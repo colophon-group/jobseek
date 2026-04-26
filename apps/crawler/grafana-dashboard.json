@@ -20,6 +20,197 @@
   "links": [],
   "panels": [
     {
+      "id": 900,
+      "type": "row",
+      "title": "Reliability",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "id": 901,
+      "type": "stat",
+      "title": "Scrape Targets Up",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "up{job=\"crawler\"}",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 902,
+      "type": "stat",
+      "title": "External Deps",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_typesense_healthy{instance=\"exporter\"}",
+          "legendFormat": "Typesense"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_redis_connected{instance=\"exporter\"}",
+          "legendFormat": "Redis"
+        }
+      ]
+    },
+    {
+      "id": 903,
+      "type": "table",
+      "title": "Build Info",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_build_info{job=\"crawler\"}",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "Value": true,
+              "job": true
+            },
+            "renameByName": {
+              "instance": "Instance",
+              "version": "Version"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": 1,
       "type": "row",
       "title": "HTTP Worker",
@@ -28,7 +219,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 9
       },
       "panels": []
     },
@@ -44,7 +235,7 @@
         "h": 8,
         "w": 9,
         "x": 0,
-        "y": 1
+        "y": 10
       },
       "fieldConfig": {
         "defaults": {
@@ -157,7 +348,7 @@
         "h": 8,
         "w": 6,
         "x": 9,
-        "y": 1
+        "y": 10
       },
       "fieldConfig": {
         "defaults": {
@@ -213,7 +404,7 @@
         "h": 8,
         "w": 9,
         "x": 15,
-        "y": 1
+        "y": 10
       },
       "fieldConfig": {
         "defaults": {
@@ -262,7 +453,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 18
       },
       "panels": []
     },
@@ -278,7 +469,7 @@
         "h": 8,
         "w": 9,
         "x": 0,
-        "y": 10
+        "y": 19
       },
       "fieldConfig": {
         "defaults": {
@@ -391,7 +582,7 @@
         "h": 8,
         "w": 6,
         "x": 9,
-        "y": 10
+        "y": 19
       },
       "fieldConfig": {
         "defaults": {
@@ -447,7 +638,7 @@
         "h": 8,
         "w": 9,
         "x": 15,
-        "y": 10
+        "y": 19
       },
       "fieldConfig": {
         "defaults": {
@@ -496,7 +687,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 27
       },
       "panels": []
     },
@@ -512,7 +703,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 19
+        "y": 28
       },
       "fieldConfig": {
         "defaults": {
@@ -564,7 +755,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 19
+        "y": 28
       },
       "fieldConfig": {
         "defaults": {
@@ -616,7 +807,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 19
+        "y": 28
       },
       "fieldConfig": {
         "defaults": {
@@ -668,7 +859,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 19
+        "y": 28
       },
       "fieldConfig": {
         "defaults": {
@@ -717,7 +908,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 36
       },
       "panels": []
     },
@@ -733,7 +924,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 28
+        "y": 37
       },
       "fieldConfig": {
         "defaults": {
@@ -803,7 +994,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 28
+        "y": 37
       },
       "fieldConfig": {
         "defaults": {
@@ -873,7 +1064,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 28
+        "y": 37
       },
       "fieldConfig": {
         "defaults": {
@@ -943,7 +1134,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 28
+        "y": 37
       },
       "fieldConfig": {
         "defaults": {
@@ -1010,7 +1201,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 45
       },
       "panels": []
     },
@@ -1024,9 +1215,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
+        "w": 6,
         "x": 0,
-        "y": 37
+        "y": 46
       },
       "fieldConfig": {
         "defaults": {
@@ -1062,6 +1253,24 @@
           },
           "expr": "crawler_exporter_export_lag{instance=\"exporter\"}",
           "legendFormat": "Export Lag"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_typesense_export_lag{instance=\"exporter\"}",
+          "legendFormat": "Typesense Lag"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum(rate(crawler_export_errors_total{instance=\"exporter\"}[$__rate_interval]))",
+          "legendFormat": "Export Errors / s"
         }
       ]
     },
@@ -1075,9 +1284,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 37
+        "w": 6,
+        "x": 6,
+        "y": 46
       },
       "fieldConfig": {
         "defaults": {
@@ -1123,9 +1332,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 37
+        "w": 6,
+        "x": 12,
+        "y": 46
       },
       "fieldConfig": {
         "defaults": {
@@ -1170,6 +1379,64 @@
       "description": "Seconds since last successful export tick. Should be <5s. >30s = exporter stuck or crashed."
     },
     {
+      "id": 904,
+      "type": "stat",
+      "title": "Typesense Reconciliation Discrepancies",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 46
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_typesense_reconciliation_discrepancies",
+          "legendFormat": "discrepancies"
+        }
+      ]
+    },
+    {
       "id": 23,
       "type": "row",
       "title": "Exporter Detail",
@@ -1178,7 +1445,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 54
       },
       "panels": []
     },
@@ -1194,7 +1461,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 46
+        "y": 55
       },
       "fieldConfig": {
         "defaults": {
@@ -1239,6 +1506,15 @@
           },
           "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_exporter_flush_duration_seconds_bucket{instance=\"exporter\"}[$__rate_interval])))",
           "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_typesense_export_duration_seconds_bucket{instance=\"exporter\"}[$__rate_interval])))",
+          "legendFormat": "Typesense p95"
         }
       ],
       "description": "How long each exporter tick takes (p50/p95). <1s at steady state. High values during backlog catchup."
@@ -1255,7 +1531,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 46
+        "y": 55
       },
       "fieldConfig": {
         "defaults": {
@@ -1307,7 +1583,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 46
+        "y": 55
       },
       "fieldConfig": {
         "defaults": {
@@ -1343,20 +1619,29 @@
           },
           "expr": "sum by (table) (rate(crawler_exporter_rows_exported_total{instance=\"exporter\"}[$__rate_interval]))",
           "legendFormat": "{{table}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum by (status) (rate(crawler_typesense_export_docs_total{instance=\"exporter\"}[$__rate_interval]))",
+          "legendFormat": "Typesense {{status}}"
         }
       ],
       "description": "Rows exported to Supabase per second. High during backlog, near 0 at steady state thanks to conditional updated_at."
     },
     {
-      "id": 27,
+      "id": 32,
       "type": "row",
-      "title": "Infrastructure",
+      "title": "System",
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 63
       },
       "panels": []
     },
@@ -1372,7 +1657,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 55
+        "y": 64
       },
       "fieldConfig": {
         "defaults": {
@@ -1431,227 +1716,6 @@
       "description": "Connection pool for local Postgres (Hetzner). Size=total connections, Idle=unused, In Use=active queries."
     },
     {
-      "id": 29,
-      "type": "timeseries",
-      "title": "Supabase Pool",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "grafanacloud-prom"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 6,
-        "y": 55
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "spanNulls": true
-          },
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "calcs": [
-            "last"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "crawler_supa_db_pool_size{instance=\"exporter\"}",
-          "legendFormat": "Size"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "crawler_supa_db_pool_idle{instance=\"exporter\"}",
-          "legendFormat": "Idle"
-        },
-        {
-          "refId": "C",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "crawler_supa_db_pool_size{instance=\"exporter\"} - crawler_supa_db_pool_idle{instance=\"exporter\"}",
-          "legendFormat": "In Use"
-        }
-      ],
-      "description": "Connection pool for Supabase (exporter only). Typically 1-2 connections."
-    },
-    {
-      "id": 30,
-      "type": "timeseries",
-      "title": "Task Failures \u2014 HTTP",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "grafanacloud-prom"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 55
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "custom": {
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "spanNulls": true
-          },
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "red"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*scrape"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "calcs": [
-            "last"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "sum by (kind) (rate(crawler_tasks_total{instance=~\"worker-.*\", status=\"failed\"}[$__rate_interval]))",
-          "legendFormat": "task-{{kind}}"
-        }
-      ],
-      "description": "Failed monitors (red) and scrapes (orange) per second on HTTP workers. Some failures are normal (sites down, timeouts)."
-    },
-    {
-      "id": 31,
-      "type": "timeseries",
-      "title": "Task Failures \u2014 Browser",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "grafanacloud-prom"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 55
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "custom": {
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "spanNulls": true
-          },
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "red"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*scrape"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "calcs": [
-            "last"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "sum by (kind) (rate(crawler_tasks_total{instance=\"browser-1\", status=\"failed\"}[$__rate_interval]))",
-          "legendFormat": "{{kind}}"
-        }
-      ],
-      "description": "Failed monitors (red) and scrapes (orange) on browser worker. Higher failure rate expected (bot detection, page load failures)."
-    },
-    {
-      "id": 32,
-      "type": "row",
-      "title": "System",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 63
-      },
-      "panels": []
-    },
-    {
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
@@ -1670,7 +1734,7 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 0,
+        "x": 6,
         "y": 64
       },
       "id": 700,
@@ -1717,7 +1781,7 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 8,
+        "x": 14,
         "y": 64
       },
       "id": 701,
@@ -1758,53 +1822,6 @@
             "lineWidth": 2,
             "spanNulls": true
           },
-          "unit": "percentunit"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 64
-      },
-      "id": 702,
-      "title": "Host CPU",
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last"
-          ]
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "1 - avg(rate(node_cpu_seconds_total{job=\"integrations/unix\", mode=\"idle\"}[$__rate_interval]))",
-          "legendFormat": "CPU used",
-          "refId": "A"
-        }
-      ],
-      "description": "Overall machine CPU utilization. Target: 70-90% of available cores."
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "grafanacloud-prom"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "spanNulls": true
-          },
           "unit": "bytes"
         }
       },
@@ -1812,62 +1829,6 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 72
-      },
-      "id": 703,
-      "title": "Host Memory",
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last"
-          ]
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "node_memory_MemAvailable_bytes{job=\"integrations/unix\"}",
-          "legendFormat": "Available",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "node_memory_MemTotal_bytes{job=\"integrations/unix\"} - node_memory_MemAvailable_bytes{job=\"integrations/unix\"}",
-          "legendFormat": "Used",
-          "refId": "B"
-        }
-      ],
-      "description": "Machine RAM: used vs available. 15GB total, ~2-3GB used by containers."
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "grafanacloud-prom"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "spanNulls": true
-          },
-          "unit": "bytes"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
         "y": 72
       },
       "id": 704,
@@ -1923,7 +1884,7 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 16,
+        "x": 8,
         "y": 72
       },
       "id": 705,
