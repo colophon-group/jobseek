@@ -148,6 +148,36 @@ class _BoardScraperInfo:
     rich_board_ids: set[str]  # boards from rich monitors with no explicit scraper
 
 
+# ── Permanent-gone signal (#2708) ──────────────────────────────────────
+#
+# 404 / 410 from any host means "this posting no longer exists" by
+# RFC 7231 / RFC 9110. Scraper's existing 3-failure backoff would still
+# retry these, taking 90+ minutes to give up and never tombstoning. The
+# ``permanent_gone=True`` arg to ``_RECORD_SCRAPE_FAILURE`` short-circuits
+# both: tombstones immediately, no retry budget consumed.
+#
+# We deliberately do NOT add 403 here. The scraper's existing
+# 3-failure-budget tombstone (added to ``_RECORD_SCRAPE_FAILURE`` in the
+# same change) catches archived-posting 403s — Avature's quirky
+# JobDetail 403 (issue #2708), Workday 403-on-cookieless, etc. — within
+# 90 minutes via the standard path. Adding host-specific 403 handling
+# rots fast as new platforms appear; the budget catches every variant.
+
+
+def _is_permanent_gone(exc: BaseException) -> bool:
+    """Return True if *exc* indicates the posting is permanently gone.
+
+    The HTTP scrapers raise ``httpx.HTTPStatusError`` (via
+    ``raise_for_status``). 404 / 410 are universal "not here" signals.
+    Other status codes (incl. 403, 5xx, network timeouts) fall through
+    to the standard scrape-failure backoff, which now also tombstones
+    after the existing 3-failure budget.
+    """
+    if not isinstance(exc, httpx.HTTPStatusError):
+        return False
+    return exc.response.status_code in (404, 410)
+
+
 def _board_has_enrich(metadata: dict) -> list[str] | None:
     """Extract the ``enrich`` list from ``metadata["scraper_config"]``, or None."""
     sc = metadata.get("scraper_config")
@@ -387,8 +417,12 @@ async def _process_one_enrich_scrape(
         # Success check: at least one enriched field is non-empty
         has_data = any(getattr(content, f, None) is not None for f in enrich_fields)
         if not has_data:
+            # No exception raised — this is a successful HTTP fetch
+            # that produced no usable enrichment fields. Treat as a
+            # transient failure (`permanent_gone=False`) so the
+            # standard backoff applies.
             async with pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
+                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, False)
             return False, monotonic() - t0
 
         # Fetch existing row once: used for both backfill detection and
@@ -552,12 +586,28 @@ async def _process_one_enrich_scrape(
     except Exception as exc:
         elapsed = monotonic() - t0
         error_msg = _error_message(exc)
-        log.error("batch.enrich.error", url=item.url, error=error_msg, duration_s=round(elapsed, 2))
+        permanent_gone = _is_permanent_gone(exc)
+        # Permanent-gone (#2708): demote to info — the posting is just
+        # archived upstream, not a real error worth paging on.
+        if permanent_gone:
+            log.info(
+                "batch.enrich.gone",
+                url=item.url,
+                error=error_msg,
+                duration_s=round(elapsed, 2),
+            )
+        else:
+            log.error(
+                "batch.enrich.error",
+                url=item.url,
+                error=error_msg,
+                duration_s=round(elapsed, 2),
+            )
         if _lookups_mod._location_resolver is not None:
             _lookups_mod._location_resolver.drain_location_misses()
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
+                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, permanent_gone)
         return False, elapsed
 
 
@@ -628,8 +678,12 @@ async def _process_one_scrape(
                     next_type=fb_type,
                 )
             else:
+                # Step failed without an HTTP exception (e.g. extraction
+                # produced no title) and no fallback step is configured.
+                # Same transient-failure semantics as the no-data branch
+                # above; standard backoff applies.
                 async with pool.acquire() as conn:
-                    await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
+                    await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, False)
             return False, monotonic() - t0
 
         content.description = normalize_description_html(content.description)
@@ -783,18 +837,28 @@ async def _process_one_scrape(
     except Exception as exc:
         elapsed = monotonic() - t0
         error_msg = _error_message(exc)
-        log.error(
-            "batch.scrape.error",
-            url=item.url,
-            error=error_msg,
-            step=scrape_step,
-            duration_s=round(elapsed, 2),
-        )
+        permanent_gone = _is_permanent_gone(exc)
+        if permanent_gone:
+            log.info(
+                "batch.scrape.gone",
+                url=item.url,
+                error=error_msg,
+                step=scrape_step,
+                duration_s=round(elapsed, 2),
+            )
+        else:
+            log.error(
+                "batch.scrape.error",
+                url=item.url,
+                error=error_msg,
+                step=scrape_step,
+                duration_s=round(elapsed, 2),
+            )
         if _lookups_mod._location_resolver is not None:
             _lookups_mod._location_resolver.drain_location_misses()
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
+                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, permanent_gone)
         return False, elapsed
 
 

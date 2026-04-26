@@ -199,13 +199,47 @@ SET scrape_failures  = 0,
 WHERE jp.id = $1
 """
 
+# Failure recording (#2708 — generalised from Avature 403 cluster).
+#
+# Every scrape failure passes through this UPDATE. The existing backoff
+# was: doubling delay (30/60/120 min), give up after 3 failures
+# (next_scrape_at=NULL). What it was missing: the give-up point left
+# is_active=true, so a posting we'd permanently abandoned stayed
+# visible to web users until the BOARD-level monitor stopped seeing
+# the URL — which for archived URLs the monitor won't even rediscover.
+#
+# Two changes here:
+#   1. When ``scrape_failures + 1 >= 3`` we now ALSO set
+#      ``is_active = false``. Universal — every host gets it. Recovers
+#      cleanly via the monitor's ``relisted`` path
+#      (queries/monitor.py:163) if the URL reappears in a future
+#      monitor cycle.
+#   2. When the failure carried a permanent-gone HTTP status (404 / 410)
+#      the caller passes ``$2 = true`` and we tombstone IMMEDIATELY,
+#      no 90-minute retry budget. Universal-status check; no host
+#      allowlist needed.
+#
+# Avature's quirky 403-on-archived-JobDetail (issue #2708) is caught by
+# rule #1 — three scrapes (~90 min) then tombstone. We could narrow it
+# further with a host allowlist, but: (a) the 3-failure budget is
+# already cheap, (b) host allowlists rot when new platforms exhibit
+# the same behaviour, (c) generalising means we don't need a new PR
+# every time another ATS does the same thing.
 _RECORD_SCRAPE_FAILURE = """
 UPDATE job_posting
 SET scrape_failures   = scrape_failures + 1,
     last_scraped_at   = now(),
     next_scrape_at    = CASE
-        WHEN scrape_failures + 1 >= 3 THEN NULL
+        WHEN $2::boolean OR scrape_failures + 1 >= 3 THEN NULL
         ELSE now() + (30 * pow(2, scrape_failures)) * interval '1 minute'
+    END,
+    is_active         = CASE
+        WHEN $2::boolean OR scrape_failures + 1 >= 3 THEN false
+        ELSE is_active
+    END,
+    updated_at        = CASE
+        WHEN $2::boolean OR scrape_failures + 1 >= 3 THEN now()
+        ELSE updated_at
     END,
     leased_until = NULL
 WHERE id = $1
