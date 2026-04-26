@@ -140,6 +140,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="Acknowledge a re-stage of every local date when --date is not set",
     )
 
+    # --- scrub ---------------------------------------------------------
+    sc = sub.add_parser(
+        "scrub",
+        help=(
+            "Retroactively remove rows from the published HuggingFace dataset"
+            " (companion to labeller_optout.txt — see --slug)."
+        ),
+    )
+    sc.add_argument(
+        "--slug",
+        default=None,
+        help=(
+            "Drop rows whose source.company_slug matches (case-insensitive)."
+            " At least one of --slug / --posting-id is required."
+        ),
+    )
+    sc.add_argument(
+        "--posting-id",
+        default=None,
+        help="Drop the row with this top-level id (combine with --slug for AND-semantics).",
+    )
+    sc.add_argument(
+        "--date",
+        action="append",
+        default=None,
+        help=(
+            "Limit scrub to this date file (data/<date>.jsonl). May be passed"
+            " multiple times. Default: every dated file on the dataset."
+        ),
+    )
+    sc.add_argument("--dry-run", action="store_true")
+
     return p
 
 
@@ -356,6 +388,20 @@ def _cmd_upload(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_scrub(args: argparse.Namespace) -> int:
+    from .scrub import ScrubFilter, ScrubGuardError, scrub
+
+    dates = frozenset(args.date) if args.date else frozenset()
+    predicate = ScrubFilter(slug=args.slug, posting_id=args.posting_id, dates=dates)
+    try:
+        result = scrub(predicate, dry_run=args.dry_run)
+    except ScrubGuardError as e:
+        print(f"scrub refused: {e}", file=sys.stderr)
+        return 2
+    print(result.render())
+    return 0
+
+
 # Per-subcommand list of args holding paths that must be inside
 # LABELLER_DATA_ROOT. Validated up-front in main() before dispatch.
 # Add new subcommand path-args here when extending the CLI; the test
@@ -371,6 +417,8 @@ _SANDBOXED_PATH_ARGS: dict[str, tuple[str, ...]] = {
     # `upload` operates only on data_root() / its own staging dir; no
     # operator-supplied paths.
     "upload": (),
+    # `scrub` only acts against the remote HF dataset + an OS tempdir.
+    "scrub": (),
 }
 
 
@@ -415,6 +463,7 @@ def main() -> None:
             "validate": _cmd_validate,
             "merge": _cmd_merge,
             "upload": _cmd_upload,
+            "scrub": _cmd_scrub,
             "prepare-post-llm": _cmd_prepare_post_llm,
         }
         rc = handlers[args.command](args)

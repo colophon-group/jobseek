@@ -41,7 +41,12 @@ def data_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 @pytest.fixture
 def stub_hf(monkeypatch: pytest.MonkeyPatch) -> dict:
-    """Patch HfApi.upload_folder to record calls instead of hitting HF."""
+    """Patch HfApi.upload_folder to record calls instead of hitting HF.
+
+    Snapshots the staged folder's contents (README.md, data/*) before
+    returning, since the real ``push_to_hub`` deletes the tempdir on exit
+    and tests that assert on README contents need a stable handle.
+    """
     calls: dict = {"upload_folder": []}
 
     class _Stub:
@@ -49,6 +54,17 @@ def stub_hf(monkeypatch: pytest.MonkeyPatch) -> dict:
             calls["init_token"] = token
 
         def upload_folder(self, **kwargs):
+            folder = Path(kwargs["folder_path"])
+            snapshot: dict[str, str] = {}
+            if folder.exists():
+                for p in folder.rglob("*"):
+                    if p.is_file():
+                        rel = str(p.relative_to(folder))
+                        try:
+                            snapshot[rel] = p.read_text()
+                        except UnicodeDecodeError:
+                            snapshot[rel] = ""
+            kwargs["_snapshot"] = snapshot
             calls["upload_folder"].append(kwargs)
 
     import huggingface_hub
@@ -188,3 +204,60 @@ def test_unscoped_run_with_empty_string_date_still_requires_confirm(
     _write_posting(data_root, "2026-04-25", "p1", verdict="accepted")
     with pytest.raises(UploadGuardError, match="--confirm"):
         push_to_hub(run_date="", dry_run=False, confirm=False)
+
+
+# --- README counts cover all dates regardless of --date scope -----------
+
+
+def test_scoped_run_regenerates_readme_with_all_local_dates(data_root: Path, stub_hf: dict) -> None:
+    """A scoped `--date X` upload must regenerate README counts for X *and* for
+    previously-uploaded date Y still on local disk (issue #2701).
+
+    The pre-fix behavior built `counts_by_date` from the scoped `by_date`,
+    which contained only X's rows, so the README on HF showed a single-
+    date counts line that silently overwrote the multi-date breakdown.
+    """
+    # Y: previously uploaded date still on disk
+    _write_posting(data_root, "2026-04-24", "p1", verdict="accepted")
+    _write_posting(data_root, "2026-04-24", "p2", verdict="accepted")
+    # X: today's scoped upload
+    _write_posting(data_root, "2026-04-25", "p3", verdict="accepted")
+
+    push_to_hub(run_date="2026-04-25", dry_run=False)
+
+    snapshot = stub_hf["upload_folder"][0]["_snapshot"]
+    readme = snapshot["README.md"]
+
+    # README counts line must mention both dates with the right tallies.
+    assert "2026-04-25: 1" in readme
+    assert "2026-04-24: 2" in readme
+
+    # And the JSONL allow-pattern is still scoped to X — we don't accidentally
+    # restage Y's data file (that would defeat the point of scoped uploads).
+    assert stub_hf["upload_folder"][0]["allow_patterns"][0] == "data/2026-04-25.jsonl"
+    # Only X's JSONL should have been staged (the allow_patterns scoping is
+    # belt-and-braces but staging-only-X also matters for restage cost).
+    assert "data/2026-04-25.jsonl" in snapshot
+    assert "data/2026-04-24.jsonl" not in snapshot
+
+
+def test_readme_counts_skip_rejected_and_optout_for_other_dates(
+    data_root: Path, stub_hf: dict
+) -> None:
+    """`_all_local_counts` shares filtering with `_accepted_by_date`:
+
+    rejected verdicts must not contribute to README counts for previously-
+    uploaded dates either, otherwise the public dataset card would over-
+    report rows.
+    """
+    _write_posting(data_root, "2026-04-24", "p1", verdict="accepted")
+    _write_posting(data_root, "2026-04-24", "p2", verdict="rejected")
+    _write_posting(data_root, "2026-04-25", "p3", verdict="accepted")
+
+    push_to_hub(run_date="2026-04-25", dry_run=False)
+
+    readme = stub_hf["upload_folder"][0]["_snapshot"]["README.md"]
+    assert "2026-04-24: 1" in readme
+    assert "2026-04-25: 1" in readme
+    # Make sure we didn't accidentally count 2 for 2026-04-24
+    assert "2026-04-24: 2" not in readme

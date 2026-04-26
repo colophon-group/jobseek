@@ -199,7 +199,80 @@ SET scrape_failures  = 0,
 WHERE jp.id = $1
 """
 
+# Failure recording — scrape-side leg of the dual-authority delisting
+# model. See docs/03-crawler-architecture.md "Delisting model — when is
+# a posting 'gone'?" for the full design rationale.
+#
+# Short version: the monitor is the PRIMARY delisting authority
+# (``_MARK_GONE_BY_TIMESTAMP`` in queries/monitor.py — fast, fires
+# within one monitor cycle when the upstream listing stops mentioning
+# the URL). The two SQL queries below are the SCRAPE-SIDE FALLBACK,
+# needed because some upstream platforms violate the natural model
+# (issue #2708 — the Avature US Deloitte tenant lists JobDetail URLs
+# that return 403 forever).
+#
+# Three failure paths, decided by the caller's classification (see
+# ``processing/scrape.py: _is_permanent_gone`` /
+# ``_is_budget_eligible_failure``):
+#
+#   _RECORD_SCRAPE_FAILURE (this UPDATE):
+#     * ``$2::boolean = true`` (caller passes ``permanent_gone=True``,
+#       i.e. HTTP 404 / 410) — tombstone IMMEDIATELY, no budget consumed.
+#     * Otherwise — bumps ``scrape_failures``; tombstones when
+#       ``scrape_failures + 1 >= 3``. Caller only takes this path for
+#       budget-eligible 4xx (excluding 401, 403, 429 — those are
+#       transient, see below).
+#
+#   _RECORD_SCRAPE_TRANSIENT (separate UPDATE):
+#     * Fired for 5xx, network errors, timeouts, 401, 403, 429, and
+#       successful HTTP fetches with empty extraction.
+#     * Backs off WITHOUT bumping the tombstone counter. A 2-hour
+#       upstream 5xx incident (or a regex break in an extraction
+#       config) cannot mass-tombstone live postings via this path.
+#     * The monitor authority remains the only way these URLs can
+#       transition to is_active=false.
+#
+# Recovery: a tombstoned posting that the monitor later re-discovers
+# flows through the ``relisted`` branch in queries/monitor.py, which
+# flips is_active back to true AND resets ``scrape_failures = 0`` so
+# the recovered posting gets a fresh budget. Without that reset a
+# scrape-tombstoned-then-relisted posting would re-tombstone on the
+# next single failure.
 _RECORD_SCRAPE_FAILURE = """
+UPDATE job_posting
+SET scrape_failures   = scrape_failures + 1,
+    last_scraped_at   = now(),
+    next_scrape_at    = CASE
+        WHEN $2::boolean OR scrape_failures + 1 >= 3 THEN NULL
+        ELSE now() + (30 * pow(2, scrape_failures)) * interval '1 minute'
+    END,
+    is_active         = CASE
+        WHEN $2::boolean OR scrape_failures + 1 >= 3 THEN false
+        ELSE is_active
+    END,
+    updated_at        = CASE
+        -- Only bump on the tombstone branch — that's a state change
+        -- the exporter cursor needs to push to Supabase + Typesense
+        -- (cursor key is ``(updated_at, id)``). For pure backoff
+        -- updates we leave updated_at alone so we don't reflow
+        -- unchanged docs.
+        WHEN $2::boolean OR scrape_failures + 1 >= 3 THEN now()
+        ELSE updated_at
+    END,
+    leased_until = NULL
+WHERE id = $1
+"""
+
+# Transient-failure path (#2708 follow-up critic findings). Used for
+# 5xx, timeouts, connect errors, 401 / 403 / 429, and empty-extraction
+# results. Bumps scrape_failures so the existing doubling-backoff math
+# still applies, but DOES NOT use scrape_failures as a tombstone
+# trigger — the upper-bound clamp at 3 caps both the backoff and stops
+# perpetual retries (next_scrape_at becomes NULL after 3 such failures
+# just like the legacy behaviour pre-#2708), but is_active stays true
+# so the monitor authority remains the sole delisting decision-maker
+# for transient-class failures.
+_RECORD_SCRAPE_TRANSIENT = """
 UPDATE job_posting
 SET scrape_failures   = scrape_failures + 1,
     last_scraped_at   = now(),

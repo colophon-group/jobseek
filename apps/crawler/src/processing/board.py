@@ -598,7 +598,10 @@ async def _process_one_board_streaming(
                 seen.add(u)
                 filtered_urls.append(u)
             for reason, count in drop_reasons.items():
-                monitor_url_filtered_total.labels(reason=reason).inc(count)
+                # ``board_id`` label added in #2704 so a noisy board is
+                # attributable without grepping logs. ``board_id`` is the
+                # primary key UUID, in scope from the enclosing function.
+                monitor_url_filtered_total.labels(reason=reason, board_id=board_id).inc(count)
                 board_log.info(
                     "batch.monitor.url_filtered",
                     reason=reason,
