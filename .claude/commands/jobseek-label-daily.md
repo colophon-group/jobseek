@@ -254,6 +254,10 @@ Only postings with `labelling_meta.qa_verdict == "accepted"` are sent to
 HuggingFace; rejected ones stay local for inspection. `labeller upload`
 reads `HF_TOKEN` from `apps/crawler/.env.local` automatically.
 
+`upload` refuses an unscoped run (no `--date`) without `--confirm`, and
+refuses any live run when zero accepted postings are present (catches a
+typo'd `LABELLER_DATA_ROOT`). Use `--dry-run` to preview at any time.
+
 ## Step 4 — summary
 
 Print a final summary:

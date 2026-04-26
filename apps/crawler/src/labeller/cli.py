@@ -134,6 +134,11 @@ def build_parser() -> argparse.ArgumentParser:
     u = sub.add_parser("upload", help="Push accepted postings + schemas to HuggingFace")
     u.add_argument("--date", default=None, help="Limit to single date; default: all")
     u.add_argument("--dry-run", action="store_true")
+    u.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Acknowledge a re-stage of every local date when --date is not set",
+    )
 
     return p
 
@@ -336,9 +341,18 @@ def _cmd_merge(args: argparse.Namespace) -> int:
 
 
 def _cmd_upload(args: argparse.Namespace) -> int:
-    from .upload import push_to_hub
+    from .upload import UploadGuardError, push_to_hub
 
-    print(push_to_hub(run_date=args.date, dry_run=args.dry_run))
+    try:
+        out = push_to_hub(
+            run_date=args.date,
+            dry_run=args.dry_run,
+            confirm=args.confirm,
+        )
+    except UploadGuardError as e:
+        print(f"upload refused: {e}", file=sys.stderr)
+        return 2
+    print(out)
     return 0
 
 
