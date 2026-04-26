@@ -161,7 +161,7 @@ export async function createWatchlist(params: {
           is_public: true,
         });
         // Match sitemap semantics: only notify URLs the sitemap also exposes
-        // (see apps/web/app/sitemap.ts — filters `u.username IS NOT NULL`).
+        // (see apps/web/src/lib/sitemap.ts — filters `u.username IS NOT NULL`).
         if (owner.username) {
           const userSlug = owner.displayUsername ?? owner.username;
           await notifyIndexNow([`/${userSlug}/${slug}`]);

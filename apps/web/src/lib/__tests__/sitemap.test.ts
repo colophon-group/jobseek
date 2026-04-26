@@ -5,7 +5,8 @@ const { dbExecuteMock, searchMock } = vi.hoisted(() => ({
   searchMock: vi.fn(),
 }));
 
-// Mock the database — sitemap queries the DB for companies and watchlists
+// Mock the database — the sitemap data layer queries the DB for
+// companies (via Postgres fallback) and watchlists.
 vi.mock("@/db", () => ({
   db: {
     execute: dbExecuteMock,
@@ -13,10 +14,10 @@ vi.mock("@/db", () => ({
 }));
 
 // Mock the cache. Memoize per-key within a single test so the sharded
-// pipeline (generateSitemaps + per-shard renders) doesn't call the
+// pipeline (planSitemapShards + per-shard renders) doesn't call the
 // underlying fetcher repeatedly — that's what real Redis would do, and
-// it matches how the production code expects to share work across shards
-// within an ISR window.
+// it matches how the production code expects to share work across
+// shards within an ISR window.
 const cacheStore = new Map<string, unknown>();
 vi.mock("@/lib/cache", () => ({
   cached: async (
@@ -41,7 +42,12 @@ vi.mock("@/lib/search/typesense-client", () => ({
   }),
 }));
 
-import sitemap, { revalidate, generateSitemaps } from "../sitemap";
+import {
+  planSitemapShards,
+  renderSitemapShard,
+  serializeUrlset,
+  SITEMAP_TTL_SECONDS,
+} from "../sitemap";
 
 function typesensePage(slugs: string[], found: number) {
   return {
@@ -53,19 +59,19 @@ function typesensePage(slugs: string[], found: number) {
 }
 
 /**
- * Render every shard returned by `generateSitemaps()` and concatenate the
- * entries — this is what the crawler ultimately gets across /sitemap.xml
- * and the /sitemap/<id>.xml shards.
+ * Render every shard returned by `planSitemapShards()` and concatenate
+ * the entries — this is what the crawler ultimately gets across
+ * /sitemap.xml and the /sitemap/<id>.xml shards.
  */
 async function renderAllShards(): Promise<
-  Awaited<ReturnType<typeof sitemap>>
+  Awaited<ReturnType<typeof renderSitemapShard>>
 > {
-  const shards = await generateSitemaps();
-  const all = await Promise.all(shards.map(({ id }) => sitemap({ id })));
+  const shards = await planSitemapShards();
+  const all = await Promise.all(shards.map(({ id }) => renderSitemapShard(id)));
   return all.flat();
 }
 
-describe("sitemap", () => {
+describe("sitemap data layer", () => {
   beforeEach(() => {
     dbExecuteMock.mockReset();
     dbExecuteMock.mockResolvedValue([]);
@@ -80,11 +86,11 @@ describe("sitemap", () => {
     expect(result.length).toBeGreaterThan(0);
   });
 
-  it("exports `revalidate` so each shard is CDN-cached as ISR (issue #2245)", () => {
-    // Without `revalidate`, every crawler hit runs the full handler
-    // (Postgres + Typesense + serialization). Regression guard: a future
-    // refactor must not silently drop this export.
-    expect(revalidate).toBe(3600);
+  it("exposes a 1h ISR window for the cache wrappers (issue #2245)", () => {
+    // Without ISR, every crawler hit runs the full handler (Postgres +
+    // Typesense + serialization). Regression guard: a future refactor
+    // must not silently change this constant.
+    expect(SITEMAP_TTL_SECONDS).toBe(3600);
   });
 
   it("generates entries for all 4 locales", async () => {
@@ -256,7 +262,7 @@ describe("sitemap shards (issue #2646)", () => {
       450,
     ));
 
-    const shards = await generateSitemaps();
+    const shards = await planSitemapShards();
     expect(shards).toEqual([
       { id: 0 },
       { id: 1 },
@@ -275,7 +281,7 @@ describe("sitemap shards (issue #2646)", () => {
       },
     ]);
 
-    const entries = await sitemap({ id: 0 });
+    const entries = await renderSitemapShard(0);
     expect(entries.some((e) => e.url.includes("/company/"))).toBe(false);
     expect(entries.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
     expect(entries.some((e) => e.url.endsWith("/en/alice/ml-jobs"))).toBe(true);
@@ -290,27 +296,114 @@ describe("sitemap shards (issue #2646)", () => {
       350,
     ));
 
-    const shard1 = await sitemap({ id: 1 }); // companies 1..200
+    const shard1 = await renderSitemapShard(1); // companies 1..200
     expect(shard1.some((e) => e.url.endsWith("/en/company/co-1"))).toBe(true);
     expect(shard1.some((e) => e.url.endsWith("/en/company/co-200"))).toBe(true);
     expect(shard1.some((e) => e.url.endsWith("/en/company/co-201"))).toBe(false);
 
     // The memoized `cached()` mock satisfies shard 2's read without
-    // re-invoking Typesense — same as production behavior under one ISR
-    // window.
-    const shard2 = await sitemap({ id: 2 }); // companies 201..350
+    // re-invoking Typesense — same as production behavior under one
+    // ISR window.
+    const shard2 = await renderSitemapShard(2); // companies 201..350
     expect(shard2.some((e) => e.url.endsWith("/en/company/co-200"))).toBe(false);
     expect(shard2.some((e) => e.url.endsWith("/en/company/co-201"))).toBe(true);
     expect(shard2.some((e) => e.url.endsWith("/en/company/co-350"))).toBe(true);
   });
 
   it("returns at least one shard even when there are no companies", async () => {
-    // Typesense empty + Postgres fallback empty: the planner still must
-    // emit shard 0 (static + watchlists). Otherwise crawlers see an empty
-    // sitemap index.
+    // Typesense empty + Postgres fallback empty: the planner still
+    // must emit shard 0 (static + watchlists). Otherwise crawlers see
+    // an empty sitemap index.
     searchMock.mockResolvedValueOnce({ found: 0, hits: [] });
-    const shards = await generateSitemaps();
+    const shards = await planSitemapShards();
     expect(shards.length).toBeGreaterThanOrEqual(1);
     expect(shards[0]).toEqual({ id: 0 });
+  });
+
+  it("shard 0 still serves static + explore entries when watchlist DB throws (issue #2694)", async () => {
+    // Production regression: when `cachedSitemapWatchlists()` threw,
+    // the whole shard 0 function threw and Next.js served an empty
+    // `<urlset/>` — wiping out even the hardcoded static + /explore
+    // URLs.
+    dbExecuteMock.mockReset();
+    dbExecuteMock.mockRejectedValue(new Error("Postgres unavailable"));
+
+    const entries = await renderSitemapShard(0);
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
+    expect(entries.some((e) => e.url === "https://jseek.co/en")).toBe(true);
+  });
+
+  it("planSitemapShards emits only shard 0 when company fetch fails (issue #2694)", async () => {
+    // Without this guard, a Typesense + Postgres dual outage would
+    // cause the planner to throw — which the index handler would have
+    // to catch separately, and any framework code calling the
+    // planner would 500.
+    searchMock.mockReset();
+    searchMock.mockRejectedValue(new Error("Typesense down"));
+    dbExecuteMock.mockReset();
+    dbExecuteMock.mockRejectedValue(new Error("Postgres also down"));
+
+    const shards = await planSitemapShards();
+    expect(shards).toEqual([{ id: 0 }]);
+  });
+
+  it("company shard returns [] (not throw) when company fetch fails", async () => {
+    // Same hardening for non-zero shards: a Typesense+Postgres dual
+    // outage shouldn't 500 the whole sitemap. Empty shard is fine —
+    // crawlers retry; a 500 may de-rank.
+    searchMock.mockReset();
+    searchMock.mockRejectedValue(new Error("Typesense down"));
+    dbExecuteMock.mockReset();
+    dbExecuteMock.mockRejectedValue(new Error("Postgres also down"));
+
+    const entries = await renderSitemapShard(1);
+    expect(entries).toEqual([]);
+  });
+});
+
+describe("serializeUrlset", () => {
+  it("emits a valid <urlset> with hreflang alternates", () => {
+    const xml = serializeUrlset([
+      {
+        url: "https://jseek.co/en/company/foo",
+        lastModified: new Date("2026-04-01T00:00:00Z"),
+        changeFrequency: "daily",
+        priority: 0.7,
+        alternates: {
+          languages: {
+            en: "https://jseek.co/en/company/foo",
+            de: "https://jseek.co/de/company/foo",
+          },
+        },
+      },
+    ]);
+    expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+    expect(xml).toContain('xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"');
+    expect(xml).toContain("<loc>https://jseek.co/en/company/foo</loc>");
+    expect(xml).toContain("<lastmod>2026-04-01T00:00:00.000Z</lastmod>");
+    expect(xml).toContain("<changefreq>daily</changefreq>");
+    expect(xml).toContain("<priority>0.7</priority>");
+    expect(xml).toContain('<xhtml:link rel="alternate" hreflang="en" href="https://jseek.co/en/company/foo"/>');
+    expect(xml).toContain('<xhtml:link rel="alternate" hreflang="de" href="https://jseek.co/de/company/foo"/>');
+  });
+
+  it("escapes XML-significant characters in URLs", () => {
+    const xml = serializeUrlset([
+      {
+        url: "https://jseek.co/en/foo?a=1&b=2",
+        priority: 0.5,
+        changeFrequency: "weekly",
+        lastModified: new Date("2026-04-01T00:00:00Z"),
+      },
+    ]);
+    expect(xml).toContain("?a=1&amp;b=2");
+  });
+
+  it("emits an empty urlset for no entries", () => {
+    const xml = serializeUrlset([]);
+    expect(xml).toContain("<urlset");
+    expect(xml).toContain("</urlset>");
+    expect(xml).not.toContain("<url>");
   });
 });

@@ -1,7 +1,8 @@
 import { setI18n } from "@lingui/react/server";
+import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { LinguiClientProvider } from "@/components/LinguiProvider";
-import { type Locale, isLocale, defaultLocale, locales, loadCatalog } from "@/lib/i18n";
+import { type Locale, isLocale, locales, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { JsonLd } from "@/lib/seo";
 
@@ -17,7 +18,17 @@ export function generateStaticParams() {
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { lang } = await params;
-  const locale: Locale = isLocale(lang) ? lang : defaultLocale;
+  // Reject unknown locales with notFound() so requests like
+  // `/<anything>.xml` (e.g. a missing `/sitemap.xml` route after
+  // PR #2665) surface as 404 instead of silently rendering the
+  // homepage with `[lang] = "<anything>.xml"`. See issue #2694.
+  //
+  // We do NOT set `dynamicParams = false` — that would inherit to
+  // every nested dynamic segment (`company/[slug]`, `[userSlug]`,
+  // `[userSlug]/[watchlistSlug]`) and 404 every dynamic page, since
+  // those segments don't have their own `generateStaticParams`.
+  if (!isLocale(lang)) notFound();
+  const locale: Locale = lang;
   const { i18n, messages } = await loadCatalog(locale);
   setI18n(i18n);
 
