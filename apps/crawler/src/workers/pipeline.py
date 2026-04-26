@@ -25,6 +25,7 @@ import structlog
 from src.config import settings
 from src.metrics import (
     monitor_duration_seconds,
+    monitor_failed_per_board_total,
     scrape_duration_seconds,
     tasks_total,
     worker_heartbeat_ts,
@@ -377,6 +378,10 @@ async def _process_monitor_work(
         )
 
     except Exception:
+        # Per-board failure attribution (#2704). Increment first so a
+        # downstream Redis failure in the reschedule path doesn't hide
+        # the original monitor failure from the metric.
+        monitor_failed_per_board_total.labels(board_id=board_id).inc()
         worker_log.exception("pipeline.monitor.error", board_id=board_id)
         # Reschedule with backoff — guard so Redis errors don't kill the worker
         try:
