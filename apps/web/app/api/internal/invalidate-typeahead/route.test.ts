@@ -67,6 +67,8 @@ describe("POST /api/internal/invalidate-typeahead", () => {
       "sen-suggest:": 0,
       "tech-suggest:": 0,
       "company-suggest:": 2,
+      "company-slug:": 0,
+      "company-similar:": 0,
     });
 
     const calls = mocks.invalidatePattern.mock.calls.map((c) => c[0]);
@@ -76,7 +78,27 @@ describe("POST /api/internal/invalidate-typeahead", () => {
       "sen-suggest:",
       "tech-suggest:",
       "company-suggest:",
+      "company-slug:",
+      "company-similar:",
     ]);
+  });
+
+  it("sweeps company-detail caches (company-slug + company-similar)", async () => {
+    /** Regression for #2715: a company rename via crawler sync would
+     * otherwise leave /company/<slug> stale up to the 10-minute TTL on
+     * `company-slug:`. The same sweep also covers `company-similar:`,
+     * whose ranked-peers result depends on industry membership. */
+    mocks.invalidatePattern.mockImplementation(async (prefix: string) =>
+      prefix === "company-slug:" ? 4 : prefix === "company-similar:" ? 3 : 0,
+    );
+
+    const res = await POST(_request("Bearer secret-token") as never);
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.deleted["company-slug:"]).toBe(4);
+    expect(body.deleted["company-similar:"]).toBe(3);
+    expect(body.total).toBe(7);
   });
 
   it("does not accept arbitrary prefixes from the caller", async () => {
