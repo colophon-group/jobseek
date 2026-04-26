@@ -12,8 +12,8 @@ from typing import Any
 
 from src.retire_stale_boards import (
     _QUERY,
-    format_csv_snippets,
     format_md,
+    format_shell_snippets,
 )
 
 
@@ -78,15 +78,15 @@ def test_format_md_renders_multiple_rows_in_order() -> None:
     assert alpha_pos < beta_pos
 
 
-# ---------- format_csv_snippets -----------------------------------------
+# ---------- format_shell_snippets -----------------------------------------
 
 
 def test_format_csv_empty_returns_friendly_comment() -> None:
-    assert format_csv_snippets([]) == "# No retirement candidates found."
+    assert format_shell_snippets([]) == "# No retirement candidates found."
 
 
 def test_format_csv_renders_grep_per_row() -> None:
-    out = format_csv_snippets([_row()])
+    out = format_shell_snippets([_row()])
     assert "grep -vF" in out
     assert "data/boards.csv" in out
     assert "https://boards.greenhouse.io/acme" in out
@@ -97,7 +97,7 @@ def test_format_csv_uses_fixed_string_match_not_regex() -> None:
     """`grep -F` is critical: URLs contain `.` which would otherwise be a regex
     metachar and over-match unrelated rows (e.g. `jobs.x.com` matching
     `jobsXxXcom`)."""
-    out = format_csv_snippets([_row(board_url="https://jobs.example.com/path")])
+    out = format_shell_snippets([_row(board_url="https://jobs.example.com/path")])
     assert "grep -vF" in out
     assert "https://jobs.example.com/path" in out
 
@@ -105,7 +105,7 @@ def test_format_csv_uses_fixed_string_match_not_regex() -> None:
 def test_format_csv_skips_rows_with_unsafe_quote_in_url() -> None:
     """Defensive: shell-unsafe URLs (rare; no-op today) emit a SKIP comment
     rather than a snippet that the operator might paste blindly."""
-    out = format_csv_snippets([_row(board_url="https://x.com/o'brien")])
+    out = format_shell_snippets([_row(board_url="https://x.com/o'brien")])
     assert "SKIP" in out
     assert "single quote" in out
     assert "grep -vF" not in out
@@ -114,12 +114,12 @@ def test_format_csv_skips_rows_with_unsafe_quote_in_url() -> None:
 def test_format_csv_anchors_on_url_with_csv_separators() -> None:
     """The pattern `,<url>,` ensures we don't accidentally match a substring
     of a different column (e.g. a URL embedded in scraper_config JSON)."""
-    out = format_csv_snippets([_row()])
+    out = format_shell_snippets([_row()])
     assert ",https://boards.greenhouse.io/acme," in out
 
 
 def test_format_csv_includes_operator_instructions_header() -> None:
-    out = format_csv_snippets([_row()])
+    out = format_shell_snippets([_row()])
     assert "Run from apps/crawler/" in out
     assert "git checkout -b" in out
 

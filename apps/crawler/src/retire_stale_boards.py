@@ -122,13 +122,23 @@ def format_md(rows: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def format_csv_snippets(rows: list[dict[str, Any]]) -> str:
-    """Render `grep -vF` snippets that delete the matching rows from boards.csv.
+def format_shell_snippets(rows: list[dict[str, Any]]) -> str:
+    """Render `grep -vF` shell snippets that delete the matching rows from boards.csv.
 
-    Targets the ``board_url`` (CSV-unique within the file) using a fixed-string
-    match, NOT regex — URLs contain `.` and would otherwise trigger
-    over-matching (e.g. `jobs.example.com` matching `jobsXexampleXcom`).
-    Each snippet rewrites the file in place via a temp file rename so the
+    Targets the ``board_url`` (CSV-unique within the file, enforced by the
+    ``UNIQUE`` constraint on ``job_board.board_url``) using a fixed-string
+    match, NOT regex — URLs contain `.` which would otherwise be a regex
+    metachar and over-match. The pattern ``,<url>,`` anchors on the
+    surrounding CSV separators so a URL that happens to be a substring of a
+    longer URL on another row does not collide.
+
+    The anchoring is correct for today's `boards.csv`, where the third
+    column (``board_url``) is always a bare URL between literal commas and
+    no row has a quoted cell. If a future row has a comma inside the URL
+    column the snippet will silently no-op; the operator should notice via
+    an empty `git diff` and fall back to a manual edit.
+
+    Each snippet rewrites the file in place via a temp-file rename so the
     operator can review with `git diff`.
     """
     if not rows:
@@ -163,6 +173,6 @@ def format_csv_snippets(rows: list[dict[str, Any]]) -> str:
 async def report_stale_boards(conn: asyncpg.Connection, *, days: int, fmt: str) -> str:
     """Convenience wrapper: query + format in one call."""
     rows = await find_stale_boards(conn, days=days)
-    if fmt == "csv":
-        return format_csv_snippets(rows)
+    if fmt == "shell":
+        return format_shell_snippets(rows)
     return format_md(rows)

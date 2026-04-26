@@ -121,10 +121,11 @@ def parse_args() -> argparse.Namespace:
     )
     retire_p.add_argument(
         "--format",
-        choices=["md", "csv"],
+        choices=["md", "shell"],
         default="md",
         help="Output format: `md` markdown table for PR descriptions; "
-        "`csv` sed snippets for boards.csv removal.",
+        "`shell` `grep -vF` snippets that drop the matching rows from "
+        "boards.csv.",
     )
 
     prune_p = sub.add_parser(
