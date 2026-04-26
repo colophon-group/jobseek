@@ -1,6 +1,19 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { NextResponse, type NextRequest } from "next/server";
 
 import { invalidatePattern } from "@/lib/cache";
+
+function _safeBearerEqual(presented: string | null, expected: string): boolean {
+  if (presented === null) return false;
+  const a = Buffer.from(presented);
+  const b = Buffer.from(`Bearer ${expected}`);
+  // timingSafeEqual requires equal-length buffers; length mismatch
+  // is itself a timing oracle, but that leaks only the expected length
+  // (a public-ish constant), not any token bytes.
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 export const runtime = "nodejs";
 
@@ -40,7 +53,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const presented = req.headers.get("authorization");
-  if (presented !== `Bearer ${expected}`) {
+  if (!_safeBearerEqual(presented, expected)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
