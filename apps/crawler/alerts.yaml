@@ -135,3 +135,83 @@ groups:
             DataDome), Postgres connection saturation, or a
             recently-merged scraper that broke a major ATS. See the
             Task Throughput panels and the daily error-review report.
+
+      # Catches the failure mode from the 2026-04-26 NHS spike (#2722):
+      # a paginating monitor silently truncates and tombstones live
+      # postings via _MARK_GONE_BY_TIMESTAMP. Compares the fleet 30m
+      # gone rate against the rolling 7-day median of itself; alerts
+      # when it spikes >3×. Subquery `[7d:30m]` evaluates the inner
+      # expression every 30m for the last 7 days, then quantile_over_time
+      # picks the median.
+      #
+      # Fleet-level only — `crawler_monitor_jobs_discovered` does not
+      # carry a `board_id` label (cardinality concern with ~3000
+      # boards). Per-board alerting is a Loki-LogQL follow-up; the
+      # `batch.monitor.success` log line includes board_id and gone
+      # count and can be aggregated there.
+      - alert: DelistingRateSpike
+        expr: |
+          sum(rate(crawler_monitor_jobs_discovered{action="gone"}[30m]))
+            >
+          3 *
+          quantile_over_time(0.5,
+            sum(rate(crawler_monitor_jobs_discovered{action="gone"}[30m]))[7d:30m]
+          )
+        for: 30m
+        labels:
+          severity: page
+          service: crawler
+        annotations:
+          summary: "Crawler delisting rate >3× 7d median for 30m"
+          description: |
+            Fleet-wide ``crawler_monitor_jobs_discovered{action="gone"}``
+            rate is above 3× the 7-day rolling median for >30 minutes.
+            The 2026-04-26 NHS spike (#2722) is the failure mode this
+            catches: a paginating monitor silently truncates URL
+            discovery and `_MARK_GONE_BY_TIMESTAMP` tombstones live
+            postings.
+          runbook: |
+            # 1. Identify the offending board(s) via Loki
+            {container=~"worker-.*|browser-.*"} |= "batch.monitor.success"
+              | json | gone > 100 | line_format "{{.board_id}} discovered={{.discovered}} gone={{.gone}}"
+            # 2. Compare discovered to historical baseline. If `discovered`
+            #    is much lower than the recent norm → silent truncation
+            #    (#2722 root cause) on a paginating monitor.
+            # 3. If only one board is responsible, raise its
+            #    `metadata.delist_threshold` (#2725) or set
+            #    `metadata.drop_threshold = 0.20` (#2723) for tighter
+            #    catch-and-skip behaviour while the underlying monitor
+            #    is fixed.
+
+      # The PREVENTIVE signal counterpart to DelistingRateSpike. When
+      # the resilience guards from #2723/#2724 catch a truncation, the
+      # delisting itself is suppressed (so DelistingRateSpike won't
+      # fire). This alert observes the suppression itself, so we
+      # notice the underlying monitor bug even when the guards are
+      # doing their job.
+      #
+      # Email severity (not page) because the guards already prevented
+      # the user-visible damage; this is "investigate within business
+      # hours". Threshold of 5 skips/hour for 1h debounces single
+      # noisy boards. Bump to ≤1 if it turns out to be too quiet.
+      - alert: GoneDetectionGuardsFiring
+        expr: sum(increase(crawler_monitor_gone_skipped_total[1h])) > 5
+        for: 1h
+        labels:
+          severity: email
+          service: crawler
+        annotations:
+          summary: "Gone-detection guards skipping mark-gone — investigate"
+          description: |
+            The drop guard (#2723) and/or blast-radius cap (#2724) have
+            skipped ``_MARK_GONE_BY_TIMESTAMP`` more than 5 times in the
+            last hour. The guards prevented mass false delistings, but
+            the underlying monitor bug — usually a paginating monitor
+            silently truncating (#2722) — needs fixing.
+          runbook: |
+            # Find the affected board(s) in Loki:
+            {container=~"worker-.*|browser-.*"} |= "batch.monitor.suspect_drop" or "batch.monitor.blast_radius_exceeded"
+              | json | line_format "{{.board_id}} reason={{.event}} discovered={{.discovered}} streak={{.streak}}"
+            # The board_id pattern + the monitor type from job_board
+            # localizes the fix (e.g. dom pagination, sitemap shard
+            # fetch, eightfold PCSX truncation).
