@@ -94,6 +94,63 @@ All monitors now use `_process_one_board_streaming()`:
 6. Stage description for R2 upload
 7. Record success/failure, reschedule in Redis
 
+## Delisting model — when is a posting "gone"?
+
+`job_posting.is_active = true` is the primary user-visible signal: the web app, search, and watchlists all filter on it. Tombstoning correctly is therefore a correctness invariant — a posting that's been removed upstream must flip to `is_active = false` within bounded time, and a posting that's still live must not.
+
+The crawler has **two authorities** for that decision, and they answer the question from different angles:
+
+### 1. Monitor authority (primary) — `_MARK_GONE_BY_TIMESTAMP`
+
+For every board cycle, the monitor produces the current per-board URL set (sitemap parse, API page, rendered DOM). A posting that was previously discovered but does not appear in the latest cycle bumps `missing_count`; once the count crosses the per-monitor threshold (1 for authoritative monitors like APIs / sitemaps; 2 for fragile DOM-based monitors that occasionally render partials), `_MARK_GONE_BY_TIMESTAMP` flips `is_active = false`.
+
+This path implements the natural model: *"the listing is the source of truth — if the upstream listing stops mentioning the URL, the posting is gone."* It works whenever monitor and listing agree.
+
+### 2. Scrape authority (fallback) — three failure classes
+
+Some upstream platforms violate the natural model. Avature's US Deloitte tenant is the documented case (issue #2708): the `apply.deloitte.com` SearchJobs SPA continues to list JobDetail URLs that the application then refuses to serve at the per-posting endpoint, returning 403 with a real Avature error page body. The monitor sees "URL still listed → not gone"; the scraper sees "403 → not fetchable". Without a fallback, the posting stays `is_active = true` forever — a dead link in the web app — because the monitor's signal never trips the delist threshold.
+
+The scrape side classifies every failure into one of three buckets, decided by `_is_permanent_gone` and `_is_budget_eligible_failure` in `processing/scrape.py`:
+
+- **`permanent_gone`** (HTTP 404 / 410) — `_RECORD_SCRAPE_FAILURE` with `permanent_gone=True`: tombstone IMMEDIATELY on the first failure. RFC-defined "this resource is gone" semantics. Universal across every host.
+- **`budget_eligible`** (HTTP 4xx other than 401, 403, 429) — `_RECORD_SCRAPE_FAILURE` with `permanent_gone=False`: counts toward the 3-failure tombstone budget (≈90 min wall-clock with the 30/60-min doubling backoff). Catches platforms that use 400 / 422 / 405 for an archived posting.
+- **`transient`** (HTTP 5xx, 401, 403, 429, network timeouts, connect errors, and successful HTTP fetch with empty extraction) — `_RECORD_SCRAPE_TRANSIENT`: backs off using the same doubling-then-stop math, but **never** flips `is_active`. The monitor authority remains the only delisting decision-maker for these failures.
+
+The transient bucket exists as a deliberate safety choice. The first iteration of #2708's fix made every 3rd consecutive failure tombstone, regardless of failure shape. Cold-read critics surfaced two false-positive risks: a 2-hour upstream 5xx incident would mass-tombstone live postings cohort-wide, and a regex break in an extraction config would tombstone every posting on the affected board. The transient bucket protects against both.
+
+The cost of the safety: 403 from Avature/similar archived-posting platforms is in the transient bucket and is **not** auto-tombstoned by the scrape side. Those URLs stay orphaned until the monitor authority delists them (Avature's SearchJobs SPA eventually drops archived URLs from the listing) or until an operator runs a one-shot cleanup. We accept this trade-off rather than tombstoning live postings during transient WAF challenges, where Cloudflare / Datadome / Akamai also return 403.
+
+A host allowlist for the Avature 403 pattern was rejected (closed PR #2720) as overfitting: it rots fast as new platforms appear with the same quirk. The classification is universal — no host names anywhere in the decision logic.
+
+### 3. Recovery — relisted path
+
+Either authority's tombstone is reversible. The monitor's discovery query (`queries/monitor.py` — the `relisted` CTE) flips `is_active = true`, resets `missing_count = 0`, AND resets `scrape_failures = 0` when a previously-tombstoned URL reappears in a fresh monitor cycle. So a transient 3-failure cluster on a still-live URL self-heals on the next monitor pass; only URLs that the monitor *also* doesn't re-list stay tombstoned.
+
+The `scrape_failures` reset is load-bearing: without it, a relisted posting comes back with `scrape_failures = 3`, and the very next failed scrape would re-tombstone it via the budget condition — a flap loop on chronically slow upstreams.
+
+### 4. Known recovery gap — cross-tenant URLs
+
+When the same source URL is owned by board A but also discovered as a `foreign_touched` URL under board B (cross-tenant duplication — ByteDance/TikTok share a careers host; Glencore reaches GCAA's Workday tenant), only `last_seen_at` is refreshed on the foreign-board match (`queries/monitor.py` — `foreign_touched` CTE). `is_active` is never flipped back. A scrape-tombstoned posting on board A whose URL the monitor only finds via board B will stay tombstoned even though the URL is still listed somewhere. This is a pre-existing recovery gap made more visible by the scrape-side authority — flagged as a known limitation rather than a regression.
+
+### 5. Known recovery gap — transient 3-strike on permanently-listed URLs
+
+The transient class backs off via `next_scrape_at = NULL` after 3 consecutive failures, mirroring the budget path. The worker self-heal (`_process_scrape_work`) honours `next_scrape_at = NULL` and stops re-firing. Recovery is only via the monitor's `relisted` CTE — which fires only when a URL re-appears after dropping out of the listing.
+
+For a posting that stays continuously listed (the upstream listing keeps citing it) but happens to hit 3 transient failures in a row (e.g. a 90-minute upstream 5xx incident hits a posting whose backoff schedule lined up with the outage window), the URL stays in the listing throughout, the `relisted` branch never fires, and the posting is permanently un-rescrapable until either a `crawler sync` re-imports the row or an operator runs `crawler backfill-locations` (which atomically promotes `next_scrape_at` to `now()`, see `apps/crawler/src/backfill.py`).
+
+The data already in Postgres (last successful scrape) stays visible to web users, and `is_active` is preserved — so the failure mode is "stale content for this posting" rather than "dead link". An operator-driven recovery CLI is tracked in [#2738](https://github.com/colophon-group/jobseek/issues/2738).
+
+### Why dual authority
+
+Either authority alone is wrong:
+
+- **Monitor-only**: leaks dead links forever when the upstream listing lies (the Avature case).
+- **Scrape-only**: too aggressive — a transient 3-failure cluster on a live URL would tombstone it without the monitor's "I just saw it again" recovery signal.
+
+Combining them gives bounded delisting latency in both cases — at most one full monitor cycle for the natural model, at most ≈90 min of scrape budget for the inconsistent-upstream case — with relisted-path recovery as the safety net.
+
+The asymmetry is deliberate: the monitor cycle is the *fast* path (minutes) when the listing is honest; the scrape budget is the *slow but eventual* path (~90 min) when it isn't. We trust the monitor first because per-cycle URL sets are cheaper than 3 per-URL retries; the budget exists because we can't trust every monitor to be authoritative about every URL.
+
 ## R2 Drain
 
 Producer-consumer pipeline polling `descriptions WHERE NOT r2_uploaded`:

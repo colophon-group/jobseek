@@ -300,13 +300,10 @@ async def monitor_one(
         "metadata": config,
     }
 
-    if config.get("skip_ssl"):
-        from src.shared.http import create_nossl_http_client
+    from src.shared.http import client_for
 
-        async with create_nossl_http_client(use_proxy=bool(config.get("proxy"))) as nossl_http:
-            discovered = await discoverer(board, nossl_http, pw=pw)
-    else:
-        discovered = await discoverer(board, http, pw=pw)
+    async with client_for(http, config) as client:
+        discovered = await discoverer(board, client, pw=pw)
     result = _normalize_discovered(discovered)
     result = _apply_url_filter(result, config)
     if result.filtered_count:
@@ -341,17 +338,10 @@ async def monitor_one_stream(
         return
 
     board = {"board_url": board_url, "metadata": config}
-    if config.get("skip_ssl"):
-        from src.shared.http import create_nossl_http_client
+    from src.shared.http import client_for
 
-        async with create_nossl_http_client(use_proxy=bool(config.get("proxy"))) as nossl_http:
-            async for batch in stream_fn(board, nossl_http, pw=pw):
-                result = _normalize_discovered(batch)
-                result = _apply_url_filter(result, config)
-                result = _apply_url_transform(result, config)
-                yield result
-    else:
-        async for batch in stream_fn(board, http, pw=pw):
+    async with client_for(http, config) as client:
+        async for batch in stream_fn(board, client, pw=pw):
             result = _normalize_discovered(batch)
             result = _apply_url_filter(result, config)
             result = _apply_url_transform(result, config)

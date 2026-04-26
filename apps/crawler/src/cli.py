@@ -112,10 +112,15 @@ def parse_args() -> argparse.Namespace:
     retire_p = sub.add_parser(
         "retire-stale-boards",
         help=(
-            "List boards that are dead and safe to retire (board_status "
-            "in ('disabled', 'gone'); last_success_at is NULL or older "
-            "than --days; zero active postings; company has at least one "
-            "live sibling board)."
+            "Two-section retirement report: Section A — boards that are dead "
+            "and safe to retire (board_status in ('disabled', 'gone'); "
+            "last_success_at is NULL or older than --days; zero active "
+            "postings; company has at least one live sibling board). "
+            "Section B (#2714) — companies whose ENTIRE board set is dead "
+            "(every board fails the dispatcher's live filter; every dead "
+            "board passes --days; zero active postings across all boards) "
+            "and are ripe for companies.csv removal in addition to "
+            "per-board retirement."
         ),
     )
     retire_p.add_argument(
