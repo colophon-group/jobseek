@@ -16,7 +16,10 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
+import structlog
 from typesense.exceptions import ObjectAlreadyExists, ObjectNotFound
+
+log = structlog.get_logger()
 
 if TYPE_CHECKING:
     import typesense
@@ -195,6 +198,50 @@ def _drop_alias(client: typesense.Client, name: str) -> None:
         pass
 
 
+def _warn_field_drift(
+    collection_name: str, live_fields: list[dict], desired_fields: list[dict]
+) -> None:
+    """Emit a warning for fields that exist in both schemas with different types.
+
+    Typesense does not support changing a field's ``type`` in place — recovery
+    requires dropping + re-adding the field with a fresh backfill. We don't
+    attempt auto-repair here; the warning is a heads-up so the operator notices
+    drift between the spec and the live cluster (e.g. a partial deploy that
+    crashed mid-patch, or a manual operator intervention that wasn't mirrored
+    back into ``COLLECTIONS``).
+
+    Known false-positive cases the operator should disregard rather than
+    drop-and-rebuild for:
+
+    - ``"auto"`` typed fields: Typesense rewrites the live ``type`` to the
+      inferred concrete type on first ingest, so the spec ``"auto"`` will
+      always disagree with the live ``"string"``/``"int64"``/etc.
+    - Silent ``int32`` → ``int64`` widening: Typesense upgrades an int field
+      server-side when it sees a value > 2³¹, so a spec ``"int32"`` may legit-
+      imately read back as ``"int64"``. The right fix is to widen the spec,
+      not to drop and re-add.
+
+    Field-shape drift (``facet``/``optional``/``index``/``sort``) is out of
+    scope here.
+    """
+    live_by_name = {f["name"]: f for f in live_fields}
+    for desired in desired_fields:
+        live = live_by_name.get(desired["name"])
+        if live is None:
+            continue
+        live_type = live.get("type")
+        spec_type = desired.get("type")
+        if live_type != spec_type:
+            log.warning(
+                "typesense.schema.field_drift",
+                collection=collection_name,
+                field=desired["name"],
+                live_type=live_type,
+                spec_type=spec_type,
+                recovery="drop + re-add field + backfill",
+            )
+
+
 def _patch_missing_fields(
     client: typesense.Client, collection_name: str, desired_fields: list[dict]
 ) -> None:
@@ -203,6 +250,10 @@ def _patch_missing_fields(
     Typesense supports adding/removing fields in-place via PATCH on a
     collection. We only ever ADD here — removals are intentionally manual to
     avoid accidental data loss. ``id`` and existing fields are left alone.
+
+    Also runs a passive type-drift check: if a field exists in both schemas
+    with a different ``type``, a warning is emitted to stderr (no auto-
+    recovery — Typesense doesn't support type changes in place).
     """
     try:
         live = client.collections[collection_name].retrieve()
@@ -212,7 +263,10 @@ def _patch_missing_fields(
     # Typesense's implicit ``id`` field never appears in retrieve()['fields'],
     # so a name-based diff would always flag it missing — and Typesense rejects
     # any PATCH that touches ``id`` with a 400 ``cannot be altered``.
-    existing_names = {f["name"] for f in live.get("fields", [])}
+    live_fields = live.get("fields", [])
+    _warn_field_drift(collection_name, live_fields, desired_fields)
+
+    existing_names = {f["name"] for f in live_fields}
     missing = [f for f in desired_fields if f["name"] != "id" and f["name"] not in existing_names]
     if not missing:
         print(f"  schema up to date for {collection_name}")
