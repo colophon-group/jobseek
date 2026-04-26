@@ -548,7 +548,11 @@ Alert rules are managed as Prometheus YAML at `apps/crawler/alerts.yaml`
 and pushed to Grafana Cloud Mimir. The current set covers the failure
 modes from the 2026-04-25 dark-window incident (#2696):
 `NoMetricsFromCrawler`, `DiskNearFull`, `RedisMemoryPressure`,
-`ExporterStale`, `TaskFailureRateHigh`. Severity is encoded as a label
+`ExporterStale`, `TaskFailureRateHigh`; plus the 2026-04-26 false-delisting
+incident (#2722–#2726): `DelistingRateSpike` (page; fleet gone-rate
+>3× rolling 7d median) and `GoneDetectionGuardsFiring` (email; resilience
+guards #2723/#2724 actively suppressing mass delistings — investigate
+the underlying monitor truncation). Severity is encoded as a label
 (`severity=page` vs `severity=email`); routing is configured in Grafana
 Cloud Alerting separately.
 
