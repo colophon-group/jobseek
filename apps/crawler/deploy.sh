@@ -120,6 +120,15 @@ docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
 trap - ERR
 docker compose up -d --remove-orphans
 
+# Force-recreate alloy so it picks up any alloy.river bind-mount changes.
+# Compose's plain ``up -d`` does not recreate a service when only the
+# bind-mounted file's content changed — the service spec is unchanged
+# from compose's perspective. Without this step, alloy keeps serving
+# the previous config indefinitely (the container's bind-mount is
+# pinned to the old inode rsync replaced). One extra ~2s alloy restart
+# per deploy is well worth not having silent observability drift.
+docker compose up -d --force-recreate alloy
+
 # ── Cleanup ──────────────────────────────────────────────────────────
 docker image prune -f
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"
