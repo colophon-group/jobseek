@@ -167,6 +167,8 @@ uv run crawler reconcile               # Compare local vs Supabase, fix discrepa
 uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense (manual; workflow_dispatch in .github/workflows/crawler-scheduled-maintenance.yml)
 uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists (every 4h via .github/workflows/crawler-scheduled-maintenance.yml, plus inline at every deploy/CSV sync)
 uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (scheduled by the indexnow compose service's while/sleep loop; see docs/13-seo-and-indexnow.md)
+uv run crawler retry-stalled-scrapes   # Reset next_scrape_at for transient-3-strike-stalled postings (#2738; see docs/03-crawler-architecture.md "Delisting model" section 5)
+uv run crawler retry-stalled-scrapes --dry-run  # Report the count without writing
 uv run crawler board <slug>            # Process single board (debug)
 uv run crawler board <slug> --dry-run  # Test without DB writes
 uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields

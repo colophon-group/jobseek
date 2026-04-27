@@ -136,9 +136,22 @@ When the same source URL is owned by board A but also discovered as a `foreign_t
 
 The transient class backs off via `next_scrape_at = NULL` after 3 consecutive failures, mirroring the budget path. The worker self-heal (`_process_scrape_work`) honours `next_scrape_at = NULL` and stops re-firing. Recovery is only via the monitor's `relisted` CTE — which fires only when a URL re-appears after dropping out of the listing.
 
-For a posting that stays continuously listed (the upstream listing keeps citing it) but happens to hit 3 transient failures in a row (e.g. a 90-minute upstream 5xx incident hits a posting whose backoff schedule lined up with the outage window), the URL stays in the listing throughout, the `relisted` branch never fires, and the posting is permanently un-rescrapable until either a `crawler sync` re-imports the row or an operator runs `crawler backfill-locations` (which atomically promotes `next_scrape_at` to `now()`, see `apps/crawler/src/backfill.py`).
+For a posting that stays continuously listed (the upstream listing keeps citing it) but happens to hit 3 transient failures in a row (e.g. a 90-minute upstream 5xx incident hits a posting whose backoff schedule lined up with the outage window), the URL stays in the listing throughout, the `relisted` branch never fires, and the posting is permanently un-rescrapable until either a `crawler sync` re-imports the row or an operator runs `crawler retry-stalled-scrapes` (`apps/crawler/src/retry_stalled.py`, added in #2738). `crawler backfill-locations` covers a different scope — it targets postings missing `location_ids` regardless of `scrape_failures`, and the predicate `description_r2_hash IS NOT NULL` excludes 3-strike postings that never had a successful scrape; use the dedicated CLI for transient-3-strike recovery.
 
-The data already in Postgres (last successful scrape) stays visible to web users, and `is_active` is preserved — so the failure mode is "stale content for this posting" rather than "dead link". An operator-driven recovery CLI is tracked in [#2738](https://github.com/colophon-group/jobseek/issues/2738).
+The data already in Postgres (last successful scrape) stays visible to web users, and `is_active` is preserved — so the failure mode is "stale content for this posting" rather than "dead link".
+
+```bash
+# Default: target postings stuck > 7 days
+uv run crawler retry-stalled-scrapes
+
+# Custom age cutoff
+uv run crawler retry-stalled-scrapes --max-age-days 14
+
+# Dry run — report the count without writing
+uv run crawler retry-stalled-scrapes --dry-run
+```
+
+The query targets `is_active = true AND next_scrape_at IS NULL AND scrape_failures >= 3 AND last_scraped_at < now() - <N>d` — transient-3-strike specifically. Postings on `rescrape_policy = "never"` boards (Starbucks, Uber, paid-proxy boards) also have `next_scrape_at IS NULL` after a successful scrape, but their `scrape_failures = 0`, so they're not affected.
 
 ### Why dual authority
 

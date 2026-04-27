@@ -234,7 +234,7 @@ export async function searchJobs(params: {
   return result;
 }
 
-export async function listTopCompanies(params: {
+type TopCompaniesParams = {
   locationIds?: number[];
   occupationIds?: number[];
   seniorityIds?: number[];
@@ -248,9 +248,20 @@ export async function listTopCompanies(params: {
   locale: string;
   offset: number;
   limit: number;
-}): Promise<SearchResponse> {
-  const userId = await getSessionUserId();
+};
 
+/**
+ * Session-free implementation shared by :func:`listTopCompanies` (which
+ * reads ``getSessionUserId`` to enforce the anonymous truncation cap)
+ * and :func:`listTopCompaniesAnonymous` (which skips the session read
+ * for ISR-eligible call sites). Reading ``headers()`` / ``cookies()``
+ * inside an ISR page render path silently downgrades the route to
+ * dynamic — see #2640 + #2243.
+ */
+async function _listTopCompaniesImpl(
+  params: TopCompaniesParams,
+  userId: string | null,
+): Promise<SearchResponse> {
   if (!userId && params.offset >= ANON_MAX_COMPANIES) {
     return { companies: [], totalCompanies: 0, truncated: true };
   }
@@ -290,6 +301,26 @@ export async function listTopCompanies(params: {
   }
 
   return result;
+}
+
+export async function listTopCompanies(params: TopCompaniesParams): Promise<SearchResponse> {
+  const userId = await getSessionUserId();
+  return _listTopCompaniesImpl(params, userId);
+}
+
+/**
+ * Anonymous variant of :func:`listTopCompanies` for ISR-eligible
+ * server-render paths (#2640). Does NOT read the session — calling
+ * ``getSessionUserId`` would await ``headers()`` and silently
+ * downgrade the route to dynamic rendering. Always treats the
+ * caller as anonymous, so the truncation cap is enforced at
+ * ``ANON_MAX_COMPANIES``. Safe for use from a page render with
+ * ``revalidate = N``.
+ */
+export async function listTopCompaniesAnonymous(
+  params: TopCompaniesParams,
+): Promise<SearchResponse> {
+  return _listTopCompaniesImpl(params, null);
 }
 
 // ── Currency rates for salary filter ────────────────────────────────

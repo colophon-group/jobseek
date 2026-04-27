@@ -33,6 +33,11 @@ const webRoot = join(here, "..", "..");
 const ISR_PROTECTED_PAGES = [
   "app/[lang]/(app)/company/[slug]/page.tsx",
   "app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx",
+  // /explore became ISR-eligible in #2640: the page server-renders
+  // ``fetchExploreDefaults`` (anonymous, no-filter case) and the
+  // client conditionally re-fetches via ``fetchExploreData`` only
+  // when the user has the ``logged_in`` hint or filter searchParams.
+  "app/[lang]/(app)/explore/page.tsx",
 ];
 
 /**
@@ -81,6 +86,12 @@ const TAINTED_HELPERS: ReadonlyArray<string> = [
   "getViewerLanguages",
   "getGeoFromHeaders",
   "getPreferences",
+  // ``fetchExploreData`` (the personalized, header-reading variant)
+  // and ``listTopCompanies`` (calls ``getSessionUserId``) are both
+  // tainted. The /explore page must call only ``fetchExploreDefaults``
+  // / ``listTopCompaniesAnonymous`` instead — see #2640.
+  "fetchExploreData",
+  "listTopCompanies",
 ];
 
 function isClientComponent(source: string): boolean {
