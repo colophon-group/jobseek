@@ -10,12 +10,16 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import random
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
+import httpx
 import structlog
+
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
@@ -1036,6 +1040,91 @@ async def fetch_json(
     return json.loads(text)
 
 
+# Retry budget for the api_sniff ``paginate_all`` pagination loop —
+# wraps both ``make_http_fetcher`` (httpx) and ``make_browser_fetcher``
+# (Playwright) transports. Same cadence as ``http_fetch_with_retry``
+# in api_sniffer.py for cross-call consistency.
+_PAGINATE_FETCH_RETRIES = 3
+_PAGINATE_FETCH_BASE_DELAY = 1.0
+
+
+async def _fetch_page_with_retry(
+    fetch_fn: FetchJsonFn,
+    method: str,
+    url: str,
+    headers: dict,
+    body: str | None,
+    *,
+    retries: int = _PAGINATE_FETCH_RETRIES,
+    base_delay: float = _PAGINATE_FETCH_BASE_DELAY,
+) -> object:
+    """Wrap a :data:`FetchJsonFn` with bounded retries (#2733).
+
+    Used by :func:`paginate_all` to convert the prior silent-on-failure
+    pagination loop (a single ``except Exception: break`` at the
+    fetch site) into a retry-then-raise contract that matches the
+    dom/sitemap/PCSX/accenture monitors.
+
+    Behaviour:
+
+    - Returns ``fetch_fn``'s normal result on success.
+    - Retries on ``httpx.HTTPStatusError`` whose status is retryable
+      (``is_retryable_status``: 5xx including Cloudflare 520-526/530,
+      plus 408/425/429), and on any other ``Exception`` (Playwright
+      errors, network errors, JSON parse errors).
+    - Raises :class:`PaginationFetchError` immediately on a
+      non-retryable 4xx (e.g. 401, 403, 400) — those won't recover.
+    - Raises :class:`PaginationFetchError` after the retry budget is
+      exhausted.
+
+    ``fetch_fn`` is the abstraction shared between the httpx and
+    Playwright transports (see :func:`make_http_fetcher` /
+    :func:`make_browser_fetcher`); the retry classifier handles each
+    transport's exception shape uniformly.
+    """
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+
+    for attempt in range(retries):
+        try:
+            return await fetch_fn(method, url, headers, body)
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            last_status = status
+            last_exc = exc
+            if not is_retryable_status(status):
+                # Non-transient — fail loudly so the run is recorded as
+                # a failure rather than truncating to whatever pages
+                # happened to succeed.
+                raise PaginationFetchError(
+                    url,
+                    attempts=attempt + 1,
+                    last_status=status,
+                ) from exc
+        except Exception as exc:  # noqa: BLE001 — Playwright errors, timeouts, parse errors
+            last_exc = exc
+            last_status = None
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "api_sniff.paginate_backoff",
+                url=url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await asyncio.sleep(delay)
+
+    raise PaginationFetchError(
+        url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
+
+
 async def paginate_all(
     fetch_fn: FetchJsonFn,
     result: JobListResult,
@@ -1131,23 +1220,26 @@ async def paginate_all(
             value=current_value,
         )
 
-        try:
-            data = await fetch_fn(ex.method, fetch_url, headers, fetch_body)
-            items = extract_items(data, result.candidate.json_path)
+        # Retry-then-raise around the fetch (#2733). Persistent transient
+        # failures previously fell through to ``except Exception: break``
+        # which silently truncated the result set — same shape as the
+        # NHS spike (#2722). Now they raise ``PaginationFetchError`` and
+        # the run is recorded as a failure end-to-end. End-of-pagination
+        # is still detected via the empty-page / partial-page branches
+        # below.
+        data = await _fetch_page_with_retry(fetch_fn, ex.method, fetch_url, headers, fetch_body)
+        items = extract_items(data, result.candidate.json_path)
 
-            if not items:
-                empty_count += 1
-                if empty_count >= 2:
-                    log.debug("api_sniff.pagination_stop", reason="empty_pages")
-                    break
-            else:
-                empty_count = 0
-                all_items.extend(items)
-                if len(items) < page_size:
-                    break
-        except Exception:
-            log.debug("api_sniff.pagination_fetch_failed", exc_info=True)
-            break
+        if not items:
+            empty_count += 1
+            if empty_count >= 2:
+                log.debug("api_sniff.pagination_stop", reason="empty_pages")
+                break
+        else:
+            empty_count = 0
+            all_items.extend(items)
+            if len(items) < page_size:
+                break
 
         pages_fetched += 1
         current_value += pag.increment
