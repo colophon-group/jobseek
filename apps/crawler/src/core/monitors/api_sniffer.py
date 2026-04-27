@@ -18,11 +18,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import random
 import re
 from math import ceil
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
+import httpx
 import structlog
 
 from src.core.monitors import DiscoveredJob, register
@@ -66,12 +68,14 @@ from src.shared.api_sniff import (
     set_url_param,
     trigger_interactions,
 )
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 from src.shared.nextdata import extract_field, resolve_path
 
 if TYPE_CHECKING:
-    import httpx
+    pass  # httpx now imported at runtime above (used in http_fetch_with_retry)
 
 log = structlog.get_logger()
+
 
 MAX_ITEMS = 10_000
 
@@ -512,6 +516,110 @@ def find_html_strings(obj: object, path: str = "") -> list[tuple[str, str]]:
     return results
 
 
+# Retry budget for the api_sniffer monitor's first-page + HTML-pagination
+# httpx fetches. Matches ``fetch_with_retry`` defaults: 3 total attempts
+# with exponential backoff and full jitter starting at 1s — symmetric
+# with the accenture monitor (#2735) for cross-monitor consistency.
+_API_SNIFFER_FETCH_RETRIES = 3
+_API_SNIFFER_FETCH_BASE_DELAY = 1.0
+
+
+async def http_fetch_with_retry(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    headers: dict | None = None,
+    body: str | None = None,
+    *,
+    retries: int = _API_SNIFFER_FETCH_RETRIES,
+    base_delay: float = _API_SNIFFER_FETCH_BASE_DELAY,
+) -> dict | None:
+    """Fetch JSON via httpx with bounded retries (#2733).
+
+    Returns:
+        - Parsed JSON dict on HTTP 200.
+        - ``None`` on 404 / 410 (legitimate end-of-pagination, or stale
+          rotating-token URL — the caller's ``api_url_match`` browser
+          fallback path interprets ``None`` as "go look up the live URL").
+        - ``None`` on other non-retryable 4xx (auth, forbidden, bad
+          request) with a warning, mirroring the lenient stop semantic
+          used by ``fetch_with_retry`` on the dom/sitemap path.
+
+    Raises:
+        :class:`PaginationFetchError` after exhausting *retries* on
+        retryable HTTP statuses (5xx including Cloudflare 520-526/530,
+        plus 408/425/429) or arbitrary network exceptions (timeout,
+        connection reset, JSON parse error). The caller is expected to
+        propagate so ``_process_one_board_streaming`` records the run
+        as a failure rather than a partial success — closing the same
+        silent-truncation hole the dom/sitemap fix (#2722) and PCSX/
+        accenture follow-ups (#2734/#2735) addressed for their paths.
+
+        Note on JSON parse failures: ``resp.json()`` raising (malformed
+        body, captcha HTML, anti-bot challenge served as 200) takes the
+        retry path. Captcha responses won't recover within the retry
+        budget — that's accepted: failing loud is preferable to
+        silently treating a captcha page as end-of-pagination. The
+        ``last_error`` field on the raised exception ("JSONDecodeError")
+        is what an operator pattern-matches in logs to recognise this
+        case.
+
+    Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
+    with full jitter.
+    """
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+
+    for attempt in range(retries):
+        try:
+            kw: dict = {"headers": headers or {}, "timeout": 30}
+            if method.upper() == "POST" and body:
+                kw["content"] = body
+                kw["headers"].setdefault("content-type", "application/json")
+            resp = await client.request(method.upper(), url, **kw)
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            last_status = status
+            last_exc = exc
+            if status in (404, 410):
+                return None
+            if not is_retryable_status(status):
+                # Other 4xx (auth, forbidden, bad-request) — not transient,
+                # not "end of pagination" canonically. Lenient stop with
+                # a warning so anomalies surface in logs.
+                log.warning(
+                    "api_sniffer.http_fetch_non_retryable_status",
+                    url=url,
+                    status=status,
+                )
+                return None
+            # else retryable — fall through to backoff
+        except Exception as exc:  # noqa: BLE001 — timeout, network, parse error
+            last_exc = exc
+            last_status = None
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "api_sniffer.http_fetch_backoff",
+                url=url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await asyncio.sleep(delay)
+
+    raise PaginationFetchError(
+        url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
+
+
 async def http_fetch(
     client: httpx.AsyncClient,
     method: str,
@@ -519,17 +627,29 @@ async def http_fetch(
     headers: dict | None = None,
     body: str | None = None,
 ) -> dict | None:
-    """Fetch JSON via httpx. Returns parsed JSON or None on error."""
+    """Lenient JSON fetcher: returns parsed JSON or ``None`` on any error.
+
+    Thin wrapper over :func:`http_fetch_with_retry` that catches
+    :class:`PaginationFetchError` and returns ``None`` so legacy callers
+    (the api_sniffer scraper at ``scrapers/api_sniffer.py:440``) keep
+    their existing "any failure → None" contract while still benefiting
+    from the bounded retry budget.
+
+    New monitor / pagination callers should prefer
+    :func:`http_fetch_with_retry` directly so persistent transient
+    failures fail loudly rather than silently truncating to the empty
+    result set (#2733).
+    """
     try:
-        kw: dict = {"headers": headers or {}, "timeout": 30}
-        if method.upper() == "POST" and body:
-            kw["content"] = body
-            kw["headers"].setdefault("content-type", "application/json")
-        resp = await client.request(method.upper(), url, **kw)
-        resp.raise_for_status()
-        return resp.json()
-    except Exception:
-        log.warning("api_sniffer.http_fetch_failed", url=url, exc_info=True)
+        return await http_fetch_with_retry(client, method, url, headers, body)
+    except PaginationFetchError as exc:
+        log.warning(
+            "api_sniffer.http_fetch_failed",
+            url=url,
+            attempts=exc.attempts,
+            last_status=exc.last_status,
+            last_error=exc.last_error,
+        )
         return None
 
 
@@ -596,8 +716,13 @@ async def _discover_http(
     headers = clean_headers(request_headers)
 
     # -- first page --------------------------------------------------------
+    # Strict variant raises on persistent transient (5xx, network) so the
+    # whole board run is recorded as a failure instead of silently
+    # returning "no items" — the same shape of bug as #2722. ``None`` is
+    # reserved for 404/410 (URL stale → browser fallback below) and other
+    # non-retryable 4xx (lenient stop).
     api_url_match = config.get("api_url_match")
-    data = await http_fetch(client, method, api_url, headers, post_data)
+    data = await http_fetch_with_retry(client, method, api_url, headers, post_data)
 
     if data is None and api_url_match and pw is not None:
         # Stored URL may be stale (rotating token).  Open browser to discover
@@ -627,10 +752,13 @@ async def _discover_http(
             api_url = fresh_url
             data = captured_data
         elif fresh_url != api_url:
-            # URL changed but no response captured — retry via HTTP
+            # URL changed but no response captured — retry via HTTP.
+            # Strict variant: a persistent 5xx on the freshly-discovered
+            # URL raises, so we don't silently return empty for a real
+            # outage. End-of-pagination (404) still falls through.
             log.info("api_sniffer.http_retry_live_url", old=api_url[:80], new=fresh_url[:80])
             api_url = fresh_url
-            data = await http_fetch(client, method, api_url, headers, post_data)
+            data = await http_fetch_with_retry(client, method, api_url, headers, post_data)
 
     if data is None:
         return list() if fields_map else set()
@@ -711,7 +839,14 @@ async def _discover_http(
                     fetch_url = api_url
                     fetch_body = set_body_param(post_data, pag_param, current_value)
 
-                page_data = await http_fetch(
+                # Strict pagination semantic (#2733). ``http_fetch_with_retry``
+                # returns ``None`` only on legitimate 404/410 end-of-pagination
+                # or non-retryable 4xx; persistent 5xx / network errors raise
+                # ``PaginationFetchError``, which propagates out of
+                # ``_discover_http`` -> ``discover`` ->
+                # ``_process_one_board_streaming``'s ``except Exception``
+                # so the run is recorded as a failure. No silent truncation.
+                page_data = await http_fetch_with_retry(
                     client,
                     method,
                     fetch_url,

@@ -654,3 +654,111 @@ class TestPaginateAllWithFetchFn:
 
         items = await paginate_all(mock_fetch, result, max_pages=5)
         assert len(items) == 5
+
+    @pytest.mark.asyncio
+    async def test_paginate_propagates_persistent_fetch_error(self, monkeypatch):
+        """A persistent transient on a paginated fetch raises
+        ``PaginationFetchError`` rather than silently truncating to the
+        items already accumulated (#2733). The previous behaviour
+        (``except Exception: break``) returned a partial result that
+        downstream gone-detection would treat as authoritative.
+        """
+        import httpx
+
+        from src.shared.api_sniff import _fetch_page_with_retry  # noqa: F401
+        from src.shared.http_retry import PaginationFetchError
+
+        page1_items = [{"title": f"Job {i}"} for i in range(10)]
+
+        from src.shared import api_sniff as api_sniff_module
+
+        monkeypatch.setattr(api_sniff_module.asyncio, "sleep", AsyncMock())
+
+        call_count = 0
+
+        async def mock_fetch(method, url, headers, body):
+            nonlocal call_count
+            call_count += 1
+            # Page 1 is the page-size probe (succeeds with same items so
+            # probe doesn't expand). Subsequent calls raise a 503
+            # HTTPStatusError so the retry budget exhausts.
+            if call_count == 1:
+                return {"jobs": page1_items, "total": 50}
+            request = httpx.Request("GET", url)
+            response = httpx.Response(503, request=request)
+            raise httpx.HTTPStatusError(
+                "503 Service Unavailable", request=request, response=response
+            )
+
+        ex = _make_exchange(
+            url="https://example.com/api/jobs?offset=0&limit=10",
+            body={"jobs": page1_items, "total": 50},
+        )
+        pag = PaginationInfo(
+            param_name="offset",
+            style="offset",
+            start_value=0,
+            increment=10,
+            location="query",
+        )
+        cand = ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items)
+        result = JobListResult(
+            candidate=cand,
+            url_field=None,
+            total_count=50,
+            pagination=pag,
+        )
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await paginate_all(mock_fetch, result, max_pages=5)
+        assert exc_info.value.last_status == 503
+
+    @pytest.mark.asyncio
+    async def test_paginate_raises_on_non_retryable_4xx_immediately(self, monkeypatch):
+        """A 401/403 on a paginated fetch raises immediately —
+        won't recover, no point retrying."""
+        import httpx
+
+        from src.shared.http_retry import PaginationFetchError
+
+        page1_items = [{"title": f"Job {i}"} for i in range(10)]
+
+        from src.shared import api_sniff as api_sniff_module
+
+        monkeypatch.setattr(api_sniff_module.asyncio, "sleep", AsyncMock())
+
+        call_count = 0
+
+        async def mock_fetch(method, url, headers, body):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {"jobs": page1_items, "total": 50}
+            request = httpx.Request("GET", url)
+            response = httpx.Response(401, request=request)
+            raise httpx.HTTPStatusError("401 Unauthorized", request=request, response=response)
+
+        ex = _make_exchange(
+            url="https://example.com/api/jobs?offset=0&limit=10",
+            body={"jobs": page1_items, "total": 50},
+        )
+        pag = PaginationInfo(
+            param_name="offset",
+            style="offset",
+            start_value=0,
+            increment=10,
+            location="query",
+        )
+        cand = ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items)
+        result = JobListResult(
+            candidate=cand,
+            url_field=None,
+            total_count=50,
+            pagination=pag,
+        )
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await paginate_all(mock_fetch, result, max_pages=5)
+        assert exc_info.value.last_status == 401
+        # Probe call (1) + page2 fetch (1) = 2 total — no retries on 401.
+        assert call_count == 2
