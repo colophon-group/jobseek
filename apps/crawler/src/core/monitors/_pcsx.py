@@ -39,6 +39,7 @@ import structlog
 
 from src.core.monitors import DiscoveredJob
 from src.core.monitors._incremental import paginate_all, paginate_until_old
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
@@ -74,8 +75,35 @@ class PcsxDisabled(Exception):
     """Probe detected that PCSX is disabled for this tenant."""
 
 
-class PcsxFetchError(Exception):
-    """PCSX request failed after retries on 429/5xx (transient)."""
+class PcsxFetchError(PaginationFetchError):
+    """PCSX request failed after retries on 429/5xx (transient).
+
+    Subclasses :class:`PaginationFetchError` (#2734) so PCSX failures are
+    interchangeable with the static dom/sitemap pagination failure shape:
+    callers that ``except PaginationFetchError`` will catch this too,
+    keeping operator-facing semantics symmetric across all paginating
+    monitors. Constructed with a free-form message (legacy contract);
+    optional ``url`` / ``last_status`` kwargs carry context for the
+    base-class fields when callers have it.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        url: str = "<pcsx>",
+        last_status: int | None = None,
+    ) -> None:
+        # Skip ``PaginationFetchError.__init__`` — its formatted message
+        # ("pagination fetch failed for {url} after {N} attempts ({detail})")
+        # would shadow PCSX's caller-supplied diagnostic. Set the
+        # base-class attributes directly so ``isinstance`` checks and
+        # ``exc.last_status`` access still work.
+        Exception.__init__(self, message)
+        self.url = url
+        self.attempts = 0
+        self.last_status = last_status
+        self.last_error = None
 
 
 class PcsxStableBlock(PcsxFetchError):
@@ -146,7 +174,9 @@ async def _fetch_page(
                 raise PcsxFetchError(
                     f"PCSX response from {host} exceeds "
                     f"{PCSX_MAX_RESPONSE_BYTES} bytes "
-                    f"(got {len(resp.content)})"
+                    f"(got {len(resp.content)})",
+                    url=_api_url(host),
+                    last_status=200,
                 )
             try:
                 data = resp.json()
@@ -157,13 +187,17 @@ async def _fetch_page(
             # Defensive: PCSX could respond with an unexpected shape.
             if not isinstance(data, dict):
                 raise PcsxFetchError(
-                    f"PCSX response from {host} is not a JSON object (got {type(data).__name__})"
+                    f"PCSX response from {host} is not a JSON object (got {type(data).__name__})",
+                    url=_api_url(host),
+                    last_status=200,
                 )
             data_inner = data.get("data")
             if data_inner is not None and not isinstance(data_inner, dict):
                 raise PcsxFetchError(
                     f"PCSX response.data from {host} is not a JSON object "
-                    f"(got {type(data_inner).__name__})"
+                    f"(got {type(data_inner).__name__})",
+                    url=_api_url(host),
+                    last_status=200,
                 )
             positions = (data_inner or {}).get("positions") or []
             return positions
@@ -178,27 +212,50 @@ async def _fetch_page(
                 raise
             except Exception:
                 pass
-            raise PcsxFetchError(f"403 from {host}")
+            raise PcsxFetchError(
+                f"403 from {host}",
+                url=_api_url(host),
+                last_status=403,
+            )
         if resp.status_code == 405:
             # Stable block (Starbucks pattern). Don't retry — the server
             # is refusing the method entirely. Bubble up as PcsxStableBlock
             # so the caller can flip the watermark to ``enabled=False`` and
             # stop re-trying every cycle.
-            raise PcsxStableBlock(f"405 from {host} (rate-limited / blocked)")
-        if resp.status_code in (429, 500, 502, 503, 504):
-            # Transient — exponential backoff + jitter then retry. Jitter
-            # prevents thundering herd when multiple workers hit the same
-            # tenant simultaneously and all back off in lockstep.
+            raise PcsxStableBlock(
+                f"405 from {host} (rate-limited / blocked)",
+                url=_api_url(host),
+                last_status=405,
+            )
+        if is_retryable_status(resp.status_code):
+            # Transient — exponential backoff + jitter then retry.
+            # ``is_retryable_status`` covers 408/425/429 plus any 5xx in
+            # range — Cloudflare 520-526/530 origin errors included.
+            #
+            # Backoff cadence (5/10/20s × narrow jitter) is intentionally
+            # heavier than the dom/sitemap path's (~0.5/1/2s × full
+            # jitter): PCSX is a paginated, expensive endpoint and the
+            # large tenants (Starbucks, Citi) have rate-limit budgets
+            # that don't tolerate a thundering-herd of fast retries from
+            # 3 workers. ``random.uniform(0.8, 1.2)`` gives ±20% spread
+            # — wide enough to decorrelate workers, narrow enough that
+            # the polite-cadence intent is preserved.
             base_delay = 5.0 * (2**attempt)
             jittered = base_delay * random.uniform(0.8, 1.2)
             await asyncio.sleep(jittered)
             continue
         # Other unexpected status — fail fast.
-        raise PcsxFetchError(f"HTTP {resp.status_code} from {host}")
+        raise PcsxFetchError(
+            f"HTTP {resp.status_code} from {host}",
+            url=_api_url(host),
+            last_status=resp.status_code,
+        )
 
     raise PcsxFetchError(
         f"PCSX fetch failed after {PCSX_DEFAULT_RETRY_MAX} attempts "
-        f"(last_status={last_status}, last_exc={last_exc!r})"
+        f"(last_status={last_status}, last_exc={last_exc!r})",
+        url=_api_url(host),
+        last_status=last_status,
     )
 
 
