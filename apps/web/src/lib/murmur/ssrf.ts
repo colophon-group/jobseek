@@ -28,7 +28,12 @@
  */
 
 import { lookup as dnsLookup } from "node:dns/promises";
-import type { LookupAddress } from "node:dns";
+import type { LookupAddress, LookupOptions } from "node:dns";
+import * as http from "node:http";
+import * as https from "node:https";
+import type { IncomingMessage } from "node:http";
+import type { LookupFunction } from "node:net";
+import { Readable } from "node:stream";
 
 /**
  * Host-pattern allowlist. Each entry is either:
@@ -314,7 +319,10 @@ export async function validateUrl(input: string): Promise<ValidateUrlResult> {
     return { ok: false, error: "url_dns_failed" };
   }
 
-  const family = resolved.family === 6 ? 6 : 4;
+  // `node:dns/promises`.lookup types `family` as `4 | 6` already; no
+  // narrowing ternary needed. Validate at runtime defensively in case a
+  // mocked resolver returns something off-spec.
+  const family: 4 | 6 = resolved.family === 6 ? 6 : 4;
   if (isPrivateIp(resolved.address)) {
     return { ok: false, error: "url_resolves_to_private" };
   }
@@ -335,32 +343,125 @@ export class SafeFetchError extends Error {
 }
 
 /**
- * Fetch a URL after validation, with DNS-rebinding protection.
+ * Build a DNS `lookup`-compatible function that pins resolution to a
+ * pre-captured IP for one specific hostname.
  *
- * Resolves the hostname *once* via `validateUrl` and captures the IP.
- * The outbound request is then issued against a URL whose hostname has
- * been rewritten to that captured IP, with the original Host header
- * preserved on the request so virtual-hosted servers route correctly.
+ * The returned function matches Node's `net.LookupFunction` signature
+ * and is intended to be passed as the `lookup` option of
+ * `http.request` / `https.request` / `net.connect`. Its behaviour:
  *
- * Why this works as rebinding mitigation: by substituting the IP into
- * the URL we prevent any further DNS resolution. The connect call has
- * no opportunity to consult the resolver again, so an attacker who
- * controls the hostname's DNS cannot redirect us to a private IP after
- * the validation check has passed.
+ *   - If called for `expectedHostname` (case-insensitive), it returns
+ *     the captured `(ip, family)` tuple immediately, with no DNS query.
+ *   - If called for any other hostname, it fails closed with an
+ *     `ENOTFOUND` error. This protects against a connection helper that
+ *     might try to resolve a CNAME, a redirect target, or any other
+ *     name the request layer derives.
  *
- * Trade-off: this approach breaks TLS hostname verification (the
- * server's certificate is for the original hostname, not the IP). For
- * the M0 demo all probe targets are public ATS providers; if/when this
- * is reused for richer transport, swap to a `node:https` Agent with a
- * custom `lookup` AND `servername` so SNI continues to use the original
- * hostname while the connection still routes to the captured IP.
+ * Why this matters for SSRF: the outbound request is issued against the
+ * original hostname (so SNI / TLS SAN matching still works), but the
+ * underlying socket is forced onto the IP we already validated. An
+ * attacker who controls the authoritative DNS for that hostname has no
+ * second window to swap in a private IP — `lookup` is never given the
+ * opportunity to query the resolver.
  *
- * Returns whatever `fetch` produces. If validation fails, throws
- * `SafeFetchError` with `.code` matching `ValidateUrlErrCode`.
+ * Calling-convention note: Node calls `lookup` with EITHER `all: false`
+ * (callback receives `(err, address, family)`) OR `all: true` (callback
+ * receives `(err, addresses[])`). Modern `net.connect` uses
+ * `all: true`, so we support both calling conventions; otherwise the
+ * connection layer rejects with `Invalid IP address: undefined`.
+ *
+ * Exported for unit testing; route handlers should not call this
+ * directly, they should use `safeFetch`.
+ *
+ * @param expectedHostname Hostname that was validated by `validateUrl`.
+ *                         Compared case-insensitively.
+ * @param ip               Captured IPv4 / IPv6 address (string form).
+ * @param family           IP family of `ip` (4 or 6).
+ */
+export function createPinnedLookup(
+  expectedHostname: string,
+  ip: string,
+  family: 4 | 6,
+): LookupFunction {
+  const expected = expectedHostname.toLowerCase();
+  // We assert through `unknown` because Node's `LookupFunction`
+  // narrows the third arg to a union shape that's awkward to express
+  // structurally; the runtime contract is correct for both modes.
+  return ((
+    hostname: string,
+    options: LookupOptions,
+    callback: (
+      err: NodeJS.ErrnoException | null,
+      addressOrAddresses: string | LookupAddress[],
+      family?: number,
+    ) => void,
+  ) => {
+    if (hostname.toLowerCase() !== expected) {
+      const err: NodeJS.ErrnoException = Object.assign(
+        new Error(
+          `safeFetch: refusing to resolve unexpected hostname '${hostname}' (expected '${expected}')`,
+        ),
+        { code: "ENOTFOUND", hostname },
+      );
+      // Match Node's expected error-arg shape for either calling mode.
+      // The address arg is conventionally "" / [] on error; Node only
+      // checks `err`.
+      if (options && options.all) {
+        callback(err, []);
+      } else {
+        callback(err, "", 0);
+      }
+      return;
+    }
+    if (options && options.all) {
+      callback(null, [{ address: ip, family }]);
+    } else {
+      callback(null, ip, family);
+    }
+  }) as unknown as LookupFunction;
+}
+
+/**
+ * Fetch a URL after validation, with DNS-rebinding protection that
+ * preserves TLS correctness.
+ *
+ * Strategy:
+ *   1. `validateUrl` performs the allowlist + DNS + IP-filter check
+ *      and captures the resolved IP and family.
+ *   2. The outbound request is dispatched via `node:https.request`
+ *      (or `node:http.request` for plaintext) with a custom `lookup`
+ *      that always returns the captured IP for the original hostname
+ *      and rejects any other name. The request URL keeps the original
+ *      hostname, so:
+ *         - SNI sends the original hostname.
+ *         - The TLS layer validates the server cert's SAN against the
+ *           original hostname (the way certificates are actually
+ *           issued for hosts like `*.greenhouse.io`).
+ *         - The Host header is the original hostname (vhost routing
+ *           continues to work).
+ *      ...but the underlying socket connects to the captured IP only.
+ *   3. The Node `IncomingMessage` is wrapped in a Web `Response` so
+ *      callers get the same shape as `globalThis.fetch`.
+ *
+ * Why this is the correct rebinding fix: the connection-time `lookup`
+ * has no chance to consult the resolver. An attacker who flips the
+ * authoritative DNS between phase-2 validation and connect is bypassed
+ * because we never query DNS again.
+ *
+ * Throws `SafeFetchError` with `.code` matching `ValidateUrlErrCode` if
+ * validation fails. Network errors propagate as the underlying
+ * `Error` from `https.request`.
  *
  * Callers at route boundaries should still invoke `validateUrl` first
  * to surface a structured error to the agent; `safeFetch` is the
  * defence-in-depth wrapper for the actual outbound call.
+ *
+ * Note on body support: this implementation supports string and
+ * Uint8Array request bodies (covering JSON, form-encoded, and raw
+ * payloads). It does NOT support streaming `ReadableStream` bodies —
+ * none of the M0 publish/probe call sites need them, and adding stream
+ * piping here is out of scope. If a future caller needs streaming,
+ * extend in a separate change.
  */
 export async function safeFetch(
   input: string,
@@ -378,17 +479,96 @@ export async function safeFetch(
     throw new SafeFetchError("url_resolves_to_private");
   }
 
-  // Pin the connection to the captured IP by substituting it into the
-  // URL hostname. Bracket IPv6 literals.
-  const ipUrl = new URL(v.url.toString());
-  ipUrl.hostname = v.family === 6 ? `[${v.resolvedIp}]` : v.resolvedIp;
+  const lookup = createPinnedLookup(v.url.hostname, v.resolvedIp, v.family);
+  return performPinnedRequest(v.url, init, lookup);
+}
 
-  // Preserve the original Host header so virtual-hosted servers still
-  // route the request to the right vhost.
-  const headers = new Headers(init?.headers);
-  if (!headers.has("host")) {
-    headers.set("host", v.url.host);
+/**
+ * Internal: dispatch the request through `node:http(s).request` with the
+ * supplied `lookup`. Exposed within the module so it can be wrapped by
+ * tests; not exported.
+ */
+async function performPinnedRequest(
+  url: URL,
+  init: RequestInit | undefined,
+  lookup: ReturnType<typeof createPinnedLookup>,
+): Promise<Response> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const isHttps = url.protocol === "https:";
+  const requestFn = isHttps ? https.request : http.request;
+
+  // Convert RequestInit headers to a plain object http.request accepts.
+  const reqHeaders: Record<string, string> = {};
+  if (init?.headers) {
+    const h = new Headers(init.headers);
+    h.forEach((value, key) => {
+      reqHeaders[key] = value;
+    });
   }
 
-  return fetch(ipUrl, { ...init, headers });
+  // Serialise body. Streams are unsupported (see jsdoc).
+  let bodyBuf: Buffer | string | undefined;
+  if (init?.body !== undefined && init.body !== null) {
+    if (typeof init.body === "string") {
+      bodyBuf = init.body;
+    } else if (init.body instanceof Uint8Array) {
+      bodyBuf = Buffer.from(init.body);
+    } else if (init.body instanceof ArrayBuffer) {
+      bodyBuf = Buffer.from(init.body);
+    } else {
+      throw new TypeError(
+        "safeFetch: unsupported body type (only string / Uint8Array / ArrayBuffer)",
+      );
+    }
+  }
+
+  const port = url.port
+    ? Number(url.port)
+    : isHttps
+      ? 443
+      : 80;
+
+  return new Promise<Response>((resolve, reject) => {
+    const req = requestFn({
+      protocol: url.protocol,
+      hostname: url.hostname,
+      // SNI / SAN check use this hostname; do NOT swap it for the IP.
+      servername: isHttps ? url.hostname : undefined,
+      port,
+      method,
+      path: `${url.pathname}${url.search}`,
+      headers: reqHeaders,
+      // The pin: connection-time DNS resolution is forced to our
+      // captured IP for the validated hostname only.
+      lookup,
+    }, (res: IncomingMessage) => {
+      // Build a Web Response from the IncomingMessage.
+      const headers = new Headers();
+      for (const [k, v] of Object.entries(res.headers)) {
+        if (v === undefined) continue;
+        if (Array.isArray(v)) {
+          for (const item of v) headers.append(k, item);
+        } else {
+          headers.set(k, String(v));
+        }
+      }
+      // Adapt the Node Readable into a web ReadableStream. Node 18+
+      // exposes `Readable.toWeb` which does the right thing.
+      const webStream = Readable.toWeb(res) as unknown as ReadableStream<Uint8Array>;
+      resolve(
+        new Response(webStream, {
+          status: res.statusCode ?? 0,
+          statusText: res.statusMessage ?? "",
+          headers,
+        }),
+      );
+    });
+
+    req.on("error", reject);
+
+    if (bodyBuf !== undefined) {
+      req.write(bodyBuf);
+    }
+    req.end();
+  });
 }
