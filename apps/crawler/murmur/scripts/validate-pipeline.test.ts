@@ -183,7 +183,19 @@ describe("vendored schema integrity", () => {
 describe("CLI behaviour", () => {
   // Run the CLI as a child process so we exercise the real exit-code path.
   const cli = (args: string[]): { code: number; stdout: string; stderr: string } => {
-    const tsxBin = path.resolve(REPO_ROOT, "node_modules", ".bin", "tsx");
+    const candidates = [
+      path.resolve(PKG_ROOT, "node_modules", ".bin", "tsx"),
+      path.resolve(REPO_ROOT, "node_modules", ".bin", "tsx"),
+    ];
+    const tsxBin = candidates.find((p) => {
+      try {
+        readFileSync(p);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    if (!tsxBin) throw new Error(`tsx not found in: ${candidates.join(", ")}`);
     try {
       const stdout = execFileSync(
         tsxBin,
