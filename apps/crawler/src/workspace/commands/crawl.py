@@ -1065,30 +1065,29 @@ def select_monitor(
     # Generate or use provided config name
     name = config_name or _auto_config_name(board, type_)
 
-    # Create named config entry with cost estimate
+    # Cost estimate + auto-scraper resolution (CLI-only metadata).
     mon_est = _estimate_monitor_cost(type_, 200, clean_config)
     auto = auto_scraper_type(type_, clean_config)
     init_load = 0.0 if auto else _estimate_initial_load(200)
-    cfg_entry: dict = {
-        "monitor_type": type_,
-        "monitor_config": clean_config,
-        "status": "selected",
-        "cost": {
-            "monitor_per_cycle": round(mon_est, 2),
-            "initial_load": round(init_load, 2),
-        },
+
+    # Persist the canonical {monitor_type, monitor_config} via the lib
+    # (which is the same code path J5's HTTP route will use). The lib
+    # adapter merges into ``board.configs[name]``; CLI-only fields below
+    # are then layered on top.
+    from src.workspace.board_claim_kv import BoardBackedClaimKV
+    from src.workspace.lib import select_monitor as _lib_select_monitor
+
+    asyncio.run(_lib_select_monitor(BoardBackedClaimKV(board), type_, name, clean_config))
+
+    # Layer in CLI-only metadata (status, cost, auto-scraper).
+    cfg_entry = board.configs[name]
+    cfg_entry["status"] = "selected"
+    cfg_entry["cost"] = {
+        "monitor_per_cycle": round(mon_est, 2),
+        "initial_load": round(init_load, 2),
     }
-    # Auto-configure scraper when the monitor determines it
     if auto:
         cfg_entry["scraper_type"] = auto[0]
-    # Preserve scraper settings when re-selecting a monitor with the same name
-    if name in board.configs:
-        prev = board.configs[name]
-        for key in ("scraper_type", "scraper_config"):
-            if key in prev and key not in cfg_entry:
-                cfg_entry[key] = prev[key]
-    board.configs[name] = cfg_entry
-    board.active_config = name
 
     action_log.append_to_list(
         board.log,
@@ -1609,8 +1608,15 @@ def select_scraper(
 
     config = json.loads(config_json) if config_json else {}
 
-    board.scraper_type = type_
-    board.scraper_config = config
+    # Persist scraper_type / scraper_config under the active named slot
+    # via the lib (canonical KV path). If no active config exists, the
+    # legacy Board.__setattr__ behavior auto-creates one — we mirror
+    # that by falling back to active_config or the type as the slot name.
+    from src.workspace.board_claim_kv import BoardBackedClaimKV
+    from src.workspace.lib import select_scraper as _lib_select_scraper
+
+    name = board.active_config or type_
+    asyncio.run(_lib_select_scraper(BoardBackedClaimKV(board), type_, name, config))
 
     save_board(slug, board)
 
@@ -2070,15 +2076,6 @@ def feedback_cmd(
 
     cfg = board.configs[name]
 
-    # Gather run quality data for auto-population
-    run = cfg.get("run") or {}
-    scraper_run = cfg.get("scraper_run") or {}
-    monitor_total = run.get("jobs", 0)
-    scraper_total = scraper_run.get("count", 0)
-    run_quality = run.get("quality") or {}
-    scraper_quality = scraper_run.get("quality") or {}
-    coverage_data = {**run_quality, **scraper_quality}
-
     # Map option values to field names
     explicit_quality = {
         "title": title_q,
@@ -2099,99 +2096,95 @@ def feedback_cmd(
         "job_location_type": jlt_notes,
     }
 
-    # When coverage_data is empty, no per-field sample was recorded at all
-    # (e.g. URL-only monitor + ws run scraper crashed). In that case any
-    # synthesized "0/N" coverage misleads reviewers — the agent assessed
-    # quality manually without programmatic sampling. We omit the coverage
-    # fraction and skip the absent-auto-population.
-    has_field_data = bool(coverage_data)
-
-    # Build per-field feedback
-    fields_fb: dict[str, dict] = {}
-    for field_name in _FEEDBACK_FIELDS:
-        count = coverage_data.get(field_name, 0)
-        # Use the total from whichever source provided this field's data
-        if field_name in scraper_quality:
-            total = scraper_total or monitor_total
-        else:
-            total = monitor_total or scraper_total
-        coverage = (f"{count}/{total}" if total else "0/0") if has_field_data else ""
-
-        # Determine quality: explicit > auto-populate
-        q = explicit_quality.get(field_name)
-        if q is None and has_field_data and count == 0:
-            q = "absent"
-
-        if q is not None:
-            entry: dict[str, str] = {"quality": q}
-            if coverage:
-                entry["coverage"] = coverage
-            notes = notes_map.get(field_name, "")
-            if notes:
-                entry["notes"] = notes
-            fields_fb[field_name] = entry
-
-    # Require explicit quality for all fields that have coverage (or are required)
-    missing_explicit = []
-    for field_name in _FEEDBACK_FIELDS:
-        if field_name in fields_fb:
+    # Build the lib's per_field shape: only fields the user explicitly
+    # rated; the lib auto-fills "absent" for zero-coverage fields when
+    # field-data is present.
+    per_field: dict[str, dict[str, str]] = {}
+    for fname, q in explicit_quality.items():
+        if q is None:
             continue
-        count = coverage_data.get(field_name, 0)
-        if field_name in scraper_quality:
-            total = scraper_total or monitor_total
-        else:
-            total = monitor_total or scraper_total
-        if count > 0 or field_name in _REQUIRED_FIELDS:
-            flag = f"--{field_name.replace('_', '-')}"
-            if count > 0:
-                missing_explicit.append(f"{flag} ({count}/{total} jobs)")
+        entry = {"quality": q}
+        if notes_map.get(fname):
+            entry["notes"] = notes_map[fname]
+        per_field[fname] = entry
+
+    # Ensure the lib reads from the right slot: temporarily set active.
+    prev_active = board.active_config
+    board.active_config = name
+
+    # Run the lib. It validates verdict, completeness, and tiering, then
+    # writes ``feedback`` into the slot via the BoardBackedClaimKV.
+    from src.workspace.board_claim_kv import BoardBackedClaimKV
+    from src.workspace.lib import (
+        WsConfigInvalid,
+        WsFeedbackIncomplete,
+    )
+    from src.workspace.lib import (
+        feedback as _lib_feedback,
+    )
+
+    monitor_run = cfg.get("run") or {}
+    scraper_run_data = cfg.get("scraper_run") or {}
+
+    try:
+        asyncio.run(
+            _lib_feedback(
+                BoardBackedClaimKV(board),
+                verdict=verdict,
+                per_field=per_field,
+                verdict_notes=verdict_notes,
+                monitor_run=monitor_run,
+                scraper_run=scraper_run_data,
+            )
+        )
+    except WsFeedbackIncomplete:
+        # Restore active pointer and render the legacy CLI message with
+        # exact flag formatting (--employment-type, etc.) and per-field
+        # coverage hint.
+        board.active_config = prev_active
+        run = cfg.get("run") or {}
+        scraper_run_for_msg = cfg.get("scraper_run") or {}
+        monitor_total = run.get("jobs", 0)
+        scraper_total = scraper_run_for_msg.get("count", 0)
+        run_quality = run.get("quality") or {}
+        scraper_quality = scraper_run_for_msg.get("quality") or {}
+        coverage_data = {**run_quality, **scraper_quality}
+
+        missing_explicit: list[str] = []
+        for field_name in _FEEDBACK_FIELDS:
+            if explicit_quality.get(field_name) is not None:
+                continue
+            count = coverage_data.get(field_name, 0)
+            if field_name in scraper_quality:
+                total = scraper_total or monitor_total
             else:
-                missing_explicit.append(flag)
-    if missing_explicit:
+                total = monitor_total or scraper_total
+            # The lib's auto-absent rule fires when coverage_data is non-empty
+            # AND the field has zero coverage — those don't require the user
+            # to pass a flag.
+            if coverage_data and count == 0:
+                continue
+            if count > 0 or field_name in _REQUIRED_FIELDS:
+                flag = f"--{field_name.replace('_', '-')}"
+                if count > 0:
+                    missing_explicit.append(f"{flag} ({count}/{total} jobs)")
+                else:
+                    missing_explicit.append(flag)
         out.die(
             "Explicit quality required for: "
             f"{', '.join(missing_explicit)} "
             "(clean/noisy/unusable/absent)",
         )
+        return  # pragma: no cover
+    except WsConfigInvalid as exc:
+        board.active_config = prev_active
+        out.die(str(exc))
+        return  # pragma: no cover
 
-    # Compute tier summaries
-    def _tier_summary(tier_fields: tuple[str, ...]) -> dict[str, str]:
-        tier_coverage = 0
-        tier_total = 0
-        worst_q = "clean"
-        q_rank = {"clean": 0, "noisy": 1, "unusable": 2, "absent": 3}
-        for f in tier_fields:
-            fb = fields_fb.get(f)
-            if fb:
-                # `coverage` is omitted when no per-field sample existed
-                # (manual quality assessment by the agent). Skip the
-                # numeric aggregation in that case but still propagate
-                # the worst quality rating across the tier.
-                cov = fb.get("coverage")
-                if cov:
-                    c, t = cov.split("/")
-                    tier_coverage += int(c)
-                    tier_total += int(t)
-                if q_rank.get(fb["quality"], 0) > q_rank.get(worst_q, 0):
-                    worst_q = fb["quality"]
-        return {"coverage": f"{tier_coverage}/{tier_total}", "quality": worst_q}
+    # Restore the previous active pointer (feedback should not change it).
+    board.active_config = prev_active
 
-    feedback_data = {
-        "fields": fields_fb,
-        "required": _tier_summary(_REQUIRED_FIELDS),
-        "important": _tier_summary(_IMPORTANT_FIELDS),
-        "optional": _tier_summary(
-            tuple(
-                f
-                for f in _FEEDBACK_FIELDS
-                if f not in _REQUIRED_FIELDS and f not in _IMPORTANT_FIELDS
-            )
-        ),
-        "verdict": verdict,
-        "verdict_notes": verdict_notes,
-    }
-
-    cfg["feedback"] = feedback_data
+    feedback_data = cfg.get("feedback", {})
     action_log.append_to_list(
         board.log,
         "feedback",
@@ -2210,7 +2203,7 @@ def feedback_cmd(
         qual = tier.get("quality", "?")
         out.plain("feedback", f"  {tier_name}: {cov} ({qual})")
     # Warn if description rated clean but samples are suspiciously short
-    desc_fb = fields_fb.get("description", {})
+    desc_fb = feedback_data.get("fields", {}).get("description", {})
     if desc_fb.get("quality") == "clean":
         scraper_run = cfg.get("scraper_run") or {}
         run_data_fb = cfg.get("run") or {}

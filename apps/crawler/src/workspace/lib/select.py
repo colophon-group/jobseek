@@ -129,8 +129,9 @@ async def select_monitor(
     slot = await _read_slot(claim_kv, name)
     slot["monitor_type"] = monitor_type
     slot["monitor_config"] = cfg
-    slot.setdefault("scraper_type", None)
-    slot.setdefault("scraper_config", {})
+    # Preserve any pre-existing scraper_* fields untouched; do NOT seed
+    # ``None`` defaults — callers that want explicit nulls can pass them
+    # in via :func:`select_scraper` later.
 
     await claim_kv.set(name, slot)
     await claim_kv.set_active(name)
@@ -156,8 +157,8 @@ async def select_scraper(
     slot = await _read_slot(claim_kv, name)
     slot["scraper_type"] = scraper_type
     slot["scraper_config"] = cfg
-    slot.setdefault("monitor_type", None)
-    slot.setdefault("monitor_config", {})
+    # Preserve any pre-existing monitor_* fields untouched; do NOT seed
+    # ``None`` defaults.
 
     await claim_kv.set(name, slot)
     await claim_kv.set_active(name)
