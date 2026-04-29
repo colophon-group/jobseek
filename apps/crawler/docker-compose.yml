@@ -260,7 +260,7 @@ services:
         # Wipe-and-rehydrate so an old image's deps don't leak into the
         # new copy. The volume itself persists across deploys; only its
         # contents get refreshed.
-        rm -rf /runtime/venv /runtime/src
+        rm -rf /runtime/venv /runtime/src /runtime/code
         # `cp -a /usr/local/bin/python3.12 /runtime/venv/bin/python3.12`
         # below requires the destination's parent dir to already exist —
         # cp does NOT auto-create `bin/` even with `-a`. Without this
@@ -269,7 +269,7 @@ services:
         # No such file or directory`, the `service_completed_successfully`
         # depends-on gate stays red, and the shim never starts.
         # Live evidence: deploy run 25137948546 init container logs.
-        mkdir -p /runtime/venv /runtime/venv/bin /runtime/venv/lib/python3.12 /runtime/src
+        mkdir -p /runtime/venv /runtime/venv/bin /runtime/venv/lib/python3.12 /runtime/code
 
         # Build a relocatable Python install at /runtime/venv/. CPython
         # locates stdlib relative to the executable, so co-locating the
@@ -297,7 +297,20 @@ services:
         # Crawler source (cli_shim et al.). Lives at a peer path so
         # invoke-lib's `cwd: MURMUR_CRAWLER_ROOT` lands somewhere with
         # `src/workspace/lib/cli_shim.py` resolvable from PYTHONPATH.
-        cp -a /app/src/. /runtime/src/
+        #
+        # The `src/` directory level MUST be preserved so that the shim's
+        # `python3 -m src.workspace.lib.cli_shim` invocation can resolve
+        # `src` as a package under PYTHONPATH=MURMUR_CRAWLER_ROOT. Copying
+        # the *contents* of /app/src into /runtime/src would strip the
+        # `src/` parent and leave `workspace/` at the PYTHONPATH root —
+        # `ModuleNotFoundError: No module named 'src'`. We instead copy
+        # `/app/src` (no trailing dot) into `/runtime/code/`, which yields
+        # `/runtime/code/src/workspace/lib/cli_shim.py`. The shim's
+        # subpath mount uses `code` so `/opt/jobseek-crawler-src/` ends
+        # up as the parent of `src/`. Live evidence: probe_monitor exit
+        # 1 with `ModuleNotFoundError: No module named 'src'` after the
+        # `cp -a /app/src/. /runtime/src/` form.
+        cp -a /app/src /runtime/code/src
 
         echo "murmur-shim runtime hydrated: $(du -sh /runtime | cut -f1)"
     volumes:
@@ -381,7 +394,13 @@ services:
         target: /opt/jobseek-crawler-src
         read_only: true
         volume:
-          subpath: src
+          # Mount `code/` (containing the preserved `src/` dir) at
+          # /opt/jobseek-crawler-src so the shim's
+          # `python3 -m src.workspace.lib.cli_shim` resolves `src` as a
+          # package under PYTHONPATH=MURMUR_CRAWLER_ROOT. See the
+          # `cp -a /app/src /runtime/code/src` note in the init service
+          # for why a `src` subpath would have stripped the `src/` level.
+          subpath: code
     # Mirror the image-level HEALTHCHECK in apps/murmur-shim/Dockerfile:
     # `node:22-bookworm-slim` has neither `wget` nor `curl`, so the
     # previous `wget -q -O- ...` probe would exit 127 every interval and
