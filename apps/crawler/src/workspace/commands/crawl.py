@@ -7,7 +7,6 @@ import json
 import math
 import random
 import re
-import time
 
 import click
 
@@ -328,21 +327,23 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int,
 
     ws, board = _resolve_board(slug, board_alias)
 
-    async def _run():
-        from playwright.async_api import async_playwright
+    # Build the immutable lib snapshot and delegate to the importable async fn.
+    from src.workspace.lib import BoardConfigState, WsProbeFailed
+    from src.workspace.lib import probe_monitor as _lib_probe_monitor
 
-        from src.core.monitors import probe_all_monitors
-        from src.shared.http import create_http_client
+    state = BoardConfigState(
+        board_url=board.url,
+        alias=board.alias,
+        slug=slug,
+    )
+    try:
+        lib_result = asyncio.run(_lib_probe_monitor(state, current_jobs))
+    except WsProbeFailed as exc:
+        out.die(str(exc))
+        return  # pragma: no cover — out.die exits
 
-        http = create_http_client()
-        try:
-            async with async_playwright() as pw:
-                results = await probe_all_monitors(board.url, http, pw=pw)
-            return results
-        finally:
-            await _shutdown_http(http)
-
-    results = asyncio.run(_run())
+    # Re-derive the legacy tuple list so existing CLI helpers stay unchanged.
+    results = [(e.name, e.metadata, e.comment) for e in lib_result.entries]
 
     # Save probe artifact
     from src.workspace.artifacts import probe_run_dir, save_probe
@@ -484,20 +485,27 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
 
     out.info("probe", f"Probing {len(target_urls)} sample URLs...")
 
-    async def _run():
-        from playwright.async_api import async_playwright
+    # Build the immutable lib snapshot and delegate to the importable async fn.
+    from src.workspace.lib import BoardConfigState, WsConfigMissing, WsProbeFailed
+    from src.workspace.lib import probe_scraper as _lib_probe_scraper
 
-        from src.core.scrapers import probe_scrapers
-        from src.shared.http import create_http_client
+    state = BoardConfigState(
+        board_url=board.url,
+        alias=board.alias,
+        slug=slug,
+        sample_urls=tuple(target_urls),
+    )
+    try:
+        lib_result = asyncio.run(_lib_probe_scraper(state, sample_urls=target_urls))
+    except WsConfigMissing as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
+    except WsProbeFailed as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
 
-        http = create_http_client()
-        try:
-            async with async_playwright() as pw:
-                return await probe_scrapers(target_urls, http, pw=pw)
-        finally:
-            await _shutdown_http(http)
-
-    results, spa_suspect = asyncio.run(_run())
+    results = [(e.name, e.metadata, e.comment) for e in lib_result.entries]
+    spa_suspect = lib_result.spa_suspect
 
     # Save artifacts
     from src.workspace.artifacts import save_probe, scraper_probe_run_dir
@@ -1190,34 +1198,36 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
     run_dir = monitor_run_dir(slug, board.alias)
     log_events = capture_structlog()
 
-    async def _run():
-        from playwright.async_api import async_playwright
+    # Build the immutable lib snapshot and delegate to the importable async fn.
+    from src.workspace.lib import BoardConfigState, WsConfigMissing, WsMonitorRunFailed
+    from src.workspace.lib import run_monitor as _lib_run_monitor
 
-        from src.core.monitor import monitor_one
-        from src.shared.http import create_logging_http_client
-
-        ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
-        use_proxy = bool((mon_config or {}).get("proxy"))
-        http, http_log = create_logging_http_client(verify=ssl_verify, use_proxy=use_proxy)
-        try:
-            async with async_playwright() as pw:
-                start = time.monotonic()
-                result = await monitor_one(
-                    board.url,
-                    mon_type,
-                    mon_config or None,
-                    http,
-                    artifact_dir=run_dir,
-                    pw=pw,
-                )
-                elapsed = time.monotonic() - start
-            return result, elapsed, http_log
-        finally:
-            await _shutdown_http(http)
+    state = BoardConfigState(
+        board_url=board.url,
+        alias=board.alias,
+        slug=slug,
+        monitor_type=mon_type,
+        monitor_config=mon_config or {},
+        ssl_verify=(board.monitor_config or {}).get("ssl_verify", True),
+        use_proxy=bool((mon_config or {}).get("proxy")),
+    )
 
     try:
-        result, elapsed, http_log = asyncio.run(_run())
-    except Exception as exc:
+        lib_result = asyncio.run(
+            _lib_run_monitor(
+                state,
+                config_name=config_name,
+                artifact_dir=run_dir,
+                log_events=log_events,
+            )
+        )
+        result = lib_result  # downstream code reads .urls / .jobs_by_url / .filtered_count
+        elapsed = lib_result.elapsed_seconds
+        http_log = lib_result.http_log
+    except WsConfigMissing as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
+    except WsMonitorRunFailed as exc:
         detail = str(exc).strip() or exc.__class__.__name__
         out.error("monitor", f"Run failed: {detail}")
         out.plain("monitor", f"Monitor: {mon_type} | Board: {board.url}")
@@ -1668,45 +1678,42 @@ def run_scraper(
     run_dir = scraper_run_dir(slug, board.alias)
     log_events = capture_structlog()
 
-    async def _run():
-        from httpx import HTTPStatusError
-        from playwright.async_api import async_playwright
+    # Build the immutable lib snapshot and delegate to the importable async fn.
+    from src.workspace.lib import BoardConfigState, WsConfigMissing, WsScraperRunFailed
+    from src.workspace.lib import run_scraper as _lib_run_scraper
 
-        from src.core.scrape import scrape_one
-        from src.processing.scrape import _apply_defaults
-        from src.shared.http import create_logging_http_client
+    state = BoardConfigState(
+        board_url=board.url,
+        alias=board.alias,
+        slug=slug,
+        scraper_type=scr_type,
+        scraper_config=scr_config or {},
+        sample_urls=tuple(target_urls),
+        ssl_verify=(board.monitor_config or {}).get("ssl_verify", True),
+        use_proxy=bool((scr_config or {}).get("proxy")),
+    )
+    try:
+        lib_result = asyncio.run(
+            _lib_run_scraper(
+                state,
+                config_name=config_name,
+                sample_urls=target_urls,
+                artifact_dir=run_dir,
+                log_events=log_events,
+            )
+        )
+    except WsConfigMissing as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
+    except WsScraperRunFailed as exc:
+        out.die(str(exc))
+        return  # pragma: no cover
 
-        ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
-        use_proxy = bool((scr_config or {}).get("proxy"))
-        http, http_log = create_logging_http_client(verify=ssl_verify, use_proxy=use_proxy)
-        results = []
-        skipped: list[tuple[str, str]] = []
-        try:
-            async with async_playwright() as pw:
-                for i, url in enumerate(target_urls):
-                    job_id = f"sample-{i}"
-                    start = time.monotonic()
-                    try:
-                        content = await scrape_one(
-                            url,
-                            scr_type,
-                            scr_config or None,
-                            http,
-                            artifact_dir=run_dir,
-                            job_id=job_id,
-                            pw=pw,
-                        )
-                    except HTTPStatusError as exc:
-                        skipped.append((url, str(exc.response.status_code)))
-                        continue
-                    content = _apply_defaults(content, scr_config or {})
-                    elapsed = time.monotonic() - start
-                    results.append((url, content, elapsed))
-            return results, http_log, skipped
-        finally:
-            await _shutdown_http(http)
-
-    results, http_log, skipped = asyncio.run(_run())
+    # Convert lib result back to the legacy (url, content, elapsed) tuples
+    # the rest of this handler operates on.
+    results = [(it.url, it.content, it.elapsed_seconds) for it in lib_result.items]
+    http_log = lib_result.http_log
+    skipped = lib_result.skipped
 
     # Save HTTP log and structlog events
     save_http_log(run_dir, http_log)

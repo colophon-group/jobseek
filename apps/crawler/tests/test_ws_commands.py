@@ -1012,8 +1012,103 @@ class TestSelectScraperValidation:
         assert "Optional: render" in result.output
 
 
+def _as_run_monitor_result(fake_result, elapsed, http_log, *, monitor_type="sitemap"):
+    """Adapter: legacy ``(FakeMonitorResult, elapsed, http_log)`` → ``RunMonitorResult``.
+
+    The CLI handler now consumes ``RunMonitorResult`` from the lib instead
+    of the bare tuple it built itself. Test helpers translate so existing
+    test bodies (which build ``FakeResult`` dataclasses) keep working.
+    """
+    from src.workspace.lib.run import RunMonitorResult, _build_monitor_quality
+
+    urls_list = sorted(fake_result.urls)
+    has_rich = fake_result.jobs_by_url is not None
+    quality = _build_monitor_quality(fake_result.jobs_by_url) if has_rich else None
+    desc_samples: list[dict] = []
+    if fake_result.jobs_by_url:
+        import re as _re
+
+        for job in list(fake_result.jobs_by_url.values())[:5]:
+            desc = getattr(job, "description", None)
+            if desc:
+                plain_desc = _re.sub(r"<[^>]+>", "", desc).strip()
+                desc_samples.append({"length": len(plain_desc), "snippet": plain_desc[:200]})
+    return RunMonitorResult(
+        board_url="https://test.com/jobs",
+        monitor_type=monitor_type,
+        urls=urls_list,
+        jobs_by_url=fake_result.jobs_by_url,
+        filtered_count=getattr(fake_result, "filtered_count", 0),
+        elapsed_seconds=elapsed,
+        has_rich_data=has_rich,
+        sample_urls=list(urls_list)[:10],
+        description_samples=desc_samples,
+        quality=quality,
+        http_log=list(http_log),
+        log_events=[],
+    )
+
+
+def _as_run_scraper_result(items, http_log, skipped, *, scraper_type="json-ld"):
+    """Adapter: legacy ``(items, http_log, skipped)`` → ``RunScraperResult``."""
+    from src.workspace.lib.run import RunScraperResult, ScrapedJob
+
+    scraped = [ScrapedJob(url=u, content=c, elapsed_seconds=e) for u, c, e in items]
+    avg = sum(it.elapsed_seconds for it in scraped) / len(scraped) if scraped else 0.0
+    desc_samples: list[dict] = []
+    import re as _re
+
+    for it in scraped:
+        desc = getattr(it.content, "description", None)
+        if desc and len(desc_samples) < 5:
+            plain_desc = _re.sub(r"<[^>]+>", "", desc).strip()
+            desc_samples.append({"length": len(plain_desc), "snippet": plain_desc[:200]})
+    return RunScraperResult(
+        scraper_type=scraper_type,
+        items=scraped,
+        skipped=list(skipped),
+        description_samples=desc_samples,
+        avg_elapsed_seconds=avg,
+        http_log=list(http_log),
+        log_events=[],
+    )
+
+
+def _as_probe_scraper_result(entries, spa_suspect, *, sample_urls=None):
+    """Adapter: legacy ``(entries, spa_suspect)`` → ``ProbeScraperResult``."""
+    from src.workspace.lib.probe import ProbeEntry, ProbeScraperResult
+
+    return ProbeScraperResult(
+        sample_urls=list(sample_urls or []),
+        entries=[ProbeEntry(name=n, metadata=m, comment=c) for n, m, c in entries],
+        spa_suspect=spa_suspect,
+    )
+
+
+def _as_probe_monitor_result(entries, *, board_url="https://test.com/jobs", current_jobs=200):
+    """Adapter: legacy ``[(name, metadata, comment), ...]`` → ``ProbeMonitorResult``."""
+    from src.workspace.lib.probe import (
+        ProbeEntry,
+        ProbeMonitorResult,
+        score_probe_entries,
+    )
+
+    probe_entries = [ProbeEntry(name=n, metadata=m, comment=c) for n, m, c in entries]
+    return ProbeMonitorResult(
+        board_url=board_url,
+        current_jobs=current_jobs,
+        entries=probe_entries,
+        scored=score_probe_entries(probe_entries, current_jobs),
+    )
+
+
 def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
-    """Enter common patches for run monitor tests. Returns (stack, mock_asyncio)."""
+    """Enter common patches for run monitor tests. Returns (stack, mock_asyncio).
+
+    The mocked ``asyncio.run`` must return a :class:`RunMonitorResult` since
+    the CLI now delegates to ``src.workspace.lib.run.run_monitor``.
+    Existing tests pass tuples; use :func:`_as_run_monitor_result` to wrap.
+    """
     stack = ExitStack()
     mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
     stack.enter_context(
@@ -1031,7 +1126,12 @@ def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
 
 
 def _enter_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
-    """Enter common patches for run scraper tests. Returns (stack, mock_asyncio)."""
+    """Enter common patches for run scraper tests. Returns (stack, mock_asyncio).
+
+    The mocked ``asyncio.run`` must return a :class:`RunScraperResult` since
+    the CLI now delegates to ``src.workspace.lib.run.run_scraper``.
+    Existing tests pass tuples; use :func:`_as_run_scraper_result` to wrap.
+    """
     stack = ExitStack()
     mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
     stack.enter_context(
@@ -1076,7 +1176,7 @@ class TestRunMonitorOutput:
 
         stack, mock_asyncio = _enter_monitor_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (fake_result, 1.5, [])
+            mock_asyncio.run.return_value = _as_run_monitor_result(fake_result, 1.5, [])
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "monitor", "test"])
 
@@ -1100,7 +1200,7 @@ class TestRunMonitorOutput:
 
         stack, mock_asyncio = _enter_monitor_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (fake_result, 2.0, [])
+            mock_asyncio.run.return_value = _as_run_monitor_result(fake_result, 2.0, [])
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "monitor", "test"])
 
@@ -1110,15 +1210,23 @@ class TestRunMonitorOutput:
     def test_monitor_failure_shows_recovery_guidance(self, tmp_path, monkeypatch):
         self._setup_monitor_board(tmp_path, monkeypatch, monitor_type="greenhouse")
 
+        from src.workspace.lib import WsMonitorRunFailed
+
         stack, mock_asyncio = _enter_monitor_patches(tmp_path)
         with stack:
 
             def _fail(coro):
                 coro.close()
-                raise ValueError(
+                # The lib normally wraps the underlying ValueError in
+                # WsMonitorRunFailed; we simulate that here since the
+                # mocked asyncio.run bypasses the lib body.
+                inner = ValueError(
                     "Cannot derive Greenhouse token from board URL "
                     "'https://test.com/jobs' and no token in metadata"
                 )
+                wrapped = WsMonitorRunFailed(str(inner))
+                wrapped.__cause__ = inner
+                raise wrapped
 
             mock_asyncio.run.side_effect = _fail
             runner = CliRunner()
@@ -1164,7 +1272,7 @@ class TestRunMonitorOutput:
 
         stack, mock_asyncio = _enter_monitor_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (fake_result, 1.0, [])
+            mock_asyncio.run.return_value = _as_run_monitor_result(fake_result, 1.0, [])
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "monitor", "test"])
 
@@ -1200,7 +1308,7 @@ class TestRunScraperOutput:
 
         stack, mock_asyncio = _enter_scraper_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (
+            mock_asyncio.run.return_value = _as_run_scraper_result(
                 [
                     ("https://test.com/jobs/1", contents[0], 0.5),
                     ("https://test.com/jobs/2", contents[1], 0.3),
@@ -1227,7 +1335,7 @@ class TestRunScraperOutput:
 
         stack, mock_asyncio = _enter_scraper_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (
+            mock_asyncio.run.return_value = _as_run_scraper_result(
                 [
                     ("https://test.com/jobs/1", contents[0], 0.5),
                     ("https://test.com/jobs/2", contents[1], 0.3),
@@ -1261,7 +1369,7 @@ class TestRunScraperOutput:
 
         stack, mock_asyncio = _enter_scraper_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (
+            mock_asyncio.run.return_value = _as_run_scraper_result(
                 [
                     ("https://test.com/jobs/1", contents[0], 0.5),
                     ("https://test.com/jobs/2", contents[1], 0.3),
@@ -1289,7 +1397,7 @@ class TestRunScraperOutput:
 
         stack, mock_asyncio = _enter_scraper_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (
+            mock_asyncio.run.return_value = _as_run_scraper_result(
                 [
                     ("https://test.com/jobs/1", contents[0], 0.5),
                     ("https://test.com/jobs/2", contents[1], 0.3),
@@ -1320,7 +1428,7 @@ class TestRunScraperOutput:
 
         stack, mock_asyncio = _enter_scraper_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (
+            mock_asyncio.run.return_value = _as_run_scraper_result(
                 [("https://test.com/jobs/1", contents[0], 0.5)],
                 [],
                 [],
@@ -1361,7 +1469,7 @@ class TestRunMonitorVerifyPrompt:
 
         stack, mock_asyncio = _enter_monitor_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (fake_result, 2.0, [])
+            mock_asyncio.run.return_value = _as_run_monitor_result(fake_result, 2.0, [])
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "monitor", "test"])
 
@@ -1381,7 +1489,7 @@ class TestRunMonitorVerifyPrompt:
 
         stack, mock_asyncio = _enter_monitor_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (fake_result, 1.0, [])
+            mock_asyncio.run.return_value = _as_run_monitor_result(fake_result, 1.0, [])
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "monitor", "test"])
 
@@ -1430,7 +1538,7 @@ class TestRunMonitorNamedConfig:
 
         stack, mock_asyncio = _enter_monitor_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (fake_result, 1.0, [])
+            mock_asyncio.run.return_value = _as_run_monitor_result(fake_result, 1.0, [])
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "monitor", "test", "--config", "greenhouse"])
 
@@ -1518,10 +1626,11 @@ class TestRunScraperNamedConfig:
 
         stack, mock_asyncio = _enter_scraper_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (
+            mock_asyncio.run.return_value = _as_run_scraper_result(
                 [("https://test.com/jobs/3", fake_content, 0.5)],
                 [],
                 [],
+                scraper_type="dom",
             )
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "scraper", "test", "--config", "alt"])
@@ -1599,7 +1708,9 @@ class TestProbeScraperQualityGate:
 
         stack, mock_asyncio = _enter_probe_scraper_patches(tmp_path)
         with stack:
-            mock_asyncio.run.return_value = (fake_results, True)
+            mock_asyncio.run.return_value = _as_probe_scraper_result(
+                fake_results, True, sample_urls=["https://test.com/jobs/1"]
+            )
             runner = CliRunner()
             result = runner.invoke(ws, ["probe", "scraper", "test"])
 
@@ -3263,7 +3374,7 @@ class TestMonitorRegression:
             stack.enter_context(
                 patch(
                     "src.workspace.commands.crawl.asyncio.run",
-                    return_value=(fake, 1.0, []),
+                    return_value=_as_run_monitor_result(fake, 1.0, [], monitor_type="greenhouse"),
                 )
             )
             stack.enter_context(patch("src.workspace.commands.crawl.save_board"))
@@ -3312,7 +3423,7 @@ class TestMonitorRegression:
             stack.enter_context(
                 patch(
                     "src.workspace.commands.crawl.asyncio.run",
-                    return_value=(fake, 1.0, []),
+                    return_value=_as_run_monitor_result(fake, 1.0, [], monitor_type="greenhouse"),
                 )
             )
             stack.enter_context(patch("src.workspace.commands.crawl.save_board"))
