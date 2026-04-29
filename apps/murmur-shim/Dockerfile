@@ -149,11 +149,16 @@ RUN pnpm --filter @jobseek/murmur-shim build
 # ───────────────────────── runtime ──────────────────────────
 FROM ${NODE_IMAGE} AS runtime
 
-# tini for proper PID 1 behaviour. wget is already present in
-# bookworm-slim (used by HEALTHCHECK below). `--no-install-recommends`
-# + cleaning the apt lists keeps the layer small (~2 MB for tini).
+# tini for proper PID 1 behaviour. `--no-install-recommends` +
+# cleaning the apt lists keeps the layer small (~2 MB for tini).
 # On Debian, tini installs to `/usr/bin/tini` (not `/sbin/tini` as on
 # Alpine) — the ENTRYPOINT below is matched accordingly.
+#
+# Note: bookworm-slim does NOT ship `wget` or `curl`. We deliberately
+# avoid pulling those in just for a healthcheck — instead the
+# HEALTHCHECK below uses a Node one-liner with built-in `fetch`
+# (Node 18+), which keeps the image lean and removes a whole class
+# of CVE surface from extra HTTP clients.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends tini \
  && rm -rf /var/lib/apt/lists/*
@@ -202,11 +207,13 @@ EXPOSE 8080
 # `docker run` smoke tests still surface health, and so that a host-
 # orchestrated `docker ps` shows the container's true state.
 #
-# `wget -q -O- ... || exit 1` — busybox wget exits non-zero on any
-# 4xx/5xx, which is what we want. The `-q` keeps stderr quiet so
-# `docker logs` doesn't fill with health probe noise.
+# Uses Node's built-in `fetch` (Node 18+) so we don't have to install
+# `wget` or `curl` into the slim image. The probe checks `r.ok`
+# (2xx/3xx → exit 0, 4xx/5xx → exit 1) and treats any thrown error
+# (connection refused, DNS, abort) as unhealthy. We use `process.env.PORT`
+# so the probe stays correct if the runtime PORT is overridden.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -q -O- http://127.0.0.1:8080/health || exit 1
+  CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # tini handles signals; node runs the standalone server entrypoint.
 # The entrypoint lives at `apps/murmur-shim/server.js` because the

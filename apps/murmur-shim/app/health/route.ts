@@ -4,8 +4,8 @@
  * Three callers depend on this route, none of which can present a
  * bearer token:
  *
- *   1. The Docker image's `HEALTHCHECK` directive (busybox `wget`
- *      against `http://localhost:8080/health`).
+ *   1. The Docker image's `HEALTHCHECK` directive (a Node `fetch`
+ *      one-liner against `http://127.0.0.1:$PORT/health`).
  *   2. The compose-level healthcheck in H3's docker-compose.yml.
  *   3. Cloudflared's `originRequest.proxyAddress` upstream-up probe in
  *      the H4 deploy.
