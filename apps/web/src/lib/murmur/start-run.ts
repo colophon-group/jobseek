@@ -137,6 +137,14 @@ export function buildRunsUrl(baseUrl: string, pipelineId: string): string {
 }
 
 /**
+ * Default request timeout in milliseconds. Set deliberately high so a slow
+ * demo pipeline that's also doing per-board probes server-side at start
+ * time can still respond, but low enough that operator-side hangs surface
+ * as a typed error rather than blocking the admin route handler.
+ */
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+/**
  * Trigger a Murmur run for the `jobseek-add-company` pipeline. Resolves with
  * the parsed `{ run_id }` envelope. Throws {@link StartRunError} on every
  * failure mode (no other error class escapes this function).
@@ -150,7 +158,153 @@ export async function startRun(
   input: StartRunInput,
   options?: StartRunOptions,
 ): Promise<StartRunResponse> {
-  void input;
-  void options;
-  throw new Error("not implemented");
+  // 1. Resolve env. Fail fast on missing config — error message references
+  //    variable NAMES, never values, so the bearer token is never logged.
+  const env = options?.env ?? {
+    MURMUR_URL: process.env.MURMUR_URL,
+    MURMUR_TOKEN: process.env.MURMUR_TOKEN,
+  };
+  const missing: string[] = [];
+  if (!env.MURMUR_URL || env.MURMUR_URL.length === 0) missing.push("MURMUR_URL");
+  if (!env.MURMUR_TOKEN || env.MURMUR_TOKEN.length === 0)
+    missing.push("MURMUR_TOKEN");
+  if (missing.length > 0) {
+    throw new StartRunError(
+      "config_missing",
+      `startRun: missing required env: ${missing.join(", ")}`,
+    );
+  }
+  const baseUrl = env.MURMUR_URL as string;
+  const token = env.MURMUR_TOKEN as string;
+
+  // 2. Build URL + body.
+  const url = buildRunsUrl(baseUrl, ADD_COMPANY_PIPELINE_ID);
+  const body = JSON.stringify({
+    initial_input: {
+      company_name: input.company_name,
+      website: input.website,
+    },
+  });
+
+  // 3. Set up the abort signal for the timeout budget. We compose with any
+  //    caller-supplied signal so a containing route can still cancel us.
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  const fetchImpl: FetchImpl =
+    options?.fetchImpl ?? (globalThis.fetch.bind(globalThis) as FetchImpl);
+
+  // 4. Issue the request. Translate every failure mode into StartRunError.
+  let res: Response;
+  try {
+    res = await fetchImpl(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (isAbortError(err) || controller.signal.aborted) {
+      throw new StartRunError(
+        "timeout",
+        `startRun: request timed out after ${timeoutMs}ms`,
+        { cause: err },
+      );
+    }
+    throw new StartRunError(
+      "network",
+      `startRun: network error: ${(err as Error).message ?? String(err)}`,
+      { cause: err },
+    );
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+
+  // 5. Branch on status.
+  if (res.status >= 400 && res.status < 500) {
+    // Drain the body so we don't leak a held-open connection. We don't
+    // include the body in the error message — Murmur error envelopes can
+    // include user-supplied input that we don't want to echo into logs.
+    await safeDrain(res);
+    throw new StartRunError(
+      "http_4xx",
+      `startRun: Murmur returned HTTP ${res.status}`,
+      { status: res.status },
+    );
+  }
+  if (res.status >= 500) {
+    await safeDrain(res);
+    throw new StartRunError(
+      "http_5xx",
+      `startRun: Murmur returned HTTP ${res.status}`,
+      { status: res.status },
+    );
+  }
+
+  // 2xx — parse and validate envelope.
+  let text: string;
+  try {
+    text = await res.text();
+  } catch (err) {
+    throw new StartRunError(
+      "bad_response",
+      `startRun: failed to read response body`,
+      { cause: err },
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    throw new StartRunError(
+      "bad_response",
+      `startRun: response body was not JSON`,
+      { cause: err },
+    );
+  }
+  if (
+    parsed === null ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    typeof (parsed as { run_id?: unknown }).run_id !== "string" ||
+    ((parsed as { run_id: string }).run_id as string).length === 0
+  ) {
+    throw new StartRunError(
+      "bad_response",
+      `startRun: response missing required string field 'run_id'`,
+    );
+  }
+  return { run_id: (parsed as { run_id: string }).run_id };
+}
+
+/**
+ * Best-effort drain of a Response body. Never throws — this is a hygiene
+ * call so 4xx / 5xx error paths don't leak an unconsumed stream.
+ */
+async function safeDrain(res: Response): Promise<void> {
+  try {
+    await res.text();
+  } catch {
+    // Intentionally swallowed.
+  }
+}
+
+/**
+ * Detect an `AbortError`. WHATWG fetch raises one with `name === "AbortError"`
+ * (and Node's undici sometimes uses a `DOMException` whose name is also
+ * `"AbortError"`); we identify by name to cover both shapes.
+ */
+function isAbortError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    (err as { name: unknown }).name === "AbortError"
+  );
 }
