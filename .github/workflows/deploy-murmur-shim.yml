@@ -93,7 +93,12 @@ jobs:
       - name: Build & push jobseek-murmur-shim
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
-          context: ./apps/murmur-shim
+          # Build context is the monorepo root because the Dockerfile COPYs
+          # apps/web/src/db/schema.ts (wildcard re-export) plus pnpm-lock.yaml
+          # and pnpm-workspace.yaml from the workspace root. Dockerfile path
+          # is therefore relative to root, not to apps/murmur-shim.
+          context: .
+          file: ./apps/murmur-shim/Dockerfile
           platforms: linux/amd64
           push: true
           tags: |
