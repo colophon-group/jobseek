@@ -5,7 +5,8 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "validate-pipeline": "pnpm --filter @jobseek/murmur-pipelines validate-pipeline"
+    "validate-pipeline": "pnpm --filter @jobseek/murmur-pipelines validate-pipeline",
+    "register-pipeline": "pnpm --filter @jobseek/murmur-pipelines register-pipeline"
   },
   "devDependencies": {
     "turbo": "^2"

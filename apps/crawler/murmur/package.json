@@ -7,6 +7,7 @@
   "scripts": {
     "validate-pipeline": "tsx scripts/validate-pipeline.ts pipelines/add-company.yaml --no-routes-check",
     "validate-pipeline:full": "tsx scripts/validate-pipeline.ts pipelines/add-company.yaml --app-dir ../../web/app",
+    "register-pipeline": "tsx scripts/register.ts pipelines/add-company.yaml",
     "test": "vitest run",
     "test:watch": "vitest"
   },
