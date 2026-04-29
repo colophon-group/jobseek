@@ -39,6 +39,20 @@
 # `invoke-lib.ts` at call time). This image only needs to be able to
 # `spawn()` that interpreter — no native deps.
 #
+# ── Why bookworm-slim, not alpine ──────────────────────────────────
+#
+# Alpine uses musl libc; the crawler image (and therefore the venv
+# Python that gets mounted/copied into this container at runtime, per
+# H3's volume-hydration design — jobseek#2787) is built against glibc.
+# The musl loader cannot run a glibc-linked binary: `python3` would
+# fail with `exec format error` or musl's misleading "No such file or
+# directory" (interpreter-not-found). `/health` would still answer
+# since it's pure JS, so the container would go HEALTHY while every
+# probe/run/select/feedback call broke at spawn time.
+#
+# node:22-bookworm-slim ships glibc, so the cross-image Python runs
+# cleanly. The size cost vs alpine is modest (~80–130 MB image).
+#
 # Note: jobseek#2774 originally wrote `VENV_PYTHON` and `PYTHONPATH`
 # as the env names, but the actual code reads `MURMUR_PY` and
 # `MURMUR_CRAWLER_ROOT` (`PYTHONPATH` is set to `MURMUR_CRAWLER_ROOT`
@@ -64,9 +78,9 @@
 # ── Runtime invariants ─────────────────────────────────────────────
 #
 # - PID 1 is `tini`, which forwards SIGTERM and reaps zombies.
-# - Process runs as `node` (uid 1000), which exists in node:22-alpine
-#   by default. We never `chown -R node:node /app/.next`; the COPY
-#   --chown does it in a single layer.
+# - Process runs as `node` (uid 1000), which exists in
+#   node:22-bookworm-slim by default. We never `chown -R node:node
+#   /app/.next`; the COPY --chown does it in a single layer.
 # - EXPOSE 8080. Compose binds it to 127.0.0.1 only; cloudflared is
 #   the public ingress.
 # - HEALTHCHECK hits `/health` (added by jobseek#2774 alongside this
@@ -74,7 +88,7 @@
 #   intentionally bearer-free so the healthcheck and the cloudflared
 #   origin-up probe both work without secrets.
 
-ARG NODE_IMAGE=node:22-alpine
+ARG NODE_IMAGE=node:22-bookworm-slim
 # pnpm@10.30.0 matches the root `package.json`'s `packageManager` field.
 # Mismatched versions would emit a hard Corepack error rather than
 # silent drift.
@@ -83,10 +97,10 @@ ARG PNPM_VERSION=10.30.0
 # ───────────────────────── builder ──────────────────────────
 FROM ${NODE_IMAGE} AS builder
 
-# libc6-compat is needed for some npm postinstall scripts (sharp's
-# native bindings, esbuild). We don't pull g++/make/python3 because
-# the shim has no native deps — drizzle-orm and postgres are pure JS.
-RUN apk add --no-cache libc6-compat
+# bookworm-slim already ships glibc + the standard build-time helpers
+# Corepack/pnpm need (no `libc6-compat` shim required, unlike Alpine).
+# The shim has no native deps (drizzle-orm and postgres are pure JS),
+# so we don't install g++/make/python3.
 
 # Activate pnpm via Corepack in a globally-readable location so
 # subsequent stages (and humans `docker exec`-ing) can use it.
@@ -135,10 +149,19 @@ RUN pnpm --filter @jobseek/murmur-shim build
 # ───────────────────────── runtime ──────────────────────────
 FROM ${NODE_IMAGE} AS runtime
 
-# tini for proper PID 1 behaviour. wget is already present via
-# busybox-extras (alpine ships busybox-wget); we use it in HEALTHCHECK
-# below.
-RUN apk add --no-cache tini
+# tini for proper PID 1 behaviour. `--no-install-recommends` +
+# cleaning the apt lists keeps the layer small (~2 MB for tini).
+# On Debian, tini installs to `/usr/bin/tini` (not `/sbin/tini` as on
+# Alpine) — the ENTRYPOINT below is matched accordingly.
+#
+# Note: bookworm-slim does NOT ship `wget` or `curl`. We deliberately
+# avoid pulling those in just for a healthcheck — instead the
+# HEALTHCHECK below uses a Node one-liner with built-in `fetch`
+# (Node 18+), which keeps the image lean and removes a whole class
+# of CVE surface from extra HTTP clients.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tini \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -184,14 +207,17 @@ EXPOSE 8080
 # `docker run` smoke tests still surface health, and so that a host-
 # orchestrated `docker ps` shows the container's true state.
 #
-# `wget -q -O- ... || exit 1` — busybox wget exits non-zero on any
-# 4xx/5xx, which is what we want. The `-q` keeps stderr quiet so
-# `docker logs` doesn't fill with health probe noise.
+# Uses Node's built-in `fetch` (Node 18+) so we don't have to install
+# `wget` or `curl` into the slim image. The probe checks `r.ok`
+# (2xx/3xx → exit 0, 4xx/5xx → exit 1) and treats any thrown error
+# (connection refused, DNS, abort) as unhealthy. We use `process.env.PORT`
+# so the probe stays correct if the runtime PORT is overridden.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -q -O- http://127.0.0.1:8080/health || exit 1
+  CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # tini handles signals; node runs the standalone server entrypoint.
 # The entrypoint lives at `apps/murmur-shim/server.js` because the
 # build's outputFileTracingRoot was the monorepo root.
-ENTRYPOINT ["/sbin/tini", "--"]
+# Debian's tini ships at `/usr/bin/tini` (Alpine put it at `/sbin/tini`).
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "apps/murmur-shim/server.js"]
