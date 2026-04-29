@@ -12,6 +12,10 @@
  * @see colophon-group/jobseek#2757
  */
 
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { murmurClaimKv } from "@/db/schema";
+
 /**
  * Fetch a single named value for a claim.
  *
@@ -21,18 +25,28 @@
  *   this `(claim_token, name)` pair.
  */
 export async function getKV(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   claim_token: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   name: string,
 ): Promise<unknown | null> {
-  throw new Error("not implemented");
+  const rows = await db
+    .select({ value: murmurClaimKv.value })
+    .from(murmurClaimKv)
+    .where(
+      and(
+        eq(murmurClaimKv.claimToken, claim_token),
+        eq(murmurClaimKv.name, name),
+      ),
+    )
+    .limit(1);
+
+  if (rows.length === 0) return null;
+  return rows[0]!.value as unknown;
 }
 
 /**
  * Store a named value for a claim. Performs an UPSERT keyed on
  * `(claim_token, name)`: if a row already exists it is overwritten and
- * `updated_at` is bumped to the current transaction time.
+ * `updated_at` is bumped to the current time.
  *
  * Concurrent writes under the same `(claim_token, name)` are last-write-
  * wins via Postgres' row-level locking — the function never throws on
@@ -43,14 +57,24 @@ export async function getKV(
  * @param value - Any JSON-serializable value.
  */
 export async function setKV(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   claim_token: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   name: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   value: unknown,
 ): Promise<void> {
-  throw new Error("not implemented");
+  await db
+    .insert(murmurClaimKv)
+    .values({
+      claimToken: claim_token,
+      name,
+      value: value as never,
+    })
+    .onConflictDoUpdate({
+      target: [murmurClaimKv.claimToken, murmurClaimKv.name],
+      set: {
+        value: value as never,
+        updatedAt: new Date(),
+      },
+    });
 }
 
 /**
@@ -61,10 +85,18 @@ export async function setKV(
  *   the token has no rows.
  */
 export async function listKV(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   claim_token: string,
 ): Promise<Record<string, unknown>> {
-  throw new Error("not implemented");
+  const rows = await db
+    .select({ name: murmurClaimKv.name, value: murmurClaimKv.value })
+    .from(murmurClaimKv)
+    .where(eq(murmurClaimKv.claimToken, claim_token));
+
+  const out: Record<string, unknown> = {};
+  for (const row of rows) {
+    out[row.name] = row.value as unknown;
+  }
+  return out;
 }
 
 /**
@@ -73,9 +105,8 @@ export async function listKV(
  *
  * @param claim_token - The opaque token identifying the claim row.
  */
-export async function clearKV(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  claim_token: string,
-): Promise<void> {
-  throw new Error("not implemented");
+export async function clearKV(claim_token: string): Promise<void> {
+  await db
+    .delete(murmurClaimKv)
+    .where(eq(murmurClaimKv.claimToken, claim_token));
 }
