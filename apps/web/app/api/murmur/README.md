@@ -93,3 +93,49 @@ Every route enforces, in order:
 | `MURMUR_PY` (optional) | Python interpreter path; defaults to `python3`. |
 | `MURMUR_CRAWLER_ROOT` (optional) | Path to the crawler app root; defaults to `<cwd>/../crawler`. |
 | `MURMUR_INVOKE_TIMEOUT_MS` (optional) | Wallclock cap per call; defaults to 30 000 ms. |
+
+## Webhook accept handler — `POST /api/murmur/accept`
+
+Tracking issue: [colophon-group/jobseek#2763](https://github.com/colophon-group/jobseek/issues/2763).
+
+Murmur POSTs the composed `final_output` for a completed run here when
+the pipeline declares `webhook: …/api/murmur/accept` (Murmur DESIGN.md
+§4.1). The contract:
+
+- `Authorization: Bearer <MURMUR_TOKEN>` — the same shared bearer used by
+  the seven shim routes. Wrong / missing → 401.
+- `Idempotency-Key: <run_id>` — required. Missing → 400. The handler
+  stores a SHA-256 of the canonicalised JSON body and dedupes on
+  `(run_id)`. Same run\_id + same hash returns
+  `{ ok: true, data: { applied: false, reason: "already_applied" } }`;
+  same run\_id + different hash returns `reason: "body_mismatch"` and
+  logs a warning.
+- Body cap: 5 MB. Larger payloads are rejected 413 — checked twice
+  (Content-Length fast-path + post-read buffer).
+- Schema validation: the `final_output` shape from
+  `apps/crawler/murmur/pipelines/add-company.yaml` is vendored at
+  `_lib/accept-schema.ts`; per-field errors come back as
+  `errors: ["validation:<json-pointer>:<token>"]`.
+- Defense-in-depth probe re-run: every board in the validated
+  `final_output` is fed back through `invokeLib("probe_monitor", …)` —
+  same Python lib the agent used. The subprocess fan-out is wrapped in
+  a 30 s wallclock budget (`MURMUR_ACCEPT_PROBE_TIMEOUT_MS`); on
+  timeout the route returns 504 with `errors: ["probe_timeout"]`. On
+  per-board failure the route returns HTTP 200 with
+  `{ ok: false, errors: [...] }` so Murmur's one-retry budget burns
+  cleanly instead of forever.
+- Catalog write: `MURMUR_ACCEPT_TARGET=postgres` (default) writes to
+  the `company` + `job_board` tables alongside the
+  `murmur_accept_log` ledger row in one transaction. The PRIMARY KEY
+  on `murmur_accept_log.run_id` is the durable UNIQUE the issue
+  requires. `MURMUR_ACCEPT_TARGET=csv` switches to appending
+  `apps/crawler/data/companies.csv` + `boards.csv` for operator-side
+  debugging — not concurrency-safe.
+
+### Additional environment
+
+| Variable | Purpose |
+|---|---|
+| `MURMUR_ACCEPT_TARGET` | `postgres` (default) or `csv`. |
+| `MURMUR_ACCEPT_CSV_DIR` | Override the CSV-backend output dir; defaults to `<cwd>/../crawler/data`. |
+| `MURMUR_ACCEPT_PROBE_TIMEOUT_MS` | Probe re-run wallclock cap; defaults to 30 000 ms. Must match Murmur's webhook retry interval (DESIGN.md §4.1). |
