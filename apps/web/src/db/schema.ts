@@ -814,3 +814,24 @@ export const watchlistCompany = pgTable(
   ],
 );
 
+// ── Murmur per-claim KV (named-config state, jobseek#2757) ───────────
+
+export const murmurClaimKv = pgTable(
+  "murmur_claim_kv",
+  {
+    claimToken: text("claim_token").notNull(),
+    name: text("name").notNull(),
+    value: jsonb("value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.claimToken, table.name] }),
+    index("murmur_claim_kv_token_idx").on(table.claimToken),
+  ],
+);
+
