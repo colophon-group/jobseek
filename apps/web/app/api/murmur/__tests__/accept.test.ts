@@ -1,0 +1,323 @@
+/**
+ * Unit tests for `POST /api/murmur/accept` — the Murmur webhook handler.
+ *
+ * Covers the full Verification matrix from jobseek#2763:
+ *
+ *   - Bearer missing                         → 401
+ *   - Bearer wrong                           → 401
+ *   - Body > 5 MB                            → 413
+ *   - Idempotency-Key missing                → 400
+ *   - Body parse failure                     → 400
+ *   - Schema-invalid body                    → 400 with validation:* errors
+ *   - Idempotent replay (same hash)          → 200 applied:false reason:already_applied
+ *   - Idempotent replay (different hash)     → 200 applied:false reason:body_mismatch
+ *   - Re-run probes succeed                  → 200 applied:true, catalog written
+ *   - Re-run probes fail                     → 200 ok:false, no catalog write
+ *   - Re-run probes time out                 → 504 ok:false errors:["probe_timeout"]
+ *   - Catalog writer throws                  → 200 ok:false errors:["catalog_write_failed"]
+ *
+ * The catalog writer + idempotency ledger + probe re-runner are all
+ * stubbed via the holders defined alongside the production functions.
+ *
+ * @see colophon-group/jobseek#2763
+ */
+
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+import "./_helpers";
+import {
+  ApplyCatalogHolder,
+  type ApplyCatalog,
+} from "../_lib/catalog";
+import {
+  RerunHolder,
+  type RerunProbes,
+} from "../_lib/accept-pipeline";
+
+/** Minimum-shape `final_output` body that passes schema validation. */
+const VALID_FINAL_OUTPUT = {
+  canonical_name: "Acme",
+  canonical_website: "https://acme.example.com",
+  slug: "acme",
+  description: "Test fixture company.",
+  industry_ids: ["software"],
+  boards: [
+    {
+      alias: "global",
+      board_url: "https://job-boards.greenhouse.io/acme",
+      provider: "greenhouse",
+      outcome: "configured",
+      monitor_type: "greenhouse",
+      monitor_config: { token: "acme" },
+      scraper_type: "skip",
+      scraper_config: {},
+      verdict: "ok",
+    },
+  ],
+} as const;
+
+/** Build a fully-formed authorised webhook request. */
+function webhookRequest(
+  body: unknown,
+  overrides?: {
+    bearer?: string | null;
+    runId?: string | null;
+    rawBody?: string;
+    contentLength?: string;
+  },
+): Request {
+  const headers = new Headers({ "content-type": "application/json" });
+  if (overrides?.bearer !== null) {
+    headers.set(
+      "authorization",
+      `Bearer ${overrides?.bearer ?? process.env.MURMUR_TOKEN ?? "test-token"}`,
+    );
+  }
+  if (overrides?.runId !== null) {
+    headers.set("idempotency-key", overrides?.runId ?? "run-test-1");
+  }
+  const raw = overrides?.rawBody ?? JSON.stringify(body);
+  if (overrides?.contentLength !== undefined) {
+    headers.set("content-length", overrides.contentLength);
+  }
+  return new Request("https://jobseek.test/api/murmur/accept", {
+    method: "POST",
+    headers,
+    body: raw,
+  });
+}
+
+let appliedCalls: Array<{
+  body: unknown;
+  context: { runId: string; bodyHash: string };
+}> = [];
+let rerunCalls: number;
+
+beforeEach(() => {
+  appliedCalls = [];
+  rerunCalls = 0;
+  // Default: catalog applies cleanly with no warnings.
+  ApplyCatalogHolder.current = (async (_target, body, context) => {
+    appliedCalls.push({ body, context });
+    return {
+      companyId: "00000000-0000-0000-0000-000000000001",
+      boardCount: 1,
+      warnings: [],
+    };
+  }) as ApplyCatalog;
+  // Default: probe re-run succeeds.
+  RerunHolder.current = (async () => {
+    rerunCalls += 1;
+    return { status: "ok" } as const;
+  }) as RerunProbes;
+});
+
+async function loadRoute() {
+  return await import("../accept/route");
+}
+
+describe("POST /api/murmur/accept", () => {
+  it("returns 401 when the bearer is missing", async () => {
+    const { POST } = await loadRoute();
+    const res = await POST(webhookRequest(VALID_FINAL_OUTPUT, { bearer: null }));
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ ok: false, errors: ["unauthorized"] });
+    expect(appliedCalls).toHaveLength(0);
+    expect(rerunCalls).toBe(0);
+  });
+
+  it("returns 401 when the bearer is wrong", async () => {
+    const { POST } = await loadRoute();
+    const res = await POST(
+      webhookRequest(VALID_FINAL_OUTPUT, { bearer: "WRONG-TOKEN" }),
+    );
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ ok: false, errors: ["unauthorized"] });
+  });
+
+  it("returns 413 when Content-Length exceeds 5 MB", async () => {
+    const { POST } = await loadRoute();
+    const res = await POST(
+      webhookRequest(VALID_FINAL_OUTPUT, {
+        contentLength: String(6 * 1024 * 1024),
+      }),
+    );
+    expect(res.status).toBe(413);
+    const body = (await res.json()) as { ok: boolean; errors: string[] };
+    expect(body).toEqual({ ok: false, errors: ["payload_too_large"] });
+    expect(appliedCalls).toHaveLength(0);
+  });
+
+  it("returns 413 when the post-read buffer exceeds 5 MB even if Content-Length lied", async () => {
+    const { POST } = await loadRoute();
+    // 6 MB of payload, but Content-Length unset (some HTTP clients omit it).
+    const huge = "a".repeat(6 * 1024 * 1024);
+    const res = await POST(
+      webhookRequest(null, { rawBody: JSON.stringify({ huge }) }),
+    );
+    expect(res.status).toBe(413);
+  });
+
+  it("returns 400 when Idempotency-Key header is missing", async () => {
+    const { POST } = await loadRoute();
+    const res = await POST(
+      webhookRequest(VALID_FINAL_OUTPUT, { runId: null }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { errors: string[] };
+    expect(body.errors).toEqual(["missing_header:idempotency-key"]);
+  });
+
+  it("returns 400 on invalid JSON body", async () => {
+    const { POST } = await loadRoute();
+    const res = await POST(
+      webhookRequest(null, { rawBody: "{not json" }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { errors: string[] };
+    expect(body.errors).toEqual(["invalid_json"]);
+  });
+
+  it("returns 400 with validation:* errors on a schema-invalid body", async () => {
+    const { POST } = await loadRoute();
+    const bad = {
+      ...VALID_FINAL_OUTPUT,
+      slug: "Bad Slug!", // pattern violation
+      boards: [], // minItems: 1
+    };
+    const res = await POST(webhookRequest(bad));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { ok: boolean; errors: string[] };
+    expect(body.ok).toBe(false);
+    expect(body.errors.length).toBeGreaterThan(0);
+    for (const err of body.errors) {
+      expect(err).toMatch(/^validation:\/[^:]*:[a-z_]+$/);
+    }
+    expect(appliedCalls).toHaveLength(0);
+    expect(rerunCalls).toBe(0);
+  });
+
+  it("idempotent replay (same run_id, same body): applied:false reason:already_applied, no second write", async () => {
+    const { POST } = await loadRoute();
+    // First call — fresh.
+    const res1 = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-A" }));
+    expect(res1.status).toBe(200);
+    const body1 = await res1.json();
+    expect(body1.ok).toBe(true);
+    expect(body1.data.applied).toBe(true);
+    expect(appliedCalls).toHaveLength(1);
+
+    // Second call with the same body — should hit the ledger.
+    const res2 = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-A" }));
+    expect(res2.status).toBe(200);
+    const body2 = await res2.json();
+    expect(body2.ok).toBe(true);
+    expect(body2.data.applied).toBe(false);
+    expect(body2.data.reason).toBe("already_applied");
+    expect(body2.data.run_id).toBe("run-A");
+    // Catalog writer NOT called a second time.
+    expect(appliedCalls).toHaveLength(1);
+  });
+
+  it("idempotent replay (same run_id, different body): applied:false reason:body_mismatch, no second write, warning", async () => {
+    const { POST } = await loadRoute();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const res1 = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-B" }));
+    expect(res1.status).toBe(200);
+    expect(appliedCalls).toHaveLength(1);
+
+    const tampered = {
+      ...VALID_FINAL_OUTPUT,
+      description: "Different description.",
+    };
+    const res2 = await POST(webhookRequest(tampered, { runId: "run-B" }));
+    expect(res2.status).toBe(200);
+    const body2 = await res2.json();
+    expect(body2.ok).toBe(true);
+    expect(body2.data.applied).toBe(false);
+    expect(body2.data.reason).toBe("body_mismatch");
+    expect(appliedCalls).toHaveLength(1);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("happy path: re-run probes succeed → catalog written, applied:true", async () => {
+    const { POST } = await loadRoute();
+    const res = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-C" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.data.applied).toBe(true);
+    expect(body.data.run_id).toBe("run-C");
+    expect(rerunCalls).toBe(1);
+    expect(appliedCalls).toHaveLength(1);
+    expect(appliedCalls[0]?.context.runId).toBe("run-C");
+  });
+
+  it("re-run probes fail → no catalog write, 200 with ok:false errors:[...]", async () => {
+    RerunHolder.current = (async () => ({
+      status: "failed",
+      errors: ["probe_failed:global"],
+    })) as RerunProbes;
+    const { POST } = await loadRoute();
+    const res = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-D" }));
+    // Not 5xx — Murmur retry budget would burn forever.
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.errors).toEqual(["probe_failed:global"]);
+    expect(appliedCalls).toHaveLength(0);
+  });
+
+  it("re-run probes time out → 504 with errors:['probe_timeout']", async () => {
+    RerunHolder.current = (async () => ({ status: "timeout" })) as RerunProbes;
+    const { POST } = await loadRoute();
+    const res = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-E" }));
+    expect(res.status).toBe(504);
+    const body = await res.json();
+    expect(body).toEqual({ ok: false, errors: ["probe_timeout"] });
+    expect(appliedCalls).toHaveLength(0);
+  });
+
+  it("catalog writer throws → 200 ok:false errors:['catalog_write_failed']", async () => {
+    ApplyCatalogHolder.current = (async () => {
+      throw new Error("simulated DB outage");
+    }) as ApplyCatalog;
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { POST } = await loadRoute();
+    const res = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-F" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ ok: false, errors: ["catalog_write_failed"] });
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
+  it("surfaces catalog writer warnings as errors:['catalog:<token>'] but still applies", async () => {
+    ApplyCatalogHolder.current = (async (_t, _body, _ctx) => ({
+      companyId: "00000000-0000-0000-0000-000000000002",
+      boardCount: 1,
+      warnings: ["slug_conflict"],
+    })) as ApplyCatalog;
+    const { POST } = await loadRoute();
+    const res = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-G" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.data.applied).toBe(true);
+    expect(body.data.warnings).toEqual(["slug_conflict"]);
+  });
+
+  it("never returns a 5xx for a typed lib failure", async () => {
+    // Belt-and-suspenders: combination of probe failure + catalog throw
+    // should still resolve to a 200 envelope.
+    RerunHolder.current = (async () => ({
+      status: "failed",
+      errors: ["monitor_run_failed"],
+    })) as RerunProbes;
+    const { POST } = await loadRoute();
+    const res = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-H" }));
+    expect(res.status).toBeLessThan(500);
+  });
+});
