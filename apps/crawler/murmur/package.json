@@ -1,0 +1,24 @@
+{
+  "name": "@jobseek/murmur-pipelines",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Murmur pipeline definitions and validator for jobseek (P1: add-company demo).",
+  "scripts": {
+    "validate-pipeline": "tsx scripts/validate-pipeline.ts pipelines/add-company.yaml --no-routes-check",
+    "validate-pipeline:full": "tsx scripts/validate-pipeline.ts pipelines/add-company.yaml --app-dir ../../web/app",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "^4.0.18"
+  }
+}
