@@ -1,6 +1,13 @@
 # syntax=docker/dockerfile:1.7
 #
-# jobseek-murmur-shim — production image (linux/arm64).
+# jobseek-murmur-shim — production image (linux/amd64).
+#
+# Target host: the Hetzner crawler box at 116.203.192.19, which is
+# x86_64 (`uname -m` → `x86_64`). This Dockerfile has no hard-coded
+# `--platform` pin in its `FROM` stages, so buildx picks the platform
+# from `--platform=linux/<arch>` at invocation time. Production
+# builds (and CI) MUST pass `--platform=linux/amd64` so the image
+# manifest matches the deploy target.
 #
 # Source spec: colophon-group/jobseek#2774 (H2). Sibling pattern of
 # colophon-group/murmur's Dockerfile (multi-stage Node-on-Alpine,
@@ -46,7 +53,7 @@
 # Invoke as:
 #
 #     docker buildx build \
-#       --platform=linux/arm64 \
+#       --platform=linux/amd64 \
 #       -f apps/murmur-shim/Dockerfile \
 #       -t jobseek-murmur-shim:test \
 #       .
