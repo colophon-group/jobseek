@@ -13,7 +13,7 @@
  *   4. Body parse + canonical hash; invalid JSON → 400.
  *   5. Schema validation against `FINAL_OUTPUT_SCHEMA`.
  *      - failure → 400 with `errors: ["validation:<path>:<message>"]`.
- *   6. Idempotency lookup against `murmur_accept_log`.
+ *   6. Idempotency lookup against the in-memory + DB ledger.
  *      - same run_id + same hash → 200 `{ applied: false, reason:
  *        "already_applied" }`.
  *      - same run_id + different hash → 200 `{ applied: false, reason:
@@ -23,8 +23,7 @@
  *        the issue explicitly says "so Murmur doesn't retry forever").
  *      - timeout → 504 `{ ok: false, errors: ["probe_timeout"] }`.
  *   8. Apply catalog via `applyCatalog`. Wrapped with the ledger insert
- *      in one transaction — the catalog write and the idempotency row
- *      land or both roll back.
+ *      in one transaction.
  *      - I/O failure → 200 `{ ok: false, errors: ["catalog_write_failed"] }`.
  *   9. Return 200 `{ ok: true, data: { run_id, applied: true,
  *      company_id, board_count, warnings? } }`.
@@ -38,29 +37,157 @@
 import { NextResponse } from "next/server";
 import { requireBearer } from "../_lib/auth";
 import { errJson, okJson } from "../_lib/envelope";
+import {
+  parseAndCapBody,
+  rerunProbes,
+} from "../_lib/accept-pipeline";
+import { FINAL_OUTPUT_SCHEMA, type FinalOutput } from "../_lib/accept-schema";
+import { validateAcceptBody } from "../_lib/accept-validate";
+import {
+  applyCatalog,
+  resolveCatalogTarget,
+  CatalogIdempotencyConflict,
+} from "../_lib/catalog";
+import { sha256Canonical } from "../_lib/idempotency";
 
 export const runtime = "nodejs";
+
+/**
+ * Header name Murmur uses for the run-id idempotency key.
+ *
+ * Lower-cased per the canonical-form convention from `_lib/headers.ts`.
+ * Reading via `request.headers.get(...)` is case-insensitive at the
+ * platform layer — the constant is for grep-auditability only.
+ */
+export const HEADER_IDEMPOTENCY_KEY = "idempotency-key" as const;
+
+/**
+ * In-process idempotency ledger.
+ *
+ * The Postgres ledger (`murmur_accept_log`) is the durable source of
+ * truth, but unit tests don't carry a database. We keep a tiny
+ * per-process Map so the unit-test "same run_id replay" case works
+ * end-to-end without hitting the DB. Production usage is the same: the
+ * map serves as a hot cache; the DB UNIQUE constraint is the
+ * authoritative guard.
+ *
+ * The map only stores `{ runId → bodyHash }`. Catalog state lives in
+ * the DB / CSV — never in this map.
+ *
+ * Eviction: there is no eviction. Demo-grade. The map grows by one
+ * entry per accepted run; for the demo budget that's negligible.
+ */
+const inProcessLedger = new Map<string, string>();
+
+interface AcceptResponseData {
+  readonly run_id: string;
+  readonly applied: boolean;
+  readonly reason?: "already_applied" | "body_mismatch";
+  readonly company_id?: string | null;
+  readonly board_count?: number;
+  readonly warnings?: readonly string[];
+}
 
 /**
  * Hand the request through the accept pipeline. Returns the
  * `NextResponse` the framework propagates verbatim.
  */
-export async function POST(_request: Request): Promise<NextResponse> {
-  // Force the unused import to register so lint doesn't flag it during
-  // the interfaces-first commit. Real implementation lives in the next
-  // commit.
-  void requireBearer;
-  void errJson;
-  void okJson;
-  throw new Error("not implemented");
-}
+export async function POST(request: Request): Promise<NextResponse> {
+  // 1. Bearer auth — first line of work, before any body read.
+  const authFail = requireBearer(request);
+  if (authFail) return authFail;
 
-/**
- * Header name Murmur uses for the run-id idempotency key.
- *
- * Lower-cased per the canonical-form convention that already lives in
- * `_lib/headers.ts`. Reading the header from `request.headers.get(...)`
- * is case-insensitive at the platform layer — the constant is for
- * grep-auditability only.
- */
-export const HEADER_IDEMPOTENCY_KEY = "idempotency-key" as const;
+  // 2. Body cap + parse. Reads the buffer, refuses anything over
+  //    5 MB regardless of what `Content-Length` claimed.
+  const parsed = await parseAndCapBody(request);
+  if (parsed.status === "too_large") {
+    return errJson(["payload_too_large"], { status: 413 });
+  }
+  if (parsed.status === "invalid_json") {
+    return errJson(["invalid_json"], { status: 400 });
+  }
+
+  // 3. Required header.
+  const runId = (request.headers.get(HEADER_IDEMPOTENCY_KEY) ?? "").trim();
+  if (!runId) {
+    return errJson([`missing_header:${HEADER_IDEMPOTENCY_KEY}`], {
+      status: 400,
+    });
+  }
+
+  // 4. Schema validation.
+  const schemaErrors = validateAcceptBody(parsed.body, FINAL_OUTPUT_SCHEMA);
+  if (schemaErrors.length > 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        errors: schemaErrors.map((e) => `validation:${e.path}:${e.message}`),
+      },
+      { status: 400 },
+    );
+  }
+  const body = parsed.body as FinalOutput;
+  const bodyHash = sha256Canonical(body);
+
+  // 5. Idempotency classification.
+  const seenHash = inProcessLedger.get(runId);
+  if (seenHash !== undefined) {
+    if (seenHash === bodyHash) {
+      return okJson<AcceptResponseData>({
+        run_id: runId,
+        applied: false,
+        reason: "already_applied",
+      });
+    }
+    console.warn(
+      `[murmur accept] run_id=${runId} re-fired with a different body; discarding the new payload (hash mismatch)`,
+    );
+    return okJson<AcceptResponseData>({
+      run_id: runId,
+      applied: false,
+      reason: "body_mismatch",
+    });
+  }
+
+  // 6. Defense-in-depth probe re-run.
+  const rerun = await rerunProbes(body);
+  if (rerun.status === "timeout") {
+    return errJson(["probe_timeout"], { status: 504 });
+  }
+  if (rerun.status === "failed") {
+    return errJson(rerun.errors);
+  }
+
+  // 7. Catalog write.
+  const target = resolveCatalogTarget();
+  let result;
+  try {
+    result = await applyCatalog(target, body, { runId, bodyHash });
+  } catch (err) {
+    if (err instanceof CatalogIdempotencyConflict) {
+      // Concurrent first-write race; the other writer landed first.
+      // Cache the hash so subsequent re-fires hit the fast path.
+      inProcessLedger.set(runId, bodyHash);
+      return okJson<AcceptResponseData>({
+        run_id: runId,
+        applied: false,
+        reason: "already_applied",
+      });
+    }
+    console.error(
+      `[murmur accept] catalog write failed for run_id=${runId}: ${(err as Error).message}`,
+    );
+    return errJson(["catalog_write_failed"]);
+  }
+
+  // 8. Record the hash for future re-fires within this process.
+  inProcessLedger.set(runId, bodyHash);
+
+  return okJson<AcceptResponseData>({
+    run_id: runId,
+    applied: true,
+    company_id: result.companyId,
+    board_count: result.boardCount,
+    ...(result.warnings.length > 0 ? { warnings: result.warnings } : {}),
+  });
+}

@@ -24,6 +24,8 @@
  * @see colophon-group/jobseek#2763
  */
 
+import { createHash } from "node:crypto";
+
 /**
  * Stable, length-prefixed canonical form of a JSON value. Two bodies
  * that decode to the same JS object always produce the same string;
@@ -31,13 +33,31 @@
  *
  * The output is fed directly into SHA-256.
  */
-export function canonicalizeJson(_value: unknown): string {
-  throw new Error("not implemented");
+export function canonicalizeJson(value: unknown): string {
+  if (value === null) return "null";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "string") return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalizeJson).join(",")}]`;
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries
+      .map(([k, v]) => `${JSON.stringify(k)}:${canonicalizeJson(v)}`)
+      .join(",")}}`;
+  }
+  // undefined / function / symbol — JSON drops these. Mirror that.
+  return "null";
 }
 
 /** Hex SHA-256 of the canonicalised JSON form. */
-export function sha256Canonical(_value: unknown): string {
-  throw new Error("not implemented");
+export function sha256Canonical(value: unknown): string {
+  return createHash("sha256").update(canonicalizeJson(value)).digest("hex");
 }
 
 /** Outcome of classifying an inbound run_id + body against the ledger. */

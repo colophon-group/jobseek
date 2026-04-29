@@ -135,12 +135,11 @@ describe("POST /api/murmur/accept", () => {
     expect(await res.json()).toEqual({ ok: false, errors: ["unauthorized"] });
   });
 
-  it("returns 413 when Content-Length exceeds 5 MB", async () => {
+  it("returns 413 when the body exceeds 5 MB", async () => {
     const { POST } = await loadRoute();
+    const huge = "a".repeat(6 * 1024 * 1024);
     const res = await POST(
-      webhookRequest(VALID_FINAL_OUTPUT, {
-        contentLength: String(6 * 1024 * 1024),
-      }),
+      webhookRequest(null, { rawBody: JSON.stringify({ huge }) }),
     );
     expect(res.status).toBe(413);
     const body = (await res.json()) as { ok: boolean; errors: string[] };
@@ -148,13 +147,24 @@ describe("POST /api/murmur/accept", () => {
     expect(appliedCalls).toHaveLength(0);
   });
 
-  it("returns 413 when the post-read buffer exceeds 5 MB even if Content-Length lied", async () => {
+  it("returns 413 fast-path when Content-Length declares > 5 MB even if body is smaller", async () => {
+    // This case verifies that the route looks at Content-Length BEFORE
+    // reading the body buffer — important when a malicious / buggy
+    // client lies about the size to provoke a large allocation. We
+    // construct a `Request`-shaped object directly so happy-dom doesn't
+    // overwrite Content-Length.
     const { POST } = await loadRoute();
-    // 6 MB of payload, but Content-Length unset (some HTTP clients omit it).
-    const huge = "a".repeat(6 * 1024 * 1024);
-    const res = await POST(
-      webhookRequest(null, { rawBody: JSON.stringify({ huge }) }),
-    );
+    const headers = new Headers({
+      "content-type": "application/json",
+      authorization: `Bearer ${process.env.MURMUR_TOKEN ?? "test-token"}`,
+      "idempotency-key": "run-cl-lied",
+      "content-length": String(6 * 1024 * 1024),
+    });
+    const fakeRequest = {
+      headers,
+      text: async () => JSON.stringify(VALID_FINAL_OUTPUT),
+    } as unknown as Request;
+    const res = await POST(fakeRequest);
     expect(res.status).toBe(413);
   });
 
@@ -319,5 +329,68 @@ describe("POST /api/murmur/accept", () => {
     const { POST } = await loadRoute();
     const res = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-H" }));
     expect(res.status).toBeLessThan(500);
+  });
+
+  // ── Murmur one-retry simulations (issue #2763 e2e bullet) ──────────
+
+  it("simulates Murmur 200 + 200 retry: idempotency holds, only one row written", async () => {
+    const { POST } = await loadRoute();
+    // First fire — applied.
+    const res1 = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-retry-A" }));
+    expect((await res1.json()).data.applied).toBe(true);
+    expect(appliedCalls).toHaveLength(1);
+    // Second fire (Murmur thought the first one timed out and retried)
+    // — same body, same run_id. Idempotency catches it; no second
+    // catalog row.
+    const res2 = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-retry-A" }));
+    const body2 = await res2.json();
+    expect(body2.ok).toBe(true);
+    expect(body2.data.applied).toBe(false);
+    expect(body2.data.reason).toBe("already_applied");
+    expect(appliedCalls).toHaveLength(1);
+  });
+
+  it("simulates Murmur 503 + 200 retry: first attempt fails, retry succeeds, only one row", async () => {
+    const { POST } = await loadRoute();
+    // Round 1: catalog backend simulates a transient outage.
+    let firstCall = true;
+    ApplyCatalogHolder.current = (async (_t, _b, _ctx) => {
+      if (firstCall) {
+        firstCall = false;
+        throw new Error("simulated transient DB outage");
+      }
+      appliedCalls.push({ body: _b, context: _ctx });
+      return {
+        companyId: "00000000-0000-0000-0000-000000000003",
+        boardCount: 1,
+        warnings: [],
+      };
+    }) as ApplyCatalog;
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const res1 = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-retry-B" }));
+    // Catalog write failure surfaces in the envelope; Murmur sees a
+    // 200 with ok:false, classifies it as a soft failure, and retries
+    // (the issue's "503 + 200" pattern is shorthand for "first
+    // attempt was non-2xx, retry succeeded").
+    expect((await res1.json()).ok).toBe(false);
+    expect(appliedCalls).toHaveLength(0);
+
+    // Round 2: backend recovers. Same run_id, same body — the
+    // in-process ledger has NOT yet recorded this run (apply failed),
+    // so the retry proceeds and writes the row.
+    const res2 = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-retry-B" }));
+    const body2 = await res2.json();
+    expect(body2.ok).toBe(true);
+    expect(body2.data.applied).toBe(true);
+    expect(appliedCalls).toHaveLength(1);
+
+    // Round 3 (Murmur's bug-budget belt-and-suspenders): even if a
+    // duplicate fires AGAIN after success, it's deduped.
+    const res3 = await POST(webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-retry-B" }));
+    expect((await res3.json()).data.applied).toBe(false);
+    expect(appliedCalls).toHaveLength(1);
+
+    errSpy.mockRestore();
   });
 });
