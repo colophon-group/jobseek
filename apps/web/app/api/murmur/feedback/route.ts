@@ -8,8 +8,8 @@
  * @see colophon-group/jobseek#2759
  */
 
-import { handleSubcommand } from "../../_lib/handle";
-import { FEEDBACK_SCHEMA } from "../../_lib/schemas";
+import { handleSubcommand } from "../_lib/handle";
+import { FEEDBACK_SCHEMA } from "../_lib/schemas";
 
 export async function POST(request: Request) {
   return handleSubcommand(request, {
