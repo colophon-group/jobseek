@@ -1,11 +1,12 @@
 """Postgres-backed :class:`ClaimKV` for the Murmur HTTP shim.
 
-Mirrors the TS `apps/web/src/lib/murmur/claim-kv.ts` module against the
+Mirrors the TS `apps/murmur-shim/src/lib/murmur/claim-kv.ts` module against the
 same `murmur_claim_kv` table. Used only by the HTTP shim entry point
 (`cli_shim`); the regular CLI keeps using the in-memory implementation
 or the YAML-backed adapter.
 
-Schema (ddl owned by `apps/web/src/db/schema.ts`)::
+Schema (ddl owned by `apps/web/src/db/schema.ts`, re-exported by
+`apps/murmur-shim/src/db/schema.ts`)::
 
     CREATE TABLE murmur_claim_kv (
         claim_token  text          NOT NULL,

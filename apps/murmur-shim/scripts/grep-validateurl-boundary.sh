@@ -37,9 +37,16 @@ cd "$REPO_ROOT"
 
 # Files that import `validateUrl` or `safeFetch` from the ssrf module.
 # Two patterns: relative `./ssrf` or `@/lib/murmur/ssrf`.
+#
+# Exclude build outputs (`.next/`, `node_modules/`, `dist/`) — those are
+# downstream copies that re-bundle the source. The gate's job is to
+# police the source tree, not the artefacts.
 matches=$(
   grep -rEn \
     --include='*.ts' --include='*.tsx' \
+    --exclude-dir='.next' \
+    --exclude-dir='node_modules' \
+    --exclude-dir='dist' \
     "from ['\"](.*lib/murmur/ssrf|\\./ssrf|\\.\\./ssrf|@/lib/murmur/ssrf)['\"]" \
     apps/murmur-shim 2>/dev/null || true
 )

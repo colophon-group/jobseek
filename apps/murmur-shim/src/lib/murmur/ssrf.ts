@@ -1,7 +1,7 @@
 /**
  * SSRF allowlist + DNS-rebinding-aware fetcher for agent-supplied URLs.
  *
- * Used by every Murmur subcommand route in `apps/web/app/api/**` that
+ * Used by every Murmur subcommand route in `apps/murmur-shim/app/api/**` that
  * accepts a URL field (`board_url`, `sample_url`, ...). Two phases:
  *
  *   1. Host-pattern allowlist (synchronous, no DNS).
@@ -19,7 +19,7 @@
  * rejections in real demo runs. The full reference list of board hosts
  * is at `apps/crawler/data/boards.csv`.
  *
- * Caller boundary: only files under `apps/web/app/api/**` (route
+ * Caller boundary: only files under `apps/murmur-shim/app/api/**` (route
  * boundaries) and this module's own test file may import from here. The
  * `scripts/grep-validateurl-boundary.sh` gate enforces this.
  *

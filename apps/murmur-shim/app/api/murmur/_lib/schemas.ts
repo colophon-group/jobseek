@@ -7,7 +7,7 @@
  * synchronously without parsing YAML on every request.
  *
  * Whenever the YAML schemas change, mirror the change here. The
- * `apps/web/__tests__/murmur-schemas-match-yaml.test.ts` (added under J5)
+ * `apps/murmur-shim/__tests__/murmur-schemas-match-yaml.test.ts` (added under J5)
  * does NOT exist — there is no automated drift gate. Reviewers should
  * cross-check by hand on schema changes.
  *
