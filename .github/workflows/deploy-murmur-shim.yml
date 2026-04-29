@@ -1,0 +1,167 @@
+# Deploy jobseek-murmur-shim to the Hetzner crawler box.
+#
+# Source spec: issue #2776 (H4). Mirrors the murmur repo's
+# `.github/workflows/deploy.yml` shape, with build + deploy unified
+# (jobseek's CI doesn't gate this deploy via workflow_run because the
+# image is built here in-line).
+#
+# Trigger model:
+#   - `push` to `murmur-demo` touching the shim source, the crawler
+#     compose (where the murmur-shim service is declared by H3), or
+#     this workflow file. The path filter prevents accidental redeploys
+#     when unrelated files change.
+#   - `workflow_dispatch`: manual trigger so the operator can force a
+#     redeploy without a code commit (e.g. after rotating MURMUR_TOKEN).
+#
+# Concurrency: `deploy-murmur-shim` with `cancel-in-progress: false` —
+# never kill an in-flight deploy mid-restart.
+#
+# Secrets resolve from the `production` environment on the deploy job.
+# Required: HETZNER_HOST, HETZNER_SSH_KEY, GHCR_PAT (with write:packages
+# for the build job; pull-only is fine for the SSH login step but a
+# single PAT covers both), MURMUR_TOKEN, DATABASE_URL.
+#
+# Lessons baked in (from the murmur deploy this session):
+#   1. `docker/login-action@v3` is broken with classic PATs against GHCR
+#      (auth probe fails with `denied: denied`). Use a direct
+#      `docker login` via stdin instead.
+#   2. The PAT login username must be the PAT owner (`viktor-shcherb`),
+#      NOT `github.repository_owner` — the package lives under
+#      colophon-group but auth presents user identity.
+#   3. `appleboy/scp-action`'s `strip_components` drops files that have
+#      fewer leading components than the strip count. Single-file SCP
+#      from `apps/crawler/docker-compose.yml` with `strip_components: 2`
+#      is safe (file has exactly 2 leading components -> lands as
+#      `/home/deploy/docker-compose.yml`). If we ever bundle the
+#      shim sources too, split per-depth into separate SCP steps.
+#   4. PAT must have `write:packages` scope (read:packages alone broke
+#      the first GHCR push in murmur).
+#   5. `gh secret set --body -` is taken as the literal "-", not stdin;
+#      use no `--body` (reads stdin) or `< file`. Confirm GHCR_PAT on
+#      this repo is the actual token, not the literal "-".
+#   6. SHA-pin every action — no @v3 floating tags.
+#
+# Action SHA pins (mirror apps/crawler/.github/workflows/deploy-crawler-browser.yml
+# so all jobseek deploys pin to the same versions):
+#   actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd            # v6
+#   docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
+#   docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8    # v6
+#   appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634         # v0.1.7
+#   appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2         # v1
+
+name: Deploy murmur-shim
+
+on:
+  push:
+    branches: [murmur-demo]
+    paths:
+      - apps/murmur-shim/**
+      - apps/crawler/docker-compose.yml
+      - apps/crawler/deploy.sh
+      - .github/workflows/deploy-murmur-shim.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-murmur-shim
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # Belt-and-suspenders alongside the PAT — keeps workflow-level perms
+      # from being the surprise blocker if the PAT is ever rotated.
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      # Direct `docker login` (NOT docker/login-action). The action's
+      # auth probe is incompatible with classic PATs against GHCR even
+      # when the same PAT works fine via the CLI — see lesson #1 above.
+      # Username is the PAT owner (viktor-shcherb), not the org.
+      - name: Log in to GHCR (PAT, stdin)
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT || secrets.HETZNER_GH_TOKEN }}
+        run: echo "$GHCR_PAT" | docker login ghcr.io -u viktor-shcherb --password-stdin
+
+      - name: Build & push jobseek-murmur-shim
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ./apps/murmur-shim
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/colophon-group/jobseek-murmur-shim:latest
+            ghcr.io/colophon-group/jobseek-murmur-shim:${{ github.sha }}
+          cache-from: type=gha,scope=murmur-shim
+          cache-to: type=gha,mode=max,scope=murmur-shim
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # `environment: production` is what makes the production-env secrets
+    # available to this job. Required reviewers / wait-timer can be
+    # added later via repo settings without changing this file.
+    environment: production
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout (for compose file)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      # Single SCP, single file. `strip_components: 2` strips
+      # `apps/crawler/`, landing the file at
+      # `/home/deploy/docker-compose.yml` — matches what the existing
+      # crawler deploy (`deploy-crawler-browser.yml`) ships and what the
+      # box's deploy.sh expects. Do NOT mix multi-depth sources here
+      # (see lesson #3); add a second SCP step instead.
+      - name: Copy docker-compose.yml to box
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: apps/crawler/docker-compose.yml
+          target: /home/deploy/
+          strip_components: 2
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          # `envs:` whitelist — only these names are forwarded into the
+          # remote shell. Names only; values come from the matching
+          # `env:` block below. Never put a secret name into `script:`.
+          envs: GHCR_PAT,MURMUR_TOKEN,DATABASE_URL,OWNER
+          # Inline script (no /home/deploy/deploy.sh dependency — this
+          # workflow only touches the murmur-shim service). The crawler's
+          # deploy.sh is left alone; full-stack redeploys still go via
+          # deploy-crawler-browser.yml.
+          script: |
+            set -euo pipefail
+            cd /home/deploy
+            echo "$GHCR_PAT" | docker login ghcr.io -u viktor-shcherb --password-stdin
+            docker compose pull murmur-shim
+            docker compose up -d murmur-shim
+            docker compose ps murmur-shim
+            # Brief settle, then probe the shim's health endpoint via
+            # the host network. The shim listens on :8080 by H2's
+            # contract; if H5's tunnel is also up, the public probe
+            # is `https://jobseek-murmur.colophon-group.org/health`.
+            sleep 5
+            curl -sf http://localhost:8080/health
+        env:
+          OWNER: ${{ github.repository_owner }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT || secrets.HETZNER_GH_TOKEN }}
+          MURMUR_TOKEN: ${{ secrets.MURMUR_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
