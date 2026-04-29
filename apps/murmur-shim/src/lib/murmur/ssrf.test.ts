@@ -592,3 +592,12 @@ describe("safeFetch + createPinnedLookup — loopback integration", () => {
     expect(receivedRemoteAddr).toMatch(/^(::ffff:)?127\.0\.0\.1$/);
   });
 });
+
+// PROBE: deliberately-failing assertion for issue #2779 adversarial verification.
+// This proves the new Test Murmur Shim CI job actually fires on failure. The
+// probe branch (dev/2779-ci-probe-adversarial) must NEVER be merged.
+describe("ci-probe-2779", () => {
+  it("intentionally fails to prove CI catches it", () => {
+    expect(1).toBe(2);
+  });
+});
