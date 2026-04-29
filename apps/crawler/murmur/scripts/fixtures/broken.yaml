@@ -1,0 +1,23 @@
+# Deliberately broken pipeline def used by validate-pipeline.test.ts to
+# confirm the validator fails with a useful diagnostic.
+#
+# Defects (each one alone should fail the schema; we include several so the
+# validator's allErrors mode has multiple paths to surface):
+#   - `id` contains a slash (violates ^[a-z][a-z0-9-]*[a-z0-9]$).
+#   - subtask `id` contains uppercase + space (same pattern).
+#   - subtask is missing `output_schema` (required).
+#   - subcommand `endpoint` uses GET, not "POST <https-url>".
+#   - `final_output.webhook` is http://, not https://.
+id: jobseek/add-company
+initial_input:
+  type: object
+subtasks:
+  - id: "Pre Verify"
+    instructions: do something
+    subcommands:
+      - name: probe monitor
+        endpoint: GET https://jobseek.colophon-group.org/api/murmur/probes/monitor
+final_output:
+  composes:
+    - pre-verify.canonical_*
+  webhook: http://jobseek.colophon-group.org/api/murmur/accept

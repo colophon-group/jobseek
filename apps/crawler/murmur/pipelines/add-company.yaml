@@ -1,0 +1,374 @@
+# jobseek add-company pipeline (demo-minimum shape)
+#
+# Authoring notes:
+# - Validated against the M0 JSON Schema vendored at
+#   apps/crawler/murmur/scripts/pipeline-def.schema.json (sourced from
+#   colophon-group/murmur@adfb73e:docs/contracts/pipeline-def.schema.json).
+# - The schema enforces `id` as kebab-case (^[a-z][a-z0-9-]*[a-z0-9]$). The
+#   issue text used `jobseek/add-company`; we use the canonical kebab form
+#   `jobseek-add-company` — the same id used in the Murmur fixture
+#   (docs/contracts/fixtures/all-seven.json).
+# - Only the seven canonical subcommands from contracts.md §5 may be
+#   referenced as subcommand `endpoint`s:
+#     probe monitor, run monitor, probe scraper, run scraper,
+#     select monitor, select scraper, feedback
+#   pre-verify and list-boards intentionally have no `subcommands`; their
+#   work is done with built-in Murmur tools (`kb search`, etc.) and the
+#   agent's general-purpose research toolkit.
+# - JSON Schema is written **directly** here — no shorthand preprocessor.
+# - `provider` enum values are pulled from the demo-relevant subset of
+#   apps/crawler/data/boards.csv's monitor_type column.
+
+id: jobseek-add-company
+
+initial_input:
+  type: object
+  additionalProperties: false
+  required: [company_name, website]
+  properties:
+    company_name:
+      type: string
+      minLength: 1
+      description: Free-form company name as supplied by the requester.
+    website:
+      type: string
+      format: uri
+      pattern: "^https?://"
+      description: A URL on the company's primary domain (anchor for verification).
+
+subtasks:
+  # ---------------------------------------------------------------------------
+  # 1. pre-verify — confirm this is a real company with a careers page, and
+  #    capture the canonical name + website + lightweight metadata that
+  #    `final_output` will surface.
+  # ---------------------------------------------------------------------------
+  - id: pre-verify
+    instructions: |
+      Confirm that the supplied initial_input describes a real, currently-
+      operating company that has at least one careers page reachable from
+      its website.
+
+      Steps:
+        1. Fetch `website`. If it 404s, returns a parked-domain landing page,
+           or is plainly the wrong company, set `verified = false` and supply
+           `reject_reason`.
+        2. Otherwise resolve the canonical company name and canonical
+           website (lowercased host, https where available, no tracking
+           query strings). These canonical values feed final_output.
+        3. Look for a "Careers" / "Jobs" / "Open Positions" link from the
+           homepage or footer. Note the URL(s) you find — `list-boards`
+           will use this as a hint, not as the final answer.
+        4. Capture lightweight catalog metadata while you are there:
+           - `slug` — kebab-case id derived from canonical_name; must be
+             unique within the catalog (use `kb search` to dedupe).
+           - `description` — one-paragraph summary in the company's own
+             language (≤ 400 chars).
+           - `industry_ids` — 1–4 stable industry slugs (e.g. ["software",
+             "saas"]).
+        5. Use `kb search` with the canonical name + website to ensure the
+           company is not already in the jobseek catalog. If it is, set
+           `verified = false` and `reject_reason = "already_in_catalog"`.
+
+      Return the structured result; do **not** advance to list-boards if
+      `verified = false` — Murmur will short-circuit the run via downstream
+      schema failures.
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [verified, canonical_name, canonical_website, slug, description, industry_ids]
+      properties:
+        verified:
+          type: boolean
+          description: True iff the company exists, is operating, and has a careers page.
+        canonical_name:
+          type: string
+          minLength: 1
+          description: The company's preferred display name.
+        canonical_website:
+          type: string
+          format: uri
+          pattern: "^https://"
+          description: Lowercased host, https, no tracking params.
+        slug:
+          type: string
+          pattern: "^[a-z][a-z0-9-]*[a-z0-9]$"
+          description: Kebab-case catalog id derived from canonical_name.
+        description:
+          type: string
+          minLength: 1
+          maxLength: 400
+        industry_ids:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items:
+            type: string
+            pattern: "^[a-z][a-z0-9-]*[a-z0-9]$"
+        reject_reason:
+          type: string
+          description: |
+            Present iff verified=false. Stable tokens: `not_a_company`,
+            `parked_domain`, `no_careers_page`, `already_in_catalog`,
+            `unreachable`.
+        kb_entries:
+          type: array
+          description: Optional KB notes accumulated during verification.
+          items: { type: object }
+        case_studies:
+          type: array
+          description: Optional case-study notes accumulated during verification.
+          items: { type: object }
+
+  # ---------------------------------------------------------------------------
+  # 2. list-boards — discover the canonical board URL(s) for this company,
+  #    classify each by provider, and spawn one configure-board child per
+  #    board.
+  # ---------------------------------------------------------------------------
+  - id: list-boards
+    inputs:
+      - from: pre-verify
+    instructions: |
+      Discover one or more **canonical job-board URLs** for this company.
+      A "board" is a single endpoint that lists currently-open positions —
+      e.g. a Greenhouse job-boards page, a Lever site, an Ashby hosted
+      board, a Workday site, or the company's own /careers page if no
+      hosted ATS is in play.
+
+      Procedure:
+        1. Re-fetch `pre-verify.canonical_website` and follow the
+           Careers / Jobs / Open Positions link.
+        2. If the careers page redirects to (or embeds) a hosted ATS,
+           extract the canonical board URL on that ATS's domain. Patterns:
+             - `https://job-boards.greenhouse.io/<token>`
+             - `https://jobs.lever.co/<slug>`
+             - `https://jobs.ashbyhq.com/<slug>`
+             - `https://<slug>.workable.com/`
+             - `https://<slug>.recruitee.com/`
+             - `https://<slug>.personio.com/`
+             - …etc. (full enum below)
+        3. If the company runs the careers page itself (no hosted ATS),
+           the board_url is the company's own listings page; set
+           `provider = "inline"`.
+        4. Many companies maintain regional / language splits. Emit one
+           entry per **distinct list of jobs**; deduplicate by URL.
+        5. For every board, supply:
+             - `alias` — human label, e.g. "global", "engineering", "EMEA"
+             - `board_url` — absolute https URL, no fragment
+             - `provider` — one of the enum values below
+             - `hreflang` — optional BCP-47 language tag
+
+      You must emit **at least one** board; if you cannot find one,
+      pre-verify should have set `verified = false` and the run should not
+      have reached this subtask.
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [boards]
+      properties:
+        boards:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [alias, board_url, provider]
+            properties:
+              alias:
+                type: string
+                minLength: 1
+              board_url:
+                type: string
+                format: uri
+                pattern: "^https://"
+              provider:
+                type: string
+                # Demo-relevant subset of monitor_type values from
+                # apps/crawler/data/boards.csv. Extend by auditing that CSV.
+                enum:
+                  - greenhouse
+                  - lever
+                  - ashby
+                  - workable
+                  - workday
+                  - recruitee
+                  - personio
+                  - smartrecruiters
+                  - pinpoint
+                  - join
+                  - gem
+                  - jobylon
+                  - softgarden
+                  - phenom
+                  - eightfold
+                  - rippling
+                  - breezy
+                  - oracle_hcm
+                  - sitemap
+                  - rss
+                  - inline
+              hreflang:
+                type: string
+                pattern: "^[a-z]{2}(-[A-Z]{2})?$"
+        kb_entries:
+          type: array
+          items: { type: object }
+        case_studies:
+          type: array
+          items: { type: object }
+    spawns:
+      for_each: boards
+      template: configure-board
+
+  # ---------------------------------------------------------------------------
+  # 3. configure-board — for each board emitted by list-boards, run the full
+  #    probe → select → run → feedback loop for both monitor and scraper.
+  #    This subtask is instantiated once per board via `list-boards.spawns`.
+  # ---------------------------------------------------------------------------
+  - id: configure-board
+    inputs:
+      - from: list-boards
+    instructions: |
+      Iterate the canonical four-step loop for **one** board:
+
+        1. **Probe the monitor.** Call `task_tool('probe monitor', claim, {
+             board_url, hreflang? })`. Murmur proxies to
+             POST /api/murmur/probes/monitor on jobseek. The publisher
+             returns a list of **candidate monitor configs** (one per
+             provider it thinks could read this board). The candidates
+             carry `monitor_type` + `monitor_config` + a synthetic
+             `expected_count` for the next step.
+
+        2. **Select a monitor.** Call `task_tool('select monitor', claim,
+             { candidate_id, board_url })`. The publisher records your
+             choice under the claim's session and returns the chosen
+             config. If none of the candidates work, call `task_tool(
+             'feedback', claim, { kind: 'monitor_no_candidate', notes })`
+             and set `outcome = "blocked"`.
+
+        3. **Run the monitor.** Call `task_tool('run monitor', claim, {
+             board_url })` against POST /api/murmur/run/monitor. The
+             publisher exercises the selected config and returns
+             `{ live_count, sample }`. Sanity-check `live_count` against
+             the expected_count from step 1; off-by-an-order-of-magnitude
+             discrepancies should be reported via `feedback`.
+
+        4. **Probe / select / run the scraper.** Same shape as
+             monitor, but on POST /api/murmur/probes/scraper,
+             POST /api/murmur/select/scraper, POST /api/murmur/run/scraper.
+             The output is a `per_field` selector map plus a sample
+             scrape of one job. The agent verifies the per_field map by
+             comparing the scrape against the rendered job page.
+
+        5. **Feedback.** Call `task_tool('feedback', claim, {
+             verdict, per_field, notes? })` to record the verdict on
+             this board. Verdicts: `ok` (ship as configured),
+             `needs-work` (config is plausible but a human should
+             double-check), `rejected` (ATS unsupported / paywalled /
+             requires login).
+
+      Set `outcome = "configured"` if you completed all four steps for both
+      monitor and scraper; `outcome = "blocked"` otherwise. Either way
+      every field below is required, even if some are empty objects.
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [outcome, monitor_type, monitor_config, scraper_type, scraper_config, verdict, per_field]
+      properties:
+        outcome:
+          enum: [configured, blocked]
+        monitor_type:
+          type: string
+        monitor_config:
+          type: object
+        scraper_type:
+          type: string
+        scraper_config:
+          type: object
+        verdict:
+          enum: [ok, needs-work, rejected]
+        per_field:
+          type: object
+        kb_entries:
+          type: array
+          items: { type: object }
+        case_studies:
+          type: array
+          items: { type: object }
+    subcommands:
+      - name: probe monitor
+        endpoint: POST https://jobseek.colophon-group.org/api/murmur/probes/monitor
+        input_schema:
+          type: object
+          additionalProperties: false
+          required: [board_url]
+          properties:
+            board_url: { type: string, format: uri, pattern: "^https://" }
+            hreflang:  { type: string }
+            expected_count: { type: integer, minimum: 0 }
+      - name: select monitor
+        endpoint: POST https://jobseek.colophon-group.org/api/murmur/select/monitor
+        input_schema:
+          type: object
+          additionalProperties: false
+          required: [candidate_id, board_url]
+          properties:
+            candidate_id: { type: string, minLength: 1 }
+            board_url:    { type: string, format: uri, pattern: "^https://" }
+      - name: run monitor
+        endpoint: POST https://jobseek.colophon-group.org/api/murmur/run/monitor
+        input_schema:
+          type: object
+          additionalProperties: false
+          required: [board_url]
+          properties:
+            board_url: { type: string, format: uri, pattern: "^https://" }
+      - name: probe scraper
+        endpoint: POST https://jobseek.colophon-group.org/api/murmur/probes/scraper
+        input_schema:
+          type: object
+          additionalProperties: false
+          required: [board_url, monitor_type, monitor_config]
+          properties:
+            board_url:      { type: string, format: uri, pattern: "^https://" }
+            monitor_type:   { type: string, minLength: 1 }
+            monitor_config: { type: object }
+      - name: select scraper
+        endpoint: POST https://jobseek.colophon-group.org/api/murmur/select/scraper
+        input_schema:
+          type: object
+          additionalProperties: false
+          required: [candidate_id, board_url]
+          properties:
+            candidate_id: { type: string, minLength: 1 }
+            board_url:    { type: string, format: uri, pattern: "^https://" }
+      - name: run scraper
+        endpoint: POST https://jobseek.colophon-group.org/api/murmur/run/scraper
+        input_schema:
+          type: object
+          additionalProperties: false
+          required: [board_url]
+          properties:
+            board_url: { type: string, format: uri, pattern: "^https://" }
+            sample_job_url: { type: string, format: uri }
+      - name: feedback
+        endpoint: POST https://jobseek.colophon-group.org/api/murmur/feedback
+        input_schema:
+          type: object
+          additionalProperties: false
+          required: [verdict]
+          properties:
+            verdict: { enum: [ok, needs-work, rejected] }
+            kind:    { type: string }
+            per_field: { type: object }
+            notes:   { type: string }
+
+final_output:
+  composes:
+    - pre-verify.canonical_*
+    - "slug: pre-verify.slug"
+    - "description: pre-verify.description"
+    - "industry_ids: pre-verify.industry_ids"
+    - "boards: list-boards.boards × configure-board.*"
+    - "kb_entries: flatten([pre-verify, list-boards, configure-board].kb_entries)"
+    - "case_studies: flatten([pre-verify, list-boards, configure-board].case_studies)"
+  webhook: https://jobseek.colophon-group.org/api/murmur/accept
