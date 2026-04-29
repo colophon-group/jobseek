@@ -24,6 +24,15 @@ required_vars=(
   TYPESENSE_PORT
   TYPESENSE_PROTOCOL
   TYPESENSE_ADMIN_KEY
+  # Murmur shim secret. Without this, the shim's compose env
+  # substitution `${MURMUR_TOKEN}` resolves to empty on a full-stack
+  # redeploy and the shim accepts every request as anonymous. The
+  # H4 deploy workflow (deploy-murmur-shim.yml) sets this transiently
+  # via SSH `env:` block, but its `up -d murmur-shim` does not write
+  # to /home/deploy/.env — so a subsequent crawler full-stack redeploy
+  # would silently lose the token if we didn't pin it here.
+  # Required since H3 (#2775) added the murmur-shim service.
+  MURMUR_TOKEN
 )
 
 missing=()
@@ -73,6 +82,7 @@ INDEXNOW_KEY=${INDEXNOW_KEY:-}
 INDEXNOW_SITE_URL=${INDEXNOW_SITE_URL:-}
 INDEXNOW_KEY_URL=${INDEXNOW_KEY_URL:-}
 INDEXNOW_INTERVAL=${INDEXNOW_INTERVAL:-3600}
+MURMUR_TOKEN=${MURMUR_TOKEN}
 EOF
 
 # Lock down the env file — it contains proxy + DB + R2 creds. Default

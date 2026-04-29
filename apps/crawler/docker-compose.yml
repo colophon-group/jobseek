@@ -212,6 +212,177 @@ services:
     pids_limit: 4096
     cpus: 3.0
 
+  # -- Murmur shim runtime init (one-shot) ------------------------
+  #
+  # Populates a named volume with the python interpreter, stdlib,
+  # crawler venv site-packages, and the crawler `src/` tree by copying
+  # them out of the already-pulled crawler image. The murmur-shim
+  # container then mounts that volume read-only at the H2 contract
+  # paths (`/opt/jobseek-crawler-venv` and `/opt/jobseek-crawler-src`)
+  # so its Node process can `spawn(MURMUR_PY, ["-m",
+  # "src.workspace.lib.cli_shim"])` without baking ~1 GB of Python +
+  # Playwright into the shim image.
+  #
+  # Why a one-shot init instead of a host bind-mount: the crawler box
+  # is fully containerized — there is no host-side `.venv` under
+  # `/opt/` or `/home/deploy/`. Extracting from the running crawler
+  # image keeps the shim's runtime in lockstep with the workers'
+  # without an additional host-provisioning step.
+  #
+  # `pull_policy: always` forces compose to fetch the crawler image's
+  # current `:latest` digest on every `up`, so a new crawler build
+  # rehydrates the volume the next time this init runs. Without it,
+  # compose would skip the pull (the tag is unchanged) and the volume
+  # would keep stale dep snapshots indefinitely.
+  #
+  # `restart: "no"` makes this a true one-shot. The shim's
+  # `depends_on` with `service_completed_successfully` is the gate
+  # that withholds the shim until the copy finishes (or fails loudly).
+  murmur-shim-runtime-init:
+    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    pull_policy: always
+    restart: "no"
+    # `cp -a` preserves modes + symlinks, which we need for the venv's
+    # `bin/python3 -> /usr/local/bin/python3` symlink to resolve once
+    # `/usr/local` is also under the runtime tree (we expose it via
+    # the shim's `/opt/jobseek-crawler-runtime/usr-local`). The shim
+    # doesn't actually rely on that symlink — it uses the absolute
+    # base interpreter path directly — but mirroring the layout keeps
+    # `python3 -m site` debug output sane for the operator.
+    #
+    # Using `set -e` so a failed copy aborts before the shim depends-on
+    # gate flips green.
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        # Wipe-and-rehydrate so an old image's deps don't leak into the
+        # new copy. The volume itself persists across deploys; only its
+        # contents get refreshed.
+        rm -rf /runtime/venv /runtime/src
+        mkdir -p /runtime/venv /runtime/venv/lib/python3.12 /runtime/src
+
+        # Build a relocatable Python install at /runtime/venv/. CPython
+        # locates stdlib relative to the executable, so co-locating the
+        # binary, stdlib, libpython, and merged site-packages under one
+        # prefix lets the shim invoke `/.../venv/bin/python3` without
+        # any `PYTHONPATH`/`PYTHONHOME` gymnastics — invoke-lib only
+        # sets PYTHONPATH=MURMUR_CRAWLER_ROOT for `-m` discovery.
+        cp -a /usr/local/bin/python3.12 /runtime/venv/bin/python3.12
+        ln -sf python3.12 /runtime/venv/bin/python3
+        ln -sf python3.12 /runtime/venv/bin/python
+        # libpython is loaded via `../lib/libpython3.12.so.1.0` (RPATH),
+        # so it must live at /runtime/venv/lib/.
+        cp -a /usr/local/lib/libpython3.12.so* /runtime/venv/lib/ 2>/dev/null || true
+        cp -a /usr/local/lib/libpython3.so /runtime/venv/lib/ 2>/dev/null || true
+        # stdlib + shared site-packages root.
+        cp -a /usr/local/lib/python3.12/. /runtime/venv/lib/python3.12/
+        # Merge the crawler venv's site-packages on top of the base
+        # interpreter's stdlib site-packages. Order matters: cp -a
+        # over the existing dir is additive — pre-existing files win
+        # only if `cp -a` is told to skip-existing, which it isn't, so
+        # the venv's site-packages overwrite duplicates (intended).
+        cp -a /app/.venv/lib/python3.12/site-packages/. \
+              /runtime/venv/lib/python3.12/site-packages/
+
+        # Crawler source (cli_shim et al.). Lives at a peer path so
+        # invoke-lib's `cwd: MURMUR_CRAWLER_ROOT` lands somewhere with
+        # `src/workspace/lib/cli_shim.py` resolvable from PYTHONPATH.
+        cp -a /app/src/. /runtime/src/
+
+        echo "murmur-shim runtime hydrated: $(du -sh /runtime | cut -f1)"
+    volumes:
+      - murmur-shim-runtime:/runtime
+    mem_limit: 256m
+
+  # -- Murmur shim ------------------------------------------------
+  #
+  # Sidecar that exposes Murmur's HTTP surface (claim/probe/run/
+  # select/feedback/health) over `:8080` on the host loopback. The
+  # cloudflared tunnel — provisioned out-of-band by H5 — fronts this
+  # at `https://jobseek-murmur.colophon-group.org`.
+  #
+  # `network_mode: host` because the shim's PostgresClaimKV needs to
+  # reach the local Hetzner Postgres machine via `LOCAL_DATABASE_URL`,
+  # exactly like the crawler workers do. We forward the same DSN as
+  # `MURMUR_DB_DSN` (the env var the shim's invoke-lib + claim-kv
+  # actually read); the legacy `DATABASE_URL` points at Supabase and
+  # is exporter-only.
+  #
+  # Port choice: 8080. Verified free on the box at deploy time
+  # (existing crawler stack uses 6379, 9093-9098, 12345/12346 only).
+  # The shim's `/health` route is bearer-free per H2 design so this
+  # healthcheck and the cloudflared origin-up probe both work without
+  # secrets.
+  #
+  # The runtime mounts use the named volume populated by
+  # `murmur-shim-runtime-init`. They are read-only — the shim must
+  # never mutate the crawler's source tree or venv.
+  #
+  # NOTE on libc: the shim image is `node:22-alpine` (musl libc) and
+  # the crawler image's python is glibc-built. The container will go
+  # `(healthy)` because `/health` is python-free, but invocations of
+  # `probe`/`run`/`select`/`feedback` fail until the shim base is
+  # switched to `node:22-bookworm-slim` (one-line H2 follow-up). This
+  # H3 PR intentionally leaves that follow-up to keep blast radius
+  # small; the deploy-ready milestone for end-to-end auth + health
+  # probe is achievable with the current shape.
+  murmur-shim:
+    image: ghcr.io/${OWNER}/jobseek-murmur-shim:${SHIM_IMAGE_TAG:-latest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 15s
+    depends_on:
+      murmur-shim-runtime-init:
+        condition: service_completed_successfully
+    environment:
+      PORT: "8080"
+      MURMUR_TOKEN: ${MURMUR_TOKEN}
+      # Forward LOCAL_DATABASE_URL (Hetzner Postgres) as MURMUR_DB_DSN
+      # so the shim's PostgresClaimKV connects to the same DB the
+      # crawler workers use. Compose env-substitution: the var on the
+      # right is read from `.env` / shell at compose-up time; the var
+      # on the left is exported into the container.
+      MURMUR_DB_DSN: ${LOCAL_DATABASE_URL}
+      MURMUR_ACCEPT_TARGET: postgres
+      MURMUR_PY: /opt/jobseek-crawler-venv/bin/python3
+      MURMUR_CRAWLER_ROOT: /opt/jobseek-crawler-src
+    volumes:
+      # Subpath mounts into the named volume populated by
+      # `murmur-shim-runtime-init`. Compose v2 (>= 2.20) supports
+      # `volume.subpath`; the box runs current compose (verified by
+      # the existing long-form `condition: service_healthy` syntax).
+      # Both mounts are read-only — the shim must never mutate the
+      # crawler's source tree or venv. The init step assembled
+      # `/runtime/venv/` as a relocatable Python install (binary +
+      # stdlib + libpython + merged venv site-packages), so calling
+      # `/opt/jobseek-crawler-venv/bin/python3 -m
+      # src.workspace.lib.cli_shim` with `PYTHONPATH=
+      # /opt/jobseek-crawler-src` (set by invoke-lib at spawn time)
+      # is the entire boundary contract.
+      - type: volume
+        source: murmur-shim-runtime
+        target: /opt/jobseek-crawler-venv
+        read_only: true
+        volume:
+          subpath: venv
+      - type: volume
+        source: murmur-shim-runtime
+        target: /opt/jobseek-crawler-src
+        read_only: true
+        volume:
+          subpath: src
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    mem_limit: 256m
+    cpus: 0.5
+
   # -- Grafana Alloy (metrics + log collector) --------------------
   alloy:
     image: grafana/alloy:latest
@@ -236,3 +407,7 @@ services:
 
 volumes:
   redis-data:
+  # Hydrated at deploy time by `murmur-shim-runtime-init` from the
+  # crawler image; consumed read-only by `murmur-shim` via subpath
+  # mounts. See the init service for the layout (venv/ + src/).
+  murmur-shim-runtime:

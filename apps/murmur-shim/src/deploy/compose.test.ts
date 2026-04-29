@@ -28,6 +28,23 @@ const composePath = path.resolve(
   "../../../crawler/docker-compose.yml",
 );
 
+/**
+ * Compose's `volumes:` entries can be either a short-form string
+ * (`source:target:mode`) or a long-form mount object. The shim uses
+ * the long form because we need `volume.subpath` to point inside a
+ * named volume; the rest of the file uses short-form. Both must be
+ * navigable by these tests.
+ */
+type VolumeEntry =
+  | string
+  | {
+      type?: string;
+      source?: string;
+      target?: string;
+      read_only?: boolean;
+      volume?: { subpath?: string };
+    };
+
 interface ComposeService {
   image?: string;
   restart?: string;
@@ -35,7 +52,7 @@ interface ComposeService {
   mem_limit?: string;
   command?: string | readonly string[];
   environment?: Record<string, string> | readonly string[];
-  volumes?: readonly string[];
+  volumes?: readonly VolumeEntry[];
   healthcheck?: {
     test?: readonly string[] | string;
     interval?: string;
@@ -115,14 +132,12 @@ describe("crawler docker-compose: murmur-shim service", () => {
   it("mounts the crawler-runtime volume read-only at the H2 contract paths", () => {
     const compose = loadCompose();
     const volumes = compose.services["murmur-shim"]?.volumes ?? [];
-    // Volume entries are strings of the form `name:/path:ro`. We assert
-    // both the venv mount and the src mount exist and are :ro.
-    const venvMount = volumes.find((v) => v.includes("/opt/jobseek-crawler-venv"));
-    const srcMount = volumes.find((v) => v.includes("/opt/jobseek-crawler-src"));
-    expect(venvMount).toBeTruthy();
-    expect(srcMount).toBeTruthy();
-    expect(venvMount).toMatch(/:ro$/);
-    expect(srcMount).toMatch(/:ro$/);
+    const venvMount = findMountByTarget(volumes, "/opt/jobseek-crawler-venv");
+    const srcMount = findMountByTarget(volumes, "/opt/jobseek-crawler-src");
+    expect(venvMount, "venv mount missing").toBeTruthy();
+    expect(srcMount, "src mount missing").toBeTruthy();
+    expect(isReadOnly(venvMount!), "venv mount must be :ro").toBe(true);
+    expect(isReadOnly(srcMount!), "src mount must be :ro").toBe(true);
   });
 
   it("has a healthcheck that hits /health with reasonable interval and start-period", () => {
@@ -175,10 +190,10 @@ describe("crawler docker-compose: murmur-shim-runtime-init", () => {
   it("populates the named volume at /runtime", () => {
     const compose = loadCompose();
     const volumes = compose.services["murmur-shim-runtime-init"]?.volumes ?? [];
-    const runtimeMount = volumes.find((v) => v.endsWith(":/runtime"));
-    expect(runtimeMount).toBeTruthy();
-    // Init must have RW access — no `:ro` suffix.
-    expect(runtimeMount).not.toMatch(/:ro$/);
+    const runtimeMount = findMountByTarget(volumes, "/runtime");
+    expect(runtimeMount, "/runtime mount missing").toBeTruthy();
+    // Init must have RW access — read_only=false / no `:ro` suffix.
+    expect(isReadOnly(runtimeMount!), "/runtime must be RW").toBe(false);
   });
 
   it("does not auto-restart (one-shot)", () => {
@@ -214,4 +229,26 @@ function normalizeEnvironment(
     });
   }
   return Object.keys(env as Record<string, string>);
+}
+
+function findMountByTarget(
+  volumes: readonly VolumeEntry[],
+  target: string,
+): VolumeEntry | undefined {
+  return volumes.find((v) => {
+    if (typeof v === "string") {
+      // short form: source:target[:mode]
+      const parts = v.split(":");
+      return parts[1] === target;
+    }
+    return v.target === target;
+  });
+}
+
+function isReadOnly(entry: VolumeEntry): boolean {
+  if (typeof entry === "string") {
+    // short form: trailing `:ro` mode.
+    return /:ro$/.test(entry);
+  }
+  return entry.read_only === true;
 }
