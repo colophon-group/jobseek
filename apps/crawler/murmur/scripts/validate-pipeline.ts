@@ -4,7 +4,7 @@
  * Loads a Murmur pipeline-def YAML file, validates it against the M0 JSON Schema
  * (vendored at scripts/pipeline-def.schema.json), and optionally confirms every
  * referenced subcommand `endpoint` URL exists as a Next.js route under
- * apps/web/app/api/murmur/.
+ * apps/murmur-shim/app/api/murmur/.
  *
  * Usage:
  *   tsx validate-pipeline.ts <yaml-path> [--no-routes-check] [--app-dir <path>]
@@ -174,7 +174,7 @@ const ROUTE_FILES = ["route.ts", "route.tsx", "route.js", "route.mjs"];
 /**
  * For each endpoint, confirm `<appDir>/<route-path>/route.{ts,tsx,js,mjs}` exists.
  *
- * @param appDir - root of the Next.js `app` directory (e.g. `<repo>/apps/web/app`).
+ * @param appDir - root of the Next.js `app` directory (e.g. `<repo>/apps/murmur-shim/app`).
  * @returns object listing missing endpoints; empty `missing` means all present.
  */
 export function checkRoutes(
@@ -224,10 +224,10 @@ function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
 }
 
 function defaultAppDir(yamlPath: string): string {
-  // From .../apps/crawler/murmur/pipelines/<file>.yaml, resolve back to apps/web/app.
-  // Fall back to env var if it doesn't exist.
+  // From .../apps/crawler/murmur/pipelines/<file>.yaml, resolve back to
+  // apps/murmur-shim/app (where the M0 routes live as of jobseek#2773).
   const repoRoot = path.resolve(path.dirname(yamlPath), "..", "..", "..", "..");
-  return path.join(repoRoot, "apps", "web", "app");
+  return path.join(repoRoot, "apps", "murmur-shim", "app");
 }
 
 function formatErrors(

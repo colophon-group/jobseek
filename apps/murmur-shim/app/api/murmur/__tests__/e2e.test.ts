@@ -22,7 +22,7 @@
  *   MURMUR_PY=<path/to/python>        (optional; defaults to `python3`. Use the
  *                                      crawler venv: `apps/crawler/.venv/bin/python`)
  *   MURMUR_CRAWLER_ROOT=<...>         (optional; defaults to ../crawler relative
- *                                      to apps/web)
+ *                                      to apps/murmur-shim)
  *   MURMUR_INVOKE_TIMEOUT_MS=<...>    (optional but recommended: a real probe
  *                                      against greenhouse takes ~30 s, which
  *                                      exceeds the 30 s production default.
@@ -33,7 +33,7 @@
  *
  * Reproduce locally:
  *
- *   cd apps/web
+ *   cd apps/murmur-shim
  *   MURMUR_INVOKE_TIMEOUT_MS=180000 \
  *     MURMUR_PY=$(pwd)/../crawler/.venv/bin/python \
  *     MURMUR_CRAWLER_ROOT=$(pwd)/../crawler \

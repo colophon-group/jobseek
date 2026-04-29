@@ -33,7 +33,7 @@ stdlib, and the local :mod:`exceptions` module — no CLI dependencies, no
 disk I/O, no networking.
 
 @see colophon-group/jobseek#2756
-@see colophon-group/jobseek#2757 (TS counterpart in ``apps/web/src/lib/murmur/claim-kv.ts``)
+@see colophon-group/jobseek#2757 (TS counterpart in ``apps/murmur-shim/src/lib/murmur/claim-kv.ts``)
 """
 
 from __future__ import annotations

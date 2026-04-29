@@ -1,6 +1,6 @@
 /**
  * Unit tests for `defaultApplyCatalog` (the Postgres + CSV branches of
- * `apps/web/app/api/murmur/_lib/catalog.ts`).
+ * `apps/murmur-shim/app/api/murmur/_lib/catalog.ts`).
  *
  * Background:
  *   The route-level tests in `accept.test.ts` stub `ApplyCatalogHolder
@@ -14,7 +14,7 @@
  *   - **Postgres branch:** mock `@/db`, `@/db/schema`, and `drizzle-orm`
  *     with an in-memory store that respects UNIQUE on `run_id`,
  *     `company.slug`, and `job_board.board_url`. The mock follows the
- *     same pattern as `apps/web/src/lib/murmur/claim-kv.test.ts`.
+ *     same pattern as `apps/murmur-shim/src/lib/murmur/claim-kv.test.ts`.
  *   - **CSV branch:** drive against `os.tmpdir()` and read the appended
  *     rows + the `murmur_accept_log.csv` sidecar.
  *

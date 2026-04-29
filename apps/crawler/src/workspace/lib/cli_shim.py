@@ -1,6 +1,6 @@
 """JSON-in / JSON-out entry point for jobseek's HTTP shim routes.
 
-Spawned by `apps/web/app/api/murmur/_lib/invoke-lib.ts` (pattern (a) per
+Spawned by `apps/murmur-shim/app/api/murmur/_lib/invoke-lib.ts` (pattern (a) per
 J5's IPC decision). Reads a single JSON object on stdin::
 
     {

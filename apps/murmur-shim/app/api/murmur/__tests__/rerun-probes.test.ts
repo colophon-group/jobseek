@@ -1,6 +1,6 @@
 /**
  * Unit tests for `defaultRerunProbes` — the per-board fan-out + race +
- * error aggregation in `apps/web/app/api/murmur/_lib/accept-pipeline.ts`.
+ * error aggregation in `apps/murmur-shim/app/api/murmur/_lib/accept-pipeline.ts`.
  *
  * Background:
  *   `accept.test.ts` stubs `RerunHolder.current` outright, so the real
