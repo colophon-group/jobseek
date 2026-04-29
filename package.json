@@ -4,7 +4,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "validate-pipeline": "pnpm --filter @jobseek/murmur-pipelines validate-pipeline"
   },
   "devDependencies": {
     "turbo": "^2"

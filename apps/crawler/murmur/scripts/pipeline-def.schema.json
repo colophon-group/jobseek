@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://murmur.colophon-group.org/schemas/pipeline-def.schema.json",
+  "title": "Murmur pipeline definition",
+  "description": "Body of POST /pipelines. Authoritative shape for pipeline upserts. Mirrors docs/contracts.md §1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "initial_input", "subtasks", "final_output"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+      "description": "Kebab-case slug; unique per Murmur deployment."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Set by Murmur on upsert; clients omit on POST."
+    },
+    "initial_input": {
+      "$ref": "#/$defs/JsonSchema",
+      "description": "JSON Schema (draft 2020-12) for POST /pipelines/{id}/runs body's initial_input field."
+    },
+    "subtasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Subtask" }
+    },
+    "final_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["composes", "webhook"],
+      "properties": {
+        "composes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/ComposeRule" }
+        },
+        "webhook": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "Subtask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "instructions", "output_schema"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/InputRef" }
+        },
+        "output_schema": { "$ref": "#/$defs/JsonSchema" },
+        "subcommands": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Subcommand" }
+        },
+        "spawns": { "$ref": "#/$defs/Spawns" },
+        "requires": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "skip_if": {
+          "type": "object",
+          "description": "JSONLogic-style expression. Deferred for MVP — accepted but ignored."
+        }
+      }
+    },
+    "InputRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from"],
+      "properties": {
+        "from": { "type": "string" },
+        "path": {
+          "type": "string",
+          "description": "JSON Pointer per RFC 6901; empty string or omitted = whole output."
+        }
+      }
+    },
+    "Subcommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "endpoint"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endpoint": {
+          "type": "string",
+          "pattern": "^POST https://"
+        },
+        "input_schema": { "$ref": "#/$defs/JsonSchema" }
+      }
+    },
+    "Spawns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["for_each", "template"],
+      "properties": {
+        "for_each": {
+          "type": "string",
+          "description": "Array field on the parent's output."
+        },
+        "template": {
+          "type": "string",
+          "description": "Subtask id used as the template for each child."
+        }
+      }
+    },
+    "JsonSchema": {
+      "description": "Any JSON Schema document (draft 2020-12). Murmur defers actual validation to the runtime validator; this $defs slot only ensures the field is an object.",
+      "type": "object"
+    },
+    "ComposeRule": {
+      "type": "string",
+      "description": "One rule per docs/contracts.md §7. Grammar: wildcard | rename | cartesian | flatten | wildcard-prefix.",
+      "anyOf": [
+        {
+          "description": "Wildcard expansion: <subtask>.*",
+          "pattern": "^[a-z][a-z0-9-]*\\.\\*$"
+        },
+        {
+          "description": "Wildcard-prefix expansion: <subtask>.<prefix>_*",
+          "pattern": "^[a-z][a-z0-9-]*\\.[a-z][a-zA-Z0-9_]*_\\*$"
+        },
+        {
+          "description": "Field rename: <key>: <subtask>.<field>",
+          "pattern": "^[a-z][a-zA-Z0-9_]*:\\s*[a-z][a-z0-9-]*\\.[a-zA-Z_][a-zA-Z0-9_]*$"
+        },
+        {
+          "description": "Field rename whole-output: <key>: <subtask>.*",
+          "pattern": "^[a-z][a-zA-Z0-9_]*:\\s*[a-z][a-z0-9-]*\\.\\*$"
+        },
+        {
+          "description": "Cartesian product: <key>: <list_subtask>.<field> × <spawn_subtask>.*",
+          "pattern": "^[a-z][a-zA-Z0-9_]*:\\s*[a-z][a-z0-9-]*\\.[a-zA-Z_][a-zA-Z0-9_]*\\s*×\\s*[a-z][a-z0-9-]*\\.\\*$"
+        },
+        {
+          "description": "Flatten: <key>: flatten([<subtask>, ...].<field>)",
+          "pattern": "^[a-z][a-zA-Z0-9_]*:\\s*flatten\\(\\[[a-z0-9, -]+\\]\\.[a-zA-Z_][a-zA-Z0-9_]*\\)$"
+        }
+      ]
+    }
+  }
+}
