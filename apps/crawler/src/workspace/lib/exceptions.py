@@ -44,3 +44,23 @@ class WsMonitorRunFailed(WsLibError):
 
 class WsScraperRunFailed(WsLibError):
     """Raised when ``scrape_one`` raises a non-HTTP-status exception."""
+
+
+class WsConfigInvalid(WsLibError):
+    """Raised when a select / feedback call carries an invalid argument.
+
+    Examples: empty ``name``, empty ``monitor_type``, malformed
+    pagination block, ``verdict`` not in the allowed set.  Distinct from
+    :class:`WsConfigMissing`, which signals "no config found", whereas
+    this means "the config you provided is rejected".
+    """
+
+
+class WsFeedbackIncomplete(WsLibError):
+    """Raised when ``feedback`` cannot be recorded because required
+    per-field quality ratings are missing.
+
+    The CLI handler previously hit this branch via ``out.die`` when a
+    field had non-zero coverage but no explicit rating.  The lib raises
+    this exception so the adapter can render the same message.
+    """
