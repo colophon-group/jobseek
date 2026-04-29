@@ -18,6 +18,7 @@
     "screenshots": "tsx script/capture-screenshots.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e:murmur": "RUN_E2E_MURMUR=1 vitest run app/api/murmur/__tests__/e2e.test.ts",
     "grep:validateurl-boundary": "bash scripts/grep-validateurl-boundary.sh"
   },
   "dependencies": {

@@ -256,13 +256,14 @@ describe.each(ROUTE_CASES)("$path", (rc) => {
 
   it("returns { ok: true, data } on the happy path", async () => {
     const dataPayload = { sentinel: rc.libSubcommand };
-    let invokedWith: {
+    interface InvokeRecord {
       sub: string;
       body: unknown;
       claim: string;
-    } | null = null;
+    }
+    const invokedWith: { value: InvokeRecord | null } = { value: null };
     InvokerHolder.current = async (sub, body, claim) => {
-      invokedWith = { sub, body, claim };
+      invokedWith.value = { sub, body, claim };
       return { ok: true, data: dataPayload };
     };
     const mod = await loadRoute(rc.path);
@@ -271,9 +272,10 @@ describe.each(ROUTE_CASES)("$path", (rc) => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({ ok: true, data: dataPayload });
-    expect(invokedWith?.sub).toBe(rc.libSubcommand);
-    expect(invokedWith?.claim).toBe("claim-abc");
-    expect(invokedWith?.body).toEqual(rc.validBody);
+    expect(invokedWith.value).not.toBeNull();
+    expect(invokedWith.value?.sub).toBe(rc.libSubcommand);
+    expect(invokedWith.value?.claim).toBe("claim-abc");
+    expect(invokedWith.value?.body).toEqual(rc.validBody);
   });
 
   it("maps a typed lib failure envelope to the response without leaking 5xx", async () => {

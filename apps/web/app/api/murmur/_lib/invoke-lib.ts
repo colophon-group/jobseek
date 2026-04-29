@@ -150,30 +150,81 @@ export const defaultInvoker: LibInvoker = async (
         finish({ ok: false, errors: ["internal_error"] });
         return;
       }
-      try {
-        const parsed: unknown = JSON.parse(stdout);
-        if (!isInvokeResult(parsed)) {
-
-          console.error(
-            `[murmur invoke-lib] ${subcommand} returned non-envelope stdout: ${stdout.slice(0, 200)}`,
-          );
-          finish({ ok: false, errors: ["internal_error"] });
-          return;
-        }
-        finish(parsed);
-      } catch (err) {
-
+      // The shim's stdout contract is a single JSON envelope, but in
+      // practice Python loggers (structlog, plain logging) sometimes
+      // leak human-readable lines onto stdout before the envelope.
+      // Be defensive: scan from the end and pick the first line that
+      // parses to a valid envelope. If no line qualifies, fall back to
+      // parsing the whole buffer (preserves the strict contract for
+      // shims that already do the right thing).
+      const parsed = extractEnvelope(stdout);
+      if (parsed === null) {
         console.error(
-          `[murmur invoke-lib] ${subcommand} stdout JSON parse error: ${(err as Error).message}; stdout=${stdout.slice(0, 200)}`,
+          `[murmur invoke-lib] ${subcommand} returned non-envelope stdout: ${stdout.slice(-400)}`,
         );
         finish({ ok: false, errors: ["internal_error"] });
+        return;
       }
+      finish(parsed);
     });
 
-    child.stdin.write(payload);
-    child.stdin.end();
+    // Guard against EPIPE / instant-crash races: if the child died
+    // before stdin is writable, `write` would throw synchronously.
+    child.stdin.on("error", (err) => {
+      console.error(
+        `[murmur invoke-lib] ${subcommand} stdin error: ${err.message}`,
+      );
+      finish({ ok: false, errors: ["internal_error"] });
+    });
+    try {
+      child.stdin.write(payload);
+      child.stdin.end();
+    } catch (err) {
+      console.error(
+        `[murmur invoke-lib] ${subcommand} stdin write threw: ${(err as Error).message}`,
+      );
+      finish({ ok: false, errors: ["internal_error"] });
+    }
   });
 };
+
+/**
+ * Pick the last well-formed envelope JSON object out of mixed stdout.
+ *
+ * Strategy:
+ *   1. Try parsing the whole buffer (fast happy path — the shim's
+ *      strict contract is one envelope, no extra noise).
+ *   2. If that fails or doesn't match the envelope shape, scan
+ *      newline-separated lines from the end and return the first one
+ *      that parses to a valid envelope.
+ *   3. Returns `null` when nothing matches.
+ *
+ * This tolerance is intentionally narrow: only the envelope shape
+ * `{ok: bool, ...}` qualifies. We never accept arbitrary JSON.
+ */
+function extractEnvelope(stdout: string): InvokeLibResult | null {
+  const trimmed = stdout.trim();
+  if (trimmed.length === 0) return null;
+  try {
+    const whole: unknown = JSON.parse(trimmed);
+    if (isInvokeResult(whole)) return whole;
+  } catch {
+    // fall through to per-line scan
+  }
+  const lines = trimmed.split(/\r?\n/);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    if (line.length === 0) continue;
+    if (line[0] !== "{") continue;
+    try {
+      const parsed: unknown = JSON.parse(line);
+      if (isInvokeResult(parsed)) return parsed;
+    } catch {
+      // not JSON — keep scanning earlier lines
+    }
+  }
+  return null;
+}
 
 function isInvokeResult(v: unknown): v is InvokeLibResult {
   if (typeof v !== "object" || v === null) return false;
