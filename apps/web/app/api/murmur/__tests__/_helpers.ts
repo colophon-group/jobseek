@@ -42,7 +42,7 @@ vi.mock("@/lib/murmur/ssrf", () => {
 
 declare global {
   // SSRF decision override. Set to `null` / `undefined` for default.
-  // eslint-disable-next-line no-var
+
   var __ssrfDecision:
     | ((url: string) =>
         | {

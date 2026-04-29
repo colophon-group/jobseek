@@ -51,15 +51,14 @@ class PostgresClaimKV:
         self._claim_token = claim_token
         self._dsn = dsn
 
-    async def _connect(self) -> "asyncpg.Connection[Any]":
+    async def _connect(self) -> asyncpg.Connection[Any]:
         return await asyncpg.connect(self._dsn)
 
     async def get(self, name: str) -> Any | None:  # noqa: ANN401
         conn = await self._connect()
         try:
             row = await conn.fetchrow(
-                "SELECT value FROM murmur_claim_kv "
-                "WHERE claim_token = $1 AND name = $2",
+                "SELECT value FROM murmur_claim_kv WHERE claim_token = $1 AND name = $2",
                 self._claim_token,
                 name,
             )
@@ -94,8 +93,7 @@ class PostgresClaimKV:
         conn = await self._connect()
         try:
             rows = await conn.fetch(
-                "SELECT name, value FROM murmur_claim_kv "
-                "WHERE claim_token = $1",
+                "SELECT name, value FROM murmur_claim_kv WHERE claim_token = $1",
                 self._claim_token,
             )
         finally:

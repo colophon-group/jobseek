@@ -103,7 +103,7 @@ export async function handleSubcommand(
   } catch (err) {
     // Defensive: the invoker should not throw, but if it does we map
     // to internal_error rather than leaking a 500.
-    // eslint-disable-next-line no-console
+
     console.error(
       `[murmur ${spec.libSubcommand}] invoker threw: ${(err as Error).message}`,
     );

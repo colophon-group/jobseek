@@ -28,9 +28,8 @@ from src.workspace.lib import (
     WsMonitorRunFailed,
     WsProbeFailed,
     WsScraperRunFailed,
+    cli_shim,
 )
-from src.workspace.lib import cli_shim
-
 
 # ── Dispatch map / unknown-subcommand handling ───────────────────────
 
@@ -43,9 +42,7 @@ async def test_unknown_subcommand_returns_envelope() -> None:
 
 @pytest.mark.asyncio
 async def test_invalid_body_type_returns_envelope() -> None:
-    out = await cli_shim.run_envelope(
-        {"subcommand": "probe_monitor", "body": "not-a-dict"}
-    )
+    out = await cli_shim.run_envelope({"subcommand": "probe_monitor", "body": "not-a-dict"})
     assert out == {"ok": False, "errors": ["invalid_body"]}
 
 
@@ -150,9 +147,7 @@ async def test_select_monitor_routes_through_kv_when_provided() -> None:
         def to_dict(self) -> dict[str, Any]:
             return {"name": "cfg-1", "kind": "monitor"}
 
-    async def stub_select_monitor(
-        kv: Any, monitor_type: str, name: str, config: Any
-    ) -> Any:
+    async def stub_select_monitor(kv: Any, monitor_type: str, name: str, config: Any) -> Any:
         received["type"] = monitor_type
         received["name"] = name
         return _StubResult()

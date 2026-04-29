@@ -4,9 +4,15 @@
 # Asserts the caller boundary for `validateUrl` (and `safeFetch`) from
 # `apps/web/src/lib/murmur/ssrf.ts`: those names must only be imported
 # from
-#   - apps/web/app/api/**/route.ts          (route handlers)
-#   - apps/web/src/lib/murmur/ssrf.ts       (defining module — re-exports)
-#   - apps/web/src/lib/murmur/ssrf.test.ts  (its own test)
+#   - apps/web/app/api/**/route.ts                       (route handlers)
+#   - apps/web/app/api/murmur/_lib/handle.ts             (J5 shared route
+#                                                         dispatcher — IS
+#                                                         the boundary,
+#                                                         called by all
+#                                                         seven Murmur
+#                                                         routes)
+#   - apps/web/src/lib/murmur/ssrf.ts                    (defining module)
+#   - apps/web/src/lib/murmur/ssrf.test.ts               (its own test)
 #
 # Anywhere else is a boundary violation: SSRF validation must happen at
 # the request boundary so the structured `url_*` error code can be
@@ -46,6 +52,7 @@ while IFS= read -r line; do
     apps/web/app/api/*/*/route.ts) ;;
     apps/web/app/api/*/*/*/route.ts) ;;
     apps/web/app/api/*/*/*/*/route.ts) ;;
+    apps/web/app/api/murmur/_lib/handle.ts) ;;
     apps/web/src/lib/murmur/ssrf.ts) ;;
     apps/web/src/lib/murmur/ssrf.test.ts) ;;
     *)

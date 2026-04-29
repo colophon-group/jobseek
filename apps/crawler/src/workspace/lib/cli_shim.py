@@ -40,7 +40,8 @@ import asyncio
 import json
 import sys
 import traceback
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from src.workspace.lib import (
     BoardConfigState,
@@ -61,7 +62,6 @@ from src.workspace.lib import (
     select_scraper,
 )
 from src.workspace.lib.postgres_claim_kv import PostgresClaimKV
-
 
 # ── Error mapping ─────────────────────────────────────────────────────
 
@@ -91,27 +91,21 @@ def _map_exception(exc: BaseException) -> str:
 # ── Subcommand dispatchers ────────────────────────────────────────────
 
 
-async def _do_probe_monitor(
-    body: dict[str, Any], _kv: PostgresClaimKV | None
-) -> dict[str, Any]:
+async def _do_probe_monitor(body: dict[str, Any], _kv: PostgresClaimKV | None) -> dict[str, Any]:
     state = BoardConfigState(board_url=body["board_url"])
     expected = int(body.get("expected_count", 0) or 0)
     result = await probe_monitor(state, expected)
     return result.to_dict()
 
 
-async def _do_probe_scraper(
-    body: dict[str, Any], _kv: PostgresClaimKV | None
-) -> dict[str, Any]:
+async def _do_probe_scraper(body: dict[str, Any], _kv: PostgresClaimKV | None) -> dict[str, Any]:
     state = BoardConfigState(board_url=body["board_url"])
     sample_url = body.get("sample_job_url")
     result = await probe_scraper(state, sample_url=sample_url)
     return result.to_dict()
 
 
-async def _do_run_monitor(
-    body: dict[str, Any], kv: PostgresClaimKV | None
-) -> dict[str, Any]:
+async def _do_run_monitor(body: dict[str, Any], kv: PostgresClaimKV | None) -> dict[str, Any]:
     if kv is None:
         raise WsConfigInvalid("run_monitor: claim_kv unavailable")
     active = await kv.get_active()
@@ -129,9 +123,7 @@ async def _do_run_monitor(
     return result.to_dict()
 
 
-async def _do_run_scraper(
-    body: dict[str, Any], kv: PostgresClaimKV | None
-) -> dict[str, Any]:
+async def _do_run_scraper(body: dict[str, Any], kv: PostgresClaimKV | None) -> dict[str, Any]:
     if kv is None:
         raise WsConfigInvalid("run_scraper: claim_kv unavailable")
     active = await kv.get_active()
@@ -152,9 +144,7 @@ async def _do_run_scraper(
     return result.to_dict()
 
 
-async def _do_select_monitor(
-    body: dict[str, Any], kv: PostgresClaimKV | None
-) -> dict[str, Any]:
+async def _do_select_monitor(body: dict[str, Any], kv: PostgresClaimKV | None) -> dict[str, Any]:
     if kv is None:
         raise WsConfigInvalid("select_monitor: claim_kv unavailable")
     # The agent supplies `candidate_id` rather than a (monitor_type,
@@ -167,9 +157,7 @@ async def _do_select_monitor(
     return result.to_dict()
 
 
-async def _do_select_scraper(
-    body: dict[str, Any], kv: PostgresClaimKV | None
-) -> dict[str, Any]:
+async def _do_select_scraper(body: dict[str, Any], kv: PostgresClaimKV | None) -> dict[str, Any]:
     if kv is None:
         raise WsConfigInvalid("select_scraper: claim_kv unavailable")
     name = body["candidate_id"]
@@ -177,9 +165,7 @@ async def _do_select_scraper(
     return result.to_dict()
 
 
-async def _do_feedback(
-    body: dict[str, Any], kv: PostgresClaimKV | None
-) -> dict[str, Any]:
+async def _do_feedback(body: dict[str, Any], kv: PostgresClaimKV | None) -> dict[str, Any]:
     if kv is None:
         raise WsConfigInvalid("feedback: claim_kv unavailable")
     verdict = body["verdict"]
@@ -200,9 +186,7 @@ async def _do_feedback(
             elif isinstance(v, str):
                 normalised[k] = {"quality": v}
         per_field = normalised
-    result = await feedback(
-        kv, verdict=lib_verdict, per_field=per_field, verdict_notes=notes
-    )
+    result = await feedback(kv, verdict=lib_verdict, per_field=per_field, verdict_notes=notes)
     return result.to_dict()
 
 

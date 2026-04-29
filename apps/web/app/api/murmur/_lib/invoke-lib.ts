@@ -116,7 +116,7 @@ export const defaultInvoker: LibInvoker = async (
 
     const timer = setTimeout(() => {
       // Log so operators can see why a request got `internal_error`.
-      // eslint-disable-next-line no-console
+
       console.error(
         `[murmur invoke-lib] ${subcommand} timed out after ${timeoutMs}ms`,
       );
@@ -132,7 +132,7 @@ export const defaultInvoker: LibInvoker = async (
 
     child.on("error", (err) => {
       clearTimeout(timer);
-      // eslint-disable-next-line no-console
+
       console.error(
         `[murmur invoke-lib] ${subcommand} spawn failed: ${err.message}`,
       );
@@ -143,7 +143,7 @@ export const defaultInvoker: LibInvoker = async (
       clearTimeout(timer);
       if (settled) return;
       if (code !== 0) {
-        // eslint-disable-next-line no-console
+
         console.error(
           `[murmur invoke-lib] ${subcommand} exited with code ${code}; stderr: ${stderr}`,
         );
@@ -153,7 +153,7 @@ export const defaultInvoker: LibInvoker = async (
       try {
         const parsed: unknown = JSON.parse(stdout);
         if (!isInvokeResult(parsed)) {
-          // eslint-disable-next-line no-console
+
           console.error(
             `[murmur invoke-lib] ${subcommand} returned non-envelope stdout: ${stdout.slice(0, 200)}`,
           );
@@ -162,7 +162,7 @@ export const defaultInvoker: LibInvoker = async (
         }
         finish(parsed);
       } catch (err) {
-        // eslint-disable-next-line no-console
+
         console.error(
           `[murmur invoke-lib] ${subcommand} stdout JSON parse error: ${(err as Error).message}; stdout=${stdout.slice(0, 200)}`,
         );
