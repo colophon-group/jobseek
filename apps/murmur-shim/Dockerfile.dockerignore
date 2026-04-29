@@ -1,0 +1,78 @@
+# BuildKit reads `<Dockerfile>.dockerignore` (this file) when the build
+# is invoked with `-f apps/murmur-shim/Dockerfile <ctx>`. We ship this
+# alongside the Dockerfile so the exclusion list lives next to the
+# image it governs, regardless of whether the build context is the
+# repo root or some other parent directory.
+#
+# Source: jobseek#2774 (H2 — Dockerfile + image for jobseek-murmur-shim).
+#
+# Patterns are evaluated against paths inside the build context. We
+# build with context = monorepo root.
+#
+# Philosophy: we only PRUNE noise — we don't try to be surgical about
+# sibling apps. The Dockerfile's runtime stage COPY's only the
+# `.next/standalone` + `.next/static` trees from the builder, so what
+# ends up in the final image is bounded by the build, not by the
+# build context. The exclusions below speed up `docker build`'s
+# initial "transferring context" phase but don't affect image size.
+
+# ──────────────── never copy ────────────────
+
+# Local dev artefacts. The builder stage rebuilds node_modules from
+# pnpm-lock.yaml; carrying the host's node_modules across is both
+# wasteful and a source of "works on my machine" drift (different OS /
+# arch native bindings).
+**/node_modules/
+**/.next/
+**/.turbo/
+**/dist/
+**/coverage/
+**/.vitest-cache/
+
+# Tests are not needed in the runtime image. The builder stage runs
+# `pnpm --filter @jobseek/murmur-shim build` which bundles only the
+# routes / pages, not test files; excluding here just shrinks the
+# context payload.
+**/__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Repo metadata. Git history serves no build/runtime purpose;
+# .github/ is CI-only.
+.git/
+.github/
+.gitignore
+.gitattributes
+.husky/
+lefthook.yml
+.lefthook.yml
+
+# Editor / OS noise.
+.idea/
+.vscode/
+.DS_Store
+**/*.log
+**/.eslintcache
+
+# Secrets. Never bake env files into an image — compose passes them at
+# runtime via `env_file:`. Excluding here is belt-and-braces; the
+# Dockerfile itself never `COPY`s `.env*`.
+.env
+.env.*
+!.env.example
+
+# Documentation. None of these affect what the image runs; trimming
+# them keeps the build context small.
+**/*.md
+LICENSE
+LICENCE
+CHANGELOG*
+
+# Crawler venv / data (large, not needed in shim image — shim spawns
+# python from a host-mounted venv at runtime, never bakes one in).
+apps/crawler/.venv/
+apps/crawler/.uv-cache/
+apps/crawler/data/
+apps/crawler/traces/
