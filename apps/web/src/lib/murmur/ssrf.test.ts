@@ -9,30 +9,56 @@
  *
  * @see colophon-group/jobseek#2758
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Queue of DNS answers consumed in order by the mocked `lookup`.
+// Stored on globalThis so the hoisted `vi.mock` factory can see them
+// without triggering vitest's "top-level variables in factory" rule.
 type DnsAnswer = { address: string; family: 4 | 6 };
-const dnsQueue: DnsAnswer[] = [];
-let dnsCallCount = 0;
-let dnsThrow: Error | null = null;
 
-vi.mock("node:dns/promises", () => ({
-  lookup: vi.fn(async (_hostname: string, _opts?: unknown) => {
-    dnsCallCount += 1;
-    if (dnsThrow) throw dnsThrow;
-    const answer = dnsQueue.shift();
+interface DnsMockState {
+  queue: DnsAnswer[];
+  callCount: number;
+  throwError: Error | null;
+}
+
+declare global {
+  var __ssrfDnsMock: DnsMockState | undefined;
+}
+
+globalThis.__ssrfDnsMock = { queue: [], callCount: 0, throwError: null };
+
+vi.mock("node:dns/promises", () => {
+  const lookup = async (_hostname: string, _opts?: unknown) => {
+    const state = globalThis.__ssrfDnsMock!;
+    state.callCount += 1;
+    if (state.throwError) throw state.throwError;
+    const answer = state.queue.shift();
     if (!answer) {
       throw Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" });
     }
     return answer;
-  }),
-}));
+  };
+  return { default: { lookup }, lookup };
+});
 
+const dnsState = (): DnsMockState => globalThis.__ssrfDnsMock!;
+const dnsQueue = {
+  push: (a: DnsAnswer) => dnsState().queue.push(a),
+  reset: () => {
+    dnsState().queue.length = 0;
+  },
+  get length() {
+    return dnsState().queue.length;
+  },
+  set length(n: number) {
+    dnsState().queue.length = n;
+  },
+};
 beforeEach(() => {
-  dnsQueue.length = 0;
-  dnsCallCount = 0;
-  dnsThrow = null;
+  dnsState().queue.length = 0;
+  dnsState().callCount = 0;
+  dnsState().throwError = null;
 });
 
 import {
@@ -156,21 +182,21 @@ describe("validateUrl — allowlist gate", () => {
   it("rejects a disallowed host with `url_not_allowed` and performs NO DNS lookup", async () => {
     const r = await validateUrl("https://evil.example.com/");
     expect(r).toEqual({ ok: false, error: "url_not_allowed" });
-    expect(dnsCallCount).toBe(0);
+    expect(dnsState().callCount).toBe(0);
   });
 
   it("rejects an unparseable input with `url_invalid`", async () => {
     const r = await validateUrl("not a url");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("url_invalid");
-    expect(dnsCallCount).toBe(0);
+    expect(dnsState().callCount).toBe(0);
   });
 
   it("rejects a non-http(s) scheme even on an allowed host", async () => {
     const r = await validateUrl("ftp://boards.greenhouse.io/x");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("url_invalid");
-    expect(dnsCallCount).toBe(0);
+    expect(dnsState().callCount).toBe(0);
   });
 });
 
@@ -192,7 +218,7 @@ describe("validateUrl — IP filter", () => {
     // `localhost` is not on the allowlist, so it must fail at the
     // pattern gate without a DNS lookup.
     expect(r).toEqual({ ok: false, error: "url_not_allowed" });
-    expect(dnsCallCount).toBe(0);
+    expect(dnsState().callCount).toBe(0);
   });
 
   it("rejects a literal IP host (127.0.0.1) regardless of DNS", async () => {
@@ -220,54 +246,48 @@ describe("validateUrl — IP filter", () => {
   });
 
   it("returns `url_dns_failed` when the resolver throws", async () => {
-    dnsThrow = Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" });
+    dnsState().throwError = Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" });
     const r = await validateUrl("https://acme.greenhouse.io/x");
     expect(r).toEqual({ ok: false, error: "url_dns_failed" });
   });
 });
 
 describe("safeFetch — DNS rebinding scenario", () => {
-  it("uses the post-resolution IP and rejects when a second lookup goes private", async () => {
-    // First lookup (from validateUrl) returns a public IP — passes.
-    // Second lookup (from a hypothetical re-resolution at fetch time)
-    // returns a private IP. safeFetch must NOT trust the second lookup;
-    // it must pin to the first answer, and we verify that by ensuring
-    // a second-answer-poisoned IP that's private gets rejected at the
-    // captured-IP check (not silently followed).
+  // Stub global fetch so safeFetch never actually opens a socket on the
+  // happy path. It records the URL it was asked to fetch — the assertion
+  // we care about is that the URL is the captured (post-validation) IP,
+  // not the hostname (which a re-resolution could redirect).
+  const originalFetch = globalThis.fetch;
+  let lastFetchedUrl: string | URL | undefined;
+  beforeEach(() => {
+    lastFetchedUrl = undefined;
+    globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
+      lastFetchedUrl = input instanceof Request ? input.url : input;
+      return new Response("ok", { status: 200 });
+    }) as typeof fetch;
+  });
+  // Restore after each test so the global fetch is back to its original
+  // value before subsequent suites (defensive — no other suite uses
+  // fetch, but the cleanup pattern is cheap).
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("first call: pins the connection to the resolved (public) IP, not the hostname", async () => {
     dnsQueue.push({ address: "104.19.20.21", family: 4 });
-    dnsQueue.push({ address: "10.0.0.5", family: 4 });
+    const r = await safeFetch("https://acme.greenhouse.io/x");
+    expect(r.status).toBe(200);
+    // The captured IP must be in the URL passed to fetch — that's the
+    // proof of pinning. A second DNS lookup at connect time has nothing
+    // to attack because the URL no longer references the hostname.
+    const fetched = String(lastFetchedUrl);
+    expect(fetched).toContain("104.19.20.21");
+    expect(fetched).not.toContain("acme.greenhouse.io");
+  });
 
-    // We don't open a real connection; we only need to observe that
-    // safeFetch routes through the IP filter at connect-time. The
-    // standardised contract: if the captured IP from `validateUrl` is
-    // private, safeFetch throws with code `url_resolves_to_private`.
-    // To exercise that path here, simulate the rebind by validating
-    // first (which captures the public IP), then asking safeFetch to
-    // re-validate against the next queued answer (the private one).
-    //
-    // Implementation note: safeFetch performs its own validateUrl call
-    // at entry. With our queue containing [public, private], the FIRST
-    // call to safeFetch consumes the public answer and would proceed
-    // to open a TCP connection — which we cannot do in unit tests.
-    // Instead we test the rebinding-protection PROPERTY: a second,
-    // independent safeFetch on the same URL — simulating a rebind —
-    // will consume the (now poisoned) private answer and reject with
-    // `url_resolves_to_private`, never opening a connection to the
-    // attacker-controlled private IP.
-    let err: unknown = null;
-    try {
-      await safeFetch("https://acme.greenhouse.io/x");
-    } catch (e) {
-      err = e;
-    }
-    // The first safeFetch may either resolve (mock fetch) or throw at
-    // connect time; we don't constrain that. What we DO require is
-    // that a subsequent rebind-poisoned attempt fails closed.
-    void err;
-
-    // Drain anything left from the first call, then queue exactly one
-    // poisoned (private) answer and assert it's rejected.
-    dnsQueue.length = 0;
+  it("rebind poisoning: a second lookup that resolves private is rejected, no connection opened", async () => {
+    // Simulate the post-resolution rebind: the queue now yields a
+    // private IP for the same hostname. safeFetch must fail closed.
     dnsQueue.push({ address: "10.0.0.5", family: 4 });
     let rebindError: { code?: string } | null = null;
     try {
@@ -277,5 +297,7 @@ describe("safeFetch — DNS rebinding scenario", () => {
     }
     expect(rebindError).not.toBeNull();
     expect(rebindError?.code).toBe("url_resolves_to_private");
+    // And critically: fetch was never invoked.
+    expect(lastFetchedUrl).toBeUndefined();
   });
 });
