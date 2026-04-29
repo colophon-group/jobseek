@@ -33,6 +33,10 @@ import {
   RerunHolder,
   type RerunProbes,
 } from "../_lib/accept-pipeline";
+import {
+  LedgerReaderHolder,
+  type LedgerReader,
+} from "../_lib/idempotency";
 
 /** Minimum-shape `final_output` body that passes schema validation. */
 const VALID_FINAL_OUTPUT = {
@@ -92,13 +96,22 @@ let appliedCalls: Array<{
   context: { runId: string; bodyHash: string };
 }> = [];
 let rerunCalls: number;
+/**
+ * Stub durable ledger backing store, keyed by run_id. Tests that want
+ * to simulate a cold-start replay seed this directly (bypassing the
+ * route's in-process Map) and then clear the Map.
+ */
+let durableLedger: Map<string, string>;
 
 beforeEach(() => {
   appliedCalls = [];
   rerunCalls = 0;
-  // Default: catalog applies cleanly with no warnings.
+  durableLedger = new Map();
+  // Default: catalog applies cleanly with no warnings. Records into the
+  // durable ledger stub so the cold-start-replay tests below see it.
   ApplyCatalogHolder.current = (async (_target, body, context) => {
     appliedCalls.push({ body, context });
+    durableLedger.set(context.runId, context.bodyHash);
     return {
       companyId: "00000000-0000-0000-0000-000000000001",
       boardCount: 1,
@@ -110,7 +123,29 @@ beforeEach(() => {
     rerunCalls += 1;
     return { status: "ok" } as const;
   }) as RerunProbes;
+  // Default: durable ledger reader consults the in-memory map. Tests
+  // that exercise cold-start replays clear the Map (via the dedicated
+  // helper) but keep the durableLedger entry — that asymmetry is the
+  // whole point of the test.
+  LedgerReaderHolder.current = (async (runId, bodyHash) => {
+    const seen = durableLedger.get(runId);
+    if (seen === undefined) return { status: "fresh" };
+    if (seen === bodyHash)
+      return { status: "already_applied", companyId: null };
+    return { status: "body_mismatch", companyId: null };
+  }) as LedgerReader;
 });
+
+/**
+ * Clear the in-process Map used by `accept/route.ts`. Cold-start tests
+ * call this between requests to simulate a process restart while
+ * keeping the `durableLedger` populated.
+ */
+async function clearInProcessLedger(): Promise<void> {
+  const mod = await import("../accept/route");
+  const map = (mod as unknown as { __ledger?: Map<string, string> }).__ledger;
+  if (map) map.clear();
+}
 
 async function loadRoute() {
   return await import("../accept/route");
@@ -304,7 +339,7 @@ describe("POST /api/murmur/accept", () => {
     errSpy.mockRestore();
   });
 
-  it("surfaces catalog writer warnings as errors:['catalog:<token>'] but still applies", async () => {
+  it("surfaces catalog writer warnings on the response but still applies", async () => {
     ApplyCatalogHolder.current = (async (_t, _body, _ctx) => ({
       companyId: "00000000-0000-0000-0000-000000000002",
       boardCount: 1,
@@ -347,6 +382,164 @@ describe("POST /api/murmur/accept", () => {
     expect(body2.ok).toBe(true);
     expect(body2.data.applied).toBe(false);
     expect(body2.data.reason).toBe("already_applied");
+    expect(appliedCalls).toHaveLength(1);
+  });
+
+  // ── Cold-start replay (durable ledger source-of-truth) ─────────────
+
+  it("cold-start replay (Postgres path): Map cleared, durable ledger returns already_applied", async () => {
+    // Seed: first fire applies cleanly and writes the durable ledger.
+    const { POST } = await loadRoute();
+    const res1 = await POST(
+      webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-cold-A" }),
+    );
+    expect((await res1.json()).data.applied).toBe(true);
+    expect(durableLedger.has("run-cold-A")).toBe(true);
+    expect(appliedCalls).toHaveLength(1);
+
+    // Simulate a process restart: clear the in-process Map only.
+    await clearInProcessLedger();
+
+    // Same body re-fires after restart. The Map miss must fall through
+    // to the durable ledger and return already_applied — NOT re-apply.
+    const res2 = await POST(
+      webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-cold-A" }),
+    );
+    const body2 = await res2.json();
+    expect(res2.status).toBe(200);
+    expect(body2.ok).toBe(true);
+    expect(body2.data.applied).toBe(false);
+    expect(body2.data.reason).toBe("already_applied");
+    // Critical: catalog writer was NOT called a second time despite the
+    // empty in-process Map.
+    expect(appliedCalls).toHaveLength(1);
+    // Critical: the probe re-runner was also short-circuited.
+    expect(rerunCalls).toBe(1);
+  });
+
+  it("cold-start replay (CSV path): Map cleared, durable ledger returns already_applied", async () => {
+    // The route doesn't care about the catalog target for the
+    // idempotency-classification step — it always defers to the ledger
+    // reader. We force the env var so the same code path the CSV
+    // backend would hit in production is what ledger-reader sees.
+    const prevTarget = process.env.MURMUR_ACCEPT_TARGET;
+    process.env.MURMUR_ACCEPT_TARGET = "csv";
+    try {
+      const { POST } = await loadRoute();
+      const res1 = await POST(
+        webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-cold-csv" }),
+      );
+      expect((await res1.json()).data.applied).toBe(true);
+      expect(durableLedger.has("run-cold-csv")).toBe(true);
+
+      await clearInProcessLedger();
+
+      const res2 = await POST(
+        webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-cold-csv" }),
+      );
+      const body2 = await res2.json();
+      expect(body2.data.applied).toBe(false);
+      expect(body2.data.reason).toBe("already_applied");
+      expect(appliedCalls).toHaveLength(1);
+    } finally {
+      if (prevTarget === undefined) {
+        delete process.env.MURMUR_ACCEPT_TARGET;
+      } else {
+        process.env.MURMUR_ACCEPT_TARGET = prevTarget;
+      }
+    }
+  });
+
+  it("cold-start body_mismatch: Map cleared, durable ledger holds different hash", async () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const { POST } = await loadRoute();
+
+    const res1 = await POST(
+      webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-cold-B" }),
+    );
+    expect((await res1.json()).data.applied).toBe(true);
+
+    // Restart: Map empty, durable ledger has the FIRST body's hash.
+    await clearInProcessLedger();
+
+    const tampered = {
+      ...VALID_FINAL_OUTPUT,
+      description: "Different description after restart.",
+    };
+    const res2 = await POST(webhookRequest(tampered, { runId: "run-cold-B" }));
+    const body2 = await res2.json();
+    expect(res2.status).toBe(200);
+    expect(body2.ok).toBe(true);
+    expect(body2.data.applied).toBe(false);
+    expect(body2.data.reason).toBe("body_mismatch");
+    // Catalog NOT called for the tampered body.
+    expect(appliedCalls).toHaveLength(1);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  // ── UNIQUE-constraint integration: concurrent first-write race ─────
+
+  it("UNIQUE constraint integration: catalog writer throws CatalogIdempotencyConflict → already_applied", async () => {
+    // Simulate the exact scenario the issue's quality gate calls out:
+    // two concurrent first-writes for the same run_id race into the
+    // catalog writer. The first one lands; the second one's `tx
+    // .insert(murmurAcceptLog).onConflictDoNothing().returning()`
+    // returns an empty array, the writer raises
+    // CatalogIdempotencyConflict, and the route surfaces
+    // already_applied (NOT a 500, NOT a duplicate row).
+    const { CatalogIdempotencyConflict } = await import("../_lib/catalog");
+    let firstWriterCompleted = false;
+    ApplyCatalogHolder.current = (async (_t, _b, ctx) => {
+      if (!firstWriterCompleted) {
+        firstWriterCompleted = true;
+        appliedCalls.push({ body: _b, context: ctx });
+        durableLedger.set(ctx.runId, ctx.bodyHash);
+        return {
+          companyId: "00000000-0000-0000-0000-000000000099",
+          boardCount: 1,
+          warnings: [],
+        };
+      }
+      throw new CatalogIdempotencyConflict(ctx.runId);
+    }) as ApplyCatalog;
+
+    // Force the durable-ledger reader to miss for both calls so both
+    // requests proceed past idempotency classification and into the
+    // catalog writer — that is the exact race the UNIQUE constraint
+    // guards against (the in-process Map and the durable ledger both
+    // miss on the second request because the first writer hasn't
+    // committed yet from THIS process's perspective).
+    LedgerReaderHolder.current = (async () => ({
+      status: "fresh" as const,
+    })) as LedgerReader;
+
+    const { POST } = await loadRoute();
+    // First fire — wins the UNIQUE.
+    const res1 = await POST(
+      webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-race-X" }),
+    );
+    const body1 = await res1.json();
+    expect(body1.ok).toBe(true);
+    expect(body1.data.applied).toBe(true);
+
+    // Clear the Map so the second request also reaches the catalog
+    // writer (otherwise the in-process Map short-circuits).
+    await clearInProcessLedger();
+
+    // Second concurrent fire — loses the UNIQUE; route surfaces
+    // already_applied via the CatalogIdempotencyConflict catch.
+    const res2 = await POST(
+      webhookRequest(VALID_FINAL_OUTPUT, { runId: "run-race-X" }),
+    );
+    expect(res2.status).toBe(200);
+    const body2 = await res2.json();
+    expect(body2.ok).toBe(true);
+    expect(body2.data.applied).toBe(false);
+    expect(body2.data.reason).toBe("already_applied");
+    // Exactly one catalog row was written.
     expect(appliedCalls).toHaveLength(1);
   });
 

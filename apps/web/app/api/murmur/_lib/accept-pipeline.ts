@@ -90,9 +90,28 @@ export type RerunProbesResult =
 export type RerunProbes = (body: FinalOutput) => Promise<RerunProbesResult>;
 
 const ACCEPT_TIMEOUT_ENV = "MURMUR_ACCEPT_PROBE_TIMEOUT_MS";
+const DEFAULT_TIMEOUT_MS = 30000;
+
+/**
+ * Parse a positive-integer milliseconds value from env. Falls back to
+ * the default on missing / non-numeric / non-positive input. Logs a
+ * warning so misconfiguration is visible without crashing the route.
+ */
+function resolveTimeoutMs(): number {
+  const raw = process.env[ACCEPT_TIMEOUT_ENV];
+  if (raw === undefined || raw.trim() === "") return DEFAULT_TIMEOUT_MS;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) {
+    console.warn(
+      `[murmur accept] ignoring invalid ${ACCEPT_TIMEOUT_ENV}=${raw}; using default ${DEFAULT_TIMEOUT_MS}ms`,
+    );
+    return DEFAULT_TIMEOUT_MS;
+  }
+  return n;
+}
 
 export const defaultRerunProbes: RerunProbes = async (body) => {
-  const timeoutMs = Number(process.env[ACCEPT_TIMEOUT_ENV] ?? 30000);
+  const timeoutMs = resolveTimeoutMs();
 
   const racing = (async () => {
     const probeResults = await Promise.all(

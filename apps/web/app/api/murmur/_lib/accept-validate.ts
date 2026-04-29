@@ -206,10 +206,11 @@ export function validateAcceptProperty(
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return (
-    typeof v === "object" &&
-    v !== null &&
-    !Array.isArray(v) &&
-    Object.getPrototypeOf(v) !== null
-  );
+  if (typeof v !== "object" || v === null) return false;
+  if (Array.isArray(v)) return false;
+  const proto = Object.getPrototypeOf(v);
+  // Plain objects are either `Object.prototype` (default JSON.parse
+  // output) or `null` (`Object.create(null)`). Anything else (Date,
+  // Map, custom class instance, etc.) is rejected.
+  return proto === Object.prototype || proto === null;
 }

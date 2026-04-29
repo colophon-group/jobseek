@@ -48,7 +48,7 @@ import {
   resolveCatalogTarget,
   CatalogIdempotencyConflict,
 } from "../_lib/catalog";
-import { sha256Canonical } from "../_lib/idempotency";
+import { readLedger, sha256Canonical } from "../_lib/idempotency";
 
 export const runtime = "nodejs";
 
@@ -78,6 +78,13 @@ export const HEADER_IDEMPOTENCY_KEY = "idempotency-key" as const;
  * entry per accepted run; for the demo budget that's negligible.
  */
 const inProcessLedger = new Map<string, string>();
+
+/**
+ * Test-only access to the in-process Map. Cold-start replay tests
+ * clear it between calls to simulate a process restart while leaving
+ * the durable ledger populated. Production code never reads this.
+ */
+export const __ledger = inProcessLedger;
 
 interface AcceptResponseData {
   readonly run_id: string;
@@ -118,11 +125,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   // 4. Schema validation.
   const schemaErrors = validateAcceptBody(parsed.body, FINAL_OUTPUT_SCHEMA);
   if (schemaErrors.length > 0) {
-    return NextResponse.json(
-      {
-        ok: false,
-        errors: schemaErrors.map((e) => `validation:${e.path}:${e.message}`),
-      },
+    return errJson(
+      schemaErrors.map((e) => `validation:${e.path}:${e.message}`),
       { status: 400 },
     );
   }
@@ -130,15 +134,25 @@ export async function POST(request: Request): Promise<NextResponse> {
   const bodyHash = sha256Canonical(body);
 
   // 5. Idempotency classification.
+  //
+  //    Two-tier lookup. The in-process Map is a hot cache; the durable
+  //    ledger (`murmur_accept_log` for Postgres, `murmur_accept_log.csv`
+  //    for the CSV target) is the source of truth. After a process
+  //    restart the Map is empty, so we MUST consult the durable ledger
+  //    on a Map miss — otherwise a Murmur retry replaying against a
+  //    fresh process would either (Postgres) crash on the UNIQUE
+  //    constraint and surface a 200/ok:false instead of the correct
+  //    `already_applied`, or (CSV) blindly append a duplicate row.
   const seenHash = inProcessLedger.get(runId);
-  if (seenHash !== undefined) {
-    if (seenHash === bodyHash) {
-      return okJson<AcceptResponseData>({
-        run_id: runId,
-        applied: false,
-        reason: "already_applied",
-      });
-    }
+  const classify = await classifyIdempotency(runId, bodyHash, seenHash);
+  if (classify.status === "already_applied") {
+    return okJson<AcceptResponseData>({
+      run_id: runId,
+      applied: false,
+      reason: "already_applied",
+    });
+  }
+  if (classify.status === "body_mismatch") {
     console.warn(
       `[murmur accept] run_id=${runId} re-fired with a different body; discarding the new payload (hash mismatch)`,
     );
@@ -190,4 +204,46 @@ export async function POST(request: Request): Promise<NextResponse> {
     board_count: result.boardCount,
     ...(result.warnings.length > 0 ? { warnings: result.warnings } : {}),
   });
+}
+
+/**
+ * Resolve idempotency status for the inbound `runId + bodyHash`.
+ *
+ * Order:
+ *   1. In-process Map — hot cache, avoids a DB round-trip on the happy
+ *      path within a single process.
+ *   2. Durable ledger (`readLedger`) — `murmur_accept_log` for the
+ *      Postgres target, `murmur_accept_log.csv` for the CSV target.
+ *      Source of truth across process restarts.
+ *
+ * On a durable hit we backfill the Map so subsequent requests stay on
+ * the fast path.
+ */
+async function classifyIdempotency(
+  runId: string,
+  bodyHash: string,
+  seenHash: string | undefined,
+): Promise<
+  | { readonly status: "fresh" }
+  | { readonly status: "already_applied" }
+  | { readonly status: "body_mismatch" }
+> {
+  if (seenHash !== undefined) {
+    return seenHash === bodyHash
+      ? { status: "already_applied" }
+      : { status: "body_mismatch" };
+  }
+  const durable = await readLedger(runId, bodyHash);
+  if (durable.status === "already_applied") {
+    inProcessLedger.set(runId, bodyHash);
+    return { status: "already_applied" };
+  }
+  if (durable.status === "body_mismatch") {
+    // Map cache stores the hash of the FIRST body — but we only have
+    // the inbound (mismatched) hash to hand. Skip the cache populate;
+    // a subsequent re-fire of the FIRST body will repopulate it via
+    // `already_applied`. The durable ledger remains authoritative.
+    return { status: "body_mismatch" };
+  }
+  return { status: "fresh" };
 }

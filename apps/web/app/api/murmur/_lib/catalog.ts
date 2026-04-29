@@ -25,6 +25,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 
 import type { FinalOutput, FinalOutputBoard } from "./accept-schema";
+import { appendLedgerCsv, readLedger } from "./idempotency";
 
 /** The two backends the handler supports. */
 export type CatalogTarget = "postgres" | "csv";
@@ -128,7 +129,7 @@ async function applyPostgres(
   // and never need DATABASE_URL.
   const { db } = await import("@/db");
   const { company, jobBoard, murmurAcceptLog } = await import("@/db/schema");
-  const { eq, sql } = await import("drizzle-orm");
+  const { eq } = await import("drizzle-orm");
 
   const warnings: string[] = [];
   let companyId: string | null = null;
@@ -219,7 +220,7 @@ async function applyPostgres(
       .update(murmurAcceptLog)
       .set({
         companyId,
-        boardCount: sql`${written}`,
+        boardCount: written,
       })
       .where(eq(murmurAcceptLog.runId, context.runId));
   });
@@ -255,11 +256,23 @@ const CSV_DIR_ENV = "MURMUR_ACCEPT_CSV_DIR";
 
 async function applyCsv(
   body: FinalOutput,
-  _context: ApplyCatalogContext,
+  context: ApplyCatalogContext,
 ): Promise<ApplyCatalogResult> {
   const dir =
     process.env[CSV_DIR_ENV] ??
     path.resolve(process.cwd(), "../crawler/data");
+  await fs.mkdir(dir, { recursive: true });
+
+  // Pre-flight: cold-start idempotency for the CSV target. Without this
+  // a Murmur retry after process restart would blindly append another
+  // company + boards row. Read the durable CSV ledger via the holder so
+  // tests can stub it; if a row with this run_id already exists, raise
+  // `CatalogIdempotencyConflict` and let the route surface
+  // `already_applied` / `body_mismatch`.
+  const prior = await readLedger(context.runId, context.bodyHash);
+  if (prior.status !== "fresh") {
+    throw new CatalogIdempotencyConflict(context.runId);
+  }
 
   const companiesCsv = path.join(dir, "companies.csv");
   const boardsCsv = path.join(dir, "boards.csv");
@@ -299,6 +312,16 @@ async function applyCsv(
     )
     .join("\n");
   await fs.appendFile(boardsCsv, boardRows + "\n", "utf8");
+
+  // Durable ledger: append AFTER the catalog rows so a crash mid-write
+  // doesn't leave a ledger row pointing at no data. (The Postgres path
+  // achieves the same atomicity via a transaction; the CSV path is
+  // best-effort demo-grade.)
+  await appendLedgerCsv({
+    runId: context.runId,
+    bodyHash: context.bodyHash,
+    target: "csv",
+  });
 
   return {
     companyId: null,
