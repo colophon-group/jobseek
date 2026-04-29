@@ -39,7 +39,7 @@
 # `invoke-lib.ts` at call time). This image only needs to be able to
 # `spawn()` that interpreter — no native deps.
 #
-# ── Why bookworm-slim, not alpine ──────────────────────────────────
+# ── Why trixie-slim, not alpine or bookworm-slim ───────────────────
 #
 # Alpine uses musl libc; the crawler image (and therefore the venv
 # Python that gets mounted/copied into this container at runtime, per
@@ -48,10 +48,31 @@
 # fail with `exec format error` or musl's misleading "No such file or
 # directory" (interpreter-not-found). `/health` would still answer
 # since it's pure JS, so the container would go HEALTHY while every
-# probe/run/select/feedback call broke at spawn time.
+# probe/run/select/feedback call broke at spawn time. So: glibc, not
+# musl.
 #
-# node:22-bookworm-slim ships glibc, so the cross-image Python runs
-# cleanly. The size cost vs alpine is modest (~80–130 MB image).
+# But not just any glibc. The first fix-forward (jobseek#2788) swapped
+# alpine -> bookworm-slim, and that surfaced a *second* libc bug at
+# live deploy: the crawler image's Python 3.12 was built against
+# Debian trixie (13), which ships glibc 2.38, while bookworm-slim
+# ships glibc 2.36. GLIBC is NOT backward-compatible — a binary that
+# was linked against 2.38 will refuse to load on a 2.36 host with
+#
+#     /lib/x86_64-linux-gnu/libm.so.6: version `GLIBC_2.38' not found
+#       (required by .../libpython3.12.so.1.0)
+#
+# (observed in the live deploy log when `probe_monitor` exited 1).
+# The kernel binfmt loader resolves symbol versions at load time, and
+# 2.36 simply doesn't have the GLIBC_2.38 versioned symbols the linker
+# baked into the Python shared library. The forward-only direction
+# (newer host, older binary) is fine; the backward direction (older
+# host, newer binary) is fatal.
+#
+# Pinning the shim base to the same Debian release lineage as the
+# crawler image (trixie / 13) keeps the loader's glibc at >= the
+# crawler's link target, so the cross-image Python runs cleanly.
+# trixie-slim is roughly the same size as bookworm-slim (~70–90 MB
+# compressed); the size cost vs alpine remains modest.
 #
 # Note: jobseek#2774 originally wrote `VENV_PYTHON` and `PYTHONPATH`
 # as the env names, but the actual code reads `MURMUR_PY` and
@@ -79,7 +100,7 @@
 #
 # - PID 1 is `tini`, which forwards SIGTERM and reaps zombies.
 # - Process runs as `node` (uid 1000), which exists in
-#   node:22-bookworm-slim by default. We never `chown -R node:node
+#   node:22-trixie-slim by default. We never `chown -R node:node
 #   /app/.next`; the COPY --chown does it in a single layer.
 # - EXPOSE 8080. Compose binds it to 127.0.0.1 only; cloudflared is
 #   the public ingress.
@@ -88,7 +109,7 @@
 #   intentionally bearer-free so the healthcheck and the cloudflared
 #   origin-up probe both work without secrets.
 
-ARG NODE_IMAGE=node:22-bookworm-slim
+ARG NODE_IMAGE=node:22-trixie-slim
 # pnpm@10.30.0 matches the root `package.json`'s `packageManager` field.
 # Mismatched versions would emit a hard Corepack error rather than
 # silent drift.
@@ -97,10 +118,10 @@ ARG PNPM_VERSION=10.30.0
 # ───────────────────────── builder ──────────────────────────
 FROM ${NODE_IMAGE} AS builder
 
-# bookworm-slim already ships glibc + the standard build-time helpers
-# Corepack/pnpm need (no `libc6-compat` shim required, unlike Alpine).
-# The shim has no native deps (drizzle-orm and postgres are pure JS),
-# so we don't install g++/make/python3.
+# trixie-slim already ships glibc 2.38 + the standard build-time
+# helpers Corepack/pnpm need (no `libc6-compat` shim required, unlike
+# Alpine). The shim has no native deps (drizzle-orm and postgres are
+# pure JS), so we don't install g++/make/python3.
 
 # Activate pnpm via Corepack in a globally-readable location so
 # subsequent stages (and humans `docker exec`-ing) can use it.
@@ -154,7 +175,7 @@ FROM ${NODE_IMAGE} AS runtime
 # On Debian, tini installs to `/usr/bin/tini` (not `/sbin/tini` as on
 # Alpine) — the ENTRYPOINT below is matched accordingly.
 #
-# Note: bookworm-slim does NOT ship `wget` or `curl`. We deliberately
+# Note: trixie-slim does NOT ship `wget` or `curl`. We deliberately
 # avoid pulling those in just for a healthcheck — instead the
 # HEALTHCHECK below uses a Node one-liner with built-in `fetch`
 # (Node 18+), which keeps the image lean and removes a whole class
