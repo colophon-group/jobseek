@@ -261,7 +261,15 @@ services:
         # new copy. The volume itself persists across deploys; only its
         # contents get refreshed.
         rm -rf /runtime/venv /runtime/src
-        mkdir -p /runtime/venv /runtime/venv/lib/python3.12 /runtime/src
+        # `cp -a /usr/local/bin/python3.12 /runtime/venv/bin/python3.12`
+        # below requires the destination's parent dir to already exist —
+        # cp does NOT auto-create `bin/` even with `-a`. Without this
+        # explicit `mkdir -p /runtime/venv/bin`, the init service exits 1
+        # with `cp: cannot create regular file '/runtime/venv/bin/python3.12':
+        # No such file or directory`, the `service_completed_successfully`
+        # depends-on gate stays red, and the shim never starts.
+        # Live evidence: deploy run 25137948546 init container logs.
+        mkdir -p /runtime/venv /runtime/venv/bin /runtime/venv/lib/python3.12 /runtime/src
 
         # Build a relocatable Python install at /runtime/venv/. CPython
         # locates stdlib relative to the executable, so co-locating the
@@ -374,8 +382,17 @@ services:
         read_only: true
         volume:
           subpath: src
+    # Mirror the image-level HEALTHCHECK in apps/murmur-shim/Dockerfile:
+    # `node:22-bookworm-slim` has neither `wget` nor `curl`, so the
+    # previous `wget -q -O- ...` probe would exit 127 every interval and
+    # the container would go UNHEALTHY despite the JS server answering
+    # /health correctly. Compose's `healthcheck:` overrides the
+    # Dockerfile's HEALTHCHECK, so we have to restate the working probe
+    # here — using Node's built-in `fetch` (Node 18+) keeps the slim
+    # image free of extra HTTP clients. `process.env.PORT` keeps the
+    # probe correct if PORT is overridden in compose.
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+process.env.PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       start_period: 10s

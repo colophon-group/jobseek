@@ -147,16 +147,40 @@ jobs:
           # `envs:` whitelist — only these names are forwarded into the
           # remote shell. Names only; values come from the matching
           # `env:` block below. Never put a secret name into `script:`.
-          envs: GHCR_PAT,MURMUR_TOKEN,DATABASE_URL,OWNER
+          envs: GHCR_PAT,MURMUR_TOKEN,DATABASE_URL,LOCAL_DATABASE_URL,OWNER
           # Inline script (no /home/deploy/deploy.sh dependency — this
           # workflow only touches the murmur-shim service). The crawler's
           # deploy.sh is left alone; full-stack redeploys still go via
           # deploy-crawler-browser.yml.
           script: |
             set -euo pipefail
+            # `appleboy/ssh-action`'s `envs:` injects the listed names as
+            # plain shell variables (assignment only, no `export`). Child
+            # processes — including `docker compose` — therefore do NOT
+            # inherit them, and compose's `${MURMUR_TOKEN}` /
+            # `${LOCAL_DATABASE_URL}` substitutions resolve to empty.
+            # Live evidence: deploy run 25137948546 logged
+            # `WARN[0000] The "MURMUR_TOKEN" variable is not set.
+            # Defaulting to a blank string.` despite the secret being
+            # forwarded correctly through `envs:`. Re-export here so
+            # docker compose (a child process) sees the values.
+            #
+            # We do not write /home/deploy/.env from this workflow on
+            # purpose: the crawler's full-stack deploy.sh owns that file
+            # and any keys this workflow doesn't know about (R2 / Grafana
+            # / Typesense / proxy creds) would be wiped. Re-exporting in
+            # the SSH session is additive and ephemeral, which is exactly
+            # what we want for a single-service redeploy.
+            export MURMUR_TOKEN DATABASE_URL OWNER LOCAL_DATABASE_URL
             cd /home/deploy
             echo "$GHCR_PAT" | docker login ghcr.io -u viktor-shcherb --password-stdin
-            docker compose pull murmur-shim
+            # Pull both the shim image AND the runtime-init image. The
+            # init service `pull_policy: always` would handle this on
+            # `up`, but pulling explicitly here surfaces auth/network
+            # errors before we touch the running shim. Without this,
+            # only `murmur-shim` was pulled and an upgraded init image
+            # would only land on the next compose-triggered pull.
+            docker compose pull murmur-shim murmur-shim-runtime-init
             docker compose up -d murmur-shim
             docker compose ps murmur-shim
             # Brief settle, then probe the shim's health endpoint via
@@ -170,3 +194,9 @@ jobs:
           GHCR_PAT: ${{ secrets.GHCR_PAT || secrets.HETZNER_GH_TOKEN }}
           MURMUR_TOKEN: ${{ secrets.MURMUR_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Forwarded so the compose `MURMUR_DB_DSN: ${LOCAL_DATABASE_URL}`
+          # substitution resolves on this single-service redeploy. The
+          # crawler's full-stack deploy already pins the same secret in
+          # /home/deploy/.env, but this workflow runs without invoking
+          # deploy.sh, so the inline export above is the only path.
+          LOCAL_DATABASE_URL: ${{ secrets.LOCAL_DATABASE_URL }}
