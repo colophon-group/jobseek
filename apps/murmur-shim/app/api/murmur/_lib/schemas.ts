@@ -90,6 +90,13 @@ export const PROBE_SCRAPER_SCHEMA: SubcommandSchema = {
     board_url: { type: "string", format: "uri", pattern: "^https://" },
     monitor_type: { type: "string", minLength: 1 },
     monitor_config: { type: "object" },
+    // Optional explicit sample URL. The Python lib
+    // (`apps/crawler/src/workspace/lib/probe.py#probe_scraper`) falls
+    // back to `state.sample_urls` from claim-kv when absent; without
+    // this property the `additionalProperties:false` check rejects the
+    // field even though `cli_shim._do_probe_scraper` already plumbs
+    // it through.
+    sample_job_url: { type: "string", format: "uri", pattern: "^https://" },
   },
 } as const;
 
