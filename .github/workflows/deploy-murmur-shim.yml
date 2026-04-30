@@ -53,7 +53,12 @@ name: Deploy murmur-shim
 
 on:
   push:
-    branches: [murmur-demo]
+    # `murmur-demo` was the long-lived integration branch during H1–H3
+    # and was squash-merged into `main` in #2793; subsequent work flows
+    # through main like the rest of jobseek. Both branches stay in the
+    # trigger list — main is the load-bearing one, `murmur-demo` is
+    # kept for the unlikely case anyone still pushes there.
+    branches: [main, murmur-demo]
     paths:
       - apps/murmur-shim/**
       - apps/crawler/docker-compose.yml
