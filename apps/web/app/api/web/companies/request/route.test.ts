@@ -150,7 +150,7 @@ describe("POST /api/web/companies/request", () => {
     expect(body.errors.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("happy path: returns run_id and agent_prompt with company name + run id", async () => {
+  it("happy path: returns run_id and structured agent_prompt with company name + run id", async () => {
     vi.mocked(startRun).mockResolvedValue({
       run_id: "r_abc123",
     });
@@ -160,17 +160,49 @@ describe("POST /api/web/companies/request", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       ok: true;
-      data: { run_id: string; agent_prompt: string };
+      data: {
+        run_id: string;
+        agent_prompt: { install_command: string; prompt_text: string };
+      };
     };
     expect(body.ok).toBe(true);
     expect(body.data.run_id).toBe("r_abc123");
-    expect(body.data.agent_prompt).toContain("Stripe");
-    expect(body.data.agent_prompt).toContain("https://stripe.com");
-    expect(body.data.agent_prompt).toContain("r_abc123");
+    // The structured agent_prompt has two fields the UI renders separately.
+    expect(body.data.agent_prompt.install_command).toContain(
+      "claude mcp add --transport http",
+    );
+    expect(body.data.agent_prompt.prompt_text).toContain("Stripe");
+    expect(body.data.agent_prompt.prompt_text).toContain("https://stripe.com");
+    expect(body.data.agent_prompt.prompt_text).toContain("r_abc123");
+    expect(body.data.agent_prompt.prompt_text).toContain("pull_task");
     expect(vi.mocked(startRun)).toHaveBeenCalledWith({
       company_name: "Stripe",
       website: "https://stripe.com",
     });
+  });
+
+  it("install_command carries the literal <token-from-jobseek-team> placeholder, never a real token", async () => {
+    process.env.MURMUR_TOKEN = "super_secret_token_42";
+    vi.mocked(startRun).mockResolvedValue({ run_id: "r_x" });
+    const res = await POST(
+      makeRequest({ company_name: "Stripe", website: "https://stripe.com" }),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: true;
+      data: { agent_prompt: { install_command: string; prompt_text: string } };
+    };
+    expect(body.data.agent_prompt.install_command).toContain(
+      "<token-from-jobseek-team>",
+    );
+    // Defence in depth: the production token must NEVER leak into either
+    // field of the response body.
+    const joined =
+      body.data.agent_prompt.install_command +
+      " " +
+      body.data.agent_prompt.prompt_text;
+    expect(joined).not.toContain("super_secret_token_42");
+    delete process.env.MURMUR_TOKEN;
   });
 
   it("trims whitespace on company_name and website before forwarding", async () => {
@@ -404,16 +436,54 @@ describe("consumeRateLimit", () => {
 });
 
 describe("buildAgentPrompt", () => {
-  it("includes company name, website, and run_id verbatim", () => {
+  it("returns a structured object with install_command and prompt_text fields", () => {
     const out = buildAgentPrompt({
       company_name: "Stripe",
       website: "https://stripe.com",
       run_id: "r_abc123",
     });
-    expect(out).toContain("Stripe");
-    expect(out).toContain("https://stripe.com");
-    expect(out).toContain("r_abc123");
-    // The MCP tool name is part of the prompt the issue spec calls out.
-    expect(out).toContain("pull_task");
+    expect(typeof out).toBe("object");
+    expect(typeof out.install_command).toBe("string");
+    expect(typeof out.prompt_text).toBe("string");
+    expect(out.install_command.length).toBeGreaterThan(0);
+    expect(out.prompt_text.length).toBeGreaterThan(0);
+  });
+
+  it("install_command contains `claude mcp add --transport http` and the placeholder bearer token", () => {
+    const out = buildAgentPrompt({
+      company_name: "Stripe",
+      website: "https://stripe.com",
+      run_id: "r_abc123",
+    });
+    expect(out.install_command).toContain("claude mcp add --transport http");
+    // Server (Murmur) MCP URL.
+    expect(out.install_command).toContain(
+      "https://murmur.colophon-group.org/mcp",
+    );
+    // Placeholder, NOT a real token.
+    expect(out.install_command).toContain("<token-from-jobseek-team>");
+  });
+
+  it("prompt_text includes company, website, run_id, and the pull_task tool name", () => {
+    const out = buildAgentPrompt({
+      company_name: "Stripe",
+      website: "https://stripe.com",
+      run_id: "r_abc123",
+    });
+    expect(out.prompt_text).toContain("Stripe");
+    expect(out.prompt_text).toContain("https://stripe.com");
+    expect(out.prompt_text).toContain("r_abc123");
+    expect(out.prompt_text).toContain("pull_task");
+  });
+
+  it("install_command does not embed company/website/run_id (it's per-server, not per-run)", () => {
+    const out = buildAgentPrompt({
+      company_name: "VerySpecificCompanyName",
+      website: "https://very-specific-host.example",
+      run_id: "r_very_specific_run_id_42",
+    });
+    expect(out.install_command).not.toContain("VerySpecificCompanyName");
+    expect(out.install_command).not.toContain("very-specific-host.example");
+    expect(out.install_command).not.toContain("r_very_specific_run_id_42");
   });
 });
