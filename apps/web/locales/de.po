@@ -371,16 +371,16 @@ msgstr "Bewerbungstracker"
 msgid "faq.a.whatIsWatchlist"
 msgstr "Eine Watchlist ist eine gespeicherte Suche mit optionaler Unternehmensfilterung. Wähle die Unternehmen, die dich interessieren, setze deine Filter (Rolle, Standort, Seniorität, Gehalt) und erhalte einen Live-Feed passender Stellen. Du kannst Watchlists öffentlich teilen oder privat halten."
 
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/about/page.tsx:18
-#: app/[lang]/(public)/about/page.tsx:40
-msgid "about.meta.title"
-msgstr "Über uns"
-
 #. About page eyebrow
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx:24
 msgid "about.eyebrow"
+msgstr "Über uns"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/page.tsx:18
+#: app/[lang]/(public)/about/page.tsx:40
+msgid "about.meta.title"
 msgstr "Über uns"
 
 #. Nav link: About
@@ -492,16 +492,16 @@ msgstr "Alle Daten werden bei Übertragung und Speicherung verschlüsselt."
 msgid "watchlists.companyModal.allIndustries"
 msgstr "Alle Branchen"
 
-#. Title for the all-languages modal in settings
-#. js-lingui-explicit-id
-#: src/components/settings/JobLanguageModal.tsx:56
-msgid "settings.jobLanguages.modal.title"
-msgstr "Alle Sprachen"
-
 #. All languages option
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx:234
 msgid "settings.general.jobLanguages.all"
+msgstr "Alle Sprachen"
+
+#. Title for the all-languages modal in settings
+#. js-lingui-explicit-id
+#: src/components/settings/JobLanguageModal.tsx:56
+msgid "settings.jobLanguages.modal.title"
 msgstr "Alle Sprachen"
 
 #. Title for the all-locations modal on company page
@@ -610,16 +610,16 @@ msgstr "Beworben"
 msgid "myJobs.status.applied"
 msgstr "Beworben"
 
-#. Application tracker status: applied
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:462
-msgid "search.tracker.applied"
-msgstr "Beworben"
-
 #. Sankey funnel node: applied
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:42
 msgid "myJobs.funnel.applied"
+msgstr "Beworben"
+
+#. Application tracker status: applied
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:462
+msgid "search.tracker.applied"
 msgstr "Beworben"
 
 #. Status option in dropdown: applied
@@ -683,16 +683,16 @@ msgstr "Aug"
 msgid "settings.account.username.available"
 msgstr "Verfügbar"
 
-#. Link back to sign-in from reset password
-#. js-lingui-explicit-id
-#: app/[lang]/reset-password/page.tsx:42
-msgid "auth.resetPassword.backToSignIn"
-msgstr "Zurück zur Anmeldung"
-
 #. Link back to sign-in after failed verification
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:68
 msgid "auth.verify.error.backToSignIn"
+msgstr "Zurück zur Anmeldung"
+
+#. Link back to sign-in from reset password
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:42
+msgid "auth.resetPassword.backToSignIn"
 msgstr "Zurück zur Anmeldung"
 
 #. Link back to sign-in from forgot password
@@ -953,7 +953,7 @@ msgstr "Demnächst verfügbar"
 
 #. Section header for company suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:706
+#: src/components/search/search-bar.tsx:748
 msgid "search.bar.companies"
 msgstr "Unternehmen"
 
@@ -2035,16 +2035,16 @@ msgstr "Gibt es ein Limit, wie viele Jobs ich verfolgen kann?"
 msgid "myJobs.heatmap.month.jan"
 msgstr "Jan"
 
-#. Singular job count on watchlist card
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-card.tsx:31
-msgid "watchlists.card.jobSingular"
-msgstr "Job"
-
 #. Singular job count in public watchlist
 #. js-lingui-explicit-id
 #: src/components/watchlist/public-watchlist-search.tsx:121
 msgid "watchlists.explore.jobSingular"
+msgstr "Job"
+
+#. Singular job count on watchlist card
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:31
+msgid "watchlists.card.jobSingular"
 msgstr "Job"
 
 #. js-lingui-explicit-id
@@ -2168,16 +2168,16 @@ msgstr "Die Codebasis von Job Seek ist Open Source unter MIT. Die von uns gesamm
 msgid "watchlist.meta.fallback"
 msgstr "Job-Watchlist von @{owner}"
 
-#. Plural job count on watchlist card
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-card.tsx:32
-msgid "watchlists.card.jobPlural"
-msgstr "Jobs"
-
 #. Plural job count in public watchlist
 #. js-lingui-explicit-id
 #: src/components/watchlist/public-watchlist-search.tsx:122
 msgid "watchlists.explore.jobPlural"
+msgstr "Jobs"
+
+#. Plural job count on watchlist card
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:32
+msgid "watchlists.card.jobPlural"
 msgstr "Jobs"
 
 #. js-lingui-explicit-id
@@ -2264,7 +2264,7 @@ msgstr "Mehr erfahren"
 
 #. Section header for seniority suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:596
+#: src/components/search/search-bar.tsx:638
 msgid "search.bar.level"
 msgstr "Stufe"
 
@@ -2343,7 +2343,7 @@ msgstr "Standort"
 
 #. Section header for location suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:666
+#: src/components/search/search-bar.tsx:708
 msgid "search.bar.locations"
 msgstr "Standorte"
 
@@ -2629,17 +2629,17 @@ msgstr "Keine Jobs gefunden."
 msgid "settings.jobLanguages.modal.noResults"
 msgstr "Keine Sprachen entsprechen deiner Suche."
 
-#. No locations match search in location modal
-#. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:171
-msgid "search.locationModal.noResults"
-msgstr "Keine Standorte gefunden."
-
 #. No locations match search in all-locations modal
 #. js-lingui-explicit-id
 #: src/components/search/location-modal.tsx:186
 msgid "company.locationModal.noResults"
 msgstr "Keine Standorte entsprechen Ihrer Suche."
+
+#. No locations match search in location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-search-modal.tsx:171
+msgid "search.locationModal.noResults"
+msgstr "Keine Standorte gefunden."
 
 #. No postings found message on company page
 #. js-lingui-explicit-id
@@ -2711,16 +2711,16 @@ msgstr "Nein. Der Bewerbungstracker hat kein festes Limit — speichere so viele
 msgid "faq.a.dataPrivacy"
 msgstr "Nein. Wir verkaufen, vermieten oder teilen deine Daten nicht zu Marketingzwecken. Cookies sind nur sitzungsbasiert, ohne Werbung oder Tracking. Du kannst dein Konto löschen und alle Daten werden innerhalb von 30 Tagen entfernt."
 
-#. Application tracker status: not applied
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:461
-msgid "search.tracker.notApplied"
-msgstr "Nicht beworben"
-
 #. Sankey funnel node: not applied
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:44
 msgid "myJobs.funnel.notApplied"
+msgstr "Nicht beworben"
+
+#. Application tracker status: not applied
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:461
+msgid "search.tracker.notApplied"
 msgstr "Nicht beworben"
 
 #. Warning shown when the request was saved in DB but GitHub issue creation failed
@@ -3182,18 +3182,18 @@ msgstr "Gemeinfrei"
 msgid "license.contactCta"
 msgstr "Fragen zur Lizenzierung oder kommerziellen Nutzung? Schreib uns eine E-Mail."
 
-#. Terms contact call to action
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:59
-#: src/components/TermsContent.tsx:54
-msgid "terms.contact.description"
-msgstr "Fragen? Schreib uns eine E-Mail."
-
 #. Privacy contact call to action
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/privacy-policy/page.tsx:61
 #: src/components/PrivacyPolicyContent.tsx:66
 msgid "privacy.contact.description"
+msgstr "Fragen? Schreib uns eine E-Mail."
+
+#. Terms contact call to action
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/terms/page.tsx:59
+#: src/components/TermsContent.tsx:54
+msgid "terms.contact.description"
 msgstr "Fragen? Schreib uns eine E-Mail."
 
 #. Link to full CC license
@@ -3268,16 +3268,16 @@ msgstr "Abgelehnt"
 msgid "myJobs.status.rejected"
 msgstr "Abgelehnt"
 
-#. Application tracker status: rejected
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:465
-msgid "search.tracker.rejected"
-msgstr "Abgelehnt"
-
 #. Sankey funnel node label prefix: rejected
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:45
 msgid "myJobs.funnel.rejected"
+msgstr "Abgelehnt"
+
+#. Application tracker status: rejected
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:465
+msgid "search.tracker.rejected"
 msgstr "Abgelehnt"
 
 #. Status option in dropdown: rejected
@@ -3303,6 +3303,12 @@ msgstr "Stichwort entfernen"
 #: src/components/search/location-pills.tsx:201
 msgid "search.locations.remove"
 msgstr "Standort entfernen"
+
+#. Synthetic dropdown row that lets the user request a company that's not in the catalog
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx:811
+msgid "search.bar.request"
+msgstr ""
 
 #. Companies-request page heading when no company name was supplied
 #. js-lingui-explicit-id
@@ -3393,7 +3399,7 @@ msgstr "Beruf"
 
 #. Section header for occupation suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:561
+#: src/components/search/search-bar.tsx:603
 msgid "search.bar.roles"
 msgstr "Berufe"
 
@@ -3547,7 +3553,7 @@ msgstr "Unternehmen suchen..."
 
 #. Option to search by title keyword in dropdown
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:549
+#: src/components/search/search-bar.tsx:591
 msgid "search.bar.keyword"
 msgstr "Nach \"{trimmedInput}\" in Jobtiteln suchen"
 
@@ -3562,17 +3568,17 @@ msgstr "Durchsuche Jobs bei Tausenden von Unternehmen, direkt von Karriereseiten
 msgid "settings.jobLanguages.modal.searchPlaceholder"
 msgstr "Sprachen suchen…"
 
-#. Placeholder for search input in global location modal
-#. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:150
-msgid "search.locationModal.searchPlaceholder"
-msgstr "Standorte suchen..."
-
 #. Placeholder for search input in all-locations modal
 #. js-lingui-explicit-id
 #: src/components/search/location-modal.tsx:165
 msgid "company.locationModal.searchPlaceholder"
 msgstr "Standorte suchen…"
+
+#. Placeholder for search input in global location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-search-modal.tsx:150
+msgid "search.locationModal.searchPlaceholder"
+msgstr "Standorte suchen..."
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/page.tsx:22
@@ -3607,7 +3613,7 @@ msgstr "Alles, was du brauchst, um vorne zu bleiben"
 
 #. Placeholder for the main search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:478
+#: src/components/search/search-bar.tsx:518
 msgid "search.bar.placeholder"
 msgstr "Suchen…"
 
@@ -4039,7 +4045,7 @@ msgstr "Technisch"
 
 #. Section header for technology suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:631
+#: src/components/search/search-bar.tsx:673
 msgid "search.bar.technologies"
 msgstr "Technologien"
 
@@ -4142,16 +4148,16 @@ msgstr "Der Service wird ohne Gewährleistung bereitgestellt."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:51
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
+#: app/[lang]/(public)/privacy-policy/page.tsx:51
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
 msgstr "Die Kurzfassung"
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:51
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
+#: app/[lang]/(public)/terms/page.tsx:51
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
 msgstr "Die Kurzfassung"
 
 #. Theme settings section heading
@@ -4530,6 +4536,12 @@ msgstr "Wir empfehlen ausdrücklich, eine leicht auffindbare Sitemap für deinen
 #: src/components/PrivacyPolicyContent.tsx:45
 msgid "privacy.short.r3"
 msgstr "Wir nutzen eine Handvoll Drittanbieter für Anmeldung, Hosting und Speicherung — sonst nichts."
+
+#. Secondary line under the Request <query> dropdown row
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx:818
+msgid "search.bar.request.subtext"
+msgstr ""
 
 #. Heading prefix on the agent-prompt success card; followed by the company name
 #. js-lingui-explicit-id

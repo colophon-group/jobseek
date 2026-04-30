@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, MapPin, Building2, ArrowRight, Briefcase, BarChart3, Code2 } from "lucide-react";
+import { Search, MapPin, Building2, ArrowRight, Briefcase, BarChart3, Code2, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useLingui } from "@lingui/react/macro";
 import type { LocationSuggestion } from "@/lib/actions/locations";
@@ -28,7 +28,15 @@ type SuggestionItem =
   | { kind: "seniority"; data: TaxonomySuggestion }
   | { kind: "technology"; data: TaxonomySuggestion }
   | { kind: "location"; data: LocationSuggestion }
-  | { kind: "company"; data: CompanySuggestion };
+  | { kind: "company"; data: CompanySuggestion }
+  /**
+   * Synthetic "Request <query>" entry rendered at the bottom of the
+   * dropdown when the user's query has no company match. Activating
+   * this item navigates to the company-request landing page with the
+   * raw query pre-filled. Owned by issue #2807; the landing page is
+   * jobseek#2808.
+   */
+  | { kind: "request"; data: { query: string } };
 
 interface SearchBarProps {
   /** Direct callback for location adds (used on the search page for mobile). */
@@ -159,6 +167,11 @@ export function SearchBar({
   // Build flat list for keyboard navigation
   // "keyword" option first so user can search by title, then structured suggestions
   const trimmedInput = inputValue.trim();
+  // Show the "Request <query>" entry only when the user has a non-empty
+  // query, no real company match has come back, and we're not scoped to
+  // a single company page (where cross-company nav would be a trap).
+  const showRequestItem =
+    trimmedInput.length >= 2 && companyResults.length === 0 && !scopedToCompany;
   const allSuggestions: SuggestionItem[] = [
     ...(trimmedInput.length >= 2
       ? [{ kind: "keyword" as const, data: { text: trimmedInput } }]
@@ -168,6 +181,9 @@ export function SearchBar({
     ...technologyResults.map((s): SuggestionItem => ({ kind: "technology", data: s })),
     ...locationResults.map((s): SuggestionItem => ({ kind: "location", data: s })),
     ...companyResults.map((s): SuggestionItem => ({ kind: "company", data: s })),
+    ...(showRequestItem
+      ? [{ kind: "request" as const, data: { query: trimmedInput } }]
+      : []),
   ];
 
   const fetchSuggestions = useCallback(
@@ -216,7 +232,14 @@ export function SearchBar({
         } else {
           suggestCompanies({ query }).then((companies) => {
             setCompanyResults(companies);
-            if (companies.length > 0) setIsOpen(true);
+            // Open the dropdown either when a real company match exists,
+            // or when no match exists for a non-empty query (so the
+            // synthetic "Request <query>" entry — issue #2807 — is
+            // visible). The Request branch is suppressed on
+            // company-scoped routes via the parent `if`.
+            if (companies.length > 0 || query.trim().length >= 2) {
+              setIsOpen(true);
+            }
           });
         }
         suggestLocations({
@@ -269,6 +292,23 @@ export function SearchBar({
       if (item.kind === "keyword") {
         // User selected "Search for 'X' as title keyword"
         void submitFreeTextSearch();
+        return;
+      }
+      if (item.kind === "request") {
+        // Navigate to the company-request landing page (jobseek#2808)
+        // with the raw query pre-filled. Encode the name so spaces and
+        // any URL-significant characters survive the round-trip.
+        router.push(
+          lp(`/companies/request?name=${encodeURIComponent(item.data.query)}`),
+        );
+        setInputValue("");
+        setLocationResults([]);
+        setCompanyResults([]);
+        setOccupationResults([]);
+        setSeniorityResults([]);
+        setTechnologyResults([]);
+        setIsOpen(false);
+        setActiveIndex(-1);
         return;
       }
       if (item.kind === "location") {
@@ -481,7 +521,7 @@ export function SearchBar({
     message: "Search...",
   });
 
-  // Compute flat indices for each section (keyword → occupations → seniorities → technologies → locations → companies)
+  // Compute flat indices for each section (keyword → occupations → seniorities → technologies → locations → companies → request)
   let flatIdx = 0;
   const keywordIndex = flatIdx;
   flatIdx += trimmedInput.length >= 2 ? 1 : 0;
@@ -494,6 +534,8 @@ export function SearchBar({
   const locStartIndex = flatIdx;
   flatIdx += locationResults.length;
   const companyStartIndex = flatIdx;
+  flatIdx += companyResults.length;
+  const requestIndex = flatIdx;
 
   return (
     <div className={`relative ${className ?? ""}`} ref={containerRef}>
@@ -745,6 +787,43 @@ export function SearchBar({
                 );
               })}
             </>
+          )}
+
+          {showRequestItem && (
+            <div
+              id={`search-option-${requestIndex}`}
+              role="option"
+              aria-selected={requestIndex === activeIndex}
+              data-suggestion
+              data-testid="search-bar-request-item"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                selectItem({ kind: "request", data: { query: trimmedInput } });
+              }}
+              onMouseEnter={() => setActiveIndex(requestIndex)}
+              className={`flex cursor-pointer items-start gap-2 px-3 py-2 text-sm border-t border-border-soft ${
+                requestIndex === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
+              }`}
+            >
+              <Sparkles size={14} className="mt-0.5 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">
+                  {t({
+                    id: "search.bar.request",
+                    comment: "Synthetic dropdown row that lets the user request a company that's not in the catalog",
+                    message: `Request "${trimmedInput}"`,
+                  })}
+                </div>
+                <div className="text-xs text-muted">
+                  {t({
+                    id: "search.bar.request.subtext",
+                    comment: "Secondary line under the Request <query> dropdown row",
+                    message: "We'll start tracking it",
+                  })}
+                </div>
+              </div>
+              <ArrowRight size={12} className="mt-1 shrink-0 text-muted" />
+            </div>
           )}
         </ScrollFade>
         </div>
