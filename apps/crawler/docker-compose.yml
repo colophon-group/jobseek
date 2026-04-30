@@ -361,11 +361,18 @@ services:
     environment:
       PORT: "8080"
       MURMUR_TOKEN: ${MURMUR_TOKEN}
-      # Forward LOCAL_DATABASE_URL (Hetzner Postgres) as MURMUR_DB_DSN
-      # so the shim's PostgresClaimKV connects to the same DB the
-      # crawler workers use. Compose env-substitution: the var on the
-      # right is read from `.env` / shell at compose-up time; the var
-      # on the left is exported into the container.
+      # The shim's Drizzle client (apps/murmur-shim/src/db/index.ts)
+      # reads DATABASE_URL — the J5 work for `murmur_claim_kv` and
+      # `murmur_accept_log` writes through Drizzle, and the
+      # accept-log table FKs the `company` row that lives on the
+      # Supabase pooler with the rest of jobseek-web's schema. So
+      # the shim must point at the same Postgres apps/web uses, not
+      # at the local Hetzner Postgres the crawler workers write to.
+      DATABASE_URL: ${DATABASE_URL}
+      # MURMUR_DB_DSN is a separate env read by the Python invoke-lib
+      # for crawler-side stateful probes (boards/last-seen). Keep
+      # pointing it at the local Hetzner Postgres because that is
+      # where the crawler workers' state lives.
       MURMUR_DB_DSN: ${LOCAL_DATABASE_URL}
       MURMUR_ACCEPT_TARGET: postgres
       MURMUR_PY: /opt/jobseek-crawler-venv/bin/python3
