@@ -241,6 +241,93 @@ describe("AgentPromptCard", () => {
     });
   });
 
+  it("renders the polling indicator while runStatus.state === 'running'", () => {
+    render(
+      <AgentPromptCard
+        companyName="Acme"
+        runId="run_abc"
+        installCommand={SAMPLE_INSTALL}
+        promptText={SAMPLE_PROMPT}
+        labels={{
+          ...labels,
+          pollingLabel: "Waiting for your agent to finish...",
+          companyAddedLabel: "added — open it",
+          givenUpLabel: "still running... refresh later",
+        }}
+        runStatus={{ state: "running" }}
+      />,
+    );
+    expect(screen.getByTestId("agent-prompt-card-polling")).toBeTruthy();
+    expect(screen.queryByTestId("agent-prompt-card-success-link")).toBeNull();
+  });
+
+  it("swaps in a 'company added — open it' link when runStatus.state === 'completed' with slug", () => {
+    render(
+      <AgentPromptCard
+        companyName="Acme"
+        runId="run_abc"
+        installCommand={SAMPLE_INSTALL}
+        promptText={SAMPLE_PROMPT}
+        labels={{
+          ...labels,
+          pollingLabel: "Waiting for your agent to finish...",
+          companyAddedLabel: "added — open it",
+          givenUpLabel: "still running... refresh later",
+        }}
+        runStatus={{
+          state: "completed",
+          slug: "acme",
+          successHref: "/en/company/acme",
+        }}
+      />,
+    );
+    const link = screen.getByTestId(
+      "agent-prompt-card-success-link",
+    ) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe("/en/company/acme");
+    expect(link.textContent).toContain("Acme");
+    expect(link.textContent).toContain("added — open it");
+    expect(screen.queryByTestId("agent-prompt-card-polling")).toBeNull();
+  });
+
+  it("falls back to the polling indicator without a link when 'completed' but no slug", () => {
+    render(
+      <AgentPromptCard
+        companyName="Acme"
+        runId="run_abc"
+        installCommand={SAMPLE_INSTALL}
+        promptText={SAMPLE_PROMPT}
+        labels={{
+          ...labels,
+          pollingLabel: "Waiting for your agent to finish...",
+          companyAddedLabel: "added — open it",
+          givenUpLabel: "still running... refresh later",
+        }}
+        runStatus={{ state: "completed" }}
+      />,
+    );
+    expect(screen.queryByTestId("agent-prompt-card-success-link")).toBeNull();
+  });
+
+  it("renders the given_up indicator when runStatus.state === 'given_up'", () => {
+    render(
+      <AgentPromptCard
+        companyName="Acme"
+        runId="run_abc"
+        installCommand={SAMPLE_INSTALL}
+        promptText={SAMPLE_PROMPT}
+        labels={{
+          ...labels,
+          pollingLabel: "Waiting for your agent to finish...",
+          companyAddedLabel: "added — open it",
+          givenUpLabel: "still running... refresh later",
+        }}
+        runStatus={{ state: "given_up" }}
+      />,
+    );
+    expect(screen.getByTestId("agent-prompt-card-given-up")).toBeTruthy();
+  });
+
   it("both copy buttons are keyboard reachable (Tab + Enter triggers copy)", async () => {
     const user = userEvent.setup();
     const writeToClipboard = vi.fn().mockResolvedValue(undefined);
