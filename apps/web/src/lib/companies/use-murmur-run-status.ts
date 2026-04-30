@@ -28,6 +28,7 @@
  *
  * @see colophon-group/jobseek#2810
  */
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Polling cadence constants. Exported so tests can reference them without
@@ -39,8 +40,7 @@ export const BACKOFF_INTERVAL_MS = 30_000;
 export const GIVE_UP_AFTER_MS = 30 * 60 * 1000;
 
 /**
- * Possible top-level states the hook returns to consumers. See the file
- * docstring for semantics.
+ * Possible top-level states the hook returns to consumers.
  */
 export type MurmurRunStatusState =
   | "idle"
@@ -49,9 +49,7 @@ export type MurmurRunStatusState =
   | "given_up";
 
 /**
- * Hook return shape. The `status`, `webhookStatus`, `slug`, and `companyId`
- * fields are populated as soon as we have a server snapshot; they're undefined
- * before the first response.
+ * Hook return shape.
  */
 export interface UseMurmurRunStatusResult {
   readonly state: MurmurRunStatusState;
@@ -63,12 +61,6 @@ export interface UseMurmurRunStatusResult {
 
 /**
  * Test/override hooks. In production, callers pass nothing.
- *
- *   - `fetchImpl` lets tests stub the network without touching `globalThis.fetch`.
- *   - `now` lets tests control the deadline check (we use this instead of
- *     `Date.now` so fake-timer tests are deterministic).
- *   - `getEndpoint` lets tests rewrite the URL — the default builds it from
- *     `runId` against the proxy path.
  */
 export interface UseMurmurRunStatusOptions {
   readonly fetchImpl?: typeof fetch;
@@ -77,20 +69,142 @@ export interface UseMurmurRunStatusOptions {
 }
 
 /**
+ * Default URL builder. The proxy lives at the same origin as the page, so a
+ * relative URL is enough — the browser will attach session cookies.
+ */
+function defaultEndpoint(runId: string): string {
+  return `/api/web/companies/request/${encodeURIComponent(runId)}/status`;
+}
+
+interface ProxyEnvelope {
+  ok: boolean;
+  data?: {
+    status?: unknown;
+    webhook_status?: unknown;
+    slug?: unknown;
+    company_id?: unknown;
+  };
+}
+
+/** True if `value` is a non-empty string. */
+function isStr(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+/**
  * The hook. Pass `null` or an empty `runId` to disable polling — the hook
  * stays in `state: "idle"`.
- *
- * Re-renders the host component on every state transition (state change,
- * status update, or `webhookStatus` flip). Guarantees:
- *   - At most one in-flight request at a time per mount.
- *   - On unmount, any pending fetch is aborted and the next-tick timer is
- *     cleared.
- *   - The hook NEVER throws. Server errors keep the state at `"running"`
- *     and we retry on the next interval.
  */
 export function useMurmurRunStatus(
   runId: string | null,
   options?: UseMurmurRunStatusOptions,
 ): UseMurmurRunStatusResult {
-  throw new Error("not implemented");
+  const [result, setResult] = useState<UseMurmurRunStatusResult>({
+    state: runId ? "running" : "idle",
+  });
+
+  // Latest options ref so we don't have to retrigger the effect when callers
+  // pass inline objects. The hook is keyed only on `runId`.
+  const optsRef = useRef<UseMurmurRunStatusOptions | undefined>(options);
+  optsRef.current = options;
+
+  useEffect(() => {
+    if (!runId) {
+      setResult({ state: "idle" });
+      return;
+    }
+
+    setResult({ state: "running" });
+
+    const startedAt = (optsRef.current?.now ?? Date.now)();
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    async function tick(): Promise<void> {
+      if (cancelled) return;
+      const nowFn = optsRef.current?.now ?? Date.now;
+      const fetchImpl = optsRef.current?.fetchImpl ?? fetch;
+      const getEndpoint = optsRef.current?.getEndpoint ?? defaultEndpoint;
+
+      const elapsed = nowFn() - startedAt;
+      if (elapsed >= GIVE_UP_AFTER_MS) {
+        if (!cancelled) {
+          setResult((prev) => ({ ...prev, state: "given_up" }));
+        }
+        return;
+      }
+
+      try {
+        const res = await fetchImpl(getEndpoint(runId as string), {
+          method: "GET",
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
+        if (cancelled) return;
+        if (res.ok) {
+          let body: ProxyEnvelope | undefined;
+          try {
+            body = (await res.json()) as ProxyEnvelope;
+          } catch {
+            body = undefined;
+          }
+          const data = body?.data;
+          if (data && isStr(data.status) && isStr(data.webhook_status)) {
+            const slug = isStr(data.slug) ? data.slug : undefined;
+            const companyId = isStr(data.company_id) ? data.company_id : undefined;
+            const reachedDelivered = data.webhook_status === "delivered";
+            if (!cancelled) {
+              setResult({
+                state: reachedDelivered ? "completed" : "running",
+                status: data.status,
+                webhookStatus: data.webhook_status,
+                slug,
+                companyId,
+              });
+            }
+            if (reachedDelivered) {
+              return;
+            }
+          }
+        }
+        // Non-2xx or malformed body: keep polling — surface as "running" with
+        // whatever fields we already had. We deliberately don't expose error
+        // states to the UI for the demo; a future iteration can add backoff.
+      } catch (err) {
+        if (
+          (err as { name?: string } | null)?.name === "AbortError" ||
+          controller.signal.aborted
+        ) {
+          return;
+        }
+        // network error — fall through to the next scheduled tick.
+      }
+
+      if (cancelled) return;
+      const elapsedAfter =
+        (optsRef.current?.now ?? Date.now)() - startedAt;
+      if (elapsedAfter >= GIVE_UP_AFTER_MS) {
+        if (!cancelled) {
+          setResult((prev) => ({ ...prev, state: "given_up" }));
+        }
+        return;
+      }
+      const nextDelay =
+        elapsedAfter >= BACKOFF_AFTER_MS
+          ? BACKOFF_INTERVAL_MS
+          : INITIAL_INTERVAL_MS;
+      timer = setTimeout(tick, nextDelay);
+    }
+
+    void tick();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, [runId]);
+
+  return result;
 }

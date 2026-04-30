@@ -14,11 +14,10 @@
  *   504 { ok: false, errors: ["upstream:timeout"] }
  *   500 { ok: false, errors: ["internal"] }
  *
- * On a fresh transition to `webhook_status === "delivered"` (which we
- * approximate via "delivered AND we have an accept-log row" — the row only
- * exists once the webhook handler successfully wrote the catalog), the
- * route triggers `revalidatePath('/[lang]/(app)/explore')` and
- * `revalidateTag('companies')` so the user's browse views pick up the new
+ * On a fresh transition to `webhook_status === "delivered"` AND we have an
+ * accept-log row (the row only exists once the webhook handler successfully
+ * wrote the catalog), the route triggers `revalidatePath('/[lang]/(app)/explore')`
+ * and `revalidateTag('companies')` so the user's browse views pick up the new
  * company without a hard reload. Both calls are wrapped in try/catch — a
  * revalidation failure must not 500 the proxy (we still want to return the
  * status to the client).
@@ -40,18 +39,19 @@
  */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
+import {
+  fetchMurmurRunStatus,
+  RunStatusError,
+  type RunStatusErrorCode,
+} from "@/lib/murmur/run-status";
+import { getSessionUserId } from "@/lib/sessionCache";
+import { lookupAcceptedCompany } from "./helpers";
 
 export const runtime = "nodejs";
 
 /**
  * Successful proxy response payload (under `data`).
- *
- *   - `status`         — Murmur run-level status.
- *   - `webhook_status` — webhook-delivery status; `"delivered"` is terminal.
- *   - `slug`           — present iff there's an accept-log row for this run
- *                        AND the joined `company.slug` is non-null.
- *   - `company_id`     — present iff there's an accept-log row for this run
- *                        AND the row's `company_id` is non-null.
  */
 export interface RunStatusProxyData {
   readonly status: string;
@@ -68,19 +68,28 @@ export type RunStatusProxyResponse =
   | { ok: true; data: RunStatusProxyData }
   | { ok: false; errors: string[] };
 
-/**
- * Look up the catalog `company.slug` + `company_id` for a given Murmur
- * run id, if the webhook handler has already landed. Returns `null` when
- * no accept-log row exists yet (i.e. webhook hasn't been processed).
- *
- * The accept-log row is the only piece of jobseek state that's
- * authoritatively keyed on `run_id`, so the proxy reads it directly
- * instead of trying to parse Murmur's `agent_actions`.
- */
-export async function lookupAcceptedCompany(
-  runId: string,
-): Promise<{ slug: string | null; companyId: string | null } | null> {
-  throw new Error("not implemented");
+function isFeatureEnabled(): boolean {
+  return process.env.MURMUR_RUN_TRIGGER_ENABLED === "true";
+}
+
+function statusForRunStatusCode(code: RunStatusErrorCode): number {
+  switch (code) {
+    case "config_missing":
+      return 503;
+    case "timeout":
+      return 504;
+    case "http_4xx":
+    case "http_5xx":
+    case "network":
+    case "bad_response":
+      return 502;
+    default:
+      return 502;
+  }
+}
+
+function errorResponse(status: number, errors: string[]): NextResponse {
+  return NextResponse.json({ ok: false, errors }, { status });
 }
 
 /**
@@ -89,12 +98,91 @@ export async function lookupAcceptedCompany(
  * swallowed — a revalidation hiccup must not 500 the proxy.
  */
 export async function tryRevalidateCompanies(): Promise<void> {
-  throw new Error("not implemented");
+  try {
+    revalidatePath("/[lang]/(app)/explore");
+  } catch (err) {
+    console.warn("[web/companies/request/status] revalidatePath failed", err);
+  }
+  try {
+    // Next 16 requires a second `profile` arg; "max" matches the framework
+    // recommendation for "no expire" tag invalidations from route handlers.
+    revalidateTag("companies", "max");
+  } catch (err) {
+    console.warn("[web/companies/request/status] revalidateTag failed", err);
+  }
 }
 
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ run_id: string }> },
 ): Promise<NextResponse> {
-  throw new Error("not implemented");
+  // 1. Auth gate first.
+  let userId: string | null;
+  try {
+    userId = await getSessionUserId();
+  } catch {
+    userId = null;
+  }
+  if (!userId) {
+    return errorResponse(401, ["unauthorized"]);
+  }
+
+  // 2. Feature flag — fail closed when not explicitly enabled.
+  if (!isFeatureEnabled()) {
+    return errorResponse(503, ["disabled"]);
+  }
+
+  // 3. Resolve the dynamic param.
+  const { run_id: runId } = await context.params;
+  if (typeof runId !== "string" || runId.length === 0) {
+    return errorResponse(400, ["validation:run_id:empty"]);
+  }
+
+  // 4. Forward to Murmur and look up the accept-log row in parallel.
+  let upstream: Awaited<ReturnType<typeof fetchMurmurRunStatus>>;
+  try {
+    upstream = await fetchMurmurRunStatus(runId);
+  } catch (err) {
+    if (err instanceof RunStatusError) {
+      console.error("[web/companies/request/status] upstream failed", {
+        code: err.code,
+        status: err.status,
+      });
+      return errorResponse(statusForRunStatusCode(err.code), [
+        `upstream:${err.code}`,
+      ]);
+    }
+    console.error("[web/companies/request/status] unexpected error", err);
+    return errorResponse(500, ["internal"]);
+  }
+
+  let accept: { slug: string | null; companyId: string | null } | null = null;
+  try {
+    accept = await lookupAcceptedCompany(runId);
+  } catch (err) {
+    // DB hiccup shouldn't 500 the proxy — the user can still see the run
+    // status; the success link will just be missing this tick.
+    console.warn(
+      "[web/companies/request/status] lookupAcceptedCompany failed",
+      err,
+    );
+  }
+
+  // 5. If the webhook delivered AND we have a catalog row, fire revalidation.
+  //    The accept-log row gating is what makes this safe to call repeatedly:
+  //    Next dedupes within a single request, and a row only exists post-
+  //    webhook-write, so the first poll after webhook delivery is the
+  //    earliest possible firing point.
+  if (upstream.webhook_status === "delivered" && accept !== null) {
+    await tryRevalidateCompanies();
+  }
+
+  const data: RunStatusProxyData = {
+    status: upstream.status,
+    webhook_status: upstream.webhook_status,
+    ...(accept?.slug ? { slug: accept.slug } : {}),
+    ...(accept?.companyId ? { company_id: accept.companyId } : {}),
+  };
+
+  return NextResponse.json({ ok: true, data }, { status: 200 });
 }

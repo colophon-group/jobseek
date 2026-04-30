@@ -34,21 +34,17 @@ vi.mock("next/cache", () => ({
 }));
 
 // Stub the Drizzle query the route uses to look up the accept-log row.
-// `lookupAcceptedCompany` is exported from the route so we can swap it
-// independently of mocking the entire DB layer.
+// The helper lives in a sibling module so we can mock it without faking the
+// whole DB layer (and without needing to mock the route under test).
 const mockLookup =
   vi.fn<
     (
       runId: string,
     ) => Promise<{ slug: string | null; companyId: string | null } | null>
   >();
-vi.mock("./route", async () => {
-  const actual = await vi.importActual<typeof import("./route")>("./route");
-  return {
-    ...actual,
-    lookupAcceptedCompany: (runId: string) => mockLookup(runId),
-  };
-});
+vi.mock("./helpers", () => ({
+  lookupAcceptedCompany: (runId: string) => mockLookup(runId),
+}));
 
 import { GET } from "./route";
 
@@ -162,7 +158,7 @@ describe("GET /api/web/companies/request/[run_id]/status", () => {
     });
     await GET(makeRequest() as never, makeContext("r_abc"));
     expect(mockRevalidatePath).toHaveBeenCalledWith("/[lang]/(app)/explore");
-    expect(mockRevalidateTag).toHaveBeenCalledWith("companies");
+    expect(mockRevalidateTag).toHaveBeenCalledWith("companies", "max");
   });
 
   it("does NOT trigger revalidation when delivered but accept-log row is missing", async () => {

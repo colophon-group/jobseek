@@ -25,8 +25,13 @@
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/core/macro";
-import { AgentPromptCard } from "@/components/search/agent-prompt-card";
+import { useParams } from "next/navigation";
+import {
+  AgentPromptCard,
+  type AgentPromptCardRunStatus,
+} from "@/components/search/agent-prompt-card";
 import type { AgentRunRequestResult } from "@/lib/companies/request-agent-run";
+import { useMurmurRunStatus } from "@/lib/companies/use-murmur-run-status";
 
 const GITHUB_ISSUE_URL = "https://github.com/colophon-group/jobseek/issues";
 
@@ -55,14 +60,31 @@ export function RequestCompanySuccess({
   serverActionState,
 }: RequestCompanySuccessProps) {
   const { _: t } = useLingui();
+  const params = useParams();
+  const lang = (params?.lang as string | undefined) ?? "en";
+
+  // The hook is unconditionally called (rules-of-hooks) but it short-circuits
+  // to `state: "idle"` when the runId is null. The agent-run branch below
+  // projects the result into the card's `runStatus` shape only when we have
+  // a successful run trigger.
+  const runId = agentRun?.kind === "ok" ? agentRun.runId : null;
+  const pollResult = useMurmurRunStatus(runId);
 
   if (agentRun?.kind === "ok") {
+    const runStatus: AgentPromptCardRunStatus = {
+      state: pollResult.state,
+      slug: pollResult.slug,
+      successHref: pollResult.slug
+        ? `/${lang}/company/${pollResult.slug}`
+        : undefined,
+    };
     return (
       <AgentPromptCard
         companyName={companyName}
         runId={agentRun.runId}
         installCommand={agentRun.installCommand}
         promptText={agentRun.promptText}
+        runStatus={runStatus}
         labels={{
           headingPrefix: t(
             msg({
@@ -152,6 +174,30 @@ export function RequestCompanySuccess({
               id: "app.home.request.agent.promptRegionLabel",
               comment: "Aria label for the region containing the agent prompt code block",
               message: "Agent prompt",
+            }),
+          ),
+          pollingLabel: t(
+            msg({
+              id: "app.home.request.agent.pollingLabel",
+              comment:
+                "Footer shown on the agent-prompt success card while we wait for the user's agent to complete the Murmur run",
+              message: "Waiting for your agent to finish...",
+            }),
+          ),
+          companyAddedLabel: t(
+            msg({
+              id: "app.home.request.agent.companyAddedLabel",
+              comment:
+                "Suffix shown on the success link after the Murmur run completes; the link text reads '{company name} {this label}'",
+              message: "added — open it",
+            }),
+          ),
+          givenUpLabel: t(
+            msg({
+              id: "app.home.request.agent.givenUpLabel",
+              comment:
+                "Footer shown on the agent-prompt success card after 30 minutes of polling without seeing the run complete",
+              message: "Still running… refresh later to check progress.",
             }),
           ),
         }}

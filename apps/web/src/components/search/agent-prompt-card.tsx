@@ -31,7 +31,31 @@
  * @see colophon-group/jobseek#2809
  */
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Loader2, CheckCircle2 } from "lucide-react";
+
+/**
+ * Polling-status snapshot the parent passes down so the card can swap in a
+ * "company added" success link once the Murmur run has been webhooked. The
+ * card itself never polls — it stays presentational. The parent wires the
+ * `useMurmurRunStatus` hook (jobseek#2810) and projects its output into this
+ * shape.
+ *
+ *   - `state: "running"`    — show a spinner footer ("Waiting for your agent...").
+ *   - `state: "completed"`  — if `slug` + `successHref` are present, swap the
+ *                             card body for a success link to the company
+ *                             page; otherwise behave like `running` (the
+ *                             webhook has landed but the catalog row hasn't
+ *                             been read yet).
+ *   - `state: "given_up"`   — show a stale-poll footer ("still running...
+ *                             refresh later").
+ */
+export interface AgentPromptCardRunStatus {
+  state: "idle" | "running" | "completed" | "given_up";
+  /** Catalog `company.slug` once the webhook has landed. */
+  slug?: string;
+  /** Pre-built `/{lang}/company/{slug}` URL the success link points to. */
+  successHref?: string;
+}
 
 export interface AgentPromptCardProps {
   /** The exact `company_name` the user submitted (verbatim, no trimming). */
@@ -48,6 +72,11 @@ export interface AgentPromptCardProps {
    * `installCommand`. Mentions the company, website, run id, and `pull_task`.
    */
   promptText: string;
+  /**
+   * Optional polling-status snapshot. When omitted or `state: "idle"`, the
+   * card renders the original two-section layout with no footer.
+   */
+  runStatus?: AgentPromptCardRunStatus;
   /**
    * All visible labels in one bag so the parent can resolve lingui catalog
    * entries up-front. Keeps this component free of any i18n dependency.
@@ -81,6 +110,23 @@ export interface AgentPromptCardProps {
     installRegionLabel: string;
     /** Aria label on the `role="region"` containing the prompt block. */
     promptRegionLabel: string;
+    /**
+     * "Waiting for your agent to finish..." — footer text shown while the
+     * Murmur run is still running. Optional: only used when `runStatus` is
+     * passed in.
+     */
+    pollingLabel?: string;
+    /**
+     * "added — open it" — suffix on the success link rendered when the run
+     * has been webhooked and we have a slug. The link text reads
+     * `{companyName} {companyAddedLabel}`. Optional.
+     */
+    companyAddedLabel?: string;
+    /**
+     * "Still running... refresh later" — fallback footer when the hook gives
+     * up after 30 minutes without seeing `webhook_status: delivered`. Optional.
+     */
+    givenUpLabel?: string;
   };
   /**
    * Optional injection for unit tests so we don't have to stub the global
@@ -99,6 +145,7 @@ export function AgentPromptCard({
   runId,
   installCommand,
   promptText,
+  runStatus,
   labels,
   writeToClipboard,
 }: AgentPromptCardProps) {
@@ -223,6 +270,17 @@ export function AgentPromptCard({
         {toastText}
       </p>
 
+      {/* Polling-status footer (jobseek#2810). Only renders when the parent
+          passes a `runStatus` snapshot. The card stays presentational; the
+          parent owns the actual polling. */}
+      {runStatus && runStatus.state !== "idle" && (
+        <RunStatusFooter
+          companyName={companyName}
+          runStatus={runStatus}
+          labels={labels}
+        />
+      )}
+
       <p className="text-xs opacity-80">
         <span className="opacity-80">{labels.runIdLabel}:</span>{" "}
         <code
@@ -233,6 +291,75 @@ export function AgentPromptCard({
         </code>
       </p>
     </div>
+  );
+}
+
+/**
+ * Renders the per-run footer: spinner while polling, success link when the
+ * webhook has landed and we know the slug, or a "still running" line if the
+ * hook gave up.
+ */
+function RunStatusFooter({
+  companyName,
+  runStatus,
+  labels,
+}: {
+  companyName: string;
+  runStatus: AgentPromptCardRunStatus;
+  labels: AgentPromptCardProps["labels"];
+}) {
+  if (
+    runStatus.state === "completed" &&
+    runStatus.slug &&
+    runStatus.successHref
+  ) {
+    return (
+      <p
+        className="flex items-center gap-2 text-sm font-medium"
+        aria-live="polite"
+      >
+        <CheckCircle2
+          size={16}
+          aria-hidden="true"
+          className="text-success"
+        />
+        <a
+          href={runStatus.successHref}
+          data-testid="agent-prompt-card-success-link"
+          className="underline focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {companyName} {labels.companyAddedLabel ?? ""}
+        </a>
+      </p>
+    );
+  }
+
+  if (runStatus.state === "given_up") {
+    return (
+      <p
+        className="flex items-center gap-2 text-xs opacity-80"
+        data-testid="agent-prompt-card-given-up"
+        aria-live="polite"
+      >
+        {labels.givenUpLabel ?? ""}
+      </p>
+    );
+  }
+
+  // running, OR completed-without-slug -> still show the spinner.
+  return (
+    <p
+      className="flex items-center gap-2 text-xs opacity-80"
+      data-testid="agent-prompt-card-polling"
+      aria-live="polite"
+    >
+      <Loader2
+        size={14}
+        aria-hidden="true"
+        className="animate-spin"
+      />
+      <span>{labels.pollingLabel ?? ""}</span>
+    </p>
   );
 }
 
