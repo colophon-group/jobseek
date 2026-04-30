@@ -332,6 +332,13 @@ subtasks:
             board_url:      { type: string, format: uri, pattern: "^https://" }
             monitor_type:   { type: string, minLength: 1 }
             monitor_config: { type: object }
+            # Optional explicit sample URL — the agent picks one from the
+            # prior `run monitor` response. Falls back to claim-kv state
+            # when absent (see apps/crawler/src/workspace/lib/probe.py).
+            sample_job_url:
+              type: string
+              format: uri
+              pattern: "^https://"
       - name: select scraper
         endpoint: POST https://jobseek.colophon-group.org/api/murmur/select/scraper
         input_schema:
