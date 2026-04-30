@@ -119,7 +119,15 @@ describe("AgentPromptCard", () => {
         labels={labels}
       />,
     );
-    expect(screen.getByText(/<token-from-jobseek-team>/)).toBeTruthy();
+    // The literal placeholder appears in BOTH the install command (the
+    // verbatim shell line) and the caveat sentence. Match the caveat by its
+    // full sentence so we know we found the user-facing prose, not just the
+    // shell echo.
+    expect(
+      screen.getByText(
+        /You'll need a token from the jobseek team .* replace <token-from-jobseek-team> before running the install command\./,
+      ),
+    ).toBeTruthy();
   });
 
   it("renders the run_id inside a select-all element so the user can copy it", () => {

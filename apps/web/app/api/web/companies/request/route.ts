@@ -208,16 +208,45 @@ export interface AgentPrompt {
 }
 
 /**
+ * Literal MCP install one-liner the UI shows in step 1 of the agent card.
+ *
+ * Construction notes:
+ *   - The bearer token is the LITERAL placeholder `<token-from-jobseek-team>`.
+ *     We never emit a real production token here. Per-user token issuance is
+ *     murmur#77 (post-demo).
+ *   - The transport, scope, and server URL are fixed for the
+ *     murmur.colophon-group.org deployment. If the deployment ever moves we
+ *     update this constant; we deliberately do NOT read the URL from
+ *     `process.env` so that a misconfigured deploy can't accidentally point
+ *     users at a stale or local Murmur.
+ */
+const INSTALL_COMMAND =
+  'claude mcp add --transport http --scope user murmur https://murmur.colophon-group.org/mcp --header "Authorization: Bearer <token-from-jobseek-team>"';
+
+/**
  * Build the structured agent prompt the UI shows next to `run_id`. See
  * {@link AgentPrompt} for the field contract. Mirrors the exact phrasing
  * called out in jobseek#2801 §Scope.5 + jobseek#2809 §Scope.1.
+ *
+ * The `install_command` is a constant — it does not depend on the run inputs
+ * because the MCP server registration is per-user, not per-run. The
+ * `prompt_text` is the per-run natural-language prompt the user pastes into
+ * Claude Code after they've registered the MCP server once.
  */
-export function buildAgentPrompt(_input: {
+export function buildAgentPrompt(input: {
   company_name: string;
   website: string;
   run_id: string;
 }): AgentPrompt {
-  throw new Error("not implemented");
+  const prompt_text =
+    `Add ${input.company_name} (${input.website}) to jobseek. ` +
+    `The Murmur run id is ${input.run_id}. ` +
+    `Call pull_task({run_id: "${input.run_id}"}) repeatedly until it returns null ` +
+    `and complete each subtask using the instructions Murmur returns.`;
+  return {
+    install_command: INSTALL_COMMAND,
+    prompt_text,
+  };
 }
 
 /**

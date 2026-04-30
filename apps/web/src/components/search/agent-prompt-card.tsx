@@ -92,12 +92,147 @@ export interface AgentPromptCardProps {
 /** Duration of the "Copied" toast confirmation in milliseconds. */
 const COPIED_TOAST_MS = 2_000;
 
-export function AgentPromptCard(_props: AgentPromptCardProps) {
-  // Suppress unused warnings until the implementation lands; the props
-  // contract is what step 4 (interfaces first) defines. Step 6 implements.
-  void useState;
-  void Copy;
-  void Check;
-  void COPIED_TOAST_MS;
-  throw new Error("not implemented");
+type CopyStatus = "idle" | "copied" | "failed";
+
+export function AgentPromptCard({
+  companyName,
+  runId,
+  installCommand,
+  promptText,
+  labels,
+  writeToClipboard,
+}: AgentPromptCardProps) {
+  const [installStatus, setInstallStatus] = useState<CopyStatus>("idle");
+  const [promptStatus, setPromptStatus] = useState<CopyStatus>("idle");
+  // Tracks which button most recently changed status, so the shared
+  // aria-live region can announce only the latest event.
+  const [lastTouched, setLastTouched] = useState<"install" | "prompt" | null>(
+    null,
+  );
+
+  function defaultWriter(text: string): Promise<void> {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      return Promise.reject(new Error("clipboard unavailable"));
+    }
+    return navigator.clipboard.writeText(text);
+  }
+
+  async function copyBlock(
+    text: string,
+    setStatus: (s: CopyStatus) => void,
+    which: "install" | "prompt",
+  ) {
+    const writer = writeToClipboard ?? defaultWriter;
+    setLastTouched(which);
+    try {
+      await writer(text);
+      setStatus("copied");
+      window.setTimeout(() => setStatus("idle"), COPIED_TOAST_MS);
+    } catch {
+      setStatus("failed");
+      window.setTimeout(() => setStatus("idle"), COPIED_TOAST_MS);
+    }
+  }
+
+  const toastStatus =
+    lastTouched === "install"
+      ? installStatus
+      : lastTouched === "prompt"
+        ? promptStatus
+        : "idle";
+  const toastText =
+    toastStatus === "copied"
+      ? labels.copied
+      : toastStatus === "failed"
+        ? labels.copyFailed
+        : "";
+
+  return (
+    <div
+      role="status"
+      className="mb-4 flex flex-col gap-3 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success"
+    >
+      <h3 className="text-base font-semibold">
+        {labels.headingPrefix} {companyName}
+      </h3>
+      <p className="text-sm opacity-90">{labels.body}</p>
+
+      {/* Section 1: Install MCP */}
+      <div className="flex flex-col gap-1.5">
+        <h4 className="text-sm font-semibold">{labels.installHeading}</h4>
+        <section
+          role="region"
+          aria-label={labels.installRegionLabel}
+          className="relative"
+        >
+          <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md border border-success-border bg-background px-3 py-2 pr-12 text-xs leading-relaxed text-foreground">
+            <code>{installCommand}</code>
+          </pre>
+          <button
+            type="button"
+            onClick={() =>
+              copyBlock(installCommand, setInstallStatus, "install")
+            }
+            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md border border-divider bg-surface px-2 py-1 text-xs text-foreground transition-colors hover:bg-border-soft focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+            aria-label={labels.copyInstallButton}
+          >
+            {installStatus === "copied" ? (
+              <Check size={12} aria-hidden="true" />
+            ) : (
+              <Copy size={12} aria-hidden="true" />
+            )}
+            <span>{labels.copyInstallButton}</span>
+          </button>
+        </section>
+        <p className="text-xs opacity-80">{labels.tokenCaveat}</p>
+      </div>
+
+      {/* Section 2: Run the prompt */}
+      <div className="flex flex-col gap-1.5">
+        <h4 className="text-sm font-semibold">{labels.runHeading}</h4>
+        <section
+          role="region"
+          aria-label={labels.promptRegionLabel}
+          className="relative"
+        >
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md border border-success-border bg-background px-3 py-2 pr-12 text-xs leading-relaxed text-foreground">
+            <code>{promptText}</code>
+          </pre>
+          <button
+            type="button"
+            onClick={() => copyBlock(promptText, setPromptStatus, "prompt")}
+            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md border border-divider bg-surface px-2 py-1 text-xs text-foreground transition-colors hover:bg-border-soft focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+            aria-label={labels.copyPromptButton}
+          >
+            {promptStatus === "copied" ? (
+              <Check size={12} aria-hidden="true" />
+            ) : (
+              <Copy size={12} aria-hidden="true" />
+            )}
+            <span>{labels.copyPromptButton}</span>
+          </button>
+        </section>
+      </div>
+
+      {/* Shared aria-live region for the most recent copy event. */}
+      <p
+        aria-live="polite"
+        className="min-h-[1em] text-xs"
+        data-testid="agent-prompt-card-toast"
+      >
+        {toastText}
+      </p>
+
+      <p className="text-xs opacity-80">
+        <span className="opacity-80">{labels.runIdLabel}:</span>{" "}
+        <code
+          data-testid="agent-prompt-card-run-id"
+          className="select-all rounded bg-background px-1.5 py-0.5 font-mono text-foreground"
+        >
+          {runId}
+        </code>
+      </p>
+    </div>
+  );
 }
+
