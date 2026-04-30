@@ -35,8 +35,15 @@
  *         bad_response   -> 502
  *
  * Response envelope:
- *   200: { ok: true,  data: { run_id, agent_prompt } }
+ *   200: { ok: true,  data: { run_id, agent_prompt: { install_command, prompt_text } } }
  *   4xx/5xx: { ok: false, errors: string[] }   -- error codes only, never values
+ *
+ * The `agent_prompt` is structured rather than a single string so the UI can
+ * render the MCP install command and the user-facing prompt as two separately
+ * copyable blocks (jobseek#2809). The `install_command` carries the LITERAL
+ * placeholder `<token-from-jobseek-team>` instead of a real bearer token —
+ * production tokens are handed out at demo time, and per-user issuance lives
+ * in murmur#77.
  *
  * NEVER LOGS THE TOKEN. The `MURMUR_TOKEN` only ever leaves `start-run.ts`
  * via the outgoing `Authorization` header. Error envelopes from this route
@@ -45,6 +52,7 @@
  *
  * @see colophon-group/jobseek#2801
  * @see colophon-group/jobseek#2803  (KV-backed rate limit, captcha, post-demo)
+ * @see colophon-group/jobseek#2809  (MCP install instructions in agent_prompt)
  * @see Murmur DESIGN.md §3.4 (Publisher API), §4.2 (Run trigger)
  */
 import { NextResponse } from "next/server";
@@ -176,21 +184,40 @@ export function consumeRateLimit(
 }
 
 /**
- * Build the agent prompt the UI shows next to `run_id`. Pre-formatted so
- * downstream consumers don't have to reconstruct the wording. Mirrors the
- * exact phrasing called out in jobseek#2801 §Scope.5.
+ * Structured agent prompt the UI renders as two copyable blocks.
+ *
+ *   - `install_command` is the one-liner the user runs in their terminal to
+ *     register the Murmur MCP server with their Claude Code. The bearer token
+ *     in this string is the LITERAL placeholder `<token-from-jobseek-team>` —
+ *     production tokens are handed out at demo time and per-user issuance is
+ *     murmur#77 (post-demo).
+ *   - `prompt_text` is the natural-language prompt the user pastes into Claude
+ *     Code AFTER installing the MCP server. It mentions the company, website,
+ *     and run id, and instructs the agent to drain `pull_task` until empty.
+ *
+ * Pre-formatted server-side so downstream consumers (the API client + the
+ * `AgentPromptCard`) don't have to reconstruct the wording.
+ *
+ * @see colophon-group/jobseek#2809
  */
-export function buildAgentPrompt(input: {
+export interface AgentPrompt {
+  /** `claude mcp add ...` one-liner with `<token-from-jobseek-team>` placeholder. */
+  install_command: string;
+  /** Natural-language prompt mentioning company, website, run id, and `pull_task`. */
+  prompt_text: string;
+}
+
+/**
+ * Build the structured agent prompt the UI shows next to `run_id`. See
+ * {@link AgentPrompt} for the field contract. Mirrors the exact phrasing
+ * called out in jobseek#2801 §Scope.5 + jobseek#2809 §Scope.1.
+ */
+export function buildAgentPrompt(_input: {
   company_name: string;
   website: string;
   run_id: string;
-}): string {
-  return (
-    `Add ${input.company_name} (${input.website}) to jobseek. ` +
-    `The Murmur run id is ${input.run_id}. ` +
-    `Use pull_task({run_id: '${input.run_id}'}) until it returns null ` +
-    `and complete each subtask using the instructions Murmur returns.`
-  );
+}): AgentPrompt {
+  throw new Error("not implemented");
 }
 
 /**
