@@ -4,7 +4,7 @@
  * Returns a discriminated union so callers can route each response state to
  * the right UI branch without re-parsing the envelope shape:
  *
- *   - `ok`            -> 200 { ok: true,  data: { run_id, agent_prompt } }
+ *   - `ok`            -> 200 { ok: true,  data: { run_id, agent_prompt: { install_command, prompt_text } } }
  *   - `disabled`      -> 503 errors:["disabled"]   (feature flag off)
  *   - `rate_limited`  -> 429 errors:["rate_limited"]
  *   - `validation`    -> 400 errors:["validation:..."]
@@ -14,11 +14,24 @@
  * NEVER throws. All failures are reflected in the return shape so calling
  * components can render UI deterministically.
  *
+ * The `agent_prompt` field was widened from a single string to
+ * `{install_command, prompt_text}` in jobseek#2809 so the card can render the
+ * MCP install one-liner and the natural-language prompt as two separately
+ * copyable blocks.
+ *
  * @see colophon-group/jobseek#2801 (endpoint contract)
  * @see colophon-group/jobseek#2802 (UI consumer)
+ * @see colophon-group/jobseek#2809 (MCP install instructions)
  */
 export type AgentRunRequestResult =
-  | { kind: "ok"; runId: string; agentPrompt: string }
+  | {
+      kind: "ok";
+      runId: string;
+      /** `claude mcp add ...` one-liner with `<token-from-jobseek-team>` placeholder. */
+      installCommand: string;
+      /** Natural-language prompt mentioning company, website, run id, and `pull_task`. */
+      promptText: string;
+    }
   | { kind: "disabled" }
   | { kind: "rate_limited" }
   | { kind: "validation"; codes: string[] }
@@ -37,6 +50,22 @@ const ENDPOINT = "/api/web/companies/request";
 interface SuccessEnvelope {
   ok: true;
   data?: { run_id?: unknown; agent_prompt?: unknown };
+}
+
+interface AgentPromptShape {
+  install_command: string;
+  prompt_text: string;
+}
+
+function isAgentPromptShape(value: unknown): value is AgentPromptShape {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as { install_command?: unknown; prompt_text?: unknown };
+  return (
+    typeof v.install_command === "string" &&
+    v.install_command.length > 0 &&
+    typeof v.prompt_text === "string" &&
+    v.prompt_text.length > 0
+  );
 }
 
 interface ErrorEnvelope {
@@ -97,8 +126,17 @@ export async function requestAgentRun(
   if (response.status === 200 && body && body.ok === true) {
     const runId = body.data?.run_id;
     const agentPrompt = body.data?.agent_prompt;
-    if (typeof runId === "string" && typeof agentPrompt === "string" && runId.length > 0) {
-      return { kind: "ok", runId, agentPrompt };
+    if (
+      typeof runId === "string" &&
+      runId.length > 0 &&
+      isAgentPromptShape(agentPrompt)
+    ) {
+      return {
+        kind: "ok",
+        runId,
+        installCommand: agentPrompt.install_command,
+        promptText: agentPrompt.prompt_text,
+      };
     }
     return { kind: "error" };
   }

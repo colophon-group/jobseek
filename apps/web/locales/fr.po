@@ -366,21 +366,33 @@ msgstr "1 candidature le {date}"
 msgid "home.pricing.free.f2"
 msgstr "Suivi des candidatures"
 
+#. Heading for the 'install the Murmur MCP server' step on the agent-prompt success card
+#. js-lingui-explicit-id
+#: src/components/search/request-company-success.tsx:83
+msgid "app.home.request.agent.install_heading"
+msgstr ""
+
+#. Heading for the 'paste this into Claude Code' step on the agent-prompt success card
+#. js-lingui-explicit-id
+#: src/components/search/request-company-success.tsx:91
+msgid "app.home.request.agent.run_heading"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:59
 msgid "faq.a.whatIsWatchlist"
 msgstr "Une liste de suivi est une recherche enregistrée avec filtrage optionnel par entreprise. Choisissez les entreprises qui vous intéressent, définissez vos filtres (poste, lieu, séniorité, salaire) et obtenez un flux en direct des offres correspondantes. Vous pouvez partager vos listes publiquement ou les garder privées."
 
-#. About page eyebrow
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/about/about-content.tsx:24
-msgid "about.eyebrow"
-msgstr "À propos"
-
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/page.tsx:18
 #: app/[lang]/(public)/about/page.tsx:40
 msgid "about.meta.title"
+msgstr "À propos"
+
+#. About page eyebrow
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:24
+msgid "about.eyebrow"
 msgstr "À propos"
 
 #. Nav link: About
@@ -475,7 +487,7 @@ msgstr "Ajouter un lieu..."
 
 #. Aria label for the region containing the agent prompt code block
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:110
+#: src/components/search/request-company-success.tsx:151
 msgid "app.home.request.agent.promptRegionLabel"
 msgstr ""
 
@@ -492,16 +504,16 @@ msgstr "Toutes les données sont chiffrées en transit et au repos."
 msgid "watchlists.companyModal.allIndustries"
 msgstr "Tous les secteurs"
 
-#. All languages option
-#. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:234
-msgid "settings.general.jobLanguages.all"
-msgstr "Toutes les langues"
-
 #. Title for the all-languages modal in settings
 #. js-lingui-explicit-id
 #: src/components/settings/JobLanguageModal.tsx:56
 msgid "settings.jobLanguages.modal.title"
+msgstr "Toutes les langues"
+
+#. All languages option
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:234
+msgid "settings.general.jobLanguages.all"
 msgstr "Toutes les langues"
 
 #. Title for the all-locations modal on company page
@@ -604,6 +616,12 @@ msgstr "candidatures durant l'année écoulée"
 msgid "myJobs.group.applied"
 msgstr "Postulé"
 
+#. Application tracker status: applied
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:462
+msgid "search.tracker.applied"
+msgstr "Postulé"
+
 #. Applied status badge label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/status-badge.tsx:20
@@ -614,12 +632,6 @@ msgstr "Postulé"
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:42
 msgid "myJobs.funnel.applied"
-msgstr "Postulé"
-
-#. Application tracker status: applied
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:462
-msgid "search.tracker.applied"
 msgstr "Postulé"
 
 #. Status option in dropdown: applied
@@ -798,17 +810,17 @@ msgstr "Modifie ton mot de passe via un lien e-mail sécurisé."
 msgid "myJobs.detail.changePlaceholder"
 msgstr "Changer…"
 
-#. Heading after reset email is sent
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx:58
-msgid "auth.forgotPassword.sent.title"
-msgstr "Vérifiez votre e-mail"
-
 #. Heading after sign-up telling user to check email
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/check-email/page.tsx:80
 msgid "auth.verify.checkEmail.title"
 msgstr "Vérifie ton e-mail"
+
+#. Heading after reset email is sent
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:58
+msgid "auth.forgotPassword.sent.title"
+msgstr "Vérifiez votre e-mail"
 
 #. Checking username availability
 #. js-lingui-explicit-id
@@ -1018,16 +1030,16 @@ msgstr "Comptes connectés"
 msgid "license.contact.title"
 msgstr "Contact"
 
-#. TOC: Contact
-#. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:25
-msgid "license.toc.contact"
-msgstr "Contact"
-
 #. Footer link to contact email
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx:41
 msgid "common.footer.contact"
+msgstr "Contact"
+
+#. TOC: Contact
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:25
+msgid "license.toc.contact"
 msgstr "Contact"
 
 #. Table of contents heading
@@ -1081,7 +1093,7 @@ msgstr "Les cookies servent uniquement à la session — pas de pub, pas de trac
 
 #. Toast shown briefly after the agent prompt is copied
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:89
+#: src/components/search/request-company-success.tsx:123
 msgid "app.home.request.agent.copied"
 msgstr ""
 
@@ -1091,15 +1103,21 @@ msgstr ""
 msgid "license.code.r1"
 msgstr "Copie et modifie le code pour tout usage, y compris des produits commerciaux."
 
+#. Accessible label for the button that copies the MCP install one-liner
+#. js-lingui-explicit-id
+#: src/components/search/request-company-success.tsx:108
+msgid "app.home.request.agent.copyInstallButton"
+msgstr ""
+
 #. Toast shown when copying the agent prompt to the clipboard failed
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:96
+#: src/components/search/request-company-success.tsx:130
 msgid "app.home.request.agent.copyFailed"
 msgstr ""
 
 #. Label for the copy-prompt button on the agent-prompt success card
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:82
+#: src/components/search/request-company-success.tsx:116
 msgid "app.home.request.agent.copyButton"
 msgstr ""
 
@@ -1983,16 +2001,16 @@ msgstr "Fini la routine des 50 onglets"
 msgid "myJobs.group.interviewing"
 msgstr "En entretien"
 
-#. Interviewing status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:21
-msgid "myJobs.status.interviewing"
-msgstr "En entretien"
-
 #. Application tracker status: interviewing
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:463
 msgid "search.tracker.interviewing"
+msgstr "En entretien"
+
+#. Interviewing status badge label
+#. js-lingui-explicit-id
+#: src/components/my-jobs/status-badge.tsx:21
+msgid "myJobs.status.interviewing"
 msgstr "En entretien"
 
 #. Status option in dropdown: interviewing
@@ -2341,16 +2359,16 @@ msgstr "Lieu"
 msgid "search.advanced.location"
 msgstr "Lieu"
 
-#. Section header for location suggestions in search bar
-#. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:708
-msgid "search.bar.locations"
-msgstr "Lieux"
-
 #. Locations heading in job detail
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:325
 msgid "search.detail.locations"
+msgstr "Lieux"
+
+#. Section header for location suggestions in search bar
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx:708
+msgid "search.bar.locations"
 msgstr "Lieux"
 
 #. Login button label
@@ -2439,6 +2457,12 @@ msgstr "Max"
 #: src/components/my-jobs/activity-heatmap.tsx:61
 msgid "myJobs.heatmap.month.may"
 msgstr "Mai"
+
+#. Aria label for the region containing the MCP install one-liner
+#. js-lingui-explicit-id
+#: src/components/search/request-company-success.tsx:144
+msgid "app.home.request.agent.installRegionLabel"
+msgstr ""
 
 #. Minimum salary label
 #. js-lingui-explicit-id
@@ -2711,21 +2735,21 @@ msgstr "Non. Le suivi des candidatures n'a pas de limite — enregistrez autant 
 msgid "faq.a.dataPrivacy"
 msgstr "Non. Nous ne vendons, ne louons ni ne partageons vos données à des fins marketing. Les cookies sont uniquement de session, sans publicité ni tracking. Vous pouvez supprimer votre compte et toutes les données seront effacées sous 30 jours."
 
-#. Sankey funnel node: not applied
-#. js-lingui-explicit-id
-#: src/components/my-jobs/sankey-funnel.tsx:44
-msgid "myJobs.funnel.notApplied"
-msgstr "Non postulé"
-
 #. Application tracker status: not applied
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:461
 msgid "search.tracker.notApplied"
 msgstr "Non postulé"
 
+#. Sankey funnel node: not applied
+#. js-lingui-explicit-id
+#: src/components/my-jobs/sankey-funnel.tsx:44
+msgid "myJobs.funnel.notApplied"
+msgstr "Non postulé"
+
 #. Warning shown when the request was saved in DB but GitHub issue creation failed
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:177
+#: src/components/search/request-company-success.tsx:218
 msgid "app.home.request.issueWarning"
 msgstr "Remarque : Nous n'avons pas pu créer un ticket de suivi, mais votre demande a été enregistrée."
 
@@ -2747,16 +2771,16 @@ msgstr "Métier"
 msgid "myJobs.heatmap.month.oct"
 msgstr "Oct"
 
-#. Offered status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:22
-msgid "myJobs.status.offered"
-msgstr "Offre"
-
 #. Application tracker status: offer
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:464
 msgid "search.tracker.offer"
+msgstr "Offre"
+
+#. Offered status badge label
+#. js-lingui-explicit-id
+#: src/components/my-jobs/status-badge.tsx:22
+msgid "myJobs.status.offered"
 msgstr "Offre"
 
 #. Status group heading: offered
@@ -3182,18 +3206,18 @@ msgstr "Domaine public"
 msgid "license.contactCta"
 msgstr "Des questions sur les licences ou l'utilisation commerciale ? Écris-nous."
 
-#. Privacy contact call to action
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:61
-#: src/components/PrivacyPolicyContent.tsx:66
-msgid "privacy.contact.description"
-msgstr "Des questions ? Écris-nous."
-
 #. Terms contact call to action
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/terms/page.tsx:59
 #: src/components/TermsContent.tsx:54
 msgid "terms.contact.description"
+msgstr "Des questions ? Écris-nous."
+
+#. Privacy contact call to action
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/privacy-policy/page.tsx:61
+#: src/components/PrivacyPolicyContent.tsx:66
+msgid "privacy.contact.description"
 msgstr "Des questions ? Écris-nous."
 
 #. Link to full CC license
@@ -3262,6 +3286,12 @@ msgstr "Région"
 msgid "myJobs.group.rejected"
 msgstr "Refusé"
 
+#. Application tracker status: rejected
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:465
+msgid "search.tracker.rejected"
+msgstr "Refusé"
+
 #. Rejected status badge label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/status-badge.tsx:23
@@ -3272,12 +3302,6 @@ msgstr "Refusé"
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:45
 msgid "myJobs.funnel.rejected"
-msgstr "Refusé"
-
-#. Application tracker status: rejected
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:465
-msgid "search.tracker.rejected"
 msgstr "Refusé"
 
 #. Status option in dropdown: rejected
@@ -3325,13 +3349,13 @@ msgstr "Demander n'importe quelle entreprise"
 
 #. Success message after submitting a company request, with link to GitHub issue for tracking
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:146
+#: src/components/search/request-company-success.tsx:187
 msgid "app.home.request.success.withIssue"
 msgstr "Demande soumise ! Suivez la progression ici :"
 
 #. Success message when request was saved but GitHub issue could not be created
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:154
+#: src/components/search/request-company-success.tsx:195
 msgid "app.home.request.success.noIssue"
 msgstr "Demande soumise ! Nous commencerons bientôt à suivre cette entreprise."
 
@@ -3411,7 +3435,7 @@ msgstr "Tour"
 
 #. Label preceding the Murmur run id on the agent-prompt success card
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:103
+#: src/components/search/request-company-success.tsx:137
 msgid "app.home.request.agent.runIdLabel"
 msgstr ""
 
@@ -3539,16 +3563,16 @@ msgstr "Suis les postes, reçois des notifications quand les entreprises publien
 msgid "company.page.searchPlaceholder"
 msgstr "Rechercher chez {0}..."
 
-#. Placeholder for company search in watchlist creation
-#. js-lingui-explicit-id
-#: src/components/watchlist/company-selector.tsx:91
-msgid "watchlists.companySelector.placeholder"
-msgstr "Rechercher des entreprises..."
-
 #. Placeholder for company search in modal
 #. js-lingui-explicit-id
 #: src/components/watchlist/company-search-modal.tsx:217
 msgid "watchlists.companyModal.searchPlaceholder"
+msgstr "Rechercher des entreprises..."
+
+#. Placeholder for company search in watchlist creation
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-selector.tsx:91
+msgid "watchlists.companySelector.placeholder"
 msgstr "Rechercher des entreprises..."
 
 #. Option to search by title keyword in dropdown
@@ -3679,16 +3703,16 @@ msgstr "Envoyer le lien"
 msgid "settings.account.password.send"
 msgstr "Envoyer le lien"
 
-#. Send reset link button while loading
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx:103
-msgid "auth.forgotPassword.button.loading"
-msgstr "Envoi en cours..."
-
 #. Resend button while sending
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/check-email/page.tsx:96
 msgid "auth.verify.resending"
+msgstr "Envoi en cours..."
+
+#. Send reset link button while loading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:103
+msgid "auth.forgotPassword.button.loading"
 msgstr "Envoi en cours..."
 
 #. Reset password button while loading
@@ -4043,16 +4067,16 @@ msgstr "System Design"
 msgid "myJobs.interviewType.technical"
 msgstr "Technique"
 
-#. Section header for technology suggestions in search bar
-#. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:673
-msgid "search.bar.technologies"
-msgstr "Technologies"
-
 #. Technologies sub-heading in details section
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:410
 msgid "search.detail.technologies"
+msgstr "Technologies"
+
+#. Section header for technology suggestions in search bar
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx:673
+msgid "search.bar.technologies"
 msgstr "Technologies"
 
 #. Add technology filter
@@ -4148,16 +4172,16 @@ msgstr "Le service est fourni tel quel, sans garantie."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:51
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
+#: app/[lang]/(public)/terms/page.tsx:51
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
 msgstr "En bref"
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:51
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
+#: app/[lang]/(public)/privacy-policy/page.tsx:51
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
 msgstr "En bref"
 
 #. Theme settings section heading
@@ -4545,7 +4569,7 @@ msgstr ""
 
 #. Heading prefix on the agent-prompt success card; followed by the company name
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:67
+#: src/components/search/request-company-success.tsx:68
 msgid "app.home.request.agent.headingPrefix"
 msgstr ""
 
@@ -4645,7 +4669,7 @@ msgstr "Tu peux remixer ou transformer les données à des fins de recherche ou 
 
 #. Body of the agent-prompt success card
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:74
+#: src/components/search/request-company-success.tsx:75
 msgid "app.home.request.agent.body"
 msgstr ""
 
@@ -4676,9 +4700,15 @@ msgstr "Tu dois avoir au moins 16 ans pour utiliser Job Seek."
 msgid "settings.account.password.setDescription"
 msgstr "Tu t'es connecté avec un compte social. Définis un mot de passe pour permettre les changements d'e-mail et renforcer la sécurité."
 
+#. Footnote on the agent-prompt success card explaining that the user must replace the literal placeholder <token-from-jobseek-team> with a token handed out by the jobseek team before running the install command
+#. js-lingui-explicit-id
+#: src/components/search/request-company-success.tsx:99
+msgid "app.home.request.agent.token_caveat"
+msgstr ""
+
 #. Message shown when the user has hit the per-hour limit on triggering Murmur company-add runs
 #. js-lingui-explicit-id
-#: src/components/search/request-company-success.tsx:127
+#: src/components/search/request-company-success.tsx:168
 msgid "app.home.request.agent.rateLimited"
 msgstr ""
 

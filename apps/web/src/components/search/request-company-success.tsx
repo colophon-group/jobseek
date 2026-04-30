@@ -61,7 +61,8 @@ export function RequestCompanySuccess({
       <AgentPromptCard
         companyName={companyName}
         runId={agentRun.runId}
-        agentPrompt={agentRun.agentPrompt}
+        installCommand={agentRun.installCommand}
+        promptText={agentRun.promptText}
         labels={{
           headingPrefix: t(
             msg({
@@ -78,7 +79,40 @@ export function RequestCompanySuccess({
                 "You can speed this up by asking your AI agent to complete it via Murmur.",
             }),
           ),
-          copyButton: t(
+          installHeading: t(
+            msg({
+              id: "app.home.request.agent.install_heading",
+              comment:
+                "Heading for the 'install the Murmur MCP server' step on the agent-prompt success card",
+              message: "1. Install MCP",
+            }),
+          ),
+          runHeading: t(
+            msg({
+              id: "app.home.request.agent.run_heading",
+              comment:
+                "Heading for the 'paste this into Claude Code' step on the agent-prompt success card",
+              message: "2. Run the prompt",
+            }),
+          ),
+          tokenCaveat: t(
+            msg({
+              id: "app.home.request.agent.token_caveat",
+              comment:
+                "Footnote on the agent-prompt success card explaining that the user must replace the literal placeholder <token-from-jobseek-team> with a token handed out by the jobseek team before running the install command",
+              message:
+                "You'll need a token from the jobseek team — replace <token-from-jobseek-team> before running the install command.",
+            }),
+          ),
+          copyInstallButton: t(
+            msg({
+              id: "app.home.request.agent.copyInstallButton",
+              comment:
+                "Accessible label for the button that copies the MCP install one-liner",
+              message: "Copy command",
+            }),
+          ),
+          copyPromptButton: t(
             msg({
               id: "app.home.request.agent.copyButton",
               comment: "Label for the copy-prompt button on the agent-prompt success card",
@@ -104,6 +138,13 @@ export function RequestCompanySuccess({
               id: "app.home.request.agent.runIdLabel",
               comment: "Label preceding the Murmur run id on the agent-prompt success card",
               message: "Run id",
+            }),
+          ),
+          installRegionLabel: t(
+            msg({
+              id: "app.home.request.agent.installRegionLabel",
+              comment: "Aria label for the region containing the MCP install one-liner",
+              message: "MCP install command",
             }),
           ),
           promptRegionLabel: t(

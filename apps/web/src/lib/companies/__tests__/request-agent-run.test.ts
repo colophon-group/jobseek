@@ -24,7 +24,35 @@ afterEach(() => {
 });
 
 describe("requestAgentRun", () => {
-  it("returns ok with run_id and agent_prompt on 200", async () => {
+  it("returns ok with run_id, installCommand, and promptText on 200", async () => {
+    mockFetch(async () =>
+      jsonResponse(200, {
+        ok: true,
+        data: {
+          run_id: "run_abc",
+          agent_prompt: {
+            install_command: "claude mcp add --transport http ...",
+            prompt_text: "do the thing",
+          },
+        },
+      }),
+    );
+
+    const result = await requestAgentRun({
+      companyName: "Acme",
+      website: "https://acme.example",
+    });
+
+    expect(result).toEqual({
+      kind: "ok",
+      runId: "run_abc",
+      installCommand: "claude mcp add --transport http ...",
+      promptText: "do the thing",
+    });
+  });
+
+  it("returns error on 200 when agent_prompt is still the old single-string shape", async () => {
+    // Defends against accidental rollback to the pre-#2809 contract.
     mockFetch(async () =>
       jsonResponse(200, {
         ok: true,
@@ -37,16 +65,18 @@ describe("requestAgentRun", () => {
       website: "https://acme.example",
     });
 
-    expect(result).toEqual({
-      kind: "ok",
-      runId: "run_abc",
-      agentPrompt: "do the thing",
-    });
+    expect(result).toEqual({ kind: "error" });
   });
 
   it("posts JSON body to the documented endpoint", async () => {
     const fetchMock = vi.fn(async () =>
-      jsonResponse(200, { ok: true, data: { run_id: "r", agent_prompt: "p" } }),
+      jsonResponse(200, {
+        ok: true,
+        data: {
+          run_id: "r",
+          agent_prompt: { install_command: "i", prompt_text: "p" },
+        },
+      }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
