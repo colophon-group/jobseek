@@ -56,7 +56,9 @@ describe("requestAgentRun", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const call = fetchMock.mock.calls[0];
+    if (!call) throw new Error("fetch was not called");
+    const [url, init] = call as unknown as [string, RequestInit];
     expect(url).toBe(ENDPOINT);
     expect(init.method).toBe("POST");
     expect(

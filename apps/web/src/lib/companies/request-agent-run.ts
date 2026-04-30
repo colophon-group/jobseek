@@ -32,13 +32,88 @@ export interface AgentRunRequestInput {
   website: string;
 }
 
+const ENDPOINT = "/api/web/companies/request";
+
+interface SuccessEnvelope {
+  ok: true;
+  data?: { run_id?: unknown; agent_prompt?: unknown };
+}
+
+interface ErrorEnvelope {
+  ok: false;
+  errors?: unknown;
+}
+
+type Envelope = SuccessEnvelope | ErrorEnvelope;
+
+function isErrorEnvelope(body: unknown): body is ErrorEnvelope {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "ok" in body &&
+    (body as { ok: unknown }).ok === false
+  );
+}
+
+function extractErrorCodes(body: unknown): string[] {
+  if (!isErrorEnvelope(body)) return [];
+  const errs = body.errors;
+  if (!Array.isArray(errs)) return [];
+  return errs.filter((e): e is string => typeof e === "string");
+}
+
 /**
  * Fire the request. The endpoint is same-origin; no CSRF token is needed
  * because better-auth cookies are SameSite=Lax and the route also does its
  * own session check.
  */
 export async function requestAgentRun(
-  _input: AgentRunRequestInput,
+  input: AgentRunRequestInput,
 ): Promise<AgentRunRequestResult> {
-  throw new Error("not implemented");
+  let response: Response;
+  try {
+    response = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        company_name: input.companyName,
+        website: input.website,
+      }),
+      // Important: same-origin so cookies are sent with the request. This is
+      // the default for same-origin URLs but we make it explicit.
+      credentials: "same-origin",
+    });
+  } catch {
+    return { kind: "error" };
+  }
+
+  let body: Envelope | undefined;
+  try {
+    body = (await response.json()) as Envelope;
+  } catch {
+    return { kind: "error" };
+  }
+
+  if (response.status === 200 && body && body.ok === true) {
+    const runId = body.data?.run_id;
+    const agentPrompt = body.data?.agent_prompt;
+    if (typeof runId === "string" && typeof agentPrompt === "string" && runId.length > 0) {
+      return { kind: "ok", runId, agentPrompt };
+    }
+    return { kind: "error" };
+  }
+
+  if (response.status === 401) return { kind: "unauthorized" };
+  if (response.status === 429) return { kind: "rate_limited" };
+  if (response.status === 503) {
+    // The endpoint also returns 503 for `upstream:config_missing`. Treat both
+    // as "disabled" -> fall back to the GH-issue UI; this is what the demo
+    // wants when Murmur is not reachable for any reason.
+    return { kind: "disabled" };
+  }
+  if (response.status === 400) {
+    return { kind: "validation", codes: extractErrorCodes(body) };
+  }
+
+  return { kind: "error" };
 }

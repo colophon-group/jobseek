@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
@@ -8,8 +8,12 @@ import { useParams } from "next/navigation";
 import { requestCompany } from "@/lib/actions/stats";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
-
-const GITHUB_ISSUE_URL = "https://github.com/colophon-group/jobseek/issues";
+import { RequestCompanySuccess } from "@/components/search/request-company-success";
+import {
+  requestAgentRun,
+  type AgentRunRequestResult,
+} from "@/lib/companies/request-agent-run";
+import { parseRequestInput } from "@/lib/companies/parse-request-input";
 
 const errorMessages = {
   empty: msg({ id: "app.home.request.error.empty", comment: "Error when company request input is empty", message: "Please enter a company name or URL." }),
@@ -25,6 +29,9 @@ export function RequestCompanyPrompt() {
   const { _: t } = useLingui();
   const [state, action, isPending] = useActionState(requestCompany, null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [agentRun, setAgentRun] = useState<AgentRunRequestResult | null>(null);
+  const [submittedName, setSubmittedName] = useState<string>("");
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     if (state?.success) {
@@ -33,6 +40,28 @@ export function RequestCompanyPrompt() {
   }, [state]);
 
   const errorMessage = state?.errorCode ? t(errorMessages[state.errorCode]) : "";
+
+  function handleSubmit(formData: FormData) {
+    // Clear previous agent-run state so old success cards don't linger.
+    setAgentRun(null);
+    const raw = (formData.get("input") as string | null) ?? "";
+    const trimmed = raw.trim();
+    setSubmittedName(trimmed);
+
+    // Hand off to the existing server action (DB + GH issue side effect).
+    startTransition(() => {
+      action(formData);
+    });
+
+    // In parallel, if the input is a URL, also trigger the new Murmur run.
+    const fields = parseRequestInput(raw);
+    if (fields) {
+      void requestAgentRun({
+        companyName: fields.company_name,
+        website: fields.website,
+      }).then(setAgentRun);
+    }
+  }
 
   return (
     <div className="flex flex-col items-center gap-4 py-8 text-center">
@@ -43,7 +72,11 @@ export function RequestCompanyPrompt() {
       </p>
 
       <div className="w-full max-w-md">
-        <form ref={formRef} action={action} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
+        <form
+          ref={formRef}
+          action={handleSubmit}
+          className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end"
+        >
           <input type="hidden" name="locale" value={locale} />
           <div className="flex-1">
             <input
@@ -69,41 +102,14 @@ export function RequestCompanyPrompt() {
         </form>
         <div className="mt-3">
           {state?.success && (
-            <div role="status" className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
-              <p>
-                {state.issueNumber
-                  ? t(msg({
-                      id: "app.home.request.success.withIssue",
-                      comment: "Success message after submitting a company request, with link to GitHub issue for tracking",
-                      message: "Request submitted! Track progress here:",
-                    }))
-                  : t(msg({
-                      id: "app.home.request.success.noIssue",
-                      comment: "Success message when request was saved but GitHub issue could not be created",
-                      message: "Request submitted! We'll start tracking this company soon.",
-                    }))}
-                {state.issueNumber && (
-                  <>
-                    {" "}
-                    <a
-                      href={`${GITHUB_ISSUE_URL}/${state.issueNumber}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline font-medium"
-                    >
-                      #{state.issueNumber}
-                    </a>
-                  </>
-                )}
-              </p>
-              {state.issueCreationFailed && (
-                <p className="mt-1 text-xs opacity-80">
-                  <Trans id="app.home.request.issueWarning" comment="Warning shown when the request was saved in DB but GitHub issue creation failed">
-                    Note: We couldn&apos;t create a tracking issue, but your request was saved.
-                  </Trans>
-                </p>
-              )}
-            </div>
+            <RequestCompanySuccess
+              companyName={submittedName}
+              agentRun={agentRun}
+              serverActionState={{
+                issueNumber: state.issueNumber,
+                issueCreationFailed: state.issueCreationFailed,
+              }}
+            />
           )}
           <ErrorAlert message={errorMessage} />
         </div>
