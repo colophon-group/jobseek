@@ -42,4 +42,19 @@ describe("parseRequestInput", () => {
   it("returns null for malformed URLs", () => {
     expect(parseRequestInput("https://")).toBeNull();
   });
+
+  // Regression test for the PR #2806 review blocker: the three call-sites
+  // (request-company.tsx and the two (app)/.../company-request-form.tsx
+  // siblings) must surface `company_name` (not the raw input URL) as the
+  // success-card heading text. The card heading reads
+  // "We're working on adding {{name}}", so passing the URL produced
+  // "We're working on adding https://www.stripe.com/jobs". The fix uses
+  // `parseRequestInput(raw)?.company_name ?? trimmed`. This test pins the
+  // contract for the heading text.
+  it("derives a heading-suitable name (no scheme, no path, no www) for URL input", () => {
+    const fields = parseRequestInput("https://www.stripe.com/jobs");
+    expect(fields?.company_name).toBe("stripe.com");
+    expect(fields?.company_name).not.toMatch(/^https?:\/\//);
+    expect(fields?.company_name).not.toContain("/jobs");
+  });
 });

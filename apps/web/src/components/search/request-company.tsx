@@ -46,7 +46,14 @@ export function RequestCompanyPrompt() {
     setAgentRun(null);
     const raw = (formData.get("input") as string | null) ?? "";
     const trimmed = raw.trim();
-    setSubmittedName(trimmed);
+
+    // If the input parses as a URL, surface the derived company name in the
+    // success card heading so users see "We're working on adding stripe.com"
+    // rather than the raw URL ("...adding https://www.stripe.com/jobs"). Falls
+    // back to the trimmed input when we can't derive a name (legacy GH-issue
+    // path).
+    const fields = parseRequestInput(raw);
+    setSubmittedName(fields?.company_name ?? trimmed);
 
     // Hand off to the existing server action (DB + GH issue side effect).
     startTransition(() => {
@@ -54,7 +61,6 @@ export function RequestCompanyPrompt() {
     });
 
     // In parallel, if the input is a URL, also trigger the new Murmur run.
-    const fields = parseRequestInput(raw);
     if (fields) {
       void requestAgentRun({
         companyName: fields.company_name,

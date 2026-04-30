@@ -31,6 +31,26 @@ describe("AgentPromptCard", () => {
     expect(heading.textContent).toBe("We're working on adding Stripe, Inc.");
   });
 
+  // Regression test for the PR #2806 review blocker: the heading must show the
+  // derived display name (e.g. "stripe.com") that callers compute via
+  // `parseRequestInput`, NOT the raw URL the user typed
+  // (e.g. "https://www.stripe.com/jobs"). This pins the card-side end of the
+  // contract; see also parse-request-input.test.ts for the caller-side end.
+  it("renders the heading with a derived display name (caller passes company_name, not raw URL)", () => {
+    render(
+      <AgentPromptCard
+        companyName="stripe.com"
+        runId="run_xyz"
+        agentPrompt="Add stripe.com to jobseek..."
+        labels={labels}
+      />,
+    );
+    const heading = screen.getByRole("heading", { level: 3 });
+    expect(heading.textContent).toBe("We're working on adding stripe.com");
+    expect(heading.textContent).not.toContain("https://");
+    expect(heading.textContent).not.toContain("/jobs");
+  });
+
   it("renders the body copy", () => {
     render(
       <AgentPromptCard

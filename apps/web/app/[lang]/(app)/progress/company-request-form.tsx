@@ -42,13 +42,17 @@ export function CompanyRequestForm({ locale }: { locale: string }) {
     setAgentRun(null);
     const raw = (formData.get("input") as string | null) ?? "";
     const trimmed = raw.trim();
-    setSubmittedName(trimmed);
+
+    // Use the derived company_name (e.g. "stripe.com") in the success card
+    // heading when the input parsed as a URL, falling back to the raw trimmed
+    // input only when we couldn't derive a name (legacy GH-issue path).
+    const fields = parseRequestInput(raw);
+    setSubmittedName(fields?.company_name ?? trimmed);
 
     startTransition(() => {
       action(formData);
     });
 
-    const fields = parseRequestInput(raw);
     if (fields) {
       void requestAgentRun({
         companyName: fields.company_name,

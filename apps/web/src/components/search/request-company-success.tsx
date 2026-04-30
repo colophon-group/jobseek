@@ -36,7 +36,12 @@ export interface ServerActionState {
 }
 
 export interface RequestCompanySuccessProps {
-  /** Verbatim user input — used as the company name in the agent card. */
+  /**
+   * Display name used as the company name in the agent card heading. Callers
+   * should pass the derived `company_name` (e.g. "stripe.com") when the input
+   * parsed as a URL, falling back to the raw trimmed input only when no name
+   * could be derived. See request-company.tsx and the (app) form siblings.
+   */
   companyName: string;
   /** Result from the new `POST /api/web/companies/request` (or null when not yet attempted). */
   agentRun: AgentRunRequestResult | null;
