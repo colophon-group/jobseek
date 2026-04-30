@@ -36,6 +36,19 @@ vi.mock("../company-request-page-form", () => ({
 }));
 
 // i18n loader is heavy and depends on filesystem — stub it.
+// The stub `_` interpolates `{values}` placeholders so callers passing
+// `i18n._({ message: "Hello {name}", values: { name: "..." } })` get the
+// interpolated string back, which mirrors lingui's runtime behaviour
+// closely enough for these tests.
+function interpolate(
+  template: string,
+  values: Record<string, unknown> | undefined,
+): string {
+  if (!values) return template;
+  return template.replace(/\{(\w+)\}/g, (_, key) =>
+    key in values ? String(values[key]) : `{${key}}`,
+  );
+}
 vi.mock("@/lib/i18n", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/i18n")>("@/lib/i18n");
@@ -43,10 +56,19 @@ vi.mock("@/lib/i18n", async () => {
     ...actual,
     loadCatalog: vi.fn(async () => ({
       i18n: {
-        _: (msg: { id?: string; message?: string } | string) =>
-          typeof msg === "string"
-            ? msg
-            : (msg.message ?? msg.id ?? ""),
+        _: (
+          msg:
+            | {
+                id?: string;
+                message?: string;
+                values?: Record<string, unknown>;
+              }
+            | string,
+        ) => {
+          if (typeof msg === "string") return msg;
+          const tmpl = msg.message ?? msg.id ?? "";
+          return interpolate(tmpl, msg.values);
+        },
       },
       messages: {},
     })),
