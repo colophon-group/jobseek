@@ -29,6 +29,14 @@ export async function GET(): Promise<Response> {
     shards = [{ id: 0 }];
   }
 
+  // <lastmod> on each <sitemap> entry tells crawlers when to re-fetch
+  // the child. Without it, Google can stick on a stale view of the
+  // index ("0 discovered pages") until it eventually decides to
+  // re-walk every child — days on a large index. Tying lastmod to the
+  // cache-fill window (1h s-maxage) gives a steady "this index moves
+  // hourly, re-walk the children" signal without per-request churn.
+  const lastmod = new Date().toISOString();
+
   const lines: string[] = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
     `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
@@ -39,7 +47,7 @@ export async function GET(): Promise<Response> {
   // shard URLs that don't exist.
   for (const { id } of shards) {
     lines.push(
-      `  <sitemap><loc>${siteConfig.url}/sitemap/${id}.xml</loc></sitemap>`,
+      `  <sitemap><loc>${siteConfig.url}/sitemap/${id}.xml</loc><lastmod>${lastmod}</lastmod></sitemap>`,
     );
   }
   lines.push(`</sitemapindex>`, "");

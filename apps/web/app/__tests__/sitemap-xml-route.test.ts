@@ -35,6 +35,22 @@ describe("/sitemap.xml route handler (issue #2694)", () => {
     expect(body).toContain("</sitemapindex>");
   });
 
+  it("emits a <lastmod> on every <sitemap> entry so crawlers re-walk children", async () => {
+    // Without <lastmod>, Google can stick on a stale view of the
+    // index for days. The value just needs to be a valid W3C
+    // datetime; we use the current time bounded by the 1h cache TTL.
+    planSitemapShardsMock.mockResolvedValue([{ id: 0 }, { id: 1 }]);
+
+    const res = await GET();
+    const body = await res.text();
+
+    const sitemapEntries = body.match(/<sitemap>[\s\S]*?<\/sitemap>/g) ?? [];
+    expect(sitemapEntries).toHaveLength(2);
+    for (const entry of sitemapEntries) {
+      expect(entry).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z<\/lastmod>/);
+    }
+  });
+
   it("falls back to a single-shard index when planSitemapShards throws", async () => {
     // Defense-in-depth: planSitemapShards already swallows fetcher
     // errors, but if a future change makes it throw the index must
