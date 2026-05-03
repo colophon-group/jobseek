@@ -1,83 +1,90 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 
-const { planSitemapShardsMock } = vi.hoisted(() => ({
-  planSitemapShardsMock: vi.fn(),
-}));
+const { planSitemapShardsMock, renderSitemapShardMock, serializeUrlsetMock } =
+  vi.hoisted(() => ({
+    planSitemapShardsMock: vi.fn(),
+    renderSitemapShardMock: vi.fn(),
+    serializeUrlsetMock: vi.fn(),
+  }));
 
 vi.mock("@/lib/sitemap", () => ({
   planSitemapShards: planSitemapShardsMock,
-}));
-
-vi.mock("@/content/config", () => ({
-  siteConfig: { url: "https://jseek.co" },
+  renderSitemapShard: renderSitemapShardMock,
+  serializeUrlset: serializeUrlsetMock,
 }));
 
 import { GET } from "../sitemap.xml/route";
 
-describe("/sitemap.xml route handler (issue #2694)", () => {
+/**
+ * TEMPORARY suite: /sitemap.xml is a monolithic <urlset> while we
+ * isolate why GSC reports "Couldn't fetch" on shard URLs. When the
+ * sitemapindex is restored, replace this whole file with the prior
+ * tests asserting <sitemapindex> output.
+ */
+describe("/sitemap.xml route handler (TEMPORARY monolithic urlset)", () => {
   beforeEach(() => {
     planSitemapShardsMock.mockReset();
+    renderSitemapShardMock.mockReset();
+    serializeUrlsetMock.mockReset();
+    serializeUrlsetMock.mockImplementation(
+      () => "<?xml version=\"1.0\"?><urlset/>",
+    );
   });
 
-  it("emits a sitemapindex listing every shard returned by planSitemapShards", async () => {
+  it("renders every shard, flattens the entries, and serializes once", async () => {
     planSitemapShardsMock.mockResolvedValue([{ id: 0 }, { id: 1 }, { id: 2 }]);
+    renderSitemapShardMock
+      .mockResolvedValueOnce([{ url: "https://jseek.co/en" }])
+      .mockResolvedValueOnce([
+        { url: "https://jseek.co/en/company/a" },
+        { url: "https://jseek.co/de/company/a" },
+      ])
+      .mockResolvedValueOnce([{ url: "https://jseek.co/en/company/b" }]);
 
     const res = await GET();
+
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/xml; charset=utf-8");
-
-    const body = await res.text();
-    expect(body).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-    expect(body).toContain('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
-    expect(body).toContain("<loc>https://jseek.co/sitemap/0.xml</loc>");
-    expect(body).toContain("<loc>https://jseek.co/sitemap/1.xml</loc>");
-    expect(body).toContain("<loc>https://jseek.co/sitemap/2.xml</loc>");
-    expect(body).toContain("</sitemapindex>");
+    expect(renderSitemapShardMock).toHaveBeenCalledTimes(3);
+    expect(renderSitemapShardMock).toHaveBeenNthCalledWith(1, 0);
+    expect(renderSitemapShardMock).toHaveBeenNthCalledWith(2, 1);
+    expect(renderSitemapShardMock).toHaveBeenNthCalledWith(3, 2);
+    expect(serializeUrlsetMock).toHaveBeenCalledWith([
+      { url: "https://jseek.co/en" },
+      { url: "https://jseek.co/en/company/a" },
+      { url: "https://jseek.co/de/company/a" },
+      { url: "https://jseek.co/en/company/b" },
+    ]);
   });
 
-  it("emits a <lastmod> on every <sitemap> entry so crawlers re-walk children", async () => {
-    // Without <lastmod>, Google can stick on a stale view of the
-    // index for days. The value just needs to be a valid W3C
-    // datetime; we use the current time bounded by the 1h cache TTL.
-    planSitemapShardsMock.mockResolvedValue([{ id: 0 }, { id: 1 }]);
+  it("serves an empty <urlset/> rather than 5xx when planSitemapShards rejects", async () => {
+    // Crawlers re-try retryable errors but de-rank on hard failures —
+    // an empty 200 keeps the URL in good standing while we recover.
+    planSitemapShardsMock.mockRejectedValue(new Error("planner down"));
 
     const res = await GET();
-    const body = await res.text();
 
-    const sitemapEntries = body.match(/<sitemap>[\s\S]*?<\/sitemap>/g) ?? [];
-    expect(sitemapEntries).toHaveLength(2);
-    for (const entry of sitemapEntries) {
-      expect(entry).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z<\/lastmod>/);
-    }
-  });
-
-  it("falls back to a single-shard index when planSitemapShards throws", async () => {
-    // Defense-in-depth: planSitemapShards already swallows fetcher
-    // errors, but if a future change makes it throw the index must
-    // still serve a valid XML pointing at shard 0 (which serves the
-    // hardcoded static URLs).
-    planSitemapShardsMock.mockRejectedValue(new Error("backends down"));
-
-    const res = await GET();
     expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain("<loc>https://jseek.co/sitemap/0.xml</loc>");
-    expect(body).not.toContain("<loc>https://jseek.co/sitemap/1.xml</loc>");
+    expect(renderSitemapShardMock).not.toHaveBeenCalled();
+    expect(serializeUrlsetMock).toHaveBeenCalledWith([]);
   });
 
-  it("emits at least shard 0 when planSitemapShards returns []", async () => {
-    planSitemapShardsMock.mockResolvedValue([]);
+  it("serves an empty <urlset/> when a shard render rejects", async () => {
+    planSitemapShardsMock.mockResolvedValue([{ id: 0 }, { id: 1 }]);
+    renderSitemapShardMock
+      .mockResolvedValueOnce([{ url: "https://jseek.co/en" }])
+      .mockRejectedValueOnce(new Error("shard 1 failed"));
 
     const res = await GET();
-    const body = await res.text();
-    expect(body).toContain("<loc>https://jseek.co/sitemap/0.xml</loc>");
+
+    expect(res.status).toBe(200);
+    expect(serializeUrlsetMock).toHaveBeenCalledWith([]);
   });
 
   it("CDN-caches for 1h with a long stale-while-revalidate window", async () => {
-    // Cache-Control is the single source of truth — segment-config
-    // `revalidate` would conflict with this explicit header on a
-    // Route Handler, so it's intentionally not exported.
     planSitemapShardsMock.mockResolvedValue([{ id: 0 }]);
+    renderSitemapShardMock.mockResolvedValue([]);
+
     const res = await GET();
     expect(res.headers.get("cache-control")).toContain("s-maxage=3600");
     expect(res.headers.get("cache-control")).toContain("stale-while-revalidate=86400");
