@@ -190,6 +190,11 @@ export const siteConfig = {
       "/reset-password",
       "/verify-email",
     ],
+    // Only pages users actually search for. Legal/policy pages
+    // (license, privacy-policy, terms, how-we-index) are reached from
+    // the footer of every page and are noindex per #2822 — adding
+    // them here would round-trip the discovery for no SEO benefit.
+    //
     // Bump `lastModified` per entry whenever the page's bot-visible
     // content (copy, hero, layout) substantively changes. Stable dates
     // are an honest re-crawl signal for Bing — `new Date()` on every
@@ -199,10 +204,6 @@ export const siteConfig = {
       { path: "/", changeFrequency: "weekly", priority: 1, lastModified: "2026-05-01" },
       { path: "/about", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
       { path: "/faq", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
-      { path: "/how-we-index", changeFrequency: "monthly", priority: 0.6, lastModified: "2026-05-01" },
-      { path: "/license", changeFrequency: "monthly", priority: 0.5, lastModified: "2026-05-01" },
-      { path: "/privacy-policy", changeFrequency: "monthly", priority: 0.5, lastModified: "2026-05-01" },
-      { path: "/terms", changeFrequency: "monthly", priority: 0.5, lastModified: "2026-05-01" },
     ],
     // The /explore prerendered shell — bump when filter UI / hero /
     // initial-data layout substantively changes (#2824).

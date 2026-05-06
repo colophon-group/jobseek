@@ -25,6 +25,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates("/terms", locale),
+    // Excluded from the index (#2822): footer link satisfies legal
+    // accessibility; nobody discovers the page via search. `follow`
+    // keeps PageRank flowing.
+    robots: { index: false, follow: true },
     openGraph: { title, description, url: `${siteConfig.url}/${locale}/terms` },
   };
 }

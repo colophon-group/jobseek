@@ -25,6 +25,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates("/license", locale),
+    // Excluded from the index (#2822): nobody Googles "jobseek license";
+    // the page is reachable from the footer of every page, which is
+    // sufficient for legal accessibility. Indexing it dilutes the
+    // surface and wastes crawl budget. `follow` keeps PageRank flowing.
+    robots: { index: false, follow: true },
     openGraph: { title, description, url: `${siteConfig.url}/${locale}/license` },
   };
 }

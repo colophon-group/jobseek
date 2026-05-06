@@ -25,6 +25,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates("/how-we-index", locale),
+    // Excluded from the index (#2822): policy/methodology page reached
+    // from the footer; not a search-discovery surface. `follow` keeps
+    // PageRank flowing.
+    robots: { index: false, follow: true },
     openGraph: { title, description, url: `${siteConfig.url}/${locale}/how-we-index` },
   };
 }
