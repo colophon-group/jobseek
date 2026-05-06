@@ -121,7 +121,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: OWNER,DATABASE_URL_UNPOOLED,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_ADMIN_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,INDEXNOW_KEY,INDEXNOW_SITE_URL,INDEXNOW_KEY_URL,INDEXNOW_INTERVAL,MURMUR_TOKEN
+          envs: OWNER,DATABASE_URL_UNPOOLED,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_ADMIN_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
           script: bash /home/deploy/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
@@ -148,14 +148,11 @@ jobs:
           PROXY_PROVIDER: ${{ secrets.PROXY_PROVIDER }}
           WEBSHARE_PROXY_URL: ${{ secrets.WEBSHARE_PROXY_URL }}
           DECODO_PROXY_URL: ${{ secrets.DECODO_PROXY_URL }}
-          # IndexNow notifier (see apps/crawler/src/indexnow.py). The
-          # notifier short-circuits when INDEXNOW_KEY is empty, so
-          # deploys without the secret run the loop as a no-op rather
-          # than failing.
-          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
-          INDEXNOW_SITE_URL: ${{ secrets.INDEXNOW_SITE_URL }}
-          INDEXNOW_KEY_URL: ${{ secrets.INDEXNOW_KEY_URL }}
-          INDEXNOW_INTERVAL: ${{ secrets.INDEXNOW_INTERVAL }}
+          # IndexNow notifier was retired in #2821 (companies left the
+          # index). The GitHub secrets INDEXNOW_KEY/SITE_URL/KEY_URL/
+          # INTERVAL are no longer forwarded; deleting them from the
+          # secret store is a separate cleanup once the change is rolled
+          # out and we're confident we won't revive the loop.
           # Required since H3 (#2775) added the murmur-shim service to
           # the crawler-box compose. deploy.sh validates this var; the
           # shim's `${MURMUR_TOKEN}` env-substitution would otherwise

@@ -6,9 +6,12 @@ import { renderSitemapShard, serializeUrlset } from "@/lib/sitemap";
  * The dynamic segment captures the literal URL value, so for
  * `/sitemap/0.xml` the param is `id = "0.xml"`. We strip the `.xml`
  * suffix, parse the integer, and dispatch to the shard renderer in
- * `@/lib/sitemap`. Anything that doesn't match the
- * `<integer>.xml` shape is rejected as 404 — the shape is part of
- * our contract with the sitemap index in `app/sitemap.xml/route.ts`.
+ * `@/lib/sitemap`. Anything that doesn't match the `<integer>.xml`
+ * shape is rejected as 404 — the shape is part of our contract with
+ * the sitemap index in `app/sitemap.xml/route.ts`. A shape-valid id
+ * for which `renderSitemapShard` returns `null` (no such shard in
+ * the current plan) also 404s — this is what stale-cache requests
+ * for retired shards (e.g. company shards before #2821) now see.
  *
  * Caching mirrors the index handler: explicit Cache-Control with a
  * long stale-while-revalidate window so brief regen latency doesn't
@@ -28,6 +31,9 @@ export async function GET(
   const id = Number.parseInt(match[1], 10);
 
   const entries = await renderSitemapShard(id);
+  if (entries === null) {
+    return new Response("Not Found", { status: 404 });
+  }
   const xml = serializeUrlset(entries);
 
   return new Response(xml, {

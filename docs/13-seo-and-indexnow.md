@@ -1,5 +1,17 @@
 # SEO and IndexNow
 
+> **Status note (2026-05, #2821 / `area:seo` batch):** company pages
+> (`/{locale}/company/{slug}`) are now `noindex,follow` and excluded from
+> the sitemap. The crawler-side IndexNow notifier (which only ever
+> covered company URLs) has been retired from `docker-compose.yml`. The
+> watchlist-side IndexNow notifier in the web app is unaffected. The
+> sections below describing per-company SSR + crawler IndexNow
+> hashing remain accurate as a reference for how the surface worked
+> before the change and what the code in `apps/crawler/src/indexnow.py`
+> still does if it is invoked manually — but neither is wired into a
+> live deploy. Watchlist + future blog surfaces are the active SEO
+> targets going forward.
+
 Covers the company-page SSR surface (head metadata, JSON-LD, similar-companies strip, watchlist stats row) and the IndexNow notifier (Bing / Yandex / Seznam / Naver / Microsoft Yep — Google does **not** participate in IndexNow).
 
 ## On-page SEO

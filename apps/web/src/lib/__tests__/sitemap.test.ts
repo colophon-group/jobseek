@@ -1,4 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
+import type { MetadataRoute } from "next";
 import { siteConfig } from "@/content/config";
 
 const { dbExecuteMock, searchMock } = vi.hoisted(() => ({
@@ -63,13 +64,20 @@ function typesensePage(slugs: string[], found: number) {
  * Render every shard returned by `planSitemapShards()` and concatenate
  * the entries — this is what the crawler ultimately gets across
  * /sitemap.xml and the /sitemap/<id>.xml shards.
+ *
+ * `renderSitemapShard` returns `null` for shard ids not in the current
+ * plan (stale-cache 404 path); the planner won't hand any of those
+ * here, but we filter defensively so the helper stays safe if a future
+ * change loosens the planner.
  */
-async function renderAllShards(): Promise<
-  Awaited<ReturnType<typeof renderSitemapShard>>
-> {
+async function renderAllShards(): Promise<MetadataRoute.Sitemap> {
   const shards = await planSitemapShards();
-  const all = await Promise.all(shards.map(({ id }) => renderSitemapShard(id)));
-  return all.flat();
+  const all = await Promise.all(
+    shards.map(({ id }) => renderSitemapShard(id)),
+  );
+  return all
+    .filter((entries): entries is MetadataRoute.Sitemap => entries !== null)
+    .flat();
 }
 
 describe("sitemap data layer", () => {
@@ -185,82 +193,18 @@ describe("sitemap data layer", () => {
     );
   });
 
-  it("paginates Typesense company results so later pages reach the sitemap", async () => {
-    searchMock
-      .mockResolvedValueOnce(typesensePage(
-        Array.from({ length: 250 }, (_, i) => `company-${i + 1}`),
-        501,
-      ))
-      .mockResolvedValueOnce(typesensePage(
-        Array.from({ length: 250 }, (_, i) => `company-${i + 251}`),
-        501,
-      ))
-      .mockResolvedValueOnce(typesensePage(["company-501"], 501));
-
-    const result = await renderAllShards();
-
-    expect(searchMock).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ page: 1, per_page: 250 }),
-    );
-    expect(searchMock).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ page: 2, per_page: 250 }),
-    );
-    expect(searchMock).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({ page: 3, per_page: 250 }),
-    );
-    expect(result.some((entry) => entry.url.endsWith("/en/company/company-251"))).toBe(true);
-    expect(result.some((entry) => entry.url.endsWith("/de/company/company-251"))).toBe(true);
-    expect(result.some((entry) => entry.url.endsWith("/en/company/company-501"))).toBe(true);
-  });
-
-  it("stops after an exact 250-result Typesense page", async () => {
+  it("excludes /company/ URLs from every shard (#2821: companies left the index)", async () => {
+    // Even with a healthy Typesense full of companies, the sitemap must
+    // not surface any `/company/{slug}` URL. `noindex,follow` on the
+    // page itself is the primary signal, but keeping company URLs out
+    // of the sitemap closes the secondary discovery path.
     searchMock.mockResolvedValueOnce(typesensePage(
-      Array.from({ length: 250 }, (_, i) => `company-${i + 1}`),
-      250,
+      Array.from({ length: 50 }, (_, i) => `company-${i + 1}`),
+      50,
     ));
 
     const result = await renderAllShards();
-
-    expect(searchMock).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ page: 1, per_page: 250 }),
-    );
-    expect(result.some((entry) => entry.url.endsWith("/en/company/company-250"))).toBe(true);
-    expect(result.some((entry) => entry.url.endsWith("/en/company/company-251"))).toBe(false);
-  });
-
-  it("falls back to Postgres when a later Typesense page fails", async () => {
-    searchMock
-      .mockResolvedValueOnce(typesensePage(
-        Array.from({ length: 250 }, (_, i) => `typesense-${i + 1}`),
-        500,
-      ))
-      .mockRejectedValueOnce(new Error("Typesense page 2 failed"));
-
-    dbExecuteMock.mockImplementation(async (query: unknown) => {
-      const text = JSON.stringify(query);
-      if (text.includes("FROM company c")) {
-        return [
-          { slug: "fallback-a", updated_at: new Date("2026-01-01T00:00:00Z") },
-          { slug: "fallback-b", updated_at: new Date("2026-01-02T00:00:00Z") },
-        ];
-      }
-      if (text.includes("FROM watchlist")) {
-        return [];
-      }
-      return [];
-    });
-
-    const result = await renderAllShards();
-
-    const fallbackCompanyEntries = result.filter((entry) =>
-      entry.url.includes("/company/fallback-"),
-    );
-    expect(fallbackCompanyEntries).toHaveLength(8);
-    expect(fallbackCompanyEntries.every((entry) => entry.url.includes("/company/fallback-"))).toBe(true);
+    expect(result.some((entry) => entry.url.includes("/company/"))).toBe(false);
   });
 
   it("preserves watchlist locale coverage and curated ordering metadata", async () => {
@@ -315,23 +259,18 @@ describe("sitemap shards (issue #2646)", () => {
     cacheStore.clear();
   });
 
-  it("declares one shard per 200-company batch plus one for static + watchlists", async () => {
-    // 450 companies → 3 company shards (200 + 200 + 50) + 1 static-watchlist shard = 4 total.
+  it("emits only shard 0 regardless of company count (#2821)", async () => {
+    // After companies left the index, the sitemap is single-shard. A
+    // healthy Typesense / Postgres state is irrelevant — the planner
+    // doesn't even consult them. Future indexable surfaces (blog) may
+    // grow this back to N>1, but `/company/` is no longer a member.
     searchMock.mockResolvedValueOnce(typesensePage(
       Array.from({ length: 250 }, (_, i) => `company-${i + 1}`),
-      450,
-    )).mockResolvedValueOnce(typesensePage(
-      Array.from({ length: 200 }, (_, i) => `company-${i + 251}`),
       450,
     ));
 
     const shards = await planSitemapShards();
-    expect(shards).toEqual([
-      { id: 0 },
-      { id: 1 },
-      { id: 2 },
-      { id: 3 },
-    ]);
+    expect(shards).toEqual([{ id: 0 }]);
   });
 
   it("shard 0 contains static pages and watchlists, no company URLs", async () => {
@@ -350,27 +289,15 @@ describe("sitemap shards (issue #2646)", () => {
     expect(entries.some((e) => e.url.endsWith("/en/alice/ml-jobs"))).toBe(true);
   });
 
-  it("each company shard contains only its slice", async () => {
-    searchMock.mockResolvedValueOnce(typesensePage(
-      Array.from({ length: 250 }, (_, i) => `co-${i + 1}`),
-      350,
-    )).mockResolvedValueOnce(typesensePage(
-      Array.from({ length: 100 }, (_, i) => `co-${i + 251}`),
-      350,
-    ));
-
-    const shard1 = await renderSitemapShard(1); // companies 1..200
-    expect(shard1.some((e) => e.url.endsWith("/en/company/co-1"))).toBe(true);
-    expect(shard1.some((e) => e.url.endsWith("/en/company/co-200"))).toBe(true);
-    expect(shard1.some((e) => e.url.endsWith("/en/company/co-201"))).toBe(false);
-
-    // The memoized `cached()` mock satisfies shard 2's read without
-    // re-invoking Typesense — same as production behavior under one
-    // ISR window.
-    const shard2 = await renderSitemapShard(2); // companies 201..350
-    expect(shard2.some((e) => e.url.endsWith("/en/company/co-200"))).toBe(false);
-    expect(shard2.some((e) => e.url.endsWith("/en/company/co-201"))).toBe(true);
-    expect(shard2.some((e) => e.url.endsWith("/en/company/co-350"))).toBe(true);
+  it("non-zero shard ids return null (stale sitemap-index cache → 404 #2821)", async () => {
+    // After #2821 companies are out of the sitemap; only shard 0 is in
+    // the planned set. A crawler holding a cached sitemap-index from
+    // before the change may still ask for /sitemap/1.xml etc. — the
+    // lib returns null and the route handler maps that to 404, giving
+    // a clear "this URL no longer exists" signal rather than masking
+    // the change behind an empty <urlset/>.
+    expect(await renderSitemapShard(1)).toBeNull();
+    expect(await renderSitemapShard(7)).toBeNull();
   });
 
   it("returns at least one shard even when there are no companies", async () => {
@@ -397,11 +324,11 @@ describe("sitemap shards (issue #2646)", () => {
     expect(entries.some((e) => e.url === "https://jseek.co/en")).toBe(true);
   });
 
-  it("planSitemapShards emits only shard 0 when company fetch fails (issue #2694)", async () => {
-    // Without this guard, a Typesense + Postgres dual outage would
-    // cause the planner to throw — which the index handler would have
-    // to catch separately, and any framework code calling the
-    // planner would 500.
+  it("planSitemapShards emits only shard 0 even on backend outage (#2694, #2821)", async () => {
+    // After #2821 the planner doesn't query backends at all (companies
+    // left the index). This test stays as a regression guard: a future
+    // change that re-introduces backend calls must keep the dual-
+    // outage fallback working — otherwise the index handler 500s.
     searchMock.mockReset();
     searchMock.mockRejectedValue(new Error("Typesense down"));
     dbExecuteMock.mockReset();
@@ -409,19 +336,6 @@ describe("sitemap shards (issue #2646)", () => {
 
     const shards = await planSitemapShards();
     expect(shards).toEqual([{ id: 0 }]);
-  });
-
-  it("company shard returns [] (not throw) when company fetch fails", async () => {
-    // Same hardening for non-zero shards: a Typesense+Postgres dual
-    // outage shouldn't 500 the whole sitemap. Empty shard is fine —
-    // crawlers retry; a 500 may de-rank.
-    searchMock.mockReset();
-    searchMock.mockRejectedValue(new Error("Typesense down"));
-    dbExecuteMock.mockReset();
-    dbExecuteMock.mockRejectedValue(new Error("Postgres also down"));
-
-    const entries = await renderSitemapShard(1);
-    expect(entries).toEqual([]);
   });
 });
 
