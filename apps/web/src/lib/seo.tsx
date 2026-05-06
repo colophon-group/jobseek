@@ -116,6 +116,43 @@ export function buildBreadcrumbJsonLd(
   };
 }
 
+export type WatchlistItemListInput = {
+  title: string;
+  companies: { name: string; slug: string }[];
+};
+
+/**
+ * Build schema.org `ItemList` payload for a public watchlist (#2823).
+ * Each list item is an `Organization` reference pointing at the
+ * tracked company's profile URL. Even though `/{locale}/company/{slug}`
+ * is `noindex,follow` (#2821), schema.org URLs are entity references —
+ * AI retrievers and Knowledge-Graph crawlers consume them regardless.
+ *
+ * Returns `null` when the watchlist tracks no companies — emitting an
+ * empty `ItemList` would be invalid schema and confuse validators.
+ */
+export function buildWatchlistItemListJsonLd(
+  input: WatchlistItemListInput,
+  locale: Locale,
+): Record<string, unknown> | null {
+  if (input.companies.length === 0) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: input.title,
+    numberOfItems: input.companies.length,
+    itemListElement: input.companies.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "Organization",
+        name: c.name,
+        url: `${siteConfig.url}/${locale}/company/${c.slug}`,
+      },
+    })),
+  };
+}
+
 /**
  * Render JSON-LD structured data as a sanitized <script> tag.
  *

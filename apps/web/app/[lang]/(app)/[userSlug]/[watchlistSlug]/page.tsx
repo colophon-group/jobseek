@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import {
   getPublicWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
 } from "@/lib/actions/watchlists";
-import { isTrivialWatchlist } from "@/lib/watchlist-utils";
+import { isQualifyingWatchlist } from "@/lib/watchlist-utils";
 import { siteConfig } from "@/content/config";
-import { buildAlternates } from "@/lib/seo";
+import { buildAlternates, buildWatchlistItemListJsonLd, JsonLd } from "@/lib/seo";
 import { WatchlistContent } from "./watchlist-content";
+
+/**
+ * Per-request memoization so the watchlist detail is fetched once even
+ * though both `generateMetadata` (above) and the page render (below)
+ * need it. Without this, a single ISR regen runs the SQL twice.
+ */
+const cachedDetail = cache(getPublicWatchlistByUserAndSlug);
 
 // ISR window for the rendered metadata + page shell.
 //
@@ -27,10 +35,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [detail, { i18n }] = await Promise.all([
     // Public-only fetch: never reads session, so the page stays
-    // statically prerenderable (revalidate=600 above). The session-aware
-    // variant is only used by the client-fired server action that
-    // hydrates the page body. See issue #2244.
-    getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug),
+    // statically prerenderable. The session-aware variant is only used
+    // by the client-fired server action that hydrates the page body.
+    // See issue #2244. `cachedDetail` is the React-cache-wrapped form
+    // so this call shares its result with the page-render call below.
+    cachedDetail(userSlug, watchlistSlug),
     loadCatalog(locale),
   ]);
   if (!detail) return {};
@@ -94,7 +103,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const path = `/${userSlug}/${watchlistSlug}`;
-  const trivial = isTrivialWatchlist(detail.filters, detail.companies.length);
+  // Mirror the sitemap quality gate (#2823): if the watchlist wouldn't
+  // be in the sitemap, also `noindex,follow` it on direct discovery
+  // (someone shares the link, Google crawls it). Predicate lives in
+  // `watchlist-utils.ts::isQualifyingWatchlist` so SQL and JS stay in
+  // lockstep.
+  const indexable = isQualifyingWatchlist({
+    title: detail.title,
+    filters: detail.filters,
+    companyCount: detail.companies.length,
+    createdAt: detail.createdAt,
+  });
   return {
     title,
     description,
@@ -105,12 +124,39 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `${siteConfig.url}/${locale}${path}`,
       type: "website",
     },
-    ...(trivial && { robots: { index: false, follow: true } }),
+    ...(!indexable && { robots: { index: false, follow: true } }),
   };
 }
 
 export default async function WatchlistRoute({ params }: Props) {
   const { lang, userSlug, watchlistSlug } = await params;
+  const locale = isLocale(lang) ? lang : defaultLocale;
 
-  return <WatchlistContent lang={lang} userSlug={userSlug} watchlistSlug={watchlistSlug} />;
+  // Re-fetch via the React-cache-wrapped form so this call shares its
+  // result with `generateMetadata` above (single SQL per ISR regen).
+  // The body is client-rendered via WatchlistContent, but the
+  // structured data must reach non-JS consumers (AI retrievers,
+  // search-engine crawlers that don't execute JS) — emitting it
+  // server-side is the only path.
+  const detail = await cachedDetail(userSlug, watchlistSlug);
+
+  // For `anyCompany` watchlists, `detail.companies` is unrelated to
+  // what the watchlist actually tracks (it holds leftover rows from
+  // source copies — see existing comment in `generateMetadata`).
+  // Emitting `Organization` references for that noise would mislead
+  // schema consumers. Skip JSON-LD entirely for those; the page
+  // metadata description still describes the watchlist correctly.
+  const itemListJsonLd = detail && !detail.filters.anyCompany
+    ? buildWatchlistItemListJsonLd(
+        { title: detail.title, companies: detail.companies },
+        locale,
+      )
+    : null;
+
+  return (
+    <>
+      {itemListJsonLd && <JsonLd data={itemListJsonLd} />}
+      <WatchlistContent lang={lang} userSlug={userSlug} watchlistSlug={watchlistSlug} />
+    </>
+  );
 }

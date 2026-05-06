@@ -107,6 +107,16 @@ async function fetchSitemapCompanies(): Promise<SitemapCompanyRow[]> {
 }
 
 async function fetchSitemapWatchlists(): Promise<SitemapWatchlistRow[]> {
+  // Quality gate (#2823). Without it, every public watchlist enters the
+  // sitemap regardless of substance — empirical inspection (~half of
+  // public watchlists are templated / default-titled / thin) shows
+  // that as the surface scales the templated ones become a doorway-
+  // page signal. Filter at emit time:
+  //   - title is substantive (≥4 chars, not the default "New watchlist")
+  //   - watchlist is at least 7 days old (lets the user populate it)
+  //   - tracks ≥3 companies OR carries ≥1 keyword OR ≥2 taxonomy filters.
+  //     Salary/experience-only watchlists don't qualify on their own —
+  //     too thin to be a useful landing page.
   return db.execute<SitemapWatchlistRow>(sql`
     SELECT
       COALESCE(u.display_username, u.username) AS user_slug,
@@ -115,8 +125,21 @@ async function fetchSitemapWatchlists(): Promise<SitemapWatchlistRow[]> {
       (u.username = ${CURATED_USERNAME}) AS is_curated
     FROM watchlist w
     JOIN "user" u ON u.id = w.user_id
+    LEFT JOIN watchlist_company wc ON wc.watchlist_id = w.id
     WHERE w.is_public = true
       AND u.username IS NOT NULL
+      AND w.title IS NOT NULL
+      AND LENGTH(TRIM(w.title)) >= 4
+      AND LOWER(TRIM(w.title)) <> 'new watchlist'
+      AND w.created_at < NOW() - INTERVAL '7 days'
+    GROUP BY w.id, u.username, u.display_username
+    HAVING
+      COUNT(wc.company_id) >= 3
+      OR COALESCE(jsonb_array_length(w.filters->'keywords'), 0) > 0
+      OR COALESCE(jsonb_array_length(w.filters->'locationSlugs'), 0)
+         + COALESCE(jsonb_array_length(w.filters->'occupationSlugs'), 0)
+         + COALESCE(jsonb_array_length(w.filters->'senioritySlugs'), 0)
+         + COALESCE(jsonb_array_length(w.filters->'technologySlugs'), 0) >= 2
     ORDER BY is_curated DESC, w.updated_at DESC
   `) as unknown as Promise<SitemapWatchlistRow[]>;
 }
