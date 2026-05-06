@@ -123,6 +123,46 @@ describe("sitemap data layer", () => {
     }
   });
 
+  it("static + explore lastModified are stable (not request-time, #2824)", async () => {
+    // Previously every regen claimed `lastModified: new Date()`, which
+    // Bing eventually discounts as a useless re-crawl signal. The
+    // values must come from `siteConfig.seo.sitemap[i].lastModified`
+    // and `siteConfig.seo.exploreLastModified`.
+    const before = Date.now();
+    const result = await renderAllShards();
+    const after = Date.now();
+    const staticAndExplore = result.filter(
+      (e) => !e.url.match(/\/(company|[^/]+)\/[^/]+$/)
+        || e.url.endsWith("/explore"),
+    );
+    expect(staticAndExplore.length).toBeGreaterThan(0);
+    for (const entry of staticAndExplore) {
+      const ts = entry.lastModified instanceof Date
+        ? entry.lastModified.getTime()
+        : new Date(entry.lastModified!).getTime();
+      // A request-time `new Date()` would land between before/after.
+      // A stable hardcoded date pre-dates the test run by months.
+      expect(ts).toBeLessThan(before);
+      // sanity: not in the future
+      expect(ts).toBeLessThanOrEqual(after);
+    }
+  });
+
+  it("hreflang map includes x-default pointing at /en (#2825)", async () => {
+    const result = await renderAllShards();
+    // Pick any entry with alternates — the homepage will do.
+    const homepageEn = result.find((e) => e.url === "https://jseek.co/en");
+    expect(homepageEn?.alternates?.languages).toBeDefined();
+    expect(homepageEn?.alternates?.languages?.["x-default"]).toBe(
+      "https://jseek.co/en",
+    );
+    // Non-/ paths should also carry x-default at /en/<path>.
+    const aboutEn = result.find((e) => e.url === "https://jseek.co/en/about");
+    expect(aboutEn?.alternates?.languages?.["x-default"]).toBe(
+      "https://jseek.co/en/about",
+    );
+  });
+
   it("paginates Typesense company results so later pages reach the sitemap", async () => {
     searchMock
       .mockResolvedValueOnce(typesensePage(
@@ -239,6 +279,7 @@ describe("sitemap data layer", () => {
       de: expect.stringContaining("/de/curated-user/hot-list"),
       fr: expect.stringContaining("/fr/curated-user/hot-list"),
       it: expect.stringContaining("/it/curated-user/hot-list"),
+      "x-default": expect.stringContaining("/en/curated-user/hot-list"),
     });
   });
 });
