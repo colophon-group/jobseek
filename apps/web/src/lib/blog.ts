@@ -50,6 +50,14 @@ export type BlogPostFrontmatter = {
   relatedCompanies: string[];
   /** "owner/slug" pairs pointing at /{locale}/{owner}/{slug}. */
   relatedWatchlists: string[];
+  /**
+   * Optional author-curated overrides for the "you may also be
+   * interested in" block at the bottom of each post (#2844). Slugs
+   * pointing at other posts in this directory; missing/draft slugs are
+   * silently dropped at render time. When set, the override list wins
+   * over the auto-selection (tag overlap → recency).
+   */
+  relatedPosts: string[];
 };
 
 export type BlogPostSummary = BlogPostFrontmatter & {
@@ -99,6 +107,9 @@ function coerceFrontmatter(
       : [],
     relatedWatchlists: Array.isArray(raw.relatedWatchlists)
       ? raw.relatedWatchlists.filter((s): s is string => typeof s === "string")
+      : [],
+    relatedPosts: Array.isArray(raw.relatedPosts)
+      ? raw.relatedPosts.filter((s): s is string => typeof s === "string")
       : [],
   };
 }
@@ -253,4 +264,76 @@ export async function getBlogPostLocales(slug: string): Promise<Locale[]> {
 export function readingTimeMinutes(body: string): number {
   const words = body.trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.round(words / 200));
+}
+
+/**
+ * Pick up to `max` posts to surface in the "you may also be interested
+ * in" block at the bottom of a post (#2844). Selection is deterministic
+ * so the same input always yields the same output across ISR regens.
+ *
+ * Priority chain:
+ *   1. Author-curated `relatedPosts` slugs from frontmatter — kept in
+ *      authored order, dropped silently if a slug doesn't resolve to a
+ *      published post (typo / draft never landed).
+ *   2. Tag-overlap auto-selection — score each candidate by the size of
+ *      its tag intersection with the current post; tie-break by
+ *      `datePublished` (newest first). Skip candidates with zero tags
+ *      or zero overlap.
+ *   3. Recency fallback — fill the remainder with the most-recent
+ *      published posts, skipping the current one and any already
+ *      selected.
+ *
+ * Empty input (single post in the index, or no other published posts
+ * after exclusions) returns an empty array — the caller renders
+ * nothing rather than emit a "you may also be interested in" heading
+ * with no items.
+ */
+export function selectRelatedPosts(
+  current: BlogPostSummary,
+  all: BlogPostSummary[],
+  max = 3,
+): BlogPostSummary[] {
+  const others = all.filter((p) => p.slug !== current.slug);
+  const bySlug = new Map(others.map((p) => [p.slug, p]));
+  const picked: BlogPostSummary[] = [];
+
+  // 1. Author override.
+  for (const slug of current.relatedPosts) {
+    const post = bySlug.get(slug);
+    if (post && !picked.some((p) => p.slug === post.slug)) {
+      picked.push(post);
+      if (picked.length >= max) return picked;
+    }
+  }
+
+  // 2. Tag overlap.
+  const currentTags = new Set(current.tags);
+  if (currentTags.size > 0) {
+    const scored = others
+      .filter((p) => !picked.some((q) => q.slug === p.slug))
+      .map((p) => ({
+        post: p,
+        overlap: p.tags.reduce((n, t) => (currentTags.has(t) ? n + 1 : n), 0),
+      }))
+      .filter(({ overlap }) => overlap > 0)
+      .sort((a, b) => {
+        if (b.overlap !== a.overlap) return b.overlap - a.overlap;
+        return b.post.datePublished.localeCompare(a.post.datePublished);
+      });
+    for (const { post } of scored) {
+      picked.push(post);
+      if (picked.length >= max) return picked;
+    }
+  }
+
+  // 3. Recency fallback.
+  const remaining = others
+    .filter((p) => !picked.some((q) => q.slug === p.slug))
+    .sort((a, b) => b.datePublished.localeCompare(a.datePublished));
+  for (const post of remaining) {
+    picked.push(post);
+    if (picked.length >= max) return picked;
+  }
+
+  return picked;
 }

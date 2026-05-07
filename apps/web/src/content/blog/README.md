@@ -82,10 +82,17 @@ author: "Viktor Shcherbakov"        # optional, defaults to siteConfig
 tags: ["data-analysis"]             # optional, free-form taxonomy
 relatedCompanies: ["openai"]        # optional, slug list — informational
 relatedWatchlists: ["owner/slug"]   # optional, "owner/slug" pairs — informational
+relatedPosts: ["other-slug"]        # optional, override "you may also be interested in"
 ---
 ```
 
 Currently `relatedCompanies` and `relatedWatchlists` are advisory frontmatter — they're parsed by the loader but the post page renders mentions inline via the MDX components below. If we ever want a "related" sidebar that surfaces every entity touched by a post, the frontmatter is already populated.
+
+`relatedPosts` overrides the auto-selection for the "you may also be interested in" cross-link block at the bottom of the post (#2844). Slugs are kept in authored order; missing or draft slugs are silently dropped at render time. Leave it unset to let the page pick three posts automatically:
+
+1. Most tag overlap with the current post (tie-break: most recent).
+2. Most recent posts overall, when overlap doesn't yield three candidates.
+3. Empty render when no other posts exist.
 
 ## MDX components catalogue
 

@@ -13,6 +13,7 @@ import {
   type BlogPost,
 } from "@/lib/blog";
 import { buildMdxComponents } from "@/components/blog/MdxMentions";
+import { RelatedPosts } from "@/components/blog/RelatedPosts";
 
 // Posts are static content authored at PR-merge cadence; ISR window is
 // cosmetic. Build-time prerender via `generateStaticParams` covers
@@ -163,6 +164,8 @@ export default async function BlogPostPage({ params }: Props) {
 
           <div className="blog-post">{content}</div>
         </article>
+
+        <RelatedPosts current={post} locale={locale} />
       </main>
     </>
   );
