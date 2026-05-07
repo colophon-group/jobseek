@@ -1,4 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
+import { siteConfig } from "@/content/config";
 
 const { dbExecuteMock, searchMock } = vi.hoisted(() => ({
   dbExecuteMock: vi.fn(),
@@ -128,14 +129,35 @@ describe("sitemap data layer", () => {
     // Bing eventually discounts as a useless re-crawl signal. The
     // values must come from `siteConfig.seo.sitemap[i].lastModified`
     // and `siteConfig.seo.exploreLastModified`.
+    //
+    // Anchor on the actual static-page set: every URL listed in
+    // `siteConfig.seo.sitemap` plus the explicit `/explore` entry.
+    // A regex-based filter is too lenient — the previous version of
+    // this test matched only homepage + /explore, which let regressions
+    // on /about, /faq, /privacy-policy, /terms slip through.
     const before = Date.now();
     const result = await renderAllShards();
     const after = Date.now();
-    const staticAndExplore = result.filter(
-      (e) => !e.url.match(/\/(company|[^/]+)\/[^/]+$/)
-        || e.url.endsWith("/explore"),
+    const sitemapPaths = siteConfig.seo.sitemap.map((s) =>
+      s.path === "/" ? "" : s.path,
     );
-    expect(staticAndExplore.length).toBeGreaterThan(0);
+    const expectedSuffixes = [...sitemapPaths, "/explore"];
+    const staticAndExplore = result.filter((e) =>
+      expectedSuffixes.some((suffix) => {
+        // URL pattern: ${siteConfig.url}/{locale}${suffix}
+        const url = e.url;
+        for (const locale of ["en", "de", "fr", "it"]) {
+          const expected = `${siteConfig.url}/${locale}${suffix}`;
+          if (url === expected) return true;
+        }
+        return false;
+      }),
+    );
+    // 4 locales × (sitemap entries + /explore) — sanity that the filter
+    // matched everything we expect, not just a subset.
+    expect(staticAndExplore.length).toBe(
+      (siteConfig.seo.sitemap.length + 1) * 4,
+    );
     for (const entry of staticAndExplore) {
       const ts = entry.lastModified instanceof Date
         ? entry.lastModified.getTime()
