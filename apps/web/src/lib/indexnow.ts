@@ -44,15 +44,29 @@ const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
  *                         pages); pass a subset for routes whose
  *                         hreflang map is per-call.
  */
+/**
+ * Result envelope returned by `notifyIndexNow`. Existing watchlist
+ * call sites ignore the return (fire-and-forget inside `after()`);
+ * the blog deploy-hook script reads it to fail the workflow on a
+ * non-2xx submission so we get an actionable signal instead of a
+ * silent stderr line in a stack we never read.
+ */
+export type NotifyIndexNowResult =
+  | { kind: "submitted"; urlCount: number; status: number }
+  | { kind: "skipped"; reason: "no-key" | "no-paths" | "no-locales" | "no-urls" }
+  | { kind: "rejected"; status: number; urlCount: number }
+  | { kind: "errored"; error: unknown; urlCount: number };
+
 export async function notifyIndexNow(
   paths: string[],
   availableLocales?: readonly Locale[],
-): Promise<void> {
+): Promise<NotifyIndexNowResult> {
   const key = process.env.INDEXNOW_KEY;
-  if (!key || paths.length === 0) return;
+  if (!key) return { kind: "skipped", reason: "no-key" };
+  if (paths.length === 0) return { kind: "skipped", reason: "no-paths" };
 
   const targetLocales = availableLocales ?? locales;
-  if (targetLocales.length === 0) return;
+  if (targetLocales.length === 0) return { kind: "skipped", reason: "no-locales" };
 
   const urlList: string[] = [];
   for (const path of paths) {
@@ -64,7 +78,7 @@ export async function notifyIndexNow(
 
   // Dedupe and cap at the protocol limit (10k per request).
   const unique = [...new Set(urlList)].slice(0, 10_000);
-  if (unique.length === 0) return;
+  if (unique.length === 0) return { kind: "skipped", reason: "no-urls" };
 
   const payload = {
     host: siteConfig.domain,
@@ -84,9 +98,12 @@ export async function notifyIndexNow(
       console.error(
         `[indexnow] submission rejected (${res.status}) for ${unique.length} urls`,
       );
+      return { kind: "rejected", status: res.status, urlCount: unique.length };
     }
+    return { kind: "submitted", status: res.status, urlCount: unique.length };
   } catch (err) {
     console.error("[indexnow] submission failed", err);
+    return { kind: "errored", error: err, urlCount: unique.length };
   }
 }
 

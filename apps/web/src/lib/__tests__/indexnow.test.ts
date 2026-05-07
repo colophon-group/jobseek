@@ -24,13 +24,15 @@ afterEach(() => {
 describe("notifyIndexNow", () => {
   it("no-ops when INDEXNOW_KEY is unset", async () => {
     delete process.env.INDEXNOW_KEY;
-    await notifyIndexNow(["/foo"]);
+    const result = await notifyIndexNow(["/foo"]);
+    expect(result).toEqual({ kind: "skipped", reason: "no-key" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("no-ops when paths is empty", async () => {
     process.env.INDEXNOW_KEY = "test-key";
-    await notifyIndexNow([]);
+    const result = await notifyIndexNow([]);
+    expect(result).toEqual({ kind: "skipped", reason: "no-paths" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -92,21 +94,30 @@ describe("notifyIndexNow", () => {
     expect(errSpy).not.toHaveBeenCalled();
   });
 
-  it("logs (does not throw) when the endpoint rejects with 4xx", async () => {
+  it("returns rejected (does not throw) when the endpoint rejects with 4xx", async () => {
     process.env.INDEXNOW_KEY = "test-key";
     fetchMock.mockResolvedValue(new Response("bad key", { status: 403 }));
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    await expect(notifyIndexNow(["/foo"])).resolves.toBeUndefined();
+    const result = await notifyIndexNow(["/foo"]);
+    expect(result).toEqual({ kind: "rejected", status: 403, urlCount: 4 });
     expect(errSpy).toHaveBeenCalledOnce();
     expect(String(errSpy.mock.calls[0][0])).toContain("403");
   });
 
-  it("logs (does not throw) on network errors", async () => {
+  it("returns errored (does not throw) on network errors", async () => {
     process.env.INDEXNOW_KEY = "test-key";
-    fetchMock.mockRejectedValue(new Error("ECONNRESET"));
+    const networkErr = new Error("ECONNRESET");
+    fetchMock.mockRejectedValue(networkErr);
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    await expect(notifyIndexNow(["/foo"])).resolves.toBeUndefined();
+    const result = await notifyIndexNow(["/foo"]);
+    expect(result).toEqual({ kind: "errored", error: networkErr, urlCount: 4 });
     expect(errSpy).toHaveBeenCalledOnce();
+  });
+
+  it("returns submitted with the URL count on a 200 response", async () => {
+    process.env.INDEXNOW_KEY = "test-key";
+    const result = await notifyIndexNow(["/foo"]);
+    expect(result).toEqual({ kind: "submitted", status: 200, urlCount: 4 });
   });
 
   it("restricts locale fan-out when availableLocales is provided (#2843, blog)", async () => {
@@ -130,7 +141,8 @@ describe("notifyIndexNow", () => {
 
   it("no-ops when availableLocales is an empty array (defensive)", async () => {
     process.env.INDEXNOW_KEY = "test-key";
-    await notifyIndexNow(["/blog/no-locales"], []);
+    const result = await notifyIndexNow(["/blog/no-locales"], []);
+    expect(result).toEqual({ kind: "skipped", reason: "no-locales" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

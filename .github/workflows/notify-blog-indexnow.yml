@@ -42,6 +42,14 @@ jobs:
   notify:
     name: Submit blog URLs to IndexNow
     runs-on: ubuntu-latest
+    # `INDEXNOW_KEY` lives at the Production environment scope (alongside
+    # DATABASE_URL, R2_*, etc. — see `gh api repos/.../environments/`
+    # `Production/secrets`). Without this declaration `secrets.INDEXNOW_KEY`
+    # resolves to empty, the script's `if (!INDEXNOW_KEY)` short-circuits,
+    # and submissions silently no-op. Every other prod-secret consumer in
+    # this repo declares the same — see deploy-crawler-browser.yml,
+    # deploy-murmur-shim.yml, crawler-scheduled-maintenance.yml.
+    environment: production
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
