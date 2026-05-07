@@ -34,8 +34,8 @@
 
 import { cache } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Building2, Eye, Briefcase } from "lucide-react";
+import { Eye, Briefcase } from "lucide-react";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import { loadCatalog, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import {
@@ -181,23 +181,8 @@ function companyIcon(
   icon: string | null | undefined,
   size: 16 | 24,
 ): React.ReactNode {
-  // `Building2` is the codebase's canonical company-fallback icon
-  // (see apps/web/docs/icons.md). Only swap to <Image> when the
-  // company has a real icon URL.
-  if (icon && icon.startsWith("http")) {
-    return (
-      <Image
-        src={icon}
-        alt=""
-        width={size}
-        height={size}
-        sizes={`${size}px`}
-        className="rounded"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-  return <Building2 size={size === 16 ? 14 : 20} aria-hidden="true" />;
+  const validUrl = icon && icon.startsWith("http") ? icon : null;
+  return <CompanyIcon icon={validUrl} alt="" size={size} />;
 }
 
 // ── Inline mentions ────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import { Building2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { CompanyIcon } from "@/components/CompanyIcon";
 
 export function CompanyPill({
   company,
@@ -12,18 +12,7 @@ export function CompanyPill({
 }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border-soft px-2.5 py-1 text-sm">
-      {company.icon ? (
-        <Image
-          src={company.icon}
-          alt={company.name}
-          width={16}
-          height={16}
-          sizes="16px"
-          className="size-4 shrink-0 rounded"
-        />
-      ) : (
-        <Building2 size={14} className="shrink-0 text-muted" />
-      )}
+      <CompanyIcon icon={company.icon} alt={company.name} size={16} />
       <span className="max-w-[120px] truncate">{company.name}</span>
       {onRemove && (
         <button

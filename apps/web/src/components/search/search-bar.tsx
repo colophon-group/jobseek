@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, MapPin, Building2, ArrowRight, Briefcase, BarChart3, Code2, Sparkles } from "lucide-react";
-import Image from "next/image";
+import { Search, MapPin, ArrowRight, Briefcase, BarChart3, Code2, Sparkles } from "lucide-react";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import { useLingui } from "@lingui/react/macro";
 import type { LocationSuggestion } from "@/lib/actions/locations";
 import { suggestCompanies } from "@/lib/actions/company";
@@ -769,18 +769,7 @@ export function SearchBar({
                       fi === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
                     }`}
                   >
-                    {c.icon ? (
-                      <Image
-                        src={c.icon}
-                        alt=""
-                        width={16}
-                        height={16}
-                        sizes="16px"
-                        className="size-4 shrink-0 rounded-sm"
-                      />
-                    ) : (
-                      <Building2 size={14} className="shrink-0 text-muted" />
-                    )}
+                    <CompanyIcon icon={c.icon} alt="" size={16} />
                     <span className="min-w-0 flex-1 font-medium">{c.name}</span>
                     <ArrowRight size={12} className="shrink-0 text-muted" />
                   </div>
