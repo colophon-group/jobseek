@@ -50,6 +50,8 @@ fi
 DEPLOY_DIR="/home/deploy"
 
 # ── Stop any manually-started containers that conflict with compose ──
+# `indexnow` was retired in #2821 (companies left the index); the rm is
+# kept here to clean up boxes that still have a manually-started one.
 docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy 2>/dev/null || true
 
 # ── Write env file ──────────────────────────────────────────────────
@@ -78,10 +80,6 @@ TYPESENSE_ADMIN_KEY=${TYPESENSE_ADMIN_KEY}
 PROXY_PROVIDER=${PROXY_PROVIDER:-none}
 WEBSHARE_PROXY_URL=${WEBSHARE_PROXY_URL:-}
 DECODO_PROXY_URL=${DECODO_PROXY_URL:-}
-INDEXNOW_KEY=${INDEXNOW_KEY:-}
-INDEXNOW_SITE_URL=${INDEXNOW_SITE_URL:-}
-INDEXNOW_KEY_URL=${INDEXNOW_KEY_URL:-}
-INDEXNOW_INTERVAL=${INDEXNOW_INTERVAL:-3600}
 MURMUR_TOKEN=${MURMUR_TOKEN}
 EOF
 
@@ -106,7 +104,7 @@ trap 'echo "Deploy step failed — restoring crawler containers on previous imag
 # alloy is intentionally left running so deploy-time errors keep
 # shipping to Loki — losing observability across the deploy is what
 # turned a bad PATCH into a 15h dark window.
-docker compose stop worker-1 worker-2 worker-3 browser-1 exporter drain indexnow 2>/dev/null || true
+docker compose stop worker-1 worker-2 worker-3 browser-1 exporter drain 2>/dev/null || true
 docker compose up -d redis
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────

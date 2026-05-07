@@ -157,33 +157,12 @@ services:
         condition: service_healthy
     mem_limit: 256m
 
-  # -- IndexNow notifier ------------------------------------------
-  # Diffs company content hashes against indexnow_submission and POSTs
-  # changed URLs to api.indexnow.org (propagates to Bing, Yandex,
-  # Seznam, Naver, Yep — Google does NOT participate). The
-  # `crawler notify-indexnow` subcommand is one-shot; a shell loop
-  # wraps it on the INDEXNOW_INTERVAL cadence. Disabled at runtime
-  # when INDEXNOW_KEY is empty — the notifier short-circuits and the
-  # loop just sleeps between no-op runs.
-  indexnow:
-    image: ghcr.io/${OWNER}/jobseek-crawler:latest
-    init: true
-    restart: unless-stopped
-    network_mode: host
-    stop_grace_period: 15s
-    command: >
-      sh -c 'while true; do
-        uv run --no-sync crawler notify-indexnow || true;
-        sleep "${INDEXNOW_INTERVAL:-3600}";
-      done'
-    environment:
-      <<: *common-env
-      METRICS_PORT: "9099"
-      INDEXNOW_KEY: ${INDEXNOW_KEY:-}
-      INDEXNOW_SITE_URL: ${INDEXNOW_SITE_URL:-}
-      INDEXNOW_KEY_URL: ${INDEXNOW_KEY_URL:-}
-      INDEXNOW_INTERVAL: ${INDEXNOW_INTERVAL:-3600}
-    mem_limit: 256m
+  # IndexNow notifier removed in #2821. Companies are no longer indexed
+  # (`/company/{slug}` is `noindex,follow` and the URLs are out of the
+  # sitemap), so there is no remaining set of URLs to push to Bing /
+  # Yandex / Seznam / Naver / Yep. `crawler notify-indexnow` and
+  # `apps/crawler/src/indexnow.py` are kept in the codebase but no
+  # longer scheduled — they short-circuit on `INDEXNOW_KEY` unset.
 
   # -- Browser -----------------------------------------------------
   browser-1:

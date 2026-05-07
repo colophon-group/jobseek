@@ -52,6 +52,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates(path, locale),
+    // Excluded from the search index (#2821): /company/{slug} is content-wise
+    // a near-duplicate of the source ATS page (jseek-authored description +
+    // client-rendered postings list). At ~4k companies × 4 locales the surface
+    // dilutes site-wide quality signals and risks Helpful Content / Site
+    // Reputation Abuse classification. The page stays as the in-app + shared
+    // product surface; `follow` keeps PageRank flowing to internal targets
+    // (curated watchlists, blog) from any external links pointing here.
+    robots: { index: false, follow: true },
     openGraph: {
       title,
       description,

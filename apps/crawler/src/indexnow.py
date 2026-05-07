@@ -1,11 +1,19 @@
 """IndexNow submission notifier.
 
-Runs periodically on the crawler host. For every company × locale
-pair, derives a content hash over the fields that affect bot-visible
-HTML on ``/<locale>/company/<slug>`` pages. Compares against
-``indexnow_submission.content_hash``; URLs whose hash changed (or
-that have never been submitted) are POSTed in batches to
-``api.indexnow.org``.
+**Retired as of #2821 — kept for revival.** Companies are no longer
+indexed (``/{locale}/company/{slug}`` is ``noindex,follow`` and
+excluded from the sitemap), so there are no URLs left for this
+notifier to push. The compose service was removed from
+``apps/crawler/docker-compose.yml``; the ``notify-indexnow`` CLI
+subcommand still exists but no scheduler invokes it. The module is
+preserved so an indexable company surface can be brought back without
+re-implementing the hash-diff state machine.
+
+For every company × locale pair, derives a content hash over the
+fields that affect bot-visible HTML on ``/<locale>/company/<slug>``
+pages. Compares against ``indexnow_submission.content_hash``; URLs
+whose hash changed (or that have never been submitted) are POSTed in
+batches to ``api.indexnow.org``.
 
 A single POST propagates to all participating engines (Bing, Yandex,
 Seznam, Naver, Microsoft Yep). Google does NOT participate in
@@ -27,10 +35,6 @@ Design notes:
   Stable fields (name / logo / website / industry / employees / founded
   year) are hashed once per company; the locale-specific description
   is appended, so each of the four URLs carries its own hash.
-
-Run via ``crawler notify-indexnow`` (one-shot) or as a loop container
-(``while true; do crawler notify-indexnow; sleep $INDEXNOW_INTERVAL;
-done``) alongside ``exporter`` / ``drain``.
 """
 
 from __future__ import annotations

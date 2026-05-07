@@ -8,9 +8,10 @@ name: Crawler scheduled maintenance
 # What runs here (vs. elsewhere):
 #   refresh-typesense  — this workflow, every 4h + at every deploy (inline
 #                        via `crawler sync` in apps/crawler/deploy.sh).
-#   notify-indexnow    — NOT this workflow. Long-lived `indexnow` service in
-#                        apps/crawler/docker-compose.yml runs it every
-#                        INDEXNOW_INTERVAL seconds (default 3600).
+#   notify-indexnow    — Retired in #2821. Companies are no longer indexed,
+#                        so there is no surface left for the notifier to
+#                        push. Module + CLI subcommand kept for revival;
+#                        no scheduled invocation anywhere in the repo.
 #   reconcile          — NOT this workflow. Runs daily in-process inside the
 #                        exporter container; see docs/11-typesense.md.
 #   backfill-typesense — NOT scheduled. Full re-index, invoked manually via

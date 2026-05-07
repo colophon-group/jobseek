@@ -67,7 +67,7 @@ uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Red
 uv run crawler board <slug>       # Process single board (debug)
 uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
 uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
-uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (see docs/13-seo-and-indexnow.md)
+uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (RETIRED in #2821 — companies left the index; module preserved, not scheduled)
 
 # Labeller subsystem (daily gold-dataset routine — spec in docs/15-data-sampling-routine.md)
 uv run labeller sample --date today --count 10 --out <path>
@@ -194,7 +194,7 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 
 ## SEO and IndexNow
 
-Company pages server-render stable facts + JSON-LD (posting list stays client-rendered). IndexNow notifies Bing/Yandex/Seznam/Naver/Yep on content changes; Google is out of scope. Crawler side runs a content-hash diff per (company, locale); web side fires from watchlist server actions via `after()`.
+`/{locale}/company/{slug}` is now `noindex,follow` (#2821) — pages stay as the in-app product surface but are excluded from the sitemap. The crawler-side IndexNow notifier (which only ever covered company URLs) was retired in the same PR. Watchlist-side IndexNow notification from web server actions via `after()` remains active for the qualifying-watchlist surface (#2823); full IndexNow phase-out tracked in #2843.
 
 See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md).
 

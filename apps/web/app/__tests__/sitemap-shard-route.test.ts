@@ -52,6 +52,18 @@ describe("/sitemap/<id>.xml shard handler (issue #2694)", () => {
     expect(renderShardMock).not.toHaveBeenCalled();
   });
 
+  it("404s when renderSitemapShard returns null (#2821: retired shard)", async () => {
+    // Stale sitemap-index caches from before the company shards were
+    // retired may still reference /sitemap/1.xml etc. The lib returns
+    // null for unknown ids; the route maps that to 404 so crawlers see
+    // a clear "this URL is gone" signal rather than an empty urlset.
+    renderShardMock.mockResolvedValue(null);
+    const res = await GET(new Request("https://jseek.co/sitemap/3.xml"), paramsFor("3.xml"));
+    expect(renderShardMock).toHaveBeenCalledWith(3);
+    expect(res.status).toBe(404);
+    expect(serializeMock).not.toHaveBeenCalled();
+  });
+
   it("returns the serialized XML body", async () => {
     renderShardMock.mockResolvedValue([{ url: "https://jseek.co/en" }]);
     serializeMock.mockReturnValue("<?xml version=\"1.0\"?><urlset/>");
