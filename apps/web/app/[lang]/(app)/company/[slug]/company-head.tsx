@@ -1,8 +1,7 @@
 import { Suspense } from "react";
-import Image from "next/image";
-import { Building2 } from "lucide-react";
 import { getI18n } from "@lingui/react/server";
 import { BackLink } from "@/components/BackLink";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import { StarButton } from "@/components/search/star-button";
 import {
   JsonLd,
@@ -72,23 +71,7 @@ export function CompanyHead({ company, locale }: Props) {
       </Suspense>
 
       <div className="flex items-center gap-3">
-        {company.icon ? (
-          <Image
-            src={company.icon}
-            alt=""
-            width={32}
-            height={32}
-            sizes="32px"
-            className="size-8 shrink-0 rounded"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="flex size-8 shrink-0 items-center justify-center rounded bg-border-soft text-muted"
-          >
-            <Building2 size={18} />
-          </div>
-        )}
+        <CompanyIcon icon={company.icon} alt="" size={32} />
         <h1 className="m-0 text-lg font-semibold">
           {company.website ? (
             <a

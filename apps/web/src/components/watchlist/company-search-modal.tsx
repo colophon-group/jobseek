@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, Search, Building2, Loader2, Check, ChevronDown } from "lucide-react";
+import { X, Search, Loader2, Check, ChevronDown } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import {
   searchCompaniesForWatchlist,
   suggestIndustries,
@@ -309,20 +309,7 @@ export function CompanySearchModal({
                         isSelected ? "bg-primary/5" : "hover:bg-border-soft"
                       }`}
                     >
-                      {c.icon ? (
-                        <Image
-                          src={c.icon}
-                          alt={c.name}
-                          width={32}
-                          height={32}
-                          sizes="32px"
-                          className="mt-0.5 size-8 shrink-0 rounded"
-                        />
-                      ) : (
-                        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-                          <Building2 size={16} />
-                        </div>
-                      )}
+                      <CompanyIcon icon={c.icon} alt={c.name} size={32} className="mt-0.5" />
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">

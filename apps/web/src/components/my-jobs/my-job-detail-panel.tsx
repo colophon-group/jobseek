@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { Building2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { getPostingDetail } from "@/lib/actions/search";
@@ -280,20 +280,7 @@ function PostingContent({ detail }: { detail: PostingDetail }) {
           href={lp(`/company/${company.slug}`)}
           className="flex items-center gap-3 transition-opacity hover:opacity-80"
         >
-          {company.icon ? (
-            <Image
-              src={company.icon}
-              alt={company.name}
-              width={36}
-              height={36}
-              sizes="36px"
-              className="size-9 shrink-0 rounded"
-            />
-          ) : (
-            <div className="flex size-9 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-              <Building2 size={20} />
-            </div>
-          )}
+          <CompanyIcon icon={company.icon} alt={company.name} size={36} />
           <span className="text-sm font-semibold">{company.name}</span>
         </Link>
         <a

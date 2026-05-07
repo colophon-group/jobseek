@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useRef, useMemo } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { Building2 } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import { useParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { loadMorePostings } from "@/lib/actions/search";
@@ -107,20 +106,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href={companyHref} prefetch={false} className="flex items-center gap-3 transition-opacity hover:opacity-80">
-          {company.icon ? (
-            <Image
-              src={company.icon}
-              alt={company.name}
-              width={32}
-              height={32}
-              sizes="32px"
-              className="size-8 shrink-0 rounded"
-            />
-          ) : (
-            <div className="flex size-8 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-              <Building2 size={18} />
-            </div>
-          )}
+          <CompanyIcon icon={company.icon} alt={company.name} size={32} />
           <span className="text-sm font-semibold">{company.name}</span>
         </Link>
         <StarButton companyId={company.id} />

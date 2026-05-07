@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import Image from "next/image";
-import { Building2, Bookmark } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import { timeAgoShort } from "@/lib/time";
 import { type WatchlistPostingEntry } from "@/lib/actions/watchlists";
 import { runGetWatchlistPostings } from "@/lib/search/search-runner";
@@ -181,20 +181,7 @@ export function WatchlistJobList({
         }`}
       >
         <TrackingDot postingId={entry.id} />
-        {entry.company.icon ? (
-          <Image
-            src={entry.company.icon}
-            alt={entry.company.name}
-            width={24}
-            height={24}
-            sizes="24px"
-            className="size-6 shrink-0 rounded"
-          />
-        ) : (
-          <div className="flex size-6 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-            <Building2 size={14} />
-          </div>
-        )}
+        <CompanyIcon icon={entry.company.icon} alt={entry.company.name} size={24} />
 
         <span className="shrink-0 text-xs text-muted">
           {entry.company.name}
