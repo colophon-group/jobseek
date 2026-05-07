@@ -143,19 +143,38 @@ function slugFromFilename(filename: string): string {
 }
 
 /**
- * Returns all published posts (canonical English source files only),
- * sorted newest-first by `datePublished`. Translation files
- * (`<slug>.<locale>.mdx`) are not surfaced here — they're per-post
- * locale variants, not separate posts.
+ * Returns all published posts (one summary per canonical slug), sorted
+ * newest-first by `datePublished`. When `locale` is provided and a
+ * translated MDX sibling exists, the translated frontmatter wins for
+ * `title`/`description`/`tags`/`author`/`dateModified` — this is what
+ * the index page should call so card titles and descriptions render in
+ * the user's locale rather than always showing the English canonical.
+ *
+ * Translation files (`<slug>.<locale>.mdx`) are not surfaced as
+ * separate posts; they're per-post locale variants.
  */
-export async function listBlogPosts(): Promise<BlogPostSummary[]> {
+export async function listBlogPosts(locale?: Locale): Promise<BlogPostSummary[]> {
   const filenames = (await listBlogFilenames()).filter(isCanonicalFilename);
   const posts = await Promise.all(filenames.map(async (filename) => {
     const slug = slugFromFilename(filename);
-    const raw = await readFile(join(BLOG_DIR, filename), "utf-8");
-    const { data } = matter(raw);
-    const fm = coerceFrontmatter(slug, data as Record<string, unknown>);
-    return { slug, ...fm };
+    const candidates: string[] = [];
+    if (locale && locale !== "en") {
+      candidates.push(`${slug}.${locale}.mdx`);
+    }
+    candidates.push(filename);
+    for (const candidate of candidates) {
+      try {
+        const raw = await readFile(join(BLOG_DIR, candidate), "utf-8");
+        const { data } = matter(raw);
+        const fm = coerceFrontmatter(slug, data as Record<string, unknown>);
+        return { slug, ...fm };
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+      }
+    }
+    // Unreachable: `filename` is guaranteed to exist (we just listed it),
+    // but the type system needs a fallthrough.
+    throw new Error(`[blog] post '${slug}' disappeared between listdir and read`);
   }));
   return posts.sort((a, b) => b.datePublished.localeCompare(a.datePublished));
 }

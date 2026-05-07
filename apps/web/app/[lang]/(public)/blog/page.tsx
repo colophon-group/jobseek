@@ -60,7 +60,11 @@ function formatDate(iso: string, locale: string): string {
 export default async function BlogIndexPage({ params }: Props) {
   const locale = await initI18nForPage(params);
   const i18n = getI18n()!;
-  const posts = await listBlogPosts();
+  // Pass the locale so per-post translated frontmatter (title /
+  // description / tags) wins over the English canonical when a
+  // translation sibling exists. Without this the index would always
+  // show English titles even on /fr/blog.
+  const posts = await listBlogPosts(locale);
 
   const heading = i18n._({
     id: "blog.index.heading",
