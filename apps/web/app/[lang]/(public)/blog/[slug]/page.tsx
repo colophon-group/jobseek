@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { compileMDX } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
@@ -123,7 +124,10 @@ export default async function BlogPostPage({ params }: Props) {
 
   const { content } = await compileMDX<Record<string, never>>({
     source: post.body,
-    options: { parseFrontmatter: false },
+    options: {
+      parseFrontmatter: false,
+      mdxOptions: { remarkPlugins: [remarkGfm] },
+    },
     components: buildMdxComponents(locale),
   });
   const minutes = readingTimeMinutes(post.body);
