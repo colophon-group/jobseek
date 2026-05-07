@@ -7,10 +7,14 @@
  * `generateStaticParams`, and the index page reads the full set on
  * each ISR regen.
  *
- * The blog is English-only initially. Per-locale translations are a
- * future concern — for now the page metadata + sitemap emit only
- * `/en/blog/...` URLs and skip hreflang for locales without a
- * translated MDX sibling.
+ * Posts are translated per-post via sibling files
+ * `<slug>.<locale>.mdx` next to the canonical English `<slug>.mdx`.
+ * `getBlogPost(slug, locale)` honors the locale preference and falls
+ * back to the canonical source. The sitemap (`lib/sitemap.ts::
+ * blogPostEntries`) emits one URL per (post, locale-with-translation)
+ * pair, driven by `getBlogPostLocales(slug)`; locales without a
+ * translated MDX are skipped so we never advertise duplicate-content
+ * English-body URLs under foreign locale paths.
  *
  * Frontmatter contract (validated lightly — missing fields fall back
  * to safe defaults):

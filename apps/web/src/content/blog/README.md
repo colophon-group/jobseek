@@ -130,15 +130,22 @@ The `MentionPill` skeleton is shared so a new type inherits the visual treatment
 
 ## Translation policy
 
-The blog is **English-only** for now. The post page emits `/en/blog/{slug}` as the canonical URL; non-en locale paths (`/de/...`, `/fr/...`, `/it/...`) exist for routing completeness but render the same EN body. The sitemap intentionally lists only `/en/blog/{slug}` — adding hreflang to a duplicate-content cluster would advertise duplicates to Google.
+Posts are translated **per-post** rather than blog-wide. The canonical English source lives at `<slug>.mdx`; translations are sibling files at `<slug>.<locale>.mdx` (e.g. `welcome-to-the-job-seek-blog.de.mdx`). The post page (`app/[lang]/(public)/blog/[slug]/page.tsx`) calls `getBlogPost(slug, locale)` which looks up the translated file first and falls back to the canonical English source if it's missing.
 
-When a post genuinely warrants translation:
+The sitemap (`apps/web/src/lib/sitemap.ts::blogPostEntries`) emits one URL per (post, locale) pair **only for locales that have a translated MDX file on disk** — driven by `getBlogPostLocales(slug)`. Locales without a translation are skipped, so we never advertise a duplicate-content English-body URL under a foreign locale path. `x-default` always points at the EN canonical.
 
-1. Create `<slug>.{de,fr,it}.mdx` siblings with translated frontmatter + body.
-2. Update `blogPostEntries` in `apps/web/src/lib/sitemap.ts` to widen the `languages` map for that post.
-3. Verify the post page picks the right MDX file based on the route's `lang` param (will require a small loader update).
+To translate a post:
 
-The blog page chrome (h1, "No posts yet" empty state, "min read", "← Blog" nav, etc.) IS fully translated for de/fr/it via Lingui — see `locales/{de,fr,it}.po` for the `blog.*` and `common.nav.blog` keys. A pre-commit hook (`scripts/check-i18n-coverage.sh`) blocks commits with untranslated chrome strings.
+1. Copy `<slug>.mdx` → `<slug>.<locale>.mdx`.
+2. Translate the frontmatter (`title`, `description`, `tags`) and body. Keep MDX components (`<Watchlist>`, `<CompanyCard>`, etc.) as-is — they're identifiers, not user-visible strings.
+3. Verify the per-locale URL renders (`pnpm dev` → `/{locale}/blog/<slug>`) and the sitemap widens correctly.
+
+The blog page chrome (`<h1>`, "No posts yet" empty state, "min read", "← Blog" nav, etc.) IS translated for de/fr/it via Lingui — see `locales/{de,fr,it}.po` for the `blog.*` and `common.nav.blog` keys. A pre-commit hook (`scripts/check-i18n-coverage.sh`) blocks commits with untranslated chrome strings.
+
+**Known limitations** (tracked as follow-ups):
+
+- `getBlogPostLocales` currently does an `access()` filesystem check — it does not read each translation's `draft` flag. A `<slug>.<locale>.mdx` with `draft: true` would still appear in the sitemap's `languages` map even though `getBlogPost` would 404 the request. No draft translations exist today; a fix is filed separately to honor draft-on-translation before the next translated post lands.
+- `buildAlternates` in `seo.tsx` always emits all 4 locale alternates in the page `<head>`, regardless of which locales have a translated MDX. The sitemap is correct; the page metadata is over-broad. Symptoms only when a future post ships EN-only — fix tracked.
 
 ## Local dev workflow
 

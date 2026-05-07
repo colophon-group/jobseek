@@ -17,7 +17,7 @@ Wenn du die spezifikationsartige Zusammenfassung suchst — exakter User-Agent, 
 
 Stripes Karriereseite ist maßgeschneidert; Anthropic nutzt Greenhouse; SAP nutzt SuccessFactors; Workday ist Workday. Es gibt rund 30 verschiedene ATS-Plattformen in der Top-Schicht und einen deutlich längeren Schwanz danach. Der Großteil der Arbeit beim Betrieb von Job Seek besteht darin, jedes davon als leicht anderes Protokoll zu behandeln, während es von außen gleich aussieht.
 
-Pro Unternehmen führen wir eine Zeile in `boards.csv`, die festlegt: welcher Monitor-Typ verwendet wird, wo das Board liegt, ein optionaler Regex-Filter für Stellenlinks, manchmal ein Flag, das heißt: „Diese steht hinter einer WAF, route die Anfrage über einen Proxy." Wenn der Crawler dieses Unternehmen im Tick aufnimmt, steuert die Zeile alles Weitere.
+Pro Unternehmen führen wir eine Zeile in `boards.csv`, die festlegt: welcher Monitor-Typ verwendet wird, wo das Board liegt, ein optionaler Regex-Filter für Stellenlinks, manchmal ein Flag, das heißt: „Diese steht hinter einer WAF, route die Anfrage über einen Proxy.“ Wenn der Crawler dieses Unternehmen im Tick aufnimmt, steuert die Zeile alles Weitere.
 
 Für Stripe konkret — angenommen, es ist ein Greenhouse-Board — schickt der Monitor `https://boards-api.greenhouse.io/v1/boards/<token>/jobs` eine Anfrage und bekommt eine JSON-Liste zurück. Bei Workday senden wir POST an `/wday/cxs/<tenant>/<site>/jobs` mit einem JSON-Such-Payload. Bei Boards ohne beides laufen wir die Sitemap ab, parsen `__NEXT_DATA__` oder fallen auf Playwright-DOM-Extraktion zurück.
 
@@ -36,7 +36,7 @@ Eine neue URL kommt aus dem Monitoring. Der nächste Worker greift sie auf, holt
 
 Der Fast Path: Die meisten modernen ATS-Systeme betten `application/ld+json` vom Typ `JobPosting` ein — Titel, Ort, Beschäftigungsart, Gehalt, `datePosted`, `validThrough`. Die Greenhouse-API liefert ein normalisiertes JSON; Levers ebenfalls; Ashbys, Ripplings, Workables im Wesentlichen gleich.
 
-Wo strukturierte Daten fehlen oder falsch sind, fallen wir auf schrittweise DOM-Extraktion zurück — kleine Rezepte pro Board, die sagen: „Hol den Titel aus diesem Selektor, den Ort aus jenem, die Beschreibung aus dem Artikel-Body." Jedes wurde für ein Board geschrieben, bei dem zuvor alles andere gescheitert ist.
+Wo strukturierte Daten fehlen oder falsch sind, fallen wir auf schrittweise DOM-Extraktion zurück — kleine Rezepte pro Board, die sagen: „Hol den Titel aus diesem Selektor, den Ort aus jenem, die Beschreibung aus dem Artikel-Body.“ Jedes wurde für ein Board geschrieben, bei dem zuvor alles andere gescheitert ist.
 
 Das Ergebnis ist ein `JobContent`-Datensatz mit normalisierten Feldern: ein Beschäftigungstyp aus fünf Enums (`full_time`, `part_time`, `contract`, `internship`, `full_or_part`), ein Job-Location-Type aus einer Dreiermenge (`onsite`, `remote`, `hybrid`), Orte aufgelöst zu [GeoNames](https://www.geonames.org/)-IDs, ein Gehalt geparst zu einem strukturierten Currency-Min-Max mit Frequenz. Was in unserer Datenbank ankommt, ist einheitlicher als die Karriereseite, von der es stammt. Ohne diese Einheitlichkeit ist der Vergleich von Rollen über Unternehmen hinweg aussichtslos.
 
@@ -48,7 +48,7 @@ Der Kompromiss: Eine kleine, transparente Menge von Boards entscheidet sich für
 
 Wir geben uns nie als echte:r Nutzer:in aus. Der User-Agent bleibt ehrlich. Wir routen die Anfrage einfach über einen Residential-Exit, damit der IP-Reputations-Filter der Origin sie nicht ablehnt, bevor sie überhaupt ihren Inhaltsfilter erreicht.
 
-## Schritt 5: von „in der Datenbank" zu „in deinem Feed"
+## Schritt 5: von „in der Datenbank“ zu „in deinem Feed“
 
 Das lokale Postgres auf unserem Crawler-Server ist die Quelle der Wahrheit. Von dort laufen kontinuierlich zwei Pipelines:
 
@@ -61,7 +61,7 @@ Eine Watchlist, die zur neuen Stelle passt, nimmt sie auf, sobald die Seite das 
 
 Unternehmen veröffentlichen Stellen und vergessen, sie zu entfernen. ATS-Systeme delisten träge. Sitemap-basierte Monitore können abgeschnitten werden. Die Kosten einer fälschlichen Auslistung sind hoch: Eine Watchlist, die eine noch offene Stelle bei jemandes Wunscharbeitgeber fallen lässt, ist der Fehler, der die Beziehung beendet.
 
-Also kalibrieren wir nach der Vertrauenswürdigkeit der Quelle. Bei API-Monitoren mit definitiven Listen-Semantiken — Greenhouse, Lever, Workday-Tenant-Suche etc., wo „nicht in der Antwort" tatsächlich „nicht im Board" bedeutet — listen wir beim ersten Fehlen aus. Bei fragilen URL-only-Monitoren (Sitemaps, DOM-Extraktion) warten wir vier aufeinanderfolgende verfehlte Zyklen, plus fleetweite Drop-Guards, die Massen-Delistings unterdrücken, wenn eine Sitemap- oder API-Antwort verdächtig abgeschnitten aussieht. Nach dem Auslisten bewahren wir die Quell-URL (verlinkbar, Archivwert) und zeigen die Stelle nicht mehr in aktiven Feeds. Taucht sie an der Quelle wieder auf, listen wir mit dem ursprünglichen `first_seen_at` neu — dieses Detail wiegt mehr, als es klingt, weil es verhindert, dass versehentliches Rotieren alte Stellen frisch erscheinen lässt.
+Also kalibrieren wir nach der Vertrauenswürdigkeit der Quelle. Bei API-Monitoren mit definitiven Listen-Semantiken — Greenhouse, Lever, Workday-Tenant-Suche etc., wo „nicht in der Antwort“ tatsächlich „nicht im Board“ bedeutet — listen wir beim ersten Fehlen aus. Bei fragilen URL-only-Monitoren (Sitemaps, DOM-Extraktion) warten wir vier aufeinanderfolgende verfehlte Zyklen, plus fleetweite Drop-Guards, die Massen-Delistings unterdrücken, wenn eine Sitemap- oder API-Antwort verdächtig abgeschnitten aussieht. Nach dem Auslisten bewahren wir die Quell-URL (verlinkbar, Archivwert) und zeigen die Stelle nicht mehr in aktiven Feeds. Taucht sie an der Quelle wieder auf, listen wir mit dem ursprünglichen `first_seen_at` neu — dieses Detail wiegt mehr, als es klingt, weil es verhindert, dass versehentliches Rotieren alte Stellen frisch erscheinen lässt.
 
 ## Schritt 7: Opt-out
 
