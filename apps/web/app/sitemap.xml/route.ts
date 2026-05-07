@@ -1,3 +1,4 @@
+import type { MetadataRoute } from "next";
 import {
   planSitemapShards,
   renderSitemapShard,
@@ -32,16 +33,22 @@ import {
  * restore robots.ts to declare every shard.
  */
 export async function GET(): Promise<Response> {
-  let entries: Awaited<ReturnType<typeof renderSitemapShard>> = [];
+  let entries: MetadataRoute.Sitemap = [];
   try {
     const shards = await planSitemapShards();
     // Render shards in parallel; the data layer's Redis cache + per-key
     // single-flight (see lib/cache.ts) ensures the underlying Typesense /
     // Postgres queries fan in to one upstream call regardless of N.
+    // `renderSitemapShard` returns null for ids outside the current
+    // plan (a defensive 404 path); planSitemapShards never hands one
+    // here today, but the filter keeps the types honest if the planner
+    // ever loosens.
     const renderedShards = await Promise.all(
       shards.map(({ id }) => renderSitemapShard(id)),
     );
-    entries = renderedShards.flat();
+    entries = renderedShards
+      .filter((shard): shard is MetadataRoute.Sitemap => shard !== null)
+      .flat();
   } catch {
     // Defense-in-depth: serializeUrlset emits a syntactically valid
     // empty <urlset/> rather than letting the route 500 — crawlers
