@@ -190,15 +190,23 @@ export const siteConfig = {
       "/reset-password",
       "/verify-email",
     ],
+    // Bump `lastModified` per entry whenever the page's bot-visible
+    // content (copy, hero, layout) substantively changes. Stable dates
+    // are an honest re-crawl signal for Bing — `new Date()` on every
+    // regen would always say "modified now" and the engine eventually
+    // discounts the signal (#2824).
     sitemap: [
-      { path: "/", changeFrequency: "weekly", priority: 1 },
-      { path: "/about", changeFrequency: "monthly", priority: 0.7 },
-      { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
-      { path: "/how-we-index", changeFrequency: "monthly", priority: 0.6 },
-      { path: "/license", changeFrequency: "monthly", priority: 0.5 },
-      { path: "/privacy-policy", changeFrequency: "monthly", priority: 0.5 },
-      { path: "/terms", changeFrequency: "monthly", priority: 0.5 },
+      { path: "/", changeFrequency: "weekly", priority: 1, lastModified: "2026-05-01" },
+      { path: "/about", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
+      { path: "/faq", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
+      { path: "/how-we-index", changeFrequency: "monthly", priority: 0.6, lastModified: "2026-05-01" },
+      { path: "/license", changeFrequency: "monthly", priority: 0.5, lastModified: "2026-05-01" },
+      { path: "/privacy-policy", changeFrequency: "monthly", priority: 0.5, lastModified: "2026-05-01" },
+      { path: "/terms", changeFrequency: "monthly", priority: 0.5, lastModified: "2026-05-01" },
     ],
+    // The /explore prerendered shell — bump when filter UI / hero /
+    // initial-data layout substantively changes (#2824).
+    exploreLastModified: "2026-05-01",
   },
 
   footer: {

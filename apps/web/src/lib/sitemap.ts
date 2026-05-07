@@ -137,12 +137,21 @@ export const cachedSitemapWatchlists = () =>
     ttl: SITEMAP_TTL_SECONDS,
   });
 
-/** Build hreflang alternates map for a given path (without locale prefix). */
+/**
+ * Build hreflang alternates map for a given path (without locale prefix).
+ *
+ * Includes `x-default` pointing at the English variant — matching the
+ * convention in `buildAlternates` (`@/lib/seo`) so page metadata and
+ * sitemap hreflang stay consistent (#2825). Without `x-default`, Bing
+ * raises an ambiguity warning and Google's "alternate page with
+ * proper canonical tag" classification gets noisier.
+ */
 function langAlternates(path: string): Record<string, string> {
   const languages: Record<string, string> = {};
   for (const locale of locales) {
     languages[locale] = `${siteConfig.url}/${locale}${path}`;
   }
+  languages["x-default"] = `${siteConfig.url}/en${path}`;
   return languages;
 }
 
@@ -152,10 +161,16 @@ export function staticAndExploreEntries(): MetadataRoute.Sitemap {
   for (const item of siteConfig.seo.sitemap) {
     const suffix = item.path === "/" ? "" : item.path;
     const languages = langAlternates(suffix);
+    // `lastModified` reflects the last time the page's bot-visible
+    // content changed. `new Date()` (the previous behavior) makes
+    // every regen claim "modified now" and Bing eventually discounts
+    // the signal (#2824). Real content changes should bump the
+    // per-entry value in `siteConfig.seo.sitemap`.
+    const lastModified = new Date(item.lastModified);
     for (const locale of locales) {
       entries.push({
         url: `${siteConfig.url}/${locale}${suffix}`,
-        lastModified: new Date(),
+        lastModified,
         changeFrequency: item.changeFrequency as "weekly" | "monthly",
         priority: item.priority,
         alternates: { languages },
@@ -164,10 +179,16 @@ export function staticAndExploreEntries(): MetadataRoute.Sitemap {
   }
 
   const exploreLanguages = langAlternates("/explore");
+  // `/explore` hosts Typesense-backed search results that change
+  // continuously, but the bot-visible HTML shell (filters, top-level
+  // copy) only changes on deploy. A stable date pinned to recent
+  // explore-page deploys is a more honest signal than `new Date()`.
+  // Bump when the prerendered shell substantively changes.
+  const exploreLastModified = new Date(siteConfig.seo.exploreLastModified);
   for (const locale of locales) {
     entries.push({
       url: `${siteConfig.url}/${locale}/explore`,
-      lastModified: new Date(),
+      lastModified: exploreLastModified,
       changeFrequency: "daily",
       priority: 0.9,
       alternates: { languages: exploreLanguages },
