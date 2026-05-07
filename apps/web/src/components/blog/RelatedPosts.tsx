@@ -57,6 +57,18 @@ export async function RelatedPosts({
   );
 }
 
+function formatDate(iso: string, locale: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(locale, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
 function RelatedPostCard({
   post,
   locale,
@@ -65,7 +77,7 @@ function RelatedPostCard({
   locale: Locale;
 }) {
   const firstTag = post.tags[0];
-  const dateLabel = post.datePublished;
+  const dateLabel = formatDate(post.datePublished, locale);
   return (
     <Link
       href={`/${locale}/blog/${post.slug}`}
