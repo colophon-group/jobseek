@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { cache } from "react";
 import { cacheLife } from "next/cache";
-import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import {
   getPublicWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
@@ -11,19 +10,16 @@ import { siteConfig } from "@/content/config";
 import { buildAlternates, buildWatchlistItemListJsonLd, JsonLd } from "@/lib/seo";
 import { WatchlistContent } from "./watchlist-content";
 
-/**
- * Per-request memoization so the watchlist detail is fetched once even
- * though both `generateMetadata` (above) and the page render (below)
- * need it. The outer `'use cache'` adds cross-request caching; this
- * inner React-cache wrapper still saves a duplicate SQL call within the
- * single request that populates the cache.
- */
-const cachedDetail = cache(getPublicWatchlistByUserAndSlug);
-
-// 1-hour revalidate. Watchlist metadata is shared via the CDN, so
-// freshness from a viewer's perspective comes from the client-hydrated
-// body. Search engines re-crawl on a much slower cadence than 10
-// minutes anyway. See issue #2648.
+// 1-hour cache for both the metadata and the page body. Each is its
+// own `'use cache'` boundary — under cacheComponents they run in
+// separate clean AsyncLocalStorage snapshots, so React's `cache()`
+// wouldn't dedupe the watchlist lookup across them. Cross-boundary
+// dedup lives one level down: `getPublicWatchlistByUserAndSlug` is
+// wrapped in Redis `cached()` (60s TTL) so the two callers share a
+// single SQL roundtrip. Watchlist metadata is shared via the CDN, so
+// per-viewer freshness comes from the client-hydrated body — search
+// engines re-crawl on a much slower cadence than an hour anyway. See
+// issue #2648.
 
 type Props = {
   params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
@@ -38,9 +34,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // Public-only fetch: never reads session, so the page stays
     // statically prerenderable. The session-aware variant is only used
     // by the client-fired server action that hydrates the page body.
-    // See issue #2244. `cachedDetail` is the React-cache-wrapped form
-    // so this call shares its result with the page-render call below.
-    cachedDetail(userSlug, watchlistSlug),
+    // See issue #2244. The Redis `cached()` wrapper inside
+    // `getPublicWatchlistByUserAndSlug` shares this lookup with the
+    // page-render call below.
+    getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug),
     loadCatalog(locale),
   ]);
   if (!detail) return {};
@@ -124,6 +121,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${siteConfig.url}/${locale}${path}`,
       type: "website",
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
     },
     ...(!indexable && { robots: { index: false, follow: true } }),
   };
@@ -135,13 +135,14 @@ export default async function WatchlistRoute({ params }: Props) {
   const { lang, userSlug, watchlistSlug } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
 
-  // Re-fetch via the React-cache-wrapped form so this call shares its
-  // result with `generateMetadata` above (single SQL per ISR regen).
+  // Re-fetch the watchlist detail. The Redis `cached()` layer inside
+  // `getPublicWatchlistByUserAndSlug` shares the result with the
+  // `generateMetadata` call above (single SQL per cold cache fill).
   // The body is client-rendered via WatchlistContent, but the
   // structured data must reach non-JS consumers (AI retrievers,
   // search-engine crawlers that don't execute JS) — emitting it
   // server-side is the only path.
-  const detail = await cachedDetail(userSlug, watchlistSlug);
+  const detail = await getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug);
 
   // For `anyCompany` watchlists, `detail.companies` is unrelated to
   // what the watchlist actually tracks (it holds leftover rows from

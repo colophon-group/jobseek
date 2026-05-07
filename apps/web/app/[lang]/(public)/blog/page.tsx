@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cacheLife } from "next/cache";
 import { getI18n } from "@lingui/react/server";
-import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { listBlogPosts } from "@/lib/blog";
@@ -42,6 +42,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${siteConfig.url}/${locale}/blog`,
       type: "website",
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
     },
   };
 }

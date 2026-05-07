@@ -49,5 +49,11 @@ export const config = {
   // Only match paths that do NOT start with a locale prefix, static assets,
   // API routes, or Next.js internals.  Locale-prefixed paths (e.g. /en/…)
   // skip the middleware entirely — no edge invocation needed.
-  matcher: ["/((?!_next|api|mcp|flags|fonts|publicdomain|favicon\\.ico|en|de|fr|it|.*\\..*).*)" ],
+  //
+  // `opengraph-image*` is excluded so `og:image` URLs that the Metadata
+  // API generates against the root `app/opengraph-image.tsx` reach the
+  // handler directly. Without this, Twitter / LinkedIn / Slack OG fetches
+  // for non-(public) pages 308-redirect to `/<locale>/opengraph-image-<hash>`
+  // and 404. See #2835 critic round 1.
+  matcher: ["/((?!_next|api|mcp|flags|fonts|publicdomain|favicon\\.ico|opengraph-image|en|de|fr|it|.*\\..*).*)" ],
 };

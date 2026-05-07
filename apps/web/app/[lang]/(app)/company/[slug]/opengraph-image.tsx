@@ -5,11 +5,17 @@ import { locales } from "@/lib/i18n";
 export const alt = "Company jobs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// Cached automatically via the Next.js OG image route's built-in
-// Cache-Control headers; no `'use cache'` needed (ImageResponse is a
-// class instance and isn't serializable for the runtime cache).
+// Long-cache (30 days) via explicit `Cache-Control` headers on the
+// ImageResponse — `'use cache'` doesn't apply (ImageResponse is a
+// class instance, not serializable for the runtime cache), and Next.js
+// doesn't auto-cache OG images outside the prerender window. Vercel
+// purges the CDN on every deploy so `immutable` is safe.
 // `generateStaticParams` below covers the top-N companies at build
-// time so social-card crawl surges land on the prebake.
+// time so social-card crawl surges land on the prebake; long-tail
+// slugs render once per region per 30 days.
+const CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
+};
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -30,14 +36,17 @@ import { join } from "node:path";
 const OG_PRERENDER_TOP_N = 200;
 
 /**
- * Pick the top-N companies to prerender. Returns `[]` on any error so a
- * build environment without Typesense access (or a transient outage)
- * never fails the build — Next.js will fall back to dynamic rendering on
- * first request, identical to the existing behavior.
+ * Pick the top-N companies to prerender. Soft-fails (returns `[]`) on
+ * non-production builds so local + preview builds without Typesense
+ * access still work. **Fails loudly on Production** — silently shipping
+ * a deploy with zero OG prerender means every Twitter/LinkedIn/Slack
+ * crawl on a popular slug cold-starts a function, which is exactly the
+ * cost surge the prebake exists to absorb. See #2835 critic round 1.
  */
 export async function generateStaticParams(): Promise<
   { lang: string; slug: string }[]
 > {
+  const isProductionBuild = process.env.VERCEL_ENV === "production";
   try {
     const { getSearchClient } = await import(
       "@/lib/search/typesense-client"
@@ -55,11 +64,18 @@ export async function generateStaticParams(): Promise<
     const slugs = (result.hits ?? [])
       .map((h) => (h.document as Record<string, unknown>).slug)
       .filter((s): s is string => typeof s === "string");
+    if (slugs.length === 0 && isProductionBuild) {
+      throw new Error(
+        "[opengraph-image] generateStaticParams: 0 companies returned from Typesense " +
+          "on a production build — would silently degrade to per-request OG generation. " +
+          "Check Typesense reachability + active_posting_count:>0 filter.",
+      );
+    }
     return slugs.flatMap((slug) => locales.map((lang) => ({ lang, slug })));
   } catch (err) {
-    // Misconfigured TYPESENSE_* in build env, transient Typesense outage,
-    // etc. Don't fail the build — but log so a silent zero-prerender is
-    // visible in CI output and observable as a deploy regression.
+    if (isProductionBuild) throw err;
+    // Local / preview build without Typesense access — log loudly but
+    // don't fail; long-tail dynamic rendering is the existing fallback.
     console.warn(
       "[opengraph-image] generateStaticParams: skipping prerender",
       err,
@@ -97,7 +113,7 @@ export default async function OgImage({
       >
         Not Found
       </div>,
-      { ...size },
+      { ...size, headers: CACHE_HEADERS },
     );
   }
 
@@ -182,6 +198,7 @@ export default async function OgImage({
     </div>,
     {
       ...size,
+      headers: CACHE_HEADERS,
       fonts: [
         {
           name: "JetBrains Mono",

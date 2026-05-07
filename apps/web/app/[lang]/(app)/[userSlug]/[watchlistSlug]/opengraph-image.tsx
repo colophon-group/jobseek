@@ -6,10 +6,14 @@ import { getPublicWatchlistByUserAndSlug } from "@/lib/actions/watchlists";
 export const alt = "Watchlist on Job Seek";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// Cached via the Next.js OG image route's built-in Cache-Control
-// headers (ImageResponse class instances aren't serializable for
-// `'use cache'`). Mirrors the company OG image
+// 30-day cache via explicit `Cache-Control` headers on the
+// ImageResponse — `'use cache'` doesn't apply (ImageResponse is a
+// class instance). Mirrors the company OG image
 // (apps/web/app/[lang]/(app)/company/[slug]/opengraph-image.tsx).
+// Vercel purges the CDN on every deploy so `immutable` is safe.
+const CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
+};
 
 // Satori (used by next/og) only supports TTF/OTF, not woff2.
 const fontPromise = readFile(
@@ -55,6 +59,7 @@ export default async function OgImage({
       </div>,
       {
         ...size,
+        headers: CACHE_HEADERS,
         fonts: [{ name: "JetBrains Mono", data: fontData, weight: 700, style: "normal" }],
       },
     );
@@ -159,6 +164,7 @@ export default async function OgImage({
     </div>,
     {
       ...size,
+      headers: CACHE_HEADERS,
       fonts: [
         {
           name: "JetBrains Mono",

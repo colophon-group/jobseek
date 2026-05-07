@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
-import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
-import { LlmContentMirror } from "@/components/LlmContentMirror";
 import { AboutContent } from "./about-content";
 
 type Props = {
@@ -25,7 +24,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates("/about", locale),
-    openGraph: { title, description, url: `${siteConfig.url}/${locale}/about` },
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}/about`,
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+    },
   };
 }
 
@@ -47,15 +53,6 @@ export default async function AboutPage({ params }: Props) {
         contactEmail={siteConfig.indexing.contactEmail}
         ossRepoUrl={siteConfig.indexing.ossRepoUrl}
       />
-      <LlmContentMirror locale={locale}>
-        <h1>{i18n._("about.title")}</h1>
-        <p>{i18n._("about.p1")}</p>
-        <p>{i18n._("about.p2")}</p>
-        <p>{i18n._("about.p3")}</p>
-        <h2>{i18n._("about.transparency.title")}</h2>
-        <p>{i18n._("about.transparency.p1")}</p>
-        <p>Contact: {siteConfig.indexing.contactEmail}</p>
-      </LlmContentMirror>
     </>
   );
 }

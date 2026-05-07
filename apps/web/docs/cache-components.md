@@ -256,7 +256,37 @@ We keep our own Redis-backed `cached(key, fetcher, { ttl, skipIf })` helper for 
 | Invalidation | `revalidateTag()` / `updateTag()` by tag | Manual `redis.del(key)` or TTL expiry |
 | When to use | Per-render dedup; viewer-scoped variants; dependency on Next.js render lifecycle; cross-instance sharing via `: remote` | Empty-result skipping (the `skipIf` predicate has no `'use cache'` equivalent), or when manual key construction is genuinely load-bearing (e.g., keys derived from external systems) |
 
-New code should default to `'use cache'`. Reach for `'use cache: remote'` when cross-instance sharing matters. Reach for `cached()` only when `skipIf` empty-skipping is the load-bearing requirement.
+New code should default to `'use cache'`. Reach for `'use cache: remote'` when cross-instance sharing matters. Reach for `cached()` only when `skipIf` empty-skipping is the load-bearing requirement, or when cross-`'use cache'`-boundary dedup is needed (see below).
+
+#### Cross-`'use cache'`-boundary dedup
+
+Each `'use cache'` function runs in a clean AsyncLocalStorage snapshot
+(`runInCleanSnapshot`), so React's `cache()` wrapper does NOT dedupe
+calls across two `'use cache'` boundaries within the same request. The
+canonical case: a page's `generateMetadata` and its body both call the
+same data fetcher — under cacheComponents these are separate boundaries,
+so each runs the fetcher once on a cold cache fill (2× upstream load).
+
+Fix: wrap the data fetcher in Redis `cached()` (or `'use cache: remote'`)
+one level below the page. The shared cache layer dedupes across boundaries
+because both `'use cache'` calls hit the same Redis key. Used today by
+`getCompanyBySlug` (`apps/web/src/lib/actions/company.ts`) and
+`getPublicWatchlistByUserAndSlug` (`apps/web/src/lib/actions/watchlists.ts`).
+
+#### Layered TTL: observable staleness can be 2×
+
+When a `'use cache'` boundary calls a function wrapped in `cached()`,
+both layers age independently. A mutation that invalidates the Redis
+cache (or expires it) can still be served from the per-region `'use cache'`
+layer for up to its own revalidate window. Worst-case observable staleness
+≈ Redis TTL + `cacheLife.revalidate`.
+
+Example: `/company/[slug]` has `cacheLife({ revalidate: 600 })` (10 min)
+calling `getCompanyBySlug` with Redis `cached(..., { ttl: 600 })` (10 min).
+A company description edit propagates within 10 min if Redis is invalidated
+on the mutation, but worst-case 20 min if the per-region cache happened to
+populate just before the invalidation. For most flows this is fine; surface
+in the page's revalidate-budget when stricter freshness is needed.
 
 ## What will break (and how to fix it)
 

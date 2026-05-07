@@ -25,8 +25,20 @@ type Props = {
 export const metadata: Metadata = {
   title: { template: "%s | Job Seek", default: "Job Seek" },
   metadataBase: new URL(siteConfig.url),
-  twitter: { card: "summary_large_image" },
-  openGraph: { type: "website", siteName: "Job Seek" },
+  twitter: {
+    card: "summary_large_image",
+    images: [{ url: "/opengraph-image", alt: "Job Seek" }],
+  },
+  // `images` here is the fallback for any page whose own
+  // `generateMetadata` doesn't return its own `openGraph.images`. The
+  // `/opengraph-image` URL is exempt from the locale-redirect middleware
+  // (`apps/web/middleware.ts:52`), so the og:image meta tag resolves
+  // directly to `app/opengraph-image.tsx` without a 308 to `/<locale>/...`.
+  openGraph: {
+    type: "website",
+    siteName: "Job Seek",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+  },
 };
 
 /** Pre-render a version of every page for each supported locale. */

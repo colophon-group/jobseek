@@ -626,8 +626,25 @@ export async function getWatchlistByUserAndSlug(
  * pages, `generateMetadata`, sitemaps). The session-aware variant reads
  * `headers()` via `getSessionUserId()` and tainted the watchlist detail
  * page's ISR — see issue #2244.
+ *
+ * Wrapped in Redis `cached()` (60s TTL) so the same `(userSlug, slug)`
+ * lookup deduplicates across the watchlist page's `generateMetadata`
+ * and body — under cacheComponents each is a separate `'use cache'`
+ * boundary running in its own clean AsyncLocalStorage, so a React-cache
+ * wrapper at the page module scope no longer dedupes them.
  */
 export async function getPublicWatchlistByUserAndSlug(
+  userSlug: string,
+  watchlistSlug: string,
+): Promise<WatchlistDetail | null> {
+  return cached(
+    `public-watchlist:${userSlug}:${watchlistSlug}`,
+    () => _fetchPublicWatchlistByUserAndSlug(userSlug, watchlistSlug),
+    { ttl: 60, skipIf: (r) => r === null },
+  );
+}
+
+async function _fetchPublicWatchlistByUserAndSlug(
   userSlug: string,
   watchlistSlug: string,
 ): Promise<WatchlistDetail | null> {

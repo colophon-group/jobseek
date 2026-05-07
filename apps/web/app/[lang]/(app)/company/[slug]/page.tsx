@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { cacheLife } from "next/cache";
-import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
+import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
@@ -66,6 +66,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${siteConfig.url}/${locale}${path}`,
       type: "website",
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
     },
   };
 }

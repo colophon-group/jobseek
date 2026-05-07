@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
-import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
-import { LlmContentMirror } from "@/components/LlmContentMirror";
 import { FaqContent } from "./faq-content";
 
 type Props = {
@@ -25,7 +24,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates("/faq", locale),
-    openGraph: { title, description, url: `${siteConfig.url}/${locale}/faq` },
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}/faq`,
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+    },
   };
 }
 
@@ -105,16 +111,6 @@ export default async function FaqPage({ params }: Props) {
         inLanguage: locale,
       }} />
       <FaqContent items={faqItems} />
-      <LlmContentMirror locale={locale}>
-        <h1>{i18n._("faq.title")}</h1>
-        <p>Everything you need to know about Job Seek. Can&apos;t find what you&apos;re looking for? Email us at {siteConfig.indexing.contactEmail}.</p>
-        {faqItems.map((item, idx) => (
-          <div key={idx}>
-            <h2>{item.q}</h2>
-            <p>{item.a}</p>
-          </div>
-        ))}
-      </LlmContentMirror>
     </>
   );
 }

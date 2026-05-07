@@ -5,6 +5,10 @@ import { join } from "node:path";
 export const alt = "Job Seek — How We Index";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+// Long-cache via explicit Cache-Control headers; deploys purge.
+const CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
+};
 
 const fontPromise = readFile(
   join(process.cwd(), "public/fonts/JetBrainsMono-Bold.ttf"),
@@ -43,6 +47,7 @@ export default async function OgImage() {
     </div>,
     {
       ...size,
+      headers: CACHE_HEADERS,
       fonts: [
         {
           name: "JetBrains Mono",

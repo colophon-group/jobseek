@@ -6,9 +6,13 @@ import { getBlogPost, listBlogSlugs } from "@/lib/blog";
 export const alt = "Job Seek blog post";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// Posts rarely change after publish; cached via the Next.js OG image
-// route's built-in Cache-Control headers. ImageResponse is a class
-// instance so `'use cache'` doesn't apply.
+// 30-day cache via explicit `Cache-Control` headers on the
+// ImageResponse — `'use cache'` doesn't apply (ImageResponse is a
+// class instance). Vercel purges the CDN on every deploy so
+// `immutable` is safe; posts rarely change after publish anyway.
+const CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
+};
 
 export async function generateStaticParams(): Promise<{ lang: string; slug: string }[]> {
   const slugs = await listBlogSlugs();
@@ -49,6 +53,7 @@ export default async function OgImage({
       </div>,
       {
         ...size,
+        headers: CACHE_HEADERS,
         fonts: [{ name: "JetBrains Mono", data: fontData, weight: 700, style: "normal" }],
       },
     );
@@ -118,6 +123,7 @@ export default async function OgImage({
     </div>,
     {
       ...size,
+      headers: CACHE_HEADERS,
       fonts: [
         {
           name: "JetBrains Mono",

@@ -5,7 +5,7 @@ import { compileMDX } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import { cacheLife } from "next/cache";
 import { getI18n } from "@lingui/react/server";
-import { initI18nForPage, isLocale, defaultLocale } from "@/lib/i18n";
+import { initI18nForPage, isLocale, defaultLocale, ogLocale } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import {
@@ -64,6 +64,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: post.datePublished,
       modifiedTime: post.dateModified,
       authors: [post.author],
+      locale: ogLocale(locale),
+      alternateLocale: availableLocales
+        .filter((l) => l !== locale)
+        .map((l) => ogLocale(l)),
     },
   };
 }
