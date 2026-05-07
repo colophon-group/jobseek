@@ -141,6 +141,18 @@ Implementation:
 - No-op if `process.env.INDEXNOW_KEY` is unset (safe locally + on preview deploys without the secret).
 - `AbortSignal.timeout(10000)` so a hung endpoint doesn't pin the function.
 
+### Web-side (blog posts): deploy-hook via GitHub Actions
+
+`.github/workflows/notify-blog-indexnow.yml` fires on `push` to `main` whenever an `apps/web/src/content/blog/**/*.mdx` file changes. After a 5-minute sleep (Vercel prod deploy settle window — typical build is 2–5 min, slow days are inside the engine retry cushion), the action runs `pnpm --filter @jobseek/web notify-blog-indexnow`, which:
+
+1. Reads every published post via `listBlogPosts()`.
+2. For each post, calls `getBlogPostLocales(slug)` — same per-post translation set the sitemap (`blogPostEntries`, #2828) and the page `<head>` hreflang (`buildAlternates(..., availableLocales)`, #2849) use.
+3. Calls `notifyIndexNow([\`/blog/${slug}\`], localesForPost)` — `availableLocales` restricts the locale fan-out so engines aren't pointed at locale variants that fall back to the EN canonical body.
+
+The action also exposes a `workflow_dispatch:` trigger for manual re-runs from the Actions UI (e.g., to re-pin engines after they drop a URL from their index without a corresponding content change).
+
+Re-submission of unchanged URLs is idempotent at the IndexNow side; the action runs on every blog content commit, not just first-publish, and that's intentional — engines treat resubmission as "please recrawl" and dedupe their own re-fetch behavior.
+
 ### URL resolution alignment
 
 `getWatchlistByUserAndSlug` in `watchlists.ts` matches **either** `u.username` **or** `u.display_username` (preferring `username` via `ORDER BY (u.username = $1)::int DESC`). The sitemap emits URLs with `COALESCE(display_username, username)`, so without this fix a user with a distinct `display_username` would advertise URLs in `sitemap.xml` that the detail page couldn't resolve.

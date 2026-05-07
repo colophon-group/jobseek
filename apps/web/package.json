@@ -16,6 +16,7 @@
     "analyze": "ANALYZE=true next build",
     "optimize:svg": "svgo public/*.svg --multipass",
     "screenshots": "tsx script/capture-screenshots.ts",
+    "notify-blog-indexnow": "tsx script/notify-blog-indexnow.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "next typegen && tsc"

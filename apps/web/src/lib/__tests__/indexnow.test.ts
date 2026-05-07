@@ -109,6 +109,31 @@ describe("notifyIndexNow", () => {
     expect(errSpy).toHaveBeenCalledOnce();
   });
 
+  it("restricts locale fan-out when availableLocales is provided (#2843, blog)", async () => {
+    process.env.INDEXNOW_KEY = "test-key";
+    await notifyIndexNow(["/blog/welcome"], ["en", "de"]);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.urlList).toEqual([
+      "https://jseek.co/en/blog/welcome",
+      "https://jseek.co/de/blog/welcome",
+    ]);
+    expect(body.urlList).not.toContain("https://jseek.co/fr/blog/welcome");
+    expect(body.urlList).not.toContain("https://jseek.co/it/blog/welcome");
+  });
+
+  it("emits a single locale URL for an EN-only post", async () => {
+    process.env.INDEXNOW_KEY = "test-key";
+    await notifyIndexNow(["/blog/en-only"], ["en"]);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.urlList).toEqual(["https://jseek.co/en/blog/en-only"]);
+  });
+
+  it("no-ops when availableLocales is an empty array (defensive)", async () => {
+    process.env.INDEXNOW_KEY = "test-key";
+    await notifyIndexNow(["/blog/no-locales"], []);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("does not import next/server (caller owns after() wrapping)", () => {
     // Structural regression guard. The original bug was that
     // notifyIndexNow called after() internally, which silently failed

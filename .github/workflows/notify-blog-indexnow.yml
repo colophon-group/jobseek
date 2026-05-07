@@ -1,0 +1,69 @@
+name: Notify IndexNow on blog content changes
+
+# Submits blog post URLs to IndexNow (Bing/Yandex/Seznam/Naver/Yep)
+# whenever an MDX file under `apps/web/src/content/blog/` lands on
+# `main`. Per-post locales come from the same `getBlogPostLocales(slug)`
+# helper the sitemap and page hreflang use, so we never push engines
+# at locale variants that don't exist on disk.
+#
+# IndexNow accepts re-submitted URLs without churn — this fires on
+# every content commit, not just on first publish, and that's fine.
+# Re-submitting the same URL is a "please recrawl" signal, not a
+# duplicate. See docs/13-seo-and-indexnow.md.
+#
+# Vercel race: pushing to main triggers a Vercel prod deploy in
+# parallel. If we POST to IndexNow before Vercel's deploy completes,
+# engines get a brief 404 window on a brand-new post (translated MDX
+# file added in the same commit). The 5-minute pre-submit sleep lets
+# most prod deploys finish (the app's typical build is 2–5 min;
+# slower builds have a 1–7 day engine retry cushion to forgive the
+# initial 404). Re-submission on the next blog commit re-pings the
+# URL anyway.
+#
+# Why a separate workflow vs piggybacking on a deploy hook: keeps the
+# secret scope narrow (only this workflow needs INDEXNOW_KEY in the
+# Actions runner; Vercel env stays the source of truth for the
+# request-handler watchlist notifier). Also lets the path filter run
+# at action-dispatch time so a runner doesn't even spin up unless
+# blog content actually changed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/src/content/blog/**/*.mdx'
+  workflow_dispatch:
+
+concurrency:
+  group: notify-blog-indexnow-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    name: Submit blog URLs to IndexNow
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Wait for Vercel prod deploy to settle
+        # Crude but reliable: app prod builds typically finish in
+        # 2–5 minutes, and 300s is well inside the engine retry
+        # cushion if we still race a long build. A more precise
+        # signal would be polling Vercel's deployment-succeeded
+        # webhook; not worth the plumbing for a 1–7-day-cadence
+        # signal.
+        run: sleep 300
+
+      - name: Submit blog post URLs
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: pnpm --filter @jobseek/web notify-blog-indexnow
