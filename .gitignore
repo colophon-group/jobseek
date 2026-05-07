@@ -8,6 +8,7 @@ node_modules
 .next
 dist
 .turbo
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

@@ -17,7 +17,8 @@
     "optimize:svg": "svgo public/*.svg --multipass",
     "screenshots": "tsx script/capture-screenshots.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "next typegen && tsc"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",

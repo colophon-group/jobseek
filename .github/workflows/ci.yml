@@ -104,6 +104,30 @@ jobs:
       - run: uv run ruff format --check src/ tests/
         working-directory: apps/crawler
 
+  type-web:
+    name: Type Web
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # mcp-server is a workspace dependency that the web app imports
+      # types from at compile time. Build first so its declarations
+      # exist on disk before tsc resolves them.
+      - run: pnpm --filter @jseek/mcp-server build
+
+      - run: pnpm --filter @jobseek/web typecheck
+
   test-web:
     name: Test Web
     needs: changes
