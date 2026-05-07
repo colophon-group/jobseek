@@ -105,6 +105,11 @@ pnpm extract      # Extract i18n strings to .po
 pnpm compile      # Compile .po to .js catalogs
 ```
 
+Web-app conventions live under `apps/web/docs/`. The ones contributors hit most:
+- [`apps/web/docs/i18n.md`](apps/web/docs/i18n.md) — Lingui translation rules; every macro needs `id` + `comment`.
+- [`apps/web/docs/cache-components.md`](apps/web/docs/cache-components.md) — Cache Components / PPR rendering rules. **Read before writing or modifying any server component, layout, or server action** — the build enforces them once `cacheComponents: true` is enabled (#2835).
+- [`apps/web/docs/data-fetching.md`](apps/web/docs/data-fetching.md), [`apps/web/docs/styling.md`](apps/web/docs/styling.md), [`apps/web/docs/llm-content-mirror.md`](apps/web/docs/llm-content-mirror.md) — narrower, by topic.
+
 ## Crawler Setup Workflow (`ws` tool)
 
 The `ws` CLI is an **agent utility** — it is run exclusively by Claude Code
