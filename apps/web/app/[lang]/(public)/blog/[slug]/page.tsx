@@ -8,6 +8,7 @@ import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import {
   getBlogPost,
+  getBlogPostLocales,
   listBlogSlugs,
   readingTimeMinutes,
   type BlogPost,
@@ -44,10 +45,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = await getBlogPost(slug, locale);
   if (!post) return {};
 
+  // Per-post hreflang: only advertise locales that actually have a
+  // translated MDX sibling on disk. Mirrors the sitemap's
+  // `blogPostEntries` behavior (#2828) — a future EN-only post stays
+  // off `<link rel="alternate" hreflang="de" ...>` instead of pointing
+  // crawlers at duplicate-content fallbacks (#2849).
+  const availableLocales = await getBlogPostLocales(slug);
+
   return {
     title: post.title,
     description: post.description,
-    alternates: buildAlternates(`/blog/${slug}`, locale),
+    alternates: buildAlternates(`/blog/${slug}`, locale, availableLocales),
     openGraph: {
       title: post.title,
       description: post.description,

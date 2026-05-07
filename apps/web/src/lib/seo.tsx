@@ -3,14 +3,35 @@ import { locales, type Locale } from "@/lib/i18n";
 
 /**
  * Build hreflang alternates for Next.js Metadata API.
- * Returns canonical URL (without query params) and language alternates including x-default.
+ *
+ * Returns canonical URL (without query params) and language alternates
+ * including x-default. By default emits all 4 site locales (correct for
+ * fully-translated app surfaces like `/about`, `/explore`).
+ *
+ * For partially-translated routes — blog posts, anything with optional
+ * locale-specific MDX siblings — pass `availableLocales` so the page
+ * `<head>` only advertises locales that actually have rendered content.
+ * Otherwise crawlers follow the alternate to a 404 (or worse, the
+ * canonical body served at a foreign-locale URL — see #2849, #2828).
+ *
+ * x-default convention: anchors at `/en` when EN is in the locale set
+ * (matches the sitemap hreflang in `@/lib/sitemap`, #2825), otherwise
+ * falls back to the first listed locale.
  */
-export function buildAlternates(path: string, currentLocale: Locale) {
+export function buildAlternates(
+  path: string,
+  currentLocale: Locale,
+  availableLocales?: readonly Locale[],
+) {
+  const targetLocales = availableLocales ?? locales;
   const languages: Record<string, string> = {};
-  for (const locale of locales) {
+  for (const locale of targetLocales) {
     languages[locale] = `${siteConfig.url}/${locale}${path}`;
   }
-  languages["x-default"] = `${siteConfig.url}/en${path}`;
+  const xdefault = targetLocales.includes("en") ? "en" : targetLocales[0];
+  if (xdefault) {
+    languages["x-default"] = `${siteConfig.url}/${xdefault}${path}`;
+  }
   return {
     canonical: `${siteConfig.url}/${currentLocale}${path}`,
     languages,
