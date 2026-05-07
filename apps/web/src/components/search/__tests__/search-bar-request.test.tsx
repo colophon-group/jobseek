@@ -9,19 +9,9 @@ import userEvent from "@testing-library/user-event";
 // in isolation so the suite exercises only the dropdown wiring around
 // the synthetic "Request <query>" entry (issue #2807).
 
-// Lingui's `useLingui` macro normally needs the babel transform (see
-// apps/web/babel.config.json). Tests run under Vitest + esbuild without
-// that transform, so substitute a runtime-friendly hook that returns a
-// `t` which simply renders the descriptor's `message`.
-vi.mock("@lingui/react/macro", () => ({
-  useLingui: () => ({
-    t: (input: unknown) => {
-      if (typeof input === "string") return input;
-      const desc = input as { message?: string; id?: string };
-      return desc.message ?? desc.id ?? "";
-    },
-  }),
-}));
+// Lingui mocks live in a shared helper so every Lingui-aware
+// component test imports the same shape (#2814).
+import "@/test-utils/lingui-mock";
 
 const pushMock = vi.fn();
 const currentSearchParams = new URLSearchParams();

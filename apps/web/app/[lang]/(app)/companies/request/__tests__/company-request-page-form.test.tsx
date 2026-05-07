@@ -34,21 +34,9 @@ vi.mock("@/components/search/request-company-success", () => ({
   ),
 }));
 
-// Lingui macros — stub so the component can be rendered outside a real i18n
-// provider. Mirrors the approach used by agent-prompt-card tests but for the
-// macro layer.
-vi.mock("@lingui/react", () => ({
-  useLingui: () => ({
-    _: (msg: { message?: string; id?: string } | string) =>
-      typeof msg === "string" ? msg : (msg.message ?? msg.id ?? ""),
-  }),
-}));
-vi.mock("@lingui/react/macro", () => ({
-  Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-vi.mock("@lingui/core/macro", () => ({
-  msg: (m: { message?: string; id?: string }) => m,
-}));
+// Lingui macros — stub so the component can be rendered outside a real
+// i18n provider. Shared across every Lingui-aware test (#2814).
+import "@/test-utils/lingui-mock";
 
 import { CompanyRequestPageForm } from "../company-request-page-form";
 
