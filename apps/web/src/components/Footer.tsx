@@ -8,9 +8,14 @@ type FooterProps = {
   lang?: string;
 };
 
+// Captured at module load (deploy time) so the render path stays
+// deterministic — `new Date()` inside a server-render function is
+// rejected under cacheComponents. Refreshes on every deploy.
+const COPYRIGHT_YEAR = new Date().getFullYear();
+
 export function Footer({ lang }: FooterProps) {
   const i18n = getI18n()!;
-  const year = new Date().getFullYear();
+  const year = COPYRIGHT_YEAR;
   const links = siteConfig.footer.links;
   const prefix = lang ? `/${lang}` : "";
 

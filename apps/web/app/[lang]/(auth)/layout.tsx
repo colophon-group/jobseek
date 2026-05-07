@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -9,10 +10,26 @@ type Props = {
   children: ReactNode;
 };
 
-export default async function AuthLayout({ params, children }: Props) {
-  const { lang } = await params;
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (session) redirect(`/${lang}/explore`);
+// Under cacheComponents, the static AuthShell + form prerender.
+// `RedirectIfSignedIn` is the only dynamic piece — it streams a session
+// lookup and redirects if the visitor is already signed in. Returns null
+// otherwise, so there's no visual placeholder to flash.
+export default function AuthLayout({ params, children }: Props) {
+  return (
+    <AuthShell>
+      <Suspense fallback={null}>
+        <RedirectIfSignedIn params={params} />
+      </Suspense>
+      {children}
+    </AuthShell>
+  );
+}
 
-  return <AuthShell>{children}</AuthShell>;
+async function RedirectIfSignedIn({ params }: { params: Promise<{ lang: string }> }) {
+  const [{ lang }, session] = await Promise.all([
+    params,
+    auth.api.getSession({ headers: await headers() }),
+  ]);
+  if (session) redirect(`/${lang}/explore`);
+  return null;
 }

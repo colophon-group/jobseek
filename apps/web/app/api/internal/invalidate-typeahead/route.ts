@@ -15,8 +15,6 @@ function _safeBearerEqual(presented: string | null, expected: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-export const runtime = "nodejs";
-
 // Closed list — every cache key prefix that would go stale after a
 // `crawler sync` mutation (taxonomy renames, company CSV edits). Defined
 // here (not in the caller) so the crawler can't accidentally request a

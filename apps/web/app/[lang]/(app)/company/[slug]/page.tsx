@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import { siteConfig } from "@/content/config";
@@ -7,13 +8,13 @@ import { CompanyHead } from "./company-head";
 import { CompanyContent } from "./company-content";
 import { SimilarSection } from "./similar-section";
 
-export const revalidate = 600; // ISR: cache metadata for 10 minutes
-
 type Props = {
   params: Promise<{ lang: string; slug: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  "use cache";
+  cacheLife({ revalidate: 600 });
   const { slug, lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [company, { i18n }] = await Promise.all([
@@ -90,18 +91,22 @@ async function CompanyNotFound() {
 }
 
 export default async function CompanyPageRoute({ params }: Props) {
+  "use cache";
+  cacheLife({ revalidate: 600 });
   const locale = await initI18nForPage(params);
   const { slug } = await params;
 
   const company = await getCompanyBySlug(slug, locale);
   if (!company) return <CompanyNotFound />;
 
-  // Note: this page must stay statically prerenderable (revalidate=600).
-  // Anything that reads `searchParams`, `headers()`, `cookies()`, or
-  // session state on the server-render path will silently turn the
-  // route dynamic. The back-link (filter-aware) and similar-companies
-  // strip live in client subtrees that read `useSearchParams()` so the
-  // shell here stays a pure ISR target. See issue #2243.
+  // The page body is `'use cache'`-wrapped (10-minute revalidate) so the
+  // anonymous static shell ships from the per-region cache without
+  // invoking a function on every request. Anything that reads
+  // `searchParams`, `headers()`, `cookies()`, or session state inside
+  // this function would either fail the build or kill the cache. The
+  // back-link (filter-aware) and similar-companies strip live in client
+  // subtrees that read `useSearchParams()` so the shell here stays
+  // cache-friendly. See issue #2243.
   return (
     <div className="space-y-4">
       <CompanyHead company={company} locale={locale} />

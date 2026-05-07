@@ -140,22 +140,28 @@ Lift `'use cache'` functions to module scope unless you have a specific reason t
 
 ### Per-locale `<html lang>` (the #2826 use case)
 
-Root layout reads `headers()` to find the locale stamped by the middleware (`x-jseek-locale`). The static parts of the root layout are still cached; only the `<html lang>` attribute reads from the dynamic shell.
+Every HTML route in jseek lives under `/<locale>/...`. So `app/[lang]/layout.tsx` is the de-facto root layout — it owns `<html>`/`<body>` and reads `locale` from the route param. There is no top-level `app/layout.tsx`; routes outside `[lang]/` are route handlers (sitemap, robots, OG images, `/api/*`) that don't render an HTML shell.
 
 ```tsx
-// app/layout.tsx
-export default async function RootLayout({ children }) {
-  const h = await headers();
-  const locale = isLocale(h.get('x-jseek-locale') ?? '') ? h.get('x-jseek-locale') : defaultLocale;
+// app/[lang]/layout.tsx
+export function generateStaticParams() {
+  return locales.map((lang) => ({ lang }));   // en/de/fr/it
+}
+
+export default async function LocaleLayout({ children, params }) {
+  const { lang } = await params;
+  if (!isLocale(lang)) notFound();
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={lang} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );
 }
 ```
 
-The middleware-set header is per-request, so this layout is dynamic. Child page `revalidate=N` (or `'use cache'`) is unaffected — pages are cached independently.
+`await params` is **not** a runtime API access here — the cache-components rule that `params` requires a Suspense ancestor only applies when `generateStaticParams` is absent. Since every locale is enumerated, the build prerenders one shell per locale and the `<html lang>` attribute is baked into the static output. Zero dynamic holes, zero per-request function invocations for the language attribute.
+
+If you ever need a non-locale route with an HTML shell (rare), add a sibling `app/<segment>/layout.tsx` that defines `<html>/<body>` for that segment — Next.js supports multiple route-group root layouts as long as no two layouts up the chain both render `<html>`.
 
 ### Cached DB lookup with viewer-language scoping
 
@@ -277,7 +283,7 @@ The build itself enforces most of this. Common errors and the one-line fix:
 - ❌ `await searchParams` in a page that should be cacheable. Move the read into a client subtree via `useSearchParams()`.
 - ❌ Wrapping an entire async page body in `'use cache'` without thinking about which subtrees are actually deterministic. The cache key includes everything, including arguments and closures — over-broad caching means rare hit rates.
 - ❌ Using `'use cache: private'` to dodge the work of refactoring a runtime-API read out of a cached function. The `: private` flavor exists for compliance escape hatches (per-user data paths that genuinely cannot be hoisted), not for "I don't want to plumb the value through as an argument." Do the refactor.
-- ❌ Adding `dynamic = 'force-static'` or `dynamic = 'force-dynamic'` route-segment exports. These bypass the new model. The migration table maps the old flags to directive equivalents.
+- ❌ Route-segment configs `revalidate`, `dynamic`, `dynamicParams`, `runtime`, `fetchCache` on pages or route handlers. The build rejects them outright when `cacheComponents: true` is enabled. Migrate to the directive equivalents in the cheat sheet below.
 - ❌ Putting `Math.random()`, `Date.now()`, `crypto.randomUUID()` inside `'use cache'` and expecting different values per render. They freeze at build time inside the cache boundary.
 - ❌ Reading session state (via `getSessionUserId`, `getViewerLanguages`, etc.) inside a route's render path **without Suspense**. Tainted helpers are now expected — but they have to be in dynamic subtrees, not in the static shell.
 
@@ -287,11 +293,16 @@ When moving an existing component or route from the legacy model to cacheCompone
 
 | Legacy pattern | Cache Components replacement |
 |---|---|
-| `export const revalidate = 3600` on a page | Either keep (still works for the *page* slot) OR move data fetches into `'use cache'` functions with `cacheLife({ revalidate: 3600 })` on each |
-| `dynamic = 'force-static'` | Wrap the page body's data fetches in `'use cache'` + `cacheLife('max')`. The route segment directive itself becomes a no-op under cacheComponents — what was previously enforced at the segment level is now enforced per-component by the build |
-| `dynamic = 'force-dynamic'` | Remove the directive (default behavior under cacheComponents); ensure the route uses runtime APIs inside Suspense as needed |
+| `export const revalidate = 3600` on a page | **Remove the export** (build rejects it). Add `'use cache'` + `cacheLife({ revalidate: 3600 })` inside the page function — and inside `generateMetadata` if it's also data-derived |
+| `export const dynamic = 'force-static'` | Remove. Wrap the page body in `'use cache'` + `cacheLife('max')` |
+| `export const dynamic = 'force-dynamic'` | Remove (route handlers default to dynamic execution; pages stay static unless they read runtime APIs) |
+| `export const dynamicParams = false` | Remove (not compatible with cacheComponents). Non-prerendered slugs fall through to the page function — call `notFound()` on missing data instead |
+| `export const runtime = 'nodejs'` | Remove (Fluid Compute Node.js is the default; the segment config is rejected) |
+| `export const runtime = 'edge'` | Edge runtime is not supported under cacheComponents — leave on Node.js (Fluid Compute) |
 | `cookies()` / `headers()` in a server component | Move into a `<Suspense>`-wrapped subtree, OR extract the value to a client read, OR pass as an argument into a `'use cache'` function |
+| `new Date()` / `Date.now()` / `Math.random()` in a server-render path | Pre-compute at module scope (build-time deploy refresh), OR move into a `<Suspense>` subtree that calls `connection()` first, OR put inside `'use cache'` if "value at cache build time" is acceptable |
 | `unstable_cache(fn, key, opts)` | `'use cache'` directive inside `fn` body; replace `opts.tags` with `cacheTag()` calls; replace `opts.revalidate` with `cacheLife({ revalidate: N })`. Drop the manual `key` array — args + closures become the key automatically. See "How cache keys are derived" above |
+| OpenGraph image function with `revalidate = N` | Remove the export — `next/og` `ImageResponse` is a class instance and isn't serializable for `'use cache'`. The framework caches OG images via HTTP `Cache-Control` headers automatically |
 
 ## References
 

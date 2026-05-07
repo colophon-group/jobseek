@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cache } from "react";
+import { cacheLife } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import {
   getPublicWatchlistByUserAndSlug,
@@ -13,24 +14,24 @@ import { WatchlistContent } from "./watchlist-content";
 /**
  * Per-request memoization so the watchlist detail is fetched once even
  * though both `generateMetadata` (above) and the page render (below)
- * need it. Without this, a single ISR regen runs the SQL twice.
+ * need it. The outer `'use cache'` adds cross-request caching; this
+ * inner React-cache wrapper still saves a duplicate SQL call within the
+ * single request that populates the cache.
  */
 const cachedDetail = cache(getPublicWatchlistByUserAndSlug);
 
-// ISR window for the rendered metadata + page shell.
-//
-// The previous 10-minute window cycled the (DB lookup + Typesense facet
-// count) on every regen × every public watchlist. Watchlist metadata is
-// shared via the CDN, so freshness from a viewer's perspective comes from
-// the client-hydrated body, not metadata. Search engines re-crawl on a
-// much slower cadence than 10 minutes anyway. See issue #2648.
-export const revalidate = 3600;
+// 1-hour revalidate. Watchlist metadata is shared via the CDN, so
+// freshness from a viewer's perspective comes from the client-hydrated
+// body. Search engines re-crawl on a much slower cadence than 10
+// minutes anyway. See issue #2648.
 
 type Props = {
   params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  "use cache";
+  cacheLife({ revalidate: 3600 });
   const { userSlug, watchlistSlug, lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [detail, { i18n }] = await Promise.all([
@@ -129,6 +130,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function WatchlistRoute({ params }: Props) {
+  "use cache";
+  cacheLife({ revalidate: 3600 });
   const { lang, userSlug, watchlistSlug } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
 

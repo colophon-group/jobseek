@@ -48,8 +48,6 @@ import {
 import { getSessionUserId } from "@/lib/sessionCache";
 import { lookupAcceptedCompany } from "./helpers";
 
-export const runtime = "nodejs";
-
 /**
  * Successful proxy response payload (under `data`).
  */

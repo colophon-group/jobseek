@@ -6,13 +6,10 @@ import { getPublicWatchlistByUserAndSlug } from "@/lib/actions/watchlists";
 export const alt = "Watchlist on Job Seek";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// 30 days. Watchlist title / company set / filters change infrequently
-// (the underlying postings churn on a different cadence — that's the
-// page body, not the social card). A long revalidate keeps the OG
-// regeneration cost flat under crawl spikes from social shares;
-// deploys purge the cache anyway. Mirrors the company OG image
+// Cached via the Next.js OG image route's built-in Cache-Control
+// headers (ImageResponse class instances aren't serializable for
+// `'use cache'`). Mirrors the company OG image
 // (apps/web/app/[lang]/(app)/company/[slug]/opengraph-image.tsx).
-export const revalidate = 2592000;
 
 // Satori (used by next/og) only supports TTF/OTF, not woff2.
 const fontPromise = readFile(

@@ -3,17 +3,14 @@
 // before accepting URL submissions. The `keyLocation` field in each
 // submission payload points here, so the key is never baked into the URL.
 //
-// Must be fully dynamic: we read the env var at request time so rotating
-// `INDEXNOW_KEY` takes effect on the next request, not the next deploy.
-// `force-static` would bake the build-time value into the prerendered
-// HTML and break rotation (and 404 on any preview deploy that was built
-// without the secret).
+// Reads `INDEXNOW_KEY` from process.env at request time so a rotation
+// takes effect on the next request, not the next deploy. The
+// `Cache-Control: no-store` response header prevents downstream caches
+// from holding the old value. Route handlers default to dynamic
+// execution under cacheComponents, so no segment config is needed.
 //
 // Returns 404 if INDEXNOW_KEY is unset — matches the notifier's own
 // short-circuit so absence is consistent end-to-end.
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export function GET() {
   const key = process.env.INDEXNOW_KEY;

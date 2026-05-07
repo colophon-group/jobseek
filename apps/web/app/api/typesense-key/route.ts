@@ -5,8 +5,6 @@ import { getSessionUserId } from "@/lib/sessionCache";
 const ANON_TTL_SECONDS = 300;
 const AUTHED_TTL_SECONDS = 600;
 
-export const runtime = "nodejs";
-
 export async function GET() {
   // Typesense scoped keys must be derived from a parent whose actions list is
   // exactly ["documents:search"]. The regular TYPESENSE_SEARCH_KEY also carries

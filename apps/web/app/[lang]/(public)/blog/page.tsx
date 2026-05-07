@@ -1,22 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cacheLife } from "next/cache";
 import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { listBlogPosts } from "@/lib/blog";
 
-// ISR window. The post list itself is just frontmatter from the file
-// system — cheap to regenerate. The 1-day window is cosmetic; deploys
-// invalidate the cache anyway, and posts publish via PR-merge cadence
-// (not faster than per-deploy).
-export const revalidate = 86400;
+// 1-day cache. The post list itself is just frontmatter from the file
+// system — cheap to regenerate. Deploys invalidate the cache anyway,
+// and posts publish via PR-merge cadence (not faster than per-deploy).
 
 type Props = {
   params: Promise<{ lang: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  "use cache";
+  cacheLife({ revalidate: 86400 });
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
@@ -58,6 +59,8 @@ function formatDate(iso: string, locale: string): string {
 }
 
 export default async function BlogIndexPage({ params }: Props) {
+  "use cache";
+  cacheLife({ revalidate: 86400 });
   const locale = await initI18nForPage(params);
   const i18n = getI18n()!;
   // Pass the locale so per-post translated frontmatter (title /

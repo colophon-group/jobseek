@@ -5,8 +5,6 @@ import {
   importLatestMetaApifyRun,
 } from "@/lib/admin/meta-apify-import";
 
-export const runtime = "nodejs";
-
 function apifyDebug(message: string, details?: Record<string, unknown>): void {
   if (details) {
     console.info("APIFY_DEBUG", message, details);

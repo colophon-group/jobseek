@@ -5,6 +5,11 @@ import path from "node:path";
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  // Stable Cache Components / Partial Prerendering (Next 16). Static
+  // shells prerender; `'use cache'` content caches per region; dynamic
+  // subtrees stream inside Suspense. See apps/web/docs/cache-components.md
+  // and #2835 for the conventions.
+  cacheComponents: true,
   images: {
     // Cache optimized images for 1 year. Company logos rarely change, and
     // Vercel purges its CDN cache on every deploy anyway.

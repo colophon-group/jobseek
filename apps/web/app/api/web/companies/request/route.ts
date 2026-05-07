@@ -59,8 +59,6 @@ import { NextResponse } from "next/server";
 import { StartRunError, startRun } from "@/lib/murmur/start-run";
 import { getSessionUserId } from "@/lib/sessionCache";
 
-export const runtime = "nodejs";
-
 /** Rate-limit window length in milliseconds (60 min, per the issue). */
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 /** Max requests per user per window. */

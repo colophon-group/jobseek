@@ -34,8 +34,6 @@ import { NextResponse } from "next/server";
 import { matchesBasicAuthorization } from "@/lib/admin/basic-auth";
 import { StartRunError, startRun } from "@/lib/murmur/start-run";
 
-export const runtime = "nodejs";
-
 function unauthorized(): NextResponse {
   return new NextResponse("Unauthorized", {
     status: 401,

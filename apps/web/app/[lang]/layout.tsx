@@ -1,14 +1,32 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { setI18n } from "@lingui/react/server";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { ThemeProvider } from "next-themes";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { LinguiClientProvider } from "@/components/LinguiProvider";
 import { type Locale, isLocale, locales, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { JsonLd } from "@/lib/seo";
+import "../globals.css";
 
 type Props = {
   children: ReactNode;
   params: Promise<{ lang: string }>;
+};
+
+// `[lang]/layout.tsx` is the de-facto root layout: every HTML route lives
+// under `/<locale>/...`. The bare `app/layout.tsx` was removed so `<html
+// lang>` can be rendered server-side per locale (closes #2826) without
+// adding a `headers()` read to the root render path. Routes outside
+// `[lang]/` are route handlers (sitemap, robots, /api/*, OG images) and
+// don't need an HTML shell.
+export const metadata: Metadata = {
+  title: { template: "%s | Job Seek", default: "Job Seek" },
+  metadataBase: new URL(siteConfig.url),
+  twitter: { card: "summary_large_image" },
+  openGraph: { type: "website", siteName: "Job Seek" },
 };
 
 /** Pre-render a version of every page for each supported locale. */
@@ -33,76 +51,85 @@ export default async function LocaleLayout({ children, params }: Props) {
   setI18n(i18n);
 
   return (
-    <LinguiClientProvider locale={locale} messages={messages}>
-      <JsonLd data={{
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        name: "Job Seek",
-        url: siteConfig.url,
-        logo: `${siteConfig.url}${siteConfig.logo.src}`,
-        description: i18n._({
-          id: "app.schema.org.description",
-          message: "Company-tracking tool for targeted job seekers — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
-        }),
-        foundingDate: "2025",
-        contactPoint: {
-          "@type": "ContactPoint",
-          email: siteConfig.indexing.contactEmail,
-          contactType: "customer support",
-        },
-        sameAs: [siteConfig.social.linkedin.href, siteConfig.repoUrl],
-      }} />
-      <JsonLd data={{
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        name: "Job Seek",
-        url: siteConfig.url,
-        potentialAction: {
-          "@type": "SearchAction",
-          target: {
-            "@type": "EntryPoint",
-            urlTemplate: `${siteConfig.url}/${locale}/explore?q={search_term_string}`,
-          },
-          "query-input": "required name=search_term_string",
-        },
-      }} />
-      <JsonLd data={{
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        name: "Job Seek",
-        url: siteConfig.url,
-        applicationCategory: "BusinessApplication",
-        operatingSystem: "Any",
-        inLanguage: locale,
-        description: i18n._({
-          id: "app.schema.description",
-          message: "Company-tracking tool for job seekers who already know which companies they want to work at. Build watchlists, get email alerts when new roles open up, and track applications in one place — postings sourced directly from company career pages.",
-        }),
-        offers: [
-          {
-            "@type": "Offer",
-            name: "Free",
-            price: "0",
-            priceCurrency: "USD",
-            description: i18n._({ id: "app.schema.offer.free", message: "Full search, 1 watchlist, application tracker" }),
-          },
-          {
-            "@type": "Offer",
-            name: "Pro",
-            price: "10",
-            priceCurrency: "USD",
-            billingPeriod: "P1M",
-            description: i18n._({ id: "app.schema.offer.pro", message: "Unlimited watchlists, email alerts on new matches" }),
-          },
-        ],
-        featureList: [
-          i18n._({ id: "app.schema.feature.monitor", message: "Monitor company career pages" }),
-          i18n._({ id: "app.schema.feature.alerts", message: "Real-time job posting alerts" }),
-          i18n._({ id: "app.schema.feature.languages", message: "Multi-language support" }),
-          i18n._({ id: "app.schema.feature.watchlists", message: "Watchlists and application tracking" }),
-        ],
-      }} />
-      {children}
-    </LinguiClientProvider>
+    <html lang={locale} suppressHydrationWarning>
+      <body>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <LinguiClientProvider locale={locale} messages={messages}>
+            <JsonLd data={{
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Job Seek",
+              url: siteConfig.url,
+              logo: `${siteConfig.url}${siteConfig.logo.src}`,
+              description: i18n._({
+                id: "app.schema.org.description",
+                message: "Company-tracking tool for targeted job seekers — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
+              }),
+              foundingDate: "2025",
+              contactPoint: {
+                "@type": "ContactPoint",
+                email: siteConfig.indexing.contactEmail,
+                contactType: "customer support",
+              },
+              sameAs: [siteConfig.social.linkedin.href, siteConfig.repoUrl],
+            }} />
+            <JsonLd data={{
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Job Seek",
+              url: siteConfig.url,
+              inLanguage: locale,
+              potentialAction: {
+                "@type": "SearchAction",
+                target: {
+                  "@type": "EntryPoint",
+                  urlTemplate: `${siteConfig.url}/${locale}/explore?q={search_term_string}`,
+                },
+                "query-input": "required name=search_term_string",
+              },
+            }} />
+            <JsonLd data={{
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: "Job Seek",
+              url: siteConfig.url,
+              applicationCategory: "BusinessApplication",
+              operatingSystem: "Any",
+              inLanguage: locale,
+              description: i18n._({
+                id: "app.schema.description",
+                message: "Company-tracking tool for job seekers who already know which companies they want to work at. Build watchlists, get email alerts when new roles open up, and track applications in one place — postings sourced directly from company career pages.",
+              }),
+              offers: [
+                {
+                  "@type": "Offer",
+                  name: "Free",
+                  price: "0",
+                  priceCurrency: "USD",
+                  description: i18n._({ id: "app.schema.offer.free", message: "Full search, 1 watchlist, application tracker" }),
+                },
+                {
+                  "@type": "Offer",
+                  name: "Pro",
+                  price: "10",
+                  priceCurrency: "USD",
+                  billingPeriod: "P1M",
+                  description: i18n._({ id: "app.schema.offer.pro", message: "Unlimited watchlists, email alerts on new matches" }),
+                },
+              ],
+              featureList: [
+                i18n._({ id: "app.schema.feature.monitor", message: "Monitor company career pages" }),
+                i18n._({ id: "app.schema.feature.alerts", message: "Real-time job posting alerts" }),
+                i18n._({ id: "app.schema.feature.languages", message: "Multi-language support" }),
+                i18n._({ id: "app.schema.feature.watchlists", message: "Watchlists and application tracking" }),
+              ],
+            }} />
+            {children}
+          </LinguiClientProvider>
+        </ThemeProvider>
+        <Analytics />
+        <SpeedInsights />
+      </body>
+    </html>
   );
 }

@@ -6,8 +6,9 @@ import { getBlogPost, listBlogSlugs } from "@/lib/blog";
 export const alt = "Job Seek blog post";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// Posts rarely change after publish; deploys purge anyway.
-export const revalidate = 2592000;
+// Posts rarely change after publish; cached via the Next.js OG image
+// route's built-in Cache-Control headers. ImageResponse is a class
+// instance so `'use cache'` doesn't apply.
 
 export async function generateStaticParams(): Promise<{ lang: string; slug: string }[]> {
   const slugs = await listBlogSlugs();
