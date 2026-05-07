@@ -27,6 +27,11 @@ from src.shared.constants import DATA_DIR
 
 IMAGES_DIR = DATA_DIR / "images"
 
+# Cap icon dimensions at 128×128 (preserve aspect ratio). Web renders top out
+# at 36 CSS px (#2867); 128 covers retina 4× DPR with headroom and keeps the
+# WebP file size around a few KB even for complex logos. See #2869.
+ICON_MAX_DIM = 128
+
 CONTENT_TYPES: dict[str, str] = {
     ".svg": "image/svg+xml",
     ".png": "image/png",
@@ -49,12 +54,16 @@ def _s3_client():
 
 
 def process_icon(path: str) -> bytes:
-    """Convert an icon image to WebP bytes for consistent lightweight delivery."""
+    """Convert an icon image to WebP bytes, capped at ICON_MAX_DIM per side."""
     with Image.open(path) as image:
         if image.mode not in ("RGB", "RGBA"):
             image = image.convert("RGBA")
+        if max(image.size) > ICON_MAX_DIM:
+            # thumbnail() preserves aspect ratio; LANCZOS keeps glyph edges sharp
+            # at small sizes vs the default BICUBIC. No-op for already-small icons.
+            image.thumbnail((ICON_MAX_DIM, ICON_MAX_DIM), Image.Resampling.LANCZOS)
         buffer = BytesIO()
-        image.save(buffer, format="WEBP")
+        image.save(buffer, format="WEBP", quality=82, method=6)
         return buffer.getvalue()
 
 
