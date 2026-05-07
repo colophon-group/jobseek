@@ -102,12 +102,12 @@ export default async function BlogIndexPage({ params }: Props) {
                   rule. */}
               <Link
                 href={`/${locale}/blog/${post.slug}`}
-                className="flex flex-col gap-2 rounded-md border border-border-soft bg-border-soft/30 p-5 no-underline transition-colors hover:bg-border-soft"
+                className="group flex flex-col gap-2 rounded-md border border-border-soft bg-border-soft/30 p-5 no-underline transition-colors hover:border-foreground/30 hover:bg-border-soft"
               >
                 <span className="text-xs uppercase tracking-wide text-muted">
                   {formatDate(post.datePublished, locale)} · {post.author}
                 </span>
-                <h2 className="m-0 text-lg font-semibold leading-tight">
+                <h2 className="m-0 text-lg font-semibold leading-tight underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/40">
                   {post.title}
                 </h2>
                 <p className="m-0 text-sm text-muted leading-relaxed">

@@ -36,11 +36,25 @@ import { cache } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Building2, Eye, Briefcase } from "lucide-react";
+import { loadCatalog, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import {
   getPublicWatchlistByUserAndSlug,
   getWatchlistPostingDisplayCounts,
 } from "@/lib/actions/watchlists";
+
+/**
+ * Helper: load the Lingui catalog for a string locale, normalizing
+ * unknown values to the default. Returns the i18n instance so the
+ * caller can resolve message ids via `i18n._({...})`. Mention cards
+ * render in MDX where each post-page render binds the locale at
+ * `buildMdxComponents()` time, so the value is already validated;
+ * this guard exists for safety against MDX authors typing a bad value.
+ */
+async function loadLocaleCatalog(locale: string) {
+  const normalized: Locale = isLocale(locale) ? locale : defaultLocale;
+  return loadCatalog(normalized);
+}
 
 // ── Inline pill ─────────────────────────────────────────────────────
 
@@ -259,24 +273,55 @@ export async function CompanyCard({
   const company = await cachedCompany(slug, locale);
   if (!company) return <MissingMention raw={`{CompanyCard ${slug}}`} />;
 
+  const { i18n } = await loadLocaleCatalog(locale);
+
   const employees = formatEmployeeRange(company.employeeCountRange);
   const metaParts: string[] = [];
   if (company.industryName) metaParts.push(company.industryName);
-  if (employees) metaParts.push(`${employees} employees`);
-  if (company.foundedYear) metaParts.push(`founded ${company.foundedYear}`);
+  if (employees) {
+    metaParts.push(
+      i18n._({
+        id: "blog.mention.company.employeesCount",
+        comment: "Meta line on a CompanyCard mention card — '{range} employees' (range like '11–50' or '5k–10k')",
+        message: "{range} employees",
+        values: { range: employees },
+      }),
+    );
+  }
+  if (company.foundedYear) {
+    metaParts.push(
+      i18n._({
+        id: "blog.mention.company.foundedYear",
+        comment: "Meta line on a CompanyCard mention card — 'founded {year}'",
+        message: "founded {year}",
+        values: { year: company.foundedYear },
+      }),
+    );
+  }
 
   const stats: { label: string; value: string }[] = [];
   if (typeof company.activeJobCount === "number") {
     stats.push({
-      label: "active postings",
+      label: i18n._({
+        id: "blog.mention.company.activePostingsLabel",
+        comment: "Stat label on a CompanyCard mention card — pluralized 'active posting' / 'active postings'. {count} is the integer count.",
+        message: "{count, plural, one {active posting} other {active postings}}",
+        values: { count: company.activeJobCount },
+      }),
       value: String(company.activeJobCount),
     });
   }
 
+  const eyebrow = i18n._({
+    id: "blog.mention.company.eyebrow",
+    comment: "Eyebrow label on a CompanyCard mention card (the small uppercase tag above the company name)",
+    message: "Company",
+  });
+
   return (
     <MentionCard
       href={`/${locale}/company/${company.slug}`}
-      eyebrow="Company"
+      eyebrow={eyebrow}
       icon={companyIcon(company.icon, 16)}
       title={company.name}
       meta={metaParts.length > 0 ? metaParts.join(" · ") : undefined}
@@ -298,6 +343,8 @@ export async function WatchlistCard({
   const detail = await cachedWatchlist(owner, slug);
   if (!detail) return <MissingMention raw={`{WatchlistCard ${owner}/${slug}}`} />;
 
+  const { i18n } = await loadLocaleCatalog(locale);
+
   // Posting counts mirror the in-app "N active · M in the last year"
   // stats row so the card embed reads consistently with the watchlist
   // detail view. ISR-safe (session-free Typesense queries).
@@ -312,27 +359,47 @@ export async function WatchlistCard({
   // watchlist tracks (same caveat as in PR #2833).
   if (!detail.filters.anyCompany) {
     stats.push({
-      label: detail.companies.length === 1 ? "company" : "companies",
+      label: i18n._({
+        id: "blog.mention.watchlist.companiesLabel",
+        comment: "Stat label on a WatchlistCard mention card — pluralized 'company' / 'companies'. {count} is the integer count.",
+        message: "{count, plural, one {company} other {companies}}",
+        values: { count: detail.companies.length },
+      }),
       value: String(detail.companies.length),
     });
   }
   if (counts.activeJobs > 0) {
     stats.push({
-      label: counts.activeJobs === 1 ? "active job" : "active jobs",
+      label: i18n._({
+        id: "blog.mention.watchlist.activeJobsLabel",
+        comment: "Stat label on a WatchlistCard mention card — pluralized 'active job' / 'active jobs'. {count} is the integer count.",
+        message: "{count, plural, one {active job} other {active jobs}}",
+        values: { count: counts.activeJobs },
+      }),
       value: String(counts.activeJobs),
     });
   }
   if (counts.yearJobs > 0) {
     stats.push({
-      label: "in the past year",
+      label: i18n._({
+        id: "blog.mention.watchlist.yearJobsLabel",
+        comment: "Stat label on a WatchlistCard mention card — 'in the past year' (year-to-date jobs counted by the watchlist filters)",
+        message: "in the past year",
+      }),
       value: String(counts.yearJobs),
     });
   }
 
+  const eyebrow = i18n._({
+    id: "blog.mention.watchlist.eyebrow",
+    comment: "Eyebrow label on a WatchlistCard mention card (the small uppercase tag above the watchlist title)",
+    message: "Watchlist",
+  });
+
   return (
     <MentionCard
       href={`/${locale}/${owner}/${slug}`}
-      eyebrow="Watchlist"
+      eyebrow={eyebrow}
       icon={<Eye size={14} aria-hidden="true" />}
       title={detail.title}
       meta={`@${ownerLabel}`}

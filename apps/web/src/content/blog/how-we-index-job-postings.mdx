@@ -8,17 +8,17 @@ tags: ["how-we-index", "infrastructure", "crawler"]
 relatedWatchlists: ["colophongroup/big-tech-jobs-in-switzerland"]
 ---
 
-A new role goes up on <Company slug="stripe" />'s careers page at 10:14 in the morning. By 11:32 it's in our index. By the next time your watchlist refreshes, it's in your feed.
+A new role goes up on <Company slug="anthropic" />'s careers page at 10:14 in the morning. By 11:32 it's in our index. By the next time your watchlist refreshes, it's in your feed.
 
 If you want the spec-style summary — exact User-Agent string, request rate per host, retry policy, full ATS list — that's on the [indexing policy page](/en/how-we-index). This post is the story.
 
 ## Step 1: a thirty-second handshake
 
-Stripe's careers page is custom; Anthropic uses Greenhouse; SAP uses SuccessFactors; Workday is Workday. There are ~30 distinct ATS platforms in the top tier and a much longer tail past that. Most of the work of running Job Seek is treating each of those as a slightly different protocol while looking the same from the outside.
+Anthropic uses Greenhouse; SAP uses SuccessFactors; Stripe runs their own; Workday is Workday. There are ~30 distinct ATS platforms in the top tier and a much longer tail past that. Most of the work of running Job Seek is treating each of those as a slightly different protocol while looking the same from the outside.
 
 Per company we keep a row in `boards.csv` that says: which monitor type to use, where the board is, an optional regex filter for job links, sometimes a flag that means "this one's behind a WAF, route the request through a proxy." When the crawler picks up that company on its tick, the row drives everything downstream.
 
-For Stripe specifically — let's say it's a Greenhouse board — the monitor hits `https://boards-api.greenhouse.io/v1/boards/<token>/jobs` and gets back a JSON list. For Workday, we POST to `/wday/cxs/<tenant>/<site>/jobs` with a JSON search payload. For boards with neither, we walk a sitemap, parse `__NEXT_DATA__`, or fall back to Playwright DOM extraction.
+For Anthropic specifically — a Greenhouse board — the monitor hits `https://boards-api.greenhouse.io/v1/boards/<token>/jobs` and gets back a JSON list. For Workday, we POST to `/wday/cxs/<tenant>/<site>/jobs` with a JSON search payload. For boards with neither, we walk a sitemap, parse `__NEXT_DATA__`, or fall back to Playwright DOM extraction.
 
 ## Step 2: the polite cadence
 
