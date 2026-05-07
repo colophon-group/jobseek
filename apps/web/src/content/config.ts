@@ -57,7 +57,12 @@ export const siteConfig = {
     features: { href: "/#features" },
     pricing: { href: "/#pricing" },
     faq: { href: "/faq" },
-    company: { href: "/how-we-index" },
+    // Header nav slot for product+process content. Originally pointed
+    // at the static `/how-we-index` page (#2828: replaced by a more
+    // engaging /blog hub that includes the indexing-policy story as a
+    // post). The static page stays reachable from the about page +
+    // footer for the readers who want the spec-style summary.
+    blog: { href: "/blog" },
     license: { href: "/license" },
     login: { href: "/sign-in" },
     app: { href: "/explore" },
@@ -204,6 +209,9 @@ export const siteConfig = {
       { path: "/", changeFrequency: "weekly", priority: 1, lastModified: "2026-05-01" },
       { path: "/about", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
       { path: "/faq", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
+      // Blog index. Per-post URLs are emitted separately by
+      // `blogPostEntries` in `apps/web/src/lib/sitemap.ts` (#2828).
+      { path: "/blog", changeFrequency: "weekly", priority: 0.7, lastModified: "2026-05-01" },
     ],
     // The /explore prerendered shell — bump when filter UI / hero /
     // initial-data layout substantively changes (#2824).

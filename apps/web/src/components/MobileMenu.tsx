@@ -93,8 +93,8 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
                   </Link>
                 </li>
                 <li>
-                  <Link href={lp(siteConfig.nav.company.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
-                    <Trans id="common.nav.company" comment="Nav link: Job indexing">Job indexing</Trans>
+                  <Link href={lp(siteConfig.nav.blog.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.blog.href))}>
+                    <Trans id="common.nav.blog" comment="Nav link: Blog">Blog</Trans>
                   </Link>
                 </li>
               </ul>

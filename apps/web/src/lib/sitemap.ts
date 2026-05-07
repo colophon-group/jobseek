@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
+import { listBlogPosts, getBlogPostLocales, type BlogPostSummary } from "@/lib/blog";
 
 /**
  * Sitemap data + entry builders, shared by `app/sitemap.xml/route.ts`
@@ -153,6 +154,46 @@ export function watchlistEntries(rows: SitemapWatchlistRow[]): MetadataRoute.Sit
 }
 
 /**
+ * Blog post sitemap entries (#2828). Emits one entry per post per
+ * locale that has a translated MDX file on disk. Locales without a
+ * translation are skipped — the post page falls back to the canonical
+ * English body for those routes, but advertising a duplicate-content
+ * URL via hreflang is what we want to avoid (Google would flag it as
+ * an alternate-page-with-canonical cluster).
+ *
+ * For posts with multiple translated locales, every locale gets its
+ * own URL entry plus a per-entry `languages` map listing all
+ * translated siblings. The `x-default` matches `seo.tsx::buildAlternates`
+ * (always points at /en/...) for consistency with other sitemap
+ * entries — see #2825.
+ */
+export async function blogPostEntries(
+  posts: BlogPostSummary[],
+): Promise<MetadataRoute.Sitemap> {
+  const entries: MetadataRoute.Sitemap = [];
+  for (const post of posts) {
+    const postLocales = await getBlogPostLocales(post.slug);
+    if (postLocales.length === 0) continue;
+    const languages: Record<string, string> = {};
+    for (const locale of postLocales) {
+      languages[locale] = `${siteConfig.url}/${locale}/blog/${post.slug}`;
+    }
+    languages["x-default"] = `${siteConfig.url}/en/blog/${post.slug}`;
+    for (const locale of postLocales) {
+      entries.push({
+        url: `${siteConfig.url}/${locale}/blog/${post.slug}`,
+        lastModified: new Date(post.dateModified),
+        changeFrequency: "monthly" as const,
+        priority: 0.6,
+        alternates: { languages },
+      });
+    }
+  }
+  return entries;
+}
+
+
+/**
  * Plan the shards.
  *
  * Companies are excluded from the index (#2821) — `/company/{slug}` is
@@ -192,7 +233,21 @@ export async function renderSitemapShard(
       err,
     );
   }
-  return [...staticAndExploreEntries(), ...watchlistEntries(watchlists)];
+  let blogPosts: BlogPostSummary[] = [];
+  try {
+    blogPosts = await listBlogPosts();
+  } catch (err) {
+    // Filesystem read shouldn't normally fail, but a malformed
+    // frontmatter on one post would otherwise tear down the whole
+    // shard. Degrade to "no blog entries" and surface the error.
+    console.error("[sitemap] blog post fetch failed; skipping blog entries", err);
+  }
+  const blogEntries = await blogPostEntries(blogPosts);
+  return [
+    ...staticAndExploreEntries(),
+    ...watchlistEntries(watchlists),
+    ...blogEntries,
+  ];
 }
 
 /**

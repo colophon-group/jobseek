@@ -64,8 +64,8 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
           <Link href={lp(siteConfig.nav.faq.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
             <Trans id="common.nav.faq" comment="Nav link: FAQ">FAQ</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.company.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
-            <Trans id="common.nav.company" comment="Nav link: Job indexing">Job indexing</Trans>
+          <Link href={lp(siteConfig.nav.blog.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.blog.href))}>
+            <Trans id="common.nav.blog" comment="Nav link: Blog">Blog</Trans>
           </Link>
         </nav>
 
