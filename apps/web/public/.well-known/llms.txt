@@ -1,17 +1,19 @@
 # Job Seek — llms.txt
 # https://llmstxt.org/
 
-> Job Seek is a job search engine that scrapes career pages directly from company websites. It monitors Workday, Greenhouse, Lever, and 30+ other ATS platforms so roles appear before they hit large aggregators. Users can search with multi-dimensional filters (seniority, tech stack, salary, location, language), create watchlists with email alerts, and track applications through a built-in pipeline.
+> Job Seek is a company-tracking tool for job seekers who already know where they want to work. It monitors career pages directly from thousands of companies — no third-party aggregators — so postings appear within hours of going live. Build watchlists of the companies you care about, get email alerts when roles open up, and track applications in one place. Multi-dimensional filters (seniority, tech stack, salary, location, language) when you want to narrow further.
 
 ## Key Facts
 
-- Thousands of companies indexed from direct career page scraping
-- Millions of job postings tracked
+- Built around per-company watchlists and email alerts — designed for users who know their target companies, not broad "find any job" searches
+- Indexes thousands of company career pages directly — no recruiter spam, no reposted ghost jobs
+- Re-indexed frequently for freshness — postings appear within hours, typically before LinkedIn/Indeed cross-post
+- Millions of postings tracked over time
 - 4 languages: English, German, French, Italian
 - Free tier: full search, 1 watchlist, application tracker
 - Pro tier ($10/month): unlimited watchlists, email alerts
 - Open-source crawler (MIT), job data (CC BY-NC 4.0)
-- Built by Colophon Group, a small developer team in Switzerland
+- Built by Colophon Group, a small developer studio in Switzerland
 
 ## Pages
 

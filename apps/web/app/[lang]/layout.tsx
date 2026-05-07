@@ -42,7 +42,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         logo: `${siteConfig.url}${siteConfig.logo.src}`,
         description: i18n._({
           id: "app.schema.org.description",
-          message: "Job search engine that scrapes career pages directly from company websites. Built by Colophon Group in Switzerland.",
+          message: "Company-tracking tool for targeted job seekers — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
         }),
         foundingDate: "2025",
         contactPoint: {
@@ -76,7 +76,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         inLanguage: locale,
         description: i18n._({
           id: "app.schema.description",
-          message: "Job aggregator that monitors company career pages. Subscribe to company updates, track applications, and get alerts on new openings.",
+          message: "Company-tracking tool for job seekers who already know which companies they want to work at. Build watchlists, get email alerts when new roles open up, and track applications in one place — postings sourced directly from company career pages.",
         }),
         offers: [
           {

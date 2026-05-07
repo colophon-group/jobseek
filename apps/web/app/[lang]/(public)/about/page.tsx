@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = i18n._({ id: "about.meta.title", message: "About" });
   const description = i18n._({
     id: "about.meta.description",
-    message: "Learn how Job Seek scrapes career pages from Workday, Greenhouse, Lever, and 30+ ATS platforms to surface roles before they hit the big aggregators.",
+    message: "Job Seek helps you track the companies you want to work at — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
   });
 
   return {
@@ -38,7 +38,7 @@ export default async function AboutPage({ params }: Props) {
         "@context": "https://schema.org",
         "@type": "WebPage",
         name: i18n._({ id: "about.meta.title", message: "About" }),
-        description: i18n._({ id: "about.meta.description", message: "Learn how Job Seek scrapes career pages from Workday, Greenhouse, Lever, and 30+ ATS platforms to surface roles before they hit the big aggregators." }),
+        description: i18n._({ id: "about.meta.description", message: "Job Seek helps you track the companies you want to work at — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland." }),
         url: `${siteConfig.url}/${locale}/about`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

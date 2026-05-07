@@ -178,7 +178,7 @@ function FeatureSection1() {
               <PointBlock
                 icon={cfg.pointIcons[0]}
                 title={<Trans id="home.features.s1.p1.title" comment="Feature: direct from source title">Direct from the source</Trans>}
-                description={<Trans id="home.features.s1.p1.description" comment="Feature: direct from source description">We scrape career pages from Workday, Greenhouse, Lever, and more — roles show up here before they hit the big aggregators.</Trans>}
+                description={<Trans id="home.features.s1.p1.description" comment="Feature: direct from source description — no platform names, leads with the ICP differentiator">We monitor company career pages directly, not third-party feeds — so postings show up here within hours, typically before LinkedIn or Indeed cross-post them.</Trans>}
               />
               <PointBlock
                 icon={cfg.pointIcons[1]}
@@ -332,9 +332,12 @@ export function Features() {
       className="relative z-[1] overflow-x-hidden overflow-y-visible py-16 pb-8 md:py-24 md:pb-12"
     >
       <div className="flex flex-col gap-24 md:gap-32">
-        <FeatureSection1 />
-        <FeatureSection2 />
+        {/* Order is ICP-first: watchlist (s3) → tracker (s2) → search (s1).
+            CSS classes (feat-row-1/2/3) and screenshot indices stay tied to
+            their section content — only the render order changes. */}
         <FeatureSection3 />
+        <FeatureSection2 />
+        <FeatureSection1 />
       </div>
     </section>
   );

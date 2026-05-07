@@ -22,14 +22,14 @@ export function Hero() {
       <div className="flex flex-col items-stretch gap-12 md:flex-row md:gap-20">
         <div className="flex flex-1 flex-col gap-6">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-            <Trans id="home.hero.eyebrow" comment="Hero eyebrow text above the title">Job search on your terms.</Trans>
+            <Trans id="home.hero.eyebrow" comment="Hero eyebrow above the title — speaks to the targeted job seeker ICP">For job seekers who already know where they want to work.</Trans>
           </span>
           <h1 className="text-3xl font-bold md:text-4xl">
-            <Trans id="home.hero.title" comment="Main heading on the landing page">Find roles before they hit the big boards.</Trans>
+            <Trans id="home.hero.title" comment="Main heading on the landing page — leads with company-watchlist ICP">Track the companies you actually want to work at.</Trans>
           </h1>
           <p className="text-muted">
-            <Trans id="home.hero.description" comment="Hero description paragraph">
-              We scrape career pages directly so you see openings the moment they go live. Search millions of job postings across thousands of companies — filter by seniority, tech stack, salary, and location, then track every application in one place.
+            <Trans id="home.hero.description" comment="Hero description paragraph — watchlist + alerts pitch with direct sourcing as supporting claim">
+              Build watchlists of the companies you care about, get email alerts when new roles open up, and track every application in one place. We monitor career pages directly — postings show up within hours, before LinkedIn or Indeed cross-post them.
             </Trans>
           </p>
           <div className="flex flex-col gap-4 pt-4 sm:flex-row">

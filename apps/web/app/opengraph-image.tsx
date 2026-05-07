@@ -36,7 +36,7 @@ export default async function OgImage() {
       <img src={logoSrc} width={120} height={120} />
       <span style={{ fontSize: 56, fontWeight: 700 }}>Job Seek</span>
       <span style={{ fontSize: 26, color: "#a1a1aa" }}>
-        Find roles before they hit the big boards
+        Track the companies you actually want to work at
       </span>
     </div>,
     {
