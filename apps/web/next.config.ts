@@ -19,6 +19,31 @@ const nextConfig: NextConfig = {
       { hostname: "jobseek-assets.colophon-group.org" },
       { hostname: "icons.duckduckgo.com" },
     ],
+    // Bound the cache-key cardinality. A transformation is billed once per
+    // unique (url, w, q, format). Default lists give 8 deviceSizes × 8
+    // imageSizes — anything along the device ladder is reachable, doubling
+    // (or worse) the per-source variant fan-out for no visible win on
+    // sources that are pixel-bound at the source resolution.
+    //
+    // qualities=[75]: lock to the default; no caller passes quality={N}.
+    // formats: explicit single format (Next 15+ default is webp; AVIF
+    //   would double transformation count for negligible byte savings on
+    //   the largest optimizer surfaces — 156-304 KB Features 1200×630
+    //   screenshot PNGs and 550-1024 px PublicDomainArt PNGs.
+    // deviceSizes: 8→4. The largest source emitted through the optimizer
+    //   is the 1200×630 Features screenshot. deviceSize > 1200 only
+    //   upscales (blurry, no extra information). 1920 keeps a small
+    //   buffer for moderate retina without paying for 2048/3840 variants.
+    // imageSizes: 8→6. Each existing company-icon width (16/20/24/28/32/36)
+    //   snaps to a rung still on this list (16, 32, 32, 32, 32, 48 — every
+    //   width has a smallest-≥ match), so the narrower list is safe for
+    //   the current call sites and is also forward-compatible with #2867
+    //   (which moves icons to `unoptimized`, dropping their imageSize use
+    //   entirely).
+    qualities: [75],
+    formats: ["image/webp"],
+    deviceSizes: [640, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128],
   },
   rewrites: async () => {
     const key = process.env.INDEXNOW_KEY;

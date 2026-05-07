@@ -1,9 +1,54 @@
 from __future__ import annotations
 
 import csv
+from io import BytesIO
 from unittest.mock import MagicMock, patch
 
-from src.image_sync import cleanup, update_csv, upload_images
+from PIL import Image
+
+from src.image_sync import ICON_MAX_DIM, cleanup, process_icon, update_csv, upload_images
+
+
+def _png_bytes(size: tuple[int, int], color: tuple[int, int, int, int] = (255, 0, 0, 255)) -> bytes:
+    img = Image.new("RGBA", size, color)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+class TestProcessIcon:
+    def test_resizes_oversized_icon(self, tmp_path):
+        path = tmp_path / "big.png"
+        path.write_bytes(_png_bytes((512, 512)))
+        out = process_icon(str(path))
+        with Image.open(BytesIO(out)) as img:
+            assert max(img.size) == ICON_MAX_DIM
+            assert img.format == "WEBP"
+
+    def test_preserves_aspect_ratio_on_resize(self, tmp_path):
+        # 800×400 wide icon — thumbnail caps the long side, scales the short side.
+        path = tmp_path / "wide.png"
+        path.write_bytes(_png_bytes((800, 400)))
+        out = process_icon(str(path))
+        with Image.open(BytesIO(out)) as img:
+            assert img.size == (ICON_MAX_DIM, ICON_MAX_DIM // 2)
+
+    def test_passes_through_already_small_icon(self, tmp_path):
+        path = tmp_path / "small.png"
+        path.write_bytes(_png_bytes((64, 64)))
+        out = process_icon(str(path))
+        with Image.open(BytesIO(out)) as img:
+            assert img.size == (64, 64)
+            assert img.format == "WEBP"
+
+    def test_converts_paletted_icon_to_rgba(self, tmp_path):
+        # Mode P (8-bit palette) — process_icon must convert to RGB/RGBA before save.
+        path = tmp_path / "palette.png"
+        Image.new("P", (200, 200), 0).save(path)
+        out = process_icon(str(path))
+        with Image.open(BytesIO(out)) as img:
+            assert max(img.size) == ICON_MAX_DIM
+            assert img.format == "WEBP"
 
 
 class TestUploadImages:

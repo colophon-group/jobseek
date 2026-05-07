@@ -1,5 +1,4 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
-import type { MetadataRoute } from "next";
 import { siteConfig } from "@/content/config";
 
 const { dbExecuteMock, searchMock } = vi.hoisted(() => ({
@@ -15,11 +14,9 @@ vi.mock("@/db", () => ({
   },
 }));
 
-// Mock the cache. Memoize per-key within a single test so the sharded
-// pipeline (planSitemapShards + per-shard renders) doesn't call the
-// underlying fetcher repeatedly — that's what real Redis would do, and
-// it matches how the production code expects to share work across
-// shards within an ISR window.
+// Mock the cache. Memoize per-key within a single test — that's what
+// real Redis would do, and it matches how the production code expects
+// to share work across requests within an ISR window.
 const cacheStore = new Map<string, unknown>();
 vi.mock("@/lib/cache", () => ({
   cached: async (
@@ -45,8 +42,7 @@ vi.mock("@/lib/search/typesense-client", () => ({
 }));
 
 import {
-  planSitemapShards,
-  renderSitemapShard,
+  buildSitemap,
   serializeUrlset,
   SITEMAP_TTL_SECONDS,
 } from "../sitemap";
@@ -60,26 +56,6 @@ function typesensePage(slugs: string[], found: number) {
   };
 }
 
-/**
- * Render every shard returned by `planSitemapShards()` and concatenate
- * the entries — this is what the crawler ultimately gets across
- * /sitemap.xml and the /sitemap/<id>.xml shards.
- *
- * `renderSitemapShard` returns `null` for shard ids not in the current
- * plan (stale-cache 404 path); the planner won't hand any of those
- * here, but we filter defensively so the helper stays safe if a future
- * change loosens the planner.
- */
-async function renderAllShards(): Promise<MetadataRoute.Sitemap> {
-  const shards = await planSitemapShards();
-  const all = await Promise.all(
-    shards.map(({ id }) => renderSitemapShard(id)),
-  );
-  return all
-    .filter((entries): entries is MetadataRoute.Sitemap => entries !== null)
-    .flat();
-}
-
 describe("sitemap data layer", () => {
   beforeEach(() => {
     dbExecuteMock.mockReset();
@@ -90,7 +66,7 @@ describe("sitemap data layer", () => {
   });
 
   it("returns an array of entries", async () => {
-    const result = await renderAllShards();
+    const result = await buildSitemap();
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
   });
@@ -103,7 +79,7 @@ describe("sitemap data layer", () => {
   });
 
   it("generates entries for all 4 locales", async () => {
-    const result = await renderAllShards();
+    const result = await buildSitemap();
     const localesToCheck = ["en", "de", "fr", "it"];
     for (const locale of localesToCheck) {
       const hasLocale = result.some((entry) =>
@@ -114,7 +90,7 @@ describe("sitemap data layer", () => {
   });
 
   it("each entry has required fields", async () => {
-    const result = await renderAllShards();
+    const result = await buildSitemap();
     for (const entry of result) {
       expect(entry.url).toBeDefined();
       expect(typeof entry.url).toBe("string");
@@ -125,7 +101,7 @@ describe("sitemap data layer", () => {
   });
 
   it("homepage entries have highest priority", async () => {
-    const result = await renderAllShards();
+    const result = await buildSitemap();
     const homeEntries = result.filter((e) => e.url.match(/\/[a-z]{2}$/));
     for (const entry of homeEntries) {
       expect(entry.priority).toBe(1);
@@ -144,7 +120,7 @@ describe("sitemap data layer", () => {
     // this test matched only homepage + /explore, which let regressions
     // on /about, /faq, /privacy-policy, /terms slip through.
     const before = Date.now();
-    const result = await renderAllShards();
+    const result = await buildSitemap();
     const after = Date.now();
     const sitemapPaths = siteConfig.seo.sitemap.map((s) =>
       s.path === "/" ? "" : s.path,
@@ -179,7 +155,7 @@ describe("sitemap data layer", () => {
   });
 
   it("hreflang map includes x-default pointing at /en (#2825)", async () => {
-    const result = await renderAllShards();
+    const result = await buildSitemap();
     // Pick any entry with alternates — the homepage will do.
     const homepageEn = result.find((e) => e.url === "https://jseek.co/en");
     expect(homepageEn?.alternates?.languages).toBeDefined();
@@ -193,7 +169,7 @@ describe("sitemap data layer", () => {
     );
   });
 
-  it("excludes /company/ URLs from every shard (#2821: companies left the index)", async () => {
+  it("excludes /company/ URLs (#2821: companies left the index)", async () => {
     // Even with a healthy Typesense full of companies, the sitemap must
     // not surface any `/company/{slug}` URL. `noindex,follow` on the
     // page itself is the primary signal, but keeping company URLs out
@@ -203,8 +179,25 @@ describe("sitemap data layer", () => {
       50,
     ));
 
-    const result = await renderAllShards();
+    const result = await buildSitemap();
     expect(result.some((entry) => entry.url.includes("/company/"))).toBe(false);
+  });
+
+  it("includes blog post URLs (#2828)", async () => {
+    // Coverage for blog post entries — the suite reads real MDX files
+    // under `src/content/blog`. A regression that drops blogPostEntries
+    // from the urlset must fail this test rather than silently delisting
+    // the posts. Asserting locale coverage on a known post (which ships
+    // with all 4 translations) also exercises the per-post hreflang
+    // alternates map (#2849-related).
+    const result = await buildSitemap();
+    const blogUrls = result.filter((e) => e.url.includes("/blog/"));
+    expect(blogUrls.length).toBeGreaterThan(0);
+    const welcomeUrls = blogUrls.filter((e) =>
+      e.url.endsWith("/blog/welcome-to-the-job-seek-blog"),
+    );
+    // 4 locales × 1 post = 4 entries when fully translated.
+    expect(welcomeUrls).toHaveLength(4);
   });
 
   it("preserves watchlist locale coverage and curated ordering metadata", async () => {
@@ -228,7 +221,7 @@ describe("sitemap data layer", () => {
       },
     ]);
 
-    const result = await renderAllShards();
+    const result = await buildSitemap();
     const watchlistRowEntries = result.filter((entry) =>
       entry.url.includes("/curated-user/hot-list") || entry.url.includes("/regular-user/daily-list"),
     );
@@ -250,7 +243,7 @@ describe("sitemap data layer", () => {
   });
 });
 
-describe("sitemap shards (issue #2646)", () => {
+describe("buildSitemap — graceful degradation", () => {
   beforeEach(() => {
     dbExecuteMock.mockReset();
     dbExecuteMock.mockResolvedValue([]);
@@ -259,85 +252,18 @@ describe("sitemap shards (issue #2646)", () => {
     cacheStore.clear();
   });
 
-  it("emits only shard 0 regardless of company count (#2821)", async () => {
-    // After companies left the index, the sitemap is single-shard. A
-    // healthy Typesense / Postgres state is irrelevant — the planner
-    // doesn't even consult them. Future indexable surfaces (blog) may
-    // grow this back to N>1, but `/company/` is no longer a member.
-    searchMock.mockResolvedValueOnce(typesensePage(
-      Array.from({ length: 250 }, (_, i) => `company-${i + 1}`),
-      450,
-    ));
-
-    const shards = await planSitemapShards();
-    expect(shards).toEqual([{ id: 0 }]);
-  });
-
-  it("shard 0 contains static pages and watchlists, no company URLs", async () => {
-    dbExecuteMock.mockResolvedValueOnce([
-      {
-        user_slug: "alice",
-        watchlist_slug: "ml-jobs",
-        updated_at: new Date("2026-01-01T00:00:00Z"),
-        is_curated: false,
-      },
-    ]);
-
-    const entries = await renderSitemapShard(0);
-    expect(entries).not.toBeNull();
-    expect(entries!.some((e) => e.url.includes("/company/"))).toBe(false);
-    expect(entries!.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
-    expect(entries!.some((e) => e.url.endsWith("/en/alice/ml-jobs"))).toBe(true);
-  });
-
-  it("non-zero shard ids return null (stale sitemap-index cache → 404 #2821)", async () => {
-    // After #2821 companies are out of the sitemap; only shard 0 is in
-    // the planned set. A crawler holding a cached sitemap-index from
-    // before the change may still ask for /sitemap/1.xml etc. — the
-    // lib returns null and the route handler maps that to 404, giving
-    // a clear "this URL no longer exists" signal rather than masking
-    // the change behind an empty <urlset/>.
-    expect(await renderSitemapShard(1)).toBeNull();
-    expect(await renderSitemapShard(7)).toBeNull();
-  });
-
-  it("returns at least one shard even when there are no companies", async () => {
-    // Typesense empty + Postgres fallback empty: the planner still
-    // must emit shard 0 (static + watchlists). Otherwise crawlers see
-    // an empty sitemap index.
-    searchMock.mockResolvedValueOnce({ found: 0, hits: [] });
-    const shards = await planSitemapShards();
-    expect(shards.length).toBeGreaterThanOrEqual(1);
-    expect(shards[0]).toEqual({ id: 0 });
-  });
-
-  it("shard 0 still serves static + explore entries when watchlist DB throws (issue #2694)", async () => {
+  it("still serves static + explore entries when watchlist DB throws (issue #2694)", async () => {
     // Production regression: when `cachedSitemapWatchlists()` threw,
-    // the whole shard 0 function threw and Next.js served an empty
+    // the whole sitemap function threw and Next.js served an empty
     // `<urlset/>` — wiping out even the hardcoded static + /explore
-    // URLs.
+    // URLs. buildSitemap must catch the watchlist fetcher and degrade.
     dbExecuteMock.mockReset();
     dbExecuteMock.mockRejectedValue(new Error("Postgres unavailable"));
 
-    const entries = await renderSitemapShard(0);
-    expect(entries).not.toBeNull();
-    expect(entries!.length).toBeGreaterThan(0);
-    expect(entries!.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
-    expect(entries!.some((e) => e.url === "https://jseek.co/en")).toBe(true);
-  });
-
-  it("planSitemapShards emits only shard 0 even on backend outage (#2694, #2821)", async () => {
-    // After #2821 the planner doesn't query backends at all (companies
-    // left the index). This test stays as a regression guard: a future
-    // change that re-introduces backend calls must keep the dual-
-    // outage fallback working — otherwise the index handler 500s.
-    searchMock.mockReset();
-    searchMock.mockRejectedValue(new Error("Typesense down"));
-    dbExecuteMock.mockReset();
-    dbExecuteMock.mockRejectedValue(new Error("Postgres also down"));
-
-    const shards = await planSitemapShards();
-    expect(shards).toEqual([{ id: 0 }]);
+    const entries = await buildSitemap();
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
+    expect(entries.some((e) => e.url === "https://jseek.co/en")).toBe(true);
   });
 });
 

@@ -144,9 +144,11 @@ To translate a post:
 
 The blog page chrome (`<h1>`, "No posts yet" empty state, "min read", "← Blog" nav, etc.) IS translated for de/fr/it via Lingui — see `locales/{de,fr,it}.po` for the `blog.*` and `common.nav.blog` keys. A pre-commit hook (`scripts/check-i18n-coverage.sh`) blocks commits with untranslated chrome strings.
 
-**Known limitations** (tracked as follow-ups):
-
-- `buildAlternates` in `seo.tsx` always emits all 4 locale alternates in the page `<head>`, regardless of which locales have a translated MDX. The sitemap is correct; the page metadata is over-broad. Symptoms only when a future post ships EN-only — fix tracked.
+**Known limitations** (tracked as follow-ups): none currently. The
+former `buildAlternates`-over-broad hreflang gap is now closed (PR
+#2865) — page metadata's hreflang restricts to locales with a
+translated MDX, matching the sitemap's `blogPostEntries` per-post
+behavior.
 
 ## Local dev workflow
 

@@ -7,16 +7,18 @@ import { locales } from "@/lib/i18n";
 import { listBlogPosts, getBlogPostLocales, type BlogPostSummary } from "@/lib/blog";
 
 /**
- * Sitemap data + entry builders, shared by `app/sitemap.xml/route.ts`
- * (the index) and `app/sitemap/[id]/route.ts` (the shards).
+ * Sitemap data + entry builders backing `app/sitemap.xml/route.ts`.
  *
- * Why a shared module instead of `app/sitemap.ts`: with Next.js 16's
- * file convention, exporting `generateSitemaps` from `app/sitemap.ts`
+ * Why a shared module instead of `app/sitemap.ts` (the Next.js file
+ * convention): exporting `generateSitemaps` from `app/sitemap.ts`
  * registers a metadata route at `/sitemap.xml` that conflicts with an
- * explicit Route Handler at the same URL. We need the explicit handler
- * because the file convention's auto-emitted index never reaches
- * production crawlers (issue #2694) — so we drop the file convention
- * entirely and own routing for both the index and the shards.
+ * explicit Route Handler at the same URL. The file convention's
+ * auto-emitted index never reaches production crawlers (issue #2694),
+ * so we drop the file convention entirely and own the route.
+ *
+ * The route used to be sharded (`/sitemap.xml` index + `/sitemap/<id>.xml`
+ * per-shard, #2646). After companies left the index (#2821) the
+ * surviving content fits in a single urlset; sharding was retired.
  */
 
 /** ISR window for cached watchlist data. */
@@ -194,36 +196,18 @@ export async function blogPostEntries(
 
 
 /**
- * Plan the shards.
+ * Build the full sitemap entry set.
  *
- * Companies are excluded from the index (#2821) — `/company/{slug}` is
- * `noindex,follow` and the per-company URLs are not emitted into any
- * shard. Only shard 0 (static + watchlists) is produced.
+ * Companies are excluded (#2821) — `/company/{slug}` is `noindex,follow`
+ * and the per-company URLs are not emitted. The surviving surface is
+ * static pages + explore + qualifying watchlists + blog posts.
  *
- * The async signature is preserved for forward compatibility with the
- * route handlers and to leave room for future indexable surfaces
- * (e.g. blog) without re-shaping callers.
- */
-export async function planSitemapShards(): Promise<{ id: number }[]> {
-  return [{ id: 0 }];
-}
-
-/**
- * Render a single shard. Shard 0 holds static + explore + watchlists.
- * Returns `null` for any other id so the route handler can map it to
- * a 404 — a stale sitemap-index reference (from before #2821 retired
- * the company shards) gets a clear "this URL no longer exists"
- * signal rather than an empty `<urlset/>`.
- *
- * Watchlist fetcher is wrapped in try/catch so a Postgres outage
+ * Each upstream fetcher is wrapped in try/catch so a Postgres outage
  * degrades to "static entries only" rather than an empty `<urlset/>`.
- * Empty shards were the second half of issue #2694: a thrown fetcher
- * tore the whole response down.
+ * That was the second half of issue #2694 when the route was sharded:
+ * a thrown fetcher tore the whole response down.
  */
-export async function renderSitemapShard(
-  id: number,
-): Promise<MetadataRoute.Sitemap | null> {
-  if (id !== 0) return null;
+export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   let watchlists: SitemapWatchlistRow[] = [];
   try {
     watchlists = await cachedSitemapWatchlists();
@@ -233,16 +217,17 @@ export async function renderSitemapShard(
       err,
     );
   }
-  let blogPosts: BlogPostSummary[] = [];
+  let blogEntries: MetadataRoute.Sitemap = [];
   try {
-    blogPosts = await listBlogPosts();
+    const blogPosts = await listBlogPosts();
+    blogEntries = await blogPostEntries(blogPosts);
   } catch (err) {
     // Filesystem read shouldn't normally fail, but a malformed
-    // frontmatter on one post would otherwise tear down the whole
-    // shard. Degrade to "no blog entries" and surface the error.
-    console.error("[sitemap] blog post fetch failed; skipping blog entries", err);
+    // frontmatter or a future change to `getBlogPostLocales` could
+    // surface here. Degrade to "no blog entries" rather than tearing
+    // down the whole urlset (which was the second half of #2694).
+    console.error("[sitemap] blog entries failed; skipping", err);
   }
-  const blogEntries = await blogPostEntries(blogPosts);
   return [
     ...staticAndExploreEntries(),
     ...watchlistEntries(watchlists),

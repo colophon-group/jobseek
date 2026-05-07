@@ -60,6 +60,12 @@ const searchMock = mocks.search;
 const dbExecuteMock = mocks.dbExecute;
 const cachedMock = mocks.cached;
 
+// Captured via the cached() mock implementation in beforeEach.
+// Lets the caching-contract test invoke `skipIf` directly without
+// pulling it back out of `cachedMock.mock.calls`, which TS sees as
+// `unknown[]` and forces non-null assertions on every step.
+let capturedSkipIf: ((d: unknown) => boolean) | undefined;
+
 const _hit = (overrides: Record<string, unknown> = {}) => ({
   id: "co-1",
   name: "Acme Corp",
@@ -85,12 +91,16 @@ beforeEach(() => {
   vi.clearAllMocks();
   searchMock.mockReset();
   dbExecuteMock.mockReset();
+  capturedSkipIf = undefined;
   cachedMock.mockImplementation(
     async (
       _key: string,
       fetcher: () => Promise<unknown>,
-      _options: { ttl: number; skipIf?: (d: unknown) => boolean },
-    ) => fetcher(),
+      options: { ttl: number; skipIf?: (d: unknown) => boolean },
+    ) => {
+      capturedSkipIf = options.skipIf;
+      return fetcher();
+    },
   );
 });
 
@@ -252,8 +262,8 @@ describe("getCompanyBySlug — caching contract", () => {
         skipIf: expect.any(Function),
       }),
     );
-    const skipIf = cachedMock.mock.calls[0][2].skipIf;
-    expect(skipIf(null)).toBe(true);
-    expect(skipIf({ id: "x" })).toBe(false);
+    expect(capturedSkipIf).toBeDefined();
+    expect(capturedSkipIf?.(null)).toBe(true);
+    expect(capturedSkipIf?.({ id: "x" })).toBe(false);
   });
 });
