@@ -153,6 +153,94 @@
 .job-description th { font-weight: 600; }
 .job-description *:first-child { margin-top: 0; }
 
+/* ── Blog post typography (#2828) ──
+ * Long-form reading rhythm: bumped sizes + larger line spacing vs.
+ * `.job-description` (which is tuned for shorter posting bodies). Same
+ * design tokens (`--muted`, `--divider`, `--info-color`, `--code-bg`)
+ * so light/dark mode and theme tweaks propagate automatically. */
+.blog-post h2,
+.blog-post h3,
+.blog-post h4 {
+  font-weight: 600;
+  margin-top: 2em;
+  margin-bottom: 0.6em;
+  line-height: 1.3;
+}
+.blog-post h2 { font-size: 1.5em; }
+.blog-post h3 { font-size: 1.25em; }
+.blog-post h4 { font-size: 1.1em; }
+.blog-post p {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  line-height: 1.6;
+}
+.blog-post ul,
+.blog-post ol {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+  line-height: 1.6;
+}
+.blog-post ul { list-style-type: disc; }
+.blog-post ol { list-style-type: decimal; }
+.blog-post li { margin-top: 0.3em; margin-bottom: 0.3em; }
+.blog-post li > p { margin-top: 0.3em; margin-bottom: 0.3em; }
+.blog-post a { color: var(--info-color); text-decoration: underline; }
+/* Mention pills + cards opt out of the prose link styling — see
+ * `src/components/blog/MdxMentions.tsx`. The pill / card chrome paints
+ * its own colors and never wants the underline-on-everything that
+ * works for inline links inside paragraphs. */
+.blog-post a.mention,
+.blog-post a.mention:hover {
+  color: inherit;
+  text-decoration: none;
+}
+/* The card body uses <ul>/<li> for the stats grid so screen readers
+ * announce it as a list. Without this reset the prose `.blog-post ul`
+ * + `.blog-post li` rules add 1em vertical margins, 1.5em padding-
+ * left, and a disc list-style — which throws the stat columns out of
+ * alignment with each other and adds an unwanted indent before each
+ * value. Scope-reset to defaults inside the mention card; the pill
+ * doesn't render any nested lists so it's a no-op there. */
+.blog-post a.mention ul,
+.blog-post a.mention ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.blog-post a.mention li {
+  margin: 0;
+}
+.blog-post strong, .blog-post b { font-weight: 600; }
+.blog-post hr { border-color: var(--divider); margin: 2em 0; border-style: solid; border-width: 1px 0 0 0; }
+.blog-post blockquote {
+  border-left: 3px solid var(--divider);
+  padding-left: 1em;
+  color: var(--muted);
+  margin: 1.25em 0;
+  font-style: italic;
+}
+.blog-post table { border-collapse: collapse; width: 100%; margin: 1.25em 0; }
+.blog-post th, .blog-post td { border: 1px solid var(--divider); padding: 0.5em 0.75em; text-align: left; }
+.blog-post th { font-weight: 600; }
+.blog-post pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--radius-sm);
+  padding: 1em;
+  margin: 1.25em 0;
+  overflow-x: auto;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+.blog-post pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+.blog-post *:first-child { margin-top: 0; }
+
 /* ── Scrollbar hide (keeps scroll, hides scrollbar) ── */
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }

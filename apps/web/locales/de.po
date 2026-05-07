@@ -14,258 +14,6 @@ msgstr ""
 "Plural-Forms: \n"
 "X-Generator: @lingui/cli\n"
 
-#. Display currency settings description
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:54
-#: src/components/settings/GeneralSettings.tsx:301
-#~ msgid "settings.general.currency.description"
-#~ msgstr "Wählen Sie die Währung für Gehaltsfilter und Anzeige."
-
-#. Display currency settings section heading
-#. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:298
-#~ msgid "settings.general.currency.title"
-#~ msgstr "Anzeigewährung"
-
-#. Empty state message when no jobs are saved
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/saved/saved-page.tsx:99
-#~ msgid "saved.empty"
-#~ msgstr "Noch keine gespeicherten Stellen. Speichern Sie Stellen aus den Suchergebnissen, um sie hier zu finden."
-
-#. Aria label for save button
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/saved/saved-page.tsx:161
-#~ msgid "saved.save.ariaLabel"
-#~ msgstr "Job speichern"
-
-#. Saved items nav icon tooltip
-#. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:56
-#~ msgid "app.header.nav.saved"
-#~ msgstr "Gespeichert"
-
-#. Title of the saved jobs page
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/saved/saved-page.tsx:113
-#~ msgid "saved.title"
-#~ msgstr "Gespeicherte Stellen"
-
-#. Search nav icon tooltip
-#. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:58
-#~ msgid "app.header.nav.search"
-#~ msgstr "Suche"
-
-#. Aria label for unsave button
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/saved/saved-page.tsx:161
-#~ msgid "saved.unsave.ariaLabel"
-#~ msgstr "Job entfernen"
-
-#. Pro feature: email alerts
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:83
-#~ msgid "home.pricing.pro.f4"
-#~ msgstr "E-Mail-Benachrichtigungen & Updates"
-
-#. Nav link: Product
-#. Nav link: Product
-#. js-lingui-explicit-id
-#: src/components/Header.tsx:55
-#: src/components/MobileMenu.tsx:76
-#~ msgid "common.nav.product"
-#~ msgstr "Produkt"
-
-#. Pro feature: saved searches
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:82
-#~ msgid "home.pricing.pro.f3"
-#~ msgstr "Gespeicherte Suchen"
-
-#. Count of additional watchlists not shown
-#. js-lingui-explicit-id
-#: src/components/watchlist/public-watchlist-search.tsx:130
-#~ msgid "watchlists.explore.moreCount"
-#~ msgstr "{0} weitere"
-
-#. Agentic features section heading
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:104
-#: src/components/AgenticFeatures.tsx:44
-#~ msgid "home.agentic.title"
-#~ msgstr "Agentische Workflows auf dem Job-Index"
-
-#. Agentic feature card title: ghosting
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:108
-#: src/components/AgenticFeatures.tsx:66
-#~ msgid "home.agentic.cards.ghosting.title"
-#~ msgstr "Wahrscheinliche Geisterstellen erkennen"
-
-#. Agentic feature card title: discovery
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:109
-#: src/components/AgenticFeatures.tsx:71
-#~ msgid "home.agentic.cards.discovery.title"
-#~ msgstr "Entdecken, wer jetzt einstellt"
-
-#. Agentic features section eyebrow
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:103
-#: src/components/AgenticFeatures.tsx:41
-#~ msgid "home.agentic.eyebrow"
-#~ msgstr "Für KI-Agenten"
-
-#. Agentic features section description
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:105
-#: src/components/AgenticFeatures.tsx:47
-#~ msgid "home.agentic.description"
-#~ msgstr "Job Seek ist nicht nur eine Suchoberfläche für Menschen. Es bietet auch strukturierte Workflows für Agenten, die Jobs suchen, Geisterstellen erkennen und analysieren müssen, wo die Einstellungsaktivität zunimmt."
-
-#. Agentic features CTA title
-#. js-lingui-explicit-id
-#: src/components/AgenticFeatures.tsx:117
-#~ msgid "home.agentic.cta.title"
-#~ msgstr "Brauchen Sie die Endpoint-Dokumentation?"
-
-#. Agentic feature card metadata: ghosting
-#. js-lingui-explicit-id
-#: src/components/AgenticFeatures.tsx:100
-#~ msgid "home.agentic.cards.ghosting.meta"
-#~ msgstr "Offene Stufe"
-
-#. Agentic feature card metadata: discovery
-#. js-lingui-explicit-id
-#: src/components/AgenticFeatures.tsx:105
-#~ msgid "home.agentic.cards.discovery.meta"
-#~ msgstr "Offene Stufe"
-
-#. Agentic feature card description: discovery
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:109
-#: src/components/AgenticFeatures.tsx:88
-#~ msgid "home.agentic.cards.discovery.description"
-#~ msgstr "Trendsignale von 39+ Jobbörsen abrufen, um expandierende Unternehmen, sinkende Aktivität und neue Einstellungswellen zu erkennen, bevor sie anderswo offensichtlich werden."
-
-#. Agentic feature card description: search
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:107
-#: src/components/AgenticFeatures.tsx:78
-#~ msgid "home.agentic.cards.search.description"
-#~ msgstr "Abfragen von Jobs, Unternehmen und Filtertaxonomien über JSON, damit Copiloten und interne Tools gegen dasselbe strukturierte Inventar wie das Produkt arbeiten können."
-
-#. Agentic feature card description: ghosting
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:108
-#: src/components/AgenticFeatures.tsx:83
-#~ msgid "home.agentic.cards.ghosting.description"
-#~ msgstr "Rekonstruiere den Posting-Verlauf aus archivierten Snapshots, um Stellen zu markieren, die scheinbar offen bleiben ohne echte Einstellungsabsicht, und erhalte einen Bericht, über den dein Agent Reasoning betreiben kann."
-
-#. Agentic features CTA description
-#. js-lingui-explicit-id
-#: src/components/AgenticFeatures.tsx:122
-#~ msgid "home.agentic.cta.description"
-#~ msgstr "Überprüfe die agentische API-Referenz, das Auth-Modell und Beispielanfragen für Suche, Geisterstellen-Analyse und Unternehmensidentifizierung."
-
-#. Agentic feature card title: search
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:107
-#: src/components/AgenticFeatures.tsx:61
-#~ msgid "home.agentic.cards.search.title"
-#~ msgstr "Den Index direkt durchsuchen"
-
-#. Agentic feature card metadata: search
-#. js-lingui-explicit-id
-#: src/components/AgenticFeatures.tsx:95
-#~ msgid "home.agentic.cards.search.meta"
-#~ msgstr "Abonnement erforderlich"
-
-#. Agentic features CTA button label
-#. js-lingui-explicit-id
-#: src/components/AgenticFeatures.tsx:137
-#~ msgid "home.agentic.cta.button"
-#~ msgstr "API-Dokumentation ansehen"
-
-#. Cancel button in create watchlist dialog
-#. js-lingui-explicit-id
-#: src/components/watchlist/create-watchlist-dialog.tsx:164
-#~ msgid "watchlists.create.cancel"
-#~ msgstr "Abbrechen"
-
-#. Label for company selector in watchlist creation
-#. js-lingui-explicit-id
-#: src/components/watchlist/create-watchlist-dialog.tsx:119
-#~ msgid "watchlists.create.companiesLabel"
-#~ msgstr "Unternehmen"
-
-#. Submit button in create watchlist dialog
-#. js-lingui-explicit-id
-#: src/components/watchlist/create-watchlist-dialog.tsx:175
-#~ msgid "watchlists.create.submit"
-#~ msgstr "Erstellen"
-
-#. Title of the create watchlist dialog
-#. js-lingui-explicit-id
-#: src/components/watchlist/create-watchlist-dialog.tsx:79
-#~ msgid "watchlists.create.title"
-#~ msgstr "Watchlist erstellen"
-
-#. Placeholder for watchlist name input
-#. js-lingui-explicit-id
-#: src/components/watchlist/create-watchlist-dialog.tsx:105
-#~ msgid "watchlists.create.namePlaceholder"
-#~ msgstr "Meine Watchlist"
-
-#. Label for watchlist name input
-#. js-lingui-explicit-id
-#: src/components/watchlist/create-watchlist-dialog.tsx:97
-#~ msgid "watchlists.create.nameLabel"
-#~ msgstr "Name"
-
-#. Checkbox label to make watchlist public
-#. js-lingui-explicit-id
-#: src/components/watchlist/create-watchlist-dialog.tsx:135
-#~ msgid "watchlists.create.publicLabel"
-#~ msgstr "Öffentlich (für andere sichtbar)"
-
-#. Generic error creating watchlist
-#. js-lingui-explicit-id
-#: src/components/watchlist/create-watchlist-dialog.tsx:150
-#~ msgid "watchlists.create.error"
-#~ msgstr "Etwas ist schiefgelaufen. Bitte versuche es erneut."
-
-#. Error when free plan watchlist limit is reached
-#. js-lingui-explicit-id
-#: src/components/watchlist/create-watchlist-dialog.tsx:143
-#~ msgid "watchlists.create.limitReached"
-#~ msgstr "Du hast dein Watchlist-Limit erreicht. Upgrade, um mehr zu erstellen."
-
-#. Employee count range on company page
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:541
-#~ msgid "company.page.employees"
-#~ msgstr "{0} Mitarbeitende"
-
-#. Founded year on company page
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:548
-#~ msgid "company.page.founded"
-#~ msgstr "Gegründet {0}"
-
-#. Back to search results link on company page
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:559
-#~ msgid "company.page.backToSearch"
-#~ msgstr "Suchergebnisse"
-
-#. Job count label in watchlist view
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:227
-#~ msgid "watchlists.jobList.jobCount"
-#~ msgstr "Jobs"
-
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -310,8 +58,26 @@ msgstr "{count, plural, one {# offene Stelle} other {# offene Stellen}}"
 msgid "company.similar.positionCount"
 msgstr "{count, plural, one {# offene Stelle} other {# offene Stellen}}"
 
+#. Stat label on a WatchlistCard mention card — pluralized 'active job' / 'active jobs'. {count} is the integer count.
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:89
+#: src/components/blog/MdxMentions.tsx:373
+msgid "blog.mention.watchlist.activeJobsLabel"
+msgstr "{count, plural, one {offene Stelle} other {offene Stellen}}"
+
+#. Stat label on a CompanyCard mention card — pluralized 'active posting' / 'active postings'. {count} is the integer count.
+#. js-lingui-explicit-id
+#: src/components/blog/MdxMentions.tsx:305
+msgid "blog.mention.company.activePostingsLabel"
+msgstr "{count, plural, one {offene Stelle} other {offene Stellen}}"
+
+#. Stat label on a WatchlistCard mention card — pluralized 'company' / 'companies'. {count} is the integer count.
+#. js-lingui-explicit-id
+#: src/components/blog/MdxMentions.tsx:362
+msgid "blog.mention.watchlist.companiesLabel"
+msgstr "{count, plural, one {Unternehmen} other {Unternehmen}}"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:98
 msgid "watchlist.meta.tracking"
 msgstr "{count, plural, one {# Unternehmen beobachtet} other {# Unternehmen beobachtet}}. {description}"
 
@@ -322,7 +88,7 @@ msgid "myJobs.heatmap.tooltipMultiple"
 msgstr "{count} Bewerbungen am {date}"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:47
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:56
 msgid "watchlist.meta.moreCompanies"
 msgstr "{count} weitere"
 
@@ -336,11 +102,23 @@ msgstr "{countText} bei {name}"
 msgid "company.meta.descriptionWithInfo"
 msgstr "{countText} bei {name}. {description}"
 
+#. Reading-time label shown in the blog post byline. {minutes} is the integer minute count.
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/[slug]/page.tsx:127
+msgid "blog.post.readingTime"
+msgstr "{minutes, plural, one {# Min. Lesezeit} other {# Min. Lesezeit}}"
+
 #. Employee count range shown on company page header
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/company-head.tsx:31
 msgid "company.head.employees"
 msgstr "{range} Mitarbeiter"
+
+#. Meta line on a CompanyCard mention card — '{range} employees' (range like '11–50' or '5k–10k')
+#. js-lingui-explicit-id
+#: src/components/blog/MdxMentions.tsx:283
+msgid "blog.mention.company.employeesCount"
+msgstr "{range} Mitarbeitende"
 
 #. Free plan price display
 #. js-lingui-explicit-id
@@ -370,13 +148,13 @@ msgstr "Bewerbungstracker"
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:105
 msgid "app.home.request.agent.install_heading"
-msgstr ""
+msgstr "1. MCP installieren"
 
 #. Heading for the 'paste this into Claude Code' step on the agent-prompt success card
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:113
 msgid "app.home.request.agent.run_heading"
-msgstr ""
+msgstr "2. Prompt ausführen"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:59
@@ -489,17 +267,17 @@ msgstr "Standort hinzufügen..."
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:188
 msgid "app.home.request.agent.companyAddedLabel"
-msgstr ""
+msgstr "hinzugefügt — öffnen"
 
 #. Aria label for the region containing the agent prompt code block
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:173
 msgid "app.home.request.agent.promptRegionLabel"
-msgstr ""
+msgstr "Agent-Prompt"
 
 #. Encryption
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:57
+#: app/[lang]/(public)/privacy-policy/page.tsx:61
 #: src/components/PrivacyPolicyContent.tsx:47
 msgid "privacy.short.r5"
 msgstr "Alle Daten werden bei Übertragung und Speicherung verschlüsselt."
@@ -563,12 +341,9 @@ msgstr "Beliebig"
 msgid "watchlists.view.anyCompany"
 msgstr "Alle Unternehmen"
 
-#~ msgid "app.header.nav.home"
-#~ msgstr "Startseite"
-
 #. MIT license section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:50
+#: app/[lang]/(public)/license/page.tsx:55
 #: src/components/LicenseContent.tsx:50
 msgid "license.code.title"
 msgstr "Anwendungscode (MIT-Lizenz)"
@@ -622,16 +397,16 @@ msgstr "Bewerbungen im letzten Jahr"
 msgid "myJobs.group.applied"
 msgstr "Beworben"
 
-#. Application tracker status: applied
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:462
-msgid "search.tracker.applied"
-msgstr "Beworben"
-
 #. Applied status badge label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/status-badge.tsx:20
 msgid "myJobs.status.applied"
+msgstr "Beworben"
+
+#. Application tracker status: applied
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:462
+msgid "search.tracker.applied"
 msgstr "Beworben"
 
 #. Sankey funnel node: applied
@@ -672,7 +447,7 @@ msgstr "Apr"
 
 #. Step 3 body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:62
+#: app/[lang]/(public)/how-we-index/page.tsx:66
 #: src/components/HowWeIndexContent.tsx:131
 msgid "indexing.ingestion.s3.body"
 msgstr "Als letztes Mittel parsen wir die Karriereseiten selbst, bevorzugen dabei die neuesten Einträge zuerst und stoppen, sobald bereits indexierte Stellen wieder auftauchen, anstatt jede Seite zu durchsuchen."
@@ -701,16 +476,16 @@ msgstr "Aug"
 msgid "settings.account.username.available"
 msgstr "Verfügbar"
 
-#. Link back to sign-in after failed verification
-#. js-lingui-explicit-id
-#: app/[lang]/verify-email/page.tsx:68
-msgid "auth.verify.error.backToSignIn"
-msgstr "Zurück zur Anmeldung"
-
 #. Link back to sign-in from reset password
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:42
 msgid "auth.resetPassword.backToSignIn"
+msgstr "Zurück zur Anmeldung"
+
+#. Link back to sign-in after failed verification
+#. js-lingui-explicit-id
+#: app/[lang]/verify-email/page.tsx:68
+msgid "auth.verify.error.backToSignIn"
 msgstr "Zurück zur Anmeldung"
 
 #. Link back to sign-in from forgot password
@@ -737,6 +512,32 @@ msgstr "Nach oben"
 msgid "myJobs.interviewType.behavioral"
 msgstr "Verhalten"
 
+#. Document title (<title>) for the blog index page
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/page.tsx:24
+msgid "blog.meta.title"
+msgstr "Blog"
+
+#. <h1> on the blog index page
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/page.tsx:69
+msgid "blog.index.heading"
+msgstr "Blog"
+
+#. Back-to-index link at the top of a blog post (rendered as '← {label}')
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/[slug]/page.tsx:122
+msgid "blog.post.backToIndex"
+msgstr "Blog"
+
+#. Nav link: Blog
+#. Nav link: Blog
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:68
+#: src/components/MobileMenu.tsx:97
+msgid "common.nav.blog"
+msgstr "Blog"
+
 #. Subtitle on the sign-in CTA card shown to anonymous users at the end of the similar-companies strip
 #. js-lingui-explicit-id
 #: src/components/company/similar-companies-strip.tsx:182
@@ -758,7 +559,7 @@ msgstr "Von Jobsuchenden entwickelt, für Jobsuchende"
 
 #. Terms page description
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:50
+#: app/[lang]/(public)/terms/page.tsx:54
 #: src/components/TermsContent.tsx:23
 msgid "terms.hero.description"
 msgstr "Mit der Nutzung von Job Seek stimmst du diesen Bedingungen zu. Hier eine verständliche Zusammenfassung."
@@ -913,7 +714,7 @@ msgstr "Klicken zum Umbenennen"
 
 #. Step 2 title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:61
+#: app/[lang]/(public)/how-we-index/page.tsx:65
 #: src/components/HowWeIndexContent.tsx:121
 msgid "indexing.ingestion.s2.title"
 msgstr "Client-APIs als Zweites."
@@ -944,7 +745,7 @@ msgstr "Coding"
 
 #. CC license section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:52
+#: app/[lang]/(public)/license/page.tsx:57
 #: src/components/LicenseContent.tsx:71
 msgid "license.data.title"
 msgstr "Sammlung von Stellenanzeigen (CC BY-NC 4.0)"
@@ -999,9 +800,15 @@ msgstr "Unternehmen"
 msgid "myJobs.group.company"
 msgstr "Unternehmen"
 
+#. Eyebrow label on a CompanyCard mention card (the small uppercase tag above the company name)
+#. js-lingui-explicit-id
+#: src/components/blog/MdxMentions.tsx:315
+msgid "blog.mention.company.eyebrow"
+msgstr "Unternehmen"
+
 #. Heading shown when a company page slug does not exist
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:66
+#: app/[lang]/(app)/company/[slug]/page.tsx:74
 msgid "company.notFound.title"
 msgstr "Unternehmen nicht gefunden"
 
@@ -1031,15 +838,9 @@ msgstr "Verknüpfte Konten"
 
 #. Contact section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:54
+#: app/[lang]/(public)/license/page.tsx:59
 #: src/components/LicenseContent.tsx:96
 msgid "license.contact.title"
-msgstr "Kontakt"
-
-#. TOC: Contact
-#. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:25
-msgid "license.toc.contact"
 msgstr "Kontakt"
 
 #. Footer link to contact email
@@ -1048,16 +849,22 @@ msgstr "Kontakt"
 msgid "common.footer.contact"
 msgstr "Kontakt"
 
-#. Table of contents heading
+#. TOC: Contact
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:18
-msgid "license.toc.title"
-msgstr "Inhalt"
+#: src/components/LicenseContent.tsx:25
+msgid "license.toc.contact"
+msgstr "Kontakt"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:23
 msgid "indexing.toc.title"
+msgstr "Inhalt"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:18
+msgid "license.toc.title"
 msgstr "Inhalt"
 
 #. Button to continue to app after verification
@@ -1092,7 +899,7 @@ msgstr "Freiberuflich"
 
 #. Cookies
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:56
+#: app/[lang]/(public)/privacy-policy/page.tsx:60
 #: src/components/PrivacyPolicyContent.tsx:46
 msgid "privacy.short.r4"
 msgstr "Cookies dienen nur der Sitzung — keine Werbung, kein Tracking."
@@ -1101,7 +908,7 @@ msgstr "Cookies dienen nur der Sitzung — keine Werbung, kein Tracking."
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:145
 msgid "app.home.request.agent.copied"
-msgstr ""
+msgstr "Kopiert"
 
 #. MIT right 1
 #. js-lingui-explicit-id
@@ -1113,19 +920,19 @@ msgstr "Den Code für jeden Zweck kopieren und ändern, einschließlich kommerzi
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:130
 msgid "app.home.request.agent.copyInstallButton"
-msgstr ""
+msgstr "Befehl kopieren"
 
 #. Toast shown when copying the agent prompt to the clipboard failed
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:152
 msgid "app.home.request.agent.copyFailed"
-msgstr ""
+msgstr "Kopieren fehlgeschlagen"
 
 #. Label for the copy-prompt button on the agent-prompt success card
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:138
 msgid "app.home.request.agent.copyButton"
-msgstr ""
+msgstr "Prompt kopieren"
 
 #. Location type label for countries
 #. Location type label for countries
@@ -1143,7 +950,7 @@ msgstr "Crawler-Quellcode"
 
 #. Assurances section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:51
+#: app/[lang]/(public)/how-we-index/page.tsx:55
 #: src/components/HowWeIndexContent.tsx:63
 msgid "indexing.assurances.title"
 msgstr "Crawling-Zusicherungen"
@@ -1226,6 +1033,18 @@ msgstr "Täglich"
 #: src/components/settings/GeneralSettings.tsx:93
 msgid "settings.theme.dark"
 msgstr "Dunkel"
+
+#. Meta description (under 160 chars) for the blog index page — covers data analyses + report breakdowns + news commentary
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/page.tsx:29
+msgid "blog.meta.description"
+msgstr "Datenanalysen, Nachrichten und Zusammenfassungen von Branchenberichten – basierend auf den Stellenanzeigen, die wir auf den Karriereseiten tausender Unternehmen verfolgen."
+
+#. One-line tagline under the blog index <h1> — covers data analyses + reports/papers + news
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/page.tsx:74
+msgid "blog.index.tagline"
+msgstr "Datenanalysen, Nachrichten und Zusammenfassungen von Branchenberichten und Studien – basierend auf den Stellenanzeigen, die wir verfolgen."
 
 #. Sort option: date saved
 #. js-lingui-explicit-id
@@ -1343,7 +1162,7 @@ msgstr "Noch kein Konto? <0>Registrieren</0>"
 
 #. No scraping
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:55
+#: app/[lang]/(public)/terms/page.tsx:59
 #: src/components/TermsContent.tsx:45
 msgid "terms.short.r3"
 msgstr "Kein Scraping, keine automatisierten Bewerbungen, kein Missbrauch der Plattform."
@@ -1430,7 +1249,7 @@ msgstr "Gib unten dein neues Passwort ein."
 
 #. Assurance 3 body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:55
+#: app/[lang]/(public)/how-we-index/page.tsx:59
 #: src/components/HowWeIndexContent.tsx:80
 msgid "indexing.assurances.i3.body"
 msgstr "Auch nach der Entdeckung rufen wir Stellendetailseiten mit einem strikten Limit von einer Anfrage pro Seite pro Minute ab."
@@ -1444,7 +1263,7 @@ msgstr "Entwickelt für aktive Jobsuchende"
 
 #. Assurance 1 body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:53
+#: app/[lang]/(public)/how-we-index/page.tsx:57
 #: src/components/HowWeIndexContent.tsx:68
 msgid "indexing.assurances.i1.body"
 msgstr "Jedes Wiederholungsfenster nutzt exponentielles Backoff, damit wir einen Server nie überlasten, und wir brechen ab, wenn ein Host weiterhin Timeouts liefert."
@@ -1682,6 +1501,12 @@ msgstr "Passwort vergessen?"
 msgid "auth.signIn.forgotPassword"
 msgstr "Passwort vergessen?"
 
+#. Meta line on a CompanyCard mention card — 'founded {year}'
+#. js-lingui-explicit-id
+#: src/components/blog/MdxMentions.tsx:293
+msgid "blog.mention.company.foundedYear"
+msgstr "gegründet {year}"
+
 #. Founded year shown on company page header
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/company-head.tsx:41
@@ -1804,7 +1629,7 @@ msgstr "Verstanden"
 
 #. Step 3 title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:62
+#: app/[lang]/(public)/how-we-index/page.tsx:66
 #: src/components/HowWeIndexContent.tsx:129
 msgid "indexing.ingestion.s3.title"
 msgstr "Behutsames Seiten-Parsing."
@@ -1851,7 +1676,7 @@ msgstr "Wie verhält sich der Crawler auf der Website meines Unternehmens?"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/how-we-index/page.tsx:19
-#: app/[lang]/(public)/how-we-index/page.tsx:41
+#: app/[lang]/(public)/how-we-index/page.tsx:45
 msgid "indexing.meta.description"
 msgstr "Wie Job Seek Stellenanzeigen von über 30 ATS-Plattformen entdeckt und indexiert. Crawl-Frequenz, Rate-Limits, robots.txt-Konformität und Opt-out-Möglichkeiten."
 
@@ -1862,7 +1687,7 @@ msgstr "Wie oft werden Stellenanzeigen aktualisiert?"
 
 #. Ingestion section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:58
+#: app/[lang]/(public)/how-we-index/page.tsx:62
 #: src/components/HowWeIndexContent.tsx:104
 msgid "indexing.ingestion.title"
 msgstr "Wie Stellenanzeigen in den Index gelangen"
@@ -1875,14 +1700,14 @@ msgstr "Wie Stellenanzeigen in den Index gelangen"
 
 #. Indexing page title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:48
+#: app/[lang]/(public)/how-we-index/page.tsx:52
 #: src/components/HowWeIndexContent.tsx:48
 msgid "indexing.hero.title"
 msgstr "Wie wir Stellenanzeigen finden und verarbeiten"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/how-we-index/page.tsx:18
-#: app/[lang]/(public)/how-we-index/page.tsx:40
+#: app/[lang]/(public)/how-we-index/page.tsx:44
 msgid "indexing.meta.title"
 msgstr "So indexieren wir"
 
@@ -1894,14 +1719,14 @@ msgstr "Falls ein Konto mit dieser E-Mail-Adresse existiert, haben wir einen Lin
 
 #. Step 2 body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:61
+#: app/[lang]/(public)/how-we-index/page.tsx:65
 #: src/components/HowWeIndexContent.tsx:123
 msgid "indexing.ingestion.s2.body"
 msgstr "Falls keine Sitemap existiert, untersuchen wir die Client-Anwendung auf JSON-APIs, die sie aufruft; wenn wir welche finden, nutzen wir diese Endpunkte direkt, um Stellenanzeigen-URLs aufzulisten, ohne das DOM zu scrapen."
 
 #. Opt-out section body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:67
+#: app/[lang]/(public)/how-we-index/page.tsx:71
 #: src/components/HowWeIndexContent.tsx:164
 msgid "indexing.optOut.body"
 msgstr "Wenn du unerwartete Aktivitäten unseres Crawlers bemerkst oder es vorziehst, dass deine Karriereseite nicht indexiert wird, schreib uns bitte eine E-Mail und wir werden umgehend antworten."
@@ -1913,7 +1738,7 @@ msgid "indexing.outreach.body"
 msgstr "Wenn du ungewöhnliches Crawler-Verhalten bemerkst, es vorziehst, dass wir deine Inhalte nicht indexieren, oder Vorschläge zur Verbesserung unserer Schutzmaßnahmen hast, kontaktiere uns bitte."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:63
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:72
 msgid "watchlist.meta.inLocations"
 msgstr "in {locations}"
 
@@ -1937,6 +1762,12 @@ msgstr "im letzten Jahr"
 #. js-lingui-explicit-id
 #: src/components/search/company-card.tsx:133
 msgid "search.card.yearCount"
+msgstr "im letzten Jahr"
+
+#. Stat label on a WatchlistCard mention card — 'in the past year' (year-to-date jobs counted by the watchlist filters)
+#. js-lingui-explicit-id
+#: src/components/blog/MdxMentions.tsx:384
+msgid "blog.mention.watchlist.yearJobsLabel"
 msgstr "im letzten Jahr"
 
 #. Indexing page eyebrow
@@ -2007,16 +1838,16 @@ msgstr "Schluss mit der 50-Tab-Routine"
 msgid "myJobs.group.interviewing"
 msgstr "Im Interview"
 
-#. Application tracker status: interviewing
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:463
-msgid "search.tracker.interviewing"
-msgstr "Im Interview"
-
 #. Interviewing status badge label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/status-badge.tsx:21
 msgid "myJobs.status.interviewing"
+msgstr "Im Interview"
+
+#. Application tracker status: interviewing
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:463
+msgid "search.tracker.interviewing"
 msgstr "Im Interview"
 
 #. Status option in dropdown: interviewing
@@ -2094,14 +1925,6 @@ msgstr "Stellendetails"
 msgid "myJobs.detail.title"
 msgstr "Jobdetails"
 
-#. Nav link: Job indexing
-#. Nav link: Job indexing
-#. js-lingui-explicit-id
-#: src/components/Header.tsx:68
-#: src/components/MobileMenu.tsx:97
-msgid "common.nav.company"
-msgstr "Wie indexieren wir Stellen?"
-
 #. Link to how we index page
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx:66
@@ -2144,7 +1967,7 @@ msgstr "Job Seek ist eine Jobsuchmaschine, die Karriereseiten direkt von Unterne
 
 #. Indexing page description
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:49
+#: app/[lang]/(public)/how-we-index/page.tsx:53
 #: src/components/HowWeIndexContent.tsx:51
 msgid "indexing.hero.description"
 msgstr "Job Seek ist eine Suchmaschine sowohl für aktive Kandidaten als auch für Fachleute, die den Markt passiv beobachten — sie zeigt aktuelle Stellen und behandelt dabei die Infrastruktur der Arbeitgeber respektvoll. Diese Seite dokumentiert genau, wie sich unser Crawler verhält, welche Kontrollen ihn höflich halten und wie Stellen letztlich in den Index gelangen."
@@ -2164,7 +1987,7 @@ msgstr "Job Seek wird von der Colophon Group entwickelt, einem kleinen Entwickle
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/privacy-policy/page.tsx:19
-#: app/[lang]/(public)/privacy-policy/page.tsx:41
+#: app/[lang]/(public)/privacy-policy/page.tsx:45
 msgid "privacy.meta.description"
 msgstr "Datenschutzrichtlinie von Job Seek — welche personenbezogenen Daten wir erheben, wie wir sie verwenden, deine DSGVO-Rechte, Cookie-Richtlinie und Kontolöschung."
 
@@ -2182,13 +2005,13 @@ msgstr "Job Seek Watchlist mit kuratierten Robotik-Ingenieurstellen in Zürich"
 
 #. License page description
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:49
+#: app/[lang]/(public)/license/page.tsx:54
 #: src/components/LicenseContent.tsx:38
 msgid "license.hero.description"
 msgstr "Die Codebasis von Job Seek ist Open Source unter MIT. Die von uns gesammelten und aufbereiteten Stellendaten stehen unter Creative Commons BY-NC 4.0. Nachfolgend eine verständliche Zusammenfassung — bitte lies die vollständigen Lizenzen für die genauen Bedingungen."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:71
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:80
 msgid "watchlist.meta.fallback"
 msgstr "Job-Watchlist von @{owner}"
 
@@ -2210,7 +2033,7 @@ msgid "company.meta.title"
 msgstr "Jobs bei {name}"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:53
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:62
 msgid "watchlist.meta.jobsAt"
 msgstr "Jobs bei {names}"
 
@@ -2300,7 +2123,7 @@ msgstr "Stufe"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/license/page.tsx:18
-#: app/[lang]/(public)/license/page.tsx:40
+#: app/[lang]/(public)/license/page.tsx:45
 msgid "license.meta.title"
 msgstr "Lizenz"
 
@@ -2318,7 +2141,7 @@ msgstr "Lizenz"
 
 #. License page title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:48
+#: app/[lang]/(public)/license/page.tsx:53
 #: src/components/LicenseContent.tsx:37
 msgid "license.hero.title"
 msgstr "Lizenz von Job Seek"
@@ -2331,7 +2154,7 @@ msgstr "Lizenzierung"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/license/page.tsx:19
-#: app/[lang]/(public)/license/page.tsx:41
+#: app/[lang]/(public)/license/page.tsx:46
 msgid "license.meta.description"
 msgstr "Lizenzierung von Job Seek — der Quellcode steht unter MIT-Lizenz, Stellenanzeigen unter CC BY-NC 4.0. Erfahre, was du mit unserem Code und unseren Daten tun darfst."
 
@@ -2468,7 +2291,7 @@ msgstr "Mai"
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:166
 msgid "app.home.request.agent.installRegionLabel"
-msgstr ""
+msgstr "MCP-Install-Befehl"
 
 #. Minimum salary label
 #. js-lingui-explicit-id
@@ -2659,23 +2482,29 @@ msgstr "Keine Jobs gefunden."
 msgid "settings.jobLanguages.modal.noResults"
 msgstr "Keine Sprachen entsprechen deiner Suche."
 
-#. No locations match search in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:186
-msgid "company.locationModal.noResults"
-msgstr "Keine Standorte entsprechen Ihrer Suche."
-
 #. No locations match search in location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx:171
 msgid "search.locationModal.noResults"
 msgstr "Keine Standorte gefunden."
 
+#. No locations match search in all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:186
+msgid "company.locationModal.noResults"
+msgstr "Keine Standorte entsprechen Ihrer Suche."
+
 #. No postings found message on company page
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/company-page.tsx:608
 msgid "company.page.noResults"
 msgstr "Keine passenden Stellenanzeigen gefunden."
+
+#. Empty-state message shown when no blog posts have been published yet
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/page.tsx:79
+msgid "blog.index.empty"
+msgstr "Noch keine Beiträge – schauen Sie bald wieder vorbei."
 
 #. Sankey funnel node label prefix: no response
 #. js-lingui-explicit-id
@@ -2777,16 +2606,16 @@ msgstr "Berufsfeld"
 msgid "myJobs.heatmap.month.oct"
 msgstr "Okt"
 
-#. Application tracker status: offer
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:464
-msgid "search.tracker.offer"
-msgstr "Angebot"
-
 #. Offered status badge label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/status-badge.tsx:22
 msgid "myJobs.status.offered"
+msgstr "Angebot"
+
+#. Application tracker status: offer
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:464
+msgid "search.tracker.offer"
 msgstr "Angebot"
 
 #. Status group heading: offered
@@ -2815,14 +2644,14 @@ msgstr "Ok"
 
 #. Step 4 body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:63
+#: app/[lang]/(public)/how-we-index/page.tsx:67
 #: src/components/HowWeIndexContent.tsx:139
 msgid "indexing.ingestion.s4.body"
 msgstr "Sobald wir eine einzelne Stellenanzeige abrufen, speichern wir nur die stellenspezifischen Metadaten (Titel, Rollenbeschreibung, Standort, Vergütungshinweise, Stellen-URL und Zeitstempel) sowie extrahierte strukturierte Felder. Wir archivieren keine nicht verwandten Seiteninhalte."
 
 #. Assurance 3 title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:55
+#: app/[lang]/(public)/how-we-index/page.tsx:59
 #: src/components/HowWeIndexContent.tsx:79
 msgid "indexing.assurances.i3.title"
 msgstr "Eine Seite pro Minute."
@@ -2852,7 +2681,7 @@ msgstr "Offene Stellen"
 
 #. Open-source section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:72
+#: app/[lang]/(public)/how-we-index/page.tsx:76
 #: src/components/HowWeIndexContent.tsx:185
 msgid "indexing.oss.title"
 msgstr "Open-Source-Crawler"
@@ -2865,7 +2694,7 @@ msgstr "Open-Source-Crawler"
 
 #. Opt-out section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:66
+#: app/[lang]/(public)/how-we-index/page.tsx:70
 #: src/components/HowWeIndexContent.tsx:161
 msgid "indexing.optOut.title"
 msgstr "Opt-out oder Fragen"
@@ -2896,14 +2725,14 @@ msgstr "Sonstige"
 
 #. Assurance 2 body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:54
+#: app/[lang]/(public)/how-we-index/page.tsx:58
 #: src/components/HowWeIndexContent.tsx:73
 msgid "indexing.assurances.i2.body"
 msgstr "Unser Crawler liest <0>robots.txt</0>, befolgt Disallow-Regeln, identifiziert sich über <1>User-Agent</1> und respektiert den W3C-<2>TDM-Reservation</2>-Header — wenn eine Seite Reservation signalisiert, überspringen wir sie."
 
 #. Automation stance title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:69
+#: app/[lang]/(public)/how-we-index/page.tsx:73
 #: src/components/HowWeIndexContent.tsx:174
 msgid "indexing.automation.title"
 msgstr "Unsere Haltung zur Automatisierung"
@@ -2916,26 +2745,26 @@ msgstr "Unsere Haltung zur Automatisierung"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:22
-msgid "license.toc.overview"
-msgstr "Überblick"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:27
 msgid "indexing.toc.overview"
 msgstr "Überblick"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:19
-msgid "license.toc.ariaLabel"
-msgstr "Seiteninhalt"
+#: src/components/LicenseContent.tsx:22
+msgid "license.toc.overview"
+msgstr "Überblick"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:24
 msgid "indexing.toc.ariaLabel"
+msgstr "Seiteninhalt"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:19
+msgid "license.toc.ariaLabel"
 msgstr "Seiteninhalt"
 
 #. Heading shown on the 404 page
@@ -3050,18 +2879,6 @@ msgstr "Wähle die Unternehmen, die dich interessieren, setze deine Filter und e
 msgid "settings.billing.plan.title"
 msgstr "Abo"
 
-#~ msgid "plans.followLimit.banner"
-#~ msgstr "Sie folgen {followCount} von {followMax} Unternehmen im kostenlosen Plan."
-
-#~ msgid "plans.followLimit.ok"
-#~ msgstr "Ok"
-
-#~ msgid "plans.followLimit.reached"
-#~ msgstr "Sie haben das Folge-Limit des kostenlosen Plans erreicht"
-
-#~ msgid "plans.followLimit.upgrade"
-#~ msgstr "Auf Pro upgraden"
-
 #. Error when company request input is empty
 #. Error when company request input is empty
 #. Error when company request input is empty
@@ -3169,14 +2986,14 @@ msgstr "Datenschutz"
 
 #. Privacy policy page title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:49
+#: app/[lang]/(public)/privacy-policy/page.tsx:53
 #: src/components/PrivacyPolicyContent.tsx:22
 msgid "privacy.hero.title"
 msgstr "Datenschutz bei Job Seek"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/privacy-policy/page.tsx:18
-#: app/[lang]/(public)/privacy-policy/page.tsx:40
+#: app/[lang]/(public)/privacy-policy/page.tsx:44
 msgid "privacy.meta.title"
 msgstr "Datenschutzrichtlinie"
 
@@ -3207,23 +3024,23 @@ msgstr "Gemeinfrei"
 
 #. Contact call to action
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:55
+#: app/[lang]/(public)/license/page.tsx:60
 #: src/components/LicenseContent.tsx:99
 msgid "license.contactCta"
 msgstr "Fragen zur Lizenzierung oder kommerziellen Nutzung? Schreib uns eine E-Mail."
 
-#. Terms contact call to action
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:59
-#: src/components/TermsContent.tsx:54
-msgid "terms.contact.description"
-msgstr "Fragen? Schreib uns eine E-Mail."
-
 #. Privacy contact call to action
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:61
+#: app/[lang]/(public)/privacy-policy/page.tsx:65
 #: src/components/PrivacyPolicyContent.tsx:66
 msgid "privacy.contact.description"
+msgstr "Fragen? Schreib uns eine E-Mail."
+
+#. Terms contact call to action
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/terms/page.tsx:63
+#: src/components/TermsContent.tsx:54
+msgid "terms.contact.description"
 msgstr "Fragen? Schreib uns eine E-Mail."
 
 #. Link to full CC license
@@ -3292,16 +3109,16 @@ msgstr "Region"
 msgid "myJobs.group.rejected"
 msgstr "Abgelehnt"
 
-#. Application tracker status: rejected
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:465
-msgid "search.tracker.rejected"
-msgstr "Abgelehnt"
-
 #. Rejected status badge label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/status-badge.tsx:23
 msgid "myJobs.status.rejected"
+msgstr "Abgelehnt"
+
+#. Application tracker status: rejected
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:465
+msgid "search.tracker.rejected"
 msgstr "Abgelehnt"
 
 #. Sankey funnel node label prefix: rejected
@@ -3338,13 +3155,13 @@ msgstr "Standort entfernen"
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:811
 msgid "search.bar.request"
-msgstr ""
+msgstr "„{trimmedInput}\" anfragen"
 
 #. Companies-request page heading when no company name was supplied
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/companies/request/page.tsx:71
 msgid "companies.request.heading.generic"
-msgstr ""
+msgstr "Unternehmen anfragen"
 
 #. Feature: request companies title
 #. js-lingui-explicit-id
@@ -3409,14 +3226,14 @@ msgstr "Wird zurückgesetzt…"
 
 #. Assurance 1 title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:53
+#: app/[lang]/(public)/how-we-index/page.tsx:57
 #: src/components/HowWeIndexContent.tsx:67
 msgid "indexing.assurances.i1.title"
 msgstr "Respektvolles Tempo."
 
 #. Assurance 2 title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:54
+#: app/[lang]/(public)/how-we-index/page.tsx:58
 #: src/components/HowWeIndexContent.tsx:71
 msgid "indexing.assurances.i2.title"
 msgstr "Robots, Attribution und TDM-Reservation."
@@ -3443,7 +3260,7 @@ msgstr "Runde"
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:159
 msgid "app.home.request.agent.runIdLabel"
-msgstr ""
+msgstr "Run-ID"
 
 #. Label for salary filter in advanced search
 #. js-lingui-explicit-id
@@ -3569,16 +3386,16 @@ msgstr "Verfolge Stellen, werde benachrichtigt, wenn Unternehmen etwas Neues ver
 msgid "company.page.searchPlaceholder"
 msgstr "Suchen bei {0}..."
 
-#. Placeholder for company search in modal
-#. js-lingui-explicit-id
-#: src/components/watchlist/company-search-modal.tsx:217
-msgid "watchlists.companyModal.searchPlaceholder"
-msgstr "Unternehmen suchen..."
-
 #. Placeholder for company search in watchlist creation
 #. js-lingui-explicit-id
 #: src/components/watchlist/company-selector.tsx:91
 msgid "watchlists.companySelector.placeholder"
+msgstr "Unternehmen suchen..."
+
+#. Placeholder for company search in modal
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-search-modal.tsx:217
+msgid "watchlists.companyModal.searchPlaceholder"
 msgstr "Unternehmen suchen..."
 
 #. Option to search by title keyword in dropdown
@@ -3598,17 +3415,17 @@ msgstr "Durchsuche Jobs bei Tausenden von Unternehmen, direkt von Karriereseiten
 msgid "settings.jobLanguages.modal.searchPlaceholder"
 msgstr "Sprachen suchen…"
 
-#. Placeholder for search input in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:165
-msgid "company.locationModal.searchPlaceholder"
-msgstr "Standorte suchen…"
-
 #. Placeholder for search input in global location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx:150
 msgid "search.locationModal.searchPlaceholder"
 msgstr "Standorte suchen..."
+
+#. Placeholder for search input in all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:165
+msgid "company.locationModal.searchPlaceholder"
+msgstr "Standorte suchen…"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/page.tsx:22
@@ -3646,12 +3463,6 @@ msgstr "Alles, was du brauchst, um vorne zu bleiben"
 #: src/components/search/search-bar.tsx:518
 msgid "search.bar.placeholder"
 msgstr "Suchen…"
-
-#~ msgid "search.card.follow"
-#~ msgstr "Folgen"
-
-#~ msgid "search.card.following"
-#~ msgstr "Abonniert"
 
 #. Feature: application stats description
 #. js-lingui-explicit-id
@@ -3692,7 +3503,7 @@ msgstr "Wähle deine bevorzugte Sprache."
 
 #. Step 4 title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:63
+#: app/[lang]/(public)/how-we-index/page.tsx:67
 #: src/components/HowWeIndexContent.tsx:137
 msgid "indexing.ingestion.s4.title"
 msgstr "Selektive Speicherung."
@@ -3768,24 +3579,6 @@ msgstr "Einstellungen"
 #: src/components/AppHeader.tsx:57
 msgid "app.header.nav.settings"
 msgstr "Einstellungen"
-
-#~ msgid "settings.billing.pro.f3"
-#~ msgstr "Alles aus dem kostenlosen Plan"
-
-#~ msgid "settings.billing.usage.description"
-#~ msgstr "Ihre aktuelle Ressourcennutzung in diesem Plan."
-
-#~ msgid "settings.billing.usage.followedCompanies"
-#~ msgstr "Verfolgte Unternehmen"
-
-#~ msgid "settings.billing.usage.limitReached"
-#~ msgstr "Sie haben Ihr Folge-Limit erreicht. Upgraden Sie, um mehr Unternehmen zu folgen."
-
-#~ msgid "settings.billing.usage.title"
-#~ msgstr "Nutzung"
-
-#~ msgid "settings.billing.usage.unlimited"
-#~ msgstr "Unbegrenzt"
 
 #. Feature: share watchlists title
 #. js-lingui-explicit-id
@@ -3923,7 +3716,7 @@ msgstr "Einfache, transparente Preise. Starte kostenlos und upgrade, wenn du dei
 
 #. Step 1 title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:60
+#: app/[lang]/(public)/how-we-index/page.tsx:64
 #: src/components/HowWeIndexContent.tsx:113
 msgid "indexing.ingestion.s1.title"
 msgstr "Zuerst die Sitemap."
@@ -3962,7 +3755,7 @@ msgstr "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/companies/request/page.tsx:64
 msgid "companies.request.heading.named"
-msgstr ""
+msgstr "Tut uns leid, {name} ist noch nicht in unserem Katalog. Sollen wir es hinzufügen?"
 
 #. Star button label on company card
 #. js-lingui-explicit-id
@@ -4017,7 +3810,7 @@ msgstr "Link einfügen, Crawl starten"
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:196
 msgid "app.home.request.agent.givenUpLabel"
-msgstr ""
+msgstr "Läuft noch… später erneut prüfen."
 
 #. Submit button for the company request form
 #. Submit button for the company request form
@@ -4107,7 +3900,7 @@ msgstr "Technologie"
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/companies/request/page.tsx:78
 msgid "companies.request.body"
-msgstr ""
+msgstr "Sag uns den Firmennamen und (idealerweise) die URL der Karriereseite. Wir bereiten einen Prompt für deinen KI-Agenten vor, der das Unternehmen über Murmur zu jobseek hinzufügt — meist schneller als auf unseren wöchentlichen Batch zu warten."
 
 #. Employment type: temporary
 #. js-lingui-explicit-id
@@ -4129,26 +3922,26 @@ msgstr "AGB"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/terms/page.tsx:18
-#: app/[lang]/(public)/terms/page.tsx:40
+#: app/[lang]/(public)/terms/page.tsx:44
 msgid "terms.meta.title"
 msgstr "Nutzungsbedingungen"
 
 #. Terms page title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:49
+#: app/[lang]/(public)/terms/page.tsx:53
 #: src/components/TermsContent.tsx:22
 msgid "terms.hero.title"
 msgstr "Nutzungsbedingungen"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/terms/page.tsx:19
-#: app/[lang]/(public)/terms/page.tsx:41
+#: app/[lang]/(public)/terms/page.tsx:45
 msgid "terms.meta.description"
 msgstr "Nutzungsbedingungen von Job Seek — Nutzungsregeln, geistiges Eigentum, Kontoverantwortung, Haftungsbeschränkung und geltendes Recht der Jobsuchplattform."
 
 #. Body text shown when a company page slug does not exist
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:71
+#: app/[lang]/(app)/company/[slug]/page.tsx:79
 msgid "company.notFound.message"
 msgstr "Das gesuchte Unternehmen existiert nicht oder wurde entfernt."
 
@@ -4177,23 +3970,23 @@ msgstr "Die Seite, die du suchst, existiert nicht oder wurde verschoben."
 
 #. Provided as-is
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:56
+#: app/[lang]/(public)/terms/page.tsx:60
 #: src/components/TermsContent.tsx:46
 msgid "terms.short.r4"
 msgstr "Der Service wird ohne Gewährleistung bereitgestellt."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:51
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
+#: app/[lang]/(public)/privacy-policy/page.tsx:55
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
 msgstr "Die Kurzfassung"
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:51
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
+#: app/[lang]/(public)/terms/page.tsx:55
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
 msgstr "Die Kurzfassung"
 
 #. Theme settings section heading
@@ -4241,7 +4034,7 @@ msgstr "Behalte die Kontrolle"
 
 #. Open-source section body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:73
+#: app/[lang]/(public)/how-we-index/page.tsx:77
 #: src/components/HowWeIndexContent.tsx:188
 msgid "indexing.oss.body"
 msgstr "Transparenz ist uns wichtig, daher ist der Code für unseren Job-Link-Erfassungsdienst und die Extraktionspipeline Open Source."
@@ -4279,7 +4072,7 @@ msgstr "In aktiver Entwicklung"
 
 #. Your rights intro
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:60
+#: app/[lang]/(public)/privacy-policy/page.tsx:64
 #: src/components/PrivacyPolicyContent.tsx:57
 msgid "privacy.rights.intro"
 msgstr "Nach DSGVO kannst du eine Kopie deiner Daten anfordern, sie korrigieren oder löschen lassen, sie exportieren oder der Verarbeitung widersprechen. Löschst du dein Konto, werden alle Daten innerhalb von 30 Tagen gelöscht."
@@ -4431,7 +4224,13 @@ msgstr "Ehrenamtlich"
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:180
 msgid "app.home.request.agent.pollingLabel"
-msgstr ""
+msgstr "Warten, bis dein Agent fertig ist…"
+
+#. Eyebrow label on a WatchlistCard mention card (the small uppercase tag above the watchlist title)
+#. js-lingui-explicit-id
+#: src/components/blog/MdxMentions.tsx:393
+msgid "blog.mention.watchlist.eyebrow"
+msgstr "Watchlist"
 
 #. Warning tooltip when watchlist limit reached on create card
 #. js-lingui-explicit-id
@@ -4471,7 +4270,7 @@ msgstr "Watchlists und Bewerbungstracking"
 
 #. What the service does
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:54
+#: app/[lang]/(public)/terms/page.tsx:58
 #: src/components/TermsContent.tsx:44
 msgid "terms.short.r2"
 msgstr "Wir aggregieren öffentliche Stellenanzeigen. Wir garantieren nicht, dass sie korrekt oder aktuell sind."
@@ -4485,14 +4284,14 @@ msgstr "Wir glauben, dass die Jobsuche von der suchenden Person gesteuert werden
 
 #. Privacy policy page description
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:50
+#: app/[lang]/(public)/privacy-policy/page.tsx:54
 #: src/components/PrivacyPolicyContent.tsx:23
 msgid "privacy.hero.description"
 msgstr "Wir erheben nur, was wir brauchen, wir verkaufen deine Daten nicht, und du kannst jederzeit alles löschen."
 
 #. No selling
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:54
+#: app/[lang]/(public)/privacy-policy/page.tsx:58
 #: src/components/PrivacyPolicyContent.tsx:44
 msgid "privacy.short.r2"
 msgstr "Wir verkaufen, vermieten oder teilen deine Daten nicht für Marketingzwecke."
@@ -4504,7 +4303,7 @@ msgstr "Wir integrieren Workday, Greenhouse, Lever, Ashby, Rippling, SmartRecrui
 
 #. Step 1 body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:60
+#: app/[lang]/(public)/how-we-index/page.tsx:64
 #: src/components/HowWeIndexContent.tsx:115
 msgid "indexing.ingestion.s1.body"
 msgstr "Wir suchen nach einer Sitemap, die bereits alle Karriere- oder Stellendetailseiten auflistet — idealerweise von <0>robots.txt</0> verlinkt — und verlassen uns darauf, wann immer möglich."
@@ -4529,7 +4328,7 @@ msgstr "Wir haben festgestellt, dass diese Stelle kürzlich hinzugefügt wurde. 
 
 #. Automation stance body
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:70
+#: app/[lang]/(public)/how-we-index/page.tsx:74
 #: src/components/HowWeIndexContent.tsx:177
 msgid "indexing.automation.body"
 msgstr "Wir lehnen es ab, Einstellungs- oder Jobsuch-Entscheidungen an undurchsichtige Automatisierung zu übergeben — ob auf Arbeitgeber- oder Bewerberseite. Jeder ausgehende Link enthält <0>utm_source=jobseek</0>, damit Recruiter den Traffic erkennen, und wir überprüfen kontinuierlich Nutzungsmuster und setzen Hürden ein, um automatisierte Bewerbungen zu verhindern."
@@ -4561,7 +4360,7 @@ msgstr "Wir haben einen Bestätigungslink an <0>{email}</0> gesendet. Klicke auf
 
 #. What we store
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:53
+#: app/[lang]/(public)/privacy-policy/page.tsx:57
 #: src/components/PrivacyPolicyContent.tsx:43
 msgid "privacy.short.r1"
 msgstr "Wir speichern deinen Namen, deine E-Mail und dein Profilbild von deiner OAuth-Anmeldung sowie die Daten, die du in der App erstellst."
@@ -4574,7 +4373,7 @@ msgstr "Wir empfehlen ausdrücklich, eine leicht auffindbare Sitemap für deinen
 
 #. Third parties
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:55
+#: app/[lang]/(public)/privacy-policy/page.tsx:59
 #: src/components/PrivacyPolicyContent.tsx:45
 msgid "privacy.short.r3"
 msgstr "Wir nutzen eine Handvoll Drittanbieter für Anmeldung, Hosting und Speicherung — sonst nichts."
@@ -4583,13 +4382,13 @@ msgstr "Wir nutzen eine Handvoll Drittanbieter für Anmeldung, Hosting und Speic
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:818
 msgid "search.bar.request.subtext"
-msgstr ""
+msgstr "Wir fangen an, sie zu verfolgen"
 
 #. Heading prefix on the agent-prompt success card; followed by the company name
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:90
 msgid "app.home.request.agent.headingPrefix"
-msgstr ""
+msgstr "Wir arbeiten am Hinzufügen von"
 
 #. Short Wednesday label for heatmap
 #. js-lingui-explicit-id
@@ -4674,7 +4473,7 @@ msgstr "Gestern"
 
 #. Account deletion
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:57
+#: app/[lang]/(public)/terms/page.tsx:61
 #: src/components/TermsContent.tsx:47
 msgid "terms.short.r5"
 msgstr "Du kannst dein Konto jederzeit löschen."
@@ -4689,25 +4488,25 @@ msgstr "Du kannst die Daten für Forschung oder persönliche Dashboards remixen/
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:97
 msgid "app.home.request.agent.body"
-msgstr ""
+msgstr "Du kannst das beschleunigen, indem du deinen KI-Agenten bittest, es über Murmur zu erledigen."
 
 #. MIT license summary
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:51
+#: app/[lang]/(public)/license/page.tsx:56
 #: src/components/LicenseContent.tsx:53
 msgid "license.code.summary"
 msgstr "Du kannst den Code in persönlichen oder kommerziellen Produkten verwenden, ändern und weiterverbreiten, solange du den Copyright- und Lizenzhinweis beifügst."
 
 #. CC license summary
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:53
+#: app/[lang]/(public)/license/page.tsx:58
 #: src/components/LicenseContent.tsx:74
 msgid "license.data.summary"
 msgstr "Du darfst den Stellendatensatz mit Quellenangabe für nicht-kommerzielle Zwecke nutzen. Kommerzielle Nutzung erfordert vorherige schriftliche Zustimmung."
 
 #. Age requirement
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:53
+#: app/[lang]/(public)/terms/page.tsx:57
 #: src/components/TermsContent.tsx:43
 msgid "terms.short.r1"
 msgstr "Du musst mindestens 16 Jahre alt sein, um Job Seek zu nutzen."
@@ -4722,13 +4521,13 @@ msgstr "Du hast dich mit einem Social-Media-Konto angemeldet. Setze ein Passwort
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:121
 msgid "app.home.request.agent.token_caveat"
-msgstr ""
+msgstr "Du brauchst ein Token vom Jobseek-Team — ersetze <token-from-jobseek-team> vor dem Ausführen des Install-Befehls."
 
 #. Message shown when the user has hit the per-hour limit on triggering Murmur company-add runs
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx:214
 msgid "app.home.request.agent.rateLimited"
-msgstr ""
+msgstr "Du hast das Stundenlimit für Unternehmensanfragen erreicht. Bitte versuche es später erneut."
 
 #. Reason shown in upgrade modal when watchlist creation limit reached
 #. js-lingui-explicit-id
@@ -4763,7 +4562,7 @@ msgstr "Dein Passwort wurde zurückgesetzt. Du kannst dich jetzt mit deinem neue
 
 #. Your rights section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:59
+#: app/[lang]/(public)/privacy-policy/page.tsx:63
 #: src/components/PrivacyPolicyContent.tsx:54
 msgid "privacy.rights.title"
 msgstr "Deine Rechte"

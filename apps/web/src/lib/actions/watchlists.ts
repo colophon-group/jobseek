@@ -1079,6 +1079,97 @@ export async function getWatchlistPostingYearCount(params: {
   }
 }
 
+/**
+ * Public-fetch posting counts for a watchlist's "N active · M last year"
+ * stats row. Resolves slug filters once, then runs both counts in
+ * parallel against Typesense. Session-free → ISR-safe → callable from
+ * `generateMetadata` and from MDX-rendered embeds in blog posts (#2828).
+ *
+ * Returns `{ activeJobs: 0, yearJobs: 0 }` on Typesense error so the
+ * caller can degrade gracefully (omit the stat row rather than crash).
+ *
+ * Languages are intentionally NOT scoped to the viewer here — like the
+ * matching watchlist metadata, the broadest count is what the cached
+ * SSR surface should show; viewer-scoped variants run client-side.
+ */
+export async function getWatchlistPostingDisplayCounts(
+  detail: WatchlistDetail,
+): Promise<{ activeJobs: number; yearJobs: number }> {
+  const f = detail.filters;
+  const isAny = f.anyCompany ?? false;
+  const companyIds = detail.companies.map((c) => c.id);
+  if (!isAny && companyIds.length === 0) {
+    return { activeJobs: 0, yearJobs: 0 };
+  }
+
+  // Slug → id resolution mirrors the pattern in
+  // `getWatchlistMatchingCompanyCount` and `resolveFilteredJobCount`.
+  // Each resolver is independently cached so this fan-out is cheap on
+  // the second hit per ISR window.
+  const locale = "en";
+  const [locMap, occMap, senMap, techMap] = await Promise.all([
+    f.locationSlugs?.length ? resolveLocationSlugs(f.locationSlugs, locale) : Promise.resolve(new Map()),
+    f.occupationSlugs?.length ? resolveOccupationSlugs(f.occupationSlugs, locale) : Promise.resolve(new Map()),
+    f.senioritySlugs?.length ? resolveSenioritySlugs(f.senioritySlugs, locale) : Promise.resolve(new Map()),
+    f.technologySlugs?.length ? resolveTechnologySlugs(f.technologySlugs) : Promise.resolve(new Map()),
+  ]);
+
+  const locationIds = locMap.size > 0 ? [...locMap.values()].map((l) => l.id) : undefined;
+  const occupationIds = occMap.size > 0 ? [...occMap.values()].map((o) => o.id) : undefined;
+  const seniorityIds = senMap.size > 0 ? [...senMap.values()].map((s) => s.id) : undefined;
+  const technologyIds = techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined;
+
+  const filterStr = buildFilterString({
+    locationIds,
+    occupationIds,
+    seniorityIds,
+    technologyIds,
+    salaryMinEur: f.salaryMin,
+    salaryMaxEur: f.salaryMax,
+    experienceMin: f.experienceMin,
+    experienceMax: f.experienceMax,
+  });
+  const hasKeywords = f.keywords && f.keywords.length > 0;
+  const q = hasKeywords ? f.keywords!.join(" ") : "*";
+
+  const companyClause = !isAny && companyIds.length > 0 && companyIds.length <= COMPANY_BATCH_SIZE
+    ? `company_id:[${companyIds.join(",")}]`
+    : null;
+  // Oversized company list (>COMPANY_BATCH_SIZE) would need fan-out
+  // batching to count correctly. The card is decorative, not load-
+  // bearing — fall back to "skip the stats" rather than running 10+
+  // Typesense queries for a number on a blog embed.
+  if (!isAny && companyIds.length > COMPANY_BATCH_SIZE) {
+    return { activeJobs: 0, yearJobs: 0 };
+  }
+
+  const baseFilterParts = (extra: string[]): string =>
+    [...extra, ...(companyClause ? [companyClause] : []), ...(filterStr ? [filterStr] : [])].join(" && ");
+
+  const oneYearAgo = Math.floor((Date.now() - 365 * 24 * 3600 * 1000) / 1000);
+  const activeFilter = baseFilterParts(["is_active:true"]);
+  const yearFilter = baseFilterParts([`first_seen_at:>${oneYearAgo}`]);
+
+  try {
+    const client = getSearchClient();
+    const [activeRes, yearRes] = await Promise.all([
+      client.collections("job_posting").documents().search({
+        q, query_by: "title", filter_by: activeFilter, per_page: 0,
+      }),
+      client.collections("job_posting").documents().search({
+        q, query_by: "title", filter_by: yearFilter, per_page: 0,
+      }),
+    ]);
+    return {
+      activeJobs: activeRes.found ?? 0,
+      yearJobs: yearRes.found ?? 0,
+    };
+  } catch (err) {
+    console.error("[getWatchlistPostingDisplayCounts] Typesense failed", err);
+    return { activeJobs: 0, yearJobs: 0 };
+  }
+}
+
 export async function addCompanyToWatchlist(
   watchlistId: string,
   companyId: string,

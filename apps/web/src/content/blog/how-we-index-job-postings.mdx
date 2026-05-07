@@ -1,0 +1,73 @@
+---
+title: "Following one job posting from a careers page to your feed"
+description: "A new role goes up at 10:14 in the morning. By 11:32 it's in our index. This is the path it takes — and the reason every step exists."
+datePublished: "2026-05-07"
+dateModified: "2026-05-07"
+author: "Viktor Shcherbakov"
+tags: ["how-we-index", "infrastructure", "crawler"]
+relatedWatchlists: ["colophongroup/big-tech-jobs-in-switzerland"]
+---
+
+A new role goes up on <Company slug="anthropic" />'s careers page at 10:14 in the morning. By 11:32 it's in our index. By the next time your watchlist refreshes, it's in your feed.
+
+If you want the spec-style summary — exact User-Agent string, request rate per host, retry policy, full ATS list — that's on the [indexing policy page](/en/how-we-index). This post is the story.
+
+## Step 1: a thirty-second handshake
+
+Anthropic uses Greenhouse; SAP uses SuccessFactors; Stripe runs their own; Workday is Workday. There are ~30 distinct ATS platforms in the top tier and a much longer tail past that. Most of the work of running Job Seek is treating each of those as a slightly different protocol while looking the same from the outside.
+
+Per company we keep a row in `boards.csv` that says: which monitor type to use, where the board is, an optional regex filter for job links, sometimes a flag that means "this one's behind a WAF, route the request through a proxy." When the crawler picks up that company on its tick, the row drives everything downstream.
+
+For Anthropic specifically — a Greenhouse board — the monitor hits `https://boards-api.greenhouse.io/v1/boards/<token>/jobs` and gets back a JSON list. For Workday, we POST to `/wday/cxs/<tenant>/<site>/jobs` with a JSON search payload. For boards with neither, we walk a sitemap, parse `__NEXT_DATA__`, or fall back to Playwright DOM extraction.
+
+## Step 2: the polite cadence
+
+Two rules govern every request the crawler makes:
+
+- **A few seconds between requests to the same host.** Default is 2s, dropping to 0.5s for known-friendly ATS domains. A full board re-check fires at most once an hour. Even at the largest companies in our set, we're never the loudest visitor on the careers page. Concurrency budget per IP, exponential backoff on errors, automatic disable after 5 consecutive failures so a misconfigured or moved board fails loudly instead of silently.
+- **`robots.txt` is binding.** If a company's robots disallows what we're trying to fetch, we stop. We also respect the EU's TDM-Reservation (text and data mining opt-out) header for any companies that emit it. Our User-Agent identifies us — `Job-Seek-Crawler/X.Y +https://jseek.co/how-we-index` — so anyone reading server logs knows exactly who's calling.
+
+This isn't generosity, it's how you stay welcome over years. The number of companies that have asked us to slow down or stop is small, which is the only metric here that matters.
+
+## Step 3: extracting the actual posting
+
+A new URL emerges from monitoring. The next worker picks it up, fetches the page, and tries to extract the structured posting.
+
+The fast path: most modern ATSes embed `application/ld+json` of type `JobPosting` — title, location, employment type, salary, `datePosted`, `validThrough`. Greenhouse's API hands you a normalized JSON; Lever's does too; Ashby's, Rippling's, Workable's, mostly the same.
+
+Where the structured data is missing or wrong, we fall back to step-based DOM extraction — small recipes per board that say "get the title from this selector, location from that one, description from the article body." Each was written for a board where everything else failed first.
+
+The output is a `JobContent` record with normalized fields: an employment type that's one of five enums (`full_time`, `part_time`, `contract`, `internship`, `full_or_part`), a job-location-type from a set of three (`onsite`, `remote`, `hybrid`), locations resolved to [GeoNames](https://www.geonames.org/) IDs, a salary parsed into a structured currency-min-max with frequency. The thing that arrives in our database is more uniform than the careers page it came from. Without that uniformity, comparing roles across companies is hopeless.
+
+## Step 4: when datacenters aren't welcome
+
+Some careers pages don't want bots from datacenters. Starbucks's eightfold-hosted board returns a 405 captcha to anything that looks like a Hetzner IP, no matter how politely we ask. Workday for a couple of large customers is the same. We respect the signal — if a company has actively blocked datacenter traffic, that's a request to slow down — but losing visibility into ~5% of postings was bigger than we wanted to accept.
+
+The compromise: a small, transparent set of boards opt into a residential-proxy provider. Boards on the proxy path get rate-limited even more aggressively. If a proxy IP gets blocked by an origin, we lose that IP and don't argue.
+
+We never pretend to be a real user. The User-Agent stays honest. We just route the request through a residential exit so the origin's IP-rep filter doesn't reject it before its content filter has a chance to see who's asking.
+
+## Step 5: from "in the database" to "in your feed"
+
+The local Postgres on our crawler box is the source of truth. From there, two pipelines run continuously:
+
+- A **change-data-capture exporter** ships new + changed posting rows to Supabase (the public-facing read database) and to Typesense (the search index). Two cursors, two destinations, deduplication on identifier, conditional updates so a re-scrape with no actual content change doesn't bump `updated_at`.
+- An **R2 drain** pushes posting description blobs to Cloudflare R2 and writes the resulting content hash back to local Postgres; the exporter then ships the hash to Supabase. We separate the description from the row because it's the largest field, used the least often (detail view only), and changes the least often.
+
+A watchlist matching the new posting picks it up the next time the page hydrates against Typesense. For someone with the app already open, that's the next refresh — typically within minutes of the 11:32 ingestion above.
+
+## Step 6: how we decide a posting is gone
+
+Companies post jobs and forget to take them down. ATSes have lazy delisting. Sitemap-based monitors can get truncated. The cost of a false-positive delisting is high: a watchlist that drops a still-open job at someone's dream employer is the kind of mistake that ends the relationship.
+
+So we calibrate by the trustworthiness of the source. For API monitors with definitive list semantics — Greenhouse, Lever, Workday's tenant search, etc. where "not in the response" means "not on the board" — we delist on the first miss. For fragile URL-only monitors (sitemaps, DOM extraction) we wait four consecutive missed cycles, plus fleet-level drop-guards that suppress mass delistings when a sitemap or API response looks suspiciously truncated. Once delisted, we keep the source URL on file (linkable, archive value) and stop showing the posting in active feeds. If it reappears on the source we relist with the original `first_seen_at` — that detail matters more than it sounds, because it stops accidental rotation from making old roles look fresh.
+
+## Step 7: opt-out
+
+If you run a careers page and want us to stop indexing it, email `business@colophon-group.org`. The company drops out of `companies.csv` and the next sync wipes their postings. Opt-out is faster than opt-in by design.
+
+---
+
+That's the path from one click on a careers-page admin form to one row in your feed. The architecture has more pieces than this — a `ws` workflow tool that humans (well, agents now) use to onboard new companies, a daily error-review routine, a labelled-postings dataset for the model we're building — but those are stories for separate posts.
+
+If something here surprised you or sounded off, the [indexing policy page](/en/how-we-index) has the contract version. The crawler is open source ([github.com/colophon-group/jobseek](https://github.com/colophon-group/jobseek)) and most of what's described above is in there if you want to read the actual code.
