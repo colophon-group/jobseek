@@ -1,15 +1,22 @@
 import { siteConfig } from "@/content/config";
-import { locales } from "@/lib/i18n";
+import { type Locale, locales } from "@/lib/i18n";
 
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
 
 /**
  * Submit one or more app paths to IndexNow.
  *
- * Each path is expanded to every supported locale prefix — a single
- * user-facing mutation covers all hreflang alternates. A single POST
- * to `api.indexnow.org` propagates to Bing, Yandex, Seznam, Naver, and
- * Microsoft Yep. Google does not participate in IndexNow.
+ * Each path is expanded to every locale in `availableLocales` (default:
+ * all four supported locales). Pass a per-call subset for partially-
+ * translated routes — blog posts whose `getBlogPostLocales(slug)` is a
+ * proper subset of `locales`, for example — so engines aren't pointed
+ * at locale variants that 404 (or worse, serve the canonical body
+ * under a foreign-locale URL: an "alternate page with proper canonical
+ * tag" cluster).
+ *
+ * A single POST to `api.indexnow.org` propagates to Bing, Yandex,
+ * Seznam, Naver, and Microsoft Yep. Google does not participate in
+ * IndexNow.
  *
  * **Caller contract**: this function awaits its fetch directly. In a
  * Vercel server action / route handler, the caller should invoke it
@@ -29,23 +36,49 @@ const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
  * without the secret) or when `paths` is empty. All errors are caught
  * and logged — callers must never observe failures.
  *
- * @param paths Locale-less app paths, e.g. ["/user/watchlist-slug"].
+ * @param paths Locale-less app paths, e.g. `["/user/watchlist-slug"]`
+ *              or `["/blog/welcome-to-the-job-seek-blog"]`.
+ * @param availableLocales Restrict the locale fan-out for these paths.
+ *                         Defaults to every supported locale (correct
+ *                         for fully-translated surfaces like watchlist
+ *                         pages); pass a subset for routes whose
+ *                         hreflang map is per-call.
  */
-export async function notifyIndexNow(paths: string[]): Promise<void> {
+/**
+ * Result envelope returned by `notifyIndexNow`. Existing watchlist
+ * call sites ignore the return (fire-and-forget inside `after()`);
+ * the blog deploy-hook script reads it to fail the workflow on a
+ * non-2xx submission so we get an actionable signal instead of a
+ * silent stderr line in a stack we never read.
+ */
+export type NotifyIndexNowResult =
+  | { kind: "submitted"; urlCount: number; status: number }
+  | { kind: "skipped"; reason: "no-key" | "no-paths" | "no-locales" | "no-urls" }
+  | { kind: "rejected"; status: number; urlCount: number }
+  | { kind: "errored"; error: unknown; urlCount: number };
+
+export async function notifyIndexNow(
+  paths: string[],
+  availableLocales?: readonly Locale[],
+): Promise<NotifyIndexNowResult> {
   const key = process.env.INDEXNOW_KEY;
-  if (!key || paths.length === 0) return;
+  if (!key) return { kind: "skipped", reason: "no-key" };
+  if (paths.length === 0) return { kind: "skipped", reason: "no-paths" };
+
+  const targetLocales = availableLocales ?? locales;
+  if (targetLocales.length === 0) return { kind: "skipped", reason: "no-locales" };
 
   const urlList: string[] = [];
   for (const path of paths) {
     const encoded = encodePath(path);
-    for (const locale of locales) {
+    for (const locale of targetLocales) {
       urlList.push(`${siteConfig.url}/${locale}${encoded}`);
     }
   }
 
   // Dedupe and cap at the protocol limit (10k per request).
   const unique = [...new Set(urlList)].slice(0, 10_000);
-  if (unique.length === 0) return;
+  if (unique.length === 0) return { kind: "skipped", reason: "no-urls" };
 
   const payload = {
     host: siteConfig.domain,
@@ -65,9 +98,12 @@ export async function notifyIndexNow(paths: string[]): Promise<void> {
       console.error(
         `[indexnow] submission rejected (${res.status}) for ${unique.length} urls`,
       );
+      return { kind: "rejected", status: res.status, urlCount: unique.length };
     }
+    return { kind: "submitted", status: res.status, urlCount: unique.length };
   } catch (err) {
     console.error("[indexnow] submission failed", err);
+    return { kind: "errored", error: err, urlCount: unique.length };
   }
 }
 
