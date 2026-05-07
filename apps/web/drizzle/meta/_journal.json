@@ -470,6 +470,13 @@
       "when": 1774934400001,
       "tag": "0071_add_board_browser_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1778198400000,
+      "tag": "0076_drop_api_credit",
+      "breakpoints": true
     }
   ]
 }
