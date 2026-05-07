@@ -2,11 +2,6 @@ import type { MetadataRoute } from "next";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
 
-// TEMPORARY: while /sitemap.xml is a monolithic <urlset> instead of a
-// <sitemapindex>, robots.txt declares only that one URL — listing the
-// shard URLs would have crawlers fetch overlapping content. Restore
-// `planSitemapShards`-driven shard declarations when reverting the
-// monolithic experiment in app/sitemap.xml/route.ts.
 function expandDisallow(paths: readonly string[]): string[] {
   const out: string[] = [];
   for (const path of paths) {
