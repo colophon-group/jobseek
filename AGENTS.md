@@ -67,7 +67,6 @@ uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Red
 uv run crawler board <slug>       # Process single board (debug)
 uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
 uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
-uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (RETIRED in #2821 — companies left the index; module preserved, not scheduled)
 
 # Labeller subsystem (daily gold-dataset routine — spec in docs/15-data-sampling-routine.md)
 uv run labeller sample --date today --count 10 --out <path>
@@ -192,11 +191,11 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 
 `TypesenseSearchProvider` replaces `PostgresSearchProvider` (one-shot cutover). The company detail page (`getCompanyBySlug`) reads from the `company` collection, falling back to Supabase on Typesense error or 0 hits. Graceful degradation: all errors return empty results, Postgres fallback for watchlist write functions. No Redis cache on main search (Typesense is fast enough); cached for unfiltered homepage (60s), popular watchlists (120s), and company detail (`ttl: 600`, skip-null to avoid poisoning brand-new slugs).
 
-## SEO and IndexNow
+## SEO
 
-`/{locale}/company/{slug}` is now `noindex,follow` (#2821) — pages stay as the in-app product surface but are excluded from the sitemap. The crawler-side IndexNow notifier (which only ever covered company URLs) was retired in the same PR. Watchlist-side IndexNow notification from web server actions via `after()` remains active for the qualifying-watchlist surface (#2823); full IndexNow phase-out tracked in #2843.
+`/{locale}/company/{slug}` is `noindex,follow` (#2821) — pages stay as the in-app product surface but are excluded from the sitemap. IndexNow has been retired entirely (#2843): the crawler-side notifier left in #2821, the watchlist-side `after()`-driven notifier left in #2843, and the `/indexnow-key.txt` route + `indexnow_submission` table left with it. Sitemap discovery is now the sole non-Google signal.
 
-See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md).
+See [docs/13-seo.md](docs/13-seo.md).
 
 ## Git Workflow
 

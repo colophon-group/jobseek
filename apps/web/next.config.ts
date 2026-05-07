@@ -45,10 +45,6 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128],
   },
-  rewrites: async () => {
-    const key = process.env.INDEXNOW_KEY;
-    return key ? [{ source: `/${key}.txt`, destination: "/indexnow-key.txt" }] : [];
-  },
   redirects: async () => [
     { source: "/:lang(en|de|fr|it)/app", destination: "/:lang/explore", permanent: true },
     { source: "/:lang(en|de|fr|it)/app/saved", destination: "/:lang/my-jobs", permanent: true },

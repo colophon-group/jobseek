@@ -28,7 +28,6 @@ Long-running services — collect logs with
   deploy-browser-1-1  Playwright/Lightpanda worker
   deploy-exporter-1   Postgres → Supabase + Typesense CDC
   deploy-drain-1      R2 description uploader
-  deploy-indexnow-1   IndexNow notifier
   deploy-redis-1      local queue (only OOM + level=error lines)
   deploy-alloy-1      log/metric shipper (only Alloy's own level=error)
 
@@ -36,8 +35,8 @@ Ephemeral one-shots — enumerate with
 `docker ps -a --filter status=exited --format '{{.Names}} {{.Image}} {{.CreatedAt}} {{.Status}}'`
 filtered to containers whose CreatedAt falls inside the window and whose
 image matches `ghcr.io/*/jobseek-crawler:*`. These are `crawler
-refresh-typesense | backfill-typesense | sync | notify-indexnow |
-reconcile` runs. Grab their logs with `docker logs <id>` before they age
+refresh-typesense | backfill-typesense | sync | reconcile` runs.
+Grab their logs with `docker logs <id>` before they age
 out (Docker retains exited container logs until the container is pruned).
 
 Ignore interactive debug containers (user-spawned, noisy): names like
@@ -107,7 +106,7 @@ For each exited ephemeral container inside the window:
   docker logs <id> 2>&1 | tail -n 1000
 
 Attribute its errors to a synthetic service derived from the exec'd
-command (e.g. `refresh-typesense`, `notify-indexnow`).
+command (e.g. `refresh-typesense`, `reconcile`).
 
 ================================================================
 CLASSIFICATION
@@ -125,8 +124,8 @@ each distinct class:
   INCIDENT    Host-signal trigger (see HOST SIGNALS), OR: a
               long-running service produced zero logs for >1h
               unexpectedly, OR: class suggests data loss / corruption,
-              OR: repeated OOM kills, OR: exporter/drain/indexnow
-              stalled (queue depth climbing with no progress).
+              OR: repeated OOM kills, OR: exporter/drain stalled
+              (queue depth climbing with no progress).
 
 ================================================================
 REPORT (always write, even on a fully healthy day)

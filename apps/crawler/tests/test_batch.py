@@ -842,8 +842,8 @@ class TestProcessOneBoard:
         but is now disabled (e.g. a brief greenhouse-wide outage that
         burned through the 5-strike backoff in ~2.5h) MUST NOT have
         its postings tombstoned. Mass-deleting them on a transient
-        provider blip would churn search results and IndexNow on
-        recovery for no real signal.
+        provider blip would churn search results on recovery for no
+        real signal.
         """
         from datetime import UTC, datetime, timedelta
 

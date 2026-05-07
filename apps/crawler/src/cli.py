@@ -103,16 +103,6 @@ def parse_args() -> argparse.Namespace:
         help="Drop existing collections and recreate from scratch",
     )
 
-    indexnow_p = sub.add_parser(
-        "notify-indexnow",
-        help="Push changed company URLs to IndexNow (Bing/Yandex/Seznam/Naver/Yep)",
-    )
-    indexnow_p.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Compute the diff and log the count without POSTing or recording hashes",
-    )
-
     sub.add_parser(
         "invalidate-typeahead",
         help=(
@@ -303,17 +293,6 @@ async def run() -> None:
             from src.typesense_schema import run_setup
 
             run_setup(force=args.force)
-
-        elif args.command == "notify-indexnow":
-            start_metrics_server(settings.metrics_port)
-            local_pool = await create_local_pool()
-            http = create_http_client()
-            try:
-                from src.indexnow import notify_indexnow
-
-                await notify_indexnow(local_pool, http, dry_run=args.dry_run)
-            finally:
-                await http.aclose()
 
         elif args.command == "invalidate-typeahead":
             from src.notify_invalidate import notify_invalidate_typeahead

@@ -148,11 +148,6 @@ jobs:
           PROXY_PROVIDER: ${{ secrets.PROXY_PROVIDER }}
           WEBSHARE_PROXY_URL: ${{ secrets.WEBSHARE_PROXY_URL }}
           DECODO_PROXY_URL: ${{ secrets.DECODO_PROXY_URL }}
-          # IndexNow notifier was retired in #2821 (companies left the
-          # index). The GitHub secrets INDEXNOW_KEY/SITE_URL/KEY_URL/
-          # INTERVAL are no longer forwarded; deleting them from the
-          # secret store is a separate cleanup once the change is rolled
-          # out and we're confident we won't revive the loop.
           # Required since H3 (#2775) added the murmur-shim service to
           # the crawler-box compose. deploy.sh validates this var; the
           # shim's `${MURMUR_TOKEN}` env-substitution would otherwise

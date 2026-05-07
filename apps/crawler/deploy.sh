@@ -50,9 +50,7 @@ fi
 DEPLOY_DIR="/home/deploy"
 
 # ── Stop any manually-started containers that conflict with compose ──
-# `indexnow` was retired in #2821 (companies left the index); the rm is
-# kept here to clean up boxes that still have a manually-started one.
-docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy 2>/dev/null || true
+docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy 2>/dev/null || true
 
 # ── Write env file ──────────────────────────────────────────────────
 # Proxy vars are expanded with ``:-`` defaults so missing provider

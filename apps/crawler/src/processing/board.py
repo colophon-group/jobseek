@@ -456,7 +456,7 @@ async def _mark_gone_with_guards(
 # fires after ~155 minutes — well inside a single provider outage. If
 # we delisted on every disable, a 3-hour greenhouse blip would tombstone
 # tens of thousands of postings that would all flap back as ``relisted``
-# on recovery, churning search and IndexNow. Gate the delist on
+# on recovery, churning search ranking. Gate the delist on
 # ``last_success_at`` so transient outages back off without data loss;
 # only boards that have been failing past this window get delisted.
 _DELIST_AFTER_FAILURE_AGE = timedelta(hours=24)

@@ -157,13 +157,6 @@ services:
         condition: service_healthy
     mem_limit: 256m
 
-  # IndexNow notifier removed in #2821. Companies are no longer indexed
-  # (`/company/{slug}` is `noindex,follow` and the URLs are out of the
-  # sitemap), so there is no remaining set of URLs to push to Bing /
-  # Yandex / Seznam / Naver / Yep. `crawler notify-indexnow` and
-  # `apps/crawler/src/indexnow.py` are kept in the codebase but no
-  # longer scheduled — they short-circuit on `INDEXNOW_KEY` unset.
-
   # -- Browser -----------------------------------------------------
   browser-1:
     image: ghcr.io/${OWNER}/jobseek-crawler-browser:latest
