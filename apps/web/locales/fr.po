@@ -104,7 +104,7 @@ msgstr "{countText} chez {name}. {description}"
 
 #. Reading-time label shown in the blog post byline. {minutes} is the integer minute count.
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/blog/[slug]/page.tsx:127
+#: app/[lang]/(public)/blog/[slug]/page.tsx:135
 msgid "blog.post.readingTime"
 msgstr "{minutes, plural, one {# min de lecture} other {# min de lecture}}"
 
@@ -300,16 +300,16 @@ msgstr "Toutes les langues"
 msgid "settings.general.jobLanguages.all"
 msgstr "Toutes les langues"
 
-#. Title for the all-locations modal on company page
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:145
-msgid "company.locationModal.title"
-msgstr "Tous les lieux"
-
 #. Button to open all-locations modal on company page
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx:342
 msgid "company.page.allLocations"
+msgstr "Tous les lieux"
+
+#. Title for the all-locations modal on company page
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:145
+msgid "company.locationModal.title"
 msgstr "Tous les lieux"
 
 #. Link to sign-in page from sign-up
@@ -397,28 +397,28 @@ msgstr "candidatures durant l'année écoulée"
 msgid "myJobs.group.applied"
 msgstr "Postulé"
 
-#. Applied status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:20
-msgid "myJobs.status.applied"
-msgstr "Postulé"
-
 #. Application tracker status: applied
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:462
 msgid "search.tracker.applied"
 msgstr "Postulé"
 
-#. Sankey funnel node: applied
+#. Applied status badge label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/sankey-funnel.tsx:42
-msgid "myJobs.funnel.applied"
+#: src/components/my-jobs/status-badge.tsx:20
+msgid "myJobs.status.applied"
 msgstr "Postulé"
 
 #. Status option in dropdown: applied
 #. js-lingui-explicit-id
 #: src/components/my-jobs/my-job-detail-panel.tsx:36
 msgid "myJobs.statusOption.applied"
+msgstr "Postulé"
+
+#. Sankey funnel node: applied
+#. js-lingui-explicit-id
+#: src/components/my-jobs/sankey-funnel.tsx:42
+msgid "myJobs.funnel.applied"
 msgstr "Postulé"
 
 #. Apply salary filter
@@ -476,16 +476,16 @@ msgstr "Aoû"
 msgid "settings.account.username.available"
 msgstr "Disponible"
 
-#. Link back to sign-in from reset password
-#. js-lingui-explicit-id
-#: app/[lang]/reset-password/page.tsx:42
-msgid "auth.resetPassword.backToSignIn"
-msgstr "Retour à la connexion"
-
 #. Link back to sign-in after failed verification
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:68
 msgid "auth.verify.error.backToSignIn"
+msgstr "Retour à la connexion"
+
+#. Link back to sign-in from reset password
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:42
+msgid "auth.resetPassword.backToSignIn"
 msgstr "Retour à la connexion"
 
 #. Link back to sign-in from forgot password
@@ -512,6 +512,12 @@ msgstr "Retour en haut"
 msgid "myJobs.interviewType.behavioral"
 msgstr "Comportemental"
 
+#. Back-to-index link at the top of a blog post (rendered as '← {label}')
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/[slug]/page.tsx:130
+msgid "blog.post.backToIndex"
+msgstr "Blog"
+
 #. Document title (<title>) for the blog index page
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:24
@@ -524,18 +530,18 @@ msgstr "Blog"
 msgid "blog.index.heading"
 msgstr "Blog"
 
-#. Back-to-index link at the top of a blog post (rendered as '← {label}')
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/blog/[slug]/page.tsx:122
-msgid "blog.post.backToIndex"
-msgstr "Blog"
-
 #. Nav link: Blog
 #. Nav link: Blog
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:68
 #: src/components/MobileMenu.tsx:97
 msgid "common.nav.blog"
+msgstr "Blog"
+
+#. Footer link to /blog index page
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:47
+msgid "common.footer.blog"
 msgstr "Blog"
 
 #. Subtitle on the sign-in CTA card shown to anonymous users at the end of the similar-companies strip
@@ -617,17 +623,17 @@ msgstr "Modifie ton mot de passe via un lien e-mail sécurisé."
 msgid "myJobs.detail.changePlaceholder"
 msgstr "Changer…"
 
-#. Heading after reset email is sent
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx:58
-msgid "auth.forgotPassword.sent.title"
-msgstr "Vérifiez votre e-mail"
-
 #. Heading after sign-up telling user to check email
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/check-email/page.tsx:80
 msgid "auth.verify.checkEmail.title"
 msgstr "Vérifie ton e-mail"
+
+#. Heading after reset email is sent
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:58
+msgid "auth.forgotPassword.sent.title"
+msgstr "Vérifiez votre e-mail"
 
 #. Checking username availability
 #. js-lingui-explicit-id
@@ -857,14 +863,14 @@ msgstr "Contact"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
+#: src/components/LicenseContent.tsx:18
+msgid "license.toc.title"
 msgstr "Sommaire"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:18
-msgid "license.toc.title"
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
 msgstr "Sommaire"
 
 #. Button to continue to app after verification
@@ -1838,16 +1844,16 @@ msgstr "Fini la routine des 50 onglets"
 msgid "myJobs.group.interviewing"
 msgstr "En entretien"
 
-#. Interviewing status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:21
-msgid "myJobs.status.interviewing"
-msgstr "En entretien"
-
 #. Application tracker status: interviewing
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:463
 msgid "search.tracker.interviewing"
+msgstr "En entretien"
+
+#. Interviewing status badge label
+#. js-lingui-explicit-id
+#: src/components/my-jobs/status-badge.tsx:21
+msgid "myJobs.status.interviewing"
 msgstr "En entretien"
 
 #. Status option in dropdown: interviewing
@@ -2135,7 +2141,7 @@ msgstr "Licence"
 
 #. Footer link to license page
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:47
+#: src/components/Footer.tsx:52
 msgid "common.footer.licenseLink"
 msgstr "Licence"
 
@@ -2606,16 +2612,16 @@ msgstr "Métier"
 msgid "myJobs.heatmap.month.oct"
 msgstr "Oct"
 
-#. Offered status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:22
-msgid "myJobs.status.offered"
-msgstr "Offre"
-
 #. Application tracker status: offer
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:464
 msgid "search.tracker.offer"
+msgstr "Offre"
+
+#. Offered status badge label
+#. js-lingui-explicit-id
+#: src/components/my-jobs/status-badge.tsx:22
+msgid "myJobs.status.offered"
 msgstr "Offre"
 
 #. Status group heading: offered
@@ -2624,16 +2630,16 @@ msgstr "Offre"
 msgid "myJobs.group.offered"
 msgstr "Offre"
 
-#. Sankey funnel node: offered
-#. js-lingui-explicit-id
-#: src/components/my-jobs/sankey-funnel.tsx:43
-msgid "myJobs.funnel.offered"
-msgstr "Offre"
-
 #. Status option in dropdown: offered
 #. js-lingui-explicit-id
 #: src/components/my-jobs/my-job-detail-panel.tsx:38
 msgid "myJobs.statusOption.offered"
+msgstr "Offre"
+
+#. Sankey funnel node: offered
+#. js-lingui-explicit-id
+#: src/components/my-jobs/sankey-funnel.tsx:43
+msgid "myJobs.funnel.offered"
 msgstr "Offre"
 
 #. Cookie banner accept button
@@ -2745,26 +2751,26 @@ msgstr "Notre position sur l'automatisation"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:27
-msgid "indexing.toc.overview"
-msgstr "Aperçu"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:22
 msgid "license.toc.overview"
 msgstr "Aperçu"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:24
-msgid "indexing.toc.ariaLabel"
-msgstr "Sommaire de la page"
+#: src/components/HowWeIndexContent.tsx:27
+msgid "indexing.toc.overview"
+msgstr "Aperçu"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:19
 msgid "license.toc.ariaLabel"
+msgstr "Sommaire de la page"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:24
+msgid "indexing.toc.ariaLabel"
 msgstr "Sommaire de la page"
 
 #. Heading shown on the 404 page
@@ -2980,7 +2986,7 @@ msgstr "Confidentialité"
 
 #. Footer link to privacy policy page
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:52
+#: src/components/Footer.tsx:57
 msgid "common.footer.privacyLink"
 msgstr "Confidentialité"
 
@@ -3029,18 +3035,18 @@ msgstr "Domaine public"
 msgid "license.contactCta"
 msgstr "Des questions sur les licences ou l'utilisation commerciale ? Écris-nous."
 
-#. Privacy contact call to action
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:65
-#: src/components/PrivacyPolicyContent.tsx:66
-msgid "privacy.contact.description"
-msgstr "Des questions ? Écris-nous."
-
 #. Terms contact call to action
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/terms/page.tsx:63
 #: src/components/TermsContent.tsx:54
 msgid "terms.contact.description"
+msgstr "Des questions ? Écris-nous."
+
+#. Privacy contact call to action
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/privacy-policy/page.tsx:65
+#: src/components/PrivacyPolicyContent.tsx:66
+msgid "privacy.contact.description"
 msgstr "Des questions ? Écris-nous."
 
 #. Link to full CC license
@@ -3109,28 +3115,28 @@ msgstr "Région"
 msgid "myJobs.group.rejected"
 msgstr "Refusé"
 
-#. Rejected status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:23
-msgid "myJobs.status.rejected"
-msgstr "Refusé"
-
 #. Application tracker status: rejected
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:465
 msgid "search.tracker.rejected"
 msgstr "Refusé"
 
-#. Sankey funnel node label prefix: rejected
+#. Rejected status badge label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/sankey-funnel.tsx:45
-msgid "myJobs.funnel.rejected"
+#: src/components/my-jobs/status-badge.tsx:23
+msgid "myJobs.status.rejected"
 msgstr "Refusé"
 
 #. Status option in dropdown: rejected
 #. js-lingui-explicit-id
 #: src/components/my-jobs/my-job-detail-panel.tsx:39
 msgid "myJobs.statusOption.rejected"
+msgstr "Refusé"
+
+#. Sankey funnel node label prefix: rejected
+#. js-lingui-explicit-id
+#: src/components/my-jobs/sankey-funnel.tsx:45
+msgid "myJobs.funnel.rejected"
 msgstr "Refusé"
 
 #. Footer license summary text
@@ -3155,7 +3161,7 @@ msgstr "Supprimer le lieu"
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:811
 msgid "search.bar.request"
-msgstr "Demander \\"{trimmedInput}\\""
+msgstr "Demander \\\"{trimmedInput}\\\""
 
 #. Companies-request page heading when no company name was supplied
 #. js-lingui-explicit-id
@@ -3342,16 +3348,16 @@ msgstr "Enregistré"
 msgid "myJobs.status.saved"
 msgstr "Enregistré"
 
-#. Sankey funnel node: saved jobs
-#. js-lingui-explicit-id
-#: src/components/my-jobs/sankey-funnel.tsx:41
-msgid "myJobs.funnel.saved"
-msgstr "Enregistré"
-
 #. Status option in dropdown: saved
 #. js-lingui-explicit-id
 #: src/components/my-jobs/my-job-detail-panel.tsx:35
 msgid "myJobs.statusOption.saved"
+msgstr "Enregistré"
+
+#. Sankey funnel node: saved jobs
+#. js-lingui-explicit-id
+#: src/components/my-jobs/sankey-funnel.tsx:41
+msgid "myJobs.funnel.saved"
 msgstr "Enregistré"
 
 #. Username save button while loading
@@ -3520,16 +3526,16 @@ msgstr "Envoyer le lien"
 msgid "settings.account.password.send"
 msgstr "Envoyer le lien"
 
-#. Send reset link button while loading
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx:103
-msgid "auth.forgotPassword.button.loading"
-msgstr "Envoi en cours..."
-
 #. Resend button while sending
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/check-email/page.tsx:96
 msgid "auth.verify.resending"
+msgstr "Envoi en cours..."
+
+#. Send reset link button while loading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:103
+msgid "auth.forgotPassword.button.loading"
 msgstr "Envoi en cours..."
 
 #. Reset password button while loading
@@ -3587,16 +3593,16 @@ msgstr "Paramètres"
 msgid "home.features.s3.p3.title"
 msgstr "Partager avec tout le monde"
 
-#. Collapse location pill list
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:351
-msgid "company.page.showLess"
-msgstr "Afficher moins"
-
 #. Button to collapse location list
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:368
 msgid "search.detail.showLessLocations"
+msgstr "Afficher moins"
+
+#. Collapse location pill list
+#. js-lingui-explicit-id
+#: src/components/search/filter-bar.tsx:351
+msgid "company.page.showLess"
 msgstr "Afficher moins"
 
 #. Aria label to show password
@@ -3916,7 +3922,7 @@ msgstr "Conditions d'utilisation"
 
 #. Footer link to terms of service page
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:57
+#: src/components/Footer.tsx:62
 msgid "common.footer.termsLink"
 msgstr "CGU"
 
@@ -3977,16 +3983,16 @@ msgstr "Le service est fourni tel quel, sans garantie."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:55
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
+#: app/[lang]/(public)/terms/page.tsx:55
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
 msgstr "En bref"
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:55
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
+#: app/[lang]/(public)/privacy-policy/page.tsx:55
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
 msgstr "En bref"
 
 #. Theme settings section heading

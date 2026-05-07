@@ -222,6 +222,7 @@ export const siteConfig = {
     links: {
       github: { href: "https://github.com/colophon-group/jobseek", external: true },
       contact: { href: "mailto:business@colophon-group.org", external: true },
+      blog: { href: "/blog", external: false },
       api: { href: "/api/openapi.json", external: false },
       license: { href: "/license", external: false },
       privacy: { href: "/privacy-policy", external: false },

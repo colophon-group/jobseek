@@ -43,6 +43,11 @@ export function Footer({ lang }: FooterProps) {
               </a>
             </li>
             <li>
+              <Link className={linkClass} prefetch={false} href={`${prefix}${links.blog.href}`}>
+                <Trans id="common.footer.blog" comment="Footer link to /blog index page">Blog</Trans>
+              </Link>
+            </li>
+            <li>
               <Link className={linkClass} prefetch={false} href={`${prefix}${links.license.href}`}>
                 <Trans id="common.footer.licenseLink" comment="Footer link to license page">License</Trans>
               </Link>
