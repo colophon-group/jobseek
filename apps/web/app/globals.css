@@ -78,6 +78,12 @@
   --code-border: rgba(24, 24, 27, 0.15);
   --tooltip-bg: rgba(50, 50, 50, 0.92);
   --tooltip-warning-bg: rgba(120, 53, 0, 0.92);
+
+  /* Chart palette — neutrals + one accent (used by blog data figures) */
+  --chart-bar-dominant: #52525b;
+  --chart-bar-accent: #2563eb;
+  --chart-bar-mid: #94a3b8;
+  --chart-bar-faint: #cbd5e1;
 }
 
 /* ── Dark ── */
@@ -111,6 +117,12 @@
   --code-border: rgba(255, 255, 255, 0.15);
   --tooltip-bg: rgba(30, 30, 30, 0.92);
   --tooltip-warning-bg: rgba(180, 83, 9, 0.92);
+
+  /* Chart palette — neutrals + one accent (dark-mode tints) */
+  --chart-bar-dominant: #71717a;
+  --chart-bar-accent: #60a5fa;
+  --chart-bar-mid: #475569;
+  --chart-bar-faint: #334155;
 }
 
 /* ── Job description typography ── */
@@ -240,6 +252,46 @@
   font-size: inherit;
 }
 .blog-post *:first-child { margin-top: 0; }
+
+/* ── Inline horizontal stacked-bar figure (used by data posts) ── */
+.blog-post figure.share-bar {
+  margin: 1.75em 0;
+}
+.blog-post figure.share-bar svg {
+  display: block;
+  width: 100%;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.blog-post figure.share-bar .seg-onsite { fill: var(--chart-bar-dominant); }
+.blog-post figure.share-bar .seg-remote { fill: var(--chart-bar-accent); }
+.blog-post figure.share-bar .seg-hybrid { fill: var(--chart-bar-mid); }
+.blog-post figure.share-bar .seg-untagged { fill: var(--chart-bar-faint); }
+.blog-post figure.share-bar figcaption {
+  margin-top: 0.75em;
+  font-size: 0.85em;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1.25em;
+}
+.blog-post figure.share-bar figcaption span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+}
+.blog-post figure.share-bar .swatch {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.blog-post figure.share-bar .swatch.seg-onsite { background: var(--chart-bar-dominant); }
+.blog-post figure.share-bar .swatch.seg-remote { background: var(--chart-bar-accent); }
+.blog-post figure.share-bar .swatch.seg-hybrid { background: var(--chart-bar-mid); }
+.blog-post figure.share-bar .swatch.seg-untagged { background: var(--chart-bar-faint); }
 
 /* ── Scrollbar hide (keeps scroll, hides scrollbar) ── */
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
