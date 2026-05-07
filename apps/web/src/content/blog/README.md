@@ -70,10 +70,6 @@ Logistics:
 - Known-aspirational claims must be enumerated in the fact-checker brief so they don't get re-flagged.
 - After applying feedback, re-run at least the affected critic. Three rounds is normal; more is fine if the post is high-stakes (e.g. a flagship piece or one that takes a strong position against a published report).
 
-### Drafts
-
-Set `draft: true` in frontmatter. The loader (`listBlogPosts` / `getBlogPost`) excludes drafts from index, sitemap, and post page — they're invisible to readers and search engines but still render in `pnpm dev` for review. Flip to `false` when ready.
-
 ## Frontmatter contract
 
 ```yaml
@@ -86,7 +82,6 @@ author: "Viktor Shcherbakov"        # optional, defaults to siteConfig
 tags: ["data-analysis"]             # optional, free-form taxonomy
 relatedCompanies: ["openai"]        # optional, slug list — informational
 relatedWatchlists: ["owner/slug"]   # optional, "owner/slug" pairs — informational
-draft: false                        # optional, true hides from index + sitemap
 ---
 ```
 
@@ -144,7 +139,6 @@ The blog page chrome (`<h1>`, "No posts yet" empty state, "min read", "← Blog"
 
 **Known limitations** (tracked as follow-ups):
 
-- `getBlogPostLocales` currently does an `access()` filesystem check — it does not read each translation's `draft` flag. A `<slug>.<locale>.mdx` with `draft: true` would still appear in the sitemap's `languages` map even though `getBlogPost` would 404 the request. No draft translations exist today; a fix is filed separately to honor draft-on-translation before the next translated post lands.
 - `buildAlternates` in `seo.tsx` always emits all 4 locale alternates in the page `<head>`, regardless of which locales have a translated MDX. The sitemap is correct; the page metadata is over-broad. Symptoms only when a future post ships EN-only — fix tracked.
 
 ## Local dev workflow
@@ -157,7 +151,7 @@ pnpm dev                # starts Next.js at localhost:3000
                         # components throw without DATABASE_URL
 ```
 
-Author MDX, save, browser hot-reloads. Drafts render in dev (only `listBlogPosts`/`getBlogPost` filter out drafts in production).
+Author MDX, save, browser hot-reloads.
 
 To verify post landed:
 
@@ -168,7 +162,6 @@ To verify post landed:
 ## Pre-merge checklist
 
 - [ ] Frontmatter complete; required fields valid.
-- [ ] `draft: false`.
 - [ ] Methodology footnote present (if any quantitative claim).
 - [ ] Internal entity links use mention components, not raw markdown links.
 - [ ] No external chart-library imports.

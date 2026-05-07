@@ -29,7 +29,6 @@
  * tags: ["data-analysis"]            # optional
  * relatedCompanies: ["openai", ...]  # optional; sluglist into /company/{slug}
  * relatedWatchlists: ["user/slug"]   # optional; "owner/slug" pairs
- * draft: false                       # optional; true hides from index + sitemap
  * ---
  * ```
  */
@@ -51,7 +50,6 @@ export type BlogPostFrontmatter = {
   relatedCompanies: string[];
   /** "owner/slug" pairs pointing at /{locale}/{owner}/{slug}. */
   relatedWatchlists: string[];
-  draft: boolean;
 };
 
 export type BlogPostSummary = BlogPostFrontmatter & {
@@ -102,7 +100,6 @@ function coerceFrontmatter(
     relatedWatchlists: Array.isArray(raw.relatedWatchlists)
       ? raw.relatedWatchlists.filter((s): s is string => typeof s === "string")
       : [],
-    draft: raw.draft === true,
   };
 }
 
@@ -147,9 +144,9 @@ function slugFromFilename(filename: string): string {
 
 /**
  * Returns all published posts (canonical English source files only),
- * sorted newest-first by `datePublished`. Drafts are excluded.
- * Translation files (`<slug>.<locale>.mdx`) are not surfaced here —
- * they're per-post locale variants, not separate posts.
+ * sorted newest-first by `datePublished`. Translation files
+ * (`<slug>.<locale>.mdx`) are not surfaced here — they're per-post
+ * locale variants, not separate posts.
  */
 export async function listBlogPosts(): Promise<BlogPostSummary[]> {
   const filenames = (await listBlogFilenames()).filter(isCanonicalFilename);
@@ -160,9 +157,7 @@ export async function listBlogPosts(): Promise<BlogPostSummary[]> {
     const fm = coerceFrontmatter(slug, data as Record<string, unknown>);
     return { slug, ...fm };
   }));
-  return posts
-    .filter((p) => !p.draft)
-    .sort((a, b) => b.datePublished.localeCompare(a.datePublished));
+  return posts.sort((a, b) => b.datePublished.localeCompare(a.datePublished));
 }
 
 /**
@@ -172,12 +167,12 @@ export async function listBlogPosts(): Promise<BlogPostSummary[]> {
  *   1. `<slug>.<locale>.mdx` if locale is provided and the file exists
  *   2. `<slug>.mdx` (canonical English) as fallback
  *
- * Returns `null` if neither file exists or if the post is marked
- * `draft`. Throws on malformed frontmatter — that's a build-time
- * mistake we want loud. Frontmatter from the translation file wins
- * over the canonical's; translation files should mirror the canonical
- * shape (same datePublished anchor) and only override translatable
- * fields (title, description, tags). The slug stays canonical.
+ * Returns `null` if no file matches. Throws on malformed frontmatter
+ * — that's a build-time mistake we want loud. Frontmatter from the
+ * translation file wins over the canonical's; translation files
+ * should mirror the canonical shape (same datePublished anchor) and
+ * only override translatable fields (title, description, tags). The
+ * slug stays canonical.
  */
 export async function getBlogPost(
   slug: string,
@@ -194,7 +189,6 @@ export async function getBlogPost(
       const raw = await readFile(join(BLOG_DIR, filename), "utf-8");
       const { data, content } = matter(raw);
       const fm = coerceFrontmatter(slug, data as Record<string, unknown>);
-      if (fm.draft) return null;
       return { slug, ...fm, body: content };
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
@@ -205,8 +199,7 @@ export async function getBlogPost(
 }
 
 /**
- * Slug list for `generateStaticParams` on the [slug] route. Drafts
- * excluded so they never get a static path.
+ * Slug list for `generateStaticParams` on the [slug] route.
  */
 export async function listBlogSlugs(): Promise<string[]> {
   const posts = await listBlogPosts();
