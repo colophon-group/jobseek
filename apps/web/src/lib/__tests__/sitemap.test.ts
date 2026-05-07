@@ -284,9 +284,10 @@ describe("sitemap shards (issue #2646)", () => {
     ]);
 
     const entries = await renderSitemapShard(0);
-    expect(entries.some((e) => e.url.includes("/company/"))).toBe(false);
-    expect(entries.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
-    expect(entries.some((e) => e.url.endsWith("/en/alice/ml-jobs"))).toBe(true);
+    expect(entries).not.toBeNull();
+    expect(entries!.some((e) => e.url.includes("/company/"))).toBe(false);
+    expect(entries!.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
+    expect(entries!.some((e) => e.url.endsWith("/en/alice/ml-jobs"))).toBe(true);
   });
 
   it("non-zero shard ids return null (stale sitemap-index cache → 404 #2821)", async () => {
@@ -319,9 +320,10 @@ describe("sitemap shards (issue #2646)", () => {
     dbExecuteMock.mockRejectedValue(new Error("Postgres unavailable"));
 
     const entries = await renderSitemapShard(0);
-    expect(entries.length).toBeGreaterThan(0);
-    expect(entries.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
-    expect(entries.some((e) => e.url === "https://jseek.co/en")).toBe(true);
+    expect(entries).not.toBeNull();
+    expect(entries!.length).toBeGreaterThan(0);
+    expect(entries!.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
+    expect(entries!.some((e) => e.url === "https://jseek.co/en")).toBe(true);
   });
 
   it("planSitemapShards emits only shard 0 even on backend outage (#2694, #2821)", async () => {
