@@ -41,19 +41,38 @@ async def shoot_homepage(page: Page) -> None:
 
 
 async def shoot_explore_with_query(page: Page) -> None:
-    """Explore page with the search bar populated and the autocomplete
-    dropdown open — demonstrates the search flow more clearly than the
-    default unfiltered grid."""
+    """Explore page with a US location filter pre-applied AND the search
+    bar showing 'engineer' with the autocomplete dropdown open. Two-step
+    capture: first select the location via the dropdown so the filter
+    sticks via URL state, then type the keyword to show the suggestions.
+    """
     await page.goto(
         f"{BASE_URL}/en/explore",
         wait_until="networkidle",
         timeout=30_000,
     )
     await page.wait_for_timeout(2_500)
+
+    # Step 1: apply the United States location filter via the search dropdown.
     search_input = page.get_by_role("combobox").first
     await search_input.click()
+    await search_input.type("united states", delay=50)
+    await page.wait_for_timeout(2_500)
+    # Multiple options may contain "United States" as text (e.g. cities and
+    # states whose parentName ends with ", United States"). Pick the option
+    # whose primary label is exactly "United States" — i.e. the country row,
+    # which has no parentName and so no additional suffix span.
+    us_option = page.locator('[role="option"][data-suggestion]').filter(
+        has=page.get_by_text("United States", exact=True)
+    ).first
+    await us_option.click()
+    # router.push triggers a navigation; wait for it to settle.
+    await page.wait_for_load_state("networkidle", timeout=15_000)
+    await page.wait_for_timeout(1_500)
+
+    # Step 2: type the keyword to show the autocomplete dropdown.
+    await search_input.click()
     await search_input.type("engineer", delay=60)
-    # Wait for the suggestions dropdown to populate.
     await page.wait_for_timeout(2_500)
 
 
