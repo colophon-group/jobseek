@@ -10,6 +10,8 @@ is handled by the scraper on the daily schedule.
 
 from __future__ import annotations
 
+import asyncio
+import random
 import re
 from urllib.parse import urlparse
 
@@ -17,11 +19,18 @@ import httpx
 import structlog
 
 from src.core.monitors import register, slugs_from_url
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
 MAX_JOBS = 50_000
 PAGE_SIZE = 100
+
+# Pagination retry budget. Symmetric with workday (#2748), lever (#2749),
+# api_sniffer (#2733), accenture (#2735) and PCSX (#2734): 3 total
+# attempts, exponential backoff with full jitter starting at 0.5s.
+_RETRY_ATTEMPTS = 3
+_RETRY_BASE_DELAY = 0.5
 
 _PAGE_PATTERNS = [
     re.compile(r"api\.smartrecruiters\.com/v1/companies/([\w-]+)"),
@@ -63,10 +72,128 @@ def _posting_url(token: str, posting_id: str) -> str:
     return f"https://jobs.smartrecruiters.com/{token}/{posting_id}"
 
 
+async def _get_page_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    params: dict,
+    *,
+    retries: int = _RETRY_ATTEMPTS,
+    base_delay: float = _RETRY_BASE_DELAY,
+) -> dict:
+    """GET a SmartRecruiters list-API page with bounded retries (#2749).
+
+    Mirrors the contract used by ``fetch_with_retry`` (#2722) and the
+    sibling monitor helpers (workday #2748, lever #2749, accenture
+    #2735, PCSX #2734, api_sniffer #2733): retryable failures back off
+    exponentially and, on budget exhaustion, raise
+    :class:`PaginationFetchError` so the run is recorded as a failure
+    rather than silently truncating to whatever pages happened to
+    succeed.
+
+    SmartRecruiters' end-of-pagination signal is
+    ``offset >= totalFound or len(content) < PAGE_SIZE``. Pre-fix, a
+    CDN/anti-bot incident dropping the body and returning ``200 {}``
+    decoded to an empty dict whose ``totalFound`` defaulted to 0 and
+    whose ``content`` defaulted to ``[]`` — the loop broke after the
+    first page and the caller treated the partial discovery as
+    success, which fed ``_MARK_GONE_BY_TIMESTAMP`` for the missing
+    URLs (same shape as #2722 / #2737 / #2748).
+
+    Retried:
+      - HTTP 5xx (Cloudflare 520-526/530 included), 408, 425, 429.
+      - Arbitrary network exceptions (timeout, connection reset, JSON
+        parse error on a captcha/HTML body served as 200).
+      - HTTP 200 with a body that decodes to a non-dict shape — e.g.,
+        a CDN error envelope or ``null`` served as 200 (same shape as
+        the workday ``null``-body guard).
+
+    Fail-fast (non-retryable 4xx — auth-expired 401, misconfigured 400,
+    forbidden 403, board-removed 404): raises
+    :class:`PaginationFetchError` on the first attempt.
+
+    Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
+    with full jitter, identical cadence to workday (#2748).
+    """
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+
+    for attempt in range(retries):
+        try:
+            resp = await client.get(url, params=params)
+            last_status = resp.status_code
+            if resp.status_code == 200:
+                # ``resp.json()`` may raise ``json.JSONDecodeError`` on a
+                # captcha/HTML body served as 200 — falls into the
+                # ``except Exception`` branch below, retried, then
+                # surfaced as ``PaginationFetchError``. No silent break.
+                data = resp.json()
+                # SmartRecruiters' list endpoint returns a dict with
+                # ``content`` / ``totalFound``. A body that decodes to
+                # ``null`` or to a non-dict shape (e.g., an unexpected
+                # error envelope) is treated as a transient failure:
+                # retry, then raise. Without this guard, ``data.get(...)``
+                # on a list/None silently falls back to defaults which
+                # fake a legitimate end-of-pagination — same shape of
+                # silent-break bug the issue (#2749) is fixing.
+                if not isinstance(data, dict):
+                    raise ValueError(
+                        f"smartrecruiters list endpoint returned non-dict body: "
+                        f"{type(data).__name__}"
+                    )
+                return data
+            if is_retryable_status(resp.status_code):
+                last_exc = None  # status-only, no exception
+            else:
+                # Non-retryable 4xx — fail fast. ``resp.raise_for_status``
+                # would raise ``HTTPStatusError`` which the caller doesn't
+                # uniformly handle; raise ``PaginationFetchError`` directly
+                # for cross-monitor symmetry.
+                raise PaginationFetchError(
+                    url,
+                    attempts=attempt + 1,
+                    last_status=resp.status_code,
+                )
+        except PaginationFetchError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — timeout, network, JSON parse
+            last_exc = exc
+            last_status = None
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "smartrecruiters.list_backoff",
+                url=url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await asyncio.sleep(delay)
+
+    raise PaginationFetchError(
+        url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
+
+
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     """Fetch job listing URLs from the SmartRecruiters public API.
 
     Paginates the list endpoint and constructs posting URLs from token + ID.
+
+    Failure semantics (#2749). Each page GET is wrapped by
+    :func:`_get_page_with_retry`, which raises
+    :class:`PaginationFetchError` on persistent transient failures or
+    non-retryable 4xx. The exception propagates out of this function
+    (no intervening try/except) and lands in
+    ``_process_one_board_streaming``'s generic ``except Exception``,
+    which records the run as a failure rather than a partial success
+    — preventing ``_MARK_GONE_BY_TIMESTAMP`` from tombstoning the
+    URLs that live on the unfetched pages (same shape of bug as
+    #2722, #2737, #2748).
     """
     metadata = board.get("metadata") or {}
     token = metadata.get("token") or _token_from_url(board["board_url"])
@@ -79,14 +206,10 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
 
     urls: set[str] = set()
     offset = 0
+    list_url = _api_list_url(token)
 
     while True:
-        resp = await client.get(
-            _api_list_url(token),
-            params={"limit": PAGE_SIZE, "offset": offset},
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        data = await _get_page_with_retry(client, list_url, {"limit": PAGE_SIZE, "offset": offset})
 
         content = data.get("content", [])
         for item in content:

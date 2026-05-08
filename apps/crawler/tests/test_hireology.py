@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import httpx
 import pytest
 
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.hireology import (
+    _get_page_with_retry,
     _parse_job,
     _parse_locations,
     _slug_from_url,
     can_handle,
     discover,
 )
+
+_LIST_URL = "https://api.hireology.com/v2/public/careers/acme"
 
 
 class TestSlugFromUrl:
@@ -348,7 +353,16 @@ class TestDiscover:
             assert len(jobs) == 1
             assert jobs[0].title == "Has URL"
 
-    async def test_http_error_raises(self):
+    async def test_http_error_raises(self, monkeypatch):
+        """Persistent 500 exhausts the retry budget and raises
+        ``PaginationFetchError`` (#2749) — pre-fix this raised
+        ``HTTPStatusError`` directly via ``raise_for_status``.
+        """
+        from src.core.monitors import hireology as hireology_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+
         def handler(request):
             return httpx.Response(500)
 
@@ -357,7 +371,7 @@ class TestDiscover:
                 "board_url": "https://acme.hireology.careers",
                 "metadata": {"slug": "acme"},
             }
-            with pytest.raises(httpx.HTTPStatusError):
+            with pytest.raises(PaginationFetchError):
                 await discover(board, client)
 
 
@@ -409,3 +423,395 @@ class TestCanHandle:
             assert result is not None
             assert result["slug"] == "acme"
             assert result["jobs"] == 10
+
+
+class TestGetPageWithRetry:
+    """``_get_page_with_retry`` mirrors ``fetch_with_retry``'s contract on
+    Hireology's GET list endpoint: 5xx / 408 / 425 / 429 / network
+    errors are retried, non-retryable 4xx fail fast, and persistent
+    failures raise :class:`PaginationFetchError` so a single broken
+    pagination page doesn't silently truncate the run (#2749).
+    """
+
+    async def test_returns_on_success(self):
+        def handler(request):
+            return httpx.Response(200, json={"data": [], "count": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(client, _LIST_URL, {"page_size": 500, "page": 1})
+            assert data == {"data": [], "count": 0}
+
+    async def test_retries_on_429_then_succeeds(self, monkeypatch):
+        from src.core.monitors import hireology as hireology_module
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return httpx.Response(429, text="rate limited")
+            return httpx.Response(200, json={"data": [{"id": "p1"}], "count": 1})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(
+                client, _LIST_URL, {"page_size": 500, "page": 1}, base_delay=0.001
+            )
+            assert data["data"] == [{"id": "p1"}]
+            assert calls["n"] == 3
+
+    async def test_retries_on_503_then_succeeds(self, monkeypatch):
+        """Pre-fix, a 5xx anywhere in the loop made ``raise_for_status``
+        throw and the run was recorded as a scrape-level failure.
+        Now 503 is retried like every other transient.
+        """
+        from src.core.monitors import hireology as hireology_module
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return httpx.Response(503, text="service unavailable")
+            return httpx.Response(200, json={"data": [], "count": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(
+                client, _LIST_URL, {"page_size": 500, "page": 1}, base_delay=0.001
+            )
+            assert data == {"data": [], "count": 0}
+            assert calls["n"] == 3
+
+    async def test_retries_on_cloudflare_5xx(self, monkeypatch):
+        """Cloudflare origin codes 520-526/530 are retried (parity with
+        dom + workday + lever + smartrecruiters + accenture + PCSX)."""
+        from src.core.monitors import hireology as hireology_module
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 2:
+                return httpx.Response(520, text="cf origin error")
+            return httpx.Response(200, json={"data": [], "count": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(
+                client, _LIST_URL, {"page_size": 500, "page": 1}, base_delay=0.001
+            )
+            assert data == {"data": [], "count": 0}
+            assert calls["n"] == 2
+
+    async def test_raises_after_persistent_5xx(self, monkeypatch):
+        """Issue #2749 acceptance: persistent 5xx exhausts the retry
+        budget and raises ``PaginationFetchError`` — no silent
+        truncation.
+        """
+        from src.core.monitors import hireology as hireology_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(500, text="internal")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"page_size": 500, "page": 1},
+                    retries=3,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status == 500
+            assert exc_info.value.attempts == 3
+            assert calls["n"] == 3
+
+    async def test_raises_on_non_retryable_4xx_immediately(self, monkeypatch):
+        """A 401 / 403 / 404 indicates a hard error — no point
+        retrying. Raise ``PaginationFetchError`` on the first attempt.
+        """
+        from src.core.monitors import hireology as hireology_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(401, text="unauthorized")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"page_size": 500, "page": 1},
+                    retries=3,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status == 401
+            assert calls["n"] == 1
+
+    async def test_raises_after_persistent_network_error(self, monkeypatch):
+        from src.core.monitors import hireology as hireology_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            raise httpx.ConnectError("conn refused")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"page_size": 500, "page": 1},
+                    retries=2,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status is None
+            assert exc_info.value.last_error == "ConnectError"
+
+    async def test_raises_on_empty_200_body(self, monkeypatch):
+        """Per the issue (#2749), a 200 with a body that decodes to
+        ``null`` (or any non-dict shape) used to leave ``count``
+        defaulting to 0 and ``data`` defaulting to ``[]`` — silently
+        breaking the loop on ``page * PAGE_SIZE >= total or
+        len(raw_jobs) < PAGE_SIZE``. Now the helper treats it as a
+        transient failure (retry, then raise) so the run surfaces.
+        """
+        from src.core.monitors import hireology as hireology_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            # JSON ``null`` decodes to Python ``None`` — non-dict.
+            return httpx.Response(
+                200, content=b"null", headers={"content-type": "application/json"}
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"page_size": 500, "page": 1},
+                    retries=2,
+                    base_delay=0.001,
+                )
+
+    async def test_raises_on_empty_array_200_body(self, monkeypatch):
+        """A 200 with body ``[]`` (empty list — wrong shape for
+        Hireology which returns dicts) is non-dict and must raise.
+        Distinguishes empty-200 from a legitimate
+        ``{"data": [], "count": 0}`` end-of-results.
+        """
+        from src.core.monitors import hireology as hireology_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            return httpx.Response(200, json=[])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"page_size": 500, "page": 1},
+                    retries=2,
+                    base_delay=0.001,
+                )
+
+    async def test_legitimate_empty_dict_returns(self):
+        """A 200 with body ``{"data": [], "count": 0}`` is the canonical
+        end-of-results signal for an empty board. Must return cleanly so
+        the discover loop's ``len(raw_jobs) < PAGE_SIZE`` end-check fires
+        correctly.
+        """
+
+        def handler(request):
+            return httpx.Response(200, json={"data": [], "count": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(
+                client, _LIST_URL, {"page_size": 500, "page": 1}, base_delay=0.001
+            )
+            assert data == {"data": [], "count": 0}
+
+
+class TestDiscoverPaginationRetry:
+    """Issue #2749 acceptance: the discover loop propagates the new
+    retry-then-raise contract end-to-end. Pre-fix, a 5xx mid-pagination
+    raised ``HTTPStatusError`` straight out and a 200-with-``{}``
+    silently broke the loop. Now both transients are retried and
+    persistent failures raise ``PaginationFetchError``.
+    """
+
+    async def test_503_then_200_pagination_continues(self, monkeypatch):
+        from src.core.monitors import hireology as hireology_module
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+
+        # Total 600 (PAGE_SIZE=500 → two pages). First page succeeds with
+        # 500 jobs; second page returns 503 once then 200 with 100.
+        page2_calls = {"n": 0}
+
+        def handler(request):
+            page = int(request.url.params.get("page", "1"))
+            if page == 1:
+                return httpx.Response(
+                    200,
+                    json={
+                        "data": [
+                            {
+                                "career_site_url": f"https://example.com/{i}",
+                                "name": f"Job {i}",
+                                "status": "Open",
+                            }
+                            for i in range(500)
+                        ],
+                        "count": 600,
+                    },
+                )
+            page2_calls["n"] += 1
+            if page2_calls["n"] < 2:
+                return httpx.Response(503, text="unavailable")
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {
+                            "career_site_url": f"https://example.com/{i}",
+                            "name": f"Job {i}",
+                            "status": "Open",
+                        }
+                        for i in range(500, 600)
+                    ],
+                    "count": 600,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://acme.hireology.careers",
+                "metadata": {"slug": "acme"},
+            }
+            jobs = await discover(board, client)
+            assert len(jobs) == 600
+            assert page2_calls["n"] == 2
+
+    async def test_persistent_500_mid_pagination_raises(self, monkeypatch):
+        """Pre-fix, a 5xx on page N>0 raised ``HTTPStatusError`` straight
+        out — recorded as scrape-level failure but bypassed the
+        unified retry contract. Now the helper raises
+        ``PaginationFetchError`` cleanly via the same path every other
+        paginating monitor uses.
+        """
+        from src.core.monitors import hireology as hireology_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            page = int(request.url.params.get("page", "1"))
+            if page > 1:
+                return httpx.Response(500, text="internal")
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {
+                            "career_site_url": f"https://example.com/{i}",
+                            "name": f"Job {i}",
+                            "status": "Open",
+                        }
+                        for i in range(500)
+                    ],
+                    "count": 600,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://acme.hireology.careers",
+                "metadata": {"slug": "acme"},
+            }
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(board, client)
+            assert exc_info.value.last_status == 500
+
+    async def test_empty_200_mid_pagination_raises(self, monkeypatch):
+        """The load-bearing test for #2749: a 200 with a non-dict body
+        (e.g., a CDN dropping the body and returning ``[]``, or an
+        anti-bot challenge served as 200) on page N>0 MUST raise, not
+        silently truncate. The pre-fix code path would have broken on
+        the missing-count default and returned the partial 500-job
+        list as success, feeding ``_MARK_GONE_BY_TIMESTAMP`` for the
+        unfetched 100 jobs.
+        """
+        from src.core.monitors import hireology as hireology_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            page = int(request.url.params.get("page", "1"))
+            if page > 1:
+                # CDN/anti-bot envelope served as 200 — the vulnerable case.
+                return httpx.Response(200, json=[])
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {
+                            "career_site_url": f"https://example.com/{i}",
+                            "name": f"Job {i}",
+                            "status": "Open",
+                        }
+                        for i in range(500)
+                    ],
+                    "count": 600,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://acme.hireology.careers",
+                "metadata": {"slug": "acme"},
+            }
+            with pytest.raises(PaginationFetchError):
+                await discover(board, client)
+
+    async def test_legitimate_empty_first_page_returns_empty(self, monkeypatch):
+        """An empty board (legitimate ``{"data": [], "count": 0}`` on
+        the first page) must return an empty list cleanly — the
+        end-signal logic ``page * PAGE_SIZE >= total or
+        len(raw_jobs) < PAGE_SIZE`` fires correctly without any retry.
+        """
+        from src.core.monitors import hireology as hireology_module
+
+        monkeypatch.setattr(hireology_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(200, json={"data": [], "count": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://acme.hireology.careers",
+                "metadata": {"slug": "acme"},
+            }
+            jobs = await discover(board, client)
+            assert jobs == []
+            assert calls["n"] == 1  # No retries — empty body is structurally valid.
