@@ -1,8 +1,5 @@
 import type { ReactNode } from "react";
 
-import { setI18n } from "@lingui/react/server";
-import { isLocale, defaultLocale, loadCatalog, type Locale } from "@/lib/i18n";
-import { LinguiClientProvider } from "@/components/LinguiProvider";
 import { AppBootstrapProvider } from "@/components/AppBootstrapProvider";
 import { AppHeader } from "@/components/AppHeader";
 import { CookieBanner } from "@/components/CookieBanner";
@@ -12,18 +9,14 @@ import { WatchlistTipBanner } from "@/components/watchlist/watchlist-tip-banner"
 import { BackToTop } from "@/components/ui/back-to-top";
 
 type Props = {
-  params: Promise<{ lang: string }>;
   children: ReactNode;
 };
 
-export default async function AppLayout({ params, children }: Props) {
-  const { lang } = await params;
-  const locale: Locale = isLocale(lang) ? lang : defaultLocale;
-  const { i18n, messages } = await loadCatalog(locale);
-  setI18n(i18n);
-
+// i18n is initialized once in the parent `[lang]/layout.tsx` (loadCatalog +
+// setI18n + <LinguiClientProvider>); this layout no longer redoes that work.
+// See #2883.
+export default async function AppLayout({ children }: Props) {
   return (
-    <LinguiClientProvider locale={locale} messages={messages}>
     <AppBootstrapProvider>
       <SearchStateProvider>
         <div className="flex min-h-dvh flex-col">
@@ -40,6 +33,5 @@ export default async function AppLayout({ params, children }: Props) {
         </div>
       </SearchStateProvider>
     </AppBootstrapProvider>
-    </LinguiClientProvider>
   );
 }
