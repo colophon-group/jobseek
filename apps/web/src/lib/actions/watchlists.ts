@@ -142,15 +142,25 @@ export async function createWatchlist(params: {
   const isPublic = params.isPublic ?? true;
   const mergedFilters = { anyCompany: true, ...params.filters };
   const trivial = isTrivialWatchlist(mergedFilters, params.companyIds.length);
+
+  // Cache invalidation runs unconditionally for public watchlists
+  // (even trivial ones): if the URL was visited before the watchlist
+  // existed, the page-level `'use cache'` may hold a null-detail
+  // noindex render that needs busting. Trivial watchlists don't go
+  // into Typesense / IndexNow (those flows are gated on !trivial).
+  if (isPublic) {
+    after(async () => {
+      try {
+        await _invalidateWatchlistCaches(userId, [slug]);
+      } catch (err) {
+        console.error("[createWatchlist] cache invalidate failed", err);
+      }
+    });
+  }
+
   if (isPublic && !trivial) {
     after(async () => {
       try {
-        // Bust any pre-existing cache entry for the new (userSlug, slug)
-        // pair. If the URL was visited while the watchlist didn't exist
-        // (or after a delete-then-recreate with the same slug), the
-        // page-level `'use cache'` may hold a null-detail render.
-        await _invalidateWatchlistCaches(userId, [slug]);
-
         const owner = await _getOwnerInfo(userId);
         if (!owner) return;
         tsUpsertWatchlist({
@@ -422,14 +432,22 @@ export async function copyWatchlist(
   // in the request scope; the previous detached .then() pattern broke
   // notifyIndexNow because the inner after() lost its request context
   // by the time the chain resolved.
+  // Cache invalidation runs unconditionally (even if trivial) — same
+  // reasoning as `createWatchlist`: a stale null-detail render in the
+  // page-level cache needs busting whether or not the watchlist will
+  // be sitemap-indexed.
+  after(async () => {
+    try {
+      await _invalidateWatchlistCaches(userId, [slug]);
+    } catch (err) {
+      console.error("[copyWatchlist] cache invalidate failed", err);
+    }
+  });
+
   if (!isTrivialWatchlist(sourceFilters, companies.length)) {
     // 1. Upsert the new copy (copies are always public) — unless trivial.
     after(async () => {
       try {
-        // Bust any pre-existing cache for the copy's URL — same
-        // reasoning as createWatchlist (delete-then-recreate races).
-        await _invalidateWatchlistCaches(userId, [slug]);
-
         const owner = await _getOwnerInfo(userId);
         if (!owner) return;
         tsUpsertWatchlist({
