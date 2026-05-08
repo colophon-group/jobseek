@@ -56,12 +56,13 @@ describe("POST /api/internal/invalidate-typeahead", () => {
     expect(mocks.revalidateTag).not.toHaveBeenCalled();
   });
 
-  it("revalidates the per-typeahead `'use cache'` tags on auth", async () => {
-    /** PR #2907 follow-up: the 5 migrated typeaheads write to Next's
-     * per-region runtime cache via `'use cache'`; only `revalidateTag`
-     * evicts those slots. The legacy Redis prefix sweep is kept as a
-     * backstop for `company-slug:` / `company-similar:` and rollout
-     * stragglers, but the migrated keys live behind tags now. */
+  it("revalidates the migrated `'use cache'` tags on auth", async () => {
+    /** PR #2907 follow-up + #2884 bucket 4: the 5 migrated typeaheads
+     * write to Next's per-region runtime cache via `'use cache'`, plus
+     * (as of #2884 bucket 4) the CSV-driven per-company tag covering
+     * `getCompanyBySlug` and `getSimilarCompanies`. Only `revalidateTag`
+     * evicts those slots. The legacy Redis prefix sweep stays as a
+     * rollout-window backstop. */
     const res = await POST(_request("Bearer secret-token") as never);
 
     expect(res.status).toBe(200);
@@ -72,6 +73,7 @@ describe("POST /api/internal/invalidate-typeahead", () => {
       "typeahead:seniorities",
       "typeahead:technologies",
       "typeahead:companies",
+      "company-csv-data",
     ]);
     // Each call passes the Next 16 "max" profile so the tag does not
     // expire — see route handler comment.

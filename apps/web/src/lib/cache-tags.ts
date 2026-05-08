@@ -24,6 +24,38 @@ export function companyCacheTag(slug: string): string {
   return `company:${slug}`;
 }
 
+/**
+ * Per-company-id cache tag for the per-company derived caches migrated
+ * to `'use cache'` in #2884 (bucket 4): `getCompanyPostings`,
+ * `getCompanyTopLocations`, `getCompanyLocationsGrouped`,
+ * `getSimilarCompanies` (filtered + unfiltered). These functions are
+ * keyed by company UUID (not slug) since the slug isn't an input — so
+ * the tag mirrors that shape. A future invalidation hook can fire BOTH
+ * `companyCacheTag(slug)` and `companyByIdCacheTag(id)` to drop every
+ * cached fragment for a given company.
+ */
+export function companyByIdCacheTag(companyId: string): string {
+  return `company-id:${companyId}`;
+}
+
+/**
+ * Shared "all CSV-driven company data" tag — fired by
+ * `/api/internal/invalidate-typeahead` after `crawler sync` to evict
+ * the migrated `getCompanyBySlug` and `getSimilarCompanies` slots that
+ * shift when a CSV row changes (rename, industry move). Mirrors the
+ * `company-slug:` + `company-similar:` Redis-prefix sweep the legacy
+ * `cached()` path used (#2715).
+ *
+ * Posting-derived per-company slots (`getCompanyPostings`,
+ * `getCompanyTopLocations`, `getCompanyLocationsGrouped`) intentionally
+ * do NOT carry this tag — they key off `job_posting` data, which a
+ * CSV sync doesn't touch (matches the legacy comment in the route
+ * handler). They drop on `companyByIdCacheTag(id)` only.
+ */
+export function companyCsvDataCacheTag(): string {
+  return "company-csv-data";
+}
+
 export function blogPostCacheTag(slug: string): string {
   return `blog-post:${slug}`;
 }

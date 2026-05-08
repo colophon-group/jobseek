@@ -5,8 +5,12 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResultPosting } from "@/lib/search";
-import { cached } from "@/lib/cache";
-import { typeaheadCompaniesCacheTag } from "@/lib/cache-tags";
+import {
+  companyByIdCacheTag,
+  companyCacheTag,
+  companyCsvDataCacheTag,
+  typeaheadCompaniesCacheTag,
+} from "@/lib/cache-tags";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { expandLocationIds } from "@/lib/actions/locations";
 import { expandOccupationIds } from "@/lib/actions/taxonomy";
@@ -565,17 +569,59 @@ export interface CompanyDetail {
   activeJobCount: number;
 }
 
+// Sentinel to signal "no company found" out of `_fetchCompanyBySlugCached`
+// without letting `null` reach the `'use cache'` boundary. Returning null
+// would pin the slot for the cacheLife window and lock a brand-new slug
+// out of being seen for up to that long. Throwing past the cache boundary
+// (caught by `getCompanyBySlug`) keeps the slot empty and lets the next
+// request retry. See #2884 footgun.
+class CompanyNotFoundError extends Error {
+  constructor() {
+    super("company-not-found");
+    this.name = "CompanyNotFoundError";
+  }
+}
+
 export async function getCompanyBySlug(
   slug: string,
   locale: string,
 ): Promise<CompanyDetail | null> {
-  const key = `company-slug:${slug}:${locale}`;
-  // skipIf null avoids cache-poisoning a brand-new slug that Typesense hasn't
-  // yet seen — Postgres fallback can fill the gap on the next request.
-  return cached(key, () => _fetchCompanyBySlug(slug, locale), {
-    ttl: 600,
-    skipIf: (d) => d === null,
-  });
+  // Throw-and-catch around the `'use cache'` inner. The previous
+  // `skipIf: d === null` semantics aren't available under `'use cache'` —
+  // the inner fetcher throws `CompanyNotFoundError` on null so the cache
+  // slot stays empty for not-yet-seen slugs (avoids 600s of poisoned
+  // null), and the wrapper returns null to the caller. Migrated from
+  // Redis-backed `cached()` in #2884 (bucket 4 footgun).
+  try {
+    return await _fetchCompanyBySlugCached(slug, locale);
+  } catch (err) {
+    if (err instanceof CompanyNotFoundError) return null;
+    // Any other error is unexpected — re-throw so the caller / Suspense
+    // boundary handles it (matches the original `cached()` behaviour
+    // where unexpected errors propagated past the cache layer).
+    throw err;
+  }
+}
+
+async function _fetchCompanyBySlugCached(
+  slug: string,
+  locale: string,
+): Promise<CompanyDetail> {
+  "use cache";
+  cacheLife("hours");
+  // Tag the slot so the page route's `revalidateTag(companyCacheTag(slug))`
+  // (already used in `app/[lang]/(app)/company/[slug]/page.tsx` and
+  // `generateMetadata`) drops THIS slot too — keeping the data layer's
+  // cached entry in sync with the page-level cache. See #2884.
+  cacheTag(companyCacheTag(slug));
+  // Also drop on a CSV-driven sweep — covers rename / industry change.
+  // Mirrors the legacy `company-slug:` Redis-prefix sweep at the
+  // `/api/internal/invalidate-typeahead` route. See #2715 + #2884.
+  cacheTag(companyCsvDataCacheTag());
+
+  const data = await _fetchCompanyBySlug(slug, locale);
+  if (data === null) throw new CompanyNotFoundError();
+  return data;
 }
 
 async function _fetchCompanyBySlug(slug: string, locale: string): Promise<CompanyDetail | null> {
@@ -757,12 +803,18 @@ export async function getSimilarCompanies(
 
   const filters = await _parseSimilarFilters(opts.searchParams, opts.locale);
   if (_hasSimilarFilters(filters)) {
-    const filterKey = _similarFiltersKey(filters);
-    const key = `company-similar:${companyId}:${industryId}:filtered:${limit}:${filterKey}`;
-    return cached(
-      key,
-      () => _fetchSimilarFiltered(companyId, industryId, limit, filters),
-      { ttl: 600 },
+    // Filtered path: cacheLife('hours') (was Redis ttl 600s) — semantic
+    // similarity within an industry shifts on the same time-scale as
+    // posting churn. Migrated from Redis-backed `cached()` in #2884
+    // (bucket 4). Filters are normalized (sorted arrays, primitives) so
+    // the implicit `'use cache'` argument-hash key matches the legacy
+    // `_similarFiltersKey` concat-key behaviour and avoids splitting
+    // hits across input-order permutations.
+    return _fetchSimilarFilteredCached(
+      companyId,
+      industryId,
+      limit,
+      _normalizeSimilarFilters(filters),
     );
   }
 
@@ -784,17 +836,56 @@ export async function getSimilarCompanies(
     return { companies: [], hasMore: false, truncated: true };
   }
 
-  const key = `company-similar:${companyId}:${industryId}:${offset}:${limit}`;
-  const page = await cached(
-    key,
-    () => _fetchSimilarUnfiltered(companyId, industryId, offset, limit),
-    { ttl: 3600 },
+  // Unfiltered path: cacheLife({ revalidate: 3600 }) preserves the
+  // legacy 1h TTL for the unfiltered ranked-peers slot. Migrated from
+  // Redis-backed `cached()` in #2884 (bucket 4).
+  const page = await _fetchSimilarUnfilteredCached(
+    companyId,
+    industryId,
+    offset,
+    limit,
   );
 
   if (wouldHitCap && !userId && offset + page.companies.length >= ANON_MAX_COMPANIES) {
     return { ...page, hasMore: false, truncated: true };
   }
   return page;
+}
+
+// Cached wrapper for `_fetchSimilarFiltered`. Splits the public
+// `getSimilarCompanies` from the cache boundary so the session-tainted
+// branch (the cap check) stays outside the slot — and so the unfiltered
+// vs filtered branches each get their own implicit cache key based on
+// their distinct argument lists. See #2884 bucket 4.
+async function _fetchSimilarFilteredCached(
+  companyId: string,
+  industryId: number,
+  limit: number,
+  filters: SimilarFilters,
+): Promise<SimilarCompaniesPage> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(companyByIdCacheTag(companyId));
+  // CSV-driven sweep — an industry move (changing `industry_id` on a
+  // company row) changes the candidate pool for every other company in
+  // the source AND target industry. Conservative: drop on every CSV
+  // sync. Mirrors the legacy `company-similar:` Redis-prefix sweep
+  // (#2715). See #2884.
+  cacheTag(companyCsvDataCacheTag());
+  return _fetchSimilarFiltered(companyId, industryId, limit, filters);
+}
+
+async function _fetchSimilarUnfilteredCached(
+  companyId: string,
+  industryId: number,
+  offset: number,
+  limit: number,
+): Promise<SimilarCompaniesPage> {
+  "use cache";
+  cacheLife({ revalidate: 3600 });
+  cacheTag(companyByIdCacheTag(companyId));
+  cacheTag(companyCsvDataCacheTag());
+  return _fetchSimilarUnfiltered(companyId, industryId, offset, limit);
 }
 
 async function _fetchSimilarUnfiltered(
@@ -896,19 +987,27 @@ function _hasSimilarFilters(f: SimilarFilters): boolean {
   );
 }
 
-function _similarFiltersKey(f: SimilarFilters): string {
-  return [
-    [...f.keywords].sort().join(","),
-    [...f.locationIds].sort().join(","),
-    [...f.occupationIds].sort().join(","),
-    [...f.seniorityIds].sort().join(","),
-    [...f.technologyIds].sort().join(","),
-    [...f.employmentTypes].sort().join(","),
-    f.salaryMinEur ?? "",
-    f.salaryMaxEur ?? "",
-    f.experienceMin ?? "",
-    f.experienceMax ?? "",
-  ].join("|");
+/**
+ * Sort all array fields for stable `'use cache'` key derivation. The
+ * legacy `cached()` helper hashed a concat-key string built from
+ * pre-sorted arrays — under `'use cache'`, the implicit key derives
+ * from the argument structure, so the arrays themselves must be sorted
+ * for `[A,B]` and `[B,A]` inputs to share a slot. Pure function; the
+ * input is not mutated. See #2884 bucket 4.
+ */
+function _normalizeSimilarFilters(f: SimilarFilters): SimilarFilters {
+  return {
+    keywords: [...f.keywords].sort(),
+    locationIds: [...f.locationIds].sort((a, b) => a - b),
+    occupationIds: [...f.occupationIds].sort((a, b) => a - b),
+    seniorityIds: [...f.seniorityIds].sort((a, b) => a - b),
+    technologyIds: [...f.technologyIds].sort((a, b) => a - b),
+    employmentTypes: [...f.employmentTypes].sort(),
+    salaryMinEur: f.salaryMinEur,
+    salaryMaxEur: f.salaryMaxEur,
+    experienceMin: f.experienceMin,
+    experienceMax: f.experienceMax,
+  };
 }
 
 async function _fetchSimilarFiltered(
@@ -1010,6 +1109,30 @@ function _toSimilarCompany(doc: Record<string, unknown>): SimilarCompany {
 
 // ── Company postings with counts ────────────────────────────────────
 
+/**
+ * Normalised parameter shape for `_fetchCompanyPostingsCached`. Sorted
+ * arrays + primitive-only fields make the implicit `'use cache'`
+ * argument-hash key match the legacy concat-key behaviour and avoid
+ * splitting hits across input-order permutations.
+ */
+interface NormalizedCompanyPostingsParams {
+  companyId: string;
+  keywords: string[];
+  locationIds: number[];
+  occupationIds: number[];
+  seniorityIds: number[];
+  technologyIds: number[];
+  employmentTypes: string[];
+  languages: string[];
+  salaryMinEur: number | null;
+  salaryMaxEur: number | null;
+  experienceMin: number | null;
+  experienceMax: number | null;
+  locale: string;
+  offset: number;
+  limit: number;
+}
+
 export async function getCompanyPostings(params: {
   companyId: string;
   keywords: string[];
@@ -1033,28 +1156,87 @@ export async function getCompanyPostings(params: {
     return { postings: [], activeCount: 0, yearCount: 0, truncated: true };
   }
 
-  const sortedKw = [...params.keywords].sort();
-  const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const sortedOcc = [...(params.occupationIds ?? [])].sort();
-  const sortedSen = [...(params.seniorityIds ?? [])].sort();
-  const sortedTech = [...(params.technologyIds ?? [])].sort();
-  const sortedEtype = [...(params.employmentTypes ?? [])].sort();
-  const sortedLangs = [...params.languages].sort();
-  const key = `company-postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech.join(",")}:${sortedEtype.join(",")}:${sortedLangs.join(",")}:${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}:${params.experienceMin ?? ""}:${params.experienceMax ?? ""}:${params.locale}:${params.offset}:${params.limit}`;
-  const result = await cached(
-    key,
-    async () => {
-      // No expansion needed — ancestor IDs are stored on each Typesense document
-      return getSearchProvider().loadPostingsWithCounts(params);
-    },
-    { ttl: 300 },
-  );
+  // Pre-sort all array fields + collapse `undefined` to `null` so the
+  // implicit `'use cache'` key derivation hashes the same value for
+  // equivalent caller intents. The sorted+nulled shape mirrors the
+  // legacy concat-key string built by the old `cached()` call.
+  const normalized: NormalizedCompanyPostingsParams = {
+    companyId: params.companyId,
+    keywords: [...params.keywords].sort(),
+    locationIds: [...(params.locationIds ?? [])].sort((a, b) => a - b),
+    occupationIds: [...(params.occupationIds ?? [])].sort((a, b) => a - b),
+    seniorityIds: [...(params.seniorityIds ?? [])].sort((a, b) => a - b),
+    technologyIds: [...(params.technologyIds ?? [])].sort((a, b) => a - b),
+    employmentTypes: [...(params.employmentTypes ?? [])].sort(),
+    languages: [...params.languages].sort(),
+    salaryMinEur: params.salaryMinEur ?? null,
+    salaryMaxEur: params.salaryMaxEur ?? null,
+    experienceMin: params.experienceMin ?? null,
+    experienceMax: params.experienceMax ?? null,
+    locale: params.locale,
+    offset: params.offset,
+    limit: params.limit,
+  };
+
+  const result = await _fetchCompanyPostingsCached(normalized);
 
   if (!userId && params.offset + result.postings.length >= ANON_MAX_POSTINGS) {
     return { ...result, truncated: true };
   }
 
   return result;
+}
+
+/**
+ * Cached inner for {@link getCompanyPostings}. cacheLife({ revalidate:
+ * 300 }) preserves the legacy 5-minute TTL — postings churn faster than
+ * top-locations / similar-companies, and the frequent revalidation is
+ * the dominant cost driver this slot is solving for. Migrated from
+ * Redis-backed `cached()` in #2884 (bucket 4).
+ *
+ * `firstSeenAt` is normalised to an ISO string before return — Date is
+ * not part of the project's `'use cache'` serializable subset. The
+ * caller-side type already accepts `Date | string`. (Same convention as
+ * the bucket-5 PR's `_fetchPostingDetail`.)
+ */
+async function _fetchCompanyPostingsCached(
+  params: NormalizedCompanyPostingsParams,
+): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number }> {
+  "use cache";
+  cacheLife({ revalidate: 300 });
+  cacheTag(companyByIdCacheTag(params.companyId));
+
+  // Re-shape to the SearchProvider param contract. Drop the cache-only
+  // null-vs-undefined distinction back to undefined for the optional
+  // numeric fields.
+  const result = await getSearchProvider().loadPostingsWithCounts({
+    companyId: params.companyId,
+    keywords: params.keywords,
+    locationIds: params.locationIds,
+    occupationIds: params.occupationIds,
+    seniorityIds: params.seniorityIds,
+    technologyIds: params.technologyIds,
+    employmentTypes: params.employmentTypes,
+    languages: params.languages,
+    salaryMinEur: params.salaryMinEur ?? undefined,
+    salaryMaxEur: params.salaryMaxEur ?? undefined,
+    experienceMin: params.experienceMin ?? undefined,
+    experienceMax: params.experienceMax ?? undefined,
+    locale: params.locale,
+    offset: params.offset,
+    limit: params.limit,
+  });
+
+  return {
+    ...result,
+    postings: result.postings.map((p) => ({
+      ...p,
+      firstSeenAt:
+        p.firstSeenAt instanceof Date
+          ? p.firstSeenAt.toISOString()
+          : p.firstSeenAt,
+    })),
+  };
 }
 
 // ── Top locations for a company ─────────────────────────────────────
@@ -1067,12 +1249,23 @@ export interface CompanyLocation {
   count: number;
 }
 
+// Per-region in-memory `'use cache'` (cacheLife('hours')). Migrated from
+// Redis-backed `cached(..., { ttl: 600 })` in #2884 (bucket 4). Ticked
+// up from 600s to the 'hours' built-in profile because top-locations
+// derive from posting churn, which the page-level `cacheTag` invalidator
+// can drop on demand if the operator wants fresher data sooner. Build
+// ID is part of the key, so each deploy re-fetches anyway.
+//
+// Cache key is `(companyId, locale)` — both load-bearing for the
+// ranked list (locale picks the localised display name).
 export async function getCompanyTopLocations(
   companyId: string,
   locale: string,
 ): Promise<{ locations: CompanyLocation[]; totalCount: number }> {
-  const key = `company-top-locs:${companyId}:${locale}`;
-  return cached(key, () => _fetchTopLocations(companyId, locale), { ttl: 600 });
+  "use cache";
+  cacheLife("hours");
+  cacheTag(companyByIdCacheTag(companyId));
+  return _fetchTopLocations(companyId, locale);
 }
 
 async function _fetchTopLocations(
@@ -1155,12 +1348,23 @@ export interface GroupedCompanyLocations {
   regions: CompanyRegionGroup[];
 }
 
+// Per-region in-memory `'use cache'` (cacheLife('hours')). Migrated from
+// Redis-backed `cached(..., { ttl: 600 })` in #2884 (bucket 4). Same
+// rationale as `getCompanyTopLocations` above — derives from posting
+// churn, page-level invalidator can drop on demand. Build ID is part
+// of the key, so each deploy re-fetches.
+//
+// Cache key is `(companyId, locale)`. The result is plain JSON-shaped
+// data (no Maps/Dates) — `_fetchLocationsGrouped` returns nested arrays
+// of primitives.
 export async function getCompanyLocationsGrouped(
   companyId: string,
   locale: string,
 ): Promise<GroupedCompanyLocations[]> {
-  const key = `company-locs-grouped:${companyId}:${locale}`;
-  return cached(key, () => _fetchLocationsGrouped(companyId, locale), { ttl: 600 });
+  "use cache";
+  cacheLife("hours");
+  cacheTag(companyByIdCacheTag(companyId));
+  return _fetchLocationsGrouped(companyId, locale);
 }
 
 async function _fetchLocationsGrouped(

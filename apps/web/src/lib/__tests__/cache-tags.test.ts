@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   blogIndexCacheTag,
   blogPostCacheTag,
+  companyByIdCacheTag,
   companyCacheTag,
+  companyCsvDataCacheTag,
   watchlistCacheTag,
 } from "../cache-tags";
 
@@ -55,6 +57,33 @@ describe("cache-tags", () => {
     it("does not normalize special characters in the slug", () => {
       expect(companyCacheTag("foo-bar")).toBe("company:foo-bar");
       expect(companyCacheTag("foo:bar")).toBe("company:foo:bar");
+    });
+  });
+
+  describe("companyByIdCacheTag", () => {
+    it("returns company-id:<companyId>", () => {
+      expect(companyByIdCacheTag("co-uuid-123")).toBe("company-id:co-uuid-123");
+    });
+
+    it("produces a tag distinct from companyCacheTag(slug)", () => {
+      // The page route and the data layer use different keys (slug vs.
+      // companyId UUID). Distinct prefixes make this explicit and avoid
+      // cross-namespace `updateTag` collisions.
+      expect(companyByIdCacheTag("foo")).not.toBe(companyCacheTag("foo"));
+      expect(companyByIdCacheTag("foo").startsWith("company-id:")).toBe(true);
+      expect(companyCacheTag("foo").startsWith("company:")).toBe(true);
+    });
+  });
+
+  describe("companyCsvDataCacheTag", () => {
+    it("returns the literal company-csv-data", () => {
+      expect(companyCsvDataCacheTag()).toBe("company-csv-data");
+    });
+
+    it("returns the same tag on every call (no input — shared sweep tag)", () => {
+      // CSV-driven blanket tag fired by `crawler sync` to drop every
+      // `getCompanyBySlug` and `getSimilarCompanies` slot in one call.
+      expect(companyCsvDataCacheTag()).toBe(companyCsvDataCacheTag());
     });
   });
 
