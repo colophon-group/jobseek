@@ -103,7 +103,8 @@ async def fetch_with_retry(
     """Fetch ``url`` and return its text body.
 
     Returns:
-        - ``str`` (truncated to ``max_chars``) on HTTP 200.
+        - ``str`` (truncated to ``max_chars``) on HTTP 200 with a
+          **non-empty** body.
         - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
           any other non-retryable 4xx (caller should treat as "no more
           content here" — same semantic as the prior tolerant
@@ -112,9 +113,19 @@ async def fetch_with_retry(
     Raises:
         :exc:`PaginationFetchError` when *retries* attempts have all
         hit a retryable failure (transient 5xx, 429, timeout, network
-        error). The caller is expected to propagate so
-        ``_process_one_board_streaming`` records the run as a failure
-        rather than a partial success.
+        error, **or 200-with-empty-body**). The caller is expected to
+        propagate so ``_process_one_board_streaming`` records the run
+        as a failure rather than a partial success.
+
+    Empty-200 handling (#2739). A 200 with an empty body is treated
+    as transient — retry, then raise. Real career pages always have
+    at least a skeleton HTML body; an empty 200 is an anti-bot
+    challenge, partial CDN response, or origin glitch. Returning
+    ``""`` (which is falsy) caused ``_paginate_urls`` and other
+    callers to treat it as legitimate end-of-pagination and tombstone
+    the un-fetched tail via ``_MARK_GONE_BY_TIMESTAMP`` — the same
+    silent-truncation shape as the bug fixed in #2722 / #2737, just
+    on a different input (empty body rather than 5xx).
 
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
     retries — exponential with full jitter. Defaults to ~0.5–1s,
@@ -133,10 +144,23 @@ async def fetch_with_retry(
             )
             last_status = resp.status_code
             if resp.status_code == 200:
-                return resp.text[:max_chars]
-            if resp.status_code in END_OF_PAGINATION_STATUSES:
+                text = resp.text
+                if text:
+                    return text[:max_chars]
+                # Empty-200 (#2739): treat as transient, fall through
+                # to backoff. ``last_exc`` stays None so retry-budget
+                # exhaustion raises with last_status=200 and a
+                # null last_error, which an operator pattern-matches
+                # in logs as the empty-body signal.
+                last_exc = None
+                log.info(
+                    "http_retry.empty_200",
+                    url=url,
+                    attempt=attempt + 1,
+                )
+            elif resp.status_code in END_OF_PAGINATION_STATUSES:
                 return None
-            if is_retryable_status(resp.status_code):
+            elif is_retryable_status(resp.status_code):
                 last_exc = None  # status-only, no exception
             else:
                 # Other 4xx (auth, forbidden, bad-request, etc.) — not

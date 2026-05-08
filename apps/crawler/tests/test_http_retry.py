@@ -169,6 +169,53 @@ class TestFetchWithRetry:
             assert out == "ok", f"status {status} should be retried"
             assert client.get.await_count == 2
 
+    async def test_recovers_from_empty_200(self):
+        """Single empty-200 (anti-bot challenge dropping body / partial
+        CDN response) is treated as transient (#2739): retry, then
+        return the non-empty body on success. The bug shape: ``""`` is
+        falsy, so ``_paginate_urls``'s ``if not html: break`` would
+        treat it as legitimate end-of-pagination and tombstone the
+        un-fetched tail.
+        """
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=[_resp(200, ""), _resp(200, "<html>ok</html>")])
+
+        out = await fetch_with_retry(client, "https://example.com", base_delay=0.001)
+
+        assert out == "<html>ok</html>"
+        assert client.get.await_count == 2
+
+    async def test_raises_after_persistent_empty_200(self):
+        """Persistent empty-200 exhausts retries and raises with
+        ``last_status=200`` (#2739) — operators pattern-match this in
+        logs as the empty-body signal. Returning ``""`` would silently
+        truncate pagination on the caller side.
+        """
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(200, ""))
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await fetch_with_retry(client, "https://example.com/empty", retries=3, base_delay=0.001)
+
+        assert exc_info.value.url == "https://example.com/empty"
+        assert exc_info.value.attempts == 3
+        assert exc_info.value.last_status == 200
+        assert exc_info.value.last_error is None
+        assert client.get.await_count == 3
+
+    async def test_non_empty_200_returns_unchanged(self):
+        """Pinning the canonical happy path against the empty-200 fix:
+        a non-empty 200 still returns the body on the first attempt,
+        no extra retries.
+        """
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(200, "x"))  # one byte
+
+        out = await fetch_with_retry(client, "https://example.com")
+
+        assert out == "x"
+        assert client.get.await_count == 1
+
     async def test_zero_retries_raises_immediately(self):
         """``retries=0`` means no attempts are made — function raises
         without consulting the network. Defensive: callers shouldn't

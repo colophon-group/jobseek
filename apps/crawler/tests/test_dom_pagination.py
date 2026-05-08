@@ -225,6 +225,32 @@ class TestPaginateUrls:
         else:
             raise AssertionError("expected PaginationFetchError to propagate")
 
+    async def test_propagates_persistent_empty_200(self):
+        """Empty-200 mid-pagination on the static httpx path now raises
+        rather than silently breaking the loop (#2739). Without the
+        fix, ``""`` falls through to ``if not html: break`` and the
+        un-fetched tail is tombstoned by ``_MARK_GONE_BY_TIMESTAMP``.
+        """
+        from src.shared.http_retry import PaginationFetchError
+
+        async def empty_200(client, url, **kwargs):
+            raise PaginationFetchError(url, attempts=3, last_status=200)
+
+        initial = {"https://example.com/jobs/1"}
+        with patch(_FETCH_PATCH, new=empty_200):
+            try:
+                await _paginate_urls(
+                    "https://example.com/careers",
+                    {"param_name": "p", "max_pages": 5},
+                    initial,
+                    MagicMock(),
+                )
+            except PaginationFetchError as exc:
+                assert exc.last_status == 200
+                assert exc.last_error is None
+            else:
+                raise AssertionError("expected PaginationFetchError to propagate")
+
     async def test_browser_path_recovers_on_transient(self, monkeypatch):
         """Browser path retries through a single 503 and continues paginating."""
         monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
@@ -496,6 +522,54 @@ class TestFetchViaPage:
         # Default cap is _BROWSER_FETCH_MAX_CHARS = 500_000.
         assert len(result) == 500_000
         assert set(result) == {"x"}
+
+    async def test_recovers_from_empty_200(self, monkeypatch):
+        """Single empty-200 on the browser path retries and recovers
+        (#2739) — symmetric with the static httpx path. The bug shape
+        otherwise: ``""`` is falsy, ``_paginate_urls``'s ``if not html:
+        break`` treats it as end-of-pagination, the un-fetched tail is
+        tombstoned by ``_MARK_GONE_BY_TIMESTAMP``.
+        """
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(
+            side_effect=[
+                {"status": 200, "text": ""},
+                {"status": 200, "text": "<html>recovered</html>"},
+            ]
+        )
+
+        result = await _fetch_via_page(page, "https://example.com/p2")
+
+        assert result == "<html>recovered</html>"
+        assert page.evaluate.await_count == 2
+
+    async def test_raises_after_persistent_empty_200(self, monkeypatch):
+        """Persistent empty-200 on the browser path exhausts retries
+        and raises ``PaginationFetchError`` with ``last_status=200``
+        (#2739) — same operator-facing signal as the static path.
+        """
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(return_value={"status": 200, "text": ""})
+
+        try:
+            await _fetch_via_page(
+                page,
+                "https://example.com/empty",
+                retries=2,
+                base_delay=0.001,
+            )
+        except PaginationFetchError as exc:
+            assert exc.url == "https://example.com/empty"
+            assert exc.attempts == 2
+            assert exc.last_status == 200
+            assert exc.last_error is None
+            assert page.evaluate.await_count == 2
+        else:
+            raise AssertionError("expected PaginationFetchError")
 
     async def test_unexpected_result_shape_retries_then_raises(self, monkeypatch):
         """A malformed ``page.evaluate`` return value (e.g. a string from
