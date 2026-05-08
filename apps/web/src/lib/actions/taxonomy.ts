@@ -26,14 +26,18 @@ export async function suggestOccupations(params: {
   const q = params.query.trim();
   if (q.length < 2) return [];
 
-  const cacheKey = `occ-suggest:${q.toLowerCase()}:${params.locale}`;
-  const cachedResult = await cached(
-    cacheKey,
-    () => _fetchOccupationSuggestions(q, params.locale),
-    { ttl: 3600, skipIf: (r) => r === null },
-  );
-
-  const suggestions = cachedResult ?? [];
+  // Per-region in-memory `'use cache'`. See note on
+  // `_fetchOccupationSuggestionsCached` below for null-vs-empty semantics.
+  // Migrated from Redis-backed `cached()` in #2884 (typeaheads slice).
+  let suggestions: TaxonomySuggestion[];
+  try {
+    suggestions = await _fetchOccupationSuggestionsCached(
+      q.toLowerCase(),
+      params.locale,
+    );
+  } catch {
+    suggestions = [];
+  }
   if (!params.filters) return suggestions;
   return boostByFilterMatches(
     suggestions,
@@ -43,15 +47,25 @@ export async function suggestOccupations(params: {
   );
 }
 
-async function _fetchOccupationSuggestions(
+/**
+ * Cached inner fetch + mapping for {@link suggestOccupations}. Throws if
+ * Typesense is unreachable so the wrapper can swallow the error and avoid
+ * pinning an outage-shaped empty list inside the `'use cache'` boundary.
+ * Empty array is a legitimate "no match" result and IS cached.
+ */
+async function _fetchOccupationSuggestionsCached(
   q: string,
   locale: string,
-): Promise<TaxonomySuggestion[] | null> {
+): Promise<TaxonomySuggestion[]> {
+  "use cache";
+  cacheLife({ revalidate: 3600 });
+
+  let result;
   try {
     const client = getTypesenseClient();
 
     // Search locale-specific documents first
-    let result = await client.collections("occupation").documents().search({
+    result = await client.collections("occupation").documents().search({
       q,
       query_by: "name,aliases",
       filter_by: `has_active_postings:true && locale:${locale}`,
@@ -73,14 +87,16 @@ async function _fetchOccupationSuggestions(
         num_typos: "1",
       });
     }
-
-    if (!result.hits || result.hits.length === 0) return [];
-    return result.hits.map((hit) =>
-      _mapOccupationHit(hit as unknown as TypesenseHit),
-    );
-  } catch {
-    return null;
+  } catch (err) {
+    // Throw past the cache boundary so the wrapper returns `[]` without
+    // pinning the slot for the next 3600s.
+    throw err instanceof Error ? err : new Error(String(err));
   }
+
+  if (!result.hits || result.hits.length === 0) return [];
+  return result.hits.map((hit) =>
+    _mapOccupationHit(hit as unknown as TypesenseHit),
+  );
 }
 
 function _mapOccupationHit(hit: TypesenseHit): TaxonomySuggestion {
@@ -106,14 +122,18 @@ export async function suggestSeniorities(params: {
   const q = params.query.trim();
   if (q.length < 2) return [];
 
-  const cacheKey = `sen-suggest:${q.toLowerCase()}:${params.locale}`;
-  const cachedResult = await cached(
-    cacheKey,
-    () => _fetchSenioritySuggestions(q, params.locale),
-    { ttl: 3600, skipIf: (r) => r === null },
-  );
-
-  const suggestions = cachedResult ?? [];
+  // Per-region in-memory `'use cache'`. See note on
+  // `_fetchSenioritySuggestionsCached` below for null-vs-empty semantics.
+  // Migrated from Redis-backed `cached()` in #2884 (typeaheads slice).
+  let suggestions: TaxonomySuggestion[];
+  try {
+    suggestions = await _fetchSenioritySuggestionsCached(
+      q.toLowerCase(),
+      params.locale,
+    );
+  } catch {
+    suggestions = [];
+  }
   if (!params.filters) return suggestions;
   return boostByFilterMatches(
     suggestions,
@@ -123,14 +143,24 @@ export async function suggestSeniorities(params: {
   );
 }
 
-async function _fetchSenioritySuggestions(
+/**
+ * Cached inner fetch + mapping for {@link suggestSeniorities}. Throws if
+ * Typesense is unreachable so the wrapper can swallow the error and avoid
+ * pinning an outage-shaped empty list inside the `'use cache'` boundary.
+ * Empty array is a legitimate "no match" result and IS cached.
+ */
+async function _fetchSenioritySuggestionsCached(
   q: string,
   locale: string,
-): Promise<TaxonomySuggestion[] | null> {
+): Promise<TaxonomySuggestion[]> {
+  "use cache";
+  cacheLife({ revalidate: 3600 });
+
+  let result;
   try {
     const client = getTypesenseClient();
 
-    let result = await client.collections("seniority").documents().search({
+    result = await client.collections("seniority").documents().search({
       q,
       query_by: "name,aliases",
       filter_by: `has_active_postings:true && locale:${locale}`,
@@ -152,14 +182,16 @@ async function _fetchSenioritySuggestions(
         num_typos: "1",
       });
     }
-
-    if (!result.hits || result.hits.length === 0) return [];
-    return result.hits.map((hit) =>
-      _mapSeniorityHit(hit as unknown as TypesenseHit),
-    );
-  } catch {
-    return null;
+  } catch (err) {
+    // Throw past the cache boundary so the wrapper returns `[]` without
+    // pinning the slot for the next 3600s.
+    throw err instanceof Error ? err : new Error(String(err));
   }
+
+  if (!result.hits || result.hits.length === 0) return [];
+  return result.hits.map((hit) =>
+    _mapSeniorityHit(hit as unknown as TypesenseHit),
+  );
 }
 
 function _mapSeniorityHit(hit: TypesenseHit): TaxonomySuggestion {
@@ -186,16 +218,18 @@ export async function suggestTechnologies(params: {
   if (q.length < 2) return [];
 
   // Technologies are locale-agnostic but the public function accepts locale
-  // for parity with the other taxonomy suggesters. Drop it from the cache
-  // key so all locales share one slot.
-  const cacheKey = `tech-suggest:${q.toLowerCase()}`;
-  const cachedResult = await cached(
-    cacheKey,
-    () => _fetchTechnologySuggestions(q),
-    { ttl: 3600, skipIf: (r) => r === null },
-  );
-
-  const suggestions = cachedResult ?? [];
+  // for parity with the other taxonomy suggesters. The inner cached fetcher
+  // takes ONLY `q` so all locales share the same `'use cache'` slot — the
+  // implicit argument-hash key drops `locale` because it isn't a parameter.
+  // (#2884 footgun — was an explicit cache-key drop under the manual-key
+  // `cached()` helper; under `'use cache'` we encode it via the function
+  // signature instead.) Migrated from Redis-backed `cached()` in #2884.
+  let suggestions: TaxonomySuggestion[];
+  try {
+    suggestions = await _fetchTechnologySuggestionsCached(q.toLowerCase());
+  } catch {
+    suggestions = [];
+  }
   if (!params.filters) return suggestions;
   return boostByFilterMatches(
     suggestions,
@@ -205,13 +239,27 @@ export async function suggestTechnologies(params: {
   );
 }
 
-async function _fetchTechnologySuggestions(
+/**
+ * Cached inner fetch + mapping for {@link suggestTechnologies}. Throws if
+ * Typesense is unreachable so the wrapper can swallow the error and avoid
+ * pinning an outage-shaped empty list inside the `'use cache'` boundary.
+ * Empty array is a legitimate "no match" result and IS cached.
+ *
+ * Takes only `q` (no `locale` arg) — technologies are locale-agnostic, so
+ * stripping locale from the cache-key inputs lets all locales share the
+ * same slot. See note on the {@link suggestTechnologies} wrapper.
+ */
+async function _fetchTechnologySuggestionsCached(
   q: string,
-): Promise<TaxonomySuggestion[] | null> {
+): Promise<TaxonomySuggestion[]> {
+  "use cache";
+  cacheLife({ revalidate: 3600 });
+
+  let result;
   try {
     const client = getTypesenseClient();
 
-    const result = await client.collections("technology").documents().search({
+    result = await client.collections("technology").documents().search({
       q,
       query_by: "name,slug",
       filter_by: "has_active_postings:true",
@@ -220,19 +268,21 @@ async function _fetchTechnologySuggestions(
       prefix: "true",
       num_typos: "0", // no typo tolerance — match current prefix-only behavior
     });
-
-    if (!result.hits || result.hits.length === 0) return [];
-    return result.hits.map((hit) => {
-      const doc = (hit as unknown as TypesenseHit).document;
-      return {
-        id: doc.technology_id as number,
-        slug: doc.slug as string,
-        name: (doc.name ?? doc.slug) as string,
-      };
-    });
-  } catch {
-    return null;
+  } catch (err) {
+    // Throw past the cache boundary so the wrapper returns `[]` without
+    // pinning the slot for the next 3600s.
+    throw err instanceof Error ? err : new Error(String(err));
   }
+
+  if (!result.hits || result.hits.length === 0) return [];
+  return result.hits.map((hit) => {
+    const doc = (hit as unknown as TypesenseHit).document;
+    return {
+      id: doc.technology_id as number,
+      slug: doc.slug as string,
+      name: (doc.name ?? doc.slug) as string,
+    };
+  });
 }
 
 // ── Resolve functions (kept on Postgres with cached()) ──────────────
