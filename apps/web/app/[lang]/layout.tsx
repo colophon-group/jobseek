@@ -31,8 +31,8 @@ export const metadata: Metadata = {
   },
   // `images` here is the fallback for any page whose own
   // `generateMetadata` doesn't return its own `openGraph.images`. The
-  // `/opengraph-image` URL is exempt from the locale-redirect middleware
-  // (`apps/web/middleware.ts:52`), so the og:image meta tag resolves
+  // `/opengraph-image` URL is exempt from the locale-redirect proxy
+  // (`apps/web/proxy.ts:52`), so the og:image meta tag resolves
   // directly to `app/opengraph-image.tsx` without a 308 to `/<locale>/...`.
   openGraph: {
     type: "website",

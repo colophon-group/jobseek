@@ -51,7 +51,7 @@ These 3-4 phantom SSR invocations per landing page visit are now eliminated.
 ## Fluid compute (serverless function duration)
 
 **Zero function compute.** Pre-rendered at build time. Served from CDN with
-no serverless invocation. Only the analytics beacon POST and middleware
+no serverless invocation. Only the analytics beacon POST and proxy
 redirect (if no locale prefix) touch edge/serverless infrastructure.
 
 ## Estimated edge requests

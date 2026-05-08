@@ -21,7 +21,7 @@ function getLocale(request: NextRequest): string {
   return match(languages, locales as unknown as string[], defaultLocale);
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const cookieLocale = request.cookies.get(COOKIE_NAME)?.value;
   const locale = getLocale(request);
   const url = request.nextUrl.clone();
@@ -31,7 +31,7 @@ export function middleware(request: NextRequest) {
   // Cache the redirect at Vercel's CDN when the chosen locale comes from
   // Accept-Language negotiation. Repeat requests with matching headers (most
   // bot/shared-link traffic on root URLs) then reuse the redirect without
-  // re-invoking the middleware. We deliberately skip the cache when an
+  // re-invoking the proxy. We deliberately skip the cache when an
   // explicit NEXT_LOCALE cookie is set: that path varies per user and Vary:
   // Cookie would shard the cache by every session token. See issue #2642.
   if (!cookieLocale || !isLocale(cookieLocale)) {
@@ -48,7 +48,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   // Only match paths that do NOT start with a locale prefix, static assets,
   // API routes, or Next.js internals.  Locale-prefixed paths (e.g. /en/…)
-  // skip the middleware entirely — no edge invocation needed.
+  // skip the proxy entirely — no edge invocation needed.
   //
   // `opengraph-image*` is excluded so `og:image` URLs that the Metadata
   // API generates against the root `app/opengraph-image.tsx` reach the

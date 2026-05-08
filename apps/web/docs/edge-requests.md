@@ -34,11 +34,14 @@ Pages that check authentication or read cookies are rendered on every request:
 
 This is correct — these pages genuinely need per-request data.
 
-### Middleware
+### Proxy (formerly Middleware)
 
-The middleware only runs for paths **without** a locale prefix (e.g. bare `/`, `/how-we-index`). It redirects to the locale-prefixed version based on `Accept-Language`.
+The proxy only runs for paths **without** a locale prefix (e.g. bare `/`, `/how-we-index`). It redirects to the locale-prefixed version based on `Accept-Language`.
 
-Paths that already have a locale prefix (`/en/...`, `/de/...`) **skip the middleware entirely** — no edge invocation.
+Paths that already have a locale prefix (`/en/...`, `/de/...`) **skip the proxy entirely** — no edge invocation.
+
+> Renamed from `middleware.ts` to `proxy.ts` for Next.js 16 (#2887).
+> Same APIs, same execution model — see https://nextjs.org/docs/messages/middleware-to-proxy.
 
 ### Theme
 
@@ -60,9 +63,9 @@ If you need request data, put it in a **route-group layout** that only wraps the
 
 This tells Next.js which locale variants to pre-render. Without it, `[lang]` is treated as a fully dynamic segment and every page requires an edge invocation.
 
-### Keep the middleware matcher narrow
+### Keep the proxy matcher narrow
 
-The middleware matcher explicitly excludes locale-prefixed paths. When adding a new locale, **add it to the matcher exclusion list** in `middleware.ts` — otherwise every request to that locale will unnecessarily invoke the middleware.
+The proxy matcher explicitly excludes locale-prefixed paths. When adding a new locale, **add it to the matcher exclusion list** in `proxy.ts` — otherwise every request to that locale will unnecessarily invoke the proxy.
 
 ### Use route groups to separate static from dynamic
 
@@ -314,7 +317,7 @@ invocations.
 | API route request | Node.js | `/api/v1/*`, `/api/auth/*`, `/api/stripe/*` |
 | OG image generation | Node.js | `opengraph-image.tsx` routes |
 | `sitemap.xml` / `robots.txt` | Node.js | Generated dynamically per request |
-| Middleware | Edge | Lightweight locale redirect only |
+| Proxy (formerly Middleware) | Edge | Lightweight locale redirect only |
 
 Static pages (`(public)`) and cached CDN assets do **not** invoke functions.
 

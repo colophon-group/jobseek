@@ -4,7 +4,7 @@ Per-page breakdown of Vercel edge requests and serverless function compute for
 the Job Seek web app.
 
 Every HTTP request that reaches the Vercel deployment counts as an **edge
-request**, including static assets served from CDN, middleware invocations,
+request**, including static assets served from CDN, proxy invocations,
 serverless function routing, and dynamically generated resources.
 
 Every dynamic page render, server action, or API route call triggers a
@@ -21,7 +21,7 @@ These edge requests are made on **every** page load (first visit, cold cache):
 | # | Request | Type | Notes |
 |---|---------|------|-------|
 | 1 | HTML document | SSR or static | The page itself |
-| 2 | Middleware redirect | Edge function | Only if path has no locale prefix (e.g. `/about` -> `/en/about`). Skipped for locale-prefixed paths, `_next`, `api`, `flags`, `fonts`, `publicdomain`, `favicon.ico` |
+| 2 | Proxy redirect | Edge function | Only if path has no locale prefix (e.g. `/about` -> `/en/about`). Skipped for locale-prefixed paths, `_next`, `api`, `flags`, `fonts`, `publicdomain`, `favicon.ico` |
 | 3-6 | `/_next/static/chunks/*.js` | Static (CDN) | Framework + page JS bundles (varies per page, typically 3-8 chunks) |
 | 7 | `/_next/static/css/*.css` | Static (CDN) | Compiled Tailwind CSS |
 | 8 | `/fonts/JetBrainsMono-Regular.woff2` | Static (CDN) | Primary font (others loaded on demand: Medium, SemiBold, Bold) |
