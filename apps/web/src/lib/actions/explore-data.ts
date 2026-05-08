@@ -8,6 +8,8 @@ import {
 import { parseSearchFilters, type ParsedSearchFilters } from "@/lib/actions/search-input";
 import { getPreferences } from "@/lib/actions/preferences";
 import { resolveJobLanguages } from "@/lib/job-languages";
+import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
+import { getSession } from "@/lib/sessionCache";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
 import type { SearchResponse } from "@/lib/search";
 
@@ -55,12 +57,19 @@ export async function fetchExploreData(params: {
 
   const { userLat, userLng } = await getGeoFromHeaders();
 
-  const [parsed, prefs] = await Promise.all([
+  // For authenticated users, `getPreferences` returns the DB row.
+  // For anon users, we mirror `jobLanguages` into a cookie (see
+  // issue #2850 + `anon-preferences.ts`) — read it here so anon
+  // toggles in /settings actually flow through to the server-side
+  // search. Other prefs (display currency etc.) stay anon-defaults.
+  const session = await getSession();
+  const [parsed, prefs, anonJobLangs] = await Promise.all([
     parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }),
-    getPreferences(),
+    session ? getPreferences() : Promise.resolve(null),
+    session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
 
-  const jobLanguages = prefs?.jobLanguages ?? [];
+  const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
   const languages = resolveJobLanguages(jobLanguages, locale);
 
