@@ -4,7 +4,7 @@ import { siteConfig } from "@/content/config";
 import "./globals.css";
 
 // Top-level not-found handler for paths that don't match any `/[lang]/...`
-// route — typically URLs with dots that the locale-redirect middleware
+// route — typically URLs with dots that the locale-redirect proxy
 // excludes (e.g. `/random.html`, `/foo.txt`). Without a root `app/layout.tsx`,
 // Next.js requires this file to render its own `<html>` + `<body>`. The
 // localized `[lang]/not-found.tsx` (with translated copy) handles

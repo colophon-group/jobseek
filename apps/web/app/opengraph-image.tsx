@@ -14,10 +14,10 @@ export const contentType = "image/png";
 // — keeping this at root sidesteps the lookup ambiguity).
 //
 // The og:image URL Next.js generates is `/opengraph-image-<hash>`,
-// without a locale prefix. The locale-redirect middleware excludes this
+// without a locale prefix. The locale-redirect proxy excludes this
 // path so the response goes to this handler directly without a 308 to
 // `/<locale>/opengraph-image-<hash>` (which would 404). See
-// `apps/web/middleware.ts:52`.
+// `apps/web/proxy.ts:52`.
 //
 // Long-cache via explicit Cache-Control headers; Vercel CDN is purged
 // on every deploy so `immutable` is safe.
