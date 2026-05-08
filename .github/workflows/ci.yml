@@ -149,6 +149,35 @@ jobs:
 
       - run: pnpm --filter @jobseek/web test
 
+  test-web-isr:
+    # Slow lane: runs `pnpm build` once and asserts the must-stay-cacheable
+    # routes (4 ISR pages + public marketing surfaces) are classified as
+    # `◐ Partial Prerender` or `○ Static` in Next 16's route summary —
+    # never `ƒ Dynamic`. Successor to the retired `app/__tests__/isr-routes.test.ts`
+    # line scanner, see #2885 (and incident #2243).
+    name: Test Web ISR (slow)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @jseek/mcp-server build
+
+      # `pnpm test:isr` runs the build itself via vitest globalSetup
+      # (`apps/web/test-setup/run-prod-build.ts`), so no separate build
+      # step is needed.
+      - run: pnpm --filter @jobseek/web test:isr
+
   test-shim:
     name: Test Murmur Shim
     needs: changes

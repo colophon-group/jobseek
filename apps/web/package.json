@@ -19,6 +19,7 @@
     "notify-blog-indexnow": "tsx script/notify-blog-indexnow.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:isr": "vitest run --config vitest.isr.config.ts",
     "typecheck": "next typegen && tsc"
   },
   "dependencies": {
