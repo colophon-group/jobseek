@@ -154,7 +154,8 @@ async def _fetch_via_page(
     """Fetch ``url`` via Playwright ``page.evaluate(fetch(...))`` with bounded retries.
 
     Returns:
-        - ``str`` (truncated to ``_BROWSER_FETCH_MAX_CHARS``) on HTTP 200.
+        - ``str`` (truncated to ``_BROWSER_FETCH_MAX_CHARS``) on HTTP 200
+          with a **non-empty** body.
         - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
           any other non-retryable 4xx (lenient stop, mirrors the
           httpx-side ``fetch_with_retry``).
@@ -162,11 +163,19 @@ async def _fetch_via_page(
     Raises:
         :exc:`PaginationFetchError` when *retries* attempts have all
         hit a retryable failure (5xx including Cloudflare 520-526/530,
-        408, 425, 429, or a Playwright ``page.evaluate`` exception —
-        timeout, network error, page closed). The caller is expected
-        to propagate so ``_process_one_board_streaming`` records the
-        run as a failure rather than a partial success — the fix for
-        the silent-truncation bug from #2737.
+        408, 425, 429, **200-with-empty-body**, or a Playwright
+        ``page.evaluate`` exception — timeout, network error, page
+        closed). The caller is expected to propagate so
+        ``_process_one_board_streaming`` records the run as a failure
+        rather than a partial success — the fix for the silent-
+        truncation bug from #2737, extended in #2739 to cover empty-200.
+
+    Empty-200 handling (#2739). Symmetric with the static httpx path:
+    a 200 with an empty body is transient (anti-bot challenge dropping
+    the body, partial Cloudflare response, origin glitch) — retry,
+    then raise. Returning ``""`` would cascade through
+    ``_paginate_urls``'s ``if not html: break`` and tombstone the
+    un-fetched tail.
 
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
     retries. Fewer retries than the static path (Playwright fetches
@@ -196,10 +205,18 @@ async def _fetch_via_page(
             text = result.get("text") or ""
             last_status = status
             if status == 200:
-                return text[:_BROWSER_FETCH_MAX_CHARS]
-            if status in END_OF_PAGINATION_STATUSES:
+                if text:
+                    return text[:_BROWSER_FETCH_MAX_CHARS]
+                # Empty-200 (#2739): transient, fall through to backoff.
+                last_exc = None
+                log.info(
+                    "dom.pagination.browser_fetch_empty_200",
+                    url=url,
+                    attempt=attempt + 1,
+                )
+            elif status in END_OF_PAGINATION_STATUSES:
                 return None
-            if is_retryable_status(status):
+            elif is_retryable_status(status):
                 last_exc = None  # status-only, no exception
             else:
                 # Other 4xx (auth, forbidden, bad-request) — not
@@ -251,10 +268,13 @@ async def _paginate_urls(
     - ``url_template``: formats a URL template containing ``{page}`` with the
       current page value — for path-based pagination.
 
-    Failure semantics (#2722, #2737). Both fetch paths use bounded
-    retries with exponential backoff and full jitter. (Empty-200
-    classification is symmetric across the two paths but still
-    "successful end-of-pagination" — see #2739 for the open hole.)
+    Failure semantics (#2722, #2737, #2739). Both fetch paths use
+    bounded retries with exponential backoff and full jitter. Empty-200
+    classification is symmetric across the two paths and treated as
+    transient (retry, then raise) rather than end-of-pagination — the
+    fix from #2739 closing the silent-truncation hole on empty bodies
+    served as 200 (anti-bot challenge dropping body, partial CDN
+    response, origin glitch).
 
     - Static httpx (``pagination.browser=false``) — :func:`fetch_with_retry`.
     - Browser (``pagination.browser=true``) — :func:`_fetch_via_page`, which
