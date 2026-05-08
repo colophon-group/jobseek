@@ -923,32 +923,42 @@ interface TechnologyMeta {
   category: string;
 }
 
-async function _getTechnologyCache(): Promise<Map<number, TechnologyMeta>> {
-  const key = "tech-hierarchy-cache";
-  const record = await cached(
-    key,
-    async () => {
-      const rows = await db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        name: string | null;
-        category: string | null;
-      }>(sql`SELECT id, slug, name, category FROM technology`);
+// Per-region in-memory `'use cache'` (cacheLife('days')). See note on
+// `_fetchOccupationHierarchyData` above. Migrated from Redis-backed
+// `cached()` in #2884 (hierarchy-cache slice — final slot, missed by
+// bucket 1 because the issue body filed it under bucket 3). Tagged so
+// `crawler sync` -> `/api/internal/invalidate-typeahead` evicts it
+// alongside the matching tech typeahead slot.
+async function _fetchTechnologyHierarchyData(): Promise<Record<string, TechnologyMeta>> {
+  "use cache";
+  cacheLife("days");
+  // Tag the slot so `revalidateTag(typeaheadTechnologiesCacheTag())` from
+  // /api/internal/invalidate-typeahead drops it after `crawler sync`,
+  // matching the typeahead slot's invalidation.
+  cacheTag(typeaheadTechnologiesCacheTag());
 
-      const result: Record<string, TechnologyMeta> = {};
-      for (const r of rows as unknown as { id: number; slug: string; name: string | null; category: string | null }[]) {
-        result[String(r.id)] = {
-          id: r.id,
-          slug: r.slug,
-          name: r.name ?? r.slug,
-          category: r.category ?? "other",
-        };
-      }
-      return result;
-    },
-    { ttl: 86400 },
-  );
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    id: number;
+    slug: string;
+    name: string | null;
+    category: string | null;
+  }>(sql`SELECT id, slug, name, category FROM technology`);
+
+  const result: Record<string, TechnologyMeta> = {};
+  for (const r of rows as unknown as { id: number; slug: string; name: string | null; category: string | null }[]) {
+    result[String(r.id)] = {
+      id: r.id,
+      slug: r.slug,
+      name: r.name ?? r.slug,
+      category: r.category ?? "other",
+    };
+  }
+  return result;
+}
+
+async function _getTechnologyCache(): Promise<Map<number, TechnologyMeta>> {
+  const record = await _fetchTechnologyHierarchyData();
   return new Map(Object.entries(record).map(([k, v]) => [Number(k), v]));
 }
 
