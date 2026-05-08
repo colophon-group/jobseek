@@ -8,6 +8,7 @@ import { account, userPreferences } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getSession, getSessionUserId } from "@/lib/sessionCache";
 import { getLanguage } from "@/lib/job-languages";
+import { writeAnonJobLanguagesCookie, readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 
@@ -34,6 +35,26 @@ export async function getPreferences() {
   return row ?? null;
 }
 
+/**
+ * Resolve the viewer's currently-saved `jobLanguages` preference,
+ * unifying the authenticated (DB-row) and anonymous (cookie) paths.
+ *
+ * Returns the same shape the rest of the codebase expects:
+ *   - `[]` when nothing is set (UI treats as "default = locale only")
+ *   - `["*"]` when the viewer opted into "all languages"
+ *   - explicit codes otherwise (e.g. `["en","de"]`)
+ *
+ * Used by the settings page so the toggle reflects the persisted state
+ * for anon viewers — without this, the toggle would visibly forget the
+ * selection on the next render even though the cookie is set. See
+ * #2850 + `anon-preferences.ts`.
+ */
+export async function getViewerJobLanguages(): Promise<string[]> {
+  const prefs = await getPreferences();
+  if (prefs) return prefs.jobLanguages ?? [];
+  return (await readAnonJobLanguagesCookie()) ?? [];
+}
+
 export async function updatePreferences(
   data: {
     theme?: "light" | "dark";
@@ -48,7 +69,18 @@ export async function updatePreferences(
   },
 ) {
   const userId = await getSessionUserId();
-  if (!userId) return null;
+  if (!userId) {
+    // Anonymous users have no DB row, but we still persist
+    // `jobLanguages` so the explore/watchlist filter actually applies
+    // on subsequent renders. Other prefs (theme, locale, currency,
+    // dismissBanner, …) are persisted client-side via `localPrefs` /
+    // `next-themes` / Lingui's locale prefix, so we only mirror the
+    // server-resolved field. See issue #2850 + `anon-preferences.ts`.
+    if (data.jobLanguages !== undefined) {
+      await writeAnonJobLanguagesCookie(data.jobLanguages);
+    }
+    return null;
+  }
 
   const [existing] = await db
     .select()

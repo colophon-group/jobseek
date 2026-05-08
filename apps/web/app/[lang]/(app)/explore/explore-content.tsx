@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchExploreData, type ExploreData } from "@/lib/actions/explore-data";
-import { hasLoggedInHint } from "@/lib/client-cookies";
+import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { SearchPage } from "./search-page";
 
@@ -38,15 +38,22 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   const [data, setData] = useState<ExploreData | null>(initialData ?? null);
 
   // Re-fetch on mount only when the prerendered ``initialData`` doesn't
-  // reflect the user's actual view — i.e. they have filter searchParams
-  // OR the ``logged_in`` hint cookie is present (their preferences /
-  // job-language filter / display currency would change the result set).
-  // Anonymous, no-filter visitors get the prerendered data with zero
-  // function invocations — the bulk of organic traffic per #2640.
+  // reflect the user's actual view — i.e. they have filter searchParams,
+  // the ``logged_in`` hint cookie is present (their DB-backed
+  // preferences / job-language filter / display currency would change
+  // the result set), OR they have an anonymous job-language cookie
+  // set (#2850 — anon viewers persist `jobLanguages` via a cookie
+  // that the server side reads in `fetchExploreData`). Anonymous, no-
+  // filter, no-job-lang-cookie visitors still get the prerendered data
+  // with zero function invocations — the bulk of organic traffic per
+  // #2640.
   useEffect(() => {
     window.scrollTo(0, 0);
     const needsPersonalizedFetch =
-      hasLoggedInHint() || hasAnyFilterParam(searchParams) || initialData === undefined;
+      hasLoggedInHint() ||
+      hasAnonJobLanguagesHint() ||
+      hasAnyFilterParam(searchParams) ||
+      initialData === undefined;
     if (!needsPersonalizedFetch) return;
 
     const sp: Record<string, string | undefined> = {};

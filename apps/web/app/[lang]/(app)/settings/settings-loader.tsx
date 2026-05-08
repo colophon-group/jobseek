@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
-import { getPreferences, getAvailableJobLanguages, type AvailableLanguage } from "@/lib/actions/preferences";
+import {
+  getPreferences,
+  getAvailableJobLanguages,
+  getViewerJobLanguages,
+  type AvailableLanguage,
+} from "@/lib/actions/preferences";
 import { getCurrencyRates } from "@/lib/actions/search";
 
 type SettingsData = {
@@ -17,17 +22,24 @@ export function SettingsLoader({ locale }: { locale: string }) {
   const [data, setData] = useState<SettingsData | null>(null);
 
   useEffect(() => {
-    Promise.all([getPreferences(), getAvailableJobLanguages(), getCurrencyRates()]).then(
-      ([prefs, availableLanguages, currencyRates]) => {
-        setData({
-          jobLanguages: prefs?.jobLanguages ?? [],
-          displayCurrency: prefs?.displayCurrency ?? "EUR",
-          salaryPeriod: prefs?.salaryPeriod ?? null,
-          availableCurrencies: currencyRates.map((r) => r.currency),
-          availableLanguages,
-        });
-      },
-    );
+    // ``getViewerJobLanguages`` unifies the auth (DB row) and anon
+    // (cookie) paths so the toggle reflects the persisted state for
+    // both. Other prefs (currency / salary period) are auth-only —
+    // the anon defaults are baked into ``GeneralSettings``.
+    Promise.all([
+      getPreferences(),
+      getViewerJobLanguages(),
+      getAvailableJobLanguages(),
+      getCurrencyRates(),
+    ]).then(([prefs, jobLanguages, availableLanguages, currencyRates]) => {
+      setData({
+        jobLanguages,
+        displayCurrency: prefs?.displayCurrency ?? "EUR",
+        salaryPeriod: prefs?.salaryPeriod ?? null,
+        availableCurrencies: currencyRates.map((r) => r.currency),
+        availableLanguages,
+      });
+    });
   }, []);
 
   if (!data) {
