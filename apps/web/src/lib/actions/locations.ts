@@ -1,9 +1,10 @@
 "use server";
 
 import { sql } from "drizzle-orm";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
+import { typeaheadLocationsCacheTag } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
 import { buildFilterString } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
@@ -30,25 +31,31 @@ export async function suggestLocations(params: {
   // share a cache slot. Typesense ranks by `coordinates(lat,lng, precision:
   // 5km)` so this granularity keeps results indistinguishable in practice
   // while delivering a usable hit rate. See issue #2641.
-  const geoKey =
-    params.userLat != null && params.userLng != null
-      ? `${params.userLat.toFixed(1)},${params.userLng.toFixed(1)}`
-      : "no-geo";
+  // The bucketed lat/lng are passed to `_fetchLocationSuggestionsCached`
+  // as the cache-key inputs (raw lat/lng would shred the hit rate).
+  const bucketedLat =
+    params.userLat != null ? Number(params.userLat.toFixed(1)) : null;
+  const bucketedLng =
+    params.userLng != null ? Number(params.userLng.toFixed(1)) : null;
 
-  const cacheKey = `loc-suggest:${q.toLowerCase()}:${params.locale}:${geoKey}`;
-  const cachedResult = await cached(
-    cacheKey,
-    () => _fetchLocationSuggestions(q, params.locale, params.userLat, params.userLng),
-    {
-      ttl: 3600,
-      // Treat null as "Typesense was unavailable" — don't poison the cache.
-      // Empty array is a legitimate "no match" result (e.g. nonsense query)
-      // and is worth caching to absorb crawler noise.
-      skipIf: (r) => r === null,
-    },
-  );
-
-  const suggestions = cachedResult ?? [];
+  // Per-region in-memory `'use cache'` (revalidate 3600s). Build ID is
+  // included in the key automatically. Migrated from Redis-backed
+  // `cached()` in #2884 (typeaheads slice). The previous `skipIf: r ===
+  // null` semantics aren't available under `'use cache'`, so the inner
+  // fetcher throws on Typesense unavailability and the wrapper catches
+  // and returns `[]` — preventing outage-shaped empties from being pinned.
+  // See `apps/web/docs/cache-components.md`.
+  let suggestions: LocationSuggestion[];
+  try {
+    suggestions = await _fetchLocationSuggestionsCached(
+      q.toLowerCase(),
+      params.locale,
+      bucketedLat,
+      bucketedLng,
+    );
+  } catch {
+    suggestions = [];
+  }
 
   // Boost is per-call (depends on the user's currently-selected filters),
   // so it must run *after* the cached layer. Boosting is a pure re-sort
@@ -63,27 +70,41 @@ export async function suggestLocations(params: {
 }
 
 /**
- * Inner fetch + mapping for {@link suggestLocations}. Returns `null` if
- * Typesense is unreachable so the cache layer can avoid poisoning the slot
- * with an outage-shaped empty list.
+ * Cached inner fetch + mapping for {@link suggestLocations}. Throws if
+ * Typesense is unreachable so the wrapper can swallow the error and avoid
+ * pinning an outage-shaped empty list inside the `'use cache'` boundary.
+ * Empty array is a legitimate "no match" result and IS cached.
+ *
+ * The function takes scalar args (not the params object) so the implicit
+ * `'use cache'` argument-hash key reflects exactly the inputs that affect
+ * the result. `bucketedLat`/`bucketedLng` are pre-rounded to 1-decimal
+ * by the caller for cross-user hit-rate (see issue #2641).
  */
-async function _fetchLocationSuggestions(
+async function _fetchLocationSuggestionsCached(
   q: string,
   locale: string,
-  userLat: number | undefined,
-  userLng: number | undefined,
-): Promise<LocationSuggestion[] | null> {
-  const hasGeo = userLat != null && userLng != null;
+  bucketedLat: number | null,
+  bucketedLng: number | null,
+): Promise<LocationSuggestion[]> {
+  "use cache";
+  cacheLife({ revalidate: 3600 });
+  // Tag the slot so `revalidateTag(typeaheadLocationsCacheTag())` from
+  // /api/internal/invalidate-typeahead drops it after `crawler sync`,
+  // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
+  cacheTag(typeaheadLocationsCacheTag());
+
+  const hasGeo = bucketedLat != null && bucketedLng != null;
   const sortBy = hasGeo
-    ? `_text_match:desc,coordinates(${userLat},${userLng}, precision: 5km):asc,active_posting_count:desc`
+    ? `_text_match:desc,coordinates(${bucketedLat},${bucketedLng}, precision: 5km):asc,active_posting_count:desc`
     : "_text_match:desc,active_posting_count:desc";
 
   const queryByFields = locale !== "en" ? `name_${locale},name_en` : "name_en";
   const queryByWeights = locale !== "en" ? "3,1" : "1";
 
+  let result;
   try {
     const client = getTypesenseClient();
-    const result = await client.collections("location").documents().search({
+    result = await client.collections("location").documents().search({
       q,
       query_by: queryByFields,
       query_by_weights: queryByWeights,
@@ -94,14 +115,16 @@ async function _fetchLocationSuggestions(
       num_typos: "1",
       drop_tokens_threshold: 0,
     });
-
-    if (!result.hits || result.hits.length === 0) return [];
-    return result.hits.map((hit) =>
-      _mapLocationHit(hit as unknown as TypesenseHit, locale),
-    );
-  } catch {
-    return null;
+  } catch (err) {
+    // Throw past the cache boundary so the wrapper can return `[]` without
+    // poisoning the cache slot for the next 3600s.
+    throw err instanceof Error ? err : new Error(String(err));
   }
+
+  if (!result.hits || result.hits.length === 0) return [];
+  return result.hits.map((hit) =>
+    _mapLocationHit(hit as unknown as TypesenseHit, locale),
+  );
 }
 
 function _mapLocationHit(hit: TypesenseHit, locale: string): LocationSuggestion {

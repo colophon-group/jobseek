@@ -1,10 +1,12 @@
 "use server";
 
 import { sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResultPosting } from "@/lib/search";
 import { cached } from "@/lib/cache";
+import { typeaheadCompaniesCacheTag } from "@/lib/cache-tags";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { expandLocationIds } from "@/lib/actions/locations";
 import { expandOccupationIds } from "@/lib/actions/taxonomy";
@@ -30,11 +32,25 @@ export async function suggestCompanies(params: {
   const q = params.query.trim().toLowerCase();
   if (q.length < 2) return [];
 
-  const key = `company-suggest:${q}`;
-  return cached(key, () => _queryCompanySuggestions(q), { ttl: 600 });
+  // Per-region in-memory `'use cache'` (revalidate 3600s). Migrated from
+  // Redis-backed `cached()` in #2884 (typeaheads slice). The previous TTL
+  // was 600s; bumped to 3600s to match the other 4 typeahead sites
+  // (issue prescription). The inner fetcher returns `CompanySuggestion[]`
+  // (plain serializable objects, never null), so no throw-and-catch
+  // wrapper is needed here.
+  return _queryCompanySuggestionsCached(q);
 }
 
-async function _queryCompanySuggestions(q: string): Promise<CompanySuggestion[]> {
+async function _queryCompanySuggestionsCached(
+  q: string,
+): Promise<CompanySuggestion[]> {
+  "use cache";
+  cacheLife({ revalidate: 3600 });
+  // Tag the slot so `revalidateTag(typeaheadCompaniesCacheTag())` from
+  // /api/internal/invalidate-typeahead drops it after `crawler sync`,
+  // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
+  cacheTag(typeaheadCompaniesCacheTag());
+
   const rows = await db.execute<{
     [key: string]: unknown;
     id: string;
