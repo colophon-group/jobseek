@@ -24,12 +24,14 @@ only the configured site, set ``"all_sites": false`` in board metadata.
 from __future__ import annotations
 
 import asyncio
+import random
 import re
 
 import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
@@ -37,8 +39,13 @@ MAX_JOBS = 50_000
 PAGE_SIZE = 20
 _LIST_CONCURRENCY = 5  # Parallel site listing during multi-site discovery
 _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
+# Pagination retry budget. Symmetric with the accenture monitor (#2735)
+# and api_sniffer monitor (#2733): 3 total attempts, exponential backoff
+# with full jitter starting at 1s. Slightly more relaxed than dom's
+# 0.5s because Workday tenants do honour 429 Retry-After hints and a
+# thundering herd of sub-second retries can entrench the rate limit.
 _RETRY_ATTEMPTS = 3
-_RETRY_BACKOFF = (5.0, 15.0, 30.0)  # Backoff per attempt on 429
+_RETRY_BASE_DELAY = 1.0
 
 _SITEMAP_RE = re.compile(r"myworkdayjobs\.com/([^/]+)/siteMap")
 
@@ -85,6 +92,104 @@ def _job_url(company: str, wd_instance: str, site: str, external_path: str) -> s
 # ── List pagination ──────────────────────────────────────────────────
 
 
+async def _post_page_with_retry(
+    client: httpx.AsyncClient,
+    list_url: str,
+    payload: dict,
+    *,
+    retries: int = _RETRY_ATTEMPTS,
+    base_delay: float = _RETRY_BASE_DELAY,
+) -> dict:
+    """POST a Workday list-API page with bounded retries (#2748).
+
+    Mirrors the contract used by ``fetch_with_retry`` (#2722) and the
+    sibling monitor helpers (accenture #2735, api_sniffer #2733, PCSX
+    #2734): retryable failures back off exponentially and, on budget
+    exhaustion, raise :class:`PaginationFetchError` so the run is
+    recorded as a failure rather than silently truncating to whatever
+    pages happened to succeed.
+
+    Retried:
+      - HTTP 5xx (Cloudflare 520-526/530 included), 408, 425, 429.
+      - Arbitrary network exceptions (timeout, connection reset, JSON
+        parse error on a captcha/HTML body served as 200).
+
+    Fail-fast (non-retryable 4xx — auth-expired 401, misconfigured 400,
+    etc.): raises :class:`PaginationFetchError` on the first attempt.
+    These won't recover within the retry budget and we'd rather surface
+    the misconfiguration than burn the budget.
+
+    Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
+    with full jitter, identical cadence to accenture (#2735).
+    """
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+
+    for attempt in range(retries):
+        try:
+            resp = await client.post(
+                list_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            last_status = resp.status_code
+            if resp.status_code == 200:
+                # ``resp.json()`` may raise ``json.JSONDecodeError`` on a
+                # captcha/HTML body served as 200 — falls into the
+                # ``except Exception`` branch below, retried, then
+                # surfaced as ``PaginationFetchError``. No silent break.
+                data = resp.json()
+                # Workday returns a dict with ``total`` / ``jobPostings``
+                # / ``facets`` on success. A body that decodes to ``null``
+                # or to a non-dict shape (e.g. an unexpected error
+                # envelope) is treated as a transient failure: retry,
+                # then raise. Without this guard ``data.get("total", 0)``
+                # in ``_paginate_query`` ``AttributeError``s — the same
+                # shape of silent-break bug the issue (#2748) is fixing.
+                if not isinstance(data, dict):
+                    raise ValueError(
+                        f"workday list endpoint returned non-dict body: {type(data).__name__}"
+                    )
+                return data
+            if is_retryable_status(resp.status_code):
+                last_exc = None  # status-only, no exception
+            else:
+                # Non-retryable 4xx — fail fast. ``resp.raise_for_status``
+                # would raise ``HTTPStatusError`` which the caller doesn't
+                # uniformly handle; raise ``PaginationFetchError`` directly
+                # for cross-monitor symmetry (callers ``except
+                # PaginationFetchError`` will route to ``_RECORD_FAILURE``).
+                raise PaginationFetchError(
+                    list_url,
+                    attempts=attempt + 1,
+                    last_status=resp.status_code,
+                )
+        except PaginationFetchError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — timeout, network, JSON parse
+            last_exc = exc
+            last_status = None
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "workday.list_backoff",
+                url=list_url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await asyncio.sleep(delay)
+
+    raise PaginationFetchError(
+        list_url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
+
+
 async def _paginate_query(
     list_url: str,
     body: dict,
@@ -98,6 +203,16 @@ async def _paginate_query(
     return immediately with only the first page's results.  This avoids
     fetching up to 100 pages that will be discarded when the caller is
     only interested in the total and facets for splitting.
+
+    Failure semantics (#2748). Each page POST is wrapped by
+    :func:`_post_page_with_retry`, which raises
+    :class:`PaginationFetchError` on persistent transient failures or
+    non-retryable 4xx. The exception propagates out of this function;
+    callers (``_api_list``, ``_api_list_stream``,
+    ``_list_all_sites``) do not have a try/except around the call,
+    so the run surfaces in ``_process_one_board_streaming``'s generic
+    ``except Exception`` and is recorded as a failure (no silent
+    truncation — same shape of bug as #2722, #2737).
     """
     paths: list[str] = []
     total = 0
@@ -106,24 +221,7 @@ async def _paginate_query(
 
     while True:
         payload = {**body, "limit": PAGE_SIZE, "offset": offset}
-        data = None
-        for attempt in range(_RETRY_ATTEMPTS):
-            resp = await client.post(
-                list_url,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            if resp.status_code == 429:
-                backoff = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
-                log.warning("workday.list_rate_limited", offset=offset, backoff_s=backoff)
-                await asyncio.sleep(backoff)
-                continue
-            resp.raise_for_status()
-            data = resp.json()
-            break
-        if data is None:
-            log.warning("workday.list_exhausted", offset=offset)
-            break
+        data = await _post_page_with_retry(client, list_url, payload)
 
         if offset == 0:
             total = data.get("total", 0)
