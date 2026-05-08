@@ -302,42 +302,62 @@ async function _fetchTechnologySuggestionsCached(
   });
 }
 
-// ── Resolve functions (kept on Postgres with cached()) ──────────────
+// ── Resolve functions (per-region in-memory `'use cache'`) ──────────
+//
+// Migrated from Redis-backed `cached()` in #2884 (resolve/expand slice,
+// bucket 3). These translate slugs -> {id, slug, name} for filter chips
+// on `/[lang]/explore` and watchlist pages — called per-render and
+// stable across requests for the same slug set, so a `cacheLife('days')`
+// per-region in-memory hit is the right shape (was 3600s on Redis).
+//
+// Cache-key shape under `'use cache'`: arguments are hashed by Next, so
+// the wrapper sorts the slug array first to keep `[a,b]` and `[b,a]`
+// in the same slot (the legacy manual-key path also sorted).
+//
+// Tagging: reuses the per-typeahead `cacheTag` namers so the existing
+// `/api/internal/invalidate-typeahead` route, fired by `crawler sync`,
+// drops resolve slots in the same sweep that drops the typeaheads —
+// both surfaces share the taxonomy-rename trigger source.
 
 export async function resolveOccupationSlugs(
   slugs: string[],
   locale: string,
 ): Promise<Map<string, TaxonomySuggestion>> {
   if (slugs.length === 0) return new Map();
-  const key = `occ-resolve:${slugs.sort().join(",")}:${locale}`;
-  const record = await cached(
-    key,
-    async () => {
-      const pgArray = `{${slugs.join(",")}}`;
-      const rows = await db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        name: string;
-      }>(sql`
-        SELECT o.id, o.slug, dn.name
-        FROM occupation o
-        JOIN LATERAL (
-          SELECT name FROM occupation_name
-          WHERE occupation_id = o.id AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) dn ON true
-        WHERE o.slug = ANY(${pgArray}::text[])
-      `);
-      const result: Record<string, TaxonomySuggestion> = {};
-      for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
-        result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
-      }
-      return result;
-    },
-    { ttl: 3600 },
-  );
+  const sorted = [...slugs].sort();
+  const record = await _resolveOccupationSlugsCached(sorted, locale);
   return new Map(Object.entries(record));
+}
+
+async function _resolveOccupationSlugsCached(
+  sortedSlugs: string[],
+  locale: string,
+): Promise<Record<string, TaxonomySuggestion>> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(typeaheadOccupationsCacheTag());
+
+  const pgArray = `{${sortedSlugs.join(",")}}`;
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    id: number;
+    slug: string;
+    name: string;
+  }>(sql`
+    SELECT o.id, o.slug, dn.name
+    FROM occupation o
+    JOIN LATERAL (
+      SELECT name FROM occupation_name
+      WHERE occupation_id = o.id AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) dn ON true
+    WHERE o.slug = ANY(${pgArray}::text[])
+  `);
+  const result: Record<string, TaxonomySuggestion> = {};
+  for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
+    result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
+  }
+  return result;
 }
 
 export async function resolveSenioritySlugs(
@@ -345,81 +365,96 @@ export async function resolveSenioritySlugs(
   locale: string,
 ): Promise<Map<string, TaxonomySuggestion>> {
   if (slugs.length === 0) return new Map();
-  const key = `sen-resolve:${slugs.sort().join(",")}:${locale}`;
-  const record = await cached(
-    key,
-    async () => {
-      const pgArray = `{${slugs.join(",")}}`;
-      const rows = await db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        name: string;
-      }>(sql`
-        SELECT s.id, s.slug, dn.name
-        FROM seniority s
-        JOIN LATERAL (
-          SELECT name FROM seniority_name
-          WHERE seniority_id = s.id AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) dn ON true
-        WHERE s.slug = ANY(${pgArray}::text[])
-      `);
-      const result: Record<string, TaxonomySuggestion> = {};
-      for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
-        result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
-      }
-      return result;
-    },
-    { ttl: 3600 },
-  );
+  const sorted = [...slugs].sort();
+  const record = await _resolveSenioritySlugsCached(sorted, locale);
   return new Map(Object.entries(record));
+}
+
+async function _resolveSenioritySlugsCached(
+  sortedSlugs: string[],
+  locale: string,
+): Promise<Record<string, TaxonomySuggestion>> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(typeaheadSenioritiesCacheTag());
+
+  const pgArray = `{${sortedSlugs.join(",")}}`;
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    id: number;
+    slug: string;
+    name: string;
+  }>(sql`
+    SELECT s.id, s.slug, dn.name
+    FROM seniority s
+    JOIN LATERAL (
+      SELECT name FROM seniority_name
+      WHERE seniority_id = s.id AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) dn ON true
+    WHERE s.slug = ANY(${pgArray}::text[])
+  `);
+  const result: Record<string, TaxonomySuggestion> = {};
+  for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
+    result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
+  }
+  return result;
 }
 
 /**
  * Expand an occupation ID to include all descendant (child) IDs.
  * If "Software Engineer" is selected, also match "Frontend Developer", "Backend Developer", etc.
+ *
+ * Per-region in-memory `'use cache'` (cacheLife('days')). Migrated from
+ * Redis-backed `cached()` (TTL 86400s) in #2884 (resolve/expand slice,
+ * bucket 3). Tagged so `crawler sync` -> `/api/internal/invalidate-typeahead`
+ * drops the slot when the occupation hierarchy changes.
  */
 export async function expandOccupationIds(occupationId: number): Promise<number[]> {
-  const key = `occ-expand:${occupationId}`;
-  return cached(
-    key,
-    async () => {
-      const rows = await db.execute<{ [key: string]: unknown; id: number }>(sql`
-        WITH RECURSIVE descendants AS (
-          SELECT id FROM occupation WHERE id = ${occupationId}
-          UNION ALL
-          SELECT o.id FROM occupation o JOIN descendants d ON o.parent_id = d.id
-        )
-        SELECT id FROM descendants
-      `);
-      return (rows as unknown as { id: number }[]).map((r) => r.id);
-    },
-    { ttl: 86400 },
-  );
+  "use cache";
+  cacheLife("days");
+  cacheTag(typeaheadOccupationsCacheTag());
+
+  const rows = await db.execute<{ [key: string]: unknown; id: number }>(sql`
+    WITH RECURSIVE descendants AS (
+      SELECT id FROM occupation WHERE id = ${occupationId}
+      UNION ALL
+      SELECT o.id FROM occupation o JOIN descendants d ON o.parent_id = d.id
+    )
+    SELECT id FROM descendants
+  `);
+  return (rows as unknown as { id: number }[]).map((r) => r.id);
 }
 
 export async function resolveTechnologySlugs(
   slugs: string[],
 ): Promise<Map<string, TaxonomySuggestion>> {
   if (slugs.length === 0) return new Map();
-  const key = `tech-resolve:${slugs.sort().join(",")}`;
-  const record = await cached(key, async () => {
-    const pgArray = `{${slugs.join(",")}}`;
-    const rows = await db.execute<{
-      [key: string]: unknown; id: number; slug: string; name: string;
-    }>(sql`
-      SELECT t.id, t.slug, COALESCE(t.name, t.slug) AS name
-      FROM technology t
-      WHERE t.slug = ANY(${pgArray}::text[])
-    `);
-    const result: Record<string, TaxonomySuggestion> = {};
-    for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
-      result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
-    }
-    return result;
-  }, { ttl: 3600 });
+  const sorted = [...slugs].sort();
+  const record = await _resolveTechnologySlugsCached(sorted);
   return new Map(Object.entries(record));
+}
+
+async function _resolveTechnologySlugsCached(
+  sortedSlugs: string[],
+): Promise<Record<string, TaxonomySuggestion>> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(typeaheadTechnologiesCacheTag());
+
+  const pgArray = `{${sortedSlugs.join(",")}}`;
+  const rows = await db.execute<{
+    [key: string]: unknown; id: number; slug: string; name: string;
+  }>(sql`
+    SELECT t.id, t.slug, COALESCE(t.name, t.slug) AS name
+    FROM technology t
+    WHERE t.slug = ANY(${pgArray}::text[])
+  `);
+  const result: Record<string, TaxonomySuggestion> = {};
+  for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
+    result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
+  }
+  return result;
 }
 
 // ── All occupations grouped by domain (Typesense facets) ─────────────

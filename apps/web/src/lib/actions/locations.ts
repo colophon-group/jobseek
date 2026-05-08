@@ -141,33 +141,36 @@ function _mapLocationHit(hit: TypesenseHit, locale: string): LocationSuggestion 
 /**
  * Expand a location ID to include all descendant IDs.
  * Used by search to match "Switzerland" -> all jobs in Swiss cities.
+ *
+ * Per-region in-memory `'use cache'` (cacheLife('days')). Migrated from
+ * Redis-backed `cached()` (TTL 86400s) in #2884 (resolve/expand slice,
+ * bucket 3). Tagged so `crawler sync` ->
+ * `/api/internal/invalidate-typeahead` drops the slot when the location
+ * hierarchy changes (macro region members in particular).
  */
 export async function expandLocationIds(locationId: number): Promise<number[]> {
-  const key = `loc-expand:${locationId}`;
-  return cached(
-    key,
-    async () => {
-      const rows = await db.execute<{ [key: string]: unknown; id: number }>(sql`
-        WITH RECURSIVE seeds AS (
-          -- The location itself
-          SELECT id FROM location WHERE id = ${locationId}
-          UNION
-          -- If it's a macro region, include its member countries
-          SELECT lm.country_id AS id
-          FROM location_macro_member lm
-          WHERE lm.macro_id = ${locationId}
-        ),
-        descendants AS (
-          SELECT id FROM seeds
-          UNION ALL
-          SELECT l.id FROM location l JOIN descendants d ON l.parent_id = d.id
-        )
-        SELECT id FROM descendants
-      `);
-      return (rows as unknown as { id: number }[]).map((r) => r.id);
-    },
-    { ttl: 86400 },
-  );
+  "use cache";
+  cacheLife("days");
+  cacheTag(typeaheadLocationsCacheTag());
+
+  const rows = await db.execute<{ [key: string]: unknown; id: number }>(sql`
+    WITH RECURSIVE seeds AS (
+      -- The location itself
+      SELECT id FROM location WHERE id = ${locationId}
+      UNION
+      -- If it's a macro region, include its member countries
+      SELECT lm.country_id AS id
+      FROM location_macro_member lm
+      WHERE lm.macro_id = ${locationId}
+    ),
+    descendants AS (
+      SELECT id FROM seeds
+      UNION ALL
+      SELECT l.id FROM location l JOIN descendants d ON l.parent_id = d.id
+    )
+    SELECT id FROM descendants
+  `);
+  return (rows as unknown as { id: number }[]).map((r) => r.id);
 }
 
 export interface ResolvedLocation {
@@ -183,51 +186,65 @@ export async function resolveLocationSlugs(
   locale: string,
 ): Promise<Map<string, ResolvedLocation>> {
   if (slugs.length === 0) return new Map();
-  const key = `loc-resolve-slugs:${slugs.sort().join(",")}:${locale}`;
-  // Cache as a plain record (Map doesn't survive JSON serialization in Redis)
-  const record = await cached(
-    key,
-    async () => {
-      const pgArray = `{${slugs.join(",")}}`;
-      const rows = await db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        type: string;
-        name: string;
-        parent_name: string | null;
-      }>(sql`
-        SELECT l.id, l.slug, l.type::text AS type,
-          ln.name,
-          pln.name AS parent_name
-        FROM location l
-        JOIN LATERAL (
-          SELECT name FROM location_name
-          WHERE location_id = l.id AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) ln ON true
-        LEFT JOIN LATERAL (
-          SELECT name FROM location_name
-          WHERE location_id = l.parent_id AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) pln ON true
-        WHERE l.slug = ANY(${pgArray}::text[])
-      `);
-      const result: Record<string, ResolvedLocation> = {};
-      for (const r of rows as unknown as { id: number; slug: string; type: string; name: string; parent_name: string | null }[]) {
-        result[r.slug] = {
-          id: r.id,
-          slug: r.slug,
-          name: r.name,
-          type: r.type,
-          parentName: r.parent_name,
-        };
-      }
-      return result;
-    },
-    { ttl: 3600 },
-  );
+  const sorted = [...slugs].sort();
+  // Plain `Record` survives the `'use cache'` boundary; Map is not
+  // serializable, so the wrapper converts at the edge for caller ergonomics.
+  const record = await _resolveLocationSlugsCached(sorted, locale);
   return new Map(Object.entries(record));
+}
+
+/**
+ * Per-region in-memory `'use cache'` (cacheLife('days')). Migrated from
+ * Redis-backed `cached()` (TTL 3600s) in #2884 (resolve/expand slice,
+ * bucket 3). The wrapper sorts the slug array so `[a,b]` and `[b,a]` hit
+ * the same `'use cache'` slot. Tagged so `crawler sync` ->
+ * `/api/internal/invalidate-typeahead` drops the slot when location names
+ * are renamed.
+ */
+async function _resolveLocationSlugsCached(
+  sortedSlugs: string[],
+  locale: string,
+): Promise<Record<string, ResolvedLocation>> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(typeaheadLocationsCacheTag());
+
+  const pgArray = `{${sortedSlugs.join(",")}}`;
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    id: number;
+    slug: string;
+    type: string;
+    name: string;
+    parent_name: string | null;
+  }>(sql`
+    SELECT l.id, l.slug, l.type::text AS type,
+      ln.name,
+      pln.name AS parent_name
+    FROM location l
+    JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = l.id AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) ln ON true
+    LEFT JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = l.parent_id AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) pln ON true
+    WHERE l.slug = ANY(${pgArray}::text[])
+  `);
+  const result: Record<string, ResolvedLocation> = {};
+  for (const r of rows as unknown as { id: number; slug: string; type: string; name: string; parent_name: string | null }[]) {
+    result[r.slug] = {
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      type: r.type,
+      parentName: r.parent_name,
+    };
+  }
+  return result;
 }
 
 // ── All locations grouped by country / region (global) ───────────────
