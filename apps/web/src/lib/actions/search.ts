@@ -1,6 +1,7 @@
 "use server";
 
 import { sql } from "drizzle-orm";
+import { cacheLife } from "next/cache";
 import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResponse, SearchResultPosting, HistogramFilters } from "@/lib/search";
@@ -38,8 +39,7 @@ export async function getPostingDetail(params: {
 }): Promise<PostingDetail | null> {
   const { postingId, locale } = params;
   if (!UUID_RE.test(postingId)) return null;
-  const key = `posting-detail:${postingId}:${locale}`;
-  return cached(key, () => _fetchPostingDetail(postingId, locale), { ttl: 300 });
+  return _fetchPostingDetail(postingId, locale);
 }
 
 async function resolvePostingLocations(
@@ -101,10 +101,18 @@ async function resolvePostingTechnologies(
     .map((t) => ({ id: t.id, name: t.name! }));
 }
 
+// Per-region in-memory `'use cache'` (cacheLife({ revalidate: 300 })).
+// Build ID is part of the key, so each deploy re-fetches. Migrated from
+// Redis-backed `cached(..., { ttl: 300 })` in #2884 (bucket 5). Args
+// `(postingId, locale)` derive the cache key automatically; no manual
+// key construction. `firstSeenAt` is converted to ISO string before the
+// return, so the cached value is fully serializable (no `Date`).
 async function _fetchPostingDetail(
   postingId: string,
   locale: string,
 ): Promise<PostingDetail | null> {
+  "use cache";
+  cacheLife({ revalidate: 300 });
   const rows = await db.execute<{
     [key: string]: unknown;
     id: string;
@@ -330,21 +338,26 @@ export interface CurrencyRate {
   toEur: number;
 }
 
+// Per-region in-memory `'use cache'` (cacheLife('hours')). Migrated from
+// Redis-backed `cached(..., { ttl: 3600 })` in #2884 (bucket 5). The
+// fallback try/catch stays *outside* the cache boundary so that the
+// `currency_rate` table-missing path returns the EUR fallback uncached
+// (preserving the original behaviour: don't cache the fallback shape).
+async function _fetchCurrencyRates(): Promise<CurrencyRate[]> {
+  "use cache";
+  cacheLife("hours");
+  const rows = await db.execute<{ [key: string]: unknown; currency: string; to_eur: string }>(
+    sql`SELECT currency, to_eur FROM currency_rate ORDER BY currency`,
+  );
+  return (rows as unknown as { currency: string; to_eur: string }[]).map((r) => ({
+    currency: r.currency,
+    toEur: parseFloat(r.to_eur),
+  }));
+}
+
 export async function getCurrencyRates(): Promise<CurrencyRate[]> {
   try {
-    return await cached(
-      "currency-rates",
-      async () => {
-        const rows = await db.execute<{ [key: string]: unknown; currency: string; to_eur: string }>(
-          sql`SELECT currency, to_eur FROM currency_rate ORDER BY currency`,
-        );
-        return (rows as unknown as { currency: string; to_eur: string }[]).map((r) => ({
-          currency: r.currency,
-          toEur: parseFloat(r.to_eur),
-        }));
-      },
-      { ttl: 3600 },
-    );
+    return await _fetchCurrencyRates();
   } catch {
     // Table may not exist yet — return fallback without caching
     return [{ currency: "EUR", toEur: 1 }];
@@ -354,35 +367,65 @@ export async function getCurrencyRates(): Promise<CurrencyRate[]> {
 export type { SalaryBucket, ExperienceBucket } from "@/lib/search/types";
 import type { SalaryBucket, ExperienceBucket } from "@/lib/search/types";
 
+// Histograms are cached on a *normalized* filter object (sorted arrays,
+// stable shape) so the auto-derived `'use cache'` key matches the legacy
+// concatenated string-key behaviour. Migrated from Redis-backed
+// `cached(..., { ttl: 3600 })` in #2884 (bucket 5). The try/catch stays
+// *inside* the cache boundary so a Typesense blip caches `[]` for the
+// TTL window (preserving the original behaviour — avoids hammering on
+// failure). Returns plain arrays of `{ bucket, count }` shapes (already
+// serializable; no Maps/Sets/Dates).
+
+interface NormalizedHistogramFilters {
+  companyId: string;
+  keywords: string[];
+  locationIds: number[];
+  occupationIds: number[];
+  seniorityIds: number[];
+  technologyIds: number[];
+  languages: string[];
+}
+
+function normalizeHistogramFilters(filters?: HistogramFilters): NormalizedHistogramFilters {
+  const f = filters ?? {};
+  return {
+    companyId: f.companyId ?? "",
+    keywords: [...(f.keywords ?? [])].sort(),
+    locationIds: [...(f.locationIds ?? [])].sort((a, b) => a - b),
+    occupationIds: [...(f.occupationIds ?? [])].sort((a, b) => a - b),
+    seniorityIds: [...(f.seniorityIds ?? [])].sort((a, b) => a - b),
+    technologyIds: [...(f.technologyIds ?? [])].sort((a, b) => a - b),
+    languages: [...(f.languages ?? [])].sort(),
+  };
+}
+
+async function _fetchSalaryHistogram(f: NormalizedHistogramFilters): Promise<SalaryBucket[]> {
+  "use cache";
+  cacheLife("hours");
+  try {
+    // No expansion needed — ancestor IDs are stored on each Typesense document
+    return await getSearchProvider().getSalaryHistogram(f);
+  } catch {
+    return [];
+  }
+}
+
+async function _fetchExperienceHistogram(f: NormalizedHistogramFilters): Promise<ExperienceBucket[]> {
+  "use cache";
+  cacheLife("hours");
+  try {
+    return await getSearchProvider().getExperienceHistogram(f);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Returns salary_eur distribution across fixed EUR buckets for the histogram.
  * Accepts optional filters to scope to a company / keyword / location context.
  */
 export async function getSalaryHistogram(filters?: HistogramFilters): Promise<SalaryBucket[]> {
-  const f = filters ?? {};
-  const keyParts = [
-    "salary-histogram",
-    f.companyId ?? "",
-    [...(f.keywords ?? [])].sort().join(","),
-    [...(f.locationIds ?? [])].sort().join(","),
-    [...(f.occupationIds ?? [])].sort().join(","),
-    [...(f.seniorityIds ?? [])].sort().join(","),
-    [...(f.technologyIds ?? [])].sort().join(","),
-    [...(f.languages ?? [])].sort().join(","),
-  ];
-  const key = keyParts.join(":");
-  return cached(
-    key,
-    async () => {
-      try {
-        // No expansion needed — ancestor IDs are stored on each Typesense document
-        return await getSearchProvider().getSalaryHistogram(f);
-      } catch {
-        return [];
-      }
-    },
-    { ttl: 3600 },
-  );
+  return _fetchSalaryHistogram(normalizeHistogramFilters(filters));
 }
 
 /**
@@ -390,30 +433,7 @@ export async function getSalaryHistogram(filters?: HistogramFilters): Promise<Sa
  * Accepts optional filters to scope to a company / keyword / location context.
  */
 export async function getExperienceHistogram(filters?: HistogramFilters): Promise<ExperienceBucket[]> {
-  const f = filters ?? {};
-  const keyParts = [
-    "experience-histogram",
-    f.companyId ?? "",
-    [...(f.keywords ?? [])].sort().join(","),
-    [...(f.locationIds ?? [])].sort().join(","),
-    [...(f.occupationIds ?? [])].sort().join(","),
-    [...(f.seniorityIds ?? [])].sort().join(","),
-    [...(f.technologyIds ?? [])].sort().join(","),
-    [...(f.languages ?? [])].sort().join(","),
-  ];
-  const key = keyParts.join(":");
-  return cached(
-    key,
-    async () => {
-      try {
-        // No expansion needed — ancestor IDs are stored on each Typesense document
-        return await getSearchProvider().getExperienceHistogram(f);
-      } catch {
-        return [];
-      }
-    },
-    { ttl: 3600 },
-  );
+  return _fetchExperienceHistogram(normalizeHistogramFilters(filters));
 }
 
 // ── Load more postings ─────────────────────────────────────────────

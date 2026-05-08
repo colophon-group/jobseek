@@ -2,11 +2,11 @@
 
 import { eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
+import { cacheLife } from "next/cache";
 import { db } from "@/db";
 import { account, userPreferences } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getSession, getSessionUserId } from "@/lib/sessionCache";
-import { cached } from "@/lib/cache";
 import { getLanguage } from "@/lib/job-languages";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
@@ -226,27 +226,25 @@ export interface AvailableLanguage {
 
 /**
  * Returns distinct language codes from active job postings with counts, sorted by count desc.
- * Cached for 1 hour since this changes slowly.
+ * Per-region in-memory `'use cache'` (cacheLife('hours')); migrated from
+ * Redis-backed `cached(..., { ttl: 3600 })` in #2884 (bucket 5). Build ID
+ * is part of the cache key, so each deploy re-fetches.
  */
 export async function getAvailableJobLanguages(): Promise<AvailableLanguage[]> {
-  return cached(
-    "available-job-languages-v2",
-    async () => {
-      const rows = await db.execute<{ [key: string]: unknown; locale: string; cnt: number }>(sql`
-        SELECT locale, COUNT(*)::int AS cnt
-        FROM (
-          SELECT unnest(locales) AS locale
-          FROM job_posting
-          WHERE is_active = true AND array_length(locales, 1) > 0
-        ) sub
-        GROUP BY locale
-        ORDER BY cnt DESC
-      `);
-      return (rows as unknown as { locale: string; cnt: number }[]).map((r) => ({
-        code: r.locale,
-        count: r.cnt,
-      }));
-    },
-    { ttl: 3600 },
-  );
+  "use cache";
+  cacheLife("hours");
+  const rows = await db.execute<{ [key: string]: unknown; locale: string; cnt: number }>(sql`
+    SELECT locale, COUNT(*)::int AS cnt
+    FROM (
+      SELECT unnest(locales) AS locale
+      FROM job_posting
+      WHERE is_active = true AND array_length(locales, 1) > 0
+    ) sub
+    GROUP BY locale
+    ORDER BY cnt DESC
+  `);
+  return (rows as unknown as { locale: string; cnt: number }[]).map((r) => ({
+    code: r.locale,
+    count: r.cnt,
+  }));
 }
