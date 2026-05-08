@@ -6,13 +6,22 @@ import { getPublicWatchlistByUserAndSlug } from "@/lib/actions/watchlists";
 export const alt = "Watchlist on Job Seek";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// 30-day cache via explicit `Cache-Control` headers on the
+// 1-day cache via explicit `Cache-Control` headers on the
 // ImageResponse — `'use cache'` doesn't apply (ImageResponse is a
-// class instance). Mirrors the company OG image
-// (apps/web/app/[lang]/(app)/company/[slug]/opengraph-image.tsx).
-// Vercel purges the CDN on every deploy so `immutable` is safe.
+// class instance).
+//
+// Unlike the company OG (which is `immutable` for 30 days because
+// companies don't toggle visibility on the web), watchlists CAN be
+// flipped from public to private at any time by their owner. PR #2888
+// busts the page-level `'use cache'` and Redis on toggle, but social
+// previews on Twitter/LinkedIn/Slack/Facebook fetch the OG card while
+// the watchlist was public and respect `Cache-Control` themselves —
+// `immutable` would tell them never to revalidate, leaking the card
+// for up to 30 days after privacy toggle. Drop `immutable` and cap
+// max-age at 1 day so third-party social caches refetch within 24h
+// of any visibility change. Issue #2890 (privacy follow-up to #2888).
 const CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
+  "Cache-Control": "public, max-age=86400, s-maxage=86400",
 };
 
 // Satori (used by next/og) only supports TTF/OTF, not woff2.

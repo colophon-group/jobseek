@@ -332,7 +332,21 @@ When moving an existing component or route from the legacy model to cacheCompone
 | `cookies()` / `headers()` in a server component | Move into a `<Suspense>`-wrapped subtree, OR extract the value to a client read, OR pass as an argument into a `'use cache'` function |
 | `new Date()` / `Date.now()` / `Math.random()` in a server-render path | Pre-compute at module scope (build-time deploy refresh), OR move into a `<Suspense>` subtree that calls `connection()` first, OR put inside `'use cache'` if "value at cache build time" is acceptable |
 | `unstable_cache(fn, key, opts)` | `'use cache'` directive inside `fn` body; replace `opts.tags` with `cacheTag()` calls; replace `opts.revalidate` with `cacheLife({ revalidate: N })`. Drop the manual `key` array — args + closures become the key automatically. See "How cache keys are derived" above |
-| OpenGraph image function with `revalidate = N` | Remove the export — `next/og` `ImageResponse` is a class instance and isn't serializable for `'use cache'`. The framework caches OG images via HTTP `Cache-Control` headers automatically |
+| OpenGraph image function with `revalidate = N` | Remove the export — `next/og` `ImageResponse` is a class instance and isn't serializable for `'use cache'`. Set `Cache-Control` headers on the `ImageResponse` directly; pick `immutable` vs `must-revalidate` per the OG cache trade-off below |
+
+### OG image cache trade-off: `immutable` vs short TTL
+
+OG image route handlers can't use `'use cache'` (the `ImageResponse` is a class instance), so we set `Cache-Control` on the response. The choice of `immutable` vs a short TTL is load-bearing for **privacy** — third-party social-media caches (Twitter, LinkedIn, Slack, Facebook) honor the header, and `immutable` tells them never to revalidate.
+
+| OG handler | Cache-Control | Why |
+|---|---|---|
+| `app/opengraph-image.tsx` (root site card) | `public, max-age=2592000, s-maxage=2592000, immutable` | Static brand asset; rebakes on deploy |
+| `app/[lang]/(public)/blog/[slug]/opengraph-image.tsx` | `public, max-age=2592000, s-maxage=2592000, immutable` | MDX from disk; deploy-flushes on edit |
+| `app/[lang]/(public)/how-we-index/opengraph-image.tsx` | `public, max-age=2592000, s-maxage=2592000, immutable` | Static page; deploy-flushes on edit |
+| `app/[lang]/(app)/company/[slug]/opengraph-image.tsx` | `public, max-age=2592000, s-maxage=2592000, immutable` | Companies are CSV-managed; no per-user visibility toggle on the web |
+| `app/[lang]/(app)/[userSlug]/[watchlistSlug]/opengraph-image.tsx` | `public, max-age=86400, s-maxage=86400` (no `immutable`) | Owners can toggle a watchlist private at any time. `immutable` would let third-party caches keep the card for up to 30 days post-toggle (the leak window described in #2890). 1-day TTL bounds third-party staleness to 24h |
+
+Rule of thumb: an OG card is `immutable`-safe only when the underlying entity has **no per-user visibility flag** that can change after the card is fetched. Anything that can flip from public to private at runtime needs a bounded TTL and no `immutable`.
 
 ## References
 
