@@ -1,6 +1,7 @@
 "use server";
 
 import { sql } from "drizzle-orm";
+import { cacheLife } from "next/cache";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
@@ -402,83 +403,91 @@ interface OccupationDomainMeta {
   names: Record<string, string>;
 }
 
+// Per-region in-memory `'use cache'` (cacheLife('days')). Build ID is
+// included in the key automatically — every deploy re-fetches, which is
+// the right TTL semantics for taxonomy data driven by `crawler sync`.
+// Returns plain `Record`s (serializable); callers convert to `Map` for
+// O(1) lookup ergonomics. Migrated from Redis-backed `cached()` in #2884
+// (hierarchy-cache slice). See `apps/web/docs/cache-components.md`.
+async function _fetchOccupationHierarchyData(): Promise<{
+  occupations: Record<string, OccupationMeta>;
+  domains: Record<string, OccupationDomainMeta>;
+}> {
+  "use cache";
+  cacheLife("days");
+
+  // Fetch occupations
+  const occRows = await db.execute<{
+    [key: string]: unknown;
+    id: number;
+    slug: string;
+    parent_id: number | null;
+    domain_id: number | null;
+  }>(sql`SELECT id, slug, parent_id, domain_id FROM occupation`);
+
+  const occNameRows = await db.execute<{
+    [key: string]: unknown;
+    occupation_id: number;
+    locale: string;
+    name: string;
+  }>(sql`SELECT occupation_id, locale, name FROM occupation_name WHERE is_display = true`);
+
+  const occNameMap = new Map<number, Record<string, string>>();
+  for (const nr of occNameRows as unknown as { occupation_id: number; locale: string; name: string }[]) {
+    let names = occNameMap.get(nr.occupation_id);
+    if (!names) { names = {}; occNameMap.set(nr.occupation_id, names); }
+    names[nr.locale] = nr.name;
+  }
+
+  const occupations: Record<string, OccupationMeta> = {};
+  for (const r of occRows as unknown as { id: number; slug: string; parent_id: number | null; domain_id: number | null }[]) {
+    occupations[String(r.id)] = {
+      id: r.id,
+      slug: r.slug,
+      parentId: r.parent_id,
+      domainId: r.domain_id,
+      names: occNameMap.get(r.id) ?? {},
+    };
+  }
+
+  // Fetch domains
+  const domainRows = await db.execute<{
+    [key: string]: unknown;
+    id: number;
+    slug: string;
+  }>(sql`SELECT id, slug FROM occupation_domain`);
+
+  const domainNameRows = await db.execute<{
+    [key: string]: unknown;
+    domain_id: number;
+    locale: string;
+    name: string;
+  }>(sql`SELECT domain_id, locale, name FROM occupation_domain_name WHERE is_display = true`);
+
+  const domainNameMap = new Map<number, Record<string, string>>();
+  for (const nr of domainNameRows as unknown as { domain_id: number; locale: string; name: string }[]) {
+    let names = domainNameMap.get(nr.domain_id);
+    if (!names) { names = {}; domainNameMap.set(nr.domain_id, names); }
+    names[nr.locale] = nr.name;
+  }
+
+  const domains: Record<string, OccupationDomainMeta> = {};
+  for (const r of domainRows as unknown as { id: number; slug: string }[]) {
+    domains[String(r.id)] = {
+      id: r.id,
+      slug: r.slug,
+      names: domainNameMap.get(r.id) ?? {},
+    };
+  }
+
+  return { occupations, domains };
+}
+
 async function _getOccupationHierarchyCache(): Promise<{
   occupations: Map<number, OccupationMeta>;
   domains: Map<number, OccupationDomainMeta>;
 }> {
-  const key = "occ-hierarchy-cache";
-  const record = await cached(
-    key,
-    async () => {
-      // Fetch occupations
-      const occRows = await db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        parent_id: number | null;
-        domain_id: number | null;
-      }>(sql`SELECT id, slug, parent_id, domain_id FROM occupation`);
-
-      const occNameRows = await db.execute<{
-        [key: string]: unknown;
-        occupation_id: number;
-        locale: string;
-        name: string;
-      }>(sql`SELECT occupation_id, locale, name FROM occupation_name WHERE is_display = true`);
-
-      const occNameMap = new Map<number, Record<string, string>>();
-      for (const nr of occNameRows as unknown as { occupation_id: number; locale: string; name: string }[]) {
-        let names = occNameMap.get(nr.occupation_id);
-        if (!names) { names = {}; occNameMap.set(nr.occupation_id, names); }
-        names[nr.locale] = nr.name;
-      }
-
-      const occupations: Record<string, OccupationMeta> = {};
-      for (const r of occRows as unknown as { id: number; slug: string; parent_id: number | null; domain_id: number | null }[]) {
-        occupations[String(r.id)] = {
-          id: r.id,
-          slug: r.slug,
-          parentId: r.parent_id,
-          domainId: r.domain_id,
-          names: occNameMap.get(r.id) ?? {},
-        };
-      }
-
-      // Fetch domains
-      const domainRows = await db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-      }>(sql`SELECT id, slug FROM occupation_domain`);
-
-      const domainNameRows = await db.execute<{
-        [key: string]: unknown;
-        domain_id: number;
-        locale: string;
-        name: string;
-      }>(sql`SELECT domain_id, locale, name FROM occupation_domain_name WHERE is_display = true`);
-
-      const domainNameMap = new Map<number, Record<string, string>>();
-      for (const nr of domainNameRows as unknown as { domain_id: number; locale: string; name: string }[]) {
-        let names = domainNameMap.get(nr.domain_id);
-        if (!names) { names = {}; domainNameMap.set(nr.domain_id, names); }
-        names[nr.locale] = nr.name;
-      }
-
-      const domains: Record<string, OccupationDomainMeta> = {};
-      for (const r of domainRows as unknown as { id: number; slug: string }[]) {
-        domains[String(r.id)] = {
-          id: r.id,
-          slug: r.slug,
-          names: domainNameMap.get(r.id) ?? {},
-        };
-      }
-
-      return { occupations, domains };
-    },
-    { ttl: 86400 },
-  );
-
+  const record = await _fetchOccupationHierarchyData();
   return {
     occupations: new Map(Object.entries(record.occupations).map(([k, v]) => [Number(k), v])),
     domains: new Map(Object.entries(record.domains).map(([k, v]) => [Number(k), v])),
@@ -689,43 +698,46 @@ interface SeniorityMeta {
   names: Record<string, string>;
 }
 
+// Per-region in-memory `'use cache'` (cacheLife('days')). See note on
+// `_fetchOccupationHierarchyData` above. Migrated from Redis-backed
+// `cached()` in #2884 (hierarchy-cache slice).
+async function _fetchSeniorityHierarchyData(): Promise<Record<string, SeniorityMeta>> {
+  "use cache";
+  cacheLife("days");
+
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    id: number;
+    slug: string;
+  }>(sql`SELECT id, slug FROM seniority`);
+
+  const nameRows = await db.execute<{
+    [key: string]: unknown;
+    seniority_id: number;
+    locale: string;
+    name: string;
+  }>(sql`SELECT seniority_id, locale, name FROM seniority_name WHERE is_display = true`);
+
+  const nameMap = new Map<number, Record<string, string>>();
+  for (const nr of nameRows as unknown as { seniority_id: number; locale: string; name: string }[]) {
+    let names = nameMap.get(nr.seniority_id);
+    if (!names) { names = {}; nameMap.set(nr.seniority_id, names); }
+    names[nr.locale] = nr.name;
+  }
+
+  const result: Record<string, SeniorityMeta> = {};
+  for (const r of rows as unknown as { id: number; slug: string }[]) {
+    result[String(r.id)] = {
+      id: r.id,
+      slug: r.slug,
+      names: nameMap.get(r.id) ?? {},
+    };
+  }
+  return result;
+}
+
 async function _getSeniorityCache(): Promise<Map<number, SeniorityMeta>> {
-  const key = "sen-hierarchy-cache";
-  const record = await cached(
-    key,
-    async () => {
-      const rows = await db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-      }>(sql`SELECT id, slug FROM seniority`);
-
-      const nameRows = await db.execute<{
-        [key: string]: unknown;
-        seniority_id: number;
-        locale: string;
-        name: string;
-      }>(sql`SELECT seniority_id, locale, name FROM seniority_name WHERE is_display = true`);
-
-      const nameMap = new Map<number, Record<string, string>>();
-      for (const nr of nameRows as unknown as { seniority_id: number; locale: string; name: string }[]) {
-        let names = nameMap.get(nr.seniority_id);
-        if (!names) { names = {}; nameMap.set(nr.seniority_id, names); }
-        names[nr.locale] = nr.name;
-      }
-
-      const result: Record<string, SeniorityMeta> = {};
-      for (const r of rows as unknown as { id: number; slug: string }[]) {
-        result[String(r.id)] = {
-          id: r.id,
-          slug: r.slug,
-          names: nameMap.get(r.id) ?? {},
-        };
-      }
-      return result;
-    },
-    { ttl: 86400 },
-  );
+  const record = await _fetchSeniorityHierarchyData();
   return new Map(Object.entries(record).map(([k, v]) => [Number(k), v]));
 }
 

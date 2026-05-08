@@ -1,6 +1,7 @@
 "use server";
 
 import { sql } from "drizzle-orm";
+import { cacheLife } from "next/cache";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
@@ -241,47 +242,53 @@ interface LocationMeta {
   names: Record<string, string>; // locale -> display name
 }
 
+// Per-region in-memory `'use cache'` (cacheLife('days')). Build ID is
+// included in the key automatically — every deploy re-fetches, which is
+// the right TTL semantics for taxonomy data driven by `crawler sync`.
+// Returns a plain `Record` (serializable); the wrapper converts to `Map`
+// for O(1) lookup ergonomics. Migrated from Redis-backed `cached()` in
+// #2884 (hierarchy-cache slice). See `apps/web/docs/cache-components.md`.
+async function _fetchLocationHierarchyData(): Promise<Record<string, LocationMeta>> {
+  "use cache";
+  cacheLife("days");
+
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    id: number;
+    slug: string;
+    type: string;
+    parent_id: number | null;
+  }>(sql`SELECT id, slug, type::text AS type, parent_id FROM location`);
+
+  const nameRows = await db.execute<{
+    [key: string]: unknown;
+    location_id: number;
+    locale: string;
+    name: string;
+  }>(sql`SELECT location_id, locale, name FROM location_name WHERE is_display = true`);
+
+  const nameMap = new Map<number, Record<string, string>>();
+  for (const nr of nameRows as unknown as { location_id: number; locale: string; name: string }[]) {
+    let names = nameMap.get(nr.location_id);
+    if (!names) { names = {}; nameMap.set(nr.location_id, names); }
+    names[nr.locale] = nr.name;
+  }
+
+  const result: Record<string, LocationMeta> = {};
+  for (const r of rows as unknown as { id: number; slug: string; type: string; parent_id: number | null }[]) {
+    result[String(r.id)] = {
+      id: r.id,
+      slug: r.slug,
+      type: r.type,
+      parentId: r.parent_id,
+      names: nameMap.get(r.id) ?? {},
+    };
+  }
+  return result;
+}
+
 async function _getLocationHierarchyCache(): Promise<Map<number, LocationMeta>> {
-  const key = "loc-hierarchy-cache";
-  const record = await cached(
-    key,
-    async () => {
-      const rows = await db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        type: string;
-        parent_id: number | null;
-      }>(sql`SELECT id, slug, type::text AS type, parent_id FROM location`);
-
-      const nameRows = await db.execute<{
-        [key: string]: unknown;
-        location_id: number;
-        locale: string;
-        name: string;
-      }>(sql`SELECT location_id, locale, name FROM location_name WHERE is_display = true`);
-
-      const nameMap = new Map<number, Record<string, string>>();
-      for (const nr of nameRows as unknown as { location_id: number; locale: string; name: string }[]) {
-        let names = nameMap.get(nr.location_id);
-        if (!names) { names = {}; nameMap.set(nr.location_id, names); }
-        names[nr.locale] = nr.name;
-      }
-
-      const result: Record<string, LocationMeta> = {};
-      for (const r of rows as unknown as { id: number; slug: string; type: string; parent_id: number | null }[]) {
-        result[String(r.id)] = {
-          id: r.id,
-          slug: r.slug,
-          type: r.type,
-          parentId: r.parent_id,
-          names: nameMap.get(r.id) ?? {},
-        };
-      }
-      return result;
-    },
-    { ttl: 86400 },
-  );
+  const record = await _fetchLocationHierarchyData();
   return new Map(Object.entries(record).map(([k, v]) => [Number(k), v]));
 }
 
