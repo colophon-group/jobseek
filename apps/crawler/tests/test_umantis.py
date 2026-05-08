@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import httpx
 import pytest
 
 from src.core.monitors.umantis import (
     _base_url,
     _extract_table_nr,
+    _get_page_with_retry,
     _parse_host,
     _parse_jobs_from_html,
     can_handle,
     discover,
 )
+from src.shared.http_retry import PaginationFetchError
 
 # ── URL helpers ──────────────────────────────────────────────────────────
 
@@ -348,3 +352,290 @@ class TestCanHandle:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://www.umantis.com/", client)
             assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Pagination retry semantics (#2747)
+# ---------------------------------------------------------------------------
+
+
+_PAGE_URL = "https://recruitingapp-2698.umantis.com/Jobs/All?tc999=p2"
+
+_PAGE1_HTML = """\
+<html><body>
+<a href="/Vacancies/1/Description/1" class="HSTableLinkSubTitle">Job A</a>
+<table-navigation initial-data-string='{"TableNr":"999"}'>
+</table-navigation>
+</body></html>"""
+
+_PAGE2_HTML = """\
+<html><body>
+<a href="/Vacancies/2/Description/1" class="HSTableLinkSubTitle">Job B</a>
+</body></html>"""
+
+
+class TestGetPageWithRetry:
+    """``_get_page_with_retry`` mirrors ``fetch_with_retry``'s contract on
+    Umantis's GET pagination endpoint: 5xx / 408 / 425 / 429 / network
+    errors are retried, non-retryable 4xx fail fast, and persistent
+    failures raise :class:`PaginationFetchError` so a single broken
+    pagination page doesn't silently truncate the run (#2747).
+    """
+
+    async def test_returns_on_success(self):
+        def handler(request):
+            return httpx.Response(200, text=_PAGE2_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            text = await _get_page_with_retry(client, _PAGE_URL)
+            assert text == _PAGE2_HTML
+
+    async def test_returns_none_on_404_end_of_pagination(self):
+        def handler(request):
+            return httpx.Response(404, text="not found")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            text = await _get_page_with_retry(client, _PAGE_URL)
+            assert text is None
+
+    async def test_retries_on_429_then_succeeds(self, monkeypatch):
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return httpx.Response(429, text="rate limited")
+            return httpx.Response(200, text=_PAGE2_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            text = await _get_page_with_retry(client, _PAGE_URL, base_delay=0.001)
+            assert text == _PAGE2_HTML
+            assert calls["n"] == 3
+
+    async def test_retries_on_503_then_succeeds(self, monkeypatch):
+        """Issue #2747's load-bearing case: pre-fix, a non-200 response
+        (e.g. 503) hit the lenient ``if resp.status_code != 200: break``
+        and silently truncated pagination — every URL on unfetched pages
+        was then tombstoned by ``_MARK_GONE_BY_TIMESTAMP``. Now 503 is
+        retried like every other transient.
+        """
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return httpx.Response(503, text="service unavailable")
+            return httpx.Response(200, text=_PAGE2_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            text = await _get_page_with_retry(client, _PAGE_URL, base_delay=0.001)
+            assert text == _PAGE2_HTML
+            assert calls["n"] == 3
+
+    async def test_raises_after_persistent_5xx(self, monkeypatch):
+        """Issue #2747 acceptance: persistent 5xx exhausts the retry budget
+        and raises ``PaginationFetchError`` — no silent truncation.
+        """
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(500, text="internal")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _get_page_with_retry(
+                    client,
+                    _PAGE_URL,
+                    retries=3,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status == 500
+            assert exc_info.value.attempts == 3
+            assert calls["n"] == 3
+
+    async def test_raises_on_non_retryable_4xx_immediately(self, monkeypatch):
+        """A 401 / 403 / 400 indicates a hard error — no point retrying.
+        Raise ``PaginationFetchError`` on the first attempt."""
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(401, text="unauthorized")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _get_page_with_retry(
+                    client,
+                    _PAGE_URL,
+                    retries=3,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status == 401
+            # Exactly one attempt — no retry on non-retryable 4xx.
+            assert calls["n"] == 1
+
+    async def test_raises_after_persistent_connection_error(self, monkeypatch):
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            raise httpx.ConnectError("conn refused")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _get_page_with_retry(
+                    client,
+                    _PAGE_URL,
+                    retries=2,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status is None
+            assert exc_info.value.last_error == "ConnectError"
+
+
+class TestDiscoverPaginationRetry:
+    """Issue #2747 acceptance: the discover() pagination loop propagates
+    the new retry-then-raise contract end-to-end. Pre-fix, a transient
+    5xx / 429 / network error mid-pagination silently truncated the URL
+    set, then ``_MARK_GONE_BY_TIMESTAMP`` tombstoned every URL on
+    unfetched pages. Now both transients are retried and persistent
+    failures raise ``PaginationFetchError``.
+    """
+
+    async def test_503_then_200_pagination_continues(self, monkeypatch):
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+        page2_calls = {"n": 0}
+
+        def handler(request):
+            url = str(request.url)
+            if "tc999=p2" in url:
+                page2_calls["n"] += 1
+                if page2_calls["n"] < 2:
+                    return httpx.Response(503, text="unavailable")
+                return httpx.Response(200, text=_PAGE2_HTML)
+            if "tc999=p3" in url:
+                return httpx.Response(200, text="<html></html>")
+            return httpx.Response(200, text=_PAGE1_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://recruitingapp-2698.umantis.com/Jobs/All",
+                "metadata": {"customer_id": "2698"},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 2
+            # Page 2 was retried once before succeeding.
+            assert page2_calls["n"] == 2
+
+    async def test_429_then_200_pagination_continues(self, monkeypatch):
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+        page2_calls = {"n": 0}
+
+        def handler(request):
+            url = str(request.url)
+            if "tc999=p2" in url:
+                page2_calls["n"] += 1
+                if page2_calls["n"] < 2:
+                    return httpx.Response(429, text="rate limited")
+                return httpx.Response(200, text=_PAGE2_HTML)
+            if "tc999=p3" in url:
+                return httpx.Response(200, text="<html></html>")
+            return httpx.Response(200, text=_PAGE1_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://recruitingapp-2698.umantis.com/Jobs/All",
+                "metadata": {"customer_id": "2698"},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 2
+            assert page2_calls["n"] == 2
+
+    async def test_persistent_500_raises_not_silent_break(self, monkeypatch):
+        """Pre-fix, ``if resp.status_code != 200: break`` silently
+        truncated the URL set on a persistent 500. Now the helper raises
+        ``PaginationFetchError`` instead — caller propagates so the run
+        is recorded as a failure.
+        """
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            url = str(request.url)
+            if "tc999=p2" in url:
+                return httpx.Response(500, text="internal")
+            return httpx.Response(200, text=_PAGE1_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://recruitingapp-2698.umantis.com/Jobs/All",
+                "metadata": {"customer_id": "2698"},
+            }
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(board, client)
+            assert exc_info.value.last_status == 500
+
+    async def test_persistent_connection_error_raises(self, monkeypatch):
+        """Pre-fix, ``except Exception: break`` silently truncated on
+        connection errors. Now the helper raises ``PaginationFetchError``.
+        """
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            url = str(request.url)
+            if "tc999=p2" in url:
+                raise httpx.ConnectError("conn reset")
+            return httpx.Response(200, text=_PAGE1_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://recruitingapp-2698.umantis.com/Jobs/All",
+                "metadata": {"customer_id": "2698"},
+            }
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(board, client)
+            assert exc_info.value.last_error == "ConnectError"
+
+    async def test_empty_page_terminates_as_success(self):
+        """Legitimate end-of-pagination: a 200 with no jobs on page N
+        terminates the loop as success — the existing pagination test
+        relies on this, repeated here to pin the behaviour now that the
+        retry helper is in place.
+        """
+
+        def handler(request):
+            url = str(request.url)
+            if "tc999=p2" in url:
+                # Empty page — no <a> tags with HSTableLinkSubTitle.
+                return httpx.Response(200, text="<html><body></body></html>")
+            return httpx.Response(200, text=_PAGE1_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://recruitingapp-2698.umantis.com/Jobs/All",
+                "metadata": {"customer_id": "2698"},
+            }
+            urls = await discover(board, client)
+            # Only page 1's job — empty page 2 terminated the loop.
+            assert len(urls) == 1
