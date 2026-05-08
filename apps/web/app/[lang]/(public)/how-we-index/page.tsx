@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = i18n._({ id: "indexing.meta.title", message: "How We Index" });
   const description = i18n._({
     id: "indexing.meta.description",
-    message: "How Job Seek discovers and indexes job postings from 30+ ATS platforms. Learn about our crawl frequency, rate limits, robots.txt compliance, and how to opt out.",
+    message: "How Job Seek discovers and indexes job postings: our sourcing approach, crawl frequency, rate limits, robots.txt and TDM-Reservation compliance, and how to opt out.",
   });
 
   return {
@@ -42,7 +42,7 @@ export default async function HowWeIndexPage({ params }: Props) {
         "@context": "https://schema.org",
         "@type": "WebPage",
         name: i18n._({ id: "indexing.meta.title", message: "How We Index" }),
-        description: i18n._({ id: "indexing.meta.description", message: "How Job Seek discovers and indexes job postings from 30+ ATS platforms. Learn about our crawl frequency, rate limits, robots.txt compliance, and how to opt out." }),
+        description: i18n._({ id: "indexing.meta.description", message: "How Job Seek discovers and indexes job postings: our sourcing approach, crawl frequency, rate limits, robots.txt and TDM-Reservation compliance, and how to opt out." }),
         url: `${siteConfig.url}/${locale}/how-we-index`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-export const alt = "Job Seek — Find roles before they hit the big boards";
+export const alt = "Job Seek — Track the companies you actually want to work at";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -35,10 +35,10 @@ export default async function OgImage() {
     >
       <img src={logoSrc} width={100} height={100} />
       <span style={{ fontSize: 48, fontWeight: 700, textAlign: "center" }}>
-        Find roles before they hit the big boards
+        Track the companies you actually want to work at
       </span>
       <span style={{ fontSize: 22, color: "#a1a1aa", textAlign: "center" }}>
-        Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location.
+        Build watchlists. Get email alerts. Postings sourced directly from company career pages.
       </span>
     </div>,
     {

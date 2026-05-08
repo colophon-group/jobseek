@@ -18,10 +18,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" });
+  const title = i18n._({ id: "home.meta.title", message: "Track the companies you want to work at — Job Seek" });
   const description = i18n._({
     id: "home.meta.description",
-    message: "Search millions of jobs scraped directly from thousands of company career pages. Filter by seniority, tech stack, salary, and location, then track every application.",
+    message: "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
   });
 
   return {
@@ -43,8 +43,8 @@ export default async function HomePage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: i18n._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" }),
-        description: i18n._({ id: "home.meta.description", message: "Search millions of jobs scraped directly from thousands of company career pages. Filter by seniority, tech stack, salary, and location, then track every application." }),
+        name: i18n._({ id: "home.meta.title", message: "Track the companies you want to work at — Job Seek" }),
+        description: i18n._({ id: "home.meta.description", message: "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings." }),
         url: `${siteConfig.url}/${locale}`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

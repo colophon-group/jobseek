@@ -14,6 +14,16 @@ msgstr ""
 "Plural-Forms: \n"
 "X-Generator: @lingui/cli\n"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:47
+#~ msgid "faq.a.whichAts"
+#~ msgstr "Wir integrieren Workday, Greenhouse, Lever, Ashby, Rippling, SmartRecruiters, Workable und über ein Dutzend weitere Plattformen. Wir parsen auch Sitemaps und JSON-APIs von beliebigen Karriereseiten."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:46
+#~ msgid "faq.q.whichAts"
+#~ msgstr "Welche ATS-Plattformen unterstützt ihr?"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -157,7 +167,7 @@ msgid "app.home.request.agent.run_heading"
 msgstr "2. Prompt ausführen"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:59
+#: app/[lang]/(public)/faq/page.tsx:63
 msgid "faq.a.whatIsWatchlist"
 msgstr "Eine Watchlist ist eine gespeicherte Suche mit optionaler Unternehmensfilterung. Wähle die Unternehmen, die dich interessieren, setze deine Filter (Rolle, Standort, Seniorität, Gehalt) und erhalte einen Live-Feed passender Stellen. Du kannst Watchlists öffentlich teilen oder privat halten."
 
@@ -556,6 +566,19 @@ msgstr "Alle Mitbewerber durchsuchen"
 msgid "indexing.oss.browseRepo"
 msgstr "Repository ansehen unter"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:22
+#: app/[lang]/(public)/page.tsx:47
+msgid "home.meta.description"
+msgstr "Erstelle Watchlists mit den Unternehmen, die dich interessieren, lasse dich per E-Mail benachrichtigen, wenn neue Stellen geöffnet werden, und verfolge Bewerbungen an einem Ort. Stellen kommen direkt von den Karriereseiten der Unternehmen, innerhalb weniger Stunden nach Veröffentlichung — kein Recruiter-Spam, keine wiederveröffentlichten Listings."
+
+#. Hero description paragraph — watchlist + alerts pitch with direct sourcing as supporting claim
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:72
+#: src/components/Hero.tsx:31
+msgid "home.hero.description"
+msgstr "Erstelle Watchlists mit den Unternehmen, die dich interessieren, lass dich per E-Mail benachrichtigen, sobald neue Stellen frei werden, und verfolge jede Bewerbung an einem Ort. Wir überwachen Karriereseiten direkt — Stellen erscheinen innerhalb weniger Stunden, bevor LinkedIn oder Indeed sie übernehmen."
+
 #. About page heading
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx:25
@@ -571,7 +594,7 @@ msgid "terms.hero.description"
 msgstr "Mit der Nutzung von Job Seek stimmst du diesen Bedingungen zu. Hier eine verständliche Zusammenfassung."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:70
+#: app/[lang]/(public)/faq/page.tsx:74
 msgid "faq.q.optOut"
 msgstr "Kann ich die Indexierung meines Unternehmens durch Jobseek ablehnen?"
 
@@ -817,6 +840,16 @@ msgstr "Unternehmen"
 #: app/[lang]/(app)/company/[slug]/page.tsx:74
 msgid "company.notFound.title"
 msgstr "Unternehmen nicht gefunden"
+
+#. js-lingui-explicit-id
+#: app/[lang]/layout.tsx:77
+msgid "app.schema.description"
+msgstr "Unternehmens-Tracking-Tool für Jobsuchende, die schon wissen, bei welchen Unternehmen sie arbeiten möchten. Erstelle Watchlists, erhalte E-Mail-Benachrichtigungen, sobald neue Stellen frei werden, und verfolge Bewerbungen an einem Ort — Stellenanzeigen direkt von den Karriereseiten der Unternehmen."
+
+#. js-lingui-explicit-id
+#: app/[lang]/layout.tsx:43
+msgid "app.schema.org.description"
+msgstr "Unternehmens-Tracking-Tool für gezielte Jobsuchende — Watchlists, E-Mail-Benachrichtigungen und Stellenanzeigen direkt von den Karriereseiten der Unternehmen. Entwickelt von der Colophon Group, einem kleinen Entwicklerstudio in der Schweiz."
 
 #. Confirm delete button
 #. js-lingui-explicit-id
@@ -1156,7 +1189,7 @@ msgid "watchlists.explore.publicTitle"
 msgstr "Öffentliche Watchlists entdecken"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:78
+#: app/[lang]/(public)/faq/page.tsx:82
 msgid "faq.q.dataPrivacy"
 msgstr "Verkauft Jobseek meine Daten?"
 
@@ -1457,19 +1490,6 @@ msgstr "Filter"
 msgid "settings.general.jobLanguages.findMore"
 msgstr "Weitere finden"
 
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:21
-#: app/[lang]/(public)/page.tsx:46
-msgid "home.meta.title"
-msgstr "Relevante Stellen schneller finden"
-
-#. Main heading on the landing page
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:71
-#: src/components/Hero.tsx:28
-msgid "home.hero.title"
-msgstr "Relevante Stellen schneller finden."
-
 #. Feature: focused search title
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/page.tsx:96
@@ -1488,6 +1508,12 @@ msgstr "Folge uns auf LinkedIn"
 #: src/components/Footer.tsx:31
 msgid "common.footer.ariaLabel"
 msgstr "Fußzeile"
+
+#. Hero eyebrow above the title — speaks to the targeted job seeker ICP
+#. js-lingui-explicit-id
+#: src/components/Hero.tsx:25
+msgid "home.hero.eyebrow"
+msgstr "Für Jobsuchende, die schon wissen, wo sie arbeiten möchten."
 
 #. Free tier period
 #. js-lingui-explicit-id
@@ -1533,14 +1559,14 @@ msgid "settings.billing.plan.free"
 msgstr "Kostenlos"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:55
+#: app/[lang]/(public)/faq/page.tsx:59
 msgid "faq.a.freeVsPro"
 msgstr "Kostenlos bietet dir vollständige Suche über alle Unternehmen, eine Watchlist und den Bewerbungstracker mit Interview-Protokollierung. Pro fügt unbegrenzte Watchlists und E-Mail-Benachrichtigungen hinzu, wenn neue Stellen deinen Kriterien entsprechen."
 
 #. FAQ page heading
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/faq-content.tsx:42
-#: app/[lang]/(public)/faq/page.tsx:105
+#: app/[lang]/(public)/faq/page.tsx:109
 msgid "faq.title"
 msgstr "Häufig gestellte Fragen"
 
@@ -1671,12 +1697,12 @@ msgid "myJobs.salary.hourly"
 msgstr "Stündlich"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:50
+#: app/[lang]/(public)/faq/page.tsx:54
 msgid "faq.q.requestCompany"
 msgstr "Wie kann ich ein nicht gelistetes Unternehmen anfragen?"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:66
+#: app/[lang]/(public)/faq/page.tsx:70
 msgid "faq.q.crawlingPolicy"
 msgstr "Wie verhält sich der Crawler auf der Website meines Unternehmens?"
 
@@ -1684,10 +1710,10 @@ msgstr "Wie verhält sich der Crawler auf der Website meines Unternehmens?"
 #: app/[lang]/(public)/how-we-index/page.tsx:19
 #: app/[lang]/(public)/how-we-index/page.tsx:45
 msgid "indexing.meta.description"
-msgstr "Wie Job Seek Stellenanzeigen von über 30 ATS-Plattformen entdeckt und indexiert. Crawl-Frequenz, Rate-Limits, robots.txt-Konformität und Opt-out-Möglichkeiten."
+msgstr "Wie Job Seek Stellenanzeigen entdeckt und indexiert: unser Sourcing-Ansatz, Crawl-Frequenz, Rate-Limits, robots.txt- und TDM-Reservation-Konformität und wie du dich abmeldest."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:42
+#: app/[lang]/(public)/faq/page.tsx:46
 msgid "faq.q.howOftenUpdated"
 msgstr "Wie oft werden Stellenanzeigen aktualisiert?"
 
@@ -1812,12 +1838,12 @@ msgstr "Eingabe ist zu lang."
 msgid "app.home.request.error.tooShort"
 msgstr "Eingabe ist zu kurz."
 
-#. About paragraph 2: how it works
+#. About paragraph 2: how it works — leads with direct sourcing and watchlist ICP, no platform listing
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx:38
 #: app/[lang]/(public)/about/page.tsx:53
 msgid "about.p2"
-msgstr "Statt darauf zu warten, dass Unternehmen Stellen auf Drittanbieter-Jobportale stellen, gehen wir direkt zur Quelle. Unser Crawler überwacht Karriereseiten von Workday, Greenhouse, Lever und über einem Dutzend weiterer Plattformen, sodass Stellen hier erscheinen, sobald sie veröffentlicht werden. Kein Zwischenhändler, keine Verzögerung."
+msgstr "Statt darauf zu warten, dass Unternehmen ihre Stellen auf Drittanbieter-Jobportalen veröffentlichen, gehen wir direkt zur Quelle. Unser Crawler überwacht tausende von Karriereseiten direkt und prüft sie häufig erneut, sodass neue Stellen hier innerhalb weniger Stunden nach Veröffentlichung auftauchen — typischerweise bevor sie die großen Aggregatoren erreichen. Erstelle eine Watchlist mit den Unternehmen, die dich interessieren, und werde benachrichtigt, sobald sie etwas posten."
 
 #. Employment type: internship
 #. js-lingui-explicit-id
@@ -1881,12 +1907,17 @@ msgid "auth.verify.error.invalidLink"
 msgstr "Ungültiger Bestätigungslink"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:74
+#: app/[lang]/(public)/faq/page.tsx:42
+msgid "faq.q.targetedSeeker"
+msgstr "Ist Job Seek das Richtige für mich, wenn ich schon weiß, bei welchen Unternehmen ich arbeiten möchte?"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:78
 msgid "faq.q.openSource"
 msgstr "Ist der Crawler Open Source?"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:62
+#: app/[lang]/(public)/faq/page.tsx:66
 msgid "faq.q.trackerLimit"
 msgstr "Gibt es ein Limit, wie viele Jobs ich verfolgen kann?"
 
@@ -1907,11 +1938,6 @@ msgstr "Job"
 #: src/components/watchlist/public-watchlist-search.tsx:121
 msgid "watchlists.explore.jobSingular"
 msgstr "Job"
-
-#. js-lingui-explicit-id
-#: app/[lang]/layout.tsx:77
-msgid "app.schema.description"
-msgstr "Job-Aggregator, der Karriereseiten von Unternehmen überwacht. Abonniere Unternehmens-Updates, verfolge Bewerbungen und erhalte Benachrichtigungen über neue Stellen."
 
 #. TOC: Job data (CC BY-NC 4.0)
 #. js-lingui-explicit-id
@@ -1949,17 +1975,6 @@ msgstr "Stellensprachen"
 msgid "app.home.stats.jobPostings"
 msgstr "Stellenanzeigen"
 
-#. js-lingui-explicit-id
-#: app/[lang]/layout.tsx:43
-msgid "app.schema.org.description"
-msgstr "Jobsuchmaschine, die Karriereseiten direkt von Unternehmenswebsites abfragt. Entwickelt von der Colophon Group in der Schweiz."
-
-#. Hero eyebrow text above the title
-#. js-lingui-explicit-id
-#: src/components/Hero.tsx:25
-msgid "home.hero.eyebrow"
-msgstr "Den Puls des Arbeitsmarkts im Blick behalten."
-
 #. Alt text for feature section 2 screenshot
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:259
@@ -1969,14 +1984,20 @@ msgstr "Job Seek Oberfläche zum Einreichen von Unternehmenslinks und Konfigurie
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:39
 msgid "faq.a.whatIsJobseek"
-msgstr "Job Seek ist eine Jobsuchmaschine, die Karriereseiten direkt von Unternehmenswebsites abfragt. Stellen erscheinen hier, bevor sie grosse Aggregatoren wie LinkedIn oder Indeed erreichen."
+msgstr "Job Seek hilft dir dabei, die Unternehmen zu verfolgen, bei denen du wirklich arbeiten möchtest. Erstelle eine Watchlist, lasse dich per E-Mail benachrichtigen, wenn neue Stellen geöffnet werden, und verfolge Bewerbungen an einem Ort. Stellen kommen direkt von den Karriereseiten der Unternehmen, sodass du sie innerhalb weniger Stunden nach Veröffentlichung siehst — typischerweise bevor LinkedIn oder Indeed sie übernehmen."
 
-#. Indexing page description
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/page.tsx:19
+#: app/[lang]/(public)/about/page.tsx:41
+msgid "about.meta.description"
+msgstr "Job Seek hilft dir dabei, die Unternehmen zu verfolgen, bei denen du arbeiten möchtest — Watchlists, E-Mail-Benachrichtigungen und Stellen direkt von den Karriereseiten der Unternehmen. Entwickelt von Colophon Group, einem kleinen Entwicklerstudio in der Schweiz."
+
+#. Indexing page description — company-tracking framing, not 'search engine'
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/how-we-index/page.tsx:53
 #: src/components/HowWeIndexContent.tsx:51
 msgid "indexing.hero.description"
-msgstr "Job Seek ist eine Suchmaschine sowohl für aktive Kandidaten als auch für Fachleute, die den Markt passiv beobachten — sie zeigt aktuelle Stellen und behandelt dabei die Infrastruktur der Arbeitgeber respektvoll. Diese Seite dokumentiert genau, wie sich unser Crawler verhält, welche Kontrollen ihn höflich halten und wie Stellen letztlich in den Index gelangen."
+msgstr "Job Seek ist ein Unternehmens-Tracking-Tool — es überwacht tausende Karriereseiten von Unternehmen, damit Nutzer Watchlists erstellen und Benachrichtigungen über neue Stellen erhalten können. Diese Seite dokumentiert genau, wie sich unser Crawler verhält, welche Kontrollen ihn höflich halten und wie Stellen letztlich in den Index gelangen."
 
 #. Main app page subtitle explaining the app is being built
 #. js-lingui-explicit-id
@@ -2087,14 +2108,14 @@ msgstr "Letzte Stunde"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:28
-msgid "terms.hero.lastUpdated"
+#: src/components/PrivacyPolicyContent.tsx:28
+msgid "privacy.hero.lastUpdated"
 msgstr "Zuletzt aktualisiert:"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:28
-msgid "privacy.hero.lastUpdated"
+#: src/components/TermsContent.tsx:28
+msgid "terms.hero.lastUpdated"
 msgstr "Zuletzt aktualisiert:"
 
 #. Time range option: last week
@@ -2102,12 +2123,6 @@ msgstr "Zuletzt aktualisiert:"
 #: src/components/watchlist/time-range-selector.tsx:27
 msgid "watchlists.timeRange.week"
 msgstr "Letzte Woche"
-
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/about/page.tsx:19
-#: app/[lang]/(public)/about/page.tsx:41
-msgid "about.meta.description"
-msgstr "Erfahre, wie Job Seek Karriereseiten von Workday, Greenhouse, Lever und über 30 ATS-Plattformen crawlt, um Stellen vor den großen Aggregatoren zu finden."
 
 #. Hero secondary call-to-action
 #. js-lingui-explicit-id
@@ -2567,12 +2582,12 @@ msgid "watchlists.page.empty"
 msgstr "Noch keine Watchlists. Erstelle eine, um Jobs von deinen Lieblingsunternehmen zu verfolgen."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:63
+#: app/[lang]/(public)/faq/page.tsx:67
 msgid "faq.a.trackerLimit"
 msgstr "Nein. Der Bewerbungstracker hat kein festes Limit — speichere so viele Jobs, wie du möchtest, und verschiebe sie durch deine Pipeline."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:79
+#: app/[lang]/(public)/faq/page.tsx:83
 msgid "faq.a.dataPrivacy"
 msgstr "Nein. Wir verkaufen, vermieten oder teilen deine Daten nicht zu Marketingzwecken. Cookies sind nur sitzungsbasiert, ohne Werbung oder Tracking. Du kannst dein Konto löschen und alle Daten werden innerhalb von 30 Tagen entfernt."
 
@@ -3433,12 +3448,6 @@ msgstr "Standorte suchen..."
 msgid "company.locationModal.searchPlaceholder"
 msgstr "Standorte suchen…"
 
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:22
-#: app/[lang]/(public)/page.tsx:47
-msgid "home.meta.description"
-msgstr "Durchsuche Millionen von Jobs, direkt von Tausenden von Karriereseiten gecrawlt. Filtere nach Erfahrungsstufe, Tech-Stack, Gehalt und Standort und verfolge jede Bewerbung."
-
 #. Back-to-search link on company page header
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/company-head.tsx:59
@@ -3959,12 +3968,12 @@ msgid "about.transparency.p1"
 msgstr "Der Crawler-Code ist Open Source, damit jeder prüfen kann, wie wir Daten sammeln. Wir respektieren robots.txt, beachten TDM-Reservation-Header und beschränken uns auf eine Anfrage pro Seite pro Minute. Jeder ausgehende Link enthält utm_source=jobseek, damit Arbeitgeber wissen, woher ihr Traffic kommt."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:43
+#: app/[lang]/(public)/faq/page.tsx:47
 msgid "faq.a.howOftenUpdated"
 msgstr "Der Crawler entdeckt neue Stellenanzeigen in einem stündlichen Zyklus und aktualisiert Stellendetails täglich. Die meisten Stellen erscheinen innerhalb weniger Stunden nach ihrer Veröffentlichung auf der Karriereseite eines Unternehmens."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:83
+#: app/[lang]/(public)/faq/page.tsx:87
 msgid "faq.a.languages"
 msgstr "Die Benutzeroberfläche ist auf Englisch, Deutsch, Französisch und Italienisch verfügbar. Du kannst Stellenanzeigen auch nach der Sprache filtern, in der sie verfasst wurden."
 
@@ -4030,6 +4039,19 @@ msgstr "Diese Watchlist und alle zugehörigen Einstellungen werden dauerhaft gel
 #: src/components/watchlist/watchlist-job-list.tsx:93
 msgid "watchlists.jobList.today"
 msgstr "Heute"
+
+#. Main heading on the landing page — leads with company-watchlist ICP
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:71
+#: src/components/Hero.tsx:28
+msgid "home.hero.title"
+msgstr "Verfolge die Unternehmen, bei denen du wirklich arbeiten willst."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:21
+#: app/[lang]/(public)/page.tsx:46
+msgid "home.meta.title"
+msgstr "Verfolge die Unternehmen, bei denen du arbeiten willst — Job Seek"
 
 #. Feature section 2 eyebrow text
 #. js-lingui-explicit-id
@@ -4156,7 +4178,7 @@ msgid "settings.billing.upgrading"
 msgstr "Upgrade l\\u00e4uft\\u2026"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:51
+#: app/[lang]/(public)/faq/page.tsx:55
 msgid "faq.a.requestCompany"
 msgstr "Nutze das Anfrageformular auf der Entdecken-Seite — füge eine Karriereseiten-URL oder einen Firmennamen ein und wir beginnen mit der Indexierung. Du kannst den Fortschritt über die Issue-Nummer verfolgen, die wir zurückgeben."
 
@@ -4303,9 +4325,9 @@ msgid "privacy.short.r2"
 msgstr "Wir verkaufen, vermieten oder teilen deine Daten nicht für Marketingzwecke."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:47
-msgid "faq.a.whichAts"
-msgstr "Wir integrieren Workday, Greenhouse, Lever, Ashby, Rippling, SmartRecruiters, Workable und über ein Dutzend weitere Plattformen. Wir parsen auch Sitemaps und JSON-APIs von beliebigen Karriereseiten."
+#: app/[lang]/(public)/faq/page.tsx:51
+msgid "faq.a.differentiation"
+msgstr "Wir indexieren Karriereseiten von Unternehmen direkt, nicht Drittanbieter-Feeds. Kein Recruiter-Spam, keine wiederveröffentlichten Ghost-Jobs, und wir prüfen Unternehmen häufig erneut — die meisten Stellen erscheinen hier also innerhalb weniger Stunden nach Veröffentlichung. Wir sind für Nutzer gemacht, die schon wissen, bei welchen Unternehmen sie arbeiten möchten, nicht für allgemeine Suchen nach irgendeinem Job."
 
 #. Step 1 body
 #. js-lingui-explicit-id
@@ -4319,6 +4341,13 @@ msgstr "Wir suchen nach einer Sitemap, die bereits alle Karriere- oder Stellende
 #: src/components/HowWeIndexContent.tsx:107
 msgid "indexing.ingestion.description"
 msgstr "Wir suchen zuerst nach strukturierten Feeds, bevor wir rohes HTML scrapen. Zuerst prüfen wir auf Sitemaps, dann auf clientseitige JSON-APIs, und parsen vollständige Seiten nur, wenn beides nicht existiert."
+
+#. Feature: direct from source description — no platform names, leads with the ICP differentiator
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:78
+#: src/components/Features.tsx:181
+msgid "home.features.s1.p1.description"
+msgstr "Wir überwachen Karriereseiten direkt, nicht Drittanbieter-Feeds — sodass Stellen hier innerhalb weniger Stunden auftauchen, typischerweise bevor LinkedIn oder Indeed sie übernehmen."
 
 #. Tooltip for pending job warning icon
 #. js-lingui-explicit-id
@@ -4340,23 +4369,9 @@ msgid "indexing.automation.body"
 msgstr "Wir lehnen es ab, Einstellungs- oder Jobsuch-Entscheidungen an undurchsichtige Automatisierung zu übergeben — ob auf Arbeitgeber- oder Bewerberseite. Jeder ausgehende Link enthält <0>utm_source=jobseek</0>, damit Recruiter den Traffic erkennen, und wir überprüfen kontinuierlich Nutzungsmuster und setzen Hürden ein, um automatisierte Bewerbungen zu verhindern."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:67
+#: app/[lang]/(public)/faq/page.tsx:71
 msgid "faq.a.crawlingPolicy"
 msgstr "Wir respektieren robots.txt und TDM-Reservation-Header, beschränken Anfragen auf eine pro Seite pro Minute und verwenden exponentielles Backoff. Alle Anfragen identifizieren sich über den User-Agent. Weitere Details findest du auf unserer Indexierungsseite."
-
-#. Hero description paragraph
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:72
-#: src/components/Hero.tsx:31
-msgid "home.hero.description"
-msgstr "Wir durchsuchen Karriereseiten direkt, damit du Stellen sofort siehst. Durchsuche Millionen von Stellenangeboten bei Tausenden von Unternehmen — filtere nach Erfahrungsstufe, Tech-Stack, Gehalt und Standort und verfolge jede Bewerbung an einem Ort."
-
-#. Feature: direct from source description
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:78
-#: src/components/Features.tsx:181
-msgid "home.features.s1.p1.description"
-msgstr "Folge Wunscharbeitgebern und werde benachrichtigt, wenn neue Stellen erscheinen."
 
 #. Description telling user a verification link was sent
 #. js-lingui-explicit-id
@@ -4409,7 +4424,7 @@ msgid "auth.signIn.subtitle"
 msgstr "Willkommen zurück"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:58
+#: app/[lang]/(public)/faq/page.tsx:62
 msgid "faq.q.whatIsWatchlist"
 msgstr "Was ist eine Watchlist?"
 
@@ -4419,14 +4434,14 @@ msgid "faq.q.whatIsJobseek"
 msgstr "Was ist Job Seek?"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:54
-msgid "faq.q.freeVsPro"
-msgstr "Was ist der Unterschied zwischen Kostenlos und Pro?"
+#: app/[lang]/(public)/faq/page.tsx:50
+msgid "faq.q.differentiation"
+msgstr "Was unterscheidet Job Seek von LinkedIn oder Indeed?"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:46
-msgid "faq.q.whichAts"
-msgstr "Welche ATS-Plattformen unterstützt ihr?"
+#: app/[lang]/(public)/faq/page.tsx:58
+msgid "faq.q.freeVsPro"
+msgstr "Was ist der Unterschied zwischen Kostenlos und Pro?"
 
 #. Heading above the company request input on the app home page
 #. js-lingui-explicit-id
@@ -4435,7 +4450,7 @@ msgid "app.home.request.heading"
 msgstr "Welches Unternehmen sollen wir verfolgen?"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:82
+#: app/[lang]/(public)/faq/page.tsx:86
 msgid "faq.q.languages"
 msgstr "Welche Sprachen unterstützt Jobseek?"
 
@@ -4462,12 +4477,17 @@ msgid "search.experienceModal.years"
 msgstr "Jahre"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:71
+#: app/[lang]/(public)/faq/page.tsx:43
+msgid "faq.a.targetedSeeker"
+msgstr "Ja — genau dafür haben wir Job Seek entwickelt. Füge die Unternehmen, die dich interessieren, zu einer Watchlist hinzu, setze deine Filter (Rolle, Standort, Seniorität, Gehalt), und Job Seek überwacht ihre Karriereseiten und benachrichtigt dich, sobald neue passende Stellen erscheinen. Du musst nicht jede Unternehmenswebsite manuell prüfen oder gegen den LinkedIn-Algorithmus kämpfen."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:75
 msgid "faq.a.optOut"
 msgstr "Ja. Schreib uns eine E-Mail und wir stellen das Crawlen deiner Karriereseite sofort ein und entfernen deine Stellenanzeigen aus dem Index."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx:75
+#: app/[lang]/(public)/faq/page.tsx:79
 msgid "faq.a.openSource"
 msgstr "Ja. Der Crawler und die Extraktions-Pipeline sind vollständig Open Source auf GitHub. Der Anwendungscode ist MIT-lizenziert; die Stellendaten sind CC BY-NC 4.0."
 
