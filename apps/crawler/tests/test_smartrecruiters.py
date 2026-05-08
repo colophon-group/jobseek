@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import httpx
 import pytest
 
 from src.core.monitors.smartrecruiters import (
+    _get_page_with_retry,
     _token_from_url,
     can_handle,
     discover,
@@ -158,7 +161,19 @@ class TestDiscover:
             assert len(urls) == 150
             assert call_count == 2  # Two pages
 
-    async def test_http_error_raises(self):
+    async def test_http_error_raises(self, monkeypatch):
+        """Persistent 5xx exhausts the retry budget and surfaces as
+        ``PaginationFetchError`` (#2749) — semantically the same
+        "scrape-level failure" outcome as the prior
+        ``HTTPStatusError`` from ``raise_for_status``, but routed
+        through the unified pagination-failure path that every other
+        paginating monitor uses (workday #2748, lever #2749, dom #2722).
+        """
+        from src.core.monitors import smartrecruiters as sr_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+
         def handler(request):
             return httpx.Response(500)
 
@@ -167,7 +182,7 @@ class TestDiscover:
                 "board_url": "https://careers.smartrecruiters.com/acme",
                 "metadata": {"token": "acme"},
             }
-            with pytest.raises(httpx.HTTPStatusError):
+            with pytest.raises(PaginationFetchError):
                 await discover(board, client)
 
 
@@ -537,3 +552,373 @@ class TestScrape:
                 client,
             )
             assert result.title is None
+
+
+_LIST_URL = "https://api.smartrecruiters.com/v1/companies/acme/postings"
+
+
+class TestGetPageWithRetry:
+    """``_get_page_with_retry`` mirrors ``fetch_with_retry``'s contract on
+    SmartRecruiters' GET list endpoint: 5xx / 408 / 425 / 429 / network
+    errors are retried, non-retryable 4xx fail fast, and persistent
+    failures raise :class:`PaginationFetchError` so a single broken
+    pagination page doesn't silently truncate the run (#2749).
+    """
+
+    async def test_returns_on_success(self):
+        def handler(request):
+            return httpx.Response(200, json={"content": [], "totalFound": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(client, _LIST_URL, {"limit": 100, "offset": 0})
+            assert data == {"content": [], "totalFound": 0}
+
+    async def test_retries_on_429_then_succeeds(self, monkeypatch):
+        from src.core.monitors import smartrecruiters as sr_module
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return httpx.Response(429, text="rate limited")
+            return httpx.Response(200, json={"content": [{"id": "p1"}], "totalFound": 1})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(
+                client, _LIST_URL, {"limit": 100, "offset": 0}, base_delay=0.001
+            )
+            assert data["content"] == [{"id": "p1"}]
+            assert calls["n"] == 3
+
+    async def test_retries_on_503_then_succeeds(self, monkeypatch):
+        """Pre-fix, a 5xx anywhere in the loop made ``raise_for_status``
+        throw and the run was recorded as a scrape-level failure.
+        Now 503 is retried like every other transient.
+        """
+        from src.core.monitors import smartrecruiters as sr_module
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return httpx.Response(503, text="service unavailable")
+            return httpx.Response(200, json={"content": [], "totalFound": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(
+                client, _LIST_URL, {"limit": 100, "offset": 0}, base_delay=0.001
+            )
+            assert data == {"content": [], "totalFound": 0}
+            assert calls["n"] == 3
+
+    async def test_retries_on_cloudflare_5xx(self, monkeypatch):
+        """Cloudflare origin codes 520-526/530 are retried (parity with
+        dom + workday + lever + accenture + PCSX)."""
+        from src.core.monitors import smartrecruiters as sr_module
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 2:
+                return httpx.Response(520, text="cf origin error")
+            return httpx.Response(200, json={"content": [], "totalFound": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(
+                client, _LIST_URL, {"limit": 100, "offset": 0}, base_delay=0.001
+            )
+            assert data == {"content": [], "totalFound": 0}
+            assert calls["n"] == 2
+
+    async def test_raises_after_persistent_5xx(self, monkeypatch):
+        """Issue #2749 acceptance: persistent 5xx exhausts the retry
+        budget and raises ``PaginationFetchError`` — no silent
+        truncation.
+        """
+        from src.core.monitors import smartrecruiters as sr_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(500, text="internal")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 100, "offset": 0},
+                    retries=3,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status == 500
+            assert exc_info.value.attempts == 3
+            assert calls["n"] == 3
+
+    async def test_raises_on_non_retryable_4xx_immediately(self, monkeypatch):
+        """A 401 / 403 / 404 indicates a hard error — no point
+        retrying. Raise ``PaginationFetchError`` on the first attempt.
+        """
+        from src.core.monitors import smartrecruiters as sr_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(401, text="unauthorized")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 100, "offset": 0},
+                    retries=3,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status == 401
+            assert calls["n"] == 1
+
+    async def test_raises_after_persistent_network_error(self, monkeypatch):
+        from src.core.monitors import smartrecruiters as sr_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            raise httpx.ConnectError("conn refused")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 100, "offset": 0},
+                    retries=2,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status is None
+            assert exc_info.value.last_error == "ConnectError"
+
+    async def test_raises_on_empty_200_body(self, monkeypatch):
+        """Per the issue (#2749), a 200 with a body that decodes to
+        ``null`` (or any non-dict shape) used to leave
+        ``totalFound`` defaulting to 0 and ``content`` defaulting to
+        ``[]`` — silently breaking the loop on
+        ``offset >= total_found``. Now the helper treats it as a
+        transient failure (retry, then raise) so the run surfaces.
+        """
+        from src.core.monitors import smartrecruiters as sr_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            # JSON ``null`` decodes to Python ``None`` — non-dict.
+            return httpx.Response(
+                200, content=b"null", headers={"content-type": "application/json"}
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 100, "offset": 0},
+                    retries=2,
+                    base_delay=0.001,
+                )
+
+    async def test_raises_on_empty_array_200_body(self, monkeypatch):
+        """A 200 with body ``[]`` (empty list — wrong shape for
+        SmartRecruiters which returns dicts) is non-dict and must
+        raise. Distinguishes empty-200 from a legitimate
+        ``{"content": [], "totalFound": 0}`` end-of-results.
+        """
+        from src.core.monitors import smartrecruiters as sr_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            return httpx.Response(200, json=[])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await _get_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 100, "offset": 0},
+                    retries=2,
+                    base_delay=0.001,
+                )
+
+    async def test_legitimate_empty_dict_returns(self):
+        """A 200 with body ``{"content": [], "totalFound": 0}`` is
+        the canonical end-of-results signal for an empty board.
+        Must return cleanly so the discover loop's
+        ``offset >= total_found`` end-check fires correctly.
+        """
+
+        def handler(request):
+            return httpx.Response(200, json={"content": [], "totalFound": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _get_page_with_retry(
+                client, _LIST_URL, {"limit": 100, "offset": 0}, base_delay=0.001
+            )
+            assert data == {"content": [], "totalFound": 0}
+
+
+class TestDiscoverPaginationRetry:
+    """Issue #2749 acceptance: the discover loop propagates the new
+    retry-then-raise contract end-to-end. Pre-fix, a 5xx mid-pagination
+    raised ``HTTPStatusError`` straight out and a 200-with-``{}``
+    silently broke the loop. Now both transients are retried and
+    persistent failures raise ``PaginationFetchError``.
+    """
+
+    async def test_503_then_200_pagination_continues(self, monkeypatch):
+        from src.core.monitors import smartrecruiters as sr_module
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+
+        # Total 150 (PAGE_SIZE=100 → two pages). First page succeeds with
+        # 100 postings; second page returns 503 once then 200 with 50.
+        page2_calls = {"n": 0}
+
+        def handler(request):
+            params = dict(request.url.params)
+            offset = int(params.get("offset", 0))
+            if offset == 0:
+                return httpx.Response(
+                    200,
+                    json={
+                        "content": [{"id": f"p{i}"} for i in range(100)],
+                        "totalFound": 150,
+                    },
+                )
+            page2_calls["n"] += 1
+            if page2_calls["n"] < 2:
+                return httpx.Response(503, text="unavailable")
+            return httpx.Response(
+                200,
+                json={
+                    "content": [{"id": f"p{100 + i}"} for i in range(50)],
+                    "totalFound": 150,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://careers.smartrecruiters.com/acme",
+                "metadata": {"token": "acme"},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 150
+            assert page2_calls["n"] == 2
+
+    async def test_persistent_500_mid_pagination_raises(self, monkeypatch):
+        """Pre-fix, a 5xx on page N>0 raised ``HTTPStatusError`` straight
+        out — recorded as scrape-level failure but bypassed the
+        unified retry contract. Now the helper raises
+        ``PaginationFetchError`` cleanly via the same path every other
+        paginating monitor uses.
+        """
+        from src.core.monitors import smartrecruiters as sr_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            params = dict(request.url.params)
+            offset = int(params.get("offset", 0))
+            if offset > 0:
+                return httpx.Response(500, text="internal")
+            return httpx.Response(
+                200,
+                json={
+                    "content": [{"id": f"p{i}"} for i in range(100)],
+                    "totalFound": 150,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://careers.smartrecruiters.com/acme",
+                "metadata": {"token": "acme"},
+            }
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(board, client)
+            assert exc_info.value.last_status == 500
+
+    async def test_empty_200_mid_pagination_raises(self, monkeypatch):
+        """The load-bearing test for #2749: a 200 with a non-dict body
+        (e.g., a CDN dropping the body and returning ``[]``, or an
+        anti-bot challenge served as 200) on page N>0 MUST raise, not
+        silently truncate. The pre-fix code path would have broken
+        on the missing-totalFound default and returned the partial
+        100-URL set as success, feeding ``_MARK_GONE_BY_TIMESTAMP``
+        for the unfetched 50 URLs.
+        """
+        from src.core.monitors import smartrecruiters as sr_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            params = dict(request.url.params)
+            offset = int(params.get("offset", 0))
+            if offset > 0:
+                # CDN/anti-bot envelope served as 200 — the vulnerable case.
+                return httpx.Response(200, json=[])
+            return httpx.Response(
+                200,
+                json={
+                    "content": [{"id": f"p{i}"} for i in range(100)],
+                    "totalFound": 150,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://careers.smartrecruiters.com/acme",
+                "metadata": {"token": "acme"},
+            }
+            with pytest.raises(PaginationFetchError):
+                await discover(board, client)
+
+    async def test_legitimate_empty_first_page_returns_empty(self, monkeypatch):
+        """An empty board (legitimate ``{"content": [], "totalFound": 0}``
+        on the first page) must return an empty set cleanly — the
+        end-signal logic ``offset >= total_found`` fires correctly
+        without any retry.
+        """
+        from src.core.monitors import smartrecruiters as sr_module
+
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(200, json={"content": [], "totalFound": 0})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://careers.smartrecruiters.com/acme",
+                "metadata": {"token": "acme"},
+            }
+            urls = await discover(board, client)
+            assert urls == set()
+            assert calls["n"] == 1  # No retries — empty body is structurally valid.

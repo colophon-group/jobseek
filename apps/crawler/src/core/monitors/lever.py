@@ -7,6 +7,7 @@ Returns full job data. Supports pagination via skip/limit. Rate limit: 2 req/sec
 from __future__ import annotations
 
 import asyncio
+import random
 import re
 
 import httpx
@@ -19,11 +20,21 @@ from src.core.monitors import (
     register,
     slugs_from_url,
 )
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
 MAX_JOBS = 50_000
 BATCH_SIZE = 100
+
+# Pagination retry budget. Symmetric with workday (#2748), api_sniffer
+# (#2733), accenture (#2735) and PCSX (#2734): 3 total attempts,
+# exponential backoff with full jitter starting at 0.5s. Lever's public
+# API is documented at 2 req/sec so the existing 0.5s inter-page sleep
+# already throttles the success path; the retry budget piggy-backs on
+# the same cadence.
+_RETRY_ATTEMPTS = 3
+_RETRY_BASE_DELAY = 0.5
 
 _INTERVAL_TO_UNIT: dict[str, str] = {
     "per-year-salary": "year",
@@ -172,8 +183,140 @@ async def _fetch_job_count(
         return None
 
 
+async def _get_page_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    params: dict,
+    *,
+    retries: int = _RETRY_ATTEMPTS,
+    base_delay: float = _RETRY_BASE_DELAY,
+    skip: int = 0,
+) -> list[dict]:
+    """GET a Lever list-API page with bounded retries (#2749).
+
+    Mirrors the contract used by ``fetch_with_retry`` (#2722) and the
+    sibling monitor helpers (workday #2748, accenture #2735, PCSX
+    #2734, api_sniffer #2733): retryable failures back off exponentially
+    and, on budget exhaustion, raise :class:`PaginationFetchError` so
+    the run is recorded as a failure rather than silently truncating to
+    whatever pages happened to succeed.
+
+    Lever's end-of-pagination signal is ``len(batch) < BATCH_SIZE``.
+    A CDN/anti-bot incident dropping the body and returning ``200 []``
+    looks identical to a legitimate empty page — pre-fix, the loop
+    simply broke and the caller treated the partial discovery as
+    success, which fed ``_MARK_GONE_BY_TIMESTAMP`` for the missing
+    URLs (same shape as #2722 / #2737 / #2748).
+
+    Retried:
+      - HTTP 5xx (Cloudflare 520-526/530 included), 408, 425, 429.
+      - Arbitrary network exceptions (timeout, connection reset, JSON
+        parse error on a captcha/HTML body served as 200).
+      - HTTP 200 with a body that decodes to a non-list shape — e.g.,
+        a CDN error envelope ``{}`` served as 200 (same shape as the
+        workday ``null``-body guard).
+
+    Fail-fast (non-retryable 4xx — auth-expired 401, misconfigured 400,
+    forbidden 403): raises :class:`PaginationFetchError` on the first
+    attempt. These won't recover within the retry budget and we'd
+    rather surface the misconfiguration than burn the budget. The
+    *first-page-only* 404 -> ``BoardGoneError`` mapping is preserved
+    by the caller (``discover``) because it's a structural signal,
+    not a transient one — see #2215.
+
+    Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
+    with full jitter, identical cadence to workday (#2748).
+    """
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+
+    for attempt in range(retries):
+        try:
+            resp = await client.get(url, params=params, headers=_API_HEADERS)
+            last_status = resp.status_code
+            if resp.status_code == 200:
+                # ``resp.json()`` may raise ``json.JSONDecodeError`` on a
+                # captcha/HTML body served as 200 — falls into the
+                # ``except Exception`` branch below, retried, then
+                # surfaced as ``PaginationFetchError``. No silent break.
+                data = resp.json()
+                # Lever's list endpoint returns a JSON array of postings.
+                # A body that decodes to ``null`` or to a non-list shape
+                # (e.g., an unexpected error envelope) is treated as a
+                # transient failure: retry, then raise. Without this
+                # guard, ``len(batch) < BATCH_SIZE`` on a non-list ``batch``
+                # raises ``TypeError`` mid-loop, OR (worse) a coincidental
+                # ``[]`` would silently break the loop — same shape of
+                # silent-break bug the issue (#2749) is fixing.
+                if not isinstance(data, list):
+                    raise ValueError(
+                        f"lever list endpoint returned non-list body: {type(data).__name__}"
+                    )
+                return data
+            if resp.status_code == 404 and skip == 0:
+                # First-page 404 is Lever's "board removed" signal.
+                # Re-raise as ``BoardGoneError`` via the caller; here we
+                # surface a sentinel by raising the canonical structural
+                # error and letting ``discover`` translate. We do this
+                # by attaching the response so the caller can detect.
+                raise PaginationFetchError(
+                    url,
+                    attempts=attempt + 1,
+                    last_status=404,
+                )
+            if is_retryable_status(resp.status_code):
+                last_exc = None  # status-only, no exception
+            else:
+                # Non-retryable 4xx — fail fast. ``resp.raise_for_status``
+                # would raise ``HTTPStatusError`` which the caller doesn't
+                # uniformly handle; raise ``PaginationFetchError`` directly
+                # for cross-monitor symmetry (callers ``except
+                # PaginationFetchError`` will route to ``_RECORD_FAILURE``).
+                raise PaginationFetchError(
+                    url,
+                    attempts=attempt + 1,
+                    last_status=resp.status_code,
+                )
+        except PaginationFetchError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — timeout, network, JSON parse
+            last_exc = exc
+            last_status = None
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "lever.list_backoff",
+                url=url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await asyncio.sleep(delay)
+
+    raise PaginationFetchError(
+        url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
+
+
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
-    """Fetch job listings from the Lever public API with pagination."""
+    """Fetch job listings from the Lever public API with pagination.
+
+    Failure semantics (#2749). Each page GET is wrapped by
+    :func:`_get_page_with_retry`, which raises
+    :class:`PaginationFetchError` on persistent transient failures or
+    non-retryable 4xx. The exception propagates out of this function
+    (no intervening try/except) and lands in
+    ``_process_one_board_streaming``'s generic ``except Exception``,
+    which records the run as a failure rather than a partial success
+    — preventing ``_MARK_GONE_BY_TIMESTAMP`` from tombstoning the URLs
+    that live on the unfetched pages (same shape of bug as #2722,
+    #2737, #2748).
+    """
     metadata = board.get("metadata") or {}
     token = metadata.get("token") or _token_from_url(board["board_url"])
 
@@ -189,20 +332,22 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     skip = 0
 
     while True:
-        response = await client.get(
-            url, params={"limit": BATCH_SIZE, "skip": skip}, headers=_API_HEADERS
-        )
-        if response.status_code == 404 and skip == 0:
-            # Lever returns 404 for the first page when the board slug
-            # has been removed upstream. Surface as a "gone" signal so
-            # the board processor disables in one shot. See issue #2215.
-            raise BoardGoneError(
-                f"Lever board token {token!r} returned 404",
-                url=str(response.url),
+        try:
+            batch = await _get_page_with_retry(
+                client, url, {"limit": BATCH_SIZE, "skip": skip}, skip=skip
             )
-        response.raise_for_status()
+        except PaginationFetchError as exc:
+            # First-page 404 is the "board removed" signal — re-raise as
+            # the canonical structural error so the board processor
+            # disables in one shot instead of accumulating five
+            # consecutive failures. See issue #2215.
+            if exc.last_status == 404 and skip == 0:
+                raise BoardGoneError(
+                    f"Lever board token {token!r} returned 404",
+                    url=url,
+                ) from exc
+            raise
 
-        batch: list[dict] = response.json()
         for raw in batch:
             parsed = _parse_job(raw)
             if parsed:
