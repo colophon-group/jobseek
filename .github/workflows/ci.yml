@@ -150,15 +150,25 @@ jobs:
       - run: pnpm --filter @jobseek/web test
 
   test-web-isr:
-    # Slow lane: runs `pnpm build` once and asserts the must-stay-cacheable
-    # routes (4 ISR pages + public marketing surfaces) are classified as
-    # `◐ Partial Prerender` or `○ Static` in Next 16's route summary —
-    # never `ƒ Dynamic`. Successor to the retired `app/__tests__/isr-routes.test.ts`
-    # line scanner, see #2885 (and incident #2243).
+    # Slow lane: runs `pnpm build` once via the vitest globalSetup
+    # (`apps/web/test-setup/run-prod-build.ts`) and asserts each
+    # must-stay-cacheable route is classified with its expected glyph
+    # (`◐ Partial Prerender` or `○ Static`) in Next 16's route summary.
+    # Catches three classes the build itself cannot: parser drift if
+    # Next's stdout shape changes, list rot if a route is removed, and
+    # ◐↔○ classification drift (the build only fails on `→ ƒ`). See
+    # #2885 (and incident #2243).
     name: Test Web ISR (slow)
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    # `Production` environment exposes DATABASE_URL + TYPESENSE_* secrets.
+    # The build needs DATABASE_URL because the blog `MdxMentions` server
+    # action (rendered for every per-post path during static generation)
+    # reads from Supabase — empirically validated in #2900 (replacing it
+    # with a stub DSN reproduces a Failed query / ECONNREFUSED prerender
+    # error on `/[lang]/blog/how-we-index-job-postings`).
+    environment: Production
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -177,6 +187,38 @@ jobs:
       # (`apps/web/test-setup/run-prod-build.ts`), so no separate build
       # step is needed.
       - run: pnpm --filter @jobseek/web test:isr
+        env:
+          # Required: blog `<Mention>` MDX components fetch company tooltips
+          # at build time. Without a real DSN the per-post prerender fails.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          # Build-time-readable Typesense client config. Present as Production
+          # secrets; provider falls back gracefully on connection error so
+          # the literal placeholder is fine when the secrets are missing in
+          # forks, but in the Production environment they resolve.
+          TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+          TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
+          TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+          # Build-time-only stubs. These are NOT used to authenticate to
+          # any real service during the test build — auth/sso secrets and
+          # the search/write keys are only read at runtime by request
+          # handlers, which the build does not exercise. We pass literal
+          # placeholders so module-top-level reads (e.g. better-auth's
+          # OAuth provider config) don't throw and so search code paths
+          # that read these names see a non-empty string.
+          BETTER_AUTH_SECRET: ci-stub-better-auth-secret-not-used-at-build-time
+          BETTER_AUTH_URL: http://localhost:3000
+          TYPESENSE_SEARCH_KEY: ci-stub-not-used-at-build-time
+          TYPESENSE_WRITE_KEY: ci-stub-not-used-at-build-time
+          GITHUB_CLIENT_ID: ci-stub
+          GITHUB_CLIENT_SECRET: ci-stub
+          GOOGLE_CLIENT_ID: ci-stub
+          GOOGLE_CLIENT_SECRET: ci-stub
+          LINKEDIN_CLIENT_ID: ci-stub
+          LINKEDIN_CLIENT_SECRET: ci-stub
+          RESEND_API_KEY: ci-stub
+          UPSTASH_REDIS_REST_URL: https://stub.invalid
+          UPSTASH_REDIS_REST_TOKEN: ci-stub
 
   test-shim:
     name: Test Murmur Shim
