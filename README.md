@@ -39,7 +39,6 @@ Roles land here within hours of the company posting them — once, in canonical 
 |---|---|
 | ![Explore](.github/assets/readme/explore.png) | **Explore.** Filter every tracked company by seniority, tech stack, salary, location, and posting language. Free, no account. |
 | ![Company page](.github/assets/readme/company.png) | **Company pages.** Live and historical posting counts, similar-company suggestions, every role linked back to the source. |
-| ![How we index](.github/assets/readme/how-we-index.png) | **A public indexing policy.** One request per site per minute, full `robots.txt` and W3C `TDM-Reservation` compliance, opt-out path. |
 
 A built-in **application tracker** moves saved roles through `saved → applied → interviewing → offered/rejected`, with stats and an interview log. Free for everyone. **Pro** ($10/month) unlocks unlimited watchlists with email alerts.
 
@@ -121,7 +120,7 @@ scripts/               Typesense setup, backfill, IndexNow notifications
 ## License
 
 - **Code** — [MIT](LICENSE). Use, modify, redistribute, no warranty.
-- **Job-posting data** — [CC BY-NC 4.0](LICENSE-JOB-DATA). Free for research and non-commercial reuse with attribution. Not "open data" by the strict OKD definition. For commercial licensing, [open an issue](https://github.com/colophon-group/jobseek/issues/new) or get in touch via [colophon-group.org](https://colophon-group.org).
+- **Job-posting data** — [CC BY-NC 4.0](LICENSE-JOB-DATA). Free for research and non-commercial reuse with attribution. Not "open data" by the strict OKD definition. For commercial licensing, get in touch via [business@colophon-group.org](mailto:business@colophon-group.org).
 
 ---
 
