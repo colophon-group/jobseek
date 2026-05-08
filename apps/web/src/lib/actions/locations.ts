@@ -1,9 +1,10 @@
 "use server";
 
 import { sql } from "drizzle-orm";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
+import { typeaheadLocationsCacheTag } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
 import { buildFilterString } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
@@ -87,6 +88,10 @@ async function _fetchLocationSuggestionsCached(
 ): Promise<LocationSuggestion[]> {
   "use cache";
   cacheLife({ revalidate: 3600 });
+  // Tag the slot so `revalidateTag(typeaheadLocationsCacheTag())` from
+  // /api/internal/invalidate-typeahead drops it after `crawler sync`,
+  // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
+  cacheTag(typeaheadLocationsCacheTag());
 
   const hasGeo = bucketedLat != null && bucketedLng != null;
   const sortBy = hasGeo

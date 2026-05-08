@@ -1,11 +1,12 @@
 "use server";
 
 import { sql } from "drizzle-orm";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResultPosting } from "@/lib/search";
 import { cached } from "@/lib/cache";
+import { typeaheadCompaniesCacheTag } from "@/lib/cache-tags";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { expandLocationIds } from "@/lib/actions/locations";
 import { expandOccupationIds } from "@/lib/actions/taxonomy";
@@ -45,6 +46,10 @@ async function _queryCompanySuggestionsCached(
 ): Promise<CompanySuggestion[]> {
   "use cache";
   cacheLife({ revalidate: 3600 });
+  // Tag the slot so `revalidateTag(typeaheadCompaniesCacheTag())` from
+  // /api/internal/invalidate-typeahead drops it after `crawler sync`,
+  // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
+  cacheTag(typeaheadCompaniesCacheTag());
 
   const rows = await db.execute<{
     [key: string]: unknown;
