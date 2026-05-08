@@ -23,7 +23,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     getCompanyBySlug(slug, locale),
     loadCatalog(locale),
   ]);
-  if (!company) return {};
+  // No company = ghost slug (deleted, never existed, typo). Bare `{}`
+  // would let `[lang]/layout.tsx`'s `metadata.title.default` ("Job
+  // Seek") cascade and leave the URL indexable. Tag explicitly as
+  // `noindex,follow` to mirror the watchlist null-detail handling.
+  if (!company) return { robots: { index: false, follow: true } };
 
   const title = i18n._({
     id: "company.meta.title",

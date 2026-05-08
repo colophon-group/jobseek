@@ -1216,7 +1216,7 @@ export async function addCompanyToWatchlist(
   if (!userId) throw new Error("Not authenticated");
 
   const [wl] = await db
-    .select({ userId: watchlist.userId, isPublic: watchlist.isPublic })
+    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
     .from(watchlist)
     .where(eq(watchlist.id, watchlistId))
     .limit(1);
@@ -1228,12 +1228,18 @@ export async function addCompanyToWatchlist(
     .values({ watchlistId, companyId })
     .onConflictDoNothing();
 
-  // Typesense write hook: update company_count if public (fire-and-forget)
+  // The companies array drives the cached page's JSON-LD ItemList,
+  // metadata description ("Jobs at X, Y, Z"), and OG image. Bust the
+  // page cache + Redis layer so the change is visible on the next read.
   if (wl.isPublic) {
-    _countWatchlistCompanies(watchlistId).then((count) => {
-      tsUpdateWatchlistField(watchlistId, { company_count: count });
-    }).catch((err) => {
-      console.error("[addCompanyToWatchlist] Typesense hook failed", err);
+    after(async () => {
+      try {
+        await _invalidateWatchlistCaches(userId, [wl.slug]);
+        const count = await _countWatchlistCompanies(watchlistId);
+        tsUpdateWatchlistField(watchlistId, { company_count: count });
+      } catch (err) {
+        console.error("[addCompanyToWatchlist] post-mutation hook failed", err);
+      }
     });
   }
 
@@ -1247,7 +1253,7 @@ export async function clearWatchlistCompanies(
   if (!userId) throw new Error("Not authenticated");
 
   const [wl] = await db
-    .select({ userId: watchlist.userId, isPublic: watchlist.isPublic })
+    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
     .from(watchlist)
     .where(eq(watchlist.id, watchlistId))
     .limit(1);
@@ -1258,9 +1264,15 @@ export async function clearWatchlistCompanies(
     .delete(watchlistCompany)
     .where(eq(watchlistCompany.watchlistId, watchlistId));
 
-  // Typesense write hook: set company_count to 0 if public (fire-and-forget)
   if (wl.isPublic) {
-    tsUpdateWatchlistField(watchlistId, { company_count: 0 });
+    after(async () => {
+      try {
+        await _invalidateWatchlistCaches(userId, [wl.slug]);
+        tsUpdateWatchlistField(watchlistId, { company_count: 0 });
+      } catch (err) {
+        console.error("[clearWatchlistCompanies] post-mutation hook failed", err);
+      }
+    });
   }
 
   return { ok: true };
@@ -1274,7 +1286,7 @@ export async function removeCompanyFromWatchlist(
   if (!userId) throw new Error("Not authenticated");
 
   const [wl] = await db
-    .select({ userId: watchlist.userId, isPublic: watchlist.isPublic })
+    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
     .from(watchlist)
     .where(eq(watchlist.id, watchlistId))
     .limit(1);
@@ -1290,12 +1302,15 @@ export async function removeCompanyFromWatchlist(
       ),
     );
 
-  // Typesense write hook: update company_count if public (fire-and-forget)
   if (wl.isPublic) {
-    _countWatchlistCompanies(watchlistId).then((count) => {
-      tsUpdateWatchlistField(watchlistId, { company_count: count });
-    }).catch((err) => {
-      console.error("[removeCompanyFromWatchlist] Typesense hook failed", err);
+    after(async () => {
+      try {
+        await _invalidateWatchlistCaches(userId, [wl.slug]);
+        const count = await _countWatchlistCompanies(watchlistId);
+        tsUpdateWatchlistField(watchlistId, { company_count: count });
+      } catch (err) {
+        console.error("[removeCompanyFromWatchlist] post-mutation hook failed", err);
+      }
     });
   }
 
