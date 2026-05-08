@@ -42,7 +42,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug),
     loadCatalog(locale),
   ]);
-  if (!detail) return {};
+  // No detail = watchlist doesn't exist or is private. Returning bare
+  // `{}` would let `[lang]/layout.tsx`'s `metadata.title.default`
+  // ("Job Seek") cascade and leave the page indexable. Tag explicitly
+  // as `noindex,follow` so search engines don't surface ghost
+  // watchlist URLs.
+  if (!detail) return { robots: { index: false, follow: true } };
 
   const ownerLabel = detail.owner.displayUsername ?? detail.owner.username ?? detail.owner.name;
   const title = `${detail.title} — @${ownerLabel}`;

@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { compileMDX } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, ogLocale } from "@/lib/i18n";
+import { blogPostCacheTag } from "@/lib/cache-tags";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import {
@@ -41,6 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
   cacheLife({ revalidate: 86400 });
   const { lang, slug } = await params;
+  cacheTag(blogPostCacheTag(slug));
   const locale = isLocale(lang) ? lang : defaultLocale;
   const post = await getBlogPost(slug, locale);
   if (!post) return {};
@@ -126,6 +128,7 @@ export default async function BlogPostPage({ params }: Props) {
   const locale = await initI18nForPage(params);
   const i18n = getI18n()!;
   const { slug } = await params;
+  cacheTag(blogPostCacheTag(slug));
   const post = await getBlogPost(slug, locale);
   if (!post) notFound();
 

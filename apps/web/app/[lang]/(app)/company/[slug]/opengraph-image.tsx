@@ -36,16 +36,21 @@ import { join } from "node:path";
 const OG_PRERENDER_TOP_N = 200;
 
 /**
- * Pick the top-N companies to prerender. Fails the build if Typesense
- * is configured (`TYPESENSE_HOST` set) but unreachable on a production
- * build — silently shipping a deploy with zero OG prerender means every
- * Twitter/LinkedIn/Slack crawl on a popular slug cold-starts a function,
- * which is exactly the cost surge the prebake exists to absorb.
+ * Pick the top-N companies to prerender. Fails the build only when
+ * Typesense is configured AND unreachable on a production build —
+ * that's the failure mode where a silent zero-prerender translates
+ * into every Twitter/LinkedIn/Slack crawl cold-starting a function.
  *
- * Soft-fails (returns `[]`) when Typesense isn't configured at all
- * (preview deploys without the secret, local builds without `.env.local`)
- * — those don't have access to the Typesense index, and dynamic-render
- * fallback is the only sensible behavior. See #2835 critic round 2.
+ * Soft-fails (returns `[]` + warn) in two other cases:
+ *   1. Typesense isn't configured (preview deploys without secrets,
+ *      local builds without `.env.local`).
+ *   2. Typesense responded successfully but with 0 results — could be
+ *      a legitimately empty index (during reindex / fresh deploy) or
+ *      an `active_posting_count:>0` filter mismatch. Failing the
+ *      production deploy on a transient empty-index state would couple
+ *      Vercel deploy availability to a specific Typesense data shape.
+ *
+ * See #2835 critic rounds 2 and 3.
  */
 export async function generateStaticParams(): Promise<
   { lang: string; slug: string }[]
@@ -69,19 +74,23 @@ export async function generateStaticParams(): Promise<
     const slugs = (result.hits ?? [])
       .map((h) => (h.document as Record<string, unknown>).slug)
       .filter((s): s is string => typeof s === "string");
-    if (slugs.length === 0 && isProductionBuild && hasTypesenseConfig) {
-      throw new Error(
-        "[opengraph-image] generateStaticParams: 0 companies returned from Typesense " +
-          "on a production build with TYPESENSE_HOST set — would silently degrade to " +
-          "per-request OG generation. Check Typesense reachability + " +
-          "active_posting_count:>0 filter.",
+    if (slugs.length === 0) {
+      console.warn(
+        "[opengraph-image] generateStaticParams: 0 companies returned from " +
+          "Typesense — index empty or filter mismatch. Long-tail OG generation " +
+          "will fall back to per-request rendering.",
       );
     }
     return slugs.flatMap((slug) => locales.map((lang) => ({ lang, slug })));
   } catch (err) {
-    if (isProductionBuild && hasTypesenseConfig) throw err;
+    if (isProductionBuild && hasTypesenseConfig) {
+      // Typesense was configured but the call threw (network error,
+      // misconfigured secret, etc.) on a production build. Fail loud —
+      // silently shipping zero prerender hides a real outage.
+      throw err;
+    }
     // Typesense not configured (preview without secrets) OR local build —
-    // log loudly but don't fail; long-tail dynamic rendering still works.
+    // log loudly but don't fail; dynamic OG rendering still works.
     console.warn(
       "[opengraph-image] generateStaticParams: skipping prerender",
       err,
@@ -101,7 +110,10 @@ export default async function OgImage({
   params: Promise<{ lang: string; slug: string }>;
 }) {
   const { slug, lang } = await params;
-  const company = await getCompanyBySlug(slug, lang);
+  const [company, fontData] = await Promise.all([
+    getCompanyBySlug(slug, lang),
+    fontPromise,
+  ]);
   if (!company) {
     return new ImageResponse(
       <div
@@ -119,11 +131,14 @@ export default async function OgImage({
       >
         Not Found
       </div>,
-      { ...size, headers: CACHE_HEADERS },
+      {
+        ...size,
+        headers: CACHE_HEADERS,
+        fonts: [{ name: "JetBrains Mono", data: fontData, weight: 700, style: "normal" }],
+      },
     );
   }
 
-  const fontData = await fontPromise;
   const hasIcon = company.icon && company.icon.startsWith("http");
 
   return new ImageResponse(

@@ -1,7 +1,7 @@
 "use server";
 
 import { after } from "next/server";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { eq, and, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -145,6 +145,12 @@ export async function createWatchlist(params: {
   if (isPublic && !trivial) {
     after(async () => {
       try {
+        // Bust any pre-existing cache entry for the new (userSlug, slug)
+        // pair. If the URL was visited while the watchlist didn't exist
+        // (or after a delete-then-recreate with the same slug), the
+        // page-level `'use cache'` may hold a null-detail render.
+        await _invalidateWatchlistCaches(userId, [slug]);
+
         const owner = await _getOwnerInfo(userId);
         if (!owner) return;
         tsUpsertWatchlist({
@@ -420,6 +426,10 @@ export async function copyWatchlist(
     // 1. Upsert the new copy (copies are always public) — unless trivial.
     after(async () => {
       try {
+        // Bust any pre-existing cache for the copy's URL — same
+        // reasoning as createWatchlist (delete-then-recreate races).
+        await _invalidateWatchlistCaches(userId, [slug]);
+
         const owner = await _getOwnerInfo(userId);
         if (!owner) return;
         tsUpsertWatchlist({
@@ -1777,9 +1787,12 @@ async function _invalidateWatchlistCaches(
 
   for (const userSlug of userSlugs) {
     for (const slug of slugs) {
-      // Profile arg matches the watchlist page's `cacheLife({ revalidate: 3600 })`
-      // window — Next 16's `revalidateTag` requires it under cacheComponents.
-      revalidateTag(watchlistCacheTag(userSlug, slug), "hours");
+      // `updateTag` (not `revalidateTag`) — we need immediate eviction
+      // for the privacy / rename / delete flows. `revalidateTag(tag, "hours")`
+      // would only mark the cache entry stale within a 24h SWR window:
+      // the next visitor would still see the pre-mutation render.
+      // `updateTag` invalidates so the next read fetches fresh DB data.
+      updateTag(watchlistCacheTag(userSlug, slug));
       try {
         await invalidate(`public-watchlist:${userSlug}:${slug}`);
       } catch (err) {

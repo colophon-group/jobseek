@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
+import { companyCacheTag } from "@/lib/cache-tags";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
@@ -16,6 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
   cacheLife({ revalidate: 600 });
   const { slug, lang } = await params;
+  cacheTag(companyCacheTag(slug));
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [company, { i18n }] = await Promise.all([
     getCompanyBySlug(slug, locale),
@@ -101,6 +103,7 @@ export default async function CompanyPageRoute({ params }: Props) {
   cacheLife({ revalidate: 600 });
   const locale = await initI18nForPage(params);
   const { slug } = await params;
+  cacheTag(companyCacheTag(slug));
 
   const company = await getCompanyBySlug(slug, locale);
   if (!company) return <CompanyNotFound />;

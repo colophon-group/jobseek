@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
+import { blogIndexCacheTag } from "@/lib/cache-tags";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { listBlogPosts } from "@/lib/blog";
@@ -18,6 +19,7 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
   cacheLife({ revalidate: 86400 });
+  cacheTag(blogIndexCacheTag());
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
@@ -64,6 +66,7 @@ function formatDate(iso: string, locale: string): string {
 export default async function BlogIndexPage({ params }: Props) {
   "use cache";
   cacheLife({ revalidate: 86400 });
+  cacheTag(blogIndexCacheTag());
   const locale = await initI18nForPage(params);
   const i18n = getI18n()!;
   // Pass the locale so per-post translated frontmatter (title /
