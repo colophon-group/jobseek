@@ -36,17 +36,22 @@ import { join } from "node:path";
 const OG_PRERENDER_TOP_N = 200;
 
 /**
- * Pick the top-N companies to prerender. Soft-fails (returns `[]`) on
- * non-production builds so local + preview builds without Typesense
- * access still work. **Fails loudly on Production** — silently shipping
- * a deploy with zero OG prerender means every Twitter/LinkedIn/Slack
- * crawl on a popular slug cold-starts a function, which is exactly the
- * cost surge the prebake exists to absorb. See #2835 critic round 1.
+ * Pick the top-N companies to prerender. Fails the build if Typesense
+ * is configured (`TYPESENSE_HOST` set) but unreachable on a production
+ * build — silently shipping a deploy with zero OG prerender means every
+ * Twitter/LinkedIn/Slack crawl on a popular slug cold-starts a function,
+ * which is exactly the cost surge the prebake exists to absorb.
+ *
+ * Soft-fails (returns `[]`) when Typesense isn't configured at all
+ * (preview deploys without the secret, local builds without `.env.local`)
+ * — those don't have access to the Typesense index, and dynamic-render
+ * fallback is the only sensible behavior. See #2835 critic round 2.
  */
 export async function generateStaticParams(): Promise<
   { lang: string; slug: string }[]
 > {
   const isProductionBuild = process.env.VERCEL_ENV === "production";
+  const hasTypesenseConfig = !!process.env.TYPESENSE_HOST;
   try {
     const { getSearchClient } = await import(
       "@/lib/search/typesense-client"
@@ -64,18 +69,19 @@ export async function generateStaticParams(): Promise<
     const slugs = (result.hits ?? [])
       .map((h) => (h.document as Record<string, unknown>).slug)
       .filter((s): s is string => typeof s === "string");
-    if (slugs.length === 0 && isProductionBuild) {
+    if (slugs.length === 0 && isProductionBuild && hasTypesenseConfig) {
       throw new Error(
         "[opengraph-image] generateStaticParams: 0 companies returned from Typesense " +
-          "on a production build — would silently degrade to per-request OG generation. " +
-          "Check Typesense reachability + active_posting_count:>0 filter.",
+          "on a production build with TYPESENSE_HOST set — would silently degrade to " +
+          "per-request OG generation. Check Typesense reachability + " +
+          "active_posting_count:>0 filter.",
       );
     }
     return slugs.flatMap((slug) => locales.map((lang) => ({ lang, slug })));
   } catch (err) {
-    if (isProductionBuild) throw err;
-    // Local / preview build without Typesense access — log loudly but
-    // don't fail; long-tail dynamic rendering is the existing fallback.
+    if (isProductionBuild && hasTypesenseConfig) throw err;
+    // Typesense not configured (preview without secrets) OR local build —
+    // log loudly but don't fail; long-tail dynamic rendering still works.
     console.warn(
       "[opengraph-image] generateStaticParams: skipping prerender",
       err,

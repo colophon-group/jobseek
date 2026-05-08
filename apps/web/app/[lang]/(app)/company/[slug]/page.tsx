@@ -61,6 +61,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // product surface; `follow` keeps PageRank flowing to internal targets
     // (curated watchlists, blog) from any external links pointing here.
     robots: { index: false, follow: true },
+    // No `images` override here — the per-company `opengraph-image.tsx`
+    // sibling generates richer OG cards (logo + name + description + meta
+    // chips) that should win. Setting `images` at the page level would
+    // bypass the file-convention auto-discovery.
     openGraph: {
       title,
       description,
@@ -68,7 +72,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "website",
       locale: ogLocale(locale),
       alternateLocale: ogAlternateLocales(locale),
-      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
     },
   };
 }

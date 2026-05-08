@@ -56,6 +56,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: post.title,
     description: post.description,
     alternates: buildAlternates(`/blog/${slug}`, locale, availableLocales),
+    // No `images` override — the per-post `opengraph-image.tsx` sibling
+    // generates a card with title + date + author. Setting `images`
+    // here would bypass the file-convention auto-discovery.
     openGraph: {
       title: post.title,
       description: post.description,

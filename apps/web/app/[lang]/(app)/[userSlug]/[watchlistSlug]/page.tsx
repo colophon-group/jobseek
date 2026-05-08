@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
+import { watchlistCacheTag } from "@/lib/cache-tags";
 import {
   getPublicWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
@@ -29,6 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
   cacheLife({ revalidate: 3600 });
   const { userSlug, watchlistSlug, lang } = await params;
+  cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [detail, { i18n }] = await Promise.all([
     // Public-only fetch: never reads session, so the page stays
@@ -116,6 +118,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates(path, locale),
+    // No `images` override — the per-watchlist `opengraph-image.tsx`
+    // sibling generates richer cards (title + owner + company count +
+    // filter count). Setting `images` here would bypass it.
     openGraph: {
       title,
       description,
@@ -123,7 +128,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "website",
       locale: ogLocale(locale),
       alternateLocale: ogAlternateLocales(locale),
-      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
     },
     ...(!indexable && { robots: { index: false, follow: true } }),
   };
@@ -133,6 +137,7 @@ export default async function WatchlistRoute({ params }: Props) {
   "use cache";
   cacheLife({ revalidate: 3600 });
   const { lang, userSlug, watchlistSlug } = await params;
+  cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
   const locale = isLocale(lang) ? lang : defaultLocale;
 
   // Re-fetch the watchlist detail. The Redis `cached()` layer inside

@@ -81,7 +81,7 @@ async function AuthAwareNav() {
 When you're writing a new server component (or porting an existing one), walk this in order and stop at the first match.
 
 1. **Does it read `cookies()`, `headers()`, `searchParams`, `connection()`, `draftMode()`, or call any helper that internally does?**
-   See `app/__tests__/isr-routes.test.ts::TAINTED_HELPERS` for the canonical list (`getSession`, `getSessionUserId`, `getViewerLanguages`, `getGeoFromHeaders`, `getPreferences`, `fetchExploreData`, `listTopCompanies` — extend that list when adding a new tainted helper).
+   The canonical "tainted helpers" — server functions that internally read request state — are: `getSession`, `getSessionUserId`, `getViewerLanguages`, `getGeoFromHeaders`, `getPreferences`, `fetchExploreData`, `listTopCompanies`. Extend the list (and grep callers in PRs) whenever you add another helper that reads `headers()` / `cookies()` / `getSession()` under the hood.
    - **Yes** → it's dynamic. Wrap the component (or its parent) in `<Suspense>`. Provide a meaningful fallback (we have `SearchSkeleton`, `WatchlistSkeleton`, `CompanySkeleton` already; reuse before inventing).
    - **No** → continue.
 
@@ -305,7 +305,7 @@ The build itself enforces most of this. Common errors and the one-line fix:
 1. **Build is the contract.** `pnpm --dir apps/web build` fails on any violation. CI must run it.
 2. **Per-route inspection.** Read the build output's per-route classification — Next 16 prints the static / cached / dynamic / mixed marker for each route. A route flagged dynamic that you expected to be cached or mostly-static is the signal.
 3. **Production observability.** Vercel function invocation count for a "should-be-cached" route — if invocations spike post-deploy, dynamic leakage occurred.
-4. **`apps/web/app/__tests__/isr-routes.test.ts`** (legacy guard) — under cacheComponents this becomes obsolete in its current form (the build enforces what the static scan was checking). Migration plan: rewrite to assert each listed route still has a meaningful static shell (parse the build output, verify the route is not 100% dynamic), or retire the test entirely. See #2835 acceptance.
+4. **Build-output classifier** as a CI guard — proposed in #2885. The legacy `app/__tests__/isr-routes.test.ts` was retired in #2835 because the line-by-line scan it performed is now enforced by `pnpm build` itself. Until #2885 lands, regressions are caught at Vercel deploy rather than at PR time — keep an eye on Vercel preview build status before merging.
 
 ## Anti-patterns
 
@@ -340,4 +340,4 @@ When moving an existing component or route from the legacy model to cacheCompone
 - `'use cache'` directive: <https://nextjs.org/docs/app/api-reference/directives/use-cache>
 - `unstable_cache` legacy reference (for migrating existing code): <https://nextjs.org/docs/app/api-reference/functions/unstable_cache>
 - jseek tracking issues: #2835 (migration), #2826 (the `<html lang>` use case that's the first concrete consumer of this model)
-- jseek incident referenced throughout: #2243 (the original ISR-leakage CPU-quota incident — the reason the legacy guard at `app/__tests__/isr-routes.test.ts` exists; also the pattern this doc replaces with build-time enforcement)
+- jseek incident referenced throughout: #2243 (the original ISR-leakage CPU-quota incident — the reason the now-retired `app/__tests__/isr-routes.test.ts` line-scanner existed; the pattern is replaced with build-time enforcement under cacheComponents)

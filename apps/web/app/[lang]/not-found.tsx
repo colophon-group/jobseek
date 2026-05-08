@@ -1,5 +1,11 @@
 "use client";
 
+// Client components can't export `metadata`. The 404 inherits its
+// `<title>` from `[lang]/layout.tsx`'s `metadata.title.default`
+// ("Job Seek"). Robots noindex flows from the closest ancestor that
+// returns a 404 status — Next.js handles this implicitly for
+// not-found responses.
+
 import { Trans } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 
