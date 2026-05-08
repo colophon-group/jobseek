@@ -104,8 +104,8 @@ jobs:
       - run: uv run ruff format --check src/ tests/
         working-directory: apps/crawler
 
-  type-web:
-    name: Type Web
+  type-all:
+    name: Type All
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -121,12 +121,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # mcp-server is a workspace dependency that the web app imports
-      # types from at compile time. Build first so its declarations
-      # exist on disk before tsc resolves them.
-      - run: pnpm --filter @jseek/mcp-server build
-
-      - run: pnpm --filter @jobseek/web typecheck
+      # turbo run typecheck has dependsOn: ["^build"], so @jseek/mcp-server
+      # is built once and all consumers (apps/web) typecheck against the
+      # built declarations. Covers every TS workspace in the monorepo.
+      - run: pnpm typecheck
 
   test-web:
     name: Test Web
