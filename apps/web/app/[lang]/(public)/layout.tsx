@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Trans } from "@lingui/react/macro";
-import { initI18nForPage } from "@/lib/i18n";
+import { defaultLocale, isLocale, type Locale } from "@/lib/i18n";
 import { HeaderShell } from "@/components/HeaderShell";
 import { Footer } from "@/components/Footer";
 
@@ -9,8 +9,12 @@ type Props = {
   params: Promise<{ lang: string }>;
 };
 
+// i18n is initialized once in the parent `[lang]/layout.tsx` (loadCatalog +
+// setI18n + <LinguiClientProvider>); this layout only resolves `locale` for
+// the <Footer lang={locale}> prop. See #2883.
 export default async function PublicLayout({ children, params }: Props) {
-  const locale = await initI18nForPage(params);
+  const { lang } = await params;
+  const locale: Locale = isLocale(lang) ? lang : defaultLocale;
 
   return (
     <>
