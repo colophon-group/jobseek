@@ -15,7 +15,7 @@ dist
 crawler.env.local
 
 # Lingui compiled catalogs (source .po files are tracked)
-locales/*.js
+apps/web/locales/*.js
 
 *.pem
 __pycache__/
