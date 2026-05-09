@@ -655,3 +655,96 @@ class TestTeslaScraperHasEnrich:
         # would yield a non-None enrich list from _board_has_enrich.
         metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
         assert _board_has_enrich(metadata) == enrich
+
+
+class TestApiSnifferRichBoardsHaveEnrich:
+    """api_sniffer rich-monitor boards MUST declare enrich on the detail
+    scraper (#2963).
+
+    Audit #2963 found 5 boards with the same pattern as Tesla #2954 and
+    Decathlon #2962: an api_sniffer monitor with ``fields`` configured
+    (or auto-detected at runtime) so the monitor returns ``DiscoveredJob``
+    items, paired with a json-ld / nextdata / dom secondary scraper —
+    but no ``enrich`` list on ``scraper_config``. Without the enrich
+    declaration ``_board_has_enrich`` returns None and
+    ``processing/board.py`` picks ``_INSERT_RICH_JOB`` (no
+    ``next_scrape_at``) over ``_INSERT_RICH_JOB_ENRICH``, leaving every
+    posting permanently unscraped.
+
+    Aggregate impact across the four boards covered here was ~5,000
+    active postings stuck with ``description_r2_hash IS NULL``:
+    hitachi-energy-careers (2,224), goldman-sachs-careers (~1,450),
+    haier-group-careers-cn (1,094), continental-careers (100).
+
+    The fifth board flagged by the audit (``alibaba-careers-lazada``)
+    is intentionally NOT in this test — it has no ``scraper_type`` /
+    ``scraper_config`` at all and tracks as a separate-scope follow-up
+    (Lazada's detail endpoint is JS-rendered with no usable static
+    JSON-LD or nextdata, so picking a scraper config requires its own
+    investigation).
+
+    One test per board, mirroring TestTeslaScraperHasEnrich, so a
+    future bulk-edit cannot silently revert any single fix.
+    """
+
+    @staticmethod
+    def _assert_enrich(slug: str, expected_scraper_type: str) -> None:
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get(slug)
+        assert row is not None, f"{slug!r} row missing from boards.csv"
+
+        assert row.get("monitor_type") == "api_sniffer", (
+            f"{slug} should remain api_sniffer-monitored — the rich/no-scrape "
+            "scheduling bug only affects rich api_sniffer monitors."
+        )
+        assert row.get("scraper_type") == expected_scraper_type, (
+            f"{slug} must use scraper_type={expected_scraper_type!r} for "
+            "description enrichment. See #2963."
+        )
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            f"{slug} scraper_config must declare 'enrich': ['description'] "
+            "so its rich-monitor postings get next_scrape_at = now() and "
+            "the detail scraper actually runs. See #2963."
+        )
+
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
+
+    def test_hitachi_energy_careers_declares_enrich(self):
+        """hitachi-energy-careers: api_sniffer (rich) + json-ld enrich."""
+        self._assert_enrich("hitachi-energy-careers", "json-ld")
+
+    def test_goldman_sachs_careers_declares_enrich(self):
+        """goldman-sachs-careers: api_sniffer (rich) + nextdata enrich."""
+        self._assert_enrich("goldman-sachs-careers", "nextdata")
+
+    def test_haier_group_careers_cn_declares_enrich(self):
+        """haier-group-careers-cn: api_sniffer (rich) + dom enrich."""
+        self._assert_enrich("haier-group-careers-cn", "dom")
+
+    def test_continental_careers_declares_enrich(self):
+        """continental-careers: api_sniffer (URL-only declared, fields
+        auto-detected at runtime) + json-ld enrich.
+
+        The CSV monitor_config has no explicit ``fields``, but the
+        api_sniffer monitor calls ``auto_map_fields(items)`` on the
+        listing payload (``api_sniffer.py:938``) and the Continental API
+        returns enough metadata for that call to succeed — flipping the
+        monitor to rich-mode at runtime. The DB confirmed 100/100 active
+        postings with ``next_scrape_at IS NULL``, identical to the
+        statically-rich boards. The fix is the same: declare enrich so
+        ``_INSERT_RICH_JOB_ENRICH`` is used and json-ld runs on the
+        detail page.
+        """
+        self._assert_enrich("continental-careers", "json-ld")
