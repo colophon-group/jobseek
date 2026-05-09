@@ -230,6 +230,31 @@ describe("getCompanyBySlug — Postgres fallback", () => {
     const out = await getCompanyBySlug("acme", "en");
     expect(out).toBeNull();
   });
+
+  it("retries the Postgres query on transient ECONNRESET (#2918 follow-up)", async () => {
+    /** The 2026-05-09 Vercel build died on a single `read ECONNRESET`
+     * during this exact code path (OG-image prerender →
+     * `_fetchCompanyBySlugFromPostgres`). The next build 2 min later
+     * succeeded — a flake, not a structural break. The retry helper
+     * must turn this single transient error into a successful query
+     * so the prerender finishes. */
+    searchMock.mockRejectedValue(new Error("typesense down"));
+    const econn = new Error("read ECONNRESET") as Error & { code: string };
+    econn.code = "ECONNRESET";
+    dbExecuteMock
+      .mockRejectedValueOnce(econn)
+      .mockResolvedValueOnce([_pgRow]);
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => {});
+
+    const out = await getCompanyBySlug("acme", "en");
+
+    expect(out?.description).toBe("From Postgres");
+    expect(dbExecuteMock).toHaveBeenCalledTimes(2);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
 });
 
 describe("getCompanyBySlug — caching contract", () => {
