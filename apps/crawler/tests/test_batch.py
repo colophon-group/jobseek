@@ -1270,6 +1270,65 @@ class TestCanonicalizeUrl:
         raw = "https://career042.sapsf.de/career?career_job_req_id=7&_s.crb=abc"
         assert self.canon(raw) == "https://career042.sapsf.de/career?career_job_req_id=7"
 
+    # ── tal.net / TalentLink (issue #2941) ────────────────────────────
+    #
+    # tal.net embeds a per-render CSRF token as a path segment
+    # ``/xf-<12 hex>/``. Without stripping, the same opportunity (e.g.
+    # ``opp/2968-Q1-2027-Internship-Programme-Frankfurt``) was inserted
+    # once per monitor cycle — Evercore inflated to ~12,340 rows for
+    # ~40 real postings.
+
+    def test_strips_tal_net_xf_path_segment(self):
+        raw = (
+            "https://evercore.tal.net/vx/lang-en-GB/mobile-0/appcentre-1/"
+            "brand-6/xf-767829ced96c/candidate/so/pm/1/pl/2/"
+            "opp/2968-Q1-2027-Internship-Programme-Frankfurt/en-GB"
+        )
+        out = self.canon(raw)
+        assert "xf-" not in out
+        # Identity-carrying segments stay intact.
+        assert "/brand-6/" in out
+        assert "/opp/2968-Q1-2027-Internship-Programme-Frankfurt/" in out
+        assert out.endswith("/en-GB")
+
+    def test_two_tal_net_renders_canonicalize_equal(self):
+        u1 = (
+            "https://evercore.tal.net/vx/lang-en-GB/mobile-0/appcentre-1/"
+            "brand-6/xf-767829ced96c/candidate/so/pm/1/pl/2/"
+            "opp/2968-Q1-2027-Internship-Programme-Frankfurt/en-GB"
+        )
+        u2 = (
+            "https://evercore.tal.net/vx/lang-en-GB/mobile-0/appcentre-1/"
+            "brand-6/xf-669053d7a42c/candidate/so/pm/1/pl/2/"
+            "opp/2968-Q1-2027-Internship-Programme-Frankfurt/en-GB"
+        )
+        assert self.canon(u1) == self.canon(u2)
+
+    def test_tal_net_url_without_xf_segment_unchanged(self):
+        # Some tal.net boards (e.g. ``moelis-careers.tal.net/candidate/...``)
+        # don't expose the ``xf-`` segment in the listing href. Leave them
+        # alone — no-op return preserves the existing dedup contract.
+        raw = "https://moelis-careers.tal.net/candidate/jobboard/vacancy/2/adv/"
+        assert self.canon(raw) == raw
+
+    def test_tal_net_subdomain_blackrock(self):
+        # Pattern verified against blackrock.tal.net production URLs.
+        raw = (
+            "https://blackrock.tal.net/vx/lang-en-GB/mobile-0/brand-3/"
+            "xf-ee99f2ab01fc/candidate/so/pm/1/pl/1/"
+            "opp/11985-2028-Full-Time-Analyst-Program-APAC/en-GB"
+        )
+        out = self.canon(raw)
+        assert "xf-" not in out
+        assert "/opp/11985-2028-Full-Time-Analyst-Program-APAC/" in out
+
+    def test_tal_net_does_not_strip_xf_inside_other_segments(self):
+        # Defensive: only ``/xf-<hex>/`` is stripped. A path segment that
+        # happens to start with ``xf`` but isn't the token shape (no hex,
+        # not a whole segment) must not match.
+        raw = "https://evercore.tal.net/vx/lang-en-GB/some/xforce/path/opp/1/en"
+        assert self.canon(raw) == raw
+
 
 # ── TestInsertSqlContract ────────────────────────────────────────────
 
