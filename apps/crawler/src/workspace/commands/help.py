@@ -2150,6 +2150,22 @@ skip — Placeholder scraper (auto-configured)
   that the scraper step should be skipped. Never selected manually.
 """
 
+SCRAPER_MOKAHR = """\
+mokahr — Mokahr ATS Detail API scraper
+
+  API:      POST https://app.mokahr.com/api/outer/ats-apply/website/job
+  Returns:  title, HTML description (jobDescription), locations,
+            employment_type (mapped from commitment), date_posted,
+            metadata (department)
+  Config:   locale (optional, default "zh-CN") — passed to the detail API
+  Note:     Pair with the mokahr monitor and declare
+            scraper_config: {"enrich": ["description"]} in boards.csv.
+            The Mokahr listing API returns metadata only — descriptions
+            live on the encrypted detail endpoint, decrypted via the
+            per-site AES IV (extracted from the SPA's init-data attribute)
+            and per-response key (necromancer field). No browser needed.
+"""
+
 SCRAPER_NOTION = """\
 notion — Notion Page API scraper
 
@@ -2189,6 +2205,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
   scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
     "bite": SCRAPER_BITE,
+    "mokahr": SCRAPER_MOKAHR,
     "rippling": SCRAPER_RIPPLING,
     "smartrecruiters": SCRAPER_SMARTRECRUITERS,
     "workable": SCRAPER_WORKABLE,

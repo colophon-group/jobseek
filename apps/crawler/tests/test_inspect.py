@@ -655,3 +655,132 @@ class TestTeslaScraperHasEnrich:
         # would yield a non-None enrich list from _board_has_enrich.
         metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
         assert _board_has_enrich(metadata) == enrich
+
+
+class TestTerveystaloJobylonHasEnrich:
+    """Terveystalo's jobylon monitor MUST pair with the json-ld enrich scrape.
+
+    The Jobylon monitor (``src/core/monitors/jobylon.py``) returns
+    ``DiscoveredJob`` rows with ``description=None`` — descriptions are
+    expressly left to an enrichment scraper (see the module docstring).
+    Without ``scraper_config: {"enrich": ["description"]}``, the
+    rich-monitor branch in ``processing/board.py`` picks
+    ``_INSERT_RICH_JOB`` (no ``next_scrape_at``) over
+    ``_INSERT_RICH_JOB_ENRICH``, so the json-ld scraper that fills
+    description on the detail page never runs. Audit #2963 reported
+    134/134 active Terveystalo postings with ``has_content=false`` for
+    exactly this reason.
+
+    This test pins the enrich declaration on the terveystalo-jobylon row
+    so a future bulk-edit can't silently revert the fix.
+    """
+
+    def test_terveystalo_jobylon_declares_enrich(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("terveystalo-jobylon")
+        assert row is not None, "terveystalo-jobylon row missing from boards.csv"
+
+        assert row.get("scraper_type") == "json-ld", (
+            "terveystalo-jobylon must use the json-ld scraper — Jobylon detail "
+            "pages serve a JobPosting JSON-LD block with the description."
+        )
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            "terveystalo-jobylon scraper_config must declare "
+            "'enrich': ['description'] so its rich-monitor postings get "
+            "next_scrape_at = now() and the json-ld scraper actually runs. "
+            "See #2963."
+        )
+
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
+
+
+class TestZteMokahrHasMokahrScraperAndEnrich:
+    """ZTE's mokahr boards MUST use the mokahr scraper with enrich (#2963).
+
+    The Mokahr listing API (``/api/outer/ats-apply/website/jobs/v2``)
+    returns metadata only — title, locations, commitment, dates — but
+    NOT the ``jobDescription`` field. The dedicated detail endpoint
+    (``/api/outer/ats-apply/website/job``, POST, AES-128-CBC encrypted)
+    is the only source for descriptions, and it's only consulted by the
+    new ``mokahr`` scraper added alongside this fix.
+
+    Two breakages combine on the ZTE rows before this PR:
+
+    1. ``scraper_type=skip`` skipped any scrape pipeline call. Because
+       the mokahr monitor IS rich (returns title + locations +
+       employment_type + metadata.department), processing/board.py
+       drives the rich path with ``enrich_fields=None``, which picks
+       ``_INSERT_RICH_JOB`` (no ``next_scrape_at``) and never queues
+       a scrape.
+
+    2. The listing API for ZTE in particular omits ``jobDescription``
+       (verified empirically against the live API), so even if the
+       monitor's description-extraction path had been wired the field
+       would still be empty without a separate detail call.
+
+    Pinning ``scraper_type=mokahr`` plus
+    ``scraper_config.enrich = ["description"]`` flips the rich-path
+    SQL to ``_INSERT_RICH_JOB_ENRICH`` (next_scrape_at = now()) AND
+    routes the queued scrape through the new mokahr scraper — which
+    decrypts the detail endpoint and returns ``description``.
+    """
+
+    _ZTE_BOARDS = ("zte-campus", "zte-careers")
+
+    def test_zte_mokahr_boards_use_mokahr_scraper_with_enrich(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        for slug in self._ZTE_BOARDS:
+            row = by_slug.get(slug)
+            assert row is not None, f"{slug!r} row missing from boards.csv"
+
+            assert row.get("monitor_type") == "mokahr", (
+                f"{slug} should remain a mokahr-monitored board"
+            )
+            assert row.get("scraper_type") == "mokahr", (
+                f"{slug} must use scraper_type=mokahr — the listing API does "
+                "not return jobDescription, so a detail scrape is required. "
+                "See #2963."
+            )
+
+            sc = json.loads(row.get("scraper_config") or "{}")
+            enrich = sc.get("enrich")
+            assert isinstance(enrich, list) and "description" in enrich, (
+                f"{slug} scraper_config must declare 'enrich': ['description'] "
+                "so the rich-monitor branch picks _INSERT_RICH_JOB_ENRICH and "
+                "queues the scrape. See #2963."
+            )
+
+            metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+            assert _board_has_enrich(metadata) == enrich
+
+    def test_mokahr_scraper_is_registered(self):
+        """The CSV references scraper_type=mokahr — the registry must accept it."""
+        from src.core.scrapers import get_scraper_type
+
+        scraper = get_scraper_type("mokahr")
+        assert scraper is not None, (
+            "scraper_type=mokahr in boards.csv requires a registered mokahr "
+            "scraper in src/core/scrapers/."
+        )
+        # Pure HTTP — no Playwright dependency, must run on slim workers.
+        assert scraper.needs_browser is False
