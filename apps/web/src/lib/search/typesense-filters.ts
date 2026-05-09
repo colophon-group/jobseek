@@ -1,6 +1,6 @@
 /**
- * Base filter applied to **every** `job_posting` query — hides postings
- * the crawler couldn't extract usable content for.
+ * Base filter applied to **every** `job_posting` snapshot query — hides
+ * postings the crawler couldn't extract usable content for.
  *
  * - `is_active:true` — only currently-listed roles
  * - `has_content:!=false` — exclude postings with empty title or no
@@ -13,9 +13,34 @@
  *   the filter is fully active.
  *
  * Use this constant — never the bare `is_active:true` string — when
- * composing `filter_by` for any search/listing surface.
+ * composing `filter_by` for any search/listing surface that displays
+ * the **current** state (active counts, listing pages, watchlist hits).
+ *
+ * For **flow** queries (year-count badges, "X in the last year"), use
+ * {@link POSTING_FLOW_FILTER} instead — those should include delisted
+ * postings to measure actual posting activity over time.
  */
 export const POSTING_BASE_FILTER = "is_active:true && has_content:!=false";
+
+/**
+ * Filter for **flow** queries that count postings first seen in a time
+ * window, regardless of current `is_active` state — i.e. measuring
+ * activity over time, not the live snapshot.
+ *
+ * Drops `is_active:true` (vs {@link POSTING_BASE_FILTER}) because the
+ * "in the last year" badge should include delisted postings — otherwise
+ * year-count collapses to active-count whenever delistings happen at the
+ * same rate as new listings (issue #2965). Empirically on 2026-05-09:
+ *
+ *   active only                       =>   709,051
+ *   active && first_seen_at:>1y (bug) =>   709,051  (BUG: same as active)
+ *   first_seen_at:>1y (correct)       => 1,400,449
+ *
+ * Retains `has_content:!=false` to keep parity with the active filter on
+ * the content-quality dimension (don't surface broken postings even in
+ * historical counts).
+ */
+export const POSTING_FLOW_FILTER = "has_content:!=false";
 
 /**
  * Build a Typesense filter_by string from user-specified filter dimensions.
