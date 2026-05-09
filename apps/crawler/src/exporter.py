@@ -219,12 +219,33 @@ class TaxonomyMaps:
         for r in rows:
             loc_parents[r["id"]] = r["parent_id"]
 
-        # Macro-region membership (country_id -> [macro_ids])
+        # Macro-region membership (country_id -> [macro_ids]).
+        # Empty / missing -> macros never get stamped onto postings, which
+        # silently breaks the EU/EMEA/DACH macro filter (issue #2978). Be
+        # loud when the table is empty or unreadable so the operator can
+        # re-seed from Supabase, instead of swallowing the failure.
         macro_members: dict[int, list[int]] = defaultdict(list)
-        with contextlib.suppress(Exception):
+        try:
             rows = await local_pool.fetch("SELECT country_id, macro_id FROM location_macro_member")
-            for r in rows:
-                macro_members[r["country_id"]].append(r["macro_id"])
+        except Exception as exc:
+            # Table missing or transient DB error — fail open so the
+            # exporter keeps running, but make sure we surface it.
+            log.warning(
+                "exporter.location_macro_member.unreadable",
+                error=str(exc),
+            )
+            rows = []
+        for r in rows:
+            macro_members[r["country_id"]].append(r["macro_id"])
+        if not macro_members:
+            # Table exists but is empty: this is the failure mode we hit
+            # when the local Postgres has never been seeded with the
+            # macro->country links. Postings will be missing macro
+            # ancestors in their location_ids until this is fixed.
+            log.warning(
+                "exporter.location_macro_member.empty",
+                hint="seed location_macro_member from Supabase to enable macro filters",
+            )
 
         # Build ancestor map
         ancestors: dict[int, list[int]] = {}

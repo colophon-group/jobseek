@@ -1008,3 +1008,125 @@ class TestLoadLocationNames:
         assert maps.location_names[5368361] == {"en": "Los Angeles", "de": "Los Angeles"}
         assert maps.location_names[5417598] == {"en": "Colorado Springs"}
         assert maps.location_names[4361885] == {"en": "Maryland"}
+
+
+class TestLoadLocationAncestors:
+    """Tests for TaxonomyMaps._load_location_ancestors macro handling.
+
+    Issue #2978: ``location_macro_member`` was empty on the production
+    Hetzner local Postgres for months, causing the EU/EMEA/DACH macro
+    filter to silently return only postings explicitly tagged with the
+    macro id (instead of every member-country posting). The previous
+    ``contextlib.suppress(Exception)`` swallowed both the missing-table
+    case AND the empty-table case without surfacing it.
+    """
+
+    async def test_populated_table_stamps_macros_onto_countries(self):
+        """Country city -> [city, country, macro] when macro_member maps
+        country -> macro.
+        """
+        # Pool returns parents on first fetch, macro members on second.
+        pool = _make_pool()
+        # Hierarchy: city(10) -> country(30); country(30) is in macro(4 = EU)
+        pool.fetch = AsyncMock(
+            side_effect=[
+                # SELECT id, parent_id FROM location
+                [
+                    {"id": 10, "parent_id": 30},
+                    {"id": 30, "parent_id": None},
+                    {"id": 4, "parent_id": None},  # macro itself, no parent
+                ],
+                # SELECT country_id, macro_id FROM location_macro_member
+                [
+                    {"country_id": 30, "macro_id": 4},
+                ],
+            ]
+        )
+
+        maps = TaxonomyMaps()
+        await maps._load_location_ancestors(pool)
+
+        assert set(maps.location_ancestors[10]) == {10, 30, 4}
+        assert set(maps.location_ancestors[30]) == {30, 4}
+        # Macro id maps to itself only (not a member of anything)
+        assert set(maps.location_ancestors[4]) == {4}
+
+    async def test_empty_table_logs_warning_and_skips_macros(self):
+        """Empty location_macro_member -> postings get only parent-chain
+        ancestors, no macros. Previously this was suppressed silently;
+        now we log a loud warning so the operator can re-seed.
+        """
+        pool = _make_pool()
+        pool.fetch = AsyncMock(
+            side_effect=[
+                # location parents
+                [
+                    {"id": 10, "parent_id": 30},
+                    {"id": 30, "parent_id": None},
+                ],
+                # empty location_macro_member
+                [],
+            ]
+        )
+
+        maps = TaxonomyMaps()
+        with patch("src.exporter.log") as mock_log:
+            await maps._load_location_ancestors(pool)
+
+        # Country chain still works without macros
+        assert set(maps.location_ancestors[10]) == {10, 30}
+        assert set(maps.location_ancestors[30]) == {30}
+        # And we logged the empty-table warning
+        warn_calls = [c for c in mock_log.warning.call_args_list]
+        empty_warns = [c for c in warn_calls if "empty" in str(c)]
+        assert empty_warns, f"expected empty-table warning, got: {warn_calls}"
+
+    async def test_unreadable_table_logs_warning_and_continues(self):
+        """If the macro_member fetch raises (table missing, transient DB
+        error), we should log the failure and continue with empty
+        macros — not crash the whole exporter.
+        """
+        pool = _make_pool()
+        pool.fetch = AsyncMock(
+            side_effect=[
+                # location parents (succeeds)
+                [
+                    {"id": 10, "parent_id": 30},
+                    {"id": 30, "parent_id": None},
+                ],
+                # location_macro_member (fails)
+                Exception('relation "location_macro_member" does not exist'),
+            ]
+        )
+
+        maps = TaxonomyMaps()
+        with patch("src.exporter.log") as mock_log:
+            await maps._load_location_ancestors(pool)
+
+        # Parent chain still resolved
+        assert set(maps.location_ancestors[10]) == {10, 30}
+        # We logged the unreadable warning
+        warn_calls = [c for c in mock_log.warning.call_args_list]
+        msgs = [c.args[0] if c.args else "" for c in warn_calls]
+        assert any("unreadable" in m for m in msgs), f"got: {warn_calls}"
+
+    def test_build_typesense_docs_includes_macro_ancestors(self):
+        """End-to-end check: a posting tagged with a country location
+        gets the country's macro id in its expanded location_ids — the
+        invariant the user-facing macro filter (e.g. EU) relies on.
+        """
+        maps = _make_taxonomy_maps()
+        # Add a macro region that contains the country (30)
+        # Country 30 is now in macro 4 (= "EU"); rebuild ancestors so the
+        # city's chain pulls in the macro id too.
+        maps.location_names[4] = {"en": "EU"}
+        maps.location_types[4] = "macro"
+        maps.location_ancestors[10] = [10, 20, 30, 4]
+        maps.location_ancestors[30] = [30, 4]
+        maps.location_ancestors[4] = [4]
+
+        row = _make_posting_record(location_ids=[10])
+        docs = _build_typesense_docs([row], maps)
+        assert 4 in docs[0]["location_ids"], (
+            "macro id missing from location_ids — macro filter would not match this posting"
+        )

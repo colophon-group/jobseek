@@ -451,15 +451,16 @@ async function _fetchGlobalLocationsGrouped(
     }
 
     // Run the country-tier facet query AND a dedicated macro-only facet
-    // query in parallel. Reason for separating them: with `max_facet_values:
-    // 500`, the country-tier facet truncates after the top-500 location
-    // IDs by count. Macros (which are aggregated via ancestor expansion)
-    // can have low counts (e.g. DACH=6) and fall below this cutoff, so we
-    // re-query with `filter_by: location_ids:[<macroIds>]` to force the
-    // facet to surface every macro with at least one matching posting.
-    // This is much cheaper than raising the global `max_facet_values` —
-    // there are only 9 macros today so the second query returns at most
-    // 9 facet entries.
+    // query in parallel. Reason for separating them: even with
+    // ``max_facet_values: 5000`` (raised from 500 in #2978 so cities like
+    // Salzburg, with ~178 postings, surface in the country-tier modal),
+    // macros are aggregated via ancestor expansion and can have low counts
+    // (e.g. DACH=6) which fall below the by-count cutoff. We re-query with
+    // ``filter_by: location_ids:[<macroIds>]`` to force the facet to
+    // surface every macro with at least one matching posting. This is much
+    // cheaper than raising the global ``max_facet_values`` further — there
+    // are only 9 macros today so the second query returns at most 9 facet
+    // entries.
     const macroFilterClause = allMacroIds.length > 0
       ? `location_ids:[${allMacroIds.join(",")}]`
       : null;
@@ -469,7 +470,13 @@ async function _fetchGlobalLocationsGrouped(
       query_by: "title",
       filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
       facet_by: "location_ids",
-      max_facet_values: 500,
+      // Raised from 500 (#2978): the country-tier facet truncates after
+      // the top-N location_ids by count, and at 500 mid-rank cities (e.g.
+      // Salzburg ~178) drop out of the modal even though they are
+      // selectable filters. 5000 covers every distinct location_id with
+      // 50+ active postings today — well above the 37k unique IDs total
+      // — and returns in ~900ms versus ~470ms at 500.
+      max_facet_values: 5000,
       facet_strategy: "exhaustive" as const,
       per_page: 0,
     };
