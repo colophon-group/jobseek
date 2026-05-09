@@ -22,15 +22,10 @@ log = structlog.get_logger()
 # e.g. https://apply.workable.com/acme-corp/j/ABC123/
 _JOB_URL_RE = re.compile(r"apply\.workable\.com/([\w-]+)/j/([\w]+)")
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "full": "Full-time",
-    "part": "Part-time",
-    "contract": "Contract",
-    "temporary": "Temporary",
-    "internship": "Intern",
-    "volunteer": "Volunteer",
-    "other": "Other",
-}
+# Workable type codes (``full``/``part``/``contract``/``temporary``/
+# ``internship``/``volunteer``/``other``) pass through — the central
+# :func:`src.core.enum_normalize.normalize_employment_type` handles
+# them.
 
 _WORKPLACE_MAP: dict[str, str] = {
     "remote": "remote",
@@ -115,11 +110,9 @@ def _parse_detail(detail: dict) -> JobContent:
     title = detail.get("title")
     description = _build_description(detail)
 
-    # Employment type
+    # Employment type — pass through raw upstream label.
     raw_type = detail.get("type")
-    employment_type = None
-    if isinstance(raw_type, str):
-        employment_type = _EMPLOYMENT_TYPE_MAP.get(raw_type.lower(), raw_type)
+    employment_type = raw_type if isinstance(raw_type, str) and raw_type else None
 
     # Metadata
     metadata: dict | None = None

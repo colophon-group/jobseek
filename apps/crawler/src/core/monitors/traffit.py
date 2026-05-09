@@ -36,12 +36,9 @@ _PAGE_PATTERNS = [
 
 _IGNORE_SLUGS = frozenset({"www", "api", "cdn", "cdn3", "app", "help", "knowledge"})
 
-_EMPLOYMENT_TYPE_MAP = {
-    "Full time": "full-time",
-    "Part time": "part-time",
-    "Contract": "contract",
-    "Internship": "internship",
-}
+# Traffit emits English title-case labels (``Full time``/``Part time``
+# /``Contract``/``Internship``) which the central
+# :func:`src.core.enum_normalize.normalize_employment_type` handles.
 
 _RATE_MAP = {
     "Monthly": "month",
@@ -137,11 +134,11 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
     description = _get_value(values, "description")
     locations = _parse_location(values)
 
-    # Employment type
+    # Employment type — pass through raw upstream label.
     job_types = options.get("job_type")
     employment_type = None
     if isinstance(job_types, list) and job_types:
-        employment_type = _EMPLOYMENT_TYPE_MAP.get(job_types[0])
+        employment_type = job_types[0] or None
 
     # Job location type
     job_location_type = None

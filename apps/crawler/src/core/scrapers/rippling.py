@@ -26,15 +26,10 @@ _JOB_URL_RE = re.compile(
     r"ats\.(?:\w+\.)?rippling\.com/(?:[a-z]{2}-[A-Z]{2}/)?([\w-]+)/jobs/([\w-]+)"
 )
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "SALARIED_FT": "Full-time",
-    "SALARIED_PT": "Part-time",
-    "HOURLY_FT": "Full-time",
-    "HOURLY_PT": "Part-time",
-    "INTERN": "Intern",
-    "CONTRACT": "Contract",
-    "TEMPORARY": "Temporary",
-}
+# Rippling label codes (``SALARIED_FT``/``SALARIED_PT``/``HOURLY_FT``/
+# ``HOURLY_PT``/``INTERN``/``CONTRACT``/``TEMPORARY``) pass through —
+# the central :func:`src.core.enum_normalize.normalize_employment_type`
+# handles them.
 
 
 def _extract_job_params(url: str) -> tuple[str, str] | None:
@@ -87,15 +82,10 @@ def _parse_job_location_type(locations: list[str] | None) -> str | None:
 
 
 def _parse_employment_type(emp: dict | None) -> str | None:
-    """Map employmentType label to human-readable form."""
+    """Pass through the upstream Rippling employment-type label."""
     if not emp:
         return None
-    label = emp.get("label", "")
-    mapped = _EMPLOYMENT_TYPE_MAP.get(label)
-    if mapped:
-        return mapped
-    # Fallback to the id field which is human-readable
-    return emp.get("id") or label or None
+    return emp.get("label") or emp.get("id") or None
 
 
 def _parse_detail(detail: dict) -> JobContent:

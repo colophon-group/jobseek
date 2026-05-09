@@ -107,6 +107,8 @@ class TestParseJob:
         assert result.locations is None
 
     def test_employment_type_full_time(self):
+        # dvinci passes the schema.org-style ``FULL_TIME`` / ``PART_TIME``
+        # value through to the central normaliser unchanged.
         raw = {
             "jobPublicationURL": "https://example.com/job",
             "jobOpening": {
@@ -114,7 +116,7 @@ class TestParseJob:
             },
         }
         result = _parse_job(raw)
-        assert result.employment_type == "full-time"
+        assert result.employment_type == "FULL_TIME"
 
     def test_employment_type_part_time(self):
         raw = {
@@ -124,9 +126,11 @@ class TestParseJob:
             },
         }
         result = _parse_job(raw)
-        assert result.employment_type == "part-time"
+        assert result.employment_type == "PART_TIME"
 
-    def test_employment_type_unknown(self):
+    def test_employment_type_unknown_passthrough(self):
+        # Unknown raw values still pass through; the central normaliser
+        # decides how to bucket them.
         raw = {
             "jobPublicationURL": "https://example.com/job",
             "jobOpening": {
@@ -134,7 +138,7 @@ class TestParseJob:
             },
         }
         result = _parse_job(raw)
-        assert result.employment_type is None
+        assert result.employment_type == "OTHER"
 
     def test_salary(self):
         raw = {

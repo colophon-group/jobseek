@@ -30,20 +30,11 @@ _PAGE_PATTERNS = [
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support", "status"})
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "full_time": "Full-time",
-    "permanent_full_time": "Full-time",
-    "part_time": "Part-time",
-    "permanent_part_time": "Part-time",
-    "contract_temp": "Contract",
-    "contract_to_hire": "Contract",
-    "fixed_term_contract": "Contract",
-    "freelance": "Contract",
-    "temporary": "Temporary",
-    "internship": "Intern",
-    "permanent": "Full-time",
-    "volunteer": "Volunteer",
-}
+# Pinpoint employment_type codes are passed through unchanged — the
+# central :func:`src.core.enum_normalize.normalize_employment_type`
+# handles ``full_time``/``permanent_full_time``/``contract_temp``/
+# ``volunteer`` etc.  The ``employment_type_text`` fallback below is
+# used when the upstream code is missing/empty.
 
 _WORKPLACE_MAP: dict[str, str] = {
     "remote": "remote",
@@ -138,12 +129,10 @@ def _parse_job(posting: dict) -> DiscoveredJob | None:
     if not url:
         return None
 
-    # Employment type
-    emp_raw = posting.get("employment_type") or ""
-    employment_type = _EMPLOYMENT_TYPE_MAP.get(emp_raw)
-    if not employment_type:
-        # Fallback to human-readable text
-        employment_type = posting.get("employment_type_text") or None
+    # Employment type — pass through raw upstream code; if the API
+    # didn't supply a code, fall back to the human-readable text field
+    # (the central normalizer handles both shapes).
+    employment_type = posting.get("employment_type") or posting.get("employment_type_text") or None
 
     # Workplace / job location type
     workplace_raw = posting.get("workplace_type") or ""

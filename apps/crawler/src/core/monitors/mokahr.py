@@ -29,13 +29,11 @@ _DETAIL_URL = "https://app.mokahr.com/api/outer/ats-apply/website/job"
 _PAGE_SIZE = 20
 _MAX_JOBS = 50_000
 
-# Map Mokahr commitment values to standard employment types.
-_COMMITMENT_MAP: dict[str, str] = {
-    "fullTime": "Full-time",
-    "partTime": "Part-time",
-    "intern": "Intern",
-    "contract": "Contract",
-}
+# Mokahr commitment values pass through unchanged — the central
+# :func:`src.core.enum_normalize.normalize_employment_type` map handles
+# the camelCase API codes (``fullTime``/``partTime``/``intern``/
+# ``contract``) and the Chinese localised labels (``全职``/``兼职``/
+# ``实习``) returned by the same endpoint.
 
 
 def _decrypt(data_b64: str, key_str: str, iv_str: str) -> dict:
@@ -111,8 +109,7 @@ def _parse_job(job: dict, org_id: str, site_id: int) -> DiscoveredJob | None:
     if not job_id or not title:
         return None
 
-    commitment = job.get("commitment", "")
-    employment_type = _COMMITMENT_MAP.get(commitment)
+    employment_type = job.get("commitment") or None
 
     published = job.get("publishedAt")
 
