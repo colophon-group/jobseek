@@ -746,6 +746,97 @@ class TestDidiGlobalDomScraper:
         assert "<li>" in desc
 
 
+class TestDecathlonScraperHasEnrich:
+    """Decathlon's talentclue dom scraper MUST declare ``enrich`` (#2952).
+
+    The talentclue api_sniffer monitor returns ``title``, ``locations``,
+    and metadata.* from the public job-list JSON — making it a "rich"
+    monitor (``result.jobs_by_url is not None``). Without an ``enrich``
+    list on the scraper config, ``_board_has_enrich`` returns None and
+    ``is_rich_no_scrape = is_rich and not enrich_fields`` evaluates True.
+    Postings are inserted via ``_INSERT_RICH_JOB`` (which doesn't set
+    ``next_scrape_at``) and the dom detail scrape is never enqueued —
+    which is what left 557 active Decathlon postings with
+    ``description_r2_hash IS NULL`` in local Postgres and
+    ``has_content=false`` in Typesense.
+
+    Mirrors the Tesla / Infineon enrich guards above.
+    """
+
+    def test_decathlon_detail_scraper_declares_enrich(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("decathlon-es-talentclue")
+        assert row is not None, "decathlon-es-talentclue row missing from boards.csv"
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            "decathlon-es-talentclue scraper_config must declare "
+            "'enrich': ['description'] so its rich-monitor postings get "
+            "next_scrape_at = now() and the dom detail scraper actually runs. "
+            "See #2952."
+        )
+
+        # Also exercise the production guard: the metadata that sync writes
+        # would yield a non-None enrich list from _board_has_enrich.
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
+
+
+class TestInfineonScraperHasEnrich:
+    """Regression guard for #2952: Infineon postings stuck with empty
+    descriptions because the eightfold (rich) monitor returned full job
+    metadata but the detail scraper had no ``enrich`` declaration.
+
+    Without ``scraper_config.enrich``, ``_board_has_enrich`` returns None,
+    which sets ``is_rich_no_scrape = True`` in ``processing.board`` —
+    rich-monitor postings are then inserted with ``next_scrape_at = NULL``
+    and never enter the scrape pipeline. Postgres confirmed
+    1152/1153 active Infineon postings sat with NULL next_scrape_at +
+    NULL last_scraped_at + 0 scrape_failures (scheduler never queued them).
+
+    The fix mirrors PR #2954 (tesla) and the 15 other eightfold boards
+    documented in apps/crawler/AGENTS.md: declare
+    ``scraper_config: {"enrich": ["description"]}`` so PCSX-rich postings
+    get a one-shot detail scrape that fills ``description``.
+    """
+
+    def test_infineon_declares_enrich_description(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "infineon-careers"),
+            None,
+        )
+        assert row is not None, "infineon-careers row missing from boards.csv"
+
+        # Eightfold monitor + eightfold scraper (matches the canonical
+        # pattern used by kering, citigroup, qualcomm, microsoft, etc.)
+        assert row["monitor_type"] == "eightfold"
+        assert row["scraper_type"] == "eightfold"
+
+        scraper_config = json.loads(row.get("scraper_config") or "{}")
+        assert "description" in (scraper_config.get("enrich") or []), (
+            "infineon-careers must declare scraper_config.enrich = "
+            '["description"] — without it, _board_has_enrich returns None, '
+            "is_rich_no_scrape becomes True, and 1152+ postings get "
+            "next_scrape_at = NULL and never enter the scrape pipeline. "
+            "See PR #2954 (tesla) for the same scheduler failure mode."
+        )
+
+
 class TestTalentclueSiblingsHaveEnrich:
     """The talentclue sibling cluster of Decathlon (#2962) — barcelona-activa
     and ayuda-en-accion — share the same root cause: rich api_sniffer
