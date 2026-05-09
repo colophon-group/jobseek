@@ -439,3 +439,211 @@ class TestPeopleStrongDomScraper:
         from src.core.scrapers import scraper_needs_browser
 
         assert scraper_needs_browser("dom", PEOPLESTRONG_DOM_CONFIG) is True
+
+
+# ---------------------------------------------------------------------------
+# gone_url_pattern — issue #2963
+#
+# L'Oréal's careers site keeps stale URLs in its sitemap that 302-redirect
+# to ``/jobs/Error`` once the upstream posting is removed. The dom scraper's
+# selectors don't match the error page, so without help the pipeline burns
+# three transient backoffs on each (``last_scraped_at`` updates, but
+# ``description_r2_hash`` stays NULL) and lands at ``next_scrape_at IS NULL``,
+# stranding the row as ``is_active=true`` indefinitely.
+#
+# ``gone_url_pattern`` checks the FINAL URL after redirects and raises
+# ``HTTPStatusError(410)`` so the existing ``_is_permanent_gone`` classifier
+# in ``processing/scrape.py`` tombstones on the first failure.
+# ---------------------------------------------------------------------------
+
+
+class TestDomGoneUrlPattern:
+    async def test_render_path_raises_410_on_gone_redirect(self):
+        """Render path: when ``page.url`` matches gone_url_pattern,
+        scrape() raises ``httpx.HTTPStatusError`` with status 410."""
+        from src.core.scrapers.dom import scrape
+
+        page = _make_page("<html></html>")
+        page.url = "https://careers.loreal.com/en_US/jobs/Error"
+        config = {
+            "render": True,
+            "gone_url_pattern": "/jobs/Error(?:[/?]|$)",
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        with _patch_playwright(page):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await scrape(
+                    "https://careers.loreal.com/jobs/JobDetail/Foo/123",
+                    config,
+                    httpx.AsyncClient(),
+                )
+        assert exc_info.value.response.status_code == 410
+
+    async def test_render_path_skips_actions_on_gone_redirect(self):
+        """When gone is detected, run_actions is skipped — actions can
+        run an evaluate() pipeline that itself raises on the error page."""
+        from src.core.scrapers.dom import scrape
+
+        page = _make_page("<html></html>")
+        page.url = "https://careers.loreal.com/en_US/jobs/Error"
+        config = {
+            "render": True,
+            "gone_url_pattern": "/jobs/Error(?:[/?]|$)",
+            "actions": [{"action": "dismiss_overlays"}],
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        with _patch_playwright(page):
+            with pytest.raises(httpx.HTTPStatusError):
+                await scrape(
+                    "https://careers.loreal.com/jobs/JobDetail/Foo/123",
+                    config,
+                    httpx.AsyncClient(),
+                )
+        page.evaluate.assert_not_called()
+
+    async def test_render_path_no_pattern_extracts_normally(self):
+        """No gone_url_pattern config -> existing behaviour preserved."""
+        from src.core.scrapers.dom import scrape
+
+        page = _make_page(FIXTURE_HTML)
+        # Even on the error URL, with no pattern set we don't classify
+        # as gone -- extraction proceeds normally (and would land on the
+        # transient path via empty extraction, the legacy behaviour).
+        page.url = "https://careers.loreal.com/en_US/jobs/Error"
+        config = {
+            "render": True,
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        with _patch_playwright(page):
+            result = await scrape(
+                "https://careers.loreal.com/jobs/JobDetail/Foo/123",
+                config,
+                httpx.AsyncClient(),
+            )
+        assert result.title == "Software Engineer"
+
+    async def test_render_path_pattern_no_match_extracts_normally(self):
+        """Pattern set, but final URL doesn't match -> extraction proceeds."""
+        from src.core.scrapers.dom import scrape
+
+        page = _make_page(FIXTURE_HTML)
+        page.url = "https://careers.loreal.com/en_US/jobs/JobDetail/Foo/123"
+        config = {
+            "render": True,
+            "gone_url_pattern": "/jobs/Error(?:[/?]|$)",
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        with _patch_playwright(page):
+            result = await scrape(
+                "https://careers.loreal.com/jobs/JobDetail/Foo/123",
+                config,
+                httpx.AsyncClient(),
+            )
+        assert result.title == "Software Engineer"
+
+    async def test_static_path_raises_410_on_gone_redirect(self):
+        """Static HTTP path: when the final URL after follow_redirects
+        matches gone_url_pattern, scrape() raises HTTPStatusError(410).
+
+        The redirect chain may end on a 200 (rendered "this posting was
+        removed" page), so status alone never reveals gone-ness on these
+        hosts -- we must inspect the final URL.
+        """
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "render": False,
+            "gone_url_pattern": "/jobs/Error(?:[/?]|$)",
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+
+        # Patch httpx.AsyncClient.get to return a Response whose .url
+        # reports the post-redirect error page. (httpx.MockTransport
+        # always reports request.url as response.url, which would defeat
+        # the test, so we patch the higher-level client method.)
+        async def fake_get(self_client, url, **kwargs):
+            final_req = httpx.Request(
+                "GET", "https://careers.loreal.com/en_US/jobs/Error"
+            )
+            return httpx.Response(200, text="error page", request=final_req)
+
+        with patch.object(httpx.AsyncClient, "get", new=fake_get):
+            client = httpx.AsyncClient()
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await scrape(
+                    "https://careers.loreal.com/jobs/JobDetail/Foo/123",
+                    config,
+                    client,
+                )
+        assert exc_info.value.response.status_code == 410
+
+    async def test_static_path_no_match_extracts_normally(self):
+        """Static path: final URL doesn't match -> 200 response is consumed
+        normally and steps run."""
+        from src.core.scrapers.dom import scrape
+
+        page_html = "<html><body><h1>Real Job</h1></body></html>"
+
+        def handler(request):
+            return httpx.Response(200, text=page_html)
+
+        config = {
+            "render": False,
+            "gone_url_pattern": "/jobs/Error(?:[/?]|$)",
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://careers.loreal.com/en_US/jobs/JobDetail/Foo/123",
+                config,
+                client,
+            )
+        assert result.title == "Real Job"
+
+    async def test_invalid_regex_logs_and_does_not_raise(self):
+        """A malformed gone_url_pattern is logged but does not break
+        extraction -- the absent guard is preferable to an outage."""
+        from src.core.scrapers.dom import scrape
+
+        page = _make_page(FIXTURE_HTML)
+        page.url = "https://careers.loreal.com/en_US/jobs/Error"
+        config = {
+            "render": True,
+            "gone_url_pattern": "[unterminated",
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        with _patch_playwright(page):
+            result = await scrape(
+                "https://careers.loreal.com/jobs/JobDetail/Foo/123",
+                config,
+                httpx.AsyncClient(),
+            )
+        # Extraction proceeds despite the bad regex.
+        assert result.title == "Software Engineer"
+
+    def test_loreal_csv_config_pattern_matches_error_redirect(self):
+        """Verify the live boards.csv config pattern actually matches the
+        L'Oreal error redirect URL we observed in production probes."""
+        import csv
+        import json
+        import re
+
+        from src.shared.constants import DATA_DIR
+
+        with open(DATA_DIR / "boards.csv") as f:
+            for row in csv.DictReader(f):
+                if row["board_slug"] == "loreal-careers":
+                    cfg = json.loads(row["scraper_config"])
+                    pat = cfg.get("gone_url_pattern")
+                    assert pat, "loreal-careers must define gone_url_pattern"
+                    # Empirically observed redirect chains (Hetzner egress,
+                    # 2026-05-09): a removed posting 302s to /en_US/jobs/Error.
+                    assert re.search(pat, "https://careers.loreal.com/en_US/jobs/Error")
+                    assert re.search(pat, "https://careers.loreal.com/en_US/jobs/Error?x=1")
+                    # Must NOT match a real posting URL.
+                    assert not re.search(
+                        pat,
+                        "https://careers.loreal.com/en_US/jobs/JobDetail/Foo/123",
+                    )
+                    return
+        raise AssertionError("loreal-careers row not found in boards.csv")

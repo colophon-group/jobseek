@@ -10,6 +10,14 @@ Config uses ``steps`` (same format as ``walk_steps``) plus optional browser
 lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``, ``actions``)
 which are only used when rendering.
 
+Optional ``gone_url_pattern`` is a regex matched against the FINAL URL after
+all redirects. When the upstream site redirects archived/removed postings to
+a generic error page (e.g. L'Oréal redirects to ``/jobs/Error``), matching
+that pattern raises ``httpx.HTTPStatusError(410)`` so the scrape pipeline
+classifies the posting as ``permanent_gone`` and tombstones it on the first
+failure instead of cycling through three "empty extraction" transient
+backoffs that strand the row at ``next_scrape_at IS NULL``. See issue #2963.
+
 Requires playwright when ``render`` is true:
 ``uv sync --group dev && uv run playwright install chromium``
 """
@@ -18,6 +26,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -29,6 +38,48 @@ from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, s
 from src.shared.extract import flatten, walk_steps
 
 log = structlog.get_logger()
+
+
+def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -> None:
+    """Raise ``httpx.HTTPStatusError(410)`` if the final URL after redirects
+    matches the configured ``gone_url_pattern`` regex.
+
+    Called from both the render and static-HTTP code paths so any final URL
+    landing on the upstream "this posting is gone" page is classified as
+    permanent_gone by ``_is_permanent_gone`` in ``processing/scrape.py``.
+
+    Generic by design: the pattern lives in the per-board scraper config so
+    no host-specific code is added. Boards opt in by setting
+    ``gone_url_pattern`` in their dom scraper config (see boards.csv).
+    """
+    if not pattern or not final_url:
+        return
+    try:
+        if not re.search(pattern, final_url):
+            return
+    except re.error:
+        log.warning(
+            "dom.gone_url_pattern.invalid_regex",
+            url=source_url,
+            pattern=pattern,
+        )
+        return
+    log.info(
+        "dom.gone_redirect",
+        url=source_url,
+        final_url=final_url,
+        pattern=pattern,
+    )
+    # Synthesise a 410 response so _is_permanent_gone() returns True. The
+    # request URL is the original posting URL; the response URL is the
+    # error page we landed on after redirects.
+    request = httpx.Request("GET", source_url)
+    response = httpx.Response(410, request=request, text="gone")
+    raise httpx.HTTPStatusError(
+        f"redirected to gone URL {final_url!r}",
+        request=request,
+        response=response,
+    )
 
 # ── Heuristic stop markers ────────────────────────────────────────────
 
@@ -228,6 +279,8 @@ async def scrape(
         )
         render = True
 
+    gone_pattern = config.get("gone_url_pattern")
+
     if render:
         browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
         use_proxy = bool(config.get("proxy"))
@@ -235,6 +288,13 @@ async def scrape(
         async def _render_page(p):
             async with open_page(p, browser_config, use_proxy=use_proxy) as page:
                 await navigate(page, url, browser_config)
+                # Read final URL BEFORE running actions/extraction so a
+                # redirect-to-gone page doesn't burn the (potentially
+                # paid-proxy) action pipeline against a known dead page.
+                final_url = ""
+                with contextlib.suppress(Exception):
+                    final_url = page.url or ""
+                _check_gone_redirect(final_url, gone_pattern, url)
                 await run_actions(page, browser_config.get("actions", []))
                 return await safe_content(page)
 
@@ -253,6 +313,11 @@ async def scrape(
                 html = await _render_page(p)
     else:
         resp = await http.get(url, follow_redirects=True)
+        # Detect redirect-to-gone BEFORE raise_for_status so the error page's
+        # 200 doesn't shadow the actual archived signal. The redirect chain
+        # may end on a 200 (rendered "this posting was removed" page), so
+        # status alone never reveals gone-ness on these hosts.
+        _check_gone_redirect(str(resp.url), gone_pattern, url)
         resp.raise_for_status()
         html = resp.text
 
