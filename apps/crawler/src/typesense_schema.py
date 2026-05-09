@@ -129,7 +129,14 @@ COLLECTIONS: list[dict] = [
         "fields": [
             {"name": "id", "type": "string"},
             {"name": "name", "type": "string"},
-            {"name": "slug", "type": "string", "index": False},
+            # `slug` MUST be indexed: web/_fetchCompanyBySlugFromTypesense uses
+            # `filter_by: slug:=<slug>` for every company detail page. With
+            # `index: false`, Typesense rejects the filter ("Cannot filter on
+            # non-indexed field"), so every lookup falls through to Postgres
+            # — the OG-image prerender (4400 × 4 locales) caused #2918 (build
+            # ECONNRESET) by hitting Supabase 17,600 times per build. See
+            # #2931.
+            {"name": "slug", "type": "string"},
             {"name": "icon", "type": "string", "index": False, "optional": True},
             {"name": "logo", "type": "string", "index": False, "optional": True},
             {"name": "website", "type": "string", "index": False, "optional": True},
@@ -206,6 +213,24 @@ def _drop_alias(client: typesense.Client, name: str) -> None:
         pass
 
 
+# Default values Typesense applies when a field-shape attribute is omitted
+# from the create-collection / patch payload. Used by ``_index_drift`` to
+# compare a sparsely-specified desired schema (e.g. just `{"name": "slug",
+# "type": "string"}`) against the live cluster's fully-populated retrieve()
+# response (which always returns explicit booleans for all attributes).
+_FIELD_INDEX_DEFAULT = True
+
+
+def _index_drift(live: dict, desired: dict) -> bool:
+    """Return True iff the field's `index` setting differs between live and spec.
+
+    The live response always carries an explicit ``index`` boolean (Typesense
+    populates defaults on retrieve); the desired dict may omit ``index`` to
+    mean "default true". Compare normalised values.
+    """
+    return live.get("index", _FIELD_INDEX_DEFAULT) != desired.get("index", _FIELD_INDEX_DEFAULT)
+
+
 def _warn_field_drift(
     collection_name: str, live_fields: list[dict], desired_fields: list[dict]
 ) -> None:
@@ -229,7 +254,9 @@ def _warn_field_drift(
       imately read back as ``"int64"``. The right fix is to widen the spec,
       not to drop and re-add.
 
-    Field-shape drift (``facet``/``optional``/``index``/``sort``) is out of
+    ``index`` drift is handled separately by ``_patch_missing_fields`` — that
+    one is auto-repaired via drop + re-add (Typesense supports a single-PATCH
+    drop+add pair). ``facet``/``optional``/``sort`` drift is still out of
     scope here.
     """
     live_by_name = {f["name"]: f for f in live_fields}
@@ -253,15 +280,20 @@ def _warn_field_drift(
 def _patch_missing_fields(
     client: typesense.Client, collection_name: str, desired_fields: list[dict]
 ) -> None:
-    """Add fields present in the desired schema but absent from the live one.
+    """Add missing fields and re-toggle ``index`` drift on existing fields.
 
     Typesense supports adding/removing fields in-place via PATCH on a
-    collection. We only ever ADD here — removals are intentionally manual to
-    avoid accidental data loss. ``id`` and existing fields are left alone.
+    collection. ``type`` drift is NOT auto-repaired (only warned about) —
+    that requires a backfill the patcher can't perform. ``index`` drift IS
+    auto-repaired here via a single-PATCH drop + re-add pair (Typesense's
+    documented mechanism for "any modifications to an existing field"). The
+    re-added field has no documents indexed under it until the next
+    exporter / sync pass repopulates them — fine for the company-detail
+    use-case (#2931) since data lives in Postgres and the next ``crawler
+    sync`` rewrites these docs anyway.
 
-    Also runs a passive type-drift check: if a field exists in both schemas
-    with a different ``type``, a warning is emitted to stderr (no auto-
-    recovery — Typesense doesn't support type changes in place).
+    ``facet``/``sort``/``optional`` drift is still out of scope. ``id`` is
+    skipped throughout — Typesense rejects any PATCH touching it.
     """
     try:
         live = client.collections[collection_name].retrieve()
@@ -274,18 +306,40 @@ def _patch_missing_fields(
     live_fields = live.get("fields", [])
     _warn_field_drift(collection_name, live_fields, desired_fields)
 
-    existing_names = {f["name"] for f in live_fields}
-    missing = [f for f in desired_fields if f["name"] != "id" and f["name"] not in existing_names]
-    if not missing:
+    live_by_name = {f["name"]: f for f in live_fields}
+    payload_fields: list[dict] = []
+    added_names: list[str] = []
+    rebuilt_names: list[str] = []
+
+    for desired in desired_fields:
+        name = desired["name"]
+        if name == "id":
+            continue
+        field_live = live_by_name.get(name)
+        if field_live is None:
+            payload_fields.append(desired)
+            added_names.append(name)
+            continue
+        # Field exists; check if `index` flipped. The live response always
+        # carries `index` explicitly, but compare via _index_drift so a future
+        # variant where Typesense omits it stays correct.
+        if _index_drift(field_live, desired):
+            payload_fields.append({"name": name, "drop": True})
+            payload_fields.append(desired)
+            rebuilt_names.append(name)
+
+    if not payload_fields:
         print(f"  schema up to date for {collection_name}")
         return
 
-    print(
-        f"  adding {len(missing)} field(s) to {collection_name}: "
-        f"{', '.join(f['name'] for f in missing)}"
-    )
+    summary_parts = []
+    if added_names:
+        summary_parts.append(f"adding {len(added_names)} ({', '.join(added_names)})")
+    if rebuilt_names:
+        summary_parts.append(f"re-indexing {len(rebuilt_names)} ({', '.join(rebuilt_names)})")
+    print(f"  patching {collection_name}: {'; '.join(summary_parts)}")
     try:
-        client.collections[collection_name].update({"fields": missing})
+        client.collections[collection_name].update({"fields": payload_fields})
     except Exception as exc:
         print(f"  ERROR patching {collection_name}: {exc}", file=sys.stderr)
         raise
