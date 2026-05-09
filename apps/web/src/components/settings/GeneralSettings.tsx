@@ -139,15 +139,25 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
     [currentLocale],
   );
 
-  // Persist language preference changes (outside updater to avoid setState-during-render)
+  // Persist language preference changes (outside updater to avoid setState-during-render).
+  // After the server-action resolves, `router.refresh()` flushes Next.js's
+  // client-side router cache so the next navigation back to /explore
+  // (or any other page that reads `jobLanguages`) refetches the RSC
+  // payload — without this, the user lands on a stale prerender that
+  // predates the toggle and only sees the new filter after a hard
+  // reload (#2916). The server-action already invalidates the
+  // per-region `'use cache'` layer via `revalidatePath`; both layers
+  // need clearing.
   const initialLangsRef = useRef(true);
   useEffect(() => {
     if (initialLangsRef.current) {
       initialLangsRef.current = false;
       return;
     }
-    void updatePreferences({ jobLanguages });
-  }, [jobLanguages]);
+    void updatePreferences({ jobLanguages }).then(() => {
+      router.refresh();
+    });
+  }, [jobLanguages, router]);
 
   return (
     <div className="space-y-10">
