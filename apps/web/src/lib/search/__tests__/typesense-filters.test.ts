@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { POSTING_BASE_FILTER, buildFilterString } from "../typesense-filters";
+import {
+  POSTING_BASE_FILTER,
+  POSTING_FLOW_FILTER,
+  buildFilterString,
+} from "../typesense-filters";
 
 describe("POSTING_BASE_FILTER", () => {
   it("includes is_active:true", () => {
@@ -17,6 +21,27 @@ describe("POSTING_BASE_FILTER", () => {
 
   it("composes the two clauses with `&&`", () => {
     expect(POSTING_BASE_FILTER).toBe("is_active:true && has_content:!=false");
+  });
+});
+
+// =====================================================================
+// Issue #2965: year-count queries measure FLOW (postings first seen in a
+// time window, regardless of current is_active state), not snapshot.
+// POSTING_FLOW_FILTER drops `is_active:true` so delisted-but-still-recent
+// postings count toward the "in the last year" total.
+// =====================================================================
+
+describe("POSTING_FLOW_FILTER (#2965)", () => {
+  it("does NOT include is_active — flow queries must include delisted postings", () => {
+    expect(POSTING_FLOW_FILTER).not.toContain("is_active");
+  });
+
+  it("retains has_content:!=false (don't surface broken postings)", () => {
+    expect(POSTING_FLOW_FILTER).toContain("has_content:!=false");
+  });
+
+  it("is exactly the content-quality clause", () => {
+    expect(POSTING_FLOW_FILTER).toBe("has_content:!=false");
   });
 });
 
@@ -39,26 +64,28 @@ describe("buildFilterString", () => {
 });
 
 // =====================================================================
-// Issue #2926: every `first_seen_at:>` (year-count) filter string in the
-// Typesense providers must compose with POSTING_BASE_FILTER. Skipping it
-// inflates yearly-posting badges to include incomplete postings.
+// Issue #2965: every `first_seen_at:>` (year-count) filter string in the
+// Typesense providers must compose with POSTING_FLOW_FILTER, NOT
+// POSTING_BASE_FILTER. Including `is_active:true` collapses year-count
+// to active-count (an active job, by definition, was first-seen in the
+// past — so the time window selects no extra docs once is_active is on).
 // =====================================================================
 
-describe("year-count badge filters reference POSTING_BASE_FILTER (#2926)", () => {
+describe("year-count badge filters reference POSTING_FLOW_FILTER (#2965)", () => {
   const SOURCES = [
     "../typesense.ts",
     "../typesense-browser.ts",
   ] as const;
 
   for (const rel of SOURCES) {
-    it(`${rel}: every \`first_seen_at:>\` filter string mentions POSTING_BASE_FILTER`, () => {
+    it(`${rel}: every \`first_seen_at:>\` filter string mentions POSTING_FLOW_FILTER`, () => {
       const path = join(__dirname, rel);
       const src = readFileSync(path, "utf8");
       const lines = src.split("\n");
 
       // Match template-literal substrings starting with `first_seen_at:>`
       // and ending at the closing backtick on the same line. The four call
-      // sites in #2926 all build the year filter on a single line.
+      // sites in #2965 all build the year filter on a single line.
       const yearFilterLines = lines.filter((line) =>
         line.includes("first_seen_at:>") &&
         // ignore comment-only lines so we don't false-positive on docs
@@ -69,9 +96,13 @@ describe("year-count badge filters reference POSTING_BASE_FILTER (#2926)", () =>
 
       for (const line of yearFilterLines) {
         expect(
-          line.includes("POSTING_BASE_FILTER"),
-          `expected POSTING_BASE_FILTER in line:\n  ${line.trim()}`,
+          line.includes("POSTING_FLOW_FILTER"),
+          `expected POSTING_FLOW_FILTER in line:\n  ${line.trim()}`,
         ).toBe(true);
+        expect(
+          line.includes("POSTING_BASE_FILTER"),
+          `year-count line must NOT use POSTING_BASE_FILTER (it inflates to is_active filter):\n  ${line.trim()}`,
+        ).toBe(false);
       }
     });
   }

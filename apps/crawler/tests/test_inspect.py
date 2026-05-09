@@ -657,6 +657,279 @@ class TestTeslaScraperHasEnrich:
         assert _board_has_enrich(metadata) == enrich
 
 
+class TestDidiGlobalScraperHasEnrich:
+    """Regression guard for #2952: Didi Global postings stuck with empty
+    descriptions because the api_sniffer (rich) monitor returned full job
+    metadata but ``scraper_type=skip`` with no ``enrich`` declaration meant
+    the detail scraper never ran.
+
+    Without ``scraper_config.enrich``, ``_board_has_enrich`` returns None,
+    ``is_rich_no_scrape`` evaluates True, and the rich-monitor branch
+    inserts via ``_INSERT_RICH_JOB`` (no ``next_scrape_at``) instead of
+    ``_INSERT_RICH_JOB_ENRICH``. Postgres confirmed all 1,979 Didi postings
+    sat with NULL next_scrape_at + NULL last_scraped_at + 0 scrape_failures
+    + NULL description_r2_hash - the scheduler never queued them.
+
+    Mirrors PR #2954 (tesla). Extra wrinkle: the original CSV row had
+    ``scraper_type=skip`` while carrying dom-format ``steps``. The fix
+    flips the type to ``dom`` AND adds ``enrich``.
+    """
+
+    def test_didi_global_declares_enrich_description(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "didi-global-careers-intl"),
+            None,
+        )
+        assert row is not None, "didi-global-careers-intl row missing from boards.csv"
+
+        assert row["scraper_type"] == "dom", (
+            "didi-global-careers-intl scraper_type must be 'dom'. The "
+            "original 'skip' value made _is_skip_no_scrape return True so "
+            "the scrape pipeline was bypassed and 1,979 postings sat with "
+            "description_r2_hash = NULL. See #2952."
+        )
+
+        scraper_config = json.loads(row.get("scraper_config") or "{}")
+        assert "description" in (scraper_config.get("enrich") or []), (
+            "didi-global-careers-intl scraper_config must declare "
+            '"enrich": ["description"] - without it, _board_has_enrich '
+            "returns None, is_rich_no_scrape becomes True, and 1,979 "
+            "postings get next_scrape_at = NULL. See PR #2954 (tesla)."
+        )
+
+        metadata = {
+            "scraper_type": row["scraper_type"],
+            "scraper_config": scraper_config,
+        }
+        assert _board_has_enrich(metadata) == ["description"]
+
+
+class TestDidiGlobalDomScraper:
+    """Functional check: Didi dom config extracts title/locations/description
+    from a captured fixture of careers.didiglobal.com (#2952)."""
+
+    def test_didi_global_dom_extracts_description(self):
+        import json
+        from pathlib import Path
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+        from src.shared.extract import flatten, walk_steps
+
+        fixture = Path(__file__).parent / "fixtures" / "didi_global_jobdetail.html"
+        html = fixture.read_text()
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(r for r in rows if r["board_slug"] == "didi-global-careers-intl")
+        config = json.loads(row["scraper_config"])
+        steps = config["steps"]
+
+        elements = flatten(html)
+        fields, _ = walk_steps(elements, steps)
+
+        assert fields.get("title") == ("Estágio em operações (Engagement Channels)")
+        assert fields.get("locations") == "Sao Paulo - Brazil"
+
+        desc = fields.get("description") or ""
+        assert len(desc) > 1000, (
+            f"description too short ({len(desc)} chars) - extraction is "
+            "broken; the fixture's About-the-company range is ~3.9KB"
+        )
+        assert "<h4>About the company</h4>" in desc
+        assert "<li>" in desc
+
+
+class TestDecathlonScraperHasEnrich:
+    """Decathlon's talentclue dom scraper MUST declare ``enrich`` (#2952).
+
+    The talentclue api_sniffer monitor returns ``title``, ``locations``,
+    and metadata.* from the public job-list JSON — making it a "rich"
+    monitor (``result.jobs_by_url is not None``). Without an ``enrich``
+    list on the scraper config, ``_board_has_enrich`` returns None and
+    ``is_rich_no_scrape = is_rich and not enrich_fields`` evaluates True.
+    Postings are inserted via ``_INSERT_RICH_JOB`` (which doesn't set
+    ``next_scrape_at``) and the dom detail scrape is never enqueued —
+    which is what left 557 active Decathlon postings with
+    ``description_r2_hash IS NULL`` in local Postgres and
+    ``has_content=false`` in Typesense.
+
+    Mirrors the Tesla / Infineon enrich guards above.
+    """
+
+    def test_decathlon_detail_scraper_declares_enrich(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("decathlon-es-talentclue")
+        assert row is not None, "decathlon-es-talentclue row missing from boards.csv"
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            "decathlon-es-talentclue scraper_config must declare "
+            "'enrich': ['description'] so its rich-monitor postings get "
+            "next_scrape_at = now() and the dom detail scraper actually runs. "
+            "See #2952."
+        )
+
+        # Also exercise the production guard: the metadata that sync writes
+        # would yield a non-None enrich list from _board_has_enrich.
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
+
+
+class TestInfineonScraperHasEnrich:
+    """Regression guard for #2952: Infineon postings stuck with empty
+    descriptions because the eightfold (rich) monitor returned full job
+    metadata but the detail scraper had no ``enrich`` declaration.
+
+    Without ``scraper_config.enrich``, ``_board_has_enrich`` returns None,
+    which sets ``is_rich_no_scrape = True`` in ``processing.board`` —
+    rich-monitor postings are then inserted with ``next_scrape_at = NULL``
+    and never enter the scrape pipeline. Postgres confirmed
+    1152/1153 active Infineon postings sat with NULL next_scrape_at +
+    NULL last_scraped_at + 0 scrape_failures (scheduler never queued them).
+
+    The fix mirrors PR #2954 (tesla) and the 15 other eightfold boards
+    documented in apps/crawler/AGENTS.md: declare
+    ``scraper_config: {"enrich": ["description"]}`` so PCSX-rich postings
+    get a one-shot detail scrape that fills ``description``.
+    """
+
+    def test_infineon_declares_enrich_description(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "infineon-careers"),
+            None,
+        )
+        assert row is not None, "infineon-careers row missing from boards.csv"
+
+        # Eightfold monitor + eightfold scraper (matches the canonical
+        # pattern used by kering, citigroup, qualcomm, microsoft, etc.)
+        assert row["monitor_type"] == "eightfold"
+        assert row["scraper_type"] == "eightfold"
+
+        scraper_config = json.loads(row.get("scraper_config") or "{}")
+        assert "description" in (scraper_config.get("enrich") or []), (
+            "infineon-careers must declare scraper_config.enrich = "
+            '["description"] — without it, _board_has_enrich returns None, '
+            "is_rich_no_scrape becomes True, and 1152+ postings get "
+            "next_scrape_at = NULL and never enter the scrape pipeline. "
+            "See PR #2954 (tesla) for the same scheduler failure mode."
+        )
+
+
+class TestApiSnifferRichBoardsHaveEnrich:
+    """api_sniffer rich-monitor boards MUST declare enrich on the detail
+    scraper (#2963).
+
+    Audit #2963 found 5 boards with the same pattern as Tesla #2954 and
+    Decathlon #2962: an api_sniffer monitor with ``fields`` configured
+    (or auto-detected at runtime) so the monitor returns ``DiscoveredJob``
+    items, paired with a json-ld / nextdata / dom secondary scraper —
+    but no ``enrich`` list on ``scraper_config``. Without the enrich
+    declaration ``_board_has_enrich`` returns None and
+    ``processing/board.py`` picks ``_INSERT_RICH_JOB`` (no
+    ``next_scrape_at``) over ``_INSERT_RICH_JOB_ENRICH``, leaving every
+    posting permanently unscraped.
+
+    Aggregate impact across the four boards covered here was ~5,000
+    active postings stuck with ``description_r2_hash IS NULL``:
+    hitachi-energy-careers (2,224), goldman-sachs-careers (~1,450),
+    haier-group-careers-cn (1,094), continental-careers (100).
+
+    The fifth board flagged by the audit (``alibaba-careers-lazada``)
+    is intentionally NOT in this test — it has no ``scraper_type`` /
+    ``scraper_config`` at all and tracks as a separate-scope follow-up
+    (Lazada's detail endpoint is JS-rendered with no usable static
+    JSON-LD or nextdata, so picking a scraper config requires its own
+    investigation).
+
+    One test per board, mirroring TestTeslaScraperHasEnrich, so a
+    future bulk-edit cannot silently revert any single fix.
+    """
+
+    @staticmethod
+    def _assert_enrich(slug: str, expected_scraper_type: str) -> None:
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get(slug)
+        assert row is not None, f"{slug!r} row missing from boards.csv"
+
+        assert row.get("monitor_type") == "api_sniffer", (
+            f"{slug} should remain api_sniffer-monitored — the rich/no-scrape "
+            "scheduling bug only affects rich api_sniffer monitors."
+        )
+        assert row.get("scraper_type") == expected_scraper_type, (
+            f"{slug} must use scraper_type={expected_scraper_type!r} for "
+            "description enrichment. See #2963."
+        )
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            f"{slug} scraper_config must declare 'enrich': ['description'] "
+            "so its rich-monitor postings get next_scrape_at = now() and "
+            "the detail scraper actually runs. See #2963."
+        )
+
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
+
+    def test_hitachi_energy_careers_declares_enrich(self):
+        """hitachi-energy-careers: api_sniffer (rich) + json-ld enrich."""
+        self._assert_enrich("hitachi-energy-careers", "json-ld")
+
+    def test_goldman_sachs_careers_declares_enrich(self):
+        """goldman-sachs-careers: api_sniffer (rich) + nextdata enrich."""
+        self._assert_enrich("goldman-sachs-careers", "nextdata")
+
+    def test_haier_group_careers_cn_declares_enrich(self):
+        """haier-group-careers-cn: api_sniffer (rich) + dom enrich."""
+        self._assert_enrich("haier-group-careers-cn", "dom")
+
+    def test_continental_careers_declares_enrich(self):
+        """continental-careers: api_sniffer (URL-only declared, fields
+        auto-detected at runtime) + json-ld enrich.
+
+        The CSV monitor_config has no explicit ``fields``, but the
+        api_sniffer monitor calls ``auto_map_fields(items)`` on the
+        listing payload (``api_sniffer.py:938``) and the Continental API
+        returns enough metadata for that call to succeed — flipping the
+        monitor to rich-mode at runtime. The DB confirmed 100/100 active
+        postings with ``next_scrape_at IS NULL``, identical to the
+        statically-rich boards. The fix is the same: declare enrich so
+        ``_INSERT_RICH_JOB_ENRICH`` is used and json-ld runs on the
+        detail page.
+        """
+        self._assert_enrich("continental-careers", "json-ld")
+
+
 class TestTalentclueSiblingsHaveEnrich:
     """The talentclue sibling cluster of Decathlon (#2962) — barcelona-activa
     and ayuda-en-accion — share the same root cause: rich api_sniffer

@@ -63,6 +63,7 @@ from src.core.monitors.sitemap import (
     MAX_URLS,
     _extract_child_sitemaps,
     _extract_urls,
+    _fetch_child_xml,
     _is_sitemap_index,
     _try_fetch_xml,
 )
@@ -150,6 +151,21 @@ async def _collect_urls(
 
     Returns ``(urls, truncated)`` where *truncated* is True when we hit
     ``sitemap.MAX_URLS`` during accumulation; the caller may log this.
+
+    Child shards use the strict :func:`_fetch_child_xml` rather than the
+    lenient :func:`_try_fetch_xml`. This mirrors the sitemap monitor's
+    #2722 hardening: a transient 5xx / 429 / timeout on a child shard
+    raises :exc:`PaginationFetchError` after the retry budget, which
+    propagates up through ``discover()`` to
+    ``_process_one_board_streaming`` and gets recorded as a failed run
+    rather than a partial-success that triggers
+    ``_MARK_GONE_BY_TIMESTAMP`` on the missing URLs. mchire's 906 ``-en``
+    shards make even a 1% per-shard transient failure rate produce
+    multi-thousand URL drops that tombstone real postings (#2974).
+
+    The index root itself stays on the lenient path: discovery of a new
+    sitemap location is allowed to fall through to the next candidate
+    on transient errors, same split as ``sitemap._discover_sitemap``.
     """
     root = await _try_fetch_xml(sitemap_url, client)
     if root is None:
@@ -176,8 +192,11 @@ async def _collect_urls(
         if len(urls) >= MAX_URLS:
             truncated = True
             break
-        child_root = await _try_fetch_xml(child_url, client)
+        # Strict fetch — transient errors raise PaginationFetchError
+        # rather than silently dropping the shard's URLs (#2974).
+        child_root = await _fetch_child_xml(child_url, client)
         if child_root is None:
+            # 404 / 410 / non-XML body — genuinely missing shard, skip.
             continue
         # Nested sitemap-index (rare; defensive): single-level recurse.
         if _is_sitemap_index(child_root):
@@ -185,7 +204,7 @@ async def _collect_urls(
                 if len(urls) >= MAX_URLS:
                     truncated = True
                     break
-                gc_root = await _try_fetch_xml(grandchild, client)
+                gc_root = await _fetch_child_xml(grandchild, client)
                 if gc_root is not None:
                     urls.update(_extract_urls(gc_root))
         else:
@@ -260,6 +279,8 @@ async def can_handle(
     Phenom host blocking the endpoint. The sitemap fingerprint is
     cheaper and does not require egress proxying.
     """
+    from src.shared.http_retry import PaginationFetchError
+
     if client is None:
         return None
     parsed = urlparse(url)
@@ -270,7 +291,20 @@ async def can_handle(
     children = _extract_child_sitemaps(root)
     if not any(_PHENOM_CHILD_RE.search(c) for c in children):
         return None
-    urls, _truncated = await _collect_urls(sitemap, client)
+    # Probe path: a transient PaginationFetchError on a single shard
+    # shouldn't fail the whole probe — return a partial count instead so
+    # the operator still gets a positive Phenom-detected signal. The
+    # discover() path keeps the strict semantics for production cycles.
+    try:
+        urls, _truncated = await _collect_urls(sitemap, client)
+    except PaginationFetchError as exc:
+        log.warning(
+            "phenom.can_handle.partial",
+            sitemap=sitemap,
+            url=exc.url,
+            last_status=exc.last_status,
+        )
+        return {"sitemap_url": sitemap, "urls": 0, "jobs": 0}
     job_urls = sum(1 for u in urls if _is_phenom_job_url(u))
     return {"sitemap_url": sitemap, "urls": len(urls), "jobs": job_urls}
 
