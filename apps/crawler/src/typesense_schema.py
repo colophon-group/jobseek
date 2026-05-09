@@ -74,6 +74,12 @@ COLLECTIONS: list[dict] = [
             {"name": "name_de", "type": "string", "locale": "de", "optional": True},
             {"name": "name_fr", "type": "string", "locale": "fr", "optional": True},
             {"name": "name_it", "type": "string", "locale": "it", "optional": True},
+            # Natural-language synonyms queried alongside ``name_*`` so users
+            # who type "Europe" or "European Union" surface the EU macro row
+            # whose canonical ``name_en`` is just "EU". Currently populated
+            # for macro regions only (sync.py — ``_LOCATION_MACRO_ALIASES``);
+            # countries fall through to ``name_*``. See #2939.
+            {"name": "aliases", "type": "string[]", "optional": True},
             {"name": "parent_name", "type": "string", "optional": True},
             {"name": "type", "type": "string", "facet": True},
             {"name": "coordinates", "type": "geopoint", "optional": True},

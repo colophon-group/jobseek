@@ -1564,6 +1564,60 @@ def _ts_bulk_delete_ids(
 # ---------------------------------------------------------------------------
 
 
+# Natural-language synonyms for macro-region location rows, keyed by
+# slug. Populated onto Typesense ``location.aliases`` so the autocomplete's
+# prefix search (``query_by=name_en,aliases``) surfaces e.g. the EU row
+# when the user types "Europe" or "European Union" — the canonical
+# ``name_en`` for these rows is just the abbreviation, which has no
+# user-typeable prefix overlap with the obvious natural-language phrases.
+# Hard-coded rather than column-driven because the macro set is small,
+# stable, and the alias choices are an editorial decision (see #2939).
+_LOCATION_MACRO_ALIASES: dict[str, list[str]] = {
+    "eu": ["European Union", "Europe", "EEA", "Schengen"],
+    "emea": [
+        "Europe Middle East Africa",
+        "Europe & Middle East",
+        "EMEA region",
+    ],
+    "dach": [
+        "D-A-CH",
+        "German-speaking countries",
+        "Germany Austria Switzerland",
+    ],
+    "apac": [
+        "Asia Pacific",
+        "Asia-Pacific",
+        "Asia and the Pacific",
+    ],
+    "americas": [
+        "North America",
+        "South America",
+        "Western Hemisphere",
+    ],
+    "latam": [
+        "Latin America",
+        "South America",
+        "Central America",
+    ],
+    "nordics": [
+        "Nordic countries",
+        "Scandinavia",
+        "Northern Europe",
+    ],
+    "mena": [
+        "Middle East and North Africa",
+        "Middle East North Africa",
+        "Arab world",
+    ],
+    "worldwide": [
+        "Global",
+        "Anywhere",
+        "Remote",
+        "International",
+    ],
+}
+
+
 async def sync_locations_typesense(
     supa_conn: asyncpg.Connection,
     local_conn: asyncpg.Connection | None,
@@ -1641,6 +1695,13 @@ async def sync_locations_typesense(
             doc["parent_name"] = r["parent_name"]
         if r["population"] is not None:
             doc["population"] = r["population"]
+        # Macro-region aliases (#2939): natural-language synonyms so
+        # "Europe" / "European Union" / "DACH" / "Asia Pacific" / etc.
+        # match the macro row whose ``name_en`` is just the abbreviation.
+        if r["type"] == "macro" and r["slug"]:
+            aliases = _LOCATION_MACRO_ALIASES.get(r["slug"])
+            if aliases:
+                doc["aliases"] = aliases
 
         docs.append(doc)
 
