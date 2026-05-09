@@ -12,6 +12,7 @@ import {
 import { getSessionUserId } from "@/lib/sessionCache";
 import { getViewerLanguages } from "@/lib/viewer";
 import { cached, invalidate } from "@/lib/cache";
+import { withDbRetry } from "@/lib/db-retry";
 import { watchlistCacheTag } from "@/lib/cache-tags";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import { generateUniqueSlug } from "@/lib/watchlist-slug";
@@ -524,27 +525,31 @@ export async function getUserWatchlists(locale: string): Promise<WatchlistSummar
 
   const languages = await getViewerLanguages(locale);
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: string;
-    slug: string;
-    title: string;
-    is_public: boolean;
-    alerts_enabled: boolean;
-    filters: WatchlistFilters;
-    last_accessed_at: Date;
-    created_at: Date;
-    company_count: number;
-    company_ids: string[];
-  }>(sql`
-    SELECT w.id, w.slug, w.title, w.description, w.is_public, w.alerts_enabled, w.filters,
-           w.last_accessed_at, w.created_at,
-           (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
-           (SELECT coalesce(array_agg(wc.company_id), '{}') FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_ids
-    FROM watchlist w
-    WHERE w.user_id = ${userId}
-    ORDER BY w.last_accessed_at DESC
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: string;
+        slug: string;
+        title: string;
+        is_public: boolean;
+        alerts_enabled: boolean;
+        filters: WatchlistFilters;
+        last_accessed_at: Date;
+        created_at: Date;
+        company_count: number;
+        company_ids: string[];
+      }>(sql`
+        SELECT w.id, w.slug, w.title, w.description, w.is_public, w.alerts_enabled, w.filters,
+               w.last_accessed_at, w.created_at,
+               (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
+               (SELECT coalesce(array_agg(wc.company_id), '{}') FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_ids
+        FROM watchlist w
+        WHERE w.user_id = ${userId}
+        ORDER BY w.last_accessed_at DESC
+      `),
+    { label: "userWatchlists" },
+  );
 
   type Row = {
     id: string; slug: string; title: string; description: string | null; is_public: boolean;
@@ -595,19 +600,23 @@ export async function getWatchlistByUserAndSlug(
   // detail page resolves the same URLs the sitemap exposes.  Exact username
   // match is preferred via ORDER BY when both columns happen to collide
   // across users.
-  const rows = await db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
-    SELECT
-      w.id AS wl_id, w.slug, w.title, w.description,
-      w.is_public, w.alerts_enabled, w.filters,
-      w.source_watchlist_id, w.created_at, w.user_id,
-      u.id AS owner_id, u.username, u.display_username, u.name AS owner_name
-    FROM watchlist w
-    JOIN "user" u ON u.id = w.user_id
-    WHERE (u.username = ${userSlug} OR u.display_username = ${userSlug})
-      AND w.slug = ${watchlistSlug}
-    ORDER BY (u.username = ${userSlug})::int DESC
-    LIMIT 1
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
+        SELECT
+          w.id AS wl_id, w.slug, w.title, w.description,
+          w.is_public, w.alerts_enabled, w.filters,
+          w.source_watchlist_id, w.created_at, w.user_id,
+          u.id AS owner_id, u.username, u.display_username, u.name AS owner_name
+        FROM watchlist w
+        JOIN "user" u ON u.id = w.user_id
+        WHERE (u.username = ${userSlug} OR u.display_username = ${userSlug})
+          AND w.slug = ${watchlistSlug}
+        ORDER BY (u.username = ${userSlug})::int DESC
+        LIMIT 1
+      `),
+    { label: `watchlistByUserAndSlug[${userSlug}/${watchlistSlug}]` },
+  );
 
   const row = (rows as unknown as WatchlistJoinRow[])[0];
   if (!row) return null;
@@ -695,20 +704,24 @@ async function _fetchPublicWatchlistByUserAndSlug(
     display_username: string | null; owner_name: string;
   };
 
-  const rows = await db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
-    SELECT
-      w.id AS wl_id, w.slug, w.title, w.description,
-      w.is_public, w.alerts_enabled, w.filters,
-      w.source_watchlist_id, w.created_at, w.user_id,
-      u.id AS owner_id, u.username, u.display_username, u.name AS owner_name
-    FROM watchlist w
-    JOIN "user" u ON u.id = w.user_id
-    WHERE (u.username = ${userSlug} OR u.display_username = ${userSlug})
-      AND w.slug = ${watchlistSlug}
-      AND w.is_public = true
-    ORDER BY (u.username = ${userSlug})::int DESC
-    LIMIT 1
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
+        SELECT
+          w.id AS wl_id, w.slug, w.title, w.description,
+          w.is_public, w.alerts_enabled, w.filters,
+          w.source_watchlist_id, w.created_at, w.user_id,
+          u.id AS owner_id, u.username, u.display_username, u.name AS owner_name
+        FROM watchlist w
+        JOIN "user" u ON u.id = w.user_id
+        WHERE (u.username = ${userSlug} OR u.display_username = ${userSlug})
+          AND w.slug = ${watchlistSlug}
+          AND w.is_public = true
+        ORDER BY (u.username = ${userSlug})::int DESC
+        LIMIT 1
+      `),
+    { label: `publicWatchlistByUserAndSlug[${userSlug}/${watchlistSlug}]` },
+  );
 
   const row = (rows as unknown as WatchlistJoinRow[])[0];
   if (!row) return null;
@@ -898,34 +911,42 @@ async function queryPublicWatchlists(params: {
   limit: number;
   languages?: string[];
 }): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
-  const [totalRow] = await db.execute<{ [key: string]: unknown; cnt: number }>(sql`
-    SELECT count(*)::int AS cnt FROM watchlist w WHERE ${params.whereClause}
-  `);
+  const [totalRow] = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; cnt: number }>(sql`
+        SELECT count(*)::int AS cnt FROM watchlist w WHERE ${params.whereClause}
+      `),
+    { label: "queryPublicWatchlists.count" },
+  );
   const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
   if (total === 0) return { watchlists: [], total: 0 };
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: string; slug: string; title: string; is_public: boolean;
-    alerts_enabled: boolean; filters: WatchlistFilters;
-    last_accessed_at: Date; created_at: Date;
-    owner_name: string; owner_username: string | null;
-    company_count: number; company_ids: string[];
-    mirror_count: number;
-  }>(sql`
-    SELECT w.id, w.slug, w.title, w.description, w.is_public, w.alerts_enabled, w.filters,
-           w.last_accessed_at, w.created_at,
-           u.name AS owner_name, u.username AS owner_username,
-           (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
-           (SELECT coalesce(array_agg(wc.company_id), '{}') FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_ids,
-           (SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) AS mirror_count
-    FROM watchlist w
-    JOIN "user" u ON u.id = w.user_id
-    WHERE ${params.whereClause}
-    ORDER BY ${params.orderClause}
-    OFFSET ${params.offset}
-    LIMIT ${params.limit}
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: string; slug: string; title: string; is_public: boolean;
+        alerts_enabled: boolean; filters: WatchlistFilters;
+        last_accessed_at: Date; created_at: Date;
+        owner_name: string; owner_username: string | null;
+        company_count: number; company_ids: string[];
+        mirror_count: number;
+      }>(sql`
+        SELECT w.id, w.slug, w.title, w.description, w.is_public, w.alerts_enabled, w.filters,
+               w.last_accessed_at, w.created_at,
+               u.name AS owner_name, u.username AS owner_username,
+               (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
+               (SELECT coalesce(array_agg(wc.company_id), '{}') FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_ids,
+               (SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) AS mirror_count
+        FROM watchlist w
+        JOIN "user" u ON u.id = w.user_id
+        WHERE ${params.whereClause}
+        ORDER BY ${params.orderClause}
+        OFFSET ${params.offset}
+        LIMIT ${params.limit}
+      `),
+    { label: "queryPublicWatchlists.rows" },
+  );
 
   type Row = {
     id: string; slug: string; title: string; description: string | null; is_public: boolean;
@@ -1419,17 +1440,21 @@ async function _enrichWatchlistsWithRealCounts(
   if (ids.length === 0) return watchlists;
 
   const pgArr = `{${ids.join(",")}}`;
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: string;
-    filters: WatchlistFilters | null;
-    company_ids: string[];
-  }>(sql`
-    SELECT w.id, w.filters,
-           (SELECT coalesce(array_agg(wc.company_id), '{}') FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_ids
-    FROM watchlist w
-    WHERE w.id = ANY(${pgArr}::uuid[])
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: string;
+        filters: WatchlistFilters | null;
+        company_ids: string[];
+      }>(sql`
+        SELECT w.id, w.filters,
+               (SELECT coalesce(array_agg(wc.company_id), '{}') FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_ids
+        FROM watchlist w
+        WHERE w.id = ANY(${pgArr}::uuid[])
+      `),
+    { label: "enrichWatchlistsWithRealCounts" },
+  );
 
   type Row = { id: string; filters: WatchlistFilters | null; company_ids: string[] };
   const rowMap = new Map<string, Row>();
@@ -1747,33 +1772,41 @@ async function _getWatchlistPostingsPostgres(
 
   const whereClause = sql.join(clauses, sql` AND `);
 
-  const [totalRow] = await db.execute<{ [key: string]: unknown; cnt: number }>(
-    sql`SELECT count(*)::int AS cnt FROM job_posting jp WHERE ${whereClause}`,
+  const [totalRow] = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; cnt: number }>(
+        sql`SELECT count(*)::int AS cnt FROM job_posting jp WHERE ${whereClause}`,
+      ),
+    { label: "getWatchlistPostingsPostgres.count" },
   );
   const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
   if (total === 0 || params.limit === 0) return { postings: [], total };
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: string;
-    title: string | null;
-    source_url: string;
-    first_seen_at: Date;
-    is_active: boolean;
-    company_id: string;
-    company_name: string;
-    company_slug: string;
-    company_icon: string | null;
-  }>(sql`
-    SELECT jp.id, jp.titles[1] AS title, jp.source_url, jp.first_seen_at, jp.is_active,
-           c.id AS company_id, c.name AS company_name, c.slug AS company_slug, c.icon AS company_icon
-    FROM job_posting jp
-    JOIN company c ON c.id = jp.company_id
-    WHERE ${whereClause}
-    ORDER BY jp.first_seen_at DESC
-    OFFSET ${params.offset}
-    LIMIT ${params.limit}
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: string;
+        title: string | null;
+        source_url: string;
+        first_seen_at: Date;
+        is_active: boolean;
+        company_id: string;
+        company_name: string;
+        company_slug: string;
+        company_icon: string | null;
+      }>(sql`
+        SELECT jp.id, jp.titles[1] AS title, jp.source_url, jp.first_seen_at, jp.is_active,
+               c.id AS company_id, c.name AS company_name, c.slug AS company_slug, c.icon AS company_icon
+        FROM job_posting jp
+        JOIN company c ON c.id = jp.company_id
+        WHERE ${whereClause}
+        ORDER BY jp.first_seen_at DESC
+        OFFSET ${params.offset}
+        LIMIT ${params.limit}
+      `),
+    { label: "getWatchlistPostingsPostgres.rows" },
+  );
 
   type Row = {
     id: string; title: string | null; source_url: string; first_seen_at: Date;
@@ -1846,12 +1879,16 @@ async function _invalidateWatchlistCaches(
 async function _getOwnerInfo(
   userId: string,
 ): Promise<{ name: string; username: string | null; displayUsername: string | null } | null> {
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    name: string;
-    username: string | null;
-    display_username: string | null;
-  }>(sql`SELECT name, username, display_username FROM "user" WHERE id = ${userId} LIMIT 1`);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        name: string;
+        username: string | null;
+        display_username: string | null;
+      }>(sql`SELECT name, username, display_username FROM "user" WHERE id = ${userId} LIMIT 1`),
+    { label: `ownerInfo[${userId}]` },
+  );
   const row = (rows as unknown as { name: string; username: string | null; display_username: string | null }[])[0];
   if (!row) return null;
   return { name: row.name, username: row.username, displayUsername: row.display_username };
@@ -1859,16 +1896,24 @@ async function _getOwnerInfo(
 
 /** Count companies in a watchlist. */
 async function _countWatchlistCompanies(watchlistId: string): Promise<number> {
-  const [row] = await db.execute<{ [key: string]: unknown; cnt: number }>(
-    sql`SELECT count(*)::int AS cnt FROM watchlist_company WHERE watchlist_id = ${watchlistId}`,
+  const [row] = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; cnt: number }>(
+        sql`SELECT count(*)::int AS cnt FROM watchlist_company WHERE watchlist_id = ${watchlistId}`,
+      ),
+    { label: `countWatchlistCompanies[${watchlistId}]` },
   );
   return (row as unknown as { cnt: number })?.cnt ?? 0;
 }
 
 /** Get the mirror count for a watchlist (number of copies). */
 async function _getWatchlistMirrorCount(watchlistId: string): Promise<number> {
-  const [row] = await db.execute<{ [key: string]: unknown; cnt: number }>(
-    sql`SELECT count(*)::int AS cnt FROM watchlist WHERE source_watchlist_id = ${watchlistId}`,
+  const [row] = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; cnt: number }>(
+        sql`SELECT count(*)::int AS cnt FROM watchlist WHERE source_watchlist_id = ${watchlistId}`,
+      ),
+    { label: `watchlistMirrorCount[${watchlistId}]` },
   );
   return (row as unknown as { cnt: number })?.cnt ?? 0;
 }

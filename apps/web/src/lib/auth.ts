@@ -5,6 +5,7 @@ import { username } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
+import { withDbRetry } from "@/lib/db-retry";
 import { sendVerificationEmail, sendResetPasswordEmail } from "@/lib/email";
 import { type Locale, defaultLocale, isLocale } from "@/lib/i18n";
 import { invalidateSessionCache } from "@/lib/sessionCache";
@@ -139,8 +140,12 @@ export const auth = betterAuth({
               candidate = withRandomSuffix(base);
               continue;
             }
-            const rows = await db.execute(
-              sql`SELECT 1 FROM "user" WHERE username = ${candidate} LIMIT 1`,
+            const rows = await withDbRetry(
+              () =>
+                db.execute(
+                  sql`SELECT 1 FROM "user" WHERE username = ${candidate} LIMIT 1`,
+                ),
+              { label: "auth.usernameAvailability" },
             );
             if (!rows.length) break;
             candidate = withRandomSuffix(base);

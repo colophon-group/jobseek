@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResponse, SearchResultPosting, HistogramFilters } from "@/lib/search";
 import { cached } from "@/lib/cache";
+import { withDbRetry } from "@/lib/db-retry";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { ANON_MAX_COMPANIES, ANON_MAX_CARD_POSTINGS } from "@/lib/search/constants";
 
@@ -49,27 +50,31 @@ async function resolvePostingLocations(
 ): Promise<PostingDetail["locations"]> {
   if (!locationIds || locationIds.length === 0) return [];
   const pgArray = `{${locationIds.join(",")}}`;
-  const locRows = await db.execute<{
-    [key: string]: unknown;
-    location_id: number;
-    name: string;
-    type: string;
-    parent_name: string | null;
-  }>(sql`
-    SELECT DISTINCT ON (ln.location_id) ln.location_id, ln.name, l.type::text,
-      (SELECT pn.name FROM location_name pn
-       WHERE pn.location_id = l.parent_id
-         AND pn.locale IN (${locale}, 'en')
-         AND pn.is_display = true
-       ORDER BY (pn.locale = ${locale})::int DESC
-       LIMIT 1) AS parent_name
-    FROM location_name ln
-    JOIN location l ON l.id = ln.location_id
-    WHERE ln.location_id = ANY(${pgArray}::integer[])
-      AND ln.locale IN (${locale}, 'en')
-      AND ln.is_display = true
-    ORDER BY ln.location_id, (ln.locale = ${locale})::int DESC
-  `);
+  const locRows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        location_id: number;
+        name: string;
+        type: string;
+        parent_name: string | null;
+      }>(sql`
+        SELECT DISTINCT ON (ln.location_id) ln.location_id, ln.name, l.type::text,
+          (SELECT pn.name FROM location_name pn
+           WHERE pn.location_id = l.parent_id
+             AND pn.locale IN (${locale}, 'en')
+             AND pn.is_display = true
+           ORDER BY (pn.locale = ${locale})::int DESC
+           LIMIT 1) AS parent_name
+        FROM location_name ln
+        JOIN location l ON l.id = ln.location_id
+        WHERE ln.location_id = ANY(${pgArray}::integer[])
+          AND ln.locale IN (${locale}, 'en')
+          AND ln.is_display = true
+        ORDER BY ln.location_id, (ln.locale = ${locale})::int DESC
+      `),
+    { label: "postingLocations" },
+  );
   const nameMap = new Map<number, { name: string; geoType: string; parentName?: string }>();
   for (const r of locRows as unknown as { location_id: number; name: string; type: string; parent_name: string | null }[]) {
     nameMap.set(r.location_id, { name: r.name, geoType: r.type, parentName: r.parent_name ?? undefined });
@@ -93,8 +98,12 @@ async function resolvePostingTechnologies(
 ): Promise<{ id: number; name: string }[]> {
   if (!technologyIds || technologyIds.length === 0) return [];
   const techArray = `{${technologyIds.join(",")}}`;
-  const techRows = await db.execute<{ [key: string]: unknown; id: number; name: string | null }>(
-    sql`SELECT id, name FROM technology WHERE id = ANY(${techArray}::integer[]) ORDER BY name`,
+  const techRows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; id: number; name: string | null }>(
+        sql`SELECT id, name FROM technology WHERE id = ANY(${techArray}::integer[]) ORDER BY name`,
+      ),
+    { label: "postingTechnologies" },
   );
   return (techRows as unknown as { id: number; name: string | null }[])
     .filter((t) => t.name)
@@ -113,41 +122,45 @@ async function _fetchPostingDetail(
 ): Promise<PostingDetail | null> {
   "use cache";
   cacheLife({ revalidate: 300 });
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: string;
-    title: string | null;
-    company_id: string;
-    company_name: string;
-    company_slug: string;
-    company_logo: string | null;
-    company_icon: string | null;
-    location_ids: number[] | null;
-    location_types: string[] | null;
-    employment_type: string | null;
-    source_url: string;
-    first_seen_at: Date;
-    locales: string[];
-  }>(sql`
-    SELECT jp.id, jp.titles[1] AS title,
-      c.id AS company_id, c.name AS company_name, c.slug AS company_slug,
-      c.logo AS company_logo, c.icon AS company_icon,
-      jp.location_ids, jp.location_types,
-      jp.employment_type, jp.source_url, jp.first_seen_at,
-      jp.locales,
-      jp.experience_min, jp.experience_max, jp.technology_ids,
-      jp.salary_min, jp.salary_max, jp.salary_currency, jp.salary_period,
-      jp.seniority_id, s.slug AS seniority_slug, sn.name AS seniority_name
-    FROM job_posting jp
-    JOIN company c ON c.id = jp.company_id
-    LEFT JOIN seniority s ON s.id = jp.seniority_id
-    LEFT JOIN LATERAL (
-      SELECT name FROM seniority_name
-      WHERE seniority_id = jp.seniority_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) sn ON true
-    WHERE jp.id = ${postingId}
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: string;
+        title: string | null;
+        company_id: string;
+        company_name: string;
+        company_slug: string;
+        company_logo: string | null;
+        company_icon: string | null;
+        location_ids: number[] | null;
+        location_types: string[] | null;
+        employment_type: string | null;
+        source_url: string;
+        first_seen_at: Date;
+        locales: string[];
+      }>(sql`
+        SELECT jp.id, jp.titles[1] AS title,
+          c.id AS company_id, c.name AS company_name, c.slug AS company_slug,
+          c.logo AS company_logo, c.icon AS company_icon,
+          jp.location_ids, jp.location_types,
+          jp.employment_type, jp.source_url, jp.first_seen_at,
+          jp.locales,
+          jp.experience_min, jp.experience_max, jp.technology_ids,
+          jp.salary_min, jp.salary_max, jp.salary_currency, jp.salary_period,
+          jp.seniority_id, s.slug AS seniority_slug, sn.name AS seniority_name
+        FROM job_posting jp
+        JOIN company c ON c.id = jp.company_id
+        LEFT JOIN seniority s ON s.id = jp.seniority_id
+        LEFT JOIN LATERAL (
+          SELECT name FROM seniority_name
+          WHERE seniority_id = jp.seniority_id AND locale IN (${locale}, 'en') AND is_display = true
+          ORDER BY (locale = ${locale})::int DESC LIMIT 1
+        ) sn ON true
+        WHERE jp.id = ${postingId}
+      `),
+    { label: `postingDetail[${postingId}]` },
+  );
 
   type Row = {
     id: string; title: string | null;
@@ -346,8 +359,12 @@ export interface CurrencyRate {
 async function _fetchCurrencyRates(): Promise<CurrencyRate[]> {
   "use cache";
   cacheLife("hours");
-  const rows = await db.execute<{ [key: string]: unknown; currency: string; to_eur: string }>(
-    sql`SELECT currency, to_eur FROM currency_rate ORDER BY currency`,
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; currency: string; to_eur: string }>(
+        sql`SELECT currency, to_eur FROM currency_rate ORDER BY currency`,
+      ),
+    { label: "currencyRates" },
   );
   return (rows as unknown as { currency: string; to_eur: string }[]).map((r) => ({
     currency: r.currency,

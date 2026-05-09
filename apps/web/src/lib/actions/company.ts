@@ -56,36 +56,40 @@ async function _queryCompanySuggestionsCached(
   // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
   cacheTag(typeaheadCompaniesCacheTag());
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: string;
-    name: string;
-    slug: string;
-    icon: string | null;
-    match_rank: number;
-  }>(sql`
-    WITH prefix_matches AS (
-      SELECT c.id, c.name, c.slug, c.icon, 1 AS match_rank
-      FROM company c
-      WHERE lower(c.name) LIKE ${q + "%"}
-        AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
-      LIMIT 5
-    ),
-    fuzzy_matches AS (
-      SELECT c.id, c.name, c.slug, c.icon, 2 AS match_rank
-      FROM company c
-      WHERE length(${q}) >= 3
-        AND similarity(lower(c.name), ${q}) > 0.3
-        AND c.id NOT IN (SELECT id FROM prefix_matches)
-        AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
-      ORDER BY similarity(lower(c.name), ${q}) DESC
-      LIMIT 5
-    )
-    SELECT * FROM prefix_matches
-    UNION ALL
-    SELECT * FROM fuzzy_matches
-    LIMIT 5
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: string;
+        name: string;
+        slug: string;
+        icon: string | null;
+        match_rank: number;
+      }>(sql`
+        WITH prefix_matches AS (
+          SELECT c.id, c.name, c.slug, c.icon, 1 AS match_rank
+          FROM company c
+          WHERE lower(c.name) LIKE ${q + "%"}
+            AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
+          LIMIT 5
+        ),
+        fuzzy_matches AS (
+          SELECT c.id, c.name, c.slug, c.icon, 2 AS match_rank
+          FROM company c
+          WHERE length(${q}) >= 3
+            AND similarity(lower(c.name), ${q}) > 0.3
+            AND c.id NOT IN (SELECT id FROM prefix_matches)
+            AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
+          ORDER BY similarity(lower(c.name), ${q}) DESC
+          LIMIT 5
+        )
+        SELECT * FROM prefix_matches
+        UNION ALL
+        SELECT * FROM fuzzy_matches
+        LIMIT 5
+      `),
+    { label: "companySuggestions" },
+  );
 
   type Row = { id: string; name: string; slug: string; icon: string | null; match_rank: number };
   return (rows as unknown as Row[]).map((r) => ({
@@ -457,9 +461,13 @@ async function _searchCompaniesForWatchlistPostgres(params: {
   if (localesClause) jobClauses.push(localesClause);
   const jobWhere = sql.join(jobClauses, sql` AND `);
 
-  const [totalRow] = await db.execute<{ [key: string]: unknown; cnt: number }>(sql`
-    SELECT count(*)::int AS cnt FROM company c WHERE ${companyWhere}
-  `);
+  const [totalRow] = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; cnt: number }>(sql`
+        SELECT count(*)::int AS cnt FROM company c WHERE ${companyWhere}
+      `),
+    { label: "searchCompaniesForWatchlistPostgres.count" },
+  );
   const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
   if (total === 0) return { companies: [], total: 0 };
 
@@ -471,31 +479,35 @@ async function _searchCompaniesForWatchlistPostgres(params: {
     ? sql`CASE WHEN c.id = ANY(${starredArray}::uuid[]) THEN 0 ELSE 1 END, active_matches DESC, c.name`
     : sql`active_matches DESC, c.name`;
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: string;
-    name: string;
-    slug: string;
-    icon: string | null;
-    description: string | null;
-    active_matches: number;
-    year_matches: number;
-  }>(sql`
-    SELECT c.id, c.name, c.slug, c.icon,
-           COALESCE(cd.description, c.description) AS description,
-           (SELECT count(*)::int FROM job_posting jp
-            WHERE jp.company_id = c.id AND ${jobWhere}) AS active_matches,
-           (SELECT count(*)::int FROM job_posting jp
-            WHERE jp.company_id = c.id
-              AND jp.first_seen_at >= now() - interval '1 year'
-              AND ${jobWhere}) AS year_matches
-    FROM company c
-    LEFT JOIN company_description cd ON cd.company_id = c.id AND cd.locale = ${params.locale}
-    WHERE ${companyWhere}
-    ORDER BY ${orderClause}
-    OFFSET ${params.offset}
-    LIMIT ${params.limit}
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: string;
+        name: string;
+        slug: string;
+        icon: string | null;
+        description: string | null;
+        active_matches: number;
+        year_matches: number;
+      }>(sql`
+        SELECT c.id, c.name, c.slug, c.icon,
+               COALESCE(cd.description, c.description) AS description,
+               (SELECT count(*)::int FROM job_posting jp
+                WHERE jp.company_id = c.id AND ${jobWhere}) AS active_matches,
+               (SELECT count(*)::int FROM job_posting jp
+                WHERE jp.company_id = c.id
+                  AND jp.first_seen_at >= now() - interval '1 year'
+                  AND ${jobWhere}) AS year_matches
+        FROM company c
+        LEFT JOIN company_description cd ON cd.company_id = c.id AND cd.locale = ${params.locale}
+        WHERE ${companyWhere}
+        ORDER BY ${orderClause}
+        OFFSET ${params.offset}
+        LIMIT ${params.limit}
+      `),
+    { label: "searchCompaniesForWatchlistPostgres.rows" },
+  );
 
   type Row = {
     id: string; name: string; slug: string; icon: string | null;
@@ -529,25 +541,29 @@ export async function suggestIndustries(params: {
   const q = params.query?.trim().toLowerCase();
   const hasQuery = q && q.length >= 1;
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    name: string;
-  }>(sql`
-    SELECT i.id,
-           COALESCE(
-             (SELECT idn.name FROM industry_name idn
-              WHERE idn.industry_id = i.id AND idn.locale = ${params.locale} AND idn.is_display = true
-              LIMIT 1),
-             i.name
-           ) AS name
-    FROM industry i
-    ${hasQuery ? sql`WHERE lower(i.name) LIKE ${q + "%"} OR EXISTS (
-      SELECT 1 FROM industry_name idn
-      WHERE idn.industry_id = i.id AND lower(idn.name) LIKE ${q + "%"}
-    )` : sql``}
-    ORDER BY i.name
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: number;
+        name: string;
+      }>(sql`
+        SELECT i.id,
+               COALESCE(
+                 (SELECT idn.name FROM industry_name idn
+                  WHERE idn.industry_id = i.id AND idn.locale = ${params.locale} AND idn.is_display = true
+                  LIMIT 1),
+                 i.name
+               ) AS name
+        FROM industry i
+        ${hasQuery ? sql`WHERE lower(i.name) LIKE ${q + "%"} OR EXISTS (
+          SELECT 1 FROM industry_name idn
+          WHERE idn.industry_id = i.id AND lower(idn.name) LIKE ${q + "%"}
+        )` : sql``}
+        ORDER BY i.name
+      `),
+    { label: "suggestIndustries" },
+  );
 
   type Row = { id: number; name: string };
   return (rows as unknown as Row[]).map((r) => ({ id: r.id, name: r.name }));
@@ -1284,43 +1300,47 @@ async function _fetchTopLocations(
   companyId: string,
   locale: string,
 ): Promise<{ locations: CompanyLocation[]; totalCount: number }> {
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    location_id: number;
-    loc_slug: string;
-    loc_type: string;
-    loc_name: string;
-    cnt: number;
-    total_locations: number;
-  }>(sql`
-    WITH active_locs AS (
-      SELECT unnest(jp.location_ids) AS location_id
-      FROM job_posting jp
-      WHERE jp.company_id = ${companyId}
-        AND jp.is_active = true
-        AND jp.location_ids IS NOT NULL
-    ),
-    grouped AS (
-      SELECT
-        al.location_id,
-        l.slug AS loc_slug,
-        l.type::text AS loc_type,
-        ln.name AS loc_name,
-        COUNT(*)::int AS cnt
-      FROM active_locs al
-      JOIN location l ON l.id = al.location_id
-      JOIN LATERAL (
-        SELECT name FROM location_name
-        WHERE location_id = al.location_id AND locale IN (${locale}, 'en') AND is_display = true
-        ORDER BY (locale = ${locale})::int DESC LIMIT 1
-      ) ln ON true
-      GROUP BY al.location_id, l.slug, l.type, ln.name
-    )
-    SELECT *, COUNT(*) OVER ()::int AS total_locations
-    FROM grouped
-    ORDER BY cnt DESC
-    LIMIT 15
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        location_id: number;
+        loc_slug: string;
+        loc_type: string;
+        loc_name: string;
+        cnt: number;
+        total_locations: number;
+      }>(sql`
+        WITH active_locs AS (
+          SELECT unnest(jp.location_ids) AS location_id
+          FROM job_posting jp
+          WHERE jp.company_id = ${companyId}
+            AND jp.is_active = true
+            AND jp.location_ids IS NOT NULL
+        ),
+        grouped AS (
+          SELECT
+            al.location_id,
+            l.slug AS loc_slug,
+            l.type::text AS loc_type,
+            ln.name AS loc_name,
+            COUNT(*)::int AS cnt
+          FROM active_locs al
+          JOIN location l ON l.id = al.location_id
+          JOIN LATERAL (
+            SELECT name FROM location_name
+            WHERE location_id = al.location_id AND locale IN (${locale}, 'en') AND is_display = true
+            ORDER BY (locale = ${locale})::int DESC LIMIT 1
+          ) ln ON true
+          GROUP BY al.location_id, l.slug, l.type, ln.name
+        )
+        SELECT *, COUNT(*) OVER ()::int AS total_locations
+        FROM grouped
+        ORDER BY cnt DESC
+        LIMIT 15
+      `),
+    { label: `companyTopLocations[${companyId}]` },
+  );
 
   type Row = { location_id: number; loc_slug: string; loc_type: string; loc_name: string; cnt: number; total_locations: number };
   const all = rows as unknown as Row[];
@@ -1562,20 +1582,22 @@ async function _fetchLocationsGrouped(
   companyId: string,
   locale: string,
 ): Promise<GroupedCompanyLocations[]> {
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    location_id: number;
-    loc_slug: string;
-    loc_type: string;
-    loc_name: string;
-    cnt: number;
-    region_id: number | null;
-    region_slug: string | null;
-    region_name: string | null;
-    country_id: number | null;
-    country_slug: string | null;
-    country_name: string | null;
-  }>(sql`
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        location_id: number;
+        loc_slug: string;
+        loc_type: string;
+        loc_name: string;
+        cnt: number;
+        region_id: number | null;
+        region_slug: string | null;
+        region_name: string | null;
+        country_id: number | null;
+        country_slug: string | null;
+        country_name: string | null;
+      }>(sql`
     WITH active_locs AS (
       SELECT unnest(jp.location_ids) AS location_id
       FROM job_posting jp
@@ -1634,7 +1656,9 @@ async function _fetchLocationsGrouped(
       ORDER BY (locale = ${locale})::int DESC LIMIT 1
     ) cn ON true
     ORDER BY cn.name NULLS LAST, rn.name NULLS LAST, h.cnt DESC
-  `);
+  `),
+    { label: `companyLocationsGrouped[${companyId}]` },
+  );
 
   type Row = {
     location_id: number; loc_slug: string; loc_type: string; loc_name: string; cnt: number;
@@ -1654,16 +1678,20 @@ async function _fetchLocationsGrouped(
   const aliasMap = new Map<number, string[]>();
   if (allLocIds.size > 0) {
     const pgArray = `{${[...allLocIds].join(",")}}`;
-    const aliasRows = await db.execute<{
-      [key: string]: unknown;
-      location_id: number;
-      name: string;
-    }>(sql`
-      SELECT location_id, lower(name) AS name
-      FROM location_name
-      WHERE location_id = ANY(${pgArray}::integer[])
-        AND locale IN (${locale}, 'en')
-    `);
+    const aliasRows = await withDbRetry(
+      () =>
+        db.execute<{
+          [key: string]: unknown;
+          location_id: number;
+          name: string;
+        }>(sql`
+          SELECT location_id, lower(name) AS name
+          FROM location_name
+          WHERE location_id = ANY(${pgArray}::integer[])
+            AND locale IN (${locale}, 'en')
+        `),
+      { label: `companyLocationsGrouped.aliases[${companyId}]` },
+    );
     for (const a of aliasRows as unknown as { location_id: number; name: string }[]) {
       let arr = aliasMap.get(a.location_id);
       if (!arr) { arr = []; aliasMap.set(a.location_id, arr); }
