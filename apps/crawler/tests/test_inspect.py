@@ -611,3 +611,48 @@ class TestMigratedBoardsHaveProxy:
             'and rely on the proxy layer to get data. Re-add "proxy": true to both '
             "monitor_config and scraper_config:\n  - " + "\n  - ".join(missing)
         )
+
+
+class TestDecathlonScraperHasEnrich:
+    """Decathlon's talentclue dom scraper MUST declare ``enrich`` (#2952).
+
+    The talentclue api_sniffer monitor returns ``title``, ``locations``,
+    and metadata.* from the public job-list JSON — making it a "rich"
+    monitor (``result.jobs_by_url is not None``). Without an ``enrich``
+    list on the scraper config, ``_board_has_enrich`` returns None and
+    ``is_rich_no_scrape = is_rich and not enrich_fields`` evaluates True.
+    Postings are inserted via ``_INSERT_RICH_JOB`` (which doesn't set
+    ``next_scrape_at``) and the dom detail scrape is never enqueued —
+    which is what left 557 active Decathlon postings with
+    ``description_r2_hash IS NULL`` in local Postgres and
+    ``has_content=false`` in Typesense.
+
+    Mirrors the Tesla / Infineon enrich guards above.
+    """
+
+    def test_decathlon_detail_scraper_declares_enrich(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("decathlon-es-talentclue")
+        assert row is not None, "decathlon-es-talentclue row missing from boards.csv"
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            "decathlon-es-talentclue scraper_config must declare "
+            "'enrich': ['description'] so its rich-monitor postings get "
+            "next_scrape_at = now() and the dom detail scraper actually runs. "
+            "See #2952."
+        )
+
+        # Also exercise the production guard: the metadata that sync writes
+        # would yield a non-None enrich list from _board_has_enrich.
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
