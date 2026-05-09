@@ -1360,6 +1360,35 @@ export interface GroupedCompanyLocations {
   regions: CompanyRegionGroup[];
 }
 
+/**
+ * Macro-region cluster on the company-page location modal. Mirrors the
+ * shape used by the global modal (`GlobalMacroRegion` in
+ * `apps/web/src/lib/actions/locations.ts`) — kept structurally identical
+ * so the rendering code in `LocationModal` can mirror what
+ * `LocationSearchModal` does without re-keying. Per #2940 the cluster is
+ * gated behind `≥2 macro-member countries with postings for that company`,
+ * which is computed at fetch time and surfaced as `eligibleMacros[]`.
+ */
+export interface CompanyMacroRegion {
+  id: number;
+  slug: string;
+  name: string;
+  abbreviation: string;
+  count: number;
+  memberCountryNames: string[];
+}
+
+/**
+ * Wrapper shape returned by {@link getCompanyLocationsGroupedWithMacros}.
+ * The existing array-shape function {@link getCompanyLocationsGrouped} is
+ * left untouched for callers that don't need the Regions cluster (search
+ * input typeahead, server-side filter resolution, etc.).
+ */
+export interface CompanyLocationsResponse {
+  countries: GroupedCompanyLocations[];
+  macros: CompanyMacroRegion[];
+}
+
 // Per-region in-memory `'use cache'` (cacheLife('hours')). Migrated from
 // Redis-backed `cached(..., { ttl: 600 })` in #2884 (bucket 4). Same
 // rationale as `getCompanyTopLocations` above — derives from posting
@@ -1377,6 +1406,156 @@ export async function getCompanyLocationsGrouped(
   cacheLife("hours");
   cacheTag(companyByIdCacheTag(companyId));
   return _fetchLocationsGrouped(companyId, locale);
+}
+
+/**
+ * Same as {@link getCompanyLocationsGrouped} plus the macro-region cluster
+ * (e.g. EU/EMEA/DACH) — but only the macros where THIS company has
+ * postings spanning ≥2 of the macro's member countries (#2940 step 5
+ * gate). Companies that hire only from one country never see the Regions
+ * cluster (it would be noise).
+ */
+export async function getCompanyLocationsGroupedWithMacros(
+  companyId: string,
+  locale: string,
+): Promise<CompanyLocationsResponse> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(companyByIdCacheTag(companyId));
+  const [countries, macros] = await Promise.all([
+    _fetchLocationsGrouped(companyId, locale),
+    _fetchCompanyMacroCluster(companyId, locale),
+  ]);
+  return { countries, macros };
+}
+
+/**
+ * Fetch macro regions that have ≥2 member countries with postings for
+ * `companyId`. Returns the macro `count` (total active postings whose
+ * `location_ids` ancestor includes this macro) and the localized member
+ * country names. The ≥2-member gate is enforced via `HAVING` on the
+ * member-country count, not the posting count — a company with 50
+ * postings in only Germany doesn't see DACH; a company with one posting
+ * in Germany and one in Austria does.
+ */
+async function _fetchCompanyMacroCluster(
+  companyId: string,
+  locale: string,
+): Promise<CompanyMacroRegion[]> {
+  // Hardcoded canonical display labels — kept in sync with
+  // `MACRO_DISPLAY_NAMES` in `apps/web/src/lib/actions/locations.ts`. When
+  // #2939 lands proper aliases on the location collection, both can move
+  // to a shared source.
+  const MACRO_DISPLAY_NAMES: Record<string, string> = {
+    eu: "European Union",
+    emea: "Europe, Middle East & Africa",
+    dach: "DACH (Germany, Austria, Switzerland)",
+    apac: "Asia-Pacific",
+    americas: "Americas",
+    latam: "Latin America",
+    nordics: "Nordics",
+    mena: "Middle East & North Africa",
+    worldwide: "Worldwide",
+  };
+
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    macro_id: number;
+    macro_slug: string | null;
+    macro_name: string;
+    posting_count: number;
+    member_country_count: number;
+  }>(sql`
+    WITH company_postings AS (
+      SELECT id, location_ids
+      FROM job_posting
+      WHERE company_id = ${companyId}
+        AND is_active = true
+        AND location_ids IS NOT NULL
+    ),
+    macro_postings AS (
+      -- Each macro that appears as an ancestor on any of this company's postings
+      SELECT m.id AS macro_id, m.slug AS macro_slug,
+             COUNT(DISTINCT cp.id)::int AS posting_count
+      FROM company_postings cp
+      JOIN location m ON m.id = ANY(cp.location_ids) AND m.type::text = 'macro'
+      GROUP BY m.id, m.slug
+    ),
+    macro_member_hits AS (
+      -- For each macro, count distinct member countries that have at least
+      -- one posting for this company. Joins via location_macro_member.
+      SELECT lmm.macro_id, COUNT(DISTINCT lmm.country_id)::int AS member_country_count
+      FROM location_macro_member lmm
+      JOIN company_postings cp ON lmm.country_id = ANY(cp.location_ids)
+      GROUP BY lmm.macro_id
+    )
+    SELECT mp.macro_id, mp.macro_slug,
+           ln.name AS macro_name,
+           mp.posting_count,
+           COALESCE(mmh.member_country_count, 0)::int AS member_country_count
+    FROM macro_postings mp
+    LEFT JOIN macro_member_hits mmh ON mmh.macro_id = mp.macro_id
+    JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = mp.macro_id
+        AND locale IN (${locale}, 'en')
+        AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) ln ON true
+    WHERE COALESCE(mmh.member_country_count, 0) >= 2
+    ORDER BY mp.posting_count DESC
+  `);
+
+  type Row = {
+    macro_id: number;
+    macro_slug: string | null;
+    macro_name: string;
+    posting_count: number;
+    member_country_count: number;
+  };
+  const macroRows = rows as unknown as Row[];
+  if (macroRows.length === 0) return [];
+
+  // Fetch member country names for each macro (for chip tooltip)
+  const macroIds = macroRows.map((r) => r.macro_id);
+  const pgArray = `{${macroIds.join(",")}}`;
+  const memberRows = await db.execute<{
+    [key: string]: unknown;
+    macro_id: number;
+    country_name: string;
+  }>(sql`
+    SELECT lmm.macro_id, ln.name AS country_name
+    FROM location_macro_member lmm
+    JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = lmm.country_id
+        AND locale IN (${locale}, 'en')
+        AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) ln ON true
+    WHERE lmm.macro_id = ANY(${pgArray}::integer[])
+    ORDER BY lmm.macro_id, ln.name
+  `);
+  const memberMap = new Map<number, string[]>();
+  for (const r of memberRows as unknown as { macro_id: number; country_name: string }[]) {
+    let arr = memberMap.get(r.macro_id);
+    if (!arr) { arr = []; memberMap.set(r.macro_id, arr); }
+    arr.push(r.country_name);
+  }
+
+  return macroRows.map((r) => {
+    const slugKey = (r.macro_slug ?? "").toLowerCase()
+      || r.macro_name.toLowerCase().replace(/\s+/g, "-");
+    const canonical = MACRO_DISPLAY_NAMES[slugKey];
+    return {
+      id: r.macro_id,
+      slug: r.macro_slug ?? slugKey,
+      name: canonical ?? r.macro_name,
+      abbreviation: r.macro_name,
+      count: r.posting_count,
+      memberCountryNames: memberMap.get(r.macro_id) ?? [],
+    };
+  });
 }
 
 async function _fetchLocationsGrouped(

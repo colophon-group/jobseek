@@ -297,21 +297,21 @@ msgstr "Toutes les données sont chiffrées en transit et au repos."
 msgid "watchlists.companyModal.allIndustries"
 msgstr "Tous les secteurs"
 
+#. All languages option
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:244
+msgid "settings.general.jobLanguages.all"
+msgstr "Toutes les langues"
+
 #. Title for the all-languages modal in settings
 #. js-lingui-explicit-id
 #: src/components/settings/JobLanguageModal.tsx:56
 msgid "settings.jobLanguages.modal.title"
 msgstr "Toutes les langues"
 
-#. All languages option
-#. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:234
-msgid "settings.general.jobLanguages.all"
-msgstr "Toutes les langues"
-
 #. Title for the all-locations modal on company page
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:145
+#: src/components/search/location-modal.tsx:183
 msgid "company.locationModal.title"
 msgstr "Tous les lieux"
 
@@ -639,17 +639,17 @@ msgstr "Modifie ton mot de passe via un lien e-mail sécurisé."
 msgid "myJobs.detail.changePlaceholder"
 msgstr "Changer…"
 
-#. Heading after sign-up telling user to check email
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/check-email/page.tsx:80
-msgid "auth.verify.checkEmail.title"
-msgstr "Vérifie ton e-mail"
-
 #. Heading after reset email is sent
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/forgot-password/page.tsx:58
 msgid "auth.forgotPassword.sent.title"
 msgstr "Vérifiez votre e-mail"
+
+#. Heading after sign-up telling user to check email
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/check-email/page.tsx:80
+msgid "auth.verify.checkEmail.title"
+msgstr "Vérifie ton e-mail"
 
 #. Checking username availability
 #. js-lingui-explicit-id
@@ -659,13 +659,13 @@ msgstr "Vérification de la disponibilité..."
 
 #. Theme settings description
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:160
+#: src/components/settings/GeneralSettings.tsx:170
 msgid "settings.general.theme.description"
 msgstr "Choisis l'apparence de Job Seek."
 
 #. Salary display settings description
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:305
+#: src/components/settings/GeneralSettings.tsx:315
 msgid "settings.general.salary.description"
 msgstr "Personnalisez l'affichage des salaires dans les résultats de recherche et les détails des offres."
 
@@ -683,7 +683,7 @@ msgstr "Choisis l'offre qui te convient"
 
 #. Job languages settings description
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:219
+#: src/components/settings/GeneralSettings.tsx:229
 msgid "settings.general.jobLanguages.description"
 msgstr "Choisissez les langues dans lesquelles vous souhaitez voir les offres d'emploi."
 
@@ -863,12 +863,6 @@ msgstr "Connecter"
 msgid "settings.account.socials.title"
 msgstr "Comptes connectés"
 
-#. Footer link to contact email
-#. js-lingui-explicit-id
-#: src/components/Footer.tsx:46
-msgid "common.footer.contact"
-msgstr "Contact"
-
 #. TOC: Contact
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:25
@@ -881,16 +875,22 @@ msgstr "Contact"
 msgid "license.contact.title"
 msgstr "Contact"
 
-#. Table of contents heading
+#. Footer link to contact email
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
-msgstr "Sommaire"
+#: src/components/Footer.tsx:46
+msgid "common.footer.contact"
+msgstr "Contact"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:18
 msgid "license.toc.title"
+msgstr "Sommaire"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
 msgstr "Sommaire"
 
 #. Button to continue to app after verification
@@ -1029,7 +1029,7 @@ msgstr "Crée une liste de suivi pour chaque niche"
 
 #. Label for currency selector
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:312
+#: src/components/settings/GeneralSettings.tsx:322
 msgid "settings.general.salary.currencyLabel"
 msgstr "Devise"
 
@@ -1047,7 +1047,7 @@ msgstr "Actuel"
 
 #. Daily pay period option
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:353
+#: src/components/settings/GeneralSettings.tsx:363
 msgid "settings.general.salary.period.daily"
 msgstr "Journalier"
 
@@ -1465,7 +1465,7 @@ msgstr "Filtres"
 
 #. Button to open modal with all languages
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:283
+#: src/components/settings/GeneralSettings.tsx:293
 msgid "settings.general.jobLanguages.findMore"
 msgstr "Rechercher"
 
@@ -1659,7 +1659,7 @@ msgstr "Accueil"
 
 #. Hourly pay period option
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:356
+#: src/components/settings/GeneralSettings.tsx:366
 msgid "settings.general.salary.period.hourly"
 msgstr "Horaire"
 
@@ -1932,7 +1932,7 @@ msgstr "Politique d'indexation des offres"
 
 #. Job languages settings section heading
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:216
+#: src/components/settings/GeneralSettings.tsx:226
 msgid "settings.general.jobLanguages.title"
 msgstr "Langues des offres"
 
@@ -2048,7 +2048,7 @@ msgstr "Mot-clé"
 
 #. Language settings section heading
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:187
+#: src/components/settings/GeneralSettings.tsx:197
 msgid "settings.general.language.title"
 msgstr "Langue"
 
@@ -2172,16 +2172,16 @@ msgstr "Lieu"
 msgid "search.advanced.location"
 msgstr "Lieu"
 
-#. Locations heading in job detail
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:312
-msgid "search.detail.locations"
-msgstr "Lieux"
-
 #. Section header for location suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:708
 msgid "search.bar.locations"
+msgstr "Lieux"
+
+#. Locations heading in job detail
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:312
+msgid "search.detail.locations"
 msgstr "Lieux"
 
 #. Login button label
@@ -2327,7 +2327,7 @@ msgstr "Surveiller les pages carrières des entreprises"
 
 #. Monthly pay period option
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:350
+#: src/components/settings/GeneralSettings.tsx:360
 msgid "settings.general.salary.period.monthly"
 msgstr "Mensuel"
 
@@ -2365,8 +2365,8 @@ msgstr "Support multilingue"
 #. Warning when Enter is pressed but multiple items match
 #. Warning when Enter is pressed but multiple items match
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:124
-#: src/components/search/location-search-modal.tsx:109
+#: src/components/search/location-modal.tsx:162
+#: src/components/search/location-search-modal.tsx:153
 #: src/components/search/occupation-modal.tsx:110
 #: src/components/search/technology-modal.tsx:88
 msgid "search.bestGuess.ambiguous"
@@ -2462,16 +2462,16 @@ msgstr "Aucune offre trouvée."
 msgid "settings.jobLanguages.modal.noResults"
 msgstr "Aucune langue ne correspond à votre recherche."
 
-#. No locations match search in location modal
-#. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:171
-msgid "search.locationModal.noResults"
-msgstr "Aucun lieu ne correspond à votre recherche."
-
 #. No locations match search in all-locations modal
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:186
+#: src/components/search/location-modal.tsx:224
 msgid "company.locationModal.noResults"
+msgstr "Aucun lieu ne correspond à votre recherche."
+
+#. No locations match search in location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-search-modal.tsx:215
+msgid "search.locationModal.noResults"
 msgstr "Aucun lieu ne correspond à votre recherche."
 
 #. No postings found message on company page
@@ -2689,7 +2689,7 @@ msgstr "ou"
 
 #. Original pay period option
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:344
+#: src/components/settings/GeneralSettings.tsx:354
 msgid "settings.general.salary.period.original"
 msgstr "Original"
 
@@ -2719,26 +2719,26 @@ msgstr "Notre position sur l'automatisation"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:27
-msgid "indexing.toc.overview"
-msgstr "Aperçu"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:22
 msgid "license.toc.overview"
 msgstr "Aperçu"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:24
-msgid "indexing.toc.ariaLabel"
-msgstr "Sommaire de la page"
+#: src/components/HowWeIndexContent.tsx:27
+msgid "indexing.toc.overview"
+msgstr "Aperçu"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:19
 msgid "license.toc.ariaLabel"
+msgstr "Sommaire de la page"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:24
+msgid "indexing.toc.ariaLabel"
 msgstr "Sommaire de la page"
 
 #. Heading shown on the 404 page
@@ -2805,7 +2805,7 @@ msgstr "Entrez un nom d'entreprise ou l'URL d'une page carrières et nous commen
 
 #. Label for pay period selector
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:331
+#: src/components/settings/GeneralSettings.tsx:341
 msgid "settings.general.salary.periodLabel"
 msgstr "Période"
 
@@ -2929,18 +2929,18 @@ msgstr "Offre non trouvée."
 msgid "myJobs.detail.notFound"
 msgstr "Offre introuvable."
 
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:100
-msgid "home.pricing.eyebrow"
-msgstr "Tarifs"
-
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:62
 #: src/components/MobileMenu.tsx:87
 msgid "common.nav.pricing"
+msgstr "Tarifs"
+
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:100
+msgid "home.pricing.eyebrow"
 msgstr "Tarifs"
 
 #. Privacy policy page eyebrow
@@ -3067,6 +3067,18 @@ msgstr "Redistribue tes modifications, à condition d'inclure la mention MIT."
 #: src/components/search/location-pills.tsx:32
 msgid "location.type.region"
 msgstr "Région"
+
+#. Header for the macro-region cluster (EU, EMEA, DACH) in company-page location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:234
+msgid "company.locationModal.regionsHeader"
+msgstr "Régions"
+
+#. Header for the macro-region cluster (EU, EMEA, DACH) at the top of the location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-search-modal.tsx:225
+msgid "search.locationModal.regionsHeader"
+msgstr "Régions"
 
 #. Status group heading: rejected
 #. js-lingui-explicit-id
@@ -3224,21 +3236,21 @@ msgstr "Tour"
 msgid "app.home.request.agent.runIdLabel"
 msgstr "Identifiant d'exécution"
 
-#. Salary override section heading
-#. js-lingui-explicit-id
-#: src/components/my-jobs/salary-override.tsx:76
-msgid "myJobs.detail.salary"
-msgstr "Salaire"
-
 #. Label for salary filter in advanced search
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx:171
 msgid "search.advanced.salary"
 msgstr "Salaire"
 
+#. Salary override section heading
+#. js-lingui-explicit-id
+#: src/components/my-jobs/salary-override.tsx:76
+msgid "myJobs.detail.salary"
+msgstr "Salaire"
+
 #. Salary display settings section heading
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:302
+#: src/components/settings/GeneralSettings.tsx:312
 msgid "settings.general.salary.title"
 msgstr "Affichage du salaire"
 
@@ -3374,17 +3386,17 @@ msgstr "Recherchez des emplois dans des milliers d'entreprises, scrapés directe
 msgid "settings.jobLanguages.modal.searchPlaceholder"
 msgstr "Rechercher des langues…"
 
-#. Placeholder for search input in global location modal
-#. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:150
-msgid "search.locationModal.searchPlaceholder"
-msgstr "Rechercher des lieux..."
-
 #. Placeholder for search input in all-locations modal
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:165
+#: src/components/search/location-modal.tsx:203
 msgid "company.locationModal.searchPlaceholder"
 msgstr "Rechercher des lieux…"
+
+#. Placeholder for search input in global location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-search-modal.tsx:194
+msgid "search.locationModal.searchPlaceholder"
+msgstr "Rechercher des lieux..."
 
 #. Back-to-search link on company page header
 #. js-lingui-explicit-id
@@ -3430,7 +3442,7 @@ msgstr "Sélectionner le niveau"
 
 #. Title for the global location selection modal
 #. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:130
+#: src/components/search/location-search-modal.tsx:174
 msgid "search.locationModal.title"
 msgstr "Sélectionner le lieu"
 
@@ -3448,7 +3460,7 @@ msgstr "Sélectionner les technologies"
 
 #. Language settings description
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:190
+#: src/components/settings/GeneralSettings.tsx:200
 msgid "settings.general.language.description"
 msgstr "Sélectionne ta langue préférée."
 
@@ -3470,16 +3482,16 @@ msgstr "Envoyer le lien"
 msgid "settings.account.password.send"
 msgstr "Envoyer le lien"
 
-#. Resend button while sending
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/check-email/page.tsx:96
-msgid "auth.verify.resending"
-msgstr "Envoi en cours..."
-
 #. Send reset link button while loading
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/forgot-password/page.tsx:103
 msgid "auth.forgotPassword.button.loading"
+msgstr "Envoi en cours..."
+
+#. Resend button while sending
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/check-email/page.tsx:96
+msgid "auth.verify.resending"
 msgstr "Envoi en cours..."
 
 #. Reset password button while loading
@@ -3536,16 +3548,16 @@ msgstr "Paramètres"
 msgid "home.features.s3.p3.title"
 msgstr "Partager avec tout le monde"
 
-#. Collapse location pill list
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:351
-msgid "company.page.showLess"
-msgstr "Afficher moins"
-
 #. Button to collapse location list
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:355
 msgid "search.detail.showLessLocations"
+msgstr "Afficher moins"
+
+#. Collapse location pill list
+#. js-lingui-explicit-id
+#: src/components/search/filter-bar.tsx:351
+msgid "company.page.showLess"
 msgstr "Afficher moins"
 
 #. Aria label to show password
@@ -3818,16 +3830,16 @@ msgstr "System Design"
 msgid "myJobs.interviewType.technical"
 msgstr "Technique"
 
-#. Technologies sub-heading in details section
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:397
-msgid "search.detail.technologies"
-msgstr "Technologies"
-
 #. Section header for technology suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:673
 msgid "search.bar.technologies"
+msgstr "Technologies"
+
+#. Technologies sub-heading in details section
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:397
+msgid "search.detail.technologies"
 msgstr "Technologies"
 
 #. Add technology filter
@@ -3932,7 +3944,7 @@ msgstr "En bref"
 
 #. Theme settings section heading
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:157
+#: src/components/settings/GeneralSettings.tsx:167
 msgid "settings.general.theme.title"
 msgstr "Thème"
 
@@ -4366,7 +4378,7 @@ msgstr "Quelles langues Jobseek prend-il en charge ?"
 
 #. Yearly pay period option
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:347
+#: src/components/settings/GeneralSettings.tsx:357
 msgid "settings.general.salary.period.yearly"
 msgstr "Annuel"
 
