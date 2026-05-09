@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
 from src.core.scrapers import JobContent
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 # ---------------------------------------------------------------------------
 # Helpers (same pattern as test_browser_shared.py)
@@ -319,3 +322,120 @@ class TestDomScraper:
             pytest.raises(RuntimeError, match="playwright is required"),
         ):
             await scrape("https://example.com/job/1", config, http)
+
+
+# ---------------------------------------------------------------------------
+# PeopleStrong (Larsen & Toubro / Bajaj Finserv) — issue #2952
+#
+# The peoplestrong career portal renders job detail pages as a single-page
+# Angular app behind Incapsula. Static HTML is just the empty ``<app-root>``
+# shell, so the dom config MUST set ``render: true`` for Playwright to
+# execute the JS. The rendered DOM uses ``<h2 data-testid=...>`` for the job
+# title (NOT ``<h1>``) — early dom configs that keyed off ``h1`` matched
+# nothing and produced 0 descriptions across thousands of postings.
+#
+# These tests exercise the SHARED config now used by both larsen-toubro and
+# bajaj-finserv against captured-from-prod fixtures.
+# ---------------------------------------------------------------------------
+
+
+# Shared dom config used in boards.csv for both peoplestrong companies.
+# Kept here so any change to the live config is mirrored by the tests.
+PEOPLESTRONG_DOM_CONFIG = {
+    "render": True,
+    "wait": "networkidle",
+    "steps": [
+        {
+            "tag": "h2",
+            "attr": "data-testid=job-detail-top-h2-page-1",
+            "field": "title",
+        },
+        {
+            "text": "Job Description",
+            "offset": 1,
+            "field": "description",
+            "stop": "expand_less",
+            "html": True,
+            "optional": True,
+        },
+    ],
+}
+
+
+class TestPeopleStrongDomScraper:
+    """Verify the dom scraper extracts title + description from a captured
+    rendered peoplestrong detail page using the boards.csv config.
+    """
+
+    def test_larsen_toubro_extraction(self):
+        """L&T detail page yields title + non-trivial HTML description."""
+        from src.core.scrapers.dom import parse_html
+
+        html = (FIXTURES_DIR / "peoplestrong_larsen_toubro.html").read_text()
+        result = parse_html(html, PEOPLESTRONG_DOM_CONFIG)
+
+        assert result.title == "Assistant Manager - Strategic Sourcing"
+        assert result.description is not None
+        # Description should be non-trivial HTML with the expected structure
+        assert len(result.description) > 200
+        assert "<ul>" in result.description
+        assert "Strategic Sourcing" in result.description
+        # The trailing 'expand_less' Material icon must NOT leak in
+        assert "expand_less" not in result.description
+
+    def test_bajaj_finserv_extraction(self):
+        """Bajaj detail page yields title + non-trivial description.
+
+        Bajaj's 'JOB DESCRIPTION' heading is uppercase; the matcher in
+        walk_steps is case-insensitive so the same step config matches.
+        """
+        from src.core.scrapers.dom import parse_html
+
+        html = (FIXTURES_DIR / "peoplestrong_bajaj_finserv.html").read_text()
+        result = parse_html(html, PEOPLESTRONG_DOM_CONFIG)
+
+        assert result.title == "Manager - Professional Loans"
+        assert result.description is not None
+        assert len(result.description) > 200
+        assert "expand_less" not in result.description
+
+    def test_old_h1_config_was_broken(self, recwarn):
+        """Regression guard: the prior <h1>-based config extracts nothing
+        from peoplestrong pages. Ensures we don't accidentally revert.
+        """
+        from src.core.scrapers.dom import parse_html
+
+        old_config = {
+            "steps": [
+                {"tag": "h1", "field": "title"},
+                {
+                    "text": "Location",
+                    "offset": 1,
+                    "field": "location",
+                    "optional": True,
+                },
+                {
+                    "tag": "h1",
+                    "offset": 1,
+                    "field": "description",
+                    "stop": "Apply",
+                    "html": True,
+                    "optional": True,
+                },
+            ]
+        }
+        html = (FIXTURES_DIR / "peoplestrong_larsen_toubro.html").read_text()
+        result = parse_html(html, old_config)
+        # Old config yields no title and no description — what the live
+        # crawler observed before this fix. ``recwarn`` swallows the
+        # expected ``step ... not found`` UserWarning.
+        assert result.title is None
+        assert result.description is None
+
+    def test_peoplestrong_config_routes_to_browser_queue(self):
+        """The dom config sets render: true, so workers must dispatch it
+        to the browser queue (slim HTTP workers can't load Chromium).
+        """
+        from src.core.scrapers import scraper_needs_browser
+
+        assert scraper_needs_browser("dom", PEOPLESTRONG_DOM_CONFIG) is True
