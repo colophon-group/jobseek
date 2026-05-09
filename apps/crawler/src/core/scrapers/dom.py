@@ -81,6 +81,7 @@ def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -
         response=response,
     )
 
+
 # ── Heuristic stop markers ────────────────────────────────────────────
 
 _STOP_MARKERS = [
