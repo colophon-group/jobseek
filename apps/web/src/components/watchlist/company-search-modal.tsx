@@ -316,8 +316,16 @@ export function CompanySearchModal({
                           <span className={`text-sm font-medium ${isSelected ? "text-primary" : ""}`}>
                             {c.name}
                           </span>
+                          {/*
+                            Hide the "in the last year" tail when it equals active.
+                            Crawler dataset is <365d so year-filter == active right
+                            now (#2950); self-healing once postings start aging out.
+                          */}
                           <span className="text-xs text-muted">
-                            {c.activeMatches} active · {c.yearMatches} in the last year
+                            {c.activeMatches} active
+                            {c.yearMatches !== c.activeMatches && (
+                              <> · {c.yearMatches} in the last year</>
+                            )}
                           </span>
                         </div>
                         {c.description && (

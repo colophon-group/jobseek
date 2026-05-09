@@ -23,10 +23,17 @@ type Props = {
  *
  * Numbers are locale-formatted (`toLocaleString`) so the thousands
  * separator follows the page locale.
+ *
+ * `yearCount === activeCount`: the crawler dataset is younger than 365d
+ * (#2950), so the year filter degenerates to "all active". Hiding the
+ * "in the last year" segment when it equals active avoids the confusing
+ * "5 active · 5 in the last year" display. Self-healing: once postings
+ * begin aging out, the segment re-appears organically.
  */
 export function LanguageStatsRow({ jobLanguages, locale, activeCount, yearCount }: Props) {
   const active = activeCount.toLocaleString(locale);
   const year = yearCount.toLocaleString(locale);
+  const showYear = yearCount !== activeCount;
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-4">
@@ -34,11 +41,15 @@ export function LanguageStatsRow({ jobLanguages, locale, activeCount, yearCount 
         <p className="hidden whitespace-nowrap text-xs text-muted md:block">
           {active}{" "}
           <Trans id="common.stats.active" comment="Active postings count">active</Trans>
-          {" · "}
-          {year}{" "}
-          <Trans id="common.stats.yearCount" comment="Postings seen in the last year count">
-            in the last year
-          </Trans>
+          {showYear && (
+            <>
+              {" · "}
+              {year}{" "}
+              <Trans id="common.stats.yearCount" comment="Postings seen in the last year count">
+                in the last year
+              </Trans>
+            </>
+          )}
         </p>
       </div>
       <div className="flex items-center justify-between text-xs text-muted md:hidden">
@@ -46,12 +57,14 @@ export function LanguageStatsRow({ jobLanguages, locale, activeCount, yearCount 
           {active}{" "}
           <Trans id="common.stats.active" comment="Active postings count">active</Trans>
         </span>
-        <span>
-          {year}{" "}
-          <Trans id="common.stats.yearCount" comment="Postings seen in the last year count">
-            in the last year
-          </Trans>
-        </span>
+        {showYear && (
+          <span>
+            {year}{" "}
+            <Trans id="common.stats.yearCount" comment="Postings seen in the last year count">
+              in the last year
+            </Trans>
+          </span>
+        )}
       </div>
     </div>
   );
