@@ -32,7 +32,18 @@ FetchJsonFn = Callable[[str, str, dict, str | None], Awaitable[object]]
 
 
 def make_browser_fetcher(page) -> FetchJsonFn:
-    """Create a FetchJsonFn that executes fetch() inside the browser context."""
+    """Create a FetchJsonFn that executes fetch() inside the browser context.
+
+    TDM-Reservation respect (#2842, #2925). The response body is parsed
+    inside :func:`fetch_json` which now surfaces ``r.headers`` through
+    the page-evaluate bridge alongside the body text and invokes
+    :func:`check_browser_response` before returning. A
+    :class:`TDMReservedError` propagates out (not retried) and is
+    treated as a clean board skip by the wrapper in
+    ``processing/board.py``. Symmetric with the static-httpx
+    :func:`make_http_fetcher` path so paginate_all over Playwright
+    (api_sniffer.py:1127, 1347) honours the W3C TDM opt-out.
+    """
 
     async def _fetch(method: str, url: str, headers: dict, body: str | None) -> object:
         return await fetch_json(page, method, url, headers, body)
@@ -1032,16 +1043,41 @@ async def fetch_json(
     headers: dict,
     body: str | None,
 ) -> object:
-    """Execute a fetch inside the browser context, return parsed JSON."""
-    text = await page.evaluate(
+    """Execute a fetch inside the browser context, return parsed JSON.
+
+    TDM-Reservation respect (#2842, #2925). The page-evaluate bridge
+    surfaces ``r.headers`` (entries materialised into a plain object
+    with lower-cased keys, since ``Headers`` itself isn't directly
+    serialisable across the bridge) alongside the body text so
+    :func:`check_browser_response` can run on the Playwright path —
+    symmetric with the static-httpx ``make_http_fetcher`` hook. A
+    :class:`TDMReservedError` propagates out (not retried) per the
+    publisher-policy semantics.
+    """
+    from src.shared.tdm import check_browser_response
+
+    result = await page.evaluate(
         """async ([method, url, headers, body]) => {
         const opts = { method, headers: JSON.parse(headers) };
         if (body) opts.body = body;
         const resp = await fetch(url, opts);
-        return await resp.text();
+        const respHeaders = {};
+        for (const [k, v] of resp.headers.entries()) {
+            respHeaders[k.toLowerCase()] = v;
+        }
+        return { headers: respHeaders, text: await resp.text() };
     }""",
         [method, url, json.dumps(headers), body],
     )
+    # ``result`` is the JS object literal — ``{headers, text}``. If
+    # something upstream malformed it (a script substituting a
+    # rejection, a navigation completing with a non-dict value), the
+    # ``result["text"]`` lookup raises ``AttributeError`` /
+    # ``TypeError`` which is surfaced to the caller's retry budget in
+    # ``_fetch_page_with_retry``. No defensive shape-check needed.
+    text = result["text"]
+    resp_headers = result.get("headers") or {}
+    check_browser_response(resp_headers, text, url=url)
     return json.loads(text)
 
 
@@ -1086,13 +1122,23 @@ async def _fetch_page_with_retry(
     Playwright transports (see :func:`make_http_fetcher` /
     :func:`make_browser_fetcher`); the retry classifier handles each
     transport's exception shape uniformly.
+
+    TDM-Reservation respect (#2842, #2925) — :class:`TDMReservedError`
+    raised by either transport (httpx or browser) propagates
+    immediately, bypassing the retry budget, since the publisher's W3C
+    opt-out signal is not transient.
     """
+    from src.shared.tdm import TDMReservedError
+
     last_exc: BaseException | None = None
     last_status: int | None = None
 
     for attempt in range(retries):
         try:
             return await fetch_fn(method, url, headers, body)
+        except TDMReservedError:
+            # Publisher policy declaration — propagate, never retry.
+            raise
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
             last_status = status

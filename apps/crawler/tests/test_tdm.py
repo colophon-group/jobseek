@@ -607,3 +607,258 @@ class TestPcsxHook:
                 http,
                 offset=0,
             )
+
+
+# =============================================================================
+# Hook integration — api_sniff.make_browser_fetcher / fetch_json (#2925)
+# =============================================================================
+
+
+class TestApiSniffBrowserFetcherHook:
+    """The Playwright transport for ``paginate_all`` raises
+    :class:`TDMReservedError` when the page-evaluate bridge surfaces a
+    ``tdm-reservation: 1`` response header or a meta-tag opt-out.
+
+    Covers the gap left by PR #2924 where ``make_http_fetcher`` was
+    hooked but the companion browser fetcher (used by api_sniffer
+    boards configured with ``pagination.browser=true``) was not.
+    """
+
+    async def test_browser_header_one_raises(self):
+        """Playwright fetch returning ``tdm-reservation: 1`` header → raises."""
+        from src.shared.api_sniff import make_browser_fetcher
+
+        page = AsyncMock()
+        page.evaluate = AsyncMock(
+            return_value={
+                "headers": {"tdm-reservation": "1"},
+                "text": '{"jobs": []}',
+            }
+        )
+
+        fetch_fn = make_browser_fetcher(page)
+        with pytest.raises(TDMReservedError) as exc_info:
+            await fetch_fn("GET", "https://browser.example/api", {}, None)
+
+        assert exc_info.value.source == "header"
+        assert exc_info.value.url == "https://browser.example/api"
+        # Single attempt — TDM is not transient.
+        assert page.evaluate.await_count == 1
+
+    async def test_browser_header_zero_passes_through(self):
+        """``tdm-reservation: 0`` (opt-in) → no exception, JSON returned."""
+        from src.shared.api_sniff import make_browser_fetcher
+
+        page = AsyncMock()
+        page.evaluate = AsyncMock(
+            return_value={
+                "headers": {"tdm-reservation": "0"},
+                "text": '{"jobs": [{"title": "Dev"}]}',
+            }
+        )
+
+        fetch_fn = make_browser_fetcher(page)
+        out = await fetch_fn("GET", "https://browser.example/api", {}, None)
+        assert out == {"jobs": [{"title": "Dev"}]}
+
+    async def test_browser_no_tdm_passes_through(self):
+        """Baseline: no TDM signal → JSON returned normally."""
+        from src.shared.api_sniff import make_browser_fetcher
+
+        page = AsyncMock()
+        page.evaluate = AsyncMock(
+            return_value={
+                "headers": {},
+                "text": '{"jobs": [{"title": "QA"}]}',
+            }
+        )
+
+        fetch_fn = make_browser_fetcher(page)
+        out = await fetch_fn("GET", "https://browser.example/api", {}, None)
+        assert out == {"jobs": [{"title": "QA"}]}
+
+    async def test_browser_meta_in_body_raises(self):
+        """No header but ``<meta tdm-reservation=1>`` in the JSON-shaped
+        body — unlikely on a real JSON endpoint but defensible: the
+        helper still scans the body excerpt as a uniform fallback so
+        a CDN-served HTML 200 (the captcha-page-as-200 shape) is
+        also detected."""
+        from src.shared.api_sniff import make_browser_fetcher
+
+        # A captcha shell occasionally ships with the meta tag.
+        body = (
+            '<html><head><meta name="tdm-reservation" content="1">'
+            "</head><body>captcha</body></html>"
+        )
+        page = AsyncMock()
+        page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": body},
+        )
+
+        fetch_fn = make_browser_fetcher(page)
+        with pytest.raises(TDMReservedError) as exc_info:
+            await fetch_fn("GET", "https://browser.example/api", {}, None)
+        assert exc_info.value.source == "meta"
+
+    async def test_browser_uppercase_header_keys(self):
+        """JS ``Headers.entries()`` lower-cases names but defensive
+        scan still works if the JS path didn't normalise (e.g. a
+        custom Headers polyfill)."""
+        from src.shared.api_sniff import make_browser_fetcher
+
+        page = AsyncMock()
+        page.evaluate = AsyncMock(
+            return_value={
+                "headers": {"TDM-Reservation": "1"},
+                "text": "{}",
+            }
+        )
+
+        fetch_fn = make_browser_fetcher(page)
+        with pytest.raises(TDMReservedError):
+            await fetch_fn("GET", "https://browser.example/api", {}, None)
+
+    async def test_browser_paginate_retry_does_not_swallow_tdm(self):
+        """Verify the retry budget in ``_fetch_page_with_retry`` (which
+        wraps ``make_browser_fetcher`` in production) does NOT retry on
+        :class:`TDMReservedError` — the publisher policy decision is
+        not transient."""
+        from src.shared.api_sniff import _fetch_page_with_retry, make_browser_fetcher
+
+        page = AsyncMock()
+        page.evaluate = AsyncMock(
+            return_value={
+                "headers": {"tdm-reservation": "1"},
+                "text": "{}",
+            }
+        )
+
+        fetch_fn = make_browser_fetcher(page)
+        with pytest.raises(TDMReservedError):
+            await _fetch_page_with_retry(
+                fetch_fn,
+                "GET",
+                "https://browser.example/api",
+                {},
+                None,
+                base_delay=0.001,
+            )
+
+        # No retries — TDM is not transient. Single attempt.
+        assert page.evaluate.await_count == 1
+
+
+# =============================================================================
+# Hook integration — sitemap discovery direct fetches (#2925)
+# =============================================================================
+
+
+class TestSitemapTryFetchXmlHook:
+    """``_try_fetch_xml`` is the lenient discovery walker. It must
+    propagate :class:`TDMReservedError` rather than swallowing it
+    along with the rest of httpx errors — otherwise an opted-out
+    publisher would have their signal silently bypassed during the
+    candidate-walk."""
+
+    async def test_header_one_raises(self):
+        """Sitemap response with ``tdm-reservation: 1`` → raises."""
+        import httpx as _httpx
+
+        from src.core.monitors.sitemap import _try_fetch_xml
+
+        def handler(request):
+            return _httpx.Response(
+                200,
+                text='<?xml version="1.0"?><urlset/>',
+                headers={
+                    "content-type": "application/xml",
+                    "tdm-reservation": "1",
+                },
+            )
+
+        async with _httpx.AsyncClient(transport=_httpx.MockTransport(handler)) as client:
+            with pytest.raises(TDMReservedError) as exc_info:
+                await _try_fetch_xml("https://opted-out.example/sitemap.xml", client)
+            assert exc_info.value.source == "header"
+
+    async def test_no_tdm_passes_through(self):
+        """Baseline: no TDM signal → XML root returned normally."""
+        import httpx as _httpx
+
+        from src.core.monitors.sitemap import _try_fetch_xml
+
+        def handler(request):
+            return _httpx.Response(
+                200,
+                text='<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/j1</loc></url></urlset>',
+                headers={"content-type": "application/xml"},
+            )
+
+        async with _httpx.AsyncClient(transport=_httpx.MockTransport(handler)) as client:
+            root = await _try_fetch_xml("https://example.com/sitemap.xml", client)
+            assert root is not None
+
+    async def test_header_zero_passes_through(self):
+        """``tdm-reservation: 0`` (explicit opt-in) → XML returned, no exception."""
+        import httpx as _httpx
+
+        from src.core.monitors.sitemap import _try_fetch_xml
+
+        def handler(request):
+            return _httpx.Response(
+                200,
+                text='<?xml version="1.0"?><urlset/>',
+                headers={
+                    "content-type": "application/xml",
+                    "tdm-reservation": "0",
+                },
+            )
+
+        async with _httpx.AsyncClient(transport=_httpx.MockTransport(handler)) as client:
+            root = await _try_fetch_xml("https://opt-in.example/sitemap.xml", client)
+            assert root is not None
+
+
+class TestSitemapParseRobotsHook:
+    """``_parse_robots_sitemaps`` walks /robots.txt to discover sitemap
+    URLs. A publisher who declares opt-out on the robots response
+    must have it honored — the discovery probe should NOT bypass
+    the W3C signal as part of "trying everything"."""
+
+    async def test_header_one_raises(self):
+        """robots.txt response with ``tdm-reservation: 1`` → raises."""
+        import httpx as _httpx
+
+        from src.core.monitors.sitemap import _parse_robots_sitemaps
+
+        def handler(request):
+            return _httpx.Response(
+                200,
+                text="Sitemap: https://opted-out.example/sitemap.xml\n",
+                headers={
+                    "content-type": "text/plain",
+                    "tdm-reservation": "1",
+                },
+            )
+
+        async with _httpx.AsyncClient(transport=_httpx.MockTransport(handler)) as client:
+            with pytest.raises(TDMReservedError) as exc_info:
+                await _parse_robots_sitemaps("https://opted-out.example/careers", client)
+            assert exc_info.value.source == "header"
+
+    async def test_no_tdm_passes_through(self):
+        """Baseline: no TDM signal → sitemaps parsed normally."""
+        import httpx as _httpx
+
+        from src.core.monitors.sitemap import _parse_robots_sitemaps
+
+        def handler(request):
+            return _httpx.Response(
+                200,
+                text="Sitemap: https://example.com/sitemap.xml\n",
+                headers={"content-type": "text/plain"},
+            )
+
+        async with _httpx.AsyncClient(transport=_httpx.MockTransport(handler)) as client:
+            sitemaps = await _parse_robots_sitemaps("https://example.com/careers", client)
+            assert sitemaps == ["https://example.com/sitemap.xml"]
