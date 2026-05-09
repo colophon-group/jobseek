@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -189,15 +190,33 @@ _SUCCESSFACTORS_VOLATILE_PARAMS = frozenset(
 )
 
 
+# tal.net (TalentLink ATS) embeds a per-render CSRF/session token as a
+# *path* segment of the form ``/xf-<12 hex chars>/`` (e.g.
+# ``/brand-6/xf-767829ced96c/candidate/...``). Each Playwright render
+# emits a fresh token, so the same opportunity ID (``opp/2968-...``)
+# produces a different ``source_url`` every monitor cycle. Without
+# stripping, ``ON CONFLICT (source_url) DO NOTHING`` inflated Evercore
+# to ~12,340 rows for ~40 real postings before the pattern was caught
+# (issue #2941). The token is a path segment, not a query param, so
+# the SuccessFactors branch above doesn't touch it.
+_TAL_NET_XF_SEGMENT = re.compile(r"/xf-[a-f0-9]+(?=/)")
+
+
 def _canonicalize_url(url: str) -> str:
-    """Strip session-scoped query params from URLs on platforms where a
-    ``<a href>`` embeds a per-render CSRF/session token that otherwise
+    """Strip session-scoped tokens from URLs on platforms where a
+    ``<a href>`` embeds a per-render CSRF/session value that otherwise
     makes every monitor cycle rediscover the same posting as "new".
 
-    Currently handles the SuccessFactors family (``*.successfactors.*``
-    and ``*.sapsf.*``). The canonical form keeps identity-carrying params
-    (``career_job_req_id``, ``company``, ``rcm_site_locale`` …) and only
-    drops the ones listed in :data:`_SUCCESSFACTORS_VOLATILE_PARAMS`.
+    Currently handles two ATS platforms:
+
+    - **SuccessFactors family** (``*.successfactors.*`` / ``*.sapsf.*``)
+      — token is a *query param*; drop the ones listed in
+      :data:`_SUCCESSFACTORS_VOLATILE_PARAMS`. Identity-carrying params
+      (``career_job_req_id``, ``company``, ``rcm_site_locale`` …) stay.
+    - **tal.net / TalentLink** (``*.tal.net``) — token is a *path*
+      segment matching :data:`_TAL_NET_XF_SEGMENT` (``/xf-<hex>/``);
+      drop it. Everything else in the path (``/brand-N/``,
+      ``/opp/<id>``, ``/en-GB``, …) carries identity and stays.
     """
     if not url:
         return url
@@ -206,16 +225,21 @@ def _canonicalize_url(url: str) -> str:
     except ValueError:
         return url
     host = (p.netloc or "").lower()
-    if not (".successfactors." in host or ".sapsf." in host):
-        return url
-    # keep_blank_values=True preserves stable no-value keys like
-    # ``jobAlertController_jobAlertId=`` — filtering here would
-    # silently reshape URLs on boards we haven't analyzed yet.
-    params = parse_qsl(p.query, keep_blank_values=True)
-    kept = [(k, v) for k, v in params if k not in _SUCCESSFACTORS_VOLATILE_PARAMS]
-    if len(kept) == len(params):
-        return url
-    return urlunparse(p._replace(query=urlencode(kept)))
+    if ".successfactors." in host or ".sapsf." in host:
+        # keep_blank_values=True preserves stable no-value keys like
+        # ``jobAlertController_jobAlertId=`` — filtering here would
+        # silently reshape URLs on boards we haven't analyzed yet.
+        params = parse_qsl(p.query, keep_blank_values=True)
+        kept = [(k, v) for k, v in params if k not in _SUCCESSFACTORS_VOLATILE_PARAMS]
+        if len(kept) == len(params):
+            return url
+        return urlunparse(p._replace(query=urlencode(kept)))
+    if host.endswith(".tal.net") or host == "tal.net":
+        new_path = _TAL_NET_XF_SEGMENT.sub("", p.path or "")
+        if new_path == p.path:
+            return url
+        return urlunparse(p._replace(path=new_path))
+    return url
 
 
 # ── Dataclasses ──────────────────────────────────────────────────────
