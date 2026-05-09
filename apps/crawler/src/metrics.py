@@ -89,6 +89,21 @@ monitor_failed_per_board_total = Counter(
     ["board_id"],
 )
 
+# TDM-Reservation respect (#2842). Emitted when a fetch helper observes
+# the W3C Text-and-Data-Mining opt-out signal (``tdm-reservation: 1``
+# response header, or ``<meta name="tdm-reservation" content="1">`` in
+# the HTML body). Distinct from the failure counter so an opted-out
+# board doesn't pollute the failure ramp / consecutive_failures logic
+# in ``_RECORD_FAILURE`` — it's a publisher policy decision, not a
+# transient upstream incident. Bounded cardinality: per ``board_id``,
+# only emits for boards that actually declare the signal (0 of 4709
+# active boards as of 2026-05-09 per #2842 blast-radius probe).
+monitor_skipped_tdm_total = Counter(
+    "crawler_monitor_skipped_tdm_total",
+    "Boards skipped by TDM-Reservation opt-out signal",
+    ["board_id", "source"],
+)
+
 scrape_processed_total = Counter(
     "crawler_scrape_processed_total",
     "Scrapes processed",

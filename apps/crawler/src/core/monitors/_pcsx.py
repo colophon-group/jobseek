@@ -152,6 +152,8 @@ async def _fetch_page(
         "start": offset,
         "num": num,
     }
+    from src.shared.tdm import check_response as _tdm_check
+
     last_status = None
     last_exc: Exception | None = None
     for attempt in range(PCSX_DEFAULT_RETRY_MAX):
@@ -163,6 +165,10 @@ async def _fetch_page(
             continue
         last_status = resp.status_code
         if resp.status_code == 200:
+            # TDM-Reservation respect (#2842). Header-only check; PCSX
+            # is a JSON API. ``TDMReservedError`` propagates out of the
+            # retry loop — publisher policy is not a transient error.
+            _tdm_check(resp)
             # Safety valve against a malicious / broken tenant returning
             # an enormous response body. ``resp.content`` is the already-
             # buffered body; httpx streams it up to this point regardless.

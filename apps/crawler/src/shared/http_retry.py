@@ -131,6 +131,12 @@ async def fetch_with_retry(
     retries — exponential with full jitter. Defaults to ~0.5–1s,
     1–2s, 2–4s for 3 attempts.
     """
+    # Imported lazily inside the loop to keep the hot-path import graph
+    # narrow — :mod:`src.shared.tdm` re-exports the sentinel exception
+    # type so tests can ``except TDMReservedError`` without importing
+    # http_retry first. The check itself runs only on 200 responses.
+    from src.shared.tdm import check_response as _tdm_check
+
     last_exc: BaseException | None = None
     last_status: int | None = None
 
@@ -146,6 +152,13 @@ async def fetch_with_retry(
             if resp.status_code == 200:
                 text = resp.text
                 if text:
+                    # TDM-Reservation respect (#2842). Inspect the response
+                    # for the W3C TDM opt-out signal before returning the
+                    # body. ``TDMReservedError`` is *not* retried — it's a
+                    # publisher policy declaration, not a transient
+                    # failure — and propagates up the call stack to the
+                    # monitor wrapper in ``processing/board.py``.
+                    _tdm_check(resp, body_excerpt=text)
                     return text[:max_chars]
                 # Empty-200 (#2739): treat as transient, fall through
                 # to backoff. ``last_exc`` stays None so retry-budget
@@ -176,6 +189,13 @@ async def fetch_with_retry(
                 )
                 return None
         except Exception as exc:  # httpx.TimeoutException, NetworkError, etc.
+            # TDM-Reservation (#2842) is a publisher policy decision, not
+            # a transient failure — never retry, propagate to the monitor
+            # wrapper for graceful skip handling.
+            from src.shared.tdm import TDMReservedError as _TDMReservedError
+
+            if isinstance(exc, _TDMReservedError):
+                raise
             last_exc = exc
             last_status = None
 

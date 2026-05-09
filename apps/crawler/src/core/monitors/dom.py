@@ -39,14 +39,21 @@ _BROWSER_FETCH_RETRIES = 2
 _BROWSER_FETCH_BASE_DELAY = 0.5
 _BROWSER_FETCH_MAX_CHARS = 500_000
 
-# JS executed inside the Playwright page. Returns ``{status, text}`` so
-# HTTP-level errors (which ``fetch`` doesn't reject on in JS) are
+# JS executed inside the Playwright page. Returns ``{status, headers, text}``
+# so HTTP-level errors (which ``fetch`` doesn't reject on in JS) are
 # observable on the Python side. ``r.text()`` rejects on a body decode
 # error; that surfaces as a ``page.evaluate`` exception.
+#
+# ``headers`` is materialised into a plain object (``Headers`` is iterable
+# but not directly serialisable across the page-evaluate bridge) with
+# keys lower-cased so the Python TDM-Reservation check (#2842) can do a
+# uniform case-insensitive lookup without re-walking the dict.
 _BROWSER_FETCH_JS = (
     "async (url) => { "
     "const r = await fetch(url); "
-    "return { status: r.status, text: await r.text() }; "
+    "const headers = {}; "
+    "for (const [k, v] of r.headers.entries()) { headers[k.toLowerCase()] = v; } "
+    "return { status: r.status, headers: headers, text: await r.text() }; "
     "}"
 )
 
@@ -186,6 +193,10 @@ async def _fetch_via_page(
         PaginationFetchError,
         is_retryable_status,
     )
+    from src.shared.tdm import (
+        TDMReservedError,
+        check_browser_response,
+    )
 
     last_exc: BaseException | None = None
     last_status: int | None = None
@@ -194,8 +205,8 @@ async def _fetch_via_page(
         try:
             result = await page.evaluate(_BROWSER_FETCH_JS, url)
             # ``result`` is the JS object literal we constructed above —
-            # ``{status, text}``. If something upstream malformed it
-            # (anti-bot script substituting a Promise rejection, page
+            # ``{status, headers, text}``. If something upstream malformed
+            # it (anti-bot script substituting a Promise rejection, page
             # navigation completing the evaluate with a non-dict value),
             # ``result["status"]`` raises ``AttributeError`` /
             # ``TypeError`` and falls through to the ``except Exception``
@@ -203,9 +214,15 @@ async def _fetch_via_page(
             # ``PaginationFetchError``. No defensive shape-check needed.
             status = result["status"]
             text = result.get("text") or ""
+            resp_headers = result.get("headers") or {}
             last_status = status
             if status == 200:
                 if text:
+                    # TDM-Reservation respect (#2842). Symmetric with the
+                    # static httpx path: a publisher emitting the W3C
+                    # opt-out signal is honored even when the page is
+                    # reached via a Playwright fetch (``pagination.browser=true``).
+                    check_browser_response(resp_headers, text, url=url)
                     return text[:_BROWSER_FETCH_MAX_CHARS]
                 # Empty-200 (#2739): transient, fall through to backoff.
                 last_exc = None
@@ -229,6 +246,10 @@ async def _fetch_via_page(
                     status=status,
                 )
                 return None
+        except TDMReservedError:
+            # Publisher policy declaration — never retry, propagate to
+            # the monitor wrapper for graceful skip handling (#2842).
+            raise
         except Exception as exc:  # page.evaluate raised — timeout, navigation, page closed
             last_exc = exc
             last_status = None

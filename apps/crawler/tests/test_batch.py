@@ -983,6 +983,50 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
+    async def test_tdm_reserved_skips_gracefully(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """TDMReservedError (#2842) — publisher emitted W3C TDM opt-out
+        signal. The board run is treated as a clean skip:
+
+        - **No** ``_RECORD_FAILURE`` (the upstream technically responded).
+        - **No** delist / tombstoning of postings.
+        - **Counter increment** on ``monitor_skipped_tdm_total`` for the
+          board so operators can attribute opt-outs to specific origins.
+        - ``_process_one_board_streaming`` returns ``(True, elapsed)`` so
+          the worker treats this as a successful cycle and re-queues
+          normally.
+        """
+        from src.processing.board import monitor_skipped_tdm_total
+        from src.shared.tdm import TDMReservedError
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = TDMReservedError(
+            "https://opted-out.example/list",
+            source="header",
+            policy_url="https://opted-out.example/tdm-policy.json",
+        )
+        board = _mock_board()
+        before = _counter_value(monitor_skipped_tdm_total, board_id="board-1", source="header")
+
+        ok, _elapsed = await _process_one_board(board, pool, mock_http)
+
+        # Run reported success — TDM is not a failure.
+        assert ok is True
+        # No failure ramp.
+        failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
+        assert failure_calls == []
+        # No delist.
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert delist_calls == []
+        # Counter went up by 1 for this board's source label.
+        after = _counter_value(monitor_skipped_tdm_total, board_id="board-1", source="header")
+        assert after - before == 1
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
     async def test_error_records_exception_type_when_message_is_blank(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):

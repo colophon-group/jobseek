@@ -24,6 +24,7 @@ from src.metrics import (
     monitor_dedup_total,
     monitor_gone_skipped_total,
     monitor_jobs_discovered,
+    monitor_skipped_tdm_total,
     monitor_url_filtered_total,
     tasks_total,
 )
@@ -82,6 +83,7 @@ from src.queries.scrape import (
 from src.redis_queue import enqueue_scrape as _enqueue_scrape
 from src.shared.html_normalize import normalize_description_html
 from src.shared.langdetect import detect_all_languages, detect_language
+from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
 
@@ -1236,6 +1238,32 @@ async def _process_one_board_streaming(
             with contextlib.suppress(Exception):
                 await _batch.get_redis().delete("cache:platform-stats")
 
+        return True, elapsed
+
+    except TDMReservedError as exc:
+        # Publisher emitted the W3C TDM-Reservation opt-out signal (#2842).
+        # Treat the run as a clean skip — log + counter increment, no
+        # tombstoning, no consecutive_failures bump, no _RECORD_FAILURE
+        # ramp. Distinct from the failure path because the upstream
+        # technically responded successfully; what they declined is
+        # text-and-data-mining, not the request itself.
+        elapsed = monotonic() - t0
+        board_log.info(
+            "batch.monitor.tdm_reserved",
+            url=getattr(exc, "url", None),
+            source=getattr(exc, "source", None),
+            tdm_policy_url=getattr(exc, "policy_url", None),
+            duration_s=round(elapsed, 2),
+        )
+        monitor_skipped_tdm_total.labels(
+            board_id=board_id,
+            source=getattr(exc, "source", "unknown"),
+        ).inc()
+        tasks_total.labels(kind="monitor", status="tdm_reserved").inc()
+        # Discard stale location misses from this skipped board. Mirrors
+        # the cleanup the failure path does.
+        loc_resolver.drain_location_misses()
+        # Return success-shaped: the run was not a failure.
         return True, elapsed
 
     except BoardGoneError as exc:

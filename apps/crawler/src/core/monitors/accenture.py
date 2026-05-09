@@ -68,6 +68,7 @@ async def _extract_cookies(pw, site: str) -> str:
 
 def _make_http_fetcher(client: httpx.AsyncClient, cookie_header: str) -> FetchJsonFn:
     """Create a FetchJsonFn backed by httpx with pre-extracted cookies."""
+    from src.shared.tdm import check_response as _tdm_check
 
     async def _fetch(method: str, url: str, headers: dict, body: str | None) -> object:
         req_headers = {
@@ -80,6 +81,9 @@ def _make_http_fetcher(client: httpx.AsyncClient, cookie_header: str) -> FetchJs
             kw["content"] = body
         resp = await client.request(method.upper(), url, **kw)
         resp.raise_for_status()
+        # TDM-Reservation respect (#2842) — header-only check on the
+        # Accenture JSON API path.
+        _tdm_check(resp)
         return resp.json()
 
     return _fetch
@@ -242,6 +246,8 @@ async def _fetch_page_with_retry(
       ``_RECORD_FAILURE`` rather than silently truncating the partition
       output (the bug from PR #2722's NHS spike — same shape).
     """
+    from src.shared.tdm import TDMReservedError
+
     last_exc: BaseException | None = None
     last_status: int | None = None
     url = f"{_API_BASE}/{endpoint}"
@@ -249,6 +255,9 @@ async def _fetch_page_with_retry(
     for attempt in range(retries):
         try:
             return await _fetch_page(fetch_fn, body, endpoint, content_type)
+        except TDMReservedError:
+            # Publisher policy declaration — never retry, propagate.
+            raise
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
             last_status = status
