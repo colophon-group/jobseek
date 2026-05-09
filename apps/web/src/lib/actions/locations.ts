@@ -98,8 +98,13 @@ async function _fetchLocationSuggestionsCached(
     ? `_text_match:desc,coordinates(${bucketedLat},${bucketedLng}, precision: 5km):asc,active_posting_count:desc`
     : "_text_match:desc,active_posting_count:desc";
 
-  const queryByFields = locale !== "en" ? `name_${locale},name_en` : "name_en";
-  const queryByWeights = locale !== "en" ? "3,1" : "1";
+  // ``aliases`` carries natural-language synonyms for macro-region rows
+  // (e.g. EU's aliases include "European Union", "Europe"). Weighted
+  // below the canonical name fields so a ``name_*`` prefix still wins
+  // over an alias prefix on the same character. See #2939.
+  const queryByFields =
+    locale !== "en" ? `name_${locale},name_en,aliases` : "name_en,aliases";
+  const queryByWeights = locale !== "en" ? "3,2,1" : "2,1";
 
   let result;
   try {
@@ -263,14 +268,83 @@ export interface GlobalLocationGroup {
   }[];
 }
 
+export interface GlobalMacroRegion {
+  id: number;
+  slug: string;
+  /**
+   * Canonical display name (e.g. "European Union" rather than "EU"). Falls
+   * back to the localized name from `location_name` when no canonical
+   * mapping exists for the slug. This is the value used both as the chip
+   * label inside the Regions cluster AND as the `SelectedLocation.name`
+   * carried into `FilterBar`/`SearchBar`, so changing it here updates both
+   * the modal and the rendered filter pill consistently. See issue #2940
+   * test plan: clicking EU yields a filter chip displaying "European Union".
+   */
+  name: string;
+  /**
+   * The localized abbreviation as stored in `location_name` (e.g. "EU",
+   * "DACH"). Used by the modal-internal text-search filter so users can
+   * match either the canonical name OR the abbreviation. Once #2939's
+   * `aliases[]` field lands on the Typesense `location` collection, this
+   * can grow into a richer alias array.
+   */
+  abbreviation: string;
+  count: number;
+  /** Member country names (English) — for the chip's hover tooltip. */
+  memberCountryNames: string[];
+}
+
+export interface GlobalLocationsResponse {
+  /**
+   * Macro regions (EU, EMEA, DACH, …) with at least one active posting.
+   * Sorted by count desc. Empty when Typesense is unreachable or no
+   * macros have postings.
+   */
+  macros: GlobalMacroRegion[];
+  /**
+   * Country-rooted hierarchy. Existing shape — preserved unchanged so the
+   * rest of the modal continues to render countries → regions → cities
+   * exactly as before.
+   */
+  countries: GlobalLocationGroup[];
+}
+
 export async function getGlobalLocationsGrouped(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
-): Promise<GlobalLocationGroup[]> {
+): Promise<GlobalLocationsResponse> {
   const fKey = filters ? JSON.stringify(filters) : "";
-  const key = `global-locs-grouped:${locale}:${fKey}`;
+  // v3 cache-key bump (#2940 — added Regions cluster + dedicated macro
+  // facet query). Old v1/v2 entries cached the array shape and would
+  // otherwise be deserialized into the new wrapper object via the
+  // run-time JSON path, then fail to render the macro tier.
+  const key = `global-locs-grouped-v3:${locale}:${fKey}`;
   return cached(key, () => _fetchGlobalLocationsGrouped(locale, filters), { ttl: 3600 });
 }
+
+/**
+ * Canonical display labels for macro regions. Stored DB names are short
+ * abbreviations ("EU", "DACH", "EMEA") which read as alphabet-soup in chip
+ * UI; this map expands the most-common ones to their full names. The slug
+ * is used as the lookup key — falls back to the localized DB name when the
+ * slug isn't in the map (e.g. NULL slug or a future addition).
+ *
+ * In the en/de/fr/it fall-through case we still pass the abbreviation
+ * through so non-English speakers see the same text as on the search bar
+ * dropdown — this matches the "consistent label" criterion in #2940's
+ * test plan.
+ */
+const MACRO_DISPLAY_NAMES: Record<string, string> = {
+  eu: "European Union",
+  emea: "Europe, Middle East & Africa",
+  dach: "DACH (Germany, Austria, Switzerland)",
+  apac: "Asia-Pacific",
+  americas: "Americas",
+  latam: "Latin America",
+  nordics: "Nordics",
+  mena: "Middle East & North Africa",
+  worldwide: "Worldwide",
+};
 
 // ── Location hierarchy cache (from Supabase Postgres, long TTL) ──────
 
@@ -339,7 +413,7 @@ function _getLocaleName(meta: LocationMeta, locale: string): string {
 async function _fetchGlobalLocationsGrouped(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
-): Promise<GlobalLocationGroup[]> {
+): Promise<GlobalLocationsResponse> {
   try {
     const client = getTypesenseClient();
 
@@ -350,15 +424,48 @@ async function _fetchGlobalLocationsGrouped(
     const hasKeywords = filters?.keywords && filters.keywords.length > 0;
     const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
 
-    const result = await client.collections("job_posting").documents().search({
+    // Load hierarchy metadata up-front so we know which IDs are macros
+    // (used both for the dedicated macro facet query below AND for the
+    // country-tier hierarchy walk further down).
+    const hierarchy = await _getLocationHierarchyCache();
+    const allMacroIds: number[] = [];
+    for (const meta of hierarchy.values()) {
+      if (meta.type === "macro") allMacroIds.push(meta.id);
+    }
+
+    // Run the country-tier facet query AND a dedicated macro-only facet
+    // query in parallel. Reason for separating them: with `max_facet_values:
+    // 500`, the country-tier facet truncates after the top-500 location
+    // IDs by count. Macros (which are aggregated via ancestor expansion)
+    // can have low counts (e.g. DACH=6) and fall below this cutoff, so we
+    // re-query with `filter_by: location_ids:[<macroIds>]` to force the
+    // facet to surface every macro with at least one matching posting.
+    // This is much cheaper than raising the global `max_facet_values` —
+    // there are only 9 macros today so the second query returns at most
+    // 9 facet entries.
+    const macroFilterClause = allMacroIds.length > 0
+      ? `location_ids:[${allMacroIds.join(",")}]`
+      : null;
+
+    const baseSearchParams = {
       q,
       query_by: "title",
       filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
       facet_by: "location_ids",
       max_facet_values: 500,
-      facet_strategy: "exhaustive",
+      facet_strategy: "exhaustive" as const,
       per_page: 0,
-    });
+    };
+
+    const [result, macroResult] = await Promise.all([
+      client.collections("job_posting").documents().search(baseSearchParams),
+      macroFilterClause
+        ? client.collections("job_posting").documents().search({
+            ...baseSearchParams,
+            filter_by: `${baseSearchParams.filter_by} && ${macroFilterClause}`,
+          })
+        : Promise.resolve(null),
+    ]);
 
     // Extract facet counts: location_id -> count
     const facetCounts = new Map<number, number>();
@@ -371,10 +478,52 @@ async function _fetchGlobalLocationsGrouped(
       }
     }
 
-    if (facetCounts.size === 0) return [];
+    // Macro counts: from the dedicated macro-filtered query (always reliable)
+    const macroFacetCounts = new Map<number, number>();
+    if (macroResult) {
+      const macroFacet = (macroResult as { facet_counts?: Array<{ field_name: string; counts: Array<{ value: string; count: number }> }> })
+        .facet_counts?.find((f) => f.field_name === "location_ids");
+      if (macroFacet) {
+        for (const fc of macroFacet.counts) {
+          macroFacetCounts.set(Number(fc.value), fc.count);
+        }
+      }
+    }
 
-    // Load hierarchy metadata
-    const hierarchy = await _getLocationHierarchyCache();
+    if (facetCounts.size === 0 && macroFacetCounts.size === 0) {
+      return { macros: [], countries: [] };
+    }
+
+    // Build macro-region cluster from the dedicated macro-only facet
+    // result (NOT the truncated top-500 country-tier facet). Ancestor
+    // expansion in `exporter.py` already promotes macro IDs onto each
+    // posting's `location_ids`, so the facet count for a macro reflects
+    // every posting whose country (transitively) belongs to it. See
+    // `_fetchGlobalMacroMembers` for the per-macro member country names
+    // used as the chip's hover tooltip.
+    const macroIdsWithCounts = allMacroIds.filter((id) => (macroFacetCounts.get(id) ?? 0) > 0);
+    const macroMemberNames = macroIdsWithCounts.length > 0
+      ? await _fetchGlobalMacroMembers(macroIdsWithCounts, locale)
+      : new Map<number, string[]>();
+    const macros: GlobalMacroRegion[] = macroIdsWithCounts
+      .map((id) => {
+        const meta = hierarchy.get(id);
+        if (!meta) return null;
+        const abbreviation = _getLocaleName(meta, locale);
+        const slugKey = (meta.slug ?? "").toLowerCase()
+          || abbreviation.toLowerCase().replace(/\s+/g, "-");
+        const canonical = MACRO_DISPLAY_NAMES[slugKey];
+        return {
+          id,
+          slug: meta.slug ?? slugKey,
+          name: canonical ?? abbreviation,
+          abbreviation,
+          count: macroFacetCounts.get(id) ?? 0,
+          memberCountryNames: macroMemberNames.get(id) ?? [],
+        } satisfies GlobalMacroRegion;
+      })
+      .filter((m): m is GlobalMacroRegion => m !== null && m.count > 0)
+      .sort((a, b) => b.count - a.count);
 
     // Build country -> region -> city structure from flat facet results
     const countries = new Map<number, GlobalLocationGroup>();
@@ -475,16 +624,62 @@ async function _fetchGlobalLocationsGrouped(
       country.regions.sort((a, b) => b.regionCount - a.regionCount);
     }
 
-    return [...countries.values()]
+    const sortedCountries = [...countries.values()]
       .filter((g) => g.regions.some((r) => r.locations.length > 0))
       .sort((a, b) => {
         // Sort by country name alphabetically
         return a.countryName.localeCompare(b.countryName);
       });
+
+    return { macros, countries: sortedCountries };
   } catch {
     // Typesense unavailable — return empty
-    return [];
+    return { macros: [], countries: [] };
   }
+}
+
+/**
+ * For each macro region, fetch the names of its member countries (in the
+ * caller's locale, falling back to English). Used to populate the chip's
+ * hover tooltip in {@link LocationSearchModal}.
+ *
+ * NOTE: in production today `location_macro_member` may be sparsely
+ * populated — macros are still useful (ancestor expansion in
+ * `exporter.py` promotes the macro ID onto each posting via the
+ * `country_id -> [macro_ids]` map, even when that map is empty in the
+ * particular DB snapshot we read from). When the table is empty we return
+ * an empty member list and the modal renders the chip without a tooltip.
+ */
+async function _fetchGlobalMacroMembers(
+  macroIds: number[],
+  locale: string,
+): Promise<Map<number, string[]>> {
+  if (macroIds.length === 0) return new Map();
+  const pgArray = `{${macroIds.join(",")}}`;
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    macro_id: number;
+    country_name: string;
+  }>(sql`
+    SELECT lmm.macro_id, ln.name AS country_name
+    FROM location_macro_member lmm
+    JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = lmm.country_id
+        AND locale IN (${locale}, 'en')
+        AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) ln ON true
+    WHERE lmm.macro_id = ANY(${pgArray}::integer[])
+    ORDER BY lmm.macro_id, ln.name
+  `);
+  const map = new Map<number, string[]>();
+  for (const r of rows as unknown as { macro_id: number; country_name: string }[]) {
+    let arr = map.get(r.macro_id);
+    if (!arr) { arr = []; map.set(r.macro_id, arr); }
+    arr.push(r.country_name);
+  }
+  return map;
 }
 
 function _ensureCountryGroup(

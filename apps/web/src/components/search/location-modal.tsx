@@ -2,10 +2,14 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, Search, Loader2 } from "lucide-react";
+import { X, Search, Loader2, Globe } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { getCompanyLocationsGrouped } from "@/lib/actions/company";
-import type { GroupedCompanyLocations, CompanyRegionGroup } from "@/lib/actions/company";
+import { getCompanyLocationsGroupedWithMacros } from "@/lib/actions/company";
+import type {
+  CompanyLocationsResponse,
+  GroupedCompanyLocations,
+  CompanyRegionGroup,
+} from "@/lib/actions/company";
 import type { FilterItem } from "./filter-bar";
 import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
@@ -33,7 +37,7 @@ export function LocationModal({
   onFiltersChange,
 }: LocationModalProps) {
   const { t } = useLingui();
-  const [groups, setGroups] = useState<GroupedCompanyLocations[] | null>(null);
+  const [response, setResponse] = useState<CompanyLocationsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [warning, setWarning] = useState("");
@@ -45,20 +49,36 @@ export function LocationModal({
   );
 
   useEffect(() => {
-    if (open && !groups) {
+    if (open && !response) {
       setLoading(true);
-      getCompanyLocationsGrouped(companyId, locale)
-        .then(setGroups)
+      getCompanyLocationsGroupedWithMacros(companyId, locale)
+        .then(setResponse)
         .finally(() => setLoading(false));
     }
-  }, [open, groups, companyId, locale]);
+  }, [open, response, companyId, locale]);
 
   useEffect(() => {
     if (!open) setSearch("");
   }, [open]);
 
+  // Filter macros: keep when canonical name OR abbreviation OR any member
+  // country name matches the local search. Mirrors the global modal —
+  // depends on #2939's `aliases[]` for richer alias matching once that
+  // ships.
+  const filteredMacros = useMemo(() => {
+    if (!response) return [];
+    if (!search.trim()) return response.macros;
+    const q = search.trim().toLowerCase();
+    return response.macros.filter((m) =>
+      m.name.toLowerCase().includes(q)
+      || m.abbreviation.toLowerCase().includes(q)
+      || m.memberCountryNames.some((c) => c.toLowerCase().includes(q)),
+    );
+  }, [response, search]);
+
   const filtered = useMemo(() => {
-    if (!groups) return [];
+    if (!response) return [];
+    const groups = response.countries;
     if (!search.trim()) return groups;
     const q = search.trim().toLowerCase();
     const matches = (aliases?: string[]) => aliases?.some((a) => a.includes(q)) ?? false;
@@ -87,7 +107,7 @@ export function LocationModal({
         return { ...country, regions: filteredRegions };
       })
       .filter((g): g is GroupedCompanyLocations => g !== null);
-  }, [groups, search]);
+  }, [response, search]);
 
   const toggleLocation = useCallback((loc: { id: number; slug: string; name: string; type: string }) => {
     if (activeLocationIds.has(loc.id)) {
@@ -111,13 +131,31 @@ export function LocationModal({
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key !== "Enter") return;
+      // Combine macros (canonical name + abbreviation) with city leaf items
+      // so Enter on "EU" or "European Union" picks the macro chip directly.
+      const macroCandidates = filteredMacros.flatMap((m) => {
+        const items: { id: number; slug: string; name: string; type: string }[] = [
+          { id: m.id, slug: m.slug, name: m.name, type: "macro" },
+        ];
+        if (m.abbreviation && m.abbreviation.toLowerCase() !== m.name.toLowerCase()) {
+          items.push({ id: m.id, slug: m.slug, name: m.abbreviation, type: "macro" });
+        }
+        return items;
+      });
       const leafItems = filtered.flatMap((c) =>
         c.regions.flatMap((r) => r.locations),
       );
-      const result = findBestGuess(search, leafItems);
+      const result = findBestGuess(search, [...macroCandidates, ...leafItems]);
       if (!result) return;
       if ("match" in result) {
-        toggleLocation(result.match);
+        // Always use the canonical display name on the resulting chip when
+        // the matched item is a macro (so abbreviation queries still yield
+        // "European Union" rather than "EU" on the filter pill).
+        const macro = filteredMacros.find((m) => m.id === result.match.id);
+        const final = macro
+          ? { id: macro.id, slug: macro.slug, name: macro.name, type: "macro" }
+          : result.match;
+        toggleLocation(final);
         setSearch("");
         setWarning("");
       } else {
@@ -128,7 +166,7 @@ export function LocationModal({
         }));
       }
     },
-    [filtered, search, toggleLocation, showWarning, t],
+    [filtered, filteredMacros, search, toggleLocation, showWarning, t],
   );
 
   return (
@@ -181,7 +219,7 @@ export function LocationModal({
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
               </div>
-            ) : filtered.length === 0 ? (
+            ) : filtered.length === 0 && filteredMacros.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted">
                 <Trans id="company.locationModal.noResults" comment="No locations match search in all-locations modal">
                   No locations match your search.
@@ -189,6 +227,46 @@ export function LocationModal({
               </p>
             ) : (
               <div className="space-y-5">
+                {filteredMacros.length > 0 && (
+                  <div>
+                    <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+                      <Globe size={14} className="shrink-0" />
+                      <Trans id="company.locationModal.regionsHeader" comment="Header for the macro-region cluster (EU, EMEA, DACH) in company-page location modal">
+                        Regions
+                      </Trans>
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {filteredMacros.map((macro) => {
+                        const active = activeLocationIds.has(macro.id);
+                        const tooltip = macro.memberCountryNames.length > 0
+                          ? macro.memberCountryNames.join(", ")
+                          : undefined;
+                        return (
+                          <button
+                            key={macro.id}
+                            onClick={() => toggleLocation({
+                              id: macro.id,
+                              slug: macro.slug,
+                              name: macro.name,
+                              type: "macro",
+                            })}
+                            title={tooltip}
+                            className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
+                              active
+                                ? "bg-primary/10 text-primary"
+                                : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
+                            }`}
+                          >
+                            {macro.name}
+                            <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
+                              ({macro.count})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 {filtered.map((country) => {
                   const countryActive = country.countryId > 0 && activeLocationIds.has(country.countryId);
                   const showRegions = countCities(country) > REGION_THRESHOLD;
