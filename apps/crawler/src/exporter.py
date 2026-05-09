@@ -345,6 +345,13 @@ def _build_typesense_docs(
         last_seen = row.get("last_seen_at") if hasattr(row, "get") else row["last_seen_at"]
         last_seen_ts = int(last_seen.timestamp()) if last_seen else None
 
+        # `has_content` flag drives the issue #2917 web filter — postings
+        # without a usable title or with no description blob in R2 are
+        # excluded from search/listing surfaces. Emitted as a boolean on
+        # every doc (not gated like `optional` fields) so it always
+        # reflects the latest title/description state on update.
+        has_content = bool(title and title.strip()) and (row["description_r2_hash"] is not None)
+
         doc: dict = {
             "id": str(row["id"]),
             "company_id": str(company_id),
@@ -352,6 +359,7 @@ def _build_typesense_docs(
             "company_slug": company_slug,
             "title": title,
             "is_active": row["is_active"],
+            "has_content": has_content,
             "location_ids": expanded_location_ids,
             "location_names": location_names,
             "location_types": list(row["location_types"] or []),

@@ -19,7 +19,7 @@ import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/co
 import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations";
 import { expandOccupationIds, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
-import { buildFilterString } from "@/lib/search/typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import {
   upsertWatchlist as tsUpsertWatchlist,
@@ -826,7 +826,7 @@ export async function getWatchlistMatchingCompanyCount(
       languages,
     });
 
-    const fullFilter = `is_active:true${filterStr ? " && " + filterStr : ""}`;
+    const fullFilter = `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`;
     const hasKeywords = f.keywords && f.keywords.length > 0;
     const q = hasKeywords ? f.keywords!.join(" ") : "*";
 
@@ -1203,7 +1203,7 @@ export async function getWatchlistPostingDisplayCounts(
     [...extra, ...(companyClause ? [companyClause] : []), ...(filterStr ? [filterStr] : [])].join(" && ");
 
   const oneYearAgo = Math.floor((Date.now() - 365 * 24 * 3600 * 1000) / 1000);
-  const activeFilter = baseFilterParts(["is_active:true"]);
+  const activeFilter = baseFilterParts([POSTING_BASE_FILTER]);
   const yearFilter = baseFilterParts([`first_seen_at:>${oneYearAgo}`]);
 
   try {
@@ -1503,7 +1503,7 @@ async function _getWatchlistPostingsTypesense(
   }
 
   // Combine all filter parts
-  const filterParts = ["is_active:true"];
+  const filterParts = [POSTING_BASE_FILTER];
   if (companyFilter) filterParts.push(companyFilter);
   if (filterStr) filterParts.push(filterStr);
   const fullFilter = filterParts.join(" && ");
@@ -1591,7 +1591,7 @@ async function _getWatchlistPostingsBatched(
   // Query each batch for total count (per_page: 0)
   const countResults = await Promise.all(
     batches.map((batch) => {
-      const filterParts = ["is_active:true", `company_id:[${batch.join(",")}]`];
+      const filterParts = [POSTING_BASE_FILTER, `company_id:[${batch.join(",")}]`];
       if (filterStr) filterParts.push(filterStr);
       return client.collections("job_posting").documents().search({
         q: keywordsQ,
@@ -1610,7 +1610,7 @@ async function _getWatchlistPostingsBatched(
   const needed = params.offset + params.limit;
   const postingsResults = await Promise.all(
     batches.map((batch) => {
-      const filterParts = ["is_active:true", `company_id:[${batch.join(",")}]`];
+      const filterParts = [POSTING_BASE_FILTER, `company_id:[${batch.join(",")}]`];
       if (filterStr) filterParts.push(filterStr);
       return client.collections("job_posting").documents().search({
         q: keywordsQ,
@@ -1687,7 +1687,14 @@ async function _getWatchlistPostingsPostgres(
       : undefined,
   ]);
 
-  const clauses = [sql`jp.is_active = true`];
+  // Mirrors the Typesense `POSTING_BASE_FILTER` so the Supabase fallback
+  // hides the same incomplete postings (issue #2917): non-empty title AND
+  // a description blob in R2 (description_r2_hash IS NOT NULL).
+  const clauses = [
+    sql`jp.is_active = true`,
+    sql`jp.titles IS NOT NULL AND cardinality(jp.titles) > 0 AND btrim(jp.titles[1]) <> ''`,
+    sql`jp.description_r2_hash IS NOT NULL`,
+  ];
 
   if (params.companyIds.length > 0) {
     const pgCompanyArray = `{${params.companyIds.join(",")}}`;

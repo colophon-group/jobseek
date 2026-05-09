@@ -1,5 +1,5 @@
 import { getSearchClient } from "./typesense-client";
-import { buildFilterString } from "./typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 
 export interface TypeaheadBoostFilters {
   companyId?: string;
@@ -39,7 +39,7 @@ export async function boostByFilterMatches<T>(
     const client = getSearchClient();
     const ids = candidates.map(idOf);
 
-    const filterParts = ["is_active:true", `${facetField}:[${ids.join(",")}]`];
+    const filterParts = [POSTING_BASE_FILTER, `${facetField}:[${ids.join(",")}]`];
     if (filterStr) filterParts.push(filterStr);
 
     const q = hasKeywords ? filters.keywords!.join(" ") : "*";

@@ -1,5 +1,5 @@
 import { getTypesenseBrowserConfig, type TypesenseBrowserConfig } from "./typesense-browser-key";
-import { buildFilterString } from "./typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 import { COMPANY_BATCH_SIZE } from "./constants";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 
@@ -109,7 +109,7 @@ export async function getWatchlistPostingsBrowser(
   const hasKeywords = params.keywords && params.keywords.length > 0;
   const q = hasKeywords ? params.keywords!.join(" ") : "*";
 
-  const filterParts = ["is_active:true"];
+  const filterParts = [POSTING_BASE_FILTER];
   if (params.companyIds.length > 0) {
     filterParts.push(`company_id:[${params.companyIds.join(",")}]`);
   }

@@ -16,7 +16,7 @@ import { expandLocationIds } from "@/lib/actions/locations";
 import { expandOccupationIds } from "@/lib/actions/taxonomy";
 import { ANON_MAX_COMPANIES, ANON_MAX_POSTINGS } from "@/lib/search/constants";
 import { getSearchClient } from "@/lib/search/typesense-client";
-import { buildFilterString } from "@/lib/search/typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { firstOf, idsOrUndefined, parseRangeParam } from "@/lib/search/params";
@@ -180,7 +180,7 @@ async function _searchCompaniesForWatchlistTypesense(params: {
   if (hasWatchlistFilters) {
     // FACET APPROACH: Get companies ranked by filtered match count.
     // Facets only return companies with >0 matching postings — zero-match filtering is implicit.
-    const activeFilter = `is_active:true${watchlistFilterStr ? " && " + watchlistFilterStr : ""}`;
+    const activeFilter = `${POSTING_BASE_FILTER}${watchlistFilterStr ? " && " + watchlistFilterStr : ""}`;
     const keywordsQ = params.keywords?.length ? params.keywords.join(" ") : "*";
 
     const facetResult = await client.collections("job_posting").documents().search({
@@ -1057,7 +1057,7 @@ async function _fetchSimilarFiltered(
       experienceMax: filters.experienceMax,
     });
     const candidateIds = [...candidates.keys()];
-    const activeFilter = `is_active:true && company_id:[${candidateIds.join(",")}]${filterStr ? ` && ${filterStr}` : ""}`;
+    const activeFilter = `${POSTING_BASE_FILTER} && company_id:[${candidateIds.join(",")}]${filterStr ? ` && ${filterStr}` : ""}`;
     const q = filters.keywords.length ? filters.keywords.join(" ") : "*";
 
     const facet = await client.collections("job_posting").documents().search({

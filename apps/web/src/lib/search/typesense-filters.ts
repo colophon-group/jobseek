@@ -1,8 +1,28 @@
 /**
+ * Base filter applied to **every** `job_posting` query — hides postings
+ * the crawler couldn't extract usable content for.
+ *
+ * - `is_active:true` — only currently-listed roles
+ * - `has_content:!=false` — exclude postings with empty title or no
+ *   description blob in R2 (issue #2917). The exporter stamps
+ *   `has_content` (true|false) on every upsert; the `!=false` form keeps
+ *   docs that haven't been backfilled yet visible (the field is absent on
+ *   them, which `!=false` matches), and only excludes docs the exporter
+ *   has explicitly marked as `false`. After
+ *   `crawler backfill-typesense` runs, every doc has the field set and
+ *   the filter is fully active.
+ *
+ * Use this constant — never the bare `is_active:true` string — when
+ * composing `filter_by` for any search/listing surface.
+ */
+export const POSTING_BASE_FILTER = "is_active:true && has_content:!=false";
+
+/**
  * Build a Typesense filter_by string from user-specified filter dimensions.
  *
- * Does NOT inject `is_active:true` — callers prepend it explicitly.
- * Returns an empty string when no filters are active.
+ * Does NOT inject the base filter — callers prepend
+ * {@link POSTING_BASE_FILTER} (or its parts) explicitly. Returns an empty
+ * string when no filters are active.
  */
 export function buildFilterString(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

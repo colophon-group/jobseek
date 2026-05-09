@@ -1,4 +1,4 @@
-import { buildFilterString } from "./typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 import {
   getTypesenseBrowserConfig,
   type TypesenseBrowserConfig,
@@ -173,7 +173,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const cfg = await this.cfg();
       const { keywords, offset, limit, locationIds } = params;
       const filterStr = buildFilterString(params);
-      const activeFilter = `is_active:true${filterStr ? ` && ${filterStr}` : ""}`;
+      const activeFilter = `${POSTING_BASE_FILTER}${filterStr ? ` && ${filterStr}` : ""}`;
 
       const result = await searchOne<JobPostingDoc>(cfg, "job_posting", {
         q: keywords.join(" "),
@@ -238,7 +238,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
     limit: number,
     locationIds?: number[],
   ): Promise<SearchResponse> {
-    const activeFilter = `is_active:true && ${filterStr}`;
+    const activeFilter = `${POSTING_BASE_FILTER} && ${filterStr}`;
     const facetResult = await searchOne<JobPostingDoc>(cfg, "job_posting", {
       q: "*",
       filter_by: activeFilter,
@@ -312,7 +312,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
     const compMap = new Map<string, CompanyDoc>(hits.map((h) => [h.document.id, h.document]));
     const postingResults = await searchOne<JobPostingDoc>(cfg, "job_posting", {
       q: "*",
-      filter_by: `company_id:[${companyIds.join(",")}] && is_active:true`,
+      filter_by: `company_id:[${companyIds.join(",")}] && ${POSTING_BASE_FILTER}`,
       group_by: "company_id",
       group_limit: 10,
       sort_by: "first_seen_at:desc",
@@ -355,7 +355,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const { companyId, keywords, offset, limit, locationIds } = params;
       const filterStr = buildFilterString(params);
       const activeFilter =
-        `company_id:=${companyId} && is_active:true` + (filterStr ? ` && ${filterStr}` : "");
+        `company_id:=${companyId} && ${POSTING_BASE_FILTER}` + (filterStr ? ` && ${filterStr}` : "");
       const q = keywords.length ? keywords.join(" ") : "*";
       const r = await searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
@@ -398,7 +398,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `is_active:true && ${baseFilter}`,
+        filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
         sort_by: keywords.length
           ? "_text_match:desc,first_seen_at:desc"
           : "first_seen_at:desc",
@@ -408,7 +408,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `is_active:true && ${baseFilter}`,
+        filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
         per_page: 0,
       }),
       searchOne<JobPostingDoc>(cfg, "job_posting", {
@@ -439,7 +439,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const r = await searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `is_active:true && salary_eur:>0${filterStr ? ` && ${filterStr}` : ""}`,
+        filter_by: `${POSTING_BASE_FILTER} && salary_eur:>0${filterStr ? ` && ${filterStr}` : ""}`,
         facet_by: SALARY_FACET_BY,
         max_facet_values: 31,
         per_page: 0,
@@ -469,7 +469,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const r = await searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `is_active:true && experience_min:>=0${filterStr ? ` && ${filterStr}` : ""}`,
+        filter_by: `${POSTING_BASE_FILTER} && experience_min:>=0${filterStr ? ` && ${filterStr}` : ""}`,
         facet_by: "experience_min",
         max_facet_values: 30,
         per_page: 0,
