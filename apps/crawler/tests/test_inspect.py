@@ -700,3 +700,51 @@ class TestDecathlonScraperHasEnrich:
         # would yield a non-None enrich list from _board_has_enrich.
         metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
         assert _board_has_enrich(metadata) == enrich
+
+
+class TestTalentclueSiblingsHaveEnrich:
+    """The talentclue sibling cluster of Decathlon (#2962) — barcelona-activa
+    and ayuda-en-accion — share the same root cause: rich api_sniffer
+    monitor + dom scraper with no ``enrich`` declaration, so postings
+    were inserted via ``_INSERT_RICH_JOB`` and the dom detail scrape was
+    never enqueued. 171 + 130 active postings sat with
+    ``has_content=false`` in Typesense before this fix (#2963).
+
+    Mirrors ``TestDecathlonScraperHasEnrich`` and the Tesla / Infineon
+    enrich guards above — pinning the ``enrich`` declaration so a future
+    bulk-edit can't silently revert it.
+    """
+
+    @pytest.mark.parametrize(
+        "board_slug,active_rows",
+        [
+            ("barcelona-activa-talentclue", 171),
+            ("ayuda-en-accion-talentclue", 130),
+        ],
+    )
+    def test_talentclue_sibling_declares_enrich(self, board_slug, active_rows):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get(board_slug)
+        assert row is not None, f"{board_slug!r} row missing from boards.csv"
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            f"{board_slug} scraper_config must declare 'enrich': ['description'] "
+            "so its rich-monitor postings get next_scrape_at = now() and the "
+            f"dom detail scraper actually runs (was {active_rows} active rows "
+            "with has_content=false). See #2963."
+        )
+
+        # Also exercise the production guard: the metadata that sync writes
+        # would yield a non-None enrich list from _board_has_enrich.
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
