@@ -29,31 +29,11 @@ _DETAIL_URL = "https://app.mokahr.com/api/outer/ats-apply/website/job"
 _PAGE_SIZE = 20
 _MAX_JOBS = 50_000
 
-# Map Mokahr commitment values to standard employment types.
-#
-# Mokahr's API returns Chinese-locale labels for ``commitment``: the SPA
-# config bundle (``recruitmentWeb-…-release.js``) declares the value
-# enum as ``[全职, 兼职, 实习, 其它]`` (full-time, part-time, intern,
-# other). The legacy English keys (``fullTime``, ``partTime``, …) never
-# fired in production — only the Chinese values do. Both are kept here
-# for safety in case Mokahr changes its locale-handling.
-#
-# ``其它`` (other) is intentionally absent — leaving the map miss to
-# return ``None`` preserves the truthful unspecified state in
-# ``JobContent.employment_type``. The downstream
-# :func:`src.core.enum_normalize.normalize_employment_type` then keeps
-# it ``None`` instead of defaulting unknown strings to ``full_time``.
-_COMMITMENT_MAP: dict[str, str] = {
-    # Chinese labels — what the API actually returns today.
-    "全职": "Full-time",
-    "兼职": "Part-time",
-    "实习": "Intern",
-    # Legacy English labels — kept for forward compatibility.
-    "fullTime": "Full-time",
-    "partTime": "Part-time",
-    "intern": "Intern",
-    "contract": "Contract",
-}
+# Mokahr commitment values pass through unchanged — the central
+# :func:`src.core.enum_normalize.normalize_employment_type` map handles
+# the camelCase API codes (``fullTime``/``partTime``/``intern``/
+# ``contract``) and the Chinese localised labels (``全职``/``兼职``/
+# ``实习``) returned by the same endpoint.
 
 # Mokahr ``salaryUnit`` enum (from
 # ``static-ats.mokahr.com/recruitment-web-client/javascripts/vendor-…js``).
@@ -358,8 +338,7 @@ def _parse_job(
     if not job_id or not title:
         return None
 
-    commitment = job.get("commitment", "")
-    employment_type = _COMMITMENT_MAP.get(commitment)
+    employment_type = job.get("commitment") or None
 
     published = job.get("publishedAt")
 

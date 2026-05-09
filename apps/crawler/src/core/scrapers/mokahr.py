@@ -24,7 +24,7 @@ This scraper:
      against the SPA-mined map because the detail API only carries
      ``cityId``, never ``cityName``
    - ``employment_type`` — ``commitment`` (Chinese ``全职/兼职/实习``)
-     mapped via :data:`mokahr._COMMITMENT_MAP`
+     normalised via :func:`src.core.enum_normalize.normalize_employment_type`
    - ``base_salary`` — ``minSalary``/``maxSalary``/``salaryUnit``
      with ``currency="CNY"``; ``salaryUnit=0`` ("K/月") multiplies the
      range by 1000 so downstream sees full RMB amounts
@@ -45,8 +45,8 @@ import re
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_employment_type
 from src.core.monitors.mokahr import (
-    _COMMITMENT_MAP,
     _build_city_name_map,
     _decrypt,
     _get_init_data,
@@ -95,7 +95,7 @@ def _parse_detail(detail: dict, city_name_map: dict[int, str] | None = None) -> 
       against *city_name_map* (mined from the SPA's ``init-data``)
       because the detail API only returns ``cityId``, never ``cityName``
     - ``commitment`` -> ``employment_type`` (Chinese ``全职/兼职/实习``
-      via :data:`_COMMITMENT_MAP`)
+      normalised via :func:`src.core.enum_normalize.normalize_employment_type`)
     - ``minSalary`` / ``maxSalary`` / ``salaryUnit`` -> ``base_salary``
       with ``currency="CNY"``; ``salaryUnit=0`` ("K_MONTH") multiplies
       by 1000 so downstream sees full RMB amounts
@@ -111,7 +111,7 @@ def _parse_detail(detail: dict, city_name_map: dict[int, str] | None = None) -> 
     description = detail.get("jobDescription") or None
     title = detail.get("title") or None
     locations = _parse_locs(detail, city_name_map)
-    employment_type = _COMMITMENT_MAP.get(detail.get("commitment", ""))
+    employment_type = normalize_employment_type(detail.get("commitment") or None)
     date_posted = detail.get("publishedAt") or detail.get("openedAt") or None
     if isinstance(date_posted, str) and "T" in date_posted:
         date_posted = date_posted.split("T", 1)[0]

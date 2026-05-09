@@ -126,7 +126,8 @@ class TestParseDetail:
         assert job.url == ("https://mcdonalds.recruiter.co.kr/career/jobs/100")
         assert job.title == "Manager"
         assert job.description == "<p>Job desc</p>"
-        assert job.employment_type == "Full-time"
+        # Raw careerType passes through; central normaliser handles canonicalisation.
+        assert job.employment_type == "CAREER"
         assert job.date_posted == "2026-02-01"
         assert job.language == "ko"
         assert job.metadata["tags"] == ["경영기획", "본사"]
@@ -147,12 +148,14 @@ class TestParseDetail:
     def test_intern_career_type(self):
         detail = {"title": "Intern", "careerType": "INTERN"}
         job = _parse_detail(detail, self._summary(), "x")
-        assert job.employment_type == "Intern"
+        assert job.employment_type == "INTERN"
 
-    def test_unknown_career_type(self):
+    def test_unknown_career_type_passthrough(self):
+        # Unknown raw careerType passes through unchanged; the central
+        # normaliser decides how to bucket it downstream.
         detail = {"title": "X", "careerType": "SOMETHING_NEW"}
         job = _parse_detail(detail, self._summary(), "x")
-        assert job.employment_type is None
+        assert job.employment_type == "SOMETHING_NEW"
 
     def test_missing_title_returns_none(self):
         job = _parse_detail({}, self._summary(list_title=None), "x")
@@ -229,7 +232,7 @@ class TestDiscover:
         assert (
             by_url["https://mcdonalds.recruiter.co.kr/career/jobs/1"].description == "<p>First</p>"
         )
-        assert by_url["https://mcdonalds.recruiter.co.kr/career/jobs/2"].employment_type == "Intern"
+        assert by_url["https://mcdonalds.recruiter.co.kr/career/jobs/2"].employment_type == "INTERN"
 
     async def test_paginates_until_total_pages(self):
         pages = [
@@ -286,7 +289,7 @@ class TestDiscover:
         assert jobs[0].title == "From List"
         assert jobs[0].url == ("https://mcdonalds.recruiter.co.kr/career/jobs/42")
         # Summary-only record still carries the list's careerType.
-        assert jobs[0].employment_type == "Full-time"
+        assert jobs[0].employment_type == "CAREER"
         assert jobs[0].date_posted == "2026-04-01"
 
     async def test_no_slug_raises(self):

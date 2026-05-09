@@ -247,20 +247,28 @@ class TestParseJobLocationType:
 
 
 class TestParseEmploymentType:
+    """Rippling raw label passthrough.
+
+    Central :func:`src.core.enum_normalize.normalize_employment_type`
+    handles canonicalisation downstream.
+    """
+
     def test_salaried_ft(self):
-        assert _parse_employment_type({"label": "SALARIED_FT"}) == "Full-time"
+        assert _parse_employment_type({"label": "SALARIED_FT"}) == "SALARIED_FT"
 
     def test_intern(self):
-        assert _parse_employment_type({"label": "INTERN"}) == "Intern"
+        assert _parse_employment_type({"label": "INTERN"}) == "INTERN"
 
-    def test_fallback_to_id(self):
-        assert _parse_employment_type({"label": "UNKNOWN_TYPE", "id": "Freelance"}) == "Freelance"
+    def test_unknown_label_passthrough(self):
+        assert (
+            _parse_employment_type({"label": "UNKNOWN_TYPE", "id": "Freelance"}) == "UNKNOWN_TYPE"
+        )
+
+    def test_fallback_to_id_when_label_empty(self):
+        assert _parse_employment_type({"label": "", "id": "Custom"}) == "Custom"
 
     def test_none_emp(self):
         assert _parse_employment_type(None) is None
-
-    def test_empty_label_with_id(self):
-        assert _parse_employment_type({"label": "", "id": "Custom"}) == "Custom"
 
 
 class TestParseDetail:
@@ -284,7 +292,7 @@ class TestParseDetail:
         assert "<p>Build stuff</p>" in result.description
         assert result.locations == ["San Francisco", "Remote"]
         assert result.job_location_type == "remote"
-        assert result.employment_type == "Full-time"
+        assert result.employment_type == "SALARIED_FT"
         assert result.date_posted == "2024-06-01"
         assert result.base_salary is not None
         assert result.metadata["department"] == "Engineering"
@@ -358,7 +366,7 @@ class TestScrape:
             )
             assert result.title == "Engineer"
             assert result.description == "<p>Build things</p>"
-            assert result.employment_type == "Full-time"
+            assert result.employment_type == "SALARIED_FT"
 
     async def test_unparseable_url(self):
         transport = httpx.MockTransport(lambda r: httpx.Response(200))

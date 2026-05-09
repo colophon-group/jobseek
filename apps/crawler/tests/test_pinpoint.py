@@ -237,7 +237,7 @@ class TestParseJob:
         assert result.description is not None
         assert "<p>About the role</p>" in result.description
         assert result.locations == ["London"]
-        assert result.employment_type == "Full-time"
+        assert result.employment_type == "full_time"
         assert result.job_location_type == "hybrid"
         assert result.date_posted == "2024-12-31"
         assert result.base_salary == {"currency": "GBP", "min": 50000, "max": 70000, "unit": "year"}
@@ -251,30 +251,46 @@ class TestParseJob:
         assert _parse_job({}) is None
         assert _parse_job({"title": "No URL"}) is None
 
-    def test_employment_type_mapping(self):
-        for raw, expected in [
-            ("full_time", "Full-time"),
-            ("permanent_full_time", "Full-time"),
-            ("part_time", "Part-time"),
-            ("contract_temp", "Contract"),
-            ("internship", "Intern"),
-            ("temporary", "Temporary"),
-            ("volunteer", "Volunteer"),
-        ]:
+    def test_employment_type_passes_raw_through(self):
+        # The pinpoint monitor now passes raw upstream codes — the
+        # central src.core.enum_normalize.normalize_employment_type
+        # canonicalises them downstream.
+        for raw in (
+            "full_time",
+            "permanent_full_time",
+            "part_time",
+            "contract_temp",
+            "internship",
+            "temporary",
+            "volunteer",
+        ):
             posting = {"url": "https://example.com/job", "employment_type": raw}
             result = _parse_job(posting)
-            assert result.employment_type == expected, f"Failed for {raw}"
+            assert result.employment_type == raw, f"Failed for {raw}"
 
-    def test_employment_type_fallback_to_text(self):
+    def test_employment_type_code_preferred_over_text(self):
+        # The raw upstream code wins over the human-readable text — the
+        # central normaliser is the canonical source of truth and works
+        # off the stable code.  ``employment_type_text`` is only used as
+        # a fallback when the code is empty.
         posting = {
             "url": "https://example.com/job",
             "employment_type": "unknown_code",
             "employment_type_text": "Seasonal",
         }
         result = _parse_job(posting)
+        assert result.employment_type == "unknown_code"
+
+    def test_employment_type_text_fallback_when_code_empty(self):
+        posting = {
+            "url": "https://example.com/job",
+            "employment_type": "",
+            "employment_type_text": "Seasonal",
+        }
+        result = _parse_job(posting)
         assert result.employment_type == "Seasonal"
 
-    def test_employment_type_no_text_fallback(self):
+    def test_employment_type_no_code_no_text(self):
         posting = {
             "url": "https://example.com/job",
             "employment_type": "",

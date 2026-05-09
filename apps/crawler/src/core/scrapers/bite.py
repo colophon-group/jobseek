@@ -22,15 +22,11 @@ _DETAIL_URL = "https://jobs.b-ite.com/jobposting/{hash}/json"
 
 _HASH_RE = re.compile(r"/jobposting/([a-f0-9]{40,42})")
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "full_time": "full-time",
-    "part_time": "part-time",
-    "temporary": "temporary",
-    "contract": "contract",
-    "internship": "internship",
-    "mini_job": "part-time",
-    "volunteer": "volunteer",
-}
+# BITE schema.org-flavoured codes (``full_time``/``part_time``/
+# ``temporary``/``contract``/``internship``/``mini_job``/``volunteer``)
+# pass through — the central
+# :func:`src.core.enum_normalize.normalize_employment_type` handles
+# them.
 
 
 def _extract_hash_from_url(url: str) -> str | None:
@@ -53,13 +49,12 @@ def _build_location(address: dict | None) -> list[str] | None:
 
 
 def _normalize_employment_type(emp_types: list | None) -> str | None:
-    """Normalize employment type from detail endpoint."""
+    """Pass through the first BITE employment-type code unchanged."""
     if not emp_types:
         return None
     for raw in emp_types:
-        mapped = _EMPLOYMENT_TYPE_MAP.get(raw)
-        if mapped:
-            return mapped
+        if raw:
+            return raw
     return None
 
 

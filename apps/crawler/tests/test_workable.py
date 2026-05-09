@@ -388,19 +388,16 @@ class TestParseDetail:
         assert "<p>Desc</p>" in result.description
         assert result.locations == ["NYC, US"]
         assert result.job_location_type == "hybrid"
-        assert result.employment_type == "Full-time"
+        assert result.employment_type == "full"
         assert result.date_posted == "2024-01-15"
         assert result.metadata == {"department": "Engineering"}
 
-    def test_employment_type_mapping(self):
-        for raw, expected in [
-            ("full", "Full-time"),
-            ("part", "Part-time"),
-            ("contract", "Contract"),
-            ("internship", "Intern"),
-        ]:
+    def test_employment_type_passes_raw_through(self):
+        # Workable type codes pass through; central normaliser
+        # canonicalises downstream.
+        for raw in ("full", "part", "contract", "internship"):
             result = _parse_detail({"type": raw})
-            assert result.employment_type == expected
+            assert result.employment_type == raw
 
     def test_unknown_employment_type_passthrough(self):
         result = _parse_detail({"type": "seasonal"})
@@ -448,7 +445,7 @@ class TestScrape:
             assert "<p>Build things</p>" in result.description
             assert result.locations == ["Berlin, Germany"]
             assert result.job_location_type == "remote"
-            assert result.employment_type == "Full-time"
+            assert result.employment_type == "full"
             assert result.date_posted == "2024-06-01"
             assert result.metadata == {"department": "Engineering"}
 

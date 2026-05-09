@@ -70,10 +70,12 @@ class TestParseJob:
         assert _parse_job({}) is None
         assert _parse_job({"title": "No URL"}) is None
 
-    def test_employment_type_mapping(self):
+    def test_employment_type_passthrough(self):
+        # Ashby PascalCase passes through; central normaliser handles
+        # canonicalisation downstream.
         raw = {"jobUrl": "https://example.com/job", "employmentType": "FullTime"}
         result = _parse_job(raw)
-        assert result.employment_type == "Full-time"
+        assert result.employment_type == "FullTime"
 
     def test_workplace_type_mapping(self):
         raw = {"jobUrl": "https://example.com/job", "workplaceType": "Remote"}

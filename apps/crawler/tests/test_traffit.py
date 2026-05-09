@@ -205,7 +205,7 @@ class TestParseJob:
         assert result.title == "Finance Manager"
         assert result.description == "<p>Job description</p>"
         assert result.locations == ["Kraków, Polska"]
-        assert result.employment_type == "full-time"
+        assert result.employment_type == "Full time"
         assert result.job_location_type == "hybrid"
         assert result.date_posted == "2026-03-06"
         assert result.base_salary == {
@@ -244,23 +244,23 @@ class TestParseJob:
         result = _parse_job(job)
         assert result.locations == ["Warsaw"]
 
-    def test_employment_type_mapping(self):
-        for raw_type, expected in [
-            ("Full time", "full-time"),
-            ("Part time", "part-time"),
-            ("Contract", "contract"),
-            ("Internship", "internship"),
-        ]:
+    def test_employment_type_passes_raw_through(self):
+        # The traffit monitor passes raw upstream labels — the central
+        # src.core.enum_normalize.normalize_employment_type takes care
+        # of canonicalising them downstream.
+        for raw_type in ("Full time", "Part time", "Contract", "Internship"):
             job = self._make_job()
             job["options"]["job_type"] = [raw_type]
             result = _parse_job(job)
-            assert result.employment_type == expected, f"Failed for {raw_type}"
+            assert result.employment_type == raw_type, f"Failed for {raw_type}"
 
-    def test_employment_type_unknown(self):
+    def test_employment_type_unknown_passthrough(self):
+        # Unknown labels are still passed through; downstream normaliser
+        # decides whether they map to a canonical bucket.
         job = self._make_job()
         job["options"]["job_type"] = ["Freelance"]
         result = _parse_job(job)
-        assert result.employment_type is None
+        assert result.employment_type == "Freelance"
 
     def test_job_location_type_remote(self):
         job = self._make_job()

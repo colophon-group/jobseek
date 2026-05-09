@@ -14,8 +14,8 @@ import json
 import httpx
 import pytest
 
+from src.core.enum_normalize import normalize_employment_type
 from src.core.monitors.mokahr import (
-    _COMMITMENT_MAP,
     _SALARY_UNIT,
     _build_city_name_map,
     _decrypt,
@@ -29,30 +29,31 @@ from src.core.monitors.mokahr import (
 from src.core.scrapers import JobContent
 from src.core.scrapers.mokahr import _parse_detail, _parse_url, scrape
 
-# ── _COMMITMENT_MAP ──────────────────────────────────────────────────
+# ── central normalize_employment_type integration ────────────────────
 
 
-class TestCommitmentMap:
+class TestCommitmentNormalization:
+    """Mokahr commitment values flow through the central
+    :func:`normalize_employment_type` map (the per-module ``_COMMITMENT_MAP``
+    was retired in PR #2973). These tests pin the contract for the values
+    Mokahr actually emits."""
+
     def test_chinese_full_time(self):
-        # The actual Mokahr detail API returns Chinese labels.
-        assert _COMMITMENT_MAP["全职"] == "Full-time"
+        assert normalize_employment_type("全职") == "full_time"
 
     def test_chinese_part_time(self):
-        assert _COMMITMENT_MAP["兼职"] == "Part-time"
+        assert normalize_employment_type("兼职") == "part_time"
 
     def test_chinese_intern(self):
-        assert _COMMITMENT_MAP["实习"] == "Intern"
-
-    def test_chinese_other_unmapped(self):
-        # ``其它`` (other) is intentionally absent so the field stays None.
-        assert "其它" not in _COMMITMENT_MAP
+        assert normalize_employment_type("实习") == "internship"
 
     def test_legacy_english_keys_preserved(self):
-        # Forward-compat in case Mokahr ever switches its locale.
-        assert _COMMITMENT_MAP["fullTime"] == "Full-time"
-        assert _COMMITMENT_MAP["partTime"] == "Part-time"
-        assert _COMMITMENT_MAP["intern"] == "Intern"
-        assert _COMMITMENT_MAP["contract"] == "Contract"
+        # Forward-compat for camelCase API codes — ``_EMPLOYMENT_TYPE_MAP``
+        # lookup is case-insensitive (``.strip().lower()``).
+        assert normalize_employment_type("fullTime") == "full_time"
+        assert normalize_employment_type("partTime") == "part_time"
+        assert normalize_employment_type("intern") == "internship"
+        assert normalize_employment_type("contract") == "contract"
 
 
 # ── _parse_salary ────────────────────────────────────────────────────
@@ -342,7 +343,10 @@ class TestParseJobListing:
         assert job is not None
         assert job.title == "卫星激光通信系统工程师"
         assert job.url.endswith("/job/abc-123")
-        assert job.employment_type == "Full-time"
+        # Monitor ``_parse_job`` passes commitment raw — the central
+        # ``normalize_employment_type`` runs in the processing pipeline,
+        # not the monitor. (PR #2973 retired the per-module map.)
+        assert job.employment_type == "全职"
         assert job.locations == ["深圳市, 中国"]
         assert job.base_salary == {
             "currency": "CNY",
@@ -361,8 +365,9 @@ class TestParseJobListing:
         raw = {"id": "x", "title": "T", "commitment": "其它"}
         job = _parse_job(raw, "zte", 1)
         assert job is not None
-        # 其它 (other) is intentionally unmapped — preserve the unspecified state.
-        assert job.employment_type is None
+        # Monitor passes commitment raw — normalisation happens in the
+        # processing pipeline via ``normalize_employment_type``.
+        assert job.employment_type == "其它"
         assert job.base_salary is None
         assert job.extras is None
         # Empty metadata collapses to None to keep the `metadata or None`
@@ -433,7 +438,7 @@ class TestParseDetail:
         assert c.title == "通信设备电源专家"
         assert c.description == "<p>工作职责：</p><p>1、从事...</p>"
         assert c.locations == ["武汉市, 中国", "南京市, 中国"]
-        assert c.employment_type == "Full-time"
+        assert c.employment_type == "full_time"
         assert c.date_posted == "2026-04-28"  # Date-only, time stripped.
         assert c.base_salary == {
             "currency": "CNY",
@@ -450,15 +455,17 @@ class TestParseDetail:
 
     def test_chinese_intern_commitment(self):
         c = _parse_detail(self._detail(commitment="实习"), self._city_map())
-        assert c.employment_type == "Intern"
+        assert c.employment_type == "internship"
 
     def test_chinese_part_time_commitment(self):
         c = _parse_detail(self._detail(commitment="兼职"), self._city_map())
-        assert c.employment_type == "Part-time"
+        assert c.employment_type == "part_time"
 
-    def test_other_commitment_stays_none(self):
+    def test_other_commitment_falls_back_to_full_time(self):
+        # ``其它`` (other) is not in the central map — ``normalize_employment_type``
+        # falls back to ``"full_time"`` to preserve historical behaviour.
         c = _parse_detail(self._detail(commitment="其它"), self._city_map())
-        assert c.employment_type is None
+        assert c.employment_type == "full_time"
 
     def test_no_salary_when_both_zero(self):
         c = _parse_detail(self._detail(minSalary=0, maxSalary=0, salaryUnit=0), self._city_map())
@@ -562,7 +569,7 @@ async def test_scrape_decrypts_full_detail():
     assert content.title == "Senior Test Engineer"
     assert content.description == "<p>JD body</p>"
     assert content.locations == ["深圳市, 中国"]
-    assert content.employment_type == "Full-time"
+    assert content.employment_type == "full_time"
     assert content.date_posted == "2026-04-28"
     assert content.base_salary == {
         "currency": "CNY",

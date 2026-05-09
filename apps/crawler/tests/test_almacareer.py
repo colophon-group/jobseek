@@ -272,16 +272,22 @@ class TestParseEmploymentType:
         params = {"employmentTypesObjects": [{"id": "201300005", "label": "x"}]}
         assert _parse_employment_type(params) == "internship"
 
-    def test_cz_label_fallback(self):
+    def test_cz_label_fallback_passthrough(self):
+        # When the upstream id is missing/unknown the raw label is
+        # passed through; the central normaliser handles the locale.
         params = {"employmentTypesObjects": [{"id": None, "label": "Práce na plný úvazek"}]}
-        assert _parse_employment_type(params) == "full-time"
+        assert _parse_employment_type(params) == "Práce na plný úvazek"
 
-    def test_sk_label_fallback(self):
+    def test_sk_label_fallback_passthrough(self):
         params = {"employmentTypesObjects": [{"id": None, "label": "Práca na plný úväzok"}]}
-        assert _parse_employment_type(params) == "full-time"
+        assert _parse_employment_type(params) == "Práca na plný úväzok"
 
-    def test_unknown(self):
+    def test_unknown_id_falls_back_to_label(self):
         params = {"employmentTypesObjects": [{"id": "999", "label": "Mystery"}]}
+        assert _parse_employment_type(params) == "Mystery"
+
+    def test_unknown_id_no_label(self):
+        params = {"employmentTypesObjects": [{"id": "999"}]}
         assert _parse_employment_type(params) is None
 
     def test_empty(self):
