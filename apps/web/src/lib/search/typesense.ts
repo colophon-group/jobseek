@@ -165,7 +165,7 @@ async function fetchYearCountsFiltered(
   if (companyIds.length === 0) return new Map();
 
   const client = getSearchClient();
-  const yearFilter = `first_seen_at:>${oneYearAgoUnix()} && company_id:[${companyIds.join(",")}]${filterStr ? " && " + filterStr : ""}`;
+  const yearFilter = `${POSTING_BASE_FILTER} && first_seen_at:>${oneYearAgoUnix()} && company_id:[${companyIds.join(",")}]${filterStr ? " && " + filterStr : ""}`;
 
   const result: TsSearchResponse<JobPostingDoc> = await client
     .collections<JobPostingDoc>("job_posting")
@@ -543,7 +543,7 @@ export class TypesenseSearchProvider implements SearchProvider {
           .search({
             q,
             query_by: "title",
-            filter_by: `first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
+            filter_by: `${POSTING_BASE_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
             per_page: 0,
           }),
       ]);

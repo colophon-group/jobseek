@@ -6,6 +6,7 @@ import polars as pl
 import pytest
 
 from src.sync import (
+    _LOCATION_MACRO_ALIASES,
     _REALIGN_RENAMED_BOARD_URLS_SUPA,
     _UPSERT_BOARDS_SUPA,
     _UPSERT_COMPANIES,
@@ -17,6 +18,7 @@ from src.sync import (
     run_sync,
     sync_boards,
     sync_companies,
+    sync_locations_typesense,
     sync_occupation_domains,
 )
 
@@ -885,3 +887,154 @@ class TestIsTrivialWatchlist:
     )
     def test_empty_filter_arrays_are_trivial(self, filters):
         assert _is_trivial_watchlist(filters, 0) is True
+
+
+# ---------------------------------------------------------------------------
+# TestSyncLocationsTypesense
+# ---------------------------------------------------------------------------
+
+
+class _StubRecord(dict):
+    """asyncpg.Record-compatible stub usable as a dict (``r["key"]``)."""
+
+
+def _make_loc_row(
+    *,
+    id: int,
+    slug: str,
+    type: str,
+    lat: float | None = None,
+    lng: float | None = None,
+    population: int | None = None,
+    parent_name: str | None = None,
+) -> _StubRecord:
+    return _StubRecord(
+        id=id,
+        slug=slug,
+        type=type,
+        lat=lat,
+        lng=lng,
+        population=population,
+        parent_name=parent_name,
+    )
+
+
+def _make_name_row(*, location_id: int, locale: str, name: str) -> _StubRecord:
+    return _StubRecord(location_id=location_id, locale=locale, name=name)
+
+
+class TestSyncLocationsTypesense:
+    """``sync_locations_typesense`` builds Typesense docs from Postgres rows.
+
+    The behaviour under test is the macro-region alias enrichment from
+    issue #2939: macro rows whose slug is in ``_LOCATION_MACRO_ALIASES``
+    must carry the ``aliases`` array; non-macro rows must not.
+    """
+
+    async def test_macro_rows_get_aliases(self):
+        loc_rows = [
+            _make_loc_row(id=4, slug="eu", type="macro"),
+            _make_loc_row(id=1, slug="emea", type="macro"),
+            _make_loc_row(id=5, slug="dach", type="macro"),
+            _make_loc_row(
+                id=100,
+                slug="berlin",
+                type="city",
+                lat=52.52,
+                lng=13.405,
+                population=3_700_000,
+                parent_name="Germany",
+            ),
+        ]
+        name_rows = [
+            _make_name_row(location_id=4, locale="en", name="EU"),
+            _make_name_row(location_id=1, locale="en", name="EMEA"),
+            _make_name_row(location_id=5, locale="en", name="DACH"),
+            _make_name_row(location_id=100, locale="en", name="Berlin"),
+            _make_name_row(location_id=100, locale="de", name="Berlin"),
+        ]
+
+        supa_conn = AsyncMock()
+        # Two ``fetch`` calls in order: location rows, then name rows.
+        supa_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows])
+
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(return_value=[])
+
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        client = MagicMock()
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await sync_locations_typesense(supa_conn, local_conn, client)
+
+        by_slug = {d["slug"]: d for d in captured_docs}
+        # All four locations were indexed.
+        assert set(by_slug) == {"eu", "emea", "dach", "berlin"}
+
+        # The EU macro row carries the suggested aliases verbatim.
+        assert by_slug["eu"]["aliases"] == [
+            "European Union",
+            "Europe",
+            "EEA",
+            "Schengen",
+        ]
+        # EMEA + DACH carry their respective alias bundles.
+        assert "Europe Middle East Africa" in by_slug["emea"]["aliases"]
+        assert "Germany Austria Switzerland" in by_slug["dach"]["aliases"]
+        # The non-macro Berlin row has no aliases attached — those rows
+        # are reachable via their own canonical name.
+        assert "aliases" not in by_slug["berlin"]
+
+    async def test_macro_alias_map_covers_seeded_macros(self):
+        """The 9 macros currently in the live Typesense index must all
+        have alias bundles. Drift between the alias map and the macro
+        seed list would silently degrade the typeahead.
+        """
+        seeded_macro_slugs = {
+            "eu",
+            "emea",
+            "dach",
+            "apac",
+            "americas",
+            "latam",
+            "nordics",
+            "mena",
+            "worldwide",
+        }
+        missing = seeded_macro_slugs - set(_LOCATION_MACRO_ALIASES)
+        assert not missing, f"macro slugs missing aliases: {missing}"
+        # Each bundle is non-empty and has only stripped strings.
+        for slug, aliases in _LOCATION_MACRO_ALIASES.items():
+            assert aliases, f"empty alias bundle for {slug}"
+            for alias in aliases:
+                assert alias and alias.strip() == alias
+
+    async def test_unknown_macro_slug_skips_aliases(self):
+        """A macro row whose slug is NOT in the hard-coded map should be
+        indexed without an ``aliases`` field (rather than crash or
+        invent one).
+        """
+        loc_rows = [
+            _make_loc_row(id=42, slug="oceania", type="macro"),
+        ]
+        name_rows = [
+            _make_name_row(location_id=42, locale="en", name="Oceania"),
+        ]
+        supa_conn = AsyncMock()
+        supa_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows])
+
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        client = MagicMock()
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await sync_locations_typesense(supa_conn, None, client)
+
+        assert len(captured_docs) == 1
+        assert captured_docs[0]["slug"] == "oceania"
+        assert "aliases" not in captured_docs[0]

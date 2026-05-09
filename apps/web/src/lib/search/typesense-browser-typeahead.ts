@@ -125,6 +125,7 @@ interface LocationDoc {
   slug: string;
   type: string;
   parent_name?: string;
+  aliases?: string[];
   [key: `name_${string}`]: string | undefined;
 }
 
@@ -163,8 +164,13 @@ export async function suggestLocationsBrowser(params: {
   const sortBy = hasGeo
     ? `_text_match:desc,coordinates(${userLat},${userLng}, precision: 5km):asc,active_posting_count:desc`
     : "_text_match:desc,active_posting_count:desc";
-  const queryByFields = locale !== "en" ? `name_${locale},name_en` : "name_en";
-  const queryByWeights = locale !== "en" ? "3,1" : "1";
+  // ``aliases`` carries natural-language synonyms for macro-region rows
+  // (e.g. EU's aliases include "European Union", "Europe"). Weighted
+  // below the canonical name fields so an exact ``name_*`` prefix still
+  // wins over an alias prefix on the same character. See #2939.
+  const queryByFields =
+    locale !== "en" ? `name_${locale},name_en,aliases` : "name_en,aliases";
+  const queryByWeights = locale !== "en" ? "3,2,1" : "2,1";
 
   try {
     const cfg = await getTypesenseBrowserConfig();
