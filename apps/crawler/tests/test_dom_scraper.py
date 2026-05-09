@@ -470,13 +470,12 @@ class TestDomGoneUrlPattern:
             "gone_url_pattern": "/jobs/Error(?:[/?]|$)",
             "steps": [{"tag": "h1", "field": "title"}],
         }
-        with _patch_playwright(page):
-            with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await scrape(
-                    "https://careers.loreal.com/jobs/JobDetail/Foo/123",
-                    config,
-                    httpx.AsyncClient(),
-                )
+        with _patch_playwright(page), pytest.raises(httpx.HTTPStatusError) as exc_info:
+            await scrape(
+                "https://careers.loreal.com/jobs/JobDetail/Foo/123",
+                config,
+                httpx.AsyncClient(),
+            )
         assert exc_info.value.response.status_code == 410
 
     async def test_render_path_skips_actions_on_gone_redirect(self):
@@ -492,13 +491,12 @@ class TestDomGoneUrlPattern:
             "actions": [{"action": "dismiss_overlays"}],
             "steps": [{"tag": "h1", "field": "title"}],
         }
-        with _patch_playwright(page):
-            with pytest.raises(httpx.HTTPStatusError):
-                await scrape(
-                    "https://careers.loreal.com/jobs/JobDetail/Foo/123",
-                    config,
-                    httpx.AsyncClient(),
-                )
+        with _patch_playwright(page), pytest.raises(httpx.HTTPStatusError):
+            await scrape(
+                "https://careers.loreal.com/jobs/JobDetail/Foo/123",
+                config,
+                httpx.AsyncClient(),
+            )
         page.evaluate.assert_not_called()
 
     async def test_render_path_no_pattern_extracts_normally(self):
@@ -562,9 +560,7 @@ class TestDomGoneUrlPattern:
         # always reports request.url as response.url, which would defeat
         # the test, so we patch the higher-level client method.)
         async def fake_get(self_client, url, **kwargs):
-            final_req = httpx.Request(
-                "GET", "https://careers.loreal.com/en_US/jobs/Error"
-            )
+            final_req = httpx.Request("GET", "https://careers.loreal.com/en_US/jobs/Error")
             return httpx.Response(200, text="error page", request=final_req)
 
         with patch.object(httpx.AsyncClient, "get", new=fake_get):
@@ -647,6 +643,116 @@ class TestDomGoneUrlPattern:
                     )
                     return
         raise AssertionError("loreal-careers row not found in boards.csv")
+
+
+# ---------------------------------------------------------------------------
+# Decathlon talentclue.com — kept as a live mirror of the boards.csv config
+# so a future bulk-edit of the row gets caught by the suite.
+# ---------------------------------------------------------------------------
+
+DECATHLON_DOM_CONFIG = {
+    "render": False,
+    "steps": [
+        {"tag": "title", "field": "title"},
+        {
+            "tag": "h2",
+            "attr": "class=job-description__title",
+            "field": "description",
+            "html": True,
+            "stop": "tienes perfil en",
+            "optional": True,
+        },
+    ],
+}
+
+
+class TestDecathlonDomScraper:
+    """Verify the dom scraper extracts title + description from a captured
+    decathlon.talentclue.com (Drupal 7) detail page using the boards.csv
+    config (#2952).
+
+    Empirical findings that motivated the fix:
+
+    1. The previous selectors used ``class~=job-page__header-title`` syntax
+       — the dom scraper's attr matcher splits on ``=`` once, so it ended
+       up looking for an attribute literally named ``class~`` and never
+       matched anything (0/2 fields extracted on every posting).
+    2. Even with the syntax corrected, the title <h1> sits inside a
+       ``<header>`` element which ``flatten()`` filters as NOISE_TAGS,
+       and the description container is not a single <div>. The working
+       config reads the ``<title>`` tag for the headline and starts the
+       description range at the first ``<h2 class="job-description__title">``
+       block, stopping before the apply UI ("¿Ya tienes perfil en ?").
+    """
+
+    def test_decathlon_extraction_vendor(self):
+        """Vendor posting yields title + non-trivial description."""
+        from src.core.scrapers.dom import parse_html
+
+        html = (FIXTURES_DIR / "decathlon_talentclue_jobpage.html").read_text()
+        result = parse_html(html, DECATHLON_DOM_CONFIG)
+
+        assert result.title == "VENDEDOR/A DEPORTES DE AGUA Decathlon Albacete"
+        assert result.description is not None
+        assert len(result.description) > 500
+        # Description should include the company intro + actual job copy
+        assert "DECATHLON" in result.description
+        assert "Requisitos" in result.description
+        # The apply-UI fragment must NOT leak into the description range
+        assert "Autocompletar" not in result.description
+        assert "Inscríbete" not in result.description
+
+    def test_decathlon_extraction_taller(self):
+        """A second posting (workshop technician) extracts cleanly too —
+        guards against over-fitting the config to one job's structure."""
+        from src.core.scrapers.dom import parse_html
+
+        html = (FIXTURES_DIR / "decathlon_talentclue_jobpage_taller.html").read_text()
+        result = parse_html(html, DECATHLON_DOM_CONFIG)
+
+        assert result.title == "TÉCNICO/A DE TALLER Decathlon Lugones"
+        assert result.description is not None
+        assert len(result.description) > 500
+        assert "DECATHLON" in result.description
+        assert "Autocompletar" not in result.description
+
+    def test_old_class_tilde_config_was_broken(self, recwarn):
+        """Regression guard: the prior ``class~=...`` config extracts
+        nothing from decathlon talentclue pages. Ensures we don't revert.
+        """
+        from src.core.scrapers.dom import parse_html
+
+        old_config = {
+            "steps": [
+                {
+                    "tag": "h1",
+                    "attr": "class~=job-page__header-title",
+                    "field": "title",
+                },
+                {
+                    "tag": "div",
+                    "attr": "class~=job-page__content",
+                    "field": "description",
+                    "html": True,
+                },
+            ]
+        }
+        html = (FIXTURES_DIR / "decathlon_talentclue_jobpage.html").read_text()
+        result = parse_html(html, old_config)
+        # 0/2 fields extracted — what the live crawler observed for 557
+        # active postings before this fix (all has_content=false in
+        # Typesense, all next_scrape_at=NULL in Postgres).
+        assert result.title is None
+        assert result.description is None
+
+    def test_decathlon_config_routes_to_http_queue(self):
+        """``render: false`` keeps the scraper on the slim HTTP worker —
+        the talentclue page is fully rendered server-side (Drupal 7) so
+        Playwright is unnecessary.
+        """
+        from src.core.scrapers import scraper_needs_browser
+
+        assert scraper_needs_browser("dom", DECATHLON_DOM_CONFIG) is False
 
 
 # ---------------------------------------------------------------------------
