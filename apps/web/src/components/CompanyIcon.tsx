@@ -24,6 +24,13 @@ type CompanyIconProps = {
  * small WebP and Vercel docs say sub-10KB images shouldn't be transformed.
  * Width/height attrs preserved so CLS stays bounded; lazy/decoding=async
  * remain next/image defaults.
+ *
+ * `object-contain` preserves the source aspect ratio inside the square
+ * slot — R2 icons are stored at their natural aspect ratio (see #2935 and
+ * apps/crawler/src/image_sync.py::process_icon, which uses
+ * `image.thumbnail` to cap the longest edge while preserving ratio).
+ * Without object-contain, `width=height` + `size-N` would stretch wide
+ * wordmarks (Oracle 1509x962, NXP 1552x534, Coop 602x204, etc.).
  */
 export function CompanyIcon({ icon, alt, size, className = "" }: CompanyIconProps) {
   const { box, fallback } = SIZE_MAP[size];
@@ -36,7 +43,7 @@ export function CompanyIcon({ icon, alt, size, className = "" }: CompanyIconProp
         width={size}
         height={size}
         unoptimized
-        className={`${base} ${className}`.trim()}
+        className={`${base} object-contain ${className}`.trim()}
       />
     );
   }

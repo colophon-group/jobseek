@@ -47,4 +47,16 @@ describe("CompanyIcon", () => {
     const img = container.querySelector("img")!;
     expect(img.getAttribute("srcset")).toBeNull();
   });
+
+  it("applies object-contain so non-square source assets are not stretched (#2935)", () => {
+    // R2 icons are stored at natural aspect ratio (image_sync.process_icon
+    // uses thumbnail() which preserves ratio). Forcing width=height onto a
+    // non-square source without object-fit stretches the image; object-contain
+    // letterboxes/pillarboxes instead.
+    const { container } = render(
+      <CompanyIcon icon="https://example.com/i.webp" alt="Acme" size={32} />,
+    );
+    const img = container.querySelector("img")!;
+    expect(img.className).toContain("object-contain");
+  });
 });
