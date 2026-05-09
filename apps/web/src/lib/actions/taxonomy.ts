@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
+import { withDbRetry } from "@/lib/db-retry";
 import {
   typeaheadOccupationsCacheTag,
   typeaheadSenioritiesCacheTag,
@@ -338,21 +339,25 @@ async function _resolveOccupationSlugsCached(
   cacheTag(typeaheadOccupationsCacheTag());
 
   const pgArray = `{${sortedSlugs.join(",")}}`;
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    name: string;
-  }>(sql`
-    SELECT o.id, o.slug, dn.name
-    FROM occupation o
-    JOIN LATERAL (
-      SELECT name FROM occupation_name
-      WHERE occupation_id = o.id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) dn ON true
-    WHERE o.slug = ANY(${pgArray}::text[])
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        name: string;
+      }>(sql`
+        SELECT o.id, o.slug, dn.name
+        FROM occupation o
+        JOIN LATERAL (
+          SELECT name FROM occupation_name
+          WHERE occupation_id = o.id AND locale IN (${locale}, 'en') AND is_display = true
+          ORDER BY (locale = ${locale})::int DESC LIMIT 1
+        ) dn ON true
+        WHERE o.slug = ANY(${pgArray}::text[])
+      `),
+    { label: "resolveOccupationSlugs" },
+  );
   const result: Record<string, TaxonomySuggestion> = {};
   for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
     result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
@@ -379,21 +384,25 @@ async function _resolveSenioritySlugsCached(
   cacheTag(typeaheadSenioritiesCacheTag());
 
   const pgArray = `{${sortedSlugs.join(",")}}`;
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    name: string;
-  }>(sql`
-    SELECT s.id, s.slug, dn.name
-    FROM seniority s
-    JOIN LATERAL (
-      SELECT name FROM seniority_name
-      WHERE seniority_id = s.id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) dn ON true
-    WHERE s.slug = ANY(${pgArray}::text[])
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        name: string;
+      }>(sql`
+        SELECT s.id, s.slug, dn.name
+        FROM seniority s
+        JOIN LATERAL (
+          SELECT name FROM seniority_name
+          WHERE seniority_id = s.id AND locale IN (${locale}, 'en') AND is_display = true
+          ORDER BY (locale = ${locale})::int DESC LIMIT 1
+        ) dn ON true
+        WHERE s.slug = ANY(${pgArray}::text[])
+      `),
+    { label: "resolveSenioritySlugs" },
+  );
   const result: Record<string, TaxonomySuggestion> = {};
   for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
     result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
@@ -415,14 +424,18 @@ export async function expandOccupationIds(occupationId: number): Promise<number[
   cacheLife("days");
   cacheTag(typeaheadOccupationsCacheTag());
 
-  const rows = await db.execute<{ [key: string]: unknown; id: number }>(sql`
-    WITH RECURSIVE descendants AS (
-      SELECT id FROM occupation WHERE id = ${occupationId}
-      UNION ALL
-      SELECT o.id FROM occupation o JOIN descendants d ON o.parent_id = d.id
-    )
-    SELECT id FROM descendants
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; id: number }>(sql`
+        WITH RECURSIVE descendants AS (
+          SELECT id FROM occupation WHERE id = ${occupationId}
+          UNION ALL
+          SELECT o.id FROM occupation o JOIN descendants d ON o.parent_id = d.id
+        )
+        SELECT id FROM descendants
+      `),
+    { label: `expandOccupationIds[${occupationId}]` },
+  );
   return (rows as unknown as { id: number }[]).map((r) => r.id);
 }
 
@@ -443,13 +456,17 @@ async function _resolveTechnologySlugsCached(
   cacheTag(typeaheadTechnologiesCacheTag());
 
   const pgArray = `{${sortedSlugs.join(",")}}`;
-  const rows = await db.execute<{
-    [key: string]: unknown; id: number; slug: string; name: string;
-  }>(sql`
-    SELECT t.id, t.slug, COALESCE(t.name, t.slug) AS name
-    FROM technology t
-    WHERE t.slug = ANY(${pgArray}::text[])
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown; id: number; slug: string; name: string;
+      }>(sql`
+        SELECT t.id, t.slug, COALESCE(t.name, t.slug) AS name
+        FROM technology t
+        WHERE t.slug = ANY(${pgArray}::text[])
+      `),
+    { label: "resolveTechnologySlugs" },
+  );
   const result: Record<string, TaxonomySuggestion> = {};
   for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
     result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
@@ -519,20 +536,28 @@ async function _fetchOccupationHierarchyData(): Promise<{
   cacheLife("days");
 
   // Fetch occupations
-  const occRows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    parent_id: number | null;
-    domain_id: number | null;
-  }>(sql`SELECT id, slug, parent_id, domain_id FROM occupation`);
+  const occRows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        parent_id: number | null;
+        domain_id: number | null;
+      }>(sql`SELECT id, slug, parent_id, domain_id FROM occupation`),
+    { label: "occupationHierarchy.occupations" },
+  );
 
-  const occNameRows = await db.execute<{
-    [key: string]: unknown;
-    occupation_id: number;
-    locale: string;
-    name: string;
-  }>(sql`SELECT occupation_id, locale, name FROM occupation_name WHERE is_display = true`);
+  const occNameRows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        occupation_id: number;
+        locale: string;
+        name: string;
+      }>(sql`SELECT occupation_id, locale, name FROM occupation_name WHERE is_display = true`),
+    { label: "occupationHierarchy.names" },
+  );
 
   const occNameMap = new Map<number, Record<string, string>>();
   for (const nr of occNameRows as unknown as { occupation_id: number; locale: string; name: string }[]) {
@@ -553,18 +578,26 @@ async function _fetchOccupationHierarchyData(): Promise<{
   }
 
   // Fetch domains
-  const domainRows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-  }>(sql`SELECT id, slug FROM occupation_domain`);
+  const domainRows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+      }>(sql`SELECT id, slug FROM occupation_domain`),
+    { label: "occupationHierarchy.domains" },
+  );
 
-  const domainNameRows = await db.execute<{
-    [key: string]: unknown;
-    domain_id: number;
-    locale: string;
-    name: string;
-  }>(sql`SELECT domain_id, locale, name FROM occupation_domain_name WHERE is_display = true`);
+  const domainNameRows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        domain_id: number;
+        locale: string;
+        name: string;
+      }>(sql`SELECT domain_id, locale, name FROM occupation_domain_name WHERE is_display = true`),
+    { label: "occupationHierarchy.domainNames" },
+  );
 
   const domainNameMap = new Map<number, Record<string, string>>();
   for (const nr of domainNameRows as unknown as { domain_id: number; locale: string; name: string }[]) {
@@ -807,18 +840,26 @@ async function _fetchSeniorityHierarchyData(): Promise<Record<string, SeniorityM
   "use cache";
   cacheLife("days");
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-  }>(sql`SELECT id, slug FROM seniority`);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+      }>(sql`SELECT id, slug FROM seniority`),
+    { label: "seniorityHierarchy.seniorities" },
+  );
 
-  const nameRows = await db.execute<{
-    [key: string]: unknown;
-    seniority_id: number;
-    locale: string;
-    name: string;
-  }>(sql`SELECT seniority_id, locale, name FROM seniority_name WHERE is_display = true`);
+  const nameRows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        seniority_id: number;
+        locale: string;
+        name: string;
+      }>(sql`SELECT seniority_id, locale, name FROM seniority_name WHERE is_display = true`),
+    { label: "seniorityHierarchy.names" },
+  );
 
   const nameMap = new Map<number, Record<string, string>>();
   for (const nr of nameRows as unknown as { seniority_id: number; locale: string; name: string }[]) {
@@ -937,13 +978,17 @@ async function _fetchTechnologyHierarchyData(): Promise<Record<string, Technolog
   // matching the typeahead slot's invalidation.
   cacheTag(typeaheadTechnologiesCacheTag());
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    name: string | null;
-    category: string | null;
-  }>(sql`SELECT id, slug, name, category FROM technology`);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        name: string | null;
+        category: string | null;
+      }>(sql`SELECT id, slug, name, category FROM technology`),
+    { label: "technologyHierarchy" },
+  );
 
   const result: Record<string, TechnologyMeta> = {};
   for (const r of rows as unknown as { id: number; slug: string; name: string | null; category: string | null }[]) {
