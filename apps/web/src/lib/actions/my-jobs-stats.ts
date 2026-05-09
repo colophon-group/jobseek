@@ -2,6 +2,7 @@
 
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import { withDbRetry } from "@/lib/db-retry";
 import { getSessionUserId } from "@/lib/sessionCache";
 
 export interface FunnelData {
@@ -60,36 +61,44 @@ export async function getStats(params?: {
 
   // Run funnel + activity queries in parallel (independent aggregations)
   const [rows, activityRows] = await Promise.all([
-    db.execute<{
-      [key: string]: unknown;
-      status: string;
-      interview_count: number;
-      max_round: number;
-    }>(sql`
-      SELECT
-        sj.status,
-        coalesce(ic.cnt, 0)::int AS interview_count,
-        coalesce(ic.max_round, 0)::int AS max_round
-      FROM saved_job sj
-      LEFT JOIN (
-        SELECT saved_job_id, count(*) AS cnt, max(round) AS max_round
-        FROM application_interview
-        GROUP BY saved_job_id
-      ) ic ON ic.saved_job_id = sj.id
-      WHERE sj.user_id = ${userId} ${dateFilter}
-    `),
-    db.execute<{
-      [key: string]: unknown;
-      day: string;
-      cnt: number;
-    }>(sql`
-      SELECT to_char(saved_at, 'YYYY-MM-DD') AS day, count(*)::int AS cnt
-      FROM saved_job
-      WHERE user_id = ${userId}
-        AND saved_at >= now() - interval '52 weeks'
-      GROUP BY day
-      ORDER BY day
-    `),
+    withDbRetry(
+      () =>
+        db.execute<{
+          [key: string]: unknown;
+          status: string;
+          interview_count: number;
+          max_round: number;
+        }>(sql`
+          SELECT
+            sj.status,
+            coalesce(ic.cnt, 0)::int AS interview_count,
+            coalesce(ic.max_round, 0)::int AS max_round
+          FROM saved_job sj
+          LEFT JOIN (
+            SELECT saved_job_id, count(*) AS cnt, max(round) AS max_round
+            FROM application_interview
+            GROUP BY saved_job_id
+          ) ic ON ic.saved_job_id = sj.id
+          WHERE sj.user_id = ${userId} ${dateFilter}
+        `),
+      { label: "myJobsStats.funnel" },
+    ),
+    withDbRetry(
+      () =>
+        db.execute<{
+          [key: string]: unknown;
+          day: string;
+          cnt: number;
+        }>(sql`
+          SELECT to_char(saved_at, 'YYYY-MM-DD') AS day, count(*)::int AS cnt
+          FROM saved_job
+          WHERE user_id = ${userId}
+            AND saved_at >= now() - interval '52 weeks'
+          GROUP BY day
+          ORDER BY day
+        `),
+      { label: "myJobsStats.activity" },
+    ),
   ]);
 
   type Row = { status: string; interview_count: number; max_round: number };

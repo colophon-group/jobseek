@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
+import { withDbRetry } from "@/lib/db-retry";
 import { typeaheadLocationsCacheTag } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
@@ -158,23 +159,27 @@ export async function expandLocationIds(locationId: number): Promise<number[]> {
   cacheLife("days");
   cacheTag(typeaheadLocationsCacheTag());
 
-  const rows = await db.execute<{ [key: string]: unknown; id: number }>(sql`
-    WITH RECURSIVE seeds AS (
-      -- The location itself
-      SELECT id FROM location WHERE id = ${locationId}
-      UNION
-      -- If it's a macro region, include its member countries
-      SELECT lm.country_id AS id
-      FROM location_macro_member lm
-      WHERE lm.macro_id = ${locationId}
-    ),
-    descendants AS (
-      SELECT id FROM seeds
-      UNION ALL
-      SELECT l.id FROM location l JOIN descendants d ON l.parent_id = d.id
-    )
-    SELECT id FROM descendants
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; id: number }>(sql`
+        WITH RECURSIVE seeds AS (
+          -- The location itself
+          SELECT id FROM location WHERE id = ${locationId}
+          UNION
+          -- If it's a macro region, include its member countries
+          SELECT lm.country_id AS id
+          FROM location_macro_member lm
+          WHERE lm.macro_id = ${locationId}
+        ),
+        descendants AS (
+          SELECT id FROM seeds
+          UNION ALL
+          SELECT l.id FROM location l JOIN descendants d ON l.parent_id = d.id
+        )
+        SELECT id FROM descendants
+      `),
+    { label: `expandLocationIds[${locationId}]` },
+  );
   return (rows as unknown as { id: number }[]).map((r) => r.id);
 }
 
@@ -215,30 +220,34 @@ async function _resolveLocationSlugsCached(
   cacheTag(typeaheadLocationsCacheTag());
 
   const pgArray = `{${sortedSlugs.join(",")}}`;
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    type: string;
-    name: string;
-    parent_name: string | null;
-  }>(sql`
-    SELECT l.id, l.slug, l.type::text AS type,
-      ln.name,
-      pln.name AS parent_name
-    FROM location l
-    JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = l.id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) ln ON true
-    LEFT JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = l.parent_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) pln ON true
-    WHERE l.slug = ANY(${pgArray}::text[])
-  `);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        type: string;
+        name: string;
+        parent_name: string | null;
+      }>(sql`
+        SELECT l.id, l.slug, l.type::text AS type,
+          ln.name,
+          pln.name AS parent_name
+        FROM location l
+        JOIN LATERAL (
+          SELECT name FROM location_name
+          WHERE location_id = l.id AND locale IN (${locale}, 'en') AND is_display = true
+          ORDER BY (locale = ${locale})::int DESC LIMIT 1
+        ) ln ON true
+        LEFT JOIN LATERAL (
+          SELECT name FROM location_name
+          WHERE location_id = l.parent_id AND locale IN (${locale}, 'en') AND is_display = true
+          ORDER BY (locale = ${locale})::int DESC LIMIT 1
+        ) pln ON true
+        WHERE l.slug = ANY(${pgArray}::text[])
+      `),
+    { label: "resolveLocationSlugs" },
+  );
   const result: Record<string, ResolvedLocation> = {};
   for (const r of rows as unknown as { id: number; slug: string; type: string; name: string; parent_name: string | null }[]) {
     result[r.slug] = {
@@ -366,20 +375,28 @@ async function _fetchLocationHierarchyData(): Promise<Record<string, LocationMet
   "use cache";
   cacheLife("days");
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    type: string;
-    parent_id: number | null;
-  }>(sql`SELECT id, slug, type::text AS type, parent_id FROM location`);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        type: string;
+        parent_id: number | null;
+      }>(sql`SELECT id, slug, type::text AS type, parent_id FROM location`),
+    { label: "locationHierarchy.locations" },
+  );
 
-  const nameRows = await db.execute<{
-    [key: string]: unknown;
-    location_id: number;
-    locale: string;
-    name: string;
-  }>(sql`SELECT location_id, locale, name FROM location_name WHERE is_display = true`);
+  const nameRows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        location_id: number;
+        locale: string;
+        name: string;
+      }>(sql`SELECT location_id, locale, name FROM location_name WHERE is_display = true`),
+    { label: "locationHierarchy.names" },
+  );
 
   const nameMap = new Map<number, Record<string, string>>();
   for (const nr of nameRows as unknown as { location_id: number; locale: string; name: string }[]) {
