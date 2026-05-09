@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import { typeaheadLocationsCacheTag } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
-import { buildFilterString } from "@/lib/search/typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 
 export interface LocationSuggestion {
@@ -353,7 +353,7 @@ async function _fetchGlobalLocationsGrouped(
     const result = await client.collections("job_posting").documents().search({
       q,
       query_by: "title",
-      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
+      filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
       facet_by: "location_ids",
       max_facet_values: 500,
       facet_strategy: "exhaustive",

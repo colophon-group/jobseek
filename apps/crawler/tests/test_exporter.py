@@ -819,6 +819,8 @@ def _make_posting_record(
     *,
     location_ids: list[int] | None = None,
     occupation_id: int | None = None,
+    titles: list[str] | None = None,
+    description_r2_hash: int | None = 12345,
 ) -> MagicMock:
     """Simulate an asyncpg.Record for a job_posting row."""
     company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -827,7 +829,7 @@ def _make_posting_record(
     data = {
         "id": posting_id,
         "company_id": company_id,
-        "titles": ["Test Job"],
+        "titles": ["Test Job"] if titles is None else titles,
         "is_active": True,
         "location_ids": location_ids,
         "location_types": ["onsite"] * len(location_ids or []),
@@ -841,6 +843,7 @@ def _make_posting_record(
         "last_seen_at": now,
         "salary_eur": None,
         "source_url": "https://example.com/job",
+        "description_r2_hash": description_r2_hash,
     }
     rec = MagicMock()
     rec.keys.return_value = list(data.keys())
@@ -923,6 +926,55 @@ class TestBuildTypesenseDocsAncestors:
         # location_names and location_geo_types are only for the leaf
         assert len(docs[0]["location_names"]) == 1
         assert len(docs[0]["location_geo_types"]) == 1
+
+
+class TestBuildTypesenseDocsHasContent:
+    """Tests for the `has_content` flag emitted on each Typesense doc.
+
+    Drives the issue #2917 web filter — postings without a usable title
+    or with no description blob in R2 are excluded from search surfaces.
+    """
+
+    def test_full_content_is_true(self):
+        """Posting with title + description hash → has_content=True."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(
+            location_ids=[10], titles=["Senior Engineer"], description_r2_hash=999
+        )
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["has_content"] is True
+
+    def test_empty_titles_array_is_false(self):
+        """No titles → has_content=False (the dominant '_none' locale case)."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10], titles=[], description_r2_hash=None)
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["has_content"] is False
+
+    def test_blank_title_is_false(self):
+        """Whitespace-only title is treated as empty → has_content=False."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10], titles=["   "], description_r2_hash=999)
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["has_content"] is False
+
+    def test_missing_description_hash_is_false(self):
+        """Title present but no R2 description → has_content=False."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(
+            location_ids=[10], titles=["Senior Engineer"], description_r2_hash=None
+        )
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["has_content"] is False
+
+    def test_zero_hash_still_truthy(self):
+        """description_r2_hash=0 is a valid hash (not NULL) → has_content=True."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(
+            location_ids=[10], titles=["Senior Engineer"], description_r2_hash=0
+        )
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["has_content"] is True
 
 
 class TestLoadLocationNames:

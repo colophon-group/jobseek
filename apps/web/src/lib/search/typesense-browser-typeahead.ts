@@ -1,5 +1,5 @@
 import { getTypesenseBrowserConfig, type TypesenseBrowserConfig } from "./typesense-browser-key";
-import { buildFilterString } from "./typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 import type { TypeaheadBoostFilters } from "./typeahead-boost";
 import type { LocationSuggestion } from "@/lib/actions/locations";
 import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
@@ -90,7 +90,7 @@ async function boost<T>(
   if (!filterStr && !hasKeywords) return candidates;
 
   const ids = candidates.map(idOf);
-  const filterParts = ["is_active:true", `${facetField}:[${ids.join(",")}]`];
+  const filterParts = [POSTING_BASE_FILTER, `${facetField}:[${ids.join(",")}]`];
   if (filterStr) filterParts.push(filterStr);
   const q = hasKeywords ? filters.keywords!.join(" ") : "*";
 

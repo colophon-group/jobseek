@@ -4,7 +4,7 @@ import type {
   SearchResponseFacetCountSchema,
 } from "typesense/lib/Typesense/Documents";
 import { getSearchClient } from "./typesense-client";
-import { buildFilterString } from "./typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 import type {
   PostingLocation,
   SearchFilters,
@@ -218,7 +218,7 @@ export class TypesenseSearchProvider implements SearchProvider {
     try {
       const { keywords, offset, limit, locationIds } = params;
       const filterStr = buildFilterString(params);
-      const activeFilter = `is_active:true${filterStr ? " && " + filterStr : ""}`;
+      const activeFilter = `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`;
       const client = getSearchClient();
 
       // Main grouped search with facet for totalCompanies
@@ -295,7 +295,7 @@ export class TypesenseSearchProvider implements SearchProvider {
     locationIds?: number[],
   ): Promise<SearchResponse> {
     const client = getSearchClient();
-    const activeFilter = `is_active:true && ${filterStr}`;
+    const activeFilter = `${POSTING_BASE_FILTER} && ${filterStr}`;
 
     // Active count facet to rank companies
     const activeResult: TsSearchResponse<JobPostingDoc> = await client
@@ -417,7 +417,7 @@ export class TypesenseSearchProvider implements SearchProvider {
       .documents()
       .search({
         q: "*",
-        filter_by: `company_id:[${companyIds.join(",")}] && is_active:true`,
+        filter_by: `company_id:[${companyIds.join(",")}] && ${POSTING_BASE_FILTER}`,
         group_by: "company_id",
         group_limit: 10,
         sort_by: "first_seen_at:desc",
@@ -467,7 +467,7 @@ export class TypesenseSearchProvider implements SearchProvider {
     try {
       const { companyId, keywords, offset, limit, locationIds } = params;
       const filterStr = buildFilterString(params);
-      const activeFilter = `company_id:=${companyId} && is_active:true${filterStr ? " && " + filterStr : ""}`;
+      const activeFilter = `company_id:=${companyId} && ${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`;
       const q = keywords.length ? keywords.join(" ") : "*";
       const client = getSearchClient();
 
@@ -521,7 +521,7 @@ export class TypesenseSearchProvider implements SearchProvider {
           .search({
             q,
             query_by: "title",
-            filter_by: `is_active:true && ${baseFilter}`,
+            filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
             sort_by: keywords.length
               ? "_text_match:desc,first_seen_at:desc"
               : "first_seen_at:desc",
@@ -534,7 +534,7 @@ export class TypesenseSearchProvider implements SearchProvider {
           .search({
             q,
             query_by: "title",
-            filter_by: `is_active:true && ${baseFilter}`,
+            filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
             per_page: 0,
           }),
         client
@@ -571,7 +571,7 @@ export class TypesenseSearchProvider implements SearchProvider {
       const q = hasKeywords ? f.keywords!.join(" ") : "*";
       const client = getSearchClient();
 
-      const filterBy = `is_active:true && salary_eur:>0${filterStr ? " && " + filterStr : ""}`;
+      const filterBy = `${POSTING_BASE_FILTER} && salary_eur:>0${filterStr ? " && " + filterStr : ""}`;
 
       const result: TsSearchResponse<JobPostingDoc> = await client
         .collections<JobPostingDoc>("job_posting")
@@ -613,7 +613,7 @@ export class TypesenseSearchProvider implements SearchProvider {
       const q = hasKeywords ? f.keywords!.join(" ") : "*";
       const client = getSearchClient();
 
-      const filterBy = `is_active:true && experience_min:>=0${filterStr ? " && " + filterStr : ""}`;
+      const filterBy = `${POSTING_BASE_FILTER} && experience_min:>=0${filterStr ? " && " + filterStr : ""}`;
 
       const result: TsSearchResponse<JobPostingDoc> = await client
         .collections<JobPostingDoc>("job_posting")

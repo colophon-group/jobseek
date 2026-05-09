@@ -35,6 +35,14 @@ COLLECTIONS: list[dict] = [
             {"name": "company_icon", "type": "string", "index": False, "optional": True},
             {"name": "title", "type": "string"},
             {"name": "is_active", "type": "bool", "facet": True},
+            # `has_content` is True iff the posting has both a non-empty title
+            # AND a description blob in R2 (description_r2_hash IS NOT NULL).
+            # Web search surfaces filter on `has_content:!=false` so postings
+            # without title or description are hidden (issue #2917). Optional
+            # so existing docs stay visible until backfill replays the field;
+            # `!=false` matches `true` and absent values, only excluding docs
+            # the exporter has explicitly stamped as `false`.
+            {"name": "has_content", "type": "bool", "facet": True, "optional": True},
             {"name": "location_ids", "type": "int32[]", "facet": True},
             {"name": "location_names", "type": "string[]", "facet": True},
             {"name": "location_types", "type": "string[]", "facet": True},

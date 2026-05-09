@@ -287,6 +287,13 @@ const JOB_POSTING_SCHEMA: CollectionCreateSchema = {
     { name: "company_icon", type: "string", index: false, optional: true },
     { name: "title", type: "string" },
     { name: "is_active", type: "bool", facet: true },
+    // `has_content` mirrors the production schema (issue #2917). Seed
+    // docs below do NOT set the field; the production filter
+    // `has_content:!=false` then matches them by virtue of `!=false`
+    // covering both `true` and absent values. This keeps the test data
+    // shape representative of the post-deploy-pre-backfill state where
+    // existing docs lack the field but stay visible until backfill.
+    { name: "has_content", type: "bool", facet: true, optional: true },
     { name: "location_ids", type: "int32[]", facet: true },
     { name: "location_names", type: "string[]", facet: true },
     { name: "location_types", type: "string[]", facet: true },

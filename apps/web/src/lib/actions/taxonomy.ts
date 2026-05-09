@@ -10,7 +10,7 @@ import {
   typeaheadTechnologiesCacheTag,
 } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
-import { buildFilterString } from "@/lib/search/typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 
 export interface TaxonomySuggestion {
@@ -614,7 +614,7 @@ async function _fetchAllOccupationsGrouped(
     const result = await client.collections("job_posting").documents().search({
       q,
       query_by: "title",
-      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
+      filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
       facet_by: "occupation_id",
       max_facet_values: 500,
       facet_strategy: "exhaustive",
@@ -857,7 +857,7 @@ async function _fetchAllSeniorities(
     const result = await client.collections("job_posting").documents().search({
       q,
       query_by: "title",
-      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
+      filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
       facet_by: "seniority_id",
       max_facet_values: 50,
       facet_strategy: "exhaustive",
@@ -975,7 +975,7 @@ async function _fetchAllTechnologiesGrouped(
     const result = await client.collections("job_posting").documents().search({
       q,
       query_by: "title",
-      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
+      filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
       facet_by: "technology_ids",
       max_facet_values: 500,
       facet_strategy: "exhaustive",
