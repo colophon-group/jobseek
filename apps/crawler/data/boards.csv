@@ -2162,7 +2162,7 @@ inditex-tech,inditex-tech-careers-tech,https://zara.recruitee.com/,recruitee,"{"
 inductive-bio,inductive-bio-ashby,https://jobs.ashbyhq.com/inductive-bio,ashby,"{""token"": ""inductive-bio""}",skip,
 industrial-electric-manufacturing,industrial-electric-manufacturing-greenhouse,https://job-boards.greenhouse.io/industrialelectricmanufacturing,greenhouse,"{""token"": ""industrialelectricmanufacturing""}",skip,
 industrious-labs,industrious-labs-greenhouse,https://job-boards.greenhouse.io/industriouslabs,greenhouse,"{""token"": ""industriouslabs""}",skip,
-infineon,infineon-careers,https://jobs.infineon.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
+infineon,infineon-careers,https://jobs.infineon.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
 infinite-machine,infinite-machine-careers,https://api.ashbyhq.com/posting-api/job-board/infinite-machine,ashby,"{""token"": ""infinite-machine""}",skip,
 infinitus-systems,infinitus-systems-careers,https://api.ashbyhq.com/posting-api/job-board/infinitus,ashby,"{""token"": ""infinitus""}",skip,
 infinity-constellation,infinity-constellation-ashby,https://jobs.ashbyhq.com/infinity-constellation,ashby,"{""token"": ""infinity-constellation""}",skip,

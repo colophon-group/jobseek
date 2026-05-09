@@ -611,3 +611,49 @@ class TestMigratedBoardsHaveProxy:
             'and rely on the proxy layer to get data. Re-add "proxy": true to both '
             "monitor_config and scraper_config:\n  - " + "\n  - ".join(missing)
         )
+
+
+class TestInfineonScraperHasEnrich:
+    """Regression guard for #2952: Infineon postings stuck with empty
+    descriptions because the eightfold (rich) monitor returned full job
+    metadata but the detail scraper had no ``enrich`` declaration.
+
+    Without ``scraper_config.enrich``, ``_board_has_enrich`` returns None,
+    which sets ``is_rich_no_scrape = True`` in ``processing.board`` —
+    rich-monitor postings are then inserted with ``next_scrape_at = NULL``
+    and never enter the scrape pipeline. Postgres confirmed
+    1152/1153 active Infineon postings sat with NULL next_scrape_at +
+    NULL last_scraped_at + 0 scrape_failures (scheduler never queued them).
+
+    The fix mirrors PR #2954 (tesla) and the 15 other eightfold boards
+    documented in apps/crawler/AGENTS.md: declare
+    ``scraper_config: {"enrich": ["description"]}`` so PCSX-rich postings
+    get a one-shot detail scrape that fills ``description``.
+    """
+
+    def test_infineon_declares_enrich_description(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "infineon-careers"),
+            None,
+        )
+        assert row is not None, "infineon-careers row missing from boards.csv"
+
+        # Eightfold monitor + eightfold scraper (matches the canonical
+        # pattern used by kering, citigroup, qualcomm, microsoft, etc.)
+        assert row["monitor_type"] == "eightfold"
+        assert row["scraper_type"] == "eightfold"
+
+        scraper_config = json.loads(row.get("scraper_config") or "{}")
+        assert "description" in (scraper_config.get("enrich") or []), (
+            "infineon-careers must declare scraper_config.enrich = "
+            '["description"] — without it, _board_has_enrich returns None, '
+            "is_rich_no_scrape becomes True, and 1152+ postings get "
+            "next_scrape_at = NULL and never enter the scrape pipeline. "
+            "See PR #2954 (tesla) for the same scheduler failure mode."
+        )
