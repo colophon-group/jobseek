@@ -1299,44 +1299,80 @@ async def _populate_locations_if_empty(
     Local DB is the source of truth.  This only runs when the local tables
     are empty (fresh deploy).  After that, GeoNames data lives in local
     Postgres and is never overwritten from Supabase.
+
+    Also populates ``location_macro_member`` (macro region -> member country
+    mappings) idempotently. Prior to issue #2978 this table was never seeded
+    on the Hetzner local Postgres, so macros never got stamped onto postings
+    via ancestor expansion in the exporter. We seed it whenever it is empty
+    so a fresh deploy / restored DB still gets the EU/EMEA/DACH/... links.
     """
     local_count = await local_conn.fetchval("SELECT count(*) FROM location")
     if local_count > 0:
         log.info("sync.locations.already_populated", count=local_count)
-        return
+    else:
+        loc_rows = await supa_conn.fetch(
+            "SELECT id, parent_id, type, population, languages FROM location"
+        )
+        if not loc_rows:
+            log.warning("sync.locations.supabase_empty")
+            return
 
-    loc_rows = await supa_conn.fetch(
-        "SELECT id, parent_id, type, population, languages FROM location"
-    )
-    if not loc_rows:
-        log.warning("sync.locations.supabase_empty")
-        return
-
-    name_rows = await supa_conn.fetch(
-        "SELECT location_id, locale, name, is_display FROM location_name"
-    )
-
-    await local_conn.copy_records_to_table(
-        "location",
-        records=[
-            (r["id"], r["parent_id"], r["type"], r["population"], r["languages"]) for r in loc_rows
-        ],
-        columns=["id", "parent_id", "type", "population", "languages"],
-    )
-
-    if name_rows:
-        await local_conn.copy_records_to_table(
-            "location_name",
-            records=[
-                (r["location_id"], r["locale"], r["name"], r["is_display"]) for r in name_rows
-            ],
-            columns=["location_id", "locale", "name", "is_display"],
+        name_rows = await supa_conn.fetch(
+            "SELECT location_id, locale, name, is_display FROM location_name"
         )
 
+        await local_conn.copy_records_to_table(
+            "location",
+            records=[
+                (r["id"], r["parent_id"], r["type"], r["population"], r["languages"])
+                for r in loc_rows
+            ],
+            columns=["id", "parent_id", "type", "population", "languages"],
+        )
+
+        if name_rows:
+            await local_conn.copy_records_to_table(
+                "location_name",
+                records=[
+                    (r["location_id"], r["locale"], r["name"], r["is_display"]) for r in name_rows
+                ],
+                columns=["location_id", "locale", "name", "is_display"],
+            )
+
+        log.info(
+            "sync.locations.populated_from_supabase",
+            locations=len(loc_rows),
+            names=len(name_rows),
+        )
+
+    # Macro-member seed (idempotent, runs every sync). Tracked separately
+    # from the location/location_name guard above because that guard
+    # short-circuits when the location table was already populated (which
+    # was the live state on Hetzner) — and the prior code missed seeding
+    # this table entirely. See issue #2978.
+    macro_count = await local_conn.fetchval("SELECT count(*) FROM location_macro_member")
+    macro_rows = await supa_conn.fetch("SELECT macro_id, country_id FROM location_macro_member")
+    if not macro_rows:
+        log.warning("sync.location_macro_member.supabase_empty")
+        return
+    if macro_count == len(macro_rows):
+        log.info("sync.location_macro_member.up_to_date", count=macro_count)
+        return
+    # Use INSERT ... ON CONFLICT DO NOTHING for idempotency. Falls back to
+    # row-by-row when the table has rows already (rare drift). The set is
+    # small (<1k rows), so this is cheap.
+    await local_conn.executemany(
+        "INSERT INTO location_macro_member (macro_id, country_id) "
+        "VALUES ($1, $2) "
+        "ON CONFLICT (macro_id, country_id) DO NOTHING",
+        [(r["macro_id"], r["country_id"]) for r in macro_rows],
+    )
+    new_count = await local_conn.fetchval("SELECT count(*) FROM location_macro_member")
     log.info(
-        "sync.locations.populated_from_supabase",
-        locations=len(loc_rows),
-        names=len(name_rows),
+        "sync.location_macro_member.populated_from_supabase",
+        before=macro_count,
+        after=new_count,
+        supabase=len(macro_rows),
     )
 
 

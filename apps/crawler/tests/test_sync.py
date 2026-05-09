@@ -16,6 +16,7 @@ from src.sync import (
     _is_trivial_watchlist,
     _load_boards,
     _load_companies,
+    _populate_locations_if_empty,
     refresh_typesense_counts,
     run_sync,
     sync_boards,
@@ -1162,3 +1163,88 @@ class TestRefreshTypesenseCounts:
         # Parent occupation 200 carries the rolled-up count of 90 in every locale
         en_parent = next(d for d in occ_docs if d["id"] == "200-en")
         assert en_parent["active_posting_count"] == 90
+
+
+class TestPopulateLocationsIfEmpty:
+    """Issue #2978: ``location_macro_member`` was never seeded into the
+    Hetzner local Postgres because the original
+    ``_populate_locations_if_empty`` only handled ``location`` and
+    ``location_name``. We now seed ``location_macro_member`` from
+    Supabase too — idempotently, every sync — so a fresh deploy or
+    restored DB still gets the macro->country links.
+    """
+
+    async def test_seeds_macro_members_when_table_is_empty(self):
+        """Empty location_macro_member -> seed from Supabase even when
+        ``location`` is already populated (i.e. the production failure
+        mode on Hetzner).
+        """
+        supa_conn = AsyncMock()
+        local_conn = AsyncMock()
+
+        # Local already has locations (so the location/location_name
+        # branch short-circuits) but zero macro members.
+        local_count_returns = iter(
+            [
+                5000,  # SELECT count(*) FROM location -> already populated
+                0,  # SELECT count(*) FROM location_macro_member -> empty
+                573,  # SELECT count(*) FROM location_macro_member -> after insert
+            ]
+        )
+        local_conn.fetchval = AsyncMock(side_effect=lambda *_a, **_kw: next(local_count_returns))
+
+        # Supabase returns the canonical macro members
+        macro_rows = [
+            {"macro_id": 4, "country_id": 2782113},  # EU -> Austria
+            {"macro_id": 4, "country_id": 2921044},  # EU -> Germany
+            {"macro_id": 5, "country_id": 2921044},  # DACH -> Germany
+        ]
+        supa_conn.fetch = AsyncMock(return_value=macro_rows)
+        local_conn.executemany = AsyncMock()
+
+        await _populate_locations_if_empty(supa_conn, local_conn)
+
+        # We executed the bulk INSERT exactly once with all 3 rows.
+        local_conn.executemany.assert_awaited_once()
+        sql, rows = local_conn.executemany.await_args[0]
+        assert "INSERT INTO location_macro_member" in sql
+        assert "ON CONFLICT (macro_id, country_id) DO NOTHING" in sql
+        assert rows == [(4, 2782113), (4, 2921044), (5, 2921044)]
+
+    async def test_skips_when_already_in_sync(self):
+        """Idempotency: if local already has every macro_member row,
+        skip the executemany call (cheap fast-path on every sync)."""
+        supa_conn = AsyncMock()
+        local_conn = AsyncMock()
+
+        local_count_returns = iter(
+            [
+                5000,  # location: populated
+                573,  # macro_members: same as supabase
+            ]
+        )
+        local_conn.fetchval = AsyncMock(side_effect=lambda *_a, **_kw: next(local_count_returns))
+        rows_573 = [{"macro_id": 1, "country_id": i} for i in range(573)]
+        supa_conn.fetch = AsyncMock(return_value=rows_573)
+        local_conn.executemany = AsyncMock()
+
+        await _populate_locations_if_empty(supa_conn, local_conn)
+
+        # No insert needed — already in sync.
+        local_conn.executemany.assert_not_called()
+
+    async def test_warns_when_supabase_macro_table_empty(self):
+        """If Supabase has nothing to seed from, log a warning and
+        return without crashing — local stays empty and the exporter's
+        own loud warning will surface this on the next refresh."""
+        supa_conn = AsyncMock()
+        local_conn = AsyncMock()
+
+        local_count_returns = iter([5000, 0])
+        local_conn.fetchval = AsyncMock(side_effect=lambda *_a, **_kw: next(local_count_returns))
+        supa_conn.fetch = AsyncMock(return_value=[])
+        local_conn.executemany = AsyncMock()
+
+        await _populate_locations_if_empty(supa_conn, local_conn)
+
+        local_conn.executemany.assert_not_called()
