@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
 
 from src.core.scrapers import JobContent
@@ -14,6 +16,8 @@ from src.core.scrapers.jsonld import (
     probe,
     scrape,
 )
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 class TestJsonLdExtractor:
@@ -552,3 +556,108 @@ class TestFetchRetry403:
         assert calls[0] == ""
         assert "challenge=solved" in calls[1]
         assert result.title == "T"
+
+
+class TestMetaCareersFixture:
+    """Regression test for #2963 — metacareers.com requires browser rendering.
+
+    Static fetches of ``www.metacareers.com/profile/job_details/...`` from
+    the Hetzner crawler return HTTP 400 from a Facebook WAF; only Playwright
+    renders that the WAF accepts as a real browser produce JSON-LD. This
+    test pins the parser invariant via a captured fixture (no network).
+    """
+
+    def test_fixture_exists(self):
+        path = FIXTURES / "jsonld_meta_software_engineer.html"
+        assert path.exists(), f"missing fixture: {path}"
+
+    def test_parses_meta_jobposting_jsonld(self):
+        from src.core.scrapers.jsonld import parse_html
+
+        html = (FIXTURES / "jsonld_meta_software_engineer.html").read_text()
+        content = parse_html(html)
+        assert content.title == "Software Engineer, Infrastructure"
+        assert content.description and len(content.description) > 500
+        # Multi-location: schema.org allows jobLocation as a list — we expect
+        # all 9 to be picked up and formatted as "City, State".
+        assert content.locations is not None and len(content.locations) >= 5
+        assert "Sunnyvale, CA" in content.locations
+        assert "Remote, US" in content.locations
+        assert content.employment_type == "Full-time"
+
+    async def test_render_true_uses_playwright_for_meta(self):
+        """With ``render: true`` the meta scraper bypasses the static HTTP path
+        entirely (which returns 400 in production) and runs against the
+        browser-rendered HTML. The fixture stands in for the browser output.
+        """
+        from unittest.mock import AsyncMock, patch
+
+        html = (FIXTURES / "jsonld_meta_software_engineer.html").read_text()
+        with patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render:
+            mock_render.return_value = html
+            # The static path would 500 here — proves we never hit it.
+            transport = httpx.MockTransport(lambda r: httpx.Response(500))
+            async with httpx.AsyncClient(transport=transport) as client:
+                result = await scrape(
+                    "https://www.metacareers.com/profile/job_details/677160418622314",
+                    {"render": True, "wait": "networkidle", "timeout": 45000},
+                    client,
+                    pw="fake_pw",
+                )
+        assert result.title == "Software Engineer, Infrastructure"
+        assert result.description and "Meta is seeking" in result.description
+        # Browser keys are forwarded; non-browser keys (none here) would be filtered.
+        mock_render.assert_called_once()
+        call_kwargs = mock_render.call_args.args[1]
+        assert call_kwargs.get("wait") == "networkidle"
+        assert call_kwargs.get("timeout") == 45000
+
+
+class TestNeuraRoboticsFixture:
+    """Regression test for #2963 — jobs.neura-robotics.com (TalentsConnect ATS).
+
+    The page DOES contain JobPosting JSON-LD in static HTML, but in production
+    the Cloudflare-fronted host rejects the crawler's default UA from Hetzner
+    egress, so descriptions stay empty for 86.8% of postings. Switching to
+    ``render: true`` provides a full browser fingerprint that passes
+    Cloudflare's bot detection. This fixture pins the parser invariant.
+    """
+
+    def test_fixture_exists(self):
+        path = FIXTURES / "jsonld_neura_robotics_manager.html"
+        assert path.exists(), f"missing fixture: {path}"
+
+    def test_parses_neura_jobposting_jsonld(self):
+        from src.core.scrapers.jsonld import parse_html
+
+        html = (FIXTURES / "jsonld_neura_robotics_manager.html").read_text()
+        content = parse_html(html)
+        assert content.title == "Manager Ecosystem Integration & Certification (Human)"
+        assert content.description and len(content.description) > 1000
+        # NeuraVerse appears in the role description.
+        assert "NeuraVerse" in (content.description or "")
+        assert content.locations == ["Metzingen, DE"]
+
+    async def test_render_true_uses_playwright_for_neura(self):
+        """``render: true`` on jobs.neura-robotics.com routes through Playwright."""
+        from unittest.mock import AsyncMock, patch
+
+        html = (FIXTURES / "jsonld_neura_robotics_manager.html").read_text()
+        with patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render:
+            mock_render.return_value = html
+            transport = httpx.MockTransport(lambda r: httpx.Response(500))
+            async with httpx.AsyncClient(transport=transport) as client:
+                result = await scrape(
+                    (
+                        "https://jobs.neura-robotics.com/offer/"
+                        "manager-ecosystem-integration-certi/"
+                        "00df0928-b013-448c-b3dd-6c6fb80eadc2"
+                    ),
+                    {"render": True, "wait": "networkidle", "timeout": 45000},
+                    client,
+                    pw="fake_pw",
+                )
+        assert result.title == "Manager Ecosystem Integration & Certification (Human)"
+        assert result.locations == ["Metzingen, DE"]
+        assert result.description and len(result.description) > 1000
+        mock_render.assert_called_once()

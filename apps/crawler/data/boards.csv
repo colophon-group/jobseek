@@ -2830,7 +2830,7 @@ meriton,meriton-greenhouse,https://job-boards.greenhouse.io/meriton,greenhouse,"
 merqube-inc,merqube-inc-greenhouse,https://job-boards.greenhouse.io/merqube,greenhouse,"{""token"": ""merqube""}",skip,
 mesh,mesh-greenhouse,https://job-boards.greenhouse.io/mesh,greenhouse,"{""token"": ""mesh""}",skip,
 meshy,meshy-ashby,https://jobs.ashbyhq.com/meshy,ashby,"{""token"": ""meshy""}",skip,
-meta,meta-careers,https://www.metacareers.com/jobsearch/sitemap.xml,sitemap,"{""url_filter"": ""/profile/job_details/""}",json-ld,
+meta,meta-careers,https://www.metacareers.com/jobsearch/sitemap.xml,sitemap,"{""url_filter"": ""/profile/job_details/""}",json-ld,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 45000}"
 metabase,metabase-lever,https://jobs.lever.co/metabase,lever,"{""token"": ""metabase""}",skip,
 metabit-technology-llc,metabit-technology-llc-greenhouse,https://job-boards.greenhouse.io/metabittechnologyllc,greenhouse,"{""token"": ""metabittechnologyllc""}",skip,
 metacore,metacore-greenhouse,https://job-boards.greenhouse.io/metacore,greenhouse,"{""token"": ""metacore""}",skip,
@@ -3029,7 +3029,7 @@ netlify,netlify-greenhouse,https://job-boards.greenhouse.io/netlify,greenhouse,"
 netskope,netskope-greenhouse,https://job-boards.greenhouse.io/netskope,greenhouse,"{""token"": ""netskope""}",skip,
 netwealth,netwealth-ashby,https://jobs.ashbyhq.com/netwealth,ashby,"{""token"": ""netwealth""}",skip,
 neuehealth,neuehealth-greenhouse,https://job-boards.greenhouse.io/neuehealth,greenhouse,"{""token"": ""neuehealth""}",skip,
-neura-robotics,neura-robotics-careers,https://jobs.neura-robotics.com/,sitemap,"{""sitemap_url"": ""https://jobs.neura-robotics.com/sitemap.xml"", ""url_filter"": ""/offer/""}",json-ld,
+neura-robotics,neura-robotics-careers,https://jobs.neura-robotics.com/,sitemap,"{""sitemap_url"": ""https://jobs.neura-robotics.com/sitemap.xml"", ""url_filter"": ""/offer/""}",json-ld,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 45000}"
 neuraflash-part-of-accenture,neuraflash-part-of-accenture-greenhouse,https://job-boards.greenhouse.io/neuraflash,greenhouse,"{""token"": ""neuraflash""}",skip,
 neural-concept,neural-concept-careers,https://jobs.ashbyhq.com/neuralconcept,ashby,,skip,
 neural-frames,neural-frames-join,https://join.com/companies/neuralframescom,join,"{""slug"": ""neuralframescom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
