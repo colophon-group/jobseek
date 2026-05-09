@@ -93,6 +93,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "eightfold",
         "embedded",
         "json-ld",
+        "mokahr",
         "nextdata",
         "notion",
         "oracle_hcm",
