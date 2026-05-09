@@ -481,6 +481,21 @@ export interface OccupationItem {
   slug: string;
   name: string;
   count: number;
+  /**
+   * Parent occupation id within the same domain. `null` for top-level
+   * occupations (family parents and standalones). Plumbed through from
+   * the underlying `OccupationMeta.parentId` so the modal can disable
+   * descendant pills when a family parent or domain is selected.
+   * See #2978.
+   */
+  parentId: number | null;
+  /**
+   * Domain id this occupation belongs to. `null` for occupations with no
+   * domain (rare). Used by the modal to disable every descendant when a
+   * domain header is selected as a single filter (#2978 — domain headers
+   * are now ancestor filters, not "select all children" loops).
+   */
+  domainId: number | null;
 }
 
 /** A parent occupation with its children within a domain. */
@@ -742,7 +757,14 @@ async function _fetchAllOccupationsGrouped(
       ungrouped.push({
         domain: { id: r.id, slug: r.slug, name: r.name, count: r.cnt },
         subGroups: [],
-        standalone: [{ id: r.id, slug: r.slug, name: r.name, count: r.cnt }],
+        standalone: [{
+          id: r.id,
+          slug: r.slug,
+          name: r.name,
+          count: r.cnt,
+          parentId: r.parentId,
+          domainId: r.domainId,
+        }],
       });
     }
 
@@ -764,7 +786,14 @@ async function _fetchAllOccupationsGrouped(
       for (const r of domainItems) {
         if (parentIds.has(r.id)) {
           subGroupMap.set(r.id, {
-            parent: { id: r.id, slug: r.slug, name: r.name, count: r.cnt },
+            parent: {
+              id: r.id,
+              slug: r.slug,
+              name: r.name,
+              count: r.cnt,
+              parentId: r.parentId,
+              domainId: r.domainId,
+            },
             children: [],
           });
         }
@@ -774,10 +803,22 @@ async function _fetchAllOccupationsGrouped(
       for (const r of domainItems) {
         if (r.parentId != null && subGroupMap.has(r.parentId)) {
           subGroupMap.get(r.parentId)!.children.push({
-            id: r.id, slug: r.slug, name: r.name, count: r.cnt,
+            id: r.id,
+            slug: r.slug,
+            name: r.name,
+            count: r.cnt,
+            parentId: r.parentId,
+            domainId: r.domainId,
           });
         } else if (!parentIds.has(r.id)) {
-          standalone.push({ id: r.id, slug: r.slug, name: r.name, count: r.cnt });
+          standalone.push({
+            id: r.id,
+            slug: r.slug,
+            name: r.name,
+            count: r.cnt,
+            parentId: r.parentId,
+            domainId: r.domainId,
+          });
         }
       }
 

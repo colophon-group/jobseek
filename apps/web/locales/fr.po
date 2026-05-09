@@ -297,21 +297,21 @@ msgstr "Toutes les données sont chiffrées en transit et au repos."
 msgid "watchlists.companyModal.allIndustries"
 msgstr "Tous les secteurs"
 
-#. All languages option
-#. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:244
-msgid "settings.general.jobLanguages.all"
-msgstr "Toutes les langues"
-
 #. Title for the all-languages modal in settings
 #. js-lingui-explicit-id
 #: src/components/settings/JobLanguageModal.tsx:56
 msgid "settings.jobLanguages.modal.title"
 msgstr "Toutes les langues"
 
+#. All languages option
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:244
+msgid "settings.general.jobLanguages.all"
+msgstr "Toutes les langues"
+
 #. Title for the all-locations modal on company page
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:183
+#: src/components/search/location-modal.tsx:268
 msgid "company.locationModal.title"
 msgstr "Tous les lieux"
 
@@ -404,12 +404,6 @@ msgstr "candidatures durant l'année écoulée"
 msgid "myJobs.group.applied"
 msgstr "Postulé"
 
-#. Application tracker status: applied
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:449
-msgid "search.tracker.applied"
-msgstr "Postulé"
-
 #. Applied status badge label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/status-badge.tsx:20
@@ -420,6 +414,12 @@ msgstr "Postulé"
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:42
 msgid "myJobs.funnel.applied"
+msgstr "Postulé"
+
+#. Application tracker status: applied
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:449
+msgid "search.tracker.applied"
 msgstr "Postulé"
 
 #. Status option in dropdown: applied
@@ -1771,6 +1771,12 @@ msgstr "au cours de la dernière année"
 msgid "blog.mention.watchlist.yearJobsLabel"
 msgstr "au cours de la dernière année"
 
+#. Tooltip on a disabled filter pill explaining the row is implied by an already-selected ancestor (e.g. 'Included in European Union' when EU is selected).
+#. js-lingui-explicit-id
+#: src/components/search/disabled-filter-pill.tsx:86
+msgid "search.filterModal.includedInAncestor"
+msgstr "Inclus dans {ancestorName}"
+
 #. Indexing page eyebrow
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:45
@@ -1837,16 +1843,16 @@ msgstr "Journal d'entretiens"
 msgid "myJobs.group.interviewing"
 msgstr "En entretien"
 
-#. Application tracker status: interviewing
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:450
-msgid "search.tracker.interviewing"
-msgstr "En entretien"
-
 #. Interviewing status badge label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/status-badge.tsx:21
 msgid "myJobs.status.interviewing"
+msgstr "En entretien"
+
+#. Application tracker status: interviewing
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:450
+msgid "search.tracker.interviewing"
 msgstr "En entretien"
 
 #. Status option in dropdown: interviewing
@@ -2365,9 +2371,9 @@ msgstr "Support multilingue"
 #. Warning when Enter is pressed but multiple items match
 #. Warning when Enter is pressed but multiple items match
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:162
-#: src/components/search/location-search-modal.tsx:153
-#: src/components/search/occupation-modal.tsx:110
+#: src/components/search/location-modal.tsx:247
+#: src/components/search/location-search-modal.tsx:237
+#: src/components/search/occupation-modal.tsx:180
 #: src/components/search/technology-modal.tsx:88
 msgid "search.bestGuess.ambiguous"
 msgstr "Plusieurs résultats — sélectionnez-en un ci-dessous"
@@ -2462,16 +2468,16 @@ msgstr "Aucune offre trouvée."
 msgid "settings.jobLanguages.modal.noResults"
 msgstr "Aucune langue ne correspond à votre recherche."
 
-#. No locations match search in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:224
-msgid "company.locationModal.noResults"
-msgstr "Aucun lieu ne correspond à votre recherche."
-
 #. No locations match search in location modal
 #. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:215
+#: src/components/search/location-search-modal.tsx:299
 msgid "search.locationModal.noResults"
+msgstr "Aucun lieu ne correspond à votre recherche."
+
+#. No locations match search in all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:309
+msgid "company.locationModal.noResults"
 msgstr "Aucun lieu ne correspond à votre recherche."
 
 #. No postings found message on company page
@@ -2500,7 +2506,7 @@ msgstr "Aucun résultat trouvé pour « {query} »"
 
 #. No occupations match search in occupation modal
 #. js-lingui-explicit-id
-#: src/components/search/occupation-modal.tsx:213
+#: src/components/search/occupation-modal.tsx:293
 msgid "search.occupationModal.noResults"
 msgstr "Aucun rôle ne correspond à votre recherche."
 
@@ -2550,16 +2556,16 @@ msgstr "Non. Le suivi des candidatures n'a pas de limite — enregistrez autant 
 msgid "faq.a.dataPrivacy"
 msgstr "Non. Nous ne vendons, ne louons ni ne partageons vos données à des fins marketing. Les cookies sont uniquement de session, sans publicité ni tracking. Vous pouvez supprimer votre compte et toutes les données seront effacées sous 30 jours."
 
-#. Application tracker status: not applied
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:448
-msgid "search.tracker.notApplied"
-msgstr "Non postulé"
-
 #. Sankey funnel node: not applied
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:44
 msgid "myJobs.funnel.notApplied"
+msgstr "Non postulé"
+
+#. Application tracker status: not applied
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:448
+msgid "search.tracker.notApplied"
 msgstr "Non postulé"
 
 #. Warning shown when the request was saved in DB but GitHub issue creation failed
@@ -2586,16 +2592,16 @@ msgstr "Métier"
 msgid "myJobs.heatmap.month.oct"
 msgstr "Oct"
 
-#. Application tracker status: offer
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:451
-msgid "search.tracker.offer"
-msgstr "Offre"
-
 #. Offered status badge label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/status-badge.tsx:22
 msgid "myJobs.status.offered"
+msgstr "Offre"
+
+#. Application tracker status: offer
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:451
+msgid "search.tracker.offer"
 msgstr "Offre"
 
 #. Status group heading: offered
@@ -2929,18 +2935,18 @@ msgstr "Offre non trouvée."
 msgid "myJobs.detail.notFound"
 msgstr "Offre introuvable."
 
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:100
+msgid "home.pricing.eyebrow"
+msgstr "Tarifs"
+
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:62
 #: src/components/MobileMenu.tsx:87
 msgid "common.nav.pricing"
-msgstr "Tarifs"
-
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:100
-msgid "home.pricing.eyebrow"
 msgstr "Tarifs"
 
 #. Privacy policy page eyebrow
@@ -3068,28 +3074,22 @@ msgstr "Redistribue tes modifications, à condition d'inclure la mention MIT."
 msgid "location.type.region"
 msgstr "Région"
 
-#. Header for the macro-region cluster (EU, EMEA, DACH) in company-page location modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:234
-msgid "company.locationModal.regionsHeader"
-msgstr "Régions"
-
 #. Header for the macro-region cluster (EU, EMEA, DACH) at the top of the location modal
 #. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:225
+#: src/components/search/location-search-modal.tsx:309
 msgid "search.locationModal.regionsHeader"
+msgstr "Régions"
+
+#. Header for the macro-region cluster (EU, EMEA, DACH) in company-page location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:319
+msgid "company.locationModal.regionsHeader"
 msgstr "Régions"
 
 #. Status group heading: rejected
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/my-jobs/my-jobs-page.tsx:32
 msgid "myJobs.group.rejected"
-msgstr "Refusé"
-
-#. Application tracker status: rejected
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:452
-msgid "search.tracker.rejected"
 msgstr "Refusé"
 
 #. Rejected status badge label
@@ -3102,6 +3102,12 @@ msgstr "Refusé"
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:45
 msgid "myJobs.funnel.rejected"
+msgstr "Refusé"
+
+#. Application tracker status: rejected
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:452
+msgid "search.tracker.rejected"
 msgstr "Refusé"
 
 #. Status option in dropdown: rejected
@@ -3386,17 +3392,17 @@ msgstr "Recherchez des emplois dans des milliers d'entreprises, scrapés directe
 msgid "settings.jobLanguages.modal.searchPlaceholder"
 msgstr "Rechercher des langues…"
 
-#. Placeholder for search input in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:203
-msgid "company.locationModal.searchPlaceholder"
-msgstr "Rechercher des lieux…"
-
 #. Placeholder for search input in global location modal
 #. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:194
+#: src/components/search/location-search-modal.tsx:278
 msgid "search.locationModal.searchPlaceholder"
 msgstr "Rechercher des lieux..."
+
+#. Placeholder for search input in all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:288
+msgid "company.locationModal.searchPlaceholder"
+msgstr "Rechercher des lieux…"
 
 #. Back-to-search link on company page header
 #. js-lingui-explicit-id
@@ -3406,7 +3412,7 @@ msgstr "Résultats de recherche"
 
 #. Placeholder for search input in occupation modal
 #. js-lingui-explicit-id
-#: src/components/search/occupation-modal.tsx:192
+#: src/components/search/occupation-modal.tsx:272
 msgid "search.occupationModal.searchPlaceholder"
 msgstr "Rechercher des rôles..."
 
@@ -3442,13 +3448,13 @@ msgstr "Sélectionner le niveau"
 
 #. Title for the global location selection modal
 #. js-lingui-explicit-id
-#: src/components/search/location-search-modal.tsx:174
+#: src/components/search/location-search-modal.tsx:258
 msgid "search.locationModal.title"
 msgstr "Sélectionner le lieu"
 
 #. Title for the occupation selection modal
 #. js-lingui-explicit-id
-#: src/components/search/occupation-modal.tsx:172
+#: src/components/search/occupation-modal.tsx:252
 msgid "search.occupationModal.title"
 msgstr "Sélectionner le rôle"
 
@@ -3548,16 +3554,16 @@ msgstr "Paramètres"
 msgid "home.features.s3.p3.title"
 msgstr "Partager avec tout le monde"
 
-#. Button to collapse location list
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:355
-msgid "search.detail.showLessLocations"
-msgstr "Afficher moins"
-
 #. Collapse location pill list
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx:351
 msgid "company.page.showLess"
+msgstr "Afficher moins"
+
+#. Button to collapse location list
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:355
+msgid "search.detail.showLessLocations"
 msgstr "Afficher moins"
 
 #. Aria label to show password

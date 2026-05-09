@@ -15,6 +15,8 @@ import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
 import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { useDisabledByAncestor } from "./use-disabled-by-ancestor";
+import { DisabledFilterPill } from "./disabled-filter-pill";
 
 /** Threshold: show region sub-headers when a country has more cities than this. */
 const REGION_THRESHOLD = 8;
@@ -109,13 +111,96 @@ export function LocationModal({
       .filter((g): g is GroupedCompanyLocations => g !== null);
   }, [response, search]);
 
+  // Build hierarchy maps from the loaded response. Same shape as the
+  // global modal — see use-disabled-by-ancestor.ts for the contract.
+  const parentMap = useMemo(() => {
+    const map = new Map<number, number | null>();
+    if (!response) return map;
+    for (const country of response.countries) {
+      if (country.countryId > 0) map.set(country.countryId, null);
+      for (const region of country.regions) {
+        if (region.regionId > 0 && country.countryId > 0) {
+          map.set(region.regionId, country.countryId);
+        }
+        for (const loc of region.locations) {
+          map.set(
+            loc.id,
+            region.regionId > 0 ? region.regionId : country.countryId > 0 ? country.countryId : null,
+          );
+        }
+      }
+    }
+    return map;
+  }, [response]);
+
+  const macroMembersMap = useMemo(() => {
+    const map = new Map<number, number[]>();
+    if (!response) return map;
+    for (const macro of response.macros) {
+      map.set(macro.id, macro.memberCountryIds ?? []);
+    }
+    return map;
+  }, [response]);
+
+  const { isDisabled, disabledByAncestor } = useDisabledByAncestor({
+    selectedIds: activeLocationIds,
+    parents: parentMap,
+    macroMembers: macroMembersMap,
+  });
+
+  const nameById = useMemo(() => {
+    const map = new Map<number, string>();
+    if (!response) return map;
+    for (const macro of response.macros) map.set(macro.id, macro.name);
+    for (const country of response.countries) {
+      if (country.countryId > 0) map.set(country.countryId, country.countryName);
+      for (const region of country.regions) {
+        if (region.regionId > 0) map.set(region.regionId, region.regionName);
+        for (const loc of region.locations) map.set(loc.id, loc.name);
+      }
+    }
+    return map;
+  }, [response]);
+
+  const ancestorNameOf = useCallback((id: number): string => {
+    const ancId = disabledByAncestor(id);
+    if (ancId == null) return "";
+    return nameById.get(ancId) ?? "";
+  }, [disabledByAncestor, nameById]);
+
   const toggleLocation = useCallback((loc: { id: number; slug: string; name: string; type: string }) => {
     if (activeLocationIds.has(loc.id)) {
       onFiltersChange(filters.filter((f) => !(f.kind === "location" && f.id === loc.id)));
-    } else {
-      onFiltersChange([...filters, { kind: "location", id: loc.id, slug: loc.slug, name: loc.name, type: loc.type }]);
+      return;
     }
-  }, [activeLocationIds, filters, onFiltersChange]);
+    // Selecting a parent: remove redundant descendants from the filters
+    // so the chip strip doesn't carry stale selections that would render
+    // as disabled-but-selected.
+    const next: FilterItem[] = [
+      ...filters,
+      { kind: "location", id: loc.id, slug: loc.slug, name: loc.name, type: loc.type },
+    ];
+    // Find descendants of `loc.id` in current selection. A descendant is
+    // anything whose parent chain reaches `loc.id`, OR (when `loc` is a
+    // macro) any country in macroMembers + their descendants.
+    const subsumed = new Set<number>();
+    const macroChildren = macroMembersMap.get(loc.id);
+    if (macroChildren) {
+      for (const cid of macroChildren) subsumed.add(cid);
+    }
+    for (const id of activeLocationIds) {
+      let cur = parentMap.get(id);
+      const seen = new Set<number>([id]);
+      while (cur != null && !seen.has(cur)) {
+        seen.add(cur);
+        if (cur === loc.id) { subsumed.add(id); break; }
+        if (subsumed.has(cur)) { subsumed.add(id); break; }
+        cur = parentMap.get(cur);
+      }
+    }
+    const cleaned = next.filter((f) => f.kind !== "location" || !subsumed.has(f.id));
+    onFiltersChange(cleaned);
+  }, [activeLocationIds, filters, onFiltersChange, parentMap, macroMembersMap]);
 
   /** Total city count across all regions in a country. */
   function countCities(country: GroupedCompanyLocations) {
@@ -238,6 +323,16 @@ export function LocationModal({
                     <div className="flex flex-wrap gap-2">
                       {filteredMacros.map((macro) => {
                         const active = activeLocationIds.has(macro.id);
+                        if (!active && isDisabled(macro.id)) {
+                          return (
+                            <DisabledFilterPill
+                              key={macro.id}
+                              name={macro.name}
+                              count={macro.count}
+                              ancestorName={ancestorNameOf(macro.id)}
+                            />
+                          );
+                        }
                         const tooltip = macro.memberCountryNames.length > 0
                           ? macro.memberCountryNames.join(", ")
                           : undefined;
@@ -269,31 +364,44 @@ export function LocationModal({
                 )}
                 {filtered.map((country) => {
                   const countryActive = country.countryId > 0 && activeLocationIds.has(country.countryId);
+                  const countryDisabled = country.countryId > 0 && !countryActive && isDisabled(country.countryId);
                   const showRegions = countCities(country) > REGION_THRESHOLD;
 
                   return (
                     <div key={country.countryId}>
                       {/* Country header */}
                       {country.countryId > 0 ? (
-                        <button
-                          onClick={() => toggleLocation({
-                            id: country.countryId,
-                            slug: country.countrySlug,
-                            name: country.countryName,
-                            type: "country",
-                          })}
-                          className={`mb-2 cursor-pointer text-xs font-semibold uppercase tracking-wider transition-colors ${
-                            countryActive ? "text-primary" : "text-muted hover:text-foreground"
-                          }`}
-                        >
-                          <CountryFlag iso={countryIso(country.countryId)} size={14} className="mr-1 inline-block align-middle" />
-                          <span className={countryActive ? "underline" : ""}>{country.countryName}</span>
-                          {country.countryCount > 0 && (
-                            <span className={`ml-1 text-[10px] font-normal normal-case ${countryActive ? "text-primary/70" : "text-muted"}`}>
-                              ({country.countryCount})
-                            </span>
-                          )}
-                        </button>
+                        countryDisabled ? (
+                          <DisabledFilterPill
+                            name={country.countryName}
+                            count={country.countryCount > 0 ? country.countryCount : undefined}
+                            ancestorName={ancestorNameOf(country.countryId)}
+                            variant="country"
+                            leftAdornment={
+                              <CountryFlag iso={countryIso(country.countryId)} size={14} className="mr-1 inline-block align-middle" />
+                            }
+                          />
+                        ) : (
+                          <button
+                            onClick={() => toggleLocation({
+                              id: country.countryId,
+                              slug: country.countrySlug,
+                              name: country.countryName,
+                              type: "country",
+                            })}
+                            className={`mb-2 cursor-pointer text-xs font-semibold uppercase tracking-wider transition-colors ${
+                              countryActive ? "text-primary" : "text-muted hover:text-foreground"
+                            }`}
+                          >
+                            <CountryFlag iso={countryIso(country.countryId)} size={14} className="mr-1 inline-block align-middle" />
+                            <span className={countryActive ? "underline" : ""}>{country.countryName}</span>
+                            {country.countryCount > 0 && (
+                              <span className={`ml-1 text-[10px] font-normal normal-case ${countryActive ? "text-primary/70" : "text-muted"}`}>
+                                ({country.countryCount})
+                              </span>
+                            )}
+                          </button>
+                        )
                       ) : (
                         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
                           <CountryFlag iso={countryIso(country.countryId)} size={14} className="mr-1 inline-block align-middle" />
@@ -307,27 +415,37 @@ export function LocationModal({
                           {country.regions.map((region) => {
                             if (region.locations.length === 0) return null;
                             const regionActive = region.regionId > 0 && activeLocationIds.has(region.regionId);
+                            const regionDisabled = region.regionId > 0 && !regionActive && isDisabled(region.regionId);
                             return (
                               <div key={region.regionId}>
                                 {region.regionId > 0 ? (
-                                  <button
-                                    onClick={() => toggleLocation({
-                                      id: region.regionId,
-                                      slug: region.regionSlug,
-                                      name: region.regionName,
-                                      type: "region",
-                                    })}
-                                    className={`mb-1.5 cursor-pointer text-xs font-medium transition-colors ${
-                                      regionActive ? "text-primary" : "text-muted hover:text-foreground"
-                                    }`}
-                                  >
-                                    <span className={regionActive ? "underline" : ""}>{region.regionName}</span>
-                                    {region.regionCount > 0 && (
-                                      <span className={`ml-1 text-[10px] font-normal ${regionActive ? "text-primary/70" : "text-muted"}`}>
-                                        ({region.regionCount})
-                                      </span>
-                                    )}
-                                  </button>
+                                  regionDisabled ? (
+                                    <DisabledFilterPill
+                                      name={region.regionName}
+                                      count={region.regionCount > 0 ? region.regionCount : undefined}
+                                      ancestorName={ancestorNameOf(region.regionId)}
+                                      variant="region"
+                                    />
+                                  ) : (
+                                    <button
+                                      onClick={() => toggleLocation({
+                                        id: region.regionId,
+                                        slug: region.regionSlug,
+                                        name: region.regionName,
+                                        type: "region",
+                                      })}
+                                      className={`mb-1.5 cursor-pointer text-xs font-medium transition-colors ${
+                                        regionActive ? "text-primary" : "text-muted hover:text-foreground"
+                                      }`}
+                                    >
+                                      <span className={regionActive ? "underline" : ""}>{region.regionName}</span>
+                                      {region.regionCount > 0 && (
+                                        <span className={`ml-1 text-[10px] font-normal ${regionActive ? "text-primary/70" : "text-muted"}`}>
+                                          ({region.regionCount})
+                                        </span>
+                                      )}
+                                    </button>
+                                  )
                                 ) : (
                                   <span className="mb-1.5 block text-xs font-medium text-muted">
                                     {region.regionName || "Other"}
@@ -336,6 +454,16 @@ export function LocationModal({
                                 <div className="flex flex-wrap gap-2">
                                   {region.locations.map((loc) => {
                                     const active = activeLocationIds.has(loc.id);
+                                    if (!active && isDisabled(loc.id)) {
+                                      return (
+                                        <DisabledFilterPill
+                                          key={loc.id}
+                                          name={loc.name}
+                                          count={loc.count}
+                                          ancestorName={ancestorNameOf(loc.id)}
+                                        />
+                                      );
+                                    }
                                     return (
                                       <button
                                         key={loc.id}
@@ -364,6 +492,16 @@ export function LocationModal({
                           {country.regions.flatMap((region) =>
                             region.locations.map((loc) => {
                               const active = activeLocationIds.has(loc.id);
+                              if (!active && isDisabled(loc.id)) {
+                                return (
+                                  <DisabledFilterPill
+                                    key={loc.id}
+                                    name={loc.name}
+                                    count={loc.count}
+                                    ancestorName={ancestorNameOf(loc.id)}
+                                  />
+                                );
+                              }
                               return (
                                 <button
                                   key={loc.id}

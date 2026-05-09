@@ -10,6 +10,8 @@ import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
 import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { useDisabledByAncestor, pruneRedundantDescendants } from "./use-disabled-by-ancestor";
+import { DisabledFilterPill } from "./disabled-filter-pill";
 
 /** Show region sub-headers when a country has more cities than this. */
 const REGION_THRESHOLD = 8;
@@ -41,6 +43,88 @@ export function LocationSearchModal({
   const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
+
+  // Build parent map: city.parent = region (or country if no region),
+  // region.parent = country, country.parent = null. Macros are NOT in
+  // the parent chain — they're consulted via the macroMembers side-channel.
+  const parentMap = useMemo(() => {
+    const map = new Map<number, number | null>();
+    if (!response) return map;
+    for (const country of response.countries) {
+      map.set(country.countryId, null);
+      for (const region of country.regions) {
+        if (region.regionId > 0) {
+          map.set(region.regionId, country.countryId);
+        }
+        for (const loc of region.locations) {
+          // Cities parent to region if present, else direct to country.
+          map.set(loc.id, region.regionId > 0 ? region.regionId : country.countryId);
+        }
+      }
+    }
+    return map;
+  }, [response]);
+
+  const macroMembersMap = useMemo(() => {
+    const map = new Map<number, number[]>();
+    if (!response) return map;
+    for (const macro of response.macros) {
+      map.set(macro.id, macro.memberCountryIds ?? []);
+    }
+    return map;
+  }, [response]);
+
+  const { isDisabled, disabledByAncestor } = useDisabledByAncestor({
+    selectedIds,
+    parents: parentMap,
+    macroMembers: macroMembersMap,
+  });
+
+  // Lookup table id -> localized name, used to render the
+  // "Included in <ancestor>" tooltip without re-walking the response.
+  const nameById = useMemo(() => {
+    const map = new Map<number, string>();
+    if (!response) return map;
+    for (const macro of response.macros) {
+      map.set(macro.id, macro.name);
+    }
+    for (const country of response.countries) {
+      map.set(country.countryId, country.countryName);
+      for (const region of country.regions) {
+        if (region.regionId > 0) map.set(region.regionId, region.regionName);
+        for (const loc of region.locations) map.set(loc.id, loc.name);
+      }
+    }
+    return map;
+  }, [response]);
+
+  const ancestorNameOf = useCallback((id: number): string => {
+    const ancId = disabledByAncestor(id);
+    if (ancId == null) return "";
+    return nameById.get(ancId) ?? "";
+  }, [disabledByAncestor, nameById]);
+
+  // Wraps the caller's onToggle. After the parent commits, drop any
+  // already-selected descendants that have just become redundant — keeps
+  // the filter chip strip clean.
+  const handleToggle = useCallback((loc: SelectedLocation) => {
+    const wasSelected = selectedIds.has(loc.id);
+    onToggle(loc);
+    if (wasSelected) return;
+    // Find descendants in the current selection that this commit
+    // subsumes, and toggle them off. The `pruneRedundantDescendants`
+    // helper computes the keep-set; anything not in the keep-set must
+    // be deselected by re-emitting onToggle for it.
+    const nextSelected = [...selected, loc];
+    const kept = pruneRedundantDescendants(nextSelected, parentMap, macroMembersMap);
+    const keptIds = new Set(kept.map((s) => s.id));
+    for (const s of selected) {
+      if (!keptIds.has(s.id)) {
+        // descendant of `loc` (or another selection) — drop it
+        onToggle(s);
+      }
+    }
+  }, [onToggle, parentMap, macroMembersMap, selected, selectedIds]);
 
   const filtersKey = filters ? JSON.stringify(filters) : "";
   const prevFiltersKeyRef = useRef(filtersKey);
@@ -229,13 +313,27 @@ export function LocationSearchModal({
                     <div className="flex flex-wrap gap-2">
                       {filteredMacros.map((macro) => {
                         const active = selectedIds.has(macro.id);
+                        // Macros never have ancestors in our model — only members.
+                        // So `isDisabled(macro.id)` is always false today; left in
+                        // for future-proofing if macro -> super-macro relationships
+                        // are added.
+                        if (isDisabled(macro.id) && !active) {
+                          return (
+                            <DisabledFilterPill
+                              key={macro.id}
+                              name={macro.name}
+                              count={macro.count}
+                              ancestorName={ancestorNameOf(macro.id)}
+                            />
+                          );
+                        }
                         const tooltip = macro.memberCountryNames.length > 0
                           ? macro.memberCountryNames.join(", ")
                           : undefined;
                         return (
                           <button
                             key={macro.id}
-                            onClick={() => onToggle({
+                            onClick={() => handleToggle({
                               id: macro.id,
                               slug: macro.slug,
                               name: macro.name,
@@ -261,63 +359,86 @@ export function LocationSearchModal({
                 )}
                 {filtered.map((country) => {
                   const countryActive = selectedIds.has(country.countryId);
+                  const countryDisabled = !countryActive && isDisabled(country.countryId);
                   const showRegions = countCities(country) > REGION_THRESHOLD;
 
                   return (
                     <div key={country.countryId}>
                       {/* Country header */}
-                      <button
-                        onClick={() =>
-                          onToggle({
-                            id: country.countryId,
-                            slug: country.countrySlug,
-                            name: country.countryName,
-                            type: "country",
-                            parentName: null,
-                          })
-                        }
-                        className={`mb-2 cursor-pointer text-xs font-semibold uppercase tracking-wider transition-colors ${
-                          countryActive ? "text-primary" : "text-muted hover:text-foreground"
-                        }`}
-                      >
-                        <CountryFlag iso={countryIso(country.countryId)} size={14} className="mr-1 inline-block align-middle" />
-                        <span className={countryActive ? "underline" : ""}>{country.countryName}</span>
-                        {country.countryCount > 0 && (
-                          <span className={`ml-1 text-[10px] font-normal normal-case ${countryActive ? "text-primary/70" : "text-muted"}`}>
-                            ({country.countryCount})
-                          </span>
-                        )}
-                      </button>
+                      {countryDisabled ? (
+                        <DisabledFilterPill
+                          name={country.countryName}
+                          count={country.countryCount > 0 ? country.countryCount : undefined}
+                          ancestorName={ancestorNameOf(country.countryId)}
+                          variant="country"
+                          leftAdornment={
+                            <CountryFlag iso={countryIso(country.countryId)} size={14} className="mr-1 inline-block align-middle" />
+                          }
+                        />
+                      ) : (
+                        <button
+                          onClick={() =>
+                            handleToggle({
+                              id: country.countryId,
+                              slug: country.countrySlug,
+                              name: country.countryName,
+                              type: "country",
+                              parentName: null,
+                            })
+                          }
+                          className={`mb-2 cursor-pointer text-xs font-semibold uppercase tracking-wider transition-colors ${
+                            countryActive ? "text-primary" : "text-muted hover:text-foreground"
+                          }`}
+                        >
+                          <CountryFlag iso={countryIso(country.countryId)} size={14} className="mr-1 inline-block align-middle" />
+                          <span className={countryActive ? "underline" : ""}>{country.countryName}</span>
+                          {country.countryCount > 0 && (
+                            <span className={`ml-1 text-[10px] font-normal normal-case ${countryActive ? "text-primary/70" : "text-muted"}`}>
+                              ({country.countryCount})
+                            </span>
+                          )}
+                        </button>
+                      )}
 
                       {showRegions ? (
                         <div className="space-y-3 pl-2">
                           {country.regions.map((region) => {
                             if (region.locations.length === 0) return null;
                             const regionActive = region.regionId > 0 && selectedIds.has(region.regionId);
+                            const regionDisabled = region.regionId > 0 && !regionActive && isDisabled(region.regionId);
                             return (
                               <div key={region.regionId}>
                                 {region.regionId > 0 ? (
-                                  <button
-                                    onClick={() =>
-                                      onToggle({
-                                        id: region.regionId,
-                                        slug: region.regionSlug,
-                                        name: region.regionName,
-                                        type: "region",
-                                        parentName: country.countryName,
-                                      })
-                                    }
-                                    className={`mb-1.5 cursor-pointer text-xs font-medium transition-colors ${
-                                      regionActive ? "text-primary" : "text-muted hover:text-foreground"
-                                    }`}
-                                  >
-                                    <span className={regionActive ? "underline" : ""}>{region.regionName}</span>
-                                    {region.regionCount > 0 && (
-                                      <span className={`ml-1 text-[10px] font-normal ${regionActive ? "text-primary/70" : "text-muted"}`}>
-                                        ({region.regionCount})
-                                      </span>
-                                    )}
-                                  </button>
+                                  regionDisabled ? (
+                                    <DisabledFilterPill
+                                      name={region.regionName}
+                                      count={region.regionCount > 0 ? region.regionCount : undefined}
+                                      ancestorName={ancestorNameOf(region.regionId)}
+                                      variant="region"
+                                    />
+                                  ) : (
+                                    <button
+                                      onClick={() =>
+                                        handleToggle({
+                                          id: region.regionId,
+                                          slug: region.regionSlug,
+                                          name: region.regionName,
+                                          type: "region",
+                                          parentName: country.countryName,
+                                        })
+                                      }
+                                      className={`mb-1.5 cursor-pointer text-xs font-medium transition-colors ${
+                                        regionActive ? "text-primary" : "text-muted hover:text-foreground"
+                                      }`}
+                                    >
+                                      <span className={regionActive ? "underline" : ""}>{region.regionName}</span>
+                                      {region.regionCount > 0 && (
+                                        <span className={`ml-1 text-[10px] font-normal ${regionActive ? "text-primary/70" : "text-muted"}`}>
+                                          ({region.regionCount})
+                                        </span>
+                                      )}
+                                    </button>
+                                  )
                                 ) : (
                                   <span className="mb-1.5 block text-xs font-medium text-muted">
                                     {region.regionName || "Other"}
@@ -326,10 +447,20 @@ export function LocationSearchModal({
                                 <div className="flex flex-wrap gap-2">
                                   {region.locations.map((loc) => {
                                     const active = selectedIds.has(loc.id);
+                                    if (!active && isDisabled(loc.id)) {
+                                      return (
+                                        <DisabledFilterPill
+                                          key={loc.id}
+                                          name={loc.name}
+                                          count={loc.count}
+                                          ancestorName={ancestorNameOf(loc.id)}
+                                        />
+                                      );
+                                    }
                                     return (
                                       <button
                                         key={loc.id}
-                                        onClick={() => onToggle({ ...loc, parentName: region.regionName || country.countryName })}
+                                        onClick={() => handleToggle({ ...loc, parentName: region.regionName || country.countryName })}
                                         className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
                                           active
                                             ? "bg-primary/10 text-primary"
@@ -353,10 +484,20 @@ export function LocationSearchModal({
                           {country.regions.flatMap((region) =>
                             region.locations.map((loc) => {
                               const active = selectedIds.has(loc.id);
+                              if (!active && isDisabled(loc.id)) {
+                                return (
+                                  <DisabledFilterPill
+                                    key={loc.id}
+                                    name={loc.name}
+                                    count={loc.count}
+                                    ancestorName={ancestorNameOf(loc.id)}
+                                  />
+                                );
+                              }
                               return (
                                 <button
                                   key={loc.id}
-                                  onClick={() => onToggle({ ...loc, parentName: region.regionName || country.countryName })}
+                                  onClick={() => handleToggle({ ...loc, parentName: region.regionName || country.countryName })}
                                   className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
                                     active
                                       ? "bg-primary/10 text-primary"

@@ -1396,6 +1396,14 @@ export interface CompanyMacroRegion {
   abbreviation: string;
   count: number;
   memberCountryNames: string[];
+  /**
+   * Member country IDs — used by the hierarchical-disable hook so
+   * selecting a macro in {@link LocationModal} disables its member
+   * countries (and transitively their regions/cities) without a second
+   * round-trip. Mirrors {@link GlobalMacroRegion.memberCountryIds}. See
+   * #2978.
+   */
+  memberCountryIds: number[];
 }
 
 /**
@@ -1536,15 +1544,18 @@ async function _fetchCompanyMacroCluster(
   const macroRows = rows as unknown as Row[];
   if (macroRows.length === 0) return [];
 
-  // Fetch member country names for each macro (for chip tooltip)
+  // Fetch member country names + IDs for each macro. The IDs power the
+  // hierarchical-disable hook (#2978) and stay aligned with names because
+  // they share the same row order.
   const macroIds = macroRows.map((r) => r.macro_id);
   const pgArray = `{${macroIds.join(",")}}`;
   const memberRows = await db.execute<{
     [key: string]: unknown;
     macro_id: number;
+    country_id: number;
     country_name: string;
   }>(sql`
-    SELECT lmm.macro_id, ln.name AS country_name
+    SELECT lmm.macro_id, lmm.country_id, ln.name AS country_name
     FROM location_macro_member lmm
     JOIN LATERAL (
       SELECT name FROM location_name
@@ -1556,24 +1567,27 @@ async function _fetchCompanyMacroCluster(
     WHERE lmm.macro_id = ANY(${pgArray}::integer[])
     ORDER BY lmm.macro_id, ln.name
   `);
-  const memberMap = new Map<number, string[]>();
-  for (const r of memberRows as unknown as { macro_id: number; country_name: string }[]) {
-    let arr = memberMap.get(r.macro_id);
-    if (!arr) { arr = []; memberMap.set(r.macro_id, arr); }
-    arr.push(r.country_name);
+  const memberMap = new Map<number, { countryNames: string[]; countryIds: number[] }>();
+  for (const r of memberRows as unknown as { macro_id: number; country_id: number; country_name: string }[]) {
+    let entry = memberMap.get(r.macro_id);
+    if (!entry) { entry = { countryNames: [], countryIds: [] }; memberMap.set(r.macro_id, entry); }
+    entry.countryNames.push(r.country_name);
+    entry.countryIds.push(r.country_id);
   }
 
   return macroRows.map((r) => {
     const slugKey = (r.macro_slug ?? "").toLowerCase()
       || r.macro_name.toLowerCase().replace(/\s+/g, "-");
     const canonical = MACRO_DISPLAY_NAMES[slugKey];
+    const members = memberMap.get(r.macro_id);
     return {
       id: r.macro_id,
       slug: r.macro_slug ?? slugKey,
       name: canonical ?? r.macro_name,
       abbreviation: r.macro_name,
       count: r.posting_count,
-      memberCountryNames: memberMap.get(r.macro_id) ?? [],
+      memberCountryNames: members?.countryNames ?? [],
+      memberCountryIds: members?.countryIds ?? [],
     };
   });
 }

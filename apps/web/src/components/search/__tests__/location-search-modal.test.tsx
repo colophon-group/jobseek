@@ -31,6 +31,7 @@ const _response = (overrides: Partial<Awaited<ReturnType<typeof getGlobalLocatio
       abbreviation: "EU",
       count: 146,
       memberCountryNames: ["Germany", "France", "Italy"],
+      memberCountryIds: [100, 101, 102],
     },
     {
       id: 1,
@@ -39,6 +40,7 @@ const _response = (overrides: Partial<Awaited<ReturnType<typeof getGlobalLocatio
       abbreviation: "EMEA",
       count: 1433,
       memberCountryNames: ["Germany", "Saudi Arabia", "Egypt"],
+      memberCountryIds: [100, 110, 111],
     },
     {
       id: 5,
@@ -47,6 +49,7 @@ const _response = (overrides: Partial<Awaited<ReturnType<typeof getGlobalLocatio
       abbreviation: "DACH",
       count: 6,
       memberCountryNames: ["Germany", "Austria", "Switzerland"],
+      memberCountryIds: [100, 120, 121],
     },
   ],
   countries: [
@@ -259,4 +262,87 @@ describe("LocationSearchModal — Regions cluster (#2940)", () => {
 
   // Suppress unused-import lint
   void within;
+});
+
+describe("LocationSearchModal — hierarchical disable (#2978)", () => {
+  /** Country header should appear with `aria-disabled` once a macro that includes it is selected. */
+  it("disables the country header when its macro is selected", async () => {
+    getGlobalLocationsGroupedMock.mockResolvedValue(_response({
+      countries: [
+        {
+          countryId: 100,
+          countrySlug: "germany",
+          countryName: "Germany",
+          countryCount: 50,
+          regions: [
+            {
+              regionId: 0,
+              regionSlug: "",
+              regionName: "",
+              regionCount: 25,
+              locations: [
+                { id: 200, slug: "berlin", name: "Berlin", type: "city", count: 25 },
+              ],
+            },
+          ],
+        },
+      ],
+    }));
+    // EU is selected — Germany (member) and Berlin (descendant) should disable
+    render(
+      <LocationSearchModal
+        open
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[{ id: 4, slug: "eu", name: "European Union", type: "macro", parentName: null }]}
+        onToggle={() => {}}
+      />,
+    );
+    await waitFor(() => screen.getByText("Germany"));
+    const germanyButton = screen.getByText("Germany").closest("button");
+    expect(germanyButton?.getAttribute("aria-disabled")).toBe("true");
+    expect(germanyButton?.getAttribute("tabindex")).toBe("-1");
+    const berlinButton = screen.getByText("Berlin").closest("button");
+    expect(berlinButton?.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  /** Selecting a country auto-deselects its descendants (parity contract). */
+  it("auto-deselects child city when parent country is committed", async () => {
+    getGlobalLocationsGroupedMock.mockResolvedValue(_response());
+    const onToggle = vi.fn();
+    // Pre-select Berlin (a city under Germany)
+    render(
+      <LocationSearchModal
+        open
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[{ id: 200, slug: "berlin", name: "Berlin", type: "city", parentName: "Germany" }]}
+        onToggle={onToggle}
+      />,
+    );
+    await waitFor(() => screen.getByText("Germany"));
+    // Click Germany — should toggle Germany ON and Berlin OFF
+    await userEvent.click(screen.getByText("Germany"));
+    // First call: add Germany. Second call: remove Berlin (auto-deselect).
+    expect(onToggle).toHaveBeenCalledTimes(2);
+    expect(onToggle.mock.calls[0][0]).toMatchObject({ id: 100, type: "country" });
+    expect(onToggle.mock.calls[1][0]).toMatchObject({ id: 200 });
+  });
+
+  /** Selecting a country disables its child cities. */
+  it("disables city pills when their country is selected", async () => {
+    getGlobalLocationsGroupedMock.mockResolvedValue(_response());
+    render(
+      <LocationSearchModal
+        open
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[{ id: 100, slug: "germany", name: "Germany", type: "country", parentName: null }]}
+        onToggle={() => {}}
+      />,
+    );
+    await waitFor(() => screen.getByText("Berlin"));
+    const berlinButton = screen.getByText("Berlin").closest("button");
+    expect(berlinButton?.getAttribute("aria-disabled")).toBe("true");
+  });
 });

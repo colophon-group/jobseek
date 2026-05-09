@@ -58,7 +58,7 @@ describe("getCompanyLocationsGroupedWithMacros — Regions cluster gate (#2940)"
    * not guaranteed. We use `mockImplementation` keyed on SQL substrings so
    * the test passes regardless of interleaving.
    */
-  function setupMocks(opts: { macros: Array<{ id: number; slug: string | null; name: string; postingCount: number; memberCountryCount: number }>; members: Array<{ macro_id: number; country_name: string }>; }) {
+  function setupMocks(opts: { macros: Array<{ id: number; slug: string | null; name: string; postingCount: number; memberCountryCount: number }>; members: Array<{ macro_id: number; country_id: number; country_name: string }>; }) {
     mocks.dbExecute.mockImplementation((arg: unknown) => {
       const sql = String(arg);
       if (sql.includes("WITH active_locs AS") && sql.includes("hierarchy")) {
@@ -99,8 +99,8 @@ describe("getCompanyLocationsGroupedWithMacros — Regions cluster gate (#2940)"
         { id: 4, slug: null, name: "EU", postingCount: 100, memberCountryCount: 2 },
       ],
       members: [
-        { macro_id: 4, country_name: "Germany" },
-        { macro_id: 4, country_name: "France" },
+        { macro_id: 4, country_id: 100, country_name: "Germany" },
+        { macro_id: 4, country_id: 101, country_name: "France" },
       ],
     });
     const out = await getCompanyLocationsGroupedWithMacros("co-1", "en");
@@ -112,6 +112,7 @@ describe("getCompanyLocationsGroupedWithMacros — Regions cluster gate (#2940)"
       abbreviation: "EU",
       count: 100,
       memberCountryNames: ["Germany", "France"],
+      memberCountryIds: [100, 101],
     });
   });
 

@@ -8,6 +8,8 @@ import { getAllOccupationsGrouped } from "@/lib/actions/taxonomy";
 import type { OccupationGroup, OccupationItem } from "@/lib/actions/taxonomy";
 import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { useDisabledByAncestor } from "./use-disabled-by-ancestor";
+import { DisabledFilterPill } from "./disabled-filter-pill";
 
 interface OccupationModalProps {
   open: boolean;
@@ -34,6 +36,74 @@ export function OccupationModal({
   const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
+
+  // Build occupation -> parent map from the loaded groups. Family
+  // parents are top-level (parentId: null) within their domain; children
+  // point to the family parent's id. Standalones are top-level with no
+  // parent. Hook walks this chain to compute disable state.
+  const parentMap = useMemo(() => {
+    const map = new Map<number, number | null>();
+    if (!groups) return map;
+    for (const group of groups) {
+      for (const sg of group.subGroups) {
+        map.set(sg.parent.id, null);
+        for (const child of sg.children) {
+          map.set(child.id, sg.parent.id);
+        }
+      }
+      for (const item of group.standalone) {
+        map.set(item.id, null);
+      }
+    }
+    return map;
+  }, [groups]);
+
+  const { isDisabled, disabledByAncestor } = useDisabledByAncestor({
+    selectedIds,
+    parents: parentMap,
+  });
+
+  const nameById = useMemo(() => {
+    const map = new Map<number, string>();
+    if (!groups) return map;
+    for (const group of groups) {
+      for (const sg of group.subGroups) {
+        map.set(sg.parent.id, sg.parent.name);
+        for (const child of sg.children) map.set(child.id, child.name);
+      }
+      for (const item of group.standalone) map.set(item.id, item.name);
+    }
+    return map;
+  }, [groups]);
+
+  const ancestorNameOf = useCallback((id: number): string => {
+    const ancId = disabledByAncestor(id);
+    if (ancId == null) return "";
+    return nameById.get(ancId) ?? "";
+  }, [disabledByAncestor, nameById]);
+
+  /**
+   * Wrap onToggle so that selecting a family parent auto-deselects any
+   * children currently in `selected`. Parity with the location modals.
+   */
+  const handleToggle = useCallback((item: { id: number; slug: string; name: string }) => {
+    const wasSelected = selectedIds.has(item.id);
+    onToggle(item);
+    if (wasSelected) return;
+    // Find children of `item` currently in selection and toggle them off.
+    for (const s of selected) {
+      let cur = parentMap.get(s.id);
+      const seen = new Set<number>([s.id]);
+      while (cur != null && !seen.has(cur)) {
+        seen.add(cur);
+        if (cur === item.id) {
+          onToggle(s);
+          break;
+        }
+        cur = parentMap.get(cur);
+      }
+    }
+  }, [onToggle, selected, selectedIds, parentMap]);
 
   const filtersKey = filters ? JSON.stringify(filters) : "";
   const prevFiltersKeyRef = useRef(filtersKey);
@@ -140,10 +210,20 @@ export function OccupationModal({
 
   function renderPill(item: OccupationItem) {
     const active = selectedIds.has(item.id);
+    if (!active && isDisabled(item.id)) {
+      return (
+        <DisabledFilterPill
+          key={item.id}
+          name={item.name}
+          count={item.count}
+          ancestorName={ancestorNameOf(item.id)}
+        />
+      );
+    }
     return (
       <button
         key={item.id}
-        onClick={() => onToggle(item)}
+        onClick={() => handleToggle(item)}
         className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
           active
             ? "bg-primary/10 text-primary"
@@ -242,20 +322,31 @@ export function OccupationModal({
                       {/* Sub-groups (parent + children) */}
                       {group.subGroups.map((sg) => {
                         const parentActive = selectedIds.has(sg.parent.id);
+                        const parentDisabled = !parentActive && isDisabled(sg.parent.id);
+                        const totalCount = sg.parent.count + sg.children.reduce((s, c) => s + c.count, 0);
                         return (
                           <div key={sg.parent.id} className="mb-3 rounded-lg border border-border-soft p-3">
                             {/* Parent header */}
-                            <button
-                              onClick={() => onToggle(sg.parent)}
-                              className={`group/parent mb-1.5 cursor-pointer text-sm font-medium transition-colors ${
-                                parentActive ? "text-primary" : "text-foreground hover:text-primary"
-                              }`}
-                            >
-                              <span className={parentActive ? "underline" : "group-hover/parent:underline"}>{sg.parent.name}</span>
-                              <span className={`ml-1 text-xs font-normal ${parentActive ? "text-primary/70" : "text-muted"}`}>
-                                ({sg.parent.count + sg.children.reduce((s, c) => s + c.count, 0)})
-                              </span>
-                            </button>
+                            {parentDisabled ? (
+                              <DisabledFilterPill
+                                name={sg.parent.name}
+                                ancestorName={ancestorNameOf(sg.parent.id)}
+                                variant="parent"
+                                auxText={`(${totalCount})`}
+                              />
+                            ) : (
+                              <button
+                                onClick={() => handleToggle(sg.parent)}
+                                className={`group/parent mb-1.5 cursor-pointer text-sm font-medium transition-colors ${
+                                  parentActive ? "text-primary" : "text-foreground hover:text-primary"
+                                }`}
+                              >
+                                <span className={parentActive ? "underline" : "group-hover/parent:underline"}>{sg.parent.name}</span>
+                                <span className={`ml-1 text-xs font-normal ${parentActive ? "text-primary/70" : "text-muted"}`}>
+                                  ({totalCount})
+                                </span>
+                              </button>
+                            )}
                             {/* Child pills */}
                             <div className="flex flex-wrap gap-2">
                               {sg.children.map(renderPill)}

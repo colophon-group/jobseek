@@ -69,11 +69,11 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
         { location_id: 200, locale: "en", name: "Berlin" },
       ])
       .mockResolvedValueOnce([
-        { macro_id: 4, country_name: "Germany" },
-        { macro_id: 4, country_name: "France" },
-        { macro_id: 5, country_name: "Germany" },
-        { macro_id: 5, country_name: "Austria" },
-        { macro_id: 5, country_name: "Switzerland" },
+        { macro_id: 4, country_id: 100, country_name: "Germany" },
+        { macro_id: 4, country_id: 101, country_name: "France" },
+        { macro_id: 5, country_id: 100, country_name: "Germany" },
+        { macro_id: 5, country_id: 102, country_name: "Austria" },
+        { macro_id: 5, country_id: 103, country_name: "Switzerland" },
       ]);
 
     // Two parallel Typesense calls: country-tier facet (top-500) AND a
@@ -122,6 +122,7 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
       abbreviation: "EMEA",
       count: 1433,
       memberCountryNames: [],
+      memberCountryIds: [],
     });
     expect(out.macros[1]).toEqual({
       id: 4,
@@ -130,6 +131,7 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
       abbreviation: "EU",
       count: 146,
       memberCountryNames: ["Germany", "France"],
+      memberCountryIds: [100, 101],
     });
     expect(out.macros[2]).toEqual({
       id: 5,
@@ -138,6 +140,7 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
       abbreviation: "DACH",
       count: 6,
       memberCountryNames: ["Germany", "Austria", "Switzerland"],
+      memberCountryIds: [100, 102, 103],
     });
     // Country tier still works
     expect(out.countries.length).toBeGreaterThan(0);

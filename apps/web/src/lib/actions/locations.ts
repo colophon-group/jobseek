@@ -301,6 +301,13 @@ export interface GlobalMacroRegion {
   count: number;
   /** Member country names (English) — for the chip's hover tooltip. */
   memberCountryNames: string[];
+  /**
+   * Member country IDs — used by the hierarchical-disable hook so that
+   * selecting a macro disables every member country (and transitively
+   * regions/cities) in the modal. Mirrors `memberCountryNames` order so
+   * the two arrays stay aligned. See #2978.
+   */
+  memberCountryIds: number[];
 }
 
 export interface GlobalLocationsResponse {
@@ -526,9 +533,9 @@ async function _fetchGlobalLocationsGrouped(
     // `_fetchGlobalMacroMembers` for the per-macro member country names
     // used as the chip's hover tooltip.
     const macroIdsWithCounts = allMacroIds.filter((id) => (macroFacetCounts.get(id) ?? 0) > 0);
-    const macroMemberNames = macroIdsWithCounts.length > 0
+    const macroMembers = macroIdsWithCounts.length > 0
       ? await _fetchGlobalMacroMembers(macroIdsWithCounts, locale)
-      : new Map<number, string[]>();
+      : new Map<number, MacroMembers>();
     const macros: GlobalMacroRegion[] = macroIdsWithCounts
       .map((id) => {
         const meta = hierarchy.get(id);
@@ -537,13 +544,15 @@ async function _fetchGlobalLocationsGrouped(
         const slugKey = (meta.slug ?? "").toLowerCase()
           || abbreviation.toLowerCase().replace(/\s+/g, "-");
         const canonical = MACRO_DISPLAY_NAMES[slugKey];
+        const members = macroMembers.get(id);
         return {
           id,
           slug: meta.slug ?? slugKey,
           name: canonical ?? abbreviation,
           abbreviation,
           count: macroFacetCounts.get(id) ?? 0,
-          memberCountryNames: macroMemberNames.get(id) ?? [],
+          memberCountryNames: members?.countryNames ?? [],
+          memberCountryIds: members?.countryIds ?? [],
         } satisfies GlobalMacroRegion;
       })
       .filter((m): m is GlobalMacroRegion => m !== null && m.count > 0)
@@ -674,18 +683,28 @@ async function _fetchGlobalLocationsGrouped(
  * particular DB snapshot we read from). When the table is empty we return
  * an empty member list and the modal renders the chip without a tooltip.
  */
+interface MacroMembers {
+  countryNames: string[];
+  countryIds: number[];
+}
+
 async function _fetchGlobalMacroMembers(
   macroIds: number[],
   locale: string,
-): Promise<Map<number, string[]>> {
+): Promise<Map<number, MacroMembers>> {
   if (macroIds.length === 0) return new Map();
   const pgArray = `{${macroIds.join(",")}}`;
+  // Project `country_id` alongside `country_name` so the hierarchical
+  // disable hook (#2978) can walk macro -> member-country links without
+  // a second round-trip. Names and IDs stay aligned because they share
+  // the same row order.
   const rows = await db.execute<{
     [key: string]: unknown;
     macro_id: number;
+    country_id: number;
     country_name: string;
   }>(sql`
-    SELECT lmm.macro_id, ln.name AS country_name
+    SELECT lmm.macro_id, lmm.country_id, ln.name AS country_name
     FROM location_macro_member lmm
     JOIN LATERAL (
       SELECT name FROM location_name
@@ -697,11 +716,12 @@ async function _fetchGlobalMacroMembers(
     WHERE lmm.macro_id = ANY(${pgArray}::integer[])
     ORDER BY lmm.macro_id, ln.name
   `);
-  const map = new Map<number, string[]>();
-  for (const r of rows as unknown as { macro_id: number; country_name: string }[]) {
-    let arr = map.get(r.macro_id);
-    if (!arr) { arr = []; map.set(r.macro_id, arr); }
-    arr.push(r.country_name);
+  const map = new Map<number, MacroMembers>();
+  for (const r of rows as unknown as { macro_id: number; country_id: number; country_name: string }[]) {
+    let entry = map.get(r.macro_id);
+    if (!entry) { entry = { countryNames: [], countryIds: [] }; map.set(r.macro_id, entry); }
+    entry.countryNames.push(r.country_name);
+    entry.countryIds.push(r.country_id);
   }
   return map;
 }
