@@ -113,21 +113,10 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
       </div>
 
       {/* Stats */}
-      {/*
-        Hide the "in the last year" tail when it equals the active count.
-        The crawler dataset is younger than 365d (#2950), so the year filter
-        is currently a no-op vs active and shows confusingly identical numbers.
-        Self-healing: once postings start aging out (year-count < active-count),
-        the tail re-appears organically.
-      */}
       <p className="mt-2 text-xs text-muted">
         {activeMatches} <Trans id="search.card.active" comment="Active matches label on company card">active</Trans>
-        {yearMatches !== activeMatches && (
-          <>
-            {" · "}
-            {yearMatches} <Trans id="search.card.yearCount" comment="Yearly matches label on company card">in the last year</Trans>
-          </>
-        )}
+        {" · "}
+        {yearMatches} <Trans id="search.card.yearCount" comment="Yearly matches label on company card">in the last year</Trans>
       </p>
 
       {/* Divider */}
