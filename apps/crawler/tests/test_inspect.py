@@ -611,3 +611,92 @@ class TestMigratedBoardsHaveProxy:
             'and rely on the proxy layer to get data. Re-add "proxy": true to both '
             "monitor_config and scraper_config:\n  - " + "\n  - ".join(missing)
         )
+
+
+class TestDidiGlobalScraperHasEnrich:
+    """Regression guard for #2952: Didi Global postings stuck with empty
+    descriptions because the api_sniffer (rich) monitor returned full job
+    metadata but ``scraper_type=skip`` with no ``enrich`` declaration meant
+    the detail scraper never ran.
+
+    Without ``scraper_config.enrich``, ``_board_has_enrich`` returns None,
+    ``is_rich_no_scrape`` evaluates True, and the rich-monitor branch
+    inserts via ``_INSERT_RICH_JOB`` (no ``next_scrape_at``) instead of
+    ``_INSERT_RICH_JOB_ENRICH``. Postgres confirmed all 1,979 Didi postings
+    sat with NULL next_scrape_at + NULL last_scraped_at + 0 scrape_failures
+    + NULL description_r2_hash - the scheduler never queued them.
+
+    Mirrors PR #2954 (tesla). Extra wrinkle: the original CSV row had
+    ``scraper_type=skip`` while carrying dom-format ``steps``. The fix
+    flips the type to ``dom`` AND adds ``enrich``.
+    """
+
+    def test_didi_global_declares_enrich_description(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "didi-global-careers-intl"),
+            None,
+        )
+        assert row is not None, "didi-global-careers-intl row missing from boards.csv"
+
+        assert row["scraper_type"] == "dom", (
+            "didi-global-careers-intl scraper_type must be 'dom'. The "
+            "original 'skip' value made _is_skip_no_scrape return True so "
+            "the scrape pipeline was bypassed and 1,979 postings sat with "
+            "description_r2_hash = NULL. See #2952."
+        )
+
+        scraper_config = json.loads(row.get("scraper_config") or "{}")
+        assert "description" in (scraper_config.get("enrich") or []), (
+            "didi-global-careers-intl scraper_config must declare "
+            '"enrich": ["description"] - without it, _board_has_enrich '
+            "returns None, is_rich_no_scrape becomes True, and 1,979 "
+            "postings get next_scrape_at = NULL. See PR #2954 (tesla)."
+        )
+
+        metadata = {
+            "scraper_type": row["scraper_type"],
+            "scraper_config": scraper_config,
+        }
+        assert _board_has_enrich(metadata) == ["description"]
+
+
+class TestDidiGlobalDomScraper:
+    """Functional check: Didi dom config extracts title/locations/description
+    from a captured fixture of careers.didiglobal.com (#2952)."""
+
+    def test_didi_global_dom_extracts_description(self):
+        import json
+        from pathlib import Path
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+        from src.shared.extract import flatten, walk_steps
+
+        fixture = Path(__file__).parent / "fixtures" / "didi_global_jobdetail.html"
+        html = fixture.read_text()
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(r for r in rows if r["board_slug"] == "didi-global-careers-intl")
+        config = json.loads(row["scraper_config"])
+        steps = config["steps"]
+
+        elements = flatten(html)
+        fields, _ = walk_steps(elements, steps)
+
+        assert fields.get("title") == ("Est\u00e1gio em opera\u00e7\u00f5es (Engagement Channels)")
+        assert fields.get("locations") == "Sao Paulo - Brazil"
+
+        desc = fields.get("description") or ""
+        assert len(desc) > 1000, (
+            f"description too short ({len(desc)} chars) - extraction is "
+            "broken; the fixture's About-the-company range is ~3.9KB"
+        )
+        assert "<h4>About the company</h4>" in desc
+        assert "<li>" in desc
