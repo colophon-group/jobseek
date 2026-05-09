@@ -187,24 +187,72 @@ export function OccupationModal({
     [filtered, search, onToggle, showWarning, t],
   );
 
-  /** Collect all selectable occupation items from a group (parents + children + standalone). */
-  function allItems(group: OccupationGroup): OccupationItem[] {
+  /**
+   * First-level descendants of a domain — the rows that render at depth-1
+   * in the modal tree. This is the set of items the domain header toggles
+   * (and the set used to compute the header's "all selected" indicator).
+   *
+   * Composition:
+   * - Family parents: `group.subGroups[].parent` — top-level occupations
+   *   in the domain that themselves have children (e.g. Software Engineer,
+   *   DevOps Engineer).
+   * - Standalones: `group.standalone[]` — top-level occupations in the
+   *   domain with no children (e.g. QA Engineer).
+   *
+   * Grandchildren (`sg.children`) are NOT first-level — selecting them via
+   * the domain header would be redundant once their family parent is
+   * selected. The disable hook handles their UI state via the
+   * parent-chain walk in `useDisabledByAncestor`.
+   */
+  function firstLevelItems(group: OccupationGroup): OccupationItem[] {
     const items: OccupationItem[] = [...group.standalone];
     for (const sg of group.subGroups) {
       items.push(sg.parent);
-      items.push(...sg.children);
     }
     return items;
   }
 
+  /**
+   * Domain header click selects every first-level descendant of the
+   * domain. Grandchildren (`sg.children`) are not added — they become
+   * disabled (greyed) via `useDisabledByAncestor` because their family
+   * parent is now selected. Mirrors the location modal's
+   * country-header / region-header semantics.
+   *
+   * On deselect: drops the first-level ids, and also drops any of their
+   * descendants currently in `selected` (which would otherwise be
+   * orphan-selected with no visible ancestor). Same rule as
+   * `handleToggle` for an individual family parent.
+   *
+   * #2978 follow-up — was previously a "select-all-children" loop that
+   * recursively activated grandchildren too.
+   */
   function handleDomainToggle(group: OccupationGroup) {
-    const items = allItems(group);
-    if (items.length === 0) return;
-    const allSelected = items.every((c) => selectedIds.has(c.id));
+    const firstLevel = firstLevelItems(group);
+    if (firstLevel.length === 0) return;
+    const allSelected = firstLevel.every((c) => selectedIds.has(c.id));
     if (allSelected) {
-      items.forEach((c) => { if (selectedIds.has(c.id)) onToggle(c); });
+      // Deselect every first-level row plus any of their descendants
+      // currently in the selection (grandchildren that were selected
+      // independently before the parent was committed).
+      const firstLevelIds = new Set(firstLevel.map((c) => c.id));
+      for (const c of firstLevel) onToggle(c);
+      for (const s of selected) {
+        if (firstLevelIds.has(s.id)) continue;
+        // Walk parent chain — drop if any ancestor is a first-level id.
+        let cur = parentMap.get(s.id);
+        const seen = new Set<number>([s.id]);
+        while (cur != null && !seen.has(cur)) {
+          seen.add(cur);
+          if (firstLevelIds.has(cur)) {
+            onToggle(s);
+            break;
+          }
+          cur = parentMap.get(cur);
+        }
+      }
     } else {
-      items.forEach((c) => { if (!selectedIds.has(c.id)) onToggle(c); });
+      firstLevel.forEach((c) => { if (!selectedIds.has(c.id)) onToggle(c); });
     }
   }
 
@@ -297,8 +345,12 @@ export function OccupationModal({
             ) : (
               <div className="space-y-5">
                 {filtered.map((group) => {
-                  const items = allItems(group);
-                  const allSelected = items.length > 0 && items.every((c) => selectedIds.has(c.id));
+                  // Domain header is "all selected" iff every first-level
+                  // descendant is selected — grandchildren don't count
+                  // because they're auto-disabled by the parent. Mirrors
+                  // the toggle semantics in `handleDomainToggle`.
+                  const firstLevel = firstLevelItems(group);
+                  const allSelected = firstLevel.length > 0 && firstLevel.every((c) => selectedIds.has(c.id));
 
                   return (
                     <div key={group.domain.slug}>
