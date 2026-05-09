@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { cacheLife } from "next/cache";
 import { db } from "@/db";
@@ -9,6 +9,7 @@ import { auth } from "@/lib/auth";
 import { getSession, getSessionUserId } from "@/lib/sessionCache";
 import { getLanguage } from "@/lib/job-languages";
 import { writeAnonJobLanguagesCookie, readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
+import { getSearchClient } from "@/lib/search/typesense-client";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 
@@ -258,25 +259,51 @@ export interface AvailableLanguage {
 
 /**
  * Returns distinct language codes from active job postings with counts, sorted by count desc.
- * Per-region in-memory `'use cache'` (cacheLife('hours')); migrated from
- * Redis-backed `cached(..., { ttl: 3600 })` in #2884 (bucket 5). Build ID
- * is part of the cache key, so each deploy re-fetches.
+ *
+ * Reads from Typesense (`job_posting` collection has `locales` as a faceted
+ * field). The previous Postgres implementation `unnest`ed `locales` over all
+ * active rows on every cold cache miss — at ~760k active postings that took
+ * ~4s on Supabase and dominated the /settings cold load (#2918). The
+ * Typesense facet variant returns the same shape in ~0.6s.
+ *
+ * Filters out the `_none` sentinel (rows with no detected locale; written
+ * by the exporter to keep `locales` non-empty for Typesense — see
+ * `apps/crawler/src/typesense_schema.py`).
+ *
+ * Per-region in-memory `'use cache'` (cacheLife('hours')) keeps repeat
+ * loads sub-millisecond; build ID is part of the cache key, so each deploy
+ * re-fetches. The fallback path returns `[]` uncached so a Typesense blip
+ * doesn't poison the cache for an hour. Migrated from Redis-backed
+ * `cached(..., { ttl: 3600 })` in #2884 (bucket 5).
  */
-export async function getAvailableJobLanguages(): Promise<AvailableLanguage[]> {
+async function _fetchAvailableJobLanguages(): Promise<AvailableLanguage[]> {
   "use cache";
   cacheLife("hours");
-  const rows = await db.execute<{ [key: string]: unknown; locale: string; cnt: number }>(sql`
-    SELECT locale, COUNT(*)::int AS cnt
-    FROM (
-      SELECT unnest(locales) AS locale
-      FROM job_posting
-      WHERE is_active = true AND array_length(locales, 1) > 0
-    ) sub
-    GROUP BY locale
-    ORDER BY cnt DESC
-  `);
-  return (rows as unknown as { locale: string; cnt: number }[]).map((r) => ({
-    code: r.locale,
-    count: r.cnt,
-  }));
+  const client = getSearchClient();
+  const result = await client
+    .collections("job_posting")
+    .documents()
+    .search({
+      q: "*",
+      filter_by: "is_active:=true",
+      facet_by: "locales",
+      // Typesense returns up to ~32 distinct values by default; bump well
+      // past the ~30 codes currently in production so we don't truncate.
+      max_facet_values: 100,
+      per_page: 0,
+    });
+  const counts = result.facet_counts?.[0]?.counts ?? [];
+  return counts
+    .filter((c) => c.value !== "_none")
+    .map((c) => ({ code: c.value, count: c.count }));
+}
+
+export async function getAvailableJobLanguages(): Promise<AvailableLanguage[]> {
+  try {
+    return await _fetchAvailableJobLanguages();
+  } catch {
+    // Typesense unreachable — return empty list rather than blocking the
+    // settings page render. The UI falls back to UI-locale-only filter.
+    return [];
+  }
 }
