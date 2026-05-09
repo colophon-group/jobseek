@@ -1,62 +1,69 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
 import {
   getPreferences,
   getAvailableJobLanguages,
   getViewerJobLanguages,
-  type AvailableLanguage,
 } from "@/lib/actions/preferences";
 import { getCurrencyRates } from "@/lib/actions/search";
+import { getSession } from "@/lib/sessionCache";
 
-type SettingsData = {
-  jobLanguages: string[];
-  displayCurrency: string;
-  salaryPeriod: string | null;
-  availableCurrencies: string[];
-  availableLanguages: AvailableLanguage[];
-};
+/**
+ * Server-side data fetcher for the /settings (general) page.
+ *
+ * Runs all four data dependencies in parallel inside the React server
+ * tree so the client receives the form fully hydrated — no
+ * post-mount `useEffect` waterfall, no spinner. This is the second
+ * half of the #2918 fix: PR #2921 cut `getAvailableJobLanguages` from
+ * 4s to ~700ms by switching it to a Typesense facet, but the four
+ * server actions still ran *sequentially after hydration* in the
+ * client `useEffect`, so the slowest call (Typesense round-trip)
+ * gated "fully settled" on every cold load. Moving the awaits into
+ * the server tree:
+ *
+ * - merges the four POST round-trips into the initial document GET
+ * - lets the cacheable calls (`getAvailableJobLanguages`,
+ *   `getCurrencyRates`, both `'use cache'`) be served from the
+ *   per-region in-memory cache without ever crossing the wire
+ * - keeps the session-scoped reads (`getPreferences`,
+ *   `getViewerJobLanguages`) on their existing dynamic path; they
+ *   read `headers()` via Better Auth so the parent `<Suspense>` in
+ *   `page.tsx` is what makes them PPR-compatible.
+ *
+ * The leading `getSession()` await is the load-bearing dynamic gate:
+ * it reads `headers()` via Better Auth, so under cacheComponents the
+ * build-time prerender bails *before* the parallel Typesense /
+ * Postgres reads ever fire. Without this gate, the Typesense calls
+ * (inside `'use cache'`) populate during the prerender's parallel
+ * sweep across 974 pages and contend with the rest of the build for
+ * Typesense's request budget — producing build-time HTTP 429s. With
+ * the gate first, the function only ever executes at request time,
+ * where the per-region `'use cache'` layer absorbs the read cost.
+ *
+ * The remaining three awaits stay in a single `Promise.all` so the
+ * slowest read is the bound rather than the sum (~932ms cold vs
+ * ~1.2s sequential under cacheComponents per-boundary clean-snapshot
+ * semantics).
+ */
+export async function SettingsLoader({ locale }: { locale: string }) {
+  // Dynamic gate — see comment above. Discarded result; the same
+  // session is re-resolved (per-request memoised) inside
+  // `getPreferences` and `getViewerJobLanguages` below.
+  await getSession();
 
-export function SettingsLoader({ locale }: { locale: string }) {
-  const [data, setData] = useState<SettingsData | null>(null);
-
-  useEffect(() => {
-    // ``getViewerJobLanguages`` unifies the auth (DB row) and anon
-    // (cookie) paths so the toggle reflects the persisted state for
-    // both. Other prefs (currency / salary period) are auth-only —
-    // the anon defaults are baked into ``GeneralSettings``.
-    Promise.all([
-      getPreferences(),
-      getViewerJobLanguages(),
-      getAvailableJobLanguages(),
-      getCurrencyRates(),
-    ]).then(([prefs, jobLanguages, availableLanguages, currencyRates]) => {
-      setData({
-        jobLanguages,
-        displayCurrency: prefs?.displayCurrency ?? "EUR",
-        salaryPeriod: prefs?.salaryPeriod ?? null,
-        availableCurrencies: currencyRates.map((r) => r.currency),
-        availableLanguages,
-      });
-    });
-  }, []);
-
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-      </div>
-    );
-  }
+  const [prefs, jobLanguages, availableLanguages, currencyRates] = await Promise.all([
+    getPreferences(),
+    getViewerJobLanguages(),
+    getAvailableJobLanguages(),
+    getCurrencyRates(),
+  ]);
 
   return (
     <GeneralSettings
-      savedJobLanguages={data.jobLanguages}
-      savedDisplayCurrency={data.displayCurrency}
-      savedSalaryPeriod={data.salaryPeriod}
-      availableCurrencies={data.availableCurrencies}
-      availableLanguages={data.availableLanguages}
+      savedJobLanguages={jobLanguages}
+      savedDisplayCurrency={prefs?.displayCurrency ?? "EUR"}
+      savedSalaryPeriod={prefs?.salaryPeriod ?? null}
+      availableCurrencies={currencyRates.map((r) => r.currency)}
+      availableLanguages={availableLanguages}
       locale={locale}
     />
   );
