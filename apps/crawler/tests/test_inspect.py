@@ -613,6 +613,50 @@ class TestMigratedBoardsHaveProxy:
         )
 
 
+class TestTeslaScraperHasEnrich:
+    """Tesla's api_sniffer detail scraper MUST declare ``enrich`` (#2952).
+
+    The Tesla monitor delivers ``title``, ``locations``, ``employment_type``,
+    and metadata from the cua-api listing payload — making it a "rich"
+    monitor (``result.jobs_by_url is not None``). Without an ``enrich`` list
+    on the scraper config, ``_board_has_enrich`` returns None and
+    ``is_rich_no_scrape = is_rich and not enrich_fields`` evaluates True.
+    Postings are then inserted via ``_INSERT_RICH_JOB`` (which doesn't set
+    ``next_scrape_at``) and the scrape is never enqueued — leaving 6,099
+    active Tesla postings with ``description_r2_hash IS NULL`` indefinitely.
+
+    This test pins the ``enrich`` declaration so a future bulk-edit can't
+    silently revert the fix. Mirrors the Netflix-careers pattern (also a
+    rich api_sniffer monitor with an XHR-capture detail scraper).
+    """
+
+    def test_tesla_detail_scraper_declares_enrich(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("tesla-careers")
+        assert row is not None, "tesla-careers row missing from boards.csv"
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            "tesla-careers scraper_config must declare 'enrich': ['description'] "
+            "so its rich-monitor postings get next_scrape_at = now() and the "
+            "browser-capture scraper actually runs. See #2952."
+        )
+
+        # Also exercise the production guard: the metadata that sync writes
+        # would yield a non-None enrich list from _board_has_enrich.
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
+
+
 class TestInfineonScraperHasEnrich:
     """Regression guard for #2952: Infineon postings stuck with empty
     descriptions because the eightfold (rich) monitor returned full job
