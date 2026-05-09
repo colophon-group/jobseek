@@ -75,13 +75,12 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
         if name and name not in locations:
             locations.append(name)
 
-    # Employment type
+    # Employment type — pass through the schema.org-style code
+    # (``FULL_TIME`` / ``PART_TIME``) for the central normaliser.
     working_times = opening.get("workingTimes", [])
     employment_type = None
     if working_times:
-        internal = working_times[0].get("internalName", "")
-        _map = {"FULL_TIME": "full-time", "PART_TIME": "part-time"}
-        employment_type = _map.get(internal)
+        employment_type = working_times[0].get("internalName") or None
 
     # Salary
     salary_obj = opening.get("salary")

@@ -36,17 +36,12 @@ _KNOWN_TLDS = ("de", "com")
 
 _IGNORE_SLUGS = frozenset({"www", "api", "app", "docs", "help", "support", "status"})
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str | None] = {
-    "permanent": None,  # combined with schedule
-    "intern": "Intern",
-    "trainee": "Intern",
-    "freelance": "Contract",
-}
-
-_SCHEDULE_MAP: dict[str, str] = {
-    "full-time": "Full-time",
-    "part-time": "Part-time",
-}
+# Personio combines two upstream fields, ``employmentType`` and
+# ``schedule``. ``employmentType`` carries specific types
+# (``intern``/``trainee``/``freelance``) that override schedule,
+# while ``permanent`` is generic and lets ``schedule`` pick the
+# canonical full-/part-time bucket.
+_SPECIFIC_EMPLOYMENT_TYPES: frozenset[str] = frozenset({"intern", "trainee", "freelance"})
 
 
 def _slug_from_url(board_url: str) -> str | None:
@@ -88,17 +83,19 @@ def _text(el: ET.Element, tag: str) -> str | None:
 
 
 def _parse_employment_type(position: ET.Element) -> str | None:
-    """Combine employmentType + schedule into a standard employment type."""
+    """Combine ``employmentType`` + ``schedule`` and pass through raw.
+
+    The central :func:`src.core.enum_normalize.normalize_employment_type`
+    handles the canonicalisation downstream — we only resolve the
+    Personio-specific layering here (``intern``/``trainee``/
+    ``freelance`` win over schedule, ``permanent`` defers to schedule).
+    """
     emp_type = (_text(position, "employmentType") or "").lower()
     schedule = (_text(position, "schedule") or "").lower()
 
-    # If employmentType maps to a specific type (intern/freelance), use that
-    mapped = _EMPLOYMENT_TYPE_MAP.get(emp_type)
-    if mapped is not None:
-        return mapped
-
-    # Otherwise, use schedule to determine Full-time/Part-time
-    return _SCHEDULE_MAP.get(schedule)
+    if emp_type in _SPECIFIC_EMPLOYMENT_TYPES:
+        return emp_type
+    return schedule or None
 
 
 def _parse_description(position: ET.Element) -> str | None:
@@ -207,12 +204,11 @@ def _parse_html_listings(html: str, slug: str, domain: str) -> list[DiscoveredJo
         if not pos_id:
             continue
 
-        # Employment type mapping
+        # Employment type — pass through raw, layered the same way
+        # _parse_employment_type does for the XML path.
         emp_raw = (item.get("employment_type") or "").lower()
         schedule_raw = (item.get("schedule") or "").lower()
-        emp_type = _EMPLOYMENT_TYPE_MAP.get(emp_raw)
-        if emp_type is None:
-            emp_type = _SCHEDULE_MAP.get(schedule_raw)
+        emp_type = emp_raw if emp_raw in _SPECIFIC_EMPLOYMENT_TYPES else schedule_raw or None
 
         # Location
         office = item.get("main_office")

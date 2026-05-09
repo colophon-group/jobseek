@@ -59,16 +59,10 @@ _RETRY_BASE_DELAY_S = 2.0
 
 _IGNORE_SLUGS = frozenset({"www", "api", "api-recruiter", "infra1-static", "cdn"})
 
-# Recruiter.co.kr stores careerType values from the public API.
-_CAREER_TYPE_MAP: dict[str, str] = {
-    "NEW": "Full-time",  # 신입 (new graduate) — treat as full-time
-    "CAREER": "Full-time",  # 경력 (experienced)
-    "INTERN": "Intern",
-    "INTERNSHIP": "Intern",
-    "CONTRACT": "Contract",
-    "PARTTIME": "Part-time",
-    "PART_TIME": "Part-time",
-}
+# Recruiter.co.kr ``careerType`` values pass through unchanged — the
+# central :func:`src.core.enum_normalize.normalize_employment_type`
+# handles ``NEW``/``CAREER``/``INTERN``/``INTERNSHIP``/``CONTRACT``/
+# ``PARTTIME``/``PART_TIME`` (case-insensitive).
 
 
 def _slug_from_url(url: str) -> str | None:
@@ -205,7 +199,7 @@ def _parse_detail(detail: dict, summary: dict, slug: str) -> DiscoveredJob | Non
         description = f"<pre>{str(description)}</pre>"
 
     career_type = detail.get("careerType") or summary.get("careerType")
-    employment_type = _CAREER_TYPE_MAP.get((career_type or "").upper())
+    employment_type = career_type or None
 
     date_posted = _dt_date(detail.get("startDateTime") or summary.get("startDateTime"))
 

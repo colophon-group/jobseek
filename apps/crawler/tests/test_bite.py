@@ -82,23 +82,34 @@ class TestBuildLocation:
 
 
 class TestNormalizeEmploymentType:
+    """BITE first-non-empty selection.
+
+    Values are passed through raw to
+    :func:`src.core.enum_normalize.normalize_employment_type` downstream.
+    """
+
     def test_full_time(self):
-        assert _normalize_employment_type(["full_time"]) == "full-time"
+        assert _normalize_employment_type(["full_time"]) == "full_time"
 
     def test_part_time(self):
-        assert _normalize_employment_type(["part_time"]) == "part-time"
+        assert _normalize_employment_type(["part_time"]) == "part_time"
 
     def test_multiple_picks_first(self):
-        assert _normalize_employment_type(["full_time", "part_time"]) == "full-time"
+        assert _normalize_employment_type(["full_time", "part_time"]) == "full_time"
 
-    def test_unknown(self):
-        assert _normalize_employment_type(["freelance"]) is None
+    def test_first_truthy_wins_unknown_passthrough(self):
+        # Previously this returned None because freelance wasn't in the
+        # local map.  After centralisation the raw value passes through.
+        assert _normalize_employment_type(["freelance"]) == "freelance"
 
     def test_none(self):
         assert _normalize_employment_type(None) is None
 
     def test_empty(self):
         assert _normalize_employment_type([]) is None
+
+    def test_skips_falsy_first(self):
+        assert _normalize_employment_type(["", "contract"]) == "contract"
 
 
 # ── Salary (scraper) ────────────────────────────────────────────────────
@@ -168,7 +179,7 @@ class TestParseDetail:
         assert result.title == "Software Developer (m/f/d)"
         assert result.description == "<p>Build cool stuff</p>"
         assert result.locations == ["Munich, DE"]
-        assert result.employment_type == "full-time"
+        assert result.employment_type == "full_time"
         assert result.date_posted == "2025-01-15"
         assert result.base_salary["currency"] == "EUR"
         assert result.language == "de"
@@ -405,7 +416,7 @@ class TestScrape:
             assert result.title == "Software Developer (m/f/d)"
             assert result.description == "<p>Build cool stuff</p>"
             assert result.locations == ["Munich, DE"]
-            assert result.employment_type == "full-time"
+            assert result.employment_type == "full_time"
             assert result.date_posted == "2025-01-15"
             assert result.base_salary["currency"] == "EUR"
             assert result.language == "de"

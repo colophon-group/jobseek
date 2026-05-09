@@ -37,13 +37,10 @@ _WORKPLACE_TYPE_MAP: dict[str, str] = {
     "OnSite": "onsite",
 }
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "FullTime": "Full-time",
-    "PartTime": "Part-time",
-    "Intern": "Intern",
-    "Contract": "Contract",
-    "Temporary": "Temporary",
-}
+# Ashby emits PascalCase labels (``FullTime``/``PartTime``/``Intern``/
+# ``Contract``/``Temporary``).  These pass through unchanged — the
+# central :func:`src.core.enum_normalize.normalize_employment_type`
+# lowercases and looks them up.
 
 
 def _parse_locations(job: dict) -> list[str] | None:
@@ -129,12 +126,7 @@ def _parse_job(job: dict, compensation: dict | None = None) -> DiscoveredJob | N
     workplace_type = job.get("workplaceType")
     job_location_type = _WORKPLACE_TYPE_MAP.get(workplace_type, "") if workplace_type else None
 
-    employment_type_raw = job.get("employmentType")
-    employment_type = (
-        _EMPLOYMENT_TYPE_MAP.get(employment_type_raw, employment_type_raw)
-        if employment_type_raw
-        else None
-    )
+    employment_type = job.get("employmentType") or None
 
     return DiscoveredJob(
         url=url,

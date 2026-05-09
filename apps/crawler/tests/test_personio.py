@@ -44,13 +44,22 @@ class TestSlugFromUrl:
 
 
 class TestParseEmploymentType:
+    """Personio combines ``employmentType`` and ``schedule``.
+
+    Specific employmentType values (``intern``/``trainee``/
+    ``freelance``) win.  ``permanent`` defers to the schedule field.
+    The values are passed through raw — the central
+    ``src.core.enum_normalize.normalize_employment_type`` canonicalises
+    them downstream.
+    """
+
     def test_permanent_fulltime(self):
         xml = (
             "<position><employmentType>permanent</employmentType>"
             "<schedule>full-time</schedule></position>"
         )
         el = ET.fromstring(xml)
-        assert _parse_employment_type(el) == "Full-time"
+        assert _parse_employment_type(el) == "full-time"
 
     def test_permanent_parttime(self):
         xml = (
@@ -58,22 +67,22 @@ class TestParseEmploymentType:
             "<schedule>part-time</schedule></position>"
         )
         el = ET.fromstring(xml)
-        assert _parse_employment_type(el) == "Part-time"
+        assert _parse_employment_type(el) == "part-time"
 
     def test_intern(self):
         xml = "<position><employmentType>intern</employmentType></position>"
         el = ET.fromstring(xml)
-        assert _parse_employment_type(el) == "Intern"
+        assert _parse_employment_type(el) == "intern"
 
     def test_trainee(self):
         xml = "<position><employmentType>trainee</employmentType></position>"
         el = ET.fromstring(xml)
-        assert _parse_employment_type(el) == "Intern"
+        assert _parse_employment_type(el) == "trainee"
 
     def test_freelance(self):
         xml = "<position><employmentType>freelance</employmentType></position>"
         el = ET.fromstring(xml)
-        assert _parse_employment_type(el) == "Contract"
+        assert _parse_employment_type(el) == "freelance"
 
     def test_both_missing(self):
         xml = "<position></position>"
@@ -83,7 +92,8 @@ class TestParseEmploymentType:
     def test_permanent_no_schedule(self):
         xml = "<position><employmentType>permanent</employmentType></position>"
         el = ET.fromstring(xml)
-        # permanent maps to None, schedule is empty -> _SCHEDULE_MAP.get("") -> None
+        # permanent is not in _SPECIFIC_EMPLOYMENT_TYPES, schedule is
+        # empty -> falls through to None
         assert _parse_employment_type(el) is None
 
     def test_unknown_employment_type_with_fulltime_schedule(self):
@@ -92,8 +102,8 @@ class TestParseEmploymentType:
             "<schedule>full-time</schedule></position>"
         )
         el = ET.fromstring(xml)
-        # "other" not in map -> no mapped value, falls through to schedule
-        assert _parse_employment_type(el) == "Full-time"
+        # "other" not in _SPECIFIC_EMPLOYMENT_TYPES -> defers to schedule
+        assert _parse_employment_type(el) == "full-time"
 
 
 class TestParseDescription:
@@ -200,7 +210,7 @@ class TestParseJob:
         assert result.url == "https://acme.jobs.personio.de/job/12345"
         assert result.title == "Software Engineer"
         assert result.locations == ["Berlin"]
-        assert result.employment_type == "Full-time"
+        assert result.employment_type == "full-time"
         assert result.date_posted == "2024-01-15"
         assert result.description is not None
         assert "Great role" in result.description
@@ -283,11 +293,11 @@ class TestParseHtmlListings:
         assert jobs[0].title == "Engineer"
         assert jobs[0].url == "https://acme.jobs.personio.com/job/100"
         assert jobs[0].locations == ["Berlin"]
-        assert jobs[0].employment_type == "Full-time"
+        assert jobs[0].employment_type == "full-time"
         assert jobs[0].date_posted == "2024-01-15T00:00:00Z"
         assert jobs[0].description is None
         assert jobs[1].title == "Designer"
-        assert jobs[1].employment_type == "Intern"
+        assert jobs[1].employment_type == "intern"
 
     def test_no_jobs_returns_empty(self):
         html = "<html>no rsc data here</html>"

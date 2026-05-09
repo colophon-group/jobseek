@@ -36,18 +36,11 @@ _PAGE_PATTERNS = [
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support", "status"})
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "fulltime": "Full-time",
-    "fulltime_permanent": "Full-time",
-    "fulltime_fixed_term": "Full-time",
-    "parttime": "Part-time",
-    "parttime_permanent": "Part-time",
-    "parttime_fixed_term": "Part-time",
-    "freelance": "Contract",
-    "internship": "Intern",
-    "traineeship": "Intern",
-    "volunteer": "Volunteer",
-}
+# Recruitee employment-type codes (``fulltime_permanent``,
+# ``parttime_fixed_term``, ``freelance``, ``traineeship``, …) pass
+# through unchanged — the central
+# :func:`src.core.enum_normalize.normalize_employment_type` handles
+# them.
 
 
 def _slug_from_url(board_url: str) -> str | None:
@@ -148,9 +141,8 @@ def _parse_job(offer: dict) -> DiscoveredJob | None:
         parts.append(reqs)
     description = "\n".join(parts) if parts else None
 
-    # Employment type
-    emp_code = offer.get("employment_type_code") or ""
-    employment_type = _EMPLOYMENT_TYPE_MAP.get(emp_code, emp_code or None)
+    # Employment type — pass through raw upstream code.
+    employment_type = offer.get("employment_type_code") or None
 
     # Metadata
     metadata: dict = {}

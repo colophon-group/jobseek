@@ -107,7 +107,7 @@ class TestParseJob:
         assert result.title == "Software Engineer"
         assert result.description == "<p>About the role</p>"
         assert result.locations == ["Zürich, Switzerland"]
-        assert result.employment_type == "Full-time"
+        assert result.employment_type == "full_time"
         assert result.job_location_type == "hybrid"
         assert result.date_posted == "2025-11-24T14:56:56.569Z"
         assert result.metadata == {"department": "Engineering"}
@@ -116,16 +116,13 @@ class TestParseJob:
         assert _parse_job({}) is None
         assert _parse_job({"title": "No URL"}) is None
 
-    def test_employment_type_mapping(self):
-        for code, expected in [
-            ("full_time", "Full-time"),
-            ("part_time", "Part-time"),
-            ("contract", "Contract"),
-            ("internship", "Intern"),
-        ]:
+    def test_employment_type_passes_raw_through(self):
+        # Gem snake_case codes pass straight through; the central
+        # normaliser maps them downstream.
+        for code in ("full_time", "part_time", "contract", "internship"):
             post = {"absolute_url": "https://jobs.gem.com/x/1", "employment_type": code}
             result = _parse_job(post)
-            assert result.employment_type == expected, f"Failed for {code}"
+            assert result.employment_type == code, f"Failed for {code}"
 
     def test_unknown_employment_type_passthrough(self):
         post = {"absolute_url": "https://jobs.gem.com/x/1", "employment_type": "custom"}

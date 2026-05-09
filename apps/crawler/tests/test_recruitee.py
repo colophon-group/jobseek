@@ -196,7 +196,7 @@ class TestParseJob:
         assert "<p>About the role</p>" in result.description
         assert "<p>What we need</p>" in result.description
         assert result.locations == ["Berlin, Germany"]
-        assert result.employment_type == "Full-time"
+        assert result.employment_type == "fulltime"
         assert result.job_location_type == "remote"
         assert result.date_posted == "2024-06-01"
         assert result.base_salary == {"currency": "EUR", "min": 50000, "max": 70000, "unit": "year"}
@@ -235,19 +235,21 @@ class TestParseJob:
         result = _parse_job(offer)
         assert result.description is None
 
-    def test_employment_type_code_mapping(self):
-        for code, expected in [
-            ("fulltime", "Full-time"),
-            ("fulltime_permanent", "Full-time"),
-            ("parttime", "Part-time"),
-            ("freelance", "Contract"),
-            ("internship", "Intern"),
-            ("traineeship", "Intern"),
-            ("volunteer", "Volunteer"),
-        ]:
+    def test_employment_type_code_passes_raw_through(self):
+        # Recruitee snake_case codes pass through; central normaliser
+        # canonicalises downstream.
+        for code in (
+            "fulltime",
+            "fulltime_permanent",
+            "parttime",
+            "freelance",
+            "internship",
+            "traineeship",
+            "volunteer",
+        ):
             offer = {"careers_url": "https://example.com/job", "employment_type_code": code}
             result = _parse_job(offer)
-            assert result.employment_type == expected, f"Failed for {code}"
+            assert result.employment_type == code, f"Failed for {code}"
 
     def test_unknown_employment_type_code_passthrough(self):
         offer = {

@@ -30,14 +30,11 @@ _URL_PATTERN = re.compile(r"jobs\.gem\.com/([\w-]+)")
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support"})
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "full_time": "Full-time",
-    "part_time": "Part-time",
-    "contract": "Contract",
-    "temporary": "Temporary",
-    "internship": "Intern",
-    "volunteer": "Volunteer",
-}
+# Gem snake_case codes (``full_time``/``part_time``/``contract``/
+# ``temporary``/``internship``/``volunteer``) pass through unchanged
+# — the central
+# :func:`src.core.enum_normalize.normalize_employment_type` handles
+# them.
 
 _LOCATION_TYPE_MAP: dict[str, str] = {
     "remote": "remote",
@@ -96,9 +93,8 @@ def _parse_job(post: dict) -> DiscoveredJob | None:
     if not url:
         return None
 
-    # Employment type
-    raw_type = post.get("employment_type") or ""
-    employment_type = _EMPLOYMENT_TYPE_MAP.get(raw_type, raw_type or None)
+    # Employment type — pass through raw upstream value.
+    employment_type = post.get("employment_type") or None
 
     # Location type
     raw_loc_type = post.get("location_type") or ""
