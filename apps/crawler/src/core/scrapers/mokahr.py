@@ -12,13 +12,25 @@ This scraper:
 
 1. Parses ``org_id``, ``site_id``, and ``job_id`` from the source URL
    (e.g. ``https://app.mokahr.com/social-recruitment/zte/47588#/job/<uuid>``).
-2. Fetches the SPA root to obtain the AES IV.
+2. Fetches the SPA root to obtain the parsed ``init-data`` block — both
+   the AES IV (``aesIv``) and the ``cityId -> cityName`` lookup mined
+   from ``jobsGroupedByLocation``.
 3. POSTs the detail endpoint and decrypts the response.
-4. Returns a :class:`JobContent` with ``description`` (HTML) and any
-   incidental fields the detail payload exposes (employment type,
-   salary, date_posted) — the monitor already supplies title and
-   locations on the rich path, but populating them defensively makes the
-   scraper usable for ad-hoc URL probes too.
+4. Returns a :class:`JobContent` populated with **every structured
+   field the detail payload exposes** (Rule 16):
+
+   - ``title`` / ``description`` (HTML)
+   - ``locations`` — joined ``"City, Country"``; ``cityId`` is resolved
+     against the SPA-mined map because the detail API only carries
+     ``cityId``, never ``cityName``
+   - ``employment_type`` — ``commitment`` (Chinese ``全职/兼职/实习``)
+     mapped via :data:`mokahr._COMMITMENT_MAP`
+   - ``base_salary`` — ``minSalary``/``maxSalary``/``salaryUnit``
+     with ``currency="CNY"``; ``salaryUnit=0`` ("K/月") multiplies the
+     range by 1000 so downstream sees full RMB amounts
+   - ``extras.experience`` — ``minExperience``/``maxExperience`` years
+   - ``metadata.{department,education,job_function}`` — raw CN labels
+   - ``date_posted`` — ``publishedAt`` or ``openedAt`` (date-only)
 
 Pair with the ``mokahr`` monitor and declare
 ``scraper_config: {"enrich": ["description"]}`` in ``boards.csv`` so
@@ -33,7 +45,15 @@ import re
 import httpx
 import structlog
 
-from src.core.monitors.mokahr import _COMMITMENT_MAP, _decrypt, _get_iv
+from src.core.monitors.mokahr import (
+    _COMMITMENT_MAP,
+    _build_city_name_map,
+    _decrypt,
+    _get_init_data,
+    _parse_experience,
+    _parse_metadata,
+    _parse_salary,
+)
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -65,44 +85,43 @@ def _parse_url(url: str) -> tuple[str, str, int, str] | None:
     return m.group("path"), m.group("org"), site_id, job_id
 
 
-def _parse_locations(detail: dict) -> list[str] | None:
-    """Mirror ``mokahr._parse_locations`` — kept local to avoid coupling."""
-    locs = detail.get("locations")
-    if not isinstance(locs, list) or not locs:
-        return None
-    parts: list[str] = []
-    seen: set[str] = set()
-    for loc in locs:
-        if isinstance(loc, dict):
-            city = loc.get("cityName", "")
-            country = loc.get("country", "")
-            s = ", ".join(p for p in (city, country) if p)
-        elif isinstance(loc, str):
-            s = loc
-        else:
-            continue
-        if s and s not in seen:
-            parts.append(s)
-            seen.add(s)
-    return parts or None
+def _parse_detail(detail: dict, city_name_map: dict[int, str] | None = None) -> JobContent:
+    """Map a decrypted Mokahr detail payload to :class:`JobContent`.
 
+    Extracts every structured field the detail API exposes:
 
-def _parse_detail(detail: dict) -> JobContent:
-    """Map a decrypted Mokahr detail payload to :class:`JobContent`."""
+    - ``title`` / ``jobDescription``
+    - ``locations`` — joined ``"City, Country"``; ``cityId`` is resolved
+      against *city_name_map* (mined from the SPA's ``init-data``)
+      because the detail API only returns ``cityId``, never ``cityName``
+    - ``commitment`` -> ``employment_type`` (Chinese ``全职/兼职/实习``
+      via :data:`_COMMITMENT_MAP`)
+    - ``minSalary`` / ``maxSalary`` / ``salaryUnit`` -> ``base_salary``
+      with ``currency="CNY"``; ``salaryUnit=0`` ("K_MONTH") multiplies
+      by 1000 so downstream sees full RMB amounts
+    - ``minExperience`` / ``maxExperience`` -> ``extras.experience``
+    - ``education`` / ``zhineng.name`` / ``department.name`` ->
+      ``metadata`` (raw CN labels, e.g. ``"硕士"``)
+    - ``publishedAt`` / ``openedAt`` -> ``date_posted`` (date-only)
+    """
+    # Reuse monitor helpers — _parse_locations sits in the monitor
+    # because it's locally important; the rest are imported above.
+    from src.core.monitors.mokahr import _parse_locations as _parse_locs
+
     description = detail.get("jobDescription") or None
     title = detail.get("title") or None
-    locations = _parse_locations(detail)
+    locations = _parse_locs(detail, city_name_map)
     employment_type = _COMMITMENT_MAP.get(detail.get("commitment", ""))
     date_posted = detail.get("publishedAt") or detail.get("openedAt") or None
     if isinstance(date_posted, str) and "T" in date_posted:
         date_posted = date_posted.split("T", 1)[0]
 
-    metadata: dict = {}
-    dept = detail.get("department")
-    if isinstance(dept, dict) and dept.get("name"):
-        metadata["department"] = dept["name"]
-    elif isinstance(dept, str) and dept:
-        metadata["department"] = dept
+    metadata = _parse_metadata(detail)
+    base_salary = _parse_salary(detail)
+    experience = _parse_experience(detail)
+    extras: dict = {}
+    if experience:
+        extras["experience"] = experience
 
     return JobContent(
         title=title,
@@ -110,6 +129,8 @@ def _parse_detail(detail: dict) -> JobContent:
         locations=locations,
         employment_type=employment_type,
         date_posted=date_posted,
+        base_salary=base_salary,
+        extras=extras or None,
         metadata=metadata or None,
     )
 
@@ -141,16 +162,22 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     if other != path:
         paths_to_try.append(other)
 
-    iv: str | None = None
+    init_data: dict | None = None
     page_url: str | None = None
     for attempt_path in paths_to_try:
         page_url = f"https://app.mokahr.com/{attempt_path}/{org_id}/{site_id}"
-        iv = await _get_iv(page_url, http)
-        if iv:
+        init_data = await _get_init_data(page_url, http)
+        if init_data and init_data.get("aesIv"):
             break
+    iv = init_data.get("aesIv") if init_data else None
     if not iv:
         log.warning("mokahr_scraper.no_iv", url=url, page_url=page_url)
         return JobContent()
+    # Build a cityId -> cityName lookup from the SPA listing data, so
+    # detail-API ``locations`` (which only carries ``cityId``) can still
+    # produce human-readable city names. Empty dict on miss is fine —
+    # the parser falls back to ``provinceName`` then ``country``.
+    city_name_map = _build_city_name_map(init_data)
 
     body = {"orgId": org_id, "siteId": site_id, "jobId": job_id, "locale": locale}
     try:
@@ -186,7 +213,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         log.warning("mokahr_scraper.no_data", url=url)
         return JobContent()
 
-    return _parse_detail(detail)
+    return _parse_detail(detail, city_name_map)
 
 
 register("mokahr", scrape)
