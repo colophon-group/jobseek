@@ -1,14 +1,15 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { cacheLife } from "next/cache";
+import { cacheLife, revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { account, userPreferences } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getSession, getSessionUserId } from "@/lib/sessionCache";
 import { getLanguage } from "@/lib/job-languages";
 import { writeAnonJobLanguagesCookie, readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
+import { getSearchClient } from "@/lib/search/typesense-client";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 
@@ -20,6 +21,54 @@ const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
  */
 function sanitizeJobLanguages(input: string[]): string[] {
   return input.filter((c) => c === "*" || getLanguage(c) != null);
+}
+
+/**
+ * Routes whose `'use cache'` output depends on the viewer's job-language
+ * filter (DB row for auth users, `JSEEK_JOB_LANGUAGES` cookie for anon).
+ * After `updatePreferences` mutates `jobLanguages`, every cached layer
+ * across these routes needs to be invalidated — otherwise the user
+ * navigates back to a stale prerender that predates the cookie write
+ * (#2916). Stays in sync with the read sites enumerated in PR #2914.
+ */
+const JOB_LANGUAGE_DEPENDENT_PATHS = [
+  "/[lang]/(app)/explore",
+  "/[lang]/(app)/[userSlug]/[watchlistSlug]",
+  "/[lang]/(app)/company/[slug]",
+] as const;
+
+/**
+ * Invalidate every `'use cache'` page that reads the viewer's
+ * `jobLanguages` so the next render reflects the just-persisted value.
+ *
+ * `revalidatePath` is the right primitive here even though the data
+ * dependency comes via cookie/DB rather than a `cacheTag`: it evicts
+ * the per-region cache entry for the route and forces a fresh server
+ * render on the next request. The caller (a client component in
+ * /settings) ALSO calls `router.refresh()` to flush the client-side
+ * router cache that holds a snapshot of /explore in memory across
+ * back-nav (#2916). Both layers must be cleared — the per-region
+ * cache is the source for the RSC payload server-side, the router
+ * cache is the source the browser uses on back-nav.
+ *
+ * Failures are swallowed because a successful preference write is the
+ * load-bearing operation; a revalidation hiccup must not 500 the form
+ * submit. The user's next hard reload would self-heal anyway.
+ */
+function invalidateJobLanguageDependentPages(): void {
+  for (const path of JOB_LANGUAGE_DEPENDENT_PATHS) {
+    try {
+      // Match the existing convention from
+      // `app/api/web/companies/request/[run_id]/status/route.ts` —
+      // single-arg call invalidates that page's cache entries across
+      // every locale. Passing the second `"page"` arg is also valid
+      // but the unspecified default is what the rest of the codebase
+      // uses for App-Router page paths.
+      revalidatePath(path);
+    } catch (err) {
+      console.warn("[preferences] revalidatePath failed for", path, err);
+    }
+  }
 }
 
 export async function getPreferences() {
@@ -78,6 +127,12 @@ export async function updatePreferences(
     // server-resolved field. See issue #2850 + `anon-preferences.ts`.
     if (data.jobLanguages !== undefined) {
       await writeAnonJobLanguagesCookie(data.jobLanguages);
+      // Cookie write happened — flush every page whose `'use cache'`
+      // output depends on the cookie. Without this the back-nav from
+      // /settings to /explore renders the prerender that predates the
+      // toggle; the user only sees the new filter after a hard reload
+      // (#2916).
+      invalidateJobLanguageDependentPages();
     }
     return null;
   }
@@ -143,6 +198,16 @@ export async function updatePreferences(
       .where(eq(userPreferences.userId, userId))
       .returning();
 
+    // `jobLanguages` was part of this write — flush every cached
+    // page whose render reads it. Mirrors the anon path (#2916). The
+    // mutation for other fields (theme/locale/currency) is observed
+    // by the caller via `router.refresh()` and doesn't need a
+    // server-side `revalidatePath` because none of those flow into
+    // the explore/watchlist `'use cache'` outputs.
+    if (data.jobLanguages !== undefined) {
+      invalidateJobLanguageDependentPages();
+    }
+
     return row;
   }
 
@@ -166,6 +231,15 @@ export async function updatePreferences(
       },
     })
     .returning();
+
+  // First-write inserts always materialise `jobLanguages` (defaults to
+  // `[]` when omitted), which still affects every dependent page if
+  // the caller passed a non-default — invalidate when the field was
+  // explicitly set so the upsert path stays consistent with the
+  // update path above (#2916).
+  if (data.jobLanguages !== undefined) {
+    invalidateJobLanguageDependentPages();
+  }
 
   return row;
 }
@@ -258,25 +332,51 @@ export interface AvailableLanguage {
 
 /**
  * Returns distinct language codes from active job postings with counts, sorted by count desc.
- * Per-region in-memory `'use cache'` (cacheLife('hours')); migrated from
- * Redis-backed `cached(..., { ttl: 3600 })` in #2884 (bucket 5). Build ID
- * is part of the cache key, so each deploy re-fetches.
+ *
+ * Reads from Typesense (`job_posting` collection has `locales` as a faceted
+ * field). The previous Postgres implementation `unnest`ed `locales` over all
+ * active rows on every cold cache miss — at ~760k active postings that took
+ * ~4s on Supabase and dominated the /settings cold load (#2918). The
+ * Typesense facet variant returns the same shape in ~0.6s.
+ *
+ * Filters out the `_none` sentinel (rows with no detected locale; written
+ * by the exporter to keep `locales` non-empty for Typesense — see
+ * `apps/crawler/src/typesense_schema.py`).
+ *
+ * Per-region in-memory `'use cache'` (cacheLife('hours')) keeps repeat
+ * loads sub-millisecond; build ID is part of the cache key, so each deploy
+ * re-fetches. The fallback path returns `[]` uncached so a Typesense blip
+ * doesn't poison the cache for an hour. Migrated from Redis-backed
+ * `cached(..., { ttl: 3600 })` in #2884 (bucket 5).
  */
-export async function getAvailableJobLanguages(): Promise<AvailableLanguage[]> {
+async function _fetchAvailableJobLanguages(): Promise<AvailableLanguage[]> {
   "use cache";
   cacheLife("hours");
-  const rows = await db.execute<{ [key: string]: unknown; locale: string; cnt: number }>(sql`
-    SELECT locale, COUNT(*)::int AS cnt
-    FROM (
-      SELECT unnest(locales) AS locale
-      FROM job_posting
-      WHERE is_active = true AND array_length(locales, 1) > 0
-    ) sub
-    GROUP BY locale
-    ORDER BY cnt DESC
-  `);
-  return (rows as unknown as { locale: string; cnt: number }[]).map((r) => ({
-    code: r.locale,
-    count: r.cnt,
-  }));
+  const client = getSearchClient();
+  const result = await client
+    .collections("job_posting")
+    .documents()
+    .search({
+      q: "*",
+      filter_by: "is_active:=true",
+      facet_by: "locales",
+      // Typesense returns up to ~32 distinct values by default; bump well
+      // past the ~30 codes currently in production so we don't truncate.
+      max_facet_values: 100,
+      per_page: 0,
+    });
+  const counts = result.facet_counts?.[0]?.counts ?? [];
+  return counts
+    .filter((c) => c.value !== "_none")
+    .map((c) => ({ code: c.value, count: c.count }));
+}
+
+export async function getAvailableJobLanguages(): Promise<AvailableLanguage[]> {
+  try {
+    return await _fetchAvailableJobLanguages();
+  } catch {
+    // Typesense unreachable — return empty list rather than blocking the
+    // settings page render. The UI falls back to UI-locale-only filter.
+    return [];
+  }
 }

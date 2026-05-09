@@ -272,12 +272,27 @@ async def fetch_page_text(
     client: httpx.AsyncClient,
     max_chars: int = 500_000,
 ) -> str | None:
-    """Fetch a page and return its text content (capped), or None on error."""
+    """Fetch a page and return its text content (capped), or None on error.
+
+    TDM-Reservation respect (#2842). Lenient wrapper but still honors the
+    W3C opt-out signal — :class:`TDMReservedError` is **not** swallowed by
+    the broad ``except Exception``; it propagates so the caller (typically
+    a discovery probe path) can surface the publisher policy decision
+    rather than silently returning None and treating the board as
+    fetch-failed.
+    """
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
     try:
         resp = await client.get(url, follow_redirects=True)
         if resp.status_code != 200:
             return None
-        return resp.text[:max_chars]
+        text = resp.text[:max_chars]
+        _tdm_check(resp, body_excerpt=text)
+        return text
+    except TDMReservedError:
+        raise
     except Exception:
         return None
 

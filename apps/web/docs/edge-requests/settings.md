@@ -46,8 +46,8 @@
 | `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
 | `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
 | `getPreferences()` (page) | 0 | — | React `cache()` dedup | 0ms |
-| `getAvailableJobLanguages()` | 1 | — | Redis 1h | 10-25ms |
-| `getCurrencyRates()` | 1 | — | Redis 1h | 10-25ms |
+| `getAvailableJobLanguages()` | 1 (Typesense facet) | — | `'use cache'` 1h | ~600ms cold, <1ms warm |
+| `getCurrencyRates()` | 1 | — | `'use cache'` 1h | ~200ms cold, <1ms warm |
 
 **Total DB queries:** 7 (5 if languages + currencies cached)
 **Estimated function duration:** 40-120ms (warm instance)

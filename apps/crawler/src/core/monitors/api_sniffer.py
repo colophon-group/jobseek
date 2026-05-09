@@ -567,6 +567,9 @@ async def http_fetch_with_retry(
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
     with full jitter.
     """
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
     last_exc: BaseException | None = None
     last_status: int | None = None
 
@@ -578,7 +581,15 @@ async def http_fetch_with_retry(
                 kw["headers"].setdefault("content-type", "application/json")
             resp = await client.request(method.upper(), url, **kw)
             resp.raise_for_status()
+            # TDM-Reservation respect (#2842). Header-only on the JSON
+            # API path. Runs after ``raise_for_status`` so we only check
+            # successful responses (errors fall through to the existing
+            # ``HTTPStatusError`` branch).
+            _tdm_check(resp)
             return resp.json()
+        except TDMReservedError:
+            # Publisher policy declaration — propagate, never retry.
+            raise
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
             last_status = status

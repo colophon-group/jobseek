@@ -122,6 +122,9 @@ async def _post_page_with_retry(
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
     with full jitter, identical cadence to accenture (#2735).
     """
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
     last_exc: BaseException | None = None
     last_status: int | None = None
 
@@ -134,6 +137,10 @@ async def _post_page_with_retry(
             )
             last_status = resp.status_code
             if resp.status_code == 200:
+                # TDM-Reservation respect (#2842) — header-only check on
+                # API endpoints (the body is JSON, not HTML, so the meta
+                # scan is uninformative).
+                _tdm_check(resp)
                 # ``resp.json()`` may raise ``json.JSONDecodeError`` on a
                 # captcha/HTML body served as 200 — falls into the
                 # ``except Exception`` branch below, retried, then
@@ -164,7 +171,7 @@ async def _post_page_with_retry(
                     attempts=attempt + 1,
                     last_status=resp.status_code,
                 )
-        except PaginationFetchError:
+        except (PaginationFetchError, TDMReservedError):
             raise
         except Exception as exc:  # noqa: BLE001 — timeout, network, JSON parse
             last_exc = exc

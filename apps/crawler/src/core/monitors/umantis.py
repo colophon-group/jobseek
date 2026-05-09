@@ -195,6 +195,9 @@ async def _get_page_with_retry(
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
     with full jitter, identical cadence to dom and workday.
     """
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
     last_exc: BaseException | None = None
     last_status: int | None = None
 
@@ -203,6 +206,9 @@ async def _get_page_with_retry(
             resp = await client.get(url, follow_redirects=True)
             last_status = resp.status_code
             if resp.status_code == 200:
+                # TDM-Reservation respect (#2842). Umantis is HTML, so
+                # both the header and the body-meta check apply.
+                _tdm_check(resp, body_excerpt=resp.text)
                 return resp.text
             if resp.status_code in END_OF_PAGINATION_STATUSES:
                 return None
@@ -219,7 +225,7 @@ async def _get_page_with_retry(
                     attempts=attempt + 1,
                     last_status=resp.status_code,
                 )
-        except PaginationFetchError:
+        except (PaginationFetchError, TDMReservedError):
             raise
         except Exception as exc:  # noqa: BLE001 — timeout, connection error, etc.
             last_exc = exc

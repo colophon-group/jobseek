@@ -42,6 +42,7 @@ def make_browser_fetcher(page) -> FetchJsonFn:
 
 def make_http_fetcher(client) -> FetchJsonFn:
     """Create a FetchJsonFn that uses httpx for plain HTTP requests."""
+    from src.shared.tdm import check_response as _tdm_check
 
     async def _fetch(method: str, url: str, headers: dict, body: str | None) -> object:
         # Strip any case-variant of Accept before setting the canonical one,
@@ -55,6 +56,10 @@ def make_http_fetcher(client) -> FetchJsonFn:
             kw["headers"].setdefault("content-type", "application/json")
         resp = await client.request(method.upper(), url, **kw)
         resp.raise_for_status()
+        # TDM-Reservation respect (#2842) — header-only on the JSON
+        # API path. Header-canonical even when the publisher might also
+        # have set a body meta (the JSON shape would not contain HTML).
+        _tdm_check(resp)
         return resp.json()
 
     return _fetch
