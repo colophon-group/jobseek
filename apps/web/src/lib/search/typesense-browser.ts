@@ -146,7 +146,7 @@ async function fetchYearCounts(
 ): Promise<Map<string, number>> {
   if (companyIds.length === 0) return new Map();
   const yearFilter =
-    `first_seen_at:>${oneYearAgoUnix()} && company_id:[${companyIds.join(",")}]` +
+    `${POSTING_BASE_FILTER} && first_seen_at:>${oneYearAgoUnix()} && company_id:[${companyIds.join(",")}]` +
     (filterStr ? ` && ${filterStr}` : "");
   const r = await searchOne<JobPostingDoc>(cfg, "job_posting", {
     q,
@@ -414,7 +414,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
+        filter_by: `${POSTING_BASE_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
         per_page: 0,
       }),
     ]);
