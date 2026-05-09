@@ -647,3 +647,226 @@ class TestDomGoneUrlPattern:
                     )
                     return
         raise AssertionError("loreal-careers row not found in boards.csv")
+
+
+# ---------------------------------------------------------------------------
+# ayuda-en-accion talentclue.com — sibling cluster of Decathlon (#2962/#2963).
+# Same Drupal 7 talentclue page structure; the ``stop`` marker differs
+# because ayuda-en-accion has no b4work integration, so the apply CTA
+# falls through to the Spanish "Inscríbete" button.
+# ---------------------------------------------------------------------------
+
+AYUDA_EN_ACCION_DOM_CONFIG = {
+    "render": False,
+    "steps": [
+        {"tag": "title", "field": "title"},
+        {
+            "tag": "h2",
+            "attr": "class=job-description__title",
+            "field": "description",
+            "html": True,
+            "stop": "Inscríbete",
+            "optional": True,
+        },
+    ],
+}
+
+
+class TestAyudaEnAccionDomScraper:
+    """Verify the dom scraper extracts title + description from a captured
+    empleoayudaenaccion.talentclue.com (Drupal 7) detail page using the
+    boards.csv config (sibling of #2952 / #2962, tracked in #2963).
+
+    Same Drupal 7 talentclue layout as Decathlon: <h1 class="job-page__
+    header-title"> sits inside a <header> (filtered as NOISE_TAGS by
+    flatten()), and the description is a series of <h2 class=
+    "job-description__title"> blocks rather than a single <div>.
+
+    The original ``class~=...`` syntax was a parser bug — the dom scraper's
+    attr matcher splits on the first ``=`` only, so it looked for an
+    attribute literally named ``class~`` and never matched anything
+    (0/2 fields extracted on every posting → 130 active rows with
+    has_content=false in Typesense).
+    """
+
+    def test_ayuda_en_accion_extraction_consultoria(self):
+        """Consultoría posting yields title + non-trivial description."""
+        from src.core.scrapers.dom import parse_html
+
+        html = (FIXTURES_DIR / "ayuda_en_accion_talentclue_jobpage.html").read_text()
+        result = parse_html(html, AYUDA_EN_ACCION_DOM_CONFIG)
+
+        assert result.title is not None
+        assert "AGROTECH BOLIVIA 2026" in result.title
+        assert result.description is not None
+        assert len(result.description) > 500
+        # Description should include the company intro + the actual job copy
+        assert "Ayuda en Acción" in result.description
+        # The apply UI / footer must NOT leak into the description range
+        assert "Inscríbete" not in result.description
+        assert "Mira el resto" not in result.description
+        assert "Powered by" not in result.description
+
+    def test_ayuda_en_accion_extraction_coordinador(self):
+        """A second posting (Coordinador/a Territorial) extracts cleanly
+        too — guards against over-fitting the config to one job's structure.
+        """
+        from src.core.scrapers.dom import parse_html
+
+        html = (FIXTURES_DIR / "ayuda_en_accion_talentclue_jobpage_coord.html").read_text()
+        result = parse_html(html, AYUDA_EN_ACCION_DOM_CONFIG)
+
+        assert result.title == "Coordinador/a Territorial"
+        assert result.description is not None
+        assert len(result.description) > 500
+        assert "Ayuda en Acción" in result.description
+        assert "Inscríbete" not in result.description
+        assert "Mira el resto" not in result.description
+
+    def test_ayuda_en_accion_old_class_tilde_config_was_broken(self, recwarn):
+        """Regression guard: the prior ``class~=...`` config extracts
+        nothing from ayuda-en-accion talentclue pages. Ensures we don't
+        revert the pre-#2963 boards.csv row.
+        """
+        from src.core.scrapers.dom import parse_html
+
+        old_config = {
+            "steps": [
+                {
+                    "tag": "h1",
+                    "attr": "class~=job-page__header-title",
+                    "field": "title",
+                },
+                {
+                    "tag": "div",
+                    "attr": "class~=job-page__content",
+                    "field": "description",
+                    "html": True,
+                },
+            ]
+        }
+        html = (FIXTURES_DIR / "ayuda_en_accion_talentclue_jobpage.html").read_text()
+        result = parse_html(html, old_config)
+        # 0/2 fields extracted — the live state for 130 active postings
+        # before this fix (all has_content=false in Typesense).
+        assert result.title is None
+        assert result.description is None
+
+    def test_ayuda_en_accion_config_routes_to_http_queue(self):
+        """``render: false`` keeps the scraper on the slim HTTP worker —
+        the talentclue page is fully rendered server-side (Drupal 7) so
+        Playwright is unnecessary.
+        """
+        from src.core.scrapers import scraper_needs_browser
+
+        assert scraper_needs_browser("dom", AYUDA_EN_ACCION_DOM_CONFIG) is False
+
+
+# ---------------------------------------------------------------------------
+# barcelona-activa talentclue.com — sibling cluster of Decathlon (#2962/#2963).
+# Same Drupal 7 talentclue page structure; barcelona-activa runs the
+# Catalan UI (Inscriu-t'hi) but exposes the b4work integration, so the
+# Spanish "¿Ya tienes perfil en ?" line still appears on every page —
+# we use ``stop: "tienes perfil en"`` to match Decathlon's anchor.
+# ---------------------------------------------------------------------------
+
+BARCELONA_ACTIVA_DOM_CONFIG = {
+    "render": False,
+    "steps": [
+        {"tag": "title", "field": "title"},
+        {
+            "tag": "h2",
+            "attr": "class=job-description__title",
+            "field": "description",
+            "html": True,
+            "stop": "tienes perfil en",
+            "optional": True,
+        },
+    ],
+}
+
+
+class TestBarcelonaActivaDomScraper:
+    """Verify the dom scraper extracts title + description from a captured
+    barcelonactiva.talentclue.com (Drupal 7) detail page using the
+    boards.csv config (sibling of #2952 / #2962, tracked in #2963).
+
+    Same root cause as Decathlon and ayuda-en-accion: the prior
+    ``class~=...`` selector was a parser bug. 171 active rows had
+    has_content=false in Typesense before this fix.
+    """
+
+    def test_barcelona_activa_extraction_monitor(self):
+        """Monitor d'Oci Infantil posting yields title + non-trivial
+        description (Catalan content)."""
+        from src.core.scrapers.dom import parse_html
+
+        html = (FIXTURES_DIR / "barcelona_activa_talentclue_jobpage.html").read_text()
+        result = parse_html(html, BARCELONA_ACTIVA_DOM_CONFIG)
+
+        assert result.title is not None
+        assert "Monitor" in result.title
+        assert result.description is not None
+        assert len(result.description) > 500
+        # Description should include the company intro
+        assert "Barcelona Activa" in result.description
+        # The apply UI / footer must NOT leak into the description range
+        assert "tienes perfil en" not in result.description
+        assert "Autocompletar" not in result.description
+        assert "Powered by" not in result.description
+
+    def test_barcelona_activa_extraction_admin(self):
+        """A second posting (Administratiu/iva de recepció) extracts
+        cleanly too — guards against over-fitting the config to one
+        job's structure.
+        """
+        from src.core.scrapers.dom import parse_html
+
+        html = (FIXTURES_DIR / "barcelona_activa_talentclue_jobpage_admin.html").read_text()
+        result = parse_html(html, BARCELONA_ACTIVA_DOM_CONFIG)
+
+        assert result.title is not None
+        assert "Administratiu" in result.title
+        assert result.description is not None
+        assert len(result.description) > 500
+        assert "Barcelona Activa" in result.description
+        assert "tienes perfil en" not in result.description
+        assert "Autocompletar" not in result.description
+
+    def test_barcelona_activa_old_class_tilde_config_was_broken(self, recwarn):
+        """Regression guard: the prior ``class~=...`` config extracts
+        nothing from barcelona-activa talentclue pages. Ensures we don't
+        revert the pre-#2963 boards.csv row.
+        """
+        from src.core.scrapers.dom import parse_html
+
+        old_config = {
+            "steps": [
+                {
+                    "tag": "h1",
+                    "attr": "class~=job-page__header-title",
+                    "field": "title",
+                },
+                {
+                    "tag": "div",
+                    "attr": "class~=job-page__content",
+                    "field": "description",
+                    "html": True,
+                },
+            ]
+        }
+        html = (FIXTURES_DIR / "barcelona_activa_talentclue_jobpage.html").read_text()
+        result = parse_html(html, old_config)
+        # 0/2 fields extracted — the live state for 171 active postings
+        # before this fix (all has_content=false in Typesense).
+        assert result.title is None
+        assert result.description is None
+
+    def test_barcelona_activa_config_routes_to_http_queue(self):
+        """``render: false`` keeps the scraper on the slim HTTP worker —
+        the talentclue page is fully rendered server-side (Drupal 7) so
+        Playwright is unnecessary.
+        """
+        from src.core.scrapers import scraper_needs_browser
+
+        assert scraper_needs_browser("dom", BARCELONA_ACTIVA_DOM_CONFIG) is False
