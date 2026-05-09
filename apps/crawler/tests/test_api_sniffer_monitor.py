@@ -206,7 +206,9 @@ class TestDiscoverReplay:
         board = {"board_url": "https://example.com/careers", "metadata": config}
 
         mock_page = AsyncMock()
-        mock_page.evaluate = AsyncMock(return_value=json.dumps(api_response))
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps(api_response)}
+        )
         mock_pw = _make_mock_pw(mock_page)
 
         http = AsyncMock()
@@ -236,7 +238,9 @@ class TestDiscoverReplay:
         board = {"board_url": "https://example.com/careers", "metadata": config}
 
         mock_page = AsyncMock()
-        mock_page.evaluate = AsyncMock(return_value=json.dumps(api_response))
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps(api_response)}
+        )
         mock_pw = _make_mock_pw(mock_page)
 
         http = AsyncMock()
@@ -386,7 +390,9 @@ class TestJsonPathValues:
         board = {"board_url": "https://example.com/careers", "metadata": config}
 
         mock_page = AsyncMock()
-        mock_page.evaluate = AsyncMock(return_value=json.dumps(api_response))
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps(api_response)}
+        )
         mock_pw = _make_mock_pw(mock_page)
 
         http = AsyncMock()
