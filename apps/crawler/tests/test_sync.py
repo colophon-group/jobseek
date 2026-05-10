@@ -1164,6 +1164,90 @@ class TestRefreshTypesenseCounts:
         en_parent = next(d for d in occ_docs if d["id"] == "200-en")
         assert en_parent["active_posting_count"] == 90
 
+    async def test_company_counts_apply_has_content_filter(self):
+        """Issue #3009: the precomputed `company.active_posting_count` /
+        `year_posting_count` numbers must use the same `has_content`
+        filter as the web's `POSTING_BASE_FILTER` so the unfiltered
+        `listTopCompanies` path can't structurally diverge from the
+        filtered facet path. Without `has_content`, McDonald's reads
+        55,591 from `company` collection vs ~44,161 from the live facet
+        (12k delta = postings whose exporter set `has_content=false`).
+
+        This test asserts:
+        1. Both company SQL queries (active + year) include the
+           has_content predicate equivalent to the exporter formula.
+        2. The resulting Typesense upsert docs propagate per-company
+           counts unchanged from whatever the SQL returns.
+        """
+        captured_sql: list[str] = []
+
+        async def _fetch(sql, *args, **kwargs):
+            captured_sql.append(sql)
+            # Dispatch by the column shape of the query so seniority/
+            # technology queries (also `WHERE is_active`) don't get
+            # confused with the company queries.
+            if "company_id::text" in sql and "first_seen_at" not in sql:
+                return [
+                    {"company_id": "co-mcdonalds", "cnt": 44161},
+                    {"company_id": "co-accenture", "cnt": 52273},
+                ]
+            if "company_id::text" in sql and "first_seen_at" in sql:
+                return [
+                    {"company_id": "co-mcdonalds", "cnt": 55026},
+                    {"company_id": "co-accenture", "cnt": 81971},
+                ]
+            # Seniority + technology queries also touch local_conn —
+            # return empty for them.
+            return []
+
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=_fetch)
+
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
+
+        captured_upserts: list[tuple[str, list[dict]]] = []
+
+        def _capture_upsert(_client, collection, docs, *_a, **_kw):
+            captured_upserts.append((collection, list(docs)))
+
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await refresh_typesense_counts(local_conn, client)
+
+        # 1. Both company SQL queries must include the has_content predicate.
+        company_sqls = [s for s in captured_sql if "company_id::text" in s]
+        assert len(company_sqls) == 2, (
+            f"expected active + year company queries, got {len(company_sqls)}"
+        )
+        for sql in company_sqls:
+            assert "description_r2_hash IS NOT NULL" in sql, (
+                f"missing description_r2_hash predicate in:\n{sql}"
+            )
+            assert "cardinality(titles) > 0" in sql, (
+                f"missing titles cardinality predicate in:\n{sql}"
+            )
+            assert "length(trim(titles[1])) > 0" in sql, (
+                f"missing titles non-blank predicate in:\n{sql}"
+            )
+
+        # 2. The active query keeps `is_active`; the year query keeps
+        #    `first_seen_at` and drops `is_active` (flow filter parity
+        #    with `POSTING_FLOW_FILTER` on the web side, issue #2965).
+        active_sql = next(s for s in company_sqls if "is_active" in s and "first_seen_at" not in s)
+        year_sql = next(s for s in company_sqls if "first_seen_at" in s)
+        assert "is_active" in active_sql
+        assert "is_active" not in year_sql, (
+            "year_posting_count is a flow query — should not gate on is_active"
+        )
+
+        # 3. Resulting upsert docs reflect the SQL counts.
+        company_docs = next((docs for c, docs in captured_upserts if c == "company"), [])
+        by_id = {d["id"]: d for d in company_docs}
+        assert by_id["co-mcdonalds"]["active_posting_count"] == 44161
+        assert by_id["co-mcdonalds"]["year_posting_count"] == 55026
+        assert by_id["co-accenture"]["active_posting_count"] == 52273
+        assert by_id["co-accenture"]["year_posting_count"] == 81971
+
 
 class TestPopulateLocationsIfEmpty:
     """Issue #2978: ``location_macro_member`` was never seeded into the
