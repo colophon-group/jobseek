@@ -1105,3 +1105,79 @@ class TestZteMokahrHasMokahrScraperAndEnrich:
         )
         # Pure HTTP — no Playwright dependency, must run on slim workers.
         assert scraper.needs_browser is False
+
+
+class TestPeopleStrongScrapersHaveEnrich:
+    """Regression guard for #2995: PeopleStrong (Bajaj Finserv, L&T)
+    rich-monitor postings stuck with NULL next_scrape_at because their
+    dom detail scraper didn't declare ``enrich``.
+
+    PR #2953 wired a working render:true dom scraper for both peoplestrong
+    boards (extraction confirmed live: Bajaj 1850-byte HTML description,
+    title "Cluster Manager - Operations and Service" on JR00209059) but
+    omitted ``enrich``. The api_sniffer monitor returns rich data
+    (jobTitle, locationHierarchy, jobPostedDate), so
+    ``result.jobs_by_url is not None`` and ``is_rich = True``. Without
+    ``_board_has_enrich`` returning a non-None list, ``is_rich_no_scrape``
+    is True and postings are inserted via ``_INSERT_RICH_JOB`` (no
+    ``next_scrape_at``) — the dom scrape is never enqueued. Postgres on
+    2026-05-10 confirmed 6,322 / 6,322 Bajaj and 1,184 / 1,185 L&T
+    peoplestrong postings stuck with NULL next_scrape_at.
+
+    Mirrors PR #2954 (tesla), #2964 (didi-global), and the existing
+    enrich-guard suites above.
+    """
+
+    def test_bajaj_finserv_peoplestrong_declares_enrich(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("bajaj-finserv-careers-ps-jobs")
+        assert row is not None, "bajaj-finserv-careers-ps-jobs row missing from boards.csv"
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            "bajaj-finserv-careers-ps-jobs scraper_config must declare "
+            "'enrich': ['description'] — its api_sniffer monitor returns "
+            "rich (jobTitle/locationHierarchy/jobPostedDate), so without "
+            "enrich the rich-monitor branch picks _INSERT_RICH_JOB and "
+            "leaves next_scrape_at = NULL on all 6,322 active postings. "
+            "See #2995."
+        )
+
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
+
+    def test_larsen_toubro_peoplestrong_declares_enrich(self):
+        import json
+
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("larsen-toubro-careers")
+        assert row is not None, "larsen-toubro-careers row missing from boards.csv"
+
+        sc = json.loads(row.get("scraper_config") or "{}")
+        enrich = sc.get("enrich")
+        assert isinstance(enrich, list) and "description" in enrich, (
+            "larsen-toubro-careers scraper_config must declare "
+            "'enrich': ['description'] — its api_sniffer monitor returns "
+            "rich (jobTitle/locationHierarchyComplete/jobPostedDate/"
+            "employment_type), so without enrich the rich-monitor branch "
+            "picks _INSERT_RICH_JOB and leaves next_scrape_at = NULL. "
+            "See #2995."
+        )
+
+        metadata = {"scraper_type": row.get("scraper_type"), "scraper_config": sc}
+        assert _board_has_enrich(metadata) == enrich
