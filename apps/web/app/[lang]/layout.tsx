@@ -6,6 +6,7 @@ import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { LinguiClientProvider } from "@/components/LinguiProvider";
+import { LocaleGuard } from "@/components/LocaleGuard";
 import { type Locale, isLocale, locales, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { JsonLd } from "@/lib/seo";
@@ -67,6 +68,14 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <LinguiClientProvider locale={locale} messages={messages}>
+            {/*
+              Mounted here (root of every locale-prefixed route) so a
+              browser-back to a stale-locale URL — e.g. /en/explore after
+              the user picked German in /settings — auto-redirects to
+              the correct /de/explore. Reads `NEXT_LOCALE` cookie on every
+              pathname change. See `LocaleGuard.tsx` and #2988.
+            */}
+            <LocaleGuard />
             <JsonLd data={{
               "@context": "https://schema.org",
               "@type": "Organization",
