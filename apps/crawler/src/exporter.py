@@ -178,19 +178,6 @@ class TaxonomyMaps:
         )
         self.occupation_names = {r["occupation_id"]: r["name"] for r in rows}
 
-    async def _load_occupation_ancestors(self, pool: asyncpg.Pool) -> None:
-        rows = await pool.fetch("SELECT id, parent_id FROM occupation")
-        parents: dict[int, int | None] = {r["id"]: r["parent_id"] for r in rows}
-        ancestors: dict[int, list[int]] = {}
-        for oid in parents:
-            chain: set[int] = set()
-            current: int | None = oid
-            while current is not None:
-                chain.add(current)
-                current = parents.get(current)
-            ancestors[oid] = list(chain)
-        self.occupation_ancestors = ancestors
-
     async def _load_seniority_names(self, pool: asyncpg.Pool) -> None:
         rows = await pool.fetch(
             "SELECT seniority_id, name FROM seniority_name "
@@ -261,11 +248,22 @@ class TaxonomyMaps:
         self.location_ancestors = ancestors
 
     async def _load_occupation_ancestors(self, pool: asyncpg.Pool) -> None:
-        """Build occupation_id -> [self + all ancestor IDs] map."""
+        """Build occupation_id -> [self + all ancestor IDs] map.
+
+        Walks the ``parent_id`` chain AND unions in ``domain_id`` so that
+        a posting tagged with a specific occupation carries the domain
+        root in its expanded ``occupation_ids``. Without this, filtering
+        by domain id (e.g. ``occupation_ids:=<software_engineering>``)
+        returns 0 because no posting has the domain id stamped (#2980).
+        Mirrors the location macro expansion in
+        ``_load_location_ancestors`` (#2977).
+        """
         occ_parents: dict[int, int | None] = {}
-        rows = await pool.fetch("SELECT id, parent_id FROM occupation")
+        occ_domains: dict[int, int | None] = {}
+        rows = await pool.fetch("SELECT id, parent_id, domain_id FROM occupation")
         for r in rows:
             occ_parents[r["id"]] = r["parent_id"]
+            occ_domains[r["id"]] = r["domain_id"]
 
         ancestors: dict[int, list[int]] = {}
         for oid in occ_parents:
@@ -274,6 +272,11 @@ class TaxonomyMaps:
             while current is not None:
                 anc.add(current)
                 current = occ_parents.get(current)
+            # Union in the domain id so domain-as-single-filter works
+            # (parity with location macro membership).
+            domain_id = occ_domains.get(oid)
+            if domain_id is not None and domain_id != oid:
+                anc.add(domain_id)
             ancestors[oid] = list(anc)
         self.occupation_ancestors = ancestors
 

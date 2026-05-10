@@ -1130,3 +1130,128 @@ class TestLoadLocationAncestors:
         assert 4 in docs[0]["location_ids"], (
             "macro id missing from location_ids — macro filter would not match this posting"
         )
+
+
+class TestLoadOccupationAncestors:
+    """Tests for TaxonomyMaps._load_occupation_ancestors domain handling.
+
+    Issue #2980: occupation ancestors used to walk only the ``parent_id``
+    chain, so a posting tagged with a specific occupation never carried
+    its ``domain_id`` (e.g. Software Engineering = 1) in the expanded
+    ``occupation_ids``. As a result, ``occupation_ids:=<domain_id>``
+    returned 0 — domain-as-single-filter could not work. The fix unions
+    the row's ``domain_id`` into the ancestor set, mirroring the location
+    macro expansion in ``_load_location_ancestors`` (#2977).
+    """
+
+    async def test_domain_id_is_unioned_into_ancestors(self):
+        """Each occupation's ancestor set must include its domain_id when
+        present, so ``occupation_ids:=<domain_id>`` matches every posting
+        in that domain.
+        """
+        pool = _make_pool()
+        # Hierarchy:
+        #  - frontend-developer(2): parent=1 (software-engineer), domain=1 (SE)
+        #  - software-engineer(1):  parent=None,                 domain=1 (SE)
+        #  - solutions-architect(18): parent=None,               domain=3 (infra-security)
+        #  - data-engineer(7):       parent=None,                domain=2 (data-ai)
+        #  - orphan(99):             parent=None,                domain=None (no domain)
+        pool.fetch = AsyncMock(
+            return_value=[
+                {"id": 1, "parent_id": None, "domain_id": 1},
+                {"id": 2, "parent_id": 1, "domain_id": 1},
+                {"id": 18, "parent_id": None, "domain_id": 3},
+                {"id": 7, "parent_id": None, "domain_id": 2},
+                {"id": 99, "parent_id": None, "domain_id": None},
+            ]
+        )
+
+        maps = TaxonomyMaps()
+        await maps._load_occupation_ancestors(pool)
+
+        # Sanity: query selected the new domain_id column.
+        sql = pool.fetch.await_args.args[0]
+        assert "domain_id" in sql, f"query missing domain_id: {sql!r}"
+
+        # Leaf occupation gets parent + domain.
+        assert set(maps.occupation_ancestors[2]) == {2, 1}, (
+            "frontend-developer(2): self + parent(1) — note domain(1) "
+            "happens to coincide with parent id, so set has 2 elems"
+        )
+        # Top-level occupation in SE: self only (domain==self id is
+        # skipped to avoid stamping the same id twice).
+        assert set(maps.occupation_ancestors[1]) == {1}, (
+            "software-engineer(1): domain_id(1) coincides with self id"
+        )
+        # Top-level occupation in a different domain: self + domain.
+        assert set(maps.occupation_ancestors[18]) == {18, 3}, (
+            "solutions-architect(18): self + domain(3) — domain ancestor "
+            "is the smoking-gun for the #2980 fix"
+        )
+        # Another domain stamping
+        assert set(maps.occupation_ancestors[7]) == {7, 2}, (
+            "data-engineer(7): self + domain(2 = data-ai)"
+        )
+        # Occupation with no domain is unchanged (parent chain only).
+        assert set(maps.occupation_ancestors[99]) == {99}
+
+    async def test_parent_chain_still_walked_when_domain_present(self):
+        """A multi-level parent chain plus a domain id should produce the
+        full ancestor set: self + every parent up the chain + domain id.
+        """
+        pool = _make_pool()
+        # 3-level chain with shared domain id 5
+        pool.fetch = AsyncMock(
+            return_value=[
+                {"id": 1, "parent_id": None, "domain_id": 5},
+                {"id": 2, "parent_id": 1, "domain_id": 5},
+                {"id": 3, "parent_id": 2, "domain_id": 5},
+            ]
+        )
+
+        maps = TaxonomyMaps()
+        await maps._load_occupation_ancestors(pool)
+
+        # Leaf gets self, parent, grandparent, plus domain
+        assert set(maps.occupation_ancestors[3]) == {3, 2, 1, 5}
+        assert set(maps.occupation_ancestors[2]) == {2, 1, 5}
+        assert set(maps.occupation_ancestors[1]) == {1, 5}
+
+    async def test_null_domain_is_safe(self):
+        """Occupations without a domain (domain_id IS NULL) must not crash
+        and must not add a stray None or 0 to the ancestor set.
+        """
+        pool = _make_pool()
+        pool.fetch = AsyncMock(
+            return_value=[
+                {"id": 1, "parent_id": None, "domain_id": None},
+                {"id": 2, "parent_id": 1, "domain_id": None},
+            ]
+        )
+
+        maps = TaxonomyMaps()
+        await maps._load_occupation_ancestors(pool)
+
+        assert set(maps.occupation_ancestors[1]) == {1}
+        assert set(maps.occupation_ancestors[2]) == {2, 1}
+
+    def test_build_typesense_docs_includes_domain_ancestor(self):
+        """End-to-end check: a posting tagged with a top-level occupation
+        in a non-coinciding domain must carry the domain id in its
+        expanded ``occupation_ids`` — the invariant the domain-as-single-
+        filter UX (#2980) relies on.
+        """
+        maps = _make_taxonomy_maps()
+        # Solutions Architect (id=18, no parent, domain=3 = infra-security)
+        maps.occupation_names[18] = "Solutions Architect"
+        maps.occupation_ancestors[18] = [18, 3]
+        # Domain 3 is not represented as an occupation row but must
+        # still appear in the posting's occupation_ids array.
+
+        row = _make_posting_record(occupation_id=18)
+        docs = _build_typesense_docs([row], maps)
+        assert 3 in docs[0]["occupation_ids"], (
+            "domain id missing from occupation_ids — domain filter would not match this posting"
+        )
+        # Leaf occupation_id (singular) is still the specific occupation.
+        assert docs[0]["occupation_id"] == 18
