@@ -14,6 +14,7 @@ import re
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_job_location_type
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -25,14 +26,9 @@ _JOB_URL_RE = re.compile(r"apply\.workable\.com/([\w-]+)/j/([\w]+)")
 # Workable type codes (``full``/``part``/``contract``/``temporary``/
 # ``internship``/``volunteer``/``other``) pass through — the central
 # :func:`src.core.enum_normalize.normalize_employment_type` handles
-# them.
-
-_WORKPLACE_MAP: dict[str, str] = {
-    "remote": "remote",
-    "hybrid": "hybrid",
-    "onsite": "onsite",
-    "on_site": "onsite",
-}
+# them.  The ``workplace`` field
+# (``remote``/``hybrid``/``onsite``/``on_site``) is funnelled through
+# :func:`src.core.enum_normalize.normalize_job_location_type`.
 
 
 def _parse_job_url(url: str) -> tuple[str, str] | None:
@@ -97,7 +93,7 @@ def _parse_job_location_type(detail: dict) -> str | None:
     """Derive job_location_type from workplace or remote fields."""
     workplace = detail.get("workplace")
     if isinstance(workplace, str):
-        mapped = _WORKPLACE_MAP.get(workplace.lower())
+        mapped = normalize_job_location_type(workplace, default=None)
         if mapped:
             return mapped
     if detail.get("remote"):

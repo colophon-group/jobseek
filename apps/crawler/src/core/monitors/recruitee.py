@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import (
     BoardGoneError,
     DiscoveredJob,
@@ -114,14 +115,8 @@ def _parse_salary(offer: dict) -> dict | None:
     if sal_min is None and sal_max is None:
         return None
     currency = salary.get("currency")
-    period = (salary.get("period") or "").lower()
-    unit = "year"
-    if "hour" in period:
-        unit = "hour"
-    elif "month" in period:
-        unit = "month"
-    elif "week" in period:
-        unit = "week"
+    # Recruitee defaults to ``year`` when period is missing/unknown.
+    unit = normalize_salary_unit(salary.get("period")) or "year"
     return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
 
 

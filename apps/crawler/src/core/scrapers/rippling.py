@@ -14,6 +14,7 @@ import re
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_job_location_type, normalize_salary_unit
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -60,24 +61,30 @@ def _parse_salary(pay_ranges: list[dict] | None) -> dict | None:
     if sal_min is None and sal_max is None:
         return None
     currency = pr.get("currency")
-    freq = (pr.get("frequency") or "").upper()
-    unit = "year"
-    if "HOUR" in freq:
-        unit = "hour"
-    elif "MONTH" in freq:
-        unit = "month"
-    elif "WEEK" in freq:
-        unit = "week"
+    # Rippling defaults to ``year`` when frequency is missing/unknown.
+    unit = normalize_salary_unit(pr.get("frequency")) or "year"
     return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
 
 
 def _parse_job_location_type(locations: list[str] | None) -> str | None:
-    """Infer job_location_type from workLocations strings."""
+    """Infer job_location_type from workLocations strings.
+
+    Rippling emits free-text location strings like ``"San Francisco,
+    Remote"`` — the loop scans substrings for canonical tokens.  Inner
+    mapping is centralised: each canonical token (``remote``/``hybrid``
+    /``onsite``) is checked against
+    :func:`src.core.enum_normalize.normalize_job_location_type` so the
+    mapping logic stays in one place.
+    """
     if not locations:
         return None
     for loc in locations:
-        if "remote" in loc.lower():
-            return "remote"
+        text = loc.lower()
+        for token in ("remote", "hybrid", "onsite", "on-site", "on site"):
+            if token in text:
+                mapped = normalize_job_location_type(token, default=None)
+                if mapped:
+                    return mapped
     return None
 
 

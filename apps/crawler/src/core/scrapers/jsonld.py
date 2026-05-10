@@ -15,6 +15,7 @@ from html.parser import HTMLParser
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -179,11 +180,17 @@ def _extract_salary(posting: dict) -> dict | None:
     value = base_salary.get("value")
 
     if isinstance(value, dict):
+        # schema.org uses ``MONTH``/``HOUR``/``DAY``/``WEEK``/``YEAR`` —
+        # the central :func:`src.core.enum_normalize.normalize_salary_unit`
+        # already covers the lowercase forms (and substring fallback for
+        # future schema.org extensions).  No behaviour change vs the old
+        # ``.lower() or None`` since unrecognised tokens still resolve to
+        # ``None``.
         return {
             "currency": currency,
             "min": value.get("minValue"),
             "max": value.get("maxValue"),
-            "unit": value.get("unitText", "").lower() or None,
+            "unit": normalize_salary_unit(value.get("unitText")),
         }
     elif isinstance(value, (int, float)):
         return {

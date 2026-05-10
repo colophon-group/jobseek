@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_job_location_type, normalize_salary_unit
 from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
 
 log = structlog.get_logger()
@@ -34,13 +35,9 @@ _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support", "stat
 # central :func:`src.core.enum_normalize.normalize_employment_type`
 # handles ``full_time``/``permanent_full_time``/``contract_temp``/
 # ``volunteer`` etc.  The ``employment_type_text`` fallback below is
-# used when the upstream code is missing/empty.
-
-_WORKPLACE_MAP: dict[str, str] = {
-    "remote": "remote",
-    "hybrid": "hybrid",
-    "onsite": "onsite",
-}
+# used when the upstream code is missing/empty.  ``workplace_type``
+# (``remote``/``hybrid``/``onsite``) is funnelled through
+# :func:`src.core.enum_normalize.normalize_job_location_type`.
 
 
 def _slug_from_url(board_url: str) -> str | None:
@@ -109,16 +106,9 @@ def _parse_salary(posting: dict) -> dict | None:
         return None
 
     currency = posting.get("compensation_currency")
-    freq = (posting.get("compensation_frequency") or "").lower()
-    unit = "year"
-    if "hour" in freq:
-        unit = "hour"
-    elif "month" in freq:
-        unit = "month"
-    elif "week" in freq or "two_weeks" in freq:
-        unit = "week"
-    elif "day" in freq:
-        unit = "day"
+    # Pinpoint defaults to ``year`` when frequency is missing/unknown.
+    # ``two_weeks`` is normalised to ``week`` by the central helper.
+    unit = normalize_salary_unit(posting.get("compensation_frequency")) or "year"
 
     return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
 
@@ -136,7 +126,7 @@ def _parse_job(posting: dict) -> DiscoveredJob | None:
 
     # Workplace / job location type
     workplace_raw = posting.get("workplace_type") or ""
-    job_location_type = _WORKPLACE_MAP.get(workplace_raw)
+    job_location_type = normalize_job_location_type(workplace_raw, default=None)
 
     # Metadata
     metadata: dict = {}

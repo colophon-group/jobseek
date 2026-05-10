@@ -20,6 +20,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
 
 log = structlog.get_logger()
@@ -39,12 +40,8 @@ _IGNORE_SLUGS = frozenset({"www", "api", "cdn", "cdn3", "app", "help", "knowledg
 # Traffit emits English title-case labels (``Full time``/``Part time``
 # /``Contract``/``Internship``) which the central
 # :func:`src.core.enum_normalize.normalize_employment_type` handles.
-
-_RATE_MAP = {
-    "Monthly": "month",
-    "Yearly": "year",
-    "Hourly": "hour",
-}
+# Salary rate (``Monthly``/``Yearly``/``Hourly``) is funnelled through
+# :func:`src.core.enum_normalize.normalize_salary_unit`.
 
 
 def _slug_from_url(url: str) -> str | None:
@@ -101,8 +98,8 @@ def _parse_salary(options: dict) -> dict | None:
     if not currency or (min_val is None and max_val is None):
         return None
 
-    rate_raw = options.get("_Salary_Rate", "")
-    unit = _RATE_MAP.get(rate_raw, "month")
+    # Traffit defaults to ``month`` when ``_Salary_Rate`` is missing/unknown.
+    unit = normalize_salary_unit(options.get("_Salary_Rate")) or "month"
 
     def _to_num(v):
         if v is None:

@@ -14,6 +14,7 @@ import re
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -66,14 +67,8 @@ def _parse_salary(detail: dict) -> dict | None:
     currency = base.get("currency")
     if not currency:
         return None
-    unit_raw = (base.get("unitText") or "").upper()
-    unit = "month"  # BITE default
-    if "YEAR" in unit_raw:
-        unit = "year"
-    elif "HOUR" in unit_raw:
-        unit = "hour"
-    elif "WEEK" in unit_raw:
-        unit = "week"
+    # BITE defaults to ``month`` when ``unitText`` is missing or unrecognised.
+    unit = normalize_salary_unit(base.get("unitText")) or "month"
 
     min_val = base.get("minValue")
     max_val = base.get("maxValue")

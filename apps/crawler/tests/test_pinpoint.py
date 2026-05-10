@@ -159,9 +159,12 @@ class TestParseSalary:
         result = _parse_salary(posting)
         assert result == {"currency": "USD", "min": 200, "max": 300, "unit": "day"}
 
-    def test_daily_string_without_day_substring(self):
-        # "daily" does not contain the substring "day" (d-a-i-l-y vs d-a-y),
-        # so it falls through to the default "year"
+    def test_daily_string_correctly_maps_to_day(self):
+        # Pre-#2993 the local substring scanner did ``if "day" in freq``,
+        # which missed ``"daily"`` (d-a-i-l-y has no ``day`` substring) and
+        # silently fell through to the default ``"year"``.  Centralising
+        # via :func:`normalize_salary_unit` fixes this — ``daily`` is a
+        # direct match in the central map.
         posting = {
             "compensation_minimum": 200,
             "compensation_maximum": 300,
@@ -169,7 +172,7 @@ class TestParseSalary:
             "compensation_frequency": "daily",
         }
         result = _parse_salary(posting)
-        assert result == {"currency": "USD", "min": 200, "max": 300, "unit": "year"}
+        assert result == {"currency": "USD", "min": 200, "max": 300, "unit": "day"}
 
     def test_annual_default(self):
         posting = {

@@ -13,6 +13,7 @@ import re
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import (
     BoardGoneError,
     DiscoveredJob,
@@ -35,12 +36,6 @@ BATCH_SIZE = 100
 # the same cadence.
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY = 0.5
-
-_INTERVAL_TO_UNIT: dict[str, str] = {
-    "per-year-salary": "year",
-    "per-month-salary": "month",
-    "per-hour-wage": "hour",
-}
 
 _PAGE_PATTERNS = [
     re.compile(r"api\.(?:eu\.)?lever\.co/v0/postings/([\w-]+)"),
@@ -84,11 +79,15 @@ def _parse_salary(salary_range: dict | None) -> dict | None:
     interval = salary_range.get("interval", "")
     if sal_min is None and sal_max is None:
         return None
+    # Lever historically passed an unknown interval through unchanged
+    # (rather than dropping to ``None``); preserve that to avoid
+    # silently changing the R2 ``unit`` value for any future Lever
+    # interval token not yet in the central map.
     return {
         "currency": currency,
         "min": sal_min,
         "max": sal_max,
-        "unit": _INTERVAL_TO_UNIT.get(interval, interval),
+        "unit": normalize_salary_unit(interval) or interval,
     }
 
 

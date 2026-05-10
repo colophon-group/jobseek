@@ -130,7 +130,11 @@ class TestParseSalary:
         options = {"_Salary_MIN": "5000", "_Salary_MAX": "10000"}
         assert _parse_salary(options) is None
 
-    def test_unknown_rate(self):
+    def test_weekly_rate_is_now_recognised(self):
+        # Pre-#2993 the local ``_RATE_MAP`` only knew
+        # ``Monthly/Yearly/Hourly`` and silently mapped ``Weekly`` to
+        # the ``month`` default.  Centralising via
+        # :func:`normalize_salary_unit` fixes this — ``Weekly`` -> ``week``.
         options = {
             "_Salary_MIN": "100",
             "_Salary_Currency": "EUR",
@@ -138,7 +142,17 @@ class TestParseSalary:
         }
         result = _parse_salary(options)
         assert result is not None
-        assert result["unit"] == "month"  # default fallback
+        assert result["unit"] == "week"
+
+    def test_unknown_rate_falls_back_to_month(self):
+        options = {
+            "_Salary_MIN": "100",
+            "_Salary_Currency": "EUR",
+            "_Salary_Rate": "Mystery",
+        }
+        result = _parse_salary(options)
+        assert result is not None
+        assert result["unit"] == "month"  # local default fallback
 
     def test_yearly_rate(self):
         options = {

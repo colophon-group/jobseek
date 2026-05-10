@@ -14,6 +14,7 @@ import re
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -81,12 +82,8 @@ def _parse_salary(posting: dict) -> dict | None:
     if sal_min is None and sal_max is None:
         return None
     currency = salary.get("currency")
-    period = salary.get("period", "")
-    unit = "year"
-    if "hour" in period.lower():
-        unit = "hour"
-    elif "month" in period.lower():
-        unit = "month"
+    # SmartRecruiters defaults to ``year`` when period is missing/unknown.
+    unit = normalize_salary_unit(salary.get("period")) or "year"
     return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
 
 

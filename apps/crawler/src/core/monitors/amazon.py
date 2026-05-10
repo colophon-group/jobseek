@@ -26,6 +26,7 @@ from datetime import datetime
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import DiscoveredJob, register
 
 log = structlog.get_logger()
@@ -156,21 +157,6 @@ _SALARY_RANGE_RE = re.compile(
     re.IGNORECASE,
 )
 
-_UNIT_MAP = {
-    "year": "year",
-    "yr": "year",
-    "annually": "year",
-    "per year": "year",
-    "hour": "hour",
-    "hr": "hour",
-    "hourly": "hour",
-    "per hour": "hour",
-    "month": "month",
-    "mo": "month",
-    "monthly": "month",
-    "per month": "month",
-}
-
 
 def _parse_salary(text: str | None) -> dict | None:
     if not text or not isinstance(text, str):
@@ -181,7 +167,12 @@ def _parse_salary(text: str | None) -> dict | None:
     if m:
         sal_min = float(m.group(1).replace(",", ""))
         sal_max = float(m.group(3).replace(",", ""))
-        unit = _UNIT_MAP.get(m.group(2).lower(), m.group(2).lower())
+        # Amazon's regex captures bare ``year``/``hour``/``mo``/``yr``
+        # tokens; preserve the lowercase raw token as a tail fallback so
+        # any future regex extension lands here cleanly without
+        # unintentionally dropping to ``None``.
+        raw_unit = m.group(2).lower()
+        unit = normalize_salary_unit(raw_unit) or raw_unit
         return {"currency": "USD", "min": sal_min, "max": sal_max, "unit": unit}
 
     # Try "min - max CURRENCY unit" format
@@ -190,7 +181,8 @@ def _parse_salary(text: str | None) -> dict | None:
         sal_min = float(m.group(1).replace(",", ""))
         sal_max = float(m.group(2).replace(",", ""))
         currency = m.group(3).upper()
-        unit = _UNIT_MAP.get(m.group(4).lower(), m.group(4).lower())
+        raw_unit = m.group(4).lower()
+        unit = normalize_salary_unit(raw_unit) or raw_unit
         return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
 
     return None

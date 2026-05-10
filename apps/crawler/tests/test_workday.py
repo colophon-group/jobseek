@@ -93,10 +93,24 @@ class TestParseLocationtype:
         assert _parse_location_type(None) is None
 
     def test_onsite(self):
-        assert _parse_location_type("On-Site") is None
+        # Centralized via #2992 — Workday's ``remoteType`` enum does emit
+        # ``onsite`` per the public API, and the central map handles
+        # ``On-Site`` / ``OnSite``.  Pre-#2992 the local
+        # ``_parse_location_type`` only knew ``remote``/``flexible``/
+        # ``hybrid`` and silently dropped ``On-Site`` to ``None`` — that
+        # was a bug, not an invariant.
+        assert _parse_location_type("On-Site") == "onsite"
+        assert _parse_location_type("OnSite") == "onsite"
 
     def test_case_insensitive(self):
         assert _parse_location_type("REMOTE") == "remote"
+
+    def test_unknown_falls_back_to_none(self):
+        # Local fallback is ``None`` (not the central default of
+        # ``onsite``) so unknown upstream values surface as ``None`` in
+        # ``JobContent.job_location_type`` — matches pre-#2992
+        # behaviour.
+        assert _parse_location_type("Mystery type") is None
 
 
 class TestNormalizeWorkdayLocation:
