@@ -2459,16 +2459,40 @@ async def refresh_typesense_counts(
         await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs, "update")
 
     # --- Companies ---
+    # The web reads `company.active_posting_count` directly (unfiltered
+    # `listTopCompanies` path) but the live filtered path facets
+    # `job_posting` with `is_active:true && has_content:!=false`
+    # (POSTING_BASE_FILTER, see apps/web/src/lib/search/typesense-filters.ts).
+    # If we count without `has_content` here, the precomputed and live
+    # numbers structurally diverge — issue #3009 (McDonald's: 55,591 vs
+    # 44,161 on 2026-05-10).
+    #
+    # `has_content` is computed in `exporter._build_typesense_docs` as
+    # `bool(title and title.strip()) and (description_r2_hash is not None)`,
+    # where `title = titles[0] if titles else ""`. The SQL predicate
+    # mirrors that formula so the precomputed counts equal the live
+    # facet counts modulo locale filtering (which is the user's
+    # deliberate choice).
+    _HAS_CONTENT = (
+        "description_r2_hash IS NOT NULL "
+        "AND cardinality(titles) > 0 "
+        "AND length(trim(titles[1])) > 0"
+    )
     active_rows = await local_conn.fetch(
-        """
+        f"""
         SELECT company_id::text, COUNT(*) AS cnt
-        FROM job_posting WHERE is_active GROUP BY 1
+        FROM job_posting
+        WHERE is_active AND {_HAS_CONTENT}
+        GROUP BY 1
         """
     )
     year_rows = await local_conn.fetch(
-        """
+        f"""
         SELECT company_id::text, COUNT(*) AS cnt
-        FROM job_posting WHERE first_seen_at > now() - interval '1 year' GROUP BY 1
+        FROM job_posting
+        WHERE first_seen_at > now() - interval '1 year'
+          AND {_HAS_CONTENT}
+        GROUP BY 1
         """
     )
     if active_rows or year_rows:
