@@ -436,7 +436,7 @@ export const jobPosting = pgTable("job_posting", {
 			name: "job_posting_seniority_id_fkey"
 		}),
 	unique("job_posting_source_url_unique").on(table.sourceUrl),
-	check("chk_employment_type", sql`(employment_type IS NULL) OR (employment_type = ANY (ARRAY['full_time'::text, 'part_time'::text, 'contract'::text, 'internship'::text, 'full_or_part'::text]))`),
+	check("chk_employment_type", sql`(employment_type IS NULL) OR (employment_type = ANY (ARRAY['full_time'::text, 'part_time'::text, 'contract'::text, 'internship'::text, 'temporary'::text, 'volunteer'::text, 'full_or_part'::text]))`),
 	check("chk_location_arrays_length", sql`((location_ids IS NULL) AND (location_types IS NULL)) OR (array_length(location_ids, 1) = array_length(location_types, 1))`),
 	check("chk_location_types", sql`location_types <@ ARRAY['onsite'::text, 'remote'::text, 'hybrid'::text]`),
 ]);
