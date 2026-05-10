@@ -221,13 +221,47 @@ WHERE jp.id = t.id
 RETURNING jp.id::text, jp.source_url, jp.board_id::text, jp.description_r2_hash
 """
 
-# Dry-run COUNT — same WHERE clause as the UPDATE above, no writes.
+# Pass 2 — read-only fetch for stuck rows whose ``next_scrape_at`` is
+# already non-NULL (typically set by an earlier ad-hoc operator UPDATE
+# from the #2996 issue body, OR by a previous invocation of this helper
+# that ran Pass 1 and set ``next_scrape_at = now()`` but whose Redis
+# enqueue was lost — Redis eviction, container restart between SQL
+# UPDATE and HSET, etc.). Without Pass 2 such rows are stranded: Pass
+# 1's WHERE excludes them (next_scrape_at is no longer NULL) and
+# workers can't pick them up because the per-domain Redis ZSET has no
+# entry for them and ``scrape:<id>`` is missing — production workers
+# claim from Redis only, not Postgres ``next_scrape_at``.
+#
+# Walks via OFFSET because the criteria are read-only: every candidate
+# row stays a candidate across iterations, so a no-OFFSET LIMIT loop
+# would re-enqueue the same first-N rows forever. ``enqueue_scrape``'s
+# Lua ZADD-NX dedup absorbs any concurrent re-enqueue from a monitor
+# ``relisted`` cycle that lands on a row sorting before ``offset``;
+# the cost is an inflated ``enqueued`` count in the log, not duplicate
+# scrapes (a deduped enqueue returns added=0 and is not counted).
+_FETCH_STUCK_DESCRIPTIONS_BATCH = """
+SELECT jp.id::text, jp.source_url, jp.board_id::text, jp.description_r2_hash
+FROM job_posting jp
+JOIN company c ON c.id = jp.company_id
+WHERE jp.is_active = true
+  AND jp.description_r2_hash IS NULL
+  AND jp.next_scrape_at IS NOT NULL
+  AND ($1::text[] IS NULL OR c.slug = ANY($1::text[]))
+ORDER BY jp.id
+LIMIT $2
+OFFSET $3
+"""
+
+# Dry-run COUNT — sums Pass 1 + Pass 2 buckets so the dry_run number
+# reflects the ACTUAL work the helper would do, not just the legacy
+# ``next_scrape_at IS NULL`` bucket. The two buckets are mutually
+# exclusive (next_scrape_at is NULL or NOT NULL, never both) so a
+# straight UNION ALL is safe.
 _COUNT_DESCRIPTIONS_CANDIDATES = """
 SELECT COUNT(*)::int FROM job_posting jp
 JOIN company c ON c.id = jp.company_id
 WHERE jp.is_active = true
   AND jp.description_r2_hash IS NULL
-  AND jp.next_scrape_at IS NULL
   AND ($1::text[] IS NULL OR c.slug = ANY($1::text[]))
 """
 
@@ -238,12 +272,33 @@ async def backfill_descriptions(
     only_missing: bool = True,
     dry_run: bool = False,
 ) -> int:
-    """Set ``next_scrape_at = now()`` on rich-monitor postings whose
+    """Enqueue Redis scrape tasks for stuck rich-monitor postings whose
     description is missing.
 
+    Two-pass design mirroring :func:`backfill_locations`:
+
+    1. **PROMOTE** — rows with ``next_scrape_at IS NULL``. Atomically
+       sets ``next_scrape_at = now()`` and enqueues into Redis. This is
+       the original #2996 path: rows inserted via the no-enrich
+       ``_INSERT_RICH_JOB`` before the board's enrich config landed.
+
+    2. **FETCH** — rows with ``next_scrape_at IS NOT NULL AND
+       description_r2_hash IS NULL``. Read-only enqueue. Catches rows
+       stranded by:
+         - the ad-hoc operator UPDATE from #2996's issue body (sets
+           ``next_scrape_at`` in DB but does not touch Redis — workers
+           claim from Redis in production, never from Postgres);
+         - a prior invocation whose Redis enqueue was lost (eviction,
+           container restart between SQL UPDATE and HSET).
+
+    Without Pass 2 this helper became a no-op for the affected
+    companies once the operator UPDATE landed, since the legacy
+    ``next_scrape_at IS NULL`` predicate excluded the already-promoted
+    rows.
+
     Scoped by ``company_slugs`` if provided; otherwise the default 20
-    stuck companies from #2996. Returns the number of rows touched
-    (or, in ``dry_run`` mode, the number that WOULD be touched).
+    stuck companies from #2996. Returns the number of rows enqueued
+    (or, in ``dry_run`` mode, the number that WOULD be considered).
 
     ``only_missing`` is reserved for future expansion (currently always
     True — the helper exists specifically to clear the missing-description
@@ -315,15 +370,46 @@ async def backfill_descriptions(
 
     enqueued = 0
 
-    # Single pass: each iteration UPDATEs up to N rows and the WHERE
-    # clause excludes already-promoted ids on the next pass (the row's
-    # next_scrape_at is no longer NULL). Loop until empty.
+    # Pass 1 (PROMOTE): rows with ``next_scrape_at IS NULL``.
+    # Each iteration UPDATEs up to N rows and the WHERE clause excludes
+    # already-promoted ids on the next pass (the row's next_scrape_at
+    # is no longer NULL). Loop until empty.
     while True:
         rows = await pool.fetch(_PROMOTE_DESCRIPTIONS_BATCH, slugs, _BACKFILL_BATCH_SIZE)
         if not rows:
             break
         log.info("backfill.descriptions.promote.batch", count=len(rows), slugs=slugs)
         enqueued += await _enqueue_rows(list(rows))
+
+    # Pass 2 (FETCH-ONLY): rows with ``next_scrape_at IS NOT NULL`` —
+    # already promoted by an earlier ad-hoc operator UPDATE or a prior
+    # invocation whose Redis enqueue was lost. The criteria stay true
+    # across iterations (we're not flipping next_scrape_at this time
+    # — the row already has a non-NULL value), so OFFSET pagination
+    # is required to walk the table. Concurrent-write race: if
+    # ``_DIFF_BATCH``'s touched-self-heal flips a row's
+    # next_scrape_at from NULL to non-NULL during this loop on an
+    # ``id`` sorting before ``offset``, the row appears behind us and
+    # we'd re-enqueue it on the next iteration. ``enqueue_scrape``'s
+    # Lua ZADD-NX dedup absorbs the duplicate (returns added=0, not
+    # counted), so the operational effect is just a slightly inflated
+    # log count. Acceptable; documented here so a future maintainer
+    # doesn't try to "fix" the count drift by adding row-level locks.
+    offset = 0
+    while True:
+        rows = await pool.fetch(
+            _FETCH_STUCK_DESCRIPTIONS_BATCH, slugs, _BACKFILL_BATCH_SIZE, offset
+        )
+        if not rows:
+            break
+        log.info(
+            "backfill.descriptions.fetch.batch",
+            count=len(rows),
+            offset=offset,
+            slugs=slugs,
+        )
+        enqueued += await _enqueue_rows(list(rows))
+        offset += len(rows)
 
     if enqueued == 0:
         log.info("backfill.descriptions.none_needed", slugs=slugs)
