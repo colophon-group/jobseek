@@ -335,6 +335,84 @@ class TestFetchChildXml:
             root = await _fetch_child_xml("https://example.com/sitemap-html.xml", client)
             assert root is None
 
+    async def test_403_raises_after_retries(self, monkeypatch):
+        """WAF/anti-bot 403 on a child shard exhausts retries →
+        propagate ``PaginationFetchError`` (#2994). mchire's awselb/2.0
+        was 403'ing 18-44%% of phenom child shards per cycle from the
+        production Webshare egress while the index returned 200; the
+        original ``transient_403=False`` default would have returned
+        ``None`` and let ``_collect_urls`` silently drop the shard's
+        URLs, tombstoning thousands of postings via
+        ``_MARK_GONE_BY_TIMESTAMP`` — same shape as the 5xx leg of
+        #2722 / #2974, just on the 4xx side of the WAF response.
+        """
+        import asyncio
+
+        import pytest
+
+        from src.core.monitors.sitemap import _fetch_child_xml
+        from src.shared.http_retry import PaginationFetchError
+
+        async def _no_sleep(_):
+            return None
+
+        monkeypatch.setattr(asyncio, "sleep", _no_sleep)
+
+        attempts = 0
+
+        # awselb/2.0 403 body shape — generic forbidden HTML, no
+        # WWW-Authenticate header. Verifies we don't accidentally
+        # gate on body inspection.
+        forbidden_html = (
+            "<html><head><title>403 Forbidden</title></head>"
+            "<body><center><h1>403 Forbidden</h1></center></body></html>"
+        )
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(
+                403,
+                text=forbidden_html,
+                headers={"server": "awselb/2.0"},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc:
+                await _fetch_child_xml("https://example.com/sitemap-waf-blocked.xml", client)
+            assert exc.value.last_status == 403
+            assert attempts == 3
+
+    async def test_403_recovers_within_budget(self, monkeypatch):
+        """Transient 403 that clears within the retry budget returns
+        the parsed shard — shows the retry path actually delivers
+        recovery, not just hard-failure escalation. WAF blocks tied
+        to per-IP burst limits often clear after a back-off interval.
+        """
+        import asyncio
+
+        from src.core.monitors.sitemap import _fetch_child_xml
+
+        async def _no_sleep(_):
+            return None
+
+        monkeypatch.setattr(asyncio, "sleep", _no_sleep)
+
+        xml_str = '<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/j1</loc></url></urlset>'
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            if attempts < 2:
+                return httpx.Response(403)
+            return httpx.Response(200, text=xml_str)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            root = await _fetch_child_xml("https://example.com/sitemap-flaky.xml", client)
+            assert root is not None
+            assert attempts == 2
+
 
 class TestParseRobotsSitemaps:
     async def test_parses_sitemaps(self):

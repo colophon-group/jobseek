@@ -228,3 +228,100 @@ class TestFetchWithRetry:
             await fetch_with_retry(client, "https://example.com", retries=0)
 
         assert client.get.await_count == 0
+
+    # ── transient_403 opt-in (#2994) ─────────────────────────────────────
+
+    async def test_default_403_returns_none_no_retry(self):
+        """Default behaviour preserves the dom-monitor pagination contract:
+        a 403 means "this URL is permanently blocked, drop it" — return
+        ``None`` so the caller stops paginating without flagging the run
+        as a failure. Pinned so the #2994 fix doesn't accidentally
+        flip dom-monitor semantics for Indeed and similar.
+        """
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(403))
+
+        out = await fetch_with_retry(client, "https://example.com/blocked")
+
+        assert out is None
+        assert client.get.await_count == 1
+
+    async def test_transient_403_retries_then_succeeds(self):
+        """``transient_403=True``: 403 retries, then 200 returns text.
+        Mirrors the 5xx contract — a transient WAF block on a sitemap
+        shard often clears within the retry budget.
+        """
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=[_resp(403), _resp(200, "<urlset/>")])
+
+        out = await fetch_with_retry(
+            client,
+            "https://example.com/sitemap-shard.xml",
+            base_delay=0.001,
+            transient_403=True,
+        )
+
+        assert out == "<urlset/>"
+        assert client.get.await_count == 2
+
+    async def test_transient_403_raises_after_persistent(self):
+        """``transient_403=True`` with persistent 403 → raises
+        ``PaginationFetchError`` carrying ``last_status=403`` so
+        operators can pattern-match the WAF-block signal in logs. This
+        is the load-bearing assertion for the mchire flap fix (#2994):
+        the call propagates instead of returning ``None``, so the
+        monitor cycle records as a failure instead of silently
+        dropping the shard.
+        """
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(403))
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await fetch_with_retry(
+                client,
+                "https://example.com/sitemap-shard.xml",
+                retries=3,
+                base_delay=0.001,
+                transient_403=True,
+            )
+
+        assert exc_info.value.last_status == 403
+        assert exc_info.value.attempts == 3
+        assert client.get.await_count == 3
+
+    async def test_transient_403_also_retries_401(self):
+        """401 (unauthorized) shares the WAF/anti-bot semantics for shard
+        fetches — covered by the same opt-in. Some CDNs return 401
+        instead of 403 for the same block.
+        """
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(401))
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await fetch_with_retry(
+                client,
+                "https://example.com/sitemap-shard.xml",
+                retries=2,
+                base_delay=0.001,
+                transient_403=True,
+            )
+
+        assert exc_info.value.last_status == 401
+        assert client.get.await_count == 2
+
+    async def test_transient_403_does_not_affect_404(self):
+        """``transient_403`` only changes 401/403 — 404/410 remain
+        legitimate end-of-pagination signals. Defensive: don't expand
+        the opt-in's scope by accident.
+        """
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(404))
+
+        out = await fetch_with_retry(
+            client,
+            "https://example.com/sitemap-missing.xml",
+            transient_403=True,
+        )
+
+        assert out is None
+        assert client.get.await_count == 1

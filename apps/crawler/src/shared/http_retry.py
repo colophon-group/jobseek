@@ -59,6 +59,21 @@ class PaginationFetchError(Exception):
 # / 530 origin-error codes that real jobs sites behind CDNs commonly emit.
 _EXTRA_RETRYABLE_STATUSES = frozenset({408, 425, 429})
 
+# Auth/forbidden statuses that some callers want treated as transient. By
+# default these route through the "non-retryable 4xx → return None" path,
+# matching the prior tolerant ``fetch_page_text`` behaviour: a 403 from a
+# pagination sub-page (Indeed company pages, etc.) is a permanent block on
+# *that* URL, so dropping the page and continuing is the right move.
+#
+# Sitemap-shard fetchers behave differently — see #2994. mchire's
+# (Phenom-managed AWS ELB) 403s a fraction of child shards on every cycle
+# from a single egress IP, even though the sitemap *index* itself returns
+# 200. Treating those 403s as "shard is gone" silently drops thousands of
+# URLs and tombstones real postings via ``_MARK_GONE_BY_TIMESTAMP`` — the
+# same bug class as #2722 / #2974, just on the 4xx leg of the WAF instead
+# of the 5xx leg. ``_fetch_child_xml`` opts in via ``transient_403=True``.
+_TRANSIENT_403_STATUSES = frozenset({401, 403})
+
 # Statuses that mean "no content here, but the request was understood".
 # Pagination treats these as legitimate end-of-pagination signals so the
 # monitor returns its accumulated set as a successful run. Public so
@@ -99,6 +114,7 @@ async def fetch_with_retry(
     max_chars: int = 500_000,
     timeout: float | None = None,
     headers: dict | None = None,
+    transient_403: bool = False,
 ) -> str | None:
     """Fetch ``url`` and return its text body.
 
@@ -126,6 +142,20 @@ async def fetch_with_retry(
     the un-fetched tail via ``_MARK_GONE_BY_TIMESTAMP`` — the same
     silent-truncation shape as the bug fixed in #2722 / #2737, just
     on a different input (empty body rather than 5xx).
+
+    Transient-403 opt-in (#2994). When ``transient_403=True``, 401 and
+    403 statuses are treated as retryable and surface as
+    ``PaginationFetchError`` after retry exhaustion instead of
+    returning ``None``. This is for callers fetching child shards from
+    an index that succeeded — a 403 there is empirically a WAF /
+    anti-bot block on the egress IP (mchire's awselb/2.0 returned 403
+    on 18-44%% of phenom-monitor child shards from the production
+    Webshare egress while the index returned 200), not the shard being
+    permanently removed. Default ``False`` preserves the dom-monitor
+    pagination contract where a 403 on Indeed company pages means
+    "this URL is permanently blocked, drop it" — silently turning that
+    into a hard failure would 5-strike-disable boards on first
+    encounter.
 
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
     retries — exponential with full jitter. Defaults to ~0.5–1s,
@@ -175,6 +205,21 @@ async def fetch_with_retry(
                 return None
             elif is_retryable_status(resp.status_code):
                 last_exc = None  # status-only, no exception
+            elif transient_403 and resp.status_code in _TRANSIENT_403_STATUSES:
+                # WAF/anti-bot block on a sitemap-shard fetch (#2994). The
+                # caller (``_fetch_child_xml``) opted in: retry through
+                # the budget, then raise so the cycle records as a
+                # failure rather than silently dropping this shard's
+                # URLs. ``last_exc`` stays None so the raised
+                # PaginationFetchError carries ``last_status=403`` for
+                # operator log pattern-matching.
+                last_exc = None
+                log.info(
+                    "http_retry.transient_403",
+                    url=url,
+                    status=resp.status_code,
+                    attempt=attempt + 1,
+                )
             else:
                 # Other 4xx (auth, forbidden, bad-request, etc.) — not
                 # transient, but also not "end of pagination" in the
