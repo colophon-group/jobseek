@@ -9,6 +9,7 @@ import { typeaheadLocationsCacheTag } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
+import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
 
 export interface LocationSuggestion {
   id: number;
@@ -336,6 +337,145 @@ export async function getGlobalLocationsGrouped(
   // run-time JSON path, then fail to render the macro tier.
   const key = `global-locs-grouped-v3:${locale}:${fKey}`;
   return cached(key, () => _fetchGlobalLocationsGrouped(locale, filters), { ttl: 3600 });
+}
+
+// ── Paged variant for fast modal TTFB (#2982) ─────────────────────────
+
+export interface GlobalLocationsPage {
+  /**
+   * Macro regions — only included on the first page (cursor=0). Bounded
+   * (~9 entries today) so they always fit and don't need pagination.
+   */
+  macros: GlobalMacroRegion[];
+  /**
+   * The slice of countries for this page, sorted alphabetically by
+   * country name (matches the unpaged sort in
+   * {@link _fetchGlobalLocationsGrouped}).
+   */
+  countries: GlobalLocationGroup[];
+  /**
+   * Index into the full sorted country list for the next page, or
+   * `null` when this page contains the tail. Callers pass this back to
+   * {@link getGlobalLocationsPage} as the `cursor`.
+   */
+  nextCursor: number | null;
+  /**
+   * Total number of countries available across all pages. Lets the
+   * client size the scroll container or display "showing X of Y".
+   */
+  totalCountries: number;
+}
+
+/**
+ * Paginated variant of {@link getGlobalLocationsGrouped} (#2982).
+ *
+ * The modal previously fetched the full {@link GlobalLocationsResponse}
+ * on every open and rendered all ~150 countries (with their full
+ * region/city subtrees) in one pass. First-paint scripting cost scales
+ * with total facet cardinality. This wrapper slices the cached full
+ * response so the first paint only mounts `LOCATION_PAGE_SIZE`
+ * countries; subsequent pages are fetched on-scroll and append to the
+ * rendered list.
+ *
+ * The underlying Typesense + DB fetch is still one round-trip (cached
+ * via the shared {@link cached} slot for 3600s) — the perf win comes
+ * from React mounting fewer DOM nodes on first paint, plus the
+ * subsequent pages hitting the same cache slot without re-running the
+ * Typesense facet. TTFB for cursor=0 equals the unpaged action's TTFB;
+ * TTFB for cursor>0 is dominated by Redis round-trip + JSON parse
+ * (typically <30ms).
+ *
+ * `macros` are always returned on cursor=0 only — they're bounded
+ * (~9 entries) so the client doesn't need to page across them.
+ */
+export async function getGlobalLocationsPage(
+  locale: string,
+  cursor: number,
+  filters?: { companyId?: string; keywords?: string[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
+  limit: number = LOCATION_PAGE_SIZE,
+): Promise<GlobalLocationsPage> {
+  const full = await getGlobalLocationsGrouped(locale, filters);
+  const start = Math.max(0, cursor);
+  const end = Math.min(full.countries.length, start + limit);
+  const slice = full.countries.slice(start, end);
+  return {
+    macros: start === 0 ? full.macros : [],
+    countries: slice,
+    nextCursor: end < full.countries.length ? end : null,
+    totalCountries: full.countries.length,
+  };
+}
+
+// ── Search-driven location lookup (modal search input, #2982) ─────────
+
+export interface GlobalLocationSearchHit {
+  id: number;
+  slug: string;
+  name: string;
+  type: "macro" | "country" | "region" | "city";
+  parentName: string | null;
+  /** Active posting count for this location (for the chip suffix). */
+  count: number;
+}
+
+/**
+ * Search the `location` collection directly when the user types in the
+ * modal's search box. Bypasses the country/region/city assembly path —
+ * we just need a flat list of matching locations to surface as chips.
+ *
+ * Returns up to 30 matches (covers prefix matches against most queries).
+ * Limited to locations with `has_active_postings:true` so we don't show
+ * dead taxonomy rows. The text-match score from Typesense plus
+ * `active_posting_count` is the sort.
+ *
+ * Crucially this surfaces long-tail cities (e.g. Salzburg, Linz) that
+ * would otherwise be hidden behind the country-tier facet's top-N
+ * truncation. Modal callers fall through to this path whenever the
+ * user types — the loaded country pages stay rendered as the source of
+ * truth for the unfiltered scroll, and search results render in a
+ * separate cluster.
+ *
+ * On Typesense unavailability, returns an empty array so the modal
+ * gracefully falls back to its in-memory filter against the already-
+ * loaded country pages.
+ */
+export async function searchGlobalLocations(
+  query: string,
+  locale: string,
+): Promise<GlobalLocationSearchHit[]> {
+  const q = query.trim();
+  if (q.length < 1) return [];
+  try {
+    const client = getTypesenseClient();
+    const queryByFields =
+      locale !== "en" ? `name_${locale},name_en,aliases` : "name_en,aliases";
+    const queryByWeights = locale !== "en" ? "3,2,1" : "2,1";
+    const result = await client.collections("location").documents().search({
+      q,
+      query_by: queryByFields,
+      query_by_weights: queryByWeights,
+      filter_by: "has_active_postings:true",
+      sort_by: "_text_match:desc,active_posting_count:desc",
+      per_page: 30,
+      prefix: "true",
+      num_typos: "1",
+      drop_tokens_threshold: 0,
+    });
+    if (!result.hits || result.hits.length === 0) return [];
+    return result.hits.map((hit) => {
+      const doc = (hit as unknown as TypesenseHit).document;
+      return {
+        id: doc.location_id as number,
+        slug: doc.slug as string,
+        name: (doc[`name_${locale}`] ?? doc.name_en) as string,
+        type: doc.type as GlobalLocationSearchHit["type"],
+        parentName: (doc.parent_name as string) ?? null,
+        count: (doc.active_posting_count as number) ?? 0,
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
 /**

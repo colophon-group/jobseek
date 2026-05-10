@@ -5,9 +5,45 @@ import userEvent from "@testing-library/user-event";
 // Lingui shim — register before imports of Lingui-aware modules.
 import "@/test-utils/lingui-mock";
 
+// `getGlobalLocationsGroupedMock` returns the unpaged shape — the test
+// fixture below stays in the pre-#2982 form so existing assertions read
+// naturally. The paged action mock slices the fixture into pages of
+// `LOCATION_PAGE_SIZE` (mirroring the production `getGlobalLocationsPage`
+// implementation) so the modal sees paginated input but tests don't have
+// to rebuild every page boundary by hand.
 const getGlobalLocationsGroupedMock = vi.fn();
+const searchGlobalLocationsMock = vi.fn();
+// LOCATION_PAGE_SIZE is inlined in the mock factory because vi.mock
+// hoists above all module-level variables (the factory cannot reference
+// top-level `const`s — see vitest docs on hoisting). The constant value
+// must mirror `LOCATION_PAGE_SIZE` in `apps/web/src/lib/actions/locations.ts`.
 vi.mock("@/lib/actions/locations", () => ({
   getGlobalLocationsGrouped: (...args: unknown[]) => getGlobalLocationsGroupedMock(...args),
+  // Paged variant: callers pass cursor + limit; we build the slice over
+  // the same fixture the unpaged mock returns. Keeps existing tests one
+  // mock invocation away from the paged shape.
+  getGlobalLocationsPage: async (
+    locale: string,
+    cursor: number,
+    filters?: unknown,
+    limit: number = 30,
+  ) => {
+    const full = await getGlobalLocationsGroupedMock(locale, filters);
+    const start = Math.max(0, cursor);
+    const end = Math.min(full.countries.length, start + limit);
+    return {
+      macros: start === 0 ? full.macros : [],
+      countries: full.countries.slice(start, end),
+      nextCursor: end < full.countries.length ? end : null,
+      totalCountries: full.countries.length,
+    };
+  },
+  // Search action — stubbed to whatever each test sets via
+  // `searchGlobalLocationsMock`; default return is empty so tests that
+  // don't care about server-side search still get the in-memory filter
+  // path.
+  searchGlobalLocations: (...args: unknown[]) => searchGlobalLocationsMock(...args),
+  LOCATION_PAGE_SIZE: 30,
 }));
 
 vi.mock("@/lib/country-flags", () => ({
@@ -76,6 +112,8 @@ const _response = (overrides: Partial<Awaited<ReturnType<typeof getGlobalLocatio
 
 beforeEach(() => {
   getGlobalLocationsGroupedMock.mockReset();
+  searchGlobalLocationsMock.mockReset();
+  searchGlobalLocationsMock.mockResolvedValue([]);
 });
 
 describe("LocationSearchModal — Regions cluster (#2940)", () => {
@@ -257,7 +295,10 @@ describe("LocationSearchModal — Regions cluster (#2940)", () => {
     await waitFor(() => screen.getByText("European Union"));
     const input = screen.getByPlaceholderText("Search locations...");
     await userEvent.type(input, "ZZZNomatch");
-    expect(screen.getByText("No locations match your search.")).toBeTruthy();
+    // Wait for debounce + server-side search to settle (returns empty
+    // by default per beforeEach). After that, the empty-state text appears
+    // since neither in-memory pages nor server hits matched.
+    await waitFor(() => expect(screen.getByText("No locations match your search.")).toBeTruthy());
   });
 
   // Suppress unused-import lint
@@ -344,5 +385,130 @@ describe("LocationSearchModal — hierarchical disable (#2978)", () => {
     await waitFor(() => screen.getByText("Berlin"));
     const berlinButton = screen.getByText("Berlin").closest("button");
     expect(berlinButton?.getAttribute("aria-disabled")).toBe("true");
+  });
+});
+
+describe("LocationSearchModal — paged fetch (#2982)", () => {
+  /**
+   * Build a fixture with N countries — used to verify the modal renders
+   * only the first page on initial open, even when the underlying full
+   * response has more.
+   */
+  const makeManyCountries = (n: number) => ({
+    macros: [],
+    countries: Array.from({ length: n }, (_, i) => ({
+      countryId: 1000 + i,
+      countrySlug: `c-${i}`,
+      countryName: `Country ${i.toString().padStart(3, "0")}`,
+      countryCount: 5,
+      regions: [
+        {
+          regionId: 0,
+          regionSlug: "",
+          regionName: "",
+          regionCount: 5,
+          locations: [
+            { id: 5000 + i, slug: `city-${i}`, name: `City ${i}`, type: "city", count: 5 },
+          ],
+        },
+      ],
+    })),
+  });
+
+  /**
+   * First-paint contract: with 100 countries in the underlying data, the
+   * modal renders only the first 30 (LOCATION_PAGE_SIZE) on open. The
+   * 31st must NOT be in the DOM until the user scrolls.
+   */
+  it("renders only the first page of countries on open", async () => {
+    getGlobalLocationsGroupedMock.mockResolvedValue(makeManyCountries(100));
+    render(
+      <LocationSearchModal
+        open
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+    // Country 0 is in the first page — should appear
+    await waitFor(() => screen.getByText("Country 000"));
+    // Country 29 is the last in the first page — should appear
+    expect(screen.getByText("Country 029")).toBeTruthy();
+    // Country 30 is the first in page 2 — must NOT appear yet
+    expect(screen.queryByText("Country 030")).toBeNull();
+  });
+
+  /**
+   * Search input dispatches a server-side `searchGlobalLocations` call
+   * (debounced) so long-tail cities not in the loaded country pages
+   * still surface as chips. The "Matches" header is rendered.
+   */
+  it("renders server-side search hits when the user types", async () => {
+    getGlobalLocationsGroupedMock.mockResolvedValue(makeManyCountries(50));
+    searchGlobalLocationsMock.mockResolvedValue([
+      {
+        id: 9999,
+        slug: "salzburg",
+        name: "Salzburg",
+        type: "city",
+        parentName: "Austria",
+        count: 178,
+      },
+    ]);
+    render(
+      <LocationSearchModal
+        open
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+    await waitFor(() => screen.getByText("Country 000"));
+    const input = screen.getByPlaceholderText("Search locations...");
+    await userEvent.type(input, "Salz");
+    // Debounced + server-side search resolves; Salzburg + Matches header
+    await waitFor(() => screen.getByText("Salzburg"));
+    expect(screen.getByText("Matches")).toBeTruthy();
+    // The mock was called at least once with the search query
+    expect(searchGlobalLocationsMock).toHaveBeenCalled();
+  });
+
+  /**
+   * Server-side search hits already covered by an in-memory page should
+   * be deduplicated — we don't render Berlin twice when it's both in
+   * the first page AND a search hit.
+   */
+  it("deduplicates server-side search hits against loaded pages", async () => {
+    getGlobalLocationsGroupedMock.mockResolvedValue(_response());
+    searchGlobalLocationsMock.mockResolvedValue([
+      // Same Berlin id (200) as in the in-memory fixture
+      {
+        id: 200,
+        slug: "berlin",
+        name: "Berlin",
+        type: "city",
+        parentName: "Germany",
+        count: 25,
+      },
+    ]);
+    render(
+      <LocationSearchModal
+        open
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+    await waitFor(() => screen.getByText("Berlin"));
+    const input = screen.getByPlaceholderText("Search locations...");
+    await userEvent.type(input, "Berlin");
+    // Wait for the debounce to elapse + search call to resolve
+    await new Promise((resolve) => setTimeout(resolve, 220));
+    // Berlin should appear only once (in the country list, not also under Matches)
+    const berlinNodes = screen.queryAllByText("Berlin");
+    expect(berlinNodes.length).toBe(1);
   });
 });
