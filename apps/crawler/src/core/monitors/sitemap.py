@@ -158,8 +158,8 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
 
     Returns the parsed root on 200 + parseable XML, or ``None`` on
     legitimate not-found (404/410) and on non-parseable bodies. **Raises**
-    :exc:`PaginationFetchError` when transient errors (5xx, 429, timeout,
-    network) persist past the retry budget.
+    :exc:`PaginationFetchError` when transient errors (5xx, 429, 401,
+    403, timeout, network) persist past the retry budget.
 
     The 2026-04-26 NHS spike (#2722) showed why this distinction
     matters: a multi-shard sitemap (e.g. ``sitemap-jobs-1.xml`` …
@@ -172,10 +172,20 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
     here propagates the failure to ``_process_one_board_streaming``'s
     generic ``except Exception`` so the run is recorded as a
     failure (no delistings) instead.
+
+    The 2026-05-10 mchire flap (#2994) showed the same shape on the
+    4xx leg: mchire's awselb/2.0 issued 403 to ~18-44%% of child
+    shards per cycle from the production Webshare egress, while the
+    sitemap *index itself* returned 200. The default
+    ``fetch_with_retry`` non-retryable-4xx → ``None`` path interpreted
+    those 403s as "shard is gone" and the caller silently dropped
+    thousands of URLs. ``transient_403=True`` retries 401/403 through
+    the budget and raises ``PaginationFetchError`` on exhaustion —
+    same propagation path as the 5xx fix from #2722 / #2974.
     """
     from src.shared.http_retry import fetch_with_retry
 
-    text = await fetch_with_retry(client, url, headers=_SITEMAP_HEADERS)
+    text = await fetch_with_retry(client, url, headers=_SITEMAP_HEADERS, transient_403=True)
     if text is None:
         # 404 / 410 / non-retryable 4xx — child sitemap is gone or
         # the URL is wrong. Caller's ``continue`` is appropriate: a
