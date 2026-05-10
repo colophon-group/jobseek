@@ -452,3 +452,143 @@ async def test_prune_covers_all_four_patterns(mock_redis):
     # At least one hash delete fired (the others are idempotent no-ops
     # because the key was already removed).
     assert result["hashes"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# Issue #3016: claim_work scheduler priority-inversion regression test
+# ---------------------------------------------------------------------------
+
+
+async def test_claim_work_drains_scrapes_when_monitor_is_far_future(mock_redis):
+    """Regression for #3016 — Tesla scenario.
+
+    A domain with one recurring monitor scheduled far in the future and a
+    large pile of due-now scrapes must drain the scrape backlog. Before
+    the fix, claim_work re-added the domain to ``ready:browser:1`` at the
+    monitor's far-future score after every scrape claim, parking the
+    domain and starving the rest of the scrape queue.
+    """
+    r = mock_redis
+    domain = "test.example.com"
+    now = time.time()
+
+    # Force rate-delay to 0 so we can drive the claim loop synchronously
+    # without sleeping. This isolates the test to the tier-selection logic.
+    await r.set(f"delay:{domain}", "0")
+
+    # 1 recurring monitor, scheduled 1000s in the future.
+    monitor_due = now + 1000
+    await r.zadd(f"monitors_browser:{domain}", {"mon-1": monitor_due})
+    # Board config so the claim path that hits a monitor doesn't crash.
+    await r.hset("board:mon-1", mapping={"monitor": "dom", "domain": domain})
+
+    # 100 scrapes, all due now (10s in the past, varying by 0.1s so ZSET ordering
+    # is deterministic but they are all <= now).
+    scrape_count = 100
+    scrapes = {}
+    for i in range(scrape_count):
+        sid = f"scr-{i:03d}"
+        scrapes[sid] = now - 10 - (i * 0.1)
+        await r.hset(
+            f"scrape:{sid}",
+            mapping={
+                "source_url": f"https://{domain}/jobs/{i}",
+                "board_id": "b1",
+                "scrape_interval_hours": "24",
+            },
+        )
+    await r.zadd(f"scrapes_browser:{domain}", scrapes)
+
+    # Place the domain in ready:browser:2 at score=now so claim_work sees it.
+    await r.zadd("ready:browser:2", {domain: now - 1})
+    # Also remove from any stale tier just in case.
+    await r.zrem("ready:browser:0", domain)
+    await r.zrem("ready:browser:1", domain)
+
+    # Run claim_work many times. Each successful claim consumes one task
+    # and the domain is re-parked. Without the fix, the domain bounces to
+    # tier 1 at monitor_due (future) after the first claim and stays there.
+    claimed_kinds: list[str] = []
+    for _ in range(200):
+        # Bypass shared rate limit between claims so we can drive the loop.
+        await r.delete(f"ratelimit:{domain}")
+        work = await rq.claim_work(browser=True)
+        if work is None:
+            break
+        claimed_kinds.append(work.kind)
+
+    scrape_claims = sum(1 for k in claimed_kinds if k == "scrape")
+    monitor_claims = sum(1 for k in claimed_kinds if k == "monitor")
+
+    # The whole scrape backlog must drain (the monitor is still in the future).
+    assert scrape_claims >= scrape_count, (
+        f"expected at least {scrape_count} scrape claims, got {scrape_claims} "
+        f"(monitor_claims={monitor_claims}, total={len(claimed_kinds)})"
+    )
+    # Monitor is in the future — should not be claimed.
+    assert monitor_claims == 0
+    # All scrape tasks consumed from the per-domain queue.
+    assert await r.zcard(f"scrapes_browser:{domain}") == 0
+    # Monitor still pending.
+    assert await r.zcard(f"monitors_browser:{domain}") == 1
+
+
+async def test_claim_work_monitors_still_fire_when_due(mock_redis):
+    """Recurring monitors must still fire on schedule after the fix.
+
+    A domain with one due-now monitor and a far-future scrape claims the
+    monitor first (ties go to monitor by tier semantics), then the domain
+    rebounds to tier 2 at the future scrape score until the scrape is due.
+    """
+    r = mock_redis
+    domain = "test2.example.com"
+    now = time.time()
+
+    # 1 recurring monitor due 5s ago.
+    await r.zadd(f"monitors_browser:{domain}", {"mon-1": now - 5})
+    await r.hset("board:mon-1", mapping={"monitor": "dom", "domain": domain})
+
+    # 1 recurring scrape due in 1h.
+    await r.zadd(f"scrapes_browser:{domain}", {"scr-1": now + 3600})
+    await r.hset(
+        "scrape:scr-1",
+        mapping={"source_url": f"https://{domain}/j", "board_id": "b1"},
+    )
+
+    # Initial ready entry — tier 1 at monitor due time.
+    await r.zadd("ready:browser:1", {domain: now - 5})
+
+    work = await rq.claim_work(browser=True)
+    assert work is not None
+    assert work.kind == "monitor"
+
+    # After the monitor claim with no remaining due-now monitors, the domain
+    # should be re-parked at the next pending task — the future scrape.
+    score_t2 = await r.zscore("ready:browser:2", domain)
+    assert score_t2 is not None, "domain should re-park in tier 2 at scrape's future score"
+    assert score_t2 > now  # future
+
+
+async def test_enqueue_scrape_does_not_park_in_monitor_tier(mock_redis):
+    """Enqueueing a due-now scrape on a domain with a far-future monitor
+    must place the domain in tier 2 (scrapes), not tier 1 (monitors).
+
+    Symmetric guard for the priority-inversion bug in enqueue_task.lua.
+    """
+    r = mock_redis
+    domain = "test3.example.com"
+    now = time.time()
+
+    # Pre-existing far-future monitor.
+    await r.zadd(f"monitors_browser:{domain}", {"mon-1": now + 1000})
+
+    # Enqueue a scrape due 10s ago.
+    config = {"source_url": f"https://{domain}/j", "board_id": "b1"}
+    added = await rq.enqueue_scrape(domain, "p1", now - 10, config, browser=True)
+    assert added is True
+
+    # Domain should be in ready:browser:2 (scrapes), NOT tier 1.
+    score_t2 = await r.zscore("ready:browser:2", domain)
+    score_t1 = await r.zscore("ready:browser:1", domain)
+    assert score_t2 is not None, "domain should land in tier 2 because scrape is due-now"
+    assert score_t1 is None, "domain must not be in tier 1 — that's the priority-inversion bug"
