@@ -63,6 +63,33 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("backfill-locations", help="Enqueue re-scrapes for jobs missing locations")
 
+    backfill_desc_p = sub.add_parser(
+        "backfill-descriptions",
+        help=(
+            "Reset next_scrape_at = now() on rich-monitor postings whose "
+            "description is missing because the board's enrich config flipped "
+            "AFTER the rows were inserted via the no-enrich path "
+            "(_INSERT_RICH_JOB). Restricted by --slug; defaults to the 20 "
+            "stuck companies from #2996. The _DIFF_BATCH self-heal in #2996 "
+            "prevents the bug for FUTURE config flips, this CLI cleans up "
+            "the historical backlog."
+        ),
+    )
+    backfill_desc_p.add_argument(
+        "--slug",
+        action="append",
+        default=None,
+        help=(
+            "Limit to this company slug. Pass multiple times for several "
+            "companies. Default: the 20 stuck companies from #2996."
+        ),
+    )
+    backfill_desc_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report the count that would be affected; make no writes.",
+    )
+
     retry_p = sub.add_parser(
         "retry-stalled-scrapes",
         help=(
@@ -253,6 +280,22 @@ async def run() -> None:
             from src.backfill import backfill_locations
 
             await backfill_locations(local_pool)
+
+        elif args.command == "backfill-descriptions":
+            local_pool = await create_local_pool()
+            from src.backfill import backfill_descriptions
+
+            n = await backfill_descriptions(
+                local_pool,
+                company_slugs=args.slug,
+                dry_run=args.dry_run,
+            )
+            log.info(
+                "backfill_descriptions.done",
+                dry_run=args.dry_run,
+                count=n,
+                slugs=args.slug,
+            )
 
         elif args.command == "retry-stalled-scrapes":
             local_pool = await create_local_pool()

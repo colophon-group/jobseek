@@ -178,9 +178,30 @@ _DIFF_BATCH = """
 WITH discovered AS (
   SELECT unnest($1::text[]) AS url
 ),
+-- Self-heal touched rows (#2996): when a previously-stuck rich-monitor
+-- posting (description_r2_hash IS NULL AND next_scrape_at IS NULL) is
+-- re-scanned by a board that NOW has enrich (is_rich_no_scrape = $3 =
+-- false), reset next_scrape_at = now() so the scrape worker picks the
+-- row up. Without this branch, scraper-config fixes shipped via PR
+-- (e.g. #2947, #2953, #2954, #2961, #2962, #2964, #2967, #2968, #2970,
+-- #2971, #2972) only affect FUTURE rows inserted via
+-- ``_INSERT_RICH_JOB_ENRICH``; existing rows inserted via the no-enrich
+-- ``_INSERT_RICH_JOB`` path stay stuck forever. Healthy rows
+-- (description_r2_hash already set, OR next_scrape_at already
+-- scheduled) are untouched. is_rich_no_scrape=true boards (rich
+-- monitor without enrich) intentionally keep next_scrape_at = NULL —
+-- the board delivers everything.
 touched AS (
   UPDATE job_posting
-  SET last_seen_at = now(), missing_count = 0
+  SET last_seen_at = now(),
+      missing_count = 0,
+      next_scrape_at = CASE
+          WHEN NOT $3::boolean
+               AND job_posting.description_r2_hash IS NULL
+               AND job_posting.next_scrape_at IS NULL
+          THEN now()
+          ELSE job_posting.next_scrape_at
+      END
   FROM discovered d
   WHERE job_posting.board_id = $2
     AND job_posting.is_active = true

@@ -1358,6 +1358,61 @@ class TestInsertSqlContract:
         # new_urls must check "any board", not "this board only".
         assert "NOT EXISTS" in _DIFF_BATCH
 
+    def test_diff_batch_touched_self_heals_stuck_next_scrape_at(self):
+        # #2996: the touched branch must reset next_scrape_at = now() when
+        # the row is stuck (description_r2_hash IS NULL AND
+        # next_scrape_at IS NULL) AND the board NOW has enrich
+        # (is_rich_no_scrape = $3 = false). Otherwise the
+        # _INSERT_RICH_JOB no-enrich path leaves rows permanently stuck
+        # whenever the operator adds enrich after onboarding — see the
+        # 20-company audit in #2996. Drop the CASE branch and the
+        # post-fix scraper-config PRs (#2947, #2953, #2954, #2961, #2962,
+        # #2964, #2967, #2968, #2970, #2971, #2972) silently regress.
+        # Style: collapse whitespace before substring-matching so
+        # cosmetic re-indents don't break the pin.
+        sql_compact = " ".join(_DIFF_BATCH.split())
+        # The touched UPDATE must SET next_scrape_at conditionally.
+        assert "next_scrape_at = CASE WHEN NOT $3::boolean" in sql_compact
+        # The condition must include both NULL checks.
+        assert "description_r2_hash IS NULL" in sql_compact
+        assert "next_scrape_at IS NULL" in sql_compact
+        # And it must promote to now() rather than NULL.
+        assert "THEN now() ELSE job_posting.next_scrape_at" in sql_compact
+
+    def test_diff_batch_touched_does_not_alter_healthy_rows(self):
+        # Defense-in-depth: ensure the SQL preserves the ELSE branch so
+        # rows that are NOT stuck (next_scrape_at already scheduled, or
+        # description_r2_hash already set, or the board still has no
+        # enrich) keep their existing next_scrape_at. A bare
+        # ``next_scrape_at = now()`` would re-schedule healthy rows on
+        # every touch and burn the proxy budget.
+        sql_compact = " ".join(_DIFF_BATCH.split())
+        # ELSE keeps the existing value.
+        assert "ELSE job_posting.next_scrape_at" in sql_compact
+        # The CASE must be inside the touched UPDATE, not the relisted
+        # one. Identify the touched UPDATE block by finding the
+        # ``touched AS (`` start and the first ``RETURNING ...
+        # description_r2_hash`` after it (which closes the touched CTE
+        # body — the relisted CTE has its own RETURNING further along).
+        touched_start = sql_compact.find("touched AS (")
+        assert touched_start != -1, "touched CTE missing"
+        cte_body_end = sql_compact.find(
+            "RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash",
+            touched_start,
+        )
+        assert cte_body_end != -1, "touched CTE has no RETURNING"
+        touched_section = sql_compact[touched_start:cte_body_end]
+        assert "description_r2_hash IS NULL" in touched_section
+        assert "next_scrape_at IS NULL" in touched_section
+        # And the same NULL checks must NOT bleed into the relisted CTE
+        # (which has its own NULL/now() decision based on $3 alone).
+        relisted_start = sql_compact.find("relisted AS (")
+        assert relisted_start != -1, "relisted CTE missing"
+        # The relisted block uses next_scrape_at = CASE WHEN $3 THEN
+        # NULL ELSE now() END — distinct from our self-heal CASE.
+        relisted_block = sql_compact[relisted_start : relisted_start + 1500]
+        assert "next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END" in relisted_block
+
     def test_record_failure_returns_disable_signal(self):
         # The RETURNING clause is what lets the Python layer detect the
         # enabled→disabled transition (post-update ``is_enabled=false``
