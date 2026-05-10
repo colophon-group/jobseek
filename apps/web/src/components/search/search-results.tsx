@@ -4,7 +4,7 @@ import { CompanyCard } from "./company-card";
 import { RequestCompanyPrompt } from "./request-company";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
-import type { SearchResultCompany } from "@/lib/search";
+import type { SearchResultCompany, WorkMode } from "@/lib/search";
 import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 
@@ -17,6 +17,7 @@ interface SearchResultsProps {
   seniorities?: SerializableSeniority[];
   technologies?: SerializableTechnology[];
   employmentTypes?: string[];
+  workMode?: WorkMode[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;
@@ -38,6 +39,7 @@ export function SearchResults({
   seniorities,
   technologies,
   employmentTypes,
+  workMode,
   salaryMinEur,
   salaryMaxEur,
   experienceMin,
@@ -55,7 +57,7 @@ export function SearchResults({
     <div className="space-y-3">
       {companies.map((result) => (
         <div key={`${result.company.id}-${keywords.join(",")}`}>
-          <CompanyCard result={result} keywords={keywords} locationIds={locationIds} locations={locations} occupations={occupations} seniorities={seniorities} technologies={technologies} employmentTypes={employmentTypes} salaryMinEur={salaryMinEur} salaryMaxEur={salaryMaxEur} experienceMin={experienceMin} experienceMax={experienceMax} languages={languages} onShowPosting={onShowPosting} selectedPostingId={selectedPostingId} />
+          <CompanyCard result={result} keywords={keywords} locationIds={locationIds} locations={locations} occupations={occupations} seniorities={seniorities} technologies={technologies} employmentTypes={employmentTypes} workMode={workMode} salaryMinEur={salaryMinEur} salaryMaxEur={salaryMaxEur} experienceMin={experienceMin} experienceMax={experienceMax} languages={languages} onShowPosting={onShowPosting} selectedPostingId={selectedPostingId} />
         </div>
       ))}
       {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />}

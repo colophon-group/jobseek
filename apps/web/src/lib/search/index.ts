@@ -7,7 +7,9 @@ export type {
   HistogramFilters,
   SalaryBucket,
   ExperienceBucket,
+  WorkMode,
 } from "./types";
+export { WORK_MODE_VALUES, isWorkMode } from "./types";
 export { TypesenseSearchProvider } from "./typesense";
 
 import type { SearchProvider } from "./types";

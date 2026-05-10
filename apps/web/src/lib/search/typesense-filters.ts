@@ -84,6 +84,17 @@ export function buildFilterString(
     parts.push(`employment_type:[${filters.employmentTypes.join(",")}]`);
   }
 
+  // Work-mode filter (issue #2983). Reuses the existing `location_types`
+  // multi-array field on `job_posting`. Typesense `field:[a,b]` is OR
+  // semantics across values — selecting multiple modes returns docs that
+  // declare any of them. Postings with empty `location_types` (~0.9% of
+  // active postings on 2026-05-09) drop out silently when this filter
+  // is active — no sentinel-OR; treating unknown as bookable would
+  // produce too many false positives (per issue Q4).
+  if (filters.workMode?.length) {
+    parts.push(`location_types:[${filters.workMode.join(",")}]`);
+  }
+
   // salary_eur is optional — only apply when user has set a meaningful salary filter (> 0)
   const hasSalaryFilter =
     (filters.salaryMinEur != null && filters.salaryMinEur > 0) ||

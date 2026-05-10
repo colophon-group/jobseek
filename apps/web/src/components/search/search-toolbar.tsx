@@ -1,14 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { X, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2 } from "lucide-react";
+import { X, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2, Home } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import { SearchBar } from "@/components/search/search-bar";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
 import { LanguageNote } from "@/components/search/language-note";
 import { SaveSearchButton } from "@/components/search/save-search-button";
 import type { SelectedLocation } from "@/components/search/location-pills";
-import type { HistogramFilters } from "@/lib/search";
+import type { HistogramFilters, WorkMode } from "@/lib/search";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
 
@@ -41,6 +41,8 @@ interface SearchToolbarProps {
   onRemoveTechnology?: (id: number) => void;
   employmentTypes?: string[];
   onToggleEmploymentType?: (type: string) => void;
+  workMode?: WorkMode[];
+  onToggleWorkMode?: (mode: WorkMode) => void;
   onSalaryChange?: (currency: string, min: number | undefined, max: number | undefined) => void;
   onExperienceChange?: (min: number | undefined, max: number | undefined) => void;
   histogramFilters?: HistogramFilters;
@@ -88,6 +90,8 @@ export function SearchToolbar({
   onRemoveTechnology,
   employmentTypes,
   onToggleEmploymentType,
+  workMode,
+  onToggleWorkMode,
   onSalaryChange,
   onExperienceChange,
   histogramFilters,
@@ -104,6 +108,8 @@ export function SearchToolbar({
     occupations.length > 0 ||
     seniorities.length > 0 ||
     (technologies?.length ?? 0) > 0 ||
+    (employmentTypes?.length ?? 0) > 0 ||
+    (workMode?.length ?? 0) > 0 ||
     salaryMin != null ||
     salaryMax != null ||
     experienceMin != null ||
@@ -156,6 +162,8 @@ export function SearchToolbar({
           onRemoveTechnology={onRemoveTechnology}
           employmentTypes={employmentTypes}
           onToggleEmploymentType={onToggleEmploymentType}
+          workMode={workMode}
+          onToggleWorkMode={onToggleWorkMode}
           onSalaryChange={onSalaryChange}
           onExperienceChange={onExperienceChange}
           histogramFilters={histogramFilters}
@@ -167,6 +175,7 @@ export function SearchToolbar({
             occupations={occupations}
             seniorities={seniorities}
             technologies={technologies}
+            workMode={workMode}
             salaryMin={salaryMin}
             salaryMax={salaryMax}
             salaryCurrency={salaryCurrency}
@@ -233,6 +242,25 @@ export function SearchToolbar({
               {et.replace(/_/g, " ")}
               <button
                 onClick={() => onToggleEmploymentType(et)}
+                className="ml-0.5 cursor-pointer rounded-full p-0.5 transition-colors hover:bg-primary/20"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+          {onToggleWorkMode && workMode && workMode.map((wm) => (
+            <span
+              key={`wm-${wm}`}
+              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+            >
+              <Home size={12} className="shrink-0" />
+              {wm === "onsite"
+                ? t({ id: "search.workMode.onsite", comment: "Work mode: onsite (in-office)", message: "On-site" })
+                : wm === "hybrid"
+                  ? t({ id: "search.workMode.hybrid", comment: "Work mode: hybrid (mixed onsite/remote)", message: "Hybrid" })
+                  : t({ id: "search.workMode.remote", comment: "Work mode: remote (work-from-home)", message: "Remote" })}
+              <button
+                onClick={() => onToggleWorkMode(wm)}
                 className="ml-0.5 cursor-pointer rounded-full p-0.5 transition-colors hover:bg-primary/20"
               >
                 <X size={12} />

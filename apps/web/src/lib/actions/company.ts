@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSearchProvider } from "@/lib/search";
-import type { SearchResultPosting } from "@/lib/search";
+import type { SearchResultPosting, WorkMode } from "@/lib/search";
 import {
   companyByIdCacheTag,
   companyCacheTag,
@@ -1151,6 +1151,7 @@ interface NormalizedCompanyPostingsParams {
   seniorityIds: number[];
   technologyIds: number[];
   employmentTypes: string[];
+  workMode: WorkMode[];
   languages: string[];
   salaryMinEur: number | null;
   salaryMaxEur: number | null;
@@ -1169,6 +1170,7 @@ export async function getCompanyPostings(params: {
   seniorityIds?: number[];
   technologyIds?: number[];
   employmentTypes?: string[];
+  workMode?: WorkMode[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;
@@ -1196,6 +1198,7 @@ export async function getCompanyPostings(params: {
     seniorityIds: [...(params.seniorityIds ?? [])].sort((a, b) => a - b),
     technologyIds: [...(params.technologyIds ?? [])].sort((a, b) => a - b),
     employmentTypes: [...(params.employmentTypes ?? [])].sort(),
+    workMode: [...(params.workMode ?? [])].sort(),
     languages: [...params.languages].sort(),
     salaryMinEur: params.salaryMinEur ?? null,
     salaryMaxEur: params.salaryMaxEur ?? null,
@@ -1245,6 +1248,7 @@ async function _fetchCompanyPostingsCached(
     seniorityIds: params.seniorityIds,
     technologyIds: params.technologyIds,
     employmentTypes: params.employmentTypes,
+    workMode: params.workMode.length > 0 ? params.workMode : undefined,
     languages: params.languages,
     salaryMinEur: params.salaryMinEur ?? undefined,
     salaryMaxEur: params.salaryMaxEur ?? undefined,

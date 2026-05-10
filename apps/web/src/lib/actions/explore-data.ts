@@ -23,6 +23,7 @@ const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
   occupations: [],
   seniorities: [],
   technologies: [],
+  workMode: [],
 };
 
 export interface ExploreData {
@@ -51,6 +52,7 @@ export async function fetchExploreData(params: {
   const occ = firstOf(searchParams.occ);
   const sen = firstOf(searchParams.sen);
   const tech = firstOf(searchParams.tech);
+  const wm = firstOf(searchParams.wm);
   const sal = firstOf(searchParams.sal);
   const salcur = firstOf(searchParams.salcur);
   const exp = firstOf(searchParams.exp);
@@ -64,7 +66,7 @@ export async function fetchExploreData(params: {
   // search. Other prefs (display currency etc.) stay anon-defaults.
   const session = await getSession();
   const [parsed, prefs, anonJobLangs] = await Promise.all([
-    parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }),
+    parseSearchFilters({ q, loc, occ, sen, tech, wm, locale, userLat, userLng }),
     session ? getPreferences() : Promise.resolve(null),
     session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
@@ -77,6 +79,7 @@ export async function fetchExploreData(params: {
   const occupationIds = idsOrUndefined(parsed.occupations);
   const seniorityIds = idsOrUndefined(parsed.seniorities);
   const technologyIds = idsOrUndefined(parsed.technologies);
+  const workMode = parsed.workMode.length > 0 ? parsed.workMode : undefined;
 
   const salaryCurrencyParam = salcur ?? displayCurrency;
   const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
@@ -92,6 +95,7 @@ export async function fetchExploreData(params: {
           occupationIds,
           seniorityIds,
           technologyIds,
+          workMode,
           salaryMinEur,
           salaryMaxEur,
           experienceMin,
@@ -106,6 +110,7 @@ export async function fetchExploreData(params: {
           occupationIds,
           seniorityIds,
           technologyIds,
+          workMode,
           salaryMinEur,
           salaryMaxEur,
           experienceMin,

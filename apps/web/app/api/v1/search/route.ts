@@ -16,11 +16,12 @@ export async function GET(request: NextRequest) {
   const occ = sp.get("occ") ?? undefined;
   const sen = sp.get("sen") ?? undefined;
   const tech = sp.get("tech") ?? undefined;
+  const wm = sp.get("wm") ?? undefined;
   const sal = sp.get("sal") ?? undefined;
   const exp = sp.get("exp") ?? undefined;
   const locale = sp.get("locale") ?? "en";
 
-  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, locale });
+  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, locale });
 
   const locationIds =
     parsed.locations.length > 0 ? parsed.locations.map((l) => l.id) : undefined;
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
     occupationIds,
     seniorityIds,
     technologyIds,
+    workMode: parsed.workMode.length > 0 ? parsed.workMode : undefined,
     salaryMinEur,
     salaryMaxEur,
     experienceMin,

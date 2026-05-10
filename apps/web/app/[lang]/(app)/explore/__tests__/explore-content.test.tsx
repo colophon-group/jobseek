@@ -60,6 +60,7 @@ function makeInitialData(overrides: Partial<ExploreData> = {}): ExploreData {
       occupations: [],
       seniorities: [],
       technologies: [],
+      workMode: [],
     },
     displayCurrency: "EUR",
     jobLanguages: [],

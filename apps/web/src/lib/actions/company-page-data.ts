@@ -46,6 +46,7 @@ export async function fetchCompanyPageData(params: {
   const occ = firstOf(searchParams.occ);
   const sen = firstOf(searchParams.sen);
   const tech = firstOf(searchParams.tech);
+  const wm = firstOf(searchParams.wm);
   const show = firstOf(searchParams.show);
   const sal = firstOf(searchParams.sal);
   const salcur = firstOf(searchParams.salcur);
@@ -57,7 +58,7 @@ export async function fetchCompanyPageData(params: {
   // mirror it into a cookie (issue #2850 + `anon-preferences.ts`).
   const session = await getSession();
   const [parsed, prefs, anonJobLangs] = await Promise.all([
-    parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }),
+    parseSearchFilters({ q, loc, occ, sen, tech, wm, locale, userLat, userLng }),
     session ? getPreferences() : Promise.resolve(null),
     session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
@@ -70,6 +71,7 @@ export async function fetchCompanyPageData(params: {
   const occupationIds = idsOrUndefined(parsed.occupations);
   const seniorityIds = idsOrUndefined(parsed.seniorities);
   const technologyIds = idsOrUndefined(parsed.technologies);
+  const workMode = parsed.workMode.length > 0 ? parsed.workMode : undefined;
 
   const salaryCurrencyParam = salcur ?? displayCurrency;
   const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
@@ -84,6 +86,7 @@ export async function fetchCompanyPageData(params: {
     occupationIds,
     seniorityIds,
     technologyIds,
+    workMode,
     salaryMinEur,
     salaryMaxEur,
     experienceMin,

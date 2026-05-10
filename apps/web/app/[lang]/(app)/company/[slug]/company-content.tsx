@@ -53,6 +53,7 @@ export function CompanyContent({ locale, slug }: CompanyContentProps) {
       initialOccupations={data.parsed.occupations}
       initialSeniorities={data.parsed.seniorities}
       initialTechnologies={data.parsed.technologies}
+      initialWorkMode={data.parsed.workMode}
       initialSalaryCurrency={data.salaryCurrencyParam !== data.displayCurrency ? data.salaryCurrencyParam : undefined}
       initialSalaryMin={data.salaryMinDisplay}
       initialSalaryMax={data.salaryMaxDisplay}

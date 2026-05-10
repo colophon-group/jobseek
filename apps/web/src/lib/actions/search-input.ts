@@ -4,6 +4,8 @@ import { resolveLocationSlugs, suggestLocations, type LocationSuggestion } from 
 import { resolveOccupationSlugs, resolveSenioritySlugs, suggestOccupations, suggestSeniorities, suggestTechnologies, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
 import type { SelectedLocation } from "@/components/search/location-pills";
+import { parseWorkModeParam } from "@/lib/search/query-params";
+import type { WorkMode } from "@/lib/search/types";
 
 export type ParsedSearchLocation = SelectedLocation;
 
@@ -13,7 +15,35 @@ export interface ParsedSearchFilters {
   occupations: { id: number; slug: string; name: string }[];
   seniorities: { id: number; slug: string; name: string }[];
   technologies: { id: number; slug: string; name: string }[];
+  workMode: WorkMode[];
 }
+
+/**
+ * Map of normalized lower-cased tokens / synonyms to canonical
+ * {@link WorkMode} values. Single-word entries match against
+ * `splitIntoWords` output during Pass 2; multi-word entries (e.g.
+ * `"work from home"`, `"in office"`) match against the raw segment so
+ * tokenizing them by whitespace doesn't lose them. Issue #2983.
+ *
+ * NOTE: synonyms are intentionally narrow — `"flex"` is NOT included
+ * because it's an English noun common in job titles ("flex engineer").
+ * `"office"` alone is also excluded for the same reason.
+ */
+const WORK_MODE_SINGLE_TOKEN: Record<string, WorkMode> = {
+  remote: "remote",
+  wfh: "remote",
+  hybrid: "hybrid",
+  onsite: "onsite",
+};
+
+const WORK_MODE_MULTI_TOKEN: Record<string, WorkMode> = {
+  "work from home": "remote",
+  "work-from-home": "remote",
+  "on site": "onsite",
+  "on-site": "onsite",
+  "in office": "onsite",
+  "in-office": "onsite",
+};
 
 function uniqCaseInsensitive(values: string[]): string[] {
   const seen = new Set<string>();
@@ -128,6 +158,8 @@ export async function parseSearchFilters(params: {
   occ?: string;
   sen?: string;
   tech?: string;
+  /** `wm` URL param — comma-separated WorkMode values (issue #2983). */
+  wm?: string;
   locale: string;
   userLat?: number;
   userLng?: number;
@@ -206,6 +238,12 @@ export async function parseSearchFilters(params: {
     .map((slug) => resolvedTechs.get(slug))
     .filter((t): t is NonNullable<typeof t> => t !== undefined);
 
+  // Explicit `wm` URL param (issue #2983) — already constrained to valid
+  // WorkMode values by parseWorkModeParam. Free-text matches found below
+  // during tokenization extend this set without duplicates.
+  const workMode: WorkMode[] = parseWorkModeParam(params.wm);
+  const workModeSet = new Set<WorkMode>(workMode);
+
   const locationIds = new Set(locations.map((location) => location.id));
   const occupationIds = new Set(occupations.map((o) => o.id));
   const seniorityIds = new Set(seniorities.map((s) => s.id));
@@ -235,7 +273,7 @@ export async function parseSearchFilters(params: {
   const singles = [...singleSet];
   const allCandidates = [...allCandidateSet];
   if (singles.length === 0) {
-    return { keywords: [], locations, occupations, seniorities, technologies };
+    return { keywords: [], locations, occupations, seniorities, technologies, workMode };
   }
 
   // All three suggest batches run in parallel. Locations use an expensive
@@ -282,10 +320,56 @@ export async function parseSearchFilters(params: {
   for (const words of segmentWords) {
     const consumed = new Array<boolean>(words.length).fill(false);
 
-    // --- Pass 2: Single-word matching (seniority → location → occupation) ---
+    // --- Pass 1.5: Multi-word work-mode (e.g. "work from home", "in office") ---
+    // Issue #2983. Try triplet then pair sliding windows so longer phrases
+    // win over their shorter substrings (e.g. don't let "in" + "office"
+    // bind to single-token "office" — which we don't ship anyway).
+    if (words.length >= 3) {
+      for (let i = 0; i <= words.length - 3; i++) {
+        if (consumed[i] || consumed[i + 1] || consumed[i + 2]) continue;
+        const triplet = `${words[i]} ${words[i + 1]} ${words[i + 2]}`.toLowerCase();
+        const wm = WORK_MODE_MULTI_TOKEN[triplet];
+        if (wm) {
+          if (!workModeSet.has(wm)) {
+            workModeSet.add(wm);
+            workMode.push(wm);
+          }
+          consumed[i] = consumed[i + 1] = consumed[i + 2] = true;
+        }
+      }
+    }
+    if (words.length >= 2) {
+      for (let i = 0; i <= words.length - 2; i++) {
+        if (consumed[i] || consumed[i + 1]) continue;
+        const pair = `${words[i]} ${words[i + 1]}`.toLowerCase();
+        const wm = WORK_MODE_MULTI_TOKEN[pair];
+        if (wm) {
+          if (!workModeSet.has(wm)) {
+            workModeSet.add(wm);
+            workMode.push(wm);
+          }
+          consumed[i] = consumed[i + 1] = true;
+        }
+      }
+    }
+
+    // --- Pass 2: Single-word matching (work-mode → seniority → location → occupation) ---
     for (let i = 0; i < words.length; i++) {
       if (consumed[i]) continue;
       const word = words[i];
+
+      // Work-mode single-token (`remote`, `hybrid`, `onsite`, `wfh`).
+      // Tried before seniority because these tokens never overlap with
+      // seniority/occupation/location names in practice.
+      const wmMatch = WORK_MODE_SINGLE_TOKEN[word.toLowerCase()];
+      if (wmMatch) {
+        if (!workModeSet.has(wmMatch)) {
+          workModeSet.add(wmMatch);
+          workMode.push(wmMatch);
+        }
+        consumed[i] = true;
+        continue;
+      }
 
       const senMatch = exactTaxonomyMatch(word, senMap.get(word) ?? []);
       if (senMatch) {
@@ -373,5 +457,6 @@ export async function parseSearchFilters(params: {
     occupations,
     seniorities,
     technologies,
+    workMode,
   };
 }

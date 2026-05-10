@@ -17,7 +17,7 @@ import { StarButton } from "@/components/search/star-button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
-import type { SearchResultCompany, SearchResultPosting } from "@/lib/search";
+import type { SearchResultCompany, SearchResultPosting, WorkMode } from "@/lib/search";
 
 const POSTINGS_BATCH = 20;
 
@@ -30,6 +30,7 @@ interface CompanyCardProps {
   seniorities?: SerializableSeniority[];
   technologies?: SerializableTechnology[];
   employmentTypes?: string[];
+  workMode?: WorkMode[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;
@@ -39,7 +40,7 @@ interface CompanyCardProps {
   selectedPostingId?: string | null;
 }
 
-export function CompanyCard({ result, keywords, locationIds, locations, occupations, seniorities, technologies, employmentTypes, salaryMinEur, salaryMaxEur, experienceMin, experienceMax, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
+export function CompanyCard({ result, keywords, locationIds, locations, occupations, seniorities, technologies, employmentTypes, workMode, salaryMinEur, salaryMaxEur, experienceMin, experienceMax, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
   const params = useParams();
   const locale = (params.lang as string) ?? "en";
   const { company, activeMatches, yearMatches } = result;
@@ -52,6 +53,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
     occupations,
     seniorities,
     technologies,
+    workMode,
   );
 
   const [extraPostings, setExtraPostings] = useState<SearchResultPosting[]>([]);
@@ -80,6 +82,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
       seniorityIds: seniorities?.map((s) => s.id),
       technologyIds: technologies?.map((t) => t.id),
       employmentTypes,
+      workMode,
       salaryMinEur,
       salaryMaxEur,
       experienceMin,

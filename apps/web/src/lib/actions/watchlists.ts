@@ -38,6 +38,15 @@ export type WatchlistFilters = {
   occupationSlugs?: string[];
   senioritySlugs?: string[];
   technologySlugs?: string[];
+  /**
+   * Work-mode (location_types) filter — `onsite | hybrid | remote`.
+   * Issue #2983. Backwards-compatible: missing field on existing
+   * watchlists ⇒ undefined ⇒ no filter applied. Reading code must
+   * defensively re-validate strings against {@link WORK_MODE_VALUES}
+   * before passing to Typesense (this column is JSONB and could carry
+   * legacy garbage from older client versions).
+   */
+  workMode?: ("onsite" | "hybrid" | "remote")[];
   salaryMin?: number;
   salaryMax?: number;
   salaryCurrency?: string;

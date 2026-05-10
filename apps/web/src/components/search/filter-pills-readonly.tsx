@@ -1,10 +1,17 @@
 "use client";
 
-import { MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock } from "lucide-react";
+import { MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Home } from "lucide-react";
 import type { WatchlistFilters } from "@/lib/actions/watchlists";
 import type { SelectedLocation } from "@/components/search/location-pills";
+import type { WorkMode } from "@/lib/search/types";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
+
+const WORK_MODE_LABEL: Record<WorkMode, string> = {
+  onsite: "On-site",
+  hybrid: "Hybrid",
+  remote: "Remote",
+};
 
 export function FilterPillsReadOnly({
   filters,
@@ -12,12 +19,20 @@ export function FilterPillsReadOnly({
   occupations,
   seniorities,
   technologies,
+  workMode,
 }: {
   filters: WatchlistFilters;
   locations?: SelectedLocation[];
   occupations?: TaxonomyItem[];
   seniorities?: TaxonomyItem[];
   technologies?: TaxonomyItem[];
+  /**
+   * Optional work-mode filter slugs to render as read-only pills
+   * (issue #2983). The watchlist filter shape doesn't yet persist
+   * work-mode, but the prop is accepted now so the explore-page
+   * "save snapshot" view can show it.
+   */
+  workMode?: WorkMode[];
 }) {
   const pills: { key: string; icon: React.ReactNode; label: string }[] = [];
 
@@ -63,6 +78,11 @@ export function FilterPillsReadOnly({
   } else if (filters.technologySlugs?.length) {
     for (const slug of filters.technologySlugs) {
       pills.push({ key: `tech-${slug}`, icon: <Code2 size={12} />, label: slug });
+    }
+  }
+  if (workMode && workMode.length > 0) {
+    for (const mode of workMode) {
+      pills.push({ key: `wm-${mode}`, icon: <Home size={12} />, label: WORK_MODE_LABEL[mode] });
     }
   }
   if (filters.salaryMin != null || filters.salaryMax != null) {

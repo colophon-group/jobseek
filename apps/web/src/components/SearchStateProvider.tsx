@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { SelectedLocation } from "@/components/search/location-pills";
-import type { SearchResultCompany } from "@/lib/search";
+import type { SearchResultCompany, WorkMode } from "@/lib/search";
 
 export interface SearchStateSnapshot {
   keywords: string[];
@@ -17,6 +17,7 @@ export interface SearchStateSnapshot {
   occupations: { id: number; slug: string; name: string }[];
   seniorities: { id: number; slug: string; name: string }[];
   technologies: { id: number; slug: string; name: string }[];
+  workMode: WorkMode[];
   salaryMinEur: number | undefined;
   salaryMaxEur: number | undefined;
   salaryCurrency: string;
@@ -53,6 +54,12 @@ export interface SearchPageActions {
   addSeniority: (seniority: { id: number; slug: string; name: string }) => void;
   addTechnology?: (technology: { id: number; slug: string; name: string }) => void;
   addEmploymentType?: (type: string) => void;
+  /**
+   * Add a work-mode (onsite/hybrid/remote) to the active filter set.
+   * Idempotent — implementations should no-op when the mode is already
+   * selected. Used by the global search-bar autocomplete (#2983).
+   */
+  addWorkMode?: (mode: WorkMode) => void;
   setSalaryFilter?: (currency: string, min: number | undefined, max: number | undefined) => void;
   setExperienceFilter?: (min: number | undefined, max: number | undefined) => void;
   submitSearch: (

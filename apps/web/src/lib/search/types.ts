@@ -4,6 +4,20 @@ export interface PostingLocation {
   geoType?: "city" | "region" | "country" | "macro";
 }
 
+/**
+ * Work-mode (location_types) filter values. Source of truth lives in the
+ * crawler's ``enum_normalize.py`` (canonical: onsite | remote | hybrid).
+ * Issue #2983 — filter-wide multi-select reusing the existing
+ * ``location_types`` field on ``job_posting``. No schema change.
+ */
+export type WorkMode = "onsite" | "hybrid" | "remote";
+
+export const WORK_MODE_VALUES: readonly WorkMode[] = ["onsite", "hybrid", "remote"] as const;
+
+export function isWorkMode(value: string): value is WorkMode {
+  return (WORK_MODE_VALUES as readonly string[]).includes(value);
+}
+
 export interface SearchResultPosting {
   id: string;
   title: string | null;
@@ -33,6 +47,7 @@ export interface SearchFilters {
   seniorityIds?: number[];
   technologyIds?: number[];
   employmentTypes?: string[];
+  workMode?: WorkMode[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;
@@ -48,6 +63,7 @@ export interface HistogramFilters {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  workMode?: WorkMode[];
   languages?: string[];
 }
 

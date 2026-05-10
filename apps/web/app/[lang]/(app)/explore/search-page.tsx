@@ -15,7 +15,7 @@ import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-
 import { useSession } from "@/components/SessionProvider";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
-import type { SearchResultCompany, HistogramFilters } from "@/lib/search";
+import type { SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
 import {
   useSearchStateStore,
   buildCacheKey,
@@ -34,6 +34,7 @@ interface SearchPageProps {
   initialOccupations: TaxonomyItem[];
   initialSeniorities: TaxonomyItem[];
   initialTechnologies: TaxonomyItem[];
+  initialWorkMode: WorkMode[];
   initialSalaryCurrency?: string;
   initialSalaryMin?: number;
   initialSalaryMax?: number;
@@ -58,6 +59,7 @@ export function SearchPage({
   initialOccupations,
   initialSeniorities,
   initialTechnologies,
+  initialWorkMode,
   initialSalaryCurrency,
   initialSalaryMin,
   initialSalaryMax,
@@ -122,6 +124,9 @@ export function SearchPage({
   );
 
   const [employmentTypes, setEmploymentTypes] = useState<string[]>([]);
+  const [workMode, setWorkMode] = useState<WorkMode[]>(
+    shouldRestore ? cached.workMode : initialWorkMode,
+  );
 
   // Currency rates for EUR conversion (fetched lazily)
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
@@ -155,6 +160,7 @@ export function SearchPage({
   const senioritiesRef = useRef(seniorities);
   const technologiesRef = useRef(technologies);
   const employmentTypesRef = useRef(employmentTypes);
+  const workModeRef = useRef(workMode);
   const salaryCurrencyRef = useRef(salaryCurrency);
   const salaryMinRef = useRef(salaryMin);
   const salaryMaxRef = useRef(salaryMax);
@@ -169,6 +175,7 @@ export function SearchPage({
   senioritiesRef.current = seniorities;
   technologiesRef.current = technologies;
   employmentTypesRef.current = employmentTypes;
+  workModeRef.current = workMode;
   salaryCurrencyRef.current = salaryCurrency;
   salaryMinRef.current = salaryMin;
   salaryMaxRef.current = salaryMax;
@@ -214,6 +221,7 @@ export function SearchPage({
     const occ = searchParams.get("occ") ?? undefined;
     const sen = searchParams.get("sen") ?? undefined;
     const tech = searchParams.get("tech") ?? undefined;
+    const wm = searchParams.get("wm") ?? undefined;
     const sal = searchParams.get("sal") ?? undefined;
     const salcur = searchParams.get("salcur") ?? undefined;
     const exp = searchParams.get("exp") ?? undefined;
@@ -235,12 +243,13 @@ export function SearchPage({
     }
 
     setIsSearching(true);
-    parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }).then((parsed) => {
+    parseSearchFilters({ q, loc, occ, sen, tech, wm, locale, userLat, userLng }).then((parsed) => {
       setKeywords(parsed.keywords); keywordsRef.current = parsed.keywords;
       setLocations(parsed.locations); locationsRef.current = parsed.locations;
       setOccupations(parsed.occupations); occupationsRef.current = parsed.occupations;
       setSeniorities(parsed.seniorities); senioritiesRef.current = parsed.seniorities;
       setTechnologies(parsed.technologies); technologiesRef.current = parsed.technologies;
+      setWorkMode(parsed.workMode); workModeRef.current = parsed.workMode;
       runSearch();
     });
   }, [searchParams]);
@@ -262,6 +271,7 @@ export function SearchPage({
         occupations: occupationsRef.current,
         seniorities: senioritiesRef.current,
         technologies: technologiesRef.current,
+        workMode: workModeRef.current,
         salaryMinEur: salaryMinRef.current,
         salaryMaxEur: salaryMaxRef.current,
         salaryCurrency: salaryCurrencyRef.current,
@@ -337,6 +347,14 @@ export function SearchPage({
         updateUrl();
         runSearch();
       },
+      addWorkMode: (mode) => {
+        if (workModeRef.current.includes(mode)) return;
+        const updated = [...workModeRef.current, mode];
+        setWorkMode(updated);
+        workModeRef.current = updated;
+        updateUrl();
+        runSearch();
+      },
       setSalaryFilter: (currency: string, min: number | undefined, max: number | undefined) => {
         setSalaryCurrency(currency); salaryCurrencyRef.current = currency;
         setSalaryMin(min); salaryMinRef.current = min;
@@ -364,6 +382,7 @@ export function SearchPage({
         cached.occupations,
         cached.seniorities,
         cached.technologies,
+        cached.workMode,
       );
       window.history.replaceState(null, "", url);
 
@@ -376,7 +395,7 @@ export function SearchPage({
   }, []);
 
   const hasMore = companies.length < totalCompanies && !isTruncated;
-  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
+  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
 
   /** Update only the `show` query param without touching filter state. */
   function updateShowParam(postingId: string | null) {
@@ -412,6 +431,7 @@ export function SearchPage({
       occupationsRef.current,
       senioritiesRef.current,
       technologiesRef.current,
+      workModeRef.current,
     );
     window.history.replaceState(null, "", url);
   };
@@ -436,6 +456,7 @@ export function SearchPage({
     const seniorityIds = senioritiesRef.current.map((s) => s.id);
     const technologyIds = technologiesRef.current.map((t) => t.id);
     const etypes = employmentTypesRef.current;
+    const wm = workModeRef.current;
     const salMinEur = toEur(salaryMinRef.current);
     const salMaxEur = toEur(salaryMaxRef.current);
     const expMin = experienceMinRef.current;
@@ -454,6 +475,7 @@ export function SearchPage({
                   seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
                   technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
                   employmentTypes: etypes.length > 0 ? etypes : undefined,
+                  workMode: wm.length > 0 ? wm : undefined,
                   salaryMinEur: salMinEur,
                   salaryMaxEur: salMaxEur,
                   experienceMin: expMin,
@@ -472,6 +494,7 @@ export function SearchPage({
                   seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
                   technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
                   employmentTypes: etypes.length > 0 ? etypes : undefined,
+                  workMode: wm.length > 0 ? wm : undefined,
                   salaryMinEur: salMinEur,
                   salaryMaxEur: salMaxEur,
                   experienceMin: expMin,
@@ -643,6 +666,7 @@ export function SearchPage({
     setSeniorities([]); senioritiesRef.current = [];
     setTechnologies([]); technologiesRef.current = [];
     setEmploymentTypes([]); employmentTypesRef.current = [];
+    setWorkMode([]); workModeRef.current = [];
     setSalaryCurrency(displayCurrency); salaryCurrencyRef.current = displayCurrency;
     setSalaryMin(undefined); salaryMinRef.current = undefined;
     setSalaryMax(undefined); salaryMaxRef.current = undefined;
@@ -661,13 +685,14 @@ export function SearchPage({
     const seniorityIds = senioritiesRef.current.length > 0 ? senioritiesRef.current.map((s) => s.id) : undefined;
     const technologyIds = technologiesRef.current.length > 0 ? technologiesRef.current.map((t) => t.id) : undefined;
     const etypes = employmentTypesRef.current.length > 0 ? employmentTypesRef.current : undefined;
+    const wm = workModeRef.current.length > 0 ? workModeRef.current : undefined;
     const salMinEur = toEur(salaryMinRef.current);
     const salMaxEur = toEur(salaryMaxRef.current);
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
     const result = kws.length > 0
-      ? await runSearchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current)
-      : await runListTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current);
+      ? await runSearchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, workMode: wm, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current)
+      : await runListTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, workMode: wm, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current);
 
     if (result.truncated) setIsTruncated(true);
     serverOffsetRef.current += result.companies.length;
@@ -723,6 +748,15 @@ export function SearchPage({
           updateUrl();
           runSearch();
         }}
+        workMode={workMode}
+        onToggleWorkMode={(mode) => {
+          const exists = workModeRef.current.includes(mode);
+          const updated = exists ? workModeRef.current.filter((m) => m !== mode) : [...workModeRef.current, mode];
+          setWorkMode(updated);
+          workModeRef.current = updated;
+          updateUrl();
+          runSearch();
+        }}
         onSalaryChange={handleSalaryChange}
         onExperienceChange={handleExperienceChange}
         histogramFilters={histogramFilters}
@@ -745,6 +779,7 @@ export function SearchPage({
             seniorities={seniorities}
             technologies={technologies}
             employmentTypes={employmentTypes}
+            workMode={workMode}
             salaryMinEur={toEur(salaryMin)}
             salaryMaxEur={toEur(salaryMax)}
             experienceMin={experienceMin}

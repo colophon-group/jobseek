@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife } from "next/cache";
 import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
-import type { SearchResponse, SearchResultPosting, HistogramFilters } from "@/lib/search";
+import type { SearchResponse, SearchResultPosting, HistogramFilters, WorkMode } from "@/lib/search";
 import { cached } from "@/lib/cache";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSessionUserId } from "@/lib/sessionCache";
@@ -228,6 +228,7 @@ export async function searchJobs(params: {
   seniorityIds?: number[];
   technologyIds?: number[];
   employmentTypes?: string[];
+  workMode?: WorkMode[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;
@@ -261,6 +262,7 @@ type TopCompaniesParams = {
   seniorityIds?: number[];
   technologyIds?: number[];
   employmentTypes?: string[];
+  workMode?: WorkMode[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;
@@ -296,6 +298,7 @@ async function _listTopCompaniesImpl(
     !params.seniorityIds?.length &&
     !params.technologyIds?.length &&
     !params.employmentTypes?.length &&
+    !params.workMode?.length &&
     params.salaryMinEur == null &&
     params.salaryMaxEur == null &&
     params.experienceMin == null &&
@@ -463,6 +466,7 @@ export async function loadMorePostings(params: {
   seniorityIds?: number[];
   technologyIds?: number[];
   employmentTypes?: string[];
+  workMode?: WorkMode[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;

@@ -64,6 +64,43 @@ describe("buildFilterString", () => {
 });
 
 // =====================================================================
+// Issue #2983: work-mode (location_types) filter clause.
+// =====================================================================
+
+describe("buildFilterString — workMode (#2983)", () => {
+  it("emits the location_types clause when a single mode is set", () => {
+    expect(buildFilterString({ workMode: ["remote"] })).toBe(
+      "location_types:[remote]",
+    );
+  });
+
+  it("emits a comma-separated list for multiple modes (Typesense OR)", () => {
+    expect(buildFilterString({ workMode: ["remote", "hybrid"] })).toBe(
+      "location_types:[remote,hybrid]",
+    );
+  });
+
+  it("preserves the order the caller passed in (no auto-sort)", () => {
+    expect(buildFilterString({ workMode: ["onsite", "remote", "hybrid"] })).toBe(
+      "location_types:[onsite,remote,hybrid]",
+    );
+  });
+
+  it("composes with other filters via &&", () => {
+    const out = buildFilterString({
+      locationIds: [101],
+      workMode: ["remote"],
+    });
+    expect(out).toBe("location_ids:[101] && location_types:[remote]");
+  });
+
+  it("does NOT emit anything when workMode is undefined / empty", () => {
+    expect(buildFilterString({ workMode: undefined })).toBe("");
+    expect(buildFilterString({ workMode: [] })).toBe("");
+  });
+});
+
+// =====================================================================
 // Issue #2965: every `first_seen_at:>` (year-count) filter string in the
 // Typesense providers must compose with POSTING_FLOW_FILTER, NOT
 // POSTING_BASE_FILTER. Including `is_active:true` collapses year-count
