@@ -1,33 +1,34 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render } from "@testing-library/react";
 
-// ── Mocks ────────────────────────────────────────────────────────────
+// `LocaleGuard` is a tiny client-only component that reads the
+// `NEXT_LOCALE` cookie and redirects (`window.location.replace`) any
+// URL whose `[lang]` segment disagrees. It deliberately uses
+// browser-native APIs only — under cacheComponents (#2835),
+// `useRouter()`/`usePathname()` would taint the parent layout's
+// static-rendering classification.
 //
-// `LocaleGuard` is a tiny client-only component: it reads the
-// `NEXT_LOCALE` cookie via `document.cookie` and `router.replace`s any
-// URL whose `[lang]` segment disagrees. The tests pin down the
-// regression in #2988: after the user changes their UI language in
-// /settings, *every* subsequent in-app navigation must land on a path
-// prefixed with the new locale — including back-button traversal of
-// pre-switch history entries.
+// Tests pin the regression in #2988 (locale switch in /settings does
+// not propagate to subsequent navigations) AND the build-fix in
+// #3001 (no Next.js navigation hooks).
 
 const replaceMock = vi.fn();
-let currentPathname = "/en/explore";
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    replace: replaceMock,
-    push: vi.fn(),
-    refresh: vi.fn(),
-  }),
-  usePathname: () => currentPathname,
-}));
-
-// Stub `document.cookie` per test. happy-dom supports cookie writes,
-// but we want deterministic state across the suite.
 let cookieValue = "";
+
 function setCookie(value: string) {
   cookieValue = value;
+}
+
+function setLocation(pathname: string, search = "") {
+  Object.defineProperty(window, "location", {
+    configurable: true,
+    value: {
+      ...window.location,
+      pathname,
+      search,
+      replace: replaceMock,
+    },
+  });
 }
 
 beforeEach(() => {
@@ -40,8 +41,6 @@ beforeEach(() => {
       cookieValue = v;
     },
   });
-  // `window.location.search` defaults to "" in happy-dom; tests that
-  // exercise query-string preservation override it explicitly.
 });
 
 afterEach(() => {
@@ -50,10 +49,10 @@ afterEach(() => {
 
 import { LocaleGuard } from "../LocaleGuard";
 
-describe("LocaleGuard (#2988)", () => {
+describe("LocaleGuard (#2988, #3001)", () => {
   it("redirects /en/explore -> /de/explore when NEXT_LOCALE=de", () => {
     setCookie("NEXT_LOCALE=de");
-    currentPathname = "/en/explore";
+    setLocation("/en/explore");
 
     act(() => {
       render(<LocaleGuard />);
@@ -65,11 +64,7 @@ describe("LocaleGuard (#2988)", () => {
 
   it("preserves query string across the redirect", () => {
     setCookie("NEXT_LOCALE=de");
-    currentPathname = "/en/explore";
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: { ...window.location, search: "?q=engineer&loc=zurich" },
-    });
+    setLocation("/en/explore", "?q=engineer&loc=zurich");
 
     act(() => {
       render(<LocaleGuard />);
@@ -78,16 +73,11 @@ describe("LocaleGuard (#2988)", () => {
     expect(replaceMock).toHaveBeenCalledWith(
       "/de/explore?q=engineer&loc=zurich",
     );
-
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: { ...window.location, search: "" },
-    });
   });
 
   it("does nothing when URL [lang] already matches the cookie", () => {
     setCookie("NEXT_LOCALE=de");
-    currentPathname = "/de/explore";
+    setLocation("/de/explore");
 
     act(() => {
       render(<LocaleGuard />);
@@ -98,7 +88,7 @@ describe("LocaleGuard (#2988)", () => {
 
   it("does nothing when the cookie is absent", () => {
     setCookie("");
-    currentPathname = "/en/explore";
+    setLocation("/en/explore");
 
     act(() => {
       render(<LocaleGuard />);
@@ -109,7 +99,7 @@ describe("LocaleGuard (#2988)", () => {
 
   it("ignores an unsupported cookie value", () => {
     setCookie("NEXT_LOCALE=xx");
-    currentPathname = "/en/explore";
+    setLocation("/en/explore");
 
     act(() => {
       render(<LocaleGuard />);
@@ -119,11 +109,8 @@ describe("LocaleGuard (#2988)", () => {
   });
 
   it("ignores a path whose first segment is not a known locale", () => {
-    // e.g. a /sitemap.xml-shaped fallback that somehow reaches the
-    // [lang] layout — never happens in production thanks to
-    // `notFound()` in the layout, but the guard must not redirect.
     setCookie("NEXT_LOCALE=de");
-    currentPathname = "/api/health";
+    setLocation("/api/health");
 
     act(() => {
       render(<LocaleGuard />);
@@ -134,7 +121,7 @@ describe("LocaleGuard (#2988)", () => {
 
   it("redirects nested paths, not just /<lang>/<page>", () => {
     setCookie("NEXT_LOCALE=fr");
-    currentPathname = "/en/company/stripe";
+    setLocation("/en/company/stripe");
 
     act(() => {
       render(<LocaleGuard />);
@@ -145,7 +132,7 @@ describe("LocaleGuard (#2988)", () => {
 
   it("decodes URL-encoded cookie values", () => {
     setCookie("NEXT_LOCALE=de; theme=dark");
-    currentPathname = "/en/explore";
+    setLocation("/en/explore");
 
     act(() => {
       render(<LocaleGuard />);
@@ -156,12 +143,33 @@ describe("LocaleGuard (#2988)", () => {
 
   it("handles multi-cookie strings where NEXT_LOCALE is not first", () => {
     setCookie("logged_in=1; theme=dark; NEXT_LOCALE=it");
-    currentPathname = "/en/settings";
+    setLocation("/en/settings");
 
     act(() => {
       render(<LocaleGuard />);
     });
 
     expect(replaceMock).toHaveBeenCalledWith("/it/settings");
+  });
+
+  it("re-fires on browser back/forward (popstate)", () => {
+    // Initial mount: URL matches cookie, no redirect.
+    setCookie("NEXT_LOCALE=de");
+    setLocation("/de/explore");
+
+    act(() => {
+      render(<LocaleGuard />);
+    });
+    expect(replaceMock).not.toHaveBeenCalled();
+
+    // User clicks back to a stale /en/explore history entry. The
+    // browser updates location and dispatches popstate.
+    setLocation("/en/explore");
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(replaceMock).toHaveBeenCalledTimes(1);
+    expect(replaceMock).toHaveBeenCalledWith("/de/explore");
   });
 });

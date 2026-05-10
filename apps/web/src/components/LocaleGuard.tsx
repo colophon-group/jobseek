@@ -1,23 +1,40 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 
 const COOKIE_NAME = "NEXT_LOCALE";
 
 function readLocaleCookie(): string | null {
   if (typeof document === "undefined") return null;
-  // Linear scan is fine — cookies are O(handful) on this site.
   const parts = document.cookie ? document.cookie.split("; ") : [];
   for (const part of parts) {
     const eq = part.indexOf("=");
     if (eq === -1) continue;
     if (part.slice(0, eq) !== COOKIE_NAME) continue;
-    const value = decodeURIComponent(part.slice(eq + 1));
-    return value;
+    return decodeURIComponent(part.slice(eq + 1));
   }
   return null;
+}
+
+function correctLocaleIfStale() {
+  if (typeof window === "undefined") return;
+  const cookieLocale = readLocaleCookie();
+  if (!cookieLocale || !isLocale(cookieLocale)) return;
+  const segments = window.location.pathname.split("/");
+  const urlLocale = segments[1];
+  if (!urlLocale || !isLocale(urlLocale)) return;
+  if (urlLocale === cookieLocale) return;
+  segments[1] = cookieLocale;
+  const newPath = segments.join("/") + window.location.search;
+  // `window.location.replace` (not `router.replace`) so this component
+  // reads no Next.js navigation hooks. Under cacheComponents (#2835),
+  // `useRouter()`/`usePathname()` are dynamic-API reads that opt the
+  // parent layout out of static rendering — mounted at the
+  // `[lang]/layout.tsx` root, that taints every page in the route
+  // tree and breaks the production build (#3001 P0). Browser-native
+  // APIs are runtime-only and don't leak into static analysis.
+  window.location.replace(newPath);
 }
 
 /**
@@ -36,44 +53,16 @@ function readLocaleCookie(): string | null {
  *      English (URL `[lang]=en`) until a hard reload, even though the
  *      cookie says `de`.
  *
- * On every pathname change, if `NEXT_LOCALE` is set and disagrees with
- * the URL `[lang]` segment, `router.replace` to the same path with the
- * correct locale prefix. `replace` (not `push`) so going back doesn't
- * re-walk to the wrong-locale entry.
- *
- * Caveats:
- * - SSR-safe: all reads gated on `typeof document !== "undefined"`.
- * - Idempotent: only fires when both URL and cookie are valid locales
- *   and they differ — never recursive.
- * - Search params preserved across the redirect; the user's filter
- *   state in /explore must survive.
- * - We deliberately do *not* read `localPrefs.locale` (localStorage):
- *   the canonical signal is the cookie, which both switchers set.
- *   Mixing localStorage in here would re-create the divergence the
- *   cookie write was designed to close.
+ * Implementation: runs once on mount + listens for `popstate` to handle
+ * browser back/forward across stale history entries. SSR-safe.
  */
 export function LocaleGuard() {
-  const router = useRouter();
-  const pathname = usePathname();
-
   useEffect(() => {
-    const cookieLocale = readLocaleCookie();
-    if (!cookieLocale || !isLocale(cookieLocale)) return;
-
-    const segments = pathname.split("/");
-    const urlLocale = segments[1];
-    if (!urlLocale || !isLocale(urlLocale)) return;
-    if (urlLocale === cookieLocale) return;
-
-    segments[1] = cookieLocale;
-    const newPath = segments.join("/");
-    // Read query string from `window.location` rather than `useSearchParams`
-    // so this client component does not opt the parent layout out of
-    // static rendering under cacheComponents (#2835). The effect runs
-    // only on the client, so the browser global is always available.
-    const qs = typeof window !== "undefined" ? window.location.search : "";
-    router.replace(qs ? `${newPath}${qs}` : newPath);
-  }, [pathname, router]);
+    correctLocaleIfStale();
+    const onPopState = () => correctLocaleIfStale();
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   return null;
 }
