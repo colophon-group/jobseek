@@ -4,8 +4,16 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Search, Loader2, Globe } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { getGlobalLocationsGrouped } from "@/lib/actions/locations";
-import type { GlobalLocationGroup, GlobalLocationsResponse } from "@/lib/actions/locations";
+import {
+  getGlobalLocationsPage,
+  searchGlobalLocations,
+  LOCATION_PAGE_SIZE,
+} from "@/lib/actions/locations";
+import type {
+  GlobalLocationGroup,
+  GlobalMacroRegion,
+  GlobalLocationSearchHit,
+} from "@/lib/actions/locations";
 import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
 import { findBestGuess } from "./best-guess";
@@ -15,6 +23,9 @@ import { DisabledFilterPill } from "./disabled-filter-pill";
 
 /** Show region sub-headers when a country has more cities than this. */
 const REGION_THRESHOLD = 8;
+
+/** Debounce window for the server-side search input fetch (ms). */
+const SEARCH_DEBOUNCE_MS = 180;
 
 type SelectedLocation = { id: number; slug: string; name: string; type: string; parentName?: string | null };
 
@@ -36,21 +47,39 @@ export function LocationSearchModal({
   filters,
 }: LocationSearchModalProps) {
   const { t } = useLingui();
-  const [response, setResponse] = useState<GlobalLocationsResponse | null>(null);
+  // Paged country list (#2982): instead of loading the full ~150-country
+  // tree on every modal-open, we fetch in slices of LOCATION_PAGE_SIZE
+  // and append on scroll-near-bottom. The first page also carries the
+  // bounded `macros[]` cluster.
+  const [pages, setPages] = useState<GlobalLocationGroup[]>([]);
+  const [macros, setMacros] = useState<GlobalMacroRegion[]>([]);
+  const [nextCursor, setNextCursor] = useState<number | null>(0);
+  const [totalCountries, setTotalCountries] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Server-side search hits (separate code path from the in-memory filter
+  // over `pages`). Surfaces long-tail cities that aren't in the loaded
+  // pages — see `searchGlobalLocations`.
+  const [searchHits, setSearchHits] = useState<GlobalLocationSearchHit[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [warning, setWarning] = useState("");
   const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Scroll container — observed by both ScrollFade (gradient overlay) and
+  // the bottom IntersectionObserver that triggers loadMore.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
-  // Build parent map: city.parent = region (or country if no region),
-  // region.parent = country, country.parent = null. Macros are NOT in
-  // the parent chain — they're consulted via the macroMembers side-channel.
+  // Build parent map from the loaded country pages. Partial coverage is
+  // fine — `useDisabledByAncestor` walks parents; an unknown id (not yet
+  // loaded) just doesn't get disabled until its page lands. Macros are
+  // NOT in the parent chain — they're consulted via the macroMembers
+  // side-channel.
   const parentMap = useMemo(() => {
     const map = new Map<number, number | null>();
-    if (!response) return map;
-    for (const country of response.countries) {
+    for (const country of pages) {
       map.set(country.countryId, null);
       for (const region of country.regions) {
         if (region.regionId > 0) {
@@ -63,16 +92,15 @@ export function LocationSearchModal({
       }
     }
     return map;
-  }, [response]);
+  }, [pages]);
 
   const macroMembersMap = useMemo(() => {
     const map = new Map<number, number[]>();
-    if (!response) return map;
-    for (const macro of response.macros) {
+    for (const macro of macros) {
       map.set(macro.id, macro.memberCountryIds ?? []);
     }
     return map;
-  }, [response]);
+  }, [macros]);
 
   const { isDisabled, disabledByAncestor } = useDisabledByAncestor({
     selectedIds,
@@ -84,11 +112,10 @@ export function LocationSearchModal({
   // "Included in <ancestor>" tooltip without re-walking the response.
   const nameById = useMemo(() => {
     const map = new Map<number, string>();
-    if (!response) return map;
-    for (const macro of response.macros) {
+    for (const macro of macros) {
       map.set(macro.id, macro.name);
     }
-    for (const country of response.countries) {
+    for (const country of pages) {
       map.set(country.countryId, country.countryName);
       for (const region of country.regions) {
         if (region.regionId > 0) map.set(region.regionId, region.regionName);
@@ -96,7 +123,7 @@ export function LocationSearchModal({
       }
     }
     return map;
-  }, [response]);
+  }, [pages, macros]);
 
   const ancestorNameOf = useCallback((id: number): string => {
     const ancId = disabledByAncestor(id);
@@ -128,38 +155,127 @@ export function LocationSearchModal({
 
   const filtersKey = filters ? JSON.stringify(filters) : "";
   const prevFiltersKeyRef = useRef(filtersKey);
+  // Track the most recent in-flight first-page fetch so a stale response
+  // (filter changed mid-flight) doesn't clobber the fresh state.
+  const fetchSeqRef = useRef(0);
 
+  // First page on open / on filter change. Always cursor=0; resets the
+  // accumulated pages list so the second open of the modal shows a fresh
+  // first page rather than the tail of the previous session.
   useEffect(() => {
-    if (open && (!response || filtersKey !== prevFiltersKeyRef.current)) {
-      prevFiltersKeyRef.current = filtersKey;
-      setLoading(true);
-      getGlobalLocationsGrouped(locale, filters)
-        .then(setResponse)
-        .finally(() => setLoading(false));
+    if (!open) return;
+    const filtersChanged = filtersKey !== prevFiltersKeyRef.current;
+    const firstOpen = pages.length === 0 && nextCursor === 0;
+    if (!filtersChanged && !firstOpen) return;
+    prevFiltersKeyRef.current = filtersKey;
+    const seq = ++fetchSeqRef.current;
+    setLoading(true);
+    setPages([]);
+    setMacros([]);
+    setNextCursor(0);
+    setTotalCountries(0);
+    getGlobalLocationsPage(locale, 0, filters)
+      .then((page) => {
+        if (fetchSeqRef.current !== seq) return; // stale — drop
+        setMacros(page.macros);
+        setPages(page.countries);
+        setNextCursor(page.nextCursor);
+        setTotalCountries(page.totalCountries);
+      })
+      .finally(() => {
+        if (fetchSeqRef.current !== seq) return;
+        setLoading(false);
+      });
+  }, [open, locale, filtersKey, filters, pages.length, nextCursor]);
+
+  // loadMore — fetch the next page and append. Guarded by `loadingMore`
+  // so multiple sentinel triggers (fast scroll) collapse to one request.
+  const loadMore = useCallback(async () => {
+    if (nextCursor == null || loadingMore || loading) return;
+    setLoadingMore(true);
+    const seq = fetchSeqRef.current;
+    try {
+      const page = await getGlobalLocationsPage(locale, nextCursor, filters);
+      if (fetchSeqRef.current !== seq) return;
+      setPages((prev) => [...prev, ...page.countries]);
+      setNextCursor(page.nextCursor);
+    } finally {
+      if (fetchSeqRef.current === seq) setLoadingMore(false);
     }
-  }, [open, response, locale, filtersKey]);
+  }, [locale, filters, nextCursor, loadingMore, loading]);
+
+  // IntersectionObserver — fires loadMore when the bottom sentinel
+  // enters the scroll viewport. `rootMargin: 240px` pre-loads one screen
+  // before the user actually hits the bottom so the next page is ready
+  // by the time it's needed.
+  useEffect(() => {
+    if (!open) return;
+    const sentinel = sentinelRef.current;
+    const root = scrollRef.current;
+    if (!sentinel || !root) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            loadMore();
+          }
+        }
+      },
+      { root, rootMargin: "240px 0px 240px 0px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [open, loadMore, pages.length]);
 
   useEffect(() => {
-    if (!open) setSearch("");
+    if (!open) {
+      setSearch("");
+      setSearchHits([]);
+    }
   }, [open]);
+
+  // Server-side search — debounced. While the user is typing, we kick a
+  // Typesense query against the `location` collection (separate from the
+  // country-tier facet) to surface long-tail cities that don't appear in
+  // the top-N facet truncation.
+  useEffect(() => {
+    if (!open) return;
+    const q = search.trim();
+    if (q.length < 1) {
+      setSearchHits([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    const handle = setTimeout(() => {
+      const seq = fetchSeqRef.current;
+      searchGlobalLocations(q, locale)
+        .then((hits) => {
+          if (fetchSeqRef.current !== seq) return;
+          setSearchHits(hits);
+        })
+        .finally(() => {
+          if (fetchSeqRef.current === seq) setSearchLoading(false);
+        });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [open, search, locale]);
 
   // Filter macros: keep when name OR abbreviation matches the local search
   // text. Once #2939's `aliases[]` field arrives on the location collection,
   // this can grow into substring-against-aliases matching too.
   const filteredMacros = useMemo(() => {
-    if (!response) return [];
-    if (!search.trim()) return response.macros;
+    if (!search.trim()) return macros;
     const q = search.trim().toLowerCase();
-    return response.macros.filter((m) =>
+    return macros.filter((m) =>
       m.name.toLowerCase().includes(q)
       || m.abbreviation.toLowerCase().includes(q)
       || m.memberCountryNames.some((c) => c.toLowerCase().includes(q)),
     );
-  }, [response, search]);
+  }, [macros, search]);
 
   const filtered = useMemo(() => {
-    if (!response) return [];
-    const groups = response.countries;
+    const groups = pages;
     if (!search.trim()) return groups;
     const q = search.trim().toLowerCase();
 
@@ -180,7 +296,23 @@ export function LocationSearchModal({
         return { ...country, regions: filteredRegions };
       })
       .filter((g): g is GlobalLocationGroup => g !== null);
-  }, [response, search]);
+  }, [pages, search]);
+
+  // Server-side search hits, deduplicated against the in-memory matches
+  // already covered by `filtered` (we don't want to render Berlin twice
+  // when it's both in the first page AND a search hit).
+  const filteredSearchHits = useMemo(() => {
+    if (!search.trim()) return [];
+    const inMemoryIds = new Set<number>();
+    for (const country of filtered) {
+      inMemoryIds.add(country.countryId);
+      for (const region of country.regions) {
+        if (region.regionId > 0) inMemoryIds.add(region.regionId);
+        for (const loc of region.locations) inMemoryIds.add(loc.id);
+      }
+    }
+    return searchHits.filter((h) => !inMemoryIds.has(h.id));
+  }, [searchHits, filtered, search]);
 
   function countCities(country: GlobalLocationGroup) {
     return country.regions.reduce((sum, r) => sum + r.locations.length, 0);
@@ -220,7 +352,14 @@ export function LocationSearchModal({
           })),
         ),
       );
-      const result = findBestGuess(search, [...macroCandidates, ...leafItems]);
+      const searchHitItems: SelectedLocation[] = filteredSearchHits.map((h) => ({
+        id: h.id,
+        slug: h.slug,
+        name: h.name,
+        type: h.type,
+        parentName: h.parentName,
+      }));
+      const result = findBestGuess(search, [...macroCandidates, ...leafItems, ...searchHitItems]);
       if (!result) return;
       if ("match" in result) {
         // For a macro candidate matched via abbreviation, prefer the
@@ -241,8 +380,16 @@ export function LocationSearchModal({
         }));
       }
     },
-    [filtered, filteredMacros, search, onToggle, showWarning, t],
+    [filtered, filteredMacros, filteredSearchHits, search, onToggle, showWarning, t],
   );
+
+  const hasSearch = search.trim().length > 0;
+  const isEmpty =
+    !loading
+    && filtered.length === 0
+    && filteredMacros.length === 0
+    && filteredSearchHits.length === 0
+    && !searchLoading;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -289,12 +436,12 @@ export function LocationSearchModal({
           </div>
 
           {/* Body */}
-          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" scrollRef={scrollRef} className="px-5 py-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
               </div>
-            ) : filtered.length === 0 && filteredMacros.length === 0 ? (
+            ) : isEmpty ? (
               <p className="py-8 text-center text-sm text-muted">
                 <Trans id="search.locationModal.noResults" comment="No locations match search in location modal">
                   No locations match your search.
@@ -357,6 +504,59 @@ export function LocationSearchModal({
                     </div>
                   </div>
                 )}
+
+                {/* Server-side search hits cluster — only when the user is
+                    actively searching. Surfaces long-tail cities (e.g.
+                    Salzburg) that aren't in the loaded country pages. */}
+                {hasSearch && filteredSearchHits.length > 0 && (
+                  <div>
+                    <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+                      <Search size={14} className="shrink-0" />
+                      <Trans id="search.locationModal.searchHitsHeader" comment="Header for the server-side search-results cluster shown when the user types in the location modal search box">
+                        Matches
+                      </Trans>
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {filteredSearchHits.map((hit) => {
+                        const active = selectedIds.has(hit.id);
+                        if (!active && isDisabled(hit.id)) {
+                          return (
+                            <DisabledFilterPill
+                              key={hit.id}
+                              name={hit.name}
+                              count={hit.count}
+                              ancestorName={ancestorNameOf(hit.id)}
+                            />
+                          );
+                        }
+                        return (
+                          <button
+                            key={hit.id}
+                            onClick={() => handleToggle({
+                              id: hit.id,
+                              slug: hit.slug,
+                              name: hit.name,
+                              type: hit.type,
+                              parentName: hit.parentName,
+                            })}
+                            title={hit.parentName ?? undefined}
+                            className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
+                              active
+                                ? "bg-primary/10 text-primary"
+                                : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
+                            }`}
+                          >
+                            {hit.name}
+                            <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
+                              ({hit.count})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {filtered.map((country) => {
                   const countryActive = selectedIds.has(country.countryId);
                   const countryDisabled = !countryActive && isDisabled(country.countryId);
@@ -517,6 +717,24 @@ export function LocationSearchModal({
                     </div>
                   );
                 })}
+
+                {/* Bottom sentinel — IntersectionObserver triggers loadMore
+                    when this enters the viewport (with a 240px rootMargin
+                    to pre-fetch). Stays mounted until nextCursor is null. */}
+                {nextCursor != null && (
+                  <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                    {loadingMore && (
+                      <Loader2 size={16} className="animate-spin text-muted" />
+                    )}
+                  </div>
+                )}
+                {nextCursor == null && pages.length > 0 && totalCountries > LOCATION_PAGE_SIZE && (
+                  <p className="py-2 text-center text-xs text-muted/70">
+                    <Trans id="search.locationModal.allLoaded" comment="Footer shown after all paged countries have been loaded into the location modal">
+                      All {totalCountries} countries loaded
+                    </Trans>
+                  </p>
+                )}
               </div>
             )}
           </ScrollFade>
