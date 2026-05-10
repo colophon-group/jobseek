@@ -164,3 +164,66 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     }
   });
 });
+
+describe("ExploreContent — cold-start retry (#3008)", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("retries fetchExploreData once when the first call rejects (cold-start abort)", async () => {
+    setDocumentCookie("logged_in=1");
+    const successData = makeInitialData();
+    mockFetchExploreData
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(successData);
+
+    render(<ExploreContent locale="en" initialData={makeInitialData()} />);
+
+    await waitFor(() => {
+      expect(mockFetchExploreData).toHaveBeenCalledTimes(2);
+    });
+    // First failure logged at warn level (the retry attempt)
+    expect(console.warn).toHaveBeenCalled();
+  });
+
+  it("logs at error level when both attempts fail and falls back to initialData", async () => {
+    setDocumentCookie("logged_in=1");
+    mockFetchExploreData
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    render(<ExploreContent locale="en" initialData={makeInitialData()} />);
+
+    await waitFor(() => {
+      expect(mockFetchExploreData).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalled();
+    });
+    // The error log includes the marker so it can be filtered in
+    // observability.
+    const errorArg = (console.error as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as string | undefined;
+    expect(errorArg).toMatch(/explore.*failed twice/i);
+  });
+
+  it("does NOT retry on the happy path (single resolved call)", async () => {
+    setDocumentCookie("logged_in=1");
+    mockFetchExploreData.mockResolvedValueOnce(makeInitialData());
+
+    render(<ExploreContent locale="en" initialData={makeInitialData()} />);
+
+    await waitFor(() => {
+      expect(mockFetchExploreData).toHaveBeenCalledTimes(1);
+    });
+    // Wait an additional tick to confirm no second call sneaks in
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockFetchExploreData).toHaveBeenCalledTimes(1);
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+});

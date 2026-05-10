@@ -5,6 +5,7 @@ import type {
 } from "typesense/lib/Typesense/Documents";
 import { getSearchClient } from "./typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "./typesense-filters";
+import { withTypesenseRetry } from "./typesense-retry";
 import type {
   PostingLocation,
   SearchFilters,
@@ -167,18 +168,22 @@ async function fetchYearCountsFiltered(
   const client = getSearchClient();
   const yearFilter = `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && company_id:[${companyIds.join(",")}]${filterStr ? " && " + filterStr : ""}`;
 
-  const result: TsSearchResponse<JobPostingDoc> = await client
-    .collections<JobPostingDoc>("job_posting")
-    .documents()
-    .search({
-      q,
-      query_by: "title",
-      filter_by: yearFilter,
-      facet_by: "company_id",
-      facet_strategy: "exhaustive",
-      max_facet_values: companyIds.length,
-      per_page: 0,
-    });
+  const result: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+    () =>
+      client
+        .collections<JobPostingDoc>("job_posting")
+        .documents()
+        .search({
+          q,
+          query_by: "title",
+          filter_by: yearFilter,
+          facet_by: "company_id",
+          facet_strategy: "exhaustive",
+          max_facet_values: companyIds.length,
+          per_page: 0,
+        }),
+    { label: "yearCountsFiltered" },
+  );
 
   const counts = result.facet_counts?.[0]?.counts ?? [];
   return new Map(
@@ -222,24 +227,28 @@ export class TypesenseSearchProvider implements SearchProvider {
       const client = getSearchClient();
 
       // Main grouped search with facet for totalCompanies
-      const result: TsSearchResponse<JobPostingDoc> = await client
-        .collections<JobPostingDoc>("job_posting")
-        .documents()
-        .search({
-          q: keywords.join(" "),
-          query_by: "title",
-          filter_by: activeFilter,
-          sort_by: "_text_match:desc,first_seen_at:desc",
-          group_by: "company_id",
-          group_limit: 10,
-          per_page: limit,
-          page: Math.floor(offset / limit) + 1,
-          typo_tokens_threshold: 1,
-          drop_tokens_threshold: 1,
-          facet_by: "company_id",
-          facet_strategy: "exhaustive",
-          max_facet_values: 1,
-        });
+      const result: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+        () =>
+          client
+            .collections<JobPostingDoc>("job_posting")
+            .documents()
+            .search({
+              q: keywords.join(" "),
+              query_by: "title",
+              filter_by: activeFilter,
+              sort_by: "_text_match:desc,first_seen_at:desc",
+              group_by: "company_id",
+              group_limit: 10,
+              per_page: limit,
+              page: Math.floor(offset / limit) + 1,
+              typo_tokens_threshold: 1,
+              drop_tokens_threshold: 1,
+              facet_by: "company_id",
+              facet_strategy: "exhaustive",
+              max_facet_values: 1,
+            }),
+        { label: "search" },
+      );
 
       const totalCompanies =
         result.facet_counts?.[0]?.stats?.total_values ?? 0;
@@ -298,17 +307,21 @@ export class TypesenseSearchProvider implements SearchProvider {
     const activeFilter = `${POSTING_BASE_FILTER} && ${filterStr}`;
 
     // Active count facet to rank companies
-    const activeResult: TsSearchResponse<JobPostingDoc> = await client
-      .collections<JobPostingDoc>("job_posting")
-      .documents()
-      .search({
-        q: "*",
-        filter_by: activeFilter,
-        facet_by: "company_id",
-        facet_strategy: "exhaustive",
-        max_facet_values: offset + limit,
-        per_page: 0,
-      });
+    const activeResult: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+      () =>
+        client
+          .collections<JobPostingDoc>("job_posting")
+          .documents()
+          .search({
+            q: "*",
+            filter_by: activeFilter,
+            facet_by: "company_id",
+            facet_strategy: "exhaustive",
+            max_facet_values: offset + limit,
+            per_page: 0,
+          }),
+      { label: "topCompaniesActiveCount" },
+    );
 
     const activeFacets: FacetCount | undefined = activeResult.facet_counts?.[0];
     const totalCompanies = activeFacets?.stats?.total_values ?? 0;
@@ -331,17 +344,21 @@ export class TypesenseSearchProvider implements SearchProvider {
     // Fetch filtered year counts and postings in parallel (independent queries)
     const [yearCountMap, postingResults] = await Promise.all([
       fetchYearCountsFiltered(companyIds, filterStr, "*"),
-      client
-        .collections<JobPostingDoc>("job_posting")
-        .documents()
-        .search({
-          q: "*",
-          filter_by: `company_id:[${companyIds.join(",")}] && ${activeFilter}`,
-          group_by: "company_id",
-          group_limit: 10,
-          sort_by: "first_seen_at:desc",
-          per_page: companyIds.length,
-        }),
+      withTypesenseRetry(
+        () =>
+          client
+            .collections<JobPostingDoc>("job_posting")
+            .documents()
+            .search({
+              q: "*",
+              filter_by: `company_id:[${companyIds.join(",")}] && ${activeFilter}`,
+              group_by: "company_id",
+              group_limit: 10,
+              sort_by: "first_seen_at:desc",
+              per_page: companyIds.length,
+            }),
+        { label: "topCompaniesFilteredPostings" },
+      ),
     ]);
 
     // Build a map of company_id -> group for ordered assembly
@@ -384,16 +401,20 @@ export class TypesenseSearchProvider implements SearchProvider {
     const client = getSearchClient();
 
     // Query company collection sorted by active_posting_count
-    const companyResults: TsSearchResponse<CompanyDoc> = await client
-      .collections<CompanyDoc>("company")
-      .documents()
-      .search({
-        q: "*",
-        filter_by: "active_posting_count:>0",
-        sort_by: "active_posting_count:desc",
-        per_page: limit,
-        page: Math.floor(offset / limit) + 1,
-      });
+    const companyResults: TsSearchResponse<CompanyDoc> = await withTypesenseRetry(
+      () =>
+        client
+          .collections<CompanyDoc>("company")
+          .documents()
+          .search({
+            q: "*",
+            filter_by: "active_posting_count:>0",
+            sort_by: "active_posting_count:desc",
+            per_page: limit,
+            page: Math.floor(offset / limit) + 1,
+          }),
+      { label: "topCompaniesUnfiltered" },
+    );
 
     const totalCompanies = companyResults.found;
     const companyHits = companyResults.hits ?? [];
@@ -412,17 +433,21 @@ export class TypesenseSearchProvider implements SearchProvider {
     );
 
     // Fetch postings for these companies
-    const postingResults: TsSearchResponse<JobPostingDoc> = await client
-      .collections<JobPostingDoc>("job_posting")
-      .documents()
-      .search({
-        q: "*",
-        filter_by: `company_id:[${companyIds.join(",")}] && ${POSTING_BASE_FILTER}`,
-        group_by: "company_id",
-        group_limit: 10,
-        sort_by: "first_seen_at:desc",
-        per_page: companyIds.length,
-      });
+    const postingResults: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+      () =>
+        client
+          .collections<JobPostingDoc>("job_posting")
+          .documents()
+          .search({
+            q: "*",
+            filter_by: `company_id:[${companyIds.join(",")}] && ${POSTING_BASE_FILTER}`,
+            group_by: "company_id",
+            group_limit: 10,
+            sort_by: "first_seen_at:desc",
+            per_page: companyIds.length,
+          }),
+      { label: "topCompaniesUnfilteredPostings" },
+    );
 
     const groupedHits = (postingResults.grouped_hits ?? []) as GroupedHit[];
     const groupMap = new Map<string, GroupedHit>(
@@ -471,19 +496,23 @@ export class TypesenseSearchProvider implements SearchProvider {
       const q = keywords.length ? keywords.join(" ") : "*";
       const client = getSearchClient();
 
-      const result: TsSearchResponse<JobPostingDoc> = await client
-        .collections<JobPostingDoc>("job_posting")
-        .documents()
-        .search({
-          q,
-          query_by: "title",
-          filter_by: activeFilter,
-          sort_by: keywords.length
-            ? "_text_match:desc,first_seen_at:desc"
-            : "first_seen_at:desc",
-          per_page: limit,
-          page: Math.floor(offset / limit) + 1,
-        });
+      const result: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+        () =>
+          client
+            .collections<JobPostingDoc>("job_posting")
+            .documents()
+            .search({
+              q,
+              query_by: "title",
+              filter_by: activeFilter,
+              sort_by: keywords.length
+                ? "_text_match:desc,first_seen_at:desc"
+                : "first_seen_at:desc",
+              per_page: limit,
+              page: Math.floor(offset / limit) + 1,
+            }),
+        { label: "loadPostings" },
+      );
 
       return (result.hits ?? []).map((hit: JobPostingHit) =>
         mapHitToPosting(hit, locationIds),
@@ -515,37 +544,49 @@ export class TypesenseSearchProvider implements SearchProvider {
 
       // Three queries in parallel: postings + active count + year count
       const [postingsResult, activeResult, yearResult] = await Promise.all([
-        client
-          .collections<JobPostingDoc>("job_posting")
-          .documents()
-          .search({
-            q,
-            query_by: "title",
-            filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
-            sort_by: keywords.length
-              ? "_text_match:desc,first_seen_at:desc"
-              : "first_seen_at:desc",
-            per_page: limit,
-            page: Math.floor(offset / limit) + 1,
-          }),
-        client
-          .collections<JobPostingDoc>("job_posting")
-          .documents()
-          .search({
-            q,
-            query_by: "title",
-            filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
-            per_page: 0,
-          }),
-        client
-          .collections<JobPostingDoc>("job_posting")
-          .documents()
-          .search({
-            q,
-            query_by: "title",
-            filter_by: `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
-            per_page: 0,
-          }),
+        withTypesenseRetry(
+          () =>
+            client
+              .collections<JobPostingDoc>("job_posting")
+              .documents()
+              .search({
+                q,
+                query_by: "title",
+                filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
+                sort_by: keywords.length
+                  ? "_text_match:desc,first_seen_at:desc"
+                  : "first_seen_at:desc",
+                per_page: limit,
+                page: Math.floor(offset / limit) + 1,
+              }),
+          { label: "loadPostingsWithCounts.postings" },
+        ),
+        withTypesenseRetry(
+          () =>
+            client
+              .collections<JobPostingDoc>("job_posting")
+              .documents()
+              .search({
+                q,
+                query_by: "title",
+                filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
+                per_page: 0,
+              }),
+          { label: "loadPostingsWithCounts.activeCount" },
+        ),
+        withTypesenseRetry(
+          () =>
+            client
+              .collections<JobPostingDoc>("job_posting")
+              .documents()
+              .search({
+                q,
+                query_by: "title",
+                filter_by: `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
+                per_page: 0,
+              }),
+          { label: "loadPostingsWithCounts.yearCount" },
+        ),
       ]);
 
       const postings = (postingsResult.hits ?? []).map(
@@ -573,17 +614,21 @@ export class TypesenseSearchProvider implements SearchProvider {
 
       const filterBy = `${POSTING_BASE_FILTER} && salary_eur:>0${filterStr ? " && " + filterStr : ""}`;
 
-      const result: TsSearchResponse<JobPostingDoc> = await client
-        .collections<JobPostingDoc>("job_posting")
-        .documents()
-        .search({
-          q,
-          query_by: "title",
-          filter_by: filterBy,
-          facet_by: SALARY_FACET_BY,
-          max_facet_values: 31,
-          per_page: 0,
-        });
+      const result: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+        () =>
+          client
+            .collections<JobPostingDoc>("job_posting")
+            .documents()
+            .search({
+              q,
+              query_by: "title",
+              filter_by: filterBy,
+              facet_by: SALARY_FACET_BY,
+              max_facet_values: 31,
+              per_page: 0,
+            }),
+        { label: "salaryHistogram" },
+      );
 
       const facet = result.facet_counts?.[0];
       if (!facet) return [];
@@ -615,17 +660,21 @@ export class TypesenseSearchProvider implements SearchProvider {
 
       const filterBy = `${POSTING_BASE_FILTER} && experience_min:>=0${filterStr ? " && " + filterStr : ""}`;
 
-      const result: TsSearchResponse<JobPostingDoc> = await client
-        .collections<JobPostingDoc>("job_posting")
-        .documents()
-        .search({
-          q,
-          query_by: "title",
-          filter_by: filterBy,
-          facet_by: "experience_min",
-          max_facet_values: 30,
-          per_page: 0,
-        });
+      const result: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+        () =>
+          client
+            .collections<JobPostingDoc>("job_posting")
+            .documents()
+            .search({
+              q,
+              query_by: "title",
+              filter_by: filterBy,
+              facet_by: "experience_min",
+              max_facet_values: 30,
+              per_page: 0,
+            }),
+        { label: "experienceHistogram" },
+      );
 
       const facet = result.facet_counts?.[0];
       if (!facet) return [];

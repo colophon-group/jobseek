@@ -7,6 +7,33 @@ import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { SearchPage } from "./search-page";
 
+/**
+ * Retry policy for the personalized `fetchExploreData` server action
+ * on cold-start. When the Vercel function instance is cold and
+ * Typesense's first-request TLS handshake takes a few hundred ms, the
+ * client-side fetch can be aborted (`net::ERR_ABORTED`) by the browser
+ * before the server response arrives — DevTools surfaces this as
+ * "Fetch failed loading: POST". Without a client retry, the rejected
+ * promise leaks out and `setData` is never called, leaving the user on
+ * whatever the prerendered static cache had (potentially the empty/
+ * degraded variant from issue #3008).
+ *
+ * Retry once with a short delay (the second call usually hits a warm
+ * function instance + warm Typesense connection). If both fail,
+ * surface the error so the existing initialData stays.
+ */
+async function fetchExploreDataWithRetry(
+  args: Parameters<typeof fetchExploreData>[0],
+): Promise<ExploreData> {
+  try {
+    return await fetchExploreData(args);
+  } catch (err) {
+    console.warn("[explore] fetchExploreData failed, retrying once", err);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    return fetchExploreData(args);
+  }
+}
+
 type ExploreContentProps = {
   locale: string;
   /**
@@ -60,7 +87,14 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     searchParams.forEach((value, key) => {
       sp[key] = value;
     });
-    fetchExploreData({ searchParams: sp, locale }).then(setData);
+    fetchExploreDataWithRetry({ searchParams: sp, locale })
+      .then(setData)
+      .catch((err) => {
+        // Both attempts failed; keep the prerendered ``initialData``
+        // so the page doesn't go empty mid-render. Log so production
+        // observability picks up the cold-start spike (#3008).
+        console.error("[explore] fetchExploreData failed twice", err);
+      });
     // Empty deps: the conditional-fetch decision is made once on
     // mount. ``initialData`` is stable across re-renders (page
     // identity), and ``SearchPage`` owns subsequent filter changes
