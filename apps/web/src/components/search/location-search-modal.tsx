@@ -7,13 +7,13 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import {
   getGlobalLocationsPage,
   searchGlobalLocations,
-  LOCATION_PAGE_SIZE,
 } from "@/lib/actions/locations";
 import type {
   GlobalLocationGroup,
   GlobalMacroRegion,
   GlobalLocationSearchHit,
 } from "@/lib/actions/locations";
+import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
 import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
 import { findBestGuess } from "./best-guess";

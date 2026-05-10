@@ -9,6 +9,7 @@ import { typeaheadLocationsCacheTag } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
+import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
 
 export interface LocationSuggestion {
   id: number;
@@ -364,14 +365,6 @@ export interface GlobalLocationsPage {
    */
   totalCountries: number;
 }
-
-/**
- * Default page size for the location modal. 30 countries per page
- * renders fast (~50ms scripting on a mid-tier laptop) and matches
- * typical screen heights so the user reaches the bottom sentinel after
- * one or two scroll motions before the next page is needed.
- */
-export const LOCATION_PAGE_SIZE = 30;
 
 /**
  * Paginated variant of {@link getGlobalLocationsGrouped} (#2982).
