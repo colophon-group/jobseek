@@ -19,6 +19,7 @@ import type { SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/sear
 import {
   useSearchStateStore,
   buildCacheKey,
+  shouldRestoreSnapshot,
 } from "@/components/SearchStateProvider";
 
 const PAGE_SIZE = 10;
@@ -79,7 +80,7 @@ export function SearchPage({
   isLoggedInRef.current = isLoggedIn;
   const { get: getSearchState, set: setSearchState, setPageActions } = useSearchStateStore();
 
-  const cached = getSearchState();
+  const cachedSnapshot = getSearchState();
   const currentCacheKey = buildCacheKey(
     initialKeywords,
     initialLocations.map((l) => l.id),
@@ -87,10 +88,16 @@ export function SearchPage({
     initialSeniorities.map((s) => s.id),
     initialTechnologies.map((t) => t.id),
   );
-  const hasUrlFilters = initialKeywords.length > 0 || initialLocations.length > 0 || initialOccupations.length > 0 || initialSeniorities.length > 0 || initialTechnologies.length > 0;
-  const shouldRestore =
-    cached !== null &&
-    (cached.cacheKey === currentCacheKey || !hasUrlFilters);
+  // Restore the cached snapshot only when it matches the current URL
+  // filters exactly. Without the strict match, a snapshot saved from a
+  // previous filtered search (e.g. an empty-result query for
+  // "rare-keyword") would leak its ``keywords`` and empty
+  // ``companies`` into a fresh ``/explore`` visit, surfacing
+  // ``ZeroResults`` despite the URL having no filters. See #2989.
+  const cached = shouldRestoreSnapshot(cachedSnapshot, currentCacheKey)
+    ? cachedSnapshot
+    : null;
+  const shouldRestore = cached !== null;
 
   const [keywords, setKeywords] = useState<string[]>(
     shouldRestore ? cached.keywords : initialKeywords,

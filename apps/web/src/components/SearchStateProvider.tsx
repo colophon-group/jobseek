@@ -47,6 +47,35 @@ export function buildCacheKey(
   return parts.join("|");
 }
 
+/**
+ * Decide whether the cached SearchStateProvider snapshot should hydrate
+ * the SearchPage that's about to mount.
+ *
+ * Returns ``true`` only when the snapshot's cache key matches the URL-
+ * derived cache key. The previous predicate also restored whenever the
+ * URL had no filters, which let a snapshot from a previous filtered
+ * search — including ``companies: []`` from an empty-result search —
+ * leak into a fresh ``/explore`` visit. The user then saw
+ * ``ZeroResults`` even though the URL had no filters and the
+ * prerendered ``initialData`` had ~10 top companies. See #2989.
+ *
+ * Restoration semantics now:
+ *   - Same URL filters (or both empty) → restore the snapshot.
+ *   - Different URL filters → ignore the snapshot, render the fresh
+ *     ``initialData`` from the server prerender / re-fetch.
+ *
+ * The strict match preserves the original intent of the cache (return
+ * to the same view after a posting-detail dive) without the poisoning
+ * footgun.
+ */
+export function shouldRestoreSnapshot(
+  cached: SearchStateSnapshot | null,
+  currentCacheKey: string,
+): boolean {
+  if (cached === null) return false;
+  return cached.cacheKey === currentCacheKey;
+}
+
 /** Live callbacks the search page registers so the header SearchBar can interact directly. */
 export interface SearchPageActions {
   addLocation: (location: SelectedLocation) => void;
