@@ -606,14 +606,16 @@ async function _fetchGlobalLocationsGrouped(
 
     // Run the country-tier facet query AND a dedicated macro-only facet
     // query in parallel. Reason for separating them: even with
-    // ``max_facet_values: 5000`` (raised from 500 in #2978 so cities like
-    // Salzburg, with ~178 postings, surface in the country-tier modal),
-    // macros are aggregated via ancestor expansion and can have low counts
-    // (e.g. DACH=6) which fall below the by-count cutoff. We re-query with
-    // ``filter_by: location_ids:[<macroIds>]`` to force the facet to
-    // surface every macro with at least one matching posting. This is much
-    // cheaper than raising the global ``max_facet_values`` further — there
-    // are only 9 macros today so the second query returns at most 9 facet
+    // ``max_facet_values: 15000`` (raised from 5000 in #2982 so the entire
+    // distinct-location_id set — Typesense reports ~9,800 today, well
+    // over the previous 5000 cap — surfaces in the modal without
+    // truncating the long tail), macros are aggregated via ancestor
+    // expansion and can have low counts (e.g. DACH=6) which fall below
+    // the by-count cutoff. We re-query with ``filter_by:
+    // location_ids:[<macroIds>]`` to force the facet to surface every
+    // macro with at least one matching posting. This is much cheaper
+    // than raising the global ``max_facet_values`` further — there are
+    // only 9 macros today so the second query returns at most 9 facet
     // entries.
     const macroFilterClause = allMacroIds.length > 0
       ? `location_ids:[${allMacroIds.join(",")}]`
@@ -624,13 +626,16 @@ async function _fetchGlobalLocationsGrouped(
       query_by: "title",
       filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
       facet_by: "location_ids",
-      // Raised from 500 (#2978): the country-tier facet truncates after
-      // the top-N location_ids by count, and at 500 mid-rank cities (e.g.
-      // Salzburg ~178) drop out of the modal even though they are
-      // selectable filters. 5000 covers every distinct location_id with
-      // 50+ active postings today — well above the 37k unique IDs total
-      // — and returns in ~900ms versus ~470ms at 500.
-      max_facet_values: 5000,
+      // Raised from 5000 (#2982): the country-tier facet truncates after
+      // the top-N location_ids by count, and at 5000 the long tail of
+      // ~5,841 additional cities/regions/countries was dropped from the
+      // modal even though those rows are selectable filters. 15000
+      // covers the full distinct-location_id set (~9,800 today per
+      // Typesense `total_values`) with headroom for growth, and returns
+      // in ~1.3s vs ~1.0s at 5000 (well under the 2s budget). The
+      // downstream country -> region -> city walk collapses cardinality
+      // back to the country/region/city tree.
+      max_facet_values: 15000,
       facet_strategy: "exhaustive" as const,
       per_page: 0,
     };

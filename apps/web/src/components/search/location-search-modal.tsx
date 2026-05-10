@@ -12,6 +12,7 @@ import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { useDisabledByAncestor, pruneRedundantDescendants } from "./use-disabled-by-ancestor";
 import { DisabledFilterPill } from "./disabled-filter-pill";
+import { VirtualizedList } from "./virtualized-list";
 
 /** Show region sub-headers when a country has more cities than this. */
 const REGION_THRESHOLD = 8;
@@ -41,6 +42,9 @@ export function LocationSearchModal({
   const [search, setSearch] = useState("");
   const [warning, setWarning] = useState("");
   const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Shared with VirtualizedList: ScrollFade owns the overflow:auto element,
+  // tanstack-virtual reads scroll offsets from the same node (#2982).
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -289,7 +293,7 @@ export function LocationSearchModal({
           </div>
 
           {/* Body */}
-          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4" scrollRef={scrollRef}>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
@@ -301,9 +305,19 @@ export function LocationSearchModal({
                 </Trans>
               </p>
             ) : (
-              <div className="space-y-5">
-                {filteredMacros.length > 0 && (
-                  <div>
+              // Country list is virtualized via tanstack-virtual (#2982).
+              // The macros cluster is rendered as a `prelude` so it stays
+              // mounted at the top — only ~9 chips, no virtualization
+              // benefit, and keeping it outside the virtual stream means
+              // its layout doesn't perturb country offsets.
+              <VirtualizedList
+                items={filtered}
+                getKey={(c) => c.countryId}
+                estimateSize={120}
+                overscan={3}
+                scrollRef={scrollRef}
+                prelude={filteredMacros.length > 0 ? (
+                  <div className="mb-5">
                     <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
                       <Globe size={14} className="shrink-0" />
                       <Trans id="search.locationModal.regionsHeader" comment="Header for the macro-region cluster (EU, EMEA, DACH) at the top of the location modal">
@@ -356,14 +370,14 @@ export function LocationSearchModal({
                       })}
                     </div>
                   </div>
-                )}
-                {filtered.map((country) => {
+                ) : null}
+                render={(country) => {
                   const countryActive = selectedIds.has(country.countryId);
                   const countryDisabled = !countryActive && isDisabled(country.countryId);
                   const showRegions = countCities(country) > REGION_THRESHOLD;
 
                   return (
-                    <div key={country.countryId}>
+                    <div className="pb-5">
                       {/* Country header */}
                       {countryDisabled ? (
                         <DisabledFilterPill
@@ -516,8 +530,8 @@ export function LocationSearchModal({
                       )}
                     </div>
                   );
-                })}
-              </div>
+                }}
+              />
             )}
           </ScrollFade>
         </Dialog.Content>

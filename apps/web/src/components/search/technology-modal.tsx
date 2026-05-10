@@ -8,6 +8,7 @@ import { getAllTechnologiesGrouped } from "@/lib/actions/taxonomy";
 import type { TechnologyGroup } from "@/lib/actions/taxonomy";
 import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { VirtualizedList } from "./virtualized-list";
 
 interface TechnologyModalProps {
   open: boolean;
@@ -30,6 +31,9 @@ export function TechnologyModal({
   const [search, setSearch] = useState("");
   const [warning, setWarning] = useState("");
   const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Shared with VirtualizedList: ScrollFade owns the overflow:auto element,
+  // tanstack-virtual reads scroll offsets from the same node (#2982).
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -141,7 +145,7 @@ export function TechnologyModal({
           </div>
 
           {/* Body */}
-          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4" scrollRef={scrollRef}>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
@@ -153,9 +157,15 @@ export function TechnologyModal({
                 </Trans>
               </p>
             ) : (
-              <div className="flex flex-col gap-5">
-                {filteredGroups.map((group) => (
-                  <div key={group.category}>
+              // Category list is virtualized via tanstack-virtual (#2982).
+              <VirtualizedList
+                items={filteredGroups}
+                getKey={(g) => g.category}
+                estimateSize={140}
+                overscan={3}
+                scrollRef={scrollRef}
+                render={(group) => (
+                  <div className="pb-5">
                     <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
                       {group.category}
                     </h3>
@@ -181,8 +191,8 @@ export function TechnologyModal({
                       })}
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              />
             )}
           </ScrollFade>
         </Dialog.Content>
