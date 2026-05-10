@@ -14,6 +14,7 @@ Kinds:
 from __future__ import annotations
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -38,6 +39,28 @@ KNOWN_KINDS: frozenset[str] = frozenset(
 
 SECTION_EXTRACT_KINDS: frozenset[str] = frozenset(
     {"team", "role", "requirements", "preferred", "benefits"}
+)
+
+# Subordinate-rank suffix words. When a profession ends with one of these,
+# the role-noun lexically connotes IC / mid-level work — pairing it with a
+# leadership-marker seniority (head of, VP, director, …) is a labelling
+# mistake worth retrying. Match the bare last whitespace-delimited token
+# (case-insensitive). `operator` is included after the 2026-05-09 batch,
+# where Clearway's "Plant Manager" was extracted as profession="wind plant
+# operator" + seniority="manager".
+_IC_SUFFIX_WORDS: frozenset[str] = frozenset(
+    {"specialist", "analyst", "coordinator", "associate", "assistant", "operator"}
+)
+
+# Leadership markers in the seniority field. AVP / "associate VP" are
+# *demoted* (see _is_leadership_seniority) — at banks AVP is a mid-level
+# IC role, not actual leadership, and analyst+AVP is a legitimate pairing.
+# "manager" is included so that profession="<x> operator/specialist" +
+# seniority="manager" pairings (Clearway-class) get caught — but since
+# canonical role titles like "store manager" / "engineering manager" don't
+# end in an IC-suffix word, they pass through cleanly.
+_LEADERSHIP_RE: re.Pattern[str] = re.compile(
+    r"(?:^|\s)(?:head\s+of|chief|vice\s+president|vp|director|principal|manager)(?:\s|$)"
 )
 
 
@@ -77,6 +100,76 @@ def validate_schema(kind: str, data: dict) -> list[str]:
         f"{'.'.join(str(p) for p in err.absolute_path) or '(root)'}: {err.message}"
         for err in validator.iter_errors(data)
     ]
+
+
+def _is_leadership_seniority(seniority: str | None) -> bool:
+    """Return True if seniority indicates leadership-level rank.
+
+    "Assistant" / "associate" qualifiers demote — e.g. AVP at banks is a
+    mid-level IC role on the seniority ladder, not actual leadership.
+    Without this carve-out the consistency rule would false-positive on
+    legitimate "Market Analyst" + "Assistant Vice President" pairings.
+    """
+    if not seniority:
+        return False
+    s = seniority.strip().lower()
+    if not s:
+        return False
+    if "assistant" in s or "associate" in s:
+        return False
+    return bool(_LEADERSHIP_RE.search(s))
+
+
+def _profession_subordinate_suffix(profession: str | None) -> str | None:
+    """Return the IC-rank suffix word if profession ends with one, else None."""
+    if not profession:
+        return None
+    parts = profession.strip().lower().split()
+    if not parts:
+        return None
+    return parts[-1] if parts[-1] in _IC_SUFFIX_WORDS else None
+
+
+def validate_globals_consistency(globals_: dict) -> list[str]:
+    """Semantic consistency rules for the globals block.
+
+    Catches:
+
+    1. **Leadership/IC-suffix mismatch** — profession="compliance specialist"
+       paired with seniority="head of". Drop the suffix or use a more senior
+       canonical (e.g. "compliance" or "compliance officer").
+    2. **Hashtag-only location entries** — `{raw: "#LI-Hybrid", ...}` in
+       `locations[]`. The prompt rule excludes LinkedIn / Bullhorn / similar
+       social-tag markers (#LI-Remote, #LI-Hybrid, #BI-Remote, etc.) — these
+       are work-mode tags, not work locations. After the 2026-05-08 Datadog
+       case, this is a deterministic backstop.
+
+    Failing any rule triggers the orchestrator's existing retry loop.
+    """
+    errors: list[str] = []
+    profession = globals_.get("profession")
+    seniority = globals_.get("seniority")
+    suffix = _profession_subordinate_suffix(profession)
+    if suffix and _is_leadership_seniority(seniority):
+        errors.append(
+            f"profession={profession!r} ends with subordinate-rank suffix "
+            f"{suffix!r}, which is inconsistent with leadership-marker "
+            f"seniority={seniority!r}. Drop the suffix or use a more senior "
+            f"canonical (e.g. 'compliance' or 'compliance officer' instead "
+            f"of 'compliance specialist')."
+        )
+    for i, loc in enumerate(globals_.get("locations") or []):
+        raw = (loc or {}).get("raw")
+        if isinstance(raw, str) and raw.lstrip().startswith("#"):
+            errors.append(
+                f"locations[{i}].raw={raw!r} starts with '#' — hashtag tokens "
+                f"like #LI-Remote / #LI-Hybrid / #BI-Remote are work-mode "
+                f"social-media markers, not work locations. The prompt rule "
+                f"excludes them. Drop this entry; if the hashtag was the only "
+                f"location signal, leave locations=[] and let remote_policy "
+                f"carry the work-mode information."
+            )
+    return errors
 
 
 def validate_sections_custom(data: dict, *, block_ids: set[int]) -> list[str]:
@@ -243,6 +336,8 @@ def _validate_extract_all_custom(data: dict) -> list[str]:
     else:
         for e in validate_schema("globals", globals_block):
             errors.append(f"globals.{e}")
+        for e in validate_globals_consistency(globals_block):
+            errors.append(f"globals.{e}")
     return errors
 
 
@@ -272,6 +367,9 @@ def validate_file(kind: str, file_path: Path, context_path: Path | None = None) 
         return errors
 
     errors = validate_schema(kind, data)
+
+    if kind == "globals" and isinstance(data, dict):
+        errors.extend(validate_globals_consistency(data))
 
     if kind == "sections" and context_path and context_path.exists():
         try:
