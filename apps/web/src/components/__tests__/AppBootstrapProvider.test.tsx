@@ -150,6 +150,91 @@ describe("AppBootstrapProvider", () => {
     expect(screen.getByTestId("pending").textContent).toBe("false");
   });
 
+  it("exposes refresh() that re-fetches bootstrap and replaces state without an isPending flicker (#3022)", async () => {
+    setDocumentCookie("logged_in=1; NEXT_LOCALE=en");
+
+    // First mount → returns the OLD identity. Subsequent refresh() →
+    // returns the NEW identity. We assert (a) the user name flips
+    // after refresh() resolves, and (b) `isPending` stays `false`
+    // throughout the refresh — replacing `data` in place must not
+    // null it out and flash the spinner on every `useAuth()` consumer.
+    mockBootstrap.mockResolvedValueOnce({
+      user: {
+        id: "u1",
+        email: "x@x",
+        name: "Alice",
+        emailVerified: true,
+        username: "oldname",
+      },
+      prefs: null,
+      savedStatuses: [],
+      starredIds: [],
+    });
+
+    let resolveRefresh!: (v: unknown) => void;
+    mockBootstrap.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRefresh = resolve;
+      }),
+    );
+
+    let triggerRefresh!: () => Promise<void>;
+    function RefreshProbe() {
+      const { refresh } = useSession();
+      triggerRefresh = refresh;
+      return null;
+    }
+
+    render(
+      <AppBootstrapProvider>
+        <SessionProbe />
+        <RefreshProbe />
+      </AppBootstrapProvider>,
+    );
+
+    // Initial mount finishes — OLD identity visible.
+    await waitFor(() => {
+      expect(screen.getByTestId("user-name").textContent).toBe("Alice");
+    });
+    expect(screen.getByTestId("pending").textContent).toBe("false");
+
+    // Kick off refresh; do NOT resolve the inner promise yet.
+    let refreshDone = false;
+    await act(async () => {
+      triggerRefresh().then(() => {
+        refreshDone = true;
+      });
+    });
+
+    // While refresh is in-flight, isPending must STILL be false (no
+    // flicker for consumers) and the old identity is still shown.
+    expect(screen.getByTestId("pending").textContent).toBe("false");
+    expect(screen.getByTestId("user-name").textContent).toBe("Alice");
+
+    // Resolve the refresh with the new identity.
+    await act(async () => {
+      resolveRefresh({
+        user: {
+          id: "u1",
+          email: "x@x",
+          name: "Alice Renamed",
+          emailVerified: true,
+          username: "newname",
+        },
+        prefs: null,
+        savedStatuses: [],
+        starredIds: [],
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-name").textContent).toBe("Alice Renamed");
+    });
+    expect(refreshDone).toBe(true);
+    expect(screen.getByTestId("pending").textContent).toBe("false");
+    expect(mockBootstrap).toHaveBeenCalledTimes(2);
+  });
+
   it("does not substring-match `logged_in` against other cookie names", async () => {
     // Regression guard for a prior plan using bare `.includes`. A cookie
     // named `x_logged_in_ago` should NOT be treated as the hint.

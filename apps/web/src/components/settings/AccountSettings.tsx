@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { GitHubIcon } from "@/components/icons/GitHubIcon";
@@ -8,7 +9,12 @@ import { authClient } from "@/lib/auth-client";
 import { isReservedUsername } from "@/lib/username";
 import { useAuth } from "@/lib/useAuth";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { setPassword as setPasswordAction, recordPasswordResetRequest, getAccountPageData } from "@/lib/actions/preferences";
+import {
+  setPassword as setPasswordAction,
+  recordPasswordResetRequest,
+  getAccountPageData,
+  renameUsername,
+} from "@/lib/actions/preferences";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -194,6 +200,8 @@ const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 
 function UsernameSection({ currentUsername }: { currentUsername: string }) {
   const { t } = useLingui();
+  const router = useRouter();
+  const { refresh: refreshSession } = useAuth();
   const [savedUsername, setSavedUsername] = useState(currentUsername);
   const [value, setValue] = useState(currentUsername);
   const [loading, setLoading] = useState(false);
@@ -246,15 +254,26 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
     setError("");
     setSuccess("");
     setLoading(true);
-    const { error } = await authClient.updateUser({ username: normalized });
-    setLoading(false);
+    // Server action wraps `auth.api.updateUser` AND fans out every
+    // cache layer the rename invalidates (Redis session, watchlist
+    // cache tags, Typesense `owner_username`, sitemap). See #3022 +
+    // the action's docstring.
+    const { error } = await renameUsername(normalized);
     if (error) {
-      setError(error.message ?? t({ id: "settings.account.username.error", comment: "Generic username update error", message: "Failed to update username" }));
-    } else {
-      setSavedUsername(normalized);
-      setAvailable(null);
-      setSuccess(t({ id: "settings.account.username.success", comment: "Username updated success message", message: "Username updated." }));
+      setLoading(false);
+      setError(error ?? t({ id: "settings.account.username.error", comment: "Generic username update error", message: "Failed to update username" }));
+      return;
     }
+    // Re-pull the bootstrap payload so SessionProvider stops handing
+    // the stale `user.username` to URL-building components like
+    // WatchlistCard / save-search / mirror. router.refresh() rebuilds
+    // any RSC tree currently rendered with the old slug.
+    await refreshSession();
+    router.refresh();
+    setLoading(false);
+    setSavedUsername(normalized);
+    setAvailable(null);
+    setSuccess(t({ id: "settings.account.username.success", comment: "Username updated success message", message: "Username updated." }));
   }
 
   // hint is derived from the validated flags above (which already use savedUsername)

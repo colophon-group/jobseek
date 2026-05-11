@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { fetchAppBootstrap, type AppBootstrapData } from "@/lib/actions/bootstrap";
 import { SessionProvider } from "@/components/SessionProvider";
 import { SavedJobsProvider } from "@/components/SavedJobsProvider";
@@ -20,6 +20,20 @@ const ANON_BOOTSTRAP: AppBootstrapData = {
 export function AppBootstrapProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppBootstrapData | null>(null);
 
+  // Re-fetch the bootstrap payload and replace state in place. Used by
+  // identity-mutation flows (e.g. `UsernameSection.handleSubmit` after
+  // a successful `renameUsername`) so the SessionProvider stops
+  // serving the pre-mutation `user.username` to client components
+  // (#3022). Intentionally does NOT set `data = null` first — that
+  // would flip `isPending = true` across every `useAuth()` consumer
+  // (header avatar, watchlist job list, etc.) and produce a transient
+  // flicker. Replacing `data` once the new payload resolves is enough.
+  const refresh = useCallback(async () => {
+    const result = await fetchAppBootstrap();
+    if (!result.user) clearLoggedInHint();
+    setData(result);
+  }, []);
+
   useEffect(() => {
     // Skip the server-action RPC when the `logged_in` hint cookie is
     // absent — the vast majority of traffic is anonymous, and this path
@@ -31,21 +45,15 @@ export function AppBootstrapProvider({ children }: { children: ReactNode }) {
       setData(ANON_BOOTSTRAP);
       return;
     }
-    fetchAppBootstrap().then((result) => {
-      // Self-heal a stale hint: if the server says we have no session
-      // but our hint said we did, drop the hint so subsequent page
-      // loads don't keep paying for the same empty round-trip.
-      if (!result.user) clearLoggedInHint();
-      setData(result);
-    });
-  }, []);
+    refresh();
+  }, [refresh]);
 
   const isPending = data === null;
   const user = data?.user ?? null;
   const prefs = data?.prefs;
 
   return (
-    <SessionProvider user={user} isPending={isPending}>
+    <SessionProvider user={user} isPending={isPending} refresh={refresh}>
       <SavedJobsProvider initialStatuses={data?.savedStatuses}>
         <StarredCompaniesProvider initialIds={data?.starredIds}>
           <SalaryDisplayProvider

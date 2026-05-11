@@ -171,6 +171,12 @@ describe("updatePreferences invalidates job-language-dependent pages (#2916)", (
     });
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const { updatePreferences } = await import("../preferences");
+    // Drop module-init warnings (Upstash Redis fires
+    // `console.warn("[Upstash Redis] ...")` when its env vars are
+    // missing, which they are in this test environment — the redis
+    // client is loaded transitively via `@/lib/cache` for unrelated
+    // server actions in the same module).
+    warn.mockClear();
 
     // Should resolve without throwing even though every revalidate call fails.
     await expect(updatePreferences({ jobLanguages: ["fr"] })).resolves.toBeNull();
