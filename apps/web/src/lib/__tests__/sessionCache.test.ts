@@ -9,6 +9,8 @@ vi.mock("@/lib/redis", () => ({
     get: vi.fn(),
     set: vi.fn(),
     del: vi.fn(),
+    scan: vi.fn(),
+    mget: vi.fn(),
   },
 }));
 
@@ -37,11 +39,18 @@ vi.mock("react", () => ({
 }));
 
 import { redis } from "@/lib/redis";
-import { getSession, getSessionUserId, invalidateSessionCache } from "../sessionCache";
+import {
+  getSession,
+  getSessionUserId,
+  invalidateSessionCache,
+  invalidateAllUserSessionCacheEntries,
+} from "../sessionCache";
 
 const mockRedisGet = redis.get as ReturnType<typeof vi.fn>;
 const mockRedisSet = redis.set as ReturnType<typeof vi.fn>;
 const mockRedisDel = redis.del as ReturnType<typeof vi.fn>;
+const mockRedisScan = redis.scan as ReturnType<typeof vi.fn>;
+const mockRedisMget = redis.mget as ReturnType<typeof vi.fn>;
 
 describe("getSession", () => {
   beforeEach(() => {
@@ -171,5 +180,109 @@ describe("invalidateSessionCache", () => {
     mockRedisDel.mockRejectedValue(new Error("Redis unavailable"));
 
     await expect(invalidateSessionCache("my-token")).resolves.toBeUndefined();
+  });
+});
+
+describe("invalidateAllUserSessionCacheEntries", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("scans session:* and deletes only entries whose user.id matches", async () => {
+    // Two scan pages exercise the cursor loop AND the per-page filter.
+    // Cursor "0" (Upstash returns string) terminates iteration.
+    mockRedisScan
+      .mockResolvedValueOnce([
+        "42",
+        ["session:cookie-a", "session:cookie-b", "session:cookie-c"],
+      ])
+      .mockResolvedValueOnce(["0", ["session:cookie-d"]]);
+    mockRedisMget
+      .mockResolvedValueOnce([
+        { user: { id: "target" }, session: { token: "t-a" } }, // match
+        { user: { id: "other" }, session: { token: "t-b" } }, // skip
+        { user: { id: "target" }, session: { token: "t-c" } }, // match
+      ])
+      .mockResolvedValueOnce([
+        { user: { id: "target" }, session: { token: "t-d" } }, // match
+      ]);
+    mockRedisDel.mockResolvedValueOnce(2).mockResolvedValueOnce(1);
+
+    const deleted = await invalidateAllUserSessionCacheEntries("target");
+
+    expect(deleted).toBe(3);
+    expect(mockRedisScan).toHaveBeenCalledTimes(2);
+    expect(mockRedisScan.mock.calls[0][0]).toBe(0);
+    expect(mockRedisScan.mock.calls[0][1]).toEqual({
+      match: "session:*",
+      count: 100,
+    });
+    expect(mockRedisScan.mock.calls[1][0]).toBe("42");
+    // First DEL gets the two matches from page 1; second gets the
+    // single match from page 2. The non-target row is NOT included.
+    expect(mockRedisDel).toHaveBeenNthCalledWith(
+      1,
+      "session:cookie-a",
+      "session:cookie-c",
+    );
+    expect(mockRedisDel).toHaveBeenNthCalledWith(2, "session:cookie-d");
+  });
+
+  it("returns 0 when no keys match the namespace", async () => {
+    mockRedisScan.mockResolvedValueOnce(["0", []]);
+
+    const deleted = await invalidateAllUserSessionCacheEntries("target");
+
+    expect(deleted).toBe(0);
+    expect(mockRedisMget).not.toHaveBeenCalled();
+    expect(mockRedisDel).not.toHaveBeenCalled();
+  });
+
+  it("returns 0 when the page contains only non-matching users", async () => {
+    mockRedisScan.mockResolvedValueOnce([
+      "0",
+      ["session:k1", "session:k2"],
+    ]);
+    mockRedisMget.mockResolvedValueOnce([
+      { user: { id: "u-other" } },
+      { user: { id: "u-other" } },
+    ]);
+
+    const deleted = await invalidateAllUserSessionCacheEntries("target");
+
+    expect(deleted).toBe(0);
+    expect(mockRedisDel).not.toHaveBeenCalled();
+  });
+
+  it("tolerates malformed payloads (null entry, missing user.id)", async () => {
+    mockRedisScan.mockResolvedValueOnce([
+      "0",
+      ["session:k1", "session:k2", "session:k3"],
+    ]);
+    mockRedisMget.mockResolvedValueOnce([
+      null,
+      { user: null },
+      {} as unknown,
+    ]);
+
+    const deleted = await invalidateAllUserSessionCacheEntries("target");
+
+    expect(deleted).toBe(0);
+    expect(mockRedisDel).not.toHaveBeenCalled();
+  });
+
+  it("logs and returns the partial count when SCAN errors mid-sweep", async () => {
+    mockRedisScan
+      .mockResolvedValueOnce(["1", ["session:k1"]])
+      .mockRejectedValueOnce(new Error("redis down"));
+    mockRedisMget.mockResolvedValueOnce([{ user: { id: "target" } }]);
+    mockRedisDel.mockResolvedValueOnce(1);
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const deleted = await invalidateAllUserSessionCacheEntries("target");
+
+    expect(deleted).toBe(1);
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 });

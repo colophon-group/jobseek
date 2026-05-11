@@ -88,3 +88,57 @@ export async function invalidateSessionCache(token: string): Promise<void> {
     // Best effort — TTL will clean up eventually
   }
 }
+
+/**
+ * Bust every `session:*` Redis cache entry whose cached `SessionResult`
+ * belongs to ``userId``.
+ *
+ * The Redis cache key is `session:<signed-cookie-value>` (NOT
+ * `session:<raw-token>` — the cookie value is `HMAC(secret, token)`
+ * appended to the token), so callers that only have a list of raw
+ * session tokens from the DB can't construct the cache keys directly.
+ * SCAN over the namespace and filter by the payload's `user.id` is the
+ * pragmatic way to bust all of a user's devices in one shot.
+ *
+ * Used by `renameUsername` so a username change is visible on every
+ * device the user is logged into within seconds (vs. the 5-min cache
+ * TTL otherwise). Iterates Upstash via SCAN cursors so a partial sweep
+ * doesn't block on a giant single command. Best-effort: failures are
+ * logged and swallowed because the rename has already succeeded — TTL
+ * would still self-heal eventually.
+ */
+export async function invalidateAllUserSessionCacheEntries(
+  userId: string,
+): Promise<number> {
+  let cursor: string | number = 0;
+  let deleted = 0;
+  try {
+    do {
+      const [next, keys] = (await redis.scan(cursor, {
+        match: "session:*",
+        count: 100,
+      })) as [string | number, string[]];
+      cursor = next;
+      if (keys.length === 0) continue;
+
+      // mget returns the parsed JSON for each value (or null). Each cached
+      // entry is the full SessionResult: `{ session: {...}, user: {...} }`.
+      const values = (await redis.mget(...keys)) as Array<
+        { user?: { id?: string } } | null
+      >;
+      const toDelete: string[] = [];
+      for (let i = 0; i < keys.length; i++) {
+        if (values[i]?.user?.id === userId) toDelete.push(keys[i]);
+      }
+      if (toDelete.length > 0) {
+        deleted += await redis.del(...toDelete);
+      }
+    } while (String(cursor) !== "0");
+  } catch (err) {
+    console.error(
+      "[invalidateAllUserSessionCacheEntries] redis scan failed",
+      err,
+    );
+  }
+  return deleted;
+}
