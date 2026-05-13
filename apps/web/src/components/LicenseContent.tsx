@@ -5,8 +5,7 @@ import { useLingui } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { ContentPageHero } from "@/components/ContentPageHero";
 import { TableOfContents } from "@/components/TableOfContents";
-
-const sectionScroll = "scroll-mt-24 md:scroll-mt-32";
+import { sectionScrollMarginClass as sectionScroll } from "@/lib/styles";
 
 export function LicenseContent() {
   const { t } = useLingui();

@@ -3,8 +3,7 @@
 import { Trans } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { ContentPageHero } from "@/components/ContentPageHero";
-
-const sectionScroll = "scroll-mt-24 md:scroll-mt-32";
+import { sectionScrollMarginClass as sectionScroll } from "@/lib/styles";
 
 export function TermsContent() {
   const contactEmail = siteConfig.indexing.contactEmail;

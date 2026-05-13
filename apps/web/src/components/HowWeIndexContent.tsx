@@ -5,10 +5,8 @@ import { useLingui } from "@lingui/react/macro";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { TableOfContents } from "@/components/TableOfContents";
-import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
+import { eyebrowClass, sectionHeadingClass, sectionScrollMarginClass as sectionScroll } from "@/lib/styles";
 import { Info } from "lucide-react";
-
-const sectionScroll = "scroll-mt-24 md:scroll-mt-32";
 
 export function HowWeIndexContent() {
   const { t } = useLingui();
