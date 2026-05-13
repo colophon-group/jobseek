@@ -518,7 +518,12 @@ export async function getAllOccupationsGrouped(
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<OccupationGroup[]> {
   const fKey = filters ? JSON.stringify(filters) : "";
-  const key = `occ-all-grouped:${locale}:${fKey}`;
+  // v2 cache-key bump (#3033 — facet switched from `occupation_id` to the
+  // ancestor-expanded `occupation_ids`, so parent counts are now subtree
+  // counts directly; sub-group/domain totals dropped the
+  // sum-children-and-add-parent hack). Old v1 entries cached the buggy
+  // summed counts.
+  const key = `occ-all-grouped-v2:${locale}:${fKey}`;
   return cached(key, () => _fetchAllOccupationsGrouped(locale, filters), { ttl: CACHE_TTL_LONG });
 }
 
@@ -660,20 +665,33 @@ async function _fetchAllOccupationsGrouped(
     const hasKeywords = filters?.keywords && filters.keywords.length > 0;
     const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
 
+    // Facet on the ancestor-expanded `occupation_ids` (not `occupation_id`)
+    // so parent / family-parent / domain IDs receive the true subtree count
+    // directly from the facet — the exporter stamps every posting with
+    // `[self, parent_chain, domain_id]`, so `occupation_ids` facet entries
+    // already encode "match anywhere under this node" semantics. See
+    // exporter.py `_load_occupation_ancestors`. Issue #3033 — the previous
+    // `occupation_id` facet returned only direct counts, and the modal
+    // summed parent + children to fake a subtree total, which under-counts
+    // whenever a posting is tagged at the parent tier (no child) or when a
+    // mid-rank descendant falls below the top-N facet cutoff.
     const result = await client.collections("job_posting").documents().search({
       q,
       query_by: "title",
       filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
-      facet_by: "occupation_id",
+      facet_by: "occupation_ids",
       max_facet_values: 500,
       facet_strategy: "exhaustive",
       per_page: 0,
     });
 
-    // Extract facet counts: occupation_id -> count
+    // Extract facet counts: ancestor_id -> count (occupation_ids contains
+    // self + parent chain + domain id). For an occupation row, this is the
+    // true subtree count; for a domain row, this is the count of all
+    // postings under that domain.
     const facetCounts = new Map<number, number>();
     const occFacet = result.facet_counts?.find(
-      (f) => (f as { field_name: string }).field_name === "occupation_id",
+      (f) => (f as { field_name: string }).field_name === "occupation_ids",
     );
     if (occFacet) {
       for (const fc of (occFacet as { counts: Array<{ value: string; count: number }> }).counts) {
@@ -686,12 +704,20 @@ async function _fetchAllOccupationsGrouped(
     // Load hierarchy metadata
     const { occupations, domains } = await _getOccupationHierarchyCache();
 
-    // Build items with counts from facet data
+    // Build items with counts from facet data. The facet contains a mix of
+    // occupation IDs AND domain IDs (the exporter unions both into
+    // `occupation_ids` for parity with location macro membership). Domain
+    // IDs are filtered out here — only rows that match an occupation in
+    // the hierarchy survive. The facet entry for each domain is consulted
+    // separately further down when computing the domain header count.
     type OccRow = { id: number; slug: string; name: string; cnt: number; parentId: number | null; domainId: number | null };
     const items: OccRow[] = [];
 
     // Include occupations that have counts AND their parents (for sub-grouping)
-    const idsWithCounts = new Set(facetCounts.keys());
+    const idsWithCounts = new Set<number>();
+    for (const occId of facetCounts.keys()) {
+      if (occupations.has(occId)) idsWithCounts.add(occId);
+    }
     const parentIdsNeeded = new Set<number>();
 
     for (const occId of idsWithCounts) {
@@ -702,21 +728,25 @@ async function _fetchAllOccupationsGrouped(
       }
     }
 
-    // Gather all relevant occupations
-    for (const [occId, count] of facetCounts) {
+    // Gather all relevant occupations. With `occupation_ids` facet, each
+    // entry's count is already the subtree count (parent + descendants).
+    for (const occId of idsWithCounts) {
       const meta = occupations.get(occId);
       if (!meta) continue;
       items.push({
         id: meta.id,
         slug: meta.slug,
         name: _getLocaleName(meta.names, locale, meta.slug),
-        cnt: count,
+        cnt: facetCounts.get(occId) ?? 0,
         parentId: meta.parentId,
         domainId: meta.domainId,
       });
     }
 
-    // Add parent occupations that have children with counts but no direct count themselves
+    // Add parent occupations that have children with counts but no direct
+    // count themselves. With ancestor-expanded facet, a parent with any
+    // matching descendant will normally already appear above — this loop
+    // is a safety net for parents that fell below the top-N facet cutoff.
     for (const parentId of parentIdsNeeded) {
       const meta = occupations.get(parentId);
       if (!meta) continue;
@@ -724,7 +754,7 @@ async function _fetchAllOccupationsGrouped(
         id: meta.id,
         slug: meta.slug,
         name: _getLocaleName(meta.names, locale, meta.slug),
-        cnt: 0,
+        cnt: facetCounts.get(parentId) ?? 0,
         parentId: meta.parentId,
         domainId: meta.domainId,
       });
@@ -823,18 +853,28 @@ async function _fetchAllOccupationsGrouped(
         }
       }
 
-      // Sort sub-groups by total count, children within by count
-      const subGroups = [...subGroupMap.values()].sort((a, b) => {
-        const aTotal = a.parent.count + a.children.reduce((s, c) => s + c.count, 0);
-        const bTotal = b.parent.count + b.children.reduce((s, c) => s + c.count, 0);
-        return bTotal - aTotal;
-      });
+      // Sort sub-groups by parent subtree count (parent.count is already
+      // the true subtree count under the `occupation_ids` facet, so we no
+      // longer add children — that would double-count). Children within
+      // a sub-group sort by their own subtree count desc.
+      const subGroups = [...subGroupMap.values()].sort(
+        (a, b) => b.parent.count - a.parent.count,
+      );
       for (const sg of subGroups) {
         sg.children.sort((a, b) => b.count - a.count);
       }
       standalone.sort((a, b) => b.count - a.count);
 
-      const totalCount = domainItems.reduce((s, r) => s + r.cnt, 0);
+      // Domain count: prefer the direct facet count for the domain id —
+      // exporter unions domain_id into `occupation_ids`, so its facet
+      // entry is the true subtree count for the whole domain. Fall back
+      // to the parent/standalone first-level sum when no facet entry
+      // exists (e.g. the domain has only zero-count occupations, which
+      // shouldn't be displayed anyway).
+      const domainFacetCount = facetCounts.get(meta.id);
+      const firstLevelSum = subGroups.reduce((s, sg) => s + sg.parent.count, 0)
+        + standalone.reduce((s, it) => s + it.count, 0);
+      const totalCount = domainFacetCount ?? firstLevelSum;
       groupedResult.push({
         domain: { id: meta.id, slug: meta.slug, name: meta.name, count: totalCount },
         subGroups,

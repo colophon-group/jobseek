@@ -375,7 +375,14 @@ export function OccupationModal({
                       {group.subGroups.map((sg) => {
                         const parentActive = selectedIds.has(sg.parent.id);
                         const parentDisabled = !parentActive && isDisabled(sg.parent.id);
-                        const totalCount = sg.parent.count + sg.children.reduce((s, c) => s + c.count, 0);
+                        // `sg.parent.count` already encodes the parent's
+                        // subtree count (under the ancestor-expanded
+                        // `occupation_ids` facet), so display it directly
+                        // rather than re-summing children — summing
+                        // double-counts every posting tagged at the child
+                        // tier AND drops postings tagged only at the parent
+                        // tier (issue #3033).
+                        const totalCount = sg.parent.count;
                         return (
                           <div key={sg.parent.id} className="mb-3 rounded-lg border border-border-soft p-3">
                             {/* Parent header */}
