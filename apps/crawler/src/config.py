@@ -40,6 +40,39 @@ class Settings(BaseSettings):
     throttle_delay_default: float = 2.0
     throttle_delay_ats: float = 0.5
 
+    # Inflight lease + reaper (#3159 / #3173). When ``claim_work``
+    # atomically pops a task off the per-domain ZSET it also records
+    # an inflight lease entry in ``inflight:<wtype>``. If the worker
+    # dies between claim and ``reschedule_task``/``complete_task`` the
+    # reaper sweeps expired leases back onto the per-domain queue so
+    # the task isn't permanently lost.
+    #
+    # ``inflight_lease_ttl_seconds`` is the initial budget per task.
+    # Long-running monitors/scrapes extend the lease by sending
+    # heartbeats every ``inflight_heartbeat_interval_seconds`` — pick
+    # a value smaller than the TTL so we have headroom on a slow tick.
+    # Default 600 / 120 mirrors the Postgres-side
+    # ``leased_until = now() + interval '10 minutes'`` budget used by
+    # the legacy batch path (``queries/monitor.py:28``,
+    # ``queries/scrape.py:81``).
+    inflight_lease_ttl_seconds: int = 600
+    inflight_heartbeat_interval_seconds: int = 120
+    # Reaper tick interval. The reaper is cheap (one Lua EVALSHA per
+    # tick per worker type, capped at ``reaper_batch_size`` entries),
+    # but running it too aggressively wastes Redis CPU when the
+    # inflight set is empty. 30s gives <30s reaper latency on a
+    # SIGKILL'd worker — within the deploy.sh restart window.
+    reaper_interval_seconds: int = 30
+    reaper_batch_size: int = 200
+    # Strikes before a task is dead-lettered. The reaper bumps a
+    # per-task counter every time it has to re-enqueue. A genuinely
+    # poison task (Playwright always segfaults, etc.) would otherwise
+    # loop the reaper forever — at >= ``reaper_max_strikes`` reaps,
+    # the entry is moved to ``deadletter:<wtype>`` for operator
+    # investigation instead. Default 5: deploy churn / OOM-once
+    # patterns won't trip it; persistent failure modes will.
+    reaper_max_strikes: int = 5
+
     # Upstash (web app only, kept for backward compat)
     upstash_redis_rest_url: str = ""
     upstash_redis_rest_token: str = ""

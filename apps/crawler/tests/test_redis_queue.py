@@ -592,3 +592,363 @@ async def test_enqueue_scrape_does_not_park_in_monitor_tier(mock_redis):
     score_t1 = await r.zscore("ready:browser:1", domain)
     assert score_t2 is not None, "domain should land in tier 2 because scrape is due-now"
     assert score_t1 is None, "domain must not be in tier 1 — that's the priority-inversion bug"
+
+
+# ---------------------------------------------------------------------------
+# Issues #3159 + #3173: lease / heartbeat / reaper regression tests
+# ---------------------------------------------------------------------------
+
+
+async def test_claim_writes_inflight_lease(mock_redis):
+    """claim_work must atomically add an entry to ``inflight:<wtype>``."""
+    r = mock_redis
+    domain = "greenhouse"
+    config = {"monitor": "greenhouse"}
+    await rq.enqueue_monitor(
+        domain, "board-lease-1", time.time() - 10, config, browser=False, first_time=True
+    )
+
+    # No lease before claim.
+    assert await r.zcard("inflight:simple") == 0
+
+    work = await rq.claim_work(browser=False)
+    assert work is not None
+    assert work.kind == "monitor"
+
+    # Inflight ZSET now contains the leased member.
+    assert await r.zcard("inflight:simple") == 1
+    members = await r.zrange("inflight:simple", 0, -1)
+    assert members == [f"monitor|{domain}|board-lease-1"]
+    # Score is roughly now + lease_ttl (default 600).
+    score = await r.zscore("inflight:simple", members[0])
+    assert score is not None
+    assert time.time() < score < time.time() + 700  # lease_ttl + tolerance
+
+
+async def test_reschedule_clears_inflight_lease(mock_redis):
+    """reschedule_task must remove the inflight lease entry."""
+    r = mock_redis
+    domain = "greenhouse"
+    config = {"monitor": "greenhouse"}
+    await rq.enqueue_monitor(
+        domain, "board-lease-2", time.time() - 10, config, browser=False, first_time=True
+    )
+
+    await rq.claim_work(browser=False)
+    assert await r.zcard("inflight:simple") == 1
+
+    await rq.reschedule_task(domain, "board-lease-2", "monitor", time.time() + 3600, browser=False)
+
+    # Lease cleared.
+    assert await r.zcard("inflight:simple") == 0
+
+
+async def test_complete_task_clears_inflight_lease(mock_redis):
+    """complete_task is the idempotent drop-path cleanup primitive."""
+    r = mock_redis
+    domain = "lever"
+    config = {"monitor": "lever"}
+    await rq.enqueue_monitor(
+        domain, "board-lease-3", time.time() - 10, config, browser=False, first_time=True
+    )
+    await rq.claim_work(browser=False)
+    assert await r.zcard("inflight:simple") == 1
+
+    removed = await rq.complete_task(domain, "board-lease-3", "monitor", browser=False)
+    assert removed == 1
+    assert await r.zcard("inflight:simple") == 0
+
+    # Second call is a no-op (idempotent).
+    removed = await rq.complete_task(domain, "board-lease-3", "monitor", browser=False)
+    assert removed == 0
+
+
+async def test_heartbeat_extends_lease(mock_redis):
+    """heartbeat_task pushes leased_until forward."""
+    r = mock_redis
+    domain = "ashby"
+    config = {"monitor": "ashby"}
+    await rq.enqueue_monitor(
+        domain, "board-hb", time.time() - 10, config, browser=False, first_time=True
+    )
+    await rq.claim_work(browser=False)
+    members = await r.zrange("inflight:simple", 0, -1)
+    assert len(members) == 1
+    initial_score = await r.zscore("inflight:simple", members[0])
+    assert initial_score is not None
+
+    # Force the heartbeat extension large enough that fakeredis time
+    # advancement isn't needed to see a delta.
+    extended = await rq.heartbeat_task(
+        domain, "board-hb", "monitor", browser=False, extension_seconds=99999
+    )
+    assert extended == 1
+    new_score = await r.zscore("inflight:simple", members[0])
+    assert new_score is not None
+    assert new_score > initial_score
+
+
+async def test_heartbeat_after_lease_lost_returns_zero(mock_redis):
+    """heartbeat_task returns 0 when the inflight entry no longer exists.
+
+    Uses ZADD XX semantics — a stale heartbeat must NOT recreate a
+    swept lease entry.
+    """
+    domain = "lever"
+    # No claim made — inflight entry does not exist.
+    extended = await rq.heartbeat_task(domain, "fake-id", "scrape", browser=False)
+    assert extended == 0
+
+
+async def test_reaper_reenqueues_expired_lease(mock_redis):
+    """Regression test for #3159 / #3173 — worker death between claim
+    and reschedule must NOT permanently lose the task.
+
+    Simulates: claim → worker SIGKILL (no reschedule) → reaper runs.
+    Asserts: task is back on the per-domain ZSET and inflight entry is
+    cleared.
+    """
+    r = mock_redis
+    domain = "lever"
+    config = {"monitor": "lever"}
+    await rq.enqueue_monitor(
+        domain, "board-die", time.time() - 10, config, browser=False, first_time=True
+    )
+
+    # Worker claims work…
+    work = await rq.claim_work(browser=False)
+    assert work is not None
+    assert work.board_work.board_id == "board-die"
+
+    # …then SIGKILL. No reschedule_task call. The per-domain queue is
+    # empty (the claim popped it) and the inflight ZSET holds the lease.
+    assert await r.zcard("ft_monitors_simple:lever") == 0
+    assert await r.zcard("monitors_simple:lever") == 0
+    assert await r.zcard("inflight:simple") == 1
+
+    # Forge the lease's leased_until into the past so the reaper picks
+    # it up without us having to wait for the real TTL.
+    member = (await r.zrange("inflight:simple", 0, -1))[0]
+    await r.zadd("inflight:simple", {member: time.time() - 60})
+
+    result = await rq.reap_expired(browser=False)
+    assert result["reenqueued"] == 1
+    assert result["dead_lettered"] == 0
+    assert result["missing_config"] == 0
+
+    # Task is back on the per-domain queue (recurring monitor variant).
+    assert await r.zcard("monitors_simple:lever") == 1
+    members = await r.zrange("monitors_simple:lever", 0, -1)
+    assert members == ["board-die"]
+    # Inflight entry was cleared.
+    assert await r.zcard("inflight:simple") == 0
+    # The strike counter persists across re-enqueues (only cleared on
+    # successful complete_task / reschedule_task or dead-letter move) —
+    # this is how the reaper detects a genuinely poison task.
+    assert await r.hget("inflight_strikes:simple", member) == "1"
+
+    # After a successful complete_task, the strike counter is cleared.
+    await rq.complete_task("lever", "board-die", "monitor", browser=False)
+    assert await r.hexists("inflight_strikes:simple", member) == 0
+
+
+async def test_reaper_reenqueues_expired_scrape_lease(mock_redis):
+    """Same as monitor lease test, for scrape tasks."""
+    r = mock_redis
+    domain = "example.com"
+    config = {
+        "source_url": "https://example.com/jobs/die",
+        "board_id": "b1",
+        "scrape_interval_hours": "24",
+    }
+    await rq.enqueue_scrape(
+        domain, "posting-die", time.time() - 10, config, browser=False, first_time=True
+    )
+
+    work = await rq.claim_work(browser=False)
+    assert work is not None
+    assert work.kind == "scrape"
+
+    # SIGKILL — no reschedule.
+    assert await r.zcard("ft_scrapes_simple:example.com") == 0
+    assert await r.zcard("scrapes_simple:example.com") == 0
+    assert await r.zcard("inflight:simple") == 1
+
+    # Force lease into the past.
+    member = (await r.zrange("inflight:simple", 0, -1))[0]
+    await r.zadd("inflight:simple", {member: time.time() - 60})
+
+    result = await rq.reap_expired(browser=False)
+    assert result["reenqueued"] == 1
+
+    # Scrape is back on the recurring per-domain ZSET, and the domain
+    # is re-parked in the scrape tier so a worker will see it.
+    assert await r.zcard("scrapes_simple:example.com") == 1
+    assert await r.zscore("ready:simple:2", domain) is not None
+    assert await r.zcard("inflight:simple") == 0
+
+
+async def test_reaper_dead_letters_after_max_strikes(mock_redis):
+    """A task that keeps timing out must eventually be parked in the
+    dead-letter ZSET instead of being re-enqueued forever.
+
+    Simulates the steady-state behaviour: each reap strikes the task
+    once, and after ``reaper_max_strikes`` strikes the task is moved
+    to ``deadletter:simple`` so the operator can investigate instead
+    of letting the loop continue indefinitely.
+
+    The simplest reproduction is to put the lease entry there directly
+    and rerun the reaper — claim+reschedule are not the unit under
+    test here.
+    """
+    from src.config import settings as _settings
+
+    r = mock_redis
+    domain = "poison"
+    member = f"monitor|{domain}|board-poison"
+    # Ensure the board hash exists so the missing_config path doesn't fire.
+    await r.hset("board:board-poison", "monitor", "greenhouse")
+
+    # Reap N times where N = max_strikes. Each iteration we forge the
+    # lease into the past so the reaper picks it up.
+    max_strikes = _settings.reaper_max_strikes
+    last_result = None
+    for _i in range(max_strikes):
+        await r.zadd("inflight:simple", {member: time.time() - 60})
+        last_result = await rq.reap_expired(browser=False)
+        if last_result["dead_lettered"]:
+            break
+
+    assert last_result is not None
+    assert last_result["dead_lettered"] == 1
+    # Dead-letter ZSET has the poison task.
+    assert await r.zcard("deadletter:simple") == 1
+    # Inflight ZSET is empty (poison task moved out).
+    assert await r.zcard("inflight:simple") == 0
+    # Strikes cleaned up after dead-letter.
+    assert await r.hexists("inflight_strikes:simple", member) == 0
+
+
+async def test_reaper_drops_entry_when_config_missing(mock_redis):
+    """A reap whose ``board:<id>`` / ``scrape:<id>`` hash is gone
+    (sync deleted it while the worker was crashed) must be dropped,
+    not re-enqueued.
+
+    Otherwise we'd recreate phantom tasks that can never be claimed
+    (no config to load) and that loop the reaper forever.
+    """
+    r = mock_redis
+    domain = "greenhouse"
+    # Place an inflight lease directly, with an EXPIRED score, and
+    # no corresponding ``board:`` hash.
+    await r.zadd("inflight:simple", {f"monitor|{domain}|orphan-1": time.time() - 60})
+
+    result = await rq.reap_expired(browser=False)
+    assert result["reenqueued"] == 0
+    assert result["dead_lettered"] == 0
+    assert result["missing_config"] == 1
+
+    # The per-domain queue stays empty — no phantom task created.
+    assert await r.zcard("monitors_simple:greenhouse") == 0
+    assert await r.zcard("ft_monitors_simple:greenhouse") == 0
+    # Inflight entry cleared.
+    assert await r.zcard("inflight:simple") == 0
+
+
+async def test_reaper_leaves_fresh_leases_alone(mock_redis):
+    """A lease that hasn't expired yet must NOT be reaped — the worker
+    is still legitimately processing the task."""
+    r = mock_redis
+    domain = "lever"
+    config = {"monitor": "lever"}
+    await rq.enqueue_monitor(
+        domain, "board-alive", time.time() - 10, config, browser=False, first_time=True
+    )
+    await rq.claim_work(browser=False)
+    assert await r.zcard("inflight:simple") == 1
+
+    # Don't tamper with the lease score — it's set to now + 600 by
+    # default. Reaper should find nothing to do.
+    result = await rq.reap_expired(browser=False)
+    assert result["reenqueued"] == 0
+    assert result["dead_lettered"] == 0
+    assert result["missing_config"] == 0
+    # Lease entry still present.
+    assert await r.zcard("inflight:simple") == 1
+
+
+async def test_reaper_re_enqueue_uses_nx_against_concurrent_enqueue(mock_redis):
+    """If the monitor's relisted CTE / sync re-enqueued the task while
+    the worker was dead, the reaper's ZADD NX must not overwrite the
+    fresher score.
+
+    This guards against the reaper inadvertently rescheduling a
+    higher-priority enqueue (e.g. monitor side just discovered the
+    URL again at next_check_at=now) to retry_score=now.
+    """
+    r = mock_redis
+    domain = "lever"
+    config = {"monitor": "lever"}
+    # Step 1: enqueue + claim (lease entry created).
+    await rq.enqueue_monitor(
+        domain, "board-concurrent", time.time() - 10, config, browser=False, first_time=True
+    )
+    await rq.claim_work(browser=False)
+
+    # Step 2: simulate a parallel re-enqueue from a different code path
+    # at a much earlier score (monitor relisted, say). Use ZADD NX
+    # directly so we know the score the reaper would later see.
+    earlier_score = time.time() - 1000
+    await r.zadd("monitors_simple:lever", {"board-concurrent": earlier_score})
+
+    # Step 3: Force the lease expired and run the reaper.
+    member = (await r.zrange("inflight:simple", 0, -1))[0]
+    await r.zadd("inflight:simple", {member: time.time() - 60})
+    result = await rq.reap_expired(browser=False)
+    assert result["reenqueued"] == 1
+
+    # The earlier-score entry must have survived (ZADD NX on the
+    # reaper's retry_score didn't overwrite it).
+    final_score = await r.zscore("monitors_simple:lever", "board-concurrent")
+    assert final_score == earlier_score, (
+        "reaper must use ZADD NX so it doesn't overwrite an earlier "
+        "score put there by a concurrent monitor relisted enqueue"
+    )
+
+
+async def test_complete_task_clears_inflight_strikes(mock_redis):
+    """A task that completes successfully must reset its strike counter
+    so future flapping doesn't accumulate across days."""
+    r = mock_redis
+    domain = "greenhouse"
+    member = f"monitor|{domain}|board-strike"
+    # Seed a strike count and an inflight entry.
+    await r.hset("inflight_strikes:simple", member, "2")
+    await r.zadd("inflight:simple", {member: time.time() + 600})
+
+    await rq.complete_task(domain, "board-strike", "monitor", browser=False)
+    assert await r.hexists("inflight_strikes:simple", member) == 0
+    assert await r.zcard("inflight:simple") == 0
+
+
+async def test_get_inflight_depth_metric_helper(mock_redis):
+    """get_inflight_depth returns the ZCARD of inflight:<wtype>."""
+    assert await rq.get_inflight_depth(browser=False) == 0
+    assert await rq.get_inflight_depth(browser=True) == 0
+
+    domain = "lever"
+    config = {"monitor": "lever"}
+    await rq.enqueue_monitor(
+        domain, "board-depth", time.time() - 10, config, browser=False, first_time=True
+    )
+    await rq.claim_work(browser=False)
+
+    assert await rq.get_inflight_depth(browser=False) == 1
+    assert await rq.get_inflight_depth(browser=True) == 0
+
+
+async def test_get_deadletter_depth_metric_helper(mock_redis):
+    r = mock_redis
+    assert await rq.get_deadletter_depth(browser=False) == 0
+    await r.zadd("deadletter:simple", {"monitor|x|y": time.time()})
+    assert await rq.get_deadletter_depth(browser=False) == 1

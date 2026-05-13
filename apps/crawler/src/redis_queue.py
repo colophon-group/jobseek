@@ -11,6 +11,24 @@ Per-domain task queues:
     monitors_{wtype}:{domain}     — recurring monitors
     scrapes_{wtype}:{domain}      — recurring scrapes
 
+Inflight (lease) tracking — see issues #3159 / #3173:
+    inflight:{wtype}              — ZSET keyed by "task_type|domain|task_id",
+                                    score = leased_until (unix ts). Atomically
+                                    written by ``claim_work.lua``, cleared by
+                                    ``reschedule_task.lua``/``complete_task.lua``,
+                                    extended by ``heartbeat_task.lua``, and
+                                    swept by ``reap_expired.lua`` once score
+                                    drops below ``now``.
+    inflight_strikes:{wtype}      — HASH of member -> int retry count. A
+                                    task that exceeds ``reaper_max_strikes``
+                                    is moved to ``deadletter:{wtype}`` for
+                                    operator review instead of being
+                                    re-enqueued.
+    deadletter:{wtype}            — ZSET of poison-pill task descriptors
+                                    (score = unix ts of last reap). Inspect
+                                    with ``ZRANGE deadletter:simple 0 -1
+                                    WITHSCORES`` from ``redis-cli``.
+
 Rate limiting (shared across worker types):
     ratelimit:{domain}  — STRING with TTL
     delay:{domain}      — per-domain delay (0.5 for ATS, 2.0 default)
@@ -84,11 +102,32 @@ class ScrapeWork:
 
 @dataclass
 class WorkItem:
-    """A claimed work item — either a board monitor or a scrape."""
+    """A claimed work item — either a board monitor or a scrape.
+
+    ``domain`` and ``task_id`` mirror the inner work objects but are
+    surfaced here so the worker doesn't have to dispatch on ``kind`` to
+    extend or release a lease (see issues #3159 / #3173).
+    """
 
     kind: str  # "monitor" or "scrape"
     board_work: BoardWork | None = None
     scrape_work: ScrapeWork | None = None
+
+    @property
+    def domain(self) -> str:
+        if self.board_work is not None:
+            return self.board_work.domain
+        if self.scrape_work is not None:
+            return self.scrape_work.domain
+        return ""
+
+    @property
+    def task_id(self) -> str:
+        if self.board_work is not None:
+            return self.board_work.board_id
+        if self.scrape_work is not None:
+            return self.scrape_work.posting_id
+        return ""
 
 
 # ---------------------------------------------------------------------------
@@ -99,17 +138,24 @@ _LUA_DIR = Path(__file__).parent / "lua"
 _CLAIM_SHA: str | None = None
 _ENQUEUE_SHA: str | None = None
 _RESCHEDULE_SHA: str | None = None
+_COMPLETE_SHA: str | None = None
+_HEARTBEAT_SHA: str | None = None
+_REAP_SHA: str | None = None
 
 
 async def _load_scripts() -> None:
     """Load Lua scripts into Redis and cache their SHAs."""
     global _CLAIM_SHA, _ENQUEUE_SHA, _RESCHEDULE_SHA
+    global _COMPLETE_SHA, _HEARTBEAT_SHA, _REAP_SHA
     if _CLAIM_SHA is not None:
         return
     r = get_redis()
     _CLAIM_SHA = await r.script_load((_LUA_DIR / "claim_work.lua").read_text())
     _ENQUEUE_SHA = await r.script_load((_LUA_DIR / "enqueue_task.lua").read_text())
     _RESCHEDULE_SHA = await r.script_load((_LUA_DIR / "reschedule_task.lua").read_text())
+    _COMPLETE_SHA = await r.script_load((_LUA_DIR / "complete_task.lua").read_text())
+    _HEARTBEAT_SHA = await r.script_load((_LUA_DIR / "heartbeat_task.lua").read_text())
+    _REAP_SHA = await r.script_load((_LUA_DIR / "reap_expired.lua").read_text())
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +304,11 @@ async def enqueue_scrape(
 async def claim_work(*, browser: bool = False) -> WorkItem | None:
     """Claim the next available work item from the tiered ready queues.
 
-    Uses a Lua script for atomic claim + rate limit + reschedule.
+    Uses a Lua script for atomic claim + rate limit + reschedule +
+    inflight lease entry (see issues #3159 / #3173). The lease entry
+    is the worker's IOU back to the queue — if the worker dies before
+    calling ``reschedule_task`` or ``complete_task``, the reaper sweeps
+    the expired lease back onto the per-domain queue.
     """
     await _load_scripts()
     r = get_redis()
@@ -271,6 +321,7 @@ async def claim_work(*, browser: bool = False) -> WorkItem | None:
         str(time.time()),
         str(settings.throttle_delay_default),
         "10",  # max domains to check per tier
+        str(settings.inflight_lease_ttl_seconds),
     )
 
     if not result:
@@ -323,7 +374,10 @@ async def reschedule_task(
     *,
     browser: bool = False,
 ) -> None:
-    """Reschedule a task after processing."""
+    """Reschedule a task after processing.
+
+    Also clears the inflight lease entry — see ``reschedule_task.lua``.
+    """
     await _load_scripts()
     r = get_redis()
     wtype = "browser" if browser else "simple"
@@ -336,6 +390,118 @@ async def reschedule_task(
         task_type,
         str(next_due),
     )
+
+
+# ---------------------------------------------------------------------------
+# Lease lifecycle: complete / heartbeat / reap (#3159 / #3173)
+# ---------------------------------------------------------------------------
+
+
+async def complete_task(
+    domain: str,
+    task_id: str,
+    task_type: str,
+    *,
+    browser: bool = False,
+) -> int:
+    """Mark a task complete without rescheduling — drop the lease entry.
+
+    Used by self-heal / drop-rich paths that already removed the task
+    from the per-domain ZSET (so reschedule semantics don't apply) but
+    must still close the inflight lease so the reaper doesn't
+    re-enqueue. Idempotent: returns 1 if the lease was present, 0 if
+    it had already been swept.
+    """
+    await _load_scripts()
+    r = get_redis()
+    wtype = "browser" if browser else "simple"
+    result = await r.evalsha(
+        _COMPLETE_SHA,
+        0,
+        wtype,
+        task_type,
+        domain,
+        task_id,
+    )
+    return int(result or 0)
+
+
+async def heartbeat_task(
+    domain: str,
+    task_id: str,
+    task_type: str,
+    *,
+    browser: bool = False,
+    extension_seconds: float | None = None,
+) -> int:
+    """Extend the lease on an in-flight task.
+
+    Workers call this while processing long-running work to push out
+    ``leased_until`` so the reaper doesn't reclaim a task that's still
+    progressing. Returns 1 if extended, 0 if the inflight entry was
+    already gone (reaper raced ahead — caller should stop processing
+    to avoid double-execution).
+    """
+    await _load_scripts()
+    r = get_redis()
+    wtype = "browser" if browser else "simple"
+    ttl = (
+        extension_seconds
+        if extension_seconds is not None
+        else float(settings.inflight_lease_ttl_seconds)
+    )
+    new_until = time.time() + ttl
+    result = await r.evalsha(
+        _HEARTBEAT_SHA,
+        0,
+        wtype,
+        task_type,
+        domain,
+        task_id,
+        str(new_until),
+    )
+    return int(result or 0)
+
+
+async def reap_expired(*, browser: bool = False) -> dict[str, int]:
+    """Sweep expired inflight leases and re-enqueue or dead-letter.
+
+    Returns ``{"reenqueued": N, "dead_lettered": M, "missing_config": K}``
+    for the single batch swept. The reaper coroutine calls this on a
+    loop; ``max_entries`` caps work per call to bound Lua runtime.
+    """
+    await _load_scripts()
+    r = get_redis()
+    wtype = "browser" if browser else "simple"
+    now = time.time()
+    result = await r.evalsha(
+        _REAP_SHA,
+        0,
+        wtype,
+        str(now),
+        str(settings.reaper_batch_size),
+        str(settings.reaper_max_strikes),
+        str(now),  # retry_score = now → "retry ASAP"
+    )
+    return {
+        "reenqueued": int(result[0]),
+        "dead_lettered": int(result[1]),
+        "missing_config": int(result[2]),
+    }
+
+
+async def get_inflight_depth(*, browser: bool = False) -> int:
+    """Return number of currently in-flight (leased) tasks."""
+    r = get_redis()
+    wtype = "browser" if browser else "simple"
+    return int(await r.zcard(f"inflight:{wtype}"))
+
+
+async def get_deadletter_depth(*, browser: bool = False) -> int:
+    """Return number of tasks parked in the dead-letter queue."""
+    r = get_redis()
+    wtype = "browser" if browser else "simple"
+    return int(await r.zcard(f"deadletter:{wtype}"))
 
 
 # ---------------------------------------------------------------------------

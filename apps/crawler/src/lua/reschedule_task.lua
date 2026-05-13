@@ -8,6 +8,13 @@
 -- ARGV[5] = next_due (float timestamp)
 --
 -- Returns: 1
+--
+-- Lease cleanup (added in #3159 / #3173):
+--   This script also removes the inflight lease entry for the task,
+--   since rescheduling means the worker successfully completed (or
+--   failed in a way that already records the next_due backoff). The
+--   reaper must not re-enqueue tasks that the worker has already
+--   pushed back to the per-domain ZSET.
 
 local wtype = ARGV[1]
 local domain = ARGV[2]
@@ -23,6 +30,12 @@ else
     queue_key = "scrapes_" .. wtype .. ":" .. domain
 end
 redis.call("ZADD", queue_key, next_due, task_id)
+
+-- Clear inflight lease entry — the task is back on the per-domain
+-- queue, so the reaper must not double-enqueue it.
+local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
+redis.call("ZREM", "inflight:" .. wtype, inflight_member)
+redis.call("HDEL", "inflight_strikes:" .. wtype, inflight_member)
 
 -- Remove from all tiers
 for t = 0, 2 do
