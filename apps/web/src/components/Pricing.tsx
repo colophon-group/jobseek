@@ -23,6 +23,12 @@ function FreeTier() {
   const cfg = siteConfig.pricing.free;
   const ctaHref = lp(cfg.href);
   const ctaLabel = t({ id: "home.pricing.free.cta", comment: "Free tier CTA", message: "Start for free" });
+  const priceLabel = t({
+    id: "home.pricing.free.price",
+    comment:
+      "Free tier price displayed prominently on the home pricing card. Source is USD ($0); translators may render the symbol+number per locale convention (e.g. German '0 $').",
+    message: "$0",
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-[500px] md:mx-0 md:max-w-[360px] md:flex-[1_1_320px]">
@@ -32,7 +38,7 @@ function FreeTier() {
             <Trans id="home.pricing.free.name" comment="Free tier name">Free</Trans>
           </p>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-bold">$0</span>
+            <span className="text-3xl font-bold">{priceLabel}</span>
             <span className="text-muted">
               <Trans id="home.pricing.free.period" comment="Free tier period">Forever</Trans>
             </span>
@@ -59,6 +65,12 @@ function FreeTier() {
 function ProTier() {
   const { t } = useLingui();
   const ctaLabel = t({ id: "home.pricing.pro.cta", comment: "Pro tier CTA — disabled until subscriptions launch", message: "Coming soon" });
+  const priceLabel = t({
+    id: "home.pricing.pro.price",
+    comment:
+      "Pro tier price displayed prominently on the home pricing card. Source is USD ($10/month); translators may render the symbol+number per locale convention (e.g. German '10 $').",
+    message: "$10",
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-[500px] md:mx-0 md:max-w-[360px] md:flex-[1_1_320px]">
@@ -68,7 +80,7 @@ function ProTier() {
             <Trans id="home.pricing.pro.name" comment="Pro tier name">Pro</Trans>
           </p>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-bold">$10</span>
+            <span className="text-3xl font-bold">{priceLabel}</span>
             <span className="text-muted">
               <Trans id="home.pricing.pro.period" comment="Pro tier period">per month</Trans>
             </span>
