@@ -45,20 +45,28 @@
 | `getPreferences()` | 1 | parallel | None | 10-30ms |
 | `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
 | `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
-| `getUserWatchlists()` base | 1 | — | None | 10-30ms |
-| `resolveFilteredJobCount()` × N | 5N | parallel per watchlist | None | 30-80ms × N |
+| `getUserWatchlists()` | 1 | — | None | 12-38ms |
 | `canCreateWatchlist()` | 1 | — | None | 10-20ms |
 
-**Total DB queries:** 5 + 5N (N = number of user's watchlists)
-**Estimated function duration:** 60-300ms+ (warm instance)
+**Total DB queries:** 5 (constant in N — fixed by #3176)
+**Estimated function duration:** 50-100ms (warm instance)
 
-**This is the worst N+1 pattern in the app.** For each watchlist,
-`resolveFilteredJobCount()` runs 4 parallel taxonomy lookups (locations,
-occupations, seniority, technology) plus 1 count query. A user with 10
-watchlists triggers ~51 DB queries.
+**Previously the worst N+1 pattern in the app.** Pre-fix, `getUserWatchlists`
+ran `resolveFilteredJobCount()` once per watchlist — each leg ran 4
+parallel taxonomy lookups + 1 Typesense filtered count. A user with 50
+watchlists paid 1.5-2.5s of mostly-serial Typesense round-trips (the
+Typesense host is a single CX22 with effective concurrency ~2) on every
+`/watchlists` load. Issue #3176 (PR fixing this file) collapsed the
+fan-out into a single SQL query whose `watchlist_company JOIN
+job_posting` subquery returns the denormalized "company-scope" active
+count alongside each row.
 
-Consider batching all watchlist job counts into a single SQL query that
-computes counts for all watchlists at once.
+**Trade-off:** the listing badge now ignores the per-watchlist filter
+clauses (keywords, locations, work_mode, …) and the viewer's job-language
+preference. The watchlist detail page still surfaces the filter-applied
+count via `getWatchlistPostingDisplayCounts()`. Issue #3261 tracks a
+batched `multi_search`-based path if/when filter-precise badges are
+needed on the listing.
 
 ### Client-side server actions
 
