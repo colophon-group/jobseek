@@ -25,7 +25,13 @@ export function WatchlistContent({ lang, userSlug, watchlistSlug }: WatchlistCon
 
   useEffect(() => {
     setData(null);
-    window.scrollTo(0, 0);
+    // No `window.scrollTo(0, 0)` here — Next handles scroll on
+    // navigation natively, and the previous unconditional reset
+    // fired on every mount of this component. In edge cases (HMR
+    // in dev, Suspense reconnection on `?show=` changes from
+    // `useSearchParams()`, etc.) that re-mount fires after the
+    // user has already scrolled into the list, snapping them
+    // back to the top. See #3028.
     fetchWatchlistPageData({ userSlug, watchlistSlug, locale: lang }).then((result) => {
       setData(result ?? "not-found");
     });
