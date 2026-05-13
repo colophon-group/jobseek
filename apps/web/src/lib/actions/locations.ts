@@ -332,11 +332,17 @@ export async function getGlobalLocationsGrouped(
   filters?: { companyId?: string; keywords?: string[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<GlobalLocationsResponse> {
   const fKey = filters ? JSON.stringify(filters) : "";
+  // v4 cache-key bump (#3033 — hierarchical-modal counts now use the
+  // direct facet entry for parent IDs instead of summing children). Old
+  // v3 entries cache the buggy summed counts (e.g. "Chile (4)" when the
+  // true subtree count was 12); they must not be served alongside the
+  // fixed code path.
+  //
   // v3 cache-key bump (#2940 — added Regions cluster + dedicated macro
   // facet query). Old v1/v2 entries cached the array shape and would
   // otherwise be deserialized into the new wrapper object via the
   // run-time JSON path, then fail to render the macro tier.
-  const key = `global-locs-grouped-v3:${locale}:${fKey}`;
+  const key = `global-locs-grouped-v4:${locale}:${fKey}`;
   return cached(key, () => _fetchGlobalLocationsGrouped(locale, filters), { ttl: CACHE_TTL_LONG });
 }
 
@@ -795,27 +801,65 @@ async function _fetchGlobalLocationsGrouped(
       });
     }
 
-    // Aggregate counts bottom-up.
-    // With ancestor IDs stored on documents, the facet already returns correct
-    // counts for regions/countries (they include all descendant postings).
-    // We only roll up from cities — do NOT add directRegionCount/directCountryCount
-    // to avoid double-counting.
+    // Resolve subtree counts directly from the facet — never via summing
+    // children (issue #3033).
+    //
+    // Postings carry ancestor-expanded `location_ids` (see exporter.py:
+    // a posting in Santiago is tagged [santiago, santiago-region, chile,
+    // americas, worldwide]), so the facet entry for `chile_id` already
+    // counts every posting under Chile — whether tagged at city, region,
+    // or country level. Using `directCountryCount` as the country count
+    // is therefore the **true** subtree count.
+    //
+    // Summing children (the previous behaviour) under-counted whenever
+    // any posting under Chile was tagged at the country/region tier
+    // without a city — or whenever a mid-rank city fell below the
+    // top-`max_facet_values` cutoff. Concrete production case:
+    // `loc=chile&occ=fullstack-developer` showed `Chile (4) / Santiago
+    // (4)` while the true ancestor-facet count is 12. The fix below
+    // makes `country.countryCount = 12`, matching the count of postings
+    // shown when the user clicks "Chile".
+    //
+    // Cities under regions that don't appear in the facet (zero count
+    // here) still surface in their region pill if the region has a
+    // direct facet entry — the previous "drop empty regions" filter at
+    // the bottom now keys off `regionCount > 0` rather than
+    // `locations.length > 0`.
     for (const country of countries.values()) {
-      let countryTotal = 0;
       for (const region of country.regions) {
+        // Prefer the direct facet count for the region (true ancestor
+        // count); fall back to summing children when the region itself
+        // wasn't in the facet (e.g. orphan-region container).
+        const directRegion = region.regionId > 0
+          ? directRegionCount.get(region.regionId)
+          : undefined;
         const cityTotal = region.locations.reduce((sum, l) => sum + l.count, 0);
-        region.regionCount = cityTotal;
-        countryTotal += region.regionCount;
+        region.regionCount = directRegion ?? cityTotal;
         // Sort locations within region by count desc
         region.locations.sort((a, b) => b.count - a.count);
       }
-      country.countryCount = countryTotal;
+      // Country: prefer the direct facet count; fall back to summing
+      // region counts for synthetic country groups (countryId<=0 — the
+      // "Other" container for orphaned cities).
+      const directCountry = country.countryId > 0
+        ? directCountryCount.get(country.countryId)
+        : undefined;
+      country.countryCount = directCountry ?? country.regions.reduce(
+        (s, r) => s + r.regionCount,
+        0,
+      );
       // Sort regions by count desc
       country.regions.sort((a, b) => b.regionCount - a.regionCount);
     }
 
+    // Keep countries that have ANY signal: a non-zero direct facet count
+    // (country tier — set when the country itself has matching postings),
+    // OR at least one city/region in the facet. The previous "needs a
+    // city" filter dropped countries whose postings are tagged purely at
+    // the country level — a regression introduced alongside #3033's
+    // sum-of-children count.
     const sortedCountries = [...countries.values()]
-      .filter((g) => g.regions.some((r) => r.locations.length > 0))
+      .filter((g) => g.countryCount > 0 || g.regions.some((r) => r.locations.length > 0))
       .sort((a, b) => {
         // Sort by country name alphabetically
         return a.countryName.localeCompare(b.countryName);
