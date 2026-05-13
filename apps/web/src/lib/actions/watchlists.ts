@@ -828,6 +828,8 @@ const nonTrivialWatchlistPredicate = sql`(
   OR jsonb_array_length(COALESCE(w.filters->'occupationSlugs', '[]'::jsonb)) > 0
   OR jsonb_array_length(COALESCE(w.filters->'senioritySlugs', '[]'::jsonb)) > 0
   OR jsonb_array_length(COALESCE(w.filters->'technologySlugs', '[]'::jsonb)) > 0
+  OR jsonb_array_length(COALESCE(w.filters->'workMode', '[]'::jsonb)) > 0
+  OR jsonb_array_length(COALESCE(w.filters->'employmentType', '[]'::jsonb)) > 0
   OR (w.filters ? 'salaryMin')
   OR (w.filters ? 'salaryMax')
   OR (w.filters ? 'experienceMin')

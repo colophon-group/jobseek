@@ -5,6 +5,11 @@ import type { WatchlistFilters } from "@/lib/actions/watchlists";
 // no companies — effectively a blank shell. We exclude these from public
 // listings and search engines so they don't dilute the index.
 // `anyCompany` and `salaryCurrency` alone don't count (they're defaults/prefs).
+//
+// Mirror of the `nonTrivialWatchlistPredicate` SQL fragment in
+// `@/lib/actions/watchlists`. Keep the two in sync — see the drift-guard
+// test in `__tests__/watchlist-utils.test.ts` which fails if a new key
+// is added to `WatchlistFilters` without being checked here.
 export function isTrivialWatchlist(
   filters: WatchlistFilters | null | undefined,
   companyCount: number,
@@ -17,6 +22,8 @@ export function isTrivialWatchlist(
     f.occupationSlugs?.length ||
     f.senioritySlugs?.length ||
     f.technologySlugs?.length ||
+    f.workMode?.length ||
+    f.employmentType?.length ||
     f.salaryMin != null ||
     f.salaryMax != null ||
     f.experienceMin != null ||
