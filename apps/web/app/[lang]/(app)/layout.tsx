@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Trans } from "@lingui/react/macro";
 
 import { AppBootstrapProvider } from "@/components/AppBootstrapProvider";
 import { AppHeader } from "@/components/AppHeader";
@@ -19,13 +20,22 @@ export default async function AppLayout({ children }: Props) {
   return (
     <AppBootstrapProvider>
       <SearchStateProvider>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only fixed top-2 left-2 z-[100] rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-contrast focus:outline-none"
+        >
+          <Trans id="common.a11y.skipToContent" comment="Skip to main content link for keyboard users">Skip to content</Trans>
+        </a>
         <div className="flex min-h-dvh flex-col">
           <AppHeader />
           <div className="flex min-h-0 flex-1 flex-col md:pt-12">
             <CookieBanner aboveBottomBar />
             <UpgradeBanner aboveBottomBar />
             <WatchlistTipBanner aboveBottomBar />
-            <main className="mx-auto w-full max-w-[1200px] px-4 py-8 pb-20 md:pb-8">
+            <main
+              id="main-content"
+              className="mx-auto w-full max-w-[1200px] px-4 py-8 pb-20 md:pb-8"
+            >
               {children}
             </main>
           </div>
