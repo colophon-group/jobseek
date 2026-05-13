@@ -69,6 +69,10 @@ export interface WatchlistPostingsParams {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  /** Work-mode filter — `onsite | hybrid | remote` (issue #3037). */
+  workMode?: ("onsite" | "hybrid" | "remote")[];
+  /** Employment-type filter (issue #3037). */
+  employmentType?: string[];
   salaryMin?: number;
   salaryMax?: number;
   experienceMin?: number;
@@ -100,6 +104,8 @@ export async function getWatchlistPostingsBrowser(
     occupationIds: params.occupationIds,
     seniorityIds: params.seniorityIds,
     technologyIds: params.technologyIds,
+    workMode: params.workMode?.length ? params.workMode : undefined,
+    employmentTypes: params.employmentType?.length ? params.employmentType : undefined,
     salaryMinEur: params.salaryMin,
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,

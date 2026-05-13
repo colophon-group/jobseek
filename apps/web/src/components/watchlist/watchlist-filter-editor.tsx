@@ -1,9 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, Check, Loader2, MapPin, Briefcase, Award, Cpu, DollarSign, Clock } from "lucide-react";
+import { X, Plus, Check, Loader2, MapPin, Briefcase, Award, Cpu, DollarSign, Clock, Home, CalendarDays } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { WatchlistFilters } from "@/lib/actions/watchlists";
+import type { WorkMode } from "@/lib/search/types";
+
+// Closed sets for the two enum-shaped filters added in issue #3037.
+// Defining them client-side mirrors the Typesense canonical values and
+// keeps the editor decoupled from server-only modules.
+const WORK_MODE_OPTIONS: { value: WorkMode; labelKey: string; fallback: string }[] = [
+  { value: "onsite", labelKey: "search.workMode.onsite", fallback: "On-site" },
+  { value: "hybrid", labelKey: "search.workMode.hybrid", fallback: "Hybrid" },
+  { value: "remote", labelKey: "search.workMode.remote", fallback: "Remote" },
+];
+
+const EMPLOYMENT_TYPE_OPTIONS: { value: string; labelKey: string; fallback: string }[] = [
+  { value: "full_time", labelKey: "search.employmentType.fullTime", fallback: "Full-time" },
+  { value: "part_time", labelKey: "search.employmentType.partTime", fallback: "Part-time" },
+  { value: "contract", labelKey: "search.employmentType.contract", fallback: "Contract" },
+  { value: "internship", labelKey: "search.employmentType.internship", fallback: "Internship" },
+  { value: "temporary", labelKey: "search.employmentType.temporary", fallback: "Temporary" },
+  { value: "volunteer", labelKey: "search.employmentType.volunteer", fallback: "Volunteer" },
+];
 
 function FilterPill({
   icon,
@@ -29,7 +48,7 @@ function FilterPill({
   );
 }
 
-type AddingType = "keyword" | "location" | "occupation" | "seniority" | "technology" | null;
+type AddingType = "keyword" | "location" | "occupation" | "seniority" | "technology" | "workMode" | "employmentType" | null;
 
 export function WatchlistFilterEditor({
   filters,
@@ -74,6 +93,16 @@ export function WatchlistFilterEditor({
       technologySlugs: (filters.technologySlugs ?? []).filter((s) => s !== slug),
     });
   }
+  function toggleWorkMode(mode: WorkMode) {
+    const cur = filters.workMode ?? [];
+    const next = cur.includes(mode) ? cur.filter((m) => m !== mode) : [...cur, mode];
+    onChange({ ...filters, workMode: next.length > 0 ? next : undefined });
+  }
+  function toggleEmploymentType(type: string) {
+    const cur = filters.employmentType ?? [];
+    const next = cur.includes(type) ? cur.filter((t) => t !== type) : [...cur, type];
+    onChange({ ...filters, employmentType: next.length > 0 ? next : undefined });
+  }
   function removeSalary() {
     onChange({
       ...filters,
@@ -91,6 +120,15 @@ export function WatchlistFilterEditor({
   }
 
   function submitInput() {
+    // workMode / employmentType use chip-toggle UI, not the free-text
+    // input — short-circuit here so an accidental Enter on the input
+    // while one of those tabs is active doesn't append the raw string
+    // as a slug.
+    if (adding === "workMode" || adding === "employmentType") {
+      setInputValue("");
+      setAdding(null);
+      return;
+    }
     const val = inputValue.trim();
     if (!val || !adding) return;
 
@@ -123,6 +161,8 @@ export function WatchlistFilterEditor({
     (filters.occupationSlugs?.length ?? 0) > 0 ||
     (filters.senioritySlugs?.length ?? 0) > 0 ||
     (filters.technologySlugs?.length ?? 0) > 0 ||
+    (filters.workMode?.length ?? 0) > 0 ||
+    (filters.employmentType?.length ?? 0) > 0 ||
     filters.salaryMin != null ||
     filters.salaryMax != null ||
     filters.experienceMin != null ||
@@ -134,6 +174,8 @@ export function WatchlistFilterEditor({
     { type: "occupation", icon: <Briefcase size={12} />, label: t({ id: "watchlists.filters.occupation", comment: "Add occupation filter", message: "Occupation" }) },
     { type: "seniority", icon: <Award size={12} />, label: t({ id: "watchlists.filters.seniority", comment: "Add seniority filter", message: "Seniority" }) },
     { type: "technology", icon: <Cpu size={12} />, label: t({ id: "watchlists.filters.technology", comment: "Add technology filter", message: "Technology" }) },
+    { type: "employmentType", icon: <CalendarDays size={12} />, label: t({ id: "watchlists.filters.employmentType", comment: "Add employment type filter", message: "Type" }) },
+    { type: "workMode", icon: <Home size={12} />, label: t({ id: "watchlists.filters.workMode", comment: "Add work-mode (onsite/hybrid/remote) filter", message: "Work mode" }) },
   ];
 
   return (
@@ -163,6 +205,24 @@ export function WatchlistFilterEditor({
         ))}
         {filters.technologySlugs?.map((slug) => (
           <FilterPill key={`tech-${slug}`} icon={<Cpu size={12} />} label={slug} onRemove={() => removeTechnology(slug)} />
+        ))}
+        {filters.employmentType?.map((type) => (
+          <FilterPill
+            key={`et-${type}`}
+            icon={<CalendarDays size={12} />}
+            label={
+              EMPLOYMENT_TYPE_OPTIONS.find((o) => o.value === type)?.fallback ?? type.replace(/_/g, " ")
+            }
+            onRemove={() => toggleEmploymentType(type)}
+          />
+        ))}
+        {filters.workMode?.map((mode) => (
+          <FilterPill
+            key={`wm-${mode}`}
+            icon={<Home size={12} />}
+            label={WORK_MODE_OPTIONS.find((o) => o.value === mode)?.fallback ?? mode}
+            onRemove={() => toggleWorkMode(mode as WorkMode)}
+          />
         ))}
         {(filters.salaryMin != null || filters.salaryMax != null) && (
           <FilterPill
@@ -228,40 +288,76 @@ export function WatchlistFilterEditor({
             ))}
           </div>
 
-          {/* Value input */}
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitInput();
-                if (e.key === "Escape") { setAdding(null); setInputValue(""); }
-              }}
-              placeholder={t({
-                id: "watchlists.filters.inputPlaceholder",
-                comment: "Placeholder for filter value input",
-                message: "Type slug and press Enter",
+          {/* Value input — chip-toggle for enum filters, text for slugs */}
+          {adding === "workMode" || adding === "employmentType" ? (
+            <div className="flex flex-wrap items-center gap-1">
+              {(adding === "workMode" ? WORK_MODE_OPTIONS : EMPLOYMENT_TYPE_OPTIONS).map((opt) => {
+                const isActive =
+                  adding === "workMode"
+                    ? (filters.workMode ?? []).includes(opt.value as WorkMode)
+                    : (filters.employmentType ?? []).includes(opt.value);
+                const onClick =
+                  adding === "workMode"
+                    ? () => toggleWorkMode(opt.value as WorkMode)
+                    : () => toggleEmploymentType(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={onClick}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition-colors cursor-pointer ${
+                      isActive
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
+                    }`}
+                  >
+                    {t({ id: opt.labelKey, comment: "Filter option label", message: opt.fallback })}
+                  </button>
+                );
               })}
-              autoFocus
-              className="w-40 rounded-md border border-border-soft bg-transparent px-2 py-1 text-sm outline-none focus:border-primary placeholder:text-muted"
-            />
-            <button
-              type="button"
-              onClick={submitInput}
-              disabled={!inputValue.trim()}
-              className="rounded-md p-1 text-muted transition-colors hover:text-foreground disabled:opacity-40 cursor-pointer"
-            >
-              <Check size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAdding(null); setInputValue(""); }}
-              className="rounded-md p-1 text-muted transition-colors hover:text-foreground cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => { setAdding(null); setInputValue(""); }}
+                className="rounded-md p-1 text-muted transition-colors hover:text-foreground cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitInput();
+                  if (e.key === "Escape") { setAdding(null); setInputValue(""); }
+                }}
+                placeholder={t({
+                  id: "watchlists.filters.inputPlaceholder",
+                  comment: "Placeholder for filter value input",
+                  message: "Type slug and press Enter",
+                })}
+                autoFocus
+                className="w-40 rounded-md border border-border-soft bg-transparent px-2 py-1 text-sm outline-none focus:border-primary placeholder:text-muted"
+              />
+              <button
+                type="button"
+                onClick={submitInput}
+                disabled={!inputValue.trim()}
+                className="rounded-md p-1 text-muted transition-colors hover:text-foreground disabled:opacity-40 cursor-pointer"
+              >
+                <Check size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAdding(null); setInputValue(""); }}
+                className="rounded-md p-1 text-muted transition-colors hover:text-foreground cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
