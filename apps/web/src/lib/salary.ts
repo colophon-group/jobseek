@@ -2,12 +2,21 @@ import type { CurrencyRate } from "@/lib/actions/search";
 
 export type SalaryPeriod = "yearly" | "monthly" | "daily" | "hourly";
 
-/** Multiplier to convert FROM the given period TO yearly. */
+/**
+ * Multiplier to convert FROM the given period TO yearly.
+ *
+ * Source of truth for hourly annualization: the crawler computes the
+ * `salary_eur` filter column with **2080 hours/year** (52 × 40) in
+ * `apps/crawler/src/processing/cpu.py::_extract_salary_fields`. The web
+ * MUST use the same constant so the displayed yearly-equivalent of an
+ * hourly posting matches the cutoff the salary slider is filtering on.
+ * See issue #3194.
+ */
 const TO_YEARLY: Record<SalaryPeriod, number> = {
   yearly: 1,
   monthly: 12,
-  daily: 252,   // working days
-  hourly: 2016, // 252 × 8
+  daily: 252,   // working days (web-only; crawler does not emit "daily")
+  hourly: 2080, // 52 × 40 — must match crawler cpu.py
 };
 
 /**

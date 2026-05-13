@@ -133,7 +133,11 @@ def _extract_salary_fields(
     sal_min = sr.min
     sal_max = sr.max
 
-    # Annualize only for the EUR filter column
+    # Annualize only for the EUR filter column.
+    # Source of truth for the hourly→yearly multiplier: 2080 = 52 × 40 (US
+    # convention, ignoring holidays). `apps/web/src/lib/salary.ts::TO_YEARLY`
+    # mirrors this constant so display-side conversions match the salary
+    # filter cutoffs computed here. See issue #3194.
     if sr.period == "hourly":
         annual_min = round(sr.min / 100 * 2080)
     elif sr.period == "monthly":
