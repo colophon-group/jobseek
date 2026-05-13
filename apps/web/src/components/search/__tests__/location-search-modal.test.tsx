@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // Lingui shim — register before imports of Lingui-aware modules.
@@ -510,5 +510,241 @@ describe("LocationSearchModal — paged fetch (#2982)", () => {
     // Berlin should appear only once (in the country list, not also under Matches)
     const berlinNodes = screen.queryAllByText("Berlin");
     expect(berlinNodes.length).toBe(1);
+  });
+});
+
+describe("LocationSearchModal — close+reopen accumulator reset (#3000)", () => {
+  /**
+   * Captured IntersectionObserver instances. Each test wires a stub
+   * onto the global so it can fire the callback synchronously to
+   * simulate the bottom sentinel entering the viewport (happy-dom
+   * doesn't ship a real observer).
+   */
+  type ObserverEntry = {
+    callback: IntersectionObserverCallback;
+    elements: Element[];
+    instance: { disconnect: () => void };
+  };
+  const observerEntries: ObserverEntry[] = [];
+
+  class MockIntersectionObserver {
+    private callback: IntersectionObserverCallback;
+    private elements: Element[] = [];
+    constructor(callback: IntersectionObserverCallback) {
+      this.callback = callback;
+      observerEntries.push({
+        callback,
+        elements: this.elements,
+        instance: this,
+      });
+    }
+    observe(el: Element) {
+      this.elements.push(el);
+    }
+    unobserve(el: Element) {
+      const i = this.elements.indexOf(el);
+      if (i >= 0) this.elements.splice(i, 1);
+    }
+    disconnect() {
+      this.elements.length = 0;
+    }
+    takeRecords() {
+      return [];
+    }
+  }
+
+  function fireSentinelVisible() {
+    // Find the freshest observer that has a sentinel element observed
+    // and fire it. The modal's loadMore observer is the only one in
+    // play here (no other observers in the component tree).
+    for (let i = observerEntries.length - 1; i >= 0; i--) {
+      const entry = observerEntries[i];
+      if (entry.elements.length === 0) continue;
+      const entries = entry.elements.map((target) => ({
+        isIntersecting: true,
+        target,
+        // The component only checks `isIntersecting`; the rest of the
+        // IntersectionObserverEntry shape is filler to satisfy the type.
+        boundingClientRect: {} as DOMRectReadOnly,
+        intersectionRatio: 1,
+        intersectionRect: {} as DOMRectReadOnly,
+        rootBounds: null,
+        time: 0,
+      } as IntersectionObserverEntry));
+      entry.callback(entries, entry.instance as unknown as IntersectionObserver);
+      return true;
+    }
+    return false;
+  }
+
+  beforeEach(() => {
+    observerEntries.length = 0;
+    // @ts-expect-error — installing a mock onto the global
+    globalThis.IntersectionObserver = MockIntersectionObserver;
+  });
+
+  afterEach(() => {
+    // @ts-expect-error — cleanup
+    delete globalThis.IntersectionObserver;
+  });
+
+  const makeManyCountries = (n: number) => ({
+    macros: [],
+    countries: Array.from({ length: n }, (_, i) => ({
+      countryId: 1000 + i,
+      countrySlug: `c-${i}`,
+      countryName: `Country ${i.toString().padStart(3, "0")}`,
+      countryCount: 5,
+      regions: [
+        {
+          regionId: 0,
+          regionSlug: "",
+          regionName: "",
+          regionCount: 5,
+          locations: [
+            { id: 5000 + i, slug: `city-${i}`, name: `City ${i}`, type: "city", count: 5 },
+          ],
+        },
+      ],
+    })),
+  });
+
+  /**
+   * The bug from #3000: opening the modal, scrolling far enough to
+   * load page 2 (accumulator now holds 60 countries), then closing
+   * and reopening MUST snap back to page 1 — i.e. Country 030
+   * (the first country in page 2) must NOT be rendered after reopen.
+   *
+   * Without the close-reset effect, the firstOpen guard in the
+   * first-page useEffect short-circuits (pages.length > 0 already),
+   * leaving the user staring at the stale tail of pages they had
+   * accumulated before closing.
+   */
+  it("resets pages and nextCursor on close so reopen starts from page 1", async () => {
+    getGlobalLocationsGroupedMock.mockResolvedValue(makeManyCountries(100));
+    const onOpenChange = vi.fn();
+    const { rerender } = render(
+      <LocationSearchModal
+        open
+        onOpenChange={onOpenChange}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+    // Initial page-1 paint
+    await waitFor(() => screen.getByText("Country 000"));
+    expect(screen.getByText("Country 029")).toBeTruthy();
+    expect(screen.queryByText("Country 030")).toBeNull();
+
+    // Trigger the bottom sentinel — loadMore fetches page 2 (countries
+    // 30-59) and appends. The 31st country (Country 030) should now
+    // appear in the DOM.
+    await act(async () => {
+      fireSentinelVisible();
+    });
+    await waitFor(() => expect(screen.queryByText("Country 030")).toBeTruthy());
+    expect(screen.getByText("Country 059")).toBeTruthy();
+    expect(screen.queryByText("Country 060")).toBeNull();
+
+    // Close the modal. The portal unmounts the visible body content
+    // but the component itself stays mounted (open is just a prop on
+    // Dialog.Root), so our close-reset useEffect runs.
+    rerender(
+      <LocationSearchModal
+        open={false}
+        onOpenChange={onOpenChange}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+
+    // Re-open — should snap back to a fresh page 1.
+    rerender(
+      <LocationSearchModal
+        open
+        onOpenChange={onOpenChange}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+
+    // First-page fetch fires again — wait for Country 000 to repaint
+    // and assert page 2's first country is NOT in the DOM.
+    await waitFor(() => screen.getByText("Country 000"));
+    expect(screen.getByText("Country 029")).toBeTruthy();
+    expect(screen.queryByText("Country 030")).toBeNull();
+    expect(screen.queryByText("Country 059")).toBeNull();
+  });
+
+  /**
+   * Sanity guard: an in-flight loadMore response that lands AFTER the
+   * modal has been closed must not write into the now-fresh state. The
+   * close effect bumps `fetchSeqRef` so the stale response is dropped.
+   *
+   * If this regresses, closing mid-fetch would briefly flash extra
+   * countries after the close-reset.
+   */
+  it("drops in-flight loadMore responses when modal closes mid-fetch", async () => {
+    // Stall the second page so the response lands AFTER close.
+    let resolvePage2: (() => void) | null = null;
+    const page2Block = new Promise<void>((resolve) => {
+      resolvePage2 = resolve;
+    });
+    let callCount = 0;
+    getGlobalLocationsGroupedMock.mockImplementation(async () => {
+      callCount++;
+      if (callCount === 2) await page2Block;
+      return makeManyCountries(100);
+    });
+
+    const { rerender } = render(
+      <LocationSearchModal
+        open
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+    await waitFor(() => screen.getByText("Country 000"));
+
+    // Kick the loadMore call (page 2 is now pending)
+    await act(async () => {
+      fireSentinelVisible();
+    });
+
+    // Close while page 2 is still in flight
+    rerender(
+      <LocationSearchModal
+        open={false}
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+
+    // Resolve the page-2 fetch *after* close — it must NOT add Country 030
+    // to the now-cleared pages state.
+    await act(async () => {
+      resolvePage2?.();
+      await page2Block;
+    });
+
+    // Re-open. We re-fetch page 1 only — Country 030 must not appear.
+    rerender(
+      <LocationSearchModal
+        open
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+    await waitFor(() => screen.getByText("Country 000"));
+    expect(screen.queryByText("Country 030")).toBeNull();
   });
 });

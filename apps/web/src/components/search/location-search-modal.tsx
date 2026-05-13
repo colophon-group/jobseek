@@ -162,6 +162,12 @@ export function LocationSearchModal({
   // First page on open / on filter change. Always cursor=0; resets the
   // accumulated pages list so the second open of the modal shows a fresh
   // first page rather than the tail of the previous session.
+  //
+  // The close-side companion below (`reset on close`) handles the actual
+  // accumulator-on-close-reopen contract — fixes #3000 where the
+  // `firstOpen` guard returned false after a partial-scroll close because
+  // `pages.length` was nonzero. With the close-effect clearing state, the
+  // re-open path naturally goes through the firstOpen branch.
   useEffect(() => {
     if (!open) return;
     const filtersChanged = filtersKey !== prevFiltersKeyRef.current;
@@ -187,6 +193,23 @@ export function LocationSearchModal({
         setLoading(false);
       });
   }, [open, locale, filtersKey, filters, pages.length, nextCursor]);
+
+  // Reset the paged accumulator on close (#3000). Without this, closing
+  // the modal mid-scroll leaves `pages.length > 0` and `nextCursor > 0`,
+  // so the next open's first-page useEffect sees `firstOpen === false`
+  // and skips the re-fetch — the user re-opens to whatever tail they
+  // had accumulated last time. Bumping `fetchSeqRef` also invalidates
+  // any in-flight first-page or loadMore response so it can't land into
+  // the freshly-cleared state.
+  useEffect(() => {
+    if (open) return;
+    fetchSeqRef.current += 1;
+    setPages([]);
+    setMacros([]);
+    setNextCursor(0);
+    setTotalCountries(0);
+    setLoadingMore(false);
+  }, [open]);
 
   // loadMore — fetch the next page and append. Guarded by `loadingMore`
   // so multiple sentinel triggers (fast scroll) collapse to one request.
