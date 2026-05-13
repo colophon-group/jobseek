@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { suggestCompanies } from "@/lib/actions/company";
+import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { checkRateLimit, apiResponse, siteUrl } from "../_shared";
 
 const MAX_RESULTS = 10;
@@ -31,5 +32,5 @@ export async function GET(request: NextRequest) {
   // Autocomplete suggestions are very stable (a single new company per few
   // days, slug shape never changes). Bumped from the 300s default to 1h
   // for higher CDN reuse on common queries — see issue #2644.
-  return apiResponse({ companies }, { maxAge: 3600, rateLimit: rl });
+  return apiResponse({ companies }, { maxAge: CACHE_TTL_LONG, rateLimit: rl });
 }

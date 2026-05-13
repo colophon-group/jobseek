@@ -12,6 +12,12 @@ import {
 import { getSessionUserId } from "@/lib/sessionCache";
 import { getViewerLanguages } from "@/lib/viewer";
 import { cached, invalidate } from "@/lib/cache";
+import {
+  CACHE_TTL_SHORT,
+  CACHE_TTL_POPULAR,
+  CACHE_TTL_MEDIUM,
+  CACHE_TTL_LONG,
+} from "@/lib/cache-ttl";
 import { withDbRetry } from "@/lib/db-retry";
 import { watchlistCacheTag } from "@/lib/cache-tags";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
@@ -731,7 +737,7 @@ export async function getPublicWatchlistByUserAndSlug(
   return cached(
     `public-watchlist:${userSlug}:${watchlistSlug}`,
     () => _fetchPublicWatchlistByUserAndSlug(userSlug, watchlistSlug),
-    { ttl: 60, skipIf: (r) => r === null },
+    { ttl: CACHE_TTL_SHORT, skipIf: (r) => r === null },
   );
 }
 
@@ -911,7 +917,7 @@ export async function getWatchlistMatchingCompanyCount(
     // Aligned to the watchlist-detail ISR window (1h, see page.tsx). Bumped
     // from 600s with #2648 — metadata freshness from a viewer's perspective
     // comes from the client-hydrated body, not the cached count.
-  }, { ttl: 3600 });
+  }, { ttl: CACHE_TTL_LONG });
 }
 
 async function resolveFilteredJobCount(
@@ -952,7 +958,7 @@ async function resolveFilteredJobCount(
       languages,
     });
     return total;
-  }, { ttl: 300 });
+  }, { ttl: CACHE_TTL_MEDIUM });
 }
 
 async function queryPublicWatchlists(params: {
@@ -1070,7 +1076,7 @@ export async function searchPublicWatchlists(params: {
         languages,
       });
     },
-    { ttl: 60 },
+    { ttl: CACHE_TTL_SHORT },
   );
 }
 
@@ -1105,7 +1111,7 @@ export async function getPopularWatchlists(params: {
         languages,
       });
     },
-    { ttl: 120 },
+    { ttl: CACHE_TTL_POPULAR },
   );
 }
 

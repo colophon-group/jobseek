@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
+import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { withDbRetry } from "@/lib/db-retry";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
@@ -23,7 +24,7 @@ import { listBlogPosts, getBlogPostLocales, type BlogPostSummary } from "@/lib/b
  */
 
 /** ISR window for cached watchlist data. */
-export const SITEMAP_TTL_SECONDS = 3600;
+export const SITEMAP_TTL_SECONDS = CACHE_TTL_LONG;
 
 const CURATED_USERNAME = "colophongroup";
 

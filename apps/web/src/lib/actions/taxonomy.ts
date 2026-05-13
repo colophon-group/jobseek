@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
+import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { withDbRetry } from "@/lib/db-retry";
 import {
   typeaheadOccupationsCacheTag,
@@ -64,7 +65,7 @@ async function _fetchOccupationSuggestionsCached(
   locale: string,
 ): Promise<TaxonomySuggestion[]> {
   "use cache";
-  cacheLife({ revalidate: 3600 });
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   // Tag the slot so `revalidateTag(typeaheadOccupationsCacheTag())` from
   // /api/internal/invalidate-typeahead drops it after `crawler sync`,
   // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
@@ -164,7 +165,7 @@ async function _fetchSenioritySuggestionsCached(
   locale: string,
 ): Promise<TaxonomySuggestion[]> {
   "use cache";
-  cacheLife({ revalidate: 3600 });
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   // Tag the slot so `revalidateTag(typeaheadSenioritiesCacheTag())` from
   // /api/internal/invalidate-typeahead drops it after `crawler sync`,
   // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
@@ -267,7 +268,7 @@ async function _fetchTechnologySuggestionsCached(
   q: string,
 ): Promise<TaxonomySuggestion[]> {
   "use cache";
-  cacheLife({ revalidate: 3600 });
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   // Tag the slot so `revalidateTag(typeaheadTechnologiesCacheTag())` from
   // /api/internal/invalidate-typeahead drops it after `crawler sync`,
   // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
@@ -518,7 +519,7 @@ export async function getAllOccupationsGrouped(
 ): Promise<OccupationGroup[]> {
   const fKey = filters ? JSON.stringify(filters) : "";
   const key = `occ-all-grouped:${locale}:${fKey}`;
-  return cached(key, () => _fetchAllOccupationsGrouped(locale, filters), { ttl: 3600 });
+  return cached(key, () => _fetchAllOccupationsGrouped(locale, filters), { ttl: CACHE_TTL_LONG });
 }
 
 // ── Occupation hierarchy cache ───────────────────────────────────────
@@ -863,7 +864,7 @@ export async function getAllSeniorities(
 ): Promise<SeniorityOption[]> {
   const fKey = filters ? JSON.stringify(filters) : "";
   const key = `sen-all:${locale}:${fKey}`;
-  return cached(key, () => _fetchAllSeniorities(locale, filters), { ttl: 3600 });
+  return cached(key, () => _fetchAllSeniorities(locale, filters), { ttl: CACHE_TTL_LONG });
 }
 
 // ── Seniority metadata cache ─────────────────────────────────────────
@@ -993,7 +994,7 @@ export async function getAllTechnologiesGrouped(
 ): Promise<TechnologyGroup[]> {
   const fKey = filters ? JSON.stringify(filters) : "";
   const key = `tech-all-grouped:${fKey}`;
-  return cached(key, () => _fetchAllTechnologiesGrouped(filters), { ttl: 3600 });
+  return cached(key, () => _fetchAllTechnologiesGrouped(filters), { ttl: CACHE_TTL_LONG });
 }
 
 // ── Technology metadata cache ────────────────────────────────────────
@@ -1127,7 +1128,7 @@ export async function getEmploymentTypeCounts(
 ): Promise<Record<string, number>> {
   const fKey = filters ? JSON.stringify(filters) : "";
   const key = `emp-type-counts:${fKey}`;
-  return cached(key, () => _fetchEmploymentTypeCounts(filters), { ttl: 3600 });
+  return cached(key, () => _fetchEmploymentTypeCounts(filters), { ttl: CACHE_TTL_LONG });
 }
 
 async function _fetchEmploymentTypeCounts(
@@ -1170,7 +1171,7 @@ export async function getWorkModeCounts(
 ): Promise<Record<string, number>> {
   const fKey = filters ? JSON.stringify(filters) : "";
   const key = `work-mode-counts:${fKey}`;
-  return cached(key, () => _fetchWorkModeCounts(filters), { ttl: 3600 });
+  return cached(key, () => _fetchWorkModeCounts(filters), { ttl: CACHE_TTL_LONG });
 }
 
 async function _fetchWorkModeCounts(

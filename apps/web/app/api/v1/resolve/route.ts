@@ -6,6 +6,7 @@ import {
   suggestTechnologies,
 } from "@/lib/actions/taxonomy";
 import { suggestIndustries } from "@/lib/actions/company";
+import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { checkRateLimit, apiResponse } from "../_shared";
 
 const VALID_TYPES = [
@@ -86,6 +87,6 @@ export async function GET(request: NextRequest) {
       query: q,
       matches: matches.slice(0, 10),
     },
-    { maxAge: 3600, rateLimit: rl },
+    { maxAge: CACHE_TTL_LONG, rateLimit: rl },
   );
 }

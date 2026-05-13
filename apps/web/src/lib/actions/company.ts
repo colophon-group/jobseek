@@ -3,6 +3,7 @@
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
+import { CACHE_TTL_MEDIUM, CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResultPosting, WorkMode } from "@/lib/search";
@@ -50,7 +51,7 @@ async function _queryCompanySuggestionsCached(
   q: string,
 ): Promise<CompanySuggestion[]> {
   "use cache";
-  cacheLife({ revalidate: 3600 });
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   // Tag the slot so `revalidateTag(typeaheadCompaniesCacheTag())` from
   // /api/internal/invalidate-typeahead drops it after `crawler sync`,
   // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
@@ -910,7 +911,7 @@ async function _fetchSimilarUnfilteredCached(
   limit: number,
 ): Promise<SimilarCompaniesPage> {
   "use cache";
-  cacheLife({ revalidate: 3600 });
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   cacheTag(companyByIdCacheTag(companyId));
   cacheTag(companyCsvDataCacheTag());
   return _fetchSimilarUnfiltered(companyId, industryId, offset, limit);
@@ -1234,7 +1235,7 @@ async function _fetchCompanyPostingsCached(
   params: NormalizedCompanyPostingsParams,
 ): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number }> {
   "use cache";
-  cacheLife({ revalidate: 300 });
+  cacheLife({ revalidate: CACHE_TTL_MEDIUM });
   cacheTag(companyByIdCacheTag(params.companyId));
 
   // Re-shape to the SearchProvider param contract. Drop the cache-only

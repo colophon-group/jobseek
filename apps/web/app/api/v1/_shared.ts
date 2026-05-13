@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { apiLimiter, getClientIp } from "@/lib/rate-limit";
+import { CACHE_TTL_MEDIUM } from "@/lib/cache-ttl";
 import { siteConfig } from "@/content/config";
 
 /** Rate-limit result to thread through to apiResponse(). */
@@ -40,7 +41,7 @@ export function apiResponse(
   data: unknown,
   options?: { maxAge?: number; rateLimit?: RateLimitInfo | null },
 ): NextResponse {
-  const maxAge = options?.maxAge ?? 300;
+  const maxAge = options?.maxAge ?? CACHE_TTL_MEDIUM;
   const headers: Record<string, string> = {
     "Cache-Control": `public, max-age=${maxAge}, s-maxage=${maxAge}`,
     "Access-Control-Allow-Origin": "*",

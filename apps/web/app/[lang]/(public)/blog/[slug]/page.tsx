@@ -7,6 +7,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, ogLocale } from "@/lib/i18n";
 import { blogPostCacheTag } from "@/lib/cache-tags";
+import { CACHE_TTL_DAY } from "@/lib/cache-ttl";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import {
@@ -40,7 +41,7 @@ export async function generateStaticParams(): Promise<{ lang: string; slug: stri
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
-  cacheLife({ revalidate: 86400 });
+  cacheLife({ revalidate: CACHE_TTL_DAY });
   const { lang, slug } = await params;
   cacheTag(blogPostCacheTag(slug));
   const locale = isLocale(lang) ? lang : defaultLocale;
@@ -124,7 +125,7 @@ function formatDate(iso: string, locale: string): string {
 
 export default async function BlogPostPage({ params }: Props) {
   "use cache";
-  cacheLife({ revalidate: 86400 });
+  cacheLife({ revalidate: CACHE_TTL_DAY });
   const locale = await initI18nForPage(params);
   const i18n = getI18n()!;
   const { slug } = await params;

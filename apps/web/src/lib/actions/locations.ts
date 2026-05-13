@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
+import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { withDbRetry } from "@/lib/db-retry";
 import { typeaheadLocationsCacheTag } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
@@ -89,7 +90,7 @@ async function _fetchLocationSuggestionsCached(
   bucketedLng: number | null,
 ): Promise<LocationSuggestion[]> {
   "use cache";
-  cacheLife({ revalidate: 3600 });
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   // Tag the slot so `revalidateTag(typeaheadLocationsCacheTag())` from
   // /api/internal/invalidate-typeahead drops it after `crawler sync`,
   // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
@@ -336,7 +337,7 @@ export async function getGlobalLocationsGrouped(
   // otherwise be deserialized into the new wrapper object via the
   // run-time JSON path, then fail to render the macro tier.
   const key = `global-locs-grouped-v3:${locale}:${fKey}`;
-  return cached(key, () => _fetchGlobalLocationsGrouped(locale, filters), { ttl: 3600 });
+  return cached(key, () => _fetchGlobalLocationsGrouped(locale, filters), { ttl: CACHE_TTL_LONG });
 }
 
 // ── Paged variant for fast modal TTFB (#2982) ─────────────────────────

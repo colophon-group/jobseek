@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { watchlistCacheTag } from "@/lib/cache-tags";
+import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import {
   getPublicWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
@@ -28,7 +29,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
-  cacheLife({ revalidate: 3600 });
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   const { userSlug, watchlistSlug, lang } = await params;
   cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
   const locale = isLocale(lang) ? lang : defaultLocale;
@@ -140,7 +141,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function WatchlistRoute({ params }: Props) {
   "use cache";
-  cacheLife({ revalidate: 3600 });
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   const { lang, userSlug, watchlistSlug } = await params;
   cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
   const locale = isLocale(lang) ? lang : defaultLocale;

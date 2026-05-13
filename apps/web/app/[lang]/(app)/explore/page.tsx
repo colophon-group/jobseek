@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cacheLife } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
+import { CACHE_TTL_SHORT } from "@/lib/cache-ttl";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { fetchExploreDefaults } from "@/lib/actions/explore-data";
@@ -23,7 +24,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
-  cacheLife({ revalidate: 60 });
+  cacheLife({ revalidate: CACHE_TTL_SHORT });
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
@@ -52,7 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function AppPage({ params }: Props) {
   "use cache";
-  cacheLife({ revalidate: 60 });
+  cacheLife({ revalidate: CACHE_TTL_SHORT });
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const initialData = await fetchExploreDefaults({ locale });

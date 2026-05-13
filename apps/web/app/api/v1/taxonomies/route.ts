@@ -5,6 +5,7 @@ import {
   getAllTechnologiesGrouped,
 } from "@/lib/actions/taxonomy";
 import { suggestIndustries } from "@/lib/actions/company";
+import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { checkRateLimit, apiResponse } from "../_shared";
 
 const VALID_TYPES = ["seniority", "occupations", "technologies", "industries"] as const;
@@ -49,5 +50,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return apiResponse({ type, items }, { maxAge: 3600, rateLimit: rl });
+  return apiResponse({ type, items }, { maxAge: CACHE_TTL_LONG, rateLimit: rl });
 }

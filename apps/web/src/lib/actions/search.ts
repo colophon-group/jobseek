@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResponse, SearchResultPosting, HistogramFilters, WorkMode } from "@/lib/search";
 import { cached } from "@/lib/cache";
+import { CACHE_TTL_SHORT, CACHE_TTL_MEDIUM } from "@/lib/cache-ttl";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { ANON_MAX_COMPANIES, ANON_MAX_CARD_POSTINGS } from "@/lib/search/constants";
@@ -121,7 +122,7 @@ async function _fetchPostingDetail(
   locale: string,
 ): Promise<PostingDetail | null> {
   "use cache";
-  cacheLife({ revalidate: 300 });
+  cacheLife({ revalidate: CACHE_TTL_MEDIUM });
   const rows = await withDbRetry(
     () =>
       db.execute<{
@@ -314,7 +315,7 @@ async function _listTopCompaniesImpl(
     result = await cached(
       `top-companies:${params.locale}:${langKey}:${params.offset}:${params.limit}`,
       fetch,
-      { ttl: 60, skipIf: (r: SearchResponse) => !!r.degraded },
+      { ttl: CACHE_TTL_SHORT, skipIf: (r: SearchResponse) => !!r.degraded },
     );
   } else {
     result = await fetch();

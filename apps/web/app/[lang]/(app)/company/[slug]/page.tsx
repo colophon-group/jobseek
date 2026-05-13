@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { companyCacheTag } from "@/lib/cache-tags";
+import { CACHE_TTL_DETAIL } from "@/lib/cache-ttl";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
@@ -15,7 +16,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
-  cacheLife({ revalidate: 600 });
+  cacheLife({ revalidate: CACHE_TTL_DETAIL });
   const { slug, lang } = await params;
   cacheTag(companyCacheTag(slug));
   const locale = isLocale(lang) ? lang : defaultLocale;
@@ -104,7 +105,7 @@ async function CompanyNotFound() {
 
 export default async function CompanyPageRoute({ params }: Props) {
   "use cache";
-  cacheLife({ revalidate: 600 });
+  cacheLife({ revalidate: CACHE_TTL_DETAIL });
   const locale = await initI18nForPage(params);
   const { slug } = await params;
   cacheTag(companyCacheTag(slug));
