@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import time
 import uuid
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import asyncpg
@@ -88,6 +89,39 @@ async def _save_cursor(pool: asyncpg.Pool, table: str, cursor: Cursor) -> None:
     )
 
 
+async def _save_cursors_atomic(
+    pool: asyncpg.Pool,
+    cursors: list[tuple[str, Cursor]],
+) -> None:
+    """Persist multiple export cursors in a single transaction.
+
+    Issue #3171: the exporter previously called ``_save_cursor`` twice
+    in sequence (Supabase first, Typesense second). A crash between the
+    two writes — OOM, SIGKILL, host reboot — left the Supabase cursor
+    advanced but the Typesense cursor stale. On restart the entire
+    just-exported batch was re-pushed to Typesense (or vice versa),
+    burning CPU and re-touching every doc in the batch.
+
+    Wrapping the upserts in a single transaction makes the pair atomic:
+    either both cursors land or neither does. If neither lands, the
+    next tick just re-fetches the same rows and re-upserts to both
+    targets (which is idempotent — Supabase ON CONFLICT and Typesense
+    ``import_(..., {"action": "upsert"})``).
+    """
+    if not cursors:
+        return
+    async with pool.acquire() as conn, conn.transaction():
+        for table, cursor in cursors:
+            ts, last_id = cursor
+            await conn.execute(
+                "INSERT INTO exporter_state (key, value, updated_at) "
+                "VALUES ($1, $2, now()) "
+                "ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now()",
+                f"last_export_ts:{table}",
+                f"{ts.isoformat()}|{last_id}",
+            )
+
+
 # ---------------------------------------------------------------------------
 # Taxonomy name maps for Typesense denormalization
 # ---------------------------------------------------------------------------
@@ -95,21 +129,29 @@ async def _save_cursor(pool: asyncpg.Pool, table: str, cursor: Cursor) -> None:
 _TAXONOMY_REFRESH_INTERVAL = 600  # 10 minutes
 
 
+@dataclass
 class TaxonomyMaps:
-    """In-memory lookup tables for denormalizing Typesense documents."""
+    """In-memory lookup tables for denormalizing Typesense documents.
 
-    def __init__(self) -> None:
-        self.location_names: dict[int, dict[str, str]] = {}
-        self.location_types: dict[int, str] = {}
-        self.company_info: dict[uuid.UUID, dict[str, str | None]] = {}
-        self.occupation_names: dict[int, str] = {}
-        self.occupation_ancestors: dict[int, list[int]] = {}
-        self.seniority_names: dict[int, str] = {}
-        self.technology_names: dict[int, str] = {}
-        # Ancestor lookup maps for hierarchy-free Typesense filtering
-        self.location_ancestors: dict[int, list[int]] = {}
-        self.occupation_ancestors: dict[int, list[int]] = {}
-        self._last_refresh: float = 0.0
+    Declared as a ``@dataclass`` to make field uniqueness auditable —
+    ``dataclasses.fields(TaxonomyMaps)`` returns one entry per logical
+    slot, so a regression test can assert there is exactly one
+    ``occupation_ancestors`` field. Issue #3124: the prior class-body
+    ``__init__`` defined ``self.occupation_ancestors`` twice, and the
+    second assignment silently shadowed the first.
+    """
+
+    # Name maps (per-locale where applicable)
+    location_names: dict[int, dict[str, str]] = field(default_factory=dict)
+    location_types: dict[int, str] = field(default_factory=dict)
+    company_info: dict[uuid.UUID, dict[str, str | None]] = field(default_factory=dict)
+    occupation_names: dict[int, str] = field(default_factory=dict)
+    seniority_names: dict[int, str] = field(default_factory=dict)
+    technology_names: dict[int, str] = field(default_factory=dict)
+    # Ancestor lookup maps for hierarchy-free Typesense filtering
+    location_ancestors: dict[int, list[int]] = field(default_factory=dict)
+    occupation_ancestors: dict[int, list[int]] = field(default_factory=dict)
+    _last_refresh: float = 0.0
 
     @property
     def stale(self) -> bool:
@@ -907,8 +949,16 @@ async def run_exporter(
                 exported, posting_cursor, ts_cursor = await _export_postings_dual(
                     local_pool, supa_pool, posting_cursor, ts_cursor, maps
                 )
-                await _save_cursor(local_pool, "job_posting", posting_cursor)
-                await _save_cursor(local_pool, "typesense:job_posting", ts_cursor)
+                # Save both cursors in a single transaction so a crash
+                # between writes cannot leave one cursor advanced while
+                # the other is stale (issue #3171).
+                await _save_cursors_atomic(
+                    local_pool,
+                    [
+                        ("job_posting", posting_cursor),
+                        ("typesense:job_posting", ts_cursor),
+                    ],
+                )
             else:
                 # Supabase-only export (original path)
                 exported, posting_cursor = await _export_changed_postings(

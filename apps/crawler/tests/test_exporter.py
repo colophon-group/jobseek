@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import uuid
+from collections import Counter
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -17,6 +19,7 @@ from src.exporter import (
     _get_cursor,
     _reconciliation_loop,
     _save_cursor,
+    _save_cursors_atomic,
     _update_metrics,
     _update_typesense_health,
     _upsert_to_supabase,
@@ -1255,3 +1258,306 @@ class TestLoadOccupationAncestors:
         )
         # Leaf occupation_id (singular) is still the specific occupation.
         assert docs[0]["occupation_id"] == 18
+
+
+# ---------------------------------------------------------------------------
+# TaxonomyMaps shape (issue #3124)
+# ---------------------------------------------------------------------------
+
+
+class TestTaxonomyMapsFields:
+    """Regression for issue #3124: ``occupation_ancestors`` was declared
+    twice in ``TaxonomyMaps.__init__``. The second assignment silently
+    shadowed the first, which made the source-level duplicate dead code
+    and made future renames split-brain across two lines that look
+    independent. Converting ``TaxonomyMaps`` to a ``@dataclass`` makes
+    field declarations introspectable via ``dataclasses.fields()`` — the
+    Counter below catches any future re-introduction of a duplicate
+    declaration."""
+
+    def test_is_a_dataclass(self):
+        assert dataclasses.is_dataclass(TaxonomyMaps), (
+            "TaxonomyMaps must be a @dataclass so its field set is "
+            "introspectable for the uniqueness audit below"
+        )
+
+    def test_occupation_ancestors_declared_exactly_once(self):
+        names = [f.name for f in dataclasses.fields(TaxonomyMaps)]
+        counts = Counter(names)
+        assert counts["occupation_ancestors"] == 1, (
+            f"occupation_ancestors must appear exactly once; got {counts}"
+        )
+
+    def test_all_field_names_unique(self):
+        names = [f.name for f in dataclasses.fields(TaxonomyMaps)]
+        duplicates = {n for n, c in Counter(names).items() if c > 1}
+        assert not duplicates, (
+            f"duplicate TaxonomyMaps fields: {duplicates} — every slot "
+            "must be declared exactly once so attribute writes do not "
+            "silently shadow earlier definitions"
+        )
+
+    def test_expected_fields_present(self):
+        """Pin the set of fields callers rely on so a refactor doesn't
+        silently drop a slot (e.g. someone trying to fix #3124 by
+        deleting the wrong duplicate)."""
+        names = {f.name for f in dataclasses.fields(TaxonomyMaps)}
+        # Public maps consumed by _build_typesense_docs.
+        for required in (
+            "location_names",
+            "location_types",
+            "company_info",
+            "occupation_names",
+            "seniority_names",
+            "technology_names",
+            "location_ancestors",
+            "occupation_ancestors",
+        ):
+            assert required in names, f"missing TaxonomyMaps field: {required}"
+
+    def test_default_instance_has_empty_maps(self):
+        """Default-constructed instance must have empty, mutable dicts —
+        regression for the case where the dataclass field uses a shared
+        class-level mutable default (``field(default_factory=dict)`` is
+        the correct shape)."""
+        a = TaxonomyMaps()
+        b = TaxonomyMaps()
+        assert a.occupation_ancestors == {}
+        assert a.location_ancestors == {}
+        a.occupation_ancestors[1] = [1, 2]
+        assert b.occupation_ancestors == {}, (
+            "default_factory=dict required: mutating one instance's "
+            "occupation_ancestors must not leak into another"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Atomic cursor save (issue #3171)
+# ---------------------------------------------------------------------------
+
+
+class TestSaveCursorsAtomic:
+    """Regression for issue #3171: the exporter previously persisted the
+    Supabase cursor and the Typesense cursor with two separate
+    ``_save_cursor`` calls. A crash between them (OOM, SIGKILL, reboot)
+    left one cursor advanced and the other stale, so the next process
+    re-exported the just-shipped batch to one target only.
+
+    ``_save_cursors_atomic`` wraps the pair in a single transaction so
+    either both writes commit or neither does."""
+
+    async def test_writes_both_cursors_in_one_transaction(self):
+        pool = _make_pool()
+        conn = AsyncMock()
+        tx_ctx = MagicMock()
+        tx_ctx.__aenter__ = AsyncMock(return_value=None)
+        tx_ctx.__aexit__ = AsyncMock(return_value=False)
+        conn.transaction = MagicMock(return_value=tx_ctx)
+        conn.execute = AsyncMock()
+        acq_ctx = MagicMock()
+        acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+        acq_ctx.__aexit__ = AsyncMock(return_value=False)
+        pool.acquire = MagicMock(return_value=acq_ctx)
+
+        ts = datetime(2025, 6, 15, 12, 0, 0, tzinfo=UTC)
+        cur_a = (ts, uuid.uuid4())
+        cur_b = (ts, uuid.uuid4())
+
+        await _save_cursors_atomic(
+            pool,
+            [("job_posting", cur_a), ("typesense:job_posting", cur_b)],
+        )
+
+        # One acquire, one transaction, two upserts.
+        pool.acquire.assert_called_once_with()
+        conn.transaction.assert_called_once_with()
+        assert conn.execute.await_count == 2
+        keys = {call.args[1] for call in conn.execute.await_args_list}
+        assert keys == {"last_export_ts:job_posting", "last_export_ts:typesense:job_posting"}
+
+    async def test_partial_crash_rolls_back_both_writes(self):
+        """If the second cursor's INSERT raises (server reboot mid-tx,
+        connection drop, integrity violation), both writes must be
+        absent from durable storage. The asyncpg ``conn.transaction``
+        context manager raises on exit when its body raised, and
+        Postgres rolls back the BEGIN/COMMIT pair. The test simulates
+        this by making the second execute raise and asserting the
+        exception propagates instead of leaving us with a half-saved
+        pair."""
+        pool = _make_pool()
+        conn = AsyncMock()
+        # Track whether the transaction was rolled back: __aexit__ with
+        # a non-None exc_type is the rollback signal.
+        rollback_called: dict[str, bool] = {"rolled_back": False}
+
+        async def fake_aexit(exc_type, exc, tb):
+            if exc_type is not None:
+                rollback_called["rolled_back"] = True
+            return False  # do not suppress
+
+        tx_ctx = MagicMock()
+        tx_ctx.__aenter__ = AsyncMock(return_value=None)
+        tx_ctx.__aexit__ = AsyncMock(side_effect=fake_aexit)
+        conn.transaction = MagicMock(return_value=tx_ctx)
+
+        call_count = {"n": 0}
+
+        async def fake_execute(*args, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 2:
+                raise RuntimeError("simulated crash between cursor writes")
+
+        conn.execute = AsyncMock(side_effect=fake_execute)
+
+        acq_ctx = MagicMock()
+        acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+        acq_ctx.__aexit__ = AsyncMock(return_value=False)
+        pool.acquire = MagicMock(return_value=acq_ctx)
+
+        ts = datetime(2025, 6, 15, 12, 0, 0, tzinfo=UTC)
+        cur_a = (ts, uuid.uuid4())
+        cur_b = (ts, uuid.uuid4())
+
+        raised = False
+        try:
+            await _save_cursors_atomic(
+                pool,
+                [("job_posting", cur_a), ("typesense:job_posting", cur_b)],
+            )
+        except RuntimeError:
+            raised = True
+
+        assert raised, (
+            "partial cursor write must propagate the error — silently "
+            "swallowing it would re-introduce #3171"
+        )
+        assert rollback_called["rolled_back"], (
+            "transaction must roll back when an execute raises so that "
+            "neither cursor's write is durable"
+        )
+
+    async def test_round_trip_via_real_storage(self):
+        """End-to-end shape check: after a successful atomic save, both
+        cursors are readable by ``_get_cursor`` and match what we wrote.
+        Uses an in-memory dict to stand in for ``exporter_state``.
+        """
+        stored: dict[str, str] = {}
+
+        pool = _make_pool()
+        conn = AsyncMock()
+        tx_ctx = MagicMock()
+        tx_ctx.__aenter__ = AsyncMock(return_value=None)
+        tx_ctx.__aexit__ = AsyncMock(return_value=False)
+        conn.transaction = MagicMock(return_value=tx_ctx)
+
+        async def fake_execute(_query, key, value):
+            stored[key] = value
+
+        conn.execute = AsyncMock(side_effect=fake_execute)
+        acq_ctx = MagicMock()
+        acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+        acq_ctx.__aexit__ = AsyncMock(return_value=False)
+        pool.acquire = MagicMock(return_value=acq_ctx)
+
+        async def fake_fetchrow(_query, key):
+            val = stored.get(key)
+            return {"value": val} if val else None
+
+        pool.fetchrow = AsyncMock(side_effect=fake_fetchrow)
+
+        ts_a = datetime(2025, 7, 1, 10, 30, 0, tzinfo=UTC)
+        ts_b = datetime(2025, 7, 1, 10, 31, 0, tzinfo=UTC)
+        cur_a = (ts_a, uuid.uuid4())
+        cur_b = (ts_b, uuid.uuid4())
+
+        await _save_cursors_atomic(
+            pool,
+            [("job_posting", cur_a), ("typesense:job_posting", cur_b)],
+        )
+
+        # Both cursors readable.
+        a = await _get_cursor(pool, "job_posting")
+        b = await _get_cursor(pool, "typesense:job_posting")
+        assert a == cur_a
+        assert b == cur_b
+
+    async def test_empty_input_is_noop(self):
+        """Caller may pass [] (no cursors to save). Must not allocate a
+        transaction or touch the connection — otherwise an empty tick
+        wastes a TX slot every export interval."""
+        pool = _make_pool()
+        await _save_cursors_atomic(pool, [])
+        pool.acquire.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# run_exporter dual-path cursor save (issue #3171 wiring)
+# ---------------------------------------------------------------------------
+
+
+class TestRunExporterAtomicCursorWiring:
+    """The exporter loop's dual path must call ``_save_cursors_atomic``
+    rather than two sequential ``_save_cursor`` calls — otherwise the
+    atomic helper exists but is bypassed and #3171 silently regresses.
+    """
+
+    async def test_dual_path_uses_atomic_helper(self):
+        local = _make_pool()
+        supa = _make_pool()
+        shutdown = asyncio.Event()
+
+        local.fetchrow = AsyncMock(return_value=None)
+        local.fetch = AsyncMock(return_value=[])
+        local.execute = AsyncMock()
+        local.fetchval = AsyncMock(return_value=0)
+        local.get_size = MagicMock(return_value=1)
+        local.get_idle_size = MagicMock(return_value=1)
+        supa.get_size = MagicMock(return_value=1)
+        supa.get_idle_size = MagicMock(return_value=1)
+
+        ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        pid = uuid.uuid4()
+        new_supa = (ts, pid)
+        new_ts = (ts, pid)
+
+        async def _fake_dual(*_a, **_kw):
+            return 0, new_supa, new_ts
+
+        with (
+            patch("src.exporter._typesense_enabled", return_value=True),
+            patch(
+                "src.exporter._get_taxonomy_maps",
+                new_callable=AsyncMock,
+                return_value=TaxonomyMaps(),
+            ),
+            patch("src.exporter._export_postings_dual", side_effect=_fake_dual),
+            patch("src.exporter._save_cursors_atomic", new_callable=AsyncMock) as mock_atomic,
+            patch("src.exporter._save_cursor", new_callable=AsyncMock) as mock_single,
+            patch(
+                "src.exporter.get_queue_depths",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
+        ):
+
+            async def set_shutdown():
+                await asyncio.sleep(0.05)
+                shutdown.set()
+
+            await asyncio.gather(
+                run_exporter(local, supa, shutdown),
+                set_shutdown(),
+            )
+
+            # At least one tick must have used the atomic helper.
+            assert mock_atomic.await_count >= 1, (
+                "dual-path tick must persist both cursors atomically (#3171)"
+            )
+            # And the single-cursor helper must not be called from the
+            # dual path — that's what re-introduced the partial-write
+            # window in the first place.
+            assert mock_single.await_count == 0, (
+                "_save_cursor must not be called in the dual path; use "
+                "_save_cursors_atomic so both cursors are committed in "
+                "one transaction"
+            )
