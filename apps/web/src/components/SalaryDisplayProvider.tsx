@@ -1,8 +1,9 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useMemo, useCallback, type ReactNode } from "react";
+import { useLingui } from "@lingui/react/macro";
 import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
-import { formatSalary, type SalaryPeriod } from "@/lib/salary";
+import { formatSalary, type PeriodLabel, type SalaryPeriod } from "@/lib/salary";
 
 interface SalaryDisplayContextValue {
   displayCurrency: string | null;
@@ -30,6 +31,7 @@ export function SalaryDisplayProvider({
   salaryPeriod?: string | null;
   children: ReactNode;
 }) {
+  const { t } = useLingui();
   const [rates, setRates] = useState<CurrencyRate[]>([]);
   const [displayCurrency, setDisplayCurrency] = useState(initialCurrency);
   const [salaryPeriod, setSalaryPeriod] = useState(initialPeriod);
@@ -45,6 +47,21 @@ export function SalaryDisplayProvider({
     if (opts.salaryPeriod !== undefined) setSalaryPeriod(opts.salaryPeriod);
   }, []);
 
+  // Locale-aware period suffix used when the salary is shown as
+  // "<amount> <CCY> / <period>" on posting cards and detail pages.
+  const periodLabel: PeriodLabel = useCallback((p) => {
+    switch (p) {
+      case "yearly":
+        return t({ id: "common.salary.period.yearly", comment: "Salary period suffix shown after the amount, e.g. '50k EUR / yearly'", message: "yearly" });
+      case "monthly":
+        return t({ id: "common.salary.period.monthly", comment: "Salary period suffix shown after the amount, e.g. '5k EUR / monthly'", message: "monthly" });
+      case "daily":
+        return t({ id: "common.salary.period.daily", comment: "Salary period suffix shown after the amount, e.g. '300 EUR / daily'", message: "daily" });
+      case "hourly":
+        return t({ id: "common.salary.period.hourly", comment: "Salary period suffix shown after the amount, e.g. '26 USD / hourly'", message: "hourly" });
+    }
+  }, [t]);
+
   const value = useMemo<SalaryDisplayContextValue>(() => ({
     displayCurrency,
     displayPeriod,
@@ -54,9 +71,10 @@ export function SalaryDisplayProvider({
         displayCurrency,
         displayPeriod,
         rates,
+        periodLabel,
       }),
     update,
-  }), [displayCurrency, displayPeriod, rates, update]);
+  }), [displayCurrency, displayPeriod, rates, update, periodLabel]);
 
   return (
     <SalaryDisplayContext.Provider value={value}>

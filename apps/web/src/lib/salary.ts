@@ -10,6 +10,20 @@ const TO_YEARLY: Record<SalaryPeriod, number> = {
   hourly: 2016, // 252 × 8
 };
 
+/**
+ * Crawler-side encoding: hourly salaries are stored in **cents** (the smallest
+ * monetary unit of the source currency) so they can be exact integers
+ * (e.g. $25.50/hr → 2550). All other periods are stored as whole units.
+ * See `apps/crawler/src/processing/cpu.py::_extract_salary_fields` and the
+ * `SalaryRange` dataclass in `apps/crawler/src/core/salary_extract.py`.
+ *
+ * The DB stores raw values; consumers must scale back when the period is
+ * `hourly`. Returns the value in whole units (e.g. 25.50 for "$25.50/hr").
+ */
+export function decodeStoredAmount(amount: number, period: SalaryPeriod): number {
+  return period === "hourly" ? amount / 100 : amount;
+}
+
 export function convertAmount(
   amount: number,
   fromCurrency: string,
@@ -35,6 +49,15 @@ export function convertAmount(
   return Math.round(val);
 }
 
+/**
+ * Period-suffix label provider. Callers in client components inject a
+ * Lingui-translated label per period; default falls back to English so
+ * pure-function consumers (tests, server scripts) still work.
+ */
+export type PeriodLabel = (period: SalaryPeriod) => string;
+
+const DEFAULT_PERIOD_LABEL: PeriodLabel = (p) => p;
+
 export function formatSalary(
   min: number | null,
   max: number | null,
@@ -44,6 +67,7 @@ export function formatSalary(
     displayCurrency?: string | null;
     displayPeriod?: SalaryPeriod | null;
     rates?: CurrencyRate[];
+    periodLabel?: PeriodLabel;
   },
 ): string {
   if (min == null && max == null) return "";
@@ -53,9 +77,19 @@ export function formatSalary(
   const toCur = opts?.displayCurrency && opts.rates?.length ? opts.displayCurrency : fromCur;
   const toPeriod = opts?.displayPeriod ?? fromPeriod;
   const rates = opts?.rates ?? [];
+  const periodLabel = opts?.periodLabel ?? DEFAULT_PERIOD_LABEL;
 
-  const conv = (n: number) => convertAmount(n, fromCur, toCur, fromPeriod, toPeriod, rates);
-  const fmt = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
+  // Decode the storage convention: hourly values come in cents.
+  // Do this BEFORE currency/period conversion so downstream math is in whole units.
+  const decode = (n: number) => decodeStoredAmount(n, fromPeriod);
+  const conv = (n: number) => convertAmount(decode(n), fromCur, toCur, fromPeriod, toPeriod, rates);
+  const fmt = (n: number) => {
+    if (toPeriod === "hourly") {
+      // For hourly rates, the natural unit is a small whole number — round to integer.
+      return String(Math.round(n));
+    }
+    return n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n));
+  };
 
   const cMin = min != null ? conv(min) : null;
   const cMax = max != null ? conv(max) : null;
@@ -70,7 +104,7 @@ export function formatSalary(
   }
 
   if (toPeriod !== "yearly") {
-    parts.push(`/ ${toPeriod}`);
+    parts.push(`/ ${periodLabel(toPeriod)}`);
   }
 
   return parts.join(" ");
