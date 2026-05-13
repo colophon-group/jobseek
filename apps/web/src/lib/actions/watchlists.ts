@@ -20,7 +20,7 @@ import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/co
 import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations";
 import { expandOccupationIds, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
-import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "@/lib/search/typesense-filters";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import {
   upsertWatchlist as tsUpsertWatchlist,
@@ -1110,6 +1110,13 @@ export async function getWatchlistPostings(params: {
  * feed the "N active · M in the last year" stats row on the watchlist
  * view. `per_page: 0` so Typesense returns only the `found` total with
  * no documents — cheap and cacheable.
+ *
+ * Composes with {@link POSTING_FLOW_FILTER} (`has_content:!=false`) so
+ * the year-count stays consistent with the active-count's
+ * {@link POSTING_BASE_FILTER} on the content-quality dimension — see
+ * issue #3029 / follow-up to #2965. Without this, broken/empty
+ * postings inflate the year badge but are correctly hidden from the
+ * active badge, producing visible "active disagrees with year" rows.
  */
 export async function getWatchlistPostingYearCount(params: {
   companyIds: string[];
@@ -1142,7 +1149,7 @@ export async function getWatchlistPostingYearCount(params: {
     const hasKeywords = params.keywords && params.keywords.length > 0;
     const keywordsQ = hasKeywords ? params.keywords!.join(" ") : "*";
     const oneYearAgo = Math.floor((Date.now() - 365 * 24 * 3600 * 1000) / 1000);
-    const parts = [`first_seen_at:>${oneYearAgo}`];
+    const parts = [POSTING_FLOW_FILTER, `first_seen_at:>${oneYearAgo}`];
     if (params.companyIds.length > 0 && params.companyIds.length <= COMPANY_BATCH_SIZE) {
       parts.push(`company_id:[${params.companyIds.join(",")}]`);
     } else if (params.companyIds.length > COMPANY_BATCH_SIZE) {
@@ -1234,7 +1241,11 @@ export async function getWatchlistPostingDisplayCounts(
 
   const oneYearAgo = Math.floor((Date.now() - 365 * 24 * 3600 * 1000) / 1000);
   const activeFilter = baseFilterParts([POSTING_BASE_FILTER]);
-  const yearFilter = baseFilterParts([`first_seen_at:>${oneYearAgo}`]);
+  // Mirror `POSTING_FLOW_FILTER` (#2965) on the year filter so the
+  // year-count stays content-quality-consistent with the active filter
+  // (which already includes `has_content:!=false` via POSTING_BASE_FILTER).
+  // See issue #3029.
+  const yearFilter = baseFilterParts([POSTING_FLOW_FILTER, `first_seen_at:>${oneYearAgo}`]);
 
   try {
     const client = getSearchClient();

@@ -106,12 +106,17 @@ describe("buildFilterString — workMode (#2983)", () => {
 // POSTING_BASE_FILTER. Including `is_active:true` collapses year-count
 // to active-count (an active job, by definition, was first-seen in the
 // past — so the time window selects no extra docs once is_active is on).
+//
+// Also (#3029): apply the same invariant to `actions/watchlists.ts`,
+// where the watchlist-page year-count was constructed without any
+// content-quality clause, inflating the year badge vs the active badge.
 // =====================================================================
 
-describe("year-count badge filters reference POSTING_FLOW_FILTER (#2965)", () => {
+describe("year-count badge filters reference POSTING_FLOW_FILTER (#2965, #3029)", () => {
   const SOURCES = [
     "../typesense.ts",
     "../typesense-browser.ts",
+    "../../actions/watchlists.ts",
   ] as const;
 
   for (const rel of SOURCES) {
@@ -121,8 +126,8 @@ describe("year-count badge filters reference POSTING_FLOW_FILTER (#2965)", () =>
       const lines = src.split("\n");
 
       // Match template-literal substrings starting with `first_seen_at:>`
-      // and ending at the closing backtick on the same line. The four call
-      // sites in #2965 all build the year filter on a single line.
+      // and ending at the closing backtick on the same line. The five call
+      // sites (#2965 + #3029) all build the year filter on a single line.
       const yearFilterLines = lines.filter((line) =>
         line.includes("first_seen_at:>") &&
         // ignore comment-only lines so we don't false-positive on docs
