@@ -329,7 +329,7 @@ export function Features() {
   return (
     <section
       id={siteConfig.features.anchorId}
-      className="relative z-[1] overflow-x-hidden overflow-y-visible py-16 pb-8 md:py-24 md:pb-12"
+      className="relative z-[1] scroll-mt-24 overflow-x-hidden overflow-y-visible py-16 pb-8 md:scroll-mt-32 md:py-24 md:pb-12"
     >
       <div className="flex flex-col gap-24 md:gap-32">
         {/* Order is ICP-first: watchlist (s3) → tracker (s2) → search (s1).
