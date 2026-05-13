@@ -155,10 +155,7 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
       return;
     }
 
-    const { error } = await (authClient as unknown as {
-      requestPasswordReset: (opts: { email: string; redirectTo: string }) =>
-        Promise<{ error: { message?: string } | null }>;
-    }).requestPasswordReset({
+    const { error } = await authClient.requestPasswordReset({
       email: user.email,
       redirectTo: "/reset-password",
     });
@@ -240,7 +237,7 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await authClient.isUsernameAvailable({ username: norm });
-        setAvailable(!!(res.data as unknown as { available: boolean })?.available);
+        setAvailable(!!res.data?.available);
       } catch {
         setAvailable(null);
       }
