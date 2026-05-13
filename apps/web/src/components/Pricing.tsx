@@ -4,7 +4,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
+import { eyebrowClass, sectionHeadingClass, sectionScrollMarginClass } from "@/lib/styles";
 import { Button } from "@/components/ui/Button";
 import { CircleCheck } from "lucide-react";
 
@@ -96,7 +96,7 @@ export function Pricing() {
   return (
     <section
       id={siteConfig.pricing.anchorId}
-      className="mx-auto max-w-[1200px] scroll-mt-24 px-4 py-12 md:scroll-mt-32 md:py-20"
+      className={`mx-auto max-w-[1200px] px-4 py-12 md:py-20 ${sectionScrollMarginClass}`}
     >
       <div className="mx-auto flex max-w-[640px] flex-col gap-4 text-center">
         <span className={eyebrowClass}>
