@@ -401,7 +401,7 @@ def save_workspace(ws: Workspace) -> None:
 
 
 @contextmanager
-def update_workspace(slug: str) -> Generator[Workspace, None, None]:
+def update_workspace(slug: str) -> Generator[Workspace]:
     """Atomic read-modify-write for workspace.yaml.
 
     Usage::
