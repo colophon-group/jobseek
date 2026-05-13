@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     drain_producers: int = 2
     drain_consumers: int = 30
     drain_buffer_size: int = 200
+    # Periodic reaper for orphaned r2_uploaded=NULL rows (#3168). The
+    # startup reaper always runs once before producers; this sweep
+    # catches consumer crashes that happen later in the process
+    # lifetime. Default 300s (5 minutes).
+    drain_reaper_interval: int = 300
 
     # Exporter
     export_interval: int = 1
