@@ -33,9 +33,9 @@
  */
 
 import { cache } from "react";
-import Link from "next/link";
 import { Eye, Briefcase } from "lucide-react";
 import { CompanyIcon } from "@/components/CompanyIcon";
+import { NavLink } from "@/components/NavLink";
 import { loadCatalog, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import {
@@ -80,7 +80,7 @@ function MentionPill({
   // inheritance. Without it, the prose `a` rule paints the whole pill
   // blue and underlines every word inside.
   return (
-    <Link
+    <NavLink
       href={href}
       className="mention inline-flex items-center gap-1.5 align-baseline rounded-md border border-border-soft bg-border-soft/40 px-2 py-0.5 text-[0.95em] transition-colors hover:bg-border-soft"
     >
@@ -89,7 +89,7 @@ function MentionPill({
       </span>
       <span className="font-medium">{label}</span>
       {meta && <span className="text-muted">{meta}</span>}
-    </Link>
+    </NavLink>
   );
 }
 
@@ -128,7 +128,7 @@ function MentionCard({
   // `app/globals.css` — undoes the post-body link underline + info-color
   // inheritance so the card's internal color/typography controls win.
   return (
-    <Link
+    <NavLink
       href={href}
       className="mention my-6 flex w-full flex-col gap-3 rounded-md border border-border-soft bg-border-soft/30 p-5 transition-colors hover:bg-border-soft"
     >
@@ -165,7 +165,7 @@ function MentionCard({
           ))}
         </ul>
       )}
-    </Link>
+    </NavLink>
   );
 }
 
