@@ -47,6 +47,18 @@ export type WatchlistFilters = {
    * legacy garbage from older client versions).
    */
   workMode?: ("onsite" | "hybrid" | "remote")[];
+  /**
+   * Employment-type filter — `full_time | part_time | contract |
+   * internship | temporary | volunteer`. Issue #3037 — closes the
+   * parity gap between this watchlist editor and the explore page's
+   * `AdvancedSearchPanel`. Same backwards-compat shape as `workMode`:
+   * missing on legacy rows ⇒ undefined ⇒ no filter applied. The
+   * column is JSONB and untrusted at read time; downstream consumers
+   * forward values straight into Typesense `filter_by` so any future
+   * sanitisation must live in `buildFilterString` (already accepts
+   * `employmentTypes`).
+   */
+  employmentType?: string[];
   salaryMin?: number;
   salaryMax?: number;
   salaryCurrency?: string;
@@ -809,6 +821,8 @@ function buildFilterCacheKey(f: WatchlistFilters, companyIds: string[]): string 
   if (f.occupationSlugs?.length) parts.push(`occ:${[...f.occupationSlugs].sort().join(",")}`);
   if (f.senioritySlugs?.length) parts.push(`sen:${[...f.senioritySlugs].sort().join(",")}`);
   if (f.technologySlugs?.length) parts.push(`tech:${[...f.technologySlugs].sort().join(",")}`);
+  if (f.workMode?.length) parts.push(`wm:${[...f.workMode].sort().join(",")}`);
+  if (f.employmentType?.length) parts.push(`et:${[...f.employmentType].sort().join(",")}`);
   if (f.salaryMin != null) parts.push(`smin:${f.salaryMin}`);
   if (f.salaryMax != null) parts.push(`smax:${f.salaryMax}`);
   if (f.experienceMin != null) parts.push(`emin:${f.experienceMin}`);
@@ -841,6 +855,8 @@ export async function getWatchlistMatchingCompanyCount(
       occupationIds: occMap.size > 0 ? [...occMap.values()].map((o) => o.id) : undefined,
       seniorityIds: senMap.size > 0 ? [...senMap.values()].map((s) => s.id) : undefined,
       technologyIds: techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined,
+      workMode: f.workMode?.length ? f.workMode : undefined,
+      employmentTypes: f.employmentType?.length ? f.employmentType : undefined,
       salaryMinEur: f.salaryMin,
       salaryMaxEur: f.salaryMax,
       experienceMin: f.experienceMin,
@@ -903,6 +919,8 @@ async function resolveFilteredJobCount(
       occupationIds: occMap.size > 0 ? [...occMap.values()].map((o) => o.id) : undefined,
       seniorityIds: senMap.size > 0 ? [...senMap.values()].map((s) => s.id) : undefined,
       technologyIds: techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined,
+      workMode: f.workMode?.length ? f.workMode : undefined,
+      employmentType: f.employmentType?.length ? f.employmentType : undefined,
       salaryMin: f.salaryMin,
       salaryMax: f.salaryMax,
       experienceMin: f.experienceMin,
@@ -1077,6 +1095,13 @@ export async function getWatchlistPostings(params: {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  /** Work-mode filter — `onsite | hybrid | remote` (issue #3037). */
+  workMode?: ("onsite" | "hybrid" | "remote")[];
+  /** Employment-type filter (issue #3037). Untyped because legacy
+   * documents may carry strings outside the canonical six; downstream
+   * `buildFilterString` joins values raw, so any sanitisation must
+   * happen there. */
+  employmentType?: string[];
   salaryMin?: number;
   salaryMax?: number;
   experienceMin?: number;
@@ -1119,6 +1144,8 @@ export async function getWatchlistPostingYearCount(params: {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  workMode?: ("onsite" | "hybrid" | "remote")[];
+  employmentType?: string[];
   salaryMin?: number;
   salaryMax?: number;
   experienceMin?: number;
@@ -1133,6 +1160,8 @@ export async function getWatchlistPostingYearCount(params: {
       occupationIds: params.occupationIds,
       seniorityIds: params.seniorityIds,
       technologyIds: params.technologyIds,
+      workMode: params.workMode?.length ? params.workMode : undefined,
+      employmentTypes: params.employmentType?.length ? params.employmentType : undefined,
       salaryMinEur: params.salaryMin,
       salaryMaxEur: params.salaryMax,
       experienceMin: params.experienceMin,
@@ -1498,6 +1527,8 @@ async function _getWatchlistPostingsTypesense(
     occupationIds?: number[];
     seniorityIds?: number[];
     technologyIds?: number[];
+    workMode?: ("onsite" | "hybrid" | "remote")[];
+    employmentType?: string[];
     salaryMin?: number;
     salaryMax?: number;
     experienceMin?: number;
@@ -1516,6 +1547,8 @@ async function _getWatchlistPostingsTypesense(
     occupationIds: params.occupationIds,
     seniorityIds: params.seniorityIds,
     technologyIds: params.technologyIds,
+    workMode: params.workMode?.length ? params.workMode : undefined,
+    employmentTypes: params.employmentType?.length ? params.employmentType : undefined,
     salaryMinEur: params.salaryMin,
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,
@@ -1590,6 +1623,8 @@ async function _getWatchlistPostingsBatched(
     occupationIds?: number[];
     seniorityIds?: number[];
     technologyIds?: number[];
+    workMode?: ("onsite" | "hybrid" | "remote")[];
+    employmentType?: string[];
     salaryMin?: number;
     salaryMax?: number;
     experienceMin?: number;
@@ -1606,6 +1641,8 @@ async function _getWatchlistPostingsBatched(
     occupationIds: params.occupationIds,
     seniorityIds: params.seniorityIds,
     technologyIds: params.technologyIds,
+    workMode: params.workMode?.length ? params.workMode : undefined,
+    employmentTypes: params.employmentType?.length ? params.employmentType : undefined,
     salaryMinEur: params.salaryMin,
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,
@@ -1703,6 +1740,8 @@ async function _getWatchlistPostingsPostgres(
     occupationIds?: number[];
     seniorityIds?: number[];
     technologyIds?: number[];
+    workMode?: ("onsite" | "hybrid" | "remote")[];
+    employmentType?: string[];
     salaryMin?: number;
     salaryMax?: number;
     experienceMin?: number;
@@ -1759,6 +1798,19 @@ async function _getWatchlistPostingsPostgres(
   if (params.technologyIds && params.technologyIds.length > 0) {
     const pgArr = `{${params.technologyIds.join(",")}}`;
     clauses.push(sql`jp.technology_ids && ${pgArr}::integer[]`);
+  }
+  if (params.workMode && params.workMode.length > 0) {
+    // `location_types` is `text[]`. Use && (array overlap) to mirror
+    // Typesense `location_types:[a,b]` (OR semantics across values).
+    // Postings with NULL/empty `location_types` (~0.9% of active on
+    // 2026-05-09) drop out silently — matches the Typesense path.
+    const pgArr = `{${params.workMode.join(",")}}`;
+    clauses.push(sql`jp.location_types && ${pgArr}::text[]`);
+  }
+  if (params.employmentType && params.employmentType.length > 0) {
+    // `employment_type` is a single text column — use `= ANY(...)`.
+    const pgArr = `{${params.employmentType.join(",")}}`;
+    clauses.push(sql`jp.employment_type = ANY(${pgArr}::text[])`);
   }
   if (params.salaryMin != null && params.salaryMax != null) {
     clauses.push(sql`jp.salary_eur BETWEEN ${params.salaryMin} AND ${params.salaryMax}`);

@@ -93,6 +93,13 @@ export async function fetchWatchlistPageData(params: {
     .map((slug) => techMap.get(slug))
     .filter((t): t is NonNullable<typeof t> => t != null);
 
+  // Re-validate workMode strings before letting them flow into the
+  // Typesense filter — JSONB column means we can't trust the shape.
+  // Mirrors the same guard in the client-side editor (issue #3037).
+  const WORK_MODE_VALUES = new Set(["onsite", "hybrid", "remote"] as const);
+  const validatedWorkMode = (filters.workMode ?? []).filter(
+    (m): m is "onsite" | "hybrid" | "remote" => WORK_MODE_VALUES.has(m),
+  );
   const sharedCountsParams = {
     companyIds: filters.anyCompany ? [] : detail.companies.map((c) => c.id),
     anyCompany: filters.anyCompany,
@@ -101,6 +108,8 @@ export async function fetchWatchlistPageData(params: {
     occupationIds: resolvedOccupations.map((o) => o.id),
     seniorityIds: resolvedSeniorities.map((s) => s.id),
     technologyIds: resolvedTechnologies.map((t) => t.id),
+    workMode: validatedWorkMode.length > 0 ? validatedWorkMode : undefined,
+    employmentType: filters.employmentType?.length ? filters.employmentType : undefined,
     salaryMin: filters.salaryMin,
     salaryMax: filters.salaryMax,
     experienceMin: filters.experienceMin,
