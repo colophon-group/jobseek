@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatSalary, decodeStoredAmount, type PeriodLabel } from "../salary";
+import { formatSalary, decodeStoredAmount, convertAmount, type PeriodLabel } from "../salary";
 
 describe("decodeStoredAmount", () => {
   it("divides hourly amounts by 100 (cents → whole units)", () => {
@@ -83,6 +83,32 @@ describe("formatSalary — #3144 period suffix i18n", () => {
     const out = formatSalary(120000, 150000, "USD", "yearly", { periodLabel: deLabel });
     expect(out).toBe("120k–150k USD");
     expect(out).not.toContain("jährlich");
+  });
+});
+
+describe("convertAmount — #3194 hourly annualization parity with crawler", () => {
+  // The crawler-side `salary_eur` column (which powers the filter slider)
+  // annualizes hourly amounts with 2080 hours/year — see
+  // `apps/crawler/src/processing/cpu.py::_extract_salary_fields`. The
+  // web's converter MUST use the same constant so that the displayed
+  // yearly equivalent of an hourly posting agrees with the cutoff the
+  // filter is operating on. Before the fix it used 2016 (252 × 8).
+
+  it("converts $25/hour to $52,000/year (2080 × 25), matching crawler salary_eur", () => {
+    // Crawler stores $25/hr as 2500 cents → salary_eur uses 25 * 2080 = 52,000
+    // Web's convertAmount takes whole units (post-decode), so $25 directly.
+    expect(convertAmount(25, "USD", "USD", "hourly", "yearly", [])).toBe(52000);
+  });
+
+  it("converts $50/hour to $104,000/year (2080 × 50)", () => {
+    expect(convertAmount(50, "USD", "USD", "hourly", "yearly", [])).toBe(104000);
+  });
+
+  it("round-trips hourly→yearly→hourly without drift (within rounding)", () => {
+    const hourly = 30;
+    const yearly = convertAmount(hourly, "USD", "USD", "hourly", "yearly", []);
+    const back = convertAmount(yearly, "USD", "USD", "yearly", "hourly", []);
+    expect(back).toBe(hourly);
   });
 });
 
