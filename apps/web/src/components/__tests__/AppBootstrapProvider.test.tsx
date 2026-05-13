@@ -1,5 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
+// SalaryDisplayProvider (mounted via AppBootstrapProvider) now calls
+// `useLingui()` for the period-suffix label (#3144). Stub the Lingui
+// surface so the provider hierarchy can render without an I18n setup.
+import "@/test-utils/lingui-mock";
 import { useSession } from "../SessionProvider";
 
 // The real `@/lib/actions/bootstrap` is a server action that transitively
