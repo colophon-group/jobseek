@@ -717,8 +717,15 @@ export function SearchPage({
     occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
     seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
     technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
+    // #3066 — workMode + employmentTypes flow through so the work-mode and
+    // employment-type modals can cross-filter their per-option counts against
+    // each other (parity with watchlist-view-page). AdvancedSearchPanel strips
+    // the active dimension before passing this object down to the matching
+    // modal, so the counts answer "what would I see if I toggled this on".
+    workMode: workMode.length > 0 ? workMode : undefined,
+    employmentTypes: employmentTypes.length > 0 ? employmentTypes : undefined,
     languages: languages.length > 0 ? languages : undefined,
-  }), [keywords, locations, occupations, seniorities, technologies, languages]);
+  }), [keywords, locations, occupations, seniorities, technologies, workMode, employmentTypes, languages]);
 
   const searchColumn = (
     <div className="space-y-6">
