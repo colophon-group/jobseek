@@ -22,6 +22,7 @@ from src.core.monitors import (
     slugs_from_url,
 )
 from src.shared.http_retry import PaginationFetchError, is_retryable_status
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -365,8 +366,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
         if len(jobs) >= MAX_JOBS:
             log.warning("lever.truncated", url=url, total=len(jobs), cap=MAX_JOBS)
-            jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
-            break
+            return truncated_rich_result(jobs)
 
         await asyncio.sleep(0.5)
 

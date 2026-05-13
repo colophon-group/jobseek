@@ -28,6 +28,7 @@ import structlog
 
 from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import DiscoveredJob, register
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -528,7 +529,8 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
         if len(all_jobs) >= MAX_JOBS:
             log.warning("amazon.truncated", total=len(all_jobs), cap=MAX_JOBS)
-            break
+            log.info("amazon.discovered", total=len(all_jobs), countries=len(country_codes))
+            return truncated_rich_result(all_jobs)
 
     log.info("amazon.discovered", total=len(all_jobs), countries=len(country_codes))
     return all_jobs
@@ -595,6 +597,9 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     seen_urls: set[str] = set()
     total_jobs = 0
 
+    # Local import to avoid a top-level cycle with src.core.monitor.
+    from src.core.monitor import MonitorResult as _MR
+
     for country_code in country_codes:
         params = {**base_params, "country": country_code}
         country_jobs, country_total = await _paginate_query(client, params)
@@ -647,6 +652,11 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
 
         if total_jobs >= MAX_JOBS:
             log.warning("amazon.truncated", total=total_jobs, cap=MAX_JOBS)
+            # Flag the run as partial (#3216). The pipeline reads
+            # ``truncated`` on this empty trailing batch, marks the
+            # cycle partial, and skips gone-detection for the unseen
+            # tail beyond MAX_JOBS.
+            yield _MR(urls=set(), jobs_by_url={}, truncated=True)
             break
 
     log.info("amazon.discovered", total=total_jobs, countries=len(country_codes))

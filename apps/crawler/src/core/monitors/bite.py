@@ -27,6 +27,7 @@ import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register
+from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
@@ -164,10 +165,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
         log.info("bite.no_jobs", key=key[:8] + "...")
         return set()
 
-    if len(urls) > MAX_JOBS:
-        log.warning("bite.truncated", total=len(urls), cap=MAX_JOBS)
-
     log.info("bite.listed", key=key[:8] + "...", jobs=len(urls))
+
+    if len(urls) >= MAX_JOBS:
+        log.warning("bite.truncated", total=len(urls), cap=MAX_JOBS)
+        return truncated_url_result(urls)
 
     return urls
 

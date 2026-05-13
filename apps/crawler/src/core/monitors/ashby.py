@@ -20,6 +20,7 @@ from src.core.monitors import (
     register,
     slugs_from_url,
 )
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -214,7 +215,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     if len(jobs) > MAX_JOBS:
         log.warning("ashby.truncated", url=url, total=len(jobs), cap=MAX_JOBS)
-        jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
+        return truncated_rich_result(jobs)
 
     return jobs
 

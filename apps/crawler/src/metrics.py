@@ -46,6 +46,19 @@ monitor_gone_skipped_total = Counter(
     ["reason"],
 )
 
+# Cycles where a monitor hit its MAX_JOBS cap and returned a truncated
+# discovery list (#3216). Each truncation is a known silent-data-loss
+# signal: the unseen tail beyond the cap would otherwise be tombstoned
+# by ``_MARK_GONE_BY_TIMESTAMP``. The pipeline marks the run as partial
+# and suppresses gone-detection for the affected cycle. ``board_id``
+# attribution lets ops trace which board breached the cap without
+# grepping logs. Cardinality stays bounded — only breaching boards emit.
+monitor_truncated_total = Counter(
+    "crawler_monitor_truncated_total",
+    "Cycles where a monitor truncated discovery at the MAX_JOBS cap",
+    ["board_id"],
+)
+
 monitor_url_filtered_total = Counter(
     "crawler_monitor_url_filtered_total",
     "URLs dropped by monitor pre-insert sanity checks",

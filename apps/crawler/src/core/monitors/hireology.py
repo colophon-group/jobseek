@@ -21,6 +21,7 @@ import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
 from src.shared.http_retry import PaginationFetchError, is_retryable_status
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -310,8 +311,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
         if len(jobs) >= MAX_JOBS:
             log.warning("hireology.truncated", slug=slug, total=len(jobs), cap=MAX_JOBS)
-            jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
-            break
+            return truncated_rich_result(jobs)
 
     return jobs
 

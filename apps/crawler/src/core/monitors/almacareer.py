@@ -37,6 +37,7 @@ import httpx
 import structlog
 
 from src.core.monitors import BoardGoneError, DiscoveredJob, fetch_page_text, register
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -632,6 +633,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     raw_ads: list[dict] = []
     page = 1
     last_page = 1
+    truncated = False
     while page <= last_page:
         listing = await _fetch_list_page(
             client,
@@ -648,6 +650,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         page += 1
         if len(raw_ads) >= MAX_JOBS:
             log.warning("almacareer.truncated", host=host, collected=len(raw_ads), cap=MAX_JOBS)
+            truncated = True
             break
 
     # ---- 2. Parse into DiscoveredJob ----
@@ -695,6 +698,8 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
                     error=str(result),
                 )
 
+    if truncated:
+        return truncated_rich_result(jobs)
     return jobs
 
 

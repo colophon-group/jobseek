@@ -28,6 +28,7 @@ from src.shared.http_retry import (
     PaginationFetchError,
     is_retryable_status,
 )
+from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
@@ -306,9 +307,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     # failure rather than silently truncating (#2747). Legitimate
     # end-of-pagination signals (404/410, or a 200 with no jobs / only
     # duplicate jobs) terminate the loop as success.
+    truncated = False
     if table_nr:
         page = 2
-        while len(jobs) < MAX_JOBS and page <= MAX_PAGES:
+        while page <= MAX_PAGES:
+            if len(jobs) >= MAX_JOBS:
+                truncated = True
+                break
             page_url = f"{listing_url}?tc{table_nr}=p{page}"
             page_html = await _get_page_with_retry(client, page_url)
             if page_html is None:
@@ -324,15 +329,15 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
                 break
             jobs.extend(page_jobs)
             page += 1
+        else:
+            # Hit MAX_PAGES without hitting an end-of-pagination signal —
+            # also a truncation (the next page may have more jobs).
+            truncated = True
 
     label = cname or customer_id
     if not jobs:
         log.info("umantis.no_jobs", customer_id=label)
         return set()
-
-    if len(jobs) > MAX_JOBS:
-        log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
-        jobs = jobs[:MAX_JOBS]
 
     log.info("umantis.listed", customer_id=label, jobs=len(jobs))
 
@@ -344,6 +349,9 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
             seen.add(url)
             unique.add(url)
 
+    if truncated:
+        log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
+        return truncated_url_result(unique)
     return unique
 
 
