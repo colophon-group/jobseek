@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 
 from src.shared.proxy import httpx_proxy_for
+from src.shared.ssrf import SSRFGuardedTransport
 
 
 def _make_ssl_context() -> ssl.SSLContext:
@@ -79,9 +80,62 @@ def _client_kwargs(*, verify: bool, use_proxy: bool) -> dict[str, Any]:
     return kwargs
 
 
+def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClient:
+    """Construct an ``httpx.AsyncClient`` with the SSRF guard installed.
+
+    httpx's own ``AsyncClient(proxy=...)`` path builds an internal
+    ``AsyncHTTPTransport(proxy=...)`` and routes it via ``_mounts``; the
+    default (no-proxy) path uses a plain ``AsyncHTTPTransport``. Both
+    paths converge on ``transport.handle_async_request`` per request +
+    per redirect, so wrapping the resolved transport with
+    :class:`~src.shared.ssrf.SSRFGuardedTransport` catches every fetch
+    regardless of whether it was proxied.
+
+    We do the wrapping outside httpx by:
+
+      1. Reading the resolved ``proxy``, ``verify`` from ``kwargs``.
+      2. Building the underlying ``AsyncHTTPTransport`` ourselves with
+         the same options httpx would have used internally.
+      3. Wrapping it in ``SSRFGuardedTransport`` and passing it as the
+         single ``transport=`` argument. httpx will use this transport
+         for every request URL.
+
+    The original ``kwargs`` dict is NOT mutated — we shallow-copy and
+    pop the proxy/transport keys on the copy. This keeps callers
+    (including tests that introspect ``_client_kwargs`` output) seeing
+    the same shape they always have.
+    """
+    kw = dict(kwargs)
+    kw.update(extra)
+    proxy = kw.pop("proxy", None)
+    inner = kw.pop("transport", None)
+    if inner is None:
+        verify = kw.pop("verify", True)
+        transport_kwargs: dict[str, Any] = {"verify": verify}
+        if proxy is not None:
+            transport_kwargs["proxy"] = proxy
+        inner = httpx.AsyncHTTPTransport(**transport_kwargs)
+    else:
+        # An explicit transport was supplied — drop the httpx-managed
+        # verify/proxy kwargs so AsyncClient doesn't complain about
+        # them being ignored when a transport is provided.
+        kw.pop("verify", None)
+    kw["transport"] = SSRFGuardedTransport(inner)
+    return httpx.AsyncClient(**kw)
+
+
 def create_http_client(*, verify: bool = True, use_proxy: bool = False) -> httpx.AsyncClient:
-    """Create an httpx client, optionally routed through the active proxy provider."""
-    return httpx.AsyncClient(**_client_kwargs(verify=verify, use_proxy=use_proxy))
+    """Create an httpx client, optionally routed through the active proxy provider.
+
+    Every client returned here runs through
+    :class:`~src.shared.ssrf.SSRFGuardedTransport`, which rejects
+    requests whose target host resolves to a private / loopback /
+    link-local IP. Redirects to private IPs are blocked too because
+    httpx re-enters the transport for every redirect hop. See
+    :mod:`src.shared.ssrf` for the guard contract and the deployment
+    allowlist (Typesense / Postgres / Redis / proxy URL).
+    """
+    return _build_async_client(_client_kwargs(verify=verify, use_proxy=use_proxy))
 
 
 def create_nossl_http_client(*, use_proxy: bool = False) -> httpx.AsyncClient:
@@ -146,8 +200,8 @@ def create_logging_http_client(
             }
         )
 
-    client = httpx.AsyncClient(
-        **_client_kwargs(verify=verify, use_proxy=use_proxy),
+    client = _build_async_client(
+        _client_kwargs(verify=verify, use_proxy=use_proxy),
         event_hooks={"request": [_on_request], "response": [_on_response]},
     )
     return client, log_entries

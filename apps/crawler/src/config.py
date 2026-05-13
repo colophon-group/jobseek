@@ -19,6 +19,15 @@ class Settings(BaseSettings):
     webshare_proxy_url: str = ""
     decodo_proxy_url: str = ""
 
+    # SSRF guard — comma-separated list of ``host`` or ``host:port``
+    # entries that bypass the private-IP rejection in
+    # ``src.shared.ssrf``. The deployment's Postgres / Redis / Typesense
+    # hosts are derived automatically from their ``*_URL`` / ``*_HOST``
+    # settings; this knob is for ad-hoc boards or test fixtures that
+    # legitimately point at an internal service. Leave empty in
+    # production. See ``src/shared/ssrf.py`` for the threat model.
+    internal_hosts_allow: str = ""
+
     # Redis (local instance, not Upstash)
     redis_url: str = "redis://localhost:6379/0"
     # Pool size MUST be >= ``discovery_concurrency + monitor_concurrency``
