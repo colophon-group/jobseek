@@ -82,6 +82,18 @@ jobs:
         # sleep, and we cap at 10 min so a stuck Vercel build fails
         # the job loudly instead of submitting against a stale
         # surface.
+        #
+        # We filter the deployment list by `creator.login == "vercel[bot]"`
+        # because multiple workflows in this repo (ci.yml's "Test Web ISR
+        # (slow)", crawler-scheduled-maintenance.yml,
+        # deploy-crawler-browser.yml, sync-data.yml, deploy-murmur-shim.yml)
+        # also declare `environment: production` and therefore create their
+        # own Production deployment records via the GitHub Actions runner.
+        # Without the creator filter we could match a CI workflow's
+        # short-lived deployment (which finishes in seconds) instead of
+        # Vercel's actual build, race past it, and submit to IndexNow
+        # before content is live — exactly the race the original
+        # 5-min sleep guarded against.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEPLOY_SHA: ${{ github.sha }}
@@ -90,14 +102,16 @@ jobs:
           set -euo pipefail
           deadline=$(( $(date +%s) + 600 ))
           while :; do
-            # Collect every status state across every deployment matching
-            # this SHA in the Production environment. In practice there's
-            # exactly one (Vercel publishes one per SHA), but we don't
-            # depend on that. Statuses are returned newest-first, so the
-            # first terminal state in the stream wins.
+            # Collect every status state across every Vercel-bot deployment
+            # matching this SHA in the Production environment. In practice
+            # there's exactly one Vercel deployment per SHA, but we don't
+            # depend on that. The `creator.login` filter excludes Production
+            # deployment records this repo's own CI workflows create for
+            # their `environment: production` jobs. Statuses are returned
+            # newest-first, so the first terminal state in the stream wins.
             states=$(gh api \
               "repos/${REPO}/deployments?sha=${DEPLOY_SHA}&environment=Production&per_page=10" \
-              --jq '.[].statuses_url' \
+              --jq '.[] | select(.creator.login == "vercel[bot]") | .statuses_url' \
             | while read -r url; do
                 gh api "$url" --jq '.[].state'
               done) || true
