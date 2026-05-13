@@ -10,6 +10,7 @@ import type { WatchlistSummary, WatchlistFilters } from "@/lib/actions/watchlist
 import { createWatchlist } from "@/lib/actions/watchlists";
 import { WatchlistCard, CreateWatchlistCard } from "@/components/watchlist/watchlist-card";
 import { PublicWatchlistSearch } from "@/components/watchlist/public-watchlist-search";
+import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import { Button } from "@/components/ui/Button";
 
 export function WatchlistsPage({
@@ -27,11 +28,24 @@ export function WatchlistsPage({
   const { user, isLoggedIn } = useAuth();
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
+  const upgrade = useUpgradeModal();
+
+  function showLimitUpgrade() {
+    upgrade.show(t({
+      id: "upgrade.reason.watchlistLimit",
+      comment: "Reason shown in upgrade modal when watchlist creation limit reached",
+      message: "You've reached your watchlist limit. Upgrade your plan to create more watchlists.",
+    }));
+  }
 
   async function handleCreate(prefill?: { title?: string; description?: string; filters?: WatchlistFilters }) {
     if (creating || !isLoggedIn) return;
     if (limitReached) {
-      router.push(lp("/settings"));
+      // Issue #3036: redirecting to /settings (general tab) hid the
+      // reason from the user and put them on a tab unrelated to plans.
+      // Surface the same upgrade modal used elsewhere in the gating
+      // subsystem so the destination (billing) is explicit.
+      showLimitUpgrade();
       return;
     }
     setCreating(true);
@@ -42,6 +56,12 @@ export function WatchlistsPage({
         companyIds: [],
         filters: prefill?.filters,
       });
+      if ("error" in result) {
+        // Server-side race: client thought limit wasn't reached, but a
+        // concurrent create elsewhere raised the count. Same UX.
+        if (result.error === "limit_reached") showLimitUpgrade();
+        return;
+      }
       if ("slug" in result && (username ?? user?.username)) {
         router.push(lp(`/${username ?? user?.username}/${result.slug}`));
       } else {
@@ -55,7 +75,14 @@ export function WatchlistsPage({
   // Auto-create watchlist from URL params (e.g. from /api/v1/watchlist/create)
   useEffect(() => {
     const title = searchParams.get("title");
-    if (!title || !isLoggedIn || limitReached) return;
+    if (!title || !isLoggedIn) return;
+    if (limitReached) {
+      // Issue #3036: arriving with `?title=...` while at the plan
+      // limit used to silently no-op. Tell the user why nothing
+      // happened by surfacing the same upgrade modal.
+      showLimitUpgrade();
+      return;
+    }
 
     const q = searchParams.get("q");
     const loc = searchParams.get("loc");
@@ -92,6 +119,7 @@ export function WatchlistsPage({
   }, []);
 
   return (
+    <>
     <div className="space-y-8">
       {/* My watchlists */}
       <div>
@@ -162,5 +190,7 @@ export function WatchlistsPage({
       {/* Public search — always visible */}
       <PublicWatchlistSearch />
     </div>
+    <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
+    </>
   );
 }

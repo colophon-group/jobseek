@@ -528,6 +528,28 @@ export async function toggleWatchlistAlerts(
   return { enabled: newVal };
 }
 
+/**
+ * Combined fetch for the watchlists overview page: returns the user's
+ * watchlist summaries AND whether they've reached their plan limit.
+ *
+ * Issue #3036: the loader previously hardcoded ``limitReached: false``,
+ * which meant the ``CreateWatchlistCard`` never rendered its disabled
+ * state (tooltip + dimmed + upgrade modal on click). Compute the real
+ * value server-side so the gating UX matches the watchlist-detail page.
+ */
+export async function getUserWatchlistsWithLimit(
+  locale: string,
+): Promise<{ watchlists: WatchlistSummary[]; limitReached: boolean }> {
+  const userId = await getSessionUserId();
+  if (!userId) return { watchlists: [], limitReached: true };
+
+  const [watchlists, limit] = await Promise.all([
+    getUserWatchlists(locale),
+    canCreateWatchlist(userId),
+  ]);
+  return { watchlists, limitReached: !limit.allowed };
+}
+
 export async function getUserWatchlists(locale: string): Promise<WatchlistSummary[]> {
   const userId = await getSessionUserId();
   if (!userId) return [];

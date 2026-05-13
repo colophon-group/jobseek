@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getUserWatchlists, type WatchlistSummary } from "@/lib/actions/watchlists";
+import { getUserWatchlistsWithLimit, type WatchlistSummary } from "@/lib/actions/watchlists";
 import { useSession } from "@/components/SessionProvider";
 import { WatchlistsPage } from "./watchlists-page";
 
@@ -21,11 +21,15 @@ export function WatchlistsLoader({ locale }: { locale: string }) {
       setData({ watchlists: [], username: null, limitReached: true });
       return;
     }
-    getUserWatchlists(locale).then((watchlists) => {
+    // Issue #3036: previously hardcoded ``limitReached: false`` here,
+    // which left ``CreateWatchlistCard`` permanently enabled even for
+    // users at the plan limit. Server now returns both so the card
+    // surfaces its disabled state + upgrade modal correctly.
+    getUserWatchlistsWithLimit(locale).then(({ watchlists, limitReached }) => {
       setData({
         watchlists,
         username: user.username ?? null,
-        limitReached: false,
+        limitReached,
       });
     });
   }, [user, isPending, locale]);
