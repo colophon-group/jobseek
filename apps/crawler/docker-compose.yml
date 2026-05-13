@@ -240,15 +240,15 @@ services:
         # new copy. The volume itself persists across deploys; only its
         # contents get refreshed.
         rm -rf /runtime/venv /runtime/src /runtime/code
-        # `cp -a /usr/local/bin/python3.12 /runtime/venv/bin/python3.12`
+        # `cp -a /usr/local/bin/python3.13 /runtime/venv/bin/python3.13`
         # below requires the destination's parent dir to already exist —
         # cp does NOT auto-create `bin/` even with `-a`. Without this
         # explicit `mkdir -p /runtime/venv/bin`, the init service exits 1
-        # with `cp: cannot create regular file '/runtime/venv/bin/python3.12':
+        # with `cp: cannot create regular file '/runtime/venv/bin/python3.13':
         # No such file or directory`, the `service_completed_successfully`
         # depends-on gate stays red, and the shim never starts.
         # Live evidence: deploy run 25137948546 init container logs.
-        mkdir -p /runtime/venv /runtime/venv/bin /runtime/venv/lib/python3.12 /runtime/code
+        mkdir -p /runtime/venv /runtime/venv/bin /runtime/venv/lib/python3.13 /runtime/code
 
         # Build a relocatable Python install at /runtime/venv/. CPython
         # locates stdlib relative to the executable, so co-locating the
@@ -256,22 +256,22 @@ services:
         # prefix lets the shim invoke `/.../venv/bin/python3` without
         # any `PYTHONPATH`/`PYTHONHOME` gymnastics — invoke-lib only
         # sets PYTHONPATH=MURMUR_CRAWLER_ROOT for `-m` discovery.
-        cp -a /usr/local/bin/python3.12 /runtime/venv/bin/python3.12
-        ln -sf python3.12 /runtime/venv/bin/python3
-        ln -sf python3.12 /runtime/venv/bin/python
-        # libpython is loaded via `../lib/libpython3.12.so.1.0` (RPATH),
+        cp -a /usr/local/bin/python3.13 /runtime/venv/bin/python3.13
+        ln -sf python3.13 /runtime/venv/bin/python3
+        ln -sf python3.13 /runtime/venv/bin/python
+        # libpython is loaded via `../lib/libpython3.13.so.1.0` (RPATH),
         # so it must live at /runtime/venv/lib/.
-        cp -a /usr/local/lib/libpython3.12.so* /runtime/venv/lib/ 2>/dev/null || true
+        cp -a /usr/local/lib/libpython3.13.so* /runtime/venv/lib/ 2>/dev/null || true
         cp -a /usr/local/lib/libpython3.so /runtime/venv/lib/ 2>/dev/null || true
         # stdlib + shared site-packages root.
-        cp -a /usr/local/lib/python3.12/. /runtime/venv/lib/python3.12/
+        cp -a /usr/local/lib/python3.13/. /runtime/venv/lib/python3.13/
         # Merge the crawler venv's site-packages on top of the base
         # interpreter's stdlib site-packages. Order matters: cp -a
         # over the existing dir is additive — pre-existing files win
         # only if `cp -a` is told to skip-existing, which it isn't, so
         # the venv's site-packages overwrite duplicates (intended).
-        cp -a /app/.venv/lib/python3.12/site-packages/. \
-              /runtime/venv/lib/python3.12/site-packages/
+        cp -a /app/.venv/lib/python3.13/site-packages/. \
+              /runtime/venv/lib/python3.13/site-packages/
 
         # Crawler source (cli_shim et al.). Lives at a peer path so
         # invoke-lib's `cwd: MURMUR_CRAWLER_ROOT` lands somewhere with

@@ -2,7 +2,7 @@
 name = "jobseek-crawler"
 dynamic = ["version"]
 description = "Job listing monitor and extraction crawler"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "asyncpg>=0.30",
     "boto3>=1.35",
@@ -58,7 +58,7 @@ asyncio_mode = "auto"
 timeout = 30
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py313"
 line-length = 100
 
 [tool.ruff.lint]
