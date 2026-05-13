@@ -196,7 +196,7 @@ export const applicationInterview = pgTable("application_interview", {
 	scheduledAt: timestamp("scheduled_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("idx_ai_saved_job_round").using("btree", table.savedJobId.asc().nullsLast(), table.round.asc().nullsLast()),
+	uniqueIndex("idx_ai_saved_job_round").using("btree", table.savedJobId.asc().nullsLast(), table.round.asc().nullsLast()),
 	foreignKey({
 			columns: [table.savedJobId],
 			foreignColumns: [savedJob.id],

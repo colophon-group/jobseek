@@ -298,21 +298,26 @@ export async function updateJobStatus(
     .set(updates)
     .where(eq(savedJob.id, savedJobId));
 
-  // Auto-create first interview if transitioning to interviewing with none
+  // Auto-create first interview if transitioning to interviewing with none.
+  //
+  // Race with `addInterview` (#3160): two tabs running
+  // `updateJobStatus('interviewing')` and `addInterview(...)` for the same
+  // saved_job both observe "no interviews yet" and both insert round=1.
+  // Fix: rely on the UNIQUE (saved_job_id, round) constraint added in
+  // migration 0078 and use INSERT … ON CONFLICT DO NOTHING. If the other
+  // call already inserted round=1, this is a silent no-op (caller didn't
+  // ask for a specific interview row, only that one exists).
   if (newStatus === "interviewing") {
-    const [existing] = await db
-      .select({ id: applicationInterview.id })
-      .from(applicationInterview)
-      .where(eq(applicationInterview.savedJobId, savedJobId))
-      .limit(1);
-
-    if (!existing) {
-      await db.insert(applicationInterview).values({
+    await db
+      .insert(applicationInterview)
+      .values({
         savedJobId,
         round: 1,
         type: "phone_screen",
+      })
+      .onConflictDoNothing({
+        target: [applicationInterview.savedJobId, applicationInterview.round],
       });
-    }
   }
 
   return { ok: true };
@@ -336,18 +341,103 @@ export async function addInterview(
 
   if (!row) return { ok: false, error: "Not found" };
 
-  // Get next round number
-  const [maxRow] = await db
-    .select({ maxRound: sql<number>`coalesce(max(round), 0)` })
-    .from(applicationInterview)
-    .where(eq(applicationInterview.savedJobId, savedJobId));
+  // Atomic round-number assignment (#3160 / #3114).
+  //
+  // Previous shape was two statements — `SELECT coalesce(max(round), 0)`
+  // followed by an `INSERT` with the read value — which races between
+  // any two concurrent callers (double-tap, two tabs, addInterview vs
+  // updateJobStatus auto-create). Both observe the same max and both
+  // INSERT the same round.
+  //
+  // New shape: a single `INSERT … SELECT coalesce(max(round), 0) + 1 …`
+  // is atomic in postgres — the inner SELECT and the row write happen
+  // under the same statement, and the UNIQUE (saved_job_id, round)
+  // constraint (migration 0078) is the backstop. If two such statements
+  // serialize and the second observes the first's row, MAX returns the
+  // new value and the round increments cleanly. If they truly tie under
+  // the same snapshot (a window narrowed but not eliminated by SELECT's
+  // read consistency), the UNIQUE constraint trips the loser with a
+  // 23505 unique_violation and the retry loop computes a fresh round.
+  //
+  // The retry budget is small (4 attempts) — the only way to exhaust it
+  // is a many-way concurrent burst, which the application surface (a
+  // single "Add interview" button) cannot generate.
+  const MAX_ATTEMPTS = 4;
+  let inserted:
+    | {
+        id: string;
+        round: number;
+        type: string;
+        scheduledAt: Date | null;
+        createdAt: Date;
+      }
+    | undefined;
+  let lastErr: unknown;
 
-  const nextRound = (maxRow?.maxRound ?? 0) + 1;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      const rows = await db.execute<{
+        id: string;
+        round: number;
+        type: string;
+        scheduled_at: Date | null;
+        created_at: Date;
+      }>(sql`
+        INSERT INTO application_interview (saved_job_id, round, type)
+        SELECT
+          ${savedJobId}::uuid,
+          coalesce(max(round), 0) + 1,
+          ${type}
+        FROM application_interview
+        WHERE saved_job_id = ${savedJobId}::uuid
+        RETURNING id, round, type, scheduled_at, created_at
+      `);
 
-  const [inserted] = await db
-    .insert(applicationInterview)
-    .values({ savedJobId, round: nextRound, type })
-    .returning();
+      const r = (rows as unknown as Array<{
+        id: string;
+        round: number;
+        type: string;
+        scheduled_at: Date | null;
+        created_at: Date;
+      }>)[0];
+
+      if (!r) {
+        // Defensive: postgres should always return the inserted row.
+        // Treat as a transient miss and retry.
+        lastErr = new Error("addInterview: INSERT…SELECT returned no row");
+        continue;
+      }
+
+      inserted = {
+        id: r.id,
+        round: r.round,
+        type: r.type,
+        scheduledAt: r.scheduled_at,
+        createdAt: r.created_at,
+      };
+      break;
+    } catch (err) {
+      lastErr = err;
+      // Postgres unique_violation: another concurrent caller won the
+      // race for this round number. Recompute via another INSERT…SELECT
+      // pass (which will see the conflicting row and pick the next round).
+      const code = (err as { code?: unknown }).code;
+      if (code === "23505") continue;
+      // Non-conflict errors propagate.
+      throw err;
+    }
+  }
+
+  if (!inserted) {
+    // Exhausted the retry budget without a successful insert. Surface as
+    // a soft error so the caller can decide (the UI shows a toast). The
+    // server log path picks up the underlying postgres error.
+    console.warn(
+      "[addInterview] failed to assign unique round after retries",
+      { savedJobId, type, lastErr },
+    );
+    return { ok: false, error: "Could not assign interview round" };
+  }
 
   // Auto-transition to interviewing if currently applied
   if (row.status === "applied") {

@@ -613,7 +613,12 @@ export const applicationInterview = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index("idx_ai_saved_job_round").on(table.savedJobId, table.round),
+    // UNIQUE on (saved_job_id, round) — closes the duplicate-round race
+    // between concurrent addInterview calls and the updateJobStatus
+    // auto-create branch (#3114 / #3160). Application layer pairs this
+    // with ON CONFLICT DO NOTHING and a single-statement
+    // INSERT … SELECT max(round)+1 …
+    uniqueIndex("idx_ai_saved_job_round").on(table.savedJobId, table.round),
   ],
 );
 
