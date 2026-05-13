@@ -9,20 +9,56 @@ import type { WorkMode } from "@/lib/search/types";
 // Closed sets for the two enum-shaped filters added in issue #3037.
 // Defining them client-side mirrors the Typesense canonical values and
 // keeps the editor decoupled from server-only modules.
-const WORK_MODE_OPTIONS: { value: WorkMode; labelKey: string; fallback: string }[] = [
-  { value: "onsite", labelKey: "search.workMode.onsite", fallback: "On-site" },
-  { value: "hybrid", labelKey: "search.workMode.hybrid", fallback: "Hybrid" },
-  { value: "remote", labelKey: "search.workMode.remote", fallback: "Remote" },
-];
+//
+// The translated label is obtained via {@link useEnumLabels} below; the
+// Lingui babel macro requires literal `id` strings so we can't loop and
+// `t({ id: opt.labelKey, … })`. Instead the hook holds an explicit
+// `switch` mapping value -> macro call.
+const WORK_MODE_VALUES = ["onsite", "hybrid", "remote"] as const satisfies readonly WorkMode[];
 
-const EMPLOYMENT_TYPE_OPTIONS: { value: string; labelKey: string; fallback: string }[] = [
-  { value: "full_time", labelKey: "search.employmentType.fullTime", fallback: "Full-time" },
-  { value: "part_time", labelKey: "search.employmentType.partTime", fallback: "Part-time" },
-  { value: "contract", labelKey: "search.employmentType.contract", fallback: "Contract" },
-  { value: "internship", labelKey: "search.employmentType.internship", fallback: "Internship" },
-  { value: "temporary", labelKey: "search.employmentType.temporary", fallback: "Temporary" },
-  { value: "volunteer", labelKey: "search.employmentType.volunteer", fallback: "Volunteer" },
-];
+const EMPLOYMENT_TYPE_VALUES = [
+  "full_time",
+  "part_time",
+  "contract",
+  "internship",
+  "temporary",
+  "volunteer",
+] as const;
+
+// Lingui macro requires literal `id` strings, so the enum -> label map
+// can't be a dynamic loop. Each branch below is rewritten by Babel into a
+// `i18n._({ id, message })` call with the static id baked in.
+type TFn = ReturnType<typeof useLingui>["t"];
+
+function workModeLabel(t: TFn, value: WorkMode): string {
+  switch (value) {
+    case "onsite":
+      return t({ id: "search.workMode.onsite", comment: "Work mode label", message: "On-site" });
+    case "hybrid":
+      return t({ id: "search.workMode.hybrid", comment: "Work mode label", message: "Hybrid" });
+    case "remote":
+      return t({ id: "search.workMode.remote", comment: "Work mode label", message: "Remote" });
+  }
+}
+
+function employmentTypeLabel(t: TFn, value: string): string {
+  switch (value) {
+    case "full_time":
+      return t({ id: "search.employmentType.fullTime", comment: "Employment type label", message: "Full-time" });
+    case "part_time":
+      return t({ id: "search.employmentType.partTime", comment: "Employment type label", message: "Part-time" });
+    case "contract":
+      return t({ id: "search.employmentType.contract", comment: "Employment type label", message: "Contract" });
+    case "internship":
+      return t({ id: "search.employmentType.internship", comment: "Employment type label", message: "Internship" });
+    case "temporary":
+      return t({ id: "search.employmentType.temporary", comment: "Employment type label", message: "Temporary" });
+    case "volunteer":
+      return t({ id: "search.employmentType.volunteer", comment: "Employment type label", message: "Volunteer" });
+    default:
+      return value;
+  }
+}
 
 function FilterPill({
   icon,
@@ -210,9 +246,7 @@ export function WatchlistFilterEditor({
           <FilterPill
             key={`et-${type}`}
             icon={<CalendarDays size={12} />}
-            label={
-              EMPLOYMENT_TYPE_OPTIONS.find((o) => o.value === type)?.fallback ?? type.replace(/_/g, " ")
-            }
+            label={employmentTypeLabel(t, type)}
             onRemove={() => toggleEmploymentType(type)}
           />
         ))}
@@ -220,7 +254,7 @@ export function WatchlistFilterEditor({
           <FilterPill
             key={`wm-${mode}`}
             icon={<Home size={12} />}
-            label={WORK_MODE_OPTIONS.find((o) => o.value === mode)?.fallback ?? mode}
+            label={workModeLabel(t, mode as WorkMode)}
             onRemove={() => toggleWorkMode(mode as WorkMode)}
           />
         ))}
@@ -291,7 +325,10 @@ export function WatchlistFilterEditor({
           {/* Value input — chip-toggle for enum filters, text for slugs */}
           {adding === "workMode" || adding === "employmentType" ? (
             <div className="flex flex-wrap items-center gap-1">
-              {(adding === "workMode" ? WORK_MODE_OPTIONS : EMPLOYMENT_TYPE_OPTIONS).map((opt) => {
+              {(adding === "workMode"
+                ? WORK_MODE_VALUES.map((v) => ({ value: v as string }))
+                : EMPLOYMENT_TYPE_VALUES.map((v) => ({ value: v as string }))
+              ).map((opt) => {
                 const isActive =
                   adding === "workMode"
                     ? (filters.workMode ?? []).includes(opt.value as WorkMode)
@@ -300,6 +337,10 @@ export function WatchlistFilterEditor({
                   adding === "workMode"
                     ? () => toggleWorkMode(opt.value as WorkMode)
                     : () => toggleEmploymentType(opt.value);
+                const label =
+                  adding === "workMode"
+                    ? workModeLabel(t, opt.value as WorkMode)
+                    : employmentTypeLabel(t, opt.value);
                 return (
                   <button
                     key={opt.value}
@@ -311,7 +352,7 @@ export function WatchlistFilterEditor({
                         : "border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
                     }`}
                   >
-                    {t({ id: opt.labelKey, comment: "Filter option label", message: opt.fallback })}
+                    {label}
                   </button>
                 );
               })}

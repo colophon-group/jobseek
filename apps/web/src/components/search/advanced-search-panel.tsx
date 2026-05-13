@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { SlidersHorizontal, ChevronDown, ChevronUp, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2, Home } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import type { SelectedLocation } from "@/components/search/location-pills";
@@ -12,6 +12,8 @@ import { SalaryModal } from "./salary-modal";
 import { ExperienceModal } from "./experience-modal";
 import { EmploymentTypeModal } from "./employment-type-modal";
 import { WorkModeModal } from "./work-mode-modal";
+import { getGlobalLocationsPage } from "@/lib/actions/locations";
+import { prefetchLocationsFirstPage, type LocationModalFilters } from "@/lib/search/location-prefetch";
 import type { HistogramFilters, WorkMode } from "@/lib/search";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
@@ -132,6 +134,40 @@ export function AdvancedSearchPanel({
     [technologies, onAddTechnology, onRemoveTechnology],
   );
 
+  // #3031 perf: prefetch the LocationSearchModal's first page when the
+  // panel expands, AND opportunistically when the user hovers the Location
+  // button. The first signal shifts the slow ~1.5 s server-side facet
+  // query off the click path entirely; the second covers the case where
+  // the user was browsing for a while and the panel was already open. The
+  // prefetch helper deduplicates: if a fetch is already in-flight or the
+  // cache holds a fresh value, this is a cheap noop.
+  const locationFilters = useMemo<LocationModalFilters | undefined>(
+    () =>
+      histogramFilters
+        ? {
+            companyId: histogramFilters.companyId,
+            keywords: histogramFilters.keywords,
+            occupationIds: histogramFilters.occupationIds,
+            seniorityIds: histogramFilters.seniorityIds,
+            technologyIds: histogramFilters.technologyIds,
+            languages: histogramFilters.languages,
+          }
+        : undefined,
+    [histogramFilters],
+  );
+
+  useEffect(() => {
+    if (!expanded) return;
+    // Fire-and-forget — errors surface only if the modal opens, and the
+    // modal itself swallows them. We don't await; the goal is to use the
+    // browser's idle bandwidth between expand and click.
+    void prefetchLocationsFirstPage(locale, locationFilters, getGlobalLocationsPage);
+  }, [expanded, locale, locationFilters]);
+
+  const handleLocationHover = useCallback(() => {
+    void prefetchLocationsFirstPage(locale, locationFilters, getGlobalLocationsPage);
+  }, [locale, locationFilters]);
+
   const btnClass = "flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-border-soft px-3 py-1.5 text-sm text-muted transition-colors hover:border-primary/30 hover:text-foreground";
 
   return (
@@ -147,7 +183,13 @@ export function AdvancedSearchPanel({
 
       {expanded && (
         <div className="mt-2 flex flex-wrap gap-2">
-          <button onClick={() => setLocationModalOpen(true)} className={btnClass}>
+          <button
+            onClick={() => setLocationModalOpen(true)}
+            onMouseEnter={handleLocationHover}
+            onFocus={handleLocationHover}
+            onPointerDown={handleLocationHover}
+            className={btnClass}
+          >
             <MapPin size={14} className="shrink-0 text-muted" />
             {t({ id: "search.advanced.location", comment: "Label for location filter in advanced search", message: "Location" })}
           </button>
@@ -198,14 +240,7 @@ export function AdvancedSearchPanel({
         locale={locale}
         selected={locations.map((l) => ({ id: l.id, slug: l.slug, name: l.name, type: l.type }))}
         onToggle={handleToggleLocation}
-        filters={histogramFilters ? {
-          companyId: histogramFilters.companyId,
-          keywords: histogramFilters.keywords,
-          occupationIds: histogramFilters.occupationIds,
-          seniorityIds: histogramFilters.seniorityIds,
-          technologyIds: histogramFilters.technologyIds,
-          languages: histogramFilters.languages,
-        } : undefined}
+        filters={locationFilters}
       />
       <OccupationModal
         open={occupationModalOpen}

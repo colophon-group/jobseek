@@ -628,7 +628,15 @@ async function _fetchGlobalLocationsGrouped(
       per_page: 0,
     };
 
-    const [result, macroResult] = await Promise.all([
+    // #3031: parallelize the macro-members DB lookup with the Typesense
+    // facet queries. Macro members depend only on the hierarchy (already
+    // cached), not on the Typesense result — we fetch members for *all*
+    // macros up-front and filter post-hoc by the macros that actually
+    // have a non-zero facet count. There are at most ~9 macros so the
+    // wasted work is negligible (most rows are kept anyway), and the
+    // saved sequential round-trip (~300 ms cold) shows up directly on
+    // the modal's first-paint TTFB.
+    const [result, macroResult, allMacroMembers] = await Promise.all([
       client.collections("job_posting").documents().search(baseSearchParams),
       macroFilterClause
         ? client.collections("job_posting").documents().search({
@@ -636,6 +644,9 @@ async function _fetchGlobalLocationsGrouped(
             filter_by: `${baseSearchParams.filter_by} && ${macroFilterClause}`,
           })
         : Promise.resolve(null),
+      allMacroIds.length > 0
+        ? _fetchGlobalMacroMembers(allMacroIds, locale)
+        : Promise.resolve(new Map<number, MacroMembers>()),
     ]);
 
     // Extract facet counts: location_id -> count
@@ -673,9 +684,10 @@ async function _fetchGlobalLocationsGrouped(
     // `_fetchGlobalMacroMembers` for the per-macro member country names
     // used as the chip's hover tooltip.
     const macroIdsWithCounts = allMacroIds.filter((id) => (macroFacetCounts.get(id) ?? 0) > 0);
-    const macroMembers = macroIdsWithCounts.length > 0
-      ? await _fetchGlobalMacroMembers(macroIdsWithCounts, locale)
-      : new Map<number, MacroMembers>();
+    // Subset the pre-fetched macro members down to the macros with counts.
+    // Macros with zero matching postings won't render so we don't need
+    // their member lists past this point.
+    const macroMembers = allMacroMembers;
     const macros: GlobalMacroRegion[] = macroIdsWithCounts
       .map((id) => {
         const meta = hierarchy.get(id);
@@ -748,7 +760,11 @@ async function _fetchGlobalLocationsGrouped(
         country = {
           countryId: cid,
           countrySlug: countryMeta?.slug ?? "",
-          countryName: countryMeta ? _getLocaleName(countryMeta, locale) : "Other",
+          // Empty string is a sentinel for "no country in hierarchy" — the
+          // client renders a localized fallback ("Other") in that case.
+          // Server can't reach the user's lingui i18n context so it must
+          // not bake an English string in here.
+          countryName: countryMeta ? _getLocaleName(countryMeta, locale) : "",
           countryCount: 0,
           regions: [],
         };

@@ -14,6 +14,11 @@ import type {
   GlobalLocationSearchHit,
 } from "@/lib/actions/locations";
 import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
+import {
+  getCachedLocationsFirstPage,
+  getCachedLocationsFirstPageSync,
+  prefetchLocationsFirstPage,
+} from "@/lib/search/location-prefetch";
 import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
 import { findBestGuess } from "./best-guess";
@@ -168,6 +173,14 @@ export function LocationSearchModal({
   // `firstOpen` guard returned false after a partial-scroll close because
   // `pages.length` was nonzero. With the close-effect clearing state, the
   // re-open path naturally goes through the firstOpen branch.
+  //
+  // #3031: before firing the server action, consult the client prefetch
+  // cache (`location-prefetch.ts`). On a warm reopen the cache holds the
+  // resolved page and we seed React state from it synchronously in the
+  // SAME commit as the open transition, so the modal mounts with content
+  // already populated (no spinner, no server round-trip). On a cold open
+  // after a hover/expand prefetch the cache holds an in-flight promise
+  // and we wait on it instead of starting a duplicate fetch.
   useEffect(() => {
     if (!open) return;
     const filtersChanged = filtersKey !== prevFiltersKeyRef.current;
@@ -175,12 +188,30 @@ export function LocationSearchModal({
     if (!filtersChanged && !firstOpen) return;
     prevFiltersKeyRef.current = filtersKey;
     const seq = ++fetchSeqRef.current;
-    setLoading(true);
+
+    // Fast path: cache has resolved value — seed state in a single
+    // commit, no spinner.
+    const sync = getCachedLocationsFirstPageSync(locale, filters);
+    if (sync) {
+      setMacros(sync.macros);
+      setPages(sync.countries);
+      setNextCursor(sync.nextCursor);
+      setTotalCountries(sync.totalCountries);
+      setLoading(false);
+      return;
+    }
+
+    // Slow path: cache miss or inflight — show spinner, await the (possibly
+    // already-started) prefetch.
     setPages([]);
     setMacros([]);
     setNextCursor(0);
     setTotalCountries(0);
-    getGlobalLocationsPage(locale, 0, filters)
+    setLoading(true);
+    const inflight =
+      getCachedLocationsFirstPage(locale, filters)
+      ?? prefetchLocationsFirstPage(locale, filters, getGlobalLocationsPage);
+    inflight
       .then((page) => {
         if (fetchSeqRef.current !== seq) return; // stale — drop
         setMacros(page.macros);
@@ -407,12 +438,25 @@ export function LocationSearchModal({
   );
 
   const hasSearch = search.trim().length > 0;
+  // We've completed at least one page fetch when we either have pages OR
+  // the server explicitly told us the list is empty (nextCursor === null
+  // after fetch). Before that we are in the pre-fetch initial state and
+  // must NOT render the "no results" empty state, even though
+  // `pages.length === 0` matches — that would flash an empty-state
+  // message for a frame between modal mount and the first useEffect's
+  // setLoading(true). See #3031.
+  const hasFetchedAtLeastOnce = pages.length > 0 || nextCursor === null;
   const isEmpty =
-    !loading
+    hasFetchedAtLeastOnce
+    && !loading
     && filtered.length === 0
     && filteredMacros.length === 0
     && filteredSearchHits.length === 0
     && !searchLoading;
+  // Show the spinner whenever we're explicitly loading OR we're in the
+  // pre-fetch initial state (about to fetch but the useEffect hasn't run
+  // yet to flip loading). Prevents the empty-state flash described above.
+  const showSpinner = loading || (!hasFetchedAtLeastOnce && open);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -460,7 +504,7 @@ export function LocationSearchModal({
 
           {/* Body */}
           <ScrollFade wrapperClassName="flex-1 min-h-0" scrollRef={scrollRef} className="px-5 py-4">
-            {loading ? (
+            {showSpinner ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
               </div>
@@ -584,13 +628,22 @@ export function LocationSearchModal({
                   const countryActive = selectedIds.has(country.countryId);
                   const countryDisabled = !countryActive && isDisabled(country.countryId);
                   const showRegions = countCities(country) > REGION_THRESHOLD;
+                  // Localized fallback for orphaned cities (no parent
+                  // country in hierarchy). The server returns countryName=""
+                  // for that case so we don't bake an English "Other" into
+                  // the action response.
+                  const countryDisplayName = country.countryName || t({
+                    id: "search.locationModal.otherCountry",
+                    comment: "Fallback label for a country header in the location modal when the city has no parent country in the hierarchy. Rare path.",
+                    message: "Other",
+                  });
 
                   return (
                     <div key={country.countryId}>
                       {/* Country header */}
                       {countryDisabled ? (
                         <DisabledFilterPill
-                          name={country.countryName}
+                          name={countryDisplayName}
                           count={country.countryCount > 0 ? country.countryCount : undefined}
                           ancestorName={ancestorNameOf(country.countryId)}
                           variant="country"
@@ -604,7 +657,7 @@ export function LocationSearchModal({
                             handleToggle({
                               id: country.countryId,
                               slug: country.countrySlug,
-                              name: country.countryName,
+                              name: countryDisplayName,
                               type: "country",
                               parentName: null,
                             })
@@ -614,7 +667,7 @@ export function LocationSearchModal({
                           }`}
                         >
                           <CountryFlag iso={countryIso(country.countryId)} size={14} className="mr-1 inline-block align-middle" />
-                          <span className={countryActive ? "underline" : ""}>{country.countryName}</span>
+                          <span className={countryActive ? "underline" : ""}>{countryDisplayName}</span>
                           {country.countryCount > 0 && (
                             <span className={`ml-1 text-[10px] font-normal normal-case ${countryActive ? "text-primary/70" : "text-muted"}`}>
                               ({country.countryCount})
@@ -664,7 +717,11 @@ export function LocationSearchModal({
                                   )
                                 ) : (
                                   <span className="mb-1.5 block text-xs font-medium text-muted">
-                                    {region.regionName || "Other"}
+                                    {region.regionName || t({
+                                      id: "search.locationModal.otherRegion",
+                                      comment: "Fallback label for a region row in the location modal when the region has no display name (e.g. orphaned cities). Rare path; only shown when a city's parent region in the hierarchy has no localized name.",
+                                      message: "Other",
+                                    })}
                                   </span>
                                 )}
                                 <div className="flex flex-wrap gap-2">

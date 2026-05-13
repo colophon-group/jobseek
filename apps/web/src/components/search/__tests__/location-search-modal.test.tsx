@@ -57,6 +57,7 @@ vi.mock("@/components/country-flag", () => ({
 vi.mock("server-only", () => ({}));
 
 import { LocationSearchModal } from "../location-search-modal";
+import { _clearLocationsPrefetchCache } from "@/lib/search/location-prefetch";
 
 const _response = (overrides: Partial<Awaited<ReturnType<typeof getGlobalLocationsGroupedMock>>> = {}) => ({
   macros: [
@@ -114,6 +115,12 @@ beforeEach(() => {
   getGlobalLocationsGroupedMock.mockReset();
   searchGlobalLocationsMock.mockReset();
   searchGlobalLocationsMock.mockResolvedValue([]);
+  // #3031: the modal now consults a module-scoped prefetch cache. The
+  // cache is shared across all tests in the same vitest worker, so a
+  // resolved value from one test would render synchronously in the next
+  // and bypass the test's mocked first-page fetch. Clear it between
+  // tests so each case starts from a known cold state.
+  _clearLocationsPrefetchCache();
 });
 
 describe("LocationSearchModal — Regions cluster (#2940)", () => {

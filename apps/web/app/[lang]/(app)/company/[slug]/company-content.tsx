@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Trans } from "@lingui/react/macro";
 import { fetchCompanyPageData, type CompanyPageData } from "@/lib/actions/company-page-data";
 import { CompanySkeleton } from "@/components/search/company-skeleton";
 import { CompanyPage } from "./company-page";
@@ -14,8 +15,22 @@ type CompanyContentProps = {
 function CompanyNotFound() {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <h1 className="text-2xl font-bold">Company not found</h1>
-      <p className="mt-2 text-muted">The company you are looking for does not exist or has been removed.</p>
+      <h1 className="text-2xl font-bold">
+        <Trans
+          id="company.notFound.title"
+          comment="Heading shown when the company URL slug doesn't resolve to a known company"
+        >
+          Company not found
+        </Trans>
+      </h1>
+      <p className="mt-2 text-muted">
+        <Trans
+          id="company.notFound.body"
+          comment="Body text for the company-not-found page; explains the company is either gone or never existed"
+        >
+          The company you are looking for does not exist or has been removed.
+        </Trans>
+      </p>
     </div>
   );
 }
