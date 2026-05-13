@@ -280,6 +280,16 @@ export function AdvancedSearchPanel({
           onOpenChange={setEmploymentTypeModalOpen}
           selected={employmentTypes ?? []}
           onToggle={onToggleEmploymentType}
+          filters={histogramFilters ? {
+            companyId: histogramFilters.companyId,
+            keywords: histogramFilters.keywords,
+            locationIds: histogramFilters.locationIds,
+            occupationIds: histogramFilters.occupationIds,
+            seniorityIds: histogramFilters.seniorityIds,
+            technologyIds: histogramFilters.technologyIds,
+            workMode: histogramFilters.workMode,
+            languages: histogramFilters.languages,
+          } : undefined}
         />
       )}
       {onToggleWorkMode && (
@@ -288,6 +298,16 @@ export function AdvancedSearchPanel({
           onOpenChange={setWorkModeModalOpen}
           selected={workMode ?? []}
           onToggle={onToggleWorkMode}
+          filters={histogramFilters ? {
+            companyId: histogramFilters.companyId,
+            keywords: histogramFilters.keywords,
+            locationIds: histogramFilters.locationIds,
+            occupationIds: histogramFilters.occupationIds,
+            seniorityIds: histogramFilters.seniorityIds,
+            technologyIds: histogramFilters.technologyIds,
+            employmentTypes: histogramFilters.employmentTypes,
+            languages: histogramFilters.languages,
+          } : undefined}
         />
       )}
     </div>

@@ -64,6 +64,13 @@ export interface HistogramFilters {
   seniorityIds?: number[];
   technologyIds?: number[];
   workMode?: WorkMode[];
+  /**
+   * Cross-filter context for the employment-type modal facet counts.
+   * Added in #3032 so toggling work-mode/occupation/etc. live-updates
+   * employment-type counts in the same way that location/level already
+   * cross-filter into the seniority and technology modals.
+   */
+  employmentTypes?: string[];
   languages?: string[];
 }
 

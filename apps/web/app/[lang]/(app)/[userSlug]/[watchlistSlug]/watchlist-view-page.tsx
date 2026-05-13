@@ -184,8 +184,16 @@ export function WatchlistViewPage({
     occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
     seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
     technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
+    // workMode + employmentTypes flow through so the modal-side facet
+    // helpers can cross-filter their counts against each other (#3032).
+    // The advanced-search-panel strips the active dimension before
+    // passing this object down to the matching modal — e.g. the
+    // work-mode modal sees `employmentTypes` but NOT `workMode`, so
+    // counts represent "what would I see if I toggled this mode on".
+    workMode: workMode.length > 0 ? workMode : undefined,
+    employmentTypes: employmentTypes.length > 0 ? employmentTypes : undefined,
     languages: languages.length > 0 ? languages : undefined,
-  }), [locations, occupations, seniorities, technologies, languages]);
+  }), [locations, occupations, seniorities, technologies, workMode, employmentTypes, languages]);
 
   // Persist filters to DB (debounced, cleaned up on unmount)
   const saveFiltersTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);

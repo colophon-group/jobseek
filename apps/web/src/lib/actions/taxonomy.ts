@@ -1106,3 +1106,103 @@ async function _fetchAllTechnologiesGrouped(
     return [];
   }
 }
+
+// ── Facet-count helpers for fixed-option modals ──────────────────────
+//
+// `employment_type` and `location_types` (work-mode) are small fixed
+// enums; the modals own the option list and i18n labels (see
+// `employment-type-modal.tsx` and `work-mode-modal.tsx`). The web app
+// only needs per-option counts to display next to each label — same
+// UX parity as the seniority/technology modals. Issue #3032.
+//
+// Both helpers re-use the shared `buildFilterString` cross-filter
+// pipeline, so counts reflect the currently-applied filter context
+// (location, occupation, level, etc.) just like the other modals.
+// Missing keys in the returned record mean "0 matching postings" —
+// the modals render `(0)` for them.
+
+/** Map of employment_type value -> matching active-posting count. */
+export async function getEmploymentTypeCounts(
+  filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; workMode?: string[]; languages?: string[] },
+): Promise<Record<string, number>> {
+  const fKey = filters ? JSON.stringify(filters) : "";
+  const key = `emp-type-counts:${fKey}`;
+  return cached(key, () => _fetchEmploymentTypeCounts(filters), { ttl: 3600 });
+}
+
+async function _fetchEmploymentTypeCounts(
+  filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; workMode?: string[]; languages?: string[] },
+): Promise<Record<string, number>> {
+  try {
+    const client = getTypesenseClient();
+    const filterStr = buildFilterString(filters);
+
+    const hasKeywords = filters?.keywords && filters.keywords.length > 0;
+    const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
+
+    const result = await client.collections("job_posting").documents().search({
+      q,
+      query_by: "title",
+      filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
+      facet_by: "employment_type",
+      max_facet_values: 50,
+      facet_strategy: "exhaustive",
+      per_page: 0,
+    });
+
+    const facet = result.facet_counts?.find(
+      (f) => (f as { field_name: string }).field_name === "employment_type",
+    );
+    if (!facet) return {};
+    const out: Record<string, number> = {};
+    for (const fc of (facet as { counts: Array<{ value: string; count: number }> }).counts) {
+      out[fc.value] = fc.count;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Map of work-mode value (`onsite`|`hybrid`|`remote`) -> matching active-posting count. */
+export async function getWorkModeCounts(
+  filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; employmentTypes?: string[]; languages?: string[] },
+): Promise<Record<string, number>> {
+  const fKey = filters ? JSON.stringify(filters) : "";
+  const key = `work-mode-counts:${fKey}`;
+  return cached(key, () => _fetchWorkModeCounts(filters), { ttl: 3600 });
+}
+
+async function _fetchWorkModeCounts(
+  filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; employmentTypes?: string[]; languages?: string[] },
+): Promise<Record<string, number>> {
+  try {
+    const client = getTypesenseClient();
+    const filterStr = buildFilterString(filters);
+
+    const hasKeywords = filters?.keywords && filters.keywords.length > 0;
+    const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
+
+    const result = await client.collections("job_posting").documents().search({
+      q,
+      query_by: "title",
+      filter_by: `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`,
+      facet_by: "location_types",
+      max_facet_values: 50,
+      facet_strategy: "exhaustive",
+      per_page: 0,
+    });
+
+    const facet = result.facet_counts?.find(
+      (f) => (f as { field_name: string }).field_name === "location_types",
+    );
+    if (!facet) return {};
+    const out: Record<string, number> = {};
+    for (const fc of (facet as { counts: Array<{ value: string; count: number }> }).counts) {
+      out[fc.value] = fc.count;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
