@@ -14,11 +14,15 @@ name: Notify IndexNow on blog content changes
 # Vercel race: pushing to main triggers a Vercel prod deploy in
 # parallel. If we POST to IndexNow before Vercel's deploy completes,
 # engines get a brief 404 window on a brand-new post (translated MDX
-# file added in the same commit). The 5-minute pre-submit sleep lets
-# most prod deploys finish (the app's typical build is 2–5 min;
-# slower builds have a 1–7 day engine retry cushion to forgive the
-# initial 404). Re-submission on the next blog commit re-pings the
-# URL anyway.
+# file added in the same commit). To avoid blindly burning 5 min of
+# runner time per push, we poll the GitHub Deployments API (Vercel
+# publishes a `Production`-environment deployment per SHA via its
+# GitHub App). We bail out as soon as that deployment reaches
+# `success`; we time out at 10 min if it never does, which surfaces
+# real Vercel outages instead of silently submitting against a stale
+# build. Re-submission on the next blog commit re-pings the URL
+# anyway, so the 1–7-day engine retry cushion still covers the worst
+# case.
 #
 # Why a separate workflow vs piggybacking on a deploy hook: keeps the
 # secret scope narrow (only this workflow needs INDEXNOW_KEY in the
@@ -50,6 +54,12 @@ jobs:
     # this repo declares the same — see deploy-crawler-browser.yml,
     # deploy-murmur-shim.yml, crawler-scheduled-maintenance.yml.
     environment: production
+    # `deployments: read` lets the poll step query Vercel's prod
+    # deployment status via the GitHub Deployments API. All other
+    # default permissions stay at their workflow defaults.
+    permissions:
+      contents: read
+      deployments: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -63,13 +73,59 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Wait for Vercel prod deploy to settle
-        # Crude but reliable: app prod builds typically finish in
-        # 2–5 minutes, and 300s is well inside the engine retry
-        # cushion if we still race a long build. A more precise
-        # signal would be polling Vercel's deployment-succeeded
-        # webhook; not worth the plumbing for a 1–7-day-cadence
-        # signal.
-        run: sleep 300
+        # Poll GitHub Deployments API for a `success` status on the
+        # `Production` deployment matching this push's SHA. Vercel
+        # publishes one via its GitHub App per prod build, with
+        # state transitions `in_progress` -> `success` (or
+        # `failure`/`error`). We exit 0 the moment we see success,
+        # which typically saves ~3-4 min compared to a flat 5-min
+        # sleep, and we cap at 10 min so a stuck Vercel build fails
+        # the job loudly instead of submitting against a stale
+        # surface.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          deadline=$(( $(date +%s) + 600 ))
+          while :; do
+            # Collect every status state across every deployment matching
+            # this SHA in the Production environment. In practice there's
+            # exactly one (Vercel publishes one per SHA), but we don't
+            # depend on that. Statuses are returned newest-first, so the
+            # first terminal state in the stream wins.
+            states=$(gh api \
+              "repos/${REPO}/deployments?sha=${DEPLOY_SHA}&environment=Production&per_page=10" \
+              --jq '.[].statuses_url' \
+            | while read -r url; do
+                gh api "$url" --jq '.[].state'
+              done) || true
+            status=$(printf '%s\n' "$states" \
+              | grep -E '^(success|failure|error|inactive)$' \
+              | head -n1 || true)
+            case "$status" in
+              success)
+                echo "Vercel prod deploy succeeded for ${DEPLOY_SHA}"
+                exit 0
+                ;;
+              failure|error)
+                echo "Vercel prod deploy reported '${status}' for ${DEPLOY_SHA}" >&2
+                exit 1
+                ;;
+              inactive)
+                # Superseded by a newer deploy — the URL is live on
+                # the newer one, so we can proceed.
+                echo "Vercel prod deploy for ${DEPLOY_SHA} was superseded ('inactive'); proceeding"
+                exit 0
+                ;;
+            esac
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "Timed out after 10 min waiting for Vercel prod deploy on ${DEPLOY_SHA}" >&2
+              exit 1
+            fi
+            sleep 15
+          done
 
       - name: Submit blog post URLs
         env:
