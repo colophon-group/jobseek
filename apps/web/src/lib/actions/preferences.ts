@@ -256,6 +256,53 @@ export async function updatePreferences(
   return row;
 }
 
+/**
+ * Null out the current viewer's `user.image` column.
+ *
+ * Called from `UserAvatar`'s `onError` handler when the stored OAuth
+ * avatar URL fails to load. LinkedIn (`media.licdn.com`) signs profile
+ * photos with a time-limited `e=<epoch>` param; once the signature
+ * expires the URL 410s permanently — the image will never come back, so
+ * every subsequent page load was firing a doomed network request and
+ * flashing a broken-image icon. After this action returns, the next
+ * session refresh resolves `user.image` to `null` and the UI cleanly
+ * falls back to the initials placeholder. See issue #3035.
+ *
+ * Self-healing by construction: the only render path that calls this
+ * action is `<img>` with a non-null `src`. Once the row is nulled, no
+ * future render emits the `<img>`, so the action can never re-fire from
+ * the same user-agent on the same row. (A subsequent OAuth re-link
+ * would write a fresh `image` value via Better Auth; that's the only
+ * way back to a non-null state.)
+ *
+ * Best-effort: returns silently on auth-missing / write failure rather
+ * than throwing. The caller is a fire-and-forget client handler; a
+ * thrown promise from a server action turns into a console error with
+ * no UX recovery.
+ */
+export async function clearStoredUserImage(): Promise<void> {
+  const userId = await getSessionUserId();
+  if (!userId) return;
+
+  try {
+    await db
+      .update(user)
+      .set({ image: null, updatedAt: new Date() })
+      .where(eq(user.id, userId));
+  } catch (err) {
+    console.warn("[clearStoredUserImage] db write failed", err);
+    return;
+  }
+
+  // Bust the Redis-cached `getSession()` blob across every device the
+  // user is logged in on, so the next bootstrap fetch returns
+  // `image: null` instead of the just-cleared URL (TTL is 5 min
+  // otherwise). Mirrors the pattern from `renameUsername`. Failures
+  // are logged inside the helper — the DB write is the load-bearing
+  // operation and we already succeeded.
+  await invalidateAllUserSessionCacheEntries(userId);
+}
+
 export async function getPasswordResetCooldown(): Promise<number> {
   const session = await getSession();
   if (!session) return 0;
