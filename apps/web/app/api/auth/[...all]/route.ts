@@ -1,13 +1,7 @@
 import { auth } from "@/lib/auth";
 import { toNextJsHandler } from "better-auth/next-js";
-import { authLimiter } from "@/lib/rate-limit";
+import { authLimiter, getClientIp } from "@/lib/rate-limit";
 import { type NextRequest, NextResponse } from "next/server";
-
-function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-  );
-}
 
 const { GET: authGet, POST: authPost } = toNextJsHandler(auth);
 
@@ -27,7 +21,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = getClientIp(request);
+    const ip = getClientIp(request.headers);
     const { success, reset } = await authLimiter.limit(ip);
     if (!success) return rateLimitResponse(reset);
   } catch {

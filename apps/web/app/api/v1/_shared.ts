@@ -1,13 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { apiLimiter } from "@/lib/rate-limit";
+import { apiLimiter, getClientIp } from "@/lib/rate-limit";
 import { siteConfig } from "@/content/config";
-
-/** Extract client IP from request headers. */
-export function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-  );
-}
 
 /** Rate-limit result to thread through to apiResponse(). */
 export type RateLimitInfo = { limit: number; remaining: number; reset: number };
@@ -16,7 +9,7 @@ export type RateLimitInfo = { limit: number; remaining: number; reset: number };
 export async function checkRateLimit(
   request: NextRequest,
 ): Promise<NextResponse | RateLimitInfo | null> {
-  const ip = getClientIp(request);
+  const ip = getClientIp(request.headers);
   try {
     const { success, limit, remaining, reset } = await apiLimiter.limit(ip);
     if (!success) {
