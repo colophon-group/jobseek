@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Bookmark } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -13,6 +13,7 @@ import { useSession } from "@/components/SessionProvider";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { usePaginatedLoadMore } from "@/lib/use-paginated-load-more";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
@@ -80,10 +81,6 @@ export function WatchlistJobList({
   const isLoggedInRef = useRef(isLoggedIn);
   isLoggedInRef.current = isLoggedIn;
   useClearTypesenseOnAuthChange(isLoggedIn);
-  const [postings, setPostings] = useState(initialPostings);
-  const [total, setTotal] = useState(initialTotal);
-  const [exhausted, setExhausted] = useState(initialPostings.length >= initialTotal);
-  const [isTruncated, setIsTruncated] = useState(false);
   const searchParams = useSearchParams();
   const [showPostingId, setShowPostingId] = useState<string | null>(searchParams.get("show"));
   const filtersRef = useRef(filters);
@@ -94,43 +91,29 @@ export function WatchlistJobList({
   const yesterdayLabel = t({ id: "watchlists.jobList.yesterday", comment: "Date divider label for yesterday", message: "Yesterday" });
 
   const filtersKey = JSON.stringify(filters);
-  const initialFiltersKey = useRef(filtersKey);
 
-  // Re-fetch only when filters actually change (not on initial mount —
-  // the server already provided initialPostings/initialTotal)
-  useEffect(() => {
-    if (filtersKey === initialFiltersKey.current) return;
-    runGetWatchlistPostings({ ...filters, offset: 0, limit: BATCH }, isLoggedInRef.current)
-      .then(({ postings: p, total: t, truncated }) => {
-        setPostings(p);
-        setTotal(t);
-        setExhausted(p.length >= t);
-        setIsTruncated(truncated ?? false);
-      });
-  }, [filtersKey]);
+  // Pagination state machine. `filtersKey` doubles as the reset key —
+  // changing filters re-fetches page 1 and clears local state.
+  const {
+    items: postings,
+    total,
+    truncated: isTruncated,
+    hasMore,
+    loadMore,
+  } = usePaginatedLoadMore<WatchlistPostingEntry>({
+    initialItems: initialPostings,
+    initialTotal,
+    batchSize: BATCH,
+    itemKey: (p) => p.id,
+    resetKey: filtersKey,
+    fetcher: ({ offset, limit }) =>
+      runGetWatchlistPostings(
+        { ...filtersRef.current, offset, limit },
+        isLoggedInRef.current,
+      ),
+  });
 
-  async function handleLoadMore() {
-    const result = await runGetWatchlistPostings(
-      {
-        ...filtersRef.current,
-        offset: postings.length,
-        limit: BATCH,
-      },
-      isLoggedInRef.current,
-    );
-    if (result.truncated) setIsTruncated(true);
-    setTotal(result.total);
-    if (result.postings.length > 0) {
-      setPostings((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        return [...prev, ...result.postings.filter((p) => !seen.has(p.id))];
-      });
-    }
-    if (result.postings.length < BATCH) setExhausted(true);
-  }
-
-  const hasMore = !exhausted && !isTruncated;
-  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: handleLoadMore });
+  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: loadMore });
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
