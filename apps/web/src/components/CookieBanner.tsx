@@ -6,7 +6,7 @@ import { useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { updatePreferences } from "@/lib/actions/preferences";
 import { useBanner } from "@/components/BannerProvider";
-import Link from "next/link";
+import { NavLink } from "@/components/NavLink";
 import { Info } from "lucide-react";
 
 const BANNER_ID = "cookie-consent";
@@ -52,13 +52,13 @@ export function CookieBanner({ aboveBottomBar, serverConsent }: CookieBannerProp
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
-          <Link
+          <NavLink
             href={lp("/privacy-policy")}
             prefetch={false}
             className="rounded-full px-2.5 py-1 font-medium transition-colors hover:bg-info-border"
           >
             {t({ id: "common.cookies.details", comment: "Cookie banner details button", message: "Details" })}
-          </Link>
+          </NavLink>
           <button
             onClick={dismiss}
             className="rounded-full bg-info-border px-2.5 py-1 font-medium transition-colors hover:opacity-80 cursor-pointer"

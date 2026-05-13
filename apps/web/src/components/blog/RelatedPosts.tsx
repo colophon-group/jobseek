@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { Trans } from "@lingui/react/macro";
 import { type Locale } from "@/lib/i18n";
 import { listBlogPosts, selectRelatedPosts, type BlogPostSummary } from "@/lib/blog";
+import { NavLink } from "@/components/NavLink";
 
 /**
  * "You may also be interested in" cross-link block (#2844). Renders
@@ -79,7 +79,7 @@ function RelatedPostCard({
   const firstTag = post.tags[0];
   const dateLabel = formatDate(post.datePublished, locale);
   return (
-    <Link
+    <NavLink
       href={`/${locale}/blog/${post.slug}`}
       className="mention flex h-full flex-col gap-2 rounded-md border border-border-soft bg-border-soft/30 p-4 transition-colors hover:bg-border-soft"
     >
@@ -98,6 +98,6 @@ function RelatedPostCard({
           </>
         )}
       </div>
-    </Link>
+    </NavLink>
   );
 }
