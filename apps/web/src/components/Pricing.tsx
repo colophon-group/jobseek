@@ -94,7 +94,10 @@ function ProTier() {
 
 export function Pricing() {
   return (
-    <section id={siteConfig.pricing.anchorId} className="mx-auto max-w-[1200px] px-4 py-12 md:py-20">
+    <section
+      id={siteConfig.pricing.anchorId}
+      className="mx-auto max-w-[1200px] scroll-mt-24 px-4 py-12 md:scroll-mt-32 md:py-20"
+    >
       <div className="mx-auto flex max-w-[640px] flex-col gap-4 text-center">
         <span className={eyebrowClass}>
           <Trans id="home.pricing.eyebrow" comment="Pricing section eyebrow">Pricing</Trans>
