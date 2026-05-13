@@ -9,6 +9,7 @@ import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
+import { scrollToTopOnNav } from "@/lib/scroll-on-nav";
 import { Button } from "@/components/ui/Button";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -44,7 +45,7 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
               <Link
                 href={lp("/")}
                 prefetch={false}
-                onClick={onCloseAction}
+                onClick={() => { scrollToTopOnNav("/"); onCloseAction(); }}
                 className="inline-flex items-center gap-2 no-underline"
               >
                 <ThemedImage
@@ -73,27 +74,27 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
             <nav className="mt-6">
               <ul className="flex flex-col">
                 <li>
-                  <Link href={lp(siteConfig.nav.about.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
+                  <Link href={lp(siteConfig.nav.about.href)} prefetch={false} onClick={() => { scrollToTopOnNav(siteConfig.nav.about.href); onCloseAction(); }} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
                     <Trans id="common.nav.about" comment="Nav link: About">About</Trans>
                   </Link>
                 </li>
                 <li>
-                  <Link href={lp(siteConfig.nav.features.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
+                  <Link href={lp(siteConfig.nav.features.href)} prefetch={false} onClick={() => { scrollToTopOnNav(siteConfig.nav.features.href); onCloseAction(); }} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
                     <Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>
                   </Link>
                 </li>
                 <li>
-                  <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
+                  <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} onClick={() => { scrollToTopOnNav(siteConfig.nav.pricing.href); onCloseAction(); }} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
                     <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
                   </Link>
                 </li>
                 <li>
-                  <Link href={lp(siteConfig.nav.faq.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
+                  <Link href={lp(siteConfig.nav.faq.href)} prefetch={false} onClick={() => { scrollToTopOnNav(siteConfig.nav.faq.href); onCloseAction(); }} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
                     <Trans id="common.nav.faq" comment="Nav link: FAQ">FAQ</Trans>
                   </Link>
                 </li>
                 <li>
-                  <Link href={lp(siteConfig.nav.blog.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.blog.href))}>
+                  <Link href={lp(siteConfig.nav.blog.href)} prefetch={false} onClick={() => { scrollToTopOnNav(siteConfig.nav.blog.href); onCloseAction(); }} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.blog.href))}>
                     <Trans id="common.nav.blog" comment="Nav link: Blog">Blog</Trans>
                   </Link>
                 </li>

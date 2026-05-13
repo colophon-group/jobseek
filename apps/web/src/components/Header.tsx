@@ -9,6 +9,7 @@ import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
+import { scrollToTopOnNav } from "@/lib/scroll-on-nav";
 import { Button } from "@/components/ui/Button";
 import { Menu } from "lucide-react";
 
@@ -34,7 +35,12 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
   return (
     <header className="border-b border-divider bg-surface-alpha backdrop-blur-md">
       <div className="mx-auto flex h-12 max-w-[1200px] items-center gap-4 px-4">
-        <Link href={lp("/")} prefetch={false} className="inline-flex shrink-0 items-center gap-2">
+        <Link
+          href={lp("/")}
+          prefetch={false}
+          onClick={() => scrollToTopOnNav(lp("/"))}
+          className="inline-flex shrink-0 items-center gap-2"
+        >
           <ThemedImage
             lightSrc={siteConfig.logoWide.light}
             darkSrc={siteConfig.logoWide.dark}
@@ -52,19 +58,19 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
             toward Vercel's edge request quota. Dynamic pages (/explore, /sign-in)
             would trigger full SSR with DB queries on prefetch. */}
         <nav className="hidden items-center gap-5 lg:flex">
-          <Link href={lp(siteConfig.nav.about.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
+          <Link href={lp(siteConfig.nav.about.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.about.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
             <Trans id="common.nav.about" comment="Nav link: About">About</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.features.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
+          <Link href={lp(siteConfig.nav.features.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.features.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
             <Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
+          <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.pricing.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
             <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.faq.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
+          <Link href={lp(siteConfig.nav.faq.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.faq.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
             <Trans id="common.nav.faq" comment="Nav link: FAQ">FAQ</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.blog.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.blog.href))}>
+          <Link href={lp(siteConfig.nav.blog.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.blog.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.blog.href))}>
             <Trans id="common.nav.blog" comment="Nav link: Blog">Blog</Trans>
           </Link>
         </nav>
