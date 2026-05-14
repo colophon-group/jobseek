@@ -1163,7 +1163,7 @@ interface NormalizedCompanyPostingsParams {
   limit: number;
 }
 
-export async function getCompanyPostings(params: {
+export interface CompanyPostingsParams {
   companyId: string;
   keywords: string[];
   locationIds?: number[];
@@ -1180,9 +1180,20 @@ export async function getCompanyPostings(params: {
   locale: string;
   offset: number;
   limit: number;
-}): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number; truncated?: boolean }> {
-  const userId = await getSessionUserId();
+}
 
+/**
+ * Session-free implementation shared by :func:`getCompanyPostings`
+ * (which reads ``getSessionUserId`` to enforce the anonymous truncation
+ * cap) and :func:`getCompanyPostingsAnonymous` (which skips the session
+ * read for ISR-eligible call sites). Reading ``headers()`` /
+ * ``cookies()`` inside an ISR page render path silently downgrades the
+ * route to dynamic — see #3203 + #2640 + #2243.
+ */
+async function _getCompanyPostingsImpl(
+  params: CompanyPostingsParams,
+  userId: string | null,
+): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number; truncated?: boolean }> {
   if (!userId && params.offset >= ANON_MAX_POSTINGS) {
     return { postings: [], activeCount: 0, yearCount: 0, truncated: true };
   }
@@ -1217,6 +1228,28 @@ export async function getCompanyPostings(params: {
   }
 
   return result;
+}
+
+export async function getCompanyPostings(
+  params: CompanyPostingsParams,
+): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number; truncated?: boolean }> {
+  const userId = await getSessionUserId();
+  return _getCompanyPostingsImpl(params, userId);
+}
+
+/**
+ * Anonymous variant of :func:`getCompanyPostings` for ISR-eligible
+ * server-render paths (#3203, mirrors :func:`listTopCompaniesAnonymous`
+ * from #2640). Does NOT read the session — calling
+ * ``getSessionUserId`` would await ``headers()`` and silently downgrade
+ * the route to dynamic rendering. Always treats the caller as
+ * anonymous, so the truncation cap is enforced at ``ANON_MAX_POSTINGS``.
+ * Safe for use from a page render with ``revalidate = N``.
+ */
+export async function getCompanyPostingsAnonymous(
+  params: CompanyPostingsParams,
+): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number; truncated?: boolean }> {
+  return _getCompanyPostingsImpl(params, null);
 }
 
 /**

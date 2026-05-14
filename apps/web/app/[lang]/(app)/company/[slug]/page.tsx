@@ -4,6 +4,7 @@ import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlte
 import { companyCacheTag } from "@/lib/cache-tags";
 import { CACHE_TTL_DETAIL } from "@/lib/cache-ttl";
 import { getCompanyBySlug } from "@/lib/actions/company";
+import { fetchCompanyPageDefaults } from "@/lib/actions/company-page-data";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { CompanyHead } from "./company-head";
@@ -110,8 +111,17 @@ export default async function CompanyPageRoute({ params }: Props) {
   const { slug } = await params;
   cacheTag(companyCacheTag(slug));
 
-  const company = await getCompanyBySlug(slug, locale);
-  if (!company) return <CompanyNotFound />;
+  // Prerender the unauthenticated, no-filter ``CompanyPageData`` and
+  // embed it as ``initialData`` so anonymous visitors hit a CDN-cached
+  // shell with zero client-side server-action round-trips (#3203,
+  // mirrors `/explore` from #2640). ``fetchCompanyPageDefaults``
+  // deliberately avoids ``headers()``/``cookies()`` to stay
+  // ISR-eligible — the client component re-fetches the personalised
+  // variant via ``fetchCompanyPageData`` when filters or auth-related
+  // hint cookies are present.
+  const initialData = await fetchCompanyPageDefaults({ slug, locale });
+  if (!initialData) return <CompanyNotFound />;
+  const { company } = initialData;
 
   // The page body is `'use cache'`-wrapped (10-minute revalidate) so the
   // anonymous static shell ships from the per-region cache without
@@ -129,7 +139,7 @@ export default async function CompanyPageRoute({ params }: Props) {
         industryId={company.industryId}
         locale={locale}
       />
-      <CompanyContent locale={locale} slug={slug} />
+      <CompanyContent locale={locale} slug={slug} initialData={initialData} />
     </div>
   );
 }
