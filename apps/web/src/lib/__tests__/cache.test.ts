@@ -10,16 +10,27 @@ vi.mock("@/lib/redis", () => ({
     set: vi.fn(),
     del: vi.fn(),
     scan: vi.fn(),
+    mget: vi.fn(),
   },
 }));
 
 import { redis } from "@/lib/redis";
-import { cached, invalidate, invalidatePattern } from "../cache";
+import {
+  cached,
+  invalidate,
+  invalidatePattern,
+  kvDelete,
+  kvGet,
+  kvMget,
+  kvScan,
+  kvSet,
+} from "../cache";
 
 const mockGet = redis.get as ReturnType<typeof vi.fn>;
 const mockSet = redis.set as ReturnType<typeof vi.fn>;
 const mockDel = redis.del as ReturnType<typeof vi.fn>;
 const mockScan = redis.scan as ReturnType<typeof vi.fn>;
+const mockMget = redis.mget as ReturnType<typeof vi.fn>;
 
 describe("cached", () => {
   beforeEach(() => {
@@ -254,5 +265,191 @@ describe("invalidatePattern", () => {
     const deleted = await invalidatePattern("x:");
 
     expect(deleted).toBe(1);
+  });
+});
+
+describe("kvGet", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("passes the raw key through without `cache:` prefixing", async () => {
+    mockGet.mockResolvedValue({ id: 1 });
+
+    const value = await kvGet<{ id: number }>("session:tok-1");
+
+    expect(value).toEqual({ id: 1 });
+    expect(mockGet).toHaveBeenCalledWith("session:tok-1");
+  });
+
+  it("returns null on miss", async () => {
+    mockGet.mockResolvedValue(null);
+
+    const value = await kvGet("k");
+
+    expect(value).toBeNull();
+  });
+
+  it("swallows Redis errors and returns null by default", async () => {
+    mockGet.mockRejectedValue(new Error("Redis down"));
+
+    const value = await kvGet("k");
+
+    expect(value).toBeNull();
+  });
+
+  it("rethrows Redis errors when swallowErrors=false", async () => {
+    mockGet.mockRejectedValue(new Error("Redis down"));
+
+    await expect(kvGet("k", { swallowErrors: false })).rejects.toThrow(
+      "Redis down",
+    );
+  });
+});
+
+describe("kvSet", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("JSON-stringifies the value and forwards the TTL as `ex`", async () => {
+    mockSet.mockResolvedValue("OK");
+
+    await kvSet("session:tok", { user: { id: "u1" } }, { ttl: 300 });
+
+    expect(mockSet).toHaveBeenCalledWith(
+      "session:tok",
+      JSON.stringify({ user: { id: "u1" } }),
+      { ex: 300 },
+    );
+  });
+
+  it("swallows Redis errors by default", async () => {
+    mockSet.mockRejectedValue(new Error("Redis write failed"));
+
+    await expect(
+      kvSet("k", { a: 1 }, { ttl: 60 }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rethrows Redis errors when swallowErrors=false", async () => {
+    mockSet.mockRejectedValue(new Error("Redis write failed"));
+
+    await expect(
+      kvSet("k", { a: 1 }, { ttl: 60, swallowErrors: false }),
+    ).rejects.toThrow("Redis write failed");
+  });
+});
+
+describe("kvDelete", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes a single key and returns the count", async () => {
+    mockDel.mockResolvedValue(1);
+
+    const n = await kvDelete("session:tok");
+
+    expect(n).toBe(1);
+    expect(mockDel).toHaveBeenCalledWith("session:tok");
+  });
+
+  it("deletes a list of keys in one call (variadic spread)", async () => {
+    mockDel.mockResolvedValue(3);
+
+    const n = await kvDelete(["session:a", "session:b", "session:c"]);
+
+    expect(n).toBe(3);
+    expect(mockDel).toHaveBeenCalledWith("session:a", "session:b", "session:c");
+  });
+
+  it("returns 0 without touching Redis when the list is empty", async () => {
+    const n = await kvDelete([]);
+
+    expect(n).toBe(0);
+    expect(mockDel).not.toHaveBeenCalled();
+  });
+
+  it("swallows Redis errors and returns 0 by default", async () => {
+    mockDel.mockRejectedValue(new Error("Redis unavailable"));
+
+    const n = await kvDelete("k");
+
+    expect(n).toBe(0);
+  });
+
+  it("rethrows Redis errors when swallowErrors=false (sweep semantics)", async () => {
+    mockDel.mockRejectedValue(new Error("Redis unavailable"));
+
+    await expect(
+      kvDelete(["a", "b"], { swallowErrors: false }),
+    ).rejects.toThrow("Redis unavailable");
+  });
+});
+
+describe("kvMget", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns parsed values in key order, with null for misses", async () => {
+    mockMget.mockResolvedValue([{ id: 1 }, null, { id: 3 }]);
+
+    const values = await kvMget<{ id: number }>(["a", "b", "c"]);
+
+    expect(values).toEqual([{ id: 1 }, null, { id: 3 }]);
+    expect(mockMget).toHaveBeenCalledWith("a", "b", "c");
+  });
+
+  it("returns [] without touching Redis when keys is empty", async () => {
+    const values = await kvMget(["" as never].slice(0, 0));
+
+    expect(values).toEqual([]);
+    expect(mockMget).not.toHaveBeenCalled();
+  });
+
+  it("propagates Redis errors so callers can decide whether to abort", async () => {
+    mockMget.mockRejectedValue(new Error("Redis down"));
+
+    await expect(kvMget(["a"])).rejects.toThrow("Redis down");
+  });
+});
+
+describe("kvScan", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("forwards the raw match (no `cache:` prefix) and returns [cursor, keys]", async () => {
+    mockScan.mockResolvedValue(["42", ["session:a", "session:b"]]);
+
+    const [cursor, keys] = await kvScan(0, { match: "session:*" });
+
+    expect(cursor).toBe("42");
+    expect(keys).toEqual(["session:a", "session:b"]);
+    expect(mockScan).toHaveBeenCalledWith(0, {
+      match: "session:*",
+      count: 100,
+    });
+  });
+
+  it("honours a custom count", async () => {
+    mockScan.mockResolvedValue(["0", []]);
+
+    await kvScan("5", { match: "session:*", count: 25 });
+
+    expect(mockScan).toHaveBeenCalledWith("5", {
+      match: "session:*",
+      count: 25,
+    });
+  });
+
+  it("propagates Redis errors so callers can decide whether to abort", async () => {
+    mockScan.mockRejectedValue(new Error("Redis down"));
+
+    await expect(kvScan(0, { match: "session:*" })).rejects.toThrow(
+      "Redis down",
+    );
   });
 });

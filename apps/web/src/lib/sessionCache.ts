@@ -2,11 +2,15 @@ import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { redis } from "@/lib/redis";
+import { kvDelete, kvGet, kvMget, kvScan, kvSet } from "@/lib/cache";
 
 const SESSION_TTL = 300; // 5 minutes
 
 type SessionResult = Awaited<ReturnType<typeof auth.api.getSession>>;
+
+function sessionKey(token: string): string {
+  return `session:${token}`;
+}
 
 function extractToken(cookieHeader: string): string | null {
   for (const part of cookieHeader.split(";")) {
@@ -27,13 +31,11 @@ async function fetchSession(): Promise<SessionResult> {
   const token = extractToken(cookieHeader);
   if (!token) return null;
 
-  // Try Redis cache first
-  try {
-    const cached = await redis.get<SessionResult>(`session:${token}`);
-    if (cached) return cached;
-  } catch {
-    // Redis unavailable — fall through to DB
-  }
+  // Try Redis cache first. `kvGet` swallows Redis errors by default and
+  // returns null on miss OR transport failure, matching the pre-façade
+  // "fall through to DB on Redis blip" behaviour.
+  const cached = await kvGet<SessionResult>(sessionKey(token));
+  if (cached) return cached;
 
   // Cache miss — fetch from DB via Better Auth
   let result: SessionResult;
@@ -45,14 +47,9 @@ async function fetchSession(): Promise<SessionResult> {
   }
   if (!result) return null;
 
-  // Store in Redis for subsequent requests
-  try {
-    await redis.set(`session:${token}`, JSON.stringify(result), {
-      ex: SESSION_TTL,
-    });
-  } catch {
-    // Redis unavailable — still return the DB result
-  }
+  // Store in Redis for subsequent requests. `kvSet` swallows on its own;
+  // we still get the DB result back to the caller either way.
+  await kvSet(sessionKey(token), result, { ttl: SESSION_TTL });
 
   return result;
 }
@@ -80,13 +77,13 @@ export async function getSessionUserId(): Promise<string | null> {
  * Invalidate a session in Redis cache.
  *
  * Called on sign-out, password change, session revocation, etc.
+ * Eviction is a true `DEL` (not stale-marking) so subsequent reads miss
+ * and re-fetch from Better Auth.
  */
 export async function invalidateSessionCache(token: string): Promise<void> {
-  try {
-    await redis.del(`session:${token}`);
-  } catch {
-    // Best effort — TTL will clean up eventually
-  }
+  // `kvDelete` swallows Redis errors by default. We don't care about the
+  // count — TTL would clean up eventually if the DEL silently fails.
+  await kvDelete(sessionKey(token));
 }
 
 /**
@@ -114,24 +111,25 @@ export async function invalidateAllUserSessionCacheEntries(
   let deleted = 0;
   try {
     do {
-      const [next, keys] = (await redis.scan(cursor, {
+      const [next, keys] = await kvScan(cursor, {
         match: "session:*",
         count: 100,
-      })) as [string | number, string[]];
+      });
       cursor = next;
       if (keys.length === 0) continue;
 
       // mget returns the parsed JSON for each value (or null). Each cached
       // entry is the full SessionResult: `{ session: {...}, user: {...} }`.
-      const values = (await redis.mget(...keys)) as Array<
-        { user?: { id?: string } } | null
-      >;
+      const values = await kvMget<{ user?: { id?: string } }>(keys);
       const toDelete: string[] = [];
       for (let i = 0; i < keys.length; i++) {
         if (values[i]?.user?.id === userId) toDelete.push(keys[i]);
       }
       if (toDelete.length > 0) {
-        deleted += await redis.del(...toDelete);
+        // Rethrow inside the loop so the outer catch logs + returns the
+        // partial count. `kvDelete` would swallow by default; we want the
+        // sweep to abort cleanly mid-iteration on transient errors.
+        deleted += await kvDelete(toDelete, { swallowErrors: false });
       }
     } while (String(cursor) !== "0");
   } catch (err) {
