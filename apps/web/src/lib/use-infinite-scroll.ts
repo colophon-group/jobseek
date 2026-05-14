@@ -1,5 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/**
+ * Parse a CSS `rootMargin` shorthand into a fixed `[top, right, bottom, left]`
+ * tuple. Supports 1–4 value forms exactly the way IntersectionObserver does:
+ *
+ *   "10px"             → [10, 10, 10, 10]
+ *   "10px 20px"        → [10, 20, 10, 20]
+ *   "10px 20px 30px"   → [10, 20, 30, 20]
+ *   "10px 20px 30px 40px" → [10, 20, 30, 40]
+ *
+ * Any non-numeric component falls back to 0. This is used by the rect-check
+ * fallback below so callers that pass an asymmetric `rootMargin` (e.g. the
+ * horizontal `similar-companies-strip` carousel with
+ * `"0px 200px 0px 0px"`) don't get a vertical-only inView check that
+ * always reports "in view" along the unguarded axis.
+ */
+function parseRootMargin(m: string): [number, number, number, number] {
+  const parts = m.trim().split(/\s+/).map((p) => parseInt(p, 10) || 0);
+  if (parts.length === 1) return [parts[0], parts[0], parts[0], parts[0]];
+  if (parts.length === 2) return [parts[0], parts[1], parts[0], parts[1]];
+  if (parts.length === 3) return [parts[0], parts[1], parts[2], parts[1]];
+  return [parts[0], parts[1], parts[2], parts[3]];
+}
+
 interface UseInfiniteScrollOptions {
   /** Whether there are more items to load */
   hasMore: boolean;
@@ -114,11 +137,18 @@ export function useInfiniteScroll({
     const rootRect = rootEl
       ? rootEl.getBoundingClientRect()
       : { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
-    // Apply rootMargin as a numeric pixel value (supports "200px" form;
-    // falls back to 0 if it can't be parsed).
-    const margin = parseInt(rootMargin, 10) || 0;
+    // Apply rootMargin on BOTH axes — IntersectionObserver expands the
+    // root's intersection rect by [top, right, bottom, left] independently.
+    // A vertical-only check breaks horizontal carousels (e.g. the
+    // similar-companies strip with `rootMargin: "0px 200px 0px 0px"`)
+    // because a sentinel scrolled far off-screen to the right would still
+    // satisfy the vertical predicate and chain-load every remaining page.
+    const [mt, mr, mb, ml] = parseRootMargin(rootMargin);
     const inView =
-      rect.top < rootRect.bottom + margin && rect.bottom > rootRect.top - margin;
+      rect.top < rootRect.bottom + mb &&
+      rect.bottom > rootRect.top - mt &&
+      rect.left < rootRect.right + mr &&
+      rect.right > rootRect.left - ml;
     if (inView) doLoad();
   }, [isLoading, hasMore, sentinelEl, root, rootMargin, doLoad]);
 
