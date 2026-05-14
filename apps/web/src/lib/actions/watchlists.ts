@@ -1213,6 +1213,91 @@ async function queryPublicWatchlists(params: {
   };
 }
 
+/**
+ * Patch `active_job_count` on Discover-surface entries whose source
+ * watchlist has `filters.anyCompany = true`.
+ *
+ * Context (#3352): `getPopularWatchlists` and `searchPublicWatchlists`
+ * both read the denormalized `active_job_count` directly from the
+ * Typesense `watchlist` doc — fast, but always 0 for `anyCompany`
+ * watchlists because the crawler's `refresh_typesense_counts` joins the
+ * empty `watchlist_company` table for them. Same root cause as #3333,
+ * which patched the analogous code path in `getUserWatchlists`. This
+ * helper mirrors that patch for the public Discover surfaces.
+ *
+ * Shape:
+ * 1. Look up `filters` JSONB for each entry's `id` in a single batched
+ *    Postgres query (Typesense doesn't index `filters`, so we can't
+ *    detect `anyCompany` from the doc alone).
+ * 2. For rows where `filters.anyCompany` is set, fan out one
+ *    `_resolveAnyCompanyActiveCount(filters, locale, languages)` per
+ *    row in parallel via `Promise.all`. Each call is cached by
+ *    `_resolveAnyCompanyActiveCount` itself, so repeat renders with the
+ *    same viewer-language scope hit Redis instead of Typesense.
+ * 3. Patch the `activeJobCount` on the matching entry; non-anyCompany
+ *    rows are returned unchanged.
+ *
+ * Fan-out is bounded by the page size (typically 10-20 tiles on the
+ * Discover surface) times the fraction that are `anyCompany`. Same
+ * trade-off as the `getUserWatchlists` patch in #3340.
+ *
+ * Failures (Postgres unreachable, Typesense per-row count failure)
+ * degrade to the Typesense doc's denormalized 0 — same as the rest of
+ * the Discover surface. Logged for visibility.
+ */
+async function _patchAnyCompanyCountsForDiscover(
+  entries: PublicWatchlistEntry[],
+  locale: string,
+  languages: string[],
+): Promise<PublicWatchlistEntry[]> {
+  if (entries.length === 0) return entries;
+
+  let filtersById: Map<string, WatchlistFilters>;
+  try {
+    const ids = entries.map((e) => e.id);
+    const rows = await withDbRetry(
+      () =>
+        db.execute<{ [key: string]: unknown; id: string; filters: WatchlistFilters }>(sql`
+          SELECT w.id, w.filters
+          FROM watchlist w
+          WHERE w.id = ANY(${ids}::uuid[])
+        `),
+      { label: "discoverAnyCompanyFilters" },
+    );
+    const typed = rows as unknown as { id: string; filters: WatchlistFilters }[];
+    filtersById = new Map(typed.map((r) => [r.id, r.filters]));
+  } catch (err) {
+    console.error("[_patchAnyCompanyCountsForDiscover] filter lookup failed", err);
+    return entries;
+  }
+
+  const anyCompanyEntries = entries.filter((e) => filtersById.get(e.id)?.anyCompany);
+  if (anyCompanyEntries.length === 0) return entries;
+
+  const pairs = await Promise.all(
+    anyCompanyEntries.map(async (e) => {
+      const f = filtersById.get(e.id)!;
+      try {
+        const c = await _resolveAnyCompanyActiveCount(f, locale, languages);
+        return [e.id, c] as const;
+      } catch (err) {
+        console.error("[_patchAnyCompanyCountsForDiscover] anyCompany count failed", {
+          id: e.id,
+          err,
+        });
+        return [e.id, 0] as const;
+      }
+    }),
+  );
+  const patchedCounts = new Map(pairs);
+
+  return entries.map((e) =>
+    patchedCounts.has(e.id)
+      ? { ...e, activeJobCount: patchedCounts.get(e.id)! }
+      : e,
+  );
+}
+
 export async function searchPublicWatchlists(params: {
   query: string;
   offset: number;
@@ -1237,8 +1322,18 @@ export async function searchPublicWatchlists(params: {
           // sync). The previous shape re-computed N filtered counts per
           // listing render, costing N Typesense round-trips for a search
           // surface that shows 20+ results per page.
+          //
+          // EXCEPTION (#3352): `anyCompany` rows carry a denormalized 0
+          // (same root cause as the `getUserWatchlists` patch in #3333 /
+          // PR #3340). Patch those rows with a live Typesense count
+          // bounded by the page size — see `_patchAnyCompanyCountsForDiscover`.
+          const patched = await _patchAnyCompanyCountsForDiscover(
+            tsResult.watchlists,
+            params.locale,
+            languages,
+          );
           return {
-            watchlists: tsResult.watchlists,
+            watchlists: patched,
             total: tsResult.total,
           };
         }
@@ -1275,8 +1370,17 @@ export async function getPopularWatchlists(params: {
           // Perf (#3176): trust the denormalized `active_job_count`
           // already on each Typesense `watchlist` doc — see the matching
           // comment in `searchPublicWatchlists`.
+          //
+          // EXCEPTION (#3352): patch `anyCompany` rows from their
+          // structural 0 — see the matching comment in
+          // `searchPublicWatchlists`.
+          const patched = await _patchAnyCompanyCountsForDiscover(
+            tsResult.watchlists,
+            params.locale,
+            languages,
+          );
           return {
-            watchlists: tsResult.watchlists,
+            watchlists: patched,
             total: tsResult.total,
           };
         }
