@@ -147,7 +147,12 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
   });
 
   it("recognises every documented filter searchParam as a refetch trigger", async () => {
-    const filterParams = ["q", "loc", "occ", "sen", "tech", "sal", "salcur", "exp"];
+    // Mirrors `FILTER_PARAMS` in `../explore-content.tsx`. Adding a new
+    // filter param to that array MUST also add it here so the regression
+    // surface stays explicit (e.g. #3275 — `wm` was added to the live
+    // code in #2987 but the test list lagged behind, leaving the
+    // refetch-trigger contract unguarded).
+    const filterParams = ["q", "loc", "occ", "sen", "tech", "wm", "sal", "salcur", "exp"];
     for (const param of filterParams) {
       mockFetchExploreData.mockClear();
       currentSearchParams = new URLSearchParams(`${param}=x`);
@@ -162,6 +167,60 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
       });
       unmount();
     }
+  });
+
+  // Regression coverage for #3275. The `wm` (workMode) searchParam was
+  // added to `FILTER_PARAMS` in #2987 alongside the work-mode filter
+  // feature, but no test pinned the behaviour. A future revert/refactor
+  // that drops `wm` would silently re-introduce the stale-data bug
+  // (anonymous deep-link to `/explore?wm=remote` paints the unfiltered
+  // homepage `initialData` and never refetches). These tests lock that
+  // contract in place.
+  describe("wm (workMode) filter-param refetch trigger (#3275)", () => {
+    it("triggers refetch when ?wm=remote is in the URL", async () => {
+      currentSearchParams = new URLSearchParams("wm=remote");
+
+      render(
+        <ExploreContent locale="en" initialData={makeInitialData()} />,
+      );
+
+      await waitFor(() => {
+        expect(mockFetchExploreData).toHaveBeenCalledTimes(1);
+      });
+      const callArgs = mockFetchExploreData.mock.calls[0]?.[0] as {
+        searchParams: Record<string, string | undefined>;
+      };
+      expect(callArgs.searchParams.wm).toBe("remote");
+    });
+
+    it("triggers refetch when ?wm=hybrid is in the URL", async () => {
+      currentSearchParams = new URLSearchParams("wm=hybrid");
+
+      render(
+        <ExploreContent locale="en" initialData={makeInitialData()} />,
+      );
+
+      await waitFor(() => {
+        expect(mockFetchExploreData).toHaveBeenCalledTimes(1);
+      });
+      const callArgs = mockFetchExploreData.mock.calls[0]?.[0] as {
+        searchParams: Record<string, string | undefined>;
+      };
+      expect(callArgs.searchParams.wm).toBe("hybrid");
+    });
+
+    it("does NOT trigger refetch when the wm param is absent", async () => {
+      // Sanity: a no-wm anonymous visit must still hit the prerendered
+      // initialData path so #2640's zero-invocation guarantee holds.
+      currentSearchParams = new URLSearchParams();
+
+      render(
+        <ExploreContent locale="en" initialData={makeInitialData()} />,
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(mockFetchExploreData).not.toHaveBeenCalled();
+    });
   });
 });
 
