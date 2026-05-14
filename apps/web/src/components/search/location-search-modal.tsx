@@ -474,8 +474,11 @@ export function LocationSearchModal({
               </Trans>
             </Dialog.Title>
             <Dialog.Close asChild>
-              <button className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer">
-                <X size={16} />
+              <button
+                className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer"
+                aria-label={t({ id: "search.locationModal.close", comment: "Aria label for the location modal close button", message: "Close" })}
+              >
+                <X size={16} aria-hidden="true" />
               </button>
             </Dialog.Close>
           </div>

@@ -37,7 +37,7 @@ export function FormField({ label, className, type, ...inputProps }: FormFieldPr
             }
             tabIndex={-1}
           >
-            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
           </button>
         )}
       </div>

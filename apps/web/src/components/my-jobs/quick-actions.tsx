@@ -24,7 +24,7 @@ function useActionsByStatus(): Record<ApplicationStatus, Action[]> {
     saved: [
       {
         label: markApplied,
-        icon: <Check size={12} />,
+        icon: <Check size={12} aria-hidden="true" />,
         status: "applied",
         className: "text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40",
       },
@@ -32,14 +32,14 @@ function useActionsByStatus(): Record<ApplicationStatus, Action[]> {
     applied: [
       {
         label: addInterview,
-        icon: <Plus size={12} />,
+        icon: <Plus size={12} aria-hidden="true" />,
         status: "interviewing",
         className:
           "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40",
       },
       {
         label: markRejected,
-        icon: <X size={12} />,
+        icon: <X size={12} aria-hidden="true" />,
         status: "rejected",
         className: "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40",
       },
@@ -47,21 +47,21 @@ function useActionsByStatus(): Record<ApplicationStatus, Action[]> {
     interviewing: [
       {
         label: addInterview,
-        icon: <Plus size={12} />,
+        icon: <Plus size={12} aria-hidden="true" />,
         status: "interviewing",
         className:
           "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40",
       },
       {
         label: markOffer,
-        icon: <Star size={12} />,
+        icon: <Star size={12} aria-hidden="true" />,
         status: "offered",
         className:
           "text-green-600 hover:bg-green-100 dark:hover:bg-green-900/40",
       },
       {
         label: markRejected,
-        icon: <X size={12} />,
+        icon: <X size={12} aria-hidden="true" />,
         status: "rejected",
         className: "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40",
       },
@@ -69,7 +69,7 @@ function useActionsByStatus(): Record<ApplicationStatus, Action[]> {
     offered: [
       {
         label: markRejected,
-        icon: <X size={12} />,
+        icon: <X size={12} aria-hidden="true" />,
         status: "rejected",
         className: "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40",
       },
@@ -112,6 +112,7 @@ export function QuickActions({
                   onStatusChange(action.status);
                 }
               }}
+              aria-label={action.label}
               className={`inline-flex cursor-pointer items-center justify-center rounded p-1 transition-colors ${action.className}`}
             >
               {action.icon}

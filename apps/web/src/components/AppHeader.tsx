@@ -136,16 +136,16 @@ export function AppHeader() {
           {/* Nav icons (desktop only) */}
           <nav className="hidden items-center gap-1 md:flex">
             <NavIcon href={appHref} label={exploreLabel}>
-              <Compass size={18} />
+              <Compass size={18} aria-hidden="true" />
             </NavIcon>
             <NavIcon href={lp("/watchlists")} label={watchlistsLabel}>
-              <Eye size={18} />
+              <Eye size={18} aria-hidden="true" />
             </NavIcon>
             <NavIcon href={lp("/my-jobs")} label={myJobsLabel}>
-              <Briefcase size={18} />
+              <Briefcase size={18} aria-hidden="true" />
             </NavIcon>
             <NavIcon href={lp(siteConfig.nav.settings.href)} label={settingsLabel}>
-              <Settings size={18} />
+              <Settings size={18} aria-hidden="true" />
             </NavIcon>
           </nav>
 

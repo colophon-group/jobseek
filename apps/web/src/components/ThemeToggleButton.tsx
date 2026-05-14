@@ -40,7 +40,7 @@ export function ThemeToggleButton({ className }: ThemeToggleButtonProps) {
             className={`inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors cursor-pointer ${className ?? ""}`}
             aria-label={label}
           >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            {isDark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
           </button>
         </Tooltip.Trigger>
         <Tooltip.Portal>

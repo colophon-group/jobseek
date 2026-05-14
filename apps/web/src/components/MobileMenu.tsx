@@ -65,7 +65,7 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
                     className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft cursor-pointer"
                     aria-label={t({ id: "common.mobileMenu.close", comment: "Aria label for close mobile menu button", message: "Close menu" })}
                   >
-                    <X size={18} />
+                    <X size={18} aria-hidden="true" />
                   </button>
                 </Dialog.Close>
               </div>

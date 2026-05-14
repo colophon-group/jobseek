@@ -170,8 +170,9 @@ export function MyJobDetailPanel({
         <button
           onClick={onClose}
           className="cursor-pointer rounded p-1 text-muted hover:bg-border-soft hover:text-foreground"
+          aria-label={t({ id: "myJobs.detail.close", comment: "Aria label for the my-jobs detail panel close button", message: "Close job details" })}
         >
-          <X size={14} />
+          <X size={14} aria-hidden="true" />
         </button>
       </div>
 

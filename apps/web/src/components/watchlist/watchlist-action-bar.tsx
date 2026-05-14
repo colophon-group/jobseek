@@ -168,7 +168,7 @@ export function WatchlistActionBar({
                   label={t({ id: "watchlists.actions.edit", comment: "Edit watchlist tooltip", message: "Edit" })}
                   onClick={onEdit}
                 >
-                  <Pencil size={16} />
+                  <Pencil size={16} aria-hidden="true" />
                 </ActionButton>
               )}
               <ActionButton
@@ -181,7 +181,7 @@ export function WatchlistActionBar({
                 disabled={!isPaidPlan && isPublic}
                 warning={!isPaidPlan && isPublic}
               >
-                {isPublic ? <Globe size={16} /> : <Lock size={16} />}
+                {isPublic ? <Globe size={16} aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
               </ActionButton>
               <ActionButton
                 label={
@@ -193,7 +193,7 @@ export function WatchlistActionBar({
                 disabled={!isPaidPlan}
                 warning={!isPaidPlan}
               >
-                {alertsEnabled ? <BellOff size={16} /> : <Bell size={16} />}
+                {alertsEnabled ? <BellOff size={16} aria-hidden="true" /> : <Bell size={16} aria-hidden="true" />}
               </ActionButton>
               <ActionButton
                 label={t({ id: "watchlists.actions.mirror", comment: "Mirror watchlist tooltip", message: "Mirror" })}
@@ -201,7 +201,7 @@ export function WatchlistActionBar({
                 disabled={limitReached}
                 warning={limitReached}
               >
-                <Copy size={16} />
+                <Copy size={16} aria-hidden="true" />
               </ActionButton>
               <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
                 <AlertDialog.Trigger asChild>
@@ -210,7 +210,7 @@ export function WatchlistActionBar({
                       label={t({ id: "watchlists.actions.delete", comment: "Delete watchlist tooltip", message: "Delete" })}
                       onClick={() => setDeleteOpen(true)}
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={16} aria-hidden="true" />
                     </ActionButton>
                   </span>
                 </AlertDialog.Trigger>
@@ -261,7 +261,7 @@ export function WatchlistActionBar({
               disabled={isLoggedIn && limitReached}
               warning={isLoggedIn && limitReached}
             >
-              <Copy size={16} />
+              <Copy size={16} aria-hidden="true" />
             </ActionButton>
           )}
         </div>

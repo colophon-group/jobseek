@@ -554,48 +554,54 @@ export function WatchlistViewPage({
                   <span key={`occ-${occ.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
                     <Briefcase size={12} className="shrink-0" />
                     {occ.name}
-                    <button onClick={() => onRemoveOccupation(occ.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
+                    <button onClick={() => onRemoveOccupation(occ.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${occ.name} filter` })}><X size={12} aria-hidden="true" /></button>
                   </span>
                 ))}
                 {seniorities.map((sen) => (
                   <span key={`sen-${sen.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
                     <BarChart3 size={12} className="shrink-0" />
                     {sen.name}
-                    <button onClick={() => onRemoveSeniority(sen.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
+                    <button onClick={() => onRemoveSeniority(sen.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${sen.name} filter` })}><X size={12} aria-hidden="true" /></button>
                   </span>
                 ))}
                 {technologies.map((tech) => (
                   <span key={`tech-${tech.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
                     <Code2 size={12} className="shrink-0" />
                     {tech.name}
-                    <button onClick={() => onRemoveTechnology(tech.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
+                    <button onClick={() => onRemoveTechnology(tech.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${tech.name} filter` })}><X size={12} aria-hidden="true" /></button>
                   </span>
                 ))}
-                {employmentTypes.map((et) => (
-                  <span key={`et-${et}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm capitalize text-primary">
-                    <CalendarDays size={12} className="shrink-0" />
-                    {et.replace(/_/g, " ")}
-                    <button onClick={() => onToggleEmploymentType(et)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
-                  </span>
-                ))}
-                {workMode.map((wm) => (
-                  <span key={`wm-${wm}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                    <Home size={12} className="shrink-0" />
-                    {wm === "onsite"
-                      ? t({ id: "search.workMode.onsite", comment: "Work mode: onsite (in-office)", message: "On-site" })
-                      : wm === "hybrid"
-                        ? t({ id: "search.workMode.hybrid", comment: "Work mode: hybrid (mixed onsite/remote)", message: "Hybrid" })
-                        : t({ id: "search.workMode.remote", comment: "Work mode: remote (work-from-home)", message: "Remote" })}
-                    <button onClick={() => onToggleWorkMode(wm)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
-                  </span>
-                ))}
+                {employmentTypes.map((et) => {
+                  const etLabel = et.replace(/_/g, " ");
+                  return (
+                    <span key={`et-${et}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm capitalize text-primary">
+                      <CalendarDays size={12} className="shrink-0" />
+                      {etLabel}
+                      <button onClick={() => onToggleEmploymentType(et)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${etLabel} filter` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
+                {workMode.map((wm) => {
+                  const wmLabel = wm === "onsite"
+                    ? t({ id: "search.workMode.onsite", comment: "Work mode: onsite (in-office)", message: "On-site" })
+                    : wm === "hybrid"
+                      ? t({ id: "search.workMode.hybrid", comment: "Work mode: hybrid (mixed onsite/remote)", message: "Hybrid" })
+                      : t({ id: "search.workMode.remote", comment: "Work mode: remote (work-from-home)", message: "Remote" });
+                  return (
+                    <span key={`wm-${wm}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
+                      <Home size={12} className="shrink-0" />
+                      {wmLabel}
+                      <button onClick={() => onToggleWorkMode(wm)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${wmLabel} filter` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
                 {(salaryMin != null || salaryMax != null) && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
                     <DollarSign size={12} className="shrink-0" />
                     {salaryMin != null && salaryMax != null
                       ? `${salaryCurrency} ${Math.round(salaryMin / 1000)}K – ${Math.round(salaryMax / 1000)}K`
                       : salaryMin != null ? `${salaryCurrency} ${Math.round(salaryMin / 1000)}K+` : `${salaryCurrency} ≤${Math.round(salaryMax! / 1000)}K`}
-                    <button onClick={() => onSalaryChange(salaryCurrency, undefined, undefined)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
+                    <button onClick={() => onSalaryChange(salaryCurrency, undefined, undefined)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeSalary", comment: "Aria label for the X button that clears the salary-range filter", message: "Remove salary filter" })}><X size={12} aria-hidden="true" /></button>
                   </span>
                 )}
                 {(experienceMin != null || experienceMax != null) && (
@@ -604,22 +610,25 @@ export function WatchlistViewPage({
                     {experienceMin != null && experienceMax != null
                       ? `${experienceMin}–${experienceMax}y`
                       : experienceMin != null ? `${experienceMin}y+` : `≤${experienceMax}y`}
-                    <button onClick={() => onExperienceChange(undefined, undefined)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
+                    <button onClick={() => onExperienceChange(undefined, undefined)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeExperience", comment: "Aria label for the X button that clears the experience-range filter", message: "Remove experience filter" })}><X size={12} aria-hidden="true" /></button>
                   </span>
                 )}
                 {keywords.map((kw) => (
                   <span key={kw} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
                     {kw}
-                    <button onClick={() => onRemoveKeyword(kw)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
+                    <button onClick={() => onRemoveKeyword(kw)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeKeyword", comment: "Aria label for remove-keyword X button; {name} is the keyword", message: `Remove keyword ${kw}` })}><X size={12} aria-hidden="true" /></button>
                   </span>
                 ))}
-                {locations.map((loc) => (
-                  <span key={loc.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                    <MapPin size={12} className="shrink-0" />
-                    {loc.parentName && loc.type !== "country" && loc.type !== "macro" ? `${loc.name}, ${loc.parentName}` : loc.name}
-                    <button onClick={() => onRemoveLocation(loc.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
-                  </span>
-                ))}
+                {locations.map((loc) => {
+                  const locLabel = loc.parentName && loc.type !== "country" && loc.type !== "macro" ? `${loc.name}, ${loc.parentName}` : loc.name;
+                  return (
+                    <span key={loc.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
+                      <MapPin size={12} className="shrink-0" />
+                      {locLabel}
+                      <button onClick={() => onRemoveLocation(loc.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeLocation", comment: "Aria label for remove-location X button; {name} is the location label", message: `Remove location ${locLabel}` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
                 <button onClick={onClearAll} className="cursor-pointer text-xs text-muted transition-colors hover:text-foreground">
                   {t({ id: "search.filters.clearAll", comment: "Button to clear all active search filters", message: "Clear all" })}
                 </button>

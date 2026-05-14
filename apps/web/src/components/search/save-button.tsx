@@ -43,7 +43,7 @@ export function SaveButton({ postingId }: { postingId: string }) {
             className="shrink-0 cursor-pointer text-muted transition-opacity hover:opacity-70 disabled:cursor-default disabled:opacity-50"
             aria-label={label}
           >
-            <Icon size={14} className={saved ? "fill-current" : ""} />
+            <Icon size={14} aria-hidden="true" className={saved ? "fill-current" : ""} />
           </button>
         </Tooltip.Trigger>
         <Tooltip.Portal>

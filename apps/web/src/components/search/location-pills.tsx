@@ -202,7 +202,7 @@ export function LocationPills({
               message: "Remove location",
             })}
           >
-            <X size={12} />
+            <X size={12} aria-hidden="true" />
           </button>
         </span>
       ))}
