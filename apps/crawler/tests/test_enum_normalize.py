@@ -9,6 +9,7 @@ as any required entry in ``enum_normalize.py``.
 from __future__ import annotations
 
 import pytest
+import structlog
 
 from src.core.enum_normalize import (
     normalize_employment_type,
@@ -31,9 +32,14 @@ class TestNormalizeEmploymentTypeNullish:
 
 
 class TestNormalizeEmploymentTypeCanonicalSet:
-    """Every output must be one of the canonical bucket names."""
+    """Every output must be one of the canonical bucket names or ``None``.
 
-    _CANONICAL = {
+    Since #3222 unknown tokens return ``None`` instead of silently
+    coercing to ``full_time`` — callers can decide whether to default,
+    preserve the raw token, or store NULL.
+    """
+
+    _CANONICAL_OR_NONE = {
         "full_time",
         "part_time",
         "contract",
@@ -41,6 +47,7 @@ class TestNormalizeEmploymentTypeCanonicalSet:
         "temporary",
         "volunteer",
         "full_or_part",
+        None,
     }
 
     @pytest.mark.parametrize(
@@ -57,7 +64,7 @@ class TestNormalizeEmploymentTypeCanonicalSet:
     )
     def test_output_is_canonical_or_none(self, raw):
         result = normalize_employment_type(raw)
-        assert result in self._CANONICAL
+        assert result in self._CANONICAL_OR_NONE
 
 
 class TestNormalizeEmploymentTypeEnglish:
@@ -295,8 +302,9 @@ class TestNormalizeEmploymentTypeJsonLd:
             ("TEMPORARY", "temporary"),
             ("VOLUNTEER", "volunteer"),
             ("PER_DIEM", "part_time"),
-            # OTHER intentionally falls back to full_time per historic
-            # behaviour — see the central map.
+            # ``OTHER`` is explicitly in the map (-> ``full_time``) so
+            # it resolves to a canonical bucket rather than hitting the
+            # post-#3222 unknown path.
             ("OTHER", "full_time"),
         ],
     )
@@ -414,16 +422,63 @@ class TestNormalizeEmploymentTypeIdempotency:
         assert normalize_employment_type(canonical) == canonical
 
 
-class TestNormalizeEmploymentTypeFallback:
-    """Unknown values fall back to ``full_time`` historically.
+class TestNormalizeEmploymentTypeUnknown:
+    """Unknown values return ``None`` (since #3222 — was ``full_time``).
 
-    This is documented behaviour — extending the central map should be
-    preferred to relying on it.  These tests pin the fallback in place
-    so a future change can't accidentally regress it.
+    The pre-#3222 silent fallback inflated the ``full_time`` bucket with
+    every unrecognised upstream token (casual, zero-hour, variable hours,
+    weekend_contractor, …), corrupting facet counts on /explore and the
+    company-detail headers.  Callers that want a default should apply
+    it explicitly at the call site (``normalize_employment_type(raw) or
+    "full_time"``).
     """
 
-    def test_unknown_value_falls_back_to_full_time(self):
-        assert normalize_employment_type("Mystery employment kind") == "full_time"
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "Mystery employment kind",
+            "Apprenticeship",  # NB: ``apprenticeship`` IS in the map
+            "weekend_contractor",
+            "casual",
+            "zero-hour",
+            "on-call",
+            "variable hours",
+        ],
+    )
+    def test_unknown_value_returns_none(self, raw):
+        # ``Apprenticeship`` is recognised (``apprenticeship`` is in the
+        # map) so it intentionally maps to ``internship`` — we only assert
+        # the unknown ones return ``None``.
+        if raw.strip().lower() == "apprenticeship":
+            assert normalize_employment_type(raw) == "internship"
+        else:
+            assert normalize_employment_type(raw) is None
+
+    def test_unknown_value_emits_warning_log(self):
+        with structlog.testing.capture_logs() as logs:
+            result = normalize_employment_type("weekend_contractor")
+        assert result is None
+        assert any(
+            e["event"] == "enum_normalize.employment_type.unknown"
+            and e["raw"] == "weekend_contractor"
+            and e["log_level"] == "warning"
+            for e in logs
+        )
+
+    def test_known_value_does_not_emit_warning_log(self):
+        with structlog.testing.capture_logs() as logs:
+            result = normalize_employment_type("Full-time")
+        assert result == "full_time"
+        assert not any(e["event"] == "enum_normalize.employment_type.unknown" for e in logs)
+
+    def test_nullish_does_not_emit_warning_log(self):
+        # ``None`` / empty / whitespace input is "no data", not "unknown
+        # token" — must not pollute the warning stream.
+        with structlog.testing.capture_logs() as logs:
+            assert normalize_employment_type(None) is None
+            assert normalize_employment_type("") is None
+            assert normalize_employment_type("   ") is None
+        assert not any(e["event"] == "enum_normalize.employment_type.unknown" for e in logs)
 
 
 # ── normalize_job_location_type ─────────────────────────────────────
@@ -463,8 +518,15 @@ class TestNormalizeJobLocationType:
     def test_empty(self):
         assert normalize_job_location_type("") is None
 
-    def test_unknown_falls_back_to_onsite(self):
-        assert normalize_job_location_type("Mystery location type") == "onsite"
+    def test_unknown_returns_none_by_default(self):
+        # Since #3222 the implicit default is ``None``.  Pre-#3222 this
+        # silently coerced to ``"onsite"`` — same anti-pattern as the
+        # employment-type fallback that #3222 fixed.
+        assert normalize_job_location_type("Mystery location type") is None
+
+    def test_unknown_with_explicit_onsite_default(self):
+        # Callers that want a last-resort bucket must now opt in.
+        assert normalize_job_location_type("Mystery location type", default="onsite") == "onsite"
 
 
 class TestNormalizeJobLocationTypeAtsCodes:
@@ -517,13 +579,13 @@ class TestNormalizeJobLocationTypeAtsCodes:
 
 
 class TestNormalizeJobLocationTypeDefault:
-    """The ``default`` parameter (added in #2992) lets per-ATS callers
-    preserve their pre-#2992 None-on-miss behaviour while keeping the
-    public default at ``"onsite"`` for the rare callers that want a
-    last-resort bucket."""
+    """The ``default`` parameter (added in #2992) lets callers opt into
+    a last-resort bucket.  Since #3222 the parameter's own default is
+    ``None`` (was ``"onsite"``) to match the post-#3222
+    employment-type convention — no silent coercion."""
 
-    def test_default_onsite_is_public_default(self):
-        assert normalize_job_location_type("Mystery") == "onsite"
+    def test_default_none_is_public_default(self):
+        assert normalize_job_location_type("Mystery") is None
 
     def test_default_none_returns_none_on_miss(self):
         assert normalize_job_location_type("Mystery", default=None) is None
@@ -548,6 +610,36 @@ class TestNormalizeJobLocationTypeDefault:
         assert normalize_job_location_type(None, default="onsite") is None
         assert normalize_job_location_type("", default="onsite") is None
         assert normalize_job_location_type("   ", default="onsite") is None
+
+
+class TestNormalizeJobLocationTypeUnknownLogging:
+    """Since #3222 unknown tokens emit a structured warning so operators
+    can extend the central map.  Same pattern as
+    ``enum_normalize.employment_type.unknown``."""
+
+    def test_unknown_value_emits_warning_log(self):
+        with structlog.testing.capture_logs() as logs:
+            result = normalize_job_location_type("anywhere-on-mars", default=None)
+        assert result is None
+        assert any(
+            e["event"] == "enum_normalize.job_location_type.unknown"
+            and e["raw"] == "anywhere-on-mars"
+            and e["log_level"] == "warning"
+            for e in logs
+        )
+
+    def test_known_value_does_not_emit_warning_log(self):
+        with structlog.testing.capture_logs() as logs:
+            result = normalize_job_location_type("Remote", default=None)
+        assert result == "remote"
+        assert not any(e["event"] == "enum_normalize.job_location_type.unknown" for e in logs)
+
+    def test_nullish_does_not_emit_warning_log(self):
+        with structlog.testing.capture_logs() as logs:
+            assert normalize_job_location_type(None) is None
+            assert normalize_job_location_type("") is None
+            assert normalize_job_location_type("   ") is None
+        assert not any(e["event"] == "enum_normalize.job_location_type.unknown" for e in logs)
 
 
 class TestNormalizeJobLocationTypeWhitespaceCase:

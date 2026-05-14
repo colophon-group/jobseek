@@ -29,6 +29,10 @@ this normalization step.
 
 from __future__ import annotations
 
+import structlog
+
+log = structlog.get_logger()
+
 # ── Employment Type ─────────────────────────────────────────────────
 # Canonical: full_time, part_time, contract, internship, temporary,
 #            volunteer, full_or_part.
@@ -287,38 +291,50 @@ _JOB_LOCATION_TYPE_MAP: dict[str, str] = {
 def normalize_employment_type(raw: str | None) -> str | None:
     """Normalize employment type to canonical enum value.
 
-    Returns ``None`` when *raw* is ``None`` or empty/whitespace.
+    Returns ``None`` when *raw* is ``None``, empty/whitespace, or an
+    unrecognised token.  Lookup is case-insensitive and trims
+    surrounding whitespace.
 
-    Lookup is case-insensitive and trims surrounding whitespace.  If the
-    trimmed value isn't in the map, falls back to ``"full_time"`` to
-    preserve historical behaviour — extending the central map below
-    should be preferred over relying on the fallback.
+    A structured warning (``enum_normalize.employment_type.unknown``) is
+    emitted on miss so operators can spot new upstream tokens and
+    extend the central map.  Per the function name "normalize": the
+    caller is free to preserve the raw value, store NULL, or apply its
+    own default — silent coercion to ``full_time`` (the pre-#3222
+    behaviour) is gone because it conflated unknown tokens with real
+    full-time postings.
     """
     if raw is None:
         return None
     key = raw.strip().lower()
     if not key:
         return None
-    return _EMPLOYMENT_TYPE_MAP.get(key, "full_time")
+    mapped = _EMPLOYMENT_TYPE_MAP.get(key)
+    if mapped is None:
+        log.warning("enum_normalize.employment_type.unknown", raw=raw)
+    return mapped
 
 
-def normalize_job_location_type(raw: str | None, default: str | None = "onsite") -> str | None:
+def normalize_job_location_type(raw: str | None, default: str | None = None) -> str | None:
     """Normalize job location type to canonical enum value.
 
     Returns ``None`` when *raw* is ``None`` or empty/whitespace.
 
     Lookup is case-insensitive and trims surrounding whitespace.  If the
-    trimmed value isn't in the map, returns *default* (defaults to
-    ``"onsite"`` to preserve historical behaviour).  Per-ATS callers
-    that previously returned ``None`` on miss should pass
-    ``default=None`` so the refactor doesn't change emitted values.
+    trimmed value isn't in the map, emits a structured warning
+    (``enum_normalize.job_location_type.unknown``) and returns
+    *default* (``None`` since #3222).  Callers that want a last-resort
+    bucket can pass ``default="onsite"`` explicitly.
     """
     if raw is None:
         return None
     key = raw.strip().lower()
     if not key:
         return None
-    return _JOB_LOCATION_TYPE_MAP.get(key, default)
+    mapped = _JOB_LOCATION_TYPE_MAP.get(key)
+    if mapped is None:
+        log.warning("enum_normalize.job_location_type.unknown", raw=raw)
+        return default
+    return mapped
 
 
 # ── Salary Unit ─────────────────────────────────────────────────────

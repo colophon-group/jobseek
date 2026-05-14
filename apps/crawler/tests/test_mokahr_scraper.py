@@ -461,11 +461,13 @@ class TestParseDetail:
         c = _parse_detail(self._detail(commitment="兼职"), self._city_map())
         assert c.employment_type == "part_time"
 
-    def test_other_commitment_falls_back_to_full_time(self):
-        # ``其它`` (other) is not in the central map — ``normalize_employment_type``
-        # falls back to ``"full_time"`` to preserve historical behaviour.
+    def test_other_commitment_returns_none(self):
+        # ``其它`` (other) is not in the central map — since #3222
+        # ``normalize_employment_type`` returns ``None`` on miss instead
+        # of silently coercing to ``"full_time"``.  The exporter / DB
+        # column accepts NULL; the warning log surfaces the new token.
         c = _parse_detail(self._detail(commitment="其它"), self._city_map())
-        assert c.employment_type == "full_time"
+        assert c.employment_type is None
 
     def test_no_salary_when_both_zero(self):
         c = _parse_detail(self._detail(minSalary=0, maxSalary=0, salaryUnit=0), self._city_map())
