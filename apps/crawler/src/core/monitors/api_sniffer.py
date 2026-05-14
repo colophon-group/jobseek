@@ -1327,7 +1327,7 @@ async def _discover_auto(
     board_url: str,
     config: dict,
     pw,
-) -> list[DiscoveredJob] | set[str]:
+) -> list[DiscoveredJob] | set[str] | MonitorResult:
     """Full auto-discover: capture exchanges, detect, paginate."""
     from src.shared.browser import BROWSER_KEYS, dismiss_overlays, navigate, open_page
 
@@ -1366,8 +1366,16 @@ async def _discover_auto(
 
         items = await paginate_all(make_browser_fetcher(page), result, MAX_PAGES)
 
-        if len(items) > MAX_ITEMS:
-            items = items[:MAX_ITEMS]
+        # MAX_ITEMS cap (#3216 / #3267 / #3336). Don't slice silently: keep
+        # every item so the URLs the monitor *did* collect are still
+        # inserted, but flag the cycle as truncated so the board processor
+        # skips ``_MARK_GONE_BY_TIMESTAMP`` and the unseen tail beyond the
+        # cap is not tombstoned. Matches the pattern used by the 29
+        # monitors migrated in #3266 and the sibling
+        # ``_discover_http`` / ``_discover_replay`` paths wired in #3334.
+        truncated = len(items) > MAX_ITEMS
+        if truncated:
+            log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
 
         # Auto-map fields if not configured
         if not fields_map:
@@ -1396,7 +1404,7 @@ async def _discover_auto(
             # First-page body is the best available root; lookup tables
             # typically sit at response level, not per item.
             root = result.candidate.exchange.body if result and result.candidate else None
-            return _extract_rich(
+            jobs = _extract_rich(
                 items,
                 fields_map,
                 url_field,
@@ -1405,13 +1413,16 @@ async def _discover_auto(
                 url_map=url_map,
                 root=root,
             )
+            return truncated_rich_result(jobs) if truncated else jobs
 
         urls = extract_urls(items, url_field, board_url)
         if not urls and url_map:
-            return set(url_map.values())
+            urls_from_map = set(url_map.values())
+            return truncated_url_result(urls_from_map) if truncated else urls_from_map
         if not urls:
             urls = await extract_urls_via_dom_crossref(page, items, board_url)
-        return set(urls)
+        urls_set = set(urls)
+        return truncated_url_result(urls_set) if truncated else urls_set
 
 
 # ---------------------------------------------------------------------------
