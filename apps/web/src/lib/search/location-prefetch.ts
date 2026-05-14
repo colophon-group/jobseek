@@ -30,6 +30,7 @@
  */
 
 import type { GlobalLocationsPage } from "@/lib/actions/locations";
+import { canonicalStringCompare } from "@/lib/sort";
 
 /** Filter shape mirrors `LocationSearchModalProps['filters']`. */
 export type LocationModalFilters = {
@@ -73,6 +74,22 @@ type CacheEntry = ResolvedEntry | InflightEntry;
 
 const _cache = new Map<string, CacheEntry>();
 
+// Field-level canonicalization rule per name. Keeps the per-field sort in
+// one place so we don't have to inline a per-array `typeof` discriminator
+// in `_stableFilterKey`. String fields get `canonicalStringCompare`
+// (locale-independent `Intl.Collator("en", { sensitivity: "base" })`) so
+// accented values collate next to their base letter — `["a","übung"]` and
+// `["übung","a"]` collapse to the same key. Numeric fields sort
+// numerically so `[10,2]` doesn't string-coerce to `["10","2"]`. See
+// #3276 (follow-up to #3221/#3187).
+const _ARRAY_SORTERS: Record<string, ((a: unknown, b: unknown) => number) | undefined> = {
+  keywords: (a, b) => canonicalStringCompare(a as string, b as string),
+  languages: (a, b) => canonicalStringCompare(a as string, b as string),
+  occupationIds: (a, b) => (a as number) - (b as number),
+  seniorityIds: (a, b) => (a as number) - (b as number),
+  technologyIds: (a, b) => (a as number) - (b as number),
+};
+
 function _stableFilterKey(filters: LocationModalFilters | undefined): string {
   if (!filters) return "";
   // Sort keys so two callers passing the same logical filter with
@@ -83,8 +100,16 @@ function _stableFilterKey(filters: LocationModalFilters | undefined): string {
     const v = filters[k];
     if (v === undefined || v === null) continue;
     if (Array.isArray(v) && v.length === 0) continue;
-    // Sort array values too — e.g. [1,2] and [2,1] should share a slot.
-    normalized[k] = Array.isArray(v) ? [...v].sort() : v;
+    if (Array.isArray(v)) {
+      const cmp = _ARRAY_SORTERS[k];
+      // Field-aware sort: strings via `canonicalStringCompare`, numeric
+      // IDs numerically. Falls back to raw `.sort()` only for unknown
+      // fields, which the static type rules out today but defends against
+      // future field additions silently re-introducing the bug.
+      normalized[k] = cmp ? [...v].sort(cmp as (a: unknown, b: unknown) => number) : [...v].sort();
+    } else {
+      normalized[k] = v;
+    }
   }
   return JSON.stringify(normalized);
 }

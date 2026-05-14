@@ -87,6 +87,61 @@ describe("location-prefetch (#3031)", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
+  // #3276 — keyword arrays sort with `canonicalStringCompare`, so accent
+  // permutations and case differences collapse to one cache slot. Numeric
+  // ID arrays sort numerically.
+  it("collapses accented keyword permutations onto the same cache key", async () => {
+    const fetcher = vi.fn(async () => _page({ totalCountries: 42 }));
+    await prefetchLocationsFirstPage(
+      "en",
+      { keywords: ["python", "übung", "zoom"] },
+      fetcher,
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await prefetchLocationsFirstPage(
+      "en",
+      { keywords: ["zoom", "python", "übung"] },
+      fetcher,
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await prefetchLocationsFirstPage(
+      "en",
+      { keywords: ["übung", "zoom", "python"] },
+      fetcher,
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("base-sensitivity preserves the slot under permutation of mixed-case inputs", async () => {
+    // The comparator collates `"Apple"` and `"apple"` as equal but does
+    // not rewrite the strings; surface text is preserved. Within a
+    // single-case input, every permutation hits the same slot.
+    const fetcher = vi.fn(async () => _page({ totalCountries: 1 }));
+    await prefetchLocationsFirstPage("en", { keywords: ["Apple", "banana"] }, fetcher);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await prefetchLocationsFirstPage("en", { keywords: ["banana", "Apple"] }, fetcher);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("sorts numeric ID arrays numerically — `[10, 2]` and `[2, 10]` share a slot", async () => {
+    // Bare `.sort()` stringifies, so `[10, 2]` would canonicalize to
+    // `[10, 2]` not `[2, 10]`. Two callers passing the same logical
+    // numeric input in different orders must hit the same slot.
+    const fetcher = vi.fn(async () => _page({ totalCountries: 1 }));
+    await prefetchLocationsFirstPage(
+      "en",
+      { occupationIds: [10, 2] },
+      fetcher,
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await prefetchLocationsFirstPage(
+      "en",
+      { occupationIds: [2, 10] },
+      fetcher,
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
   it("treats different filter shapes as different cache keys", async () => {
     const fetcher = vi.fn(async (_locale: string, _cursor: number, filters: unknown) => {
       const total = (filters as { keywords?: string[] } | undefined)?.keywords?.length ?? 0;

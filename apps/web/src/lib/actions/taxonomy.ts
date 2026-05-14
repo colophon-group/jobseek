@@ -15,6 +15,7 @@ import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-cl
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
+import { canonicalStringCompare } from "@/lib/sort";
 
 export interface TaxonomySuggestion {
   id: number;
@@ -327,7 +328,11 @@ export async function resolveOccupationSlugs(
   locale: string,
 ): Promise<Map<string, TaxonomySuggestion>> {
   if (slugs.length === 0) return new Map();
-  const sorted = [...slugs].sort();
+  // `canonicalStringCompare` instead of raw `.sort()` so accented slugs
+  // (e.g. a locale where occupation slugs include `é`) don't fragment the
+  // `'use cache'` slot between callers passing the same logical input in
+  // different orders. See #3276 (follow-up to #3221).
+  const sorted = [...slugs].sort(canonicalStringCompare);
   const record = await _resolveOccupationSlugsCached(sorted, locale);
   return new Map(Object.entries(record));
 }
@@ -372,7 +377,8 @@ export async function resolveSenioritySlugs(
   locale: string,
 ): Promise<Map<string, TaxonomySuggestion>> {
   if (slugs.length === 0) return new Map();
-  const sorted = [...slugs].sort();
+  // See `resolveOccupationSlugs` for the canonicalization rationale.
+  const sorted = [...slugs].sort(canonicalStringCompare);
   const record = await _resolveSenioritySlugsCached(sorted, locale);
   return new Map(Object.entries(record));
 }
@@ -496,7 +502,8 @@ export async function resolveTechnologySlugs(
   slugs: string[],
 ): Promise<Map<string, TaxonomySuggestion>> {
   if (slugs.length === 0) return new Map();
-  const sorted = [...slugs].sort();
+  // See `resolveOccupationSlugs` for the canonicalization rationale.
+  const sorted = [...slugs].sort(canonicalStringCompare);
   const record = await _resolveTechnologySlugsCached(sorted);
   return new Map(Object.entries(record));
 }

@@ -11,6 +11,7 @@ import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-cl
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
+import { canonicalStringCompare } from "@/lib/sort";
 import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
 
 export interface LocationSuggestion {
@@ -260,7 +261,11 @@ export async function resolveLocationSlugs(
   locale: string,
 ): Promise<Map<string, ResolvedLocation>> {
   if (slugs.length === 0) return new Map();
-  const sorted = [...slugs].sort();
+  // `canonicalStringCompare` instead of raw `.sort()` so accented slugs
+  // (e.g. `zürich`) don't fragment the `'use cache'` slot between callers
+  // passing the same logical input in different orders. See #3276
+  // (follow-up to #3221).
+  const sorted = [...slugs].sort(canonicalStringCompare);
   // Plain `Record` survives the `'use cache'` boundary; Map is not
   // serializable, so the wrapper converts at the edge for caller ergonomics.
   const record = await _resolveLocationSlugsCached(sorted, locale);

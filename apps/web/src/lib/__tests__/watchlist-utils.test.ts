@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isTrivialWatchlist, isQualifyingWatchlist } from "../watchlist-utils";
+import {
+  buildFilterCacheKey,
+  isTrivialWatchlist,
+  isQualifyingWatchlist,
+} from "../watchlist-utils";
 import { buildWatchlistItemListJsonLd } from "../seo";
 import type { WatchlistFilters } from "../actions/watchlists";
 
@@ -236,6 +240,134 @@ describe("isQualifyingWatchlist (#2823)", () => {
         createdAt: "not-a-date",
       }),
     ).toBe(false);
+  });
+});
+
+describe("buildFilterCacheKey — canonical sort (#3276)", () => {
+  // Each slug-bearing dimension on a watchlist filter must be sorted with
+  // `canonicalStringCompare` so input permutations collapse to one cache
+  // slot. Numeric-looking `companyIds` keep raw `.sort()` (no accents).
+
+  it("permutes keywords to the same key", () => {
+    const ab = buildFilterCacheKey({ keywords: ["a", "b"] }, []);
+    const ba = buildFilterCacheKey({ keywords: ["b", "a"] }, []);
+    expect(ab).toBe(ba);
+  });
+
+  it("permutes locationSlugs to the same key", () => {
+    const ab = buildFilterCacheKey({ locationSlugs: ["zurich", "berlin"] }, []);
+    const ba = buildFilterCacheKey({ locationSlugs: ["berlin", "zurich"] }, []);
+    expect(ab).toBe(ba);
+  });
+
+  it("permutes occupationSlugs to the same key", () => {
+    const a = buildFilterCacheKey(
+      { occupationSlugs: ["software-engineer", "data-scientist"] },
+      [],
+    );
+    const b = buildFilterCacheKey(
+      { occupationSlugs: ["data-scientist", "software-engineer"] },
+      [],
+    );
+    expect(a).toBe(b);
+  });
+
+  it("permutes senioritySlugs to the same key", () => {
+    const a = buildFilterCacheKey({ senioritySlugs: ["senior", "junior"] }, []);
+    const b = buildFilterCacheKey({ senioritySlugs: ["junior", "senior"] }, []);
+    expect(a).toBe(b);
+  });
+
+  it("permutes technologySlugs to the same key", () => {
+    const a = buildFilterCacheKey({ technologySlugs: ["go", "rust"] }, []);
+    const b = buildFilterCacheKey({ technologySlugs: ["rust", "go"] }, []);
+    expect(a).toBe(b);
+  });
+
+  it("permutes workMode to the same key", () => {
+    const a = buildFilterCacheKey({ workMode: ["remote", "hybrid"] }, []);
+    const b = buildFilterCacheKey({ workMode: ["hybrid", "remote"] }, []);
+    expect(a).toBe(b);
+  });
+
+  it("permutes employmentType to the same key", () => {
+    const a = buildFilterCacheKey(
+      { employmentType: ["full_time", "contract"] },
+      [],
+    );
+    const b = buildFilterCacheKey(
+      { employmentType: ["contract", "full_time"] },
+      [],
+    );
+    expect(a).toBe(b);
+  });
+
+  // Accent / case sensitivity (the bug class from #3221 / #3276).
+  it("accent-folded keywords map to the same key as the base letter neighbour", () => {
+    // The regression: raw `.sort()` puts `"übung"` (U+00FC) after `"z"`
+    // in UTF-16 order, so `["python","übung","zoom"]` and any of its
+    // permutations produce different cache keys *after sorting*. With
+    // `canonicalStringCompare` (`sensitivity: "base"`), `"übung"` collates
+    // with the u-group, so every permutation collapses to the same key.
+    const orderings = [
+      ["python", "übung", "zoom"],
+      ["zoom", "python", "übung"],
+      ["übung", "zoom", "python"],
+      ["zoom", "übung", "python"],
+    ];
+    const keys = orderings.map((kw) => buildFilterCacheKey({ keywords: kw }, []));
+    expect(new Set(keys).size).toBe(1);
+  });
+
+  it("base-sensitivity case folding collates `Apple` next to `banana` (not between `b` and `c`)", () => {
+    // `sensitivity: "base"` folds case so `"Apple"` and `"apple"` are
+    // collation-equal. Sort *positions* are stable across case variants —
+    // both upper and lower forms place the `a`-group before `banana`. The
+    // strings themselves are unchanged (the comparator only reorders), so
+    // the literal cache key strings still differ — but every PERMUTATION
+    // of a same-case input collapses to one key.
+    const a = buildFilterCacheKey({ keywords: ["Apple", "banana"] }, []);
+    const b = buildFilterCacheKey({ keywords: ["banana", "Apple"] }, []);
+    expect(a).toBe(b);
+    const c = buildFilterCacheKey({ keywords: ["apple", "banana"] }, []);
+    const d = buildFilterCacheKey({ keywords: ["banana", "apple"] }, []);
+    expect(c).toBe(d);
+    // The two case variants share the same RELATIVE ordering (`a*` before
+    // `b*`), even though the surface strings differ.
+    expect(a.startsWith("kw:Apple")).toBe(true);
+    expect(c.startsWith("kw:apple")).toBe(true);
+  });
+
+  it("companyIds stay on raw sort (numeric-looking string IDs)", () => {
+    // Original issue carve-out: `companyIds` are numeric-looking strings.
+    // We don't expect accent permutations here, so the cheap raw sort is
+    // retained. Two permutations still collapse.
+    const a = buildFilterCacheKey({}, ["10", "2", "100"]);
+    const b = buildFilterCacheKey({}, ["100", "10", "2"]);
+    expect(a).toBe(b);
+  });
+
+  it("preserves the `anyCompany` and scalar fields verbatim", () => {
+    const key = buildFilterCacheKey(
+      {
+        anyCompany: true,
+        keywords: ["python"],
+        salaryMin: 100000,
+        salaryMax: 200000,
+        experienceMin: 3,
+        experienceMax: 10,
+      },
+      [],
+    );
+    expect(key).toContain("any");
+    expect(key).toContain("smin:100000");
+    expect(key).toContain("smax:200000");
+    expect(key).toContain("emin:3");
+    expect(key).toContain("emax:10");
+  });
+
+  it("empty filter produces an empty string", () => {
+    expect(buildFilterCacheKey({}, [])).toBe("");
   });
 });
 

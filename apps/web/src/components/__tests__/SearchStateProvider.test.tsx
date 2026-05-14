@@ -62,6 +62,38 @@ describe("buildCacheKey", () => {
       buildCacheKey([], [], [], [], []),
     );
   });
+
+  // #3276 — keyword strings sort with `canonicalStringCompare` so accented
+  // entries don't fragment the snapshot key across input permutations.
+  it("collapses accented keyword permutations onto one key", () => {
+    const a = buildCacheKey(["python", "übung", "zoom"], [], [], [], []);
+    const b = buildCacheKey(["übung", "zoom", "python"], [], [], [], []);
+    const c = buildCacheKey(["zoom", "python", "übung"], [], [], [], []);
+    expect(a).toBe(b);
+    expect(b).toBe(c);
+  });
+
+  it("base-sensitivity keeps `Apple` collating with the a-group (not bumped between b and c)", () => {
+    // `sensitivity: "base"` makes `"Apple"` and `"apple"` collation-equal
+    // but does NOT rewrite the surface string. Within a single case,
+    // every permutation collapses to one key.
+    const upperA = buildCacheKey(["Apple", "banana"], [], [], [], []);
+    const upperB = buildCacheKey(["banana", "Apple"], [], [], [], []);
+    expect(upperA).toBe(upperB);
+    const lowerA = buildCacheKey(["apple", "banana"], [], [], [], []);
+    const lowerB = buildCacheKey(["banana", "apple"], [], [], [], []);
+    expect(lowerA).toBe(lowerB);
+    expect(upperA.startsWith("Apple")).toBe(true);
+    expect(lowerA.startsWith("apple")).toBe(true);
+  });
+
+  it("sorts numeric ID arrays numerically — no string-coercion bug", () => {
+    // Bare `.sort()` on a number array stringifies first, so `[10, 2]`
+    // sorts to `[10, 2]` (not `[2, 10]`). The fix uses a numeric
+    // comparator.
+    const key = buildCacheKey([], [10, 2, 100, 1], [], [], []);
+    expect(key).toBe("|1,2,10,100|||");
+  });
 });
 
 describe("shouldRestoreSnapshot — #2989 regression", () => {

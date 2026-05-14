@@ -34,7 +34,7 @@ import {
   deleteWatchlist as tsDeleteWatchlist,
   updateWatchlistField as tsUpdateWatchlistField,
 } from "@/lib/search/typesense-watchlist";
-import { isTrivialWatchlist } from "@/lib/watchlist-utils";
+import { isTrivialWatchlist, buildFilterCacheKey } from "@/lib/watchlist-utils";
 import { notifyIndexNow, logIndexNowResult } from "@/lib/indexnow";
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -937,23 +937,10 @@ const nonTrivialWatchlistPredicate = sql`(
   OR (w.filters ? 'experienceMax')
 )`;
 
-function buildFilterCacheKey(f: WatchlistFilters, companyIds: string[]): string {
-  const parts: string[] = [];
-  if (f.anyCompany) parts.push("any");
-  if (companyIds.length) parts.push(`c:${[...companyIds].sort().join(",")}`);
-  if (f.keywords?.length) parts.push(`kw:${[...f.keywords].sort().join(",")}`);
-  if (f.locationSlugs?.length) parts.push(`loc:${[...f.locationSlugs].sort().join(",")}`);
-  if (f.occupationSlugs?.length) parts.push(`occ:${[...f.occupationSlugs].sort().join(",")}`);
-  if (f.senioritySlugs?.length) parts.push(`sen:${[...f.senioritySlugs].sort().join(",")}`);
-  if (f.technologySlugs?.length) parts.push(`tech:${[...f.technologySlugs].sort().join(",")}`);
-  if (f.workMode?.length) parts.push(`wm:${[...f.workMode].sort().join(",")}`);
-  if (f.employmentType?.length) parts.push(`et:${[...f.employmentType].sort().join(",")}`);
-  if (f.salaryMin != null) parts.push(`smin:${f.salaryMin}`);
-  if (f.salaryMax != null) parts.push(`smax:${f.salaryMax}`);
-  if (f.experienceMin != null) parts.push(`emin:${f.experienceMin}`);
-  if (f.experienceMax != null) parts.push(`emax:${f.experienceMax}`);
-  return parts.join("|");
-}
+// `buildFilterCacheKey` lives in `@/lib/watchlist-utils` so it can be unit
+// tested without booting the `"use server"` module surface — `"use server"`
+// modules may only export async functions, which rules out exporting the
+// sync helper directly. See #3276 (follow-up to #3221).
 
 /**
  * Count distinct companies with currently-active postings matching the given

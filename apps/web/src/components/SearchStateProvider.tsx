@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import type { SearchResultCompany, WorkMode } from "@/lib/search";
+import { canonicalStringCompare } from "@/lib/sort";
 
 export interface SearchStateSnapshot {
   keywords: string[];
@@ -37,12 +38,19 @@ export function buildCacheKey(
   seniorityIds?: number[],
   technologyIds?: number[],
 ): string {
+  // String dimensions (keywords) sort with `canonicalStringCompare`
+  // (locale-independent `Intl.Collator("en", { sensitivity: "base" })`)
+  // so that `["python","übung"]` and `["übung","python"]` hash to the
+  // same in-memory snapshot key. Numeric dimensions sort numerically so
+  // `[10, 2]` doesn't coerce to `["10","2"]` and split the slot.
+  // See #3276 (follow-up to #3221/#3187).
+  const numCmp = (a: number, b: number) => a - b;
   const parts = [
-    [...keywords].sort().join(","),
-    [...locationIds].sort().join(","),
-    [...(occupationIds ?? [])].sort().join(","),
-    [...(seniorityIds ?? [])].sort().join(","),
-    [...(technologyIds ?? [])].sort().join(","),
+    [...keywords].sort(canonicalStringCompare).join(","),
+    [...locationIds].sort(numCmp).join(","),
+    [...(occupationIds ?? [])].sort(numCmp).join(","),
+    [...(seniorityIds ?? [])].sort(numCmp).join(","),
+    [...(technologyIds ?? [])].sort(numCmp).join(","),
   ];
   return parts.join("|");
 }

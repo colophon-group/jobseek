@@ -10,6 +10,8 @@ import { CACHE_TTL_SHORT, CACHE_TTL_MEDIUM } from "@/lib/cache-ttl";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { ANON_MAX_COMPANIES, ANON_MAX_CARD_POSTINGS } from "@/lib/search/constants";
+import { canonicalStringCompare } from "@/lib/sort";
+import { normalizeHistogramFilters, type NormalizedHistogramFilters } from "@/lib/search/histogram-filters";
 
 // ── Posting detail ──────────────────────────────────────────────────
 
@@ -309,7 +311,12 @@ async function _listTopCompaniesImpl(
 
   // Cache the default homepage (no user-specified filters). Include languages
   // in the key since different locales produce different language filters.
-  const langKey = [...(params.languages ?? [])].sort().join(",");
+  // `canonicalStringCompare` (locale-independent `Intl.Collator("en", {
+  // sensitivity: "base" })`) avoids the UTF-16-code-unit-order bug class
+  // from #3221 — for ASCII locale codes the orders coincide today, but the
+  // canonical comparator is forwards-compatible if future locale codes
+  // carry accented chars and keeps every cache-key call-site on one rule.
+  const langKey = [...(params.languages ?? [])].sort(canonicalStringCompare).join(",");
   let result: SearchResponse;
   if (hasNoExplicitFilters) {
     result = await cached(
@@ -397,28 +404,9 @@ import type { SalaryBucket, ExperienceBucket } from "@/lib/search/types";
 // failure). Returns plain arrays of `{ bucket, count }` shapes (already
 // serializable; no Maps/Sets/Dates).
 
-interface NormalizedHistogramFilters {
-  companyId: string;
-  keywords: string[];
-  locationIds: number[];
-  occupationIds: number[];
-  seniorityIds: number[];
-  technologyIds: number[];
-  languages: string[];
-}
-
-function normalizeHistogramFilters(filters?: HistogramFilters): NormalizedHistogramFilters {
-  const f = filters ?? {};
-  return {
-    companyId: f.companyId ?? "",
-    keywords: [...(f.keywords ?? [])].sort(),
-    locationIds: [...(f.locationIds ?? [])].sort((a, b) => a - b),
-    occupationIds: [...(f.occupationIds ?? [])].sort((a, b) => a - b),
-    seniorityIds: [...(f.seniorityIds ?? [])].sort((a, b) => a - b),
-    technologyIds: [...(f.technologyIds ?? [])].sort((a, b) => a - b),
-    languages: [...(f.languages ?? [])].sort(),
-  };
-}
+// `normalizeHistogramFilters` + `NormalizedHistogramFilters` extracted to
+// `@/lib/search/histogram-filters` so the sync helper is unit-testable
+// without booting the `"use server"` module surface. See #3276.
 
 async function _fetchSalaryHistogram(f: NormalizedHistogramFilters): Promise<SalaryBucket[]> {
   "use cache";
