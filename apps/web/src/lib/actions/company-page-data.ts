@@ -6,12 +6,14 @@ import {
   getCompanyPostingsAnonymous,
   type CompanyDetail,
 } from "@/lib/actions/company";
+import { getCurrencyRates } from "@/lib/actions/search";
 import { parseSearchFilters, type ParsedSearchFilters } from "@/lib/actions/search-input";
 import { getPreferences } from "@/lib/actions/preferences";
 import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 import { getSession } from "@/lib/sessionCache";
 import { resolveJobLanguages } from "@/lib/job-languages";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
+import { convertToEur } from "@/lib/salary";
 import type { SearchResultPosting } from "@/lib/search";
 
 const PAGE_SIZE = 20;
@@ -91,8 +93,16 @@ export async function fetchCompanyPageData(params: {
 
   const salaryCurrencyParam = salcur ?? displayCurrency;
   const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
-  const salaryMinEur = salaryMinDisplay;
-  const salaryMaxEur = salaryMaxDisplay;
+  // Convert user-currency filter amount to EUR — see explore-data.ts for the
+  // full rationale (issue #3178). `getCurrencyRates` is cache-backed
+  // (`cacheLife("hours")`), so this is not an extra DB round-trip in the
+  // steady state.
+  const rates =
+    salaryMinDisplay != null || salaryMaxDisplay != null
+      ? await getCurrencyRates()
+      : [];
+  const salaryMinEur = convertToEur(salaryMinDisplay, salaryCurrencyParam, rates);
+  const salaryMaxEur = convertToEur(salaryMaxDisplay, salaryCurrencyParam, rates);
   const { min: experienceMin, max: experienceMax } = parseRangeParam(exp);
 
   const postingsResult = await getCompanyPostings({

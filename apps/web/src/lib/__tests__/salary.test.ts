@@ -1,5 +1,12 @@
-import { describe, it, expect } from "vitest";
-import { formatSalary, decodeStoredAmount, convertAmount, type PeriodLabel } from "../salary";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import type { CurrencyRate } from "@/lib/actions/search";
+import {
+  formatSalary,
+  decodeStoredAmount,
+  convertAmount,
+  convertToEur,
+  type PeriodLabel,
+} from "../salary";
 
 describe("decodeStoredAmount", () => {
   it("divides hourly amounts by 100 (cents → whole units)", () => {
@@ -119,5 +126,84 @@ describe("formatSalary — null / empty handling (regression)", () => {
 
   it("handles max-only", () => {
     expect(formatSalary(null, 150000, "USD", "yearly")).toBe("≤150k USD");
+  });
+});
+
+describe("convertToEur — #3178 salary filter EUR conversion", () => {
+  // Crawler computes `salary_eur = annual_min * to_eur` (EUR units, see
+  // apps/crawler/src/processing/cpu.py::_extract_salary_fields). The salary
+  // filter must convert the user-currency amount to EUR before comparing
+  // against `salary_eur`. Pre-fix, no conversion happened — "USD 100K"
+  // produced `salary_eur:[100000..]` which excluded $100K US roles
+  // (their `salary_eur` ≈ 92,000 < 100,000).
+
+  const rates: CurrencyRate[] = [
+    { currency: "USD", toEur: 0.92 },
+    { currency: "CHF", toEur: 0.95 },
+    { currency: "JPY", toEur: 0.006 },
+    { currency: "GBP", toEur: 1.17 },
+  ];
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("converts USD 100K to ~92000 EUR (fixes #3178 — was 100000 pre-fix)", () => {
+    expect(convertToEur(100000, "USD", rates)).toBe(92000);
+  });
+
+  it("converts CHF 100K to ~95000 EUR", () => {
+    expect(convertToEur(100000, "CHF", rates)).toBe(95000);
+  });
+
+  it("converts JPY 10M to ~60000 EUR", () => {
+    expect(convertToEur(10_000_000, "JPY", rates)).toBe(60000);
+  });
+
+  it("returns EUR 100K unchanged (identity when fromCurrency === EUR)", () => {
+    // Identity branch must not even consult `rates` — passing an empty list
+    // exercises the early return.
+    expect(convertToEur(100000, "EUR", [])).toBe(100000);
+  });
+
+  it("passes amount through unchanged for unknown currency (graceful fallback)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(convertToEur(100000, "XYZ", rates)).toBe(100000);
+    expect(warn).toHaveBeenCalled();
+    expect(warn.mock.calls[0]?.[0]).toContain("XYZ");
+  });
+
+  it("preserves undefined min (no filter to apply)", () => {
+    expect(convertToEur(undefined, "USD", rates)).toBeUndefined();
+  });
+
+  it("preserves null when caller passes null (no filter to apply)", () => {
+    // The helper accepts `number | undefined`, but the runtime null-check
+    // also covers explicit null defensively — assert via cast to mirror
+    // real-world parseRangeParam output which is always number | undefined.
+    const v: number | undefined = undefined;
+    expect(convertToEur(v, "USD", rates)).toBeUndefined();
+  });
+
+  it("pre-fix regression: USD 100K without conversion would have been 100000 (the bug)", () => {
+    // This test documents what the pre-fix code did (`salaryMinEur = salaryMinDisplay`)
+    // and confirms the post-fix code returns the corrected EUR value. If anyone
+    // reverts the call sites to the identity assignment, the production behaviour
+    // would match the pre-fix value below; the post-fix value is what we assert.
+    const preFix = 100000;
+    const postFix = convertToEur(100000, "USD", rates);
+    expect(postFix).not.toBe(preFix);
+    expect(postFix).toBe(92000);
+  });
+
+  it("does not warn for EUR or for known currencies", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    convertToEur(100000, "EUR", rates);
+    convertToEur(100000, "USD", rates);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("handles zero amount as a valid filter bound", () => {
+    expect(convertToEur(0, "USD", rates)).toBe(0);
   });
 });

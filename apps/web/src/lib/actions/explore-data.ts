@@ -4,6 +4,7 @@ import {
   searchJobs,
   listTopCompanies,
   listTopCompaniesAnonymous,
+  getCurrencyRates,
 } from "@/lib/actions/search";
 import { parseSearchFilters, type ParsedSearchFilters } from "@/lib/actions/search-input";
 import { getPreferences } from "@/lib/actions/preferences";
@@ -11,6 +12,7 @@ import { resolveJobLanguages } from "@/lib/job-languages";
 import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 import { getSession } from "@/lib/sessionCache";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
+import { convertToEur } from "@/lib/salary";
 import type { SearchResponse } from "@/lib/search";
 
 const PAGE_SIZE = 10;
@@ -83,8 +85,19 @@ export async function fetchExploreData(params: {
 
   const salaryCurrencyParam = salcur ?? displayCurrency;
   const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
-  const salaryMinEur = salaryMinDisplay;
-  const salaryMaxEur = salaryMaxDisplay;
+  // The `salary_eur` field on every job_posting Typesense document is in EUR
+  // (see apps/crawler/src/processing/cpu.py::_extract_salary_fields). Convert
+  // the user-currency filter amount to EUR before passing it to the filter
+  // builder; otherwise "100K USD" would exclude US roles paying $100K
+  // because their `salary_eur` ≈ 92,000 < 100,000 (issue #3178).
+  // `getCurrencyRates` is cache-backed (`cacheLife("hours")`), so this is
+  // not an extra DB round-trip in the steady state.
+  const rates =
+    salaryMinDisplay != null || salaryMaxDisplay != null
+      ? await getCurrencyRates()
+      : [];
+  const salaryMinEur = convertToEur(salaryMinDisplay, salaryCurrencyParam, rates);
+  const salaryMaxEur = convertToEur(salaryMaxDisplay, salaryCurrencyParam, rates);
   const { min: experienceMin, max: experienceMax } = parseRangeParam(exp);
 
   const result =
