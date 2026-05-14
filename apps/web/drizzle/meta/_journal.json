@@ -491,6 +491,13 @@
       "when": 1778976000000,
       "tag": "0078_application_interview_unique_round",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1779148800000,
+      "tag": "0079_tz_aware_auth_columns",
+      "breakpoints": true
     }
   ]
 }
