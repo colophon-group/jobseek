@@ -88,16 +88,39 @@ export function useInfiniteScroll({
     };
   }, [sentinelEl, hasMore, root, rootMargin, doLoad, observerKey]);
 
-  // Re-observe after a load finishes so the next page loads if the
-  // sentinel is still visible (avoids an extra scroll nudge from the
-  // user when the just-loaded batch is short enough to leave the
-  // sentinel still in viewport).
+  // After a load finishes, check whether the sentinel is still in the
+  // viewport and, if so, trigger the next load. This covers a case the
+  // bare IntersectionObserver misses on cold-start with the `?show=`
+  // detail-panel param (#3353): the panel mounts alongside the list,
+  // its async getPostingDetail fetch shifts layout once the data
+  // streams in, and the IO's "re-evaluate on next paint" was not
+  // re-firing the callback. Reading the sentinel's actual rect after
+  // each load is deterministic regardless of layout-shift timing.
+  //
+  // Guarded by `prevLoadingRef`: only runs on the trailing edge of a
+  // load (true → false), not on mount or on every render. Without this
+  // guard, a fetcher that resolves to "no more items" (and so leaves
+  // the sentinel visible until React commits hasMore=false) could be
+  // re-invoked tightly.
+  const prevLoadingRef = useRef(false);
   useEffect(() => {
-    if (isLoading) return;
-    if (!sentinelEl || !observerRef.current) return;
-    observerRef.current.unobserve(sentinelEl);
-    observerRef.current.observe(sentinelEl);
-  }, [isLoading, sentinelEl]);
+    const justFinished = prevLoadingRef.current && !isLoading;
+    prevLoadingRef.current = isLoading;
+    if (!justFinished) return;
+    if (!hasMore || !sentinelEl) return;
+    if (loadingRef.current) return;
+    const rect = sentinelEl.getBoundingClientRect();
+    const rootEl = root?.current ?? null;
+    const rootRect = rootEl
+      ? rootEl.getBoundingClientRect()
+      : { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+    // Apply rootMargin as a numeric pixel value (supports "200px" form;
+    // falls back to 0 if it can't be parsed).
+    const margin = parseInt(rootMargin, 10) || 0;
+    const inView =
+      rect.top < rootRect.bottom + margin && rect.bottom > rootRect.top - margin;
+    if (inView) doLoad();
+  }, [isLoading, hasMore, sentinelEl, root, rootMargin, doLoad]);
 
   return { sentinelRef, isLoading };
 }
