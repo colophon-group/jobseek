@@ -1,5 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/**
+ * Parse a CSS `rootMargin` shorthand into a fixed `[top, right, bottom, left]`
+ * tuple. Supports 1–4 value forms exactly the way IntersectionObserver does:
+ *
+ *   "10px"             → [10, 10, 10, 10]
+ *   "10px 20px"        → [10, 20, 10, 20]
+ *   "10px 20px 30px"   → [10, 20, 30, 20]
+ *   "10px 20px 30px 40px" → [10, 20, 30, 40]
+ *
+ * Any non-numeric component falls back to 0. This is used by the rect-check
+ * fallback below so callers that pass an asymmetric `rootMargin` (e.g. the
+ * horizontal `similar-companies-strip` carousel with
+ * `"0px 200px 0px 0px"`) don't get a vertical-only inView check that
+ * always reports "in view" along the unguarded axis.
+ */
+function parseRootMargin(m: string): [number, number, number, number] {
+  const parts = m.trim().split(/\s+/).map((p) => parseInt(p, 10) || 0);
+  if (parts.length === 1) return [parts[0], parts[0], parts[0], parts[0]];
+  if (parts.length === 2) return [parts[0], parts[1], parts[0], parts[1]];
+  if (parts.length === 3) return [parts[0], parts[1], parts[2], parts[1]];
+  return [parts[0], parts[1], parts[2], parts[3]];
+}
+
 interface UseInfiniteScrollOptions {
   /** Whether there are more items to load */
   hasMore: boolean;
@@ -88,16 +111,46 @@ export function useInfiniteScroll({
     };
   }, [sentinelEl, hasMore, root, rootMargin, doLoad, observerKey]);
 
-  // Re-observe after a load finishes so the next page loads if the
-  // sentinel is still visible (avoids an extra scroll nudge from the
-  // user when the just-loaded batch is short enough to leave the
-  // sentinel still in viewport).
+  // After a load finishes, check whether the sentinel is still in the
+  // viewport and, if so, trigger the next load. This covers a case the
+  // bare IntersectionObserver misses on cold-start with the `?show=`
+  // detail-panel param (#3353): the panel mounts alongside the list,
+  // its async getPostingDetail fetch shifts layout once the data
+  // streams in, and the IO's "re-evaluate on next paint" was not
+  // re-firing the callback. Reading the sentinel's actual rect after
+  // each load is deterministic regardless of layout-shift timing.
+  //
+  // Guarded by `prevLoadingRef`: only runs on the trailing edge of a
+  // load (true → false), not on mount or on every render. Without this
+  // guard, a fetcher that resolves to "no more items" (and so leaves
+  // the sentinel visible until React commits hasMore=false) could be
+  // re-invoked tightly.
+  const prevLoadingRef = useRef(false);
   useEffect(() => {
-    if (isLoading) return;
-    if (!sentinelEl || !observerRef.current) return;
-    observerRef.current.unobserve(sentinelEl);
-    observerRef.current.observe(sentinelEl);
-  }, [isLoading, sentinelEl]);
+    const justFinished = prevLoadingRef.current && !isLoading;
+    prevLoadingRef.current = isLoading;
+    if (!justFinished) return;
+    if (!hasMore || !sentinelEl) return;
+    if (loadingRef.current) return;
+    const rect = sentinelEl.getBoundingClientRect();
+    const rootEl = root?.current ?? null;
+    const rootRect = rootEl
+      ? rootEl.getBoundingClientRect()
+      : { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+    // Apply rootMargin on BOTH axes — IntersectionObserver expands the
+    // root's intersection rect by [top, right, bottom, left] independently.
+    // A vertical-only check breaks horizontal carousels (e.g. the
+    // similar-companies strip with `rootMargin: "0px 200px 0px 0px"`)
+    // because a sentinel scrolled far off-screen to the right would still
+    // satisfy the vertical predicate and chain-load every remaining page.
+    const [mt, mr, mb, ml] = parseRootMargin(rootMargin);
+    const inView =
+      rect.top < rootRect.bottom + mb &&
+      rect.bottom > rootRect.top - mt &&
+      rect.left < rootRect.right + mr &&
+      rect.right > rootRect.left - ml;
+    if (inView) doLoad();
+  }, [isLoading, hasMore, sentinelEl, root, rootMargin, doLoad]);
 
   return { sentinelRef, isLoading };
 }

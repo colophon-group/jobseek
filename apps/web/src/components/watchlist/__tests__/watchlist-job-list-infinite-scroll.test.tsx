@@ -412,5 +412,85 @@ describe("WatchlistJobList — infinite-scroll termination (issue #3038)", () =>
       expect(fetcher.mock.calls.length).toBeGreaterThan(1);
     },
   );
+
+  // Regression for issue #3353: cold-start watchlist with `?show=`
+  // detail panel — the panel's separate fetch (getPostingDetail) was
+  // racing with the list's first IO intersection, leaving the observer
+  // in a state where subsequent `unobserve(); observe()` calls did not
+  // re-fire the callback even though the sentinel remained visible.
+  // The fix in `useInfiniteScroll` adds a rect-check fallback on the
+  // trailing edge of a load: after `isLoading` flips back to false,
+  // measure the sentinel and trigger another load if it is still in
+  // viewport. This regression test simulates the bug by suppressing
+  // the IO re-fire (the production-side trigger) after the first call
+  // — the hook must still drive subsequent loads.
+  it(
+    "drives subsequent loads via rect-check fallback when IO stops re-firing (#3353)",
+    { timeout: 10000 },
+    async () => {
+      // Fresh IO mock that fires the callback ONCE per observe() and
+      // never again (simulating the production bug — IO state stops
+      // changing after the first intersection until the user scrolls).
+      type OneShotEntry = { cb: ObserverCallback; target: Element };
+      const oneShotFired = new WeakSet<object>();
+      class OneShotObserver {
+        private callback: ObserverCallback;
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+        constructor(callback: ObserverCallback) {
+          this.callback = callback;
+          this.observe = vi.fn((target: Element) => {
+            const entry: OneShotEntry = { cb: callback, target };
+            if (oneShotFired.has(this)) return;
+            oneShotFired.add(this);
+            queueMicrotask(() => {
+              this.callback([
+                { isIntersecting: true, target: entry.target } as unknown as IntersectionObserverEntry,
+              ]);
+            });
+          });
+        }
+      }
+      // @ts-expect-error — override the standard mock for this test
+      globalThis.IntersectionObserver = OneShotObserver;
+
+      // Force the rect-check fallback to see the sentinel as in-view.
+      // happy-dom's default `getBoundingClientRect` returns all-zeros,
+      // which the production check (`rect.top < rootRect.bottom + 200`)
+      // already treats as in-view. We assert that on a real-browser
+      // shape too:
+      const origGBR = Element.prototype.getBoundingClientRect;
+      Element.prototype.getBoundingClientRect = function () {
+        // Sentinel near the bottom of an 800px viewport, well inside
+        // the 200px rootMargin.
+        return { top: 700, bottom: 720, left: 0, right: 0, x: 0, y: 700, width: 0, height: 20, toJSON: () => ({}) } as DOMRect;
+      };
+
+      try {
+        const fetcher = vi.fn(async (offset: number) => ({
+          postings: postingsArray(BATCH, offset),
+          total: BATCH * 100,
+        }));
+
+        render(
+          <WatchlistLoadMoreShim
+            initialPostings={postingsArray(BATCH)}
+            initialTotal={BATCH * 100}
+            fetcher={fetcher}
+          />,
+        );
+
+        await pumpLoop(10);
+
+        // Without the rect-check fallback the hook would have driven at
+        // most one load (the first IO callback) and stalled. The fix
+        // chains additional loads via the trailing-edge rect check.
+        expect(fetcher.mock.calls.length).toBeGreaterThan(1);
+      } finally {
+        Element.prototype.getBoundingClientRect = origGBR;
+      }
+    },
+  );
 });
 
