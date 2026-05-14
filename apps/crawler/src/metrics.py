@@ -159,7 +159,14 @@ exporter_last_flush_ts = Gauge(
 
 export_errors_total = Counter(
     "crawler_export_errors_total",
-    "Exporter flush errors (Supabase write failures)",
+    # Bumped per row dropped by the per-row fallback path (#3180). The
+    # exporter previously stalled forever when a single row tripped a
+    # constraint; it now falls back to per-row upserts and drops the
+    # offenders so the cursor advances. ``table`` is the local Postgres
+    # table being exported (currently always ``job_posting``); ``phase``
+    # is ``supabase`` or ``typesense``. Bounded cardinality (<10).
+    "Rows dropped by the exporter's per-row fallback path",
+    ["table", "phase"],
 )
 
 # ── Reconciliation metrics ──────────────────────────────────────────
