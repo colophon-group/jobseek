@@ -90,6 +90,43 @@ groups:
             Investigate queue backlog; consider `crawler sync` to
             reseed if state is stale, or scale `maxmemory` up.
 
+      # Catches the failure mode from #3169: a worker container is
+      # alive (so `up{job="crawler"}` stays 1 and NoMetricsFromCrawler
+      # does NOT fire) but its claim/dispatch loop is stuck — a
+      # Playwright-internal deadlock, an unawaited scraper hang, or a
+      # similar process-level wedge. `worker_heartbeat_ts` is updated
+      # at the top of every loop iteration in
+      # `src/workers/pipeline.py`; healthy workers tick every few
+      # seconds. 10 minutes is conservative — it sits well above
+      # normal monitor-run latency, so a single long board doesn't
+      # page. Tighten if it turns out to be too quiet.
+      #
+      # `max by (worker_id)` collapses across `instance` so a worker
+      # restart on a different container doesn't double-page; the
+      # worker_id label is the stable identity within a container.
+      - alert: WorkerStuck
+        expr: time() - max by (worker_id) (crawler_worker_heartbeat_timestamp_seconds) > 600
+        for: 5m
+        labels:
+          severity: page
+          service: crawler
+        annotations:
+          summary: "Crawler worker {{ $labels.worker_id }} heartbeat stale for >10 min"
+          description: |
+            Worker {{ $labels.worker_id }} hasn't updated heartbeat in
+            >10 minutes. Process may be stuck in a scraper deadlock,
+            Playwright internal hang, or similar. Container is likely
+            'up' but doing no work. SSH to the crawler box and inspect;
+            restart container if needed.
+          runbook: |
+            ssh -i ~/.ssh/hetzner_deploy root@$CRAWLER_BROWSER_IPv4
+            # Identify the wedged container by metrics port:
+            docker ps --format "{{.Names}}" | xargs -I {} sh -c \
+              'echo "=== {} ==="; docker exec {} ps -ef 2>/dev/null | head -5'
+            # Restart the stuck worker. Re-claim is automatic via the
+            # reaper (#3173) — inflight tasks come back to the queue.
+            docker restart <worker-name>
+
       # --- EMAIL ---------------------------------------------------
 
       # Catches "exporter container alive but stuck on a Supabase

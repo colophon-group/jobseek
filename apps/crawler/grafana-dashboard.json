@@ -2,7 +2,7 @@
   "uid": "jobseek-crawler-pipeline",
   "title": "Crawler Pipeline",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "timezone": "browser",
   "editable": true,
   "graphTooltip": 1,
@@ -211,6 +211,88 @@
       ]
     },
     {
+      "id": 905,
+      "type": "table",
+      "title": "Worker Heartbeat Staleness",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "red",
+                "value": 600
+              }
+            ]
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "color-background"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "time() - max by (instance, worker_id) (crawler_worker_heartbeat_timestamp_seconds)",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true
+            },
+            "renameByName": {
+              "instance": "Instance",
+              "worker_id": "Worker",
+              "Value": "Seconds since last heartbeat"
+            }
+          }
+        }
+      ],
+      "description": "Seconds since each worker last updated `crawler_worker_heartbeat_timestamp_seconds`. Healthy workers tick every few seconds. >600s fires the WorkerStuck alert (page) \u2014 process is alive but the claim/dispatch loop has wedged (Playwright deadlock, scraper hang, etc.). See #3169."
+    },
+    {
       "id": 1,
       "type": "row",
       "title": "HTTP Worker",
@@ -219,7 +301,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 17
       },
       "panels": []
     },
@@ -235,7 +317,7 @@
         "h": 8,
         "w": 9,
         "x": 0,
-        "y": 10
+        "y": 18
       },
       "fieldConfig": {
         "defaults": {
@@ -348,7 +430,7 @@
         "h": 8,
         "w": 6,
         "x": 9,
-        "y": 10
+        "y": 18
       },
       "fieldConfig": {
         "defaults": {
@@ -404,7 +486,7 @@
         "h": 8,
         "w": 9,
         "x": 15,
-        "y": 10
+        "y": 18
       },
       "fieldConfig": {
         "defaults": {
@@ -453,7 +535,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 26
       },
       "panels": []
     },
@@ -469,7 +551,7 @@
         "h": 8,
         "w": 9,
         "x": 0,
-        "y": 19
+        "y": 27
       },
       "fieldConfig": {
         "defaults": {
@@ -582,7 +664,7 @@
         "h": 8,
         "w": 6,
         "x": 9,
-        "y": 19
+        "y": 27
       },
       "fieldConfig": {
         "defaults": {
@@ -638,7 +720,7 @@
         "h": 8,
         "w": 9,
         "x": 15,
-        "y": 19
+        "y": 27
       },
       "fieldConfig": {
         "defaults": {
@@ -687,7 +769,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 35
       },
       "panels": []
     },
@@ -703,7 +785,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 28
+        "y": 36
       },
       "fieldConfig": {
         "defaults": {
@@ -755,7 +837,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 28
+        "y": 36
       },
       "fieldConfig": {
         "defaults": {
@@ -807,7 +889,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 28
+        "y": 36
       },
       "fieldConfig": {
         "defaults": {
@@ -859,7 +941,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 28
+        "y": 36
       },
       "fieldConfig": {
         "defaults": {
@@ -908,7 +990,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 44
       },
       "panels": []
     },
@@ -924,7 +1006,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 37
+        "y": 45
       },
       "fieldConfig": {
         "defaults": {
@@ -994,7 +1076,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 37
+        "y": 45
       },
       "fieldConfig": {
         "defaults": {
@@ -1064,7 +1146,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 37
+        "y": 45
       },
       "fieldConfig": {
         "defaults": {
@@ -1134,7 +1216,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 37
+        "y": 45
       },
       "fieldConfig": {
         "defaults": {
@@ -1201,7 +1283,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 53
       },
       "panels": []
     },
@@ -1217,7 +1299,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 46
+        "y": 54
       },
       "fieldConfig": {
         "defaults": {
@@ -1286,7 +1368,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 46
+        "y": 54
       },
       "fieldConfig": {
         "defaults": {
@@ -1334,7 +1416,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 46
+        "y": 54
       },
       "fieldConfig": {
         "defaults": {
@@ -1390,7 +1472,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 46
+        "y": 54
       },
       "fieldConfig": {
         "defaults": {
@@ -1445,7 +1527,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 62
       },
       "panels": []
     },
@@ -1461,7 +1543,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 55
+        "y": 63
       },
       "fieldConfig": {
         "defaults": {
@@ -1531,7 +1613,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 55
+        "y": 63
       },
       "fieldConfig": {
         "defaults": {
@@ -1583,7 +1665,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 55
+        "y": 63
       },
       "fieldConfig": {
         "defaults": {
@@ -1641,7 +1723,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 63
+        "y": 71
       },
       "panels": []
     },
@@ -1657,7 +1739,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 64
+        "y": 72
       },
       "fieldConfig": {
         "defaults": {
@@ -1735,7 +1817,7 @@
         "h": 8,
         "w": 8,
         "x": 6,
-        "y": 64
+        "y": 72
       },
       "id": 700,
       "title": "Container CPU",
@@ -1782,7 +1864,7 @@
         "h": 8,
         "w": 8,
         "x": 14,
-        "y": 64
+        "y": 72
       },
       "id": 701,
       "title": "Container Memory",
@@ -1829,7 +1911,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 72
+        "y": 80
       },
       "id": 704,
       "title": "Disk Available",
@@ -1885,7 +1967,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 72
+        "y": 80
       },
       "id": 705,
       "title": "Network I/O",
