@@ -230,71 +230,86 @@ export function WatchlistFilterEditor({
 
       {/* Existing filter pills */}
       <div className="flex flex-wrap items-center gap-2">
-        {filters.keywords?.map((kw) => (
-          <FilterPill
-            key={`kw-${kw}`}
-            label={kw}
-            onRemove={() => removeKeyword(kw)}
-            removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${kw} filter` })}
-          />
-        ))}
-        {filters.locationSlugs?.map((slug) => (
-          <FilterPill
-            key={`loc-${slug}`}
-            icon={<MapPin size={12} />}
-            label={slug}
-            onRemove={() => removeLocation(slug)}
-            removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${slug} filter` })}
-          />
-        ))}
-        {filters.occupationSlugs?.map((slug) => (
-          <FilterPill
-            key={`occ-${slug}`}
-            icon={<Briefcase size={12} />}
-            label={slug}
-            onRemove={() => removeOccupation(slug)}
-            removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${slug} filter` })}
-          />
-        ))}
-        {filters.senioritySlugs?.map((slug) => (
-          <FilterPill
-            key={`sen-${slug}`}
-            icon={<Award size={12} />}
-            label={slug}
-            onRemove={() => removeSeniority(slug)}
-            removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${slug} filter` })}
-          />
-        ))}
-        {filters.technologySlugs?.map((slug) => (
-          <FilterPill
-            key={`tech-${slug}`}
-            icon={<Cpu size={12} />}
-            label={slug}
-            onRemove={() => removeTechnology(slug)}
-            removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${slug} filter` })}
-          />
-        ))}
+        {filters.keywords?.map((kw) => {
+          const name = kw;
+          return (
+            <FilterPill
+              key={`kw-${kw}`}
+              label={name}
+              onRemove={() => removeKeyword(kw)}
+              removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${name} filter` })}
+            />
+          );
+        })}
+        {filters.locationSlugs?.map((slug) => {
+          const name = slug;
+          return (
+            <FilterPill
+              key={`loc-${slug}`}
+              icon={<MapPin size={12} />}
+              label={name}
+              onRemove={() => removeLocation(slug)}
+              removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${name} filter` })}
+            />
+          );
+        })}
+        {filters.occupationSlugs?.map((slug) => {
+          const name = slug;
+          return (
+            <FilterPill
+              key={`occ-${slug}`}
+              icon={<Briefcase size={12} />}
+              label={name}
+              onRemove={() => removeOccupation(slug)}
+              removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${name} filter` })}
+            />
+          );
+        })}
+        {filters.senioritySlugs?.map((slug) => {
+          const name = slug;
+          return (
+            <FilterPill
+              key={`sen-${slug}`}
+              icon={<Award size={12} />}
+              label={name}
+              onRemove={() => removeSeniority(slug)}
+              removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${name} filter` })}
+            />
+          );
+        })}
+        {filters.technologySlugs?.map((slug) => {
+          const name = slug;
+          return (
+            <FilterPill
+              key={`tech-${slug}`}
+              icon={<Cpu size={12} />}
+              label={name}
+              onRemove={() => removeTechnology(slug)}
+              removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${name} filter` })}
+            />
+          );
+        })}
         {filters.employmentType?.map((type) => {
-          const label = employmentTypeLabel(t, type);
+          const name = employmentTypeLabel(t, type);
           return (
             <FilterPill
               key={`et-${type}`}
               icon={<CalendarDays size={12} />}
-              label={label}
+              label={name}
               onRemove={() => toggleEmploymentType(type)}
-              removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${label} filter` })}
+              removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${name} filter` })}
             />
           );
         })}
         {filters.workMode?.map((mode) => {
-          const label = workModeLabel(t, mode as WorkMode);
+          const name = workModeLabel(t, mode as WorkMode);
           return (
             <FilterPill
               key={`wm-${mode}`}
               icon={<Home size={12} />}
-              label={label}
+              label={name}
               onRemove={() => toggleWorkMode(mode as WorkMode)}
-              removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${label} filter` })}
+              removeLabel={t({ id: "watchlists.filters.removeFilter", comment: "Aria label for remove-filter X button on a watchlist pill; {name} is the filter value", message: `Remove ${name} filter` })}
             />
           );
         })}
