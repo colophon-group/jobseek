@@ -34,7 +34,7 @@ export function BackToTop() {
               })}
               className="flex size-10 items-center justify-center rounded-full border border-divider bg-surface-alpha shadow-lg backdrop-blur-md transition-colors hover:bg-border-soft"
             >
-              <ChevronUp size={20} />
+              <ChevronUp size={20} aria-hidden="true" />
             </button>
           </Tooltip.Trigger>
           <Tooltip.Portal>

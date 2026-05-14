@@ -40,6 +40,7 @@ export function StarButton({ companyId }: { companyId: string }) {
     >
       <Star
         size={18}
+        aria-hidden="true"
         className={starred ? "fill-accent text-accent" : "text-muted hover:text-accent"}
       />
     </button>

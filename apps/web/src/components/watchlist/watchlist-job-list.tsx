@@ -171,6 +171,7 @@ export function WatchlistJobList({
         >
           <Bookmark
             size={14}
+            aria-hidden="true"
             className={isSaved(entry.id) ? "fill-current" : ""}
           />
         </span>

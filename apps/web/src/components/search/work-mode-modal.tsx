@@ -50,6 +50,7 @@ export function WorkModeModal({
   onToggle,
   filters,
 }: WorkModeModalProps) {
+  const { t } = useLingui();
   const WORK_MODES = useWorkModes();
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
@@ -84,8 +85,11 @@ export function WorkModeModal({
               </Trans>
             </Dialog.Title>
             <Dialog.Close asChild>
-              <button className="cursor-pointer rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground">
-                <X size={16} />
+              <button
+                className="cursor-pointer rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground"
+                aria-label={t({ id: "search.workModeModal.close", comment: "Aria label for the work-mode modal close button", message: "Close" })}
+              >
+                <X size={16} aria-hidden="true" />
               </button>
             </Dialog.Close>
           </div>

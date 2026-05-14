@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Loader2 } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { getAllSeniorities } from "@/lib/actions/taxonomy";
 import type { SeniorityOption } from "@/lib/actions/taxonomy";
@@ -25,6 +25,7 @@ export function SeniorityModal({
   onToggle,
   filters,
 }: SeniorityModalProps) {
+  const { t } = useLingui();
   const [options, setOptions] = useState<SeniorityOption[] | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -59,8 +60,11 @@ export function SeniorityModal({
               </Trans>
             </Dialog.Title>
             <Dialog.Close asChild>
-              <button className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer">
-                <X size={16} />
+              <button
+                className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer"
+                aria-label={t({ id: "search.seniorityModal.close", comment: "Aria label for the seniority modal close button", message: "Close" })}
+              >
+                <X size={16} aria-hidden="true" />
               </button>
             </Dialog.Close>
           </div>

@@ -258,8 +258,9 @@ export function FilterBar({
                   <button
                     onClick={() => removeFilter(pill.filter)}
                     className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                    aria-label={t({ id: "company.page.removeKeyword", comment: "Aria label for the X button that removes a keyword filter pill; {name} is the keyword", message: `Remove keyword ${pill.filter.value}` })}
                   >
-                    <X size={12} />
+                    <X size={12} aria-hidden="true" />
                   </button>
                 </span>
               );
@@ -275,8 +276,9 @@ export function FilterBar({
                   <button
                     onClick={() => removeFilter(pill.filter)}
                     className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                    aria-label={t({ id: "company.page.removeFilter", comment: "Aria label for the X button that removes a filter pill; {name} is the filter value", message: `Remove ${pill.filter.name} filter` })}
                   >
-                    <X size={12} />
+                    <X size={12} aria-hidden="true" />
                   </button>
                 </span>
               );
@@ -292,8 +294,9 @@ export function FilterBar({
                   <button
                     onClick={() => removeFilter(pill.filter)}
                     className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                    aria-label={t({ id: "company.page.removeFilter", comment: "Aria label for the X button that removes a filter pill; {name} is the filter value", message: `Remove ${pill.filter.name} filter` })}
                   >
-                    <X size={12} />
+                    <X size={12} aria-hidden="true" />
                   </button>
                 </span>
               );
@@ -309,8 +312,9 @@ export function FilterBar({
                   <button
                     onClick={() => removeFilter(pill.filter)}
                     className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                    aria-label={t({ id: "company.page.removeLocation", comment: "Aria label for the X button that removes a location filter pill; {name} is the location label", message: `Remove location ${pill.filter.name}` })}
                   >
-                    <X size={12} />
+                    <X size={12} aria-hidden="true" />
                   </button>
                 </span>
               );

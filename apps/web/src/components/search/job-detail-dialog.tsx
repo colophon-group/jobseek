@@ -30,6 +30,7 @@ interface JobDetailPanelProps {
 }
 
 export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
+  const { t } = useLingui();
   const [detail, setDetail] = useState<PostingDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -88,8 +89,9 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
         <button
           onClick={onClose}
           className="rounded p-1 text-muted hover:bg-border-soft hover:text-foreground"
+          aria-label={t({ id: "search.detail.close", comment: "Aria label for job detail panel close button", message: "Close job details" })}
         >
-          <X size={14} />
+          <X size={14} aria-hidden="true" />
         </button>
       </div>
 

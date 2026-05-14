@@ -88,7 +88,7 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
           className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft cursor-pointer lg:hidden"
           aria-label={t({ id: "common.header.openMenu", comment: "Aria label for mobile menu button", message: "Open main menu" })}
         >
-          <Menu size={20} />
+          <Menu size={20} aria-hidden="true" />
         </button>
       </div>
     </header>

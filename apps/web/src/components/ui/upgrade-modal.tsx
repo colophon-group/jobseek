@@ -54,8 +54,11 @@ export function UpgradeModal({
               </p>
             </div>
             <Dialog.Close asChild>
-              <button className="rounded-md p-1 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer">
-                <X size={14} />
+              <button
+                className="rounded-md p-1 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer"
+                aria-label={t({ id: "upgrade.modal.close", comment: "Aria label for upgrade modal close button", message: "Close" })}
+              >
+                <X size={14} aria-hidden="true" />
               </button>
             </Dialog.Close>
           </div>
