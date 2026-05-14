@@ -104,18 +104,146 @@ describe("convertAmount — #3194 hourly annualization parity with crawler", () 
   it("converts $25/hour to $52,000/year (2080 × 25), matching crawler salary_eur", () => {
     // Crawler stores $25/hr as 2500 cents → salary_eur uses 25 * 2080 = 52,000
     // Web's convertAmount takes whole units (post-decode), so $25 directly.
-    expect(convertAmount(25, "USD", "USD", "hourly", "yearly", [])).toBe(52000);
+    expect(convertAmount(25, "USD", "USD", "hourly", "yearly", [])).toEqual({
+      amount: 52000,
+      currency: "USD",
+    });
   });
 
   it("converts $50/hour to $104,000/year (2080 × 50)", () => {
-    expect(convertAmount(50, "USD", "USD", "hourly", "yearly", [])).toBe(104000);
+    expect(convertAmount(50, "USD", "USD", "hourly", "yearly", [])).toEqual({
+      amount: 104000,
+      currency: "USD",
+    });
   });
 
   it("round-trips hourly→yearly→hourly without drift (within rounding)", () => {
     const hourly = 30;
     const yearly = convertAmount(hourly, "USD", "USD", "hourly", "yearly", []);
-    const back = convertAmount(yearly, "USD", "USD", "yearly", "hourly", []);
-    expect(back).toBe(hourly);
+    const back = convertAmount(yearly.amount, "USD", "USD", "yearly", "hourly", []);
+    expect(back.amount).toBe(hourly);
+  });
+});
+
+describe("convertAmount — #3184 bail on missing FX rate", () => {
+  // The pre-fix code used `?? 1` for both the source and target rate, which
+  // silently produced a 1:1 conversion and mislabeled the result. A
+  // ¥5,000,000 yearly salary would render as "5,000k EUR" — a €5M-looking
+  // role at a click rate roughly 166× too high. The fix: bail to the source
+  // currency when either rate is missing.
+
+  it("bails to source currency when rates list is empty (JPY → EUR)", () => {
+    // The headline scenario from #3184: 5M JPY yearly, no rates loaded.
+    // Pre-fix produced { amount: 5_000_000, currency: "EUR" } via 1:1.
+    expect(convertAmount(5_000_000, "JPY", "EUR", "yearly", "yearly", [])).toEqual({
+      amount: 5_000_000,
+      currency: "JPY",
+    });
+  });
+
+  it("bails to source currency when only the target rate is present (JPY → EUR)", () => {
+    // EUR rate exists but JPY does not — still must bail (was 5M * 1 / 1 = 5M EUR pre-fix).
+    expect(
+      convertAmount(5_000_000, "JPY", "EUR", "yearly", "yearly", [
+        { currency: "EUR", toEur: 1 },
+      ]),
+    ).toEqual({ amount: 5_000_000, currency: "JPY" });
+  });
+
+  it("bails to source currency when only the source rate is present (JPY → EUR)", () => {
+    // Symmetric case: JPY rate exists but EUR does not. In practice EUR is
+    // always 1.0 and present, but the bail logic must still trip for safety.
+    expect(
+      convertAmount(5_000_000, "JPY", "EUR", "yearly", "yearly", [
+        { currency: "JPY", toEur: 0.006 },
+      ]),
+    ).toEqual({ amount: 5_000_000, currency: "JPY" });
+  });
+
+  it("converts correctly to EUR when both rates are present (~30,000 EUR for 5M JPY)", () => {
+    // 5_000_000 * 0.006 / 1 = 30_000 EUR — the post-fix correct output.
+    expect(
+      convertAmount(5_000_000, "JPY", "EUR", "yearly", "yearly", [
+        { currency: "JPY", toEur: 0.006 },
+        { currency: "EUR", toEur: 1 },
+      ]),
+    ).toEqual({ amount: 30_000, currency: "EUR" });
+  });
+
+  it("preserves identity branch — fromCurrency === toCurrency never bails", () => {
+    // Empty rates list, but no conversion needed. Must not bail to a different currency.
+    expect(convertAmount(5_000_000, "JPY", "JPY", "yearly", "yearly", [])).toEqual({
+      amount: 5_000_000,
+      currency: "JPY",
+    });
+    expect(convertAmount(100_000, "USD", "USD", "yearly", "yearly", [])).toEqual({
+      amount: 100_000,
+      currency: "USD",
+    });
+  });
+
+  it("still applies period conversion on the bail path (period math is FX-independent)", () => {
+    // 60_000 / 12 = 5_000 monthly. Currency bails to source (USD), but period still converts.
+    expect(convertAmount(60_000, "USD", "EUR", "yearly", "monthly", [])).toEqual({
+      amount: 5_000,
+      currency: "USD",
+    });
+  });
+});
+
+describe("formatSalary — #3184 missing-FX-rate display fallback", () => {
+  // End-to-end: a EUR-displaying user looking at a 5M JPY posting must not
+  // see "5,000k EUR". The display falls back to source currency rather than
+  // lying about the value.
+
+  it("displays 5M JPY in JPY when no rates are loaded (not '5,000k EUR')", () => {
+    const out = formatSalary(5_000_000, null, "JPY", "yearly", {
+      displayCurrency: "EUR",
+      rates: [],
+    });
+    // The 'rates: []' branch in formatSalary short-circuits `toCur = fromCur`,
+    // so no conversion is even attempted. Asserts the user-visible contract:
+    // an EUR-displaying user never sees JPY mislabeled as EUR.
+    expect(out).toBe("5000k+ JPY");
+    expect(out).not.toContain("EUR");
+  });
+
+  it("displays 5M JPY in JPY when rates exist but JPY is missing", () => {
+    // This is the realistic bug path: rates are populated (so the
+    // `opts.rates?.length` guard in formatSalary lets toCur = EUR), but the
+    // specific source currency is absent — exactly what #3184 describes.
+    const out = formatSalary(5_000_000, null, "JPY", "yearly", {
+      displayCurrency: "EUR",
+      rates: [
+        { currency: "EUR", toEur: 1 },
+        { currency: "USD", toEur: 0.92 },
+      ],
+    });
+    expect(out).toBe("5000k+ JPY");
+    expect(out).not.toContain("EUR");
+  });
+
+  it("converts 5M JPY to ~30k EUR when both rates are present", () => {
+    const out = formatSalary(5_000_000, null, "JPY", "yearly", {
+      displayCurrency: "EUR",
+      rates: [
+        { currency: "JPY", toEur: 0.006 },
+        { currency: "EUR", toEur: 1 },
+      ],
+    });
+    expect(out).toBe("30k+ EUR");
+  });
+
+  it("renders a JPY range with both bounds when rates are missing", () => {
+    const out = formatSalary(4_000_000, 6_000_000, "JPY", "yearly", {
+      displayCurrency: "EUR",
+      rates: [{ currency: "EUR", toEur: 1 }],
+    });
+    expect(out).toBe("4000k–6000k JPY");
+  });
+
+  it("identity case (display === source) preserved when no rates are loaded", () => {
+    expect(formatSalary(5_000_000, null, "JPY", "yearly")).toBe("5000k+ JPY");
   });
 });
 
