@@ -929,6 +929,8 @@ def _make_posting_record(
     occupation_id: int | None = None,
     titles: list[str] | None = None,
     description_r2_hash: int | None = 12345,
+    experience_min: int | None = None,
+    experience_max: int | None = None,
 ) -> MagicMock:
     """Simulate an asyncpg.Record for a job_posting row."""
     company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -945,7 +947,8 @@ def _make_posting_record(
         "seniority_id": None,
         "technology_ids": None,
         "employment_type": "full-time",
-        "experience_min": None,
+        "experience_min": experience_min,
+        "experience_max": experience_max,
         "locales": ["en"],
         "first_seen_at": now,
         "last_seen_at": now,
@@ -1083,6 +1086,46 @@ class TestBuildTypesenseDocsHasContent:
         )
         docs = _build_typesense_docs([row], maps)
         assert docs[0]["has_content"] is True
+
+
+class TestBuildTypesenseDocsExperience:
+    """Tests for experience_min / experience_max encoding (#3217)."""
+
+    def test_bounded_range_passes_through(self):
+        """`5-10 years` → `experience_min=5, experience_max=10` (no sentinel)."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10], experience_min=5, experience_max=10)
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["experience_min"] == 5
+        assert docs[0]["experience_max"] == 10
+
+    def test_open_ended_uses_high_sentinel_for_max(self):
+        """`5+ years` (Postgres `min=5, max=NULL`) → max stamped as 99 so the
+        row matches range filters whose upper bound is ≥ 5.
+        """
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10], experience_min=5, experience_max=None)
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["experience_min"] == 5
+        assert docs[0]["experience_max"] == 99
+
+    def test_no_info_uses_minus_one_sentinel_for_both(self):
+        """Postgres `min=NULL, max=NULL` (no extraction) → both fields -1 so
+        the filter's `experience_min:=-1` branch catches the row.
+        """
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10], experience_min=None, experience_max=None)
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["experience_min"] == -1
+        assert docs[0]["experience_max"] == -1
+
+    def test_exact_year_passes_through(self):
+        """`exactly 6 years` (`min=6, max=6`) round-trips unchanged."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10], experience_min=6, experience_max=6)
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["experience_min"] == 6
+        assert docs[0]["experience_max"] == 6
 
 
 class TestLoadLocationNames:

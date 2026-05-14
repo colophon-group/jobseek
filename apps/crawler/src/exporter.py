@@ -56,6 +56,13 @@ log = structlog.get_logger()
 _EPOCH = datetime.min.replace(tzinfo=UTC)
 _ZERO_UUID = uuid.UUID(int=0)
 
+# Sentinel stamped on Typesense `experience_max` for rows the extractor
+# treated as open-ended ("N+ years" → Postgres `experience_max IS NULL`).
+# Chosen well above any plausible real requirement so range-overlap
+# filters built from the UI (whose pills top out at single-digit years)
+# always include these rows when the user's upper bound ≥ N. See #3217.
+_EXPERIENCE_MAX_OPEN_ENDED = 99
+
 # Cursor is a (timestamp, id) pair for keyset pagination.
 # Stored as "ts_iso|uuid" in exporter_state.
 Cursor = tuple[datetime, uuid.UUID]
@@ -397,9 +404,24 @@ def _build_typesense_docs(
         tech_ids = row["technology_ids"] or []
         tech_names = [maps.technology_names.get(tid, "") for tid in tech_ids]
 
+        # Experience encoding for Typesense (issue #3217):
+        # - `experience_min = -1` (sentinel) when Postgres has NULL → "no
+        #   information from the extractor". `experience_max` mirrors -1 so
+        #   neither field gates the sentinel-OR clause in the web filter.
+        # - Open-ended ("N+ years"): Postgres stores `min=N, max=NULL`. We
+        #   stamp `experience_max = _EXPERIENCE_MAX_OPEN_ENDED` so the range
+        #   filter still matches users whose stated max is ≥ N (a "5+ years"
+        #   role is a valid hit for "5-10" or "exactly 6", but NOT for a
+        #   "2-4" filter — the row's `experience_min=5` excludes it via the
+        #   `experience_min <= user_max` half of the overlap test).
+        # - Bounded ("N-M years"): `min=N, max=M` straight through.
         exp_min = row["experience_min"]
+        exp_max = row["experience_max"]
         if exp_min is None:
             exp_min = -1
+            exp_max = -1
+        elif exp_max is None:
+            exp_max = _EXPERIENCE_MAX_OPEN_ENDED
 
         locales = row["locales"] or []
         if not locales:
@@ -434,6 +456,7 @@ def _build_typesense_docs(
             "technology_names": tech_names,
             "employment_type": row["employment_type"] or "",
             "experience_min": exp_min,
+            "experience_max": exp_max,
             "locales": list(locales),
             "first_seen_at": first_seen_ts,
         }

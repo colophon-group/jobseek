@@ -106,19 +106,33 @@ export function buildFilterString(
   }
 
   // experience_min uses sentinel -1 for "not specified" (NULL in Postgres).
-  // Parentheses are CRITICAL — without them, OR has lower precedence than &&
-  // and the sentinel clause would match ALL -1 docs regardless of other filters.
-  // Must match Postgres semantics: NULL experience is always included in
-  // range filters (jobs without stated requirements shouldn't be excluded).
+  // experience_max uses 99 for open-ended ("5+ years") rows and -1 in lockstep
+  // with experience_min for the "no info" rows — both written by the exporter
+  // (see exporter.py: _EXPERIENCE_MAX_OPEN_ENDED + #3217).
+  //
+  // Range-overlap test: a row "needs N to M years" matches a user range
+  // "wants X to Y years" iff `N <= Y && M >= X` (the two ranges intersect).
+  // Sentinel -1 docs (no stated requirement) are always included via the
+  // outer OR — Postgres-side filters historically treated NULL experience as
+  // "everyone qualifies" and we preserve that.
+  //
+  // Outer parentheses are CRITICAL — `buildFilterString` joins parts with
+  // `&&`, and Typesense's `&&` binds tighter than `||`. Without wrapping the
+  // whole OR, a downstream `... && location_ids:[...]` would mis-parse and
+  // the sentinel branch would match ALL -1 docs regardless of other filters.
   if (filters.experienceMin != null && filters.experienceMax != null) {
     parts.push(
-      `(experience_min:[${filters.experienceMin}..${filters.experienceMax}] || experience_min:=-1)`,
+      `((experience_min:<=${filters.experienceMax} && experience_max:>=${filters.experienceMin}) || experience_min:=-1)`,
     );
   } else if (filters.experienceMin != null) {
+    // No upper bound from the user → range is `[min, ∞)`. The row's
+    // experience_max must reach the user's lower bound (or above).
     parts.push(
-      `(experience_min:>=${filters.experienceMin} || experience_min:=-1)`,
+      `(experience_max:>=${filters.experienceMin} || experience_min:=-1)`,
     );
   } else if (filters.experienceMax != null) {
+    // No lower bound → range is `[0, max]`. The row's experience_min must
+    // sit at or below the user's upper bound.
     parts.push(
       `(experience_min:<=${filters.experienceMax} || experience_min:=-1)`,
     );

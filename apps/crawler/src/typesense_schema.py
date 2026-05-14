@@ -57,6 +57,16 @@ COLLECTIONS: list[dict] = [
             {"name": "employment_type", "type": "string", "facet": True, "optional": True},
             {"name": "salary_eur", "type": "int32", "facet": True, "optional": True},
             {"name": "experience_min", "type": "int32", "facet": True},
+            # `experience_max` is stamped alongside `experience_min` so the web
+            # filter can do range-overlap matching (e.g. user wants "exactly 6
+            # years"; a row stored as 5-10 years must match). Sentinels:
+            # `-1` when `experience_min` is also `-1` (no info from the
+            # extractor) and `99` for open-ended ("5+ years") rows where the
+            # extractor returns `max=None` — see exporter.py. Optional so
+            # docs that haven't been backfilled yet stay valid; the filter
+            # treats absent `experience_max` as part of the "no required
+            # experience" sentinel bucket. See #3217.
+            {"name": "experience_max", "type": "int32", "facet": True, "optional": True},
             {"name": "locales", "type": "string[]", "facet": True},
             {"name": "source_url", "type": "string", "index": False, "optional": True},
             {"name": "first_seen_at", "type": "int64"},
