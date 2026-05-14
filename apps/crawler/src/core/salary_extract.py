@@ -16,7 +16,9 @@ from dataclasses import dataclass
 
 # ── Result type ──────────────────────────────────────────────────────
 
-Currency = str  # ISO 4217: USD, CAD, EUR, GBP, CHF
+Currency = str  # ISO 4217: USD, CAD, EUR, GBP, CHF, PLN, CZK, SEK, DKK, HUF, RON, BGN
+# HRK intentionally omitted — Croatia adopted EUR 2023-01; recon (#3263) confirmed
+# zero HRK literals across 352 active Croatian postings. Revisit only on pre-2023 backfill.
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +75,59 @@ _PERIOD_MAP: dict[str, str] = {
     "per month": "monthly",
     "/month": "monthly",
     "/mo": "monthly",
+    # Polish
+    "rocznie": "yearly",
+    "miesięcznie": "monthly",
+    "miesiecznie": "monthly",  # diacritic-free fallback
+    "mies.": "monthly",
+    "/mies": "monthly",
+    "na godzinę": "hourly",
+    # Czech
+    "ročně": "yearly",
+    "rocne": "yearly",
+    "měsíčně": "monthly",
+    "mesicne": "monthly",
+    "měs.": "monthly",
+    "/měs": "monthly",
+    "na hodinu": "hourly",
+    "/hod": "hourly",
+    # Swedish
+    "årligen": "yearly",
+    "per år": "yearly",
+    "per månad": "monthly",
+    "kr/månad": "monthly",
+    "per timme": "hourly",
+    # Danish
+    "årligt": "yearly",
+    "pr. år": "yearly",
+    "månedlig": "monthly",
+    "pr. måned": "monthly",
+    "pr. time": "hourly",
+    # Hungarian
+    "évente": "yearly",
+    "évi": "yearly",
+    "/év": "yearly",
+    "havi": "monthly",
+    "havonta": "monthly",
+    "/hó": "monthly",
+    "óránként": "hourly",
+    "/óra": "hourly",
+    # Romanian
+    "anual": "yearly",
+    "pe an": "yearly",
+    "/an": "yearly",
+    "lunar": "monthly",
+    "pe lună": "monthly",
+    "pe luna": "monthly",
+    "/lună": "monthly",
+    "pe oră": "hourly",
+    "/oră": "hourly",
+    # Bulgarian
+    "годишно": "yearly",
+    "на година": "yearly",
+    "месечно": "monthly",
+    "на месец": "monthly",
+    "на час": "hourly",
 }
 
 
@@ -560,6 +615,513 @@ def _extract_chf(text: str) -> list[SalaryRange]:
     return results
 
 
+# ── Patterns 8-14: Non-Eurozone EU currencies ────────────────────────
+#
+# Adds: PLN, CZK, SEK, DKK, HUF, RON, BGN. Recon catalog: #3263 comment.
+# HRK skipped (Croatia adopted EUR 2023-01, zero literals in our crawl).
+#
+# Design notes:
+#  * All seven share enough structural similarity (number → ISO/symbol with
+#    optional range, or ISO/symbol → number) that we go through a single
+#    parameterised helper `_extract_eu_currency` rather than seven copy-pastes.
+#  * Number-parsing must handle four locale variants seen in production:
+#      - English: 1,234.56  (comma=thousands, dot=decimal)
+#      - German/Danish/Swedish "dot-locale": 1.234,56  (dot=thousands, comma=decimal)
+#      - Polish/Hungarian space-locale: 1 234,56  (space=thousands, comma=decimal)
+#      - Bare digits: 5172
+#  * Period detection is context-window based — we look 200 chars around the
+#    match for the native period word (`miesięcznie`, `měsíčně`, etc.) or
+#    the English equivalent, falling back to a per-currency magnitude
+#    heuristic only when context is silent.
+#  * Brutto/netto: when "net" is asserted *without* a "gross" marker in the
+#    surrounding window, we skip the extraction entirely (per #3264 brief —
+#    don't gross-up here, defer to a follow-up).
+#  * Per-currency disqualify lists cover the highest-frequency perks (meal
+#    vouchers, cafeteria budgets, Multisport, L&D budget, transport allowance)
+#    and revenue/turnover prose (SEK/DKK billion-dollar boilerplate). These
+#    are the single biggest source of false positives in the recon sample.
+
+
+def _parse_eu_number(raw: str) -> float | None:
+    """Parse a number string that may use any of: 1,234.56 / 1.234,56 / 1 234,56 / 5172.
+
+    Returns None when the string is empty, not numeric, or has an ambiguous
+    shape we'd rather decline than guess on.
+    """
+    if not raw:
+        return None
+    s = raw.strip()
+    # Strip a trailing decimal-zero idiom "110,- Kč" → "110"
+    s = re.sub(r",\s*-+$", "", s)
+    if not s or not any(c.isdigit() for c in s):
+        return None
+
+    # Trailing sentence period defence (matches _parse_number)
+    s = s.rstrip(".")
+
+    # Normalise non-breaking & thin spaces to plain space
+    s = s.replace(" ", " ").replace(" ", " ").replace(" ", " ")
+
+    has_comma = "," in s
+    has_dot = "." in s
+    has_space = " " in s
+
+    # Strip apostrophes (Swiss style, occasional in our data) for safety
+    s = s.replace("'", "").replace("’", "")
+
+    try:
+        if has_comma and has_dot:
+            # Two separators present — the last one is decimal.
+            if s.rfind(",") > s.rfind("."):
+                # 1.234,56 → "1234.56"
+                s = s.replace(".", "").replace(",", ".")
+            else:
+                # 1,234.56 → "1234.56"
+                s = s.replace(",", "")
+        elif has_comma and not has_dot:
+            # 1,234 (Eng thousands) vs 1234,56 (EU decimal).
+            # If exactly one comma and 3 digits follow → thousands; else decimal.
+            after = s.split(",")[-1]
+            if len(after) == 3 and s.count(",") >= 1 and not has_space:
+                s = s.replace(",", "")
+            else:
+                s = s.replace(",", ".")
+        elif has_dot and not has_comma:
+            # 1234.56 (Eng decimal) vs 1.234 (EU thousands) vs 1.234.567 (EU multi-thousands).
+            after = s.split(".")[-1]
+            dot_count = s.count(".")
+            # Multiple dots → unambiguously thousands separators.
+            # Single dot + 3-digit tail + >3 digits total → thousands (e.g. "1.234").
+            # Single dot + non-3-digit tail → decimal (e.g. "12.34").
+            if dot_count > 1:
+                s = s.replace(".", "")
+            elif len(after) == 3 and dot_count == 1 and len(s.replace(".", "")) > 3:
+                # 1.234 or 12.345 → thousands. 12.34 is decimal.
+                s = s.replace(".", "")
+            # else: leave as decimal
+        if has_space:
+            s = s.replace(" ", "")
+        return float(s)
+    except ValueError:
+        return None
+
+
+# Native period markers per currency family, matched in a context window.
+_EU_PERIOD_RE = re.compile(
+    r"per\s+(?:hour|month|year)|hourly|monthly|yearly|annually|annual|/(?:hour|hr|month|mo|year|yr)|"
+    r"p\.a\.|"
+    # Polish
+    r"miesięcznie|miesiecznie|miesiąc|miesiac|mies\.|/mies|rocznie|rok|na\s+godzinę|"
+    # Czech
+    r"měsíčně|mesicne|měs\.|/měs|ročně|rocne|/hod|na\s+hodinu|"
+    # Swedish/Danish
+    r"per\s+(?:år|månad|timme)|kr/(?:år|månad|timme)|årligen|årligt|månedlig|pr\.\s*(?:år|måned|time)|"
+    # Hungarian
+    r"havonta|havi|/hó|évente|évi|/év|óránként|/óra|"
+    # Romanian
+    r"pe\s+lună|lunar|pe\s+an|anual|pe\s+oră|/(?:lună|oră|an)|"
+    # Bulgarian
+    r"месечно|годишно|на\s+(?:час|месец|година)",
+    re.IGNORECASE,
+)
+
+# Brutto markers — at least one of these in the window is sufficient to
+# accept the extraction even when an explicit "net" word also appears.
+_EU_GROSS_RE = re.compile(
+    r"\b(?:gross|brut|brutto|bruttó|bruttoló|hrubého|"
+    r"bruttoløn|bruttolön|"
+    # Bulgarian Cyrillic
+    r"бруто)\b",
+    re.IGNORECASE,
+)
+
+# Net markers — if any of these are present in the window *and* no gross marker
+# is, we skip the extraction. We DO NOT gross-up — that's a separate follow-up.
+_EU_NET_RE = re.compile(
+    r"\b(?:net|netto|nettó|čistého|"
+    r"nettoløn|nettolön|"
+    r"нето)\b",
+    re.IGNORECASE,
+)
+
+# Perk / non-salary phrases shared across currencies. Matched against the
+# context window (300 chars around the number).
+_EU_PERK_RE = re.compile(
+    # Vouchers, cards, budgets, allowances
+    r"voucher|vouchere|stravenk|stravné|cafeteria|multisport|edenred|sodexo|"
+    r"allowance|appartement|wellness|wellbeing|"
+    r"l&d\s+budget|learning\s+budget|personal\s+budget|annual\s+budget|"
+    r"food\s+ticket|meal\s+ticket|meal\s+voucher|meal\s+allowance|"
+    r"tichete\s+de\s+masă|bonuri\s+de\s+masa|"
+    r"transport\s+allowance|decont|"
+    # Hungarian, Czech meal/cafeteria
+    r"étkezési|szép\s+kártya|příspěvek|příspěvky|"
+    # Polish allowance/perk words
+    r"dodatek|dodatków|"
+    # Romanian allowance/perk words
+    r"diurnă|deplasare|"
+    # Bulgarian Cyrillic perk words
+    r"бонус|ваучер|"
+    # Generic English perks/discount
+    r"referral\s+(?:bonus|reward|fee|program)|"
+    r"sign[-\s]?on\s+bonus|"
+    r"gift\s+card",
+    re.IGNORECASE,
+)
+
+# Disqualifiers for corporate-revenue prose — most damaging for SEK/DKK,
+# which the recon flagged ("SEK 134 billion", "DKK 130 billion").
+_EU_REVENUE_RE = re.compile(
+    r"\b(?:revenue|turnover|sales\s+of|"
+    r"billion|bn\b|million|mn\b|"
+    # Danish billion = "milliarder", abbrev "mia."
+    r"milliarder|mia\.?|"
+    # Swedish billion = "miljarder"
+    r"miljarder|mdr\.?|"
+    # Polish billion = "miliardów", Czech = "miliard", Hungarian = "milliárd",
+    # Romanian = "miliarde", Bulgarian = "милиарда"
+    r"miliard|miliardów|miliárd|miliarde|milliárd|милиард)",
+    re.IGNORECASE,
+)
+
+
+# Currency descriptor table.
+#
+# Fields:
+#   iso        — ISO 4217 code.
+#   symbols    — extra spellings that anchor the regex (e.g. zł, Kč, Ft, лв).
+#                Listed in regex form, exact case unless `iso_ci` is True.
+#   word_break — `True` to require a leading word boundary for the suffix
+#                form (e.g. avoid "HUFFMAN" matching "HUF").
+#   range_min  — typed lower bound for an annual gross salary in this currency
+#                (filters tiny perk amounts that slipped past the perk regex).
+#   range_max  — typed upper bound.
+#   monthly_min/max — same, for monthly salaries.
+#   hourly_min/max — same, for hourly rates (used only when explicit).
+#
+# Magnitudes are calibrated against the recon TL;DR — e.g. PLN monthly is
+# typically 4k-30k zł, annual 40k-400k. Hungarian numbers are 400× higher
+# than EUR equivalents so HUF needs its own thresholds.
+
+_EU_CURRENCIES: dict[str, dict] = {
+    "PLN": {
+        "iso": "PLN",
+        # zł is the most common, ZŁ uppercase appears in some ATS templates.
+        "symbols": [r"zł", r"ZŁ", r"PLN"],
+        "range_min": 30_000,
+        "range_max": 1_500_000,
+        "monthly_min": 2_000,
+        "monthly_max": 150_000,
+        "hourly_min": 15,
+        "hourly_max": 1_000,
+    },
+    "CZK": {
+        "iso": "CZK",
+        "symbols": [r"Kč", r"CZK"],
+        "range_min": 200_000,
+        "range_max": 5_000_000,
+        "monthly_min": 15_000,
+        "monthly_max": 500_000,
+        "hourly_min": 80,
+        "hourly_max": 3_000,
+    },
+    "SEK": {
+        "iso": "SEK",
+        # `kr` is ambiguous between NOK/SEK/DKK — recon (#3263) says SEK regex
+        # requires explicit `SEK` or `kronor`; bare `kr` is too noisy.
+        "symbols": [r"SEK", r"kronor"],
+        "range_min": 200_000,
+        "range_max": 5_000_000,
+        "monthly_min": 15_000,
+        "monthly_max": 500_000,
+        "hourly_min": 80,
+        "hourly_max": 3_000,
+    },
+    "DKK": {
+        "iso": "DKK",
+        # Recon: bare `kr.` is ambiguous with NOK/SEK/ISK; require explicit DKK.
+        "symbols": [r"DKK"],
+        "range_min": 200_000,
+        "range_max": 5_000_000,
+        "monthly_min": 15_000,
+        "monthly_max": 500_000,
+        "hourly_min": 80,
+        "hourly_max": 3_000,
+    },
+    "HUF": {
+        "iso": "HUF",
+        # Ft must be word-anchored to avoid "Ft. Walton Beach" / "HUFFMAN" hits.
+        "symbols": [r"HUF", r"Ft"],
+        "word_break": True,
+        # HUF salaries are large (~400× EUR for the same purchasing power).
+        "range_min": 1_500_000,
+        "range_max": 200_000_000,
+        "monthly_min": 200_000,
+        "monthly_max": 20_000_000,
+        "hourly_min": 1_500,
+        "hourly_max": 50_000,
+    },
+    "RON": {
+        "iso": "RON",
+        # `lei` must avoid "leisure", "Israeli" prose, etc — require a digit
+        # left-neighbour and a strong salary/period context word.
+        "symbols": [r"RON", r"lei"],
+        "word_break": True,
+        "range_min": 24_000,  # ~RON 2000/month × 12
+        "range_max": 1_000_000,
+        "monthly_min": 2_000,
+        "monthly_max": 100_000,
+        "hourly_min": 10,
+        "hourly_max": 500,
+    },
+    "BGN": {
+        "iso": "BGN",
+        # лв is the Cyrillic short form. The recon noted near-zero primary-salary
+        # hits — most BGN matches are perks — but we still ship the regex.
+        "symbols": [r"BGN", r"лв\.?"],
+        "range_min": 12_000,  # ~BGN 1000/month × 12 — Bulgarian minimum wage neighbourhood
+        "range_max": 400_000,
+        "monthly_min": 1_000,
+        "monthly_max": 40_000,
+        "hourly_min": 5,
+        "hourly_max": 200,
+    },
+}
+
+
+# Salary-confirming context words (incl. native EU words).
+# A match in the context window is required for every emission — this is the
+# precision-skewed lever that gates against perks/prose.
+_EU_SALARY_CONTEXT_RE = re.compile(
+    r"salary|salaire|salario|salariu|płaca|wynagrodzenie|wynagrodzeni|plat|"
+    r"mzda|mzd[aу]|fizetés|lön|løn|заплата|"
+    r"compensation|base\s+pay|pay\s+range|pay:|pay\b|"
+    # German salary words (Gehalt/Vergütung — for ATS templates in Polish/Czech mixed locales)
+    r"gehalt|vergütung|"
+    # Period markers count as context too
+    r"gross|net\b|brut|brutto|bruttó|hrubého|hrub[éy]|nett|netto|nettó|čistého|"
+    r"per\s+(?:hour|month|year)|hourly|monthly|yearly|annually|annual|"
+    r"miesięcznie|miesiecznie|rocznie|měsíčně|ročně|"
+    r"havi|havonta|évi|évente|lunar|anual|месечно|годишно|"
+    r"per\s+(?:år|månad)|kr/(?:år|månad)|årligen|årligt|månedlig",
+    re.IGNORECASE,
+)
+
+
+def _detect_period_in_window(window: str) -> str | None:
+    """Look for a native or English period marker in a context window."""
+    m = _EU_PERIOD_RE.search(window)
+    if not m:
+        return None
+    raw = m.group(0).lower().strip()
+    # Map raw multilingual matches to the canonical period.
+    hourly_tokens = (
+        "hour",
+        "hr",
+        "hod",
+        "godzin",
+        "óra",
+        "óránk",
+        "oră",
+        "timme",
+        "stunde",
+        "час",
+        "/h",
+    )
+    monthly_tokens = (
+        "month",
+        "mo",
+        "mies",
+        "měs",
+        "havi",
+        "havonta",
+        "/hó",
+        "lună",
+        "luna",
+        "lunar",
+        "månad",
+        "måned",
+        "месечно",
+    )
+    yearly_tokens = (
+        "year",
+        "yr",
+        "annual",
+        "annually",
+        "p.a.",
+        "rok",
+        "rocz",
+        "ročn",
+        "/év",
+        "évi",
+        "éven",
+        "/an",
+        "anual",
+        "år",
+        "годишно",
+    )
+    if any(t in raw for t in hourly_tokens):
+        return "hourly"
+    if any(t in raw for t in monthly_tokens):
+        return "monthly"
+    if any(t in raw for t in yearly_tokens):
+        return "yearly"
+    return None
+
+
+def _build_eu_currency_regex(symbols: list[str], word_break: bool) -> re.Pattern[str]:
+    """Build a precision regex for `(symbol|iso)`-anchored numbers.
+
+    Matches three shapes:
+      1.  `<symbol> <num>` (prefix)        e.g. "PLN 14 600", "CZK 34 000"
+      2.  `<num> <symbol>` (suffix)        e.g. "5 000 zł", "70 000 Kč"
+      3.  `<num> - <num> <symbol>` (range; symbol may appear before or after each endpoint)
+    """
+    sym = "(?:" + "|".join(symbols) + ")"
+    # Number token: at least 2 digits to avoid "5 lei" sub-amounts; allows
+    # space/dot/comma thousands and an optional decimal tail.
+    # We keep this deliberately loose; _parse_eu_number does the heavy lifting.
+    num = r"\d{1,3}(?:[  .,]\d{3})*(?:[.,]\d+)?|\d{2,}(?:[.,]\d+)?"
+    # Suffix form needs a non-letter left neighbour so we don't pick up "PLN"
+    # in "ERPLN" or "HUF" in "HUFFMAN".
+    left_guard = r"(?<![A-Za-zÀ-ž])" if word_break else r"(?<![A-Za-z0-9])"
+    # Right guard — same idea on the symbol side; HUF/Ft especially.
+    right_guard = r"(?![A-Za-zÀ-ž])"
+    range_sep = r"(?:-|–|—|to|do|til|à|–|—)"
+    pat = (
+        r"(?:"
+        # Prefix shape:   PLN 14,000 - PLN 20,000   |   PLN 14,000 - 20,000
+        rf"{left_guard}{sym}\s*({num})"
+        rf"(?:\s*{range_sep}\s*(?:{sym}\s*)?({num}))?{right_guard}"
+        r"|"
+        # Double-suffix range:   14,000 zł - 20,000 zł
+        rf"{left_guard}({num})\s*{sym}\s*{range_sep}\s*({num})\s*{sym}{right_guard}"
+        r"|"
+        # Single-trailing-suffix range:   14,000 - 20,000 zł
+        rf"{left_guard}({num})\s*{range_sep}\s*({num})\s*{sym}{right_guard}"
+        r"|"
+        # Single-suffix:  14,000 zł
+        rf"{left_guard}({num})\s*{sym}{right_guard}"
+        r")"
+    )
+    return re.compile(pat, re.IGNORECASE)
+
+
+# Compile per-currency regexes once at import time.
+_EU_RES: dict[str, re.Pattern[str]] = {
+    code: _build_eu_currency_regex(spec["symbols"], spec.get("word_break", False))
+    for code, spec in _EU_CURRENCIES.items()
+}
+
+
+def _extract_eu_currency(text: str, code: str) -> list[SalaryRange]:
+    """Extract salary ranges for one non-Eurozone EU currency.
+
+    Precision rules (all must hold for an emission):
+      1.  At least one salary/period context word in a ±200-char window.
+      2.  No perk word (voucher / Multisport / cafeteria budget / allowance).
+      3.  No revenue/turnover word (billion / mia. / miljarder / miliard*).
+      4.  If a net marker is present *and* no gross marker, skip.
+      5.  Parsed value falls within the per-currency magnitude window for the
+          detected (or inferred) period.
+    """
+    spec = _EU_CURRENCIES[code]
+    pat = _EU_RES[code]
+    results: list[SalaryRange] = []
+
+    for m in pat.finditer(text):
+        # Capture groups follow regex alternative order:
+        #   (prefix_lo, prefix_hi,
+        #    double_suffix_lo, double_suffix_hi,
+        #    single_trail_lo, single_trail_hi,
+        #    suffix_single)
+        g = m.groups()
+        prefix_lo, prefix_hi = g[0], g[1]
+        dbl_lo, dbl_hi = g[2], g[3]
+        sgl_lo, sgl_hi = g[4], g[5]
+        suf_one = g[6]
+        if prefix_lo:
+            raw_lo, raw_hi = prefix_lo, prefix_hi
+        elif dbl_lo:
+            raw_lo, raw_hi = dbl_lo, dbl_hi
+        elif sgl_lo:
+            raw_lo, raw_hi = sgl_lo, sgl_hi
+        else:
+            raw_lo, raw_hi = suf_one, None
+
+        if not raw_lo:
+            continue
+
+        lo = _parse_eu_number(raw_lo)
+        hi = _parse_eu_number(raw_hi) if raw_hi else None
+        if lo is None or (raw_hi and hi is None):
+            continue
+
+        # Context window for precision gating.
+        start = max(0, m.start() - 200)
+        end = min(len(text), m.end() + 200)
+        window = text[start:end]
+
+        # 1. Salary context word required.
+        if not _EU_SALARY_CONTEXT_RE.search(window):
+            continue
+
+        # 2. Perk disqualifier.
+        if _EU_PERK_RE.search(window):
+            continue
+
+        # 3. Revenue/turnover disqualifier (most relevant for SEK/DKK).
+        if _EU_REVENUE_RE.search(window):
+            continue
+
+        # 4. Net-only → skip (#3264 brief: no gross-up here).
+        if _EU_NET_RE.search(window) and not _EU_GROSS_RE.search(window):
+            continue
+
+        # 5. Period detection.
+        period = _detect_period_in_window(window)
+        if period is None:
+            # Heuristic: pick period from magnitude when context is silent.
+            # Compare against per-currency thresholds.
+            if lo >= spec["range_min"]:
+                period = "yearly"
+            elif lo >= spec["monthly_min"]:
+                period = "monthly"
+            else:
+                # Below monthly_min — too small for a primary salary; bail.
+                continue
+
+        # Magnitude sanity per period.
+        if period == "yearly":
+            if lo < spec["range_min"] or lo > spec["range_max"]:
+                continue
+            if hi is not None and (hi < lo or hi > spec["range_max"] * 1.2):
+                continue
+        elif period == "monthly":
+            if lo < spec["monthly_min"] or lo > spec["monthly_max"]:
+                continue
+            if hi is not None and (hi < lo or hi > spec["monthly_max"] * 1.2):
+                continue
+        elif period == "hourly":
+            if lo < spec["hourly_min"] or lo > spec["hourly_max"]:
+                continue
+            if hi is not None and (hi < lo or hi > spec["hourly_max"] * 1.2):
+                continue
+
+        # Hourly is stored as cents internally (same convention as USD/EUR/CHF).
+        scale = 100 if period == "hourly" else 1
+        results.append(
+            SalaryRange(
+                min=int(lo * scale),
+                max=(int(hi * scale) if hi is not None else None),
+                currency=code,
+                period=period,
+            )
+        )
+
+    return results
+
+
 # ── Public API ───────────────────────────────────────────────────────
 
 
@@ -593,7 +1155,12 @@ def extract_salary(html: str) -> list[SalaryRange]:
     # CHF patterns
     chf = _extract_chf(text)
 
-    all_results = dollar_ranges + dollar_singles + eur + gbp + chf
+    # Non-Eurozone EU currencies (PLN/CZK/SEK/DKK/HUF/RON/BGN)
+    eu_extra: list[SalaryRange] = []
+    for code in _EU_CURRENCIES:
+        eu_extra.extend(_extract_eu_currency(text, code))
+
+    all_results = dollar_ranges + dollar_singles + eur + gbp + chf + eu_extra
 
     # Deduplicate: if we have both a range and a single that overlaps, prefer the range
     if len(all_results) > 1:
