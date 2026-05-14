@@ -655,12 +655,12 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     const fromTypesense = await _fetchCompanyBySlugFromTypesense(slug, locale);
     if (fromTypesense) return fromTypesense;
   } catch (err) {
-    // Typesense unreachable — fall through to Postgres. Log at info so the
+    // Typesense unreachable — fall through to Postgres. Log at error so the
     // fallback rate is queryable (e.g. Cloudflare-tunnel blip pushing 100%
     // of company-page traffic to Supabase). Matches the precedent set by
-    // `searchCompaniesForWatchlist` / `_fetchSimilarUnfiltered` in this
-    // same file. See #3175.
-    console.info("[company] Typesense failed, falling back to Postgres", err);
+    // `searchCompaniesForWatchlist` / `_fetchSimilarUnfiltered` /
+    // `_fetchSimilarFiltered` in this same file. See #3175.
+    console.error("[company] Typesense failed, falling back to Postgres", err);
   }
   return _fetchCompanyBySlugFromPostgres(slug, locale);
 }

@@ -220,20 +220,20 @@ describe("getCompanyBySlug — Postgres fallback", () => {
      * and `_fetchSimilarUnfiltered` in the same file. */
     searchMock.mockRejectedValue(new Error("typesense unreachable"));
     dbExecuteMock.mockResolvedValue([_pgRow]);
-    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const out = await getCompanyBySlug("acme", "en");
 
     // Fallback behaviour preserved — Postgres still serves the request.
     expect(out?.description).toBe("From Postgres");
     // Stable event prefix so the fallback rate is queryable in Loki.
-    const fallbackCalls = infoSpy.mock.calls.filter(
+    const fallbackCalls = errorSpy.mock.calls.filter(
       (call) => call[0] === "[company] Typesense failed, falling back to Postgres",
     );
     expect(fallbackCalls).toHaveLength(1);
     expect(fallbackCalls[0][1]).toBeInstanceOf(Error);
     expect((fallbackCalls[0][1] as Error).message).toBe("typesense unreachable");
-    infoSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   it("does NOT log the fallback event when Typesense returns 0 hits (only thrown errors signal an outage)", async () => {
@@ -242,16 +242,16 @@ describe("getCompanyBySlug — Postgres fallback", () => {
      * signal of Typesense health, not company-freshness noise. */
     searchMock.mockResolvedValue(_typesenseResponse(null));
     dbExecuteMock.mockResolvedValue([_pgRow]);
-    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const out = await getCompanyBySlug("acme", "en");
 
     expect(out?.description).toBe("From Postgres");
-    const fallbackCalls = infoSpy.mock.calls.filter(
+    const fallbackCalls = errorSpy.mock.calls.filter(
       (call) => call[0] === "[company] Typesense failed, falling back to Postgres",
     );
     expect(fallbackCalls).toHaveLength(0);
-    infoSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   it("falls through to Postgres when Typesense returns 0 hits", async () => {
