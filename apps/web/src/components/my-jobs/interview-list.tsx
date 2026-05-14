@@ -95,6 +95,11 @@ function InterviewRow({
   onUpdate: InterviewListProps["onUpdate"];
   onDelete: InterviewListProps["onDelete"];
 }) {
+  // `i18n.locale` is the viewer's active language. Without it,
+  // `toLocaleDateString(undefined, ...)` renders the Node default
+  // (en-US) on the server and the browser locale on the client,
+  // producing a hydration mismatch for non-en viewers. See #3221.
+  const { i18n } = useLingui();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -122,7 +127,7 @@ function InterviewRow({
         <span className="text-xs">{typeLabels[interview.type]}</span>
         {interview.scheduledAt && (
           <span className="text-[11px] text-muted">
-            {new Date(interview.scheduledAt).toLocaleDateString(undefined, {
+            {new Date(interview.scheduledAt).toLocaleDateString(i18n.locale, {
               month: "short",
               day: "numeric",
               hour: "2-digit",

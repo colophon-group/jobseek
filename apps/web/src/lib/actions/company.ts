@@ -22,6 +22,7 @@ import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-f
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { firstOf, idsOrUndefined, parseRangeParam } from "@/lib/search/params";
+import { canonicalStringCompare } from "@/lib/sort";
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
 
@@ -1023,15 +1024,22 @@ function _hasSimilarFilters(f: SimilarFilters): boolean {
  * from the argument structure, so the arrays themselves must be sorted
  * for `[A,B]` and `[B,A]` inputs to share a slot. Pure function; the
  * input is not mutated. See #2884 bucket 4.
+ *
+ * String fields use `canonicalStringCompare` (locale-independent
+ * `Intl.Collator("en", { sensitivity: "base" })`) — the raw
+ * `Array#sort()` uses UTF-16 code unit order, where `"ü"` (U+00FC)
+ * sorts after `"z"` (U+007A). That produces different cache keys for
+ * `["python","übung","zoom"]` depending on the caller's input
+ * permutation. See #3221.
  */
 function _normalizeSimilarFilters(f: SimilarFilters): SimilarFilters {
   return {
-    keywords: [...f.keywords].sort(),
+    keywords: [...f.keywords].sort(canonicalStringCompare),
     locationIds: [...f.locationIds].sort((a, b) => a - b),
     occupationIds: [...f.occupationIds].sort((a, b) => a - b),
     seniorityIds: [...f.seniorityIds].sort((a, b) => a - b),
     technologyIds: [...f.technologyIds].sort((a, b) => a - b),
-    employmentTypes: [...f.employmentTypes].sort(),
+    employmentTypes: [...f.employmentTypes].sort(canonicalStringCompare),
     salaryMinEur: f.salaryMinEur,
     salaryMaxEur: f.salaryMaxEur,
     experienceMin: f.experienceMin,
@@ -1191,16 +1199,21 @@ export async function getCompanyPostings(params: {
   // implicit `'use cache'` key derivation hashes the same value for
   // equivalent caller intents. The sorted+nulled shape mirrors the
   // legacy concat-key string built by the old `cached()` call.
+  //
+  // String arrays use `canonicalStringCompare` — locale-independent so
+  // a `de-DE` viewer and an `en-US` viewer with the same filter set
+  // share a cache slot (raw `.sort()` uses UTF-16 order and splits
+  // them, see #3221).
   const normalized: NormalizedCompanyPostingsParams = {
     companyId: params.companyId,
-    keywords: [...params.keywords].sort(),
+    keywords: [...params.keywords].sort(canonicalStringCompare),
     locationIds: [...(params.locationIds ?? [])].sort((a, b) => a - b),
     occupationIds: [...(params.occupationIds ?? [])].sort((a, b) => a - b),
     seniorityIds: [...(params.seniorityIds ?? [])].sort((a, b) => a - b),
     technologyIds: [...(params.technologyIds ?? [])].sort((a, b) => a - b),
-    employmentTypes: [...(params.employmentTypes ?? [])].sort(),
-    workMode: [...(params.workMode ?? [])].sort(),
-    languages: [...params.languages].sort(),
+    employmentTypes: [...(params.employmentTypes ?? [])].sort(canonicalStringCompare),
+    workMode: [...(params.workMode ?? [])].sort(canonicalStringCompare),
+    languages: [...params.languages].sort(canonicalStringCompare),
     salaryMinEur: params.salaryMinEur ?? null,
     salaryMaxEur: params.salaryMaxEur ?? null,
     experienceMin: params.experienceMin ?? null,

@@ -19,6 +19,7 @@ import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { LanguageStatsRow } from "@/components/search/language-stats-row";
+import { formatDateDivider, getDateKey } from "@/components/watchlist/format-date-divider";
 
 const BATCH = 20;
 
@@ -39,30 +40,6 @@ export interface WatchlistJobListFilters {
   experienceMin?: number;
   experienceMax?: number;
   languages?: string[];
-}
-
-function formatDateDivider(dateStr: string, todayLabel: string, yesterdayLabel: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  if (d.getTime() === today.getTime()) return todayLabel;
-  if (d.getTime() === yesterday.getTime()) return yesterdayLabel;
-
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function getDateKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function WatchlistJobList({
@@ -151,7 +128,7 @@ export function WatchlistJobList({
         >
           <div className="h-px flex-1 bg-divider" />
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted" suppressHydrationWarning>
-            {formatDateDivider(entry.firstSeenAt, todayLabel, yesterdayLabel)}
+            {formatDateDivider(entry.firstSeenAt, todayLabel, yesterdayLabel, locale)}
           </span>
           <div className="h-px flex-1 bg-divider" />
         </div>,
