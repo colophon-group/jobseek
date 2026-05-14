@@ -4,13 +4,27 @@
 -- ARGV[2] = now (float timestamp)
 -- ARGV[3] = default_rate_delay (float seconds)
 -- ARGV[4] = max_domains_to_check (int)
+-- ARGV[5] = lease_ttl (float seconds; lease set on claim — see #3159 / #3173)
 --
 -- Returns: {task_id, source_type, domain} or nil
+--
+-- Lease semantics (added in #3159 / #3173):
+--   When a task is claimed, this script also records a lease entry in
+--   the per-worker-type inflight ZSET (``inflight:<wtype>``) with
+--   member ``"<task_type>|<domain>|<task_id>"`` and score
+--   ``now + lease_ttl``. If the worker dies between claim and
+--   completion, a periodic reaper (``reap_expired.lua``) re-enqueues
+--   the task back to its per-domain ZSET so it isn't lost.
+--
+--   On successful processing the worker MUST call ``complete_task.lua``
+--   to remove the inflight entry. Heartbeats during long-running
+--   processing extend the lease via ``heartbeat_task.lua``.
 
 local wtype = ARGV[1]
 local now = tonumber(ARGV[2])
 local default_delay = tonumber(ARGV[3])
 local max_check = tonumber(ARGV[4]) or 10
+local lease_ttl = tonumber(ARGV[5]) or 600
 
 -- Try tiers in priority order: 0=first-time, 1=monitors, 2=scrapes
 for tier = 0, 2 do
@@ -79,6 +93,12 @@ for tier = 0, 2 do
 
                 -- Remove domain from current ready tier
                 redis.call("ZREM", ready_key, domain)
+
+                -- Record lease entry in inflight ZSET (#3159 / #3173).
+                -- Member encodes (task_type, domain, task_id) so the
+                -- reaper can re-enqueue without a side hash.
+                local inflight_member = source_type .. "|" .. domain .. "|" .. task_id
+                redis.call("ZADD", "inflight:" .. wtype, now + lease_ttl, inflight_member)
 
                 -- Recompute domain's tier and re-add if tasks remain.
                 --

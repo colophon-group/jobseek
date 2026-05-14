@@ -295,6 +295,40 @@ worker_heartbeat_ts = Gauge(
     ["worker_id"],
 )
 
+# Reaper metrics (#3159 / #3173). The reaper sweeps the inflight ZSET
+# for tasks whose lease expired (worker died between claim and
+# ``reschedule_task``) and re-enqueues them. Any nonzero rate on
+# ``reenqueued`` outside of a deploy window is a signal of worker OOM /
+# crash; ``dead_lettered`` is a signal of a poison task that keeps
+# re-failing — investigate by ``ZRANGE deadletter:simple 0 -1``.
+inflight_reaped_total = Counter(
+    "crawler_inflight_reaped_total",
+    "Inflight lease entries swept by the reaper",
+    ["wtype", "outcome"],  # outcome: reenqueued | dead_lettered | missing_config
+)
+
+inflight_depth = Gauge(
+    "crawler_inflight_depth",
+    "Tasks currently in-flight (leased)",
+    ["wtype"],
+)
+
+inflight_deadletter_depth = Gauge(
+    "crawler_inflight_deadletter_depth",
+    "Tasks parked in the dead-letter ZSET",
+    ["wtype"],
+)
+
+# Heartbeats: tasks that called ``heartbeat_task`` and got 1 (extended)
+# vs 0 (lease already gone — reaper raced us). The "lost" outcome is
+# the diagnostic for tuning ``inflight_lease_ttl_seconds`` upward when
+# normal processing exceeds the lease budget.
+inflight_heartbeat_total = Counter(
+    "crawler_inflight_heartbeat_total",
+    "Inflight lease heartbeat attempts",
+    ["wtype", "outcome"],  # outcome: extended | lost
+)
+
 # ── Browser metrics ─────────────────────────────────────────────────
 
 browser_navigate_fallback_total = Counter(
