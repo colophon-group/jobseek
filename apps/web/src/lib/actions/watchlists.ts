@@ -35,7 +35,7 @@ import {
   updateWatchlistField as tsUpdateWatchlistField,
 } from "@/lib/search/typesense-watchlist";
 import { isTrivialWatchlist } from "@/lib/watchlist-utils";
-import { notifyIndexNow } from "@/lib/indexnow";
+import { notifyIndexNow, logIndexNowResult } from "@/lib/indexnow";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -222,7 +222,8 @@ export async function createWatchlist(params: {
         // (see apps/web/src/lib/sitemap.ts — filters `u.username IS NOT NULL`).
         if (owner.username) {
           const userSlug = owner.displayUsername ?? owner.username;
-          await notifyIndexNow([`/${userSlug}/${slug}`]);
+          const r = await notifyIndexNow([`/${userSlug}/${slug}`]);
+          logIndexNowResult("createWatchlist", r);
         }
       } catch (err) {
         console.error("[createWatchlist] post-mutation hook failed", err);
@@ -357,7 +358,8 @@ export async function updateWatchlist(params: {
           // engines to discover that.
           const urls = [`/${userSlug}/${newSlug}`];
           if (newSlug !== wl.slug) urls.push(`/${userSlug}/${wl.slug}`);
-          await notifyIndexNow(urls);
+          const r = await notifyIndexNow(urls);
+          logIndexNowResult("updateWatchlist", r);
         }
       } else if (wasPublic) {
         // Was indexed and shouldn't be now — delete from Typesense and
@@ -368,7 +370,8 @@ export async function updateWatchlist(params: {
         const owner = await _getOwnerInfo(userId);
         if (owner?.username) {
           const userSlug = owner.displayUsername ?? owner.username;
-          await notifyIndexNow([`/${userSlug}/${wl.slug}`]);
+          const r = await notifyIndexNow([`/${userSlug}/${wl.slug}`]);
+          logIndexNowResult("updateWatchlist:unpublish", r);
         }
       }
     } catch (err) {
@@ -408,7 +411,8 @@ export async function deleteWatchlist(
         const owner = await _getOwnerInfo(userId);
         if (owner?.username) {
           const userSlug = owner.displayUsername ?? owner.username;
-          await notifyIndexNow([`/${userSlug}/${wl.slug}`]);
+          const r = await notifyIndexNow([`/${userSlug}/${wl.slug}`]);
+          logIndexNowResult("deleteWatchlist", r);
         }
       }
     } catch (err) {
@@ -525,7 +529,8 @@ export async function copyWatchlist(
         });
         if (owner.username) {
           const userSlug = owner.displayUsername ?? owner.username;
-          await notifyIndexNow([`/${userSlug}/${slug}`]);
+          const r = await notifyIndexNow([`/${userSlug}/${slug}`]);
+          logIndexNowResult("copyWatchlist", r);
         }
       } catch (err) {
         console.error("[copyWatchlist] Typesense upsert hook failed", err);

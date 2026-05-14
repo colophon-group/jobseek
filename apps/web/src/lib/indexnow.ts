@@ -118,3 +118,91 @@ function encodePath(path: string): string {
     .map((segment) => (segment ? encodeURIComponent(segment) : segment))
     .join("/");
 }
+
+/**
+ * Stable event name used by every structured log line emitted from
+ * `logIndexNowResult`. Filter Vercel logs by this prefix to aggregate
+ * IndexNow outcomes across all watchlist call sites (#3202).
+ */
+export const INDEXNOW_LOG_EVENT = "indexnow.result";
+
+/**
+ * Hostname of the IndexNow aggregator. The IndexNow protocol uses a
+ * single endpoint that fans out to Bing, Yandex, Seznam, Naver, and
+ * Microsoft Yep — there is no per-engine status code returned to the
+ * submitter, so the `host` field is necessarily the aggregator and
+ * the status code is whatever it returns (typically 200/202 on accept,
+ * 4xx on key/quota issues). The blog-side script in
+ * `apps/web/script/notify-blog-indexnow.ts` makes the same trade-off.
+ */
+const INDEXNOW_HOST = "api.indexnow.org";
+
+/**
+ * Emit a single structured log line for an IndexNow result, so the
+ * rejection rate / skip rate / error rate can be aggregated from
+ * Vercel function logs (#3202). Previously, every watchlist call site
+ * discarded the `NotifyIndexNowResult` envelope — a 422 storm from
+ * Yandex after a key rotation was invisible to operators, and a
+ * `skipped: "no-key"` on a preview deploy without `INDEXNOW_KEY` was
+ * silent. Pairs with `notifyIndexNow`'s already-correct return shape.
+ *
+ * Log level is chosen so production filtering surfaces only the
+ * actionable cases by default:
+ *
+ *   - `submitted` → `console.info`  (normal path, low signal)
+ *   - `skipped`   → `console.debug` (no-op; expected on previews)
+ *   - `rejected`  → `console.warn`  (HTTP non-2xx — actionable)
+ *   - `errored`   → `console.warn`  (network/abort — actionable)
+ *
+ * All lines start with the stable event name {@link INDEXNOW_LOG_EVENT}
+ * (`"indexnow.result"`) as their first argument so a single Vercel log
+ * filter catches every outcome. The structured payload follows as the
+ * second argument; Vercel's log viewer preserves it as JSON.
+ *
+ * @param label Short call-site identifier — e.g. `"createWatchlist"`.
+ *              Surfaces in the log line so operators can attribute a
+ *              rejection storm to the right server action without
+ *              digging through stack traces.
+ * @param result The envelope returned by `notifyIndexNow`.
+ */
+export function logIndexNowResult(
+  label: string,
+  result: NotifyIndexNowResult,
+): void {
+  switch (result.kind) {
+    case "submitted":
+      console.info(INDEXNOW_LOG_EVENT, {
+        label,
+        kind: "submitted",
+        status: result.status,
+        urlCount: result.urlCount,
+        host: INDEXNOW_HOST,
+      });
+      return;
+    case "skipped":
+      console.debug(INDEXNOW_LOG_EVENT, {
+        label,
+        kind: "skipped",
+        reason: result.reason,
+        urlCount: 0,
+      });
+      return;
+    case "rejected":
+      console.warn(INDEXNOW_LOG_EVENT, {
+        label,
+        kind: "rejected",
+        status: result.status,
+        urlCount: result.urlCount,
+        host: INDEXNOW_HOST,
+      });
+      return;
+    case "errored":
+      console.warn(INDEXNOW_LOG_EVENT, {
+        label,
+        kind: "errored",
+        error: result.error instanceof Error ? result.error.message : String(result.error),
+        urlCount: result.urlCount,
+      });
+      return;
+  }
+}
