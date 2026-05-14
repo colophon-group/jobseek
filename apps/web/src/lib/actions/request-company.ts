@@ -5,13 +5,21 @@ import { headers } from "next/headers";
 import type { Octokit } from "@octokit/rest";
 import { db } from "@/db";
 import { companyRequest } from "@/db/schema";
+import { companyRequestLimiter, getClientIp } from "@/lib/rate-limit";
+import { isLocale } from "@/lib/i18n";
 
 const INPUT_MIN_LENGTH = 2;
 const INPUT_MAX_LENGTH = 200;
 
 export type RequestCompanyResult = {
   success: boolean;
-  errorCode?: "empty" | "too_short" | "too_long" | "invalid" | "unknown";
+  errorCode?:
+    | "empty"
+    | "too_short"
+    | "too_long"
+    | "invalid"
+    | "rate_limited"
+    | "unknown";
   issueNumber?: number;
   issueCreationFailed?: boolean;
 };
@@ -57,16 +65,44 @@ function validateInput(input: string): RequestCompanyResult["errorCode"] | null 
   return null;
 }
 
-async function buildUserHint(formData: FormData) {
-  const h = await headers();
-  const locale = (formData.get("locale") as string | null) || undefined;
-  const country =
-    h.get("x-vercel-ip-country") ?? h.get("cf-ipcountry") ?? undefined;
+/**
+ * ISO 3166-1 alpha-2 shape: exactly two ASCII letters. We don't validate
+ * against the full registered list (~250 entries, churns) because the country
+ * is only used as denormalised context on the DB row + an additional bucket
+ * on the rate-limit key — a structurally-valid garbage code degrades to "miss
+ * a bucket", not "stuff arbitrary JSON into JSONB".
+ */
+const COUNTRY_CODE_RE = /^[A-Z]{2}$/;
 
-  const hint: Record<string, string> = {};
-  if (locale) hint.locale = locale;
-  if (country) hint.country = country;
-  return Object.keys(hint).length ? hint : null;
+/**
+ * Build the `lastUserHint` JSONB blob from the form + request headers. The
+ * shape is locked down to exactly two whitelisted keys (`country`, `locale`)
+ * with each value validated, so an attacker who controls `accept-language` /
+ * `cf-ipcountry` (or hand-crafts a Next-Action POST) cannot stuff arbitrary
+ * keys/values into the row.
+ *
+ * Per issue #3235 — `lastUserHint` was previously a free-form Record<string,
+ * string> populated directly from client-supplied headers.
+ */
+function buildUserHint(
+  rawLocale: string | null,
+  rawCountry: string | null,
+): { country?: string; locale?: string } | null {
+  const hint: { country?: string; locale?: string } = {};
+
+  if (rawLocale && isLocale(rawLocale)) {
+    hint.locale = rawLocale;
+  }
+
+  if (rawCountry) {
+    // Normalize to uppercase before validating so "ch" and "CH" both pass.
+    const upper = rawCountry.trim().toUpperCase();
+    if (COUNTRY_CODE_RE.test(upper)) {
+      hint.country = upper;
+    }
+  }
+
+  return hint.country || hint.locale ? hint : null;
 }
 
 const GITHUB_REPO_OWNER = "colophon-group";
@@ -90,9 +126,11 @@ async function getOctokit(): Promise<Octokit | null> {
   });
 }
 
+type UserHint = { country?: string; locale?: string };
+
 function buildIssueBody(
   input: string,
-  userHint: Record<string, string> | null,
+  userHint: UserHint | null,
 ): string {
   const lines: string[] = [
     "A user requested to add a company or fix an existing scraper.",
@@ -115,7 +153,7 @@ function buildIssueBody(
 
 async function createGithubIssue(
   input: string,
-  userHint: Record<string, string> | null,
+  userHint: UserHint | null,
 ): Promise<{ issueNumber: number } | null> {
   const octokit = await getOctokit();
   if (!octokit) return null;
@@ -138,6 +176,39 @@ export async function requestCompany(
   _prev: RequestCompanyResult | null,
   formData: FormData,
 ): Promise<RequestCompanyResult> {
+  // Layer 3 (issue #3235) — server-action header check. Next.js sets the
+  // `Next-Action` header on every server-action POST. Direct CSRF-style hits
+  // to the action endpoint without this header are not user-initiated form
+  // submissions and should never reach the GH-issue / DB side effect.
+  const h = await headers();
+  if (!h.get("next-action")) {
+    return { success: false, errorCode: "invalid" };
+  }
+
+  // Layer 2 (issue #3235) — derive validated, whitelisted user-hint up-front.
+  // We need `country` to compose the rate-limit key (Layer 1) so attackers
+  // can't cycle one axis to break out of the limit.
+  const rawLocale = formData.get("locale");
+  const rawCountry =
+    h.get("x-vercel-ip-country") ?? h.get("cf-ipcountry") ?? null;
+  const lastUserHint = buildUserHint(
+    typeof rawLocale === "string" ? rawLocale : null,
+    rawCountry,
+  );
+
+  // Layer 1 (issue #3235) — wire up `companyRequestLimiter`. The limiter was
+  // defined (5/3600s per key) but never called, leaving the action open to
+  // GitHub-issue-tracker DoS. Key composes the platform-authoritative IP
+  // (via `getClientIp`, which is hardened against `x-forwarded-for`
+  // spoofing per #3219) with the validated country code so an attacker who
+  // cycles country headers still shares a bucket with their real IP.
+  const ip = getClientIp(h);
+  const rateKey = `${ip}:${lastUserHint?.country ?? "??"}`;
+  const { success: allowed } = await companyRequestLimiter.limit(rateKey);
+  if (!allowed) {
+    return { success: false, errorCode: "rate_limited" };
+  }
+
   const raw = (formData.get("input") as string | null)?.trim();
   const input = raw ? normalizeInput(raw) : null;
   if (!input) {
@@ -148,8 +219,6 @@ export async function requestCompany(
   if (errorCode) {
     return { success: false, errorCode };
   }
-
-  const lastUserHint = await buildUserHint(formData);
 
   try {
     // Check if this request already exists

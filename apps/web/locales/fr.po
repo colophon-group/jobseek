@@ -1123,7 +1123,7 @@ msgstr "Supprimer"
 
 #. Delete interview button
 #. js-lingui-explicit-id
-#: src/components/my-jobs/interview-list.tsx:163
+#: src/components/my-jobs/interview-list.tsx:168
 msgid "myJobs.interview.delete"
 msgstr "Supprimer"
 
@@ -1171,7 +1171,7 @@ msgstr "Détails"
 
 #. Subtext encouraging user to request a company when no results found
 #. js-lingui-explicit-id
-#: src/components/search/request-company.tsx:75
+#: src/components/search/request-company.tsx:76
 msgid "search.zero.subtext"
 msgstr "Vous n'avez pas trouvé l'entreprise recherchée ?"
 
@@ -1221,10 +1221,10 @@ msgstr "Pas de scraping, pas de candidatures automatisées, pas d'abus de la pla
 #. Placeholder for the company request input field
 #. Placeholder for the company request input field
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:117
-#: app/[lang]/(app)/explore/company-request-form.tsx:79
-#: app/[lang]/(app)/progress/company-request-form.tsx:79
-#: src/components/search/request-company.tsx:94
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:118
+#: app/[lang]/(app)/explore/company-request-form.tsx:80
+#: app/[lang]/(app)/progress/company-request-form.tsx:80
+#: src/components/search/request-company.tsx:95
 msgid "app.home.request.placeholder"
 msgstr "ex. Stripe, ou https://boards.greenhouse.io/stripe"
 
@@ -1364,7 +1364,7 @@ msgstr "Explorer les emplois"
 
 #. Hidden page H1 for /explore — screen-reader landmark
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/search-page.tsx:740
+#: app/[lang]/(app)/explore/search-page.tsx:753
 msgid "explore.h1"
 msgstr "Explorer les emplois"
 
@@ -2522,7 +2522,7 @@ msgstr "Aucun secteur trouvé."
 
 #. Empty state when no jobs match the time range
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:230
+#: src/components/watchlist/watchlist-job-list.tsx:207
 msgid "watchlists.jobList.empty"
 msgstr "Aucune offre trouvée."
 
@@ -3380,7 +3380,7 @@ msgstr "Enregistre n'importe quelle recherche en watchlist et reçois des alerte
 
 #. Save job aria label
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:192
+#: src/components/watchlist/watchlist-job-list.tsx:169
 msgid "watchlists.jobList.save"
 msgstr "Sauvegarder l'offre"
 
@@ -3809,10 +3809,10 @@ msgstr "Une erreur est survenue. Veuillez réessayer."
 #. Generic error when company request fails
 #. Generic error when company request fails
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:22
-#: app/[lang]/(app)/explore/company-request-form.tsx:22
-#: app/[lang]/(app)/progress/company-request-form.tsx:22
-#: src/components/search/request-company.tsx:23
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:23
+#: app/[lang]/(app)/explore/company-request-form.tsx:23
+#: app/[lang]/(app)/progress/company-request-form.tsx:23
+#: src/components/search/request-company.tsx:24
 msgid "app.home.request.error.unknown"
 msgstr "Une erreur s'est produite. Veuillez réessayer."
 
@@ -3881,10 +3881,10 @@ msgstr "Toujours en cours… revenez plus tard pour vérifier."
 #. Submit button for the company request form
 #. Submit button for the company request form
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:129
-#: app/[lang]/(app)/explore/company-request-form.tsx:91
-#: app/[lang]/(app)/progress/company-request-form.tsx:91
-#: src/components/search/request-company.tsx:106
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:130
+#: app/[lang]/(app)/explore/company-request-form.tsx:92
+#: app/[lang]/(app)/progress/company-request-form.tsx:92
+#: src/components/search/request-company.tsx:107
 msgid "app.home.request.submit"
 msgstr "Envoyer"
 
@@ -3893,10 +3893,10 @@ msgstr "Envoyer"
 #. Submit button while request is in progress
 #. Submit button while request is in progress
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:128
-#: app/[lang]/(app)/explore/company-request-form.tsx:90
-#: app/[lang]/(app)/progress/company-request-form.tsx:90
-#: src/components/search/request-company.tsx:105
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:129
+#: app/[lang]/(app)/explore/company-request-form.tsx:91
+#: app/[lang]/(app)/progress/company-request-form.tsx:91
+#: src/components/search/request-company.tsx:106
 msgid "app.home.request.submitting"
 msgstr "Envoi en cours..."
 
@@ -4092,7 +4092,7 @@ msgstr "Cette liste de suivi et tous ses paramètres seront définitivement supp
 
 #. Date divider label for today
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:94
+#: src/components/watchlist/watchlist-job-list.tsx:71
 msgid "watchlists.jobList.today"
 msgstr "Aujourd'hui"
 
@@ -4181,7 +4181,7 @@ msgstr "Listes de suivi illimitées, alertes email sur les nouveaux résultats"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:191
+#: src/components/watchlist/watchlist-job-list.tsx:168
 msgid "watchlists.jobList.unsave"
 msgstr "Retirer l'offre"
 
@@ -4575,7 +4575,7 @@ msgstr "Oui. Le crawler et le pipeline d'extraction sont entièrement open sourc
 
 #. Date divider label for yesterday
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:95
+#: src/components/watchlist/watchlist-job-list.tsx:72
 msgid "watchlists.jobList.yesterday"
 msgstr "Hier"
 
@@ -4632,6 +4632,18 @@ msgstr "Tu t'es connecté avec un compte social. Définis un mot de passe pour p
 #: src/components/search/request-company-success.tsx:121
 msgid "app.home.request.agent.token_caveat"
 msgstr "Vous aurez besoin d'un token de l'équipe Jobseek — remplacez <token-from-jobseek-team> avant d'exécuter la commande d'installation."
+
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:22
+#: app/[lang]/(app)/explore/company-request-form.tsx:22
+#: app/[lang]/(app)/progress/company-request-form.tsx:22
+#: src/components/search/request-company.tsx:23
+msgid "app.home.request.error.rateLimited"
+msgstr "Vous avez atteint la limite horaire de demandes d'entreprise. Veuillez réessayer plus tard."
 
 #. Message shown when the user has hit the per-hour limit on triggering Murmur company-add runs
 #. js-lingui-explicit-id

@@ -19,6 +19,7 @@ const errorMessages = {
   too_short: msg({ id: "app.home.request.error.tooShort", comment: "Error when company request input is too short", message: "Input is too short." }),
   too_long: msg({ id: "app.home.request.error.tooLong", comment: "Error when company request input is too long", message: "Input is too long." }),
   invalid: msg({ id: "app.home.request.error.invalid", comment: "Error when company request input has no alphanumeric characters", message: "Please enter a valid company name or URL." }),
+  rate_limited: msg({ id: "app.home.request.error.rateLimited", comment: "Error when the user has hit the per-hour limit on company-request submissions", message: "You've hit the hourly limit for company requests. Please try again later." }),
   unknown: msg({ id: "app.home.request.error.unknown", comment: "Generic error when company request fails", message: "Something went wrong. Please try again." }),
 } as const;
 

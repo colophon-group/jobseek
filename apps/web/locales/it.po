@@ -1123,7 +1123,7 @@ msgstr "Elimina"
 
 #. Delete interview button
 #. js-lingui-explicit-id
-#: src/components/my-jobs/interview-list.tsx:163
+#: src/components/my-jobs/interview-list.tsx:168
 msgid "myJobs.interview.delete"
 msgstr "Elimina"
 
@@ -1171,7 +1171,7 @@ msgstr "Dettagli"
 
 #. Subtext encouraging user to request a company when no results found
 #. js-lingui-explicit-id
-#: src/components/search/request-company.tsx:75
+#: src/components/search/request-company.tsx:76
 msgid "search.zero.subtext"
 msgstr "Non hai trovato l'azienda che cercavi?"
 
@@ -1221,10 +1221,10 @@ msgstr "Niente scraping, candidature automatizzate o abuso della piattaforma."
 #. Placeholder for the company request input field
 #. Placeholder for the company request input field
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:117
-#: app/[lang]/(app)/explore/company-request-form.tsx:79
-#: app/[lang]/(app)/progress/company-request-form.tsx:79
-#: src/components/search/request-company.tsx:94
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:118
+#: app/[lang]/(app)/explore/company-request-form.tsx:80
+#: app/[lang]/(app)/progress/company-request-form.tsx:80
+#: src/components/search/request-company.tsx:95
 msgid "app.home.request.placeholder"
 msgstr "es. Stripe, oppure https://boards.greenhouse.io/stripe"
 
@@ -1364,7 +1364,7 @@ msgstr "Esplora lavori"
 
 #. Hidden page H1 for /explore — screen-reader landmark
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/search-page.tsx:740
+#: app/[lang]/(app)/explore/search-page.tsx:753
 msgid "explore.h1"
 msgstr "Esplora lavori"
 
@@ -2522,7 +2522,7 @@ msgstr "Nessun settore trovato."
 
 #. Empty state when no jobs match the time range
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:230
+#: src/components/watchlist/watchlist-job-list.tsx:207
 msgid "watchlists.jobList.empty"
 msgstr "Nessuna offerta trovata."
 
@@ -3380,7 +3380,7 @@ msgstr "Salva qualsiasi ricerca come watchlist e ricevi avvisi via email quando 
 
 #. Save job aria label
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:192
+#: src/components/watchlist/watchlist-job-list.tsx:169
 msgid "watchlists.jobList.save"
 msgstr "Salva offerta"
 
@@ -3809,10 +3809,10 @@ msgstr "Qualcosa è andato storto. Riprova."
 #. Generic error when company request fails
 #. Generic error when company request fails
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:22
-#: app/[lang]/(app)/explore/company-request-form.tsx:22
-#: app/[lang]/(app)/progress/company-request-form.tsx:22
-#: src/components/search/request-company.tsx:23
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:23
+#: app/[lang]/(app)/explore/company-request-form.tsx:23
+#: app/[lang]/(app)/progress/company-request-form.tsx:23
+#: src/components/search/request-company.tsx:24
 msgid "app.home.request.error.unknown"
 msgstr "Qualcosa è andato storto. Riprova."
 
@@ -3881,10 +3881,10 @@ msgstr "Ancora in esecuzione… ricontrolla più tardi."
 #. Submit button for the company request form
 #. Submit button for the company request form
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:129
-#: app/[lang]/(app)/explore/company-request-form.tsx:91
-#: app/[lang]/(app)/progress/company-request-form.tsx:91
-#: src/components/search/request-company.tsx:106
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:130
+#: app/[lang]/(app)/explore/company-request-form.tsx:92
+#: app/[lang]/(app)/progress/company-request-form.tsx:92
+#: src/components/search/request-company.tsx:107
 msgid "app.home.request.submit"
 msgstr "Invia"
 
@@ -3893,10 +3893,10 @@ msgstr "Invia"
 #. Submit button while request is in progress
 #. Submit button while request is in progress
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:128
-#: app/[lang]/(app)/explore/company-request-form.tsx:90
-#: app/[lang]/(app)/progress/company-request-form.tsx:90
-#: src/components/search/request-company.tsx:105
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:129
+#: app/[lang]/(app)/explore/company-request-form.tsx:91
+#: app/[lang]/(app)/progress/company-request-form.tsx:91
+#: src/components/search/request-company.tsx:106
 msgid "app.home.request.submitting"
 msgstr "Invio in corso..."
 
@@ -4092,7 +4092,7 @@ msgstr "Questa lista di osservazione e tutte le sue impostazioni verranno elimin
 
 #. Date divider label for today
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:94
+#: src/components/watchlist/watchlist-job-list.tsx:71
 msgid "watchlists.jobList.today"
 msgstr "Oggi"
 
@@ -4181,7 +4181,7 @@ msgstr "Watchlist illimitate, avvisi email sui nuovi risultati"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:191
+#: src/components/watchlist/watchlist-job-list.tsx:168
 msgid "watchlists.jobList.unsave"
 msgstr "Rimuovi offerta"
 
@@ -4575,7 +4575,7 @@ msgstr "Sì. Il crawler e la pipeline di estrazione sono completamente open sour
 
 #. Date divider label for yesterday
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:95
+#: src/components/watchlist/watchlist-job-list.tsx:72
 msgid "watchlists.jobList.yesterday"
 msgstr "Ieri"
 
@@ -4632,6 +4632,18 @@ msgstr "Hai effettuato l'accesso con un account social. Imposta una password per
 #: src/components/search/request-company-success.tsx:121
 msgid "app.home.request.agent.token_caveat"
 msgstr "Avrai bisogno di un token dal team di Jobseek — sostituisci <token-from-jobseek-team> prima di eseguire il comando di installazione."
+
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx:22
+#: app/[lang]/(app)/explore/company-request-form.tsx:22
+#: app/[lang]/(app)/progress/company-request-form.tsx:22
+#: src/components/search/request-company.tsx:23
+msgid "app.home.request.error.rateLimited"
+msgstr "Hai raggiunto il limite orario per le richieste di aziende. Riprova più tardi."
 
 #. Message shown when the user has hit the per-hour limit on triggering Murmur company-add runs
 #. js-lingui-explicit-id
