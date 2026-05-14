@@ -16,7 +16,7 @@ import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
-import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
+import { useSalaryRates } from "@/components/SalaryDisplayProvider";
 import type { CompanyDetail } from "@/lib/actions/company";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SearchResultPosting, HistogramFilters, WorkMode } from "@/lib/search";
@@ -113,11 +113,11 @@ export function CompanyPage({
   const [exhausted, setExhausted] = useState(initialPostings.length < PAGE_SIZE);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
 
-  // Currency rates for EUR conversion (fetched lazily)
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
-  useEffect(() => {
-    getCurrencyRates().then(setCurrencyRates);
-  }, []);
+  // Currency rates for EUR conversion — shared via `SalaryDisplayProvider`
+  // which fetches once at the (app) layout root. Previously this page
+  // fired a third `getCurrencyRates()` per view (alongside the provider
+  // and the salary modal); see #3181.
+  const currencyRates = useSalaryRates();
 
   // Refs for all filter state — single source of truth for updateUrl/runSearch
   const keywordsRef = useRef(keywords);

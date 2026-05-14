@@ -86,3 +86,24 @@ export function SalaryDisplayProvider({
 export function useSalaryDisplay() {
   return useContext(SalaryDisplayContext);
 }
+
+/**
+ * Returns the cached currency-rate table fetched once by
+ * `SalaryDisplayProvider` on mount.
+ *
+ * Consumers (search page, company page, salary modal) historically each
+ * fired their own `getCurrencyRates()` server action on mount, producing
+ * three identical round-trips per `/explore` or `/company/<slug>` view
+ * (~90–240ms of serial latency before salary filters were interactive —
+ * see #3181). Reading the rates from context collapses that to a single
+ * fetch.
+ *
+ * Returns `[]` when no provider is in scope (the context default), so
+ * callers can treat the result as a graceful empty list. The salary
+ * conversion helpers (`toEur`, `fromEur`) already fall back to an
+ * identity transform on an empty rate table, so an unmounted provider
+ * is non-fatal.
+ */
+export function useSalaryRates(): CurrencyRate[] {
+  return useContext(SalaryDisplayContext).rates;
+}
