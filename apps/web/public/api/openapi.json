@@ -11,17 +11,19 @@
       "get": {
         "operationId": "searchJobs",
         "summary": "Search jobs across companies",
-        "description": "Returns up to 5 companies with their top 3 job postings matching the filters. Only 'q' accepts freetext. All other filter params (loc, occ, sen, tech) require exact slugs — use /api/v1/resolve to convert freetext to slugs first.",
+        "description": "Returns up to 5 companies with their top 3 job postings matching the filters. Only 'q' accepts freetext. All other filter params (loc, occ, sen, tech) require exact slugs — use /api/v1/resolve to convert freetext to slugs first.\n\nUI ``locale`` (response labels) is distinct from ``lang`` (job document language). Omitting ``lang`` returns postings in any language — pass ``lang=en`` (or a comma-separated list) to filter to specific posting languages.",
         "parameters": [
           { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Keywords (free text search)" },
           { "name": "loc", "in": "query", "schema": { "type": "string" }, "description": "Location slugs, comma-separated (exact slugs only, use /resolve to look up)" },
           { "name": "occ", "in": "query", "schema": { "type": "string" }, "description": "Occupation slugs, comma-separated (exact slugs only, use /resolve to look up)" },
           { "name": "sen", "in": "query", "schema": { "type": "string" }, "description": "Seniority slugs, comma-separated (exact slugs only, use /resolve to look up)" },
           { "name": "tech", "in": "query", "schema": { "type": "string" }, "description": "Technology slugs, comma-separated (exact slugs only, use /resolve to look up)" },
+          { "name": "wm", "in": "query", "schema": { "type": "string", "enum": ["onsite", "hybrid", "remote"] }, "description": "Work-mode filter (single value)" },
           { "name": "sal", "in": "query", "schema": { "type": "string" }, "description": "Salary range in EUR, format: min-max (e.g. 80000-150000)" },
           { "name": "salcur", "in": "query", "schema": { "type": "string" }, "description": "Salary currency code (e.g. USD, EUR)" },
           { "name": "exp", "in": "query", "schema": { "type": "string" }, "description": "Experience range in years, format: min-max (e.g. 3-10)" },
-          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" }, "description": "Response language (en, de, fr, it)" }
+          { "name": "lang", "in": "query", "schema": { "type": "string" }, "description": "Job document language filter (comma-separated codes — en, de, fr, it). Distinct from ``locale`` (which controls response labels/currency formatting). Omit to return postings in any language; the API does not fall back to a cookie or to ``locale`` (public APIs are stateless)." },
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] }, "description": "UI locale for response labels and currency formatting (en, de, fr, it). Does NOT filter postings by document language — use ``lang`` for that." }
         ],
         "responses": {
           "200": {

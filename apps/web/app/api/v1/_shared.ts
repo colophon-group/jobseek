@@ -66,7 +66,18 @@ export function exploreUrl(
   locale: string = "en",
 ): string {
   const kept = new URLSearchParams();
-  for (const key of ["q", "loc", "occ", "sen", "tech", "sal", "salcur", "exp"]) {
+  for (const key of [
+    "q",
+    "loc",
+    "occ",
+    "sen",
+    "tech",
+    "wm",
+    "sal",
+    "salcur",
+    "exp",
+    "lang",
+  ]) {
     const val = params.get(key);
     if (val) kept.set(key, val);
   }
