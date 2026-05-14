@@ -14,6 +14,7 @@ import {
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
+import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
 
 export interface TaxonomySuggestion {
   id: number;
@@ -517,7 +518,9 @@ export async function getAllOccupationsGrouped(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<OccupationGroup[]> {
-  const fKey = filters ? JSON.stringify(filters) : "";
+  // Stable cache key across array permutations — see #3187 and the helper
+  // doc for the full rationale.
+  const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
   // v2 cache-key bump (#3033 — facet switched from `occupation_id` to the
   // ancestor-expanded `occupation_ids`, so parent counts are now subtree
   // counts directly; sub-group/domain totals dropped the
@@ -902,7 +905,8 @@ export async function getAllSeniorities(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<SeniorityOption[]> {
-  const fKey = filters ? JSON.stringify(filters) : "";
+  // Stable cache key across array permutations — see #3187.
+  const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
   const key = `sen-all:${locale}:${fKey}`;
   return cached(key, () => _fetchAllSeniorities(locale, filters), { ttl: CACHE_TTL_LONG });
 }
@@ -1032,7 +1036,8 @@ export interface TechnologyGroup {
 export async function getAllTechnologiesGrouped(
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; languages?: string[] },
 ): Promise<TechnologyGroup[]> {
-  const fKey = filters ? JSON.stringify(filters) : "";
+  // Stable cache key across array permutations — see #3187.
+  const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
   const key = `tech-all-grouped:${fKey}`;
   return cached(key, () => _fetchAllTechnologiesGrouped(filters), { ttl: CACHE_TTL_LONG });
 }

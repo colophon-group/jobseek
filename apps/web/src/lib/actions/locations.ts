@@ -10,6 +10,7 @@ import { typeaheadLocationsCacheTag } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
+import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
 import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
 
 export interface LocationSuggestion {
@@ -331,7 +332,11 @@ export async function getGlobalLocationsGrouped(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<GlobalLocationsResponse> {
-  const fKey = filters ? JSON.stringify(filters) : "";
+  // `JSON.stringify` is sensitive to array element order, so without
+  // canonicalization `{occupationIds:[42,7]}` and `{occupationIds:[7,42]}`
+  // hit different cache slots even though they're semantically identical.
+  // See #3187.
+  const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
   // v4 cache-key bump (#3033 — hierarchical-modal counts now use the
   // direct facet entry for parent IDs instead of summing children). Old
   // v3 entries cache the buggy summed counts (e.g. "Chile (4)" when the
