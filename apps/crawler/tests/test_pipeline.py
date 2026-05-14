@@ -434,3 +434,243 @@ async def test_process_scrape_work_binds_posting_id_contextvar(mock_redis):
     # claim on this worker would inherit it.
     ctx_after = structlog.contextvars.get_contextvars()
     assert "posting_id" not in ctx_after
+
+
+# ---------------------------------------------------------------------------
+# Monitor task rollup metric (#3200)
+# ---------------------------------------------------------------------------
+#
+# The scrape path already emits ``tasks_total{kind="scrape", status=...}``
+# in both the happy-path and exception handlers. The matching monitor
+# sites were silent until #3200, so PromQL queries like
+# ``sum by (status) (rate(crawler_tasks_total{kind="monitor"}[5m]))``
+# undercounted — only skip statuses showed up, never success / failed /
+# gone. Tests below pin the three sites so the asymmetry can't regress.
+
+
+def _tasks_total_value(kind: str, status: str) -> float:
+    """Read a single ``crawler_tasks_total`` sample by ``kind``+``status``.
+
+    Returns ``0.0`` when the sample doesn't exist yet (Prometheus
+    counters are lazily materialised on first ``inc()``).
+    """
+    from src.metrics import tasks_total
+
+    for sample in list(tasks_total.collect())[0].samples:
+        if (
+            sample.name == "crawler_tasks_total"
+            and sample.labels.get("kind") == kind
+            and sample.labels.get("status") == status
+        ):
+            return sample.value
+    return 0.0
+
+
+def _make_monitor_local_pool():
+    """Mock ``asyncpg.Pool`` whose SELECT returns a non-disabled board."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    # ``board_status`` non-disabled so the self-heal early-return doesn't fire.
+    conn.fetchval = AsyncMock(return_value="active")
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+    return local_pool
+
+
+def _make_board_work():
+    """Build a ``BoardWork`` whose config skips the browser-reroute branch.
+
+    The pipeline checks ``monitor_needs_browser(crawler_type, metadata)``
+    for slim workers; a recognised non-browser crawler type (``sitemap``)
+    keeps the test in the happy path without needing to patch the
+    registry.
+    """
+    from src.redis_queue import BoardWork
+
+    return BoardWork(
+        board_id="board-3200",
+        config={
+            "crawler_type": "sitemap",
+            "company_id": "comp-3200",
+            "board_url": "https://example.com/jobs",
+            "check_interval_minutes": "60",
+            "metadata": json.dumps({}),
+        },
+        domain="example.com",
+    )
+
+
+@pytest.mark.asyncio
+async def test_process_monitor_work_emits_tasks_total_succeeded():
+    """Happy-path success must increment ``tasks_total{kind=monitor,
+    status=succeeded}`` exactly once — mirrors the scrape path so the
+    Grafana failure-rate panel has a non-zero denominator for monitor
+    tasks (#3200).
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from src.workers.pipeline import _process_monitor_work
+
+    work = _make_board_work()
+    local_pool = _make_monitor_local_pool()
+    http = AsyncMock()
+    worker_log = structlog.get_logger().bind(worker_id=1)
+
+    before = _tasks_total_value("monitor", "succeeded")
+    failed_before = _tasks_total_value("monitor", "failed")
+    gone_before = _tasks_total_value("monitor", "gone")
+
+    with (
+        patch(
+            "src.processing.board._process_one_board_streaming",
+            new=AsyncMock(return_value=(True, 1.23)),
+        ),
+        patch(
+            "src.workers.pipeline.reschedule_task",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        await _process_monitor_work(worker_log, work, local_pool, http, browser=False)
+
+    after = _tasks_total_value("monitor", "succeeded")
+    assert after - before == pytest.approx(1.0), (
+        "monitor happy-path must increment tasks_total{kind=monitor,"
+        "status=succeeded} exactly once (#3200)"
+    )
+    # Sibling labels must not move.
+    assert _tasks_total_value("monitor", "failed") == failed_before
+    assert _tasks_total_value("monitor", "gone") == gone_before
+
+
+@pytest.mark.asyncio
+async def test_process_monitor_work_emits_tasks_total_failed_on_success_false():
+    """``_process_one_board_streaming`` may return ``success=False`` for
+    a recoverable failure (e.g. partial fetch). That outcome must roll
+    up as ``status=failed`` — the same status the exception path uses
+    — so PromQL aggregates see both as monitor failures (#3200).
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from src.workers.pipeline import _process_monitor_work
+
+    work = _make_board_work()
+    local_pool = _make_monitor_local_pool()
+    http = AsyncMock()
+    worker_log = structlog.get_logger().bind(worker_id=1)
+
+    before = _tasks_total_value("monitor", "failed")
+    succeeded_before = _tasks_total_value("monitor", "succeeded")
+
+    with (
+        patch(
+            "src.processing.board._process_one_board_streaming",
+            new=AsyncMock(return_value=(False, 0.5)),
+        ),
+        patch(
+            "src.workers.pipeline.reschedule_task",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        await _process_monitor_work(worker_log, work, local_pool, http, browser=False)
+
+    after = _tasks_total_value("monitor", "failed")
+    assert after - before == pytest.approx(1.0)
+    # Success counter must not have moved.
+    assert _tasks_total_value("monitor", "succeeded") == succeeded_before
+
+
+@pytest.mark.asyncio
+async def test_process_monitor_work_emits_tasks_total_failed_on_exception():
+    """When ``_process_one_board_streaming`` raises, both the
+    per-board attribution counter (``monitor_failed_per_board_total``)
+    AND the low-cardinality rollup (``tasks_total{kind=monitor,
+    status=failed}``) must increment. The per-board counter is the
+    high-cardinality attribution signal; the rollup is what the
+    ``TaskFailureRateHigh`` alert sums over (#3200).
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from src.metrics import monitor_failed_per_board_total
+    from src.workers.pipeline import _process_monitor_work
+
+    work = _make_board_work()
+    local_pool = _make_monitor_local_pool()
+    http = AsyncMock()
+    worker_log = structlog.get_logger().bind(worker_id=1)
+
+    tasks_before = _tasks_total_value("monitor", "failed")
+
+    def _per_board_value(board_id: str) -> float:
+        for sample in list(monitor_failed_per_board_total.collect())[0].samples:
+            if (
+                sample.name == "crawler_monitor_failed_per_board_total"
+                and sample.labels.get("board_id") == board_id
+            ):
+                return sample.value
+        return 0.0
+
+    per_board_before = _per_board_value(work.board_id)
+
+    class _BoomError(RuntimeError):
+        pass
+
+    with (
+        patch(
+            "src.processing.board._process_one_board_streaming",
+            new=AsyncMock(side_effect=_BoomError("upstream HTTP 500")),
+        ),
+        patch(
+            "src.workers.pipeline.reschedule_task",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        # _process_monitor_work swallows the exception via the outer
+        # ``except Exception`` — must not propagate.
+        await _process_monitor_work(worker_log, work, local_pool, http, browser=False)
+
+    assert _tasks_total_value("monitor", "failed") - tasks_before == pytest.approx(1.0)
+    assert _per_board_value(work.board_id) - per_board_before == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_process_monitor_work_emits_tasks_total_gone_on_board_gone():
+    """``BoardGoneError`` from ``_process_one_board_streaming`` is a
+    publisher signal (the board's URL list is empty / 404), not a
+    crawler defect. Before #3200 this path was silent on
+    ``tasks_total``; it must now emit ``status="gone"`` so operators
+    have a separate rollup rather than diluting the failure metric.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    from src.processing.board import BoardGoneError
+    from src.workers.pipeline import _process_monitor_work
+
+    work = _make_board_work()
+    local_pool = _make_monitor_local_pool()
+    http = AsyncMock()
+    worker_log = structlog.get_logger().bind(worker_id=1)
+
+    gone_before = _tasks_total_value("monitor", "gone")
+    failed_before = _tasks_total_value("monitor", "failed")
+    succeeded_before = _tasks_total_value("monitor", "succeeded")
+
+    with (
+        patch(
+            "src.processing.board._process_one_board_streaming",
+            new=AsyncMock(side_effect=BoardGoneError("board returned 404")),
+        ),
+        patch(
+            "src.workers.pipeline.reschedule_task",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        await _process_monitor_work(worker_log, work, local_pool, http, browser=False)
+
+    assert _tasks_total_value("monitor", "gone") - gone_before == pytest.approx(1.0)
+    # BoardGoneError must NOT be conflated with failed / succeeded.
+    assert _tasks_total_value("monitor", "failed") == failed_before
+    assert _tasks_total_value("monitor", "succeeded") == succeeded_before

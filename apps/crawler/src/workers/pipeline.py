@@ -554,6 +554,12 @@ async def _process_monitor_work(
             # Drop the Redis task instead of rescheduling — the board
             # is now filtered by the self-heal check above so it
             # won't return to the queue.
+            #
+            # Explicit ``status="gone"`` (not silent / not ``failed``):
+            # gone is an upstream signal, not a crawler defect, and
+            # operators need a separate rollup so it doesn't dilute
+            # the failure-rate alert (#3200).
+            tasks_total.labels(kind="monitor", status="gone").inc()
             return
 
         profile = "browser" if browser else "simple"
@@ -563,6 +569,17 @@ async def _process_monitor_work(
         check_interval = int(config.get("check_interval_minutes", "60"))
         next_check_at = time.time() + check_interval * 60
         await reschedule_task(domain, board_id, "monitor", next_check_at, browser=browser)
+
+        # Emit the success/failure rollup for monitor tasks so Grafana
+        # panels and ``TaskFailureRateHigh`` (which sum over
+        # ``tasks_total{kind="monitor"}``) reflect monitor outcomes —
+        # the scrape path already does this at the matching site
+        # (#3200; mirrors the ``status = "succeeded" if success else
+        # "failed"`` increment in ``_process_scrape_work``).
+        tasks_total.labels(
+            kind="monitor",
+            status="succeeded" if success else "failed",
+        ).inc()
 
         worker_log.info(
             "pipeline.monitor.done",
@@ -575,6 +592,11 @@ async def _process_monitor_work(
         # downstream Redis failure in the reschedule path doesn't hide
         # the original monitor failure from the metric.
         monitor_failed_per_board_total.labels(board_id=board_id).inc()
+        # Also emit the low-cardinality rollup so the failure rate
+        # panel and ``TaskFailureRateHigh`` see monitor exceptions
+        # (#3200). The per-board counter alone is high-cardinality and
+        # not what the alert sums over.
+        tasks_total.labels(kind="monitor", status="failed").inc()
         worker_log.exception("pipeline.monitor.error", board_id=board_id)
         # Reschedule with backoff — guard so Redis errors don't kill the worker
         try:
