@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""One-shot reprocess of salary extraction over active EU postings.
+"""One-shot reprocess of salary extraction over EU postings.
 
 Re-runs ``_extract_salary_fields`` over each posting's primary-locale
 description HTML for one of two country sets:
@@ -8,6 +8,12 @@ description HTML for one of two country sets:
   added by PR #3269: PL, CZ, SE, DK, HU, RO, BG.
 * ``scope-b`` (issue #3341) — EUR/GBP/CHF locale failures fixed by PR #3342:
   DE, AT, CH, FR, IT, ES, NL, BE, UK, IE, PT, GR.
+
+By default the script touches **active postings only**. Pass
+``--include-inactive`` (issue #3359) to drop the ``is_active = true``
+predicate and reprocess inactive/closed postings too — useful for
+retroactive analyses (e.g. the EU Pay Transparency blog) that need
+consistent ``salary_eur`` coverage across the full timeline.
 
 Writes back ``salary_min`` / ``salary_max`` / ``salary_currency`` /
 ``salary_period`` / ``salary_eur`` and bumps ``updated_at`` only when at
@@ -32,6 +38,12 @@ Usage:
 
     # Both scopes together
     uv run python scripts/reprocess_salary_eu.py --countries-set all --dry-run
+
+    # Issue #3359 — include inactive/closed postings (active + historical)
+    uv run python scripts/reprocess_salary_eu.py --countries-set all \
+        --include-inactive --dry-run
+    uv run python scripts/reprocess_salary_eu.py --countries-set all \
+        --include-inactive --live
 
 The script connects via ``LOCAL_DATABASE_URL`` from the environment
 (or from ``apps/crawler/.env.local`` if loaded).
@@ -147,30 +159,68 @@ async def _currency_rates(conn: asyncpg.Connection) -> dict[str, float]:
 
 
 async def _before_counts(
-    conn: asyncpg.Connection, descendants_by_label: dict[str, list[int]]
+    conn: asyncpg.Connection,
+    descendants_by_label: dict[str, list[int]],
+    include_inactive: bool = False,
 ) -> dict[str, dict[str, int]]:
+    """Return per-country counts.
+
+    When ``include_inactive`` is True (issue #3359) the row scope drops the
+    ``is_active = true`` filter and the result dict also reports active vs
+    inactive splits for reporting.
+    """
     out: dict[str, dict[str, int]] = {}
     for label, ids in descendants_by_label.items():
-        rec = await conn.fetchrow(
-            """
-            SELECT COUNT(*) AS total,
-                   COUNT(*) FILTER (WHERE salary_eur > 0) AS with_salary
-              FROM job_posting
-             WHERE is_active AND location_ids && $1::int[]
-            """,
-            ids,
-        )
+        if include_inactive:
+            rec = await conn.fetchrow(
+                """
+                SELECT COUNT(*) AS total,
+                       COUNT(*) FILTER (WHERE salary_eur > 0) AS with_salary,
+                       COUNT(*) FILTER (WHERE is_active) AS active_total,
+                       COUNT(*) FILTER (WHERE is_active AND salary_eur > 0)
+                           AS active_with_salary,
+                       COUNT(*) FILTER (WHERE NOT is_active) AS inactive_total,
+                       COUNT(*) FILTER (WHERE NOT is_active AND salary_eur > 0)
+                           AS inactive_with_salary
+                  FROM job_posting
+                 WHERE location_ids && $1::int[]
+                """,
+                ids,
+            )
+        else:
+            rec = await conn.fetchrow(
+                """
+                SELECT COUNT(*) AS total,
+                       COUNT(*) FILTER (WHERE salary_eur > 0) AS with_salary
+                  FROM job_posting
+                 WHERE is_active AND location_ids && $1::int[]
+                """,
+                ids,
+            )
         out[label] = dict(rec)
     return out
 
 
-async def _iter_country_rows(read_conn: asyncpg.Connection, ids: list[int], limit: int | None):
-    """Yield rows for one country via a server-side cursor (in a transaction)."""
-    sql = """
+async def _iter_country_rows(
+    read_conn: asyncpg.Connection,
+    ids: list[int],
+    limit: int | None,
+    include_inactive: bool = False,
+):
+    """Yield rows for one country via a server-side cursor (in a transaction).
+
+    Default scope is active postings only. ``include_inactive=True`` (issue
+    #3359) drops the ``is_active`` predicate so closed/historical postings
+    are reprocessed too. Closed postings retain their ``descriptions`` rows,
+    so the same LATERAL JOIN resolves the primary-locale HTML.
+    """
+    active_clause = "" if include_inactive else " AND jp.is_active"
+    sql = f"""
         SELECT jp.id,
                jp.salary_min, jp.salary_max, jp.salary_currency,
                jp.salary_period, jp.salary_eur,
                jp.locales,
+               jp.is_active,
                d.html
           FROM job_posting jp
           JOIN LATERAL (
@@ -180,8 +230,7 @@ async def _iter_country_rows(read_conn: asyncpg.Connection, ids: list[int], limi
                ORDER BY (locale = jp.locales[1]) DESC NULLS LAST, updated_at DESC
                LIMIT 1
           ) d ON true
-         WHERE jp.is_active
-           AND jp.location_ids && $1::int[]
+         WHERE jp.location_ids && $1::int[]{active_clause}
     """
     if limit:
         sql += f" LIMIT {int(limit)}"
@@ -258,12 +307,25 @@ async def main(argv: list[str] | None = None) -> int:
             "IE,PT,GR — EUR/GBP/CHF locale-aware extraction from PR #3342), or all."
         ),
     )
+    parser.add_argument(
+        "--include-inactive",
+        action="store_true",
+        help=(
+            "Reprocess inactive/closed postings too (issue #3359). Default is "
+            "active-only for safety. Closed postings retain their descriptions "
+            "rows so the LATERAL JOIN still resolves the HTML."
+        ),
+    )
     args = parser.parse_args(argv)
 
     country_ids = _resolve_country_ids(args.countries_set)
     print(
         f"[reprocess-salary-eu] countries_set={args.countries_set!r}"
         f" -> {len(country_ids)} countries: {sorted(country_ids)}"
+    )
+    print(
+        f"[reprocess-salary-eu] include_inactive={args.include_inactive}"
+        f" ({'active + historical' if args.include_inactive else 'active only'})"
     )
 
     _load_env_local()
@@ -287,19 +349,41 @@ async def main(argv: list[str] | None = None) -> int:
             rates = await _currency_rates(conn)
             print(f"  currency rates loaded: {sorted(rates.keys())}")
 
-            before = await _before_counts(conn, descendants_by_label)
+            before = await _before_counts(
+                conn, descendants_by_label, include_inactive=args.include_inactive
+            )
         print("\n== BEFORE ==")
         for label, stats in before.items():
-            print(
-                f"  {label}: total={stats['total']:>5}  with_salary_eur>0={stats['with_salary']:>5}"
-            )
+            if args.include_inactive:
+                print(
+                    f"  {label}: total={stats['total']:>6}"
+                    f"  with_salary_eur>0={stats['with_salary']:>6}"
+                    f"  | active={stats['active_total']:>6}"
+                    f"/{stats['active_with_salary']:>6}"
+                    f"  inactive={stats['inactive_total']:>6}"
+                    f"/{stats['inactive_with_salary']:>6}"
+                )
+            else:
+                print(
+                    f"  {label}: total={stats['total']:>5}"
+                    f"  with_salary_eur>0={stats['with_salary']:>5}"
+                )
 
         if args.stats:
             return 0
 
         # Process per country, accumulating proposed changes.
         bucket_counts: dict[str, Counter] = {label: Counter() for label in country_ids}
+        # Per-country active-vs-inactive change counters (issue #3359).
+        active_changes: Counter = Counter()
+        inactive_changes: Counter = Counter()
+        active_writes_total = 0
+        inactive_writes_total = 0
+        # Keep separate sample buckets so we surface both active and inactive
+        # spot-checks when --include-inactive is set.
         per_country_samples: dict[str, list] = {label: [] for label in country_ids}
+        per_country_samples_active: dict[str, list] = {label: [] for label in country_ids}
+        per_country_samples_inactive: dict[str, list] = {label: [] for label in country_ids}
         total_seen = 0
         total_changes = 0
         total_writes = 0
@@ -309,7 +393,12 @@ async def main(argv: list[str] | None = None) -> int:
             read_conn = await pool.acquire()
             write_conn = await pool.acquire() if args.live else None
             try:
-                async for row in _iter_country_rows(read_conn, ids, args.limit_per_country):
+                async for row in _iter_country_rows(
+                    read_conn,
+                    ids,
+                    args.limit_per_country,
+                    include_inactive=args.include_inactive,
+                ):
                     total_seen += 1
                     new = _extract_salary_fields(row["html"], rates)
                     changes = _diff_payload(row, new)
@@ -318,33 +407,47 @@ async def main(argv: list[str] | None = None) -> int:
                     total_changes += 1
                     bucket = _classify(row, new)
                     bucket_counts[label][bucket] += 1
+                    is_active = bool(row["is_active"])
+                    if is_active:
+                        active_changes[label] += 1
+                    else:
+                        inactive_changes[label] += 1
+                    sample = {
+                        "id": str(row["id"]),
+                        "is_active": is_active,
+                        "before": {
+                            "min": row["salary_min"],
+                            "max": row["salary_max"],
+                            "currency": row["salary_currency"],
+                            "period": row["salary_period"],
+                            "eur": row["salary_eur"],
+                        },
+                        "after": {
+                            "min": new[0],
+                            "max": new[1],
+                            "currency": new[2],
+                            "period": new[3],
+                            "eur": new[4],
+                        },
+                        "bucket": bucket,
+                    }
                     if len(per_country_samples[label]) < args.samples:
-                        per_country_samples[label].append(
-                            {
-                                "id": str(row["id"]),
-                                "before": {
-                                    "min": row["salary_min"],
-                                    "max": row["salary_max"],
-                                    "currency": row["salary_currency"],
-                                    "period": row["salary_period"],
-                                    "eur": row["salary_eur"],
-                                },
-                                "after": {
-                                    "min": new[0],
-                                    "max": new[1],
-                                    "currency": new[2],
-                                    "period": new[3],
-                                    "eur": new[4],
-                                },
-                                "bucket": bucket,
-                            }
-                        )
+                        per_country_samples[label].append(sample)
+                    bucket_list = (
+                        per_country_samples_active if is_active else per_country_samples_inactive
+                    )
+                    if len(bucket_list[label]) < args.samples:
+                        bucket_list[label].append(sample)
 
                     if args.live and write_conn is not None:
                         await write_conn.execute(
                             _UPDATE_SQL, row["id"], new[0], new[1], new[2], new[3], new[4]
                         )
                         total_writes += 1
+                        if is_active:
+                            active_writes_total += 1
+                        else:
+                            inactive_writes_total += 1
 
                     if total_seen % 2000 == 0:
                         elapsed = time.monotonic() - start
@@ -359,40 +462,75 @@ async def main(argv: list[str] | None = None) -> int:
                     await pool.release(write_conn)
 
         elapsed = time.monotonic() - start
+        total_active_changes = sum(active_changes.values())
+        total_inactive_changes = sum(inactive_changes.values())
         print(
             f"\n== SUMMARY ({'LIVE' if args.live else 'DRY-RUN'}) =="
-            f"\n  rows scanned : {total_seen}"
-            f"\n  rows changed : {total_changes}"
-            f"\n  rows written : {total_writes}"
-            f"\n  elapsed_s    : {elapsed:.1f}"
+            f"\n  rows scanned     : {total_seen}"
+            f"\n  rows changed     : {total_changes}"
+            f"\n    active         : {total_active_changes}"
+            f"\n    inactive       : {total_inactive_changes}"
+            f"\n  rows written     : {total_writes}"
+            f"\n    active written : {active_writes_total}"
+            f"\n    inactive written: {inactive_writes_total}"
+            f"\n  elapsed_s        : {elapsed:.1f}"
         )
         print("\n== CHANGE BUCKETS PER COUNTRY ==")
         for label, c in bucket_counts.items():
             if c:
-                print(f"  {label}: {dict(c)}")
+                a = active_changes.get(label, 0)
+                i = inactive_changes.get(label, 0)
+                print(f"  {label}: {dict(c)}  (active={a} inactive={i})")
             else:
                 print(f"  {label}: (no changes)")
 
-        print("\n== SAMPLES ==")
-        for label, samples in per_country_samples.items():
-            if not samples:
-                continue
-            print(f"--- {label} ---")
-            for s in samples:
-                print("  ", json.dumps(s, default=str))
+        if args.include_inactive:
+            print("\n== SAMPLES (active) ==")
+            for label, samples in per_country_samples_active.items():
+                if not samples:
+                    continue
+                print(f"--- {label} ---")
+                for s in samples:
+                    print("  ", json.dumps(s, default=str))
+            print("\n== SAMPLES (inactive) ==")
+            for label, samples in per_country_samples_inactive.items():
+                if not samples:
+                    continue
+                print(f"--- {label} ---")
+                for s in samples:
+                    print("  ", json.dumps(s, default=str))
+        else:
+            print("\n== SAMPLES ==")
+            for label, samples in per_country_samples.items():
+                if not samples:
+                    continue
+                print(f"--- {label} ---")
+                for s in samples:
+                    print("  ", json.dumps(s, default=str))
 
         # Recompute after counts (cheap — same descendants)
         async with pool.acquire() as conn:
-            after = await _before_counts(conn, descendants_by_label)
+            after = await _before_counts(
+                conn, descendants_by_label, include_inactive=args.include_inactive
+            )
         print("\n== AFTER ==")
         for label in country_ids:
             b = before[label]
             a = after[label]
             delta = a["with_salary"] - b["with_salary"]
-            print(
-                f"  {label}: total={a['total']:>5}  with_salary={a['with_salary']:>5}"
-                f"  delta={delta:+}"
-            )
+            if args.include_inactive:
+                a_delta = a["active_with_salary"] - b["active_with_salary"]
+                i_delta = a["inactive_with_salary"] - b["inactive_with_salary"]
+                print(
+                    f"  {label}: total={a['total']:>6}  with_salary={a['with_salary']:>6}"
+                    f"  delta={delta:+}"
+                    f"  | active_delta={a_delta:+}  inactive_delta={i_delta:+}"
+                )
+            else:
+                print(
+                    f"  {label}: total={a['total']:>5}  with_salary={a['with_salary']:>5}"
+                    f"  delta={delta:+}"
+                )
         return 0
     finally:
         await pool.close()
