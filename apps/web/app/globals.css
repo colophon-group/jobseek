@@ -340,4 +340,47 @@
     background: var(--code-bg);
     border: 1px solid var(--code-border);
   }
+
+  /* ── Global keyboard focus indicator (WCAG 2.4.7, #3170) ──
+   *
+   * Tailwind v4 normalises away the browser default 2px focus outline. The
+   * codebase only has a handful of explicit focus rings (see
+   * `similar-companies-strip.tsx`, `similar-company-card.tsx`, the three
+   * `agent-prompt-card.tsx` sites). Every other interactive element — the
+   * `Button` primitive, icon buttons in headers/modals, filter chips, the
+   * watchlist cards, the bookmark/star buttons, the locale + theme toggles,
+   * the cookie banner, the close `X` buttons — has no visible focus
+   * indicator, leaving keyboard-only users with no way to track focus.
+   *
+   * The `:where()` wrapper keeps specificity at 0 so any per-component
+   * focus utility (e.g. the existing `focus-visible:outline-primary` sites,
+   * or `focus:outline-none focus:ring-2` on the agent-prompt-card copy
+   * buttons) still wins. Form inputs in `FormField.tsx` use
+   * `focus:border-primary` for their indicator — the global outline layers
+   * on top without disturbing the border colour.
+   *
+   * Uses `outline-offset: 2px` so the ring sits clear of rounded buttons
+   * (the `Button` primitive ships `rounded-full`) and `--primary` so it
+   * inverts cleanly between light and dark themes.
+   */
+  :where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [role="button"],
+    [role="link"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="menuitem"],
+    [role="tab"],
+    [role="switch"],
+    [tabindex]
+  ):focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
