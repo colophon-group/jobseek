@@ -2,17 +2,22 @@
 """One-shot reprocess of salary extraction over active EU postings.
 
 Re-runs ``_extract_salary_fields`` over each posting's primary-locale
-description HTML for the 7 countries added by PR #3269
-(PL, CZ, SE, DK, HU, RO, BG). Writes back ``salary_min`` / ``salary_max`` /
-``salary_currency`` / ``salary_period`` / ``salary_eur`` and bumps
-``updated_at`` only when at least one field actually changes — so the
-exporter's ``(updated_at, id)`` cursor reflows just the touched rows to
-Supabase + Typesense.
+description HTML for one of two country sets:
+
+* ``scope-a`` (default; PR #3324 / issue #3324) — 7 non-Eurozone currencies
+  added by PR #3269: PL, CZ, SE, DK, HU, RO, BG.
+* ``scope-b`` (issue #3341) — EUR/GBP/CHF locale failures fixed by PR #3342:
+  DE, AT, CH, FR, IT, ES, NL, BE, UK, IE, PT, GR.
+
+Writes back ``salary_min`` / ``salary_max`` / ``salary_currency`` /
+``salary_period`` / ``salary_eur`` and bumps ``updated_at`` only when at
+least one field actually changes — so the exporter's ``(updated_at, id)``
+cursor reflows just the touched rows to Supabase + Typesense.
 
 Idempotent: re-running produces no additional UPDATEs once values match.
 
 Usage:
-    # Recon + before counts only
+    # Recon + before counts only (scope-a)
     uv run python scripts/reprocess_salary_eu.py --stats
 
     # Dry-run (no writes; prints summary + N proposed changes per country)
@@ -20,6 +25,13 @@ Usage:
 
     # Live run
     uv run python scripts/reprocess_salary_eu.py --live
+
+    # Scope B (EUR/GBP/CHF locales)
+    uv run python scripts/reprocess_salary_eu.py --countries-set scope-b --dry-run
+    uv run python scripts/reprocess_salary_eu.py --countries-set scope-b --live
+
+    # Both scopes together
+    uv run python scripts/reprocess_salary_eu.py --countries-set all --dry-run
 
 The script connects via ``LOCAL_DATABASE_URL`` from the environment
 (or from ``apps/crawler/.env.local`` if loaded).
@@ -46,8 +58,8 @@ if str(APP_DIR) not in sys.path:
 
 from src.processing.cpu import _extract_salary_fields  # noqa: E402
 
-# GeoNames IDs for the 7 EU countries added in PR #3269.
-COUNTRY_IDS: dict[str, int] = {
+# GeoNames IDs for the 7 EU countries added in PR #3269 (Scope A).
+SCOPE_A_COUNTRY_IDS: dict[str, int] = {
     "PL": 798544,  # Poland
     "CZ": 3077311,  # Czechia
     "SE": 2661886,  # Kingdom of Sweden
@@ -56,6 +68,42 @@ COUNTRY_IDS: dict[str, int] = {
     "RO": 798549,  # Romania
     "BG": 732800,  # Bulgaria
 }
+
+# GeoNames IDs for the 12 EU locale-aware countries from PR #3342 (Scope B):
+# EUR/GBP/CHF currencies, locale-aware extraction templates.
+SCOPE_B_COUNTRY_IDS: dict[str, int] = {
+    "DE": 2921044,  # Germany
+    "AT": 2782113,  # Austria
+    "CH": 2658434,  # Switzerland
+    "FR": 3017382,  # France
+    "IT": 3175395,  # Italy
+    "ES": 2510769,  # Spain
+    "NL": 2750405,  # Netherlands
+    "BE": 2802361,  # Belgium
+    "UK": 2635167,  # United Kingdom
+    "IE": 2963597,  # Ireland
+    "PT": 2264397,  # Portugal
+    "GR": 390903,  # Greece
+}
+
+# Backwards-compat alias; defaults to scope-a so prior CLI invocations
+# (without --countries-set) keep their original behaviour.
+COUNTRY_IDS: dict[str, int] = SCOPE_A_COUNTRY_IDS
+
+
+def _resolve_country_ids(scope: str) -> dict[str, int]:
+    """Return the country->GeoNames-id mapping for the requested scope."""
+    if scope == "scope-a":
+        return dict(SCOPE_A_COUNTRY_IDS)
+    if scope == "scope-b":
+        return dict(SCOPE_B_COUNTRY_IDS)
+    if scope == "all":
+        merged: dict[str, int] = {}
+        merged.update(SCOPE_A_COUNTRY_IDS)
+        merged.update(SCOPE_B_COUNTRY_IDS)
+        return merged
+    raise ValueError(f"unknown countries-set: {scope!r}")
+
 
 FETCH_BATCH = 1000  # rows per fetch chunk
 
@@ -200,7 +248,23 @@ async def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--limit-per-country", type=int, default=None, help="Cap rows per country (debug)"
     )
+    parser.add_argument(
+        "--countries-set",
+        choices=("scope-a", "scope-b", "all"),
+        default="scope-a",
+        help=(
+            "Country set to reprocess: scope-a (PL,CZ,SE,DK,HU,RO,BG — non-Eurozone "
+            "currencies from PR #3269; default), scope-b (DE,AT,CH,FR,IT,ES,NL,BE,UK,"
+            "IE,PT,GR — EUR/GBP/CHF locale-aware extraction from PR #3342), or all."
+        ),
+    )
     args = parser.parse_args(argv)
+
+    country_ids = _resolve_country_ids(args.countries_set)
+    print(
+        f"[reprocess-salary-eu] countries_set={args.countries_set!r}"
+        f" -> {len(country_ids)} countries: {sorted(country_ids)}"
+    )
 
     _load_env_local()
     dsn = os.environ.get("LOCAL_DATABASE_URL")
@@ -216,7 +280,7 @@ async def main(argv: list[str] | None = None) -> int:
         async with pool.acquire() as conn:
             # Pre-compute per-country descendant id sets.
             descendants_by_label: dict[str, list[int]] = {}
-            for label, cid in COUNTRY_IDS.items():
+            for label, cid in country_ids.items():
                 descendants_by_label[label] = await _descendant_ids(conn, cid)
                 print(f"  {label}: {len(descendants_by_label[label])} location ids in subtree")
 
@@ -234,8 +298,8 @@ async def main(argv: list[str] | None = None) -> int:
             return 0
 
         # Process per country, accumulating proposed changes.
-        bucket_counts: dict[str, Counter] = {label: Counter() for label in COUNTRY_IDS}
-        per_country_samples: dict[str, list] = {label: [] for label in COUNTRY_IDS}
+        bucket_counts: dict[str, Counter] = {label: Counter() for label in country_ids}
+        per_country_samples: dict[str, list] = {label: [] for label in country_ids}
         total_seen = 0
         total_changes = 0
         total_writes = 0
@@ -321,7 +385,7 @@ async def main(argv: list[str] | None = None) -> int:
         async with pool.acquire() as conn:
             after = await _before_counts(conn, descendants_by_label)
         print("\n== AFTER ==")
-        for label in COUNTRY_IDS:
+        for label in country_ids:
             b = before[label]
             a = after[label]
             delta = a["with_salary"] - b["with_salary"]
