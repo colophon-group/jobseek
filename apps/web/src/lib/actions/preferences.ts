@@ -319,33 +319,67 @@ export async function getPasswordResetCooldown(): Promise<number> {
   return Math.max(0, PASSWORD_RESET_COOLDOWN_SECONDS - elapsed);
 }
 
+/**
+ * Record a password-reset request for the current viewer.
+ *
+ * Combines the per-user 60-second cooldown check and the timestamp
+ * write into a single atomic SQL statement so two concurrent callers
+ * (most commonly two browser tabs of the same user double-clicking
+ * "Forgot password?") can't both pass a stale SELECT and fire two
+ * reset emails (#3165).
+ *
+ * Shape: `INSERT … ON CONFLICT (user_id) DO UPDATE … WHERE
+ * <cooldown-elapsed>`. The `ON CONFLICT … WHERE` predicate runs
+ * atomically with the upsert: when the cooldown has not elapsed the
+ * update is skipped and `RETURNING` emits zero rows. Postgres serialises
+ * concurrent upserts on the same conflict target, so exactly one of two
+ * racing callers sees `updated=1` and the other sees `updated=0`.
+ *
+ * Return shape:
+ *   - `{}` — fresh write committed; caller should fire the reset email
+ *   - `{ cooldown }` — cooldown still active; caller should NOT fire
+ *     the reset email and should show the remaining seconds
+ *   - `{ error }` — not authenticated
+ *
+ * `getPasswordResetCooldown()` stays as a read-only helper for any
+ * future SSR initial-state hookup; it is not used to gate the write
+ * here, because doing so would re-open the same TOCTOU window the
+ * single-statement upsert exists to close.
+ */
 export async function recordPasswordResetRequest(): Promise<{ error?: string; cooldown?: number }> {
   const session = await getSession();
   if (!session) return { error: "Not authenticated" };
 
+  // Single-statement upsert + cooldown gate. The `WHERE` clause on the
+  // `DO UPDATE` branch is evaluated atomically inside the upsert; if it
+  // fails the row is left untouched AND no `RETURNING` row is emitted.
+  // The INSERT branch (first-ever request) always emits a row, because
+  // a fresh INSERT can't fail the WHERE check.
+  const rows = await db.execute<{ updated: number }>(sql`
+    INSERT INTO user_preferences (user_id, theme, locale, cookie_consent, last_password_reset_at)
+    VALUES (${session.user.id}, 'light', 'en', false, now())
+    ON CONFLICT (user_id) DO UPDATE
+      SET last_password_reset_at = now(), updated_at = now()
+      WHERE user_preferences.last_password_reset_at IS NULL
+         OR user_preferences.last_password_reset_at
+              < now() - make_interval(secs => ${PASSWORD_RESET_COOLDOWN_SECONDS})
+    RETURNING 1 AS updated
+  `);
+
+  // `db.execute` returns a postgres-js RowList that's array-like; the
+  // mocks in tests return plain arrays. `.length` covers both shapes.
+  const updated = (rows as unknown as ArrayLike<unknown>).length > 0;
+  if (updated) return {};
+
+  // Cooldown still active — another concurrent caller (or a recent
+  // sequential one) won the race. Tell the caller how long is left so
+  // the UI can show the same cooldown banner it would have shown if
+  // the user had hit the button alone after a successful request.
   const remaining = await getPasswordResetCooldown();
-  if (remaining > 0) {
-    return { cooldown: remaining };
-  }
-
-  await db
-    .insert(userPreferences)
-    .values({
-      userId: session.user.id,
-      theme: "light",
-      locale: "en",
-      cookieConsent: false,
-      lastPasswordResetAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: userPreferences.userId,
-      set: {
-        lastPasswordResetAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-
-  return {};
+  // Clamp to a minimum of 1 second so the UI always renders the
+  // cooldown branch even if `now()` has just crossed the boundary
+  // between the upsert's evaluation and the read below.
+  return { cooldown: Math.max(1, remaining) };
 }
 
 export async function setPassword(newPassword: string): Promise<{ error?: string }> {
