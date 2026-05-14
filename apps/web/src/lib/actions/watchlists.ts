@@ -7,7 +7,6 @@ import { db } from "@/db";
 import {
   watchlist,
   watchlistCompany,
-  company,
 } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { getViewerLanguages } from "@/lib/viewer";
@@ -683,13 +682,29 @@ export async function getWatchlistByUserAndSlug(
 ): Promise<WatchlistDetail | null> {
   const sessionUserId = await getSessionUserId();
 
-  // Resolve user + watchlist in a single JOIN
+  // Resolve user + watchlist + companies in a single JOIN.
+  //
+  // Perf (#3211): the companies array used to live in a separate
+  // `db.select().from(watchlist_company).innerJoin(company)…` round-trip
+  // run AFTER this one. The two queries were not data-dependent in a way
+  // that allowed parallelism (the second needs `wl_id` from the first)
+  // but they didn't need to be sequential round-trips either — the
+  // companies subquery folds cleanly into a correlated `json_agg`.
+  // Mirrors the same pattern already in use for `getUserWatchlists`'s
+  // denormalized `company_count` / `active_job_count`.
+  type CompanyRow = {
+    id: string;
+    name: string;
+    slug: string;
+    icon: string | null;
+  };
   type WatchlistJoinRow = {
     wl_id: string; slug: string; title: string; description: string | null;
     is_public: boolean; alerts_enabled: boolean; filters: WatchlistFilters | null;
     source_watchlist_id: string | null; created_at: Date; user_id: string;
     owner_id: string; username: string | null;
     display_username: string | null; owner_name: string;
+    companies: CompanyRow[];
   };
 
   // URL path segment is COALESCE(display_username, username) (see sitemap.ts
@@ -698,6 +713,12 @@ export async function getWatchlistByUserAndSlug(
   // detail page resolves the same URLs the sitemap exposes.  Exact username
   // match is preferred via ORDER BY when both columns happen to collide
   // across users.
+  //
+  // The `COALESCE(..., '[]'::json)` is load-bearing: `json_agg` returns
+  // `NULL` (not `[]`) when the correlated subquery matches zero rows,
+  // and every caller of this function iterates `.companies` directly
+  // (`.length`, `.map`, `.slice` — see page.tsx, opengraph-image.tsx,
+  // watchlist-page-data.ts).
   const rows = await withDbRetry(
     () =>
       db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
@@ -705,7 +726,24 @@ export async function getWatchlistByUserAndSlug(
           w.id AS wl_id, w.slug, w.title, w.description,
           w.is_public, w.alerts_enabled, w.filters,
           w.source_watchlist_id, w.created_at, w.user_id,
-          u.id AS owner_id, u.username, u.display_username, u.name AS owner_name
+          u.id AS owner_id, u.username, u.display_username, u.name AS owner_name,
+          COALESCE(
+            (
+              SELECT json_agg(
+                json_build_object(
+                  'id', c.id,
+                  'name', c.name,
+                  'slug', c.slug,
+                  'icon', c.icon
+                )
+                ORDER BY c.name
+              )
+              FROM watchlist_company wc
+              JOIN company c ON c.id = wc.company_id
+              WHERE wc.watchlist_id = w.id
+            ),
+            '[]'::json
+          ) AS companies
         FROM watchlist w
         JOIN "user" u ON u.id = w.user_id
         WHERE (u.username = ${userSlug} OR u.display_username = ${userSlug})
@@ -730,19 +768,6 @@ export async function getWatchlistByUserAndSlug(
       .catch(() => {});
   }
 
-  // Fetch companies
-  const companies = await db
-    .select({
-      id: company.id,
-      name: company.name,
-      slug: company.slug,
-      icon: company.icon,
-    })
-    .from(watchlistCompany)
-    .innerJoin(company, eq(watchlistCompany.companyId, company.id))
-    .where(eq(watchlistCompany.watchlistId, row.wl_id))
-    .orderBy(company.name);
-
   return {
     id: row.wl_id,
     slug: row.slug,
@@ -759,7 +784,7 @@ export async function getWatchlistByUserAndSlug(
       displayUsername: row.display_username,
       name: row.owner_name,
     },
-    companies,
+    companies: row.companies ?? [],
   };
 }
 
@@ -794,12 +819,23 @@ async function _fetchPublicWatchlistByUserAndSlug(
   userSlug: string,
   watchlistSlug: string,
 ): Promise<WatchlistDetail | null> {
+  // Same single-query fold as `getWatchlistByUserAndSlug` (#3211).
+  // This variant additionally filters to `w.is_public = true` so the
+  // session-free callers (ISR `generateMetadata`, OG image, blog mention
+  // prerender) never accidentally leak a private watchlist.
+  type CompanyRow = {
+    id: string;
+    name: string;
+    slug: string;
+    icon: string | null;
+  };
   type WatchlistJoinRow = {
     wl_id: string; slug: string; title: string; description: string | null;
     is_public: boolean; alerts_enabled: boolean; filters: WatchlistFilters | null;
     source_watchlist_id: string | null; created_at: Date; user_id: string;
     owner_id: string; username: string | null;
     display_username: string | null; owner_name: string;
+    companies: CompanyRow[];
   };
 
   const rows = await withDbRetry(
@@ -809,7 +845,24 @@ async function _fetchPublicWatchlistByUserAndSlug(
           w.id AS wl_id, w.slug, w.title, w.description,
           w.is_public, w.alerts_enabled, w.filters,
           w.source_watchlist_id, w.created_at, w.user_id,
-          u.id AS owner_id, u.username, u.display_username, u.name AS owner_name
+          u.id AS owner_id, u.username, u.display_username, u.name AS owner_name,
+          COALESCE(
+            (
+              SELECT json_agg(
+                json_build_object(
+                  'id', c.id,
+                  'name', c.name,
+                  'slug', c.slug,
+                  'icon', c.icon
+                )
+                ORDER BY c.name
+              )
+              FROM watchlist_company wc
+              JOIN company c ON c.id = wc.company_id
+              WHERE wc.watchlist_id = w.id
+            ),
+            '[]'::json
+          ) AS companies
         FROM watchlist w
         JOIN "user" u ON u.id = w.user_id
         WHERE (u.username = ${userSlug} OR u.display_username = ${userSlug})
@@ -823,18 +876,6 @@ async function _fetchPublicWatchlistByUserAndSlug(
 
   const row = (rows as unknown as WatchlistJoinRow[])[0];
   if (!row) return null;
-
-  const companies = await db
-    .select({
-      id: company.id,
-      name: company.name,
-      slug: company.slug,
-      icon: company.icon,
-    })
-    .from(watchlistCompany)
-    .innerJoin(company, eq(watchlistCompany.companyId, company.id))
-    .where(eq(watchlistCompany.watchlistId, row.wl_id))
-    .orderBy(company.name);
 
   return {
     id: row.wl_id,
@@ -852,7 +893,7 @@ async function _fetchPublicWatchlistByUserAndSlug(
       displayUsername: row.display_username,
       name: row.owner_name,
     },
-    companies,
+    companies: row.companies ?? [],
   };
 }
 
