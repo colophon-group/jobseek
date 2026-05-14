@@ -356,6 +356,37 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
 
     expect(mocks.tsSearch).not.toHaveBeenCalled();
   });
+
+  // Regression for #3344. The `anyCompany` Typesense patch previously
+  // omitted the viewer-language scope, so the tile count diverged from
+  // the watchlist-detail page (which DOES scope by `locales:[lang,
+  // _none]` via `_getWatchlistPostingsTypesense`). The fix threads the
+  // viewer's resolved languages through `_resolveAnyCompanyActiveCount`
+  // so both surfaces issue the same Typesense filter shape.
+  it("passes viewer languages through to the anyCompany Typesense count (#3344)", async () => {
+    const anyRow = {
+      ...fakeUserWatchlistRow(0, 0),
+      filters: { anyCompany: true, locationSlugs: ["eu"] },
+    };
+    mocks.dbExecute.mockResolvedValueOnce([anyRow]);
+    mocks.getViewerLanguages.mockResolvedValueOnce(["en"]);
+    mocks.tsSearch.mockResolvedValueOnce({ found: 39126, hits: [] });
+
+    const buildFilterStringMock = vi.mocked(
+      await import("@/lib/search/typesense-filters"),
+    ).buildFilterString;
+    buildFilterStringMock.mockClear();
+
+    await getUserWatchlists("en");
+
+    // `getViewerLanguages` was called once with the page locale.
+    expect(mocks.getViewerLanguages).toHaveBeenCalledWith("en");
+    // The viewer's languages were forwarded into `buildFilterString` so
+    // the Typesense filter for the tile matches the detail page's
+    // shape (locales:[en,_none] in the rendered filter_by string).
+    const lastCall = buildFilterStringMock.mock.calls.at(-1);
+    expect(lastCall?.[0]).toMatchObject({ languages: ["en"] });
+  });
 });
 
 // ---- public Discover surfaces (Typesense path) -------------------------
