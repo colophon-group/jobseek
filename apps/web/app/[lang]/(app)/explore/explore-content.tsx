@@ -83,6 +83,20 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       initialData === undefined;
     if (!needsPersonalizedFetch) return;
 
+    // Clear ``data`` BEFORE firing the personalised fetch so
+    // ``SearchPage`` doesn't mount with the stale prerendered
+    // ``initialData`` and lock its ``useState``-initialised filter /
+    // result state to the unfiltered defaults — the subsequent
+    // ``setData(filtered)`` would otherwise re-render ``ExploreContent``
+    // with new ``initialX`` props, but ``SearchPage``'s state
+    // initialisers only run on first mount, so the filtered companies
+    // would never appear in the UI. By unmounting ``SearchPage`` (via
+    // ``ExploreSkeleton``) while the filtered fetch is in flight, the
+    // remount on data arrival re-initialises every ``useState``
+    // initialiser with the filtered data. Issue #3350 (regression of
+    // the #2746 ISR-prerender path for filter-bearing URLs).
+    setData(null);
+
     const sp: Record<string, string | undefined> = {};
     searchParams.forEach((value, key) => {
       sp[key] = value;
@@ -90,10 +104,15 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     fetchExploreDataWithRetry({ searchParams: sp, locale })
       .then(setData)
       .catch((err) => {
-        // Both attempts failed; keep the prerendered ``initialData``
-        // so the page doesn't go empty mid-render. Log so production
-        // observability picks up the cold-start spike (#3008).
+        // Both attempts failed. Fall back to the prerendered
+        // ``initialData`` so the page doesn't sit on the skeleton
+        // forever; the user can retry by clicking a filter or
+        // refreshing. Filters in the URL won't be visible in the
+        // toolbar because the prerender doesn't carry them, but that
+        // matches the pre-#2746 cold-error behaviour and beats a
+        // permanent skeleton.
         console.error("[explore] fetchExploreData failed twice", err);
+        if (initialData) setData(initialData);
       });
     // Empty deps: the conditional-fetch decision is made once on
     // mount. ``initialData`` is stable across re-renders (page
