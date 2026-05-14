@@ -135,9 +135,14 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
           // button is a positioned overlay covering the row's click area;
           // SaveButton sits in normal flex flow with `relative z-10` so
           // it stacks above the overlay and stays keyboard-reachable.
+          // `min-h-7` (= 28px = current natural row height with py-1.5
+          // + 14px text) locks vertical extent so the row can never cause
+          // a layout shift inside the inner scroll container (closes
+          // #3345). `[contain:layout]` isolates per-row layout so a
+          // re-render of one row cannot reflow neighbouring rows.
           <div
             key={posting.id}
-            className={`relative flex items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === selectedPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
+            className={`relative flex min-h-7 items-center gap-2 rounded px-1 py-1.5 transition-colors [contain:layout] ${posting.id === selectedPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
           >
             <button
               type="button"

@@ -120,10 +120,13 @@ export function WatchlistJobList({
     if (dateKey !== lastDateKey && !seenDividers.has(dateKey)) {
       lastDateKey = dateKey;
       seenDividers.add(dateKey);
+      // `min-h-7` (= 28px = the divider's natural rendered height with
+      // py-2 + ~12px text) locks vertical extent so the divider can never
+      // cause a layout shift during scroll (closes #3345).
       rows.push(
         <div
           key={`d-${dateKey}`}
-          className="flex items-center gap-3 px-2 py-2"
+          className="flex min-h-7 items-center gap-3 px-2 py-2"
           suppressHydrationWarning
         >
           <div className="h-px flex-1 bg-divider" />
@@ -143,9 +146,14 @@ export function WatchlistJobList({
     // first, then save (DOM order). No `e.stopPropagation()` needed —
     // the buttons are siblings, not nested.
     rows.push(
+      // `min-h-10` (= 40px = current natural row height) locks vertical
+      // extent so any rounding / content-driven variation never causes a
+      // layout shift during scroll or pagination (closes #3345).
+      // `[contain:layout]` isolates per-row layout calculations so a
+      // re-render of one row cannot reflow neighbouring rows.
       <div
         key={entry.id}
-        className={`relative flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-border-soft ${
+        className={`relative flex min-h-10 w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors [contain:layout] hover:bg-border-soft ${
           showPostingId === entry.id ? "bg-border-soft" : ""
         }`}
       >
@@ -222,7 +230,16 @@ export function WatchlistJobList({
         activeCount={total}
         yearCount={yearTotal}
       />
-      <div>
+      {/* `[overflow-anchor:none]` opts the whole postings list out of the
+          browser's automatic scroll-anchor selection. Without it, when
+          pagination appends new rows the anchoring heuristic can pick a
+          row near the viewport edge and adjust scroll position by a few
+          pixels, which the user perceives as cards "jumping up and down"
+          (closes #3345). The sentinel inside `InfiniteScrollSentinel`
+          already opts out for itself; this widens the opt-out to every
+          row + date divider so no element in the subtree can be picked
+          mid-scroll. */}
+      <div className="[overflow-anchor:none]">
         {rows}
 
         {postings.length === 0 && !isLoading && (
