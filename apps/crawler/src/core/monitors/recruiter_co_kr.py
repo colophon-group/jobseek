@@ -31,7 +31,9 @@ from __future__ import annotations
 
 import asyncio
 import random
+from datetime import datetime
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 import httpx
 import structlog
@@ -59,6 +61,15 @@ _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY_S = 2.0
 
 _IGNORE_SLUGS = frozenset({"www", "api", "api-recruiter", "infra1-static", "cdn"})
+
+# Recruiter.co.kr serves South Korean customers and returns timestamps
+# without a TZ suffix (e.g. ``2026-04-22T00:00:00``). The API convention
+# is KST (UTC+9). The crawler stores all dates as UTC, so we localise the
+# naive value to KST first, then convert to UTC before truncating to a
+# date string. Without this conversion ``date_posted`` and ``valid_through``
+# shift by one calendar day for any non-Asia viewer (see #3208).
+_SOURCE_TZ = ZoneInfo("Asia/Seoul")
+_UTC = ZoneInfo("UTC")
 
 # Recruiter.co.kr ``careerType`` values pass through unchanged — the
 # central :func:`src.core.enum_normalize.normalize_employment_type`
@@ -96,14 +107,39 @@ def _api_headers(slug: str) -> dict[str, str]:
 
 
 def _dt_date(value: str | None) -> str | None:
-    """Return only the date portion of an ISO-8601 timestamp.
+    """Return the UTC date portion of a naive recruiter.co.kr timestamp.
 
-    The API returns values like ``2026-04-22T00:00:00``. Schema.org
-    ``datePosted`` expects a date-only string.
+    The API returns values like ``2026-04-22T00:00:00`` with no TZ suffix.
+    Korean recruiter customers run on KST (UTC+9), so the naive value is
+    localised to ``Asia/Seoul`` first, then converted to UTC before being
+    truncated to a date. Schema.org ``datePosted`` expects a date-only
+    string and the crawler stores everything as UTC.
+
+    Examples:
+        ``2026-04-22T00:00:00`` (KST midnight) → ``2026-04-21`` (UTC)
+        ``2026-04-22T12:00:00`` (KST noon) → ``2026-04-22`` (UTC)
+
+    Date-only strings (no ``T`` component) are passed through unchanged,
+    since they carry no time-of-day information and a TZ conversion
+    would be a meaningless half-day shift.
     """
     if not value or not isinstance(value, str):
         return None
-    return value.split("T", 1)[0]
+    raw = value.strip()
+    if not raw:
+        return None
+    if "T" not in raw:
+        # Already a date — no time means TZ conversion is undefined.
+        return raw.split("T", 1)[0]
+    try:
+        naive = datetime.fromisoformat(raw)
+    except ValueError:
+        # Malformed input — preserve the pre-fix behaviour of returning
+        # whatever sits before the ``T`` so we don't drop a posting just
+        # because the API hiccupped on one field.
+        return raw.split("T", 1)[0] or None
+    localised = naive.replace(tzinfo=_SOURCE_TZ) if naive.tzinfo is None else naive
+    return localised.astimezone(_UTC).date().isoformat()
 
 
 def _parse_list_item(item: dict, slug: str) -> dict | None:

@@ -65,11 +65,54 @@ class TestHelpers:
         assert "application/json" in headers["accept"]
         assert headers["content-type"] == "application/json"
 
-    def test_dt_date_strips_time(self):
-        assert _dt_date("2026-04-22T00:00:00") == "2026-04-22"
+    def test_dt_date_passes_through_date_only(self):
+        # Date-only strings carry no time-of-day, so TZ conversion is
+        # undefined — pass through unchanged.
         assert _dt_date("2026-04-22") == "2026-04-22"
+
+    def test_dt_date_returns_none_for_missing(self):
         assert _dt_date(None) is None
         assert _dt_date("") is None
+        # Non-string types: defensive fall-through to ``None``.
+        assert _dt_date(12345) is None  # type: ignore[arg-type]
+
+
+class TestDtDateKstToUtc:
+    """``_dt_date`` must localise the naive KST timestamp returned by the
+    recruiter.co.kr API to UTC before truncating, otherwise ``date_posted``
+    and ``valid_through`` shift by one calendar day for any non-Asia
+    viewer (see #3208).
+
+    KST is UTC+9, so:
+      00:00 KST = 15:00 UTC the previous day
+      12:00 KST = 03:00 UTC the same day
+      23:59 KST = 14:59 UTC the same day
+    """
+
+    def test_kst_midnight_shifts_back_one_day(self):
+        # 2026-04-22T00:00:00 KST = 2026-04-21T15:00:00 UTC
+        assert _dt_date("2026-04-22T00:00:00") == "2026-04-21"
+
+    def test_kst_midday_stays_on_same_date(self):
+        # 2026-04-22T12:00:00 KST = 2026-04-22T03:00:00 UTC
+        assert _dt_date("2026-04-22T12:00:00") == "2026-04-22"
+
+    def test_kst_late_evening_stays_on_same_date(self):
+        # 2026-04-22T23:59:59 KST = 2026-04-22T14:59:59 UTC — must NOT
+        # clip the valid_through expiry one day early.
+        assert _dt_date("2026-04-22T23:59:59") == "2026-04-22"
+
+    def test_malformed_value_falls_back_to_pre_t_segment(self):
+        # Malformed inputs degrade to the pre-fix behaviour (split on T)
+        # rather than dropping the posting field entirely.
+        assert _dt_date("not-a-date") == "not-a-date"
+        assert _dt_date("garbageTand-more") == "garbage"
+
+    def test_value_with_explicit_offset_respected(self):
+        # If the API ever starts returning explicit offsets, respect them
+        # rather than re-localising as KST. ``+00:00`` here means the
+        # value is already UTC midnight, so the UTC date is unchanged.
+        assert _dt_date("2026-04-22T00:00:00+00:00") == "2026-04-22"
 
 
 class TestParseListItem:
@@ -96,11 +139,14 @@ class TestParseListItem:
 
 class TestParseDetail:
     def _summary(self, **overrides):
+        # Use mid-day KST so the UTC date matches the KST date — these
+        # fixtures aren't about TZ math, that's covered in
+        # ``TestDtDateKstToUtc``.
         base = {
             "positionSn": 100,
             "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
             "list_title": "Sample",
-            "startDateTime": "2026-01-15T00:00:00",
+            "startDateTime": "2026-01-15T12:00:00",
             "careerType": "CAREER",
             "classificationCode": "본사",
             "tagList": [],
@@ -114,8 +160,10 @@ class TestParseDetail:
             "jobDescription": "<p>Job desc</p>",
             "jobDescriptionType": "HTML",
             "careerType": "CAREER",
-            "startDateTime": "2026-02-01T00:00:00",
-            "endDateTime": "2026-03-01T00:00:00",
+            # Mid-day / late-evening KST so the UTC date matches the
+            # source date — TZ-shift math is covered in TestDtDateKstToUtc.
+            "startDateTime": "2026-02-01T12:00:00",
+            "endDateTime": "2026-03-01T23:59:59",
             "tagList": [{"tagName": "경영기획"}, {"tagName": "본사"}],
             "classificationCode": "본사",
             "announcementType": "NORMAL",
@@ -266,7 +314,8 @@ class TestDiscover:
                         "positionSn": 42,
                         "title": "From List",
                         "careerType": "CAREER",
-                        "startDateTime": "2026-04-01T00:00:00",
+                        # Mid-day KST → same UTC date.
+                        "startDateTime": "2026-04-01T12:00:00",
                     }
                 ],
             }
