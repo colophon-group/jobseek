@@ -506,16 +506,16 @@ msgstr "Aug"
 msgid "settings.account.username.available"
 msgstr "Available"
 
-#. Link back to sign-in from reset password
-#. js-lingui-explicit-id
-#: app/[lang]/reset-password/page.tsx:42
-msgid "auth.resetPassword.backToSignIn"
-msgstr "Back to sign in"
-
 #. Link back to sign-in after failed verification
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:68
 msgid "auth.verify.error.backToSignIn"
+msgstr "Back to sign in"
+
+#. Link back to sign-in from reset password
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:42
+msgid "auth.resetPassword.backToSignIn"
 msgstr "Back to sign in"
 
 #. Link back to sign-in from forgot password
@@ -544,6 +544,12 @@ msgstr "Back to top"
 msgid "myJobs.interviewType.behavioral"
 msgstr "Behavioral"
 
+#. Back-to-index link at the top of a blog post (rendered as '← {label}')
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/[slug]/page.tsx:146
+msgid "blog.post.backToIndex"
+msgstr "Blog"
+
 #. Document title (<title>) for the blog index page
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:28
@@ -554,12 +560,6 @@ msgstr "Blog"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:79
 msgid "blog.index.heading"
-msgstr "Blog"
-
-#. Back-to-index link at the top of a blog post (rendered as '← {label}')
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/blog/[slug]/page.tsx:146
-msgid "blog.post.backToIndex"
 msgstr "Blog"
 
 #. Nav link: Blog
@@ -673,16 +673,16 @@ msgstr "Change your password via a secure email link."
 msgid "myJobs.detail.changePlaceholder"
 msgstr "Change..."
 
-#. Heading after reset email is sent
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx:58
-msgid "auth.forgotPassword.sent.title"
-msgstr "Check your email"
-
 #. Heading after sign-up telling user to check email
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/check-email/page.tsx:80
 msgid "auth.verify.checkEmail.title"
+msgstr "Check your email"
+
+#. Heading after reset email is sent
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:58
+msgid "auth.forgotPassword.sent.title"
 msgstr "Check your email"
 
 #. Checking username availability
@@ -815,16 +815,10 @@ msgstr "Close"
 msgid "search.salaryModal.close"
 msgstr "Close"
 
-#. Aria label for close button on the company-page all-locations modal
+#. Aria label for the occupation modal close button
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:275
-msgid "company.locationModal.close"
-msgstr "Close"
-
-#. Aria label for the employment-type modal close button
-#. js-lingui-explicit-id
-#: src/components/search/employment-type-modal.tsx:82
-msgid "search.employmentTypeModal.close"
+#: src/components/search/occupation-modal.tsx:307
+msgid "search.occupationModal.close"
 msgstr "Close"
 
 #. Aria label for the location modal close button
@@ -833,16 +827,22 @@ msgstr "Close"
 msgid "search.locationModal.close"
 msgstr "Close"
 
+#. Aria label for close button on the company-page all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:275
+msgid "company.locationModal.close"
+msgstr "Close"
+
 #. Aria label for the experience modal close button
 #. js-lingui-explicit-id
 #: src/components/search/experience-modal.tsx:193
 msgid "search.experienceModal.close"
 msgstr "Close"
 
-#. Aria label for the occupation modal close button
+#. Aria label for the employment-type modal close button
 #. js-lingui-explicit-id
-#: src/components/search/occupation-modal.tsx:307
-msgid "search.occupationModal.close"
+#: src/components/search/employment-type-modal.tsx:82
+msgid "search.employmentTypeModal.close"
 msgstr "Close"
 
 #. Aria label for job detail panel close button
@@ -1003,14 +1003,14 @@ msgstr "Contact"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:17
-msgid "license.toc.title"
+#: src/components/HowWeIndexContent.tsx:21
+msgid "indexing.toc.title"
 msgstr "Contents"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:21
-msgid "indexing.toc.title"
+#: src/components/LicenseContent.tsx:17
+msgid "license.toc.title"
 msgstr "Contents"
 
 #. Button to continue to app after verification
@@ -1462,7 +1462,7 @@ msgstr "Explore Jobs"
 
 #. Hidden page H1 for /explore — screen-reader landmark
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/search-page.tsx:753
+#: app/[lang]/(app)/explore/search-page.tsx:754
 msgid "explore.h1"
 msgstr "Explore Jobs"
 
@@ -2304,6 +2304,32 @@ msgstr "Licensing for Job Seek — application source code is MIT-licensed, job 
 msgid "settings.theme.light"
 msgstr "Light"
 
+#. Screen-reader announcement while the company search modal is fetching results
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-search-modal.tsx:307
+msgid "watchlists.companyModal.loading"
+msgstr "Loading companies"
+
+#. Screen-reader announcement while the job detail panel is loading
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:512
+msgid "search.detail.loading"
+msgstr "Loading job details"
+
+#. Aria label and screen-reader announcement on the infinite-scroll sentinel that triggers fetching the next page of results
+#. Aria label and screen-reader announcement on the infinite-scroll sentinel that triggers fetching the next page of results
+#. js-lingui-explicit-id
+#: src/components/InfiniteScrollSentinel.tsx:44
+#: src/components/InfiniteScrollSentinel.tsx:68
+msgid "common.a11y.loadingMoreResults"
+msgstr "Loading more results"
+
+#. Screen-reader announcement while a list of result cards is loading
+#. js-lingui-explicit-id
+#: src/components/search/skeleton-card.tsx:18
+msgid "common.a11y.loadingResults"
+msgstr "Loading results"
+
 #. Loading indicator
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:97
@@ -2328,16 +2354,16 @@ msgstr "Location"
 msgid "search.advanced.location"
 msgstr "Location"
 
-#. Locations heading in job detail
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:314
-msgid "search.detail.locations"
-msgstr "Locations"
-
 #. Section header for location suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:842
 msgid "search.bar.locations"
+msgstr "Locations"
+
+#. Locations heading in job detail
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:314
+msgid "search.detail.locations"
 msgstr "Locations"
 
 #. Login button label
@@ -2630,16 +2656,16 @@ msgstr "No jobs found."
 msgid "settings.jobLanguages.modal.noResults"
 msgstr "No languages match your search."
 
-#. No locations match search in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:312
-msgid "company.locationModal.noResults"
-msgstr "No locations match your search."
-
 #. No locations match search in location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx:516
 msgid "search.locationModal.noResults"
+msgstr "No locations match your search."
+
+#. No locations match search in all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:312
+msgid "company.locationModal.noResults"
 msgstr "No locations match your search."
 
 #. No postings found message on company page
@@ -2911,26 +2937,26 @@ msgstr "Our stance on automation"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:21
-msgid "license.toc.overview"
-msgstr "Overview"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:25
 msgid "indexing.toc.overview"
 msgstr "Overview"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:18
-msgid "license.toc.ariaLabel"
-msgstr "Page contents"
+#: src/components/LicenseContent.tsx:21
+msgid "license.toc.overview"
+msgstr "Overview"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:22
 msgid "indexing.toc.ariaLabel"
+msgstr "Page contents"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:18
+msgid "license.toc.ariaLabel"
 msgstr "Page contents"
 
 #. Heading shown on the 404 page
@@ -3260,16 +3286,16 @@ msgstr "Redistribute your changes, as long as you include the MIT notice."
 msgid "location.type.region"
 msgstr "Region"
 
-#. Header for the macro-region cluster (EU, EMEA, DACH) in company-page location modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:322
-msgid "company.locationModal.regionsHeader"
-msgstr "Regions"
-
 #. Header for the macro-region cluster (EU, EMEA, DACH) at the top of the location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx:526
 msgid "search.locationModal.regionsHeader"
+msgstr "Regions"
+
+#. Header for the macro-region cluster (EU, EMEA, DACH) in company-page location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:322
+msgid "company.locationModal.regionsHeader"
 msgstr "Regions"
 
 #. Status group heading: rejected
@@ -3706,16 +3732,16 @@ msgstr "Search jobs across thousands of companies scraped directly from career p
 msgid "settings.jobLanguages.modal.searchPlaceholder"
 msgstr "Search languages..."
 
-#. Placeholder for search input in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:291
-msgid "company.locationModal.searchPlaceholder"
-msgstr "Search locations..."
-
 #. Placeholder for search input in global location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx:495
 msgid "search.locationModal.searchPlaceholder"
+msgstr "Search locations..."
+
+#. Placeholder for search input in all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:291
+msgid "company.locationModal.searchPlaceholder"
 msgstr "Search locations..."
 
 #. Back-to-search link on company page header
@@ -3802,16 +3828,16 @@ msgstr "Send reset link"
 msgid "settings.account.password.send"
 msgstr "Send reset link"
 
-#. Send reset link button while loading
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx:103
-msgid "auth.forgotPassword.button.loading"
-msgstr "Sending..."
-
 #. Resend button while sending
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/check-email/page.tsx:96
 msgid "auth.verify.resending"
+msgstr "Sending..."
+
+#. Send reset link button while loading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:103
+msgid "auth.forgotPassword.button.loading"
 msgstr "Sending..."
 
 #. Reset password button while loading
@@ -4150,16 +4176,16 @@ msgstr "System Design"
 msgid "myJobs.interviewType.technical"
 msgstr "Technical"
 
-#. Technologies sub-heading in details section
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:399
-msgid "search.detail.technologies"
-msgstr "Technologies"
-
 #. Section header for technology suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:765
 msgid "search.bar.technologies"
+msgstr "Technologies"
+
+#. Technologies sub-heading in details section
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:399
+msgid "search.detail.technologies"
 msgstr "Technologies"
 
 #. Add technology filter

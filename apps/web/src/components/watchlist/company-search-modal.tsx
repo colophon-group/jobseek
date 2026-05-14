@@ -292,8 +292,25 @@ export function CompanySearchModal({
           {/* Company list */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto">
             {loading && companies.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 size={20} className="animate-spin text-muted" />
+              <div
+                role="status"
+                aria-busy="true"
+                aria-live="polite"
+                className="flex items-center justify-center py-12"
+              >
+                <Loader2
+                  aria-hidden="true"
+                  size={20}
+                  className="animate-spin text-muted"
+                />
+                <span className="sr-only">
+                  <Trans
+                    id="watchlists.companyModal.loading"
+                    comment="Screen-reader announcement while the company search modal is fetching results"
+                  >
+                    Loading companies
+                  </Trans>
+                </span>
               </div>
             ) : visibleCompanies.length === 0 && !loading ? (
               <div className="px-5">

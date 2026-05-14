@@ -497,25 +497,42 @@ function formatExperience(min: number | null, max: number | null): string {
 }
 
 function DetailSkeleton() {
+  // WCAG 4.1.3 (status messages): the job-detail panel skeleton sits over the
+  // previous posting body until the new description streams in. Without an
+  // `aria-busy` / `aria-live` wrapper, an SR keeps reading the stale content
+  // (closes #3190).
   return (
-    <div className="animate-pulse space-y-4">
-      <div className="flex items-center gap-3">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      className="animate-pulse space-y-4"
+    >
+      <span className="sr-only">
+        <Trans
+          id="search.detail.loading"
+          comment="Screen-reader announcement while the job detail panel is loading"
+        >
+          Loading job details
+        </Trans>
+      </span>
+      <div aria-hidden="true" className="flex items-center gap-3">
         <div className="size-9 rounded bg-border-soft" />
         <div className="h-4 w-28 rounded bg-border-soft" />
       </div>
-      <div className="h-5 w-3/4 rounded bg-border-soft" />
-      <div className="flex gap-3">
+      <div aria-hidden="true" className="h-5 w-3/4 rounded bg-border-soft" />
+      <div aria-hidden="true" className="flex gap-3">
         <div className="h-3 w-16 rounded bg-border-soft" />
         <div className="h-3 w-10 rounded bg-border-soft" />
       </div>
-      <div className="space-y-1">
+      <div aria-hidden="true" className="space-y-1">
         <div className="h-2.5 w-16 rounded bg-border-soft" />
         <div className="h-3.5 w-40 rounded bg-border-soft" />
         <div className="h-3.5 w-36 rounded bg-border-soft" />
       </div>
-      <div className="h-3 w-32 rounded bg-border-soft" />
-      <hr className="border-divider" />
-      <div className="space-y-2">
+      <div aria-hidden="true" className="h-3 w-32 rounded bg-border-soft" />
+      <hr aria-hidden="true" className="border-divider" />
+      <div aria-hidden="true" className="space-y-2">
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className="h-3 rounded bg-border-soft" style={{ width: `${65 + Math.random() * 35}%` }} />
         ))}

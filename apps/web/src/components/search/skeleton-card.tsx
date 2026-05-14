@@ -1,11 +1,31 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
+
+// WCAG 4.1.3 (status messages): screen readers stay silent on visual-only
+// skeleton placeholders unless we mark the container as a polite live region
+// in a busy state. The visually-hidden child gives the SR an actual phrase
+// to announce when the skeleton mounts (closes #3190).
 export function SkeletonCards({ count = 3 }: { count?: number }) {
   return (
-    <div className="space-y-4">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      className="space-y-4"
+    >
+      <span className="sr-only">
+        <Trans
+          id="common.a11y.loadingResults"
+          comment="Screen-reader announcement while a list of result cards is loading"
+        >
+          Loading results
+        </Trans>
+      </span>
       {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
+          aria-hidden="true"
           className="animate-pulse rounded-md border border-divider bg-surface p-4"
         >
           <div className="flex items-center gap-3">
