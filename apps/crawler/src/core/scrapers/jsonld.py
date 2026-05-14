@@ -171,33 +171,40 @@ def _extract_locations(posting: dict) -> list[str] | None:
 
 
 def _extract_salary(posting: dict) -> dict | None:
-    """Extract salary from baseSalary field."""
+    """Extract salary from baseSalary field.
+
+    Per schema.org/MonetaryAmount, ``unitText`` can appear on the OUTER
+    ``baseSalary`` object regardless of whether ``value`` is a scalar or a
+    nested ``QuantitativeValue``.  When both levels carry a ``unitText`` the
+    nested one wins (it is closer to the value it qualifies).  See #3226.
+    """
     base_salary = posting.get("baseSalary")
     if not isinstance(base_salary, dict):
         return None
 
     currency = base_salary.get("currency")
     value = base_salary.get("value")
+    # schema.org uses ``MONTH``/``HOUR``/``DAY``/``WEEK``/``YEAR`` —
+    # the central :func:`src.core.enum_normalize.normalize_salary_unit`
+    # already covers the lowercase forms (and substring fallback for
+    # future schema.org extensions).  Unrecognised tokens resolve to
+    # ``None`` so the outer/inner fallback degrades cleanly.
+    outer_unit = normalize_salary_unit(base_salary.get("unitText"))
 
     if isinstance(value, dict):
-        # schema.org uses ``MONTH``/``HOUR``/``DAY``/``WEEK``/``YEAR`` —
-        # the central :func:`src.core.enum_normalize.normalize_salary_unit`
-        # already covers the lowercase forms (and substring fallback for
-        # future schema.org extensions).  No behaviour change vs the old
-        # ``.lower() or None`` since unrecognised tokens still resolve to
-        # ``None``.
+        inner_unit = normalize_salary_unit(value.get("unitText"))
         return {
             "currency": currency,
             "min": value.get("minValue"),
             "max": value.get("maxValue"),
-            "unit": normalize_salary_unit(value.get("unitText")),
+            "unit": inner_unit or outer_unit,
         }
     elif isinstance(value, (int, float)):
         return {
             "currency": currency,
             "min": value,
             "max": value,
-            "unit": None,
+            "unit": outer_unit,
         }
 
     return None

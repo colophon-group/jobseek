@@ -230,6 +230,104 @@ class TestExtractSalary:
         result = _extract_salary(posting)
         assert result["unit"] is None
 
+    def test_scalar_value_with_outer_unit_hour(self):
+        """Form B (scalar value) with ``unitText: HOUR`` on the OUTER
+        MonetaryAmount object — schema.org allows this and the extractor
+        must respect it instead of dropping the unit on the floor (#3226).
+        """
+        posting = {
+            "baseSalary": {
+                "@type": "MonetaryAmount",
+                "currency": "USD",
+                "unitText": "HOUR",
+                "value": 25,
+            }
+        }
+        result = _extract_salary(posting)
+        assert result == {"currency": "USD", "min": 25, "max": 25, "unit": "hour"}
+
+    def test_scalar_value_with_outer_unit_year(self):
+        """Form B with ``unitText: YEAR`` on the outer object."""
+        posting = {
+            "baseSalary": {
+                "@type": "MonetaryAmount",
+                "currency": "USD",
+                "unitText": "YEAR",
+                "value": 120000,
+            }
+        }
+        result = _extract_salary(posting)
+        assert result == {"currency": "USD", "min": 120000, "max": 120000, "unit": "year"}
+
+    def test_scalar_value_without_unit_text(self):
+        """Form B without any ``unitText`` — unit stays ``None`` (current
+        default, downstream falls back to description-heuristic salary
+        period inference)."""
+        posting = {
+            "baseSalary": {
+                "currency": "USD",
+                "value": 100000,
+            }
+        }
+        result = _extract_salary(posting)
+        assert result == {"currency": "USD", "min": 100000, "max": 100000, "unit": None}
+
+    def test_nested_unit_text_still_respected(self):
+        """Form A is unchanged: nested ``unitText`` on the QuantitativeValue
+        is the source of truth when present (regression guard)."""
+        posting = {
+            "baseSalary": {
+                "@type": "MonetaryAmount",
+                "currency": "USD",
+                "value": {
+                    "@type": "QuantitativeValue",
+                    "minValue": 80000,
+                    "maxValue": 120000,
+                    "unitText": "YEAR",
+                },
+            }
+        }
+        result = _extract_salary(posting)
+        assert result == {"currency": "USD", "min": 80000, "max": 120000, "unit": "year"}
+
+    def test_nested_unit_text_wins_over_outer(self):
+        """When both outer and nested ``unitText`` are present the nested
+        one wins — it is the more specific qualifier of the actual value."""
+        posting = {
+            "baseSalary": {
+                "@type": "MonetaryAmount",
+                "currency": "USD",
+                "unitText": "HOUR",  # outer
+                "value": {
+                    "@type": "QuantitativeValue",
+                    "minValue": 80000,
+                    "maxValue": 120000,
+                    "unitText": "YEAR",  # nested — wins
+                },
+            }
+        }
+        result = _extract_salary(posting)
+        assert result["unit"] == "year"
+
+    def test_range_falls_back_to_outer_unit_when_nested_missing(self):
+        """Form A variant: nested ``unitText`` absent, outer present — the
+        outer unit fills in.  This matches the symmetric handling for
+        scalar Form B (#3226)."""
+        posting = {
+            "baseSalary": {
+                "@type": "MonetaryAmount",
+                "currency": "USD",
+                "unitText": "MONTH",
+                "value": {
+                    "@type": "QuantitativeValue",
+                    "minValue": 5000,
+                    "maxValue": 7000,
+                },
+            }
+        }
+        result = _extract_salary(posting)
+        assert result == {"currency": "USD", "min": 5000, "max": 7000, "unit": "month"}
+
 
 class TestTextOrList:
     def test_string(self):
