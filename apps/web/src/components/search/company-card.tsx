@@ -2,7 +2,7 @@
 
 import { memo, useState, useRef, useMemo } from "react";
 import Link from "next/link";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { CompanyIcon } from "@/components/CompanyIcon";
 import { useParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
@@ -43,6 +43,7 @@ interface CompanyCardProps {
 function CompanyCardImpl({ result, keywords, locationIds, locations, occupations, seniorities, technologies, employmentTypes, workMode, salaryMinEur, salaryMaxEur, experienceMin, experienceMax, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
   const params = useParams();
   const locale = (params.lang as string) ?? "en";
+  const { t } = useLingui();
   const { company, activeMatches, yearMatches } = result;
 
   const companyHref = buildFilteredPath(
@@ -128,14 +129,29 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
       {/* Scrollable posting list */}
       <ScrollFade className="max-h-[184px]" scrollRef={scrollRef} deps={[allPostings.length]}>
           {allPostings.map((posting) => (
+          // Un-nested layout (issue #3166): the row "open posting" button
+          // and the SaveButton are siblings under a `relative` wrapper —
+          // not a div[role=button] containing a nested <button>. The open
+          // button is a positioned overlay covering the row's click area;
+          // SaveButton sits in normal flex flow with `relative z-10` so
+          // it stacks above the overlay and stays keyboard-reachable.
           <div
             key={posting.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => onShowPosting?.(posting.id)}
-            onKeyDown={(e) => { if (e.key === "Enter") onShowPosting?.(posting.id); }}
-            className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === selectedPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
+            className={`relative flex items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === selectedPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
           >
+            <button
+              type="button"
+              onClick={() => onShowPosting?.(posting.id)}
+              aria-label={
+                posting.title ??
+                t({
+                  id: "search.card.openPosting",
+                  comment: "Aria label for opening a job posting from a company card row when the posting title is missing",
+                  message: "Open job posting",
+                })
+              }
+              className="absolute inset-0 z-0 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            />
             <TrackingDot postingId={posting.id} />
             <span className="min-w-0 flex-1 truncate text-sm">{posting.title ?? "—"}</span>
             {posting.isActive === false && (
@@ -151,8 +167,16 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
                 {posting.locations.length > 1 && ` +${posting.locations.length - 1}`}
               </span>
             )}
-            {!posting.title && <PendingJobIcon />}
-            <SaveButton postingId={posting.id} />
+            {!posting.title && (
+              // `relative z-10` so the warning icon's tooltip trigger
+              // remains above the absolute overlay button.
+              <span className="relative z-10 inline-flex shrink-0">
+                <PendingJobIcon />
+              </span>
+            )}
+            <span className="relative z-10 shrink-0">
+              <SaveButton postingId={posting.id} />
+            </span>
             <span suppressHydrationWarning className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted">
               {timeAgoShort(posting.firstSeenAt)}
             </span>

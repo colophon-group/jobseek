@@ -135,15 +135,34 @@ export function WatchlistJobList({
       );
     }
 
+    // Un-nested layout (issue #3166): row open button + save button are
+    // siblings in a `relative` container, not nested. The open button is
+    // a positioned overlay covering the row's click area; the save
+    // button sits in normal flex flow with `relative z-10` so it stacks
+    // above the overlay AND receives its own click. Tab order: row open
+    // first, then save (DOM order). No `e.stopPropagation()` needed —
+    // the buttons are siblings, not nested.
     rows.push(
-      <button
+      <div
         key={entry.id}
-        type="button"
-        onClick={() => handleOpenPosting(entry.id)}
-        className={`flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-border-soft ${
+        className={`relative flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-border-soft ${
           showPostingId === entry.id ? "bg-border-soft" : ""
         }`}
       >
+        <button
+          type="button"
+          onClick={() => handleOpenPosting(entry.id)}
+          aria-label={
+            entry.title
+              ? `${entry.company.name} — ${entry.title}`
+              : t({
+                  id: "watchlists.jobList.openPosting",
+                  comment: "Aria label for the row open-posting button when the posting title is missing",
+                  message: "Open job posting",
+                })
+          }
+          className="absolute inset-0 z-0 cursor-pointer rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        />
         <TrackingDot postingId={entry.id} />
         <CompanyIcon icon={entry.company.icon} alt={entry.company.name} size={24} />
 
@@ -155,14 +174,17 @@ export function WatchlistJobList({
           {entry.title ?? "—"}
         </span>
 
-        {!entry.title && <PendingJobIcon />}
-        <span
-          role="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggle(entry.id);
-          }}
-          className="shrink-0 cursor-pointer text-muted transition-opacity hover:opacity-70"
+        {!entry.title && (
+          // `relative z-10` so the warning icon's tooltip trigger remains
+          // above the absolute overlay button and still receives hover.
+          <span className="relative z-10 inline-flex shrink-0">
+            <PendingJobIcon />
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => toggle(entry.id)}
+          className="relative z-10 shrink-0 cursor-pointer text-muted transition-opacity hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           aria-label={
             isSaved(entry.id)
               ? t({ id: "watchlists.jobList.unsave", comment: "Unsave job aria label", message: "Unsave job" })
@@ -174,7 +196,7 @@ export function WatchlistJobList({
             aria-hidden="true"
             className={isSaved(entry.id) ? "fill-current" : ""}
           />
-        </span>
+        </button>
 
         <span
           suppressHydrationWarning
@@ -182,7 +204,7 @@ export function WatchlistJobList({
         >
           {timeAgoShort(entry.firstSeenAt)}
         </span>
-      </button>,
+      </div>,
     );
   }
 

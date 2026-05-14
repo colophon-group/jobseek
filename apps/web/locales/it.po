@@ -239,7 +239,7 @@ msgstr "attivi"
 
 #. Active matches label on company card
 #. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:120
+#: src/components/search/company-card.tsx:121
 msgid "search.card.active"
 msgstr "attivo"
 
@@ -333,16 +333,16 @@ msgstr "Tutte le lingue"
 msgid "settings.general.jobLanguages.all"
 msgstr "Tutte le lingue"
 
-#. Title for the all-locations modal on company page
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:268
-msgid "company.locationModal.title"
-msgstr "Tutte le sedi"
-
 #. Button to open all-locations modal on company page
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx:346
 msgid "company.page.allLocations"
+msgstr "Tutte le sedi"
+
+#. Title for the all-locations modal on company page
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:268
+msgid "company.locationModal.title"
 msgstr "Tutte le sedi"
 
 #. Link to sign-in page from sign-up
@@ -434,12 +434,6 @@ msgstr "Candidato"
 msgid "search.tracker.applied"
 msgstr "Candidato"
 
-#. Applied status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:20
-msgid "myJobs.status.applied"
-msgstr "Candidato"
-
 #. Sankey funnel node: applied
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:42
@@ -450,6 +444,12 @@ msgstr "Candidato"
 #. js-lingui-explicit-id
 #: src/components/my-jobs/my-job-detail-panel.tsx:36
 msgid "myJobs.statusOption.applied"
+msgstr "Candidato"
+
+#. Applied status badge label
+#. js-lingui-explicit-id
+#: src/components/my-jobs/status-badge.tsx:20
+msgid "myJobs.status.applied"
 msgstr "Candidato"
 
 #. Apply salary filter
@@ -544,12 +544,6 @@ msgstr "Torna su"
 msgid "myJobs.interviewType.behavioral"
 msgstr "Comportamentale"
 
-#. Back-to-index link at the top of a blog post (rendered as '← {label}')
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/blog/[slug]/page.tsx:146
-msgid "blog.post.backToIndex"
-msgstr "Blog"
-
 #. Document title (<title>) for the blog index page
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:28
@@ -560,6 +554,12 @@ msgstr "Blog"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:79
 msgid "blog.index.heading"
+msgstr "Blog"
+
+#. Back-to-index link at the top of a blog post (rendered as '← {label}')
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/[slug]/page.tsx:146
+msgid "blog.post.backToIndex"
 msgstr "Blog"
 
 #. Nav link: Blog
@@ -791,12 +791,6 @@ msgstr "Chiudi"
 msgid "settings.jobLanguages.modal.close"
 msgstr "Chiudi"
 
-#. Aria label for the work-mode modal close button
-#. js-lingui-explicit-id
-#: src/components/search/work-mode-modal.tsx:90
-msgid "search.workModeModal.close"
-msgstr "Chiudi"
-
 #. Aria label for the technology modal close button
 #. js-lingui-explicit-id
 #: src/components/search/technology-modal.tsx:117
@@ -807,6 +801,12 @@ msgstr "Chiudi"
 #. js-lingui-explicit-id
 #: src/components/search/seniority-modal.tsx:65
 msgid "search.seniorityModal.close"
+msgstr "Chiudi"
+
+#. Aria label for the work-mode modal close button
+#. js-lingui-explicit-id
+#: src/components/search/work-mode-modal.tsx:90
+msgid "search.workModeModal.close"
 msgstr "Chiudi"
 
 #. Aria label for the salary modal close button
@@ -827,12 +827,6 @@ msgstr "Chiudi"
 msgid "search.locationModal.close"
 msgstr "Chiudi"
 
-#. Aria label for close button on the company-page all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:275
-msgid "company.locationModal.close"
-msgstr "Chiudi"
-
 #. Aria label for the experience modal close button
 #. js-lingui-explicit-id
 #: src/components/search/experience-modal.tsx:193
@@ -843,6 +837,12 @@ msgstr "Chiudi"
 #. js-lingui-explicit-id
 #: src/components/search/employment-type-modal.tsx:82
 msgid "search.employmentTypeModal.close"
+msgstr "Chiudi"
+
+#. Aria label for close button on the company-page all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:275
+msgid "company.locationModal.close"
 msgstr "Chiudi"
 
 #. Aria label for job detail panel close button
@@ -871,7 +871,7 @@ msgstr "Chiuso"
 
 #. Label for inactive/closed job postings on company card
 #. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:143
+#: src/components/search/company-card.tsx:159
 msgid "search.card.closed"
 msgstr "Chiuso"
 
@@ -983,12 +983,6 @@ msgstr "Collega"
 msgid "settings.account.socials.title"
 msgstr "Account collegati"
 
-#. Footer link to contact email
-#. js-lingui-explicit-id
-#: src/components/Footer.tsx:46
-msgid "common.footer.contact"
-msgstr "Contatti"
-
 #. TOC: Contact
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:24
@@ -1001,16 +995,22 @@ msgstr "Contatti"
 msgid "license.contact.title"
 msgstr "Contatti"
 
-#. Table of contents heading
+#. Footer link to contact email
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:21
-msgid "indexing.toc.title"
-msgstr "Sommario"
+#: src/components/Footer.tsx:46
+msgid "common.footer.contact"
+msgstr "Contatti"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:17
 msgid "license.toc.title"
+msgstr "Sommario"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:21
+msgid "indexing.toc.title"
 msgstr "Sommario"
 
 #. Button to continue to app after verification
@@ -1911,7 +1911,7 @@ msgstr "nell'ultimo anno"
 
 #. Yearly matches label on company card
 #. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:122
+#: src/components/search/company-card.tsx:123
 msgid "search.card.yearCount"
 msgstr "nell'ultimo anno"
 
@@ -1999,16 +1999,16 @@ msgstr "In colloquio"
 msgid "search.tracker.interviewing"
 msgstr "In colloquio"
 
-#. Interviewing status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:21
-msgid "myJobs.status.interviewing"
-msgstr "In colloquio"
-
 #. Status option in dropdown: interviewing
 #. js-lingui-explicit-id
 #: src/components/my-jobs/my-job-detail-panel.tsx:37
 msgid "myJobs.statusOption.interviewing"
+msgstr "In colloquio"
+
+#. Interviewing status badge label
+#. js-lingui-explicit-id
+#: src/components/my-jobs/status-badge.tsx:21
+msgid "myJobs.status.interviewing"
 msgstr "In colloquio"
 
 #. Interviews section heading
@@ -2050,16 +2050,16 @@ msgstr "C'è un limite al numero di offerte che posso tracciare?"
 msgid "myJobs.heatmap.month.jan"
 msgstr "Gen"
 
-#. Singular job count on watchlist card
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-card.tsx:31
-msgid "watchlists.card.jobSingular"
-msgstr "offerta"
-
 #. Singular job count in public watchlist
 #. js-lingui-explicit-id
 #: src/components/watchlist/public-watchlist-search.tsx:121
 msgid "watchlists.explore.jobSingular"
+msgstr "offerta"
+
+#. Singular job count on watchlist card
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:31
+msgid "watchlists.card.jobSingular"
 msgstr "offerta"
 
 #. TOC: Job data (CC BY-NC 4.0)
@@ -2162,16 +2162,16 @@ msgstr "Il codice sorgente di Job Seek è open source sotto licenza MIT. I dati 
 msgid "watchlist.meta.fallback"
 msgstr "Lista lavori di @{owner}"
 
-#. Plural job count on watchlist card
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-card.tsx:32
-msgid "watchlists.card.jobPlural"
-msgstr "offerte"
-
 #. Plural job count in public watchlist
 #. js-lingui-explicit-id
 #: src/components/watchlist/public-watchlist-search.tsx:122
 msgid "watchlists.explore.jobPlural"
+msgstr "offerte"
+
+#. Plural job count on watchlist card
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:32
+msgid "watchlists.card.jobPlural"
 msgstr "offerte"
 
 #. js-lingui-explicit-id
@@ -2646,7 +2646,7 @@ msgstr "Nessun settore trovato."
 
 #. Empty state when no jobs match the time range
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:208
+#: src/components/watchlist/watchlist-job-list.tsx:230
 msgid "watchlists.jobList.empty"
 msgstr "Nessuna offerta trovata."
 
@@ -2852,6 +2852,18 @@ msgstr "Solo lettere minuscole, numeri e trattini (non all'inizio/fine)"
 msgid "myJobs.interviewType.onsite"
 msgstr "In sede"
 
+#. Aria label for the row open-posting button when the posting title is missing
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx:158
+msgid "watchlists.jobList.openPosting"
+msgstr "Apri offerta di lavoro"
+
+#. Aria label for opening a job posting from a company card row when the posting title is missing
+#. js-lingui-explicit-id
+#: src/components/search/company-card.tsx:147
+msgid "search.card.openPosting"
+msgstr "Apri offerta di lavoro"
+
 #. Aria label for mobile menu button
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:89
@@ -2937,26 +2949,26 @@ msgstr "La nostra posizione sull'automazione"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:25
-msgid "indexing.toc.overview"
-msgstr "Panoramica"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:21
 msgid "license.toc.overview"
 msgstr "Panoramica"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:22
-msgid "indexing.toc.ariaLabel"
-msgstr "Contenuti della pagina"
+#: src/components/HowWeIndexContent.tsx:25
+msgid "indexing.toc.overview"
+msgstr "Panoramica"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:18
 msgid "license.toc.ariaLabel"
+msgstr "Contenuti della pagina"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:22
+msgid "indexing.toc.ariaLabel"
 msgstr "Contenuti della pagina"
 
 #. Heading shown on the 404 page
@@ -3310,12 +3322,6 @@ msgstr "Rifiutato"
 msgid "search.tracker.rejected"
 msgstr "Rifiutato"
 
-#. Rejected status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:23
-msgid "myJobs.status.rejected"
-msgstr "Rifiutato"
-
 #. Sankey funnel node label prefix: rejected
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:45
@@ -3326,6 +3332,12 @@ msgstr "Rifiutato"
 #. js-lingui-explicit-id
 #: src/components/my-jobs/my-job-detail-panel.tsx:39
 msgid "myJobs.statusOption.rejected"
+msgstr "Rifiutato"
+
+#. Rejected status badge label
+#. js-lingui-explicit-id
+#: src/components/my-jobs/status-badge.tsx:23
+msgid "myJobs.status.rejected"
 msgstr "Rifiutato"
 
 #. Footer license summary text
@@ -3620,7 +3632,7 @@ msgstr "Salva qualsiasi ricerca come watchlist e ricevi avvisi via email quando 
 
 #. Save job aria label
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:169
+#: src/components/watchlist/watchlist-job-list.tsx:191
 msgid "watchlists.jobList.save"
 msgstr "Salva offerta"
 
@@ -3654,12 +3666,6 @@ msgstr "Salva questa ricerca"
 msgid "myJobs.group.saved"
 msgstr "Salvato"
 
-#. Saved status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx:19
-msgid "myJobs.status.saved"
-msgstr "Salvato"
-
 #. Sankey funnel node: saved jobs
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:41
@@ -3670,6 +3676,12 @@ msgstr "Salvato"
 #. js-lingui-explicit-id
 #: src/components/my-jobs/my-job-detail-panel.tsx:35
 msgid "myJobs.statusOption.saved"
+msgstr "Salvato"
+
+#. Saved status badge label
+#. js-lingui-explicit-id
+#: src/components/my-jobs/status-badge.tsx:19
+msgid "myJobs.status.saved"
 msgstr "Salvato"
 
 #. Username save button while loading
@@ -3894,16 +3906,16 @@ msgstr "Impostazioni"
 msgid "home.features.s3.p3.title"
 msgstr "Condividi con chiunque"
 
-#. Button to collapse location list
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:357
-msgid "search.detail.showLessLocations"
-msgstr "Mostra meno"
-
 #. Collapse location pill list
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx:355
 msgid "company.page.showLess"
+msgstr "Mostra meno"
+
+#. Button to collapse location list
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:357
+msgid "search.detail.showLessLocations"
 msgstr "Mostra meno"
 
 #. Aria label to show password
@@ -4421,7 +4433,7 @@ msgstr "Watchlist illimitate, avvisi email sui nuovi risultati"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:168
+#: src/components/watchlist/watchlist-job-list.tsx:190
 msgid "watchlists.jobList.unsave"
 msgstr "Rimuovi offerta"
 
