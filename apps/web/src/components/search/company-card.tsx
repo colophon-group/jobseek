@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { memo, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Trans } from "@lingui/react/macro";
 import { CompanyIcon } from "@/components/CompanyIcon";
@@ -40,7 +40,7 @@ interface CompanyCardProps {
   selectedPostingId?: string | null;
 }
 
-export function CompanyCard({ result, keywords, locationIds, locations, occupations, seniorities, technologies, employmentTypes, workMode, salaryMinEur, salaryMaxEur, experienceMin, experienceMax, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
+function CompanyCardImpl({ result, keywords, locationIds, locations, occupations, seniorities, technologies, employmentTypes, workMode, salaryMinEur, salaryMaxEur, experienceMin, experienceMax, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
   const params = useParams();
   const locale = (params.lang as string) ?? "en";
   const { company, activeMatches, yearMatches } = result;
@@ -164,3 +164,88 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
     </div>
   );
 }
+
+// --- Memoization (issue #3198) -----------------------------------------------
+// CompanyCard is rendered in a list by SearchResults; without memoization,
+// every filter mutation in the parent SearchPage re-renders all N cards (10 on
+// initial page, up to 50+ with infinite scroll), each with its own internal
+// state machine and 3-5 child components. The parent passes arrays
+// (`keywords`, `locationIds`, `locations`, ...) that are reconstructed on
+// every render in the parent JSX (`locations.map((l) => l.id)`), so default
+// `React.memo` referential equality always fails.
+//
+// We compare each prop explicitly. For arrays we use a stable shallow
+// equality check on the relevant identity (IDs for taxonomy items, raw
+// strings for keywords/workMode/employmentTypes/languages). For functions
+// (`onShowPosting`) we compare by reference — callers MUST stabilize with
+// `useCallback` (search-results.tsx + search-page.tsx do so), otherwise we'd
+// hide stale-closure bugs.
+//
+// IMPORTANT: returning `true` here skips the render. If we omit a prop that
+// genuinely changed, the UI will go stale. Every prop in `CompanyCardProps`
+// must be reflected below.
+
+function arraysShallowEqual<T>(a: readonly T[] | undefined, b: readonly T[] | undefined): boolean {
+  if (a === b) return true;
+  if (a === undefined || b === undefined) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function idArraysEqual<T extends { id: string | number }>(
+  a: readonly T[] | undefined,
+  b: readonly T[] | undefined,
+): boolean {
+  if (a === b) return true;
+  if (a === undefined || b === undefined) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id) return false;
+  }
+  return true;
+}
+
+/**
+ * Exported for unit testing only (see __tests__/company-card.test.tsx).
+ * Not part of the public component API.
+ */
+export function companyCardPropsEqual(prev: CompanyCardProps, next: CompanyCardProps): boolean {
+  // `result` is a reference-identity check — the search runner replaces the
+  // companies array on every search response, so a new reference always
+  // signals genuinely new data. We don't deep-walk postings here.
+  if (prev.result !== next.result) return false;
+
+  // Primitives.
+  if (prev.salaryMinEur !== next.salaryMinEur) return false;
+  if (prev.salaryMaxEur !== next.salaryMaxEur) return false;
+  if (prev.experienceMin !== next.experienceMin) return false;
+  if (prev.experienceMax !== next.experienceMax) return false;
+  if (prev.selectedPostingId !== next.selectedPostingId) return false;
+
+  // Function identity — callers stabilize via `useCallback`. If a parent
+  // forgets, we'll over-render; we will NOT hide stale closures here.
+  if (prev.onShowPosting !== next.onShowPosting) return false;
+
+  // Arrays of primitives (strings / WorkMode literals).
+  if (!arraysShallowEqual(prev.keywords, next.keywords)) return false;
+  if (!arraysShallowEqual(prev.locationIds, next.locationIds)) return false;
+  if (!arraysShallowEqual(prev.employmentTypes, next.employmentTypes)) return false;
+  if (!arraysShallowEqual(prev.workMode, next.workMode)) return false;
+  if (!arraysShallowEqual(prev.languages, next.languages)) return false;
+
+  // Arrays of taxonomy objects — compare by `id` only. Cards use
+  // `.map((x) => x.id)` plus `name`/`slug` for the inline-link
+  // `companyHref`, but `name`/`slug` for a given id never change at
+  // runtime in this app (they come from server-rendered taxonomy data).
+  if (!idArraysEqual(prev.locations, next.locations)) return false;
+  if (!idArraysEqual(prev.occupations, next.occupations)) return false;
+  if (!idArraysEqual(prev.seniorities, next.seniorities)) return false;
+  if (!idArraysEqual(prev.technologies, next.technologies)) return false;
+
+  return true;
+}
+
+export const CompanyCard = memo(CompanyCardImpl, companyCardPropsEqual);

@@ -444,10 +444,17 @@ export function SearchPage({
   };
   function updateUrl() { internalUrlChangeRef.current = true; updateUrlRef.current(); }
 
-  function handleOpenPosting(postingId: string) {
+  // Stabilized for #3198 — passed into `SearchResults` -> `CompanyCard`
+  // which is wrapped in `React.memo` with a custom comparator that
+  // checks `onShowPosting` by reference. Without `useCallback`, every
+  // parent render hands every card a new function and the memo is
+  // a no-op. `setShowPostingId` / `updateShowParam` are stable
+  // (state setter + module-scoped function reading refs), so an empty
+  // dep array is correct here.
+  const handleOpenPosting = useCallback((postingId: string) => {
     setShowPostingId(postingId);
     updateShowParam(postingId);
-  }
+  }, []);
 
   function handleClosePosting() {
     setShowPostingId(null);
@@ -711,6 +718,12 @@ export function SearchPage({
     setTotalCompanies(result.totalCompanies);
   }
 
+  // Stabilized for #3198 — `locationIds` is fed into `SearchResults` and
+  // then into each `CompanyCard`. Inline `locations.map((l) => l.id)` in
+  // the JSX rebuilt a fresh array on every render, defeating the custom
+  // memo comparator's identity-first short-circuit on the array prop.
+  const locationIds = useMemo(() => locations.map((l) => l.id), [locations]);
+
   const histogramFilters: HistogramFilters = useMemo(() => ({
     keywords: keywords.length > 0 ? keywords : undefined,
     locationIds: locations.length > 0 ? locations.map((l) => l.id) : undefined,
@@ -787,7 +800,7 @@ export function SearchPage({
           <SearchResults
             companies={companies}
             keywords={keywords}
-            locationIds={locations.map((l) => l.id)}
+            locationIds={locationIds}
             locations={locations}
             occupations={occupations}
             seniorities={seniorities}

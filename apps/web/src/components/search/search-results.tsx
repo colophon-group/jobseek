@@ -56,6 +56,14 @@ export function SearchResults({
   return (
     <div className="space-y-3">
       {companies.map((result) => (
+        // Keyword-keyed wrapper: forces each card to remount when the
+        // user changes `keywords`, so the card's internal pagination
+        // state (`extraPostings`, `exhausted`, `offsetRef`) resets and
+        // doesn't show stale postings from a prior keyword search.
+        // The post-#3198 `React.memo` on `CompanyCard` still skips
+        // renders for non-keyword filter changes (salary, locations,
+        // occupations, ...), which is the hot path called out in the
+        // issue (salary slider drag).
         <div key={`${result.company.id}-${keywords.join(",")}`}>
           <CompanyCard result={result} keywords={keywords} locationIds={locationIds} locations={locations} occupations={occupations} seniorities={seniorities} technologies={technologies} employmentTypes={employmentTypes} workMode={workMode} salaryMinEur={salaryMinEur} salaryMaxEur={salaryMaxEur} experienceMin={experienceMin} experienceMax={experienceMax} languages={languages} onShowPosting={onShowPosting} selectedPostingId={selectedPostingId} />
         </div>
