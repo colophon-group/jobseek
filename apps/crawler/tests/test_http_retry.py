@@ -4,10 +4,12 @@ legitimate end-of-pagination."""
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock
 
 import httpx
 import pytest
+from prometheus_client import REGISTRY
 
 from src.shared.http_retry import (
     _RETRYABLE_STATUSES,
@@ -15,6 +17,30 @@ from src.shared.http_retry import (
     PaginationFetchError,
     fetch_with_retry,
 )
+
+
+def _samples_for(metric_name: str) -> list[dict[str, Any]]:
+    """Return all current value samples for a Prometheus counter."""
+    out: list[dict[str, Any]] = []
+    for metric in REGISTRY.collect():
+        if metric.name != metric_name:
+            continue
+        for sample in metric.samples:
+            # Counter exposes both ``<name>_total`` and ``<name>_created`` —
+            # we only want the cumulative value samples.
+            if sample.name.endswith("_created"):
+                continue
+            out.append({"labels": dict(sample.labels), "value": sample.value})
+    return out
+
+
+def _value_for(metric_name: str, **labels: str) -> float:
+    """Sum samples matching all label kwargs (subset match)."""
+    total = 0.0
+    for s in _samples_for(metric_name):
+        if all(s["labels"].get(k) == v for k, v in labels.items()):
+            total += s["value"]
+    return total
 
 
 def _resp(status: int, text: str = "") -> httpx.Response:
@@ -325,3 +351,161 @@ class TestFetchWithRetry:
 
         assert out is None
         assert client.get.await_count == 1
+
+
+# ─── Retry observability (#3210) ────────────────────────────────────────
+
+
+class TestRetryMetrics:
+    """End-to-end emission of the retry counters added in #3210.
+
+    Counters are global ``prometheus_client.Counter`` objects in
+    ``src.metrics``; each test pins a unique hostname so other tests'
+    samples can't contaminate the assertion. We read samples through
+    ``REGISTRY.collect()`` (the surface a Grafana scrape sees) rather
+    than poking at private counter state.
+    """
+
+    async def test_empty_200_storm_emits_per_attempt_then_recovers(self):
+        """Two empty-200s then a 200 — the canonical anti-bot retry storm.
+
+        Pins the brief: ``empty_200_total{host} == 2``,
+        ``attempts_total{host, outcome="retry"} == 2``,
+        ``attempts_total{host, outcome="recovered"} == 1``. Each empty
+        body bumps BOTH the anti-bot-specific counter AND the generic
+        retry counter so dashboards can aggregate by outcome OR by
+        signal without double-bookkeeping.
+        """
+        host = "storm.empty200.example.com"
+        url = f"https://{host}/listings?page=1"
+
+        base_empty = _value_for("crawler_http_retry_empty_200", host=host)
+        base_retry = _value_for("crawler_http_retry_attempts", host=host, outcome="retry")
+        base_recovered = _value_for("crawler_http_retry_attempts", host=host, outcome="recovered")
+
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[_resp(200, ""), _resp(200, ""), _resp(200, "<html>ok</html>")]
+        )
+
+        out = await fetch_with_retry(client, url, retries=3, base_delay=0.001)
+
+        assert out == "<html>ok</html>"
+        assert client.get.await_count == 3
+
+        assert _value_for("crawler_http_retry_empty_200", host=host) - base_empty == 2.0, (
+            "expected exactly 2 empty-200 increments"
+        )
+        assert (
+            _value_for("crawler_http_retry_attempts", host=host, outcome="retry") - base_retry
+            == 2.0
+        ), "expected exactly 2 retry-outcome increments (one per empty-200)"
+        assert (
+            _value_for("crawler_http_retry_attempts", host=host, outcome="recovered")
+            - base_recovered
+            == 1.0
+        ), "expected exactly 1 recovered-outcome increment after final 200"
+
+    async def test_exhausted_persistent_5xx_emits_exhausted_outcome(self):
+        """Persistent 503 across the entire retry budget → one
+        ``exhausted`` increment (and N ``retry`` increments) before
+        ``PaginationFetchError`` propagates. Pins the brief assertion
+        for the exhaustion case.
+        """
+        host = "storm.exhausted.example.com"
+        url = f"https://{host}/api/list?offset=0"
+
+        base_retry = _value_for("crawler_http_retry_attempts", host=host, outcome="retry")
+        base_exhausted = _value_for("crawler_http_retry_attempts", host=host, outcome="exhausted")
+
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(503))
+
+        with pytest.raises(PaginationFetchError):
+            await fetch_with_retry(client, url, retries=3, base_delay=0.001)
+
+        assert (
+            _value_for("crawler_http_retry_attempts", host=host, outcome="exhausted")
+            - base_exhausted
+            == 1.0
+        ), "expected exactly 1 exhausted-outcome increment"
+        # Sanity: the 3 retryable 5xx attempts all bumped ``retry``. The
+        # brief asserts ``exhausted == 1`` as the load-bearing claim;
+        # this extra check pins the symmetric retry-count side so the
+        # two outcomes stay aligned in dashboards.
+        assert (
+            _value_for("crawler_http_retry_attempts", host=host, outcome="retry") - base_retry
+            == 3.0
+        )
+
+    async def test_transient_403_emits_anti_bot_counter(self):
+        """``transient_403=True`` storm increments the anti-bot
+        ``transient_403_total`` AND the generic ``attempts_total{retry}``
+        — matching the symmetric brief for empty-200.
+        """
+        host = "storm.transient403.example.com"
+        url = f"https://{host}/sitemap-shard.xml"
+
+        base_403 = _value_for("crawler_http_retry_transient_403", host=host)
+        base_retry = _value_for("crawler_http_retry_attempts", host=host, outcome="retry")
+
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=[_resp(403), _resp(200, "<urlset/>")])
+
+        out = await fetch_with_retry(client, url, retries=3, base_delay=0.001, transient_403=True)
+
+        assert out == "<urlset/>"
+        assert _value_for("crawler_http_retry_transient_403", host=host) - base_403 == 1.0
+        assert (
+            _value_for("crawler_http_retry_attempts", host=host, outcome="retry") - base_retry
+            == 1.0
+        )
+
+    async def test_happy_path_emits_no_counters(self):
+        """A successful first-attempt 200 must NOT touch any retry
+        counter — observability is opt-in for storms, not steady-state
+        noise. Pins this so the counter doesn't accidentally bloat
+        Prometheus storage with every successful fetch.
+        """
+        host = "happy.example.com"
+        url = f"https://{host}/healthy"
+
+        base_retry = _value_for("crawler_http_retry_attempts", host=host, outcome="retry")
+        base_recovered = _value_for("crawler_http_retry_attempts", host=host, outcome="recovered")
+        base_exhausted = _value_for("crawler_http_retry_attempts", host=host, outcome="exhausted")
+
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(200, "<html>ok</html>"))
+
+        out = await fetch_with_retry(client, url)
+
+        assert out == "<html>ok</html>"
+        assert (
+            _value_for("crawler_http_retry_attempts", host=host, outcome="retry") - base_retry
+            == 0.0
+        )
+        assert (
+            _value_for("crawler_http_retry_attempts", host=host, outcome="recovered")
+            - base_recovered
+            == 0.0
+        )
+        assert (
+            _value_for("crawler_http_retry_attempts", host=host, outcome="exhausted")
+            - base_exhausted
+            == 0.0
+        )
+
+    async def test_host_label_lowercases_and_strips_port(self):
+        """``http_retry_host`` normalises the URL to the bare hostname
+        for cardinality discipline. A URL with uppercase host + port +
+        path must land under the lowercased bare-host series, not three
+        distinct series — operators query ``by (host)`` and we don't
+        want one host to splinter across casing/port variants.
+        """
+        from src.metrics import http_retry_host
+
+        assert http_retry_host("https://Example.COM:8443/foo?bar=1") == "example.com"
+        # Defensive: malformed input degrades to "unknown" rather than
+        # raising at the emission site.
+        assert http_retry_host("not-a-url") == "unknown"
+        assert http_retry_host("") == "unknown"

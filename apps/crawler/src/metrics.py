@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 # ── Worker metrics (per profile) ────────────────────────────────────
@@ -341,6 +343,50 @@ browser_navigate_fallback_total = Counter(
     ["primary", "fallback", "outcome"],
 )
 
+# HTTP retry observability (#3210). The httpx retry path (and per-monitor
+# copies for workday / lever / hireology / smartrecruiters / accenture /
+# PCSX / api_sniff) all retry transient failures and emit structured logs,
+# but had no counter — so operators could not query "what's the retry storm
+# rate?" or "is host X 429-throttling us today?" without grepping Loki.
+# The 2026-04-26 NHS empty-200 incident (#2722, #2739) was diagnosed via log
+# grep; with these counters it would have alerted in 5 minutes.
+#
+# Cardinality is bounded by the number of distinct hostnames we monitor
+# (~1k tops across all boards). The label is ``urlparse(url).hostname``
+# lowercased with port stripped — no path / query — so a host that
+# paginates over thousands of URLs collapses to a single series.
+http_retry_attempts_total = Counter(
+    "crawler_http_retry_attempts_total",
+    # Outcomes:
+    #   retry      — a transient failure was observed and a retry was
+    #                scheduled (5xx, 408/425/429, network error, empty-200,
+    #                transient-403, non-list/dict body decode).
+    #   recovered  — a subsequent attempt succeeded after at least one
+    #                retry. Emitted at most once per call.
+    #   exhausted  — the retry budget was exhausted; PaginationFetchError
+    #                raised. Emitted at most once per call.
+    "HTTP fetch retry attempts",
+    ["host", "outcome"],
+)
+
+# Anti-bot signal counters (#3210). These are sub-categories of the
+# generic "retry" outcome above — emitting both lets operators
+# distinguish a 5xx storm (infrastructure) from an anti-bot ramp
+# (mitigation: proxy/cookie rotation, residential IP). Each retry that
+# matches one of these classifications increments BOTH the generic
+# ``attempts_total{outcome="retry"}`` AND the specific counter, so PromQL
+# queries that aggregate by outcome stay correct.
+http_retry_empty_200_total = Counter(
+    "crawler_http_retry_empty_200_total",
+    "HTTP fetches returning empty 200 (anti-bot suspicion)",
+    ["host"],
+)
+http_retry_transient_403_total = Counter(
+    "crawler_http_retry_transient_403_total",
+    "HTTP 403 retries (transient anti-bot)",
+    ["host"],
+)
+
 browser_content_retry_total = Counter(
     "crawler_browser_content_retry_total",
     # Outcomes: retry = page.content() raised the navigation-race error and a
@@ -387,3 +433,30 @@ def _read_version() -> str:
 def start_metrics_server(port: int) -> None:
     build_info.labels(version=_read_version()).set(1)
     start_http_server(port)
+
+
+# ── HTTP retry helpers (#3210) ─────────────────────────────────────────
+
+
+def http_retry_host(url: str) -> str:
+    """Extract a Prometheus-safe ``host`` label from ``url``.
+
+    Returns ``urlparse(url).hostname`` lowercased with the port stripped.
+    Falls back to ``"unknown"`` when the URL is malformed or hostname-less
+    so emission never fails — a counter labelled ``"unknown"`` is a
+    legitimate operator signal (something is calling the retry path with
+    a non-URL), while a ``LabelError`` raised from the emission site would
+    mask the underlying retry storm we are trying to observe.
+
+    Cardinality: bounded by the number of distinct hostnames the crawler
+    contacts (~1k tops). No path / query / port component is emitted, so
+    a board that paginates over thousands of distinct URLs collapses to
+    a single series.
+    """
+    try:
+        host = urlparse(url).hostname
+    except (ValueError, TypeError):
+        return "unknown"
+    if not host:
+        return "unknown"
+    return host.lower()
