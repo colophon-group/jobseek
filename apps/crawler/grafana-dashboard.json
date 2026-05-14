@@ -2,7 +2,7 @@
   "uid": "jobseek-crawler-pipeline",
   "title": "Crawler Pipeline",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "timezone": "browser",
   "editable": true,
   "graphTooltip": 1,
@@ -293,6 +293,170 @@
       "description": "Seconds since each worker last updated `crawler_worker_heartbeat_timestamp_seconds`. Healthy workers tick every few seconds. >600s fires the WorkerStuck alert (page) \u2014 process is alive but the claim/dispatch loop has wedged (Playwright deadlock, scraper hang, etc.). See #3169."
     },
     {
+      "id": 906,
+      "type": "table",
+      "title": "Cron Job Last Run",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Seconds since last run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 14400
+                    },
+                    {
+                      "color": "red",
+                      "value": 21600
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last status"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "failure",
+                        "color": "red"
+                      },
+                      "1": {
+                        "text": "success",
+                        "color": "green"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "time() - max by (cron_job) (crawler_cron_last_run_ts)",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "max by (cron_job) (crawler_cron_last_run_status)",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true
+            },
+            "indexByName": {
+              "cron_job": 0,
+              "Value #A": 1,
+              "Value #B": 2
+            },
+            "renameByName": {
+              "cron_job": "Cron job",
+              "Value #A": "Seconds since last run",
+              "Value #B": "Last status"
+            }
+          }
+        }
+      ],
+      "description": "Per-cron last-run telemetry from `crawler_cron_last_run_ts` and `crawler_cron_last_run_status` (#2704). >6h since last run fires the CronJobMissing alert (page); `status=0` fires CronJobFailing (email). Requires CRAWLER_PUSHGATEWAY_URL to be set in the cron's runtime env; table is empty until then. See #3167."
+    },
+    {
       "id": 1,
       "type": "row",
       "title": "HTTP Worker",
@@ -301,7 +465,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 25
       },
       "panels": []
     },
@@ -317,7 +481,7 @@
         "h": 8,
         "w": 9,
         "x": 0,
-        "y": 18
+        "y": 26
       },
       "fieldConfig": {
         "defaults": {
@@ -430,7 +594,7 @@
         "h": 8,
         "w": 6,
         "x": 9,
-        "y": 18
+        "y": 26
       },
       "fieldConfig": {
         "defaults": {
@@ -486,7 +650,7 @@
         "h": 8,
         "w": 9,
         "x": 15,
-        "y": 18
+        "y": 26
       },
       "fieldConfig": {
         "defaults": {
@@ -535,7 +699,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 34
       },
       "panels": []
     },
@@ -551,7 +715,7 @@
         "h": 8,
         "w": 9,
         "x": 0,
-        "y": 27
+        "y": 35
       },
       "fieldConfig": {
         "defaults": {
@@ -664,7 +828,7 @@
         "h": 8,
         "w": 6,
         "x": 9,
-        "y": 27
+        "y": 35
       },
       "fieldConfig": {
         "defaults": {
@@ -720,7 +884,7 @@
         "h": 8,
         "w": 9,
         "x": 15,
-        "y": 27
+        "y": 35
       },
       "fieldConfig": {
         "defaults": {
@@ -769,7 +933,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 43
       },
       "panels": []
     },
@@ -785,7 +949,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 36
+        "y": 44
       },
       "fieldConfig": {
         "defaults": {
@@ -837,7 +1001,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 36
+        "y": 44
       },
       "fieldConfig": {
         "defaults": {
@@ -889,7 +1053,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 36
+        "y": 44
       },
       "fieldConfig": {
         "defaults": {
@@ -941,7 +1105,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 36
+        "y": 44
       },
       "fieldConfig": {
         "defaults": {
@@ -990,7 +1154,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 52
       },
       "panels": []
     },
@@ -1006,7 +1170,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 45
+        "y": 53
       },
       "fieldConfig": {
         "defaults": {
@@ -1076,7 +1240,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 45
+        "y": 53
       },
       "fieldConfig": {
         "defaults": {
@@ -1146,7 +1310,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 45
+        "y": 53
       },
       "fieldConfig": {
         "defaults": {
@@ -1216,7 +1380,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 45
+        "y": 53
       },
       "fieldConfig": {
         "defaults": {
@@ -1283,7 +1447,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 61
       },
       "panels": []
     },
@@ -1299,7 +1463,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 54
+        "y": 62
       },
       "fieldConfig": {
         "defaults": {
@@ -1368,7 +1532,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 54
+        "y": 62
       },
       "fieldConfig": {
         "defaults": {
@@ -1416,7 +1580,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 54
+        "y": 62
       },
       "fieldConfig": {
         "defaults": {
@@ -1472,7 +1636,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 54
+        "y": 62
       },
       "fieldConfig": {
         "defaults": {
@@ -1527,7 +1691,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 62
+        "y": 70
       },
       "panels": []
     },
@@ -1543,7 +1707,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 63
+        "y": 71
       },
       "fieldConfig": {
         "defaults": {
@@ -1613,7 +1777,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 63
+        "y": 71
       },
       "fieldConfig": {
         "defaults": {
@@ -1665,7 +1829,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 63
+        "y": 71
       },
       "fieldConfig": {
         "defaults": {
@@ -1723,7 +1887,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 71
+        "y": 79
       },
       "panels": []
     },
@@ -1739,7 +1903,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 72
+        "y": 80
       },
       "fieldConfig": {
         "defaults": {
@@ -1817,7 +1981,7 @@
         "h": 8,
         "w": 8,
         "x": 6,
-        "y": 72
+        "y": 80
       },
       "id": 700,
       "title": "Container CPU",
@@ -1864,7 +2028,7 @@
         "h": 8,
         "w": 8,
         "x": 14,
-        "y": 72
+        "y": 80
       },
       "id": 701,
       "title": "Container Memory",
@@ -1911,7 +2075,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 80
+        "y": 88
       },
       "id": 704,
       "title": "Disk Available",
@@ -1967,7 +2131,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 80
+        "y": 88
       },
       "id": 705,
       "title": "Network I/O",
