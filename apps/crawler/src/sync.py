@@ -48,6 +48,22 @@ log = structlog.get_logger()
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
+# Postgres-side mirror of the Typesense `has_content` flag computed in
+# `exporter._build_typesense_docs` as
+#   bool(title and title.strip()) and (description_r2_hash is not None)
+# where `title = titles[0] if titles else ""`.
+#
+# The web app filters every list/search/facet surface by
+# `is_active:true && has_content:!=false` (POSTING_BASE_FILTER, see
+# apps/web/src/lib/search/typesense-filters.ts), so any precomputed
+# "active_posting_count" stored on `company`, `location`, `occupation`,
+# `seniority`, or `technology` docs MUST use the same gate; otherwise
+# the user clicks a facet labelled "N postings" and sees fewer
+# postings than the label promised (issue #3009 / #3238).
+_HAS_CONTENT_SQL = (
+    "description_r2_hash IS NOT NULL AND cardinality(titles) > 0 AND length(trim(titles[1])) > 0"
+)
+
 _UPSERT_OCCUPATION_DOMAINS = """
 INSERT INTO occupation_domain (slug)
 SELECT * FROM unnest($1::text[])
@@ -2072,21 +2088,27 @@ async def sync_companies_typesense(
     active_counts: dict[str, int] = {}
     year_counts: dict[str, int] = {}
     if local_conn is not None:
+        # Both queries gate on `has_content` so the precomputed counts
+        # match what the web's POSTING_BASE_FILTER /
+        # POSTING_FLOW_FILTER produce when filtering the
+        # `job_posting` collection. See `_HAS_CONTENT_SQL` for the
+        # formula and issue #3238 for the contract.
         active_rows = await local_conn.fetch(
-            """
+            f"""
             SELECT company_id::text, COUNT(*) AS cnt
             FROM job_posting
-            WHERE is_active
+            WHERE is_active AND {_HAS_CONTENT_SQL}
             GROUP BY 1
             """
         )
         active_counts = {r["company_id"]: r["cnt"] for r in active_rows}
 
         year_rows = await local_conn.fetch(
-            """
+            f"""
             SELECT company_id::text, COUNT(*) AS cnt
             FROM job_posting
             WHERE first_seen_at > now() - interval '1 year'
+              AND {_HAS_CONTENT_SQL}
             GROUP BY 1
             """
         )
@@ -2344,6 +2366,12 @@ def _fetch_active_facet_counts(
     Postgres ``unnest(location_ids)`` is leaf-only and silently diverges
     from filter results (issue #2978).
 
+    The ``filter_by`` clause matches the web's ``POSTING_BASE_FILTER``
+    (``is_active:true && has_content:!=false``) so the count an operator
+    sees on a location / occupation / company card equals the count
+    they get when they filter the job-posting collection by that doc
+    (issue #3238).
+
     Synchronous — designed to be called from
     ``loop.run_in_executor(None, _fetch_active_facet_counts, ...)``.
     """
@@ -2351,7 +2379,7 @@ def _fetch_active_facet_counts(
         {
             "q": "*",
             "query_by": "title",
-            "filter_by": "is_active:true",
+            "filter_by": "is_active:true && has_content:!=false",
             "facet_by": field,
             "max_facet_values": _TS_FACET_REFRESH_MAX,
             "facet_strategy": "exhaustive",
@@ -2465,24 +2493,12 @@ async def refresh_typesense_counts(
     # (POSTING_BASE_FILTER, see apps/web/src/lib/search/typesense-filters.ts).
     # If we count without `has_content` here, the precomputed and live
     # numbers structurally diverge — issue #3009 (McDonald's: 55,591 vs
-    # 44,161 on 2026-05-10).
-    #
-    # `has_content` is computed in `exporter._build_typesense_docs` as
-    # `bool(title and title.strip()) and (description_r2_hash is not None)`,
-    # where `title = titles[0] if titles else ""`. The SQL predicate
-    # mirrors that formula so the precomputed counts equal the live
-    # facet counts modulo locale filtering (which is the user's
-    # deliberate choice).
-    _HAS_CONTENT = (
-        "description_r2_hash IS NOT NULL "
-        "AND cardinality(titles) > 0 "
-        "AND length(trim(titles[1])) > 0"
-    )
+    # 44,161 on 2026-05-10). See `_HAS_CONTENT_SQL` for the formula.
     active_rows = await local_conn.fetch(
         f"""
         SELECT company_id::text, COUNT(*) AS cnt
         FROM job_posting
-        WHERE is_active AND {_HAS_CONTENT}
+        WHERE is_active AND {_HAS_CONTENT_SQL}
         GROUP BY 1
         """
     )
@@ -2491,7 +2507,7 @@ async def refresh_typesense_counts(
         SELECT company_id::text, COUNT(*) AS cnt
         FROM job_posting
         WHERE first_seen_at > now() - interval '1 year'
-          AND {_HAS_CONTENT}
+          AND {_HAS_CONTENT_SQL}
         GROUP BY 1
         """
     )

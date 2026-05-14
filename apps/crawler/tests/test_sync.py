@@ -21,6 +21,7 @@ from src.sync import (
     run_sync,
     sync_boards,
     sync_companies,
+    sync_companies_typesense,
     sync_locations_typesense,
     sync_occupation_domains,
 )
@@ -1066,10 +1067,12 @@ class TestFetchActiveFacetCounts:
         out = _fetch_active_facet_counts(client, "location_ids")
         assert out == {"30": 2416, "10": 1086, "4": 14523}
         # Sanity-check the request shape — must include facet_by + a
-        # large max_facet_values + an active-only filter.
+        # large max_facet_values + the web's POSTING_BASE_FILTER
+        # (issue #3238: facet counts must equal what users see when
+        # filtering by the doc).
         params = client.collections["job_posting"].documents.search.call_args[0][0]
         assert params["facet_by"] == "location_ids"
-        assert params["filter_by"] == "is_active:true"
+        assert params["filter_by"] == "is_active:true && has_content:!=false"
         assert params["max_facet_values"] >= 10000
         assert params["per_page"] == 0
 
@@ -1247,6 +1250,105 @@ class TestRefreshTypesenseCounts:
         assert by_id["co-mcdonalds"]["year_posting_count"] == 55026
         assert by_id["co-accenture"]["active_posting_count"] == 52273
         assert by_id["co-accenture"]["year_posting_count"] == 81971
+
+
+class TestSyncCompaniesTypesense:
+    """Issue #3238: ``sync_companies_typesense`` computes the initial
+    ``active_posting_count`` / ``year_posting_count`` on company docs.
+    Both queries must gate on the same ``has_content`` predicate as the
+    web's ``POSTING_BASE_FILTER`` so a company card's badge cannot
+    structurally exceed the filtered facet count the user sees on
+    `/explore?company=<slug>`.
+    """
+
+    async def test_company_counts_apply_has_content_filter(self):
+        """Both the active-count and year-count SQL must include the
+        ``has_content`` predicate mirror of the exporter formula:
+        ``description_r2_hash IS NOT NULL AND cardinality(titles) > 0
+        AND length(trim(titles[1])) > 0``. The resulting company doc
+        propagates only the gated count.
+        """
+        captured_sql: list[str] = []
+
+        async def _local_fetch(sql, *args, **kwargs):
+            captured_sql.append(sql)
+            if "company_id::text" in sql and "first_seen_at" not in sql:
+                # is_active branch — only gated rows show up.
+                return [
+                    {"company_id": "co-microsoft", "cnt": 1428},
+                ]
+            if "company_id::text" in sql and "first_seen_at" in sql:
+                # year branch — same gating.
+                return [
+                    {"company_id": "co-microsoft", "cnt": 9000},
+                ]
+            return []
+
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
+
+        supa_conn = AsyncMock()
+
+        async def _supa_fetch(sql, *args, **kwargs):
+            if "company" in sql and "industry" in sql:
+                return [
+                    _StubRecord(
+                        id="co-microsoft",
+                        name="Microsoft",
+                        slug="microsoft",
+                        icon=None,
+                        logo=None,
+                        website=None,
+                        description=None,
+                        industry=None,
+                        employee_count_range=None,
+                        founded_year=None,
+                        industry_name=None,
+                    )
+                ]
+            return []
+
+        supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
+
+        client = MagicMock()
+        captured_upserts: list[tuple[str, list[dict]]] = []
+
+        def _capture_upsert(_client, collection, docs, *_a, **_kw):
+            captured_upserts.append((collection, list(docs)))
+
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await sync_companies_typesense(supa_conn, local_conn, client)
+
+        # 1. Both company count SQLs must include the has_content predicate.
+        company_count_sqls = [s for s in captured_sql if "company_id::text" in s]
+        assert len(company_count_sqls) == 2, (
+            f"expected active + year company queries, got {len(company_count_sqls)}"
+        )
+        for sql in company_count_sqls:
+            assert "description_r2_hash IS NOT NULL" in sql, (
+                f"missing description_r2_hash predicate in:\n{sql}"
+            )
+            assert "cardinality(titles) > 0" in sql, (
+                f"missing titles cardinality predicate in:\n{sql}"
+            )
+            assert "length(trim(titles[1])) > 0" in sql, (
+                f"missing titles non-blank predicate in:\n{sql}"
+            )
+
+        # 2. The active SQL keeps `is_active`; the year SQL keeps
+        #    `first_seen_at` (and intentionally drops `is_active` to
+        #    measure activity over time — parity with the web's
+        #    POSTING_FLOW_FILTER).
+        active_sql = next(s for s in company_count_sqls if "is_active" in s)
+        year_sql = next(s for s in company_count_sqls if "first_seen_at" in s)
+        assert "is_active" in active_sql
+        assert "first_seen_at" in year_sql
+
+        # 3. The doc propagates the gated counts unchanged.
+        company_docs = next((docs for c, docs in captured_upserts if c == "company"), [])
+        by_id = {d["id"]: d for d in company_docs}
+        assert by_id["co-microsoft"]["active_posting_count"] == 1428
+        assert by_id["co-microsoft"]["year_posting_count"] == 9000
 
 
 class TestPopulateLocationsIfEmpty:
