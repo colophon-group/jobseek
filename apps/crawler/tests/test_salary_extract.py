@@ -390,3 +390,57 @@ class TestNonUSDDollarMarkers:
         result = extract_salary(html)
         assert len(result) == 1
         assert result[0] == SalaryRange(min=120000, max=150000, currency="AUD", period="yearly")
+
+    # ── US$/C$/CDN$ regression (#3191 follow-up) ──
+    # The original PR's word-boundary lookbehind on `_DOLLAR_RANGE_RE` and
+    # `_SINGLE_DOLLAR_PERIOD_RE` was too tight — it rejected any letter
+    # before `$`, including the legitimate ``US$``, ``C$``, ``CDN$`` and
+    # ``CA$`` conventions seen in international postings.
+
+    def test_us_dollar_prefix_returns_usd(self):
+        html = "<p>Salary: US$120,000 per year</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "USD"
+        assert result[0].min == 120000
+        assert result[0].period == "yearly"
+
+    def test_us_dollar_range(self):
+        html = "<p>Salary: US$100,000 - US$150,000 per year</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=100000, max=150000, currency="USD", period="yearly")
+
+    def test_c_dollar_prefix_returns_cad(self):
+        html = "<p>Salary: C$120,000 per year</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "CAD"
+        assert result[0].min == 120000
+        assert result[0].period == "yearly"
+
+    def test_cdn_dollar_prefix_returns_cad(self):
+        html = "<p>Salary: CDN$120,000 per year</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "CAD"
+        assert result[0].min == 120000
+        assert result[0].period == "yearly"
+
+    def test_ca_dollar_prefix_returns_cad(self):
+        # ``CA$`` is the less-common but still seen Canadian dollar prefix.
+        html = "<p>Compensation: CA$95,000 annually</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "CAD"
+        assert result[0].min == 95000
+
+    def test_bare_n_dollar_is_not_nzd(self):
+        # ``N$`` alone is ambiguous (could be Namibian Dollar). Only
+        # ``NZ$`` is treated as a New Zealand marker — ``N$`` falls back
+        # to USD (no explicit prefix mapping).
+        html = "<p>Salary: NZ$80,000 per year</p>"
+        result = extract_salary(html)
+        nzd = [r for r in result if r.currency == "NZD"]
+        assert len(nzd) == 1
+        assert nzd[0].min == 80000

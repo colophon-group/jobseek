@@ -184,28 +184,43 @@ def _extract_location_prefixed(text: str) -> list[SalaryRange]:
 #   "S$100,000 - S$130,000"  (SGD prefix)
 #   "R$50.000"               (BRL — uses European-style "." thousands)
 
-# Allow an optional 1-2 letter prefix immediately before the leading $
-# so we can detect AUD/NZD/SGD/HKD/BRL/MXN currency markers. The prefix
-# must be word-boundary-anchored to avoid stray matches mid-word.
+# Allow an optional 1-3 letter prefix immediately before the leading $
+# so we can detect AUD/NZD/SGD/HKD/BRL/MXN as well as the legitimate
+# US/USD/CAD ``US$``, ``C$``, ``CDN$`` conventions. The prefix must be
+# word-boundary-anchored to avoid stray matches mid-word.
+#
+# Without an explicit prefix capture the leading word-boundary lookbehind
+# (``(?<=[\s(\[])``) would reject text like ``US$120,000`` because the
+# character immediately before ``$`` is a letter — even though that letter
+# is itself a currency marker. The prefix group consumes those letters so
+# the boundary check is satisfied by the character before *them*.
 _DOLLAR_RANGE_RE = re.compile(
     r"(?:(?<=^)|(?<=[\s(\[]))"
-    r"(A[U]?|N[Z]?|S|HK|R|MX)?\$([\d,.]+[Kk]?)\s*[-–—]\s*"
-    r"(?:[A-Z]{0,2}\$)?([\d,.]+[Kk]?)"
+    r"(A[U]?|N[Z]?|S|HK|R|MX|U[S]?|CDN|C[A]?)?\$([\d,.]+[Kk]?)\s*[-–—]\s*"
+    r"(?:[A-Z]{0,3}\$)?([\d,.]+[Kk]?)"
     r"(\s*.{0,80})",  # capture trailing context
 )
 
 # Currency-marker detection helpers — see issue #3191
 # Maps a marker string (uppercased, suffix-only or prefix-only) to ISO currency.
 # Ordered for explicit priority: longer markers first to avoid prefix ambiguity.
+# ``N$`` alone is intentionally NOT in the table — it's ambiguous (could
+# be Namibian Dollar). New Zealand uses ``NZ$``; that's the conventional
+# marker we recognise.
 _PREFIX_TO_CURRENCY = {
     "AU": "AUD",
     "A": "AUD",
     "NZ": "NZD",
-    "N": "NZD",  # Less common but seen in NZ
     "HK": "HKD",
     "S": "SGD",
     "R": "BRL",
     "MX": "MXN",
+    # US/Canadian dollar prefixes — common in international postings
+    "U": "USD",  # rare; appears as ``U$`` in older European templates
+    "US": "USD",
+    "CDN": "CAD",
+    "C": "CAD",
+    "CA": "CAD",
 }
 
 # After-amount (suffix) currency markers, e.g. "$120K AUD".
@@ -417,7 +432,7 @@ def _extract_bare_range(text: str) -> list[SalaryRange]:
 
 _SINGLE_DOLLAR_PERIOD_RE = re.compile(
     r"(?:(?<=^)|(?<=[\s(\[]))"
-    r"(A[U]?|N[Z]?|S|HK|R|MX)?\$([\d,.]+[Kk]?)\s*"
+    r"(A[U]?|N[Z]?|S|HK|R|MX|U[S]?|CDN|C[A]?)?\$([\d,.]+[Kk]?)\s*"
     r"((?:[A-Z]{2,3}\s*)?(?:per year|per annum|annually|annual|/year|/yr|"
     r"per hour|hourly|/hour|/hr|per month|monthly|/month|/mo))",
     re.IGNORECASE,
@@ -482,7 +497,7 @@ def _extract_single_dollar(text: str) -> list[SalaryRange]:
 #   4. <digits>+ — bare integer (no separator)
 _PREFIX_DOLLAR_SINGLE_RE = re.compile(
     r"(?:(?<=^)|(?<=[\s(\[]))"
-    r"(A[U]?|N[Z]?|S|HK|R|MX)\$"
+    r"(A[U]?|N[Z]?|S|HK|R|MX|U[S]?|CDN|C[A]?)\$"
     r"(\d+(?:[.,]\d+)*[Kk]"
     r"|\d{1,3}(?:,\d{3})+"
     r"|\d{1,3}(?:\.\d{3})+"
