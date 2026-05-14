@@ -21,6 +21,7 @@ import httpx
 import structlog
 
 from src.core.monitors import DiscoveredJob, register
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -393,8 +394,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     jobs: list[DiscoveredJob] = []
     offset = 0
+    truncated = False
 
-    while len(jobs) < _MAX_JOBS:
+    while True:
+        if len(jobs) >= _MAX_JOBS:
+            truncated = True
+            log.warning("mokahr.truncated", org_id=org_id, total=len(jobs), cap=_MAX_JOBS)
+            break
         body = {
             "orgId": org_id,
             "siteId": site_id,
@@ -432,6 +438,8 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             break
 
     log.info("mokahr.complete", org_id=org_id, site_id=site_id, total=len(jobs))
+    if truncated:
+        return truncated_rich_result(jobs)
     return jobs
 
 

@@ -23,6 +23,7 @@ from src.core.monitors import (
     slug_guess_allowed,
     slugs_from_url,
 )
+from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
@@ -56,9 +57,15 @@ def _job_url(slug: str, shortcode: str) -> str:
     return f"https://apply.workable.com/{slug}/j/{shortcode}/"
 
 
-async def _api_list(slug: str, client: httpx.AsyncClient) -> set[str]:
-    """Paginate the list endpoint to collect all job URLs."""
+async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], bool]:
+    """Paginate the list endpoint to collect all job URLs.
+
+    Returns ``(urls, truncated)``. ``truncated`` is True iff the MAX_JOBS
+    cap was hit before pagination completed; the pipeline uses the flag
+    to suppress gone-detection on this cycle (#3216).
+    """
     urls: set[str] = set()
+    truncated = False
     body: dict = {"query": "", "location": [], "department": [], "worktype": []}
 
     while True:
@@ -92,12 +99,13 @@ async def _api_list(slug: str, client: httpx.AsyncClient) -> set[str]:
 
         if len(urls) >= MAX_JOBS:
             log.warning("workable.truncated", slug=slug, total=len(urls), cap=MAX_JOBS)
+            truncated = True
             break
 
-    return urls
+    return urls, truncated
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
+async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     """Discover job URLs from the Workable public API.
 
     Paginates the list endpoint to collect all job URLs.
@@ -112,9 +120,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
             "and no token in metadata"
         )
 
-    urls = await _api_list(slug, client)
+    urls, truncated = await _api_list(slug, client)
     log.info("workable.listed", slug=slug, postings=len(urls))
 
+    if truncated:
+        return truncated_url_result(urls)
     return urls
 
 

@@ -32,6 +32,7 @@ import structlog
 
 from src.core.monitors import fetch_page_text, register
 from src.shared.http_retry import PaginationFetchError, is_retryable_status
+from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
@@ -46,6 +47,14 @@ _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
 # thundering herd of sub-second retries can entrench the rate limit.
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY = 1.0
+
+# In-stream sentinel used by ``_api_list_stream`` and ``_list_all_sites_stream``
+# to signal that the MAX_JOBS cap was hit (#3216). Distinct from any real
+# Workday path; consumers drop it and flip the cycle to partial.
+# The ``_api_list_stream`` (path-only) variant yields just the path string;
+# ``_list_all_sites_stream`` yields the ``(site, path)`` tuple form.
+_TRUNCATED_PATH = "__workday_truncated__"
+_TRUNCATED_SENTINEL = ("__workday_truncated__", _TRUNCATED_PATH)
 
 _SITEMAP_RE = re.compile(r"myworkdayjobs\.com/([^/]+)/siteMap")
 
@@ -285,12 +294,24 @@ async def _api_list(
     wd_instance: str,
     site: str,
     client: httpx.AsyncClient,
-) -> list[str]:
-    """Collect all externalPaths, splitting by facet if the 2000 cap is hit."""
+) -> tuple[list[str], bool]:
+    """Collect all externalPaths, splitting by facet if the 2000 cap is hit.
+
+    Returns ``(paths, truncated)``. ``truncated`` is True iff the stream
+    yielded :data:`_TRUNCATED_PATH` — i.e. the MAX_JOBS cap was hit. The
+    sentinel is stripped from ``paths`` so callers can ignore it; callers
+    that care about the partial-cycle signal (e.g. the non-streaming
+    ``discover``) consume the bool instead.
+    """
     paths: list[str] = []
+    truncated = False
     async for batch in _api_list_stream(company, wd_instance, site, client):
-        paths.extend(batch)
-    return paths
+        for p in batch:
+            if p == _TRUNCATED_PATH:
+                truncated = True
+            else:
+                paths.append(p)
+    return paths, truncated
 
 
 async def _api_list_stream(
@@ -355,6 +376,7 @@ async def _api_list_stream(
                 total=total_count,
                 cap=MAX_JOBS,
             )
+            yield [_TRUNCATED_PATH]
             return
 
     log.info("workday.faceted_total", company=company, site=site, jobs=total_count)
@@ -389,24 +411,34 @@ async def _list_all_sites(
     wd_instance: str,
     sites: list[str],
     client: httpx.AsyncClient,
-) -> list[tuple[str, str]]:
-    """List jobs from all sites concurrently. Returns (site, path) pairs."""
+) -> tuple[list[tuple[str, str]], bool]:
+    """List jobs from all sites concurrently. Returns ``(site_paths, truncated)``.
+
+    ``truncated`` is True iff the aggregate exceeded ``MAX_JOBS``. Caller
+    (the non-streaming ``discover``) wraps the result in a partial
+    ``MonitorResult`` so the pipeline suppresses gone-detection (#3216).
+    """
     sem = asyncio.Semaphore(_LIST_CONCURRENCY)
 
-    async def _list_one(site: str) -> list[tuple[str, str]]:
+    async def _list_one(site: str) -> tuple[list[tuple[str, str]], bool]:
         async with sem:
-            paths = await _api_list(company, wd_instance, site, client)
-            return [(site, p) for p in paths]
+            paths, was_truncated = await _api_list(company, wd_instance, site, client)
+            return [(site, p) for p in paths], was_truncated
 
     results = await asyncio.gather(*[_list_one(s) for s in sites], return_exceptions=True)
 
     site_paths: list[tuple[str, str]] = []
+    any_site_truncated = False
     for i, result in enumerate(results):
         if isinstance(result, BaseException):
             log.warning("workday.site_list_error", site=sites[i], error=str(result))
         else:
-            site_paths.extend(result)
-    return site_paths[:MAX_JOBS]
+            pairs, was_truncated = result
+            site_paths.extend(pairs)
+            if was_truncated:
+                any_site_truncated = True
+    truncated = any_site_truncated or len(site_paths) > MAX_JOBS
+    return site_paths[:MAX_JOBS], truncated
 
 
 async def _list_all_sites_stream(
@@ -415,7 +447,14 @@ async def _list_all_sites_stream(
     sites: list[str],
     client: httpx.AsyncClient,
 ):
-    """Yield (site, path) batches per site for heartbeat-aware streaming."""
+    """Yield (site, path) batches per site for heartbeat-aware streaming.
+
+    On reaching ``MAX_JOBS`` yields a final sentinel batch containing
+    :data:`_TRUNCATED_SENTINEL` and stops. The outer ``discover_stream``
+    detects the sentinel, drops it, and emits a flagged
+    :class:`MonitorResult` so the pipeline marks the run partial and
+    skips gone-detection (#3216).
+    """
     sem = asyncio.Semaphore(_LIST_CONCURRENCY)
     total_count = 0
 
@@ -427,6 +466,7 @@ async def _list_all_sites_stream(
                     total_count += len(pairs)
                     yield pairs
                     if total_count >= MAX_JOBS:
+                        yield [_TRUNCATED_SENTINEL]
                         return
             except Exception as exc:
                 log.warning("workday.site_list_error", site=site, error=str(exc))
@@ -435,14 +475,16 @@ async def _list_all_sites_stream(
 # ── Main discover entry point ────────────────────────────────────────
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
+async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     """Discover job URLs from the Workday list API.
 
     By default discovers all sites for the tenant via robots.txt and
     aggregates URLs from every site.  Set ``"all_sites": false`` in board
     metadata to monitor only the configured site.
 
-    Returns a set of job URLs (no detail fetching — that's the scraper's job).
+    Returns a set of job URLs (no detail fetching — that's the scraper's job),
+    or a :class:`MonitorResult` with ``truncated=True`` when the MAX_JOBS
+    cap was hit (#3216).
     """
     metadata = board.get("metadata") or {}
     company = metadata.get("company")
@@ -459,6 +501,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
         company, wd_instance, site = parsed
 
     all_sites = metadata.get("all_sites", True)
+    truncated = False
 
     if all_sites:
         sites = await _discover_sites(company, wd_instance, client)
@@ -466,7 +509,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
             log.warning("workday.no_sites_discovered", company=company, fallback=site)
             sites = [site]
 
-        site_paths = await _list_all_sites(company, wd_instance, sites, client)
+        site_paths, truncated = await _list_all_sites(company, wd_instance, sites, client)
         log.info(
             "workday.listed_all",
             company=company,
@@ -475,11 +518,14 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
             postings=len(site_paths),
         )
     else:
-        paths = await _api_list(company, wd_instance, site, client)
+        paths, truncated = await _api_list(company, wd_instance, site, client)
         site_paths = [(site, p) for p in paths]
         log.info("workday.listed", company=company, site=site, postings=len(site_paths))
 
-    return {_job_url(company, wd_instance, s, p) for s, p in site_paths}
+    urls = {_job_url(company, wd_instance, s, p) for s, p in site_paths}
+    if truncated:
+        return truncated_url_result(urls)
+    return urls
 
 
 async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
@@ -487,7 +533,15 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
 
     Same logic as discover() but yields intermediate sets of URLs after
     each site or facet sub-query completes, preventing worker pool timeouts.
+
+    Strips the :data:`_TRUNCATED_PATH` / :data:`_TRUNCATED_SENTINEL` sentinels
+    out of streamed batches and, on truncation, yields a final flagged
+    :class:`MonitorResult` so the pipeline marks the cycle partial and
+    skips gone-detection (#3216).
     """
+    # Local import to avoid the top-level cycle with src.core.monitor.
+    from src.core.monitor import MonitorResult as _MR
+
     metadata = board.get("metadata") or {}
     company = metadata.get("company")
     wd_instance = metadata.get("wd_instance")
@@ -503,6 +557,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         company, wd_instance, site = parsed
 
     all_sites = metadata.get("all_sites", True)
+    truncated = False
 
     if all_sites:
         sites = await _discover_sites(company, wd_instance, client)
@@ -512,7 +567,15 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
 
         total_urls = 0
         async for batch in _list_all_sites_stream(company, wd_instance, sites, client):
-            urls = {_job_url(company, wd_instance, s, p) for s, p in batch}
+            clean: list[tuple[str, str]] = []
+            for s, p in batch:
+                if p == _TRUNCATED_PATH:
+                    truncated = True
+                else:
+                    clean.append((s, p))
+            if not clean:
+                continue
+            urls = {_job_url(company, wd_instance, s, p) for s, p in clean}
             total_urls += len(urls)
             yield urls
 
@@ -520,11 +583,19 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     else:
         total_urls = 0
         async for batch in _api_list_stream(company, wd_instance, site, client):
-            urls = {_job_url(company, wd_instance, site, p) for p in batch}
+            clean_paths = [p for p in batch if p != _TRUNCATED_PATH]
+            if any(p == _TRUNCATED_PATH for p in batch):
+                truncated = True
+            if not clean_paths:
+                continue
+            urls = {_job_url(company, wd_instance, site, p) for p in clean_paths}
             total_urls += len(urls)
             yield urls
 
         log.info("workday.stream_done", company=company, site=site, total=total_urls)
+
+    if truncated:
+        yield _MR(urls=set(), truncated=True)
 
 
 # ── Detection (used by ws probe) ─────────────────────────────────────

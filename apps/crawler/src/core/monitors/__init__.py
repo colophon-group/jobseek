@@ -105,10 +105,24 @@ _STREAM_BATCH = 200
 
 
 def _make_chunked_stream(discover_fn: DiscoverFunc):
-    """Create a generic streaming wrapper that chunks discover() results."""
+    """Create a generic streaming wrapper that chunks discover() results.
+
+    A monitor that returned a ``MonitorResult`` directly (e.g. with
+    ``truncated=True`` per #3216) is yielded whole rather than reshaped:
+    the per-batch flags it carries (``truncated``, ``new_sitemap_url``,
+    ``metadata_updates``, ``hybrid``) need to reach the pipeline intact.
+    A plain ``list[DiscoveredJob]`` keeps the original 200-item chunking
+    so heartbeats fire on large boards.
+    """
 
     async def _chunked_stream(board, client, pw=None):
         result = await discover_fn(board, client, pw=pw)
+        # Local import to avoid the circular dep with src.core.monitor.
+        from src.core.monitor import MonitorResult as _MR
+
+        if isinstance(result, _MR):
+            yield result
+            return
         if isinstance(result, list):
             for i in range(0, len(result), _STREAM_BATCH):
                 yield result[i : i + _STREAM_BATCH]

@@ -37,6 +37,7 @@ import httpx
 import structlog
 
 from src.core.monitors import BoardGoneError, DiscoveredJob, register
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -343,6 +344,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     # --- 1. paginate the list endpoint ---------------------------------
     summaries: list[dict] = []
     page = 1
+    truncated = False
     while page <= _HARD_PAGE_CAP:
         payload = await _fetch_list_page(slug, client, page, include_closed)
         items = payload.get("list") or []
@@ -356,12 +358,17 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             if len(summaries) >= _MAX_JOBS:
                 break
 
-        if not items or len(summaries) >= _MAX_JOBS:
+        if len(summaries) >= _MAX_JOBS:
+            truncated = True
+            break
+        if not items:
             break
         if isinstance(total_pages, int) and page >= total_pages:
             break
         page += 1
     else:
+        # Hit _HARD_PAGE_CAP without paginator end — also a truncation.
+        truncated = True
         log.warning(
             "recruiter_co_kr.hard_page_cap_reached",
             slug=slug,
@@ -399,6 +406,8 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         collected=len(summaries),
         jobs=len(jobs),
     )
+    if truncated:
+        return truncated_rich_result(jobs)
     return jobs
 
 

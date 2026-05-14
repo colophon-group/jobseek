@@ -22,6 +22,7 @@ import structlog
 
 from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -270,7 +271,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     if len(jobs) > MAX_JOBS:
         log.warning("traffit.truncated", slug=slug, total=len(jobs), cap=MAX_JOBS)
-        jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
+        return truncated_rich_result(jobs)
 
     return jobs
 

@@ -26,6 +26,7 @@ from src.metrics import (
     monitor_gone_skipped_total,
     monitor_jobs_discovered,
     monitor_skipped_tdm_total,
+    monitor_truncated_total,
     monitor_url_filtered_total,
     tasks_total,
 )
@@ -713,6 +714,10 @@ async def _process_one_board_streaming(
         total_new = 0
         total_relisted = 0
         batch_count = 0
+        # Any truncated batch flips the cycle to "partial" and suppresses
+        # gone-detection (#3216). The MAX_JOBS cap means the unseen tail
+        # would otherwise be tombstoned by _MARK_GONE_BY_TIMESTAMP.
+        any_truncated = False
 
         async for result in _batch.monitor_one_stream(
             board_url, crawler_type, metadata, effective_http, pw=pw
@@ -720,6 +725,8 @@ async def _process_one_board_streaming(
             batch_count += 1
             total_discovered += len(result.urls)
             is_rich = result.jobs_by_url is not None
+            if getattr(result, "truncated", False):
+                any_truncated = True
 
             # Pulse heartbeat + extend DB lease (shielded to avoid
             # destroying the pool connection on task cancellation)
@@ -1212,23 +1219,42 @@ async def _process_one_board_streaming(
         gone_count = 0
         gone_skipped_reason: str | None = None
         delist_threshold = _resolve_delist_threshold(metadata, crawler_type)
-        async with pool.acquire() as conn, conn.transaction():
-            gone_count, gone_skipped_reason = await _mark_gone_with_guards(
-                conn,
-                board_id,
-                total_discovered,
-                monitor_start_ts,
-                metadata,
-                delist_threshold,
-                board_log,
+        # Truncation override (#3216) — when the monitor returned a partial
+        # discovery (any batch hit its MAX_JOBS cap), skip gone-detection
+        # entirely for this cycle. The 30% drop guard catches catastrophic
+        # under-counts but not smaller truncations: a board with 60k jobs
+        # capped at 50k still reports 50k discovered, well within tolerance,
+        # so the next ``_MARK_GONE_BY_TIMESTAMP`` would tombstone the 10k
+        # unseen tail. The run is still recorded as success so the failure
+        # budget doesn't escalate on a working-but-large board; the next
+        # cycle proceeds normally.
+        if any_truncated:
+            async with pool.acquire() as conn, conn.transaction():
+                await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+            board_log.warning(
+                "batch.monitor.truncated_partial",
+                discovered=total_discovered,
+                note="MAX_JOBS cap hit; suppressing gone-detection this cycle",
             )
-            await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+            monitor_truncated_total.labels(board_id=board_id).inc()
+        else:
+            async with pool.acquire() as conn, conn.transaction():
+                gone_count, gone_skipped_reason = await _mark_gone_with_guards(
+                    conn,
+                    board_id,
+                    total_discovered,
+                    monitor_start_ts,
+                    metadata,
+                    delist_threshold,
+                    board_log,
+                )
+                await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
 
-        # Emit the skip metric AFTER the transaction commits — same
-        # pattern as ``_emit_gone_counter`` (a rollback would otherwise
-        # over-report skipped cycles).
-        if gone_skipped_reason:
-            monitor_gone_skipped_total.labels(reason=gone_skipped_reason).inc()
+            # Emit the skip metric AFTER the transaction commits — same
+            # pattern as ``_emit_gone_counter`` (a rollback would otherwise
+            # over-report skipped cycles).
+            if gone_skipped_reason:
+                monitor_gone_skipped_total.labels(reason=gone_skipped_reason).inc()
 
         # Flush location misses to taxonomy_miss table
         await _batch._flush_location_misses(loc_resolver, pool)
@@ -1242,6 +1268,7 @@ async def _process_one_board_streaming(
             relisted=total_relisted,
             gone=gone_count,
             gone_skipped_reason=gone_skipped_reason,
+            truncated=any_truncated,
             batches=batch_count,
             duration_s=round(elapsed, 2),
         )

@@ -20,6 +20,7 @@ import structlog
 
 from src.core.monitors import register, slugs_from_url
 from src.shared.http_retry import PaginationFetchError, is_retryable_status
+from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
@@ -185,7 +186,7 @@ async def _get_page_with_retry(
     )
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
+async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     """Fetch job listing URLs from the SmartRecruiters public API.
 
     Paginates the list endpoint and constructs posting URLs from token + ID.
@@ -200,6 +201,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     — preventing ``_MARK_GONE_BY_TIMESTAMP`` from tombstoning the
     URLs that live on the unfetched pages (same shape of bug as
     #2722, #2737, #2748).
+
+    Truncation semantics (#3216). When ``MAX_JOBS`` is reached the
+    monitor returns a :class:`MonitorResult` with ``truncated=True``
+    so the pipeline marks the cycle as partial and skips gone-detection
+    — the unseen tail beyond the cap must not be tombstoned.
     """
     metadata = board.get("metadata") or {}
     token = metadata.get("token") or _token_from_url(board["board_url"])
@@ -213,6 +219,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     urls: set[str] = set()
     offset = 0
     list_url = _api_list_url(token)
+    truncated = False
 
     while True:
         data = await _get_page_with_retry(client, list_url, {"limit": PAGE_SIZE, "offset": offset})
@@ -236,9 +243,12 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
                 total=len(urls),
                 cap=MAX_JOBS,
             )
+            truncated = True
             break
 
     log.info("smartrecruiters.listed", token=token, postings=len(urls))
+    if truncated:
+        return truncated_url_result(urls)
     return urls
 
 

@@ -21,6 +21,7 @@ import httpx
 import structlog
 
 from src.core.monitors import register
+from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
@@ -179,15 +180,17 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
         )
 
     openings = await _fetch_openings(portal_url, client)
-    if len(openings) > MAX_JOBS:
+    truncated = len(openings) > MAX_JOBS
+    if truncated:
         log.warning("breezy.truncated", portal=portal_url, total=len(openings), cap=MAX_JOBS)
-        openings = openings[:MAX_JOBS]
 
     urls: set[str] = set()
     for opening in openings:
         url = _opening_url(opening, portal_url)
         if url:
             urls.add(url)
+    if truncated:
+        return truncated_url_result(urls)
     return urls
 
 
