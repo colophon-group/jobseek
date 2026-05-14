@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { Trans } from "@lingui/react/macro";
 
 import type { SelectedLocation } from "@/components/search/location-pills";
 import { SearchResults } from "@/components/search/search-results";
@@ -729,6 +730,17 @@ export function SearchPage({
 
   const searchColumn = (
     <div className="space-y-6">
+      {/*
+        Visually-hidden h1 so screen-reader users have a top-level
+        heading to anchor heading-jump navigation. The visual design
+        leads with the search toolbar, so the h1 is sr-only. See
+        WCAG 1.3.1 / issue #3196.
+      */}
+      <h1 className="sr-only">
+        <Trans id="explore.h1" comment="Hidden page H1 for /explore — screen-reader landmark">
+          Explore Jobs
+        </Trans>
+      </h1>
       <SearchToolbar
         locale={locale}
         userLat={userLat}

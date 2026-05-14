@@ -58,7 +58,7 @@ msgid "search.detail.showMoreLocations"
 msgstr "{0} de plus"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:40
+#: app/[lang]/(app)/company/[slug]/page.tsx:41
 msgid "company.meta.positionCount"
 msgstr "{count, plural, one {# poste ouvert} other {# postes ouverts}}"
 
@@ -93,7 +93,7 @@ msgstr "{count, plural, one {# entreprise suivie} other {# entreprises suivies}}
 
 #. Heatmap tooltip for multiple applications
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:80
+#: src/components/my-jobs/activity-heatmap.tsx:85
 msgid "myJobs.heatmap.tooltipMultiple"
 msgstr "{count} candidatures le {date}"
 
@@ -103,12 +103,12 @@ msgid "watchlist.meta.moreCompanies"
 msgstr "{count} de plus"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:52
+#: app/[lang]/(app)/company/[slug]/page.tsx:53
 msgid "company.meta.descriptionBasic"
 msgstr "{countText} chez {name}"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:47
+#: app/[lang]/(app)/company/[slug]/page.tsx:48
 msgid "company.meta.descriptionWithInfo"
 msgstr "{countText} chez {name}. {description}"
 
@@ -156,7 +156,7 @@ msgstr "10 $ / mois"
 
 #. Heatmap tooltip for 1 application
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:79
+#: src/components/my-jobs/activity-heatmap.tsx:84
 msgid "myJobs.heatmap.tooltipOne"
 msgstr "1 candidature le {date}"
 
@@ -255,16 +255,16 @@ msgstr "Ajouter des entreprises"
 msgid "watchlists.view.addDescription"
 msgstr "Ajouter une description"
 
-#. Button to add an interview round
-#. js-lingui-explicit-id
-#: src/components/my-jobs/interview-list.tsx:76
-msgid "myJobs.detail.addInterview"
-msgstr "Ajouter un entretien"
-
 #. Quick action tooltip: add interview round
 #. js-lingui-explicit-id
 #: src/components/my-jobs/quick-actions.tsx:19
 msgid "myJobs.action.addInterview"
+msgstr "Ajouter un entretien"
+
+#. Button to add an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx:76
+msgid "myJobs.detail.addInterview"
 msgstr "Ajouter un entretien"
 
 #. Placeholder in the add keyword input
@@ -394,7 +394,7 @@ msgstr "Statistiques de candidatures"
 
 #. Stats page title
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:38
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:43
 msgid "myJobs.stats.title"
 msgstr "Statistiques des candidatures"
 
@@ -412,7 +412,7 @@ msgstr "Suivi des candidatures avec journal d'entretiens"
 
 #. Subtitle showing total applications in past year
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:47
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:52
 msgid "myJobs.stats.activitySubtitle"
 msgstr "candidatures durant l'année écoulée"
 
@@ -466,7 +466,7 @@ msgstr "Postuler"
 
 #. Short April label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:60
+#: src/components/my-jobs/activity-heatmap.tsx:65
 msgid "myJobs.heatmap.month.apr"
 msgstr "Avr"
 
@@ -490,7 +490,7 @@ msgstr "30 caractères maximum"
 
 #. Short August label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:64
+#: src/components/my-jobs/activity-heatmap.tsx:69
 msgid "myJobs.heatmap.month.aug"
 msgstr "Aoû"
 
@@ -538,12 +538,6 @@ msgstr "Retour en haut"
 msgid "myJobs.interviewType.behavioral"
 msgstr "Comportemental"
 
-#. Back-to-index link at the top of a blog post (rendered as '← {label}')
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/blog/[slug]/page.tsx:146
-msgid "blog.post.backToIndex"
-msgstr "Blog"
-
 #. Document title (<title>) for the blog index page
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:28
@@ -554,6 +548,12 @@ msgstr "Blog"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:79
 msgid "blog.index.heading"
+msgstr "Blog"
+
+#. Back-to-index link at the top of a blog post (rendered as '← {label}')
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/blog/[slug]/page.tsx:146
+msgid "blog.post.backToIndex"
 msgstr "Blog"
 
 #. Nav link: Blog
@@ -717,7 +717,7 @@ msgstr "Ville"
 
 #. Clear date filter
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:87
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:92
 msgid "myJobs.stats.clearDates"
 msgstr "Réinitialiser"
 
@@ -846,8 +846,8 @@ msgstr "Entreprise"
 #. Heading shown when a company page slug does not exist
 #. Heading shown when the company URL slug doesn't resolve to a known company
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-content.tsx:19
-#: app/[lang]/(app)/company/[slug]/page.tsx:88
+#: app/[lang]/(app)/company/[slug]/company-content.tsx:51
+#: app/[lang]/(app)/company/[slug]/page.tsx:89
 msgid "company.notFound.title"
 msgstr "Entreprise introuvable"
 
@@ -1105,7 +1105,7 @@ msgstr "Date d'enregistrement"
 
 #. Short December label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:68
+#: src/components/my-jobs/activity-heatmap.tsx:73
 msgid "myJobs.heatmap.month.dec"
 msgstr "Déc"
 
@@ -1362,6 +1362,12 @@ msgstr "Explorer"
 msgid "explore.meta.title"
 msgstr "Explorer les emplois"
 
+#. Hidden page H1 for /explore — screen-reader landmark
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/explore/search-page.tsx:740
+msgid "explore.h1"
+msgstr "Explorer les emplois"
+
 #. Generic email change error
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:360
@@ -1441,7 +1447,7 @@ msgstr "Fonctionnalités"
 
 #. Short February label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:58
+#: src/components/my-jobs/activity-heatmap.tsx:63
 msgid "myJobs.heatmap.month.feb"
 msgstr "Fév"
 
@@ -1576,7 +1582,7 @@ msgstr "Questions fréquentes"
 
 #. Short Friday label for heatmap
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:49
+#: src/components/my-jobs/activity-heatmap.tsx:54
 msgid "myJobs.heatmap.day.fri"
 msgstr "Ven"
 
@@ -1942,7 +1948,7 @@ msgstr "Y a-t-il une limite au nombre d'offres que je peux suivre ?"
 
 #. Short January label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:57
+#: src/components/my-jobs/activity-heatmap.tsx:62
 msgid "myJobs.heatmap.month.jan"
 msgstr "Jan"
 
@@ -2071,7 +2077,7 @@ msgid "watchlists.explore.jobPlural"
 msgstr "offres"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:33
+#: app/[lang]/(app)/company/[slug]/page.tsx:34
 msgid "company.meta.title"
 msgstr "Emplois chez {name}"
 
@@ -2082,13 +2088,13 @@ msgstr "Emplois chez {names}"
 
 #. Short July label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:63
+#: src/components/my-jobs/activity-heatmap.tsx:68
 msgid "myJobs.heatmap.month.jul"
 msgstr "Jul"
 
 #. Short June label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:62
+#: src/components/my-jobs/activity-heatmap.tsx:67
 msgid "myJobs.heatmap.month.jun"
 msgstr "Jun"
 
@@ -2202,7 +2208,7 @@ msgstr "Clair"
 
 #. Loading indicator
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:92
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:97
 msgid "myJobs.stats.loading"
 msgstr "Chargement…"
 
@@ -2288,7 +2294,7 @@ msgstr "Gère tes comptes sociaux liés."
 
 #. Short March label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:59
+#: src/components/my-jobs/activity-heatmap.tsx:64
 msgid "myJobs.heatmap.month.mar"
 msgstr "Mar"
 
@@ -2324,7 +2330,7 @@ msgstr "Max"
 
 #. Short May label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:61
+#: src/components/my-jobs/activity-heatmap.tsx:66
 msgid "myJobs.heatmap.month.may"
 msgstr "Mai"
 
@@ -2374,7 +2380,7 @@ msgstr "Une entreprise manque ? Colle l'URL de sa page carrières et nous commen
 
 #. Short Monday label for heatmap
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:45
+#: src/components/my-jobs/activity-heatmap.tsx:50
 msgid "myJobs.heatmap.day.mon"
 msgstr "Lun"
 
@@ -2438,7 +2444,7 @@ msgstr "Plusieurs résultats — sélectionnez-en un ci-dessous"
 
 #. Back link to my jobs
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:35
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:40
 msgid "myJobs.stats.back"
 msgstr "Mes emplois"
 
@@ -2492,7 +2498,7 @@ msgstr "Nouveau mot de passe"
 
 #. Heatmap tooltip when no applications on a date
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:78
+#: src/components/my-jobs/activity-heatmap.tsx:83
 msgid "myJobs.heatmap.tooltipNone"
 msgstr "Aucune candidature le {date}"
 
@@ -2634,7 +2640,7 @@ msgstr "Remarque : Nous n'avons pas pu créer un ticket de suivi, mais votre dem
 
 #. Short November label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:67
+#: src/components/my-jobs/activity-heatmap.tsx:72
 msgid "myJobs.heatmap.month.nov"
 msgstr "Nov"
 
@@ -2646,7 +2652,7 @@ msgstr "Métier"
 
 #. Short October label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:66
+#: src/components/my-jobs/activity-heatmap.tsx:71
 msgid "myJobs.heatmap.month.oct"
 msgstr "Oct"
 
@@ -2729,7 +2735,7 @@ msgid "common.header.openMenu"
 msgstr "Ouvrir le menu principal"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:45
+#: app/[lang]/(app)/company/[slug]/page.tsx:46
 msgid "company.meta.openPositions"
 msgstr "Postes ouverts"
 
@@ -2905,7 +2911,7 @@ msgstr "par mois"
 
 #. Period filter heading
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:57
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:62
 msgid "myJobs.stats.period"
 msgstr "Période"
 
@@ -3392,7 +3398,7 @@ msgstr "Sauvegarder des offres"
 
 #. Empty state for stats
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:101
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:106
 msgid "myJobs.stats.empty"
 msgstr "Enregistrez des offres et suivez vos candidatures pour voir des statistiques ici."
 
@@ -3608,7 +3614,7 @@ msgstr "Niveau d'expérience"
 
 #. Short September label
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:65
+#: src/components/my-jobs/activity-heatmap.tsx:70
 msgid "myJobs.heatmap.month.sep"
 msgstr "Sep"
 
@@ -3998,13 +4004,13 @@ msgstr "Conditions d'utilisation de Job Seek — règles d'usage, propriété in
 
 #. Body text shown when a company page slug does not exist
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:93
+#: app/[lang]/(app)/company/[slug]/page.tsx:94
 msgid "company.notFound.message"
 msgstr "L'entreprise que vous recherchez n'existe pas ou a été supprimée."
 
 #. Body text for the company-not-found page; explains the company is either gone or never existed
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-content.tsx:27
+#: app/[lang]/(app)/company/[slug]/company-content.tsx:59
 msgid "company.notFound.body"
 msgstr "L'entreprise que vous recherchez n'existe pas ou a été supprimée."
 
@@ -4459,7 +4465,7 @@ msgstr "Nous travaillons à ajouter"
 
 #. Short Wednesday label for heatmap
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:47
+#: src/components/my-jobs/activity-heatmap.tsx:52
 msgid "myJobs.heatmap.day.wed"
 msgstr "Mer"
 

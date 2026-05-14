@@ -85,9 +85,9 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.password.title" comment="Password section heading">Password</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.password.setDescription" comment="Set password description for OAuth users">
           You signed in with a social account. Set a password to enable email changes and additional security.
@@ -170,9 +170,9 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.password.title" comment="Password section heading">Password</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.password.description" comment="Password section description">
           Change your password via a secure email link.
@@ -294,9 +294,9 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.username.title" comment="Username section heading">Username</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.username.description" comment="Username section description">
           Your unique handle used in your public profile URL.
@@ -366,9 +366,9 @@ function ChangeEmailSection() {
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.email.title" comment="Change email section heading">Change email</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.email.description" comment="Change email section description">
           Update the email address associated with your account.
@@ -446,9 +446,9 @@ function ConnectedAccountsSection({ accounts, onDisconnect }: { accounts: Connec
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.socials.title" comment="Connected accounts section heading">Connected accounts</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.socials.description" comment="Connected accounts section description">
           Manage your linked social accounts.
@@ -504,9 +504,9 @@ function DeleteAccountSection() {
 
   return (
     <section className="rounded-md border border-error-border bg-error-bg p-4">
-      <h3 className="mb-1 text-base font-semibold text-error">
+      <h2 className="mb-1 text-base font-semibold text-error">
         <Trans id="settings.account.delete.title" comment="Delete account section heading">Delete account</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-error">
         <Trans id="settings.account.delete.description" comment="Delete account section description">
           Permanently delete your account and all associated data. This action cannot be undone.
