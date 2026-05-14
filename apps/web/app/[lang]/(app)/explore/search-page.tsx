@@ -10,7 +10,7 @@ import { ZeroResults } from "@/components/search/zero-results";
 import { SkeletonCards } from "@/components/search/skeleton-card";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
-import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
+import { useSalaryRates } from "@/components/SalaryDisplayProvider";
 import { runSearchJobs, runListTopCompanies } from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/SessionProvider";
@@ -136,11 +136,12 @@ export function SearchPage({
     shouldRestore ? cached.workMode : initialWorkMode,
   );
 
-  // Currency rates for EUR conversion (fetched lazily)
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
-  useEffect(() => {
-    getCurrencyRates().then(setCurrencyRates);
-  }, []);
+  // Currency rates for EUR conversion — read from `SalaryDisplayProvider`
+  // which fetches once on mount and shares the table with every consumer
+  // on this layout (search page, salary modal, salary cells). Previously
+  // each consumer fired its own `getCurrencyRates()`, producing 3 server
+  // actions per `/explore` view; see #3181.
+  const currencyRates = useSalaryRates();
 
   useClearTypesenseOnAuthChange(isLoggedIn);
 
