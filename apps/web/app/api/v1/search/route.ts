@@ -1,6 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { searchJobs, listTopCompanies } from "@/lib/actions/search";
-import { parseSearchFilters } from "@/lib/actions/search-input";
+// Public REST routes import the plain service tier (`@/lib/services/*`)
+// rather than the `"use server"` action modules (`@/lib/actions/*`). The
+// service functions are functionally identical but avoid the
+// server-action machinery (per-call RPC URL, serialization boundary,
+// security IDs). See issue #3231 — public REST and internal RPC are now
+// two distinct surfaces.
+import { searchJobs, listTopCompanies } from "@/lib/services/search";
+import { parseSearchFilters } from "@/lib/services/search-input";
 import { isLocale, locales } from "@/lib/i18n";
 import { checkRateLimit, apiResponse, siteUrl, exploreUrl } from "../_shared";
 

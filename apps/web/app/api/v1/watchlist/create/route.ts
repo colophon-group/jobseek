@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { listTopCompanies, searchJobs } from "@/lib/actions/search";
-import { parseSearchFilters } from "@/lib/actions/search-input";
+// Public REST routes use the plain service tier — see issue #3231.
+import { listTopCompanies, searchJobs } from "@/lib/services/search";
+import { parseSearchFilters } from "@/lib/services/search-input";
 import { checkRateLimit, apiResponse, siteUrl } from "../../_shared";
 
 export async function GET(request: NextRequest) {
