@@ -20,7 +20,10 @@ import {
 import { withDbRetry } from "@/lib/db-retry";
 import { watchlistCacheTag } from "@/lib/cache-tags";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
-import { generateUniqueSlug } from "@/lib/watchlist-slug";
+import {
+  generateUniqueSlug,
+  insertWatchlistWithUniqueSlug,
+} from "@/lib/watchlist-slug";
 import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/constants";
 import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations";
 import { expandOccupationIds, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
@@ -138,19 +141,30 @@ export async function createWatchlist(params: {
   const { allowed } = await canCreateWatchlist(userId);
   if (!allowed) return { error: "limit_reached" };
 
-  const slug = await generateUniqueSlug(userId, params.title);
-
-  const [row] = await db
-    .insert(watchlist)
-    .values({
-      userId,
-      slug,
-      title: params.title,
-      description: params.description ?? null,
-      isPublic: params.isPublic ?? true,
-      filters: { anyCompany: true, ...params.filters },
-    })
-    .returning({ id: watchlist.id });
+  // Slug allocation is concurrency-safe: `insertWatchlistWithUniqueSlug`
+  // wraps the INSERT in a retry loop that recovers from the SELECT-then-
+  // INSERT race on `idx_wl_user_slug` (#3201). Two browser tabs (or a
+  // double-fire of the Create button) used to crash one of the two
+  // callers with an un-handled 23505 here; the helper catches the
+  // violation, regenerates a fresh `-N` suffix, and retries.
+  const { row, slug } = await insertWatchlistWithUniqueSlug(
+    userId,
+    params.title,
+    async (candidate) => {
+      const [r] = await db
+        .insert(watchlist)
+        .values({
+          userId,
+          slug: candidate,
+          title: params.title,
+          description: params.description ?? null,
+          isPublic: params.isPublic ?? true,
+          filters: { anyCompany: true, ...params.filters },
+        })
+        .returning({ id: watchlist.id });
+      return r;
+    },
+  );
 
   if (params.companyIds.length > 0) {
     await db.insert(watchlistCompany).values(
@@ -252,6 +266,15 @@ export async function updateWatchlist(params: {
 
   if (params.title !== undefined) {
     updates.title = params.title;
+    // The `generateUniqueSlug` call here is still subject to the same
+    // SELECT-then-write race that #3201 fixed on create/copy, but in
+    // the UPDATE path the race shape is benign in practice: the slug
+    // is being changed on a row that already exists (same id), so two
+    // concurrent renames of the same watchlist are last-write-wins on
+    // the row, not a UNIQUE conflict. Cross-row collisions
+    // (update-rename → slug that an unrelated row just took) remain
+    // theoretically possible but out of scope for the create/copy
+    // crash fix; see the issue for the analysis.
     newSlug = await generateUniqueSlug(userId, params.title);
     updates.slug = newSlug;
   }
@@ -423,22 +446,31 @@ export async function copyWatchlist(
     return { error: "not_found" };
   }
 
-  const slug = await generateUniqueSlug(userId, source.title);
-
   const sourceFilters = (source.filters ?? {}) as WatchlistFilters;
 
-  const [row] = await db
-    .insert(watchlist)
-    .values({
-      userId,
-      slug,
-      title: source.title,
-      description: source.description,
-      isPublic: true,
-      filters: sourceFilters,
-      sourceWatchlistId: watchlistId,
-    })
-    .returning({ id: watchlist.id });
+  // Same race shape as createWatchlist (#3201): two fast clicks of the
+  // "Copy" button on a public watchlist used to race the SELECT-then-
+  // INSERT slug pick and crash the loser. The helper retries on a
+  // `idx_wl_user_slug` 23505.
+  const { row, slug } = await insertWatchlistWithUniqueSlug(
+    userId,
+    source.title,
+    async (candidate) => {
+      const [r] = await db
+        .insert(watchlist)
+        .values({
+          userId,
+          slug: candidate,
+          title: source.title,
+          description: source.description,
+          isPublic: true,
+          filters: sourceFilters,
+          sourceWatchlistId: watchlistId,
+        })
+        .returning({ id: watchlist.id });
+      return r;
+    },
+  );
 
   // Copy companies (even in anyCompany mode, so toggling it off reveals them)
   const companies = await db
