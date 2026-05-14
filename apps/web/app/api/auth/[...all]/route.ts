@@ -64,16 +64,23 @@ async function applyAuthLimits(
     try {
       const { success, reset } = await passwordResetLimiter.limit(ip);
       if (!success) return rateLimitResponse(reset);
-    } catch {
-      // Redis unavailable — degrade open, mirroring authLimiter behaviour
+    } catch (err) {
+      // Redis unavailable — degrade open, mirroring authLimiter behaviour.
+      // Log at warn so a Redis outage that disables the tight password-reset
+      // bucket (3/300s, the email-bombing vector) is queryable in Loki under
+      // `[auth-rate-limit] pw-reset redis bypass`. See #3175.
+      console.warn("[auth-rate-limit] pw-reset redis bypass", err);
     }
   }
 
   try {
     const { success, reset } = await authLimiter.limit(ip);
     if (!success) return rateLimitResponse(reset);
-  } catch {
-    // Redis unavailable — allow request through
+  } catch (err) {
+    // Redis unavailable — allow request through. Log at warn so a Redis
+    // outage that silently disables the broader auth bucket (10/60s) is
+    // queryable in Loki under `[auth-rate-limit] redis bypass`. See #3175.
+    console.warn("[auth-rate-limit] redis bypass", err);
   }
   return null;
 }

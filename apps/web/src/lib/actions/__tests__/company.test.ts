@@ -213,6 +213,47 @@ describe("getCompanyBySlug — Postgres fallback", () => {
     expect(dbExecuteMock).toHaveBeenCalled();
   });
 
+  it("logs `[company] Typesense failed, falling back to Postgres` when Typesense throws (so fallback rate is queryable per #3175)", async () => {
+    /** Issue colophon-group/jobseek#3175 — the silent `} catch {}` made a
+     * Cloudflare-tunnel outage indistinguishable from healthy traffic in
+     * the logs. Matches the precedent set by `searchCompaniesForWatchlist`
+     * and `_fetchSimilarUnfiltered` in the same file. */
+    searchMock.mockRejectedValue(new Error("typesense unreachable"));
+    dbExecuteMock.mockResolvedValue([_pgRow]);
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const out = await getCompanyBySlug("acme", "en");
+
+    // Fallback behaviour preserved — Postgres still serves the request.
+    expect(out?.description).toBe("From Postgres");
+    // Stable event prefix so the fallback rate is queryable in Loki.
+    const fallbackCalls = infoSpy.mock.calls.filter(
+      (call) => call[0] === "[company] Typesense failed, falling back to Postgres",
+    );
+    expect(fallbackCalls).toHaveLength(1);
+    expect(fallbackCalls[0][1]).toBeInstanceOf(Error);
+    expect((fallbackCalls[0][1] as Error).message).toBe("typesense unreachable");
+    infoSpy.mockRestore();
+  });
+
+  it("does NOT log the fallback event when Typesense returns 0 hits (only thrown errors signal an outage)", async () => {
+    /** Zero hits is the brand-new-company path, not a Typesense outage —
+     * silencing it here keeps the fallback-rate metric an accurate
+     * signal of Typesense health, not company-freshness noise. */
+    searchMock.mockResolvedValue(_typesenseResponse(null));
+    dbExecuteMock.mockResolvedValue([_pgRow]);
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const out = await getCompanyBySlug("acme", "en");
+
+    expect(out?.description).toBe("From Postgres");
+    const fallbackCalls = infoSpy.mock.calls.filter(
+      (call) => call[0] === "[company] Typesense failed, falling back to Postgres",
+    );
+    expect(fallbackCalls).toHaveLength(0);
+    infoSpy.mockRestore();
+  });
+
   it("falls through to Postgres when Typesense returns 0 hits", async () => {
     searchMock.mockResolvedValue(_typesenseResponse(null));
     dbExecuteMock.mockResolvedValue([_pgRow]);

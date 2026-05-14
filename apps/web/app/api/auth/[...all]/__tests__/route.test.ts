@@ -247,6 +247,59 @@ describe("auth catch-all route — passwordResetLimiter wiring (#3223)", () => {
     expect(betterAuthHandlers.POST).toHaveBeenCalledTimes(1);
   });
 
+  // --- E2: Redis bypass is logged so the outage is queryable (#3175) ----
+
+  it("logs `[auth-rate-limit] redis bypass` when authLimiter throws (so a Redis outage is visible in Loki, not silent)", async () => {
+    limiterCalls.authLimit.mockRejectedValue(new Error("ECONNREFUSED"));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { POST } = await import("../route");
+    const res = await POST(makeRequest("POST", "/api/auth/sign-in/email"));
+
+    // Bypass behaviour preserved.
+    expect(res.status).toBe(200);
+    expect(betterAuthHandlers.POST).toHaveBeenCalledTimes(1);
+    // Stable event prefix so a sustained outage is queryable.
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const [message, errArg] = warnSpy.mock.calls[0];
+    expect(message).toBe("[auth-rate-limit] redis bypass");
+    expect(errArg).toBeInstanceOf(Error);
+    expect((errArg as Error).message).toBe("ECONNREFUSED");
+    warnSpy.mockRestore();
+  });
+
+  it("logs `[auth-rate-limit] pw-reset redis bypass` when passwordResetLimiter throws on a reset path (email-bombing vector observability)", async () => {
+    limiterCalls.passwordResetLimit.mockRejectedValue(new Error("ECONNREFUSED"));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { POST } = await import("../route");
+    const res = await POST(
+      makeRequest("POST", "/api/auth/request-password-reset"),
+    );
+
+    // Bypass behaviour preserved (request still reaches the handler).
+    expect(res.status).toBe(200);
+    expect(betterAuthHandlers.POST).toHaveBeenCalledTimes(1);
+    // Two-axis defence-in-depth means authLimiter still ran with no
+    // throw, so only the pw-reset bypass log fires.
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const [message, errArg] = warnSpy.mock.calls[0];
+    expect(message).toBe("[auth-rate-limit] pw-reset redis bypass");
+    expect(errArg).toBeInstanceOf(Error);
+    expect((errArg as Error).message).toBe("ECONNREFUSED");
+    warnSpy.mockRestore();
+  });
+
+  it("does NOT log when neither limiter throws (no false bypass signal)", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { POST } = await import("../route");
+    await POST(makeRequest("POST", "/api/auth/sign-in/email"));
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
   // --- F: rate-limit key is the platform-authoritative IP ---------------
 
   it("uses getClientIp output as the rate-limit identifier (#3219 hardening)", async () => {

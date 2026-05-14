@@ -30,8 +30,13 @@ export async function checkRateLimit(
       );
     }
     return { limit, remaining, reset };
-  } catch {
-    // Redis unavailable — allow request through
+  } catch (err) {
+    // Redis unavailable — allow request through. Log so a sustained Redis
+    // outage (which silently disables rate-limiting on every public
+    // `/api/v1/*` request) is visible in Vercel/Loki rather than looking
+    // like normal "no-rate-limit-headers" traffic. See #3175.
+    // Stable event prefix `[rate-limit] redis bypass` is queryable in Loki.
+    console.warn("[rate-limit] redis bypass", err);
   }
   return null;
 }
