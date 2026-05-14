@@ -3,14 +3,14 @@
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 
 export function SaveButton({ postingId }: { postingId: string }) {
   const { t } = useLingui();
-  const { isLoggedIn, isPending } = useAuth();
+  const { isLoggedIn, isPending } = useSession();
   const lp = useLocalePath();
   const { isSaved, toggle, isToggling } = useSavedJobs();
 

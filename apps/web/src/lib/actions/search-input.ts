@@ -3,7 +3,7 @@
 import { resolveLocationSlugs, suggestLocations, type LocationSuggestion } from "@/lib/actions/locations";
 import { resolveOccupationSlugs, resolveSenioritySlugs, suggestOccupations, suggestSeniorities, suggestTechnologies, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/selected-location";
 import { parseWorkModeParam } from "@/lib/search/query-params";
 import type { WorkMode } from "@/lib/search/types";
 

@@ -52,7 +52,7 @@ export const TRANSIENT_ERROR_WINDOW_MS = 60_000;
 export const __healedImageUrls: Set<string> = new Set();
 
 type UserAvatarProps = {
-  /** Source URL — typically `user.image` from `useAuth()`. */
+  /** Source URL — typically `user.image` from `useSession()`. */
   image: string | null | undefined;
   /** Display name fed to `getUserInitials` for the fallback. */
   name: string | null | undefined;

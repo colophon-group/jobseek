@@ -5,15 +5,13 @@ import { X, MapPin } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import type { LocationSuggestion } from "@/lib/actions/locations";
 import { runSuggestLocations as suggestLocations } from "@/lib/search/typeahead-runner";
+import type { SelectedLocation } from "@/lib/search/selected-location";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 
-export interface SelectedLocation {
-  id: number;
-  slug: string;
-  name: string;
-  type: LocationSuggestion["type"];
-  parentName: string | null;
-}
+// Re-export so existing `import type { SelectedLocation } from
+// "@/components/search/location-pills"` callers compile while #3220
+// migrates them off this UI-leaf import path.
+export type { SelectedLocation };
 
 interface LocationPillsProps {
   locations: SelectedLocation[];

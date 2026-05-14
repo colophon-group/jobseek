@@ -13,7 +13,7 @@ import {
   updateWatchlist,
 } from "@/lib/actions/watchlists";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { tooltipClass, tooltipWarningClass } from "@/components/ui/tooltip-styles";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 
@@ -78,7 +78,7 @@ export function WatchlistActionBar({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn } = useSession();
   const [busy, setBusy] = useState(false);
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [deleteOpen, setDeleteOpen] = useState(false);

@@ -6,7 +6,7 @@ import { X, Loader2, MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Bui
 import { BackLink } from "@/components/BackLink";
 import { useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import type {
   WatchlistDetail,
   WatchlistFilters,
@@ -72,7 +72,7 @@ export function WatchlistViewPage({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { user } = useAuth();
+  const { user } = useSession();
 
   // ── Editable title ──
   const [title, setTitle] = useState(detail.title);

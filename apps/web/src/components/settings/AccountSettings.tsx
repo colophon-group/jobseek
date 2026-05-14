@@ -7,7 +7,7 @@ import { useLingui } from "@lingui/react/macro";
 import { GitHubIcon } from "@/components/icons/GitHubIcon";
 import { authClient } from "@/lib/auth-client";
 import { isReservedUsername } from "@/lib/username";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import {
   setPassword as setPasswordAction,
@@ -57,7 +57,7 @@ function PasswordSection({ hasPassword, initialCooldown, onPasswordSet }: { hasP
 
 function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
   const { t } = useLingui();
-  const { user } = useAuth();
+  const { user } = useSession();
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -119,7 +119,7 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
 
 function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
   const { t } = useLingui();
-  const { user } = useAuth();
+  const { user } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -198,7 +198,7 @@ const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 function UsernameSection({ currentUsername }: { currentUsername: string }) {
   const { t } = useLingui();
   const router = useRouter();
-  const { refresh: refreshSession } = useAuth();
+  const { refresh: refreshSession } = useSession();
   const [savedUsername, setSavedUsername] = useState(currentUsername);
   const [value, setValue] = useState(currentUsername);
   const [loading, setLoading] = useState(false);
@@ -548,7 +548,7 @@ type AccountPageData = {
 /* ── Main Component ── */
 
 export function AccountSettings({ initialData }: { initialData?: AccountPageData }) {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn } = useSession();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>(initialData?.accounts ?? []);
 
   const refreshAccounts = useCallback(() => {
