@@ -35,9 +35,68 @@ class SalaryRange:
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"[ \t]+")
 
+# ── Mojibake repair (UTF-8 double-encoded → original) ────────────────
+#
+# Some upstream scrapers (notably the Tesco careers JSON-LD blob) double-
+# encode UTF-8 as Latin-1 then re-encode as UTF-8, producing artifacts
+# like `Â£` for `£`, `â€"` for an en-dash, etc. The recon for #3326
+# flagged this on ~150 active UK Tesco postings; the same byte-sequence
+# also appears sporadically on other currencies and punctuation, so we
+# apply the fix at the HTML→text boundary rather than per-regex.
+#
+# Two-step strategy:
+#   1. Walk through a small explicit replacement table for the common
+#      currency-and-punctuation sequences. This is cheap and obvious.
+#   2. If the text still contains the tell-tale `Â` or `â€` artifacts,
+#      attempt a full Latin-1→UTF-8 round-trip via .encode/.decode —
+#      this catches the long tail (curly quotes, accented Latin chars,
+#      etc.). We do this only after the cheap pass so we don't pay the
+#      round-trip cost on clean text.
+_MOJIBAKE_TABLE: tuple[tuple[str, str], ...] = (
+    # Currency symbols
+    ("Â£", "£"),  # Â£ -> £
+    ("Â€", "€"),  # Â€ -> €  (rare; only when € itself double-encoded)
+    ("Â¥", "¥"),  # Â¥ -> ¥
+    # Non-breaking space artefact (NBSP 0xA0 double-encoded as "Â ")
+    ("Â ", " "),
+    ("Â ", " "),
+    # Punctuation: ellipsis, dashes, quotes — all derive from UTF-8 0xE2 0x80 ?? .
+    # Tesco template uses en-dash / em-dash extensively.
+    ("â€¦", "…"),  # â€¦ -> …
+    ("â€“", "–"),  # â€" -> – (en-dash)
+    ("â€”", "—"),  # â€" -> — (em-dash)
+    ("â€˜", "‘"),  # â€˜ -> '
+    ("â€™", "’"),  # â€™ -> '
+    ("â€œ", "“"),  # â€œ -> "
+    ("â€", "”"),  # â€ -> "  (right double quote)
+    # Common Latin-1 accented chars seen in DE/FR descriptions
+    ("Ã©", "é"),  # Ã© -> é
+    ("Ã¨", "è"),  # Ã¨ -> è
+    ("Ã ", "à"),  # Ã  -> à
+    ("Ã¼", "ü"),  # Ã¼ -> ü
+    ("Ã¤", "ä"),  # Ã¤ -> ä
+    ("Ã¶", "ö"),  # Ã¶ -> ö
+    ("ÃŸ", "ß"),  # ÃŸ -> ß
+)
+
+
+def _repair_mojibake(text: str) -> str:
+    """Fix UTF-8 double-encoded sequences (Â£ → £, â€" → en-dash, etc.).
+
+    Closes the Tesco mojibake cluster in #3326 recon. Applied at the
+    HTML→text boundary so every downstream extractor benefits.
+    """
+    # Cheap explicit replacements first.
+    if "Â" in text or "â€" in text or "Ã" in text:
+        for bad, good in _MOJIBAKE_TABLE:
+            if bad in text:
+                text = text.replace(bad, good)
+    return text
+
 
 def _html_to_text(html: str) -> str:
     text = _TAG_RE.sub(" ", html)
+    text = _repair_mojibake(text)
     return _WS_RE.sub(" ", text).strip()
 
 
@@ -578,47 +637,405 @@ def _extract_prefix_dollar_single(text: str) -> list[SalaryRange]:
     return results
 
 
-# ── Pattern 5: EUR/month salary lines ────────────────────────────────
-#   "Salary: From 1800 EUR/month"
-#   "EUR 3850 gross per month"
-#   "€47000"  → only with explicit salary/gehalt context
-#   "17.41€/hour"
+# ── Pattern 5: EUR salary lines ──────────────────────────────────────
+#
+# Scope B (#3326) extends this beyond the original single-amount keyword-
+# prefixed shapes to cover the four highest-yield clusters from the recon:
+#   1. AT Mindestgehalt boilerplate: "€ 3.930,00 brutto pro Monat (14mal jährlich)"
+#   2. ES/NL Greenhouse template: "€NN.NNN—€NN.NNN EUR"
+#   3. FR templates: "Salaire ENTRE 24 100 EUR ET 29 200 EUR", "de … à … euros brut par mois"
+#   4. UK / EN-locale ranges with comma-thousands: "€72,500.00 - €115,230.00"
+#
+# Precision posture is identical to Scope A: only extract when a gross
+# marker is present (brutto / brut / lordo / bruto / gross) OR no net
+# marker is present AND a strong salary-context word ties the number to
+# compensation. Netto-only is skipped.
 
-_EUR_SALARY_RE = re.compile(
+# Number atom shared across all EUR shapes. Accepts:
+#   * En/UK locale:    "60,000", "60,000.00"
+#   * DE/IT/NL locale: "60.000", "60.000,00"
+#   * FR/PT locale:    "60 000", "60 000,00"  (incl. NBSP / thin space)
+#   * Glued/bare:      "60000", "60K"
+# Decimal tail is optional; thousand-group sizes are not enforced here —
+# `_parse_eu_number` does the heavy lifting downstream.
+_EUR_NUM = (
+    # comma-thousand[.dot-decimal]: 72,500 / 72,500.00 / 1,000,000.50
+    r"\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?"
+    # dot-thousand[,comma-decimal]: 60.000 / 60.000,00 / 1.000.000,50
+    r"|\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?"
+    # space-thousand[,comma-decimal]: 60 000 / 33 100,00 (also NBSP/thin-space)
+    r"|\d{1,3}(?:[   ]\d{3})+(?:,\d{1,2})?"
+    # plain integer with optional decimal: 60000 / 50000.00 / 1234,56 / 60K
+    r"|\d+(?:[.,]\d{1,2})?[Kk]?"
+)
+
+# Currency token: EUR (ISO) or € (symbol) or spell-out (euros / Euro).
+# Spell-out lives behind a word boundary so we don't pick up "euroska".
+_EUR_CUR = r"(?:EUR|€|euros?\b|Euro\b)"
+
+# Range separator vocabulary. Two flavours:
+#   * tight — dash glyphs or a single connector word with whitespace.
+#   * loose — Tesco-style: number — period word(s) — connector — number.
+#             Bounded to ≤30 chars between to keep precision.
+_EUR_SEP = (
     r"(?:"
-    # "Salary: From/Starting from XXXX EUR"
+    # connector phrases
+    r"\s+(?:to|bis|zu|à|au|und|et|y|en|and|tot)\s+"
+    # bare dashes
+    r"|\s*[-–—]\s*"
+    r")"
+)
+# Loose connector for `<num> <currency> [period-words] <connector> <num> <currency>`.
+# Allows up to 30 chars of period vocabulary between the first currency
+# token and the range connector word. The connector word itself is mandatory.
+_EUR_LOOSE_SEP = (
+    r"(?:"
+    r"\s*[-–—]\s*"
+    r"|\s+(?:to|bis|zu|à|au|und|et|y|en|and|tot)\s+"
+    r"|.{0,40}?\s+(?:to|bis|zu|à|au|und|et|y|en|and|tot|ET)\s+"
+    r")"
+)
+
+# Single-amount EUR regex — keyword-prefixed (Pattern 5 original shape).
+_EUR_SINGLE_RE = re.compile(
+    r"(?:"
+    # "Salary: From/Starting from XXXX EUR/€/euros"
     r"(?:salary|gehalt|salaire|stipendio|salario|salaris|lön|løn|"
-    r"wynagrodzenie|plat|mzda|vergütung|retribuzione)\s*:?\s*"
-    r"(?:from|ab|starting from|à partir de|von|mindestens|da|vanaf)?\s*"
-    r"([\d,. ]+)\s*(?:EUR|€)"
+    r"wynagrodzenie|plat|mzda|vergütung|retribuzione|"
+    r"mindestgehalt|mindestlohn|jahresgehalt|bruttojahresgehalt|"
+    r"einstiegsgehalt|hourly\s+salary)\s*:?\s*"
+    r"(?:from|ab|starting from|à\s+partir\s+de|von|mindestens|da|vanaf|"
+    r"de|d['e]?)?\s*"
+    rf"({_EUR_NUM})\s*{_EUR_CUR}"
     r"|"
-    # "EUR XXXX" with salary context nearby
-    r"(?:EUR|€)\s*([\d,. ]+)"
+    # "EUR/€ XXXX" — symbol before number
+    rf"{_EUR_CUR}\s*({_EUR_NUM})"
     r"|"
-    # "XXXX€" with salary context
-    r"([\d,. ]+)\s*€"
+    # "XXXX €" or "XXXX EUR" or "XXXX euros" — symbol after number
+    rf"({_EUR_NUM})\s*{_EUR_CUR}"
+    r")",
+    re.IGNORECASE,
+)
+
+# Range EUR regex. Three shapes:
+#   1. Currency-leading on both endpoints (Greenhouse/J&J/Mozilla):
+#        "€65.000—€80.000 EUR"     "€72,500.00 - €115,230.00"
+#   2. Connector word range:
+#        "60 000 à 70 000 €"       "ENTRE 24 100 EUR ET 29 200 EUR"
+#        "de 800 euros … à 1000 euros"   (FR `de … à` only matches if both endpoints
+#                                         have currency; we don't pick up bare digits)
+#        "between € 30.000 and € 36.000"
+#   3. Single-currency-tail range:
+#        "60 000 - 70 000 €"       "50.000 - 70.000EUR"      "37300EUR - 39100EUR"
+_EUR_RANGE_RE = re.compile(
+    r"(?:"
+    # Shape 1 + 2: currency-leading on both endpoints (any separator/connector)
+    rf"{_EUR_CUR}\s*({_EUR_NUM})\s*"
+    rf"{_EUR_SEP}"
+    rf"{_EUR_CUR}\s*({_EUR_NUM})"
+    r"|"
+    # Shape 3: currency-trailing range — both numbers, currency at the end
+    rf"({_EUR_NUM})\s*"
+    rf"{_EUR_SEP}"
+    rf"({_EUR_NUM})\s*{_EUR_CUR}"
+    r"|"
+    # Shape 4: number — currency — loose-separator — number — currency
+    # ("60 000 € à 70 000 €", "24 100 EUR ET 29 200 EUR",
+    #  "800 euros brut par mois à 1000 euros brut par mois")
+    rf"({_EUR_NUM})\s*{_EUR_CUR}\s*"
+    rf"{_EUR_LOOSE_SEP}"
+    rf"({_EUR_NUM})\s*{_EUR_CUR}"
     r")",
     re.IGNORECASE,
 )
 
 _EUR_CONTEXT_RE = re.compile(
-    # salary words across European languages
+    # Salary words across European languages.
     r"salary|gehalt|salaire|stipendio|salario|salaris|lön|løn|"
     r"wynagrodzenie|plat|mzda|fizetés|palk|"
     r"remuneration|rémunération|vergütung|retribuzione|"
-    # gross/net indicators
-    r"gross|brutto|brut|lordo|netto|net\b|"
-    # period indicators
-    r"per month|monatlich|mensuel|mensile|monthly|/month|"
-    r"per year|jährlich|annuel|annuale|annually|yearly|/year|"
-    r"per hour|hourly|/hour|stündlich|/hr",
+    # Compensation-range phrasing common in ATS templates (J&J Workday,
+    # Greenhouse, Mozilla, Mattermost, Airbnb, Fever).
+    r"anticipated|base\s+pay|pay\s+range|salary\s+range|compensation\s+range|"
+    r"hiring\s+range|posting\s+range|annual\s+pay\s+range|loonpakket|"
+    # DE/AT collective-agreement and entitlement vocabulary.
+    r"tarifvertrag|kollektivvertrag|mindestgehalt|mindestlohn|"
+    r"bruttojahresgehalt|lehrlingseinkommen|einstiegsgehalt|"
+    r"entgeltgruppe|jahresgehalt|stundenlohn|"
+    # Gross / net indicators.
+    r"gross|brutto|brut|lordo|netto|net\b|bruto\b|"
+    # Period indicators (multilingual).
+    r"per\s+month|monatlich|mensuel|mensile|monthly|/month|pro\s+monat|"
+    r"par\s+mois|brut/?\s*mois|bruto\s+per\s+maand|"
+    r"per\s+year|jährlich|annuel|annuale|annually|yearly|/year|pro\s+jahr|"
+    r"par\s+an|brut/?\s*an|bruto\s+per\s+jaar|bruts?\s+annuels?|"
+    r"14\s*mal\s+jährlich|"
+    r"per\s+hour|hourly|/hour|stündlich|/hr|an\s+hour|per\s+annum|"
+    r"pro\s+rata|"
+    # Belgian 13/14-month indicator (counts as monthly-source context).
+    r"13[,.]\d+\s+maanden|"
+    # Catch-all monthly/yearly heads.
+    r"\bpa\b|p\.a\.",
+    re.IGNORECASE,
+)
+
+# Strong gross markers — at least one in window is sufficient to allow
+# extraction even when "net" also appears nearby.
+_EUR_GROSS_RE = re.compile(
+    r"\b(?:gross|brutto|brut|lordo|bruto)\b",
+    re.IGNORECASE,
+)
+
+# Net markers — if present without a gross marker, skip.
+_EUR_NET_RE = re.compile(
+    r"\b(?:netto|nett[oa]|net\b)\b",
     re.IGNORECASE,
 )
 
 
+def _parse_eur_number(raw: str) -> float | None:
+    """Locale-aware EUR amount parser.
+
+    Recognises four formats seen across EU postings:
+        EN/UK     1,234.56
+        DE/IT/NL  1.234,56     ("dot-thousand, comma-decimal")
+        FR/PT     1 234,56     (space-thousand, with NBSP/thin space variants)
+        Bare      1234         /  1234.56  /  12K
+
+    The choice between thousand-vs-decimal turns on which separator
+    appears last and how many digits trail it:
+      * two separators present → last one is the decimal
+      * one comma, exactly 3 trailing digits, no space → thousands (EN)
+      * one comma, any other tail → decimal (EU)
+      * one dot, multiple dots → thousands
+      * one dot, exactly 3 trailing digits and >3 total digits → thousands
+      * otherwise → decimal
+    """
+    if raw is None:
+        return None
+    s = raw.strip()
+    if not s or not any(c.isdigit() for c in s):
+        return None
+
+    # Trailing sentence-terminating dot defence ("60.000.").
+    s = s.rstrip(".")
+
+    # Normalise NBSP / thin space / non-breaking thin space to plain space.
+    s = s.replace(" ", " ").replace(" ", " ").replace(" ", " ")
+
+    # Trailing decimal-zero idiom CH `.–` already stripped at caller (`.--` too).
+    s = s.replace("'", "").replace("’", "")
+
+    has_comma = "," in s
+    has_dot = "." in s
+    has_space = " " in s
+
+    try:
+        if has_comma and has_dot:
+            if s.rfind(",") > s.rfind("."):
+                # 1.234,56 → 1234.56
+                s = s.replace(".", "").replace(",", ".")
+            else:
+                # 1,234.56 → 1234.56
+                s = s.replace(",", "")
+        elif has_comma and not has_dot:
+            after = s.split(",")[-1]
+            if len(after) == 3 and s.count(",") >= 1 and not has_space:
+                # 1,234 (English thousands)
+                s = s.replace(",", "")
+            else:
+                # 24 100,00 / 1234,56 → decimal
+                s = s.replace(",", ".")
+        elif has_dot and not has_comma:
+            after = s.split(".")[-1]
+            dot_count = s.count(".")
+            if dot_count > 1:
+                s = s.replace(".", "")
+            elif len(after) == 3 and dot_count == 1 and len(s.replace(".", "")) > 3:
+                # 1.234 / 12.345 → thousands
+                s = s.replace(".", "")
+            # else 12.34 stays decimal
+        if has_space:
+            s = s.replace(" ", "")
+        if s.upper().endswith("K"):
+            return float(s[:-1]) * 1000
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _eur_period_in_window(window: str, val: float) -> str | None:
+    """Detect canonical period from a window of EUR-context text."""
+    period_match = re.search(
+        # Hourly markers (multilingual + abbreviations).
+        r"per\s+hour|hourly|/hour|/hr|stündlich|an\s+hour|de\s+l'?heure|par\s+heure|"
+        r"pro\s+stunde|stundenlohn|brutto/std|brutto/stunde|/std\.?|"
+        # Monthly markers.
+        r"per\s+month|monthly|/month|monatlich|mensuel|mensile|pro\s+monat|"
+        r"par\s+mois|brut/?\s*mois|bruto\s+per\s+maand|"
+        r"14\s*mal\s+jährlich|"
+        # Yearly markers.
+        r"per\s+year|annually|yearly|/year|jährlich|annuel|annuale|pro\s+jahr|"
+        r"par\s+an|brut/?\s*an|bruto\s+per\s+jaar|bruts?\s+annuels?|"
+        r"per\s+annum|pro\s+rata|jahresgehalt|bruttojahresgehalt|"
+        r"p\.a\.",
+        window,
+        re.IGNORECASE,
+    )
+    if not period_match:
+        return None
+    raw = period_match.group(0).lower().strip()
+    if any(t in raw for t in ("hour", "/hr", "stünd", "stunde", "heure", "/std")):
+        return "hourly"
+    if any(
+        t in raw
+        for t in (
+            "month",
+            "monat",
+            "mensuel",
+            "mensile",
+            "mois",
+            "maand",
+            "14mal",
+            "14 mal",
+        )
+    ):
+        return "monthly"
+    if any(
+        t in raw
+        for t in (
+            "year",
+            "annual",
+            "annuel",
+            "annuale",
+            "jähr",
+            "jahr",
+            "annum",
+            "p.a.",
+            "an ",
+            " an",
+            "annuels",
+            "annuel",
+            "jaar",
+            "pro rata",
+        )
+    ):
+        return "yearly"
+    # `par an` / `brut/an` and the bare `an hour` already covered above.
+    return None
+
+
+def _eur_apply_filters(val: float, period: str) -> bool:
+    """Sanity-check a single EUR amount against its period magnitude."""
+    if period == "hourly":
+        return 5 <= val <= 200
+    if period == "monthly":
+        # AT Lehrlingseinkommen / DE hourly-derived monthly floors land
+        # in the 800-1500 EUR band. Drop the floor for monthly to admit
+        # AT apprenticeship / FR small-stipend snippets called out by recon.
+        return 600 <= val <= 30000
+    if period == "yearly":
+        return 10000 <= val <= 500000
+    return False
+
+
+_EUR_DISQUALIFY_RE = re.compile(
+    r"transport.{0,10}(compensation|allowance|Zuschuss)|"
+    r"referral.{0,10}(bonus|reward|program)|"
+    r"recommend.{0,10}(reward|bonus)|"
+    r"empfehlung|"
+    r"newborn.{0,10}bonus|"
+    r"child.{0,10}(bonus|benefit|allowance)|"
+    r"compensation for .{0,20}(tennis|gym|language|sport)|"
+    r"Zuschuss|"
+    r"commuting.{0,10}allowance",
+    re.IGNORECASE,
+)
+
+
+def _eur_context_ok(window: str) -> bool:
+    """Salary-context gate shared by single- and range-EUR matches.
+
+    Implements the brutto/netto policy:
+      - Strong gross marker present → accept (even if "net" also present).
+      - Net marker present without gross → skip.
+      - Otherwise require at least one salary/compensation/period word.
+    """
+    if not _EUR_CONTEXT_RE.search(window):
+        return False
+    if _EUR_DISQUALIFY_RE.search(window):
+        return False
+    return not (_EUR_NET_RE.search(window) and not _EUR_GROSS_RE.search(window))
+
+
+def _emit_eur(val: float, val_hi: float | None, period: str) -> SalaryRange:
+    scale = 100 if period == "hourly" else 1
+    return SalaryRange(
+        min=int(val * scale),
+        max=(int(val_hi * scale) if val_hi is not None else None),
+        currency="EUR",
+        period=period,
+    )
+
+
 def _extract_eur(text: str) -> list[SalaryRange]:
-    results = []
-    for m in _EUR_SALARY_RE.finditer(text):
+    """Extract EUR amounts as SalaryRange objects.
+
+    First sweeps ranges (so we don't fragment a `€A — €B` into two singles),
+    then collects keyword-prefixed singles for the cells the range pass misses.
+    """
+    results: list[SalaryRange] = []
+    range_spans: list[tuple[int, int]] = []
+
+    # 1. Ranges first.
+    for m in _EUR_RANGE_RE.finditer(text):
+        g = m.groups()
+        # The alternatives fill groups (1,2), (3,4), or (5,6).
+        if g[0] is not None and g[1] is not None:
+            raw_lo, raw_hi = g[0], g[1]
+        elif g[2] is not None and g[3] is not None:
+            raw_lo, raw_hi = g[2], g[3]
+        elif g[4] is not None and g[5] is not None:
+            raw_lo, raw_hi = g[4], g[5]
+        else:
+            continue
+
+        lo = _parse_eur_number(raw_lo)
+        hi = _parse_eur_number(raw_hi)
+        if lo is None or hi is None:
+            continue
+        # Range sanity: hi must be >= lo, and within 5x (loose) for noise gate.
+        if hi < lo:
+            continue
+
+        start = max(0, m.start() - 200)
+        end = min(len(text), m.end() + 100)
+        window = text[start:end]
+
+        if not _eur_context_ok(window):
+            continue
+
+        period = _eur_period_in_window(window, lo)
+        if period is None:
+            # Heuristic fallback by magnitude.
+            if lo < 1000:
+                period = "hourly"
+            elif lo < 10000:
+                period = "monthly"
+            else:
+                period = "yearly"
+
+        if not _eur_apply_filters(lo, period) or not _eur_apply_filters(hi, period):
+            continue
+
+        results.append(_emit_eur(lo, hi, period))
+        range_spans.append((m.start(), m.end()))
+
+    # 2. Singles — only outside any range span already captured.
+    for m in _EUR_SINGLE_RE.finditer(text):
+        if any(s <= m.start() and m.end() <= e for s, e in range_spans):
+            continue
+
         raw = m.group(1) or m.group(2) or m.group(3)
         if not raw:
             continue
@@ -626,133 +1043,174 @@ def _extract_eur(text: str) -> list[SalaryRange]:
         if not raw or not any(c.isdigit() for c in raw):
             continue
 
-        # Check for salary context in surrounding text
-        start = max(0, m.start() - 150)
+        start = max(0, m.start() - 200)
         end = min(len(text), m.end() + 100)
-        surrounding = text[start:end]
+        window = text[start:end]
 
-        if not _EUR_CONTEXT_RE.search(surrounding):
+        if not _eur_context_ok(window):
             continue
 
-        # Disqualify benefit/perk line items (not primary salary)
-        disqualify = re.search(
-            r"transport.{0,10}(compensation|allowance|Zuschuss)|"
-            r"referral.{0,10}(bonus|reward|program)|"
-            r"recommend.{0,10}(reward|bonus)|"
-            r"empfehlung|"
-            r"newborn.{0,10}bonus|"
-            r"child.{0,10}(bonus|benefit|allowance)|"
-            r"compensation for .{0,20}(tennis|gym|language|sport)|"
-            r"Zuschuss|"
-            r"commuting.{0,10}allowance",
-            surrounding,
-            re.IGNORECASE,
-        )
-        if disqualify:
+        val = _parse_eur_number(raw)
+        if val is None:
             continue
 
-        try:
-            # Handle European number format: 39.243 means 39243, 39.243,00 means 39243
-            cleaned = raw.replace(" ", "")
-            # European format: dots as thousand separators
-            if re.match(r"^\d{1,3}\.\d{3}(,\d+)?$", cleaned):
-                cleaned = cleaned.replace(".", "").replace(",", ".")
-            else:
-                cleaned = cleaned.replace(",", "")
-            val = float(cleaned)
-        except ValueError:
-            continue
-
-        if val < 800:  # too small for any salary (filters out benefit amounts)
-            continue
-
-        # Detect period from context
-        period = None
-        period_match = re.search(
-            r"per hour|hourly|/hour|/hr|stündlich|"
-            r"per month|monthly|/month|monatlich|mensuel|"
-            r"per year|annually|yearly|/year|jährlich|annuel|"
-            r"p\.a\.",
-            surrounding,
-            re.IGNORECASE,
-        )
-        if period_match:
-            period = _detect_period(period_match.group(0))
+        period = _eur_period_in_window(window, val)
         if period is None:
-            # Heuristic: < 10000 → likely monthly; >= 10000 → likely yearly
+            # Heuristic by magnitude when context is silent.
+            if val < 800:
+                # Too small for monthly / yearly without explicit hourly
+                # context → bail to avoid false positives.
+                continue
             period = "monthly" if val < 10000 else "yearly"
 
-        if period == "hourly" and (val < 5 or val > 200):
-            continue
-        if period == "monthly" and (val < 500 or val > 30000):
-            continue
-        if period == "yearly" and (val < 10000 or val > 500000):
+        if not _eur_apply_filters(val, period):
             continue
 
-        results.append(
-            SalaryRange(
-                min=int(val * 100) if period == "hourly" else int(val),
-                max=None,
-                currency="EUR",
-                period=period,
-            )
-        )
+        results.append(_emit_eur(val, None, period))
+
     return results
 
 
 # ── Pattern 6: GBP ──────────────────────────────────────────────────
+#
+# Scope B (#3326) extends the original two regexes to cover:
+#   * UK NHS / public-sector period vocab: `per annum`, `pro rata`
+#   * Tesco hourly: `£N.NN an hour`
+#   * NHS hourly singles: `Hourly salary: £N.NN`
+#   * `to` as range connector (NHS "£28,011 to £30,230")
+#   * Tesco template: `starts from £X an hour; this increases to £Y`
+# Mojibake `Â£` is repaired upstream in `_html_to_text`, so the regex
+# is plain `£`. `_NOT_SALARY_RE` is hardened with `budget|project|deal|
+# contract|funding` so `£250k-£2M project budget` stays rejected.
+
+# GBP number atom — same precision as before; accept `K`/`k` suffix
+# (Tesco / Hireology) plus optional `.NN` decimal.
+_GBP_NUM = r"[\d,]+(?:\.\d+)?[Kk]?"
+
+# Range separator. Two families:
+#   1. Tight connector — dash glyphs or `to`/`up to`. Goes immediately
+#      between the two £-amounts: "£28,011 to £30,230".
+#   2. Loose connector — Tesco's `<num> an hour; this increases to <num>`.
+#      Between the two numbers we may pass a period word and punctuation.
+_GBP_TIGHT_SEP = (
+    r"(?:"
+    r"\s*[-–—]\s*"
+    r"|\s+to\s+"
+    r")"
+)
+_GBP_LOOSE_SEP = (
+    r"(?:\s+(?:an\s+hour|per\s+hour|hourly|per\s+annum|annually|per\s+year))?"
+    r"\s*[;,]?\s*"
+    r"(?:this\s+increases\s+to|rising\s+to|up\s+to)\s+"
+)
 
 _GBP_RANGE_RE = re.compile(
-    r"£([\d,]+(?:\.\d+)?)\s*[-–—]\s*£?([\d,]+(?:\.\d+)?)"
-    r"(\s*.{0,50})",
+    rf"£({_GBP_NUM})"
+    rf"(?:{_GBP_TIGHT_SEP}|{_GBP_LOOSE_SEP})"
+    rf"£?({_GBP_NUM})"
+    r"(\s*.{0,60})",
 )
 
+# Single-amount with period AFTER. Adds `an hour`, `per annum`, `pro rata`.
 _GBP_SINGLE_RE = re.compile(
-    r"£([\d,]+(?:\.\d+)?)\s*(per hour|hourly|per year|annually|/hr|/hour|/year)"
+    r"£([\d,]+(?:\.\d+)?[Kk]?)\s*"
+    r"(per\s+hour|hourly|an\s+hour|per\s+year|annually|per\s+annum|"
+    r"pro\s+rata|/hr|/hour|/year)"
 )
+
+# Single-amount with period BEFORE the number — NHS / Tesco templates
+# like `Hourly salary: £14.76` or `Salary: £25,000 per annum`.
+_GBP_PREFIX_PERIOD_RE = re.compile(
+    r"(hourly\s+salary|hourly\s+pay|hourly\s+rate)\s*[:.\-]?\s*"
+    r"£([\d,]+(?:\.\d+)?[Kk]?)",
+    re.IGNORECASE,
+)
+
+# Disqualifiers specific to GBP — project budgets must NEVER fire.
+_GBP_NOT_SALARY_RE = re.compile(
+    r"\b(?:revenue|billion|million|funding|raised|ipo|valuation|"
+    r"market\s+cap|investment|assets|turnover|"
+    r"budget|project|deal|contract|funding)\b",
+    re.IGNORECASE,
+)
+
+
+def _gbp_period_from_window(window: str) -> str | None:
+    """Detect period from a window of GBP context."""
+    m = re.search(
+        r"per\s+hour|hourly|an\s+hour|/hr|/hour|"
+        r"per\s+year|annually|per\s+annum|pro\s+rata|/year",
+        window,
+        re.IGNORECASE,
+    )
+    if not m:
+        return None
+    raw = m.group(0).lower().strip()
+    if any(t in raw for t in ("hour", "/hr")):
+        return "hourly"
+    return "yearly"
 
 
 def _extract_gbp(text: str) -> list[SalaryRange]:
-    results = []
+    results: list[SalaryRange] = []
+    range_spans: list[tuple[int, int]] = []
 
     for m in _GBP_RANGE_RE.finditer(text):
         lo = _parse_number(m.group(1))
         hi = _parse_number(m.group(2))
-        trailing = m.group(3)
+        trailing = m.group(3) or ""
 
-        if _NOT_SALARY_RE.search(trailing):
-            continue
-
-        # Require salary-confirming context
+        # Stronger NOT_SALARY guard (covers project budgets).
         start = max(0, m.start() - 100)
         surrounding = text[start : m.end()] + trailing
+        if _GBP_NOT_SALARY_RE.search(surrounding):
+            continue
+
+        # Require salary-confirming context — `per annum` and `pro rata`
+        # are NHS-template terms, `an hour` is Tesco.
         if not re.search(
-            r"salary|pay|compensation|per year|annually|per hour|hourly|dependent on",
+            r"salary|pay|compensation|per\s+year|annually|per\s+hour|hourly|"
+            r"per\s+annum|pro\s+rata|an\s+hour|dependent\s+on|rate\s+of\s+pay",
             surrounding,
             re.IGNORECASE,
         ):
             continue
 
-        if lo < 10000 or hi > 500000:
-            # Could be hourly
-            if lo < 7 or lo > 200:
+        # Pick the period from the surrounding window. Falls back to
+        # the previous magnitude heuristic on silence.
+        period = _gbp_period_from_window(surrounding)
+        if period is None:
+            if lo < 10000 or hi > 500000:
+                if lo < 7 or lo > 200:
+                    continue
+                period = "hourly"
+            else:
+                period = "yearly"
+
+        if period == "hourly":
+            if lo < 5 or lo > 200 or hi < lo:
                 continue
-            period = "hourly"
             lo_val = int(lo * 100)
             hi_val = int(hi * 100)
         else:
-            period = "yearly"
+            if lo < 10000 or hi > 500000 or hi < lo:
+                continue
             lo_val = int(lo)
             hi_val = int(hi)
 
         results.append(SalaryRange(min=lo_val, max=hi_val, currency="GBP", period=period))
+        range_spans.append((m.start(), m.end()))
 
     for m in _GBP_SINGLE_RE.finditer(text):
+        if any(s <= m.start() and m.end() <= e for s, e in range_spans):
+            continue
         val = _parse_number(m.group(1))
-        period = _detect_period(m.group(2))
+        period = _detect_period(m.group(2).lower().replace("an hour", "per hour"))
         if period is None:
             continue
         if period == "hourly" and (val < 5 or val > 200):
+            continue
+        if period == "yearly" and (val < 10000 or val > 500000):
             continue
         results.append(
             SalaryRange(
@@ -763,16 +1221,41 @@ def _extract_gbp(text: str) -> list[SalaryRange]:
             )
         )
 
+    for m in _GBP_PREFIX_PERIOD_RE.finditer(text):
+        if any(s <= m.start() and m.end() <= e for s, e in range_spans):
+            continue
+        val = _parse_number(m.group(2))
+        # The prefix word IS the period (hourly).
+        if val < 5 or val > 200:
+            continue
+        results.append(
+            SalaryRange(
+                min=int(val * 100),
+                max=None,
+                currency="GBP",
+                period="hourly",
+            )
+        )
+
     return results
 
 
 # ── Pattern 7: CHF (Swiss franc) ─────────────────────────────────────
-#   "CHF 120'000 - 150'000"  (apostrophe thousands)
+#   "CHF 120'000 - 150'000"      (apostrophe thousands, straight `'`)
+#   "CHF 120’000 - 150’000"     (apostrophe thousands, curly U+2019)
 #   "CHF 8'500 pro Monat"
+#   "CHF 16.– de l'heure"        (Swiss `.–` decimal-zero idiom, FR period)
+#   "CHF 1'500.00 / brutto pro Monat"
 
+# The amount character class admits straight + curly apostrophes, the
+# Swiss decimal-zero idiom `.–` (handled by `_normalize_chf_amount`), dot,
+# and comma. We intentionally exclude bare ` -` from the inner class so
+# the range separator (also a dash) isn't swallowed by greedy matching.
+_CHF_NUM = r"[\d][\d'’.,]*\d|\d"
 _CHF_RE = re.compile(
-    r"CHF\s*([\d]['''\d.,\s]*\d)"  # min amount (must start and end with digit)
-    r"(?:\s*[-–—]\s*([\d]['''\d.,\s]*\d))?"  # optional max
+    r"CHF\s*"
+    rf"({_CHF_NUM}(?:\.[\-–—]+)?)"
+    rf"(?:\s*[-–—]\s*({_CHF_NUM}(?:\.[\-–—]+)?))?"
     r"(\s*.{0,80})",
     re.IGNORECASE,
 )
@@ -780,19 +1263,31 @@ _CHF_RE = re.compile(
 _CHF_CONTEXT_RE = re.compile(
     r"salary|gehalt|salaire|stipendio|lohn|salaris|vergütung|"
     r"gross|brutto|brut|"
-    r"per month|monatlich|pro monat|monthly|/month|"
-    r"per year|jährlich|pro jahr|annually|yearly|/year|"
-    r"per hour|pro stunde|hourly|/hour|stündlich",
+    # Period markers — DE + EN + FR (recon called out `de l'heure` / `par heure`).
+    r"per\s+month|monatlich|pro\s+monat|monthly|/month|par\s+mois|"
+    r"per\s+year|jährlich|pro\s+jahr|annually|yearly|/year|par\s+an|"
+    r"per\s+hour|pro\s+stunde|hourly|/hour|stündlich|de\s+l'?heure|par\s+heure",
     re.IGNORECASE,
 )
+
+
+def _normalize_chf_amount(raw: str) -> str:
+    """Strip Swiss-specific decimal-zero idioms before parsing.
+
+    Inputs like `CHF 16.–` and `CHF 1'500.--` mean `16.00` and `1500.00`
+    respectively. The `–` (U+2013) and bare `-` after the decimal point
+    encode the literal zero cents. We rewrite to `.00` so the standard
+    parser handles the number.
+    """
+    # `.–` / `.—` / `.--` / `.- ` at end → decimal zero.
+    return re.sub(r"\.(?:[\-–—]+)(?=\s|$|[^\d])", ".00", raw)
 
 
 def _extract_chf(text: str) -> list[SalaryRange]:
     results = []
     for m in _CHF_RE.finditer(text):
-        raw_lo = m.group(1).strip()
-        raw_hi = m.group(2)
-        m.group(3)
+        raw_lo = _normalize_chf_amount(m.group(1).strip())
+        raw_hi = _normalize_chf_amount(m.group(2).strip()) if m.group(2) else None
 
         if not any(c.isdigit() for c in raw_lo):
             continue
@@ -804,25 +1299,30 @@ def _extract_chf(text: str) -> list[SalaryRange]:
         if not _CHF_CONTEXT_RE.search(surrounding):
             continue
 
-        lo = _parse_number(raw_lo)
-        hi = _parse_number(raw_hi) if raw_hi else None
+        try:
+            lo = _parse_number(raw_lo)
+            hi = _parse_number(raw_hi) if raw_hi else None
+        except ValueError:
+            continue
 
         # Detect period
         period = None
         period_match = re.search(
-            r"pro stunde|per hour|hourly|stündlich|/hour|/hr|"
-            r"pro monat|per month|monthly|monatlich|/month|"
-            r"pro jahr|per year|annually|yearly|jährlich|/year",
+            r"pro\s+stunde|per\s+hour|hourly|stündlich|/hour|/hr|"
+            r"de\s+l'?heure|par\s+heure|"
+            r"pro\s+monat|per\s+month|monthly|monatlich|/month|par\s+mois|"
+            r"pro\s+jahr|per\s+year|annually|yearly|jährlich|/year|par\s+an",
             surrounding,
             re.IGNORECASE,
         )
         if period_match:
-            period = _detect_period(
-                period_match.group(0)
-                .replace("pro monat", "per month")
-                .replace("pro jahr", "per year")
-                .replace("pro stunde", "per hour")
-            )
+            raw_period = period_match.group(0).lower()
+            if "stunde" in raw_period or "hour" in raw_period or "heure" in raw_period:
+                period = "hourly"
+            elif "monat" in raw_period or "month" in raw_period or "mois" in raw_period:
+                period = "monthly"
+            elif "jahr" in raw_period or "year" in raw_period or "an" in raw_period:
+                period = "yearly"
         if period is None:
             if lo < 500:
                 period = "hourly"
@@ -833,7 +1333,9 @@ def _extract_chf(text: str) -> list[SalaryRange]:
 
         if period == "hourly" and (lo < 15 or lo > 300):
             continue
-        if period == "monthly" and (lo < 2000 or lo > 30000):
+        # Recon: lower CHF monthly floor 2000 → 1200 to admit Swiss
+        # bachelor-level Praktika (PSI/ETH/EPFL).
+        if period == "monthly" and (lo < 1200 or lo > 30000):
             continue
         if period == "yearly" and (lo < 30000 or (lo > 500000)):
             continue
