@@ -2,9 +2,42 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import DOMPurify from "isomorphic-dompurify";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { company, jobBoard, jobPosting } from "@/db/schema";
+
+/**
+ * Allowlist mirrors `ALLOWED_TAGS` in `apps/web/src/lib/sanitize.ts` (the
+ * client-side reader sanitizer) and `_ALLOWED_TAGS` in
+ * `apps/crawler/src/shared/html_normalize.py` (the crawler-side normalizer).
+ * Server-side and client-side allowlists MUST stay aligned — if they drift,
+ * legitimate HTML gets stripped on one path but rendered on the other.
+ */
+const ALLOWED_DESCRIPTION_TAGS = [
+  "a",
+  "b",
+  "blockquote",
+  "br",
+  "code",
+  "em",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "hr",
+  "i",
+  "li",
+  "ol",
+  "p",
+  "pre",
+  "s",
+  "strong",
+  "u",
+  "ul",
+];
 
 const APIFY_BASE_URL = "https://api.apify.com/v2";
 const META_BOARD_SLUG = "meta-careers";
@@ -710,18 +743,30 @@ function buildLocationCandidates(locations: string[] | null): string[] {
   return candidates;
 }
 
-function normalizeDescriptionHtml(description: string | null): string | null {
+/**
+ * Sanitize description HTML received from Apify before persisting it to
+ * Postgres / R2. Uses DOMPurify (parser-based, isomorphic) with the same
+ * allowlist as the client reader. This is defense-in-depth — the client
+ * also runs `sanitizeJobHtml` on read — but server-side sanitization
+ * matters because downstream consumers (RSS, JSON-LD, API) may not
+ * re-sanitize.
+ *
+ * See #3229 — the previous regex-based implementation had documented
+ * bypasses (unclosed `<script>`, unquoted `on*` handlers, data URLs,
+ * nested-tag splices). DOMPurify parses HTML in a real DOM, so those
+ * bypasses don't apply.
+ */
+export function normalizeDescriptionHtml(description: string | null): string | null {
   if (!description) return null;
   const trimmed = decodeEscapedHtml(description.trim());
   if (!trimmed) return null;
 
-  const withoutDangerousTags = trimmed
-    .replace(/<\s*(script|style|iframe|object|embed|svg|math|canvas|template|head)\b[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
-    .replace(/ on\w+="[^"]*"/gi, "")
-    .replace(/ on\w+='[^']*'/gi, "")
-    .replace(/javascript:/gi, "");
+  const clean = DOMPurify.sanitize(trimmed, {
+    ALLOWED_TAGS: ALLOWED_DESCRIPTION_TAGS,
+    ALLOWED_ATTR: [],
+  }).trim();
 
-  return withoutDangerousTags || null;
+  return clean || null;
 }
 
 function decodeEscapedHtml(value: string): string {
