@@ -67,8 +67,21 @@ export function buildCacheKey(
  * ``ZeroResults`` even though the URL had no filters and the
  * prerendered ``initialData`` had ~10 top companies. See #2989.
  *
+ * Additional guard (#3354): never restore a snapshot whose
+ * ``companies`` is empty AND whose ``cacheKey`` represents the no-
+ * filter view (``||||``). The snapshot only serves the
+ * "return to the same view after a posting-detail dive" use case — but
+ * an empty unfiltered result is never a legitimate destination (the
+ * homepage always has top companies). The empty state arises only from
+ * transient Typesense / cache degradation poisoning the snapshot, and
+ * restoring it traps the user on a permanently empty page even after
+ * the back end recovers, because the fresh prerendered top-10 in
+ * ``initialCompanies`` is overridden by the empty snapshot.
+ *
  * Restoration semantics now:
- *   - Same URL filters (or both empty) → restore the snapshot.
+ *   - Same URL filters (or both empty), snapshot has results → restore.
+ *   - Same URL filters (or both empty), snapshot has empty companies
+ *     AND the no-filter cacheKey → ignore (#3354 poison guard).
  *   - Different URL filters → ignore the snapshot, render the fresh
  *     ``initialData`` from the server prerender / re-fetch.
  *
@@ -76,12 +89,28 @@ export function buildCacheKey(
  * to the same view after a posting-detail dive) without the poisoning
  * footgun.
  */
+const NO_FILTER_CACHE_KEY = "||||";
+
 export function shouldRestoreSnapshot(
   cached: SearchStateSnapshot | null,
   currentCacheKey: string,
 ): boolean {
   if (cached === null) return false;
-  return cached.cacheKey === currentCacheKey;
+  if (cached.cacheKey !== currentCacheKey) return false;
+  // #3354 poison guard: an unfiltered snapshot with 0 companies is
+  // always a degraded prior state (Typesense glitch / silent failure)
+  // and never a legitimate "saved view" worth restoring. Reject it so
+  // the fresh ``initialCompanies`` from the server prerender / refetch
+  // can render. Filtered empty snapshots stay restorable because a
+  // 0-result keyword search IS a legitimate destination the user may
+  // want to return to.
+  if (
+    cached.cacheKey === NO_FILTER_CACHE_KEY &&
+    cached.companies.length === 0
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /** Live callbacks the search page registers so the header SearchBar can interact directly. */

@@ -112,12 +112,45 @@ describe("shouldRestoreSnapshot — #2989 regression", () => {
     expect(shouldRestoreSnapshot(cached, currentKey)).toBe(true);
   });
 
-  it("returns true when both snapshot and URL have no filters", () => {
+  it("returns true when both snapshot and URL have no filters AND snapshot has results", () => {
+    // The legitimate restore case: user previously viewed /explore (no
+    // filters, top companies loaded), drilled into a posting, comes
+    // back. cacheKey "||||" on both sides, snapshot has the top
+    // companies it last saw, restoring preserves the scroll position
+    // and result list.
     const cached = makeSnapshot({
       cacheKey: buildCacheKey([], [], [], [], []),
+      companies: [
+        {
+          company: { id: "c1", name: "Acme", slug: "acme", icon: null },
+          activeMatches: 1,
+          yearMatches: 1,
+          postings: [],
+        },
+      ] as SearchResultCompany[],
+      totalCompanies: 1,
     });
     const currentKey = buildCacheKey([], [], [], [], []);
     expect(shouldRestoreSnapshot(cached, currentKey)).toBe(true);
+  });
+
+  /**
+   * #3354 poison guard: an unfiltered snapshot with 0 companies is a
+   * degraded state (Typesense glitch / cache miss) and must NEVER be
+   * restored — restoring it traps the user on a permanently empty page
+   * even though the fresh ``initialCompanies`` prerender carries the
+   * real top-10. The strict cache-key match alone wasn't enough
+   * because the no-filter cacheKey ``||||`` legitimately matches every
+   * fresh /explore visit.
+   */
+  it("does NOT restore an empty-companies snapshot when both have no filters (#3354)", () => {
+    const cached = makeSnapshot({
+      cacheKey: buildCacheKey([], [], [], [], []),
+      companies: [] as SearchResultCompany[],
+      totalCompanies: 0,
+    });
+    const currentKey = buildCacheKey([], [], [], [], []);
+    expect(shouldRestoreSnapshot(cached, currentKey)).toBe(false);
   });
 
   /**
