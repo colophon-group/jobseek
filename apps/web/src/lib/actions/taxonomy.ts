@@ -420,6 +420,10 @@ async function _resolveSenioritySlugsCached(
  * Redis-backed `cached()` (TTL 86400s) in #2884 (resolve/expand slice,
  * bucket 3). Tagged so `crawler sync` -> `/api/internal/invalidate-typeahead`
  * drops the slot when the occupation hierarchy changes.
+ *
+ * Prefer {@link expandOccupationIdsBatch} when callers have multiple seed
+ * IDs — a single recursive CTE per batch beats L parallel CTEs. See
+ * #3186.
  */
 export async function expandOccupationIds(occupationId: number): Promise<number[]> {
   "use cache";
@@ -437,6 +441,53 @@ export async function expandOccupationIds(occupationId: number): Promise<number[
         SELECT id FROM descendants
       `),
     { label: `expandOccupationIds[${occupationId}]` },
+  );
+  return (rows as unknown as { id: number }[]).map((r) => r.id);
+}
+
+/**
+ * Batch variant of {@link expandOccupationIds} — takes an array of seed
+ * occupation IDs and returns the deduplicated union of all descendant IDs
+ * in a single recursive CTE round-trip (issue #3186).
+ *
+ * Postgres fallback paths in `_getWatchlistPostingsPostgres` and
+ * `_searchCompaniesForWatchlistPostgres` previously dispatched one
+ * `expandOccupationIds(id)` per seed via `Promise.all(...)`, which fires
+ * L separate recursive CTE queries (and L Redis round-trips even on
+ * warm cache). The batched query collapses that to one CTE regardless
+ * of L.
+ *
+ * Cache-key shape under `'use cache'`: the wrapper sorts the ID array
+ * so `[a,b]` and `[b,a]` hit the same slot. Empty input short-circuits
+ * before the cache boundary.
+ */
+export async function expandOccupationIdsBatch(
+  occupationIds: number[],
+): Promise<number[]> {
+  if (occupationIds.length === 0) return [];
+  const sorted = [...new Set(occupationIds)].sort((a, b) => a - b);
+  return _expandOccupationIdsBatchCached(sorted);
+}
+
+async function _expandOccupationIdsBatchCached(
+  sortedIds: number[],
+): Promise<number[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(typeaheadOccupationsCacheTag());
+
+  const pgArray = `{${sortedIds.join(",")}}`;
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; id: number }>(sql`
+        WITH RECURSIVE descendants AS (
+          SELECT id FROM occupation WHERE id = ANY(${pgArray}::integer[])
+          UNION
+          SELECT o.id FROM occupation o JOIN descendants d ON o.parent_id = d.id
+        )
+        SELECT DISTINCT id FROM descendants
+      `),
+    { label: "expandOccupationIdsBatch" },
   );
   return (rows as unknown as { id: number }[]).map((r) => r.id);
 }

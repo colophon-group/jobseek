@@ -14,8 +14,8 @@ import {
   typeaheadCompaniesCacheTag,
 } from "@/lib/cache-tags";
 import { getSessionUserId } from "@/lib/sessionCache";
-import { expandLocationIds } from "@/lib/actions/locations";
-import { expandOccupationIds } from "@/lib/actions/taxonomy";
+import { expandLocationIdsBatch } from "@/lib/actions/locations";
+import { expandOccupationIdsBatch } from "@/lib/actions/taxonomy";
 import { ANON_MAX_COMPANIES, ANON_MAX_POSTINGS } from "@/lib/search/constants";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
@@ -410,12 +410,18 @@ async function _searchCompaniesForWatchlistPostgres(params: {
   }
   const companyWhere = sql.join(companyClauses, sql` AND `);
 
+  // Batched ancestor/descendant expansion: one recursive CTE per taxonomy
+  // (not L per L seed IDs). The previous `Promise.all(ids.map(expand))`
+  // fired L parallel recursive CTEs against `location` / `occupation` —
+  // ~50–150ms of avoidable work and L extra Redis round-trips even on
+  // warm cache, on the exact Postgres fallback path that runs when
+  // Typesense is degraded. See #3186.
   const [expandedLocIds, expandedOccIds] = await Promise.all([
     params.locationIds?.length
-      ? Promise.all(params.locationIds.map(expandLocationIds)).then((a) => [...new Set(a.flat())])
+      ? expandLocationIdsBatch(params.locationIds)
       : undefined,
     params.occupationIds?.length
-      ? Promise.all(params.occupationIds.map(expandOccupationIds)).then((a) => [...new Set(a.flat())])
+      ? expandOccupationIdsBatch(params.occupationIds)
       : undefined,
   ]);
 

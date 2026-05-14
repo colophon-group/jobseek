@@ -41,8 +41,14 @@ vi.mock("drizzle-orm", () => ({
     strings.join("?"),
 }));
 vi.mock("@/lib/sessionCache", () => ({ getSessionUserId: vi.fn() }));
-vi.mock("@/lib/actions/locations", () => ({ expandLocationIds: vi.fn() }));
-vi.mock("@/lib/actions/taxonomy", () => ({ expandOccupationIds: vi.fn() }));
+vi.mock("@/lib/actions/locations", () => ({
+  expandLocationIds: vi.fn(),
+  expandLocationIdsBatch: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("@/lib/actions/taxonomy", () => ({
+  expandOccupationIds: vi.fn(),
+  expandOccupationIdsBatch: vi.fn().mockResolvedValue([]),
+}));
 vi.mock("@/lib/search", () => ({ getSearchProvider: vi.fn() }));
 vi.mock("@/lib/search/constants", () => ({
   ANON_MAX_COMPANIES: 5,

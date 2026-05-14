@@ -156,6 +156,10 @@ function _mapLocationHit(hit: TypesenseHit, locale: string): LocationSuggestion 
  * bucket 3). Tagged so `crawler sync` ->
  * `/api/internal/invalidate-typeahead` drops the slot when the location
  * hierarchy changes (macro region members in particular).
+ *
+ * Prefer {@link expandLocationIdsBatch} when callers have multiple seed
+ * IDs — a single recursive CTE per batch beats L parallel CTEs. See
+ * #3186.
  */
 export async function expandLocationIds(locationId: number): Promise<number[]> {
   "use cache";
@@ -182,6 +186,63 @@ export async function expandLocationIds(locationId: number): Promise<number[]> {
         SELECT id FROM descendants
       `),
     { label: `expandLocationIds[${locationId}]` },
+  );
+  return (rows as unknown as { id: number }[]).map((r) => r.id);
+}
+
+/**
+ * Batch variant of {@link expandLocationIds} — takes an array of seed
+ * location IDs and returns the deduplicated union of all descendant IDs
+ * in a single recursive CTE round-trip (issue #3186).
+ *
+ * Postgres fallback paths in `_getWatchlistPostingsPostgres` and
+ * `_searchCompaniesForWatchlistPostgres` previously dispatched one
+ * `expandLocationIds(id)` per seed via `Promise.all(...)`, which fires L
+ * separate recursive CTE queries (and L Redis round-trips even on warm
+ * cache) — a 10x amplifier on the exact path that runs when Typesense is
+ * degraded. The batched query collapses that to one CTE regardless of L.
+ *
+ * Cache-key shape under `'use cache'`: the wrapper sorts the ID array so
+ * `[a,b]` and `[b,a]` hit the same slot. Empty input short-circuits
+ * before the cache boundary.
+ */
+export async function expandLocationIdsBatch(
+  locationIds: number[],
+): Promise<number[]> {
+  if (locationIds.length === 0) return [];
+  // Dedupe + sort so callers passing `[a,b]` and `[b,a,a]` share a slot.
+  const sorted = [...new Set(locationIds)].sort((a, b) => a - b);
+  return _expandLocationIdsBatchCached(sorted);
+}
+
+async function _expandLocationIdsBatchCached(
+  sortedIds: number[],
+): Promise<number[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(typeaheadLocationsCacheTag());
+
+  const pgArray = `{${sortedIds.join(",")}}`;
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; id: number }>(sql`
+        WITH RECURSIVE seeds AS (
+          -- The seed locations themselves
+          SELECT id FROM location WHERE id = ANY(${pgArray}::integer[])
+          UNION
+          -- If any seed is a macro region, include its member countries
+          SELECT lm.country_id AS id
+          FROM location_macro_member lm
+          WHERE lm.macro_id = ANY(${pgArray}::integer[])
+        ),
+        descendants AS (
+          SELECT id FROM seeds
+          UNION
+          SELECT l.id FROM location l JOIN descendants d ON l.parent_id = d.id
+        )
+        SELECT DISTINCT id FROM descendants
+      `),
+    { label: "expandLocationIdsBatch" },
   );
   return (rows as unknown as { id: number }[]).map((r) => r.id);
 }

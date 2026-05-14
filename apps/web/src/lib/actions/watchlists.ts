@@ -24,8 +24,8 @@ import {
   insertWatchlistWithUniqueSlug,
 } from "@/lib/watchlist-slug";
 import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/constants";
-import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations";
-import { expandOccupationIds, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
+import { expandLocationIdsBatch, resolveLocationSlugs } from "@/lib/actions/locations";
+import { expandOccupationIdsBatch, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "@/lib/search/typesense-filters";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
@@ -1815,13 +1815,18 @@ async function _getWatchlistPostingsPostgres(
   },
   userId: string | null,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
-  // Expand parent locations/occupations to include children
+  // Batched ancestor/descendant expansion: one recursive CTE per taxonomy
+  // (not L per L seed IDs). The previous `Promise.all(ids.map(expand))`
+  // fired L parallel recursive CTEs against `location` / `occupation` —
+  // ~50–150ms of avoidable work and L extra Redis round-trips even on
+  // warm cache, on the exact Postgres fallback path that runs when
+  // Typesense is degraded. See #3186.
   const [expandedLocationIds, expandedOccupationIds] = await Promise.all([
     params.locationIds && params.locationIds.length > 0
-      ? Promise.all(params.locationIds.map(expandLocationIds)).then((a) => [...new Set(a.flat())])
+      ? expandLocationIdsBatch(params.locationIds)
       : undefined,
     params.occupationIds && params.occupationIds.length > 0
-      ? Promise.all(params.occupationIds.map(expandOccupationIds)).then((a) => [...new Set(a.flat())])
+      ? expandOccupationIdsBatch(params.occupationIds)
       : undefined,
   ]);
 

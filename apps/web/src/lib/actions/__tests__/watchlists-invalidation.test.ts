@@ -129,11 +129,13 @@ vi.mock("@/lib/search/constants", () => ({
 
 vi.mock("@/lib/actions/locations", () => ({
   expandLocationIds: vi.fn().mockResolvedValue([]),
+  expandLocationIdsBatch: vi.fn().mockResolvedValue([]),
   resolveLocationSlugs: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("@/lib/actions/taxonomy", () => ({
   expandOccupationIds: vi.fn().mockResolvedValue([]),
+  expandOccupationIdsBatch: vi.fn().mockResolvedValue([]),
   resolveOccupationSlugs: vi.fn().mockResolvedValue([]),
   resolveSenioritySlugs: vi.fn().mockResolvedValue([]),
   resolveTechnologySlugs: vi.fn().mockResolvedValue([]),
