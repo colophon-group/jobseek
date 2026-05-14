@@ -21,7 +21,9 @@ import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import { parseSearchFilters } from "@/lib/actions/search-input";
+import { getCurrencyRates } from "@/lib/actions/search";
 import { firstOf, idsOrUndefined, parseRangeParam } from "@/lib/search/params";
+import { convertToEur } from "@/lib/salary";
 import { canonicalStringCompare } from "@/lib/sort";
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
@@ -981,11 +983,36 @@ async function _parseSimilarFilters(
   const sen = firstOf(searchParams.sen);
   const tech = firstOf(searchParams.tech);
   const sal = firstOf(searchParams.sal);
+  const salcur = firstOf(searchParams.salcur);
   const exp = firstOf(searchParams.exp);
   const etype = firstOf(searchParams.etype);
 
   const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, locale });
-  const { min: salaryMinEur, max: salaryMaxEur } = parseRangeParam(sal);
+  const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
+  // Convert user-currency filter amount to EUR — the `salary_eur` field on
+  // every job_posting Typesense document is in EUR (see
+  // apps/crawler/src/processing/cpu.py::_extract_salary_fields), so the filter
+  // threshold MUST be in EUR-equivalent units. Without this, "100K USD" was
+  // compared against EUR-indexed values, silently excluding US roles paying
+  // $100K (their `salary_eur` ≈ 92,000 < 100,000). Mirrors the fix in
+  // `explore-data.ts` / `company-page-data.ts` (issue #3178).
+  //
+  // The strip is a client component that calls this server action with the
+  // URL search params from `useSearchParams()`. The toolbar omits `salcur`
+  // from the URL only when it equals "EUR" (see `company-page.tsx::updateUrl`
+  // and `search-page.tsx::updateUrl`), so `salcur ?? "EUR"` is the URL's
+  // own source of truth — no need to read user preferences here, which would
+  // taint the `'use cache'` boundary and break the static company-page shell.
+  //
+  // `getCurrencyRates` is cache-backed (`cacheLife("hours")`) and is only
+  // called when a salary filter is actually active.
+  const salaryCurrencyParam = salcur ?? "EUR";
+  const rates =
+    salaryMinDisplay != null || salaryMaxDisplay != null
+      ? await getCurrencyRates()
+      : [];
+  const salaryMinEur = convertToEur(salaryMinDisplay, salaryCurrencyParam, rates);
+  const salaryMaxEur = convertToEur(salaryMaxDisplay, salaryCurrencyParam, rates);
   const { min: experienceMin, max: experienceMax } = parseRangeParam(exp);
 
   return {
