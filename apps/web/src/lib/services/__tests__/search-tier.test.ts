@@ -124,4 +124,106 @@ describe("service tier boundary (#3231)", () => {
       "AsyncFunction",
     );
   });
+
+  // Regression guard for the build break observed on PR #3335.
+  //
+  // Next.js / Turbopack processes `"use server"` files by scanning for
+  // **declared** async functions and converting each into a server-action
+  // reference. Pure `export { foo } from "..."` re-exports yield ZERO
+  // exports from the wrapper's perspective — production builds then fail
+  // at every client component that imports from the wrapper.
+  //
+  // The fix is to declare each wrapper explicitly and delegate to the
+  // service implementation, e.g.:
+  //
+  //     export async function searchJobs(
+  //       ...args: Parameters<typeof service.searchJobs>
+  //     ): ReturnType<typeof service.searchJobs> {
+  //       return service.searchJobs(...args);
+  //     }
+  //
+  // These tests scan the wrapper sources and assert each callable
+  // listed in the service module appears with an `await service.<name>(`
+  // or `return service.<name>(` delegation. Catches future regressions
+  // back to the broken `export { ... } from "..."` pattern.
+  function callableServiceNames(mod: Record<string, unknown>): string[] {
+    return Object.entries(mod)
+      .filter(([, v]) => typeof v === "function")
+      .map(([k]) => k)
+      .sort();
+  }
+
+  function assertExplicitDelegation(wrapperSrc: string, name: string): void {
+    // Allow either `return service.<name>(` (sync delegation) or
+    // `await service.<name>(` (if a wrapper ever needs to do post-await
+    // work). The hard rule we're enforcing: a literal call expression
+    // against the service module must appear in the wrapper source.
+    const pattern = new RegExp(
+      String.raw`(?:await|return)\s+service\.` + name + String.raw`\(`,
+    );
+    expect(
+      pattern.test(wrapperSrc),
+      `wrapper must contain an explicit \`await service.${name}(\` or ` +
+        `\`return service.${name}(\` delegation — pure re-exports break ` +
+        `Next.js "use server" processing (PR #3335).`,
+    ).toBe(true);
+  }
+
+  it("`@/lib/actions/search` declares an explicit async wrapper for every service callable", () => {
+    const src = readSource("src/lib/actions/search.ts");
+    const names = callableServiceNames(searchService);
+    // Sanity check — we expect a non-trivial surface so a future
+    // accidental wipe of the service module surfaces here too.
+    expect(names.length).toBeGreaterThan(3);
+    for (const name of names) {
+      // Each callable must appear as a declared async export in the
+      // wrapper. Without this the `"use server"` module ships zero
+      // exports, and Next.js client imports of `@/lib/actions/search`
+      // fail at production build time.
+      expect(
+        new RegExp(String.raw`export\s+async\s+function\s+` + name + String.raw`\b`).test(src),
+        `wrapper must declare \`export async function ${name}\` — pure ` +
+          `re-exports break Next.js "use server" processing (PR #3335).`,
+      ).toBe(true);
+      assertExplicitDelegation(src, name);
+    }
+  });
+
+  it("`@/lib/actions/search-input` declares an explicit async wrapper for every service callable", () => {
+    const src = readSource("src/lib/actions/search-input.ts");
+    const names = callableServiceNames(searchInputService);
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      expect(
+        new RegExp(String.raw`export\s+async\s+function\s+` + name + String.raw`\b`).test(src),
+        `wrapper must declare \`export async function ${name}\` — pure ` +
+          `re-exports break Next.js "use server" processing (PR #3335).`,
+      ).toBe(true);
+      assertExplicitDelegation(src, name);
+    }
+  });
+
+  it("action wrappers contain no `export { foo } from \"@/lib/services/...\"` re-exports of callables", () => {
+    // Type-only re-exports (`export type { ... } from ...`) ARE legal —
+    // they're erased at compile-time and don't participate in the
+    // `"use server"` transform. We just forbid plain value re-exports
+    // from the wrappers, which is the exact pattern that broke PR #3335.
+    for (const rel of [
+      "src/lib/actions/search.ts",
+      "src/lib/actions/search-input.ts",
+    ]) {
+      const src = readSource(rel);
+      // Match `export { ... } from "@/lib/services/..."` but NOT
+      // `export type { ... } from "@/lib/services/..."`.
+      const valueReExport = /^\s*export\s*\{[^}]+\}\s*from\s*["']@\/lib\/services\//m;
+      expect(
+        valueReExport.test(src),
+        `${rel} must not use \`export { foo } from "@/lib/services/..."\` ` +
+          `for callable re-exports — Next.js "use server" processing ` +
+          `yields zero exports for that form (PR #3335). Use a declared ` +
+          `\`export async function\` wrapper that delegates to the service ` +
+          `instead.`,
+      ).toBe(false);
+    }
+  });
 });
