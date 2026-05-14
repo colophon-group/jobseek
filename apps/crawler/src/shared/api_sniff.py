@@ -1128,14 +1128,24 @@ async def _fetch_page_with_retry(
     immediately, bypassing the retry budget, since the publisher's W3C
     opt-out signal is not transient.
     """
+    # Retry observability (#3210). Same counter as ``http_retry.py`` so a
+    # Grafana ``rate(crawler_http_retry_attempts_total[5m])`` query
+    # aggregates the static-httpx and api_sniff paths into one view.
+    from src.metrics import http_retry_attempts_total, http_retry_host
     from src.shared.tdm import TDMReservedError
+
+    host = http_retry_host(url)
 
     last_exc: BaseException | None = None
     last_status: int | None = None
+    retried = False
 
     for attempt in range(retries):
         try:
-            return await fetch_fn(method, url, headers, body)
+            result = await fetch_fn(method, url, headers, body)
+            if retried:
+                http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+            return result
         except TDMReservedError:
             # Publisher policy declaration — propagate, never retry.
             raise
@@ -1152,9 +1162,13 @@ async def _fetch_page_with_retry(
                     attempts=attempt + 1,
                     last_status=status,
                 ) from exc
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
         except Exception as exc:  # noqa: BLE001 — Playwright errors, timeouts, parse errors
             last_exc = exc
             last_status = None
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
 
         if attempt < retries - 1:
             delay = base_delay * (2**attempt) * (0.5 + random.random())
@@ -1168,6 +1182,7 @@ async def _fetch_page_with_retry(
             )
             await asyncio.sleep(delay)
 
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
     raise PaginationFetchError(
         url,
         attempts=retries,

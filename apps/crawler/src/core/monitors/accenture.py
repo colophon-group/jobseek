@@ -246,15 +246,23 @@ async def _fetch_page_with_retry(
       ``_RECORD_FAILURE`` rather than silently truncating the partition
       output (the bug from PR #2722's NHS spike — same shape).
     """
+    # Retry observability (#3210). Same counter as ``http_retry.py`` so
+    # cross-monitor "retry storm" queries aggregate accenture in.
+    from src.metrics import http_retry_attempts_total, http_retry_host
     from src.shared.tdm import TDMReservedError
 
     last_exc: BaseException | None = None
     last_status: int | None = None
     url = f"{_API_BASE}/{endpoint}"
+    host = http_retry_host(url)
+    retried = False
 
     for attempt in range(retries):
         try:
-            return await _fetch_page(fetch_fn, body, endpoint, content_type)
+            result = await _fetch_page(fetch_fn, body, endpoint, content_type)
+            if retried:
+                http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+            return result
         except TDMReservedError:
             # Publisher policy declaration — never retry, propagate.
             raise
@@ -271,9 +279,13 @@ async def _fetch_page_with_retry(
                     attempts=attempt + 1,
                     last_status=status,
                 ) from exc
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
         except Exception as exc:  # noqa: BLE001 — timeout, network, parse error
             last_exc = exc
             last_status = None
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
 
         if attempt < retries - 1:
             delay = base_delay * (2**attempt) * (0.5 + random.random())
@@ -286,6 +298,7 @@ async def _fetch_page_with_retry(
             )
             await asyncio.sleep(delay)
 
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
     raise PaginationFetchError(
         url,
         attempts=retries,

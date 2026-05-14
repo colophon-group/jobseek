@@ -165,10 +165,24 @@ async def fetch_with_retry(
     # narrow — :mod:`src.shared.tdm` re-exports the sentinel exception
     # type so tests can ``except TDMReservedError`` without importing
     # http_retry first. The check itself runs only on 200 responses.
+    # Retry observability (#3210). Imported lazily so test environments
+    # that stub out ``src.metrics`` (or import this module without the
+    # full crawler runtime) don't pay the cost on the happy path. The
+    # counter is bumped at each retry-causing site, plus once on
+    # ``recovered`` / ``exhausted``; ``host`` is bounded cardinality.
+    from src.metrics import (
+        http_retry_attempts_total,
+        http_retry_empty_200_total,
+        http_retry_host,
+        http_retry_transient_403_total,
+    )
     from src.shared.tdm import check_response as _tdm_check
+
+    host = http_retry_host(url)
 
     last_exc: BaseException | None = None
     last_status: int | None = None
+    retried = False  # observability: did we burn at least one retry?
 
     for attempt in range(retries):
         try:
@@ -189,6 +203,8 @@ async def fetch_with_retry(
                     # failure — and propagates up the call stack to the
                     # monitor wrapper in ``processing/board.py``.
                     _tdm_check(resp, body_excerpt=text)
+                    if retried:
+                        http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
                     return text[:max_chars]
                 # Empty-200 (#2739): treat as transient, fall through
                 # to backoff. ``last_exc`` stays None so retry-budget
@@ -196,6 +212,9 @@ async def fetch_with_retry(
                 # null last_error, which an operator pattern-matches
                 # in logs as the empty-body signal.
                 last_exc = None
+                http_retry_empty_200_total.labels(host=host).inc()
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
                 log.info(
                     "http_retry.empty_200",
                     url=url,
@@ -205,6 +224,8 @@ async def fetch_with_retry(
                 return None
             elif is_retryable_status(resp.status_code):
                 last_exc = None  # status-only, no exception
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
             elif transient_403 and resp.status_code in _TRANSIENT_403_STATUSES:
                 # WAF/anti-bot block on a sitemap-shard fetch (#2994). The
                 # caller (``_fetch_child_xml``) opted in: retry through
@@ -214,6 +235,9 @@ async def fetch_with_retry(
                 # PaginationFetchError carries ``last_status=403`` for
                 # operator log pattern-matching.
                 last_exc = None
+                http_retry_transient_403_total.labels(host=host).inc()
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
                 log.info(
                     "http_retry.transient_403",
                     url=url,
@@ -243,6 +267,8 @@ async def fetch_with_retry(
                 raise
             last_exc = exc
             last_status = None
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
 
         if attempt < retries - 1:
             # Exponential backoff with full jitter.
@@ -257,6 +283,7 @@ async def fetch_with_retry(
             )
             await asyncio.sleep(delay)
 
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
     raise PaginationFetchError(
         url,
         attempts=retries,

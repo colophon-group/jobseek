@@ -131,11 +131,17 @@ async def _post_page_with_retry(
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
     with full jitter, identical cadence to accenture (#2735).
     """
+    # Retry observability (#3210). Same counter as ``http_retry.py`` so
+    # cross-monitor "retry storm" queries aggregate workday in.
+    from src.metrics import http_retry_attempts_total, http_retry_host
     from src.shared.tdm import TDMReservedError
     from src.shared.tdm import check_response as _tdm_check
 
+    host = http_retry_host(list_url)
+
     last_exc: BaseException | None = None
     last_status: int | None = None
+    retried = False
 
     for attempt in range(retries):
         try:
@@ -166,9 +172,13 @@ async def _post_page_with_retry(
                     raise ValueError(
                         f"workday list endpoint returned non-dict body: {type(data).__name__}"
                     )
+                if retried:
+                    http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
                 return data
             if is_retryable_status(resp.status_code):
                 last_exc = None  # status-only, no exception
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
             else:
                 # Non-retryable 4xx — fail fast. ``resp.raise_for_status``
                 # would raise ``HTTPStatusError`` which the caller doesn't
@@ -185,6 +195,8 @@ async def _post_page_with_retry(
         except Exception as exc:  # noqa: BLE001 — timeout, network, JSON parse
             last_exc = exc
             last_status = None
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
 
         if attempt < retries - 1:
             delay = base_delay * (2**attempt) * (0.5 + random.random())
@@ -198,6 +210,7 @@ async def _post_page_with_retry(
             )
             await asyncio.sleep(delay)
 
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
     raise PaginationFetchError(
         list_url,
         attempts=retries,
