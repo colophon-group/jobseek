@@ -1,8 +1,12 @@
 import "server-only";
 
 import { resolveLocationSlugs, suggestLocations, type LocationSuggestion } from "@/lib/actions/locations";
-import { resolveOccupationSlugs, resolveSenioritySlugs, suggestOccupations, suggestSeniorities, suggestTechnologies, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
-import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
+// Service-tier callers go straight to the plain service module rather
+// than the `"use server"` action wrapper — see issues #3231 / #3329.
+// (`@/lib/actions/locations` is still on the action surface; its
+// service-tier extraction is tracked in #3330.)
+import { resolveOccupationSlugs, resolveSenioritySlugs, suggestOccupations, suggestSeniorities, suggestTechnologies, resolveTechnologySlugs } from "@/lib/services/taxonomy";
+import type { TaxonomySuggestion } from "@/lib/services/taxonomy";
 import type { SelectedLocation } from "@/lib/search/selected-location";
 import { parseWorkModeParam } from "@/lib/search/query-params";
 import type { WorkMode } from "@/lib/search/types";

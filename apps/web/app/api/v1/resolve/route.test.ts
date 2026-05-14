@@ -41,7 +41,10 @@ vi.mock("@/lib/actions/company", () => ({
 vi.mock("@/lib/actions/locations", () => ({
   suggestLocations: mocks.suggestLocations,
 }));
-vi.mock("@/lib/actions/taxonomy", () => ({
+// The route handler now imports taxonomy helpers from the service tier
+// (see #3329). Mock that path so the substitution intercepts the call
+// chain.
+vi.mock("@/lib/services/taxonomy", () => ({
   suggestOccupations: mocks.suggestOccupations,
   suggestSeniorities: mocks.suggestSeniorities,
   suggestTechnologies: mocks.suggestTechnologies,

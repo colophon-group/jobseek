@@ -16,7 +16,12 @@ vi.mock("@/lib/actions/locations", () => ({
   suggestLocations: mocks.suggestLocations,
   resolveLocationSlugs: mocks.resolveLocationSlugs,
 }));
-vi.mock("@/lib/actions/taxonomy", () => ({
+// `lib/services/search-input.ts` (the implementation reached via the
+// `lib/actions/search-input` wrapper) imports taxonomy helpers
+// directly from the service tier — see #3329. Mock the service module
+// rather than the action wrapper so the substitution actually
+// intercepts the call chain.
+vi.mock("@/lib/services/taxonomy", () => ({
   suggestOccupations: mocks.suggestOccupations,
   suggestSeniorities: mocks.suggestSeniorities,
   suggestTechnologies: mocks.suggestTechnologies,

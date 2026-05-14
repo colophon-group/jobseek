@@ -1,9 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
+// Public REST routes import the plain service tier (`@/lib/services/*`)
+// rather than the `"use server"` action modules (`@/lib/actions/*`). The
+// service functions are functionally identical but avoid the
+// server-action machinery (per-call RPC URL, serialization boundary,
+// security IDs). See issues #3231 / #3329.
 import {
   getAllSeniorities,
   getAllOccupationsGrouped,
   getAllTechnologiesGrouped,
-} from "@/lib/actions/taxonomy";
+} from "@/lib/services/taxonomy";
 import { suggestIndustries } from "@/lib/actions/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { checkRateLimit, apiResponse } from "../_shared";
