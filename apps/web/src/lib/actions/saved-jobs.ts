@@ -4,6 +4,7 @@ import { eq, and, desc, count, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { savedJob, jobPosting, company } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
+import { isUniqueViolation } from "@/lib/db-conflict";
 
 export type SavedJobEntry = {
   id: string;
@@ -23,30 +24,63 @@ export type SavedJobEntry = {
   };
 };
 
+/**
+ * UNIQUE index name behind `(user_id, job_posting_id)` on `saved_job`
+ * (see `apps/web/src/db/schema.ts`). Used to scope the race-recovery
+ * branch in `toggleSavedJob` to only the conflict it knows how to
+ * handle — any other unique violation propagates so the real bug
+ * surfaces.
+ */
+const SAVED_JOB_UNIQUE_CONSTRAINT = "idx_sj_user_posting";
+
+/**
+ * Toggle a (user, posting) save row.
+ *
+ * #3179 — the legacy SELECT-then-INSERT-OR-DELETE shape raced under
+ * a double-click on flaky network: two parallel calls with no row
+ * present both observed an empty SELECT, both ran INSERT, and the
+ * loser crashed with an un-handled `23505` from `idx_sj_user_posting`.
+ *
+ * Fix matches the #3268 retry-on-conflict shape: optimistically try
+ * INSERT first; if it succeeds the toggle was OFF→ON. If the INSERT
+ * trips the UNIQUE index, the row already exists (either pre-call or
+ * landed by a racing winner), so the toggle is ON→OFF — DELETE and
+ * return `saved=false`. The UNIQUE index is the source of truth; the
+ * exception path serialises contention without leaking 500s.
+ *
+ * The conflict catch is scoped narrowly to `code === "23505"` on
+ * `idx_sj_user_posting`. Other unique violations propagate.
+ */
 export async function toggleSavedJob(
   jobPostingId: string,
 ): Promise<{ saved: boolean; savedJobId?: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
 
-  const [existing] = await db
-    .select({ id: savedJob.id })
-    .from(savedJob)
-    .where(
-      and(
-        eq(savedJob.userId, userId),
-        eq(savedJob.jobPostingId, jobPostingId),
-      ),
-    )
-    .limit(1);
-
-  if (existing) {
-    await db.delete(savedJob).where(eq(savedJob.id, existing.id));
+  try {
+    const [row] = await db
+      .insert(savedJob)
+      .values({ userId, jobPostingId })
+      .returning({ id: savedJob.id });
+    // INSERT succeeded — the row didn't exist before this call.
+    return { saved: true, savedJobId: row.id };
+  } catch (err) {
+    if (!isUniqueViolation(err, SAVED_JOB_UNIQUE_CONSTRAINT)) throw err;
+    // Row already exists (either pre-call or just inserted by a racing
+    // winner). Toggle semantics: transition ON→OFF. DELETE matching
+    // the (user_id, job_posting_id) pair — using the columns rather
+    // than re-SELECTing avoids another round-trip and another race
+    // window.
+    await db
+      .delete(savedJob)
+      .where(
+        and(
+          eq(savedJob.userId, userId),
+          eq(savedJob.jobPostingId, jobPostingId),
+        ),
+      );
     return { saved: false };
   }
-
-  const [row] = await db.insert(savedJob).values({ userId, jobPostingId }).returning({ id: savedJob.id });
-  return { saved: true, savedJobId: row.id };
 }
 
 export type SavedJobStatus = { postingId: string; savedJobId: string; status: string };
