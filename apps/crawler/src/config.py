@@ -73,6 +73,24 @@ class Settings(BaseSettings):
     # patterns won't trip it; persistent failure modes will.
     reaper_max_strikes: int = 5
 
+    # Bounded graceful drain on SIGTERM/SIGINT (#3205). When
+    # ``shutdown_event`` is set, ``run_pipeline`` stops claiming new
+    # work (existing behaviour) and then waits up to this many seconds
+    # for in-flight monitor/scrape tasks to finish before cancelling
+    # them. Cancellation alone would lose work — but in combination
+    # with the inflight lease (#3259), the reaper re-enqueues anything
+    # that didn't complete in time. Default 30s exceeds the 99th
+    # percentile monitor latency for HTTP boards (~2-15s) and gives
+    # browser workers room to close Playwright cleanly. Streaming
+    # monitors that legitimately run >30s (rare, large boards) will be
+    # cancelled and recovered by the reaper from the inflight lease.
+    #
+    # NOTE: deploy.sh sends ``docker stop --time=N`` which translates
+    # to a SIGTERM grace of N seconds before SIGKILL. This setting
+    # must be strictly less than that value or the kernel will SIGKILL
+    # us mid-drain. We use 30s here against a 60s docker stop budget.
+    shutdown_grace_seconds: int = 30
+
     # Upstash (web app only, kept for backward compat)
     upstash_redis_rest_url: str = ""
     upstash_redis_rest_token: str = ""

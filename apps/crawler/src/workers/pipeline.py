@@ -31,6 +31,8 @@ from src.metrics import (
     monitor_duration_seconds,
     monitor_failed_per_board_total,
     scrape_duration_seconds,
+    shutdown_cancelled_total,
+    shutdown_drain_total,
     tasks_total,
     worker_heartbeat_ts,
 )
@@ -942,41 +944,140 @@ async def run_pipeline(
         http: Shared httpx client for HTTP requests.
         shutdown_event: Set this event to trigger graceful shutdown.
         browser: If True, claim from browser queues only.
+
+    Shutdown semantics (#3205): when ``shutdown_event`` is set, workers
+    stop claiming new work between iterations. ``run_pipeline`` then
+    waits up to ``settings.shutdown_grace_seconds`` for in-flight tasks
+    to finish before cancelling the remaining workers. Anything still
+    in flight at cancellation time is recovered by the reaper through
+    the inflight lease set up in ``_lease_heartbeat`` / ``claim_work``
+    (#3259). Without the bounded drain, ``docker stop`` would SIGKILL
+    the container after 10s and any task mid-``_process_one_board_streaming``
+    would be silently abandoned (claimed-then-lost).
     """
     concurrency = settings.discovery_concurrency
     monitor_cap = settings.monitor_concurrency
     monitor_sem = asyncio.Semaphore(monitor_cap) if monitor_cap > 0 else None
+    grace_s = max(0, int(settings.shutdown_grace_seconds))
+    wtype = "browser" if browser else "simple"
     log.info(
         "pipeline.starting",
         concurrency=concurrency,
         monitor_concurrency=monitor_cap,
         browser=browser,
+        shutdown_grace_seconds=grace_s,
     )
 
-    try:
-        async with asyncio.TaskGroup() as tg:
-            for i in range(concurrency):
-                tg.create_task(
-                    _discovery_worker(
-                        i,
-                        local_pool,
-                        http,
-                        shutdown_event,
-                        browser=browser,
-                        monitor_semaphore=monitor_sem,
-                    ),
-                    name=f"discovery-{i}",
-                )
-            # Reaper: one per pipeline. Sweeps inflight leases for
-            # tasks orphaned by worker SIGKILL / OOM / segfault back
-            # onto the per-domain queue. See #3159 / #3173.
-            tg.create_task(
-                _reaper_loop(shutdown_event, browser=browser),
-                name="reaper",
+    # Spawn workers as plain tasks (no TaskGroup) so we can drive the
+    # shutdown drain ourselves — TaskGroup's __aexit__ waits unbounded
+    # for children, which is exactly the failure mode we're fixing.
+    tasks: list[asyncio.Task] = []
+    for i in range(concurrency):
+        tasks.append(
+            asyncio.create_task(
+                _discovery_worker(
+                    i,
+                    local_pool,
+                    http,
+                    shutdown_event,
+                    browser=browser,
+                    monitor_semaphore=monitor_sem,
+                ),
+                name=f"discovery-{i}",
             )
-    except* Exception as eg:
-        # Log any worker exceptions that escaped
-        for exc in eg.exceptions:
-            log.error("pipeline.worker_exception", error=str(exc), exc_info=exc)
+        )
+    # Reaper: one per pipeline. Sweeps inflight leases for
+    # tasks orphaned by worker SIGKILL / OOM / segfault back
+    # onto the per-domain queue. See #3159 / #3173.
+    reaper_task = asyncio.create_task(
+        _reaper_loop(shutdown_event, browser=browser),
+        name="reaper",
+    )
+    tasks.append(reaper_task)
+
+    try:
+        # Phase 1: wait until either shutdown_event fires or a worker
+        # exits unexpectedly. Workers normally only exit when
+        # shutdown_event is set; an early exit means an unhandled
+        # exception escaped — propagate it after best-effort cleanup
+        # of siblings.
+        shutdown_waiter = asyncio.create_task(shutdown_event.wait(), name="shutdown-waiter")
+        try:
+            done, _pending = await asyncio.wait(
+                [*tasks, shutdown_waiter],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+        finally:
+            shutdown_waiter.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await shutdown_waiter
+
+        # If a worker exited before shutdown_event, surface its error.
+        early_exits = [t for t in tasks if t.done()]
+        if early_exits and not shutdown_event.is_set():
+            # Make sure we actually stop the rest, then re-raise via
+            # the normal cancellation path below.
+            log.error(
+                "pipeline.worker.early_exit",
+                count=len(early_exits),
+                browser=browser,
+            )
+            shutdown_event.set()
+
+        # Phase 2: bounded drain. Allow in-flight tasks up to
+        # ``grace_s`` to honour shutdown_event and exit on their own.
+        # Use ALL_COMPLETED so we wait for every worker, not just the
+        # first one — a single slow monitor shouldn't force us to
+        # cancel its peers prematurely.
+        remaining = [t for t in tasks if not t.done()]
+        cancelled_count = 0
+        if remaining:
+            log.info(
+                "pipeline.draining",
+                in_flight=len(remaining),
+                grace_seconds=grace_s,
+                browser=browser,
+            )
+            if grace_s > 0:
+                _done, pending = await asyncio.wait(
+                    remaining,
+                    timeout=grace_s,
+                    return_when=asyncio.ALL_COMPLETED,
+                )
+            else:
+                pending = set(remaining)
+
+            if pending:
+                cancelled_count = len(pending)
+                log.warning(
+                    "pipeline.drain.timeout",
+                    cancelled=cancelled_count,
+                    grace_seconds=grace_s,
+                    browser=browser,
+                )
+                for t in pending:
+                    t.cancel()
+                # Drain the cancellations so we don't leak warnings on
+                # event loop close. ``return_exceptions=True`` because
+                # we expect CancelledError here.
+                await asyncio.gather(*pending, return_exceptions=True)
+                shutdown_drain_total.labels(wtype=wtype, outcome="timeout").inc()
+                shutdown_cancelled_total.labels(wtype=wtype).inc(cancelled_count)
+            else:
+                log.info("pipeline.drain.complete", browser=browser)
+                shutdown_drain_total.labels(wtype=wtype, outcome="drained").inc()
+    finally:
+        # Surface any non-cancellation exceptions from the workers so
+        # they don't get swallowed.
+        for t in tasks:
+            if t.cancelled():
+                continue
+            exc = t.exception() if t.done() else None
+            if exc is not None and not isinstance(exc, asyncio.CancelledError):
+                log.error(
+                    "pipeline.worker_exception",
+                    error=str(exc),
+                    exc_info=exc,
+                )
 
     log.info("pipeline.stopped", browser=browser)

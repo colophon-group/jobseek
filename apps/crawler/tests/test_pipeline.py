@@ -674,3 +674,267 @@ async def test_process_monitor_work_emits_tasks_total_gone_on_board_gone():
     # BoardGoneError must NOT be conflated with failed / succeeded.
     assert _tasks_total_value("monitor", "failed") == failed_before
     assert _tasks_total_value("monitor", "succeeded") == succeeded_before
+
+
+# ---------------------------------------------------------------------------
+# Bounded graceful drain on shutdown (#3205)
+# ---------------------------------------------------------------------------
+#
+# SIGTERM/SIGINT sets ``shutdown_event`` and ``run_pipeline`` waits up to
+# ``settings.shutdown_grace_seconds`` for in-flight tasks before cancelling
+# them. Anything cancelled at the timeout boundary is recovered by the
+# reaper from the inflight lease (#3259). Tests below pin the timeout
+# behaviour, the happy-path drain, and the metric emission.
+
+
+def _shutdown_metric_value(name: str, **labels) -> float:
+    """Read a single Counter sample by name + label match."""
+    from src.metrics import shutdown_cancelled_total, shutdown_drain_total
+
+    counter = {
+        "crawler_shutdown_drain_total": shutdown_drain_total,
+        "crawler_shutdown_cancelled_total": shutdown_cancelled_total,
+    }[name]
+    for sample in list(counter.collect())[0].samples:
+        if sample.name == name and all(sample.labels.get(k) == v for k, v in labels.items()):
+            return sample.value
+    return 0.0
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_drains_in_flight_within_grace(monkeypatch):
+    """Happy-path drain: a worker mid-task that finishes before the
+    grace window expires must NOT be cancelled, and the ``drained``
+    counter must increment.
+    """
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.config import settings
+    from src.workers.pipeline import run_pipeline
+
+    # 1 worker, no reaper churn, generous grace.
+    monkeypatch.setattr(settings, "discovery_concurrency", 1)
+    monkeypatch.setattr(settings, "shutdown_grace_seconds", 5)
+    monkeypatch.setattr(settings, "reaper_interval_seconds", 3600)
+
+    cancelled_before = _shutdown_metric_value("crawler_shutdown_cancelled_total", wtype="simple")
+    drained_before = _shutdown_metric_value(
+        "crawler_shutdown_drain_total", wtype="simple", outcome="drained"
+    )
+
+    finished = asyncio.Event()
+
+    async def fake_worker(*_a, **_kw):
+        # Simulate "in-flight task finishes promptly after shutdown".
+        # The real worker checks shutdown_event between iterations;
+        # this stub does the same end-condition (returns on shutdown).
+        shutdown_event = _a[3] if len(_a) > 3 else _kw["shutdown_event"]
+        try:
+            await shutdown_event.wait()
+            # Pretend cleanup is quick (well under grace_s=5).
+            await asyncio.sleep(0.05)
+        finally:
+            finished.set()
+
+    shutdown_event = asyncio.Event()
+    local_pool = MagicMock()
+    http = AsyncMock()
+
+    async def trigger_shutdown():
+        # Let the workers spin up before signalling.
+        await asyncio.sleep(0.05)
+        shutdown_event.set()
+
+    with (
+        patch("src.workers.pipeline._discovery_worker", new=fake_worker),
+        patch(
+            "src.workers.pipeline._reaper_loop",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        await asyncio.gather(
+            run_pipeline(local_pool, http, shutdown_event, browser=False),
+            trigger_shutdown(),
+        )
+
+    assert finished.is_set(), "worker should complete its in-flight task"
+    cancelled_after = _shutdown_metric_value("crawler_shutdown_cancelled_total", wtype="simple")
+    drained_after = _shutdown_metric_value(
+        "crawler_shutdown_drain_total", wtype="simple", outcome="drained"
+    )
+    assert cancelled_after == cancelled_before, (
+        "no tasks should be cancelled when the worker exits in time"
+    )
+    assert drained_after - drained_before == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_cancels_after_grace_timeout(monkeypatch):
+    """Drain timeout: a worker that ignores ``shutdown_event`` (e.g. a
+    blocked ``_process_one_board_streaming``) must be cancelled when
+    the grace window expires. The reaper recovers its work from the
+    inflight lease (#3259) — that's outside this test's scope.
+    """
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.config import settings
+    from src.workers.pipeline import run_pipeline
+
+    # Tight grace so the test finishes quickly.
+    monkeypatch.setattr(settings, "discovery_concurrency", 2)
+    monkeypatch.setattr(settings, "shutdown_grace_seconds", 1)
+    monkeypatch.setattr(settings, "reaper_interval_seconds", 3600)
+
+    cancelled_before = _shutdown_metric_value("crawler_shutdown_cancelled_total", wtype="simple")
+    timeout_before = _shutdown_metric_value(
+        "crawler_shutdown_drain_total", wtype="simple", outcome="timeout"
+    )
+
+    cancellations: list[bool] = []
+
+    async def stuck_worker(*_a, **_kw):
+        try:
+            # Simulate an in-flight task that doesn't observe
+            # shutdown_event — exactly the failure mode #3205 fixes.
+            await asyncio.sleep(60)
+        except asyncio.CancelledError:
+            cancellations.append(True)
+            raise
+
+    shutdown_event = asyncio.Event()
+    local_pool = MagicMock()
+    http = AsyncMock()
+
+    async def trigger_shutdown():
+        await asyncio.sleep(0.05)
+        shutdown_event.set()
+
+    start = time.monotonic()
+    with (
+        patch("src.workers.pipeline._discovery_worker", new=stuck_worker),
+        patch(
+            "src.workers.pipeline._reaper_loop",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        await asyncio.gather(
+            run_pipeline(local_pool, http, shutdown_event, browser=False),
+            trigger_shutdown(),
+        )
+    elapsed = time.monotonic() - start
+
+    # The pipeline returned in roughly grace_s seconds — not 60s.
+    assert elapsed < 5, f"pipeline should return within grace window; took {elapsed:.2f}s"
+    # Both workers were cancelled.
+    assert len(cancellations) == 2
+
+    cancelled_after = _shutdown_metric_value("crawler_shutdown_cancelled_total", wtype="simple")
+    timeout_after = _shutdown_metric_value(
+        "crawler_shutdown_drain_total", wtype="simple", outcome="timeout"
+    )
+    assert cancelled_after - cancelled_before == pytest.approx(2.0)
+    assert timeout_after - timeout_before == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_browser_drain_outcome_label(monkeypatch):
+    """The ``wtype`` label on the drain metric must reflect the
+    pipeline's worker type so simple/browser shutdowns are
+    distinguishable in dashboards.
+    """
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.config import settings
+    from src.workers.pipeline import run_pipeline
+
+    monkeypatch.setattr(settings, "discovery_concurrency", 1)
+    monkeypatch.setattr(settings, "shutdown_grace_seconds", 5)
+    monkeypatch.setattr(settings, "reaper_interval_seconds", 3600)
+
+    drained_before = _shutdown_metric_value(
+        "crawler_shutdown_drain_total", wtype="browser", outcome="drained"
+    )
+
+    async def quick_worker(*_a, **_kw):
+        shutdown_event = _a[3] if len(_a) > 3 else _kw["shutdown_event"]
+        await shutdown_event.wait()
+
+    shutdown_event = asyncio.Event()
+    local_pool = MagicMock()
+    http = AsyncMock()
+
+    async def trigger_shutdown():
+        await asyncio.sleep(0.05)
+        shutdown_event.set()
+
+    with (
+        patch("src.workers.pipeline._discovery_worker", new=quick_worker),
+        patch(
+            "src.workers.pipeline._reaper_loop",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        await asyncio.gather(
+            run_pipeline(local_pool, http, shutdown_event, browser=True),
+            trigger_shutdown(),
+        )
+
+    drained_after = _shutdown_metric_value(
+        "crawler_shutdown_drain_total", wtype="browser", outcome="drained"
+    )
+    assert drained_after - drained_before == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_zero_grace_cancels_immediately(monkeypatch):
+    """``shutdown_grace_seconds=0`` is a valid escape hatch: skip the
+    drain wait and cancel in-flight tasks immediately. The reaper
+    still recovers them via the inflight lease.
+    """
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.config import settings
+    from src.workers.pipeline import run_pipeline
+
+    monkeypatch.setattr(settings, "discovery_concurrency", 1)
+    monkeypatch.setattr(settings, "shutdown_grace_seconds", 0)
+    monkeypatch.setattr(settings, "reaper_interval_seconds", 3600)
+
+    cancelled_before = _shutdown_metric_value("crawler_shutdown_cancelled_total", wtype="simple")
+
+    cancellations: list[bool] = []
+
+    async def stuck_worker(*_a, **_kw):
+        try:
+            await asyncio.sleep(60)
+        except asyncio.CancelledError:
+            cancellations.append(True)
+            raise
+
+    shutdown_event = asyncio.Event()
+    local_pool = MagicMock()
+    http = AsyncMock()
+
+    async def trigger_shutdown():
+        await asyncio.sleep(0.05)
+        shutdown_event.set()
+
+    start = time.monotonic()
+    with (
+        patch("src.workers.pipeline._discovery_worker", new=stuck_worker),
+        patch(
+            "src.workers.pipeline._reaper_loop",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        await asyncio.gather(
+            run_pipeline(local_pool, http, shutdown_event, browser=False),
+            trigger_shutdown(),
+        )
+    elapsed = time.monotonic() - start
+
+    # With grace=0 the cancel fires immediately — well under 1s.
+    assert elapsed < 1.5, f"zero-grace path should return promptly; took {elapsed:.2f}s"
+    assert len(cancellations) == 1
+    cancelled_after = _shutdown_metric_value("crawler_shutdown_cancelled_total", wtype="simple")
+    assert cancelled_after - cancelled_before == pytest.approx(1.0)

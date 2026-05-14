@@ -338,6 +338,30 @@ inflight_heartbeat_total = Counter(
     ["wtype", "outcome"],  # outcome: extended | lost
 )
 
+# Graceful drain observability (#3205). Counts SIGTERM / SIGINT
+# pipeline shutdowns by whether all in-flight tasks finished within
+# ``settings.shutdown_grace_seconds`` (``outcome=drained``) or some
+# were cancelled and left to the reaper to re-enqueue from the
+# inflight lease (``outcome=timeout``). Any nonzero ``timeout`` rate
+# is a signal that the grace budget is too short for the workload or
+# that a task is hung — operators can tune ``SHUTDOWN_GRACE_SECONDS``
+# or investigate stuck monitors.
+shutdown_drain_total = Counter(
+    "crawler_shutdown_drain_total",
+    "Pipeline shutdowns by drain outcome",
+    ["wtype", "outcome"],  # outcome: drained | timeout
+)
+
+# Number of in-flight tasks cancelled at shutdown because the drain
+# budget expired (#3205). Recovered separately by the reaper from
+# the inflight lease (#3259) — this counter is the leading indicator
+# that the reaper will see traffic shortly after a deploy.
+shutdown_cancelled_total = Counter(
+    "crawler_shutdown_cancelled_total",
+    "Worker tasks cancelled at shutdown after drain timeout",
+    ["wtype"],
+)
+
 # ── Browser metrics ─────────────────────────────────────────────────
 
 browser_navigate_fallback_total = Counter(
