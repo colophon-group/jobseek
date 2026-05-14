@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 // Stub the server action — useActionState will treat the returned shape as
 // state. We return success so the success branch renders.
 const mockRequestCompany = vi.fn();
-vi.mock("@/lib/actions/stats", () => ({
+vi.mock("@/lib/actions/request-company", () => ({
   requestCompany: (_prev: unknown, fd: FormData) => mockRequestCompany(fd),
 }));
 
