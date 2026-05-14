@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, and, desc, asc, count, sql } from "drizzle-orm";
+import { eq, and, desc, asc, count, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { savedJob, jobPosting, company, applicationInterview } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
@@ -116,10 +116,6 @@ export async function getMyJobs(params: {
       companyName: company.name,
       companySlug: company.slug,
       companyIcon: company.icon,
-      interviewCount: sql<number>`(
-        SELECT count(*)::int FROM application_interview ai
-        WHERE ai.saved_job_id = ${savedJob.id}
-      )`,
     })
     .from(savedJob)
     .innerJoin(jobPosting, eq(savedJob.jobPostingId, jobPosting.id))
@@ -129,13 +125,45 @@ export async function getMyJobs(params: {
     .offset(offset)
     .limit(limit);
 
+  // Batch-fetch interview counts for the page (#3172).
+  //
+  // The legacy shape embedded a correlated `SELECT count(*) … WHERE
+  // ai.saved_job_id = $row.id` scalar subquery in the projection, which
+  // postgres expands into one count(*) execution per returned row — up
+  // to 20 per page. The `idx_ai_saved_job_round` index makes each
+  // execution cheap warm (<1 ms), but cold pool and 20 scans of the
+  // `application_interview` partition still adds 50–150 ms of wasted
+  // latency on every `/my-jobs` page load.
+  //
+  // New shape: one `GROUP BY saved_job_id` over the page's saved-job
+  // ids. Postgres serves this via a single hash-aggregate using the
+  // same index, with one round-trip total. The Map merge below is O(N).
+  // Saved jobs with zero interviews are absent from the result and
+  // default to count = 0.
+  const savedJobIds = rows.map((r) => r.id);
+  const interviewCounts = new Map<string, number>();
+  if (savedJobIds.length > 0) {
+    const countRows = await db
+      .select({
+        savedJobId: applicationInterview.savedJobId,
+        count: count(),
+      })
+      .from(applicationInterview)
+      .where(inArray(applicationInterview.savedJobId, savedJobIds))
+      .groupBy(applicationInterview.savedJobId);
+
+    for (const cr of countRows) {
+      interviewCounts.set(cr.savedJobId, cr.count);
+    }
+  }
+
   const jobs: MyJobEntry[] = rows.map((r) => ({
     id: r.id,
     savedAt: r.savedAt.toISOString(),
     status: r.status as ApplicationStatus,
     statusChangedAt: r.statusChangedAt.toISOString(),
     appliedAt: r.appliedAt?.toISOString() ?? null,
-    interviewCount: r.interviewCount,
+    interviewCount: interviewCounts.get(r.id) ?? 0,
     posting: {
       id: r.postingId,
       title: r.postingTitle,
