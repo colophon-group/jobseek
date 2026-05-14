@@ -57,7 +57,11 @@ vi.mock("@/components/country-flag", () => ({
 vi.mock("server-only", () => ({}));
 
 import { LocationSearchModal } from "../location-search-modal";
-import { _clearLocationsPrefetchCache } from "@/lib/search/location-prefetch";
+import {
+  _clearLocationsPrefetchCache,
+  prefetchLocationsFirstPage,
+} from "@/lib/search/location-prefetch";
+import { getGlobalLocationsPage } from "@/lib/actions/locations";
 
 const _response = (overrides: Partial<Awaited<ReturnType<typeof getGlobalLocationsGroupedMock>>> = {}) => ({
   macros: [
@@ -753,5 +757,71 @@ describe("LocationSearchModal — close+reopen accumulator reset (#3000)", () =>
     );
     await waitFor(() => screen.getByText("Country 000"));
     expect(screen.queryByText("Country 030")).toBeNull();
+  });
+
+  /**
+   * Regression #3328: when the prefetch cache holds a resolved first page
+   * before the modal opens, the modal takes the sync seeding path
+   * (`getCachedLocationsFirstPageSync`) which writes `pages` and
+   * `nextCursor` into state in a single commit without ever flipping
+   * `loading`. The previous implementation set up the IntersectionObserver
+   * in a `useEffect` keyed off `pages.length`, which ran AFTER the state
+   * commit but BEFORE Radix Dialog.Portal's deferred-mount actually
+   * attached the sentinel DOM node — so the effect saw a null ref,
+   * returned early, and never re-ran. Result: infinite scroll halted at
+   * the first page (~30 countries — symptomatically "stops at countries
+   * starting with C" in production where ~25 alphabetically-sorted
+   * countries fit in the first page).
+   *
+   * Fixed by tracking the sentinel through `useState` so its attachment
+   * triggers a re-render that fires the observer-setup effect with the
+   * node in hand.
+   *
+   * This test pre-warms the prefetch cache (seeding the sync path), opens
+   * the modal, then fires the IO callback to simulate the sentinel
+   * entering the viewport. With the fix, loadMore must execute and page 2
+   * countries must render. Without the fix, no observer is ever attached
+   * and the simulated sentinel-visible event has no observer to fire.
+   */
+  it("loads more pages when the first page is seeded synchronously from prefetch cache (#3328)", async () => {
+    getGlobalLocationsGroupedMock.mockResolvedValue(makeManyCountries(100));
+
+    // Warm the module-scoped prefetch cache so the modal's open-effect
+    // hits the sync (resolved-value) branch. `getGlobalLocationsPage` is
+    // the same server-action reference the production code passes in.
+    await prefetchLocationsFirstPage("en", undefined, getGlobalLocationsPage);
+
+    render(
+      <LocationSearchModal
+        open
+        onOpenChange={() => {}}
+        locale="en"
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+
+    // First page renders from the sync seeding — Country 000 must be
+    // visible without any spinner timing dance.
+    await waitFor(() => screen.getByText("Country 000"));
+    expect(screen.getByText("Country 029")).toBeTruthy();
+    expect(screen.queryByText("Country 030")).toBeNull();
+
+    // Simulate the sentinel entering the viewport. With the regression,
+    // no observer would have been registered against the sentinel
+    // (callback ref was never reached, or the useEffect raced the
+    // portal-mount). With the fix, the observer is attached via the
+    // sentinel's state-promoted ref and fires loadMore — page 2 lands.
+    await act(async () => {
+      const fired = fireSentinelVisible();
+      // Sanity guard: the regression manifests as "no observer was
+      // observing the sentinel" — fireSentinelVisible would return false
+      // because the observerEntries list has no matching observer with a
+      // sentinel observed.
+      expect(fired).toBe(true);
+    });
+
+    await waitFor(() => screen.getByText("Country 030"));
+    expect(screen.getByText("Country 059")).toBeTruthy();
   });
 });

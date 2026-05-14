@@ -73,7 +73,6 @@ export function LocationSearchModal({
   // Scroll container — observed by both ScrollFade (gradient overlay) and
   // the bottom IntersectionObserver that triggers loadMore.
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -262,24 +261,34 @@ export function LocationSearchModal({
   // enters the scroll viewport. `rootMargin: 240px` pre-loads one screen
   // before the user actually hits the bottom so the next page is ready
   // by the time it's needed.
+  //
+  // Track the sentinel as state (via a ref callback that calls
+  // `setSentinelEl`) instead of a plain `useRef`, so that its attachment
+  // triggers a re-render — and therefore re-runs the observer-setup
+  // effect (#3328). The previous implementation keyed the setup effect
+  // off `pages.length`, but in the sync-prefetch path the first-page
+  // state seeding races Radix Dialog.Portal's deferred content mount: the
+  // effect runs with the ref still null, returns early, and never re-runs
+  // because no further deps change — leaving the modal's infinite scroll
+  // permanently stuck at the first page. Promoting the sentinel to state
+  // guarantees we wire up the observer once the node actually attaches.
+  const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    if (!open) return;
-    const sentinel = sentinelRef.current;
+    if (!open || !sentinelEl) return;
     const root = scrollRef.current;
-    if (!sentinel || !root) return;
+    if (!root) return;
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
-            loadMore();
-          }
+          if (entry.isIntersecting) loadMore();
         }
       },
       { root, rootMargin: "240px 0px 240px 0px" },
     );
-    observer.observe(sentinel);
+    observer.observe(sentinelEl);
     return () => observer.disconnect();
-  }, [open, loadMore, pages.length]);
+  }, [open, sentinelEl, loadMore]);
 
   useEffect(() => {
     if (!open) {
@@ -805,7 +814,7 @@ export function LocationSearchModal({
                     when this enters the viewport (with a 240px rootMargin
                     to pre-fetch). Stays mounted until nextCursor is null. */}
                 {nextCursor != null && (
-                  <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                  <div ref={setSentinelEl} className="flex items-center justify-center py-4">
                     {loadingMore && (
                       <Loader2 size={16} className="animate-spin text-muted" />
                     )}
