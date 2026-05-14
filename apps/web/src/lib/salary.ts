@@ -33,6 +33,22 @@ export function decodeStoredAmount(amount: number, period: SalaryPeriod): number
   return period === "hourly" ? amount / 100 : amount;
 }
 
+/**
+ * Result of a salary conversion. The `currency` field signals whether the
+ * conversion actually happened in the requested target currency, or whether
+ * we bailed out and kept the source currency (issue #3184).
+ *
+ * A bailed-out result occurs when either `fromCurrency` or `toCurrency` is
+ * missing from `rates` — the old behavior silently substituted a 1:1 rate,
+ * which made e.g. ¥5,000,000 render as "5,000k EUR". Callers MUST check the
+ * returned `currency` and render accordingly instead of assuming the original
+ * target was used.
+ */
+export interface ConvertedAmount {
+  amount: number;
+  currency: string;
+}
+
 export function convertAmount(
   amount: number,
   fromCurrency: string,
@@ -40,22 +56,31 @@ export function convertAmount(
   fromPeriod: SalaryPeriod,
   toPeriod: SalaryPeriod,
   rates: CurrencyRate[],
-): number {
+): ConvertedAmount {
   let val = amount;
+  let currency = toCurrency;
 
-  // Currency conversion: source → EUR → target
+  // Currency conversion: source → EUR → target.
+  // If either the source or target rate is missing, bail out and keep the
+  // amount in its source currency. The pre-fix `?? 1` fallback silently
+  // produced a 1:1 conversion that mislabeled the result (issue #3184).
   if (fromCurrency !== toCurrency) {
-    const fromRate = rates.find((r) => r.currency === fromCurrency)?.toEur ?? 1;
-    const toRate = rates.find((r) => r.currency === toCurrency)?.toEur ?? 1;
-    val = val * fromRate / toRate;
+    const fromRate = rates.find((r) => r.currency === fromCurrency)?.toEur;
+    const toRate = rates.find((r) => r.currency === toCurrency)?.toEur;
+    if (fromRate == null || toRate == null) {
+      currency = fromCurrency;
+    } else {
+      val = val * fromRate / toRate;
+    }
   }
 
-  // Period conversion: source → yearly → target
+  // Period conversion: source → yearly → target.
+  // Period conversion is currency-independent and always safe to apply.
   if (fromPeriod !== toPeriod) {
     val = val * TO_YEARLY[fromPeriod] / TO_YEARLY[toPeriod];
   }
 
-  return Math.round(val);
+  return { amount: Math.round(val), currency };
 }
 
 /**
@@ -141,13 +166,21 @@ export function formatSalary(
   const cMin = min != null ? conv(min) : null;
   const cMax = max != null ? conv(max) : null;
 
+  // The currency label rendered after the amount. If convertAmount bailed
+  // (missing FX rate), both bounds will agree on the source currency since
+  // they share the same fromCur/toCur. Prefer cMin's resolved currency,
+  // falling back to cMax's. This guards against the #3184 "5M JPY → 5,000k
+  // EUR" bug: when rates are missing, we render the source currency, not
+  // the requested target.
+  const resolvedCurrency = cMin?.currency ?? cMax?.currency ?? toCur;
+
   const parts: string[] = [];
   if (cMin != null && cMax != null) {
-    parts.push(`${fmt(cMin)}–${fmt(cMax)} ${toCur}`);
+    parts.push(`${fmt(cMin.amount)}–${fmt(cMax.amount)} ${resolvedCurrency}`);
   } else if (cMin != null) {
-    parts.push(`${fmt(cMin)}+ ${toCur}`);
+    parts.push(`${fmt(cMin.amount)}+ ${resolvedCurrency}`);
   } else if (cMax != null) {
-    parts.push(`≤${fmt(cMax)} ${toCur}`);
+    parts.push(`≤${fmt(cMax.amount)} ${resolvedCurrency}`);
   }
 
   if (toPeriod !== "yearly") {
