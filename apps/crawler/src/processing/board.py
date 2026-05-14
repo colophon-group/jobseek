@@ -1052,15 +1052,48 @@ async def _process_one_board_streaming(
                                 if not j.language and j.description:
                                     j.language = detect_language(j.description)
 
-                            await conn.execute(_CREATE_RICH_UPDATES_TEMP)
-                            records = []
-                            for pid, j, _ in update_triples:
-                                loc_ids, loc_types = await _batch._resolve_locations(
+                            # Resolve locations with the cache-only sync helper
+                            # so the per-row loop doesn't await one DB round
+                            # trip per miss (#3206). A single batched backfill
+                            # runs after the loop, mirroring the NEW-jobs path
+                            # above (board.py:893-963).
+                            #
+                            # Unlike that path (INSERT with NULL is fine, the
+                            # next cycle fills it via touched-update),
+                            # _BATCH_UPDATE_RICH_CONTENT uses plain SET (not
+                            # COALESCE) for location_ids/location_types -- a
+                            # None here would null out a previously-resolved
+                            # value. So if backfill added new names, we re-
+                            # resolve every row in a second sync pass (pure
+                            # cache, zero DB round trips).
+                            resolved: list[tuple[list[int] | None, list[str] | None]] = [
+                                _resolve_locations_sync(
                                     loc_resolver,
                                     _coerce_locations(j.locations),
                                     _coerce_text(j.job_location_type),
                                     _coerce_text(j.language),
                                 )
+                                for _, j, _ in update_triples
+                            ]
+
+                            # Single DB round trip for any cache misses (rare).
+                            if await loc_resolver.backfill_misses():
+                                loc_resolver.drain_location_misses()
+                                resolved = [
+                                    _resolve_locations_sync(
+                                        loc_resolver,
+                                        _coerce_locations(j.locations),
+                                        _coerce_text(j.job_location_type),
+                                        _coerce_text(j.language),
+                                    )
+                                    for _, j, _ in update_triples
+                                ]
+
+                            await conn.execute(_CREATE_RICH_UPDATES_TEMP)
+                            records = []
+                            for (pid, j, _), (loc_ids, loc_types) in zip(
+                                update_triples, resolved, strict=True
+                            ):
                                 desc_text = _coerce_text(j.description)
                                 s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
                                     desc_text, rates

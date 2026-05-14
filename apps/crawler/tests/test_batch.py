@@ -43,7 +43,7 @@ from src.batch import (
     process_monitor_batch,
     process_scrape_batch,
 )
-from src.core.location_resolve import LocationResolver
+from src.core.location_resolve import LocationResolver, ResolvedLocation
 from src.core.monitor import MonitorResult
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
@@ -4072,3 +4072,166 @@ class TestMarkGoneGuardsIntegration:
         assert (
             _counter_value(monitor_jobs_discovered, profile="simple", action="gone") == before_gone
         )
+
+
+# ── #3206: batched location resolution in relisted/touched path ──────
+
+
+class _CountingLocationResolver(LocationResolver):
+    """LocationResolver test double with a backfill_misses() call counter.
+
+    Simulates 10 rows where 3 ("MissCity-1/2/3") miss the in-memory cache
+    on first ``resolve()``.  ``backfill_misses()`` is awaited once, after
+    which those 3 rows resolve to ``ResolvedLocation(location_id=99, ...)``.
+    The point of the test is that ``backfill_misses`` is called *exactly
+    once* for a batch (not once per missing row).
+    """
+
+    _HIT_ID = 1
+    _BACKFILLED_ID = 99
+    _MISS_NAMES: frozenset[str] = frozenset({"misscity-1", "misscity-2", "misscity-3"})
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.backfill_calls = 0
+        self.resolve_calls: list[list[str] | None] = []
+        self._backfilled = False
+
+    async def load(self, pool):  # type: ignore[override]
+        # Skip the real DB load; the test double doesn't use SQLite.
+        self._loaded = True
+        self._pool = pool
+
+    def resolve(self, raw_locations, job_location_type=None, posting_language=None):
+        # type: ignore[override]
+        self.resolve_calls.append(list(raw_locations) if raw_locations else None)
+        if not raw_locations:
+            return []
+        results = []
+        for raw in raw_locations:
+            key = raw.lower().strip()
+            if key in self._MISS_NAMES:
+                if self._backfilled:
+                    results.append(
+                        ResolvedLocation(
+                            location_id=self._BACKFILLED_ID,
+                            location_type=job_location_type or "onsite",
+                        )
+                    )
+                else:
+                    # Record the miss so backfill_misses() has work to do.
+                    self._location_misses.append((key, raw))
+                    results.append(
+                        ResolvedLocation(
+                            location_id=None,
+                            location_type=job_location_type or "onsite",
+                        )
+                    )
+            else:
+                results.append(
+                    ResolvedLocation(
+                        location_id=self._HIT_ID,
+                        location_type=job_location_type or "onsite",
+                    )
+                )
+        return results
+
+    async def backfill_misses(self) -> bool:  # type: ignore[override]
+        self.backfill_calls += 1
+        if self._location_misses:
+            self._backfilled = True
+            return True
+        return False
+
+
+class TestBatchedLocationResolve:
+    """#3206: relisted/touched path resolves locations once per batch.
+
+    Before the fix, ``_BATCH_UPDATE_RICH_CONTENT`` awaited
+    ``_resolve_locations`` per row, which hit ``backfill_misses()`` once
+    per miss (= N DB round-trips serialised in the inner loop).  After the
+    fix, the loop uses ``_resolve_locations_sync`` (cache-only) and a
+    single ``backfill_misses()`` runs after the loop, mirroring the
+    NEW-jobs path.
+    """
+
+    @pytest.fixture
+    def counting_resolver(self, monkeypatch):
+        resolver = _CountingLocationResolver()
+
+        async def _fake_get_resolver(pool):
+            return resolver
+
+        # Override the autouse fixture's resolver with our counting double.
+        monkeypatch.setattr("src.batch._get_location_resolver", _fake_get_resolver)
+        return resolver
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_batch_resolves_locations_with_single_backfill(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        counting_resolver,
+        mock_pool,
+        mock_http,
+    ):
+        """10 relisted rows with 3 cache misses -> backfill_misses called exactly once.
+
+        Asserts:
+        - ``backfill_misses()`` invoked exactly once (down from 3
+          serialised round-trips in the per-row path).
+        - All 10 rows in the ``_rich_updates`` payload end up with a
+          resolved ``location_ids`` array (no None after the second pass).
+        """
+        pool, conn = mock_pool
+
+        # 7 cache hits + 3 cache misses -> 10 relisted URLs.
+        urls = [f"https://example.com/job/{i}" for i in range(10)]
+        miss_indexes = {2, 5, 8}
+        jobs_by_url = {}
+        diff_rows = []
+        for i, url in enumerate(urls):
+            location = f"MissCity-{[2, 5, 8].index(i) + 1}" if i in miss_indexes else "HitCity"
+            jobs_by_url[url] = _discovered_job(url=url, locations=[location])
+            diff_rows.append(_diff_row("relisted", row_id=f"jp-{i}", url=url))
+
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls=set(urls), jobs_by_url=jobs_by_url, hybrid=False)
+        )
+        conn.fetch.return_value = diff_rows
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # 1. backfill_misses called exactly once (the whole point of #3206).
+        assert counting_resolver.backfill_calls == 1, (
+            f"expected 1 backfill_misses call for the whole batch, "
+            f"got {counting_resolver.backfill_calls}"
+        )
+
+        # 2. The relisted path ran (_BATCH_UPDATE_RICH_CONTENT executed and
+        #    we have a single copy_records_to_table call).
+        execute_calls = conn.execute.await_args_list
+        assert any(c.args[0] == _CREATE_RICH_UPDATES_TEMP for c in execute_calls)
+        assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in execute_calls)
+        conn.copy_records_to_table.assert_awaited_once()
+
+        # 3. All 10 records have a resolved location_ids array (non-None).
+        #    Records are passed as the ``records`` kwarg/positional to
+        #    ``conn.copy_records_to_table``.  Layout (from
+        #    ``_CREATE_RICH_UPDATES_TEMP``): id, employment_type, titles,
+        #    locales, location_ids, location_types, ...
+        copy_call = conn.copy_records_to_table.await_args_list[0]
+        records = copy_call.kwargs.get("records")
+        if records is None and len(copy_call.args) >= 2:
+            records = copy_call.args[1]
+        assert records is not None
+        records = list(records)
+        assert len(records) == 10
+        for rec in records:
+            location_ids = rec[4]
+            assert location_ids is not None and len(location_ids) > 0, (
+                f"row {rec[0]} ended up with no resolved location_ids "
+                f"(misses must be re-resolved after backfill)"
+            )
