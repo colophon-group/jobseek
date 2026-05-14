@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Bookmark } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { CompanyIcon } from "@/components/CompanyIcon";
 import { timeAgoShort } from "@/lib/time";
 import { type WatchlistPostingEntry } from "@/lib/actions/watchlists";
-import { runGetWatchlistPostings } from "@/lib/search/search-runner";
+import {
+  runGetWatchlistPostings,
+  runGetWatchlistPostingYearCount,
+} from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/SessionProvider";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
@@ -93,6 +96,34 @@ export function WatchlistJobList({
         isLoggedInRef.current,
       ),
   });
+
+  // Year-count refetch on filter change. The SSR-prerendered
+  // `yearTotal` only reflects the watchlist's stored filters at page
+  // load — when the owner edits filters in-place the active count
+  // updates (via `usePaginatedLoadMore`'s reset-on-filtersKey) but the
+  // year count went stale until a full reload. Mirror that reset by
+  // keying a `useEffect` on the same `filtersKey` so both badges stay
+  // in lockstep. Issue #3344.
+  //
+  // `initialFiltersKeyRef` skips the first fetch on mount — the SSR
+  // `yearTotal` already covers it. Cancel-on-stale guards a race
+  // between rapid filter changes (we only commit the latest
+  // in-flight result).
+  const [yearTotal_, setYearTotal] = useState(yearTotal);
+  const initialFiltersKeyRef = useRef(filtersKey);
+  useEffect(() => {
+    if (filtersKey === initialFiltersKeyRef.current) return;
+    let cancelled = false;
+    runGetWatchlistPostingYearCount(filtersRef.current).then((next) => {
+      if (cancelled) return;
+      setYearTotal(next);
+    }).catch((err) => {
+      console.error("[WatchlistJobList] year-count refetch failed", err);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [filtersKey]);
 
   const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: loadMore });
 
@@ -220,7 +251,7 @@ export function WatchlistJobList({
         jobLanguages={jobLanguages}
         locale={locale}
         activeCount={total}
-        yearCount={yearTotal}
+        yearCount={yearTotal_}
       />
       <div>
         {rows}

@@ -603,9 +603,19 @@ export async function getUserWatchlistsWithLimit(
   return { watchlists, limitReached: !limit.allowed };
 }
 
-export async function getUserWatchlists(_locale: string): Promise<WatchlistSummary[]> {
+export async function getUserWatchlists(locale: string): Promise<WatchlistSummary[]> {
   const userId = await getSessionUserId();
   if (!userId) return [];
+
+  // Viewer language preference — used to scope the `anyCompany`
+  // Typesense-backed patch below so the tile count matches the
+  // watchlist-detail page's locale-filtered count. The SQL fast path
+  // for non-`anyCompany` rows still uses the locale-blind denormalized
+  // `active_job_count` (per the trade-off in #3176 — see block comment
+  // below), but the patched `anyCompany` count is exactly what the
+  // detail page renders, so they must share the same filter shape.
+  // See issue #3344.
+  const languages = await getViewerLanguages(locale);
 
   // Perf (#3176): compute the active job count via a denormalized SQL
   // aggregation in the same query that loads the watchlist rows. The
@@ -692,7 +702,7 @@ export async function getUserWatchlists(_locale: string): Promise<WatchlistSumma
     const pairs = await Promise.all(
       anyCompanyRows.map(async (r) => {
         try {
-          const c = await _resolveAnyCompanyActiveCount(r.filters);
+          const c = await _resolveAnyCompanyActiveCount(r.filters, locale, languages);
           return [r.id, c] as const;
         } catch (err) {
           console.error("[getUserWatchlists] anyCompany count failed", { id: r.id, err });
@@ -726,24 +736,32 @@ export async function getUserWatchlists(_locale: string): Promise<WatchlistSumma
  * doc field both return 0 by construction.
  *
  * Mirrors the Typesense shape used by `_getWatchlistPostingsTypesense`
- * (POSTING_BASE_FILTER + slug-resolved filter ids + keywords) but
- * runs `per_page: 0` so we pay only for the count. Cached by
- * `buildFilterCacheKey(filters, [])` so two consecutive page renders
- * with the same filters share a single Typesense round-trip.
+ * (POSTING_BASE_FILTER + slug-resolved filter ids + keywords +
+ * viewer-language scope) but runs `per_page: 0` so we pay only for the
+ * count. Cached by `buildFilterCacheKey(filters, [])` + the viewer's
+ * resolved languages so two consecutive page renders with the same
+ * filters and the same viewer share a single Typesense round-trip, but
+ * an `en` viewer and a `de` viewer get distinct cache slots.
  *
- * The viewer's language preference is NOT scoped here — the listing
- * badge shows the same broadest count to all viewers, matching the
- * documented trade-off in #3262.
+ * Filter shape MUST match `_getWatchlistPostingsTypesense` exactly —
+ * the tile count and the detail page's "active" count read the same
+ * watchlist, and any divergence (e.g. omitting the locales filter)
+ * shows up as a P1 count mismatch. Issue #3344 (originally allowed an
+ * unscoped, broadest count here per #3262's listing trade-off; rolled
+ * back when the user-visible divergence outweighed the per-viewer
+ * cache fragmentation cost).
  *
  * Returns 0 on any Typesense error so the listing badge degrades to
  * the same value as the company-scope fast path.
  */
 async function _resolveAnyCompanyActiveCount(
   filters: WatchlistFilters,
+  locale: string,
+  languages: string[],
 ): Promise<number> {
-  const key = `wl-any-active:${buildFilterCacheKey(filters, [])}`;
+  const langKey = languagesCacheKey(languages);
+  const key = `wl-any-active:${buildFilterCacheKey(filters, [])}:${langKey}`;
   return cached(key, async () => {
-    const locale = "en";
     const [locMap, occMap, senMap, techMap] = await Promise.all([
       filters.locationSlugs?.length ? resolveLocationSlugs(filters.locationSlugs, locale) : Promise.resolve(new Map()),
       filters.occupationSlugs?.length ? resolveOccupationSlugs(filters.occupationSlugs, locale) : Promise.resolve(new Map()),
@@ -762,6 +780,7 @@ async function _resolveAnyCompanyActiveCount(
       salaryMaxEur: filters.salaryMax,
       experienceMin: filters.experienceMin,
       experienceMax: filters.experienceMax,
+      languages: languages.length > 0 ? languages : undefined,
     });
 
     const fullFilter = `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`;
