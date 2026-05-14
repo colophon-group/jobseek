@@ -603,6 +603,12 @@ async def _process_scrape_work(
     domain = scrape_work.domain
     worker_log = worker_log.bind(posting_id=posting_id, url=scrape_work.source_url)
 
+    # Bind posting_id as a contextvar so every downstream log line —
+    # including from third-party code that uses structlog — carries the
+    # correlation id (#3192). The merge_contextvars processor is already
+    # configured in shared/logging.py. We unbind on the way out to keep
+    # the next claim's events clean.
+    structlog.contextvars.bind_contextvars(posting_id=posting_id)
     try:
         # Self-heal: production scheduling is via Redis ZSETs, NOT
         # Postgres ``next_scrape_at``. Without this check, the worker
@@ -856,6 +862,20 @@ async def _process_scrape_work(
         next_scrape_at = time.time() + scrape_work.scrape_interval_hours * 3600
         await reschedule_task(domain, posting_id, "scrape", next_scrape_at, browser=browser)
 
+        # Lifecycle anchor: emit ``posting.scraped`` only on success so an
+        # operator with the posting_id can confirm "yes, this URL completed
+        # a scrape cycle" without filtering out failure noise (#3192). The
+        # adjacent ``pipeline.scrape.done`` line above is intentionally kept
+        # — it still carries success/failure for the existing dashboards.
+        if success:
+            worker_log.info(
+                "posting.scraped",
+                posting_id=posting_id,
+                board_id=scrape_work.board_id,
+                source_url=scrape_work.source_url,
+                duration_s=round(duration, 2),
+            )
+
         worker_log.info(
             "pipeline.scrape.done",
             success=success,
@@ -871,6 +891,10 @@ async def _process_scrape_work(
             await reschedule_task(domain, posting_id, "scrape", backoff_ts, browser=browser)
         except Exception:
             worker_log.warning("pipeline.scrape.reschedule_failed", exc_info=True)
+    finally:
+        # Clear the contextvar so the next claim's events don't inherit
+        # this posting_id (#3192).
+        structlog.contextvars.unbind_contextvars("posting_id")
 
 
 # ---------------------------------------------------------------------------

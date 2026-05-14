@@ -293,3 +293,144 @@ async def test_lease_heartbeat_pulses_extend_lease(mock_redis, monkeypatch):
 
     # Exit cleanup still wipes the entry.
     assert await r.zcard("inflight:simple") == 0
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle anchor: posting.scraped (#3192)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_process_scrape_work_emits_posting_scraped_on_success(mock_redis):
+    """``_process_scrape_work`` must emit ``posting.scraped`` with the
+    posting_id when ``_process_one_scrape`` returns success — the
+    lifecycle anchor that closes #3192.
+
+    The error path already emits ``pipeline.scrape.error`` with
+    ``posting_id``; the success path is the missing half.
+    """
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.workers.pipeline import _process_scrape_work
+
+    posting_id = "12345678-aaaa-bbbb-cccc-1234567890ab"
+    work = ScrapeWork(
+        posting_id=posting_id,
+        source_url="https://example.com/job/abc",
+        board_id="board-xyz",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+    )
+
+    # Mock local pool: SELECT (is_active=true, next_scrape_at not null)
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow = AsyncMock(
+        return_value={
+            "is_active": True,
+            "next_scrape_at": time.time() + 60,
+        }
+    )
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+
+    # Seed minimal board config in Redis so the worker proceeds to the
+    # scrape branch instead of taking the fail-safe stale-config path.
+    r = mock_redis
+    await r.hset(
+        f"board:{work.board_id}",
+        mapping={
+            "crawler_type": "greenhouse",
+            "metadata": json.dumps({"scraper_type": "json-ld"}),
+        },
+    )
+
+    http = AsyncMock()
+    worker_log = structlog.get_logger().bind(worker_id=1)
+
+    with (
+        patch(
+            "src.processing.scrape._process_one_scrape",
+            new=AsyncMock(return_value=(True, 0.5)),
+        ),
+        structlog.testing.capture_logs() as logs,
+    ):
+        await _process_scrape_work(worker_log, work, local_pool, http, browser=False)
+
+    events = [
+        e for e in logs if e.get("event") == "posting.scraped" and e.get("posting_id") == posting_id
+    ]
+    assert events, (
+        "_process_scrape_work must emit posting.scraped on success with "
+        "the posting_id — without it operators cannot correlate the URL "
+        "with the scrape completion event (#3192)"
+    )
+    assert events[0]["board_id"] == "board-xyz"
+    assert events[0]["source_url"] == "https://example.com/job/abc"
+
+
+@pytest.mark.asyncio
+async def test_process_scrape_work_binds_posting_id_contextvar(mock_redis):
+    """The scrape coroutine must bind ``posting_id`` to a structlog
+    contextvar so downstream code (e.g. third-party libraries using
+    structlog without explicit binding) inherits it on every log line.
+
+    The contextvar must be unbound on the way out so the next claim
+    doesn't inherit a stale posting_id (#3192).
+    """
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.workers.pipeline import _process_scrape_work
+
+    posting_id = "abcdef01-2222-3333-4444-555555555555"
+    work = ScrapeWork(
+        posting_id=posting_id,
+        source_url="https://example.com/job/xyz",
+        board_id="board-context",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+    )
+
+    # Tombstone the row so the worker takes the early-return path —
+    # cheaper than mocking the full happy path; we only care about the
+    # contextvar lifecycle.
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow = AsyncMock(return_value={"is_active": False, "next_scrape_at": None})
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+
+    http = AsyncMock()
+    worker_log = structlog.get_logger().bind(worker_id=1)
+
+    # Pre-condition: no posting_id contextvar bound.
+    ctx_before = structlog.contextvars.get_contextvars()
+    assert "posting_id" not in ctx_before
+
+    captured_during_call: dict = {}
+
+    async def fake_fetchrow(*_a, **_kw):
+        captured_during_call.update(structlog.contextvars.get_contextvars())
+        return {"is_active": False, "next_scrape_at": None}
+
+    conn.fetchrow = AsyncMock(side_effect=fake_fetchrow)
+
+    with patch(
+        "src.processing.scrape._process_one_scrape",
+        new=AsyncMock(return_value=(True, 0.5)),
+    ):
+        await _process_scrape_work(worker_log, work, local_pool, http, browser=False)
+
+    # During the call the contextvar was bound.
+    assert captured_during_call.get("posting_id") == posting_id
+
+    # After return the contextvar is unbound — otherwise the next
+    # claim on this worker would inherit it.
+    ctx_after = structlog.contextvars.get_contextvars()
+    assert "posting_id" not in ctx_after

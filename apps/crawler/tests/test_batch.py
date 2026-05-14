@@ -473,6 +473,57 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
+    async def test_url_only_emits_posting_discovered_lifecycle_event(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        mock_pool,
+        mock_http,
+    ):
+        """The URL-only insert path must emit a per-posting ``posting.discovered``
+        event so an operator with only the posting_id (from the public URL)
+        can grep Loki to find when and from which board the row entered
+        the pipeline (closes #3192).
+
+        Mirrors the rich-insert path's lifecycle anchor.
+        """
+        import structlog
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1, url2}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            # DIFF_BATCH
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            # INSERT_URL_ONLY_JOBS
+            [_inserted_row("jp-aaa", url1), _inserted_row("jp-bbb", url2)],
+            # MARK_GONE_BY_TIMESTAMP
+            [],
+        ]
+        board = _mock_board(crawler_type="dom")
+
+        with structlog.testing.capture_logs() as logs:
+            await _process_one_board(board, pool, mock_http)
+
+        events = [
+            e
+            for e in logs
+            if e.get("event") == "posting.discovered" and e.get("path") == "url_only"
+        ]
+        # One event per inserted posting.
+        assert len(events) == 2, (
+            f"expected one posting.discovered event per insert; got {len(events)}: {events}"
+        )
+        ids = {e["posting_id"] for e in events}
+        urls = {e["source_url"] for e in events}
+        assert ids == {"jp-aaa", "jp-bbb"}
+        assert urls == {url1, url2}
+        # board_id must be carried so a Loki query can group by board too.
+        assert all(e["board_id"] == "board-1" for e in events)
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
     async def test_url_only_on_rich_crawler_type_keeps_next_scrape_null(
         self,
         mock_monitor,

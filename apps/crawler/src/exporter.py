@@ -685,6 +685,16 @@ async def _export_postings_dual(
         else:
             last = supa_rows[-1]
             new_supa_cursor = (last["updated_at"], last["id"])
+            # Lifecycle anchor: surface a few sample posting_ids so an
+            # operator with the posting_id from a public URL can grep
+            # for "was THIS posting in any recent batch?" without
+            # filtering by raw counts only (#3192).
+            log.info(
+                "exporter.exported_postings",
+                target="supabase",
+                batch_size=len(supa_rows),
+                sample_ids=[str(r["id"]) for r in supa_rows[:5]],
+            )
 
     new_ts_cursor = ts_cursor
     if ts_rows:
@@ -696,6 +706,12 @@ async def _export_postings_dual(
         else:
             last = ts_rows[-1]
             new_ts_cursor = (last["updated_at"], last["id"])
+            log.info(
+                "exporter.exported_postings",
+                target="typesense",
+                batch_size=len(ts_rows),
+                sample_ids=[str(r["id"]) for r in ts_rows[:5]],
+            )
 
     return len(rows), new_supa_cursor, new_ts_cursor
 
@@ -786,6 +802,15 @@ async def _export_changed_postings(
             "SELECT * FROM _export_postings "
             f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
         )
+
+    # Lifecycle anchor: surface sample posting_ids so an operator can
+    # grep "was THIS posting in any recent Supabase batch?" (#3192).
+    log.info(
+        "exporter.exported_postings",
+        target="supabase",
+        batch_size=len(rows),
+        sample_ids=[str(r["id"]) for r in rows[:5]],
+    )
 
     last_row = rows[-1]
     new_cursor = (last_row["updated_at"], last_row["id"])

@@ -26,7 +26,7 @@ These tests pin both pieces.
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.workers.r2_drain import (
     _REAP_STALE_AFTER_SECONDS,
@@ -385,3 +385,67 @@ class TestEndToEndOrphanRecovery:
         log = MagicMock()
         n = await _reap_orphaned_claims(pool, log)
         assert n == 0
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle anchor: r2_drain.uploaded (#3192)
+# ---------------------------------------------------------------------------
+
+
+class TestR2DrainUploadedLog:
+    """The consumer must emit ``r2_drain.uploaded`` on success, mirroring
+    the ``r2_drain.consumer_error`` event on the error path so an operator
+    grepping Loki by posting_id can confirm whether the description ever
+    reached R2 (closes #3192)."""
+
+    async def test_consumer_emits_uploaded_event_with_posting_id_on_success(self):
+        import structlog
+
+        from src.workers.r2_drain import _consumer
+
+        pool = AsyncMock()
+        pool.execute = AsyncMock()
+        buffer: asyncio.Queue = asyncio.Queue(maxsize=10)
+        shutdown = asyncio.Event()
+        stats = {"uploaded": 0, "errors": 0, "total_time": 0.0}
+
+        posting_id = "11111111-2222-3333-4444-555555555555"
+        await buffer.put(
+            {
+                "posting_id": posting_id,
+                "locale": "en",
+                "html": "<p>desc</p>",
+                "hash": 123,
+            }
+        )
+
+        async def set_shutdown_after_drain():
+            # Wait until the consumer has popped the only buffered row,
+            # then trigger shutdown so the test exits promptly.
+            await asyncio.sleep(0.1)
+            shutdown.set()
+
+        drain_log = structlog.get_logger().bind(name="drain-test")
+        with (
+            patch(
+                "src.workers.r2_drain.put_description",
+                new_callable=AsyncMock,
+            ),
+            structlog.testing.capture_logs() as logs,
+        ):
+            await asyncio.gather(
+                _consumer(0, pool, buffer, shutdown, drain_log, stats),
+                set_shutdown_after_drain(),
+            )
+
+        events = [
+            e
+            for e in logs
+            if e.get("event") == "r2_drain.uploaded" and e.get("posting_id") == posting_id
+        ]
+        assert events, (
+            "consumer must emit r2_drain.uploaded on success — mirrors "
+            "r2_drain.consumer_error which already carries posting_id"
+        )
+        assert events[0]["locale"] == "en"
+        assert stats["uploaded"] == 1
