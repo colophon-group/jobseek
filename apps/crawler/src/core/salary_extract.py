@@ -16,7 +16,8 @@ from dataclasses import dataclass
 
 # ── Result type ──────────────────────────────────────────────────────
 
-Currency = str  # ISO 4217: USD, CAD, EUR, GBP, CHF, PLN, CZK, SEK, DKK, HUF, RON, BGN
+Currency = str  # ISO 4217: USD, CAD, EUR, GBP, CHF, PLN, CZK, SEK, DKK, HUF, RON, BGN,
+# AUD, NZD, SGD, HKD, BRL, MXN
 # HRK intentionally omitted — Croatia adopted EUR 2023-01; recon (#3263) confirmed
 # zero HRK literals across 352 active Croatian postings. Revisit only on pre-2023 backfill.
 
@@ -179,11 +180,104 @@ def _extract_location_prefixed(text: str) -> list[SalaryRange]:
 #   "$174,000-$252,000 + bonus + equity + benefits"
 #   "$100,000 - $150,000 CAD"
 #   "$105,000-$149,000 + bonus"
+#   "A$120,000 - A$150,000"  (AUD prefix)
+#   "S$100,000 - S$130,000"  (SGD prefix)
+#   "R$50.000"               (BRL — uses European-style "." thousands)
 
+# Allow an optional 1-2 letter prefix immediately before the leading $
+# so we can detect AUD/NZD/SGD/HKD/BRL/MXN currency markers. The prefix
+# must be word-boundary-anchored to avoid stray matches mid-word.
 _DOLLAR_RANGE_RE = re.compile(
-    r"\$([\d,]+[Kk]?)\s*[-–—]\s*\$?([\d,]+[Kk]?)"
+    r"(?:(?<=^)|(?<=[\s(\[]))"
+    r"(A[U]?|N[Z]?|S|HK|R|MX)?\$([\d,.]+[Kk]?)\s*[-–—]\s*"
+    r"(?:[A-Z]{0,2}\$)?([\d,.]+[Kk]?)"
     r"(\s*.{0,80})",  # capture trailing context
 )
+
+# Currency-marker detection helpers — see issue #3191
+# Maps a marker string (uppercased, suffix-only or prefix-only) to ISO currency.
+# Ordered for explicit priority: longer markers first to avoid prefix ambiguity.
+_PREFIX_TO_CURRENCY = {
+    "AU": "AUD",
+    "A": "AUD",
+    "NZ": "NZD",
+    "N": "NZD",  # Less common but seen in NZ
+    "HK": "HKD",
+    "S": "SGD",
+    "R": "BRL",
+    "MX": "MXN",
+}
+
+# After-amount (suffix) currency markers, e.g. "$120K AUD".
+# Must be IMMEDIATELY adjacent to the amount — the ISO code must be
+# the first significant token after the (possibly whitespace) trailer.
+# Optional surrounding parens/brackets allowed (e.g. ``$120K (AUD)``).
+_SUFFIX_CURRENCY_RE = re.compile(
+    r"^\s*[(\[]?(AUD|NZD|SGD|HKD|BRL|MXN|CAD|USD)[)\]]?\b",
+    re.IGNORECASE,
+)
+
+
+def _detect_dollar_currency(prefix: str | None, trailing: str) -> str:
+    """Resolve the currency for a `$`-prefixed amount.
+
+    Priority order (matches issue #3191):
+      1. Explicit pre-amount marker like ``A$``, ``HK$``, ``R$``.
+      2. Explicit post-amount ISO code IMMEDIATELY adjacent to the
+         amount, e.g. ``"$120K AUD"`` or ``"$120K (AUD)"``. The code
+         must be the first non-whitespace token after the amount — a
+         generic US posting that mentions ``"AUD performance bonus"``
+         later in the same sentence must not flip the currency.
+      3. Fallback to ``USD``.
+    """
+    if prefix:
+        marker = prefix.upper()
+        if marker in _PREFIX_TO_CURRENCY:
+            return _PREFIX_TO_CURRENCY[marker]
+
+    if trailing:
+        m = _SUFFIX_CURRENCY_RE.match(trailing)
+        if m:
+            return m.group(1).upper()
+
+    return "USD"
+
+
+def _is_european_decimal(raw: str) -> bool:
+    """Return True if ``raw`` looks like a European-style thousands form.
+
+    Examples that should return True:
+      ``"50.000"`` → 50000 (BRL/EUR thousands form)
+      ``"1.500.000"`` → 1500000
+      ``"50.000,00"`` → 50000.00
+
+    Examples that should return False:
+      ``"50.5"`` → 50.5 (decimal)
+      ``"50,000"`` → 50000 (US/anglo thousands)
+      ``"150K"`` → suffix form
+    """
+    if "," in raw and "." in raw:
+        # Mixed — assume European if the comma is the final separator
+        return raw.rfind(",") > raw.rfind(".")
+    if "." in raw and "," not in raw:
+        # Multiple dots → thousands separator form; one dot + exactly 3
+        # digits after → also thousands form
+        return bool(re.fullmatch(r"\d{1,3}(?:\.\d{3})+", raw))
+    return False
+
+
+def _parse_dollar_number(raw: str, currency: str) -> float:
+    """Parse a dollar-style amount, applying European-style thousands
+    when the currency uses dot-as-thousands (BRL primarily)."""
+    raw = raw.strip()
+    if currency in ("BRL",) and _is_european_decimal(raw):
+        # Convert European format: "50.000" → "50000", "50.000,00" → "50000.00"
+        normalized = raw.replace(".", "").replace(",", ".")
+        if normalized.upper().endswith("K"):
+            return float(normalized[:-1]) * 1000
+        return float(normalized)
+    return _parse_number(raw)
+
 
 # Context words that confirm this is a salary, not revenue/funding
 _SALARY_CONTEXT_RE = re.compile(
@@ -205,11 +299,21 @@ _NOT_SALARY_RE = re.compile(
 def _extract_dollar_range(text: str) -> list[SalaryRange]:
     results = []
     for m in _DOLLAR_RANGE_RE.finditer(text):
-        lo = _parse_number(m.group(1))
-        hi = _parse_number(m.group(2))
-        trailing = m.group(3)
+        prefix = m.group(1)  # optional pre-amount currency marker
+        trailing = m.group(4)
 
-        # Disqualify tiny amounts (below $15,000) and absurdly large ones
+        # Resolve currency first — affects how BRL-style "." numbers parse.
+        currency = _detect_dollar_currency(prefix, trailing)
+
+        try:
+            lo = _parse_dollar_number(m.group(2), currency)
+            hi = _parse_dollar_number(m.group(3), currency)
+        except ValueError:
+            continue
+
+        # Disqualify tiny amounts (below $15,000) and absurdly large ones.
+        # The 15000 floor is in raw units; for BRL/MXN this is still a
+        # sensible lower bound for an annual salary.
         if lo < 15000 or hi > 1_000_000:
             continue
 
@@ -223,11 +327,6 @@ def _extract_dollar_range(text: str) -> list[SalaryRange]:
 
         if not _SALARY_CONTEXT_RE.search(surrounding):
             continue
-
-        # Detect currency (default USD)
-        currency = "USD"
-        if "CAD" in trailing[:20].upper():
-            currency = "CAD"
 
         # Detect period
         period = _detect_period(trailing.lstrip(" +").lstrip())
@@ -256,7 +355,7 @@ def _extract_dollar_range(text: str) -> list[SalaryRange]:
 
 _BARE_RANGE_CURRENCY_RE = re.compile(
     r"([\d,]+\.?\d*)\s*[-–—]\s*([\d,]+\.?\d*)"
-    r"\s+\(?(USD|CAD|EUR|GBP|CHF)\)?"
+    r"\s+\(?(USD|CAD|EUR|GBP|CHF|AUD|NZD|SGD|HKD|BRL|MXN)\)?"
     r"(?:\s*\+\s*(?:bonus|equity|benefits|stock)\s*)*"  # optional trailing
     r"(?:\s+(annually|hourly|per year|per hour|per annum|monthly|per month))?"
     r"|"  # OR: amount (yr) pattern
@@ -313,11 +412,14 @@ def _extract_bare_range(text: str) -> list[SalaryRange]:
 
 # ── Pattern 4: $X/year or $X/hr (single amounts with explicit period) ──
 #   "$107.40/hr", "$120,000 per year", "$105,000 Annually"
+#   "A$80,000 per year" (AUD), "S$100k/year" (SGD), "HK$500K Annually" (HKD)
+#   "R$50.000 per month" (BRL — European thousands)
 
 _SINGLE_DOLLAR_PERIOD_RE = re.compile(
-    r"\$([\d,]+(?:\.\d+)?)\s*"
-    r"(per year|per annum|annually|annual|/year|/yr|"
-    r"per hour|hourly|/hour|/hr)",
+    r"(?:(?<=^)|(?<=[\s(\[]))"
+    r"(A[U]?|N[Z]?|S|HK|R|MX)?\$([\d,.]+[Kk]?)\s*"
+    r"((?:[A-Z]{2,3}\s*)?(?:per year|per annum|annually|annual|/year|/yr|"
+    r"per hour|hourly|/hour|/hr|per month|monthly|/month|/mo))",
     re.IGNORECASE,
 )
 
@@ -325,11 +427,32 @@ _SINGLE_DOLLAR_PERIOD_RE = re.compile(
 def _extract_single_dollar(text: str) -> list[SalaryRange]:
     results = []
     for m in _SINGLE_DOLLAR_PERIOD_RE.finditer(text):
-        val = _parse_number(m.group(1))
-        period = _detect_period(m.group(2))
+        prefix = m.group(1)
+        period_phrase = m.group(3)
+
+        # The period phrase may include a leading ISO code (e.g. "AUD per year")
+        # — resolve currency from prefix first, then from the period_phrase
+        # head, then fallback to USD.
+        currency = _detect_dollar_currency(prefix, period_phrase or "")
+
+        try:
+            val = _parse_dollar_number(m.group(2), currency)
+        except ValueError:
+            continue
+
+        # Strip leading ISO code from the period phrase before period detection.
+        period_clean = re.sub(
+            r"^\s*(AUD|NZD|SGD|HKD|BRL|MXN|CAD|USD)\s*",
+            "",
+            period_phrase,
+            flags=re.IGNORECASE,
+        )
+        period = _detect_period(period_clean)
         if period is None:
             continue
         if period == "yearly" and val < 15000:
+            continue
+        if period == "monthly" and (val < 500 or val > 100_000):
             continue
         if period == "hourly" and (val < 7 or val > 500):
             continue
@@ -337,7 +460,103 @@ def _extract_single_dollar(text: str) -> list[SalaryRange]:
             SalaryRange(
                 min=int(val * 100) if period == "hourly" else int(val),
                 max=None,
-                currency="USD",
+                currency=currency,
+                period=period,
+            )
+        )
+    return results
+
+
+# ── Pattern 4b: <prefix>$X (single amount with explicit non-USD prefix) ──
+# A prefix like ``A$``, ``S$``, ``HK$``, ``R$`` is itself a strong currency
+# marker (closes #3191). We require salary context for safety but do NOT
+# require an explicit period word — the prefix alone disambiguates from
+# revenue/funding/etc.
+
+# The amount alternation prevents regex backtracking from accepting a
+# truncated number when the full amount is followed by a dash (range).
+# In order:
+#   1. <digits>[,.<digits>]*K — explicit K-suffix (only suffix digits allowed)
+#   2. <digits>(,<digits>{3})+ — comma-thousands form, must end on a 3-digit group
+#   3. <digits>(\.<digits>{3})+ — dot-thousands form (BRL/European), 3-digit groups
+#   4. <digits>+ — bare integer (no separator)
+_PREFIX_DOLLAR_SINGLE_RE = re.compile(
+    r"(?:(?<=^)|(?<=[\s(\[]))"
+    r"(A[U]?|N[Z]?|S|HK|R|MX)\$"
+    r"(\d+(?:[.,]\d+)*[Kk]"
+    r"|\d{1,3}(?:,\d{3})+"
+    r"|\d{1,3}(?:\.\d{3})+"
+    r"|\d+)"
+)
+
+
+def _extract_prefix_dollar_single(text: str) -> list[SalaryRange]:
+    """Detect single non-USD dollar amounts like ``A$80,000`` or ``R$50.000``.
+
+    Requires salary-confirming context to avoid extracting random
+    benefits or amounts mentioned in narrative text. Skips matches
+    that are part of a range (covered by ``_extract_dollar_range``).
+    """
+    results = []
+    # Pre-compute the spans covered by range matches so we can skip
+    # prefix-singles inside them (regex backtracking would otherwise
+    # accept a truncated number adjacent to the range dash).
+    range_spans = [(m.start(), m.end()) for m in _DOLLAR_RANGE_RE.finditer(text)]
+
+    for m in _PREFIX_DOLLAR_SINGLE_RE.finditer(text):
+        # Skip if this match falls inside a range match
+        if any(s <= m.start() and m.end() <= e for s, e in range_spans):
+            continue
+
+        prefix = m.group(1)
+        currency = _detect_dollar_currency(prefix, "")
+        if currency == "USD":
+            # No prefix matched our table — fall through, the regular
+            # _extract_single_dollar path handles plain $.
+            continue
+
+        try:
+            val = _parse_dollar_number(m.group(2), currency)
+        except ValueError:
+            continue
+
+        # Require salary context in surrounding text
+        start = max(0, m.start() - 100)
+        end = min(len(text), m.end() + 80)
+        surrounding = text[start:end]
+
+        if _NOT_SALARY_RE.search(surrounding):
+            continue
+        if not _SALARY_CONTEXT_RE.search(surrounding):
+            continue
+
+        # Detect period from immediate trailing context (next ~30 chars)
+        tail = text[m.end() : m.end() + 30]
+        period = _detect_period(tail.lstrip(" +.,/").lstrip())
+        if period is None:
+            # No explicit period — default to yearly if value is salary-sized
+            if val >= 15000:
+                period = "yearly"
+            elif 500 <= val <= 30_000:
+                period = "monthly"
+            elif 5 <= val <= 500:
+                period = "hourly"
+            else:
+                continue
+
+        # Period-specific sanity filters (same as _extract_single_dollar)
+        if period == "yearly" and val < 15000:
+            continue
+        if period == "monthly" and (val < 500 or val > 100_000):
+            continue
+        if period == "hourly" and (val < 5 or val > 500):
+            continue
+
+        results.append(
+            SalaryRange(
+                min=int(val * 100) if period == "hourly" else int(val),
+                max=None,
+                currency=currency,
                 period=period,
             )
         )
@@ -1145,6 +1364,8 @@ def extract_salary(html: str) -> list[SalaryRange]:
     # Dollar patterns
     dollar_ranges = _extract_dollar_range(text)
     dollar_singles = _extract_single_dollar(text)
+    # Non-USD prefix singles (A$, S$, HK$, R$, etc.) — closes #3191
+    prefix_singles = _extract_prefix_dollar_single(text)
 
     # EUR patterns
     eur = _extract_eur(text)
@@ -1160,7 +1381,7 @@ def extract_salary(html: str) -> list[SalaryRange]:
     for code in _EU_CURRENCIES:
         eu_extra.extend(_extract_eu_currency(text, code))
 
-    all_results = dollar_ranges + dollar_singles + eur + gbp + chf + eu_extra
+    all_results = dollar_ranges + dollar_singles + prefix_singles + eur + gbp + chf + eu_extra
 
     # Deduplicate: if we have both a range and a single that overlaps, prefer the range
     if len(all_results) > 1:
@@ -1173,7 +1394,18 @@ def extract_salary(html: str) -> list[SalaryRange]:
             if r.max is not None:
                 range_vals.add(r.max)
         filtered_singles = [s for s in singles if s.min not in range_vals]
-        all_results = ranges + filtered_singles
+        # Within singles, dedupe by (currency, period, min) — _extract_single_dollar
+        # and _extract_prefix_dollar_single can both match the same text when an
+        # explicit period is present (closes #3191).
+        seen: set[tuple[str, str, int]] = set()
+        unique_singles: list[SalaryRange] = []
+        for s in filtered_singles:
+            key = (s.currency, s.period, s.min)
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_singles.append(s)
+        all_results = ranges + unique_singles
 
     return all_results
 
