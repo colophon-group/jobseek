@@ -55,6 +55,20 @@ const mocks = vi.hoisted(() => ({
   tsDeleteWatchlist: vi.fn(),
   tsUpdateWatchlistField: vi.fn(),
   generateUniqueSlug: vi.fn(),
+  // #3201: pass-through that runs the inserter once with the picker's
+  // slug. Listing-perf tests don't exercise the createWatchlist path
+  // but the module-level import needs the export.
+  insertWatchlistWithUniqueSlug: vi.fn(
+    async (
+      userId: string,
+      title: string,
+      insert: (slug: string) => Promise<unknown>,
+    ) => {
+      const slug = await mocks.generateUniqueSlug(userId, title);
+      const row = await insert(slug);
+      return { row, slug };
+    },
+  ),
 }));
 
 vi.mock("next/server", () => ({ after: (cb: () => unknown) => cb() }));
@@ -110,6 +124,7 @@ vi.mock("@/lib/search/typesense-watchlist", () => ({
 
 vi.mock("@/lib/watchlist-slug", () => ({
   generateUniqueSlug: mocks.generateUniqueSlug,
+  insertWatchlistWithUniqueSlug: mocks.insertWatchlistWithUniqueSlug,
 }));
 
 // One mock entry point for ALL Typesense reads. Every

@@ -47,6 +47,21 @@ const mocks = vi.hoisted(() => ({
   tsDeleteWatchlist: vi.fn(),
   tsUpdateWatchlistField: vi.fn(),
   generateUniqueSlug: vi.fn(),
+  // #3201: the new helper wraps `generateUniqueSlug` + the INSERT with
+  // a retry-on-23505 loop. For unrelated cache-invalidation tests we
+  // mock it as a thin pass-through: pick a slug via the same
+  // `generateUniqueSlug` stub and run the inserter exactly once.
+  insertWatchlistWithUniqueSlug: vi.fn(
+    async (
+      userId: string,
+      title: string,
+      insert: (slug: string) => Promise<unknown>,
+    ) => {
+      const slug = await mocks.generateUniqueSlug(userId, title);
+      const row = await insert(slug);
+      return { row, slug };
+    },
+  ),
   canCreateWatchlist: vi.fn().mockResolvedValue({ allowed: true }),
   getUserPlan: vi.fn().mockResolvedValue("free"),
 }));
@@ -82,6 +97,7 @@ vi.mock("@/lib/plans", () => ({
 
 vi.mock("@/lib/watchlist-slug", () => ({
   generateUniqueSlug: mocks.generateUniqueSlug,
+  insertWatchlistWithUniqueSlug: mocks.insertWatchlistWithUniqueSlug,
 }));
 
 vi.mock("@/lib/indexnow", () => ({ notifyIndexNow: mocks.notifyIndexNow }));
@@ -257,6 +273,18 @@ beforeEach(() => {
   });
   mocks.getSessionUserId.mockResolvedValue(USER_ID);
   mocks.generateUniqueSlug.mockResolvedValue(SLUG);
+  // Re-prime the helper pass-through that vi.clearAllMocks() reset.
+  mocks.insertWatchlistWithUniqueSlug.mockImplementation(
+    async (
+      userId: string,
+      title: string,
+      insert: (slug: string) => Promise<unknown>,
+    ) => {
+      const slug = await mocks.generateUniqueSlug(userId, title);
+      const row = await insert(slug);
+      return { row, slug };
+    },
+  );
   mocks.afterCallbacks.length = 0;
 });
 
