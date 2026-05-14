@@ -305,6 +305,57 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     expect(mocks.dbExecute).not.toHaveBeenCalled();
     expect(mocks.tsSearch).not.toHaveBeenCalled();
   });
+
+  // Regression for #3333. `anyCompany` watchlists have no `watchlist_company`
+  // rows, so the SQL JOIN-subquery `active_job_count` is always 0 for them.
+  // The fix patches the count in JS by running one Typesense `per_page: 0`
+  // count per `anyCompany` row.
+  it("patches anyCompany watchlists with a live Typesense count", async () => {
+    const anyRow = {
+      ...fakeUserWatchlistRow(0, 0),
+      filters: { anyCompany: true, locationSlugs: ["eu"] },
+    };
+    const normalRow = fakeUserWatchlistRow(1, 12);
+    mocks.dbExecute.mockResolvedValueOnce([anyRow, normalRow]);
+    mocks.tsSearch.mockResolvedValueOnce({ found: 38717, hits: [] });
+
+    const result = await getUserWatchlists("en");
+
+    expect(result).toHaveLength(2);
+    // Patched from SQL's 0 to the Typesense count.
+    expect(result[0].activeJobCount).toBe(38717);
+    // Non-anyCompany row keeps the SQL count untouched — no extra
+    // round-trip fires for it.
+    expect(result[1].activeJobCount).toBe(12);
+
+    // Exactly one Typesense call (the anyCompany count). The normal
+    // row goes straight from SQL.
+    expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsCollectionsCalls).toEqual(["job_posting"]);
+  });
+
+  it("returns 0 (not the SQL 0 either) when the anyCompany Typesense count fails", async () => {
+    const anyRow = {
+      ...fakeUserWatchlistRow(0, 0),
+      filters: { anyCompany: true, locationSlugs: ["eu"] },
+    };
+    mocks.dbExecute.mockResolvedValueOnce([anyRow]);
+    mocks.tsSearch.mockRejectedValueOnce(new Error("typesense unreachable"));
+
+    const result = await getUserWatchlists("en");
+
+    expect(result).toHaveLength(1);
+    expect(result[0].activeJobCount).toBe(0); // graceful degradation
+  });
+
+  it("fires no Typesense queries when there are zero anyCompany rows", async () => {
+    const rows = Array.from({ length: 10 }, (_, i) => fakeUserWatchlistRow(i, i * 3));
+    mocks.dbExecute.mockResolvedValueOnce(rows);
+
+    await getUserWatchlists("en");
+
+    expect(mocks.tsSearch).not.toHaveBeenCalled();
+  });
 });
 
 // ---- public Discover surfaces (Typesense path) -------------------------

@@ -628,6 +628,19 @@ export async function getUserWatchlists(_locale: string): Promise<WatchlistSumma
   // the precise filter-applied count via `getWatchlistPostingDisplayCounts`.
   // The follow-up issue (#3261) tracks restoring per-viewer / per-filter
   // accuracy via a batched `multi_search` when the listing UX requires it.
+  //
+  // EXCEPTION (#3333): `anyCompany` watchlists have NO `watchlist_company`
+  // rows (the editor toggle disables the company picker, and copies
+  // already strip the rows on save), so the SQL JOIN above returns 0
+  // for them — even when the filters match thousands of active postings.
+  // The denormalized Typesense `active_job_count` field is also 0 for
+  // these (the crawler's `refresh_typesense_counts` joins the same
+  // empty `watchlist_company` table — see `apps/crawler/src/sync.py`).
+  // Fall back to a per-watchlist live Typesense count for those rows
+  // only, so the listing badge reflects reality. A user can have at
+  // most PLAN_LIMITS.maxWatchlists.maxPaid (50) watchlists; the fan-out
+  // is bounded by however many of those have `anyCompany` set, which
+  // is rare in practice.
   const rows = await withDbRetry(
     () =>
       db.execute<{
@@ -667,6 +680,29 @@ export async function getUserWatchlists(_locale: string): Promise<WatchlistSumma
 
   const typed = rows as unknown as Row[];
 
+  // Patch `anyCompany` rows with a live Typesense count (see comment
+  // above the SELECT). Fan-out is bounded by the user's
+  // `anyCompany`-watchlist count (typically 0-2); each call is cached
+  // by `_resolveAnyCompanyActiveCount` so an immediately-following
+  // render hits Redis instead of Typesense. Failures degrade to the
+  // SQL 0 — same as the rest of the listing surface.
+  const anyCompanyRows = typed.filter((r) => r.filters?.anyCompany);
+  let anyCompanyCounts: Map<string, number> = new Map();
+  if (anyCompanyRows.length > 0) {
+    const pairs = await Promise.all(
+      anyCompanyRows.map(async (r) => {
+        try {
+          const c = await _resolveAnyCompanyActiveCount(r.filters);
+          return [r.id, c] as const;
+        } catch (err) {
+          console.error("[getUserWatchlists] anyCompany count failed", { id: r.id, err });
+          return [r.id, 0] as const;
+        }
+      }),
+    );
+    anyCompanyCounts = new Map(pairs);
+  }
+
   return typed.map((r) => ({
     id: r.id,
     slug: r.slug,
@@ -675,10 +711,77 @@ export async function getUserWatchlists(_locale: string): Promise<WatchlistSumma
     isPublic: r.is_public,
     alertsEnabled: r.alerts_enabled,
     companyCount: r.company_count,
-    activeJobCount: r.active_job_count,
+    activeJobCount: r.filters?.anyCompany
+      ? (anyCompanyCounts.get(r.id) ?? 0)
+      : r.active_job_count,
     lastAccessedAt: new Date(r.last_accessed_at).toISOString(),
     createdAt: new Date(r.created_at).toISOString(),
   }));
+}
+
+/**
+ * Compute the live "active jobs matching this watchlist's filters"
+ * count against Typesense, for the `anyCompany=true` case where the
+ * denormalized SQL JOIN and the Typesense `watchlist.active_job_count`
+ * doc field both return 0 by construction.
+ *
+ * Mirrors the Typesense shape used by `_getWatchlistPostingsTypesense`
+ * (POSTING_BASE_FILTER + slug-resolved filter ids + keywords) but
+ * runs `per_page: 0` so we pay only for the count. Cached by
+ * `buildFilterCacheKey(filters, [])` so two consecutive page renders
+ * with the same filters share a single Typesense round-trip.
+ *
+ * The viewer's language preference is NOT scoped here — the listing
+ * badge shows the same broadest count to all viewers, matching the
+ * documented trade-off in #3262.
+ *
+ * Returns 0 on any Typesense error so the listing badge degrades to
+ * the same value as the company-scope fast path.
+ */
+async function _resolveAnyCompanyActiveCount(
+  filters: WatchlistFilters,
+): Promise<number> {
+  const key = `wl-any-active:${buildFilterCacheKey(filters, [])}`;
+  return cached(key, async () => {
+    const locale = "en";
+    const [locMap, occMap, senMap, techMap] = await Promise.all([
+      filters.locationSlugs?.length ? resolveLocationSlugs(filters.locationSlugs, locale) : Promise.resolve(new Map()),
+      filters.occupationSlugs?.length ? resolveOccupationSlugs(filters.occupationSlugs, locale) : Promise.resolve(new Map()),
+      filters.senioritySlugs?.length ? resolveSenioritySlugs(filters.senioritySlugs, locale) : Promise.resolve(new Map()),
+      filters.technologySlugs?.length ? resolveTechnologySlugs(filters.technologySlugs) : Promise.resolve(new Map()),
+    ]);
+
+    const filterStr = buildFilterString({
+      locationIds: locMap.size > 0 ? [...locMap.values()].map((l) => l.id) : undefined,
+      occupationIds: occMap.size > 0 ? [...occMap.values()].map((o) => o.id) : undefined,
+      seniorityIds: senMap.size > 0 ? [...senMap.values()].map((s) => s.id) : undefined,
+      technologyIds: techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined,
+      workMode: filters.workMode?.length ? filters.workMode : undefined,
+      employmentTypes: filters.employmentType?.length ? filters.employmentType : undefined,
+      salaryMinEur: filters.salaryMin,
+      salaryMaxEur: filters.salaryMax,
+      experienceMin: filters.experienceMin,
+      experienceMax: filters.experienceMax,
+    });
+
+    const fullFilter = `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`;
+    const hasKeywords = filters.keywords && filters.keywords.length > 0;
+    const q = hasKeywords ? filters.keywords!.join(" ") : "*";
+
+    try {
+      const client = getSearchClient();
+      const result = await client.collections("job_posting").documents().search({
+        q,
+        query_by: "title",
+        filter_by: fullFilter,
+        per_page: 0,
+      });
+      return result.found ?? 0;
+    } catch (err) {
+      console.error("[_resolveAnyCompanyActiveCount] Typesense failed", err);
+      return 0;
+    }
+  }, { ttl: CACHE_TTL_SHORT });
 }
 
 export async function getWatchlistByUserAndSlug(

@@ -107,7 +107,17 @@ export function usePaginatedLoadMore<T>({
       limit: batchSize,
     });
     if (result.truncated) setTruncated(true);
-    setTotal(result.total);
+
+    // Never let the server-reported `total` shrink below what we
+    // already have committed locally. The anon-cap shortcut in
+    // `runGetWatchlistPostings` / `getWatchlistPostings` returns
+    // `{ postings: [], total: 0, truncated: true }` once `offset >=
+    // ANON_MAX_WATCHLIST_POSTINGS` — a UI boundary, not a real total.
+    // Without this guard the badge collapsed to "0 active" the moment
+    // an anon viewer's sentinel scrolled past the cap on a short page
+    // (#3333). Taking the max also no-ops the (legit) case where a
+    // later fetch returns the same `result.total` we already have.
+    setTotal((prev) => Math.max(prev, result.total, itemsRef.current.length));
 
     // Compute dedup against the latest `items` snapshot upfront so
     // the terminal-condition checks below use a deterministic count.
@@ -137,6 +147,14 @@ export function usePaginatedLoadMore<T>({
     // returning `batchSize` items that all collide with the current
     // list left `items.length` unchanged → next offset identical →
     // same server response → infinite refetch loop.
+    //
+    // The `projectedLength >= result.total` check uses the raw
+    // server-reported `result.total` (not the floor-guarded
+    // committed-state `total`) so the anon-cap shortcut (total: 0)
+    // still flips us terminal — we already set `truncated: true`
+    // above which alone is enough for `hasMore`, but keeping the
+    // exhausted flag in sync prevents a stale "load more" affordance
+    // from re-appearing if `truncated` ever gets reset.
     const projectedLength = baseLength + fresh.length;
     if (
       result.postings.length < batchSize ||
