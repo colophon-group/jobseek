@@ -7,7 +7,7 @@ import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { createWatchlist, type WatchlistFilters } from "@/lib/actions/watchlists";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import type { SelectedLocation } from "@/components/search/location-pills";
@@ -45,7 +45,7 @@ export function SaveSearchButton({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn } = useSession();
   const [saving, setSaving] = useState(false);
   const upgrade = useUpgradeModal();
 

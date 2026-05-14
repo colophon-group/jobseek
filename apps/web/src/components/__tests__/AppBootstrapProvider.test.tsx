@@ -161,7 +161,7 @@ describe("AppBootstrapProvider", () => {
     // returns the NEW identity. We assert (a) the user name flips
     // after refresh() resolves, and (b) `isPending` stays `false`
     // throughout the refresh — replacing `data` in place must not
-    // null it out and flash the spinner on every `useAuth()` consumer.
+    // null it out and flash the spinner on every `useSession()` consumer.
     mockBootstrap.mockResolvedValueOnce({
       user: {
         id: "u1",

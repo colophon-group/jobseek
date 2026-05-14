@@ -25,7 +25,7 @@ export function AppBootstrapProvider({ children }: { children: ReactNode }) {
   // a successful `renameUsername`) so the SessionProvider stops
   // serving the pre-mutation `user.username` to client components
   // (#3022). Intentionally does NOT set `data = null` first — that
-  // would flip `isPending = true` across every `useAuth()` consumer
+  // would flip `isPending = true` across every `useSession()` consumer
   // (header avatar, watchlist job list, etc.) and produce a transient
   // flicker. Replacing `data` once the new payload resolves is enough.
   const refresh = useCallback(async () => {

@@ -9,7 +9,7 @@ import { Compass, Briefcase, Eye, Settings, LogIn, LogOut } from "lucide-react";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/Button";
 import { SearchBar } from "@/components/search/search-bar";
@@ -48,7 +48,7 @@ function BottomBarLink({ href, label, children }: { href: string; label: string;
 export function AppHeader() {
   const { t } = useLingui();
   const lp = useLocalePath();
-  const { isLoggedIn, user, isPending } = useAuth();
+  const { isLoggedIn, user, isPending } = useSession();
 
   const appHref = lp(siteConfig.nav.app.href);
 
