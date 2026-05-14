@@ -981,7 +981,19 @@ async def _process_one_board_streaming(
                                 if row is None:
                                     n_rich_dedup += 1
                                     continue
-                                inserted_rich.append((j, t_ids, str(row["id"])))
+                                new_posting_id = str(row["id"])
+                                inserted_rich.append((j, t_ids, new_posting_id))
+                                # Lifecycle anchor: per-posting discovery event so
+                                # operators can grep Loki by posting_id from the
+                                # URL to find when (and from which board) the row
+                                # first entered the pipeline (#3192).
+                                board_log.info(
+                                    "posting.discovered",
+                                    posting_id=new_posting_id,
+                                    board_id=board_id,
+                                    source_url=j.url,
+                                    path="rich",
+                                )
                             if n_rich_dedup:
                                 monitor_dedup_total.labels(path="rich").inc(n_rich_dedup)
                                 board_log.info(
@@ -1186,6 +1198,20 @@ async def _process_one_board_streaming(
                                 count=n_deduped,
                             )
                         board_log.info("batch.inserted_for_scrape", count=len(inserted))
+                        # Lifecycle anchor: per-posting discovery event so an
+                        # operator with only the posting_id (from the public
+                        # URL) can grep Loki to find when and from which board
+                        # the row entered the pipeline (#3192). URL-only path
+                        # — rich data arrives later via the scrape branch's
+                        # ``posting.scraped`` event.
+                        for ins in inserted:
+                            board_log.info(
+                                "posting.discovered",
+                                posting_id=str(ins["id"]),
+                                board_id=board_id,
+                                source_url=ins["source_url"],
+                                path="url_only",
+                            )
                         await _enqueue_scrapes_for_new(
                             inserted, board_id, metadata, board_log, crawler_type=crawler_type
                         )

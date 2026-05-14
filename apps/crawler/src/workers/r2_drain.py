@@ -214,6 +214,17 @@ async def _consumer(
             stats["total_time"] += time.monotonic() - t0
             r2_uploaded_total.labels(status="succeeded").inc()
             r2_upload_duration.observe(time.monotonic() - t0)
+            # Lifecycle anchor: mirror the error path's per-row event so an
+            # operator with only the posting_id can confirm "yes, the
+            # description for this row reached R2" instead of having to
+            # diff the r2_drain.stats aggregate (#3192). r2_drain throughput
+            # is bounded by new/touched postings per cycle (not by every
+            # scrape claim) so per-row info is sustainable.
+            drain_log.info(
+                "r2_drain.uploaded",
+                posting_id=str(row["posting_id"]),
+                locale=row["locale"],
+            )
 
         except Exception:
             drain_log.warning(

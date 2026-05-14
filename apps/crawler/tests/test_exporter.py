@@ -7,6 +7,8 @@ from collections import Counter
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import structlog
+
 from src.exporter import (
     _EPOCH,
     _POSTING_COLUMNS,
@@ -451,6 +453,109 @@ class TestExportPostingsDual:
         assert count == 0
         assert new_supa == supa_cur
         assert new_ts == ts_cur
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle anchor: exporter.exported_postings (#3192)
+# ---------------------------------------------------------------------------
+
+
+class TestExporterExportedPostingsLog:
+    """The exporter must emit ``exporter.exported_postings`` with
+    ``sample_ids`` so an operator with the posting_id from a public URL
+    can grep "was THIS posting in any recent batch?" without filtering by
+    aggregate counts only (closes #3192)."""
+
+    async def test_dual_path_logs_sample_ids_for_both_targets(self):
+        ts1 = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        ts2 = datetime(2025, 6, 1, 12, 5, 0, tzinfo=UTC)
+        supa_cur = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
+        ts_cur = supa_cur
+
+        local = _make_pool()
+        supa, _ = _supa_pool_with_capture()
+
+        pid1 = uuid.uuid4()
+        pid2 = uuid.uuid4()
+        local.fetch = AsyncMock(
+            return_value=[
+                _posting_row(posting_id=pid1, ts=ts1),
+                _posting_row(posting_id=pid2, ts=ts2),
+            ]
+        )
+
+        with (
+            patch("src.exporter._upsert_to_typesense", new=AsyncMock()),
+            structlog.testing.capture_logs() as logs,
+        ):
+            await _export_postings_dual(local, supa, supa_cur, ts_cur, TaxonomyMaps())
+
+        supa_events = [
+            e
+            for e in logs
+            if e.get("event") == "exporter.exported_postings" and e.get("target") == "supabase"
+        ]
+        ts_events = [
+            e
+            for e in logs
+            if e.get("event") == "exporter.exported_postings" and e.get("target") == "typesense"
+        ]
+        assert supa_events, "must emit exporter.exported_postings for supabase"
+        assert ts_events, "must emit exporter.exported_postings for typesense"
+        assert supa_events[0]["batch_size"] == 2
+        assert ts_events[0]["batch_size"] == 2
+        # sample_ids is a list of stringified UUIDs (max 5)
+        assert isinstance(supa_events[0]["sample_ids"], list)
+        assert str(pid1) in supa_events[0]["sample_ids"]
+        assert str(pid2) in supa_events[0]["sample_ids"]
+
+    async def test_sample_ids_capped_at_five(self):
+        """Even if a batch has thousands of rows, ``sample_ids`` must
+        stay bounded so the Loki line stays readable."""
+        ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        supa_cur = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
+        ts_cur = supa_cur
+
+        local = _make_pool()
+        supa, _ = _supa_pool_with_capture()
+
+        pids = [uuid.uuid4() for _ in range(12)]
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=pid, ts=ts) for pid in pids])
+
+        with (
+            patch("src.exporter._upsert_to_typesense", new=AsyncMock()),
+            structlog.testing.capture_logs() as logs,
+        ):
+            await _export_postings_dual(local, supa, supa_cur, ts_cur, TaxonomyMaps())
+
+        supa_events = [
+            e
+            for e in logs
+            if e.get("event") == "exporter.exported_postings" and e.get("target") == "supabase"
+        ]
+        assert supa_events
+        assert supa_events[0]["batch_size"] == 12
+        assert len(supa_events[0]["sample_ids"]) == 5
+
+    async def test_single_path_logs_sample_ids(self):
+        """The Supabase-only fallback path (``_export_changed_postings``)
+        must also emit the lifecycle anchor — operators who run without
+        Typesense should not lose the correlation event."""
+        ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        cursor = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
+
+        local = _make_pool()
+        supa, _ = _supa_pool_with_capture()
+        pid = uuid.uuid4()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=pid, ts=ts)])
+
+        with structlog.testing.capture_logs() as logs:
+            await _export_changed_postings(local, supa, cursor)
+
+        events = [e for e in logs if e.get("event") == "exporter.exported_postings"]
+        assert events, "Supabase-only path must emit exporter.exported_postings"
+        assert events[0]["batch_size"] == 1
+        assert str(pid) in events[0]["sample_ids"]
 
 
 # ---------------------------------------------------------------------------
