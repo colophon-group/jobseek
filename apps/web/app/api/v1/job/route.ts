@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getPostingDetail } from "@/lib/actions/search";
+// Public REST routes use the plain service tier — see issue #3231.
+import { getPostingDetail } from "@/lib/services/search";
 import { checkRateLimit, apiResponse, siteUrl } from "../_shared";
 
 export async function GET(request: NextRequest) {

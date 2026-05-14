@@ -22,10 +22,14 @@ const mocks = vi.hoisted(() => ({
   listTopCompanies: vi.fn(),
 }));
 
-vi.mock("@/lib/actions/search-input", () => ({
+// Route handler now imports from `@/lib/services/*` (issue #3231). The
+// `@/lib/actions/*` re-export wrappers still exist for UI callers, but
+// the route does not touch them — mock the services here so we test the
+// real handler graph.
+vi.mock("@/lib/services/search-input", () => ({
   parseSearchFilters: mocks.parseSearchFilters,
 }));
-vi.mock("@/lib/actions/search", () => ({
+vi.mock("@/lib/services/search", () => ({
   searchJobs: mocks.searchJobs,
   listTopCompanies: mocks.listTopCompanies,
 }));
