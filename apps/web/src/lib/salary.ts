@@ -59,6 +59,44 @@ export function convertAmount(
 }
 
 /**
+ * Convert a salary-filter amount (in the user's display currency) to EUR so it
+ * can be compared against the EUR-indexed `salary_eur` field on every
+ * `job_posting` Typesense document (issue #3178).
+ *
+ * The crawler computes `salary_eur = annual_min * to_eur` in
+ * `apps/crawler/src/processing/cpu.py::_extract_salary_fields`, so the filter
+ * threshold MUST be in the same EUR-equivalent units. Before this helper,
+ * `salaryMinEur` was assigned directly from the user-currency amount, which
+ * silently excluded postings whose source currency was weaker than EUR
+ * (e.g. "$100K USD" filtered out US roles paying $100K because their
+ * `salary_eur` ≈ 92,000 < 100,000).
+ *
+ * Behavior:
+ * - `amount` null/undefined → returned unchanged (no filter to apply).
+ * - `fromCurrency === "EUR"` → identity (already in EUR).
+ * - Known rate → `amount * rates[fromCurrency].toEur`.
+ * - Missing rate (unsupported currency) → log warning, return `amount`
+ *   unchanged. This preserves the pre-#3178 behavior for unknown currencies
+ *   rather than silently filtering everything to zero.
+ */
+export function convertToEur(
+  amount: number | undefined,
+  fromCurrency: string,
+  rates: CurrencyRate[],
+): number | undefined {
+  if (amount == null) return amount;
+  if (fromCurrency === "EUR") return amount;
+  const rate = rates.find((r) => r.currency === fromCurrency)?.toEur;
+  if (rate == null) {
+    console.warn(
+      `[convertToEur] missing currency_rate for ${fromCurrency}; passing amount through unchanged`,
+    );
+    return amount;
+  }
+  return Math.round(amount * rate);
+}
+
+/**
  * Period-suffix label provider. Callers in client components inject a
  * Lingui-translated label per period; default falls back to English so
  * pure-function consumers (tests, server scripts) still work.

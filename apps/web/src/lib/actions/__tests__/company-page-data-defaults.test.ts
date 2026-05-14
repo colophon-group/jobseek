@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   readAnonJobLanguagesCookie: vi.fn(),
   getGeoFromHeaders: vi.fn(),
   parseSearchFilters: vi.fn(),
+  getCurrencyRates: vi.fn(),
+  parseRangeParam: vi.fn(),
 }));
 
 // `server-only` throws when loaded outside a Next.js runtime; neutralise.
@@ -20,6 +22,9 @@ vi.mock("@/lib/actions/company", () => ({
   getCompanyBySlug: mocks.getCompanyBySlug,
   getCompanyPostings: mocks.getCompanyPostings,
   getCompanyPostingsAnonymous: mocks.getCompanyPostingsAnonymous,
+}));
+vi.mock("@/lib/actions/search", () => ({
+  getCurrencyRates: mocks.getCurrencyRates,
 }));
 vi.mock("@/lib/sessionCache", () => ({ getSession: mocks.getSession }));
 vi.mock("@/lib/actions/preferences", () => ({
@@ -32,7 +37,7 @@ vi.mock("@/lib/search/params", () => ({
   firstOf: (v: unknown) => (Array.isArray(v) ? v[0] : v),
   idsOrUndefined: (items: { id: number }[]) =>
     items.length > 0 ? items.map((i) => i.id) : undefined,
-  parseRangeParam: () => ({ min: undefined, max: undefined }),
+  parseRangeParam: (v: string | undefined) => mocks.parseRangeParam(v),
   getGeoFromHeaders: mocks.getGeoFromHeaders,
 }));
 vi.mock("@/lib/actions/search-input", () => ({
@@ -89,6 +94,11 @@ beforeEach(() => {
     technologies: [],
     workMode: [],
   });
+  mocks.parseRangeParam.mockReturnValue({ min: undefined, max: undefined });
+  mocks.getCurrencyRates.mockResolvedValue([
+    { currency: "USD", toEur: 0.92 },
+    { currency: "CHF", toEur: 0.95 },
+  ]);
 });
 
 describe("fetchCompanyPageDefaults — ISR-safe prerender variant (#3203)", () => {
@@ -180,5 +190,51 @@ describe("fetchCompanyPageData — personalized server action (control)", () => 
     // distinguishable.
     expect(mocks.getGeoFromHeaders).toHaveBeenCalled();
     expect(mocks.getSession).toHaveBeenCalled();
+  });
+});
+
+describe("fetchCompanyPageData — salary EUR conversion (#3178)", () => {
+  it("converts USD 100K filter to ~92000 EUR before calling Typesense (was 100000 pre-fix)", async () => {
+    // Simulate the bug scenario from #3178: a US user with `salcur=USD`
+    // sets "$100K+". Pre-fix, salaryMinEur was passed through as 100000,
+    // which excluded $100K US roles (their salary_eur ≈ 92,000).
+    mocks.parseRangeParam.mockReturnValueOnce({ min: 100000, max: undefined });
+
+    await fetchCompanyPageData({
+      slug: "test-company",
+      searchParams: { sal: "100000-", salcur: "USD" },
+      locale: "en",
+    });
+
+    expect(mocks.getCurrencyRates).toHaveBeenCalled();
+    expect(mocks.getCompanyPostings).toHaveBeenCalledTimes(1);
+    const callArgs = mocks.getCompanyPostings.mock.calls[0][0];
+    expect(callArgs.salaryMinEur).toBe(92000);
+    expect(callArgs.salaryMaxEur).toBeUndefined();
+  });
+
+  it("leaves EUR 100K unchanged (identity branch — no rates needed)", async () => {
+    mocks.parseRangeParam.mockReturnValueOnce({ min: 100000, max: undefined });
+
+    await fetchCompanyPageData({
+      slug: "test-company",
+      searchParams: { sal: "100000-", salcur: "EUR" },
+      locale: "en",
+    });
+
+    const callArgs = mocks.getCompanyPostings.mock.calls[0][0];
+    expect(callArgs.salaryMinEur).toBe(100000);
+  });
+
+  it("does NOT fetch currency rates when no salary filter is active (no extra DB round-trip)", async () => {
+    mocks.parseRangeParam.mockReturnValueOnce({ min: undefined, max: undefined });
+
+    await fetchCompanyPageData({
+      slug: "test-company",
+      searchParams: {},
+      locale: "en",
+    });
+
+    expect(mocks.getCurrencyRates).not.toHaveBeenCalled();
   });
 });
