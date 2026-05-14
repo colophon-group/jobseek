@@ -15,6 +15,7 @@ import os
 from unittest.mock import MagicMock
 
 import pytest
+import structlog
 
 # Same env-stub pattern as test_exporter.py — src.config requires it at import.
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
@@ -24,6 +25,7 @@ from src.typesense_schema import (
     _index_drift,
     _patch_missing_fields,
     _warn_field_drift,
+    setup_collections,
 )
 
 
@@ -400,3 +402,112 @@ def test_patch_skips_id_field_even_when_index_would_drift() -> None:
         desired_fields=[{"name": "id", "type": "string", "index": False}],
     )
     collection.update.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Structured logging events — #3197. The deploy-path setup must emit JSON
+# log lines so Alloy's loki.process.parse extracts `level=error` and the
+# `event` label. Plain `print()` lines would bypass the JSON parser and be
+# invisible to any `{level="error"}` LogQL alert.
+# ---------------------------------------------------------------------------
+
+
+def test_patch_error_logs_structured_event() -> None:
+    """A patch failure must surface as a structlog `level=error` event so
+    Alloy/Loki labels it. The original `print(..., file=sys.stderr)` was
+    invisible to LogQL level filters."""
+    client = MagicMock()
+    collection = client.collections.__getitem__.return_value
+    collection.retrieve.return_value = {"fields": []}
+    collection.update.side_effect = RuntimeError("boom")
+
+    with structlog.testing.capture_logs() as logs, pytest.raises(RuntimeError):
+        _patch_missing_fields(
+            client,
+            "company",
+            desired_fields=[{"name": "logo", "type": "string"}],
+        )
+
+    errors = [e for e in logs if e["log_level"] == "error"]
+    assert any(e["event"] == "typesense.collection.patch_error" for e in errors)
+    err = next(e for e in errors if e["event"] == "typesense.collection.patch_error")
+    assert err["collection"] == "company"
+    assert "boom" in err["error"]
+
+
+def test_patch_up_to_date_logs_info_event() -> None:
+    """The "schema up to date" path must emit `level=info` with the
+    collection name so an operator can grep deploy logs."""
+    client = MagicMock()
+    collection = client.collections.__getitem__.return_value
+    collection.retrieve.return_value = {
+        "fields": [{"name": "name", "type": "string", "index": True}]
+    }
+
+    with structlog.testing.capture_logs() as logs:
+        _patch_missing_fields(
+            client,
+            "company",
+            desired_fields=[{"name": "name", "type": "string"}],
+        )
+
+    assert any(
+        e["event"] == "typesense.collection.up_to_date" and e["collection"] == "company"
+        for e in logs
+    )
+
+
+def test_patch_logs_added_and_rebuilt_names() -> None:
+    """The patching event must surface added + rebuilt field names as
+    structured kv pairs (the old plain string lost this information to
+    `print`)."""
+    client = MagicMock()
+    collection = client.collections.__getitem__.return_value
+    collection.retrieve.return_value = {
+        "fields": [{"name": "slug", "type": "string", "index": False}]
+    }
+
+    with structlog.testing.capture_logs() as logs:
+        _patch_missing_fields(
+            client,
+            "company",
+            desired_fields=[
+                {"name": "slug", "type": "string"},  # rebuilt (index flipped)
+                {"name": "logo", "type": "string"},  # added
+            ],
+        )
+
+    patching = next(e for e in logs if e["event"] == "typesense.collection.patching")
+    assert patching["collection"] == "company"
+    assert patching["added"] == ["logo"]
+    assert patching["rebuilt"] == ["slug"]
+
+
+def test_setup_collections_alias_create_error_logs_structured_event() -> None:
+    """A failure creating the alias is operationally significant — it leaves
+    a new collection without a routable alias, so search queries against
+    the alias 404. The structured event must carry both alias + target."""
+    client = MagicMock()
+    # No alias exists yet, but the versioned collection does.
+    client.aliases.__getitem__.return_value.retrieve.side_effect = __import__(
+        "typesense"
+    ).exceptions.ObjectNotFound("missing")
+    client.collections.__getitem__.return_value.retrieve.return_value = {"fields": []}
+    client.aliases.upsert.side_effect = RuntimeError("alias upsert failed")
+
+    # Limit to a single tiny collection to keep the test focused.
+    import src.typesense_schema as ts_mod
+
+    original_collections = ts_mod.COLLECTIONS
+    ts_mod.COLLECTIONS = [{"name": "watchlist", "fields": [{"name": "title", "type": "string"}]}]
+    try:
+        with structlog.testing.capture_logs() as logs, pytest.raises(RuntimeError):
+            setup_collections(client)
+    finally:
+        ts_mod.COLLECTIONS = original_collections
+
+    errors = [e for e in logs if e["log_level"] == "error"]
+    assert any(e["event"] == "typesense.alias.create_error" for e in errors)
+    err = next(e for e in errors if e["event"] == "typesense.alias.create_error")
+    assert err["alias"] == "watchlist"
+    assert err["target"] == "watchlist_v1"

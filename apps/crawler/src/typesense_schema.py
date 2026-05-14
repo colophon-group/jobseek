@@ -206,7 +206,7 @@ def _collection_exists(client: typesense.Client, name: str) -> bool:
 def _drop_collection(client: typesense.Client, name: str) -> None:
     try:
         client.collections[name].delete()
-        print(f"  dropped collection {name}")
+        log.info("typesense.collection.dropped", name=name)
     except ObjectNotFound:
         pass
 
@@ -214,7 +214,7 @@ def _drop_collection(client: typesense.Client, name: str) -> None:
 def _drop_alias(client: typesense.Client, name: str) -> None:
     try:
         client.aliases[name].delete()
-        print(f"  dropped alias {name}")
+        log.info("typesense.alias.dropped", name=name)
     except ObjectNotFound:
         pass
 
@@ -335,19 +335,24 @@ def _patch_missing_fields(
             rebuilt_names.append(name)
 
     if not payload_fields:
-        print(f"  schema up to date for {collection_name}")
+        log.info("typesense.collection.up_to_date", collection=collection_name)
         return
 
-    summary_parts = []
-    if added_names:
-        summary_parts.append(f"adding {len(added_names)} ({', '.join(added_names)})")
-    if rebuilt_names:
-        summary_parts.append(f"re-indexing {len(rebuilt_names)} ({', '.join(rebuilt_names)})")
-    print(f"  patching {collection_name}: {'; '.join(summary_parts)}")
+    log.info(
+        "typesense.collection.patching",
+        collection=collection_name,
+        added=added_names,
+        rebuilt=rebuilt_names,
+    )
     try:
         client.collections[collection_name].update({"fields": payload_fields})
     except Exception as exc:
-        print(f"  ERROR patching {collection_name}: {exc}", file=sys.stderr)
+        log.error(
+            "typesense.collection.patch_error",
+            collection=collection_name,
+            error=str(exc),
+            exc_info=True,
+        )
         raise
 
 
@@ -356,7 +361,7 @@ def setup_collections(client: typesense.Client, *, force: bool = False) -> None:
         alias_name = schema["name"]
         versioned_name = f"{alias_name}_v1"
 
-        print(f"\n--- {alias_name} ---")
+        log.info("typesense.setup.collection.start", alias=alias_name)
 
         if force:
             _drop_alias(client, alias_name)
@@ -364,26 +369,43 @@ def setup_collections(client: typesense.Client, *, force: bool = False) -> None:
 
         existing_target = _alias_exists(client, alias_name)
         if existing_target:
-            print(f"  alias '{alias_name}' already exists -> {existing_target}")
+            log.info(
+                "typesense.alias.exists",
+                alias=alias_name,
+                target=existing_target,
+            )
             _patch_missing_fields(client, existing_target, schema["fields"])
             continue
 
         versioned_schema = {**schema, "name": versioned_name}
         if _collection_exists(client, versioned_name):
-            print(f"  collection '{versioned_name}' already exists (no alias), creating alias")
+            log.info(
+                "typesense.collection.exists_without_alias",
+                collection=versioned_name,
+            )
             _patch_missing_fields(client, versioned_name, schema["fields"])
         else:
             try:
                 client.collections.create(versioned_schema)
-                print(f"  created collection {versioned_name}")
+                log.info("typesense.collection.created", name=versioned_name)
             except ObjectAlreadyExists:
-                print(f"  collection '{versioned_name}' already exists")
+                log.info("typesense.collection.already_exists", name=versioned_name)
 
         try:
             client.aliases.upsert(alias_name, {"collection_name": versioned_name})
-            print(f"  created alias {alias_name} -> {versioned_name}")
+            log.info(
+                "typesense.alias.created",
+                alias=alias_name,
+                target=versioned_name,
+            )
         except Exception as exc:
-            print(f"  ERROR creating alias {alias_name}: {exc}", file=sys.stderr)
+            log.error(
+                "typesense.alias.create_error",
+                alias=alias_name,
+                target=versioned_name,
+                error=str(exc),
+                exc_info=True,
+            )
             raise
 
 
@@ -398,10 +420,16 @@ def run_setup(*, force: bool = False) -> None:
     from src.config import settings
 
     if not settings.typesense_admin_key:
-        print("ERROR: TYPESENSE_ADMIN_KEY not set. Cannot proceed.", file=sys.stderr)
+        log.error(
+            "typesense.setup.missing_admin_key",
+            message="TYPESENSE_ADMIN_KEY not set. Cannot proceed.",
+        )
         sys.exit(1)
     if not settings.typesense_host:
-        print("ERROR: TYPESENSE_HOST not set. Cannot proceed.", file=sys.stderr)
+        log.error(
+            "typesense.setup.missing_host",
+            message="TYPESENSE_HOST not set. Cannot proceed.",
+        )
         sys.exit(1)
 
     client = typesense.Client(
@@ -420,12 +448,21 @@ def run_setup(*, force: bool = False) -> None:
 
     try:
         if not client.operations.is_healthy():
-            print("ERROR: Typesense reports unhealthy", file=sys.stderr)
+            log.error(
+                "typesense.setup.unhealthy",
+                message="Typesense reports unhealthy",
+            )
             sys.exit(1)
-        print("Typesense is healthy")
+        log.info("typesense.setup.healthy")
+    except SystemExit:
+        raise
     except Exception as exc:
-        print(f"ERROR: Cannot connect to Typesense: {exc}", file=sys.stderr)
+        log.error(
+            "typesense.setup.connect_error",
+            error=str(exc),
+            exc_info=True,
+        )
         sys.exit(1)
 
     setup_collections(client, force=force)
-    print("\nDone.")
+    log.info("typesense.setup.done")
