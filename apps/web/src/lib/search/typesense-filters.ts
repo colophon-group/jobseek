@@ -42,6 +42,44 @@ export const POSTING_BASE_FILTER = "is_active:true && has_content:!=false";
  */
 export const POSTING_FLOW_FILTER = "has_content:!=false";
 
+export type TypesenseFilterInput = {
+  companyId?: unknown;
+  locationIds?: unknown;
+  occupationIds?: unknown;
+  seniorityIds?: unknown;
+  technologyIds?: unknown;
+  employmentTypes?: unknown;
+  workMode?: unknown;
+  salaryMinEur?: unknown;
+  salaryMaxEur?: unknown;
+  experienceMin?: unknown;
+  experienceMax?: unknown;
+  languages?: unknown;
+};
+
+const WORK_MODES = new Set(["remote", "hybrid", "onsite"]);
+
+function numericList(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (item): item is number =>
+      typeof item === "number" && Number.isInteger(item) && item >= 0,
+  );
+}
+
+function tokenList(value: unknown, allowed?: Set<string>): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => {
+    if (typeof item !== "string") return false;
+    if (!/^[a-z0-9_-]+$/i.test(item)) return false;
+    return allowed ? allowed.has(item) : true;
+  });
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 /**
  * Build a Typesense filter_by string from user-specified filter dimensions.
  *
@@ -49,10 +87,7 @@ export const POSTING_FLOW_FILTER = "has_content:!=false";
  * {@link POSTING_BASE_FILTER} (or its parts) explicitly. Returns an empty
  * string when no filters are active.
  */
-export function buildFilterString(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  filters: any,
-): string {
+export function buildFilterString(filters?: TypesenseFilterInput | null): string {
   if (!filters) return "";
   const parts: string[] = [];
 
@@ -60,28 +95,36 @@ export function buildFilterString(
   // directly with arbitrary strings. Shape-validate before raw interpolation
   // so a hostile caller can't break out of the filter clause. Bad input is
   // dropped silently — a missing company scope is safer than an injection.
-  if (filters.companyId && /^[0-9a-z_-]{8,64}$/i.test(filters.companyId)) {
+  if (
+    typeof filters.companyId === "string" &&
+    /^[0-9a-z_-]{8,64}$/i.test(filters.companyId)
+  ) {
     parts.push(`company_id:=${filters.companyId}`);
   }
 
-  if (filters.locationIds?.length) {
-    parts.push(`location_ids:[${filters.locationIds.join(",")}]`);
+  const locationIds = numericList(filters.locationIds);
+  if (locationIds.length) {
+    parts.push(`location_ids:[${locationIds.join(",")}]`);
   }
 
-  if (filters.occupationIds?.length) {
-    parts.push(`occupation_ids:[${filters.occupationIds.join(",")}]`);
+  const occupationIds = numericList(filters.occupationIds);
+  if (occupationIds.length) {
+    parts.push(`occupation_ids:[${occupationIds.join(",")}]`);
   }
 
-  if (filters.seniorityIds?.length) {
-    parts.push(`seniority_id:[${filters.seniorityIds.join(",")}]`);
+  const seniorityIds = numericList(filters.seniorityIds);
+  if (seniorityIds.length) {
+    parts.push(`seniority_id:[${seniorityIds.join(",")}]`);
   }
 
-  if (filters.technologyIds?.length) {
-    parts.push(`technology_ids:[${filters.technologyIds.join(",")}]`);
+  const technologyIds = numericList(filters.technologyIds);
+  if (technologyIds.length) {
+    parts.push(`technology_ids:[${technologyIds.join(",")}]`);
   }
 
-  if (filters.employmentTypes?.length) {
-    parts.push(`employment_type:[${filters.employmentTypes.join(",")}]`);
+  const employmentTypes = tokenList(filters.employmentTypes);
+  if (employmentTypes.length) {
+    parts.push(`employment_type:[${employmentTypes.join(",")}]`);
   }
 
   // Work-mode filter (issue #2983). Reuses the existing `location_types`
@@ -91,17 +134,20 @@ export function buildFilterString(
   // active postings on 2026-05-09) drop out silently when this filter
   // is active — no sentinel-OR; treating unknown as bookable would
   // produce too many false positives (per issue Q4).
-  if (filters.workMode?.length) {
-    parts.push(`location_types:[${filters.workMode.join(",")}]`);
+  const workMode = tokenList(filters.workMode, WORK_MODES);
+  if (workMode.length) {
+    parts.push(`location_types:[${workMode.join(",")}]`);
   }
 
   // salary_eur is optional — only apply when user has set a meaningful salary filter (> 0)
+  const salaryMinEur = finiteNumber(filters.salaryMinEur);
+  const salaryMaxEur = finiteNumber(filters.salaryMaxEur);
   const hasSalaryFilter =
-    (filters.salaryMinEur != null && filters.salaryMinEur > 0) ||
-    (filters.salaryMaxEur != null && filters.salaryMaxEur > 0);
+    (salaryMinEur != null && salaryMinEur > 0) ||
+    (salaryMaxEur != null && salaryMaxEur > 0);
   if (hasSalaryFilter) {
-    const min = filters.salaryMinEur ?? 0;
-    const max = filters.salaryMaxEur ?? 999999;
+    const min = salaryMinEur ?? 0;
+    const max = salaryMaxEur ?? 999999;
     parts.push(`salary_eur:[${min}..${max}]`);
   }
 
@@ -120,28 +166,31 @@ export function buildFilterString(
   // `&&`, and Typesense's `&&` binds tighter than `||`. Without wrapping the
   // whole OR, a downstream `... && location_ids:[...]` would mis-parse and
   // the sentinel branch would match ALL -1 docs regardless of other filters.
-  if (filters.experienceMin != null && filters.experienceMax != null) {
+  const experienceMin = finiteNumber(filters.experienceMin);
+  const experienceMax = finiteNumber(filters.experienceMax);
+  if (experienceMin != null && experienceMax != null) {
     parts.push(
-      `((experience_min:<=${filters.experienceMax} && experience_max:>=${filters.experienceMin}) || experience_min:=-1)`,
+      `((experience_min:<=${experienceMax} && experience_max:>=${experienceMin}) || experience_min:=-1)`,
     );
-  } else if (filters.experienceMin != null) {
+  } else if (experienceMin != null) {
     // No upper bound from the user → range is `[min, ∞)`. The row's
     // experience_max must reach the user's lower bound (or above).
     parts.push(
-      `(experience_max:>=${filters.experienceMin} || experience_min:=-1)`,
+      `(experience_max:>=${experienceMin} || experience_min:=-1)`,
     );
-  } else if (filters.experienceMax != null) {
+  } else if (experienceMax != null) {
     // No lower bound → range is `[0, max]`. The row's experience_min must
     // sit at or below the user's upper bound.
     parts.push(
-      `(experience_min:<=${filters.experienceMax} || experience_min:=-1)`,
+      `(experience_min:<=${experienceMax} || experience_min:=-1)`,
     );
   }
 
   // locales uses sentinel "_none" for jobs with no detected language.
   // Include it so those jobs match any language filter.
-  if (filters.languages?.length) {
-    parts.push(`locales:[${[...filters.languages, "_none"].join(",")}]`);
+  const languages = tokenList(filters.languages);
+  if (languages.length) {
+    parts.push(`locales:[${[...languages, "_none"].join(",")}]`);
   }
 
   return parts.join(" && ");
