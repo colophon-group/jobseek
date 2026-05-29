@@ -156,6 +156,35 @@ describe("GET /api/v1/search — lang= param (issue #3230)", () => {
     expect(url.searchParams.get("q")).toBe("engineer");
   });
 
+  it("rejects malformed `sal=` instead of forwarding NaN", async () => {
+    const { body } = await callRoute("?locale=en&sal=abc-def");
+    expect(body.error).toMatch(/Invalid 'sal' param/);
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed `exp=` instead of building an invalid Typesense filter", async () => {
+    const { body } = await callRoute("?locale=en&exp=3-nope");
+    expect(body.error).toMatch(/Invalid 'exp' param/);
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+  });
+
+  it("rejects reversed numeric ranges", async () => {
+    const { body } = await callRoute("?locale=en&sal=200000-100000");
+    expect(body.error).toMatch(/min cannot be greater than max/);
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+  });
+
+  it("forwards valid `sal=` and `exp=` ranges as numbers", async () => {
+    await callRoute("?locale=en&sal=90000-140000&exp=3-7");
+    const call = mocks.listTopCompanies.mock.calls[0][0];
+    expect(call.salaryMinEur).toBe(90000);
+    expect(call.salaryMaxEur).toBe(140000);
+    expect(call.experienceMin).toBe(3);
+    expect(call.experienceMax).toBe(7);
+  });
+
   it("forwards `wm=remote` into `moreAt` (regression for lost work-mode param)", async () => {
     // The API already accepted `wm` and forwarded it to searchJobs, but
     // the moreAt-URL builder was dropping it (#3230 audit). After this

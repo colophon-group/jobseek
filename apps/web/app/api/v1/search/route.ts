@@ -58,6 +58,50 @@ function parseLangParam(raw: string | null): {
   return { ok: true, langs: Array.from(new Set(parts)) };
 }
 
+function parseIntegerRangeParam(
+  name: "sal" | "exp",
+  raw: string | undefined,
+): {
+  ok: true;
+  min: number | undefined;
+  max: number | undefined;
+} | {
+  ok: false;
+  error: string;
+} {
+  if (!raw) return { ok: true, min: undefined, max: undefined };
+
+  const parts = raw.split("-");
+  if (parts.length > 2) {
+    return { ok: false, error: `Invalid '${name}' param: expected min-max` };
+  }
+
+  const parseBound = (value: string): number | undefined => {
+    const trimmed = value.trim();
+    if (trimmed === "") return undefined;
+    if (!/^\d+$/.test(trimmed)) return Number.NaN;
+    return Number.parseInt(trimmed, 10);
+  };
+
+  const min = parseBound(parts[0] ?? "");
+  const max = parseBound(parts[1] ?? "");
+  if (Number.isNaN(min) || Number.isNaN(max)) {
+    return {
+      ok: false,
+      error: `Invalid '${name}' param: bounds must be positive integers`,
+    };
+  }
+
+  if (min !== undefined && max !== undefined && min > max) {
+    return {
+      ok: false,
+      error: `Invalid '${name}' param: min cannot be greater than max`,
+    };
+  }
+
+  return { ok: true, min, max };
+}
+
 export async function GET(request: NextRequest) {
   const rl = await checkRateLimit(request);
   if (rl instanceof NextResponse) return rl;
@@ -99,20 +143,14 @@ export async function GET(request: NextRequest) {
       ? parsed.technologies.map((t) => t.id)
       : undefined;
 
-  let salaryMinEur: number | undefined;
-  let salaryMaxEur: number | undefined;
-  if (sal) {
-    const [minStr, maxStr] = sal.split("-");
-    salaryMinEur = minStr ? parseInt(minStr, 10) : undefined;
-    salaryMaxEur = maxStr ? parseInt(maxStr, 10) : undefined;
+  const salaryRange = parseIntegerRangeParam("sal", sal);
+  if (!salaryRange.ok) {
+    return apiResponse({ error: salaryRange.error }, { maxAge: 0 });
   }
 
-  let experienceMin: number | undefined;
-  let experienceMax: number | undefined;
-  if (exp) {
-    const [minStr, maxStr] = exp.split("-");
-    experienceMin = minStr ? parseInt(minStr, 10) : undefined;
-    experienceMax = maxStr ? parseInt(maxStr, 10) : undefined;
+  const experienceRange = parseIntegerRangeParam("exp", exp);
+  if (!experienceRange.ok) {
+    return apiResponse({ error: experienceRange.error }, { maxAge: 0 });
   }
 
   const searchParams = {
@@ -121,10 +159,10 @@ export async function GET(request: NextRequest) {
     seniorityIds,
     technologyIds,
     workMode: parsed.workMode.length > 0 ? parsed.workMode : undefined,
-    salaryMinEur,
-    salaryMaxEur,
-    experienceMin,
-    experienceMax,
+    salaryMinEur: salaryRange.min,
+    salaryMaxEur: salaryRange.max,
+    experienceMin: experienceRange.min,
+    experienceMax: experienceRange.max,
     languages,
     locale,
     offset: 0,
