@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   cacheTag: vi.fn(),
   search: vi.fn(),
   dbExecute: vi.fn(),
+  buildFilterString: vi.fn(() => ""),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -54,7 +55,10 @@ vi.mock("@/lib/search/constants", () => ({
   ANON_MAX_COMPANIES: 5,
   ANON_MAX_POSTINGS: 10,
 }));
-vi.mock("@/lib/search/typesense-filters", () => ({ buildFilterString: vi.fn() }));
+vi.mock("@/lib/search/typesense-filters", () => ({
+  POSTING_BASE_FILTER: "is_active:true && has_content:!=false",
+  buildFilterString: mocks.buildFilterString,
+}));
 vi.mock("@/lib/search/pg-filters", () => ({ localesOrNoneClause: vi.fn() }));
 vi.mock("@/lib/actions/search-input", () => ({ parseSearchFilters: vi.fn() }));
 vi.mock("@/lib/search/params", () => ({
@@ -63,12 +67,13 @@ vi.mock("@/lib/search/params", () => ({
   parseRangeParam: vi.fn(),
 }));
 
-import { getCompanyBySlug } from "../company";
+import { getCompanyBySlug, searchCompaniesForWatchlist } from "../company";
 
 const searchMock = mocks.search;
 const dbExecuteMock = mocks.dbExecute;
 const cacheLifeMock = mocks.cacheLife;
 const cacheTagMock = mocks.cacheTag;
+const buildFilterStringMock = mocks.buildFilterString;
 
 const _hit = (overrides: Record<string, unknown> = {}) => ({
   id: "co-1",
@@ -95,6 +100,102 @@ beforeEach(() => {
   vi.clearAllMocks();
   searchMock.mockReset();
   dbExecuteMock.mockReset();
+  buildFilterStringMock.mockReset();
+  buildFilterStringMock.mockReturnValue("");
+});
+
+describe("searchCompaniesForWatchlist", () => {
+  it("includes companies with zero active postings in unfiltered search", async () => {
+    searchMock.mockResolvedValue({
+      found: 1,
+      hits: [{ document: _hit({ active_posting_count: 0 }) }],
+    });
+
+    const out = await searchCompaniesForWatchlist({
+      query: "Acme",
+      locale: "en",
+      offset: 0,
+      limit: 20,
+    });
+
+    expect(out.companies).toHaveLength(1);
+    expect(out.companies[0].activeMatches).toBe(0);
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.not.objectContaining({ filter_by: expect.stringContaining("active_posting_count") }),
+    );
+  });
+
+  it("does not exclude zero-posting companies when filtering by industry", async () => {
+    searchMock.mockResolvedValue({
+      found: 1,
+      hits: [{ document: _hit({ active_posting_count: 0 }) }],
+    });
+
+    await searchCompaniesForWatchlist({
+      industryId: 7,
+      locale: "en",
+      offset: 0,
+      limit: 20,
+    });
+
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ filter_by: "industry_id:=7" }),
+    );
+  });
+
+  it("keeps starred ordering without requiring active postings", async () => {
+    searchMock
+      .mockResolvedValueOnce({
+        found: 1,
+        hits: [{ document: _hit({ active_posting_count: 0 }) }],
+      })
+      .mockResolvedValueOnce({ found: 0, hits: [] });
+
+    const out = await searchCompaniesForWatchlist({
+      locale: "en",
+      offset: 0,
+      limit: 20,
+      starredCompanyIds: ["co-1"],
+    });
+
+    expect(out.companies).toHaveLength(1);
+    expect(searchMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ filter_by: "id:[co-1]" }),
+    );
+    expect(searchMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ filter_by: "id:!=[co-1]" }),
+    );
+  });
+
+  it("includes a searched zero-posting company when the watchlist has filters", async () => {
+    buildFilterStringMock.mockReturnValue("location_ids:=[42]");
+    searchMock
+      .mockResolvedValueOnce({
+        facet_counts: [{ counts: [], stats: { total_values: 0 } }],
+      })
+      .mockResolvedValueOnce({
+        found: 1,
+        hits: [{ document: _hit({ active_posting_count: 0 }) }],
+      })
+      .mockResolvedValueOnce({
+        hits: [{ document: _hit({ active_posting_count: 0 }) }],
+      });
+
+    const out = await searchCompaniesForWatchlist({
+      query: "Acme",
+      locale: "en",
+      offset: 0,
+      limit: 20,
+      locationIds: [42],
+    });
+
+    expect(out).toMatchObject({
+      total: 1,
+      companies: [{ id: "co-1", activeMatches: 0 }],
+    });
+  });
 });
 
 describe("getCompanyBySlug — Typesense path", () => {

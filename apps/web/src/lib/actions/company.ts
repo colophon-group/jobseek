@@ -217,26 +217,36 @@ async function _searchCompaniesForWatchlistTypesense(params: {
 
     if (hasQuery || params.industryId != null) {
       // Query company collection to get matching company IDs, then intersect
-      const companyFilterParts: string[] = ["active_posting_count:>0"];
+      const companyFilterParts: string[] = [];
       if (params.industryId != null) companyFilterParts.push(`industry_id:=${params.industryId}`);
 
       const companyResult = await client.collections("company").documents().search({
         q: hasQuery ? q! : "*",
         query_by: "name",
-        filter_by: companyFilterParts.join(" && "),
+        ...(companyFilterParts.length > 0
+          ? { filter_by: companyFilterParts.join(" && ") }
+          : {}),
         per_page: 250, // generous limit to intersect with facets
         prefix: true,
         num_typos: 1,
       });
 
+      const companyHits = companyResult.hits ?? [];
       const companyNameSet = new Set(
-        (companyResult.hits ?? []).map((h) => (h.document as Record<string, unknown>).id as string),
+        companyHits.map((h) => (h.document as Record<string, unknown>).id as string),
       );
 
-      // Intersect: only companies that appear in both name search and facet results
-      filteredCompanyIds = facetCounts
+      // Positive matches retain facet-count ordering. A company with no active
+      // postings cannot appear in the posting facets at all, so append those
+      // matching company documents explicitly to keep them selectable (#3383).
+      const positiveMatchIds = facetCounts
         .filter((fc) => companyNameSet.has(fc.value))
         .map((fc) => fc.value);
+      const zeroPostingIds = companyHits
+        .map((hit) => hit.document as Record<string, unknown>)
+        .filter((doc) => (doc.active_posting_count as number) === 0)
+        .map((doc) => doc.id as string);
+      filteredCompanyIds = [...positiveMatchIds, ...zeroPostingIds];
       total = filteredCompanyIds.length;
     } else {
       filteredCompanyIds = facetCounts.map((fc) => fc.value);
@@ -288,17 +298,21 @@ async function _searchCompaniesForWatchlistTypesense(params: {
     };
   }
 
-  // NO WATCHLIST FILTERS: query company collection directly by active_posting_count.
-  // Much simpler — every active company is relevant.
+  // NO WATCHLIST FILTERS: query the full company collection. Companies with
+  // no active postings are still valid watchlist targets (#3383).
 
   if (wantStarredBoost) {
     // Two queries: starred first, then remaining
-    const companyFilterParts: string[] = ["active_posting_count:>0"];
+    const companyFilterParts: string[] = [];
     if (params.industryId != null) companyFilterParts.push(`industry_id:=${params.industryId}`);
     const baseFilter = companyFilterParts.join(" && ");
 
-    const starredFilter = `${baseFilter} && id:[${starredIds!.join(",")}]`;
-    const remainingFilter = `${baseFilter} && id:!=[${starredIds!.join(",")}]`;
+    const starredFilter = [baseFilter, `id:[${starredIds!.join(",")}]`]
+      .filter(Boolean)
+      .join(" && ");
+    const remainingFilter = [baseFilter, `id:!=[${starredIds!.join(",")}]`]
+      .filter(Boolean)
+      .join(" && ");
 
     const [starredResult, remainingResult] = await Promise.all([
       client.collections("company").documents().search({
@@ -346,13 +360,15 @@ async function _searchCompaniesForWatchlistTypesense(params: {
   }
 
   // Simple case: no starred, no watchlist filters, maybe text query
-  const companyFilterParts: string[] = ["active_posting_count:>0"];
+  const companyFilterParts: string[] = [];
   if (params.industryId != null) companyFilterParts.push(`industry_id:=${params.industryId}`);
 
   const result = await client.collections("company").documents().search({
     q: hasQuery ? q! : "*",
     query_by: "name",
-    filter_by: companyFilterParts.join(" && "),
+    ...(companyFilterParts.length > 0
+      ? { filter_by: companyFilterParts.join(" && ") }
+      : {}),
     sort_by: hasQuery ? "_text_match:desc,active_posting_count:desc" : "active_posting_count:desc",
     per_page: params.limit,
     page: Math.floor(params.offset / params.limit) + 1,
@@ -1874,4 +1890,3 @@ async function _fetchLocationsGrouped(
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
-
