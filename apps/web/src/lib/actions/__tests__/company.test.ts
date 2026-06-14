@@ -180,6 +180,9 @@ describe("searchCompaniesForWatchlist", () => {
         hits: [{ document: _hit({ active_posting_count: 0 }) }],
       })
       .mockResolvedValueOnce({
+        facet_counts: [{ counts: [], stats: { total_values: 0 } }],
+      })
+      .mockResolvedValueOnce({
         hits: [{ document: _hit({ active_posting_count: 0 }) }],
       });
 
@@ -189,6 +192,37 @@ describe("searchCompaniesForWatchlist", () => {
       offset: 0,
       limit: 20,
       locationIds: [42],
+    });
+
+    expect(out).toMatchObject({
+      total: 1,
+      companies: [{ id: "co-1", activeMatches: 0 }],
+    });
+  });
+
+  it("includes a searched active company with zero matches for the current watchlist filters", async () => {
+    buildFilterStringMock.mockReturnValue("technology_ids:=[99]");
+    searchMock
+      .mockResolvedValueOnce({
+        facet_counts: [{ counts: [], stats: { total_values: 0 } }],
+      })
+      .mockResolvedValueOnce({
+        found: 1,
+        hits: [{ document: _hit({ active_posting_count: 42 }) }],
+      })
+      .mockResolvedValueOnce({
+        facet_counts: [{ counts: [], stats: { total_values: 0 } }],
+      })
+      .mockResolvedValueOnce({
+        hits: [{ document: _hit({ active_posting_count: 42 }) }],
+      });
+
+    const out = await searchCompaniesForWatchlist({
+      query: "Acme",
+      locale: "en",
+      offset: 0,
+      limit: 20,
+      technologyIds: [99],
     });
 
     expect(out).toMatchObject({

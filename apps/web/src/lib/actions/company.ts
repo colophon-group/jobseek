@@ -232,21 +232,35 @@ async function _searchCompaniesForWatchlistTypesense(params: {
       });
 
       const companyHits = companyResult.hits ?? [];
-      const companyNameSet = new Set(
-        companyHits.map((h) => (h.document as Record<string, unknown>).id as string),
-      );
+      const companyHitDocs = companyHits.map((hit) => hit.document as Record<string, unknown>);
+      const companyHitIds = companyHitDocs.map((doc) => doc.id as string);
 
-      // Positive matches retain facet-count ordering. A company with no active
-      // postings cannot appear in the posting facets at all, so append those
-      // matching company documents explicitly to keep them selectable (#3383).
-      const positiveMatchIds = facetCounts
-        .filter((fc) => companyNameSet.has(fc.value))
-        .map((fc) => fc.value);
-      const zeroPostingIds = companyHits
-        .map((hit) => hit.document as Record<string, unknown>)
-        .filter((doc) => (doc.active_posting_count as number) === 0)
-        .map((doc) => doc.id as string);
-      filteredCompanyIds = [...positiveMatchIds, ...zeroPostingIds];
+      if (companyHitIds.length > 0) {
+        const candidateFacetResult = await client.collections("job_posting").documents().search({
+          q: keywordsQ,
+          query_by: "title",
+          filter_by: `${activeFilter} && company_id:[${companyHitIds.join(",")}]`,
+          facet_by: "company_id",
+          facet_strategy: "exhaustive",
+          max_facet_values: companyHitIds.length,
+          per_page: 0,
+        });
+
+        for (const fc of candidateFacetResult.facet_counts?.[0]?.counts ?? []) {
+          activeMatchMap.set(fc.value, fc.count);
+        }
+      }
+
+      // Keep all company-name hits selectable. The first posting facet query
+      // only returns the top filtered companies, so exact company searches
+      // like "Google" or "Salesforce" could disappear when they had zero
+      // matches for the current watchlist filters, or when they simply were
+      // not in that first facet window.
+      const positiveMatchIds = companyHitIds
+        .filter((id) => (activeMatchMap.get(id) ?? 0) > 0)
+        .sort((a, b) => (activeMatchMap.get(b) ?? 0) - (activeMatchMap.get(a) ?? 0));
+      const zeroMatchIds = companyHitIds.filter((id) => !positiveMatchIds.includes(id));
+      filteredCompanyIds = [...positiveMatchIds, ...zeroMatchIds];
       total = filteredCompanyIds.length;
     } else {
       filteredCompanyIds = facetCounts.map((fc) => fc.value);
