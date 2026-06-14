@@ -98,6 +98,41 @@ describe("buildFilterString — workMode (#2983)", () => {
     expect(buildFilterString({ workMode: undefined })).toBe("");
     expect(buildFilterString({ workMode: [] })).toBe("");
   });
+
+  it("drops unknown workMode tokens before interpolation", () => {
+    expect(buildFilterString({ workMode: ["remote", "x) || is_active:true"] })).toBe(
+      "location_types:[remote]",
+    );
+  });
+});
+
+describe("buildFilterString — input hardening", () => {
+  it("drops non-numeric array entries instead of interpolating them", () => {
+    const out = buildFilterString({
+      locationIds: [101, "102) || is_active:true"],
+      technologyIds: [10, Number.NaN, -1, 11],
+    });
+    expect(out).toBe("location_ids:[101] && technology_ids:[10,11]");
+  });
+
+  it("drops invalid token-list values", () => {
+    const out = buildFilterString({
+      employmentTypes: ["full-time", "contract] || is_active:true"],
+      languages: ["en", "fr,remote"],
+    });
+    expect(out).toBe("employment_type:[full-time] && locales:[en,_none]");
+  });
+
+  it("does not emit NaN numeric ranges", () => {
+    expect(
+      buildFilterString({
+        salaryMinEur: Number.NaN,
+        salaryMaxEur: Number.NaN,
+        experienceMin: Number.NaN,
+        experienceMax: Number.NaN,
+      }),
+    ).toBe("");
+  });
 });
 
 // =====================================================================
