@@ -14,6 +14,7 @@ company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scrap
 1x,1x-recruitee,https://1x.recruitee.com,recruitee,"{""token"": ""1x""}",skip,
 2k,2k-greenhouse,https://job-boards.greenhouse.io/2k,greenhouse,"{""token"": ""2k""}",skip,
 30mpc,30mpc-ashby,https://jobs.ashbyhq.com/30mpc,ashby,"{""token"": ""30mpc""}",skip,
+3b-pharmaceuticals,3b-pharmaceuticals-careers,https://3b-pharma.com/careers/,inline,"{""render"": false, ""steps"": [{""tag"": ""p"", ""attr"": ""class=toggler"", ""text"": ""("", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_count"": 20}], ""defaults"": {""locations"": [""Berlin, DE""]}}",skip,
 3cloud,3cloud-greenhouse,https://job-boards.greenhouse.io/3cloud,greenhouse,"{""token"": ""3cloud""}",skip,
 3red-partners,3red-partners-greenhouse,https://job-boards.greenhouse.io/3redpartners,greenhouse,"{""token"": ""3redpartners""}",skip,
 66degrees,66degrees-greenhouse,https://job-boards.greenhouse.io/66degrees,greenhouse,"{""token"": ""66degrees""}",skip,
