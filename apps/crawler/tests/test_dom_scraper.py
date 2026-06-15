@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -344,6 +345,7 @@ class TestDomScraper:
 PEOPLESTRONG_DOM_CONFIG = {
     "render": True,
     "wait": "networkidle",
+    "enrich": ["description"],
     "steps": [
         {
             "tag": "h2",
@@ -439,6 +441,32 @@ class TestPeopleStrongDomScraper:
         from src.core.scrapers import scraper_needs_browser
 
         assert scraper_needs_browser("dom", PEOPLESTRONG_DOM_CONFIG) is True
+
+    @pytest.mark.parametrize(
+        "board_slug",
+        ("bajaj-finserv-careers-ps-jobs", "larsen-toubro-careers"),
+    )
+    def test_peoplestrong_boards_declare_description_enrich(self, board_slug):
+        """PeopleStrong listings are rich, so detail scrapes need explicit enrich."""
+        from src.processing.scrape import _board_has_enrich
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {row["board_slug"]: row for row in rows}
+        row = by_slug.get(board_slug)
+
+        assert row is not None, f"{board_slug!r} row missing from boards.csv"
+        assert row.get("monitor_type") == "api_sniffer"
+        assert row.get("scraper_type") == "dom"
+
+        scraper_config = json.loads(row.get("scraper_config") or "{}")
+        assert scraper_config == PEOPLESTRONG_DOM_CONFIG
+        metadata = {
+            "scraper_type": row.get("scraper_type"),
+            "scraper_config": scraper_config,
+        }
+        assert _board_has_enrich(metadata) == ["description"]
 
 
 # ---------------------------------------------------------------------------
