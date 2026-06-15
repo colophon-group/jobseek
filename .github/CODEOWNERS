@@ -1,0 +1,3 @@
+.github/CODEOWNERS @viktor-shcherb
+.github/workflows/** @viktor-shcherb
+.github/scripts/** @viktor-shcherb
