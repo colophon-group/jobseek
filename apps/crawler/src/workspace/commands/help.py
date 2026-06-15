@@ -665,6 +665,9 @@ talentbrew — TalentBrew / Radancy Search Results
     {}  — no configuration required
     {"page_size": 1000}  Optional AJAX page size (default 1000, max 10000).
     {"max_pages": 500}   Optional safety cap, rarely needed.
+    {"page_max_chars": 8000000}
+                         Optional first-page/pagination HTML read cap
+                         (default 5,000,000; max 25,000,000).
 
   Detection:  ws probe shows "TalentBrew/Radancy — N jobs across M pages"
               Looks for TalentBrew/Radancy static markers plus #search-results.

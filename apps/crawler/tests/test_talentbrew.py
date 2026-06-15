@@ -17,6 +17,7 @@ def _html(
     current_page: int = 1,
     links: list[str] | None = None,
     extra: str = "",
+    prefix: str = "",
     search_results_tag: str = "section",
     results_list_tag: str = "section",
     ajax_url: str | None = None,
@@ -29,6 +30,7 @@ def _html(
     <html>
       <head><script src="//tbcdn.talentbrew.com/js/client/search.js"></script></head>
       <body>
+        {prefix}
         <{search_results_tag} id="search-results"
           data-total-job-results="{total_jobs}"
           data-total-pages="{total_pages}"
@@ -129,6 +131,23 @@ class TestCanHandle:
             result = await can_handle("https://careers.example.com/search-jobs", client)
 
         assert result == {"urls": 1, "jobs": 28, "pages": 2}
+
+    async def test_detects_search_results_after_large_cms_payload(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text=_html(
+                    total_jobs=1295,
+                    total_pages=87,
+                    links=["/job/bay-city/field-technician/4673/95591908288"],
+                    prefix=f"<section>{'x' * 1_200_000}</section>",
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.example.com/search-jobs", client)
+
+        assert result == {"urls": 1, "jobs": 1295, "pages": 87}
 
     async def test_rejects_non_talentbrew_page(self):
         def handler(request: httpx.Request) -> httpx.Response:

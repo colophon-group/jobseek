@@ -27,7 +27,8 @@ log = structlog.get_logger()
 
 MAX_URLS = 50_000
 _MAX_PAGES = 5_000
-_MAX_PAGE_CHARS = 1_000_000
+_DEFAULT_PAGE_CHARS = 5_000_000
+_MAX_PAGE_CHARS = 25_000_000
 _MAX_AJAX_CHARS = 5_000_000
 _DEFAULT_AJAX_PAGE_SIZE = 1_000
 _MAX_AJAX_PAGE_SIZE = 10_000
@@ -204,6 +205,15 @@ def _ajax_page_size(metadata: dict) -> int:
     return max(1, min(configured, _MAX_AJAX_PAGE_SIZE))
 
 
+def _page_max_chars(metadata: dict) -> int:
+    configured = (
+        _to_int(str(metadata.get("page_max_chars"))) if metadata.get("page_max_chars") else None
+    )
+    if configured is None:
+        return _DEFAULT_PAGE_CHARS
+    return max(1, min(configured, _MAX_PAGE_CHARS))
+
+
 def _attr(attrs: dict[str, str], key: str, default: str = "") -> str:
     return attrs.get(key) or default
 
@@ -331,7 +341,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     if client is None:
         return None
 
-    html = await fetch_page_text(url, client, max_chars=_MAX_PAGE_CHARS)
+    html = await fetch_page_text(url, client, max_chars=_DEFAULT_PAGE_CHARS)
     if not html or not _looks_like_talentbrew(html):
         return None
 
@@ -359,7 +369,7 @@ async def discover(
     first_html = await fetch_with_retry(
         client,
         board_url,
-        max_chars=_MAX_PAGE_CHARS,
+        max_chars=_page_max_chars(metadata),
         transient_403=True,
     )
     if first_html is None:
@@ -397,7 +407,7 @@ async def discover(
         html = await fetch_with_retry(
             client,
             url,
-            max_chars=_MAX_PAGE_CHARS,
+            max_chars=_page_max_chars(metadata),
             transient_403=True,
         )
         if html is None:
