@@ -16,9 +16,6 @@ set -euo pipefail
 : "${PR:?PR is required}"
 : "${REPO:?REPO is required}"
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
-
 # Only label add-company/* branches — developer branches are reviewed manually
 BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
 if [[ "$BRANCH" != add-company/* ]]; then
@@ -28,32 +25,10 @@ if [[ "$BRANCH" != add-company/* ]]; then
 fi
 
 ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/VERSION"
-VALID_MONITOR_TYPES="$(
-python3 - "$REPO_ROOT" <<'PY'
-import sys
-from pathlib import Path
-
-repo_root = Path(sys.argv[1])
-sys.path.insert(0, str(repo_root / "apps/crawler"))
-
-from src.workspace._compat import all_monitor_types
-
-print("|".join(sorted(all_monitor_types())))
-PY
-)"
-VALID_SCRAPER_TYPES="$(
-python3 - "$REPO_ROOT" <<'PY'
-import sys
-from pathlib import Path
-
-repo_root = Path(sys.argv[1])
-sys.path.insert(0, str(repo_root / "apps/crawler"))
-
-from src.workspace._compat import all_scraper_types
-
-print("|".join(sorted(all_scraper_types())))
-PY
-)"
+# Keep these static: this script runs with pull_request_target write
+# permissions and must not import PR-controllable Python.
+VALID_MONITOR_TYPES='accenture|almacareer|amazon|api_sniffer|ashby|bite|breezy|deel|dom|dvinci|eightfold|gem|greenhouse|hireology|inline|jobylon|join|lever|mokahr|nextdata|notion|oracle_hcm|personio|phenom|pinpoint|recruitee|recruiter_co_kr|rippling|rss|sitemap|smartrecruiters|softgarden|talentbrew|traffit|umantis|workable|workday|ycombinator'
+VALID_SCRAPER_TYPES='api_sniffer|bite|dom|eightfold|embedded|json-ld|mokahr|nextdata|notion|oracle_hcm|pdf|rippling|skip|smartrecruiters|workable|workday'
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
 # --- Check changed files ---
