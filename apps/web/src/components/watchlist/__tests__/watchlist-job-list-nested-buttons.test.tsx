@@ -140,12 +140,12 @@ function entry(id: string, title: string | null = `Job ${id}`): WatchlistPosting
   };
 }
 
-function renderList(postings: WatchlistPostingEntry[]) {
+function renderList(postings: WatchlistPostingEntry[], total = postings.length) {
   return render(
     <WatchlistJobList
       filters={{ companyIds: ["c-1"] }}
       initialPostings={postings}
-      initialTotal={postings.length}
+      initialTotal={total}
       yearTotal={postings.length}
       jobLanguages={["en"]}
       locale="en"
@@ -238,5 +238,11 @@ describe("WatchlistJobList row a11y (issue #3166)", () => {
     ).toBeGreaterThan(0);
     expect(toggleMock).not.toHaveBeenCalled();
   });
-});
 
+  it("shows a refresh prompt when the watchlist count says jobs exist but the page is empty (#3403)", () => {
+    renderList([], 3);
+
+    expect(screen.getByRole("alert").textContent).toMatch(/oops, something went wrong/i);
+    expect(screen.queryByText(/no jobs found/i)).toBeNull();
+  });
+});

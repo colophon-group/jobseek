@@ -6,6 +6,7 @@ import { Trans } from "@lingui/react/macro";
 
 import type { SelectedLocation } from "@/components/search/location-pills";
 import { SearchResults } from "@/components/search/search-results";
+import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { ZeroResults } from "@/components/search/zero-results";
 import { SkeletonCards } from "@/components/search/skeleton-card";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
@@ -31,6 +32,7 @@ interface SearchPageProps {
   initialCompanies: SearchResultCompany[];
   initialTotalCompanies: number;
   initialTruncated?: boolean;
+  initialDegraded?: boolean;
   initialKeywords: string[];
   initialLocations: SelectedLocation[];
   initialOccupations: TaxonomyItem[];
@@ -56,6 +58,7 @@ export function SearchPage({
   initialCompanies,
   initialTotalCompanies,
   initialTruncated,
+  initialDegraded,
   initialKeywords,
   initialLocations,
   initialOccupations,
@@ -157,6 +160,9 @@ export function SearchPage({
   const [isSearching, setIsSearching] = useState(false);
   const searchCounterRef = useRef(0);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
+  const [isDegraded, setIsDegraded] = useState(
+    shouldRestore ? (cached.degraded ?? false) : (initialDegraded ?? false),
+  );
   // Track server-side offset separately from deduped client list length.
   // Facet-based pagination can return overlapping companies between pages,
   // causing the deduped list to grow slower than the server offset.
@@ -178,6 +184,7 @@ export function SearchPage({
   const companiesRef = useRef(companies);
   const totalCompaniesRef = useRef(totalCompanies);
   const showPostingIdRef = useRef(showPostingId);
+  const isDegradedRef = useRef(isDegraded);
   keywordsRef.current = keywords;
   locationsRef.current = locations;
   occupationsRef.current = occupations;
@@ -193,6 +200,7 @@ export function SearchPage({
   companiesRef.current = companies;
   totalCompaniesRef.current = totalCompanies;
   showPostingIdRef.current = showPostingId;
+  isDegradedRef.current = isDegraded;
 
   // Flag to distinguish our own URL changes (replaceState) from external
   // navigation (router.push from header search bar, back/forward, etc.)
@@ -289,6 +297,7 @@ export function SearchPage({
         companies: companiesRef.current,
         totalCompanies: totalCompaniesRef.current,
         showPostingId: showPostingIdRef.current,
+        degraded: isDegradedRef.current,
         scrollY: window.scrollY,
         cacheKey: buildCacheKey(
           keywordsRef.current,
@@ -527,6 +536,7 @@ export function SearchPage({
         serverOffsetRef.current = result.companies.length;
         setTotalCompanies(result.totalCompanies);
         setIsTruncated(result.truncated ?? false);
+        setIsDegraded(result.degraded ?? false);
       } catch {
         // Keep existing results visible on error
       } finally {
@@ -711,6 +721,7 @@ export function SearchPage({
       : await runListTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, workMode: wm, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current);
 
     if (result.truncated) setIsTruncated(true);
+    if (result.degraded) setIsDegraded(true);
     serverOffsetRef.current += result.companies.length;
 
     setCompanies((prev) => {
@@ -725,6 +736,7 @@ export function SearchPage({
   // the JSX rebuilt a fresh array on every render, defeating the custom
   // memo comparator's identity-first short-circuit on the array prop.
   const locationIds = useMemo(() => locations.map((l) => l.id), [locations]);
+  const showUnavailable = companies.length === 0 && !isSearching && (isDegraded || !hasFilters);
 
   const histogramFilters: HistogramFilters = useMemo(() => ({
     keywords: keywords.length > 0 ? keywords : undefined,
@@ -806,6 +818,8 @@ export function SearchPage({
 
       {companies.length === 0 && isSearching ? (
         <SkeletonCards count={3} />
+      ) : showUnavailable ? (
+        <SearchUnavailable />
       ) : companies.length === 0 && hasFilters ? (
         <ZeroResults query={[...keywords, ...locations.map((l) => l.name)].join(", ")} />
       ) : (
