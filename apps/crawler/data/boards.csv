@@ -1776,6 +1776,7 @@ general-dynamics,general-dynamics-jet-aviation,https://jobs.jetaviation.com/sear
 general-dynamics,general-dynamics-nassco,https://jobs.nassco.com/search/,rss,"{""url"": ""https://jobs.nassco.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
 general-dynamics,general-dynamics-ots,https://careers-gd-ots.icims.com/jobs/search,sitemap,"{""sitemap_url"": ""https://careers-gd-ots.icims.com/sitemap.xml"", ""url_filter"": ""/job$""}",json-ld,
 general-matter,general-matter-greenhouse,https://job-boards.greenhouse.io/generalmatter,greenhouse,"{""token"": ""generalmatter""}",skip,
+general-motors,general-motors-careers,https://search-careers.gm.com/en/jobs/,sitemap,"{""sitemap_url"": ""https://search-careers.gm.com/sitemap.xml"", ""url_filter"": ""/en/jobs/""}",json-ld,
 generate-biomedicines,generate-biomedicines-greenhouse,https://job-boards.greenhouse.io/generatebiomedicines,greenhouse,"{""token"": ""generatebiomedicines""}",skip,
 genesis-molecular-ai,genesis-molecular-ai-careers,https://jobs.ashbyhq.com/genesis-molecular-ai,ashby,"{""token"": ""genesis-molecular-ai""}",skip,
 genestack,genestack-careers,https://genestack.com/company/careers/,breezy,"{""portal_url"": ""https://genestack-ltd.breezy.hr"", ""slug"": ""genestack-ltd""}",json-ld,
