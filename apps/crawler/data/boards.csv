@@ -185,6 +185,7 @@ akuna-capital,akuna-capital-greenhouse,https://job-boards.greenhouse.io/akunacap
 alamar-biosciences,alamar-biosciences-greenhouse,https://job-boards.greenhouse.io/alamarbiosciences,greenhouse,"{""token"": ""alamarbiosciences""}",skip,
 alan,alan-ashby,https://jobs.ashbyhq.com/alan,ashby,"{""token"": ""alan""}",skip,
 alarm-com,alarm-com-greenhouse,https://job-boards.greenhouse.io/alarmcom,greenhouse,"{""token"": ""alarmcom""}",skip,
+alaska-airlines,alaska-airlines-careers,https://careers.alaskaair.com/company/alaska-airlines/jobs/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""actions"": [{""action"": ""repeat"", ""selector"": ""button[aria-label=\""Load more jobs\""]:visible"", ""max"": 10, ""wait_ms"": 2000}], ""url_filter"": ""^https?://(?:www\\.)?careers\\.alaskaair\\.com/[^/]+/[^/]+/[A-F0-9]{32}/job/?$""}",json-ld,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000}"
 albert-cz,albert-cz-almacareer,https://albert.jobs.cz/,almacareer,{},skip,
 albert-mackenzie-llp,albert-mackenzie-llp-greenhouse,https://job-boards.greenhouse.io/albertmackenziellp,greenhouse,"{""token"": ""albertmackenziellp""}",skip,
 alchemy,alchemy-greenhouse,https://job-boards.greenhouse.io/alchemy,greenhouse,"{""token"": ""alchemy""}",skip,
