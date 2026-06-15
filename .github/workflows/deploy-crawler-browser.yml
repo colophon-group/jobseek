@@ -7,6 +7,9 @@ on:
       - 'apps/crawler/**'
       - '.github/workflows/deploy-crawler-browser.yml'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
