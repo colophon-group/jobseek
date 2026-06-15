@@ -52,9 +52,12 @@ describe("crawler deploy.sh: murmur-shim integration", () => {
   it("remains idempotent: still uses set -euo pipefail and rewrites .env on each run", () => {
     const sh = loadDeploySh();
     expect(sh).toContain("set -euo pipefail");
-    // The .env heredoc opens with `cat > "$DEPLOY_DIR/.env" <<EOF` —
-    // unchanged shape, so re-running is idempotent w.r.t. the existing
-    // pattern.
-    expect(sh).toContain('cat > "$DEPLOY_DIR/.env" <<EOF');
+    // The .env heredoc still overwrites the box env file on every run;
+    // the path now goes through ENV_FILE so deploy.sh can keep a
+    // rollback copy and restore it if the new image fails to start.
+    expect(sh).toContain('ENV_FILE="$DEPLOY_DIR/.env"');
+    expect(sh).toContain('ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"');
+    expect(sh).toContain('cp "$ENV_FILE" "$ROLLBACK_ENV_FILE"');
+    expect(sh).toContain('cat > "$ENV_FILE" <<EOF');
   });
 });
