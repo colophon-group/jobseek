@@ -9,10 +9,14 @@
 > hashing remain accurate as a reference for how the surface worked
 > before the change and what the code in `apps/crawler/src/indexnow.py`
 > still does if it is invoked manually — but neither is wired into a
-> live deploy. Watchlist + future blog surfaces are the active SEO
+> live deploy. Watchlist + blog surfaces are the active SEO
 > targets going forward.
 
-Covers the company-page SSR surface (head metadata, JSON-LD, similar-companies strip, watchlist stats row) and the IndexNow notifier (Bing / Yandex / Seznam / Naver / Microsoft Yep — Google does **not** participate in IndexNow).
+Covers the company-page SSR surface (head metadata, JSON-LD,
+similar-companies strip, watchlist stats row), the active watchlist/blog
+IndexNow paths, and the retired crawler company notifier for historical
+reference. IndexNow reaches Bing / Yandex / Seznam / Naver / Microsoft Yep;
+Google does **not** participate in IndexNow.
 
 ## On-page SEO
 
@@ -51,10 +55,15 @@ The **posting list stays client-rendered** deliberately. Postings are ephemeral 
 
 ## IndexNow
 
-Split by where the change event lives:
+Split by where the active change event lives:
 
-- **Companies** — change via CSV sync on the crawler side. A notifier on Hetzner diffs content hashes and submits changed URLs on a timer.
 - **Watchlists** — change via user actions in the web app. Server actions call a fire-and-forget notifier from inside `after()` at mutation commit time.
+- **Blog posts** — change via blog content commits. A GitHub Actions deploy hook submits published blog URLs after the Vercel production deploy settle window.
+
+Company-page IndexNow submission is retired. Company pages are `noindex,follow`
+and excluded from the sitemap, so the crawler no longer runs an IndexNow
+container, timer, or deploy-time secret path for company URLs. The crawler
+hash-diff implementation remains in the repo only as a manual reference.
 
 ### Endpoint
 
@@ -62,23 +71,30 @@ All submissions go to `https://api.indexnow.org/indexnow`. A single POST propaga
 
 ### Key management
 
-Four env vars, configured symmetrically on the web and crawler sides:
+Active IndexNow paths need `INDEXNOW_KEY` on the web/deploy-hook side. The
+crawler-only variables below are legacy/manual-only after #2821; the crawler
+deploy does not require or forward them.
 
 | Variable | Default | Where |
 |----------|---------|-------|
-| `INDEXNOW_KEY` | — (required to enable) | Vercel (Production + Preview); GitHub Actions secret; `apps/*/.env.local` locally |
-| `INDEXNOW_SITE_URL` | — | Crawler only (`https://jseek.co`; web derives from `siteConfig.url`) |
-| `INDEXNOW_KEY_URL` | — | Crawler only (`https://jseek.co/indexnow-key.txt`) |
-| `INDEXNOW_INTERVAL` | `3600` | Crawler only; seconds between notifier loops |
-| `INDEXNOW_MAX_URLS_PER_TICK` | `500` | Crawler only; per-tick submission cap; `0` disables |
+| `INDEXNOW_KEY` | — (required to enable) | Vercel (Production + Preview); GitHub Actions secret for blog deploy-hook; `apps/*/.env.local` locally |
+| `INDEXNOW_SITE_URL` | — | Legacy crawler manual run only (`https://jseek.co`; web derives from `siteConfig.url`) |
+| `INDEXNOW_KEY_URL` | — | Legacy crawler manual run only (`https://jseek.co/indexnow-key.txt`) |
+| `INDEXNOW_INTERVAL` | `3600` | Legacy crawler loop only; no active deployment uses it |
+| `INDEXNOW_MAX_URLS_PER_TICK` | `500` | Legacy crawler manual run only; per-tick submission cap; `0` disables |
 
 The key file is served by `apps/web/app/indexnow-key.txt/route.ts` with `dynamic = "force-dynamic"` + `Cache-Control: no-store`, so rotating the key takes effect on the next request (no rebuild required).
 
 `INDEXNOW_HOST` on the crawler is derived from `INDEXNOW_SITE_URL` by a pydantic `@model_validator(mode="after")` — setting `indexnow_site_url=https://jseek.co` yields `indexnow_host=jseek.co` automatically, and trailing slashes are stripped to prevent double-slash URLs downstream.
 
-### Crawler-side (companies): content-hash diff
+### Legacy crawler-side company notifier: content-hash diff
 
-`apps/crawler/src/indexnow.py::notify_indexnow` — runs on the `indexnow` container every `INDEXNOW_INTERVAL` seconds. The scheduling mechanism is a shell `while/sleep` loop baked into the compose service command itself (`apps/crawler/docker-compose.yml` → `indexnow` service), not an external cron or timer. This keeps the cadence next to the command that reads it and survives any host-level cron migration.
+`apps/crawler/src/indexnow.py::notify_indexnow` is retained as reference code
+for the retired company-page notifier. It is not scheduled in production, and
+`apps/crawler/docker-compose.yml` no longer defines an `indexnow` service. A
+manual operator run can still execute `crawler notify-indexnow` if the legacy
+environment variables are supplied, but that is outside the current deployment
+path.
 
 Single Postgres connection across the whole cycle to avoid TOCTOU races with `crawler sync`:
 
@@ -167,14 +183,16 @@ Re-submission of unchanged URLs is idempotent at the IndexNow side; the action r
 
 ### Crawler (Hetzner)
 
-Fully CI-driven via `.github/workflows/deploy-crawler-browser.yml`:
+There is no active crawler-side IndexNow deployment after #2821.
+`.github/workflows/deploy-crawler-browser.yml` builds immutable versioned
+crawler images, deploys that version to Hetzner, and promotes `latest` only
+after the SSH deploy succeeds. It does not provision `INDEXNOW_*` secrets and
+`deploy.sh` does not start an `indexnow` container.
 
-1. Add GitHub Actions secrets: `INDEXNOW_KEY`, `INDEXNOW_SITE_URL`, `INDEXNOW_KEY_URL`, `INDEXNOW_INTERVAL`.
-2. Push to `main` with any `apps/crawler/**` or workflow change.
-3. CI builds + pushes the `ghcr.io/{owner}/jobseek-crawler:latest` image, `scp`'s `deploy.sh` + `docker-compose.yml` to the worker box, runs `/home/deploy/deploy.sh`.
-4. `deploy.sh` writes `/home/deploy/.env` including `INDEXNOW_*`, applies Alembic migrations (0003 creates `indexnow_submission`), runs `crawler sync`, `docker compose up -d` starts all services including the new `indexnow` container.
-
-Graceful degradation: if `INDEXNOW_KEY` is unset, the notifier loop runs but short-circuits at the first line with `log.info("indexnow.disabled")`, sleeping between no-op runs. Deploys succeed regardless of secret presence.
+Crawler deploys therefore do not depend on IndexNow configuration. If an
+operator needs to inspect the legacy company notifier manually, run
+`crawler notify-indexnow --dry-run` from a configured crawler environment; do
+not treat that manual command as part of the normal deploy checklist.
 
 ### Smoke tests
 
@@ -182,14 +200,13 @@ Graceful degradation: if `INDEXNOW_KEY` is unset, the notifier loop runs but sho
 # Key file serves from Vercel
 curl -I https://jseek.co/indexnow-key.txt   # HTTP/2 200, body is the key
 
-# Crawler notifier logs (dry-run before flipping the secret on prod)
-docker exec deploy-indexnow-1 uv run --no-sync crawler notify-indexnow --dry-run
+# Blog deploy hook
+gh run list --workflow notify-blog-indexnow.yml --branch main
 
-# Follow the real loop after the secret is set
-docker logs -f deploy-indexnow-1 | grep 'indexnow\.'
-#  → indexnow.submit.ok status=200 count=N
+# Legacy crawler notifier dry-run, only from a configured crawler environment
+uv run --no-sync crawler notify-indexnow --dry-run
 
-# Per-URL state
+# Legacy per-URL state
 psql -c "SELECT url, last_submitted_at FROM indexnow_submission ORDER BY last_submitted_at DESC LIMIT 10;"
 
 # Bing Webmaster Tools → IndexNow dashboard registers submissions within a few minutes
@@ -197,7 +214,13 @@ psql -c "SELECT url, last_submitted_at FROM indexnow_submission ORDER BY last_su
 
 ## Metrics
 
-The `notify-indexnow` subcommand starts a Prometheus metrics server on `METRICS_PORT=9099` for the duration of its run — but the container wraps the one-shot command in a shell loop (`while true; do notify-indexnow; sleep $INDEXNOW_INTERVAL; done`), so the server is **only live for the ~1-2 seconds of the actual run once per `$INDEXNOW_INTERVAL`**. A standard Prometheus scrape at 15–30s intervals almost always misses the window. Durable metrics + a Grafana dashboard are a TODO — will require a long-lived sidecar or converting the notifier to a daemon.
+The active web and blog IndexNow paths do not expose Prometheus metrics today;
+they rely on application logs and GitHub Actions logs.
+
+The legacy `notify-indexnow` crawler subcommand starts a Prometheus metrics
+server on `METRICS_PORT=9099` only for the duration of a manual run. There is
+no production container loop anymore, so durable metrics + a Grafana dashboard
+remain a TODO if company-page submission is ever revived.
 
 Until then, observability is structured log events emitted by `indexnow.py`:
 
