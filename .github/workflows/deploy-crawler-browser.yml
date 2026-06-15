@@ -43,7 +43,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest
             ghcr.io/${{ github.repository_owner }}/jobseek-crawler:v${{ steps.version.outputs.version }}
           cache-from: type=gha,scope=crawler-slim
-          cache-to: type=gha,mode=max,scope=crawler-slim
+          cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
 
       - name: Build and push browser image (full)
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
@@ -56,7 +56,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser:latest
             ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser:v${{ steps.version.outputs.version }}
           cache-from: type=gha,scope=crawler-browser
-          cache-to: type=gha,mode=max,scope=crawler-browser
+          cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
 
       # Dry-run setup-typesense against an ephemeral Typesense before
       # touching prod. Running it twice is the key bit — the second run

@@ -110,7 +110,7 @@ jobs:
             ghcr.io/colophon-group/jobseek-murmur-shim:latest
             ghcr.io/colophon-group/jobseek-murmur-shim:${{ github.sha }}
           cache-from: type=gha,scope=murmur-shim
-          cache-to: type=gha,mode=max,scope=murmur-shim
+          cache-to: type=gha,mode=max,scope=murmur-shim,ignore-error=true
 
   deploy:
     needs: build
