@@ -45,27 +45,30 @@ type Classification = "static" | "partial" | "dynamic";
  * Routes that must stay cacheable, plus the EXPECTED Next 16 glyph.
  *
  * - `partial` (◐ Partial Prerender) is the right answer for pages that
- *   stream request-specific content inside a static shell (the #2835 app
- *   ISR pages such as explore/company/watchlist).
+ *   stream request-specific content or async subtrees inside a static shell
+ *   (company/watchlist pages, plus blog posts with async MDX mention
+ *   components).
  *
  * - `static` (○ Static) is the right answer for pages with zero dynamic
- *   islands — pure content. Public marketing pages and blog pages are in
- *   this bucket: they are locale-parametrized and prerendered, but do not
- *   read request state at render time.
+ *   islands — pure content. Explore's anonymous/no-filter shell, the blog
+ *   index, and public marketing pages are in this bucket: they are
+ *   locale-parametrized and prerendered, but do not read request state at
+ *   render time.
  *
  * If a route is intentionally removed (e.g. a marketing page becomes
  * auth-gated), update this map AND link the justification in the PR —
  * silent drop is a CPU-cost regression, see #2243.
  */
 const EXPECTED_CLASSIFICATIONS: ReadonlyMap<string, Classification> = new Map([
-  // ISR pages explicitly migrated in #2835 — all stream request-specific
-  // data inside a static shell.
-  ["/[lang]/explore", "partial"],
+  // Explore intentionally prerenders the anonymous/no-filter result into a
+  // pure static shell; personalized/filter variants refetch client-side.
+  ["/[lang]/explore", "static"],
+  // Detail pages stream request-specific or async subtrees inside a static shell.
   ["/[lang]/company/[slug]", "partial"],
   ["/[lang]/[userSlug]/[watchlistSlug]", "partial"],
-  // Blog and public marketing surfaces are pure prerendered content.
+  ["/[lang]/blog/[slug]", "partial"],
+  // Blog index and public marketing surfaces are pure prerendered content.
   ["/[lang]/blog", "static"],
-  ["/[lang]/blog/[slug]", "static"],
   ["/[lang]", "static"],
   ["/[lang]/about", "static"],
   ["/[lang]/faq", "static"],
