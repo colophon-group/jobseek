@@ -73,10 +73,9 @@ class _JsonLdExtractor(HTMLParser):
                 self.meta[key.lower()] = content
             return
 
-        if tag == "script":
-            if attr_dict.get("type") == "application/ld+json":
-                self._in_jsonld = True
-                self._data = []
+        if tag == "script" and attr_dict.get("type") == "application/ld+json":
+            self._in_jsonld = True
+            self._data = []
 
     def handle_data(self, data):
         if self._in_jsonld:
