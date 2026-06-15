@@ -7,6 +7,7 @@ import { SearchStateProvider } from "@/components/SearchStateProvider";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { WatchlistTipBanner } from "@/components/watchlist/watchlist-tip-banner";
 import { BackToTop } from "@/components/ui/back-to-top";
+import { SkipToContentLink } from "@/components/SkipToContentLink";
 
 type Props = {
   children: ReactNode;
@@ -19,12 +20,7 @@ export default async function AppLayout({ children }: Props) {
   return (
     <AppBootstrapProvider>
       <SearchStateProvider>
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only fixed top-2 left-2 z-[100] rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-contrast focus:outline-none"
-        >
-          Skip to content
-        </a>
+        <SkipToContentLink />
         <div className="flex min-h-dvh flex-col">
           <AppHeader />
           <div className="flex min-h-0 flex-1 flex-col md:pt-12">
