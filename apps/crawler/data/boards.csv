@@ -5000,8 +5000,8 @@ zoominfo-technologies-llc,zoominfo-technologies-llc-greenhouse,https://job-board
 zoox,zoox-lever,https://jobs.lever.co/zoox,lever,"{""token"": ""zoox""}",skip,
 zopa,zopa-careers,https://jobs.lever.co/zopa,lever,"{""token"": ""zopa""}",skip,
 zscaler,zscaler-greenhouse,https://job-boards.greenhouse.io/zscaler,greenhouse,"{""token"": ""zscaler""}",skip,
-zte,zte-campus,https://app.mokahr.com/campus-recruitment/zte/46903,mokahr,"{""org_id"": ""zte"", ""site_id"": 46903}",api_sniffer,"{""enrich"": [""description""]}"
-zte,zte-careers,https://app.mokahr.com/social-recruitment/zte/47588,mokahr,"{""org_id"": ""zte"", ""site_id"": 47588}",api_sniffer,"{""enrich"": [""description""]}"
+zte,zte-campus,https://app.mokahr.com/campus-recruitment/zte/46903,mokahr,"{""org_id"": ""zte"", ""site_id"": 46903}",mokahr,"{""enrich"": [""description""]}"
+zte,zte-careers,https://app.mokahr.com/social-recruitment/zte/47588,mokahr,"{""org_id"": ""zte"", ""site_id"": 47588}",mokahr,"{""enrich"": [""description""]}"
 zulu-alpha-kilo,zulu-alpha-kilo-greenhouse,https://job-boards.greenhouse.io/zulualphakilo,greenhouse,"{""token"": ""zulualphakilo""}",skip,
 zuma,zuma-careers,https://jobs.lever.co/getzuma,lever,"{""token"": ""getzuma""}",skip,
 zuora,zuora-greenhouse,https://job-boards.greenhouse.io/zuora,greenhouse,"{""token"": ""zuora""}",skip,
