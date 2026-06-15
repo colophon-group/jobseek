@@ -161,12 +161,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    # `Production` environment exposes DATABASE_URL + TYPESENSE_* secrets.
-    # The build needs DATABASE_URL because the blog `MdxMentions` server
-    # action (rendered for every per-post path during static generation)
-    # reads from Supabase — empirically validated in #2900 (replacing it
-    # with a stub DSN reproduces a Failed query / ECONNREFUSED prerender
-    # error on `/[lang]/blog/how-we-index-job-postings`).
+    # `Production` environment exposes DATABASE_URL + TYPESENSE_* secrets for
+    # trusted same-repo runs. Fork PRs deliberately receive no secrets; blog
+    # `MdxMentions` company lookups must degrade to their missing-mention
+    # fallback instead of reaching Postgres when DATABASE_URL is absent.
     environment: Production
     # Job-level env: declared once, applied to every step in the job.
     # Real secrets come from the `Production` environment above; the
@@ -176,8 +174,9 @@ jobs:
     # search/write keys are only consumed at runtime by request handlers,
     # which the build does not exercise.
     env:
-      # Required: blog `<Mention>` MDX components fetch company tooltips
-      # at build time. Without a real DSN the per-post prerender fails.
+      # Trusted runs use the real DSN so blog `<Mention>` MDX components can
+      # render company tooltips at build time. Fork runs leave this empty and
+      # exercise the secretless fallback path.
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
       # Build-time-readable Typesense client config. Present as Production

@@ -643,6 +643,10 @@ export async function getCompanyBySlug(
   slug: string,
   locale: string,
 ): Promise<CompanyDetail | null> {
+  if (!canResolveCompanyBySlug()) {
+    console.warn("[company] lookup skipped because Typesense and DATABASE_URL are not configured");
+    return null;
+  }
   // Throw-and-catch around the `'use cache'` inner. The previous
   // `skipIf: d === null` semantics aren't available under `'use cache'` —
   // the inner fetcher throws `CompanyNotFoundError` on null so the cache
@@ -687,18 +691,41 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
   // still render. Bot traffic to nonexistent slugs pays the Postgres cost
   // (a cheap PK lookup on company.slug); cache layer above prevents
   // poisoning by not storing nulls.
+  let typesenseError: unknown;
   try {
     const fromTypesense = await _fetchCompanyBySlugFromTypesense(slug, locale);
     if (fromTypesense) return fromTypesense;
   } catch (err) {
+    typesenseError = err;
+  }
+  if (!process.env.DATABASE_URL) {
+    if (typesenseError) {
+      console.error("[company] Typesense failed and Postgres fallback is unavailable", typesenseError);
+    }
+    console.warn("[company] Postgres fallback skipped because DATABASE_URL is not configured");
+    return null;
+  }
+  if (typesenseError) {
     // Typesense unreachable — fall through to Postgres. Log at error so the
     // fallback rate is queryable (e.g. Cloudflare-tunnel blip pushing 100%
     // of company-page traffic to Supabase). Matches the precedent set by
     // `searchCompaniesForWatchlist` / `_fetchSimilarUnfiltered` /
     // `_fetchSimilarFiltered` in this same file. See #3175.
-    console.error("[company] Typesense failed, falling back to Postgres", err);
+    console.error("[company] Typesense failed, falling back to Postgres", typesenseError);
   }
   return _fetchCompanyBySlugFromPostgres(slug, locale);
+}
+
+function canResolveCompanyBySlug(): boolean {
+  return Boolean(
+    process.env.DATABASE_URL ||
+      (
+        process.env.TYPESENSE_HOST &&
+        process.env.TYPESENSE_PORT &&
+        process.env.TYPESENSE_PROTOCOL &&
+        process.env.TYPESENSE_SEARCH_KEY
+      ),
+  );
 }
 
 // Canonical company-slug shape: lowercase alphanumeric segments separated

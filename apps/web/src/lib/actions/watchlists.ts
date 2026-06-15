@@ -935,6 +935,10 @@ export async function getPublicWatchlistByUserAndSlug(
   userSlug: string,
   watchlistSlug: string,
 ): Promise<WatchlistDetail | null> {
+  if (!process.env.DATABASE_URL) {
+    console.warn("[watchlist] public lookup skipped because DATABASE_URL is not configured");
+    return null;
+  }
   return cached(
     `public-watchlist:${userSlug}:${watchlistSlug}`,
     () => _fetchPublicWatchlistByUserAndSlug(userSlug, watchlistSlug),
