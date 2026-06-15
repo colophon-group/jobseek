@@ -131,15 +131,24 @@ const econnreset = (): Error => {
   return e;
 };
 
+const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
+
 describe("issue #2930 — withDbRetry covers additional call sites", () => {
   beforeEach(() => {
     dbExecuteMock.mockReset();
     cachedMock.mockClear();
+    process.env.DATABASE_URL =
+      ORIGINAL_DATABASE_URL ?? "postgresql://test:test@localhost:5432/test";
     vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    if (ORIGINAL_DATABASE_URL === undefined) {
+      delete process.env.DATABASE_URL;
+    } else {
+      process.env.DATABASE_URL = ORIGINAL_DATABASE_URL;
+    }
   });
 
   it("retries _fetchPublicWatchlistByUserAndSlug after ECONNRESET", async () => {
