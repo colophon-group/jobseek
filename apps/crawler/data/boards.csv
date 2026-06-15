@@ -1458,6 +1458,7 @@ energyhub,energyhub-greenhouse,https://job-boards.greenhouse.io/energyhub,greenh
 energytec-ai,energytec-ai-greenhouse,https://job-boards.greenhouse.io/etec,greenhouse,"{""token"": ""etec""}",skip,
 engelhart,engelhart-greenhouse,https://job-boards.greenhouse.io/engelhart,greenhouse,"{""token"": ""engelhart""}",skip,
 engflow,engflow-careers,https://api.ashbyhq.com/posting-api/job-board/engflow,ashby,"{""token"": ""engflow""}",skip,
+engie,engie-careers,https://jobs.engie.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.engie.com/googlefeed.xml""}",skip,
 engine,engine-greenhouse,https://job-boards.greenhouse.io/engine,greenhouse,"{""token"": ""engine""}",skip,
 engineers-gate,engineers-gate-greenhouse,https://job-boards.greenhouse.io/engineersgate,greenhouse,"{""token"": ""engineersgate""}",skip,
 enhesa,enhesa-greenhouse,https://job-boards.greenhouse.io/enhesa,greenhouse,"{""token"": ""enhesa""}",skip,
