@@ -5,7 +5,7 @@
  * (see apps/crawler/src/shared/html_normalize.py), but we re-sanitize on the
  * read path to guard against R2 tampering or crawler bypass.
  */
-import DOMPurify from "dompurify";
+import DOMPurify from "isomorphic-dompurify";
 
 /** Must match _ALLOWED_TAGS in apps/crawler/src/shared/html_normalize.py */
 const ALLOWED_TAGS = [
