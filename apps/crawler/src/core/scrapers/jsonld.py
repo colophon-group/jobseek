@@ -182,15 +182,15 @@ def _normalize_meta_locations(raw: str | None) -> list[str] | None:
 
     Some TalentBrew job pages omit schema.org ``jobLocation`` while exposing
     the same location in tracking meta fields, usually as
-    ``City~Region~Country``.  Use this only as a fallback when JSON-LD has no
-    location.
+    ``City~Region~Country`` values separated by ``;`` or ``|``.  Use this only
+    as a fallback when JSON-LD has no location.
     """
     if not raw:
         return None
 
     locations: list[str] = []
     seen: set[str] = set()
-    for chunk in re.split(r"\s*;\s*", raw):
+    for chunk in re.split(r"\s*[;|]\s*", raw):
         parts = [part.strip() for part in chunk.split("~") if part.strip()]
         text = ", ".join(parts) if parts else chunk.strip()
         text = re.sub(r"\s+", " ", text)

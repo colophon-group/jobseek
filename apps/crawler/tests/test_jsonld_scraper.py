@@ -207,6 +207,13 @@ class TestMetaLocationFallback:
             "Chantilly, Virginia, United States",
         ]
 
+    def test_normalizes_pipe_separated_talentbrew_locations(self):
+        assert _normalize_meta_locations("Germany|Madrid~Spain|Munich~Bavaria~Germany") == [
+            "Germany",
+            "Madrid, Spain",
+            "Munich, Bavaria, Germany",
+        ]
+
     def test_parse_html_uses_meta_location_when_jsonld_missing_location(self):
         html = """<html><head>
         <meta name="gtm_tbcn_location" content="Bengaluru~Karnataka~India">
