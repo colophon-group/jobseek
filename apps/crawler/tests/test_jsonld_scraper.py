@@ -10,9 +10,11 @@ from src.core.scrapers.jsonld import (
     _extract_salary,
     _find_job_posting,
     _JsonLdExtractor,
+    _normalize_meta_locations,
     _parse_posting,
     _strip_html,
     _text_or_list,
+    parse_html,
     probe,
     scrape,
 )
@@ -62,6 +64,14 @@ class TestJsonLdExtractor:
         extractor = _JsonLdExtractor()
         extractor.feed(html)
         assert len(extractor.results) == 0
+
+    def test_collects_meta_content(self):
+        html = """<html><head>
+        <meta name="gtm_tbcn_location" content="Bengaluru~Karnataka~India">
+        </head></html>"""
+        extractor = _JsonLdExtractor()
+        extractor.feed(html)
+        assert extractor.meta["gtm_tbcn_location"] == "Bengaluru~Karnataka~India"
 
 
 class TestFindJobPosting:
@@ -181,6 +191,46 @@ class TestExtractLocations:
     def test_non_dict_location_skipped(self):
         posting = {"jobLocation": ["string_location"]}
         assert _extract_locations(posting) is None
+
+
+class TestMetaLocationFallback:
+    def test_normalizes_talentbrew_tilde_location(self):
+        assert _normalize_meta_locations("San Jose~California~United States") == [
+            "San Jose, California, United States"
+        ]
+
+    def test_normalizes_semicolon_separated_locations(self):
+        assert _normalize_meta_locations(
+            "San Jose~California~United States; Chantilly~Virginia~United States"
+        ) == [
+            "San Jose, California, United States",
+            "Chantilly, Virginia, United States",
+        ]
+
+    def test_parse_html_uses_meta_location_when_jsonld_missing_location(self):
+        html = """<html><head>
+        <meta name="gtm_tbcn_location" content="Bengaluru~Karnataka~India">
+        <script type="application/ld+json">
+        {"@type":"JobPosting","title":"Business Analyst","description":"<p>Analyze data</p>"}
+        </script>
+        </head></html>"""
+
+        result = parse_html(html)
+
+        assert result.locations == ["Bengaluru, Karnataka, India"]
+
+    def test_parse_html_prefers_jsonld_location_over_meta_location(self):
+        html = """<html><head>
+        <meta name="gtm_tbcn_location" content="Bengaluru~Karnataka~India">
+        <script type="application/ld+json">
+        {"@type":"JobPosting","title":"Business Analyst",
+         "jobLocation":{"name":"Bangalore, Karnataka, IN"}}
+        </script>
+        </head></html>"""
+
+        result = parse_html(html)
+
+        assert result.locations == ["Bangalore, Karnataka, IN"]
 
 
 class TestExtractSalary:
