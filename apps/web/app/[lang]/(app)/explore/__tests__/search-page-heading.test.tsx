@@ -131,3 +131,80 @@ describe("SearchPage — heading landmark (#3196)", () => {
     expect(h1.className).toMatch(/\bsr-only\b/);
   });
 });
+
+describe("SearchPage — impossible empty search state (#3403)", () => {
+  it("shows a refresh prompt for an empty unfiltered result set", async () => {
+    await act(async () => {
+      render(
+        <SearchPage
+          initialCompanies={[]}
+          initialTotalCompanies={0}
+          initialKeywords={[]}
+          initialLocations={[]}
+          initialOccupations={[]}
+          initialSeniorities={[]}
+          initialTechnologies={[]}
+          initialWorkMode={[]}
+          locale="en"
+          displayCurrency="EUR"
+          jobLanguages={[]}
+          languages={[]}
+        />,
+      );
+    });
+
+    expect(screen.getByText(/oops, something went wrong/i)).toBeTruthy();
+    expect(screen.getByText(/try refreshing the page/i)).toBeTruthy();
+    expect(screen.queryByTestId("search-results-stub")).toBeNull();
+    expect(screen.queryByTestId("zero-results-stub")).toBeNull();
+  });
+
+  it("keeps the normal zero-results state for an empty filtered search", async () => {
+    await act(async () => {
+      render(
+        <SearchPage
+          initialCompanies={[]}
+          initialTotalCompanies={0}
+          initialKeywords={["python"]}
+          initialLocations={[]}
+          initialOccupations={[]}
+          initialSeniorities={[]}
+          initialTechnologies={[]}
+          initialWorkMode={[]}
+          locale="en"
+          displayCurrency="EUR"
+          jobLanguages={[]}
+          languages={[]}
+        />,
+      );
+    });
+
+    expect(screen.getByTestId("zero-results-stub")).toBeTruthy();
+    expect(screen.queryByText(/oops, something went wrong/i)).toBeNull();
+  });
+
+  it("shows a refresh prompt for degraded filtered results", async () => {
+    await act(async () => {
+      render(
+        <SearchPage
+          initialCompanies={[]}
+          initialTotalCompanies={0}
+          initialDegraded
+          initialKeywords={["python"]}
+          initialLocations={[]}
+          initialOccupations={[]}
+          initialSeniorities={[]}
+          initialTechnologies={[]}
+          initialWorkMode={[]}
+          locale="en"
+          displayCurrency="EUR"
+          jobLanguages={[]}
+          languages={[]}
+        />,
+      );
+    });
+
+    expect(screen.getByText(/oops, something went wrong/i)).toBeTruthy();
+    expect(screen.queryByTestId("zero-results-stub")).toBeNull();
+  });
+});

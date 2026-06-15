@@ -22,6 +22,7 @@ import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { LanguageStatsRow } from "@/components/search/language-stats-row";
+import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { formatDateDivider, getDateKey } from "@/components/watchlist/format-date-divider";
 
 const BATCH = 20;
@@ -126,6 +127,7 @@ export function WatchlistJobList({
   }, [filtersKey]);
 
   const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: loadMore });
+  const showUnavailable = postings.length === 0 && !isLoading && total > 0;
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -273,7 +275,9 @@ export function WatchlistJobList({
       <div className="[overflow-anchor:none]">
         {rows}
 
-        {postings.length === 0 && !isLoading && (
+        {showUnavailable ? (
+          <SearchUnavailable />
+        ) : postings.length === 0 && !isLoading && (
           <div className="py-12 text-center text-sm text-muted">
             <Trans id="watchlists.jobList.empty" comment="Empty state when no jobs match the time range">
               No jobs found.

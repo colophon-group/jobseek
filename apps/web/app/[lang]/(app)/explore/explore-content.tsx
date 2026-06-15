@@ -130,6 +130,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       initialCompanies={result.companies}
       initialTotalCompanies={result.totalCompanies}
       initialTruncated={result.truncated}
+      initialDegraded={result.degraded}
       initialKeywords={parsed.keywords}
       initialLocations={parsed.locations}
       initialOccupations={parsed.occupations}

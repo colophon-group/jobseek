@@ -2692,6 +2692,18 @@ msgstr "Nessuna risposta"
 msgid "search.zero.heading"
 msgstr "Nessun risultato trovato per \"{query}\""
 
+#. Heading shown when a search surface returns an impossible empty result set
+#. js-lingui-explicit-id
+#: src/components/search/search-unavailable.tsx:9
+msgid "search.unavailable.heading"
+msgstr "Ops, qualcosa è andato storto."
+
+#. Body shown when a search surface returns an impossible empty result set
+#. js-lingui-explicit-id
+#: src/components/search/search-unavailable.tsx:14
+msgid "search.unavailable.body"
+msgstr "Prova ad aggiornare la pagina."
+
 #. No occupations match search in occupation modal
 #. js-lingui-explicit-id
 #: src/components/search/occupation-modal.tsx:344

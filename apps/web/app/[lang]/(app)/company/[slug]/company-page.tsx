@@ -6,6 +6,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
+import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
 import { runGetCompanyPostings } from "@/lib/search/search-runner";
@@ -149,6 +150,11 @@ export function CompanyPage({
 
   const hasMore = !exhausted && !isTruncated && postings.length < yearCount;
   const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
+  const showUnavailable =
+    !isSearching &&
+    !hasFilters &&
+    postings.length === 0 &&
+    (isTruncated || activeCount > 0 || yearCount > 0);
 
   /** Convert a salary amount from the user's display currency to EUR. */
   function toEur(amount: number | undefined): number | undefined {
@@ -639,6 +645,8 @@ export function CompanyPage({
         <div className="flex items-center justify-center py-8">
           <Loader2 size={20} className="animate-spin text-muted" />
         </div>
+      ) : showUnavailable ? (
+        <SearchUnavailable />
       ) : postings.length === 0 && hasFilters ? (
         <p className="py-8 text-center text-sm text-muted">
           <Trans id="company.page.noResults" comment="No postings found message on company page">
