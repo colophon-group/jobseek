@@ -10,7 +10,7 @@
     "register-pipeline": "pnpm --filter @jobseek/murmur-pipelines register-pipeline"
   },
   "devDependencies": {
-    "turbo": "^2"
+    "turbo": "^2.9.18"
   },
   "packageManager": "pnpm@10.30.0",
   "pnpm": {
@@ -19,18 +19,23 @@
       "axios": ">=1.15.2",
       "basic-ftp": ">=5.3.1",
       "defu": ">=6.1.5",
-      "esbuild": ">=0.25.0",
+      "brace-expansion": "5.0.6",
+      "esbuild": "0.28.1",
       "fast-uri": ">=3.1.2",
       "fast-xml-builder": ">=1.1.7",
       "fast-xml-parser": ">=5.7.0",
       "flatted": ">=3.4.2",
       "follow-redirects": ">=1.16.0",
-      "hono": ">=4.12.18",
+      "hono": "4.12.21",
       "ip-address": ">=10.1.1",
-      "kysely": ">=0.28.14",
+      "kysely": "0.29.2",
+      "lodash": "4.18.1",
       "minimatch": ">=10.2.3",
       "path-to-regexp": ">=8.4.0",
-      "postcss": ">=8.5.10"
+      "postcss": ">=8.5.10",
+      "qs": "6.15.2",
+      "uuid": "11.1.1",
+      "ws@>=8.0.0 <8.20.1": "8.20.1"
     },
     "onlyBuiltDependencies": [
       "esbuild",

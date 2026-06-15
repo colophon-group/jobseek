@@ -100,8 +100,7 @@ export const auth = betterAuth({
       // anonymous clients without a network round-trip. The real
       // session token remains httpOnly/Secure — this cookie carries
       // no security meaning. See docs/edge-requests.md and issue #2246.
-      const baseURL = ctx.context.options.baseURL ?? "";
-      const secure = baseURL.startsWith("https://");
+      const secure = ctx.context.baseURL.startsWith("https://");
 
       if (ctx.context.newSession) {
         // Sign-in (email/OAuth/username), autoSignInAfterVerification,
