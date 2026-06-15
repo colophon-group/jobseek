@@ -65,6 +65,7 @@ function makeInitialData(overrides: Partial<ExploreData> = {}): ExploreData {
       seniorities: [],
       technologies: [],
       workMode: [],
+      employmentTypes: [],
     },
     displayCurrency: "EUR",
     jobLanguages: [],
@@ -156,7 +157,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     // surface stays explicit (e.g. #3275 — `wm` was added to the live
     // code in #2987 but the test list lagged behind, leaving the
     // refetch-trigger contract unguarded).
-    const filterParams = ["q", "loc", "occ", "sen", "tech", "wm", "sal", "salcur", "exp"];
+    const filterParams = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp"];
     for (const param of filterParams) {
       mockFetchExploreData.mockClear();
       currentSearchParams = new URLSearchParams(`${param}=x`);
@@ -224,6 +225,24 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
 
       await new Promise((r) => setTimeout(r, 0));
       expect(mockFetchExploreData).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("etype (employment type) filter-param refetch trigger (#3218)", () => {
+    it("triggers refetch when ?etype=internship is in the URL", async () => {
+      currentSearchParams = new URLSearchParams("etype=internship");
+
+      render(
+        <ExploreContent locale="en" initialData={makeInitialData()} />,
+      );
+
+      await waitFor(() => {
+        expect(mockFetchExploreData).toHaveBeenCalledTimes(1);
+      });
+      const callArgs = mockFetchExploreData.mock.calls[0]?.[0] as {
+        searchParams: Record<string, string | undefined>;
+      };
+      expect(callArgs.searchParams.etype).toBe("internship");
     });
   });
 

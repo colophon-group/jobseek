@@ -39,6 +39,7 @@ interface CompanyPageProps {
   initialOccupations: TaxonomyItem[];
   initialSeniorities: TaxonomyItem[];
   initialTechnologies: TaxonomyItem[];
+  initialEmploymentTypes: string[];
   initialWorkMode: WorkMode[];
   initialSalaryCurrency?: string;
   initialSalaryMin?: number;
@@ -67,6 +68,7 @@ export function CompanyPage({
   initialOccupations,
   initialSeniorities,
   initialTechnologies,
+  initialEmploymentTypes,
   initialWorkMode,
   initialSalaryCurrency,
   initialSalaryMin,
@@ -102,7 +104,7 @@ export function CompanyPage({
   const [salaryMax, setSalaryMax] = useState<number | undefined>(initialSalaryMax);
   const [experienceMin, setExperienceMin] = useState<number | undefined>(initialExperienceMin);
   const [experienceMax, setExperienceMax] = useState<number | undefined>(initialExperienceMax);
-  const [employmentTypes, setEmploymentTypes] = useState<string[]>([]);
+  const [employmentTypes, setEmploymentTypes] = useState<string[]>(initialEmploymentTypes);
   const [workMode, setWorkMode] = useState<WorkMode[]>(initialWorkMode);
   const [postings, setPostings] = useState<SearchResultPosting[]>(initialPostings);
   const [activeCount, setActiveCount] = useState(initialActiveCount);
@@ -193,6 +195,9 @@ export function CompanyPage({
     }
     if (experienceMinRef.current || experienceMaxRef.current) {
       extra.exp = `${experienceMinRef.current ?? ""}-${experienceMaxRef.current ?? ""}`;
+    }
+    if (employmentTypesRef.current.length > 0) {
+      extra.etype = employmentTypesRef.current.join(",");
     }
     const url = buildFilteredPath(
       pathname,

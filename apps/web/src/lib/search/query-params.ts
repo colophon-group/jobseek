@@ -5,7 +5,7 @@
  * so links between them can carry filters across.
  */
 
-import { isWorkMode, type WorkMode } from "./types";
+import { isEmploymentType, isWorkMode, type EmploymentType, type WorkMode } from "./types";
 
 export interface SerializableLocation {
   id: number;
@@ -56,6 +56,29 @@ export function parseWorkModeParam(raw: string | null | undefined): WorkMode[] {
     const trimmed = token.trim().toLowerCase();
     if (!trimmed) continue;
     if (!isWorkMode(trimmed)) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+/**
+ * Parse the `etype` URL parameter into public employment-type filter
+ * values. Invalid tokens are dropped to match the existing `wm` behavior:
+ * callers can append unknown future values without breaking the endpoint,
+ * while search only receives canonical values it can safely filter on.
+ */
+export function parseEmploymentTypeParam(
+  raw: string | null | undefined,
+): EmploymentType[] {
+  if (!raw) return [];
+  const seen = new Set<EmploymentType>();
+  const out: EmploymentType[] = [];
+  for (const token of raw.split(",")) {
+    const trimmed = token.trim().toLowerCase();
+    if (!trimmed) continue;
+    if (!isEmploymentType(trimmed)) continue;
     if (seen.has(trimmed)) continue;
     seen.add(trimmed);
     out.push(trimmed);

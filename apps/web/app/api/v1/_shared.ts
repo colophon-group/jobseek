@@ -78,6 +78,7 @@ export function exploreUrl(
     "sen",
     "tech",
     "wm",
+    "etype",
     "sal",
     "salcur",
     "exp",

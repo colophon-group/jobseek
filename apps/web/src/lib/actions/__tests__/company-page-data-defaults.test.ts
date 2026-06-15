@@ -93,6 +93,7 @@ beforeEach(() => {
     seniorities: [],
     technologies: [],
     workMode: [],
+    employmentTypes: [],
   });
   mocks.parseRangeParam.mockReturnValue({ min: undefined, max: undefined });
   mocks.getCurrencyRates.mockResolvedValue([

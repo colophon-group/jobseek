@@ -43,6 +43,7 @@ const emptyParsed = {
   seniorities: [],
   technologies: [],
   workMode: [],
+  employmentTypes: [],
 };
 
 const emptyResult = { companies: [], totalCompanies: 0 };
@@ -196,5 +197,29 @@ describe("GET /api/v1/search — lang= param (issue #3230)", () => {
     const { body } = await callRoute("?locale=en&wm=remote");
     const url = new URL(body.moreAt as string);
     expect(url.searchParams.get("wm")).toBe("remote");
+  });
+
+  it("forwards `etype=` to the parser, search filters, and `moreAt`", async () => {
+    mocks.parseSearchFilters.mockResolvedValue({
+      ...emptyParsed,
+      keywords: ["designer"],
+      employmentTypes: ["full_time", "internship"],
+    });
+
+    const { body } = await callRoute("?locale=en&q=designer&etype=full_time,internship");
+
+    expect(mocks.parseSearchFilters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: "designer",
+        etype: "full_time,internship",
+      }),
+    );
+    expect(mocks.searchJobs).toHaveBeenCalledTimes(1);
+    const call = mocks.searchJobs.mock.calls[0][0];
+    expect(call.employmentTypes).toEqual(["full_time", "internship"]);
+
+    const url = new URL(body.moreAt as string);
+    expect(url.searchParams.get("etype")).toBe("full_time,internship");
+    expect(url.searchParams.get("q")).toBe("designer");
   });
 });

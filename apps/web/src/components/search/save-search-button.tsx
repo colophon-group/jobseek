@@ -21,6 +21,7 @@ interface SaveSearchButtonProps {
   occupations: TaxonomyItem[];
   seniorities: TaxonomyItem[];
   technologies?: TaxonomyItem[];
+  employmentTypes?: string[];
   workMode?: WorkMode[];
   salaryMin?: number;
   salaryMax?: number;
@@ -35,6 +36,7 @@ export function SaveSearchButton({
   occupations,
   seniorities,
   technologies,
+  employmentTypes,
   workMode,
   salaryMin,
   salaryMax,
@@ -70,6 +72,7 @@ export function SaveSearchButton({
       if (occupations.length > 0) filters.occupationSlugs = occupations.map((o) => o.slug);
       if (seniorities.length > 0) filters.senioritySlugs = seniorities.map((s) => s.slug);
       if (technologies && technologies.length > 0) filters.technologySlugs = technologies.map((t) => t.slug);
+      if (employmentTypes && employmentTypes.length > 0) filters.employmentType = employmentTypes;
       if (workMode && workMode.length > 0) filters.workMode = workMode;
       if (salaryMin != null) filters.salaryMin = salaryMin;
       if (salaryMax != null) filters.salaryMax = salaryMax;

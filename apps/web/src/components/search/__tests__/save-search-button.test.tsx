@@ -81,4 +81,27 @@ describe("SaveSearchButton (issue #3036)", () => {
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/en/alice/my-search"));
   });
+
+  it("includes employment type filters when saving the search", async () => {
+    createWatchlistMock.mockResolvedValue({ id: "w1", slug: "internships" });
+
+    render(
+      <SaveSearchButton
+        keywords={["designer"]}
+        locations={[]}
+        occupations={[]}
+        seniorities={[]}
+        employmentTypes={["internship"]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+
+    await waitFor(() => expect(createWatchlistMock).toHaveBeenCalledTimes(1));
+    expect(createWatchlistMock.mock.calls[0]?.[0]).toMatchObject({
+      filters: {
+        keywords: ["designer"],
+        employmentType: ["internship"],
+      },
+    });
+  });
 });

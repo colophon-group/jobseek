@@ -8,8 +8,8 @@ import { resolveLocationSlugs, suggestLocations, type LocationSuggestion } from 
 import { resolveOccupationSlugs, resolveSenioritySlugs, suggestOccupations, suggestSeniorities, suggestTechnologies, resolveTechnologySlugs } from "@/lib/services/taxonomy";
 import type { TaxonomySuggestion } from "@/lib/services/taxonomy";
 import type { SelectedLocation } from "@/lib/search/selected-location";
-import { parseWorkModeParam } from "@/lib/search/query-params";
-import type { WorkMode } from "@/lib/search/types";
+import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query-params";
+import type { EmploymentType, WorkMode } from "@/lib/search/types";
 
 export type ParsedSearchLocation = SelectedLocation;
 
@@ -20,6 +20,7 @@ export interface ParsedSearchFilters {
   seniorities: { id: number; slug: string; name: string }[];
   technologies: { id: number; slug: string; name: string }[];
   workMode: WorkMode[];
+  employmentTypes: EmploymentType[];
 }
 
 /**
@@ -164,6 +165,8 @@ export async function parseSearchFilters(params: {
   tech?: string;
   /** `wm` URL param — comma-separated WorkMode values (issue #2983). */
   wm?: string;
+  /** `etype` URL param — comma-separated EmploymentType values (issue #3218). */
+  etype?: string;
   locale: string;
   userLat?: number;
   userLng?: number;
@@ -247,6 +250,7 @@ export async function parseSearchFilters(params: {
   // during tokenization extend this set without duplicates.
   const workMode: WorkMode[] = parseWorkModeParam(params.wm);
   const workModeSet = new Set<WorkMode>(workMode);
+  const employmentTypes: EmploymentType[] = parseEmploymentTypeParam(params.etype);
 
   const locationIds = new Set(locations.map((location) => location.id));
   const occupationIds = new Set(occupations.map((o) => o.id));
@@ -277,7 +281,15 @@ export async function parseSearchFilters(params: {
   const singles = [...singleSet];
   const allCandidates = [...allCandidateSet];
   if (singles.length === 0) {
-    return { keywords: [], locations, occupations, seniorities, technologies, workMode };
+    return {
+      keywords: [],
+      locations,
+      occupations,
+      seniorities,
+      technologies,
+      workMode,
+      employmentTypes,
+    };
   }
 
   // All three suggest batches run in parallel. Locations use an expensive
@@ -462,5 +474,6 @@ export async function parseSearchFilters(params: {
     seniorities,
     technologies,
     workMode,
+    employmentTypes,
   };
 }

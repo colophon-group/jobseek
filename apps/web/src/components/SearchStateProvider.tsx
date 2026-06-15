@@ -18,6 +18,7 @@ export interface SearchStateSnapshot {
   occupations: { id: number; slug: string; name: string }[];
   seniorities: { id: number; slug: string; name: string }[];
   technologies: { id: number; slug: string; name: string }[];
+  employmentTypes?: string[];
   workMode: WorkMode[];
   salaryMinEur: number | undefined;
   salaryMaxEur: number | undefined;
@@ -38,6 +39,15 @@ export function buildCacheKey(
   occupationIds?: number[],
   seniorityIds?: number[],
   technologyIds?: number[],
+  filters?: {
+    employmentTypes?: string[];
+    workMode?: string[];
+    salaryMin?: number;
+    salaryMax?: number;
+    salaryCurrency?: string;
+    experienceMin?: number;
+    experienceMax?: number;
+  },
 ): string {
   // String dimensions (keywords) sort with `canonicalStringCompare`
   // (locale-independent `Intl.Collator("en", { sensitivity: "base" })`)
@@ -53,6 +63,17 @@ export function buildCacheKey(
     [...(seniorityIds ?? [])].sort(numCmp).join(","),
     [...(technologyIds ?? [])].sort(numCmp).join(","),
   ];
+  if (filters) {
+    parts.push(
+      [...(filters.employmentTypes ?? [])].sort(canonicalStringCompare).join(","),
+      [...(filters.workMode ?? [])].sort(canonicalStringCompare).join(","),
+      filters.salaryMin == null ? "" : String(filters.salaryMin),
+      filters.salaryMax == null ? "" : String(filters.salaryMax),
+      filters.salaryCurrency ?? "",
+      filters.experienceMin == null ? "" : String(filters.experienceMin),
+      filters.experienceMax == null ? "" : String(filters.experienceMax),
+    );
+  }
   return parts.join("|");
 }
 
@@ -90,7 +111,8 @@ export function buildCacheKey(
  * to the same view after a posting-detail dive) without the poisoning
  * footgun.
  */
-const NO_FILTER_CACHE_KEY = "||||";
+const LEGACY_NO_FILTER_CACHE_KEY = "||||";
+const NO_FILTER_CACHE_KEY = buildCacheKey([], [], [], [], [], {});
 
 export function shouldRestoreSnapshot(
   cached: SearchStateSnapshot | null,
@@ -106,7 +128,8 @@ export function shouldRestoreSnapshot(
   // 0-result keyword search IS a legitimate destination the user may
   // want to return to.
   if (
-    cached.cacheKey === NO_FILTER_CACHE_KEY &&
+    (cached.cacheKey === NO_FILTER_CACHE_KEY ||
+      cached.cacheKey === LEGACY_NO_FILTER_CACHE_KEY) &&
     cached.companies.length === 0
   ) {
     return false;

@@ -113,6 +113,7 @@ export async function GET(request: NextRequest) {
   const sen = sp.get("sen") ?? undefined;
   const tech = sp.get("tech") ?? undefined;
   const wm = sp.get("wm") ?? undefined;
+  const etype = sp.get("etype") ?? undefined;
   const sal = sp.get("sal") ?? undefined;
   const exp = sp.get("exp") ?? undefined;
   const locale = sp.get("locale") ?? "en";
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
   // `filters.languages?.length` guards the locales clause).
   const languages = langParsed.langs ?? [];
 
-  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, locale });
+  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
 
   const locationIds =
     parsed.locations.length > 0 ? parsed.locations.map((l) => l.id) : undefined;
@@ -159,6 +160,8 @@ export async function GET(request: NextRequest) {
     seniorityIds,
     technologyIds,
     workMode: parsed.workMode.length > 0 ? parsed.workMode : undefined,
+    employmentTypes:
+      parsed.employmentTypes.length > 0 ? parsed.employmentTypes : undefined,
     salaryMinEur: salaryRange.min,
     salaryMaxEur: salaryRange.max,
     experienceMin: experienceRange.min,

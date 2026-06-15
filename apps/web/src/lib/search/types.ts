@@ -18,6 +18,33 @@ export function isWorkMode(value: string): value is WorkMode {
   return (WORK_MODE_VALUES as readonly string[]).includes(value);
 }
 
+/**
+ * Public employment-type filter values exposed by the search UI and API.
+ * Crawler normalization also has importer-only aliases such as
+ * `full_or_part`; those are intentionally not accepted as URL filter
+ * values because the user-facing filter controls do not expose them.
+ */
+export type EmploymentType =
+  | "full_time"
+  | "part_time"
+  | "contract"
+  | "internship"
+  | "temporary"
+  | "volunteer";
+
+export const EMPLOYMENT_TYPE_VALUES: readonly EmploymentType[] = [
+  "full_time",
+  "part_time",
+  "contract",
+  "internship",
+  "temporary",
+  "volunteer",
+] as const;
+
+export function isEmploymentType(value: string): value is EmploymentType {
+  return (EMPLOYMENT_TYPE_VALUES as readonly string[]).includes(value);
+}
+
 export interface SearchResultPosting {
   id: string;
   title: string | null;

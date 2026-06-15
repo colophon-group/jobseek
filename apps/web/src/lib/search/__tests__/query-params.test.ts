@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseEmploymentTypeParam,
   parseWorkModeParam,
   buildFilterQuery,
   buildFilteredPath,
@@ -46,6 +47,45 @@ describe("parseWorkModeParam", () => {
     expect(parseWorkModeParam("remote,remote,Hybrid,REMOTE")).toEqual([
       "remote",
       "hybrid",
+    ]);
+  });
+});
+
+describe("parseEmploymentTypeParam", () => {
+  it("returns empty for nullish / empty input", () => {
+    expect(parseEmploymentTypeParam(null)).toEqual([]);
+    expect(parseEmploymentTypeParam(undefined)).toEqual([]);
+    expect(parseEmploymentTypeParam("")).toEqual([]);
+  });
+
+  it("parses a single canonical value", () => {
+    expect(parseEmploymentTypeParam("full_time")).toEqual(["full_time"]);
+  });
+
+  it("parses comma-separated values, preserving order", () => {
+    expect(parseEmploymentTypeParam("contract,internship")).toEqual([
+      "contract",
+      "internship",
+    ]);
+  });
+
+  it("lower-cases and trims input before validating", () => {
+    expect(parseEmploymentTypeParam(" FULL_TIME , Part_Time ")).toEqual([
+      "full_time",
+      "part_time",
+    ]);
+  });
+
+  it("drops invalid tokens but keeps public employment-type values", () => {
+    expect(
+      parseEmploymentTypeParam("full_time,full_or_part,bogus,volunteer"),
+    ).toEqual(["full_time", "volunteer"]);
+  });
+
+  it("deduplicates repeated tokens", () => {
+    expect(parseEmploymentTypeParam("temporary,TEMPORARY,contract")).toEqual([
+      "temporary",
+      "contract",
     ]);
   });
 });

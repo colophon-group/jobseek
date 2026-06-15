@@ -38,6 +38,7 @@ interface SearchPageProps {
   initialOccupations: TaxonomyItem[];
   initialSeniorities: TaxonomyItem[];
   initialTechnologies: TaxonomyItem[];
+  initialEmploymentTypes: string[];
   initialWorkMode: WorkMode[];
   initialSalaryCurrency?: string;
   initialSalaryMin?: number;
@@ -64,6 +65,7 @@ export function SearchPage({
   initialOccupations,
   initialSeniorities,
   initialTechnologies,
+  initialEmploymentTypes,
   initialWorkMode,
   initialSalaryCurrency,
   initialSalaryMin,
@@ -91,6 +93,17 @@ export function SearchPage({
     initialOccupations.map((o) => o.id),
     initialSeniorities.map((s) => s.id),
     initialTechnologies.map((t) => t.id),
+    {
+      employmentTypes: initialEmploymentTypes,
+      workMode: initialWorkMode,
+      salaryMin: initialSalaryMin,
+      salaryMax: initialSalaryMax,
+      salaryCurrency: initialSalaryMin != null || initialSalaryMax != null
+        ? initialSalaryCurrency ?? displayCurrency
+        : undefined,
+      experienceMin: initialExperienceMin,
+      experienceMax: initialExperienceMax,
+    },
   );
   // Restore the cached snapshot only when it matches the current URL
   // filters exactly. Without the strict match, a snapshot saved from a
@@ -134,7 +147,9 @@ export function SearchPage({
     shouldRestore ? cached.experienceMax : initialExperienceMax,
   );
 
-  const [employmentTypes, setEmploymentTypes] = useState<string[]>([]);
+  const [employmentTypes, setEmploymentTypes] = useState<string[]>(
+    shouldRestore ? cached.employmentTypes ?? [] : initialEmploymentTypes,
+  );
   const [workMode, setWorkMode] = useState<WorkMode[]>(
     shouldRestore ? cached.workMode : initialWorkMode,
   );
@@ -239,6 +254,7 @@ export function SearchPage({
     const sen = searchParams.get("sen") ?? undefined;
     const tech = searchParams.get("tech") ?? undefined;
     const wm = searchParams.get("wm") ?? undefined;
+    const etype = searchParams.get("etype") ?? undefined;
     const sal = searchParams.get("sal") ?? undefined;
     const salcur = searchParams.get("salcur") ?? undefined;
     const exp = searchParams.get("exp") ?? undefined;
@@ -260,12 +276,13 @@ export function SearchPage({
     }
 
     setIsSearching(true);
-    parseSearchFilters({ q, loc, occ, sen, tech, wm, locale, userLat, userLng }).then((parsed) => {
+    parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }).then((parsed) => {
       setKeywords(parsed.keywords); keywordsRef.current = parsed.keywords;
       setLocations(parsed.locations); locationsRef.current = parsed.locations;
       setOccupations(parsed.occupations); occupationsRef.current = parsed.occupations;
       setSeniorities(parsed.seniorities); senioritiesRef.current = parsed.seniorities;
       setTechnologies(parsed.technologies); technologiesRef.current = parsed.technologies;
+      setEmploymentTypes(parsed.employmentTypes); employmentTypesRef.current = parsed.employmentTypes;
       setWorkMode(parsed.workMode); workModeRef.current = parsed.workMode;
       runSearch();
     });
@@ -288,6 +305,7 @@ export function SearchPage({
         occupations: occupationsRef.current,
         seniorities: senioritiesRef.current,
         technologies: technologiesRef.current,
+        employmentTypes: employmentTypesRef.current,
         workMode: workModeRef.current,
         salaryMinEur: salaryMinRef.current,
         salaryMaxEur: salaryMaxRef.current,
@@ -305,6 +323,18 @@ export function SearchPage({
           occupationsRef.current.map((o) => o.id),
           senioritiesRef.current.map((s) => s.id),
           technologiesRef.current.map((t) => t.id),
+          {
+            employmentTypes: employmentTypesRef.current,
+            workMode: workModeRef.current,
+            salaryMin: salaryMinRef.current,
+            salaryMax: salaryMaxRef.current,
+            salaryCurrency:
+              salaryMinRef.current != null || salaryMaxRef.current != null
+                ? salaryCurrencyRef.current
+                : undefined,
+            experienceMin: experienceMinRef.current,
+            experienceMax: experienceMaxRef.current,
+          },
         ),
       });
       setPageActions(null);
@@ -392,11 +422,23 @@ export function SearchPage({
   // Restore scroll position and sync URL on mount when restoring from cache
   useEffect(() => {
     if (shouldRestore) {
+      const extra: Record<string, string> = {};
+      if (cached.showPostingId) extra.show = cached.showPostingId;
+      if (cached.employmentTypes?.length) extra.etype = cached.employmentTypes.join(",");
+      if (cached.salaryMinEur != null || cached.salaryMaxEur != null) {
+        extra.sal = `${cached.salaryMinEur ?? ""}-${cached.salaryMaxEur ?? ""}`;
+      }
+      if (cached.salaryCurrency && cached.salaryCurrency !== displayCurrency) {
+        extra.salcur = cached.salaryCurrency;
+      }
+      if (cached.experienceMin != null || cached.experienceMax != null) {
+        extra.exp = `${cached.experienceMin ?? ""}-${cached.experienceMax ?? ""}`;
+      }
       const url = buildFilteredPath(
         pathname,
         cached.keywords,
         cached.locations,
-        cached.showPostingId ? { show: cached.showPostingId } : undefined,
+        Object.keys(extra).length > 0 ? extra : undefined,
         cached.occupations,
         cached.seniorities,
         cached.technologies,
@@ -440,6 +482,9 @@ export function SearchPage({
     }
     if (experienceMinRef.current || experienceMaxRef.current) {
       extra.exp = `${experienceMinRef.current ?? ""}-${experienceMaxRef.current ?? ""}`;
+    }
+    if (employmentTypesRef.current.length > 0) {
+      extra.etype = employmentTypesRef.current.join(",");
     }
     const url = buildFilteredPath(
       pathname,

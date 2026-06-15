@@ -129,3 +129,27 @@ describe("parseSearchFilters — workMode tokenization (#2983)", () => {
     expect(r.workMode).toEqual(["remote"]);
   });
 });
+
+describe("parseSearchFilters — employment type URL param (#3218)", () => {
+  it("returns empty employmentTypes when `etype` is absent", async () => {
+    const r = await parseSearchFilters({ locale: "en" });
+    expect(r.employmentTypes).toEqual([]);
+  });
+
+  it("parses valid `etype` values without turning them into keywords", async () => {
+    const r = await parseSearchFilters({
+      etype: "full_time,internship",
+      locale: "en",
+    });
+    expect(r.employmentTypes).toEqual(["full_time", "internship"]);
+    expect(r.keywords).toEqual([]);
+  });
+
+  it("drops invalid `etype` tokens", async () => {
+    const r = await parseSearchFilters({
+      etype: "full_time,full_or_part,bogus,temporary",
+      locale: "en",
+    });
+    expect(r.employmentTypes).toEqual(["full_time", "temporary"]);
+  });
+});

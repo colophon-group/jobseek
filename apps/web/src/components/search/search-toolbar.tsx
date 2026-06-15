@@ -175,6 +175,7 @@ export function SearchToolbar({
             occupations={occupations}
             seniorities={seniorities}
             technologies={technologies}
+            employmentTypes={employmentTypes}
             workMode={workMode}
             salaryMin={salaryMin}
             salaryMax={salaryMax}

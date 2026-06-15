@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
   const sen = sp.get("sen") ?? undefined;
   const tech = sp.get("tech") ?? undefined;
   const wm = sp.get("wm") ?? undefined;
+  const etype = sp.get("etype") ?? undefined;
   const sal = sp.get("sal") ?? undefined;
   const salcur = sp.get("salcur") ?? undefined;
   const exp = sp.get("exp") ?? undefined;
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
   const companies = sp.get("companies") ?? undefined;
 
   // Resolve slugs to get matching counts for the preview
-  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, locale });
+  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
 
   const locationIds =
     parsed.locations.length > 0 ? parsed.locations.map((l) => l.id) : undefined;
@@ -70,6 +71,8 @@ export async function GET(request: NextRequest) {
     seniorityIds,
     technologyIds,
     workMode: parsed.workMode.length > 0 ? parsed.workMode : undefined,
+    employmentTypes:
+      parsed.employmentTypes.length > 0 ? parsed.employmentTypes : undefined,
     salaryMinEur,
     salaryMaxEur,
     experienceMin,
@@ -101,6 +104,7 @@ export async function GET(request: NextRequest) {
   if (sen) createParams.set("sen", sen);
   if (tech) createParams.set("tech", tech);
   if (wm) createParams.set("wm", wm);
+  if (etype) createParams.set("etype", etype);
   if (sal) createParams.set("sal", sal);
   if (salcur) createParams.set("salcur", salcur);
   if (exp) createParams.set("exp", exp);

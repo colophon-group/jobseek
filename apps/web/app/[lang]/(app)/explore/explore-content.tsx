@@ -51,7 +51,7 @@ type ExploreContentProps = {
  * are present, the prerendered ``initialData`` doesn't reflect the
  * filters and we must re-fetch the personalized variant.
  */
-const FILTER_PARAMS = ["q", "loc", "occ", "sen", "tech", "wm", "sal", "salcur", "exp"];
+const FILTER_PARAMS = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp"];
 
 function hasAnyFilterParam(searchParams: URLSearchParams): boolean {
   for (const key of FILTER_PARAMS) {
@@ -136,6 +136,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       initialOccupations={parsed.occupations}
       initialSeniorities={parsed.seniorities}
       initialTechnologies={parsed.technologies}
+      initialEmploymentTypes={parsed.employmentTypes}
       initialWorkMode={parsed.workMode}
       initialSalaryCurrency={salaryCurrencyParam !== displayCurrency ? salaryCurrencyParam : undefined}
       initialSalaryMin={salaryMinDisplay}

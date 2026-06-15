@@ -26,6 +26,7 @@ const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
   seniorities: [],
   technologies: [],
   workMode: [],
+  employmentTypes: [],
 };
 
 export interface ExploreData {
@@ -55,6 +56,7 @@ export async function fetchExploreData(params: {
   const sen = firstOf(searchParams.sen);
   const tech = firstOf(searchParams.tech);
   const wm = firstOf(searchParams.wm);
+  const etype = firstOf(searchParams.etype);
   const sal = firstOf(searchParams.sal);
   const salcur = firstOf(searchParams.salcur);
   const exp = firstOf(searchParams.exp);
@@ -68,7 +70,7 @@ export async function fetchExploreData(params: {
   // search. Other prefs (display currency etc.) stay anon-defaults.
   const session = await getSession();
   const [parsed, prefs, anonJobLangs] = await Promise.all([
-    parseSearchFilters({ q, loc, occ, sen, tech, wm, locale, userLat, userLng }),
+    parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }),
     session ? getPreferences() : Promise.resolve(null),
     session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
@@ -82,6 +84,8 @@ export async function fetchExploreData(params: {
   const seniorityIds = idsOrUndefined(parsed.seniorities);
   const technologyIds = idsOrUndefined(parsed.technologies);
   const workMode = parsed.workMode.length > 0 ? parsed.workMode : undefined;
+  const employmentTypes =
+    parsed.employmentTypes.length > 0 ? parsed.employmentTypes : undefined;
 
   const salaryCurrencyParam = salcur ?? displayCurrency;
   const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
@@ -108,6 +112,7 @@ export async function fetchExploreData(params: {
           occupationIds,
           seniorityIds,
           technologyIds,
+          employmentTypes,
           workMode,
           salaryMinEur,
           salaryMaxEur,
@@ -123,6 +128,7 @@ export async function fetchExploreData(params: {
           occupationIds,
           seniorityIds,
           technologyIds,
+          employmentTypes,
           workMode,
           salaryMinEur,
           salaryMaxEur,

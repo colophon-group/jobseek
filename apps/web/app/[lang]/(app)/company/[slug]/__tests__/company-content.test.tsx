@@ -21,15 +21,28 @@ vi.mock("@/lib/actions/company-page-data", async () => {
 // CompanyPage has a heavy dependency tree (Lingui i18n, Typesense
 // provider, currency rates, infinite scroll, etc.). Stub it out — this
 // suite is testing the conditional-fetch logic in CompanyContent, not
-// CompanyPage's behaviour.
+// CompanyPage's behaviour. Render a marker with initial props so the
+// stale-ISR-data regression test can assert which dataset mounted it.
 vi.mock("../company-page", () => ({
-  CompanyPage: () => null,
+  CompanyPage: ({
+    initialActiveCount,
+    initialEmploymentTypes,
+  }: {
+    initialActiveCount: number;
+    initialEmploymentTypes: string[];
+  }) => (
+    <div
+      data-testid="company-page"
+      data-active={initialActiveCount}
+      data-etypes={initialEmploymentTypes.join(",")}
+    />
+  ),
 }));
 
-// Skeleton stub — we just need a deterministic render output to check
-// that the component falls back to it when no data is available.
+// Skeleton stub — a distinct marker so tests can assert when CompanyPage
+// is intentionally unmounted while personalised data is loading.
 vi.mock("@/components/search/company-skeleton", () => ({
-  CompanySkeleton: () => null,
+  CompanySkeleton: () => <div data-testid="company-skeleton" />,
 }));
 
 // `useSearchParams` from `next/navigation` returns a `URLSearchParams`-
@@ -78,6 +91,7 @@ function makeInitialData(overrides: Partial<CompanyPageData> = {}): CompanyPageD
       seniorities: [],
       technologies: [],
       workMode: [],
+      employmentTypes: [],
     },
     displayCurrency: "EUR",
     jobLanguages: [],
@@ -199,6 +213,7 @@ describe("CompanyContent — server-render initial-data path (#3203)", () => {
       "sen",
       "tech",
       "wm",
+      "etype",
       "sal",
       "salcur",
       "exp",
@@ -220,23 +235,95 @@ describe("CompanyContent — server-render initial-data path (#3203)", () => {
     }
   });
 
+  it("passes etype through when it triggers a personalized fetch", async () => {
+    currentSearchParams = new URLSearchParams("etype=internship");
+
+    const initialData = makeInitialData();
+    render(
+      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+    );
+
+    await waitFor(() => {
+      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
+    });
+
+    const callArgs = mockFetchCompanyPageData.mock.calls[0]?.[0] as {
+      searchParams: Record<string, string | undefined>;
+    };
+    expect(callArgs.searchParams.etype).toBe("internship");
+  });
+
+  it("unmounts stale prerendered data until the filtered etype fetch resolves", async () => {
+    currentSearchParams = new URLSearchParams("etype=internship");
+    const unfilteredInitial = makeInitialData({
+      activeCount: 3835,
+      parsed: {
+        keywords: [],
+        locations: [],
+        occupations: [],
+        seniorities: [],
+        technologies: [],
+        workMode: [],
+        employmentTypes: [],
+      },
+    });
+    const filteredData = makeInitialData({
+      activeCount: 870,
+      parsed: {
+        keywords: [],
+        locations: [],
+        occupations: [],
+        seniorities: [],
+        technologies: [],
+        workMode: [],
+        employmentTypes: ["internship"],
+      },
+    });
+
+    let resolve: (v: CompanyPageData) => void = () => {};
+    mockFetchCompanyPageData.mockReturnValueOnce(
+      new Promise<CompanyPageData>((r) => {
+        resolve = r;
+      }),
+    );
+
+    const { queryByTestId } = render(
+      <CompanyContent locale="en" slug="test-company" initialData={unfilteredInitial} />,
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId("company-skeleton")).not.toBeNull();
+    });
+    expect(queryByTestId("company-page")).toBeNull();
+
+    resolve(filteredData);
+
+    await waitFor(() => {
+      expect(queryByTestId("company-page")).not.toBeNull();
+    });
+    expect(queryByTestId("company-skeleton")).toBeNull();
+    expect(queryByTestId("company-page")?.getAttribute("data-active")).toBe(
+      "870",
+    );
+    expect(queryByTestId("company-page")?.getAttribute("data-etypes")).toBe(
+      "internship",
+    );
+  });
+
   it("renders the CompanySkeleton fallback when no initialData and the fetch is in-flight", async () => {
     // Never-resolving promise to keep the component in the loading
     // state for the duration of the assertion.
     mockFetchCompanyPageData.mockReturnValue(new Promise(() => {}));
 
-    const { container } = render(
+    const { queryByTestId } = render(
       <CompanyContent locale="en" slug="test-company" />,
     );
 
-    // CompanySkeleton is mocked to render `null`; the relevant
-    // assertion is that we didn't render CompanyPage (also mocked to
-    // null but distinguishable by call). The deterministic signal is
-    // that `fetchCompanyPageData` was kicked off but never resolved
-    // and the component DID NOT throw / crash.
-    await new Promise((r) => setTimeout(r, 0));
+    await waitFor(() => {
+      expect(queryByTestId("company-skeleton")).not.toBeNull();
+    });
     expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    expect(container.firstChild).toBeNull();
+    expect(queryByTestId("company-page")).toBeNull();
   });
 
   it("triggers the not-found path when fetchCompanyPageData resolves to null", async () => {

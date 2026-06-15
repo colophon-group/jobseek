@@ -35,7 +35,7 @@ type CompanyContentProps = {
  * the panel responsive than to render with ``initialData`` and have
  * the panel pop in late.
  */
-const FILTER_PARAMS = ["q", "loc", "occ", "sen", "tech", "wm", "sal", "salcur", "exp", "show"];
+const FILTER_PARAMS = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp", "show"];
 
 function hasAnyFilterParam(searchParams: URLSearchParams): boolean {
   for (const key of FILTER_PARAMS) {
@@ -94,12 +94,21 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
       initialData === undefined;
     if (!needsPersonalizedFetch) return;
 
+    // Clear stale prerendered data before the personalised fetch so
+    // CompanyPage unmounts. Its filters/postings are useState-initialised
+    // from props, so keeping the unfiltered ISR instance mounted would
+    // ignore the filtered props when this fetch resolves.
+    setData(null);
+
     const sp: Record<string, string | undefined> = {};
     searchParams.forEach((value, key) => {
       sp[key] = value;
     });
     fetchCompanyPageData({ slug, searchParams: sp, locale }).then((result) => {
       setData(result ?? "not-found");
+    }).catch((err) => {
+      console.error("[company] fetchCompanyPageData failed", err);
+      if (initialData) setData(initialData);
     });
     // Empty deps: the conditional-fetch decision is made once on
     // mount. ``initialData`` is stable across re-renders (page
@@ -123,6 +132,7 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
       initialOccupations={data.parsed.occupations}
       initialSeniorities={data.parsed.seniorities}
       initialTechnologies={data.parsed.technologies}
+      initialEmploymentTypes={data.parsed.employmentTypes}
       initialWorkMode={data.parsed.workMode}
       initialSalaryCurrency={data.salaryCurrencyParam !== data.displayCurrency ? data.salaryCurrencyParam : undefined}
       initialSalaryMin={data.salaryMinDisplay}
