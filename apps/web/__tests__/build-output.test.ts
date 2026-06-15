@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -12,11 +13,9 @@ import { describe, expect, it } from "vitest";
  * the build cannot:
  *
  *   1. Parse-guard. The build summary is captured to disk by the vitest
- *      globalSetup (`test-setup/run-prod-build.ts`). If the parser finds
- *      zero routes, either the build never reached the summary line
- *      (silent failure earlier) or Next 16's stdout shape changed and
- *      our regex no longer matches. Either way the rest of the assertions
- *      are vacuous, so we surface that root cause first.
+ *      globalSetup (`test-setup/run-prod-build.ts`), but terminal output is
+ *      not a stable API. The classifier reads `.next` artifacts first and
+ *      only falls back to stdout when artifacts are unavailable.
  *
  *   2. Classification drift (the load-bearing assertion). For each
  *      must-stay-cacheable route we encode the EXPECTED glyph — `◐`
@@ -30,9 +29,9 @@ import { describe, expect, it } from "vitest";
  *
  *   3. Routes-of-interest list freshness. If a route in the must-stay
  *      list was deleted or renamed in the source tree, the route key
- *      stops appearing in the build summary. The list rots silently —
+ *      stops appearing in the build artifacts/summary. The list rots silently —
  *      we'd think we were guarding a route we no longer ship. The
- *      "expected this route in build output" assertion catches that.
+ *      "expected this route in build artifacts/summary" assertion catches that.
  *
  * Background incident: #2243 (ISR-leakage CPU-quota incident — a single
  * dynamic-API leak on `/[lang]/company/[slug]` blew the monthly Vercel
@@ -45,43 +44,35 @@ type Classification = "static" | "partial" | "dynamic";
 /**
  * Routes that must stay cacheable, plus the EXPECTED Next 16 glyph.
  *
- * - `partial` (◐ Partial Prerender) is the right answer for any page
- *   that streams per-viewer or otherwise personalised content inside a
- *   static shell (the four #2835 ISR pages, blog list/post, the home
- *   `(public)/page.tsx` shell, and the marketing pages that use
- *   `getViewerLanguages`/`headers()` for CTAs and locale routing).
+ * - `partial` (◐ Partial Prerender) is the right answer for pages that
+ *   stream request-specific content inside a static shell (the #2835 app
+ *   ISR pages such as explore/company/watchlist).
  *
  * - `static` (○ Static) is the right answer for pages with zero dynamic
- *   islands — pure content. We do not currently ship any pages in this
- *   bucket: every public page reads at least viewer locale or auth
- *   state. The map shape supports it for when we do, and so the test
- *   distinguishes "drifted from ◐ to ○" (lost personalisation) from
- *   "drifted from ◐ to ƒ" (lost cacheability).
+ *   islands — pure content. Public marketing pages and blog pages are in
+ *   this bucket: they are locale-parametrized and prerendered, but do not
+ *   read request state at render time.
  *
  * If a route is intentionally removed (e.g. a marketing page becomes
  * auth-gated), update this map AND link the justification in the PR —
  * silent drop is a CPU-cost regression, see #2243.
  */
 const EXPECTED_CLASSIFICATIONS: ReadonlyMap<string, Classification> = new Map([
-  // The 4 ISR pages explicitly migrated in #2835 — all stream per-viewer
+  // ISR pages explicitly migrated in #2835 — all stream request-specific
   // data inside a static shell.
   ["/[lang]/explore", "partial"],
   ["/[lang]/company/[slug]", "partial"],
   ["/[lang]/[userSlug]/[watchlistSlug]", "partial"],
-  ["/[lang]/blog", "partial"],
-  // Per-post render path is the hot SEO surface — must stay cacheable.
-  ["/[lang]/blog/[slug]", "partial"],
-  // Public marketing surfaces — home page + (public) route group.
-  // All currently ◐ because the shell reads viewer locale/auth state for
-  // CTAs and locale-prefixed links. If a page collapses to ○ that means
-  // the locale-aware island was dropped — fail loudly.
-  ["/[lang]", "partial"],
-  ["/[lang]/about", "partial"],
-  ["/[lang]/faq", "partial"],
-  ["/[lang]/how-we-index", "partial"],
-  ["/[lang]/license", "partial"],
-  ["/[lang]/privacy-policy", "partial"],
-  ["/[lang]/terms", "partial"],
+  // Blog and public marketing surfaces are pure prerendered content.
+  ["/[lang]/blog", "static"],
+  ["/[lang]/blog/[slug]", "static"],
+  ["/[lang]", "static"],
+  ["/[lang]/about", "static"],
+  ["/[lang]/faq", "static"],
+  ["/[lang]/how-we-index", "static"],
+  ["/[lang]/license", "static"],
+  ["/[lang]/privacy-policy", "static"],
+  ["/[lang]/terms", "static"],
 ]);
 
 const SYMBOL_TO_CLASSIFICATION: Record<string, Classification> = {
@@ -95,6 +86,96 @@ const CLASSIFICATION_LABEL: Record<Classification, string> = {
   partial: "◐ Partial Prerender",
   dynamic: "ƒ Dynamic",
 };
+
+const REPRESENTATIVE_LOCALES = ["en", "de", "fr", "it"] as const;
+
+type BuildMeta = {
+  headers?: Record<string, string>;
+  postponed?: unknown;
+};
+
+type ExportDetail = {
+  success?: boolean;
+};
+
+function readJson(path: string): unknown | null {
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function stripAnsi(text: string): string {
+  return text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/gu, "");
+}
+
+function buildSucceeded(distDir: string | null): boolean | null {
+  if (!distDir) return null;
+  const detail = readJson(join(distDir, "export-detail.json")) as ExportDetail | null;
+  return typeof detail?.success === "boolean" ? detail.success : null;
+}
+
+function tail(text: string, lines = 80): string {
+  return text.split(/\r?\n/u).slice(-lines).join("\n");
+}
+
+function routeConcreteCandidates(route: string): string[] {
+  if (!route.startsWith("/[lang]")) return [route];
+  return REPRESENTATIVE_LOCALES.map((locale) => route.replace("/[lang]", `/${locale}`));
+}
+
+function routeMetaCandidates(distDir: string, route: string): string[] {
+  return routeConcreteCandidates(route).map((concreteRoute) =>
+    join(distDir, "server", "app", `${concreteRoute.replace(/^\//u, "")}.meta`),
+  );
+}
+
+function classifyFromMeta(meta: BuildMeta): Classification {
+  const isPrerender = meta.headers?.["x-nextjs-prerender"] === "1";
+  if (!isPrerender) return "dynamic";
+  return Object.hasOwn(meta, "postponed") ? "partial" : "static";
+}
+
+/**
+ * Structured Next artifact parser. Next writes one `.meta` file per
+ * prerendered route. `headers.x-nextjs-prerender` means the route is
+ * cacheable; a `postponed` payload means it is Partial Prerender.
+ *
+ * This is deliberately preferred over stdout because the human build table
+ * has already changed/suppressed itself under CI once (#3399), while these
+ * artifacts are the runtime inputs.
+ */
+function parseRouteClassificationsFromArtifacts(distDir: string | null): Map<string, Classification> {
+  const map = new Map<string, Classification>();
+  if (!distDir) return map;
+
+  const appRoutes = readJson(join(distDir, "app-path-routes-manifest.json"));
+  if (!appRoutes || typeof appRoutes !== "object") return map;
+
+  for (const route of Object.values(appRoutes)) {
+    if (typeof route !== "string") continue;
+
+    const classifications: Classification[] = [];
+    for (const metaPath of routeMetaCandidates(distDir, route)) {
+      const meta = readJson(metaPath) as BuildMeta | null;
+      if (meta) classifications.push(classifyFromMeta(meta));
+    }
+
+    if (classifications.includes("partial")) {
+      map.set(route, "partial");
+    } else if (classifications.includes("static")) {
+      map.set(route, "static");
+    } else {
+      // The route exists in the app manifest but no prerender artifact was
+      // emitted for any representative concrete path.
+      map.set(route, "dynamic");
+    }
+  }
+
+  return map;
+}
 
 /**
  * Parse Next 16's route summary out of the build stdout.
@@ -121,7 +202,7 @@ function parseRouteClassifications(buildOutput: string): Map<string, Classificat
   // the route path (everything up to optional whitespace + revalidate
   // columns at the end).
   const lineRe = /^[┌├└]\s*([○◐ƒ])\s+(\S+)/u;
-  for (const rawLine of buildOutput.split(/\r?\n/)) {
+  for (const rawLine of stripAnsi(buildOutput).split(/\r?\n/u)) {
     const line = rawLine.replace(/\s+$/u, "");
     const match = lineRe.exec(line);
     if (!match) continue;
@@ -198,13 +279,13 @@ function driftDiagnostic(route: string, expected: Classification, actual: Classi
 
 function missingRouteDiagnostic(route: string, expected: Classification): string {
   return [
-    `Route \`${route}\` was not present in the production build's route summary,`,
+    `Route \`${route}\` was not present in the production build artifacts/summary,`,
     `but EXPECTED_CLASSIFICATIONS pins it to ${CLASSIFICATION_LABEL[expected]}.`,
     "",
     "Either the route was renamed/removed in the source tree (in which case",
     "remove it from EXPECTED_CLASSIFICATIONS — the must-stay-cacheable list",
     "rots silently if entries no longer match real routes), or the build",
-    "never printed the summary (look for build failures earlier in the log).",
+    "never emitted usable route artifacts/summary (look for build failures earlier in the log).",
     "",
     "This guard exists because a stale list would silently drop coverage —",
     "we'd think we were watching a route we no longer ship. See #2885.",
@@ -213,6 +294,7 @@ function missingRouteDiagnostic(route: string, expected: Classification): string
 
 describe("build-output classifier (slow lane, #2885)", () => {
   const logPath = process.env.BUILD_OUTPUT_LOG;
+  const distDir = logPath ? dirname(logPath) : null;
 
   /** Parse-guard: the globalSetup must have produced a log path. */
   it("globalSetup captured a build-output log", () => {
@@ -225,24 +307,46 @@ describe("build-output classifier (slow lane, #2885)", () => {
 
   // Eagerly parse so per-route assertions don't reparse the whole log.
   const buildOutput = logPath && existsSync(logPath) ? readFileSync(logPath, "utf8") : "";
-  const classifications = parseRouteClassifications(buildOutput);
+  const artifactClassifications = parseRouteClassificationsFromArtifacts(distDir);
+  const stdoutClassifications = parseRouteClassifications(buildOutput);
+  const classifications =
+    artifactClassifications.size > 0 ? artifactClassifications : stdoutClassifications;
+  const classificationSource =
+    artifactClassifications.size > 0 ? ".next build artifacts" : "build stdout";
+
+  it("production build completed before classification", () => {
+    const success = buildSucceeded(distDir);
+    expect(
+      success,
+      [
+        "The production build did not complete successfully, so route",
+        "classification would be based on partial artifacts or missing stdout.",
+        `Log path: ${logPath ?? "(unset)"}`,
+        "",
+        "Build log tail:",
+        tail(buildOutput),
+      ].join("\n"),
+    ).not.toBe(false);
+  });
 
   /**
    * Parse-guard #2: ensure the parser actually matched routes. If the
-   * build silently failed before the summary, or Next 16's stdout shape
-   * changed and our regex no longer matches, every per-route assertion
-   * below would degrade to a confusing "got undefined" — surface the
-   * root cause first.
+   * build silently failed, Next's artifact shape changed, and stdout is
+   * unavailable/suppressed, every per-route assertion below would degrade
+   * to a confusing "got undefined" — surface the root cause first.
    */
-  it("parsed at least one route from the build summary", () => {
+  it("parsed at least one route from build artifacts or stdout", () => {
     expect(
       classifications.size,
       [
-        "Could not parse any route classifications from the build output.",
+        "Could not parse any route classifications from `.next` artifacts or build output.",
         `Log path: ${logPath ?? "(unset)"}`,
-        "Either the build failed before the route summary printed, or the",
-        "Next.js stdout format changed. Re-run `pnpm build` and inspect the",
-        "tail of the log — the summary should look like `┌ ○ /_not-found`.",
+        `Artifact routes parsed: ${artifactClassifications.size}`,
+        `Stdout routes parsed: ${stdoutClassifications.size}`,
+        "Either the build failed before route artifacts were written, or the",
+        "Next.js artifact/stdout format changed. Re-run `pnpm build` and",
+        "inspect `.next/app-path-routes-manifest.json`, `.next/server/app/**/*.meta`,",
+        "and the build-output log tail.",
       ].join("\n"),
     ).toBeGreaterThan(0);
   });
@@ -262,7 +366,10 @@ describe("build-output classifier (slow lane, #2885)", () => {
      */
     it(`${route} stays ${expectedLabel}`, () => {
       const actual = classifications.get(route);
-      expect(actual, missingRouteDiagnostic(route, expected)).toBeDefined();
+      expect(
+        actual,
+        `${missingRouteDiagnostic(route, expected)}\n\nClassification source: ${classificationSource}.`,
+      ).toBeDefined();
       expect(actual, driftDiagnostic(route, expected, actual!)).toBe(expected);
     });
   }
