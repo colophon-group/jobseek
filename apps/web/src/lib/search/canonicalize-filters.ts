@@ -20,6 +20,8 @@ export interface CanonicalizableFilters {
   seniorityIds?: number[];
   technologyIds?: number[];
   languages?: string[];
+  workMode?: string[];
+  employmentTypes?: string[];
 }
 
 /**
@@ -74,6 +76,12 @@ export function canonicalizeFilters<T extends CanonicalizableFilters>(filters: T
   }
   if (filters.languages !== undefined) {
     out.languages = [...filters.languages].sort(canonicalStringCompare);
+  }
+  if (filters.workMode !== undefined) {
+    out.workMode = [...filters.workMode].sort(canonicalStringCompare);
+  }
+  if (filters.employmentTypes !== undefined) {
+    out.employmentTypes = [...filters.employmentTypes].sort(canonicalStringCompare);
   }
   return out as T;
 }

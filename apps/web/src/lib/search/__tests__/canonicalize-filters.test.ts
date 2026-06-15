@@ -57,6 +57,20 @@ describe("canonicalizeFilters — stable cache keys (#3187)", () => {
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 
+  it("collapses workMode permutations for employment-type count cache keys (#3303)", () => {
+    const a = canonicalizeFilters({ workMode: ["onsite", "remote"] });
+    const b = canonicalizeFilters({ workMode: ["remote", "onsite"] });
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    expect(JSON.stringify(a)).toBe('{"workMode":["onsite","remote"]}');
+  });
+
+  it("collapses employmentTypes permutations for work-mode count cache keys (#3303)", () => {
+    const a = canonicalizeFilters({ employmentTypes: ["part_time", "full_time"] });
+    const b = canonicalizeFilters({ employmentTypes: ["full_time", "part_time"] });
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    expect(JSON.stringify(a)).toBe('{"employmentTypes":["full_time","part_time"]}');
+  });
+
   it("does not mutate the input arrays", () => {
     const input = { locationIds: [42, 7], keywords: ["zoom", "apple"] };
     const before = JSON.stringify(input);
@@ -111,8 +125,12 @@ describe("canonicalizeFilters — stable cache keys (#3187)", () => {
       seniorityIds: [5, 2],
       technologyIds: [10, 4],
       languages: ["fr", "de"],
+      workMode: ["remote", "onsite"],
+      employmentTypes: ["part_time", "full_time"],
     });
     const b = canonicalizeFilters({
+      employmentTypes: ["full_time", "part_time"],
+      workMode: ["onsite", "remote"],
       languages: ["de", "fr"],
       technologyIds: [4, 10],
       seniorityIds: [2, 5],

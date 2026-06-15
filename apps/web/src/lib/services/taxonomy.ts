@@ -1229,7 +1229,7 @@ async function _fetchAllTechnologiesGrouped(
 export async function getEmploymentTypeCounts(
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; workMode?: string[]; languages?: string[] },
 ): Promise<Record<string, number>> {
-  const fKey = filters ? JSON.stringify(filters) : "";
+  const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
   const key = `emp-type-counts:${fKey}`;
   return cached(key, () => _fetchEmploymentTypeCounts(filters), { ttl: CACHE_TTL_LONG });
 }
@@ -1272,7 +1272,7 @@ async function _fetchEmploymentTypeCounts(
 export async function getWorkModeCounts(
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; employmentTypes?: string[]; languages?: string[] },
 ): Promise<Record<string, number>> {
-  const fKey = filters ? JSON.stringify(filters) : "";
+  const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
   const key = `work-mode-counts:${fKey}`;
   return cached(key, () => _fetchWorkModeCounts(filters), { ttl: CACHE_TTL_LONG });
 }

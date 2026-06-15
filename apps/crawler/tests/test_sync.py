@@ -1167,6 +1167,40 @@ class TestRefreshTypesenseCounts:
         en_parent = next(d for d in occ_docs if d["id"] == "200-en")
         assert en_parent["active_posting_count"] == 90
 
+    async def test_seniority_and_technology_counts_apply_has_content_filter(self):
+        """Issue #3288: seniority and technology precomputed counts must
+        match the web's ``POSTING_BASE_FILTER`` just like company,
+        location, and occupation counts do.
+        """
+        captured_sql: list[str] = []
+
+        async def _fetch(sql, *args, **kwargs):
+            captured_sql.append(sql)
+            return []
+
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=_fetch)
+
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
+
+        with patch("src.sync._ts_bulk_upsert"):
+            await refresh_typesense_counts(local_conn, client)
+
+        sen_sql = next(s for s in captured_sql if "SELECT seniority_id" in s)
+        tech_sql = next(s for s in captured_sql if "unnest(technology_ids)" in s)
+        for sql in (sen_sql, tech_sql):
+            assert "is_active" in sql
+            assert "description_r2_hash IS NOT NULL" in sql, (
+                f"missing description_r2_hash predicate in:\n{sql}"
+            )
+            assert "cardinality(titles) > 0" in sql, (
+                f"missing titles cardinality predicate in:\n{sql}"
+            )
+            assert "length(trim(titles[1])) > 0" in sql, (
+                f"missing titles non-blank predicate in:\n{sql}"
+            )
+
     async def test_company_counts_apply_has_content_filter(self):
         """Issue #3009: the precomputed `company.active_posting_count` /
         `year_posting_count` numbers must use the same `has_content`

@@ -2450,9 +2450,11 @@ async def refresh_typesense_counts(
 
     # --- Seniorities ---
     sen_rows = await local_conn.fetch(
-        """
+        f"""
         SELECT seniority_id, COUNT(*) AS cnt
-        FROM job_posting WHERE is_active AND seniority_id IS NOT NULL GROUP BY 1
+        FROM job_posting
+        WHERE is_active AND seniority_id IS NOT NULL AND {_HAS_CONTENT_SQL}
+        GROUP BY 1
         """
     )
     if sen_rows:
@@ -2470,9 +2472,11 @@ async def refresh_typesense_counts(
 
     # --- Technologies ---
     tech_rows = await local_conn.fetch(
-        """
+        f"""
         SELECT unnest(technology_ids) AS tech_id, COUNT(*) AS cnt
-        FROM job_posting WHERE is_active GROUP BY 1
+        FROM job_posting
+        WHERE is_active AND {_HAS_CONTENT_SQL}
+        GROUP BY 1
         """
     )
     if tech_rows:
