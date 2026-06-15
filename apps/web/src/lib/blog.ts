@@ -36,6 +36,7 @@
 import { readFile, readdir, access } from "node:fs/promises";
 import { join } from "node:path";
 import matter from "gray-matter";
+import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import { type Locale, locales } from "@/lib/i18n";
 
 const BLOG_DIR = join(process.cwd(), "src/content/blog");
@@ -71,6 +72,20 @@ export type BlogPost = BlogPostSummary & {
 };
 
 const DEFAULT_AUTHOR = "Viktor Shcherbakov";
+
+function parseBlogMatter(raw: string) {
+  return matter(raw, {
+    engines: {
+      // gray-matter 4 still calls js-yaml's removed safeLoad/safeDump
+      // defaults. Provide the v4 API explicitly so the patched js-yaml
+      // override can stay in place.
+      yaml: {
+        parse: (input: string) => loadYaml(input) ?? {},
+        stringify: (data: unknown) => dumpYaml(data),
+      },
+    },
+  });
+}
 
 function coerceFrontmatter(
   slug: string,
@@ -176,7 +191,7 @@ export async function listBlogPosts(locale?: Locale): Promise<BlogPostSummary[]>
     for (const candidate of candidates) {
       try {
         const raw = await readFile(join(BLOG_DIR, candidate), "utf-8");
-        const { data } = matter(raw);
+        const { data } = parseBlogMatter(raw);
         const fm = coerceFrontmatter(slug, data as Record<string, unknown>);
         return { slug, ...fm };
       } catch (err) {
@@ -217,7 +232,7 @@ export async function getBlogPost(
   for (const filename of candidates) {
     try {
       const raw = await readFile(join(BLOG_DIR, filename), "utf-8");
-      const { data, content } = matter(raw);
+      const { data, content } = parseBlogMatter(raw);
       const fm = coerceFrontmatter(slug, data as Record<string, unknown>);
       return { slug, ...fm, body: content };
     } catch (err) {
