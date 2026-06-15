@@ -264,7 +264,7 @@ async def _save_raw(
                 resp = await http.get(feed, follow_redirects=True)
                 if resp.status_code == 200:
                     (artifact_dir / "response.xml").write_text(resp.text)
-        elif monitor_type == "dom":
+        elif monitor_type in ("dom", "talentbrew"):
             resp = await http.get(board_url, follow_redirects=True)
             if resp.status_code == 200:
                 (artifact_dir / "page.html").write_text(resp.text)

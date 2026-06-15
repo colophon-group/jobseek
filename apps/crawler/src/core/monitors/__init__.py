@@ -381,6 +381,17 @@ def _build_comment(name: str, metadata: dict) -> str:
         if urls is not None:
             return f"Sitemap \u2014 {urls} URLs at {sitemap_url}"
         return f"Sitemap \u2014 {sitemap_url}"
+    if name == "talentbrew":
+        jobs = metadata.get("jobs")
+        pages = metadata.get("pages")
+        if jobs is not None and pages is not None:
+            return f"TalentBrew/Radancy \u2014 {jobs} jobs across {pages} pages"
+        if jobs is not None:
+            return f"TalentBrew/Radancy \u2014 {jobs} jobs"
+        urls = metadata.get("urls")
+        if urls is not None:
+            return f"TalentBrew/Radancy \u2014 {urls} job links found"
+        return "TalentBrew/Radancy"
     if name == "dom":
         urls = metadata.get("urls")
         if urls is not None:
@@ -610,6 +621,7 @@ from src.core.monitors import (  # noqa: E402
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
+    talentbrew,  # noqa: F401
     traffit,  # noqa: F401
     umantis,  # noqa: F401
     workable,  # noqa: F401
