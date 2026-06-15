@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // `vi.mock` hoists to the top of the file so its factories cannot close
 // over module-scope variables. Use `vi.hoisted` to share mocks between
@@ -74,6 +74,11 @@ const dbExecuteMock = mocks.dbExecute;
 const cacheLifeMock = mocks.cacheLife;
 const cacheTagMock = mocks.cacheTag;
 const buildFilterStringMock = mocks.buildFilterString;
+const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
+const ORIGINAL_TYPESENSE_HOST = process.env.TYPESENSE_HOST;
+const ORIGINAL_TYPESENSE_PORT = process.env.TYPESENSE_PORT;
+const ORIGINAL_TYPESENSE_PROTOCOL = process.env.TYPESENSE_PROTOCOL;
+const ORIGINAL_TYPESENSE_SEARCH_KEY = process.env.TYPESENSE_SEARCH_KEY;
 
 const _hit = (overrides: Record<string, unknown> = {}) => ({
   id: "co-1",
@@ -102,6 +107,36 @@ beforeEach(() => {
   dbExecuteMock.mockReset();
   buildFilterStringMock.mockReset();
   buildFilterStringMock.mockReturnValue("");
+  process.env.DATABASE_URL =
+    ORIGINAL_DATABASE_URL ?? "postgresql://test:test@localhost:5432/test";
+});
+
+afterEach(() => {
+  if (ORIGINAL_DATABASE_URL === undefined) {
+    delete process.env.DATABASE_URL;
+  } else {
+    process.env.DATABASE_URL = ORIGINAL_DATABASE_URL;
+  }
+  if (ORIGINAL_TYPESENSE_HOST === undefined) {
+    delete process.env.TYPESENSE_HOST;
+  } else {
+    process.env.TYPESENSE_HOST = ORIGINAL_TYPESENSE_HOST;
+  }
+  if (ORIGINAL_TYPESENSE_PORT === undefined) {
+    delete process.env.TYPESENSE_PORT;
+  } else {
+    process.env.TYPESENSE_PORT = ORIGINAL_TYPESENSE_PORT;
+  }
+  if (ORIGINAL_TYPESENSE_PROTOCOL === undefined) {
+    delete process.env.TYPESENSE_PROTOCOL;
+  } else {
+    process.env.TYPESENSE_PROTOCOL = ORIGINAL_TYPESENSE_PROTOCOL;
+  }
+  if (ORIGINAL_TYPESENSE_SEARCH_KEY === undefined) {
+    delete process.env.TYPESENSE_SEARCH_KEY;
+  } else {
+    process.env.TYPESENSE_SEARCH_KEY = ORIGINAL_TYPESENSE_SEARCH_KEY;
+  }
 });
 
 describe("searchCompaniesForWatchlist", () => {
@@ -411,6 +446,26 @@ describe("getCompanyBySlug — Postgres fallback", () => {
 
     const out = await getCompanyBySlug("acme", "en");
     expect(out).toBeNull();
+  });
+
+  it("returns null outside the cache boundary when lookup env is not configured", async () => {
+    searchMock.mockResolvedValue(_typesenseResponse(null));
+    delete process.env.DATABASE_URL;
+    delete process.env.TYPESENSE_HOST;
+    delete process.env.TYPESENSE_PORT;
+    delete process.env.TYPESENSE_PROTOCOL;
+    delete process.env.TYPESENSE_SEARCH_KEY;
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const out = await getCompanyBySlug("acme", "en");
+
+    expect(out).toBeNull();
+    expect(searchMock).not.toHaveBeenCalled();
+    expect(dbExecuteMock).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[company] lookup skipped because Typesense and DATABASE_URL are not configured",
+    );
+    warnSpy.mockRestore();
   });
 
   it("retries the Postgres query on transient ECONNRESET (#2918 follow-up)", async () => {

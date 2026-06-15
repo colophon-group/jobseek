@@ -207,14 +207,22 @@ import {
 } from "../watchlists";
 
 const USER_ID = "user-1";
+const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getSessionUserId.mockResolvedValue(USER_ID);
+  process.env.DATABASE_URL =
+    ORIGINAL_DATABASE_URL ?? "postgresql://test:test@localhost:5432/test";
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  if (ORIGINAL_DATABASE_URL === undefined) {
+    delete process.env.DATABASE_URL;
+  } else {
+    process.env.DATABASE_URL = ORIGINAL_DATABASE_URL;
+  }
 });
 
 // ---- helpers ----------------------------------------------------------
@@ -400,5 +408,20 @@ describe("getPublicWatchlistByUserAndSlug — single-query fold (#3211)", () => 
     expect(detail).toBeNull();
     expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
     expect(mocks.dbSelect).not.toHaveBeenCalled();
+  });
+
+  it("returns null before the cache/DB path when DATABASE_URL is not configured", async () => {
+    delete process.env.DATABASE_URL;
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const detail = await getPublicWatchlistByUserAndSlug("alice", "my-watchlist");
+
+    expect(detail).toBeNull();
+    expect(mocks.cached).not.toHaveBeenCalled();
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[watchlist] public lookup skipped because DATABASE_URL is not configured",
+    );
+    warnSpy.mockRestore();
   });
 });
