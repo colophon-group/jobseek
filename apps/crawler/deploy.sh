@@ -48,18 +48,89 @@ if [[ ${#missing[@]} -gt 0 ]]; then
 fi
 
 DEPLOY_DIR="/home/deploy"
+ENV_FILE="$DEPLOY_DIR/.env"
+ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
+IMAGE_TAG="${CRAWLER_IMAGE_TAG:-latest}"
+
+rollback_deploy() {
+  local exit_code=$?
+  trap - ERR
+  echo "Deploy failed — restoring crawler containers on previous image" >&2
+
+  if [[ -f "$ROLLBACK_ENV_FILE" ]]; then
+    mv "$ROLLBACK_ENV_FILE" "$ENV_FILE" || true
+    chmod 600 "$ENV_FILE" || true
+  fi
+
+  cd "$DEPLOY_DIR" || exit "$exit_code"
+  docker compose up -d --remove-orphans 2>/dev/null || true
+  exit "$exit_code"
+}
+
+compose_service_ready() {
+  local service="$1"
+  local container_id state health
+
+  container_id="$(docker compose ps -q "$service" 2>/dev/null || true)"
+  if [[ -z "$container_id" ]]; then
+    return 1
+  fi
+
+  state="$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null || true)"
+  if [[ "$state" != "running" ]]; then
+    return 1
+  fi
+
+  health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null || true)"
+  [[ "$health" == "none" || "$health" == "healthy" ]]
+}
+
+wait_for_core_services() {
+  local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)
+  local deadline=$((SECONDS + 180))
+  local missing=()
+
+  while (( SECONDS < deadline )); do
+    missing=()
+    for service in "${services[@]}"; do
+      if ! compose_service_ready "$service"; then
+        missing+=("$service")
+      fi
+    done
+
+    if [[ ${#missing[@]} -eq 0 ]]; then
+      return 0
+    fi
+
+    echo "Waiting for services to become ready: ${missing[*]}" >&2
+    sleep 5
+  done
+
+  echo "ERROR: services did not become ready: ${missing[*]}" >&2
+  docker compose ps >&2 || true
+  return 1
+}
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
 # kept here to clean up boxes that still have a manually-started one.
-docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy 2>/dev/null || true
+legacy_containers=(redis worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy)
+docker stop --time=60 "${legacy_containers[@]}" 2>/dev/null || true
+docker rm "${legacy_containers[@]}" 2>/dev/null || true
 
 # ── Write env file ──────────────────────────────────────────────────
 # Proxy vars are expanded with ``:-`` defaults so missing provider
 # secrets don't break the deploy — PROXY_PROVIDER=none disables the
 # proxy layer even when the URL envs are empty.
-cat > "$DEPLOY_DIR/.env" <<EOF
+rm -f "$ROLLBACK_ENV_FILE"
+if [[ -f "$ENV_FILE" ]]; then
+  cp "$ENV_FILE" "$ROLLBACK_ENV_FILE"
+  chmod 600 "$ROLLBACK_ENV_FILE"
+fi
+
+cat > "$ENV_FILE" <<EOF
 OWNER=${OWNER}
+CRAWLER_IMAGE_TAG=${IMAGE_TAG}
 DATABASE_URL=${DATABASE_URL_UNPOOLED}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
 R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
@@ -85,47 +156,41 @@ EOF
 
 # Lock down the env file — it contains proxy + DB + R2 creds. Default
 # umask on some images is 0022, which would leave this world-readable.
-chmod 600 "$DEPLOY_DIR/.env"
+chmod 600 "$ENV_FILE"
 
-# ── Pull images and restart ──────────────────────────────────────────
+# ── Pull images and preflight while the old stack is still serving ────
 cd "$DEPLOY_DIR"
+trap rollback_deploy ERR
+
 docker compose pull
 
-# Recover containers if any step in the migrations/setup-typesense/sync
-# window fails: ``docker compose stop`` sets the explicit "stopped"
-# state, so ``restart: unless-stopped`` will not bring them back on its
-# own. Without this trap, a failure between the stop and the final
-# ``up -d`` leaves the box dark on the previous image.
-trap 'echo "Deploy step failed — restoring crawler containers on previous image" >&2; docker compose up -d --remove-orphans 2>/dev/null || true' ERR
-
-# Keep Redis up for migrations + sync, but quiesce the rest of the
-# crawler so deploy-time `crawler sync` does not race with live workers
-# claiming work out of Redis while we are reseeding board monitors.
-# alloy is intentionally left running so deploy-time errors keep
-# shipping to Loki — losing observability across the deploy is what
-# turned a bad PATCH into a 15h dark window.
-docker compose stop worker-1 worker-2 worker-3 browser-1 exporter drain 2>/dev/null || true
 docker compose up -d redis
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────
-docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
-  "ghcr.io/${OWNER}/jobseek-crawler:latest" \
+docker run --rm --env-file "$ENV_FILE" --network host \
+  "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
 
 # ── Patch Typesense schema (idempotent — adds new fields if missing) ─
 # Must run BEFORE `crawler sync`, otherwise the next sync would upsert
 # docs containing fields that the live schema doesn't know about.
-docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
-  "ghcr.io/${OWNER}/jobseek-crawler:latest" \
+docker run --rm --env-file "$ENV_FILE" --network host \
+  "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync crawler setup-typesense
 
+# ── Quiesce processors before reseeding Redis-backed schedules ───────
+# Keep Redis and alloy up, but stop processors so deploy-time
+# `crawler sync` does not race with live workers claiming work while we
+# reseed board monitors. `--timeout 60` matches the app's 30s bounded
+# drain with headroom before Docker sends SIGKILL.
+docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
+
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
-docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
-  "ghcr.io/${OWNER}/jobseek-crawler:latest" \
+docker run --rm --env-file "$ENV_FILE" --network host \
+  "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync crawler sync
 
 # ── Start the full stack on the freshly seeded Redis state ───────────
-trap - ERR
 docker compose up -d --remove-orphans
 
 # Force-recreate alloy so it picks up any alloy.river bind-mount changes.
@@ -137,6 +202,13 @@ docker compose up -d --remove-orphans
 # per deploy is well worth not having silent observability drift.
 docker compose up -d --force-recreate alloy
 
+# Gate success on the core crawler services actually running. The
+# murmur shim is intentionally excluded while Murmur remains
+# backburnered; a shim issue should not fail the crawler deploy.
+wait_for_core_services
+
 # ── Cleanup ──────────────────────────────────────────────────────────
+trap - ERR
+rm -f "$ROLLBACK_ENV_FILE"
 docker image prune -f
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"

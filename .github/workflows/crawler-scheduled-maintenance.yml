@@ -3,7 +3,7 @@ name: Crawler scheduled maintenance
 # Periodic ephemeral crawler CLI runs. Kept in-repo so the cadence is
 # reviewable and version-controlled (see #2630). Dispatches to the Hetzner
 # crawler host via SSH and runs the task as `docker run --rm` using the
-# current `latest` image and `/home/deploy/.env`.
+# image tag currently recorded in `/home/deploy/.env`.
 #
 # What runs here (vs. elsewhere):
 #   refresh-typesense  — this workflow, every 4h + at every deploy (inline
@@ -65,9 +65,11 @@ jobs:
             set -euo pipefail
             TASK="${{ steps.task.outputs.task }}"
             NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
+            tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+            tag="${tag:-latest}"
             docker run --rm \
               --name "$NAME" \
               --env-file /home/deploy/.env \
               --network host \
-              ghcr.io/colophon-group/jobseek-crawler:latest \
+              "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
               uv run --no-sync crawler "$TASK"

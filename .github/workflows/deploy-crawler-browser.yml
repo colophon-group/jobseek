@@ -40,7 +40,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest
             ghcr.io/${{ github.repository_owner }}/jobseek-crawler:v${{ steps.version.outputs.version }}
           cache-from: type=gha,scope=crawler-slim
           cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
@@ -53,7 +52,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser:latest
             ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser:v${{ steps.version.outputs.version }}
           cache-from: type=gha,scope=crawler-browser
           cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
@@ -121,10 +119,11 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: OWNER,DATABASE_URL_UNPOOLED,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_ADMIN_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
+          envs: OWNER,CRAWLER_IMAGE_TAG,DATABASE_URL_UNPOOLED,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_ADMIN_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
           script: bash /home/deploy/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
+          CRAWLER_IMAGE_TAG: v${{ steps.version.outputs.version }}
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
           LOCAL_DATABASE_URL: ${{ secrets.LOCAL_DATABASE_URL }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -159,3 +158,15 @@ jobs:
           # resolve to empty on a full-stack redeploy and the shim
           # would silently accept every request as anonymous.
           MURMUR_TOKEN: ${{ secrets.MURMUR_TOKEN }}
+
+      - name: Promote deployed images to latest
+        run: |
+          set -euo pipefail
+          version="v${{ steps.version.outputs.version }}"
+          owner="${{ github.repository_owner }}"
+          docker buildx imagetools create \
+            -t "ghcr.io/${owner}/jobseek-crawler:latest" \
+            "ghcr.io/${owner}/jobseek-crawler:${version}"
+          docker buildx imagetools create \
+            -t "ghcr.io/${owner}/jobseek-crawler-browser:latest" \
+            "ghcr.io/${owner}/jobseek-crawler-browser:${version}"

@@ -239,6 +239,39 @@ async def test_lease_heartbeat_clears_inflight_on_exception(mock_redis):
 
 
 @pytest.mark.asyncio
+async def test_lease_heartbeat_leaves_cancelled_lease_for_reaper(mock_redis):
+    """Cancellation means the task did not finish.
+
+    The heartbeat cleanup must leave the inflight lease intact so the
+    reaper can recover the work after the lease expires.
+    """
+    r = mock_redis
+    domain = "workday"
+    task_id = "board-cancel"
+    member = f"monitor|{domain}|{task_id}"
+    await r.zadd("inflight:simple", {member: time.time() + 600})
+
+    log = structlog.get_logger()
+    entered = asyncio.Event()
+    blocker = asyncio.Event()
+
+    async def _work():
+        async with _lease_heartbeat("monitor", domain, task_id, browser=False, worker_log=log):
+            entered.set()
+            await blocker.wait()
+
+    task = asyncio.create_task(_work())
+    await asyncio.wait_for(entered.wait(), timeout=1)
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert await r.zcard("inflight:simple") == 1
+    assert await r.zscore("inflight:simple", member) is not None
+
+
+@pytest.mark.asyncio
 async def test_lease_heartbeat_does_not_disturb_a_completed_lease(mock_redis):
     """If the body called ``reschedule_task`` (which clears the inflight
     entry), the safety-net cleanup at exit must be a harmless no-op.

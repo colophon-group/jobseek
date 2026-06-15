@@ -83,14 +83,16 @@ So the cache amplifier theory is **mostly false** for the detail page. The trans
 
 The PATCH path can rebuild a field via a single drop+add pair (`apps/crawler/src/typesense_schema.py:332-335`) — but only when `_index_drift` (line 230-237) flags it. The check normalizes default `index=true` against live. For `is_active` (schema: `{"name": "is_active", "type": "bool", "facet": True}` — no explicit `index`), `_FIELD_INDEX_DEFAULT = True` means the desired is "indexed". The check only fires if live says `index: false`. **None of the historical migrations touch `is_active`'s index flag**, so this should never fire.
 
-The deploy.sh sequence (`apps/crawler/deploy.sh:108-129`):
-1. `docker compose stop` workers / exporter / drain / browser (Redis + alloy stay up).
-2. Run alembic migrations.
-3. Run `crawler setup-typesense` (idempotent PATCH).
-4. Run `crawler sync` (CSV → Postgres + Redis + Typesense taxonomies + companies + watchlists).
-5. `docker compose up -d` to bring everything back.
+The deploy.sh sequence:
+1. Pull the requested crawler image tag.
+2. Ensure Redis is up.
+3. Run alembic migrations.
+4. Run `crawler setup-typesense` (idempotent PATCH).
+5. Stop workers / exporter / drain / browser (Redis + alloy stay up).
+6. Run `crawler sync` (CSV → Postgres + Redis + Typesense taxonomies + companies + watchlists).
+7. `docker compose up -d`, force-recreate alloy, and gate core services before the workflow promotes the image tag to `latest`.
 
-The `sync` step touches taxonomy + company + watchlist collections, NOT `job_posting`. So during a deploy, the `job_posting` collection's `is_active` field is unchanged. The exporter pauses (it was stopped in step 1) — when it restarts in step 5, it resumes from its persisted cursor. No fleet-wide is_active flip.
+The `sync` step touches taxonomy + company + watchlist collections, NOT `job_posting`. So during a deploy, the `job_posting` collection's `is_active` field is unchanged. The exporter pauses (it was stopped in step 5) — when it restarts in step 7, it resumes from its persisted cursor. No fleet-wide is_active flip.
 
 ### 6. Live cluster snapshot (2026-05-13)
 

@@ -85,15 +85,20 @@ async def _lease_heartbeat(
     underlying SQL is idempotent (UPSERTs / ON CONFLICT) and the second
     worker just replays them.
 
-    Safety net (#3159 / #3173): on exit, this context manager calls
-    ``complete_task`` to make sure the inflight lease entry is cleared
-    even if the work code returned through an early-drop path without
-    calling ``reschedule_task``. ``complete_task`` is idempotent (a
-    successful ``reschedule_task`` already removed the entry, so the
-    second ZREM is a no-op). This guarantees: anything we successfully
-    finished — for any value of "finished" — leaves no orphan in the
-    inflight ZSET, even if a future drop path is added without
-    explicit cleanup.
+    Safety net (#3159 / #3173): on non-cancelled exit, this context
+    manager calls ``complete_task`` to make sure the inflight lease
+    entry is cleared even if the work code returned through an
+    early-drop path without calling ``reschedule_task``. ``complete_task``
+    is idempotent (a successful ``reschedule_task`` already removed the
+    entry, so the second ZREM is a no-op). This guarantees: anything we
+    successfully finished — for any value of "finished" — leaves no
+    orphan in the inflight ZSET, even if a future drop path is added
+    without explicit cleanup.
+
+    Cancellation is different: a task cancelled during bounded shutdown
+    did not finish, so clearing its lease would make the work disappear.
+    In that path we leave the inflight entry intact and let the reaper
+    recover it after the lease expires.
     """
     interval = max(1.0, float(settings.inflight_heartbeat_interval_seconds))
     wtype = "browser" if browser else "simple"
@@ -132,20 +137,32 @@ async def _lease_heartbeat(
             return
 
     beat_task = asyncio.create_task(_beat(), name=f"hb-{task_type}-{task_id[:8]}")
+    cancelled = False
     try:
         yield
+    except asyncio.CancelledError:
+        cancelled = True
+        raise
     finally:
         stop.set()
         beat_task.cancel()
         with contextlib.suppress(asyncio.CancelledError, Exception):
             await beat_task
-        # Safety-net cleanup — idempotent if ``reschedule_task`` already
-        # cleared the inflight entry. Suppress errors so a Redis blip on
-        # cleanup never escalates into a worker crash.
-        try:
-            await complete_task(domain, task_id, task_type, browser=browser)
-        except Exception:
-            worker_log.warning("pipeline.complete_task.failed", exc_info=True)
+        if cancelled:
+            worker_log.info(
+                "pipeline.complete_task.skipped_cancelled",
+                task_type=task_type,
+                domain=domain,
+                task_id=task_id,
+            )
+        else:
+            # Safety-net cleanup — idempotent if ``reschedule_task`` already
+            # cleared the inflight entry. Suppress errors so a Redis blip on
+            # cleanup never escalates into a worker crash.
+            try:
+                await complete_task(domain, task_id, task_type, browser=browser)
+            except Exception:
+                worker_log.warning("pipeline.complete_task.failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------

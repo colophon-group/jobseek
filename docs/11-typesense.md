@@ -98,7 +98,7 @@ cd apps/crawler && uv run python ../../scripts/typesense-setup.py --force  # Dro
 uv run --no-sync crawler setup-typesense                                   # Same, from inside the image
 ```
 
-The deploy script (`apps/crawler/deploy.sh`) runs `crawler setup-typesense` between Alembic migrations and `crawler sync`, so a PR that adds new fields ships safely: schema is patched first, then `sync` upserts populate the new fields. The deploy workflow also smoke-runs `setup-typesense` twice against an ephemeral Typesense container before SSHing to prod (the second run exercises the patch path on existing collections), so a schema regression fails CI rather than aborting the deploy mid-stream. If any step between the worker `stop` and the final `up -d` does fail, an `ERR` trap in `deploy.sh` brings containers back up on the previous image so the box doesn't sit dark.
+The deploy script (`apps/crawler/deploy.sh`) runs Alembic migrations and `crawler setup-typesense` before stopping processors, then runs `crawler sync` while workers/exporter/drain/browser are quiesced. That keeps schema patching ahead of `sync` upserts, while avoiding a Redis reseed race with live workers. The deploy workflow also smoke-runs `setup-typesense` twice against an ephemeral Typesense container before SSHing to prod (the second run exercises the patch path on existing collections), so a schema regression fails CI rather than aborting the deploy mid-stream. The script keeps a rollback copy of `/home/deploy/.env`, starts the previous image again on failure, and only lets the workflow promote the new images to `latest` after the SSH deploy succeeds.
 
 ### Company Collection (extended for company detail page)
 

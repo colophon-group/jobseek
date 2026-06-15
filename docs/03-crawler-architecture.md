@@ -266,8 +266,8 @@ crawler board <slug>     # Process single board (debug)
 
 ```bash
 # docker-compose.yml defines: redis, worker (x3), browser, exporter, drain, alloy
-# deploy.sh: writes .env, pulls images, docker compose up, alembic migrate, crawler sync
-# CI: .github/workflows/deploy-crawler-browser.yml builds slim + full images
+# deploy.sh: writes rollback-backed .env, pulls the requested tag, preflights alembic + setup-typesense, stops processors, runs crawler sync, starts + gates services
+# CI: .github/workflows/deploy-crawler-browser.yml builds versioned slim + full images, then promotes them to latest after deploy succeeds
 ```
 
 Docker images:
