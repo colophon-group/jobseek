@@ -48,6 +48,32 @@ environment variables to both build and runtime:
 - `R2_SECRET_ACCESS_KEY`
 - `R2_BUCKET`
 
+### Turborepo Env Allowlist
+
+Vercel project env vars are not automatically visible inside `pnpm turbo run
+build`. Turborepo filters the build environment to the variables listed in the
+root `turbo.json` task env allowlist. This has caused recurring production
+deploy failures: the R2 vars existed in Vercel, but Turbo stripped them from
+`@jobseek/web#build`, so the OG route could not read R2, regenerated cold
+company cards, hit Typesense 429s, and failed prerendering.
+
+When adding or renaming any env var read during `next build`, update
+`turbo.json` in the same PR. For this cache, the build allowlist must include:
+
+- `R2_ENDPOINT_URL`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET`
+- `COMPANY_OG_CACHE_BYPASS`
+- `COMPANY_OG_PRERENDER_TOP_N`
+- `COMPANY_OG_RENDERER_VERSION_SALT`
+
+Treat this Vercel/Turbo warning as a release blocker:
+
+```text
+environment variables are set on your Vercel project, but missing from "turbo.json"
+```
+
 ## Force Controls
 
 Use `COMPANY_OG_PRERENDER_TOP_N` to adjust how many high-traffic company
@@ -97,6 +123,35 @@ cascading into Postgres fallback load.
 If Typesense rate-limits the top-slug query, the query retries in place. If it
 still fails in production with Typesense configured, the build fails loud
 instead of silently shipping a zero-prebake deploy.
+
+## Retention
+
+Renderer-versioned keys intentionally leave old namespaces behind. That makes
+rollbacks and CDN revalidation safe, but it also means the R2 bucket would grow
+forever without cleanup.
+
+The repo provides `apps/web/script/prune-company-og-cache.ts`, exposed as:
+
+```bash
+pnpm --filter @jobseek/web og:prune -- --retain-versions 8 --min-age-days 60
+```
+
+The script is dry-run by default. It groups objects under `og/company/` by
+renderer version, keeps the newest N namespaces, and only deletes older
+namespaces whose newest object is past the minimum age. Pass `--yes` to delete:
+
+```bash
+pnpm --filter @jobseek/web og:prune -- \
+  --yes \
+  --retain-versions 8 \
+  --min-age-days 60 \
+  --max-delete 20000
+```
+
+`.github/workflows/prune-company-og-cache.yml` runs this weekly against the
+production R2 bucket with those defaults. The `--max-delete` cap is intentional:
+if object volume unexpectedly spikes, the workflow fails loudly instead of
+deleting an unbounded number of objects.
 
 ## Tradeoff
 

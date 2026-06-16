@@ -57,6 +57,7 @@ function getClient(config: NonNullable<ReturnType<typeof getR2Config>>): S3Clien
   client = new S3Client({
     endpoint: config.endpoint,
     region: "auto",
+    forcePathStyle: true,
     credentials: {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,

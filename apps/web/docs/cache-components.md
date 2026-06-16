@@ -144,7 +144,10 @@ Company Open Graph PNGs are not stored in Next's `'use cache'` layer because
 `ImageResponse` bodies are binary route responses, not serializable component
 data. They use a renderer-versioned R2 cache instead. See
 [company-og-cache.md](./company-og-cache.md) for the hash inputs, force-rerender
-controls, and build-time behavior.
+controls, and build-time behavior. If any build-time env var is added for this
+path, update the root `turbo.json` env allowlist in the same PR; Vercel env vars
+that are missing from Turbo's allowlist are stripped during `pnpm turbo run
+build` and can turn a cached OG build back into live Typesense prerendering.
 
 ### Per-locale `<html lang>` (the #2826 use case)
 

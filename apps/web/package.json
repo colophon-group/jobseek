@@ -15,6 +15,7 @@
     "db:push": "drizzle-kit push",
     "analyze": "ANALYZE=true next build",
     "optimize:svg": "svgo public/*.svg --multipass",
+    "og:prune": "tsx script/prune-company-og-cache.ts",
     "screenshots": "tsx script/capture-screenshots.ts",
     "notify-blog-indexnow": "tsx script/notify-blog-indexnow.ts",
     "test": "vitest run",
