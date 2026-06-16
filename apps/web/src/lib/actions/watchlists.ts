@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { updateTag } from "next/cache";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import {
   watchlist,
@@ -28,6 +28,10 @@ import { expandLocationIdsBatch, resolveLocationSlugs } from "@/lib/actions/loca
 import { expandOccupationIdsBatch, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "@/lib/search/typesense-filters";
+import {
+  isTypesenseUnavailableError,
+  withTypesenseRetry,
+} from "@/lib/search/typesense-retry";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import {
   upsertWatchlist as tsUpsertWatchlist,
@@ -123,6 +127,28 @@ export type WatchlistPostingEntry = {
     slug: string;
     icon: string | null;
   };
+};
+
+type WatchlistPostingFilterParams = {
+  companyIds: string[];
+  anyCompany?: boolean;
+  keywords?: string[];
+  locationIds?: number[];
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  workMode?: ("onsite" | "hybrid" | "remote")[];
+  employmentType?: string[];
+  salaryMin?: number;
+  salaryMax?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  languages?: string[];
+};
+
+type WatchlistPostingQueryParams = WatchlistPostingFilterParams & {
+  offset: number;
+  limit: number;
 };
 
 // ── Actions ─────────────────────────────────────────────────────────
@@ -1404,29 +1430,9 @@ export async function getPopularWatchlists(params: {
   );
 }
 
-export async function getWatchlistPostings(params: {
-  companyIds: string[];
-  anyCompany?: boolean;
-  offset: number;
-  limit: number;
-  keywords?: string[];
-  locationIds?: number[];
-  occupationIds?: number[];
-  seniorityIds?: number[];
-  technologyIds?: number[];
-  /** Work-mode filter — `onsite | hybrid | remote` (issue #3037). */
-  workMode?: ("onsite" | "hybrid" | "remote")[];
-  /** Employment-type filter (issue #3037). Untyped because legacy
-   * documents may carry strings outside the canonical six; downstream
-   * `buildFilterString` joins values raw, so any sanitisation must
-   * happen there. */
-  employmentType?: string[];
-  salaryMin?: number;
-  salaryMax?: number;
-  experienceMin?: number;
-  experienceMax?: number;
-  languages?: string[];
-}): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
+export async function getWatchlistPostings(
+  params: WatchlistPostingQueryParams,
+): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
   // No companies selected and not "any company" mode → empty
   if (!params.anyCompany && params.companyIds.length === 0) {
     return { postings: [], total: 0 };
@@ -1441,6 +1447,7 @@ export async function getWatchlistPostings(params: {
   try {
     return await _getWatchlistPostingsTypesense(params, userId);
   } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
     console.error("[getWatchlistPostings] Typesense failed, falling back to Postgres", err);
     return _getWatchlistPostingsPostgres(params, userId);
   }
@@ -1462,22 +1469,9 @@ export async function getWatchlistPostings(params: {
  * postings inflate the year badge but are correctly hidden from the
  * active badge, producing visible "active disagrees with year" rows.
  */
-export async function getWatchlistPostingYearCount(params: {
-  companyIds: string[];
-  anyCompany?: boolean;
-  keywords?: string[];
-  locationIds?: number[];
-  occupationIds?: number[];
-  seniorityIds?: number[];
-  technologyIds?: number[];
-  workMode?: ("onsite" | "hybrid" | "remote")[];
-  employmentType?: string[];
-  salaryMin?: number;
-  salaryMax?: number;
-  experienceMin?: number;
-  experienceMax?: number;
-  languages?: string[];
-}): Promise<number> {
+export async function getWatchlistPostingYearCount(
+  params: WatchlistPostingFilterParams,
+): Promise<number> {
   if (!params.anyCompany && params.companyIds.length === 0) return 0;
   try {
     const client = getSearchClient();
@@ -1507,16 +1501,21 @@ export async function getWatchlistPostingYearCount(params: {
       return 0;
     }
     if (filterStr) parts.push(filterStr);
-    const result = await client.collections("job_posting").documents().search({
-      q: keywordsQ,
-      query_by: "title",
-      filter_by: parts.join(" && "),
-      per_page: 0,
-    });
+    const result = await withTypesenseRetry(
+      () =>
+        client.collections("job_posting").documents().search({
+          q: keywordsQ,
+          query_by: "title",
+          filter_by: parts.join(" && "),
+          per_page: 0,
+        }),
+      { label: "getWatchlistPostingYearCount" },
+    );
     return result.found ?? 0;
   } catch (err) {
-    console.error("[getWatchlistPostingYearCount] Typesense failed, returning 0", err);
-    return 0;
+    if (!isTypesenseUnavailableError(err)) throw err;
+    console.error("[getWatchlistPostingYearCount] Typesense failed, falling back to Postgres", err);
+    return _getWatchlistPostingYearCountPostgres(params);
   }
 }
 
@@ -1799,24 +1798,7 @@ function _mapWatchlistDoc(doc: Record<string, unknown>): PublicWatchlistEntry {
 /** Max company IDs per Typesense filter string batch (~7KB ≈ 200 UUIDs). */
 
 async function _getWatchlistPostingsTypesense(
-  params: {
-    companyIds: string[];
-    anyCompany?: boolean;
-    offset: number;
-    limit: number;
-    keywords?: string[];
-    locationIds?: number[];
-    occupationIds?: number[];
-    seniorityIds?: number[];
-    technologyIds?: number[];
-    workMode?: ("onsite" | "hybrid" | "remote")[];
-    employmentType?: string[];
-    salaryMin?: number;
-    salaryMax?: number;
-    experienceMin?: number;
-    experienceMax?: number;
-    languages?: string[];
-  },
+  params: WatchlistPostingQueryParams,
   userId: string | null,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
   const client = getSearchClient();
@@ -1857,14 +1839,18 @@ async function _getWatchlistPostingsTypesense(
   if (filterStr) filterParts.push(filterStr);
   const fullFilter = filterParts.join(" && ");
 
-  const result = await client.collections("job_posting").documents().search({
-    q: keywordsQ,
-    query_by: "title",
-    filter_by: fullFilter,
-    sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
-    per_page: params.limit === 0 ? 0 : params.limit,
-    page: params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,
-  });
+  const result = await withTypesenseRetry(
+    () =>
+      client.collections("job_posting").documents().search({
+        q: keywordsQ,
+        query_by: "title",
+        filter_by: fullFilter,
+        sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
+        per_page: params.limit === 0 ? 0 : params.limit,
+        page: params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,
+      }),
+    { label: "getWatchlistPostings" },
+  );
 
   const total = result.found ?? 0;
   if (total === 0 || params.limit === 0) return { postings: [], total };
@@ -1895,24 +1881,7 @@ async function _getWatchlistPostingsTypesense(
 
 /** Batched version for large watchlists (200+ companies). */
 async function _getWatchlistPostingsBatched(
-  params: {
-    companyIds: string[];
-    anyCompany?: boolean;
-    offset: number;
-    limit: number;
-    keywords?: string[];
-    locationIds?: number[];
-    occupationIds?: number[];
-    seniorityIds?: number[];
-    technologyIds?: number[];
-    workMode?: ("onsite" | "hybrid" | "remote")[];
-    employmentType?: string[];
-    salaryMin?: number;
-    salaryMax?: number;
-    experienceMin?: number;
-    experienceMax?: number;
-    languages?: string[];
-  },
+  params: WatchlistPostingQueryParams,
   userId: string | null,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
   const client = getSearchClient();
@@ -1946,12 +1915,16 @@ async function _getWatchlistPostingsBatched(
     batches.map((batch) => {
       const filterParts = [POSTING_BASE_FILTER, `company_id:[${batch.join(",")}]`];
       if (filterStr) filterParts.push(filterStr);
-      return client.collections("job_posting").documents().search({
-        q: keywordsQ,
-        query_by: "title",
-        filter_by: filterParts.join(" && "),
-        per_page: 0,
-      });
+      return withTypesenseRetry(
+        () =>
+          client.collections("job_posting").documents().search({
+            q: keywordsQ,
+            query_by: "title",
+            filter_by: filterParts.join(" && "),
+            per_page: 0,
+          }),
+        { label: "getWatchlistPostings.batched.count" },
+      );
     }),
   );
 
@@ -1965,14 +1938,18 @@ async function _getWatchlistPostingsBatched(
     batches.map((batch) => {
       const filterParts = [POSTING_BASE_FILTER, `company_id:[${batch.join(",")}]`];
       if (filterStr) filterParts.push(filterStr);
-      return client.collections("job_posting").documents().search({
-        q: keywordsQ,
-        query_by: "title",
-        filter_by: filterParts.join(" && "),
-        sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
-        per_page: needed,
-        page: 1,
-      });
+      return withTypesenseRetry(
+        () =>
+          client.collections("job_posting").documents().search({
+            q: keywordsQ,
+            query_by: "title",
+            filter_by: filterParts.join(" && "),
+            sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
+            per_page: needed,
+            page: 1,
+          }),
+        { label: "getWatchlistPostings.batched.rows" },
+      );
     }),
   );
 
@@ -2010,28 +1987,13 @@ async function _getWatchlistPostingsBatched(
   };
 }
 
-/** Postgres fallback for getWatchlistPostings (graceful degradation). */
-async function _getWatchlistPostingsPostgres(
-  params: {
-    companyIds: string[];
-    anyCompany?: boolean;
-    offset: number;
-    limit: number;
-    keywords?: string[];
-    locationIds?: number[];
-    occupationIds?: number[];
-    seniorityIds?: number[];
-    technologyIds?: number[];
-    workMode?: ("onsite" | "hybrid" | "remote")[];
-    employmentType?: string[];
-    salaryMin?: number;
-    salaryMax?: number;
-    experienceMin?: number;
-    experienceMax?: number;
-    languages?: string[];
+async function buildWatchlistPostgresWhereClause(
+  params: WatchlistPostingFilterParams,
+  options: {
+    activeOnly: boolean;
+    firstSeenAfter?: Date;
   },
-  userId: string | null,
-): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
+): Promise<SQL> {
   // Batched ancestor/descendant expansion: one recursive CTE per taxonomy
   // (not L per L seed IDs). The previous `Promise.all(ids.map(expand))`
   // fired L parallel recursive CTEs against `location` / `occupation` —
@@ -2047,14 +2009,19 @@ async function _getWatchlistPostingsPostgres(
       : undefined,
   ]);
 
-  // Mirrors the Typesense `POSTING_BASE_FILTER` so the Supabase fallback
-  // hides the same incomplete postings (issue #2917): non-empty title AND
-  // a description blob in R2 (description_r2_hash IS NOT NULL).
-  const clauses = [
-    sql`jp.is_active = true`,
+  // Mirrors the Typesense `POSTING_BASE_FILTER` / `POSTING_FLOW_FILTER`
+  // content-quality checks so the Supabase fallback hides the same
+  // incomplete postings: non-empty title AND an R2 description blob.
+  const clauses: SQL[] = [
     sql`jp.titles IS NOT NULL AND cardinality(jp.titles) > 0 AND btrim(jp.titles[1]) <> ''`,
     sql`jp.description_r2_hash IS NOT NULL`,
   ];
+  if (options.activeOnly) {
+    clauses.unshift(sql`jp.is_active = true`);
+  }
+  if (options.firstSeenAfter) {
+    clauses.push(sql`jp.first_seen_at >= ${options.firstSeenAfter}`);
+  }
 
   if (params.companyIds.length > 0) {
     const pgCompanyArray = `{${params.companyIds.join(",")}}`;
@@ -2118,7 +2085,36 @@ async function _getWatchlistPostingsPostgres(
   const localesClause = localesOrNoneClause(params.languages);
   if (localesClause) clauses.push(localesClause);
 
-  const whereClause = sql.join(clauses, sql` AND `);
+  return sql.join(clauses, sql` AND `);
+}
+
+async function _getWatchlistPostingYearCountPostgres(
+  params: WatchlistPostingFilterParams,
+): Promise<number> {
+  const oneYearAgo = new Date(Date.now() - 365 * 24 * 3600 * 1000);
+  const whereClause = await buildWatchlistPostgresWhereClause(params, {
+    activeOnly: false,
+    firstSeenAfter: oneYearAgo,
+  });
+
+  const [row] = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown; cnt: number }>(
+        sql`SELECT count(*)::int AS cnt FROM job_posting jp WHERE ${whereClause}`,
+      ),
+    { label: "getWatchlistPostingYearCountPostgres.count" },
+  );
+  return (row as unknown as { cnt: number })?.cnt ?? 0;
+}
+
+/** Postgres fallback for getWatchlistPostings (graceful degradation). */
+async function _getWatchlistPostingsPostgres(
+  params: WatchlistPostingQueryParams,
+  userId: string | null,
+): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
+  const whereClause = await buildWatchlistPostgresWhereClause(params, {
+    activeOnly: true,
+  });
 
   const [totalRow] = await withDbRetry(
     () =>

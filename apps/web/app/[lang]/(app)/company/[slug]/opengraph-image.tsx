@@ -1,19 +1,21 @@
 import { ImageResponse } from "next/og";
-import { getCompanyBySlug } from "@/lib/actions/company";
+import { getCompanyBySlug, type CompanyDetail } from "@/lib/actions/company";
 import { locales } from "@/lib/i18n";
+import {
+  companyOgCacheKey,
+  readCompanyOgCache,
+  shouldBypassCompanyOgCache,
+  writeCompanyOgCache,
+} from "@/lib/og/company-og-cache";
 
 export const alt = "Company jobs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// Long-cache (30 days) via explicit `Cache-Control` headers on the
-// ImageResponse — `'use cache'` doesn't apply (ImageResponse is a
-// class instance, not serializable for the runtime cache), and Next.js
-// doesn't auto-cache OG images outside the prerender window. Vercel
-// purges the CDN on every deploy so `immutable` is safe.
-// `generateStaticParams` below covers the top-N companies at build
-// time so social-card crawl surges land on the prebake; long-tail
-// slugs render once per region per 30 days.
+// Long-cache via explicit headers. The durable cache key includes a
+// renderer hash, so unchanged deploys reuse R2 PNGs and renderer changes
+// naturally move to a new key.
 const CACHE_HEADERS = {
+  "Content-Type": contentType,
   "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
 };
 
@@ -23,7 +25,7 @@ import { join } from "node:path";
 /**
  * How many top companies (by active posting count) to prerender at build
  * time, across every supported locale. The actual count of cells baked
- * into the build is `OG_PRERENDER_TOP_N × locales.length` (4 today). At
+ * into the build is `getCompanyOgPrerenderTopN() × locales.length` (4 today). At
  * ~50 KB per PNG that's a ~40 MB increase to the build artifact for N=200.
  *
  * Long-tail companies still generate on first request and then live in
@@ -33,7 +35,13 @@ import { join } from "node:path";
  *
  * See issue #2645.
  */
-const OG_PRERENDER_TOP_N = 200;
+function getCompanyOgPrerenderTopN(): number {
+  const raw = process.env.COMPANY_OG_PRERENDER_TOP_N;
+  if (!raw) return 200;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return 200;
+  return Math.max(0, Math.min(parsed, 500));
+}
 
 /**
  * Pick the top-N companies to prerender. Fails the build only when
@@ -55,22 +63,39 @@ const OG_PRERENDER_TOP_N = 200;
 export async function generateStaticParams(): Promise<
   { lang: string; slug: string }[]
 > {
+  const prerenderTopN = getCompanyOgPrerenderTopN();
+  if (prerenderTopN === 0) return [];
+
   const isProductionBuild = process.env.VERCEL_ENV === "production";
   const hasTypesenseConfig = !!process.env.TYPESENSE_HOST;
   try {
-    const { getSearchClient } = await import(
-      "@/lib/search/typesense-client"
-    );
+    const [{ getSearchClient }, {
+      isRetryableError,
+      isTypesenseRateLimitError,
+      withTypesenseRetry,
+    }] = await Promise.all([
+      import("@/lib/search/typesense-client"),
+      import("@/lib/search/typesense-retry"),
+    ]);
     const client = getSearchClient();
-    const result = await client.collections("company").documents().search({
-      q: "*",
-      query_by: "name",
-      filter_by: "active_posting_count:>0",
-      sort_by: "active_posting_count:desc",
-      per_page: OG_PRERENDER_TOP_N,
-      page: 1,
-      include_fields: "slug",
-    });
+    const result = await withTypesenseRetry(
+      () =>
+        client.collections("company").documents().search({
+          q: "*",
+          query_by: "name",
+          filter_by: "active_posting_count:>0",
+          sort_by: "active_posting_count:desc",
+          per_page: prerenderTopN,
+          page: 1,
+          include_fields: "slug",
+        }),
+      {
+        attempts: 5,
+        baseDelaysMs: [250, 500, 1000, 2000],
+        isRetryable: (err) => isRetryableError(err) || isTypesenseRateLimitError(err),
+        label: "company-og.generateStaticParams",
+      },
+    );
     const slugs = (result.hits ?? [])
       .map((h) => (h.document as Record<string, unknown>).slug)
       .filter((s): s is string => typeof s === "string");
@@ -104,41 +129,42 @@ const fontPromise = readFile(
   join(process.cwd(), "public/fonts/JetBrainsMono-Bold.ttf"),
 );
 
-export default async function OgImage({
-  params,
-}: {
-  params: Promise<{ lang: string; slug: string }>;
-}) {
-  const { slug, lang } = await params;
-  const [company, fontData] = await Promise.all([
-    getCompanyBySlug(slug, lang),
-    fontPromise,
-  ]);
-  if (!company) {
-    return new ImageResponse(
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#0a0a0a",
-          color: "#fafafa",
-          fontSize: 48,
-          fontFamily: "JetBrains Mono",
-        }}
-      >
-        Not Found
-      </div>,
-      {
-        ...size,
-        headers: CACHE_HEADERS,
-        fonts: [{ name: "JetBrains Mono", data: fontData, weight: 700, style: "normal" }],
-      },
-    );
-  }
+function asPngResponse(bytes: Uint8Array): Response {
+  const body = new Uint8Array(bytes.byteLength);
+  body.set(bytes);
+  return new Response(body.buffer, { headers: CACHE_HEADERS });
+}
 
+async function imageResponseToBytes(response: Response): Promise<Uint8Array> {
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+function renderNotFound(fontData: Buffer): ImageResponse {
+  return new ImageResponse(
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#0a0a0a",
+        color: "#fafafa",
+        fontSize: 48,
+        fontFamily: "JetBrains Mono",
+      }}
+    >
+      Not Found
+    </div>,
+    {
+      ...size,
+      headers: CACHE_HEADERS,
+      fonts: [{ name: "JetBrains Mono", data: fontData, weight: 700, style: "normal" }],
+    },
+  );
+}
+
+function renderCompanyImage(company: CompanyDetail, fontData: Buffer): ImageResponse {
   const hasIcon = company.icon && company.icon.startsWith("http");
 
   return new ImageResponse(
@@ -230,4 +256,30 @@ export default async function OgImage({
       ],
     },
   );
+}
+
+export default async function OgImage({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>;
+}) {
+  const { slug, lang } = await params;
+  const key = companyOgCacheKey(lang, slug);
+  if (!shouldBypassCompanyOgCache()) {
+    const cached = await readCompanyOgCache(key);
+    if (cached) return asPngResponse(cached);
+  }
+
+  const [company, fontData] = await Promise.all([
+    getCompanyBySlug(slug, lang),
+    fontPromise,
+  ]);
+  if (!company) {
+    return renderNotFound(fontData);
+  }
+
+  const rendered = renderCompanyImage(company, fontData);
+  const bytes = await imageResponseToBytes(rendered);
+  await writeCompanyOgCache(key, bytes);
+  return asPngResponse(bytes);
 }

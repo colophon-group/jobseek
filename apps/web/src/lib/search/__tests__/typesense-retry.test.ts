@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { isRetryableError, withTypesenseRetry } from "../typesense-retry";
+import {
+  isRetryableError,
+  isTypesenseRateLimitError,
+  isTypesenseUnavailableError,
+  withTypesenseRetry,
+} from "../typesense-retry";
 
 /**
  * Coverage for the #3008 cold-start retry helper. A cold Vercel
@@ -72,6 +77,7 @@ describe("isRetryableError", () => {
     expect(isRetryableError(_httpStatus(403, "Forbidden"))).toBe(false);
     expect(isRetryableError(_httpStatus(404, "Not Found"))).toBe(false);
     expect(isRetryableError(_httpStatus(400, "Bad Parameter"))).toBe(false);
+    expect(isRetryableError(_httpStatus(429, "Too Many Requests"))).toBe(false);
   });
 
   it("does NOT match arbitrary errors", () => {
@@ -84,6 +90,34 @@ describe("isRetryableError", () => {
     expect(isRetryableError(undefined)).toBe(false);
     expect(isRetryableError("string")).toBe(false);
     expect(isRetryableError(42)).toBe(false);
+  });
+});
+
+describe("isTypesenseRateLimitError", () => {
+  it("matches explicit HTTP 429 errors", () => {
+    expect(isTypesenseRateLimitError(_httpStatus(429, "Too Many Requests"))).toBe(true);
+  });
+
+  it("matches Typesense SDK HTTP-code messages", () => {
+    expect(isTypesenseRateLimitError(new Error("Request failed with HTTP code 429"))).toBe(true);
+  });
+
+  it("recurses into cause", () => {
+    const outer = new Error("wrapped");
+    (outer as Error & { cause: unknown }).cause = _httpStatus(429, "Too Many Requests");
+    expect(isTypesenseRateLimitError(outer)).toBe(true);
+  });
+});
+
+describe("isTypesenseUnavailableError", () => {
+  it("matches connection-class errors and config-unavailable errors", () => {
+    expect(isTypesenseUnavailableError(_econnreset())).toBe(true);
+    expect(isTypesenseUnavailableError(new Error("TYPESENSE_SEARCH_KEY is not set"))).toBe(true);
+  });
+
+  it("does NOT classify HTTP 429 as unavailable", () => {
+    expect(isTypesenseUnavailableError(_httpStatus(429, "Too Many Requests"))).toBe(false);
+    expect(isTypesenseUnavailableError(new Error("Request failed with HTTP code 429"))).toBe(false);
   });
 });
 

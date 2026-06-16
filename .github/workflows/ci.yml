@@ -201,13 +201,13 @@ jobs:
       # exercise the secretless fallback path.
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
-      # Build-time-readable Typesense client config. Present as Production
-      # secrets; provider falls back gracefully on connection error so the
-      # literal placeholder is fine when secrets are missing in forks, but
-      # in the Production environment they resolve.
-      TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
-      TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
-      TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+      # This job classifies route cacheability. It must not depend on
+      # external Typesense availability or latency; trusted runs still have
+      # DATABASE_URL for blog company mentions, and fork/secretless runs
+      # exercise the missing-mention fallback path.
+      TYPESENSE_HOST: ""
+      TYPESENSE_PORT: ""
+      TYPESENSE_PROTOCOL: ""
       # Build-time-only stubs (see job-level comment above).
       BETTER_AUTH_SECRET: ci-stub-better-auth-secret-not-used-at-build-time
       BETTER_AUTH_URL: http://localhost:3000
@@ -222,6 +222,9 @@ jobs:
       RESEND_API_KEY: ci-stub
       UPSTASH_REDIS_REST_URL: https://stub.invalid
       UPSTASH_REDIS_REST_TOKEN: ci-stub
+      # It should also not spend build time rendering hundreds of company
+      # OG PNGs; unit tests cover the OG prebake query and renderer.
+      COMPANY_OG_PRERENDER_TOP_N: "0"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 

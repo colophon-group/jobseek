@@ -59,6 +59,32 @@ vi.mock("@/lib/search/typesense-filters", () => ({
   POSTING_BASE_FILTER: "is_active:true && has_content:!=false",
   buildFilterString: mocks.buildFilterString,
 }));
+vi.mock("@/lib/search/typesense-retry", () => ({
+  isRetryableError: (err: unknown) =>
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: unknown }).code === "ECONNRESET",
+  isTypesenseRateLimitError: (err: unknown) =>
+    typeof err === "object" &&
+    err !== null &&
+    (
+      ("httpStatus" in err && (err as { httpStatus?: unknown }).httpStatus === 429) ||
+      ("message" in err &&
+        typeof (err as { message?: unknown }).message === "string" &&
+        (err as { message: string }).message.includes("HTTP code 429"))
+    ),
+  isTypesenseUnavailableError: (err: unknown) =>
+    typeof err === "object" &&
+    err !== null &&
+    (
+      ("code" in err && (err as { code?: unknown }).code === "ECONNRESET") ||
+      ("message" in err &&
+        typeof (err as { message?: unknown }).message === "string" &&
+        (err as { message: string }).message.includes("TYPESENSE_SEARCH_KEY"))
+    ),
+  withTypesenseRetry: (fn: () => Promise<unknown>) => fn(),
+}));
 vi.mock("@/lib/search/pg-filters", () => ({ localesOrNoneClause: vi.fn() }));
 vi.mock("@/lib/actions/search-input", () => ({ parseSearchFilters: vi.fn() }));
 vi.mock("@/lib/search/params", () => ({
@@ -378,8 +404,8 @@ describe("getCompanyBySlug — Postgres fallback", () => {
     founded_year: 2015,
   };
 
-  it("falls through to Postgres when Typesense throws", async () => {
-    searchMock.mockRejectedValue(new Error("typesense down"));
+  it("falls through to Postgres when Typesense is unavailable", async () => {
+    searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
     dbExecuteMock.mockResolvedValue([_pgRow]);
 
     const out = await getCompanyBySlug("acme", "en");
@@ -389,12 +415,12 @@ describe("getCompanyBySlug — Postgres fallback", () => {
     expect(dbExecuteMock).toHaveBeenCalled();
   });
 
-  it("logs `[company] Typesense failed, falling back to Postgres` when Typesense throws (so fallback rate is queryable per #3175)", async () => {
+  it("logs `[company] Typesense failed, falling back to Postgres` when Typesense is unavailable (so fallback rate is queryable per #3175)", async () => {
     /** Issue colophon-group/jobseek#3175 — the silent `} catch {}` made a
      * Cloudflare-tunnel outage indistinguishable from healthy traffic in
      * the logs. Matches the precedent set by `searchCompaniesForWatchlist`
      * and `_fetchSimilarUnfiltered` in the same file. */
-    searchMock.mockRejectedValue(new Error("typesense unreachable"));
+    searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
     dbExecuteMock.mockResolvedValue([_pgRow]);
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -408,8 +434,18 @@ describe("getCompanyBySlug — Postgres fallback", () => {
     );
     expect(fallbackCalls).toHaveLength(1);
     expect(fallbackCalls[0][1]).toBeInstanceOf(Error);
-    expect((fallbackCalls[0][1] as Error).message).toBe("typesense unreachable");
+    expect((fallbackCalls[0][1] as Error).message).toBe("TYPESENSE_SEARCH_KEY is not set");
     errorSpy.mockRestore();
+  });
+
+  it("does not fall through to Postgres when Typesense returns HTTP 429", async () => {
+    const rateLimitError = Object.assign(new Error("Request failed with HTTP code 429"), {
+      httpStatus: 429,
+    });
+    searchMock.mockRejectedValue(rateLimitError);
+
+    await expect(getCompanyBySlug("acme", "en")).rejects.toBe(rateLimitError);
+    expect(dbExecuteMock).not.toHaveBeenCalled();
   });
 
   it("does NOT log the fallback event when Typesense returns 0 hits (only thrown errors signal an outage)", async () => {
@@ -475,7 +511,7 @@ describe("getCompanyBySlug — Postgres fallback", () => {
      * succeeded — a flake, not a structural break. The retry helper
      * must turn this single transient error into a successful query
      * so the prerender finishes. */
-    searchMock.mockRejectedValue(new Error("typesense down"));
+    searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
     const econn = new Error("read ECONNRESET") as Error & { code: string };
     econn.code = "ECONNRESET";
     dbExecuteMock
@@ -536,7 +572,7 @@ describe("getCompanyBySlug — caching contract", () => {
      * propagate so Suspense / error boundaries trigger; silently
      * nulling here would surface as a 404 instead of a 5xx and hide
      * the outage. */
-    searchMock.mockRejectedValue(new Error("typesense down"));
+    searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
     const boom = new Error("postgres pool exhausted");
     dbExecuteMock.mockRejectedValue(boom);
 

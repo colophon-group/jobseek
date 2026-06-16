@@ -138,6 +138,14 @@ Lift `'use cache'` functions to module scope unless you have a specific reason t
 
 ## Recipes
 
+### Company OG images
+
+Company Open Graph PNGs are not stored in Next's `'use cache'` layer because
+`ImageResponse` bodies are binary route responses, not serializable component
+data. They use a renderer-versioned R2 cache instead. See
+[company-og-cache.md](./company-og-cache.md) for the hash inputs, force-rerender
+controls, and build-time behavior.
+
 ### Per-locale `<html lang>` (the #2826 use case)
 
 Every HTML route in jseek lives under `/<locale>/...`. So `app/[lang]/layout.tsx` is the de-facto root layout — it owns `<html>`/`<body>` and reads `locale` from the route param. There is no top-level `app/layout.tsx`; routes outside `[lang]/` are route handlers (sitemap, robots, OG images, `/api/*`) that don't render an HTML shell.

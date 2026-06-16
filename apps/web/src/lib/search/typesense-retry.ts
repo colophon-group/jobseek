@@ -80,6 +80,11 @@ const RETRYABLE_MESSAGE_FRAGMENTS = [
  */
 const RETRYABLE_HTTP_STATUSES = new Set([502, 503, 504]);
 
+const CONFIG_UNAVAILABLE_MESSAGE_FRAGMENTS = [
+  "typesense connection not configured",
+  "typesense_search_key is not set",
+];
+
 export function isRetryableError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const e = err as {
@@ -105,6 +110,42 @@ export function isRetryableError(err: unknown): boolean {
   // `cause` chain — recurse once to catch the inner ECONNRESET etc.
   if (e.cause !== undefined && e.cause !== err) {
     return isRetryableError(e.cause);
+  }
+  return false;
+}
+
+export function isTypesenseRateLimitError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as {
+    message?: unknown;
+    httpStatus?: unknown;
+    cause?: unknown;
+  };
+  if (e.httpStatus === 429) return true;
+  if (typeof e.message === "string" && e.message.toLowerCase().includes("http code 429")) {
+    return true;
+  }
+  if (e.cause !== undefined && e.cause !== err) {
+    return isTypesenseRateLimitError(e.cause);
+  }
+  return false;
+}
+
+export function isTypesenseUnavailableError(err: unknown): boolean {
+  if (isRetryableError(err)) return true;
+  if (!err || typeof err !== "object") return false;
+  const e = err as {
+    message?: unknown;
+    cause?: unknown;
+  };
+  if (typeof e.message === "string") {
+    const lower = e.message.toLowerCase();
+    if (CONFIG_UNAVAILABLE_MESSAGE_FRAGMENTS.some((frag) => lower.includes(frag))) {
+      return true;
+    }
+  }
+  if (e.cause !== undefined && e.cause !== err) {
+    return isTypesenseUnavailableError(e.cause);
   }
   return false;
 }

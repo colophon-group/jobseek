@@ -25,6 +25,8 @@ const { searchMock } = vi.hoisted(() => ({
   searchMock: vi.fn(),
 }));
 
+vi.mock("server-only", () => ({}));
+
 vi.mock("@/lib/search/typesense-client", () => ({
   getSearchClient: () => ({
     collections: () => ({
@@ -48,6 +50,7 @@ describe("opengraph-image generateStaticParams", () => {
   let warnSpy: MockInstance<typeof console.warn>;
   const ORIGINAL_VERCEL_ENV = process.env.VERCEL_ENV;
   const ORIGINAL_TYPESENSE_HOST = process.env.TYPESENSE_HOST;
+  const ORIGINAL_OG_PRERENDER_TOP_N = process.env.COMPANY_OG_PRERENDER_TOP_N;
 
   beforeEach(() => {
     searchMock.mockReset();
@@ -68,6 +71,11 @@ describe("opengraph-image generateStaticParams", () => {
       delete process.env.TYPESENSE_HOST;
     } else {
       process.env.TYPESENSE_HOST = ORIGINAL_TYPESENSE_HOST;
+    }
+    if (ORIGINAL_OG_PRERENDER_TOP_N === undefined) {
+      delete process.env.COMPANY_OG_PRERENDER_TOP_N;
+    } else {
+      process.env.COMPANY_OG_PRERENDER_TOP_N = ORIGINAL_OG_PRERENDER_TOP_N;
     }
   });
 
@@ -128,12 +136,27 @@ describe("opengraph-image generateStaticParams", () => {
     async () => {
       delete process.env.VERCEL_ENV;
       delete process.env.TYPESENSE_HOST;
-      searchMock.mockRejectedValue(new Error("ECONNREFUSED"));
+      searchMock.mockRejectedValue(new Error("invalid request"));
 
       const result = await generateStaticParams();
 
       expect(result).toEqual([]);
       expect(warnSpy).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it(
+    "COMPANY_OG_PRERENDER_TOP_N=0 skips Typesense prebake",
+    async () => {
+      process.env.VERCEL_ENV = "production";
+      process.env.TYPESENSE_HOST = "typesense.example.com";
+      process.env.COMPANY_OG_PRERENDER_TOP_N = "0";
+
+      const result = await generateStaticParams();
+
+      expect(result).toEqual([]);
+      expect(searchMock).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
     },
   );
 

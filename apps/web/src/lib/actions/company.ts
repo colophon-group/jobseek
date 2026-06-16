@@ -19,12 +19,22 @@ import { expandOccupationIdsBatch } from "@/lib/actions/taxonomy";
 import { ANON_MAX_COMPANIES, ANON_MAX_POSTINGS } from "@/lib/search/constants";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
+import {
+  isRetryableError as isRetryableTypesenseError,
+  isTypesenseRateLimitError,
+  isTypesenseUnavailableError,
+  withTypesenseRetry,
+} from "@/lib/search/typesense-retry";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { getCurrencyRates } from "@/lib/actions/search";
 import { firstOf, idsOrUndefined, parseRangeParam } from "@/lib/search/params";
 import { convertToEur } from "@/lib/salary";
 import { canonicalStringCompare } from "@/lib/sort";
+
+function shouldRetryCompanyTypesenseRead(err: unknown): boolean {
+  return isRetryableTypesenseError(err) || isTypesenseRateLimitError(err);
+}
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
 
@@ -138,6 +148,7 @@ export async function searchCompaniesForWatchlist(params: {
   try {
     return await _searchCompaniesForWatchlistTypesense(params);
   } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
     console.error("[searchCompaniesForWatchlist] Typesense failed, falling back to Postgres", err);
     return _searchCompaniesForWatchlistPostgres(params);
   }
@@ -698,6 +709,9 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
   } catch (err) {
     typesenseError = err;
   }
+  if (typesenseError && !isTypesenseUnavailableError(typesenseError)) {
+    throw typesenseError;
+  }
   if (!process.env.DATABASE_URL) {
     if (typesenseError) {
       console.error("[company] Typesense failed and Postgres fallback is unavailable", typesenseError);
@@ -741,11 +755,20 @@ async function _fetchCompanyBySlugFromTypesense(
 ): Promise<CompanyDetail | null> {
   if (!SLUG_SHAPE.test(slug)) return null;
   const client = getSearchClient();
-  const result = await client.collections("company").documents().search({
-    q: "*",
-    filter_by: `slug:=${slug}`,
-    per_page: 1,
-  });
+  const result = await withTypesenseRetry(
+    () =>
+      client.collections("company").documents().search({
+        q: "*",
+        filter_by: `slug:=${slug}`,
+        per_page: 1,
+      }),
+    {
+      attempts: 5,
+      baseDelaysMs: [250, 500, 1000, 2000],
+      isRetryable: shouldRetryCompanyTypesenseRead,
+      label: `companyBySlug[${slug}]`,
+    },
+  );
   const hit = result.hits?.[0]?.document as Record<string, unknown> | undefined;
   if (!hit) return null;
 
