@@ -26,6 +26,9 @@ concurrency:
   group: prune-company-og-cache
   cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   prune:
     name: Prune stale company OG versions
