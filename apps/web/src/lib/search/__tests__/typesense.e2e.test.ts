@@ -699,7 +699,7 @@ describe("search()", () => {
 // =====================================================================
 
 describe("listTopCompanies()", () => {
-  it("unfiltered returns companies sorted by posting count", async () => {
+  it("unfiltered returns companies sorted by freshest posting", async () => {
     if (skipIfUnavailable()) return;
 
     const result = await provider.listTopCompanies({
@@ -711,10 +711,16 @@ describe("listTopCompanies()", () => {
     expect(result.companies.length).toBeGreaterThan(0);
     expect(result.totalCompanies).toBeGreaterThan(0);
 
-    // Companies should be sorted by activeMatches descending
+    // Companies should be sorted by each company's newest visible posting.
     for (let i = 1; i < result.companies.length; i++) {
-      expect(result.companies[i - 1].activeMatches).toBeGreaterThanOrEqual(
-        result.companies[i].activeMatches,
+      const previousNewest = new Date(
+        result.companies[i - 1].postings[0].firstSeenAt,
+      ).getTime();
+      const currentNewest = new Date(
+        result.companies[i].postings[0].firstSeenAt,
+      ).getTime();
+      expect(previousNewest).toBeGreaterThanOrEqual(
+        currentNewest,
       );
     }
   });

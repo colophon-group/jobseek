@@ -297,47 +297,51 @@ export class TypesenseBrowserProvider implements SearchProvider {
     offset: number,
     limit: number,
   ): Promise<SearchResponse> {
-    const companyResults = await searchOne<CompanyDoc>(cfg, "company", {
-      q: "*",
-      filter_by: "active_posting_count:>0",
-      sort_by: "active_posting_count:desc",
-      per_page: limit,
-      page: Math.floor(offset / limit) + 1,
-    });
-    const totalCompanies = companyResults.found;
-    const hits = companyResults.hits ?? [];
-    if (hits.length === 0) return { companies: [], totalCompanies };
-
-    const companyIds = hits.map((h) => h.document.id);
-    const compMap = new Map<string, CompanyDoc>(hits.map((h) => [h.document.id, h.document]));
     const postingResults = await searchOne<JobPostingDoc>(cfg, "job_posting", {
       q: "*",
-      filter_by: `company_id:[${companyIds.join(",")}] && ${POSTING_BASE_FILTER}`,
+      filter_by: POSTING_BASE_FILTER,
       group_by: "company_id",
       group_limit: 10,
       sort_by: "first_seen_at:desc",
+      per_page: limit,
+      page: Math.floor(offset / limit) + 1,
+      facet_by: "company_id",
+      facet_strategy: "exhaustive",
+      max_facet_values: 1,
+    });
+    const groupedHits = (postingResults.grouped_hits ?? []) as GroupedHit<JobPostingDoc>[];
+    const totalCompanies =
+      postingResults.facet_counts?.[0]?.stats?.total_values ?? groupedHits.length;
+    if (groupedHits.length === 0) return { companies: [], totalCompanies };
+
+    const companyIds = groupedHits.map((g) => g.hits[0].document.company_id);
+    const companyResults = await searchOne<CompanyDoc>(cfg, "company", {
+      q: "*",
+      filter_by: `id:[${companyIds.join(",")}]`,
       per_page: companyIds.length,
     });
-
-    const groupMap = new Map<string, GroupedHit<JobPostingDoc>>(
-      (postingResults.grouped_hits ?? []).map(
-        (g) => [g.hits[0].document.company_id, g] as [string, GroupedHit<JobPostingDoc>],
-      ),
+    const compMap = new Map<string, CompanyDoc>(
+      (companyResults.hits ?? []).map((h) => [h.document.id, h.document]),
     );
 
-    const companies: SearchResultCompany[] = companyIds
-      .map((cid) => {
+    const companies: SearchResultCompany[] = groupedHits
+      .map((g) => {
+        const first = g.hits[0].document;
+        const cid = first.company_id;
         const compDoc = compMap.get(cid);
-        const g = groupMap.get(cid);
-        if (!compDoc) return null;
         return {
-          company: { id: cid, name: compDoc.name, slug: compDoc.slug, icon: compDoc.icon ?? null },
-          activeMatches: compDoc.active_posting_count,
-          yearMatches: compDoc.year_posting_count,
-          postings: g ? g.hits.map((h) => mapHitToPosting(h)) : [],
+          company: {
+            id: cid,
+            name: compDoc?.name ?? first.company_name,
+            slug: compDoc?.slug ?? first.company_slug,
+            icon: compDoc?.icon ?? first.company_icon ?? null,
+          },
+          activeMatches: compDoc?.active_posting_count ?? g.found ?? g.hits.length,
+          yearMatches: compDoc?.year_posting_count ?? 0,
+          postings: g.hits.map((h) => mapHitToPosting(h)),
         } satisfies SearchResultCompany;
       })
-      .filter((c): c is SearchResultCompany => c !== null);
+      .filter((c) => c.postings.length > 0);
 
     return { companies, totalCompanies };
   }

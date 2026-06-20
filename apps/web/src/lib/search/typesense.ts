@@ -400,39 +400,6 @@ export class TypesenseSearchProvider implements SearchProvider {
   ): Promise<SearchResponse> {
     const client = getSearchClient();
 
-    // Query company collection sorted by active_posting_count
-    const companyResults: TsSearchResponse<CompanyDoc> = await withTypesenseRetry(
-      () =>
-        client
-          .collections<CompanyDoc>("company")
-          .documents()
-          .search({
-            q: "*",
-            filter_by: "active_posting_count:>0",
-            sort_by: "active_posting_count:desc",
-            per_page: limit,
-            page: Math.floor(offset / limit) + 1,
-          }),
-      { label: "topCompaniesUnfiltered" },
-    );
-
-    const totalCompanies = companyResults.found;
-    const companyHits = companyResults.hits ?? [];
-    if (companyHits.length === 0) {
-      return { companies: [], totalCompanies };
-    }
-
-    const companyIds = companyHits.map(
-      (h: SearchResponseHit<CompanyDoc>) => h.document.id,
-    );
-    const companyMap = new Map<string, CompanyDoc>(
-      companyHits.map(
-        (h: SearchResponseHit<CompanyDoc>) =>
-          [h.document.id, h.document] as [string, CompanyDoc],
-      ),
-    );
-
-    // Fetch postings for these companies
     const postingResults: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
       () =>
         client
@@ -440,43 +407,67 @@ export class TypesenseSearchProvider implements SearchProvider {
           .documents()
           .search({
             q: "*",
-            filter_by: `company_id:[${companyIds.join(",")}] && ${POSTING_BASE_FILTER}`,
+            filter_by: POSTING_BASE_FILTER,
             group_by: "company_id",
             group_limit: 10,
             sort_by: "first_seen_at:desc",
-            per_page: companyIds.length,
+            per_page: limit,
+            page: Math.floor(offset / limit) + 1,
+            facet_by: "company_id",
+            facet_strategy: "exhaustive",
+            max_facet_values: 1,
           }),
-      { label: "topCompaniesUnfilteredPostings" },
+      { label: "topCompaniesUnfiltered" },
     );
 
     const groupedHits = (postingResults.grouped_hits ?? []) as GroupedHit[];
-    const groupMap = new Map<string, GroupedHit>(
-      groupedHits.map(
-        (g: GroupedHit) =>
-          [g.hits[0].document.company_id, g] as [string, GroupedHit],
+    const totalCompanies =
+      postingResults.facet_counts?.[0]?.stats?.total_values ?? groupedHits.length;
+    if (groupedHits.length === 0) {
+      return { companies: [], totalCompanies };
+    }
+
+    const companyIds = groupedHits.map(
+      (g: GroupedHit) => g.hits[0].document.company_id,
+    );
+    const companyResults: TsSearchResponse<CompanyDoc> = await withTypesenseRetry(
+      () =>
+        client
+          .collections<CompanyDoc>("company")
+          .documents()
+          .search({
+            q: "*",
+            filter_by: `id:[${companyIds.join(",")}]`,
+            per_page: companyIds.length,
+          }),
+      { label: "topCompaniesUnfilteredCompanies" },
+    );
+
+    const companyMap = new Map<string, CompanyDoc>(
+      (companyResults.hits ?? []).map(
+        (h: SearchResponseHit<CompanyDoc>) =>
+          [h.document.id, h.document] as [string, CompanyDoc],
       ),
     );
 
-    const companies: SearchResultCompany[] = companyIds
-      .map((companyId: string) => {
+    const companies: SearchResultCompany[] = groupedHits
+      .map((group: GroupedHit) => {
+        const firstHit = group.hits[0].document;
+        const companyId = firstHit.company_id;
         const compDoc = companyMap.get(companyId);
-        const group = groupMap.get(companyId);
-        if (!compDoc) return null;
         return {
           company: {
             id: companyId,
-            name: compDoc.name,
-            slug: compDoc.slug,
-            icon: compDoc.icon ?? null,
+            name: compDoc?.name ?? firstHit.company_name,
+            slug: compDoc?.slug ?? firstHit.company_slug,
+            icon: compDoc?.icon ?? firstHit.company_icon ?? null,
           },
-          activeMatches: compDoc.active_posting_count,
-          yearMatches: compDoc.year_posting_count,
-          postings: group
-            ? group.hits.map((hit: JobPostingHit) => mapHitToPosting(hit))
-            : [],
+          activeMatches: compDoc?.active_posting_count ?? group.found ?? group.hits.length,
+          yearMatches: compDoc?.year_posting_count ?? 0,
+          postings: group.hits.map((hit: JobPostingHit) => mapHitToPosting(hit)),
         };
       })
-      .filter((c): c is SearchResultCompany => c !== null);
+      .filter((c) => c.postings.length > 0);
 
     return { companies, totalCompanies };
   }
