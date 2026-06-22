@@ -36,14 +36,15 @@ function postingHit(
   companyId: string,
   companyName: string,
   firstSeenAt: number,
+  title = `${companyName} role`,
 ) {
   return {
     document: {
-      id: `${companyId}-posting`,
+      id: `${companyId}-${firstSeenAt}`,
       company_id: companyId,
       company_name: companyName,
       company_slug: companyId,
-      title: `${companyName} role`,
+      title,
       is_active: true,
       location_ids: [],
       location_names: [],
@@ -76,6 +77,8 @@ function companyHit(
 
 const freshPosting = postingHit("fresh-co", "Fresh Co", NOW);
 const stalePosting = postingHit("stale-bigco", "Stale BigCo", NOW - 16 * DAY);
+const olderRole = postingHit("mixed-co", "Mixed Co", NOW - 3 * DAY, "Older role");
+const freshRole = postingHit("mixed-co", "Mixed Co", NOW - DAY, "Fresh role");
 
 function freshnessGroupedResponse() {
   return {
@@ -97,6 +100,29 @@ function companyResponse() {
       companyHit("stale-bigco", "Stale BigCo", 50_000, 50_000),
       companyHit("fresh-co", "Fresh Co", 1, 1),
     ],
+  };
+}
+
+function outOfOrderPostingsResponse() {
+  return {
+    grouped_hits: [
+      {
+        group_key: ["mixed-co"],
+        found: 2,
+        // Reproduces the screenshot class: an older posting appears above a
+        // fresher one inside the same anonymous company card.
+        hits: [olderRole, freshRole],
+      },
+    ],
+    facet_counts: [
+      { field_name: "company_id", counts: [], stats: { total_values: 1 } },
+    ],
+  };
+}
+
+function mixedCompanyResponse() {
+  return {
+    hits: [companyHit("mixed-co", "Mixed Co", 2, 2)],
   };
 }
 
@@ -154,6 +180,28 @@ describe("TypesenseSearchProvider.listTopCompanies", () => {
         per_page: 2,
       },
     });
+  });
+
+  it("orders postings inside anonymous default company cards by freshness", async () => {
+    const provider = new TypesenseSearchProvider();
+
+    mocks.search.mockImplementation(async (collection: string) => {
+      if (collection === "job_posting") return outOfOrderPostingsResponse();
+      if (collection === "company") return mixedCompanyResponse();
+      throw new Error(`unexpected collection: ${collection}`);
+    });
+
+    const result = await provider.listTopCompanies({
+      languages: [],
+      locale: "en",
+      offset: 0,
+      limit: 1,
+    });
+
+    expect(result.companies[0].postings.map((p) => p.title)).toEqual([
+      "Fresh role",
+      "Older role",
+    ]);
   });
 });
 
@@ -219,5 +267,43 @@ describe("TypesenseBrowserProvider.listTopCompanies", () => {
         per_page: "2",
       },
     });
+  });
+
+  it("orders browser-fetched anonymous card postings by freshness", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url === "/api/typesense-key") {
+          return Response.json({
+            apiKey: "browser-key",
+            host: "typesense.example",
+            port: 443,
+            protocol: "https",
+            expiresAt: Date.now() + 60_000,
+          });
+        }
+
+        const parsed = new URL(url);
+        const collection = parsed.pathname.match(/\/collections\/([^/]+)/)?.[1];
+        if (!collection) throw new Error(`unexpected URL: ${url}`);
+        if (collection === "job_posting") return Response.json(outOfOrderPostingsResponse());
+        if (collection === "company") return Response.json(mixedCompanyResponse());
+        throw new Error(`unexpected collection: ${collection}`);
+      }),
+    );
+
+    const provider = new TypesenseBrowserProvider();
+    const result = await provider.listTopCompanies({
+      languages: [],
+      locale: "en",
+      offset: 0,
+      limit: 1,
+    });
+
+    expect(result.companies[0].postings.map((p) => p.title)).toEqual([
+      "Fresh role",
+      "Older role",
+    ]);
   });
 });

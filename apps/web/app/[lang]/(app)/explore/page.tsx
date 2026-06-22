@@ -7,6 +7,12 @@ import { buildAlternates } from "@/lib/seo";
 import { fetchExploreDefaults } from "@/lib/actions/explore-data";
 import { ExploreContent } from "./explore-content";
 
+const EXPLORE_DEFAULTS_CACHE_LIFE = {
+  stale: CACHE_TTL_SHORT,
+  revalidate: CACHE_TTL_SHORT,
+  expire: CACHE_TTL_SHORT * 5,
+} as const;
+
 // Cached for 60s. The anonymous, no-filter explore page is rendered
 // server-side via `fetchExploreDefaults` and embedded as `initialData`.
 // `ExploreContent` is a client component that re-fetches a personalized
@@ -53,7 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function AppPage({ params }: Props) {
   "use cache";
-  cacheLife({ revalidate: CACHE_TTL_SHORT });
+  cacheLife(EXPLORE_DEFAULTS_CACHE_LIFE);
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const initialData = await fetchExploreDefaults({ locale });
