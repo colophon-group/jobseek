@@ -886,15 +886,14 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_five_strike_disable_skips_delist_if_recently_successful(
+    async def test_five_strike_failure_stays_retryable_if_recently_successful(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
         """Recency gate: a board that succeeded inside the 24h window
-        but is now disabled (e.g. a brief greenhouse-wide outage that
-        burned through the 5-strike backoff in ~2.5h) MUST NOT have
-        its postings tombstoned. Mass-deleting them on a transient
-        provider blip would churn search results and IndexNow on
-        recovery for no real signal.
+        and burns through the 5-strike backoff remains retryable as
+        ``suspect``. Disabling it would freeze active postings on a
+        board the scheduler never polls again; delisting it would churn
+        search results and IndexNow during short provider outages.
         """
         from datetime import UTC, datetime, timedelta
 
@@ -902,8 +901,10 @@ class TestProcessOneBoard:
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("transient outage")
+        # _RECORD_FAILURE kept the board enabled because last_success_at
+        # is inside the 24h freshness window.
         conn.fetchrow.return_value = {
-            "is_enabled": False,
+            "is_enabled": True,
             "last_success_at": datetime.now(tz=UTC) - timedelta(hours=2),
         }
         board = _mock_board()
@@ -1473,6 +1474,10 @@ class TestInsertSqlContract:
         assert "RETURNING" in _RECORD_FAILURE
         assert "is_enabled" in _RECORD_FAILURE
         assert "last_success_at" in _RECORD_FAILURE
+
+    def test_record_failure_keeps_recent_success_boards_retryable(self):
+        assert "last_success_at < now() - interval '24 hours'" in _RECORD_FAILURE
+        assert "THEN 'suspect'" in _RECORD_FAILURE
 
     def test_delist_board_postings_returns_ids(self):
         # RETURNING id is what lets _delist_and_count_gone size the

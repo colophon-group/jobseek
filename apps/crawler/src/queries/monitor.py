@@ -147,16 +147,10 @@ RETURNING board_status
 
 # RETURNING ``last_success_at`` + the post-update ``is_enabled`` lets
 # the Python caller detect the single transition from enabled →
-# disabled and apply a recency gate before delisting. The board record
-# the caller already holds (from ``_FETCH_DUE_BOARDS``) is guaranteed
-# ``is_enabled=true`` (otherwise it wouldn't have been claimed), so
-# any post-update ``is_enabled=false`` is a fresh transition — no need
-# for a fragile ``consecutive_failures = N`` equality check that breaks
-# the moment ops manually re-enables a board without zeroing the
-# counter. Without this hand-off, 5-strike disables left active
-# postings stranded on a board the scheduler never polls again — a
-# phantom-active bleed that also dropped the corresponding ``gone``
-# Prometheus counter on the floor.
+# disabled and delist postings when the board is truly stale. A
+# recent-success board stays enabled as ``suspect`` after strike #5 so
+# the scheduler retries it after the backoff instead of freezing active
+# postings forever after a short provider outage.
 _RECORD_FAILURE = """
 UPDATE job_board
 SET consecutive_failures = consecutive_failures + 1,
@@ -165,8 +159,20 @@ SET consecutive_failures = consecutive_failures + 1,
         (5 * pow(2, consecutive_failures)) || ' minutes',
         '1440 minutes'
     )::interval,
-    is_enabled = CASE WHEN consecutive_failures + 1 >= 5 THEN false ELSE is_enabled END,
-    board_status = CASE WHEN consecutive_failures + 1 >= 5 THEN 'disabled' ELSE board_status END,
+    is_enabled = CASE
+        WHEN consecutive_failures + 1 >= 5
+         AND (last_success_at IS NULL OR last_success_at < now() - interval '24 hours')
+        THEN false
+        ELSE is_enabled
+    END,
+    board_status = CASE
+        WHEN consecutive_failures + 1 >= 5
+         AND (last_success_at IS NULL OR last_success_at < now() - interval '24 hours')
+        THEN 'disabled'
+        WHEN consecutive_failures + 1 >= 5
+        THEN 'suspect'
+        ELSE board_status
+    END,
     lease_owner = NULL,
     leased_until = NULL,
     updated_at = now()
