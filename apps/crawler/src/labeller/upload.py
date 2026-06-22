@@ -292,22 +292,7 @@ def _accepted_by_date(run_date: str | None) -> dict[str, list[dict]]:
 
 
 def _all_local_counts() -> dict[str, int]:
-    """Count accepted postings under data_root for **every** date on disk.
-
-    Used to regenerate the README counts line on every upload — including
-    scoped ``--date X`` runs — so a per-date upload doesn't clobber the
-    multi-date breakdown previously shown on the dataset card. Scans the
-    full ``postings/`` tree regardless of the current run's scope.
-
-    Caveat: this is local-disk truth, not HuggingFace truth. If a previously-
-    uploaded date's local files were deleted or the data root moved, that
-    date will not appear in the regenerated counts line. The orchestrator's
-    daily flow keeps every date's accepted gold on disk, so this is the
-    intended behavior; if the local truth is gone we'd rather show what we
-    have than republish stale numbers. Race-wise, two concurrent ``--date``
-    uploads each see whatever was on disk at scan time; the daily flow
-    serializes uploads so this is not a hot path.
-    """
+    """Count accepted postings under data_root for every local date on disk."""
     base = data_root() / "postings"
     counts: dict[str, int] = {}
     if not base.exists():
@@ -330,6 +315,63 @@ def _all_local_counts() -> dict[str, int]:
             n += 1
         if n:
             counts[date_dir.name] = n
+    return counts
+
+
+def _remote_jsonl_counts(api) -> dict[str, int]:
+    """Count rows in the already-published HF ``data/*.jsonl`` files.
+
+    Scoped uploads stage only the current date's JSONL, while
+    ``upload_folder`` leaves other remote JSONLs untouched. The README count
+    line therefore has to start from remote truth and overlay the files this
+    upload is actually replacing; local-only history is not reliable in
+    temporary worktrees or backfill jobs.
+    """
+
+    try:
+        paths = api.list_repo_files(repo_id=HF_REPO, repo_type="dataset")
+    except Exception as e:  # pragma: no cover - exercised via CLI guard
+        raise UploadGuardError(
+            "could not read existing HuggingFace dataset files; refusing to "
+            "upload because README counts could be clobbered"
+        ) from e
+
+    counts: dict[str, int] = {}
+    with tempfile.TemporaryDirectory(prefix="labeller-hf-counts-") as workdir_str:
+        workdir = Path(workdir_str)
+        for hf_path in sorted(paths):
+            if not hf_path.startswith("data/") or not hf_path.endswith(".jsonl"):
+                continue
+            try:
+                local = api.hf_hub_download(
+                    repo_id=HF_REPO,
+                    filename=hf_path,
+                    repo_type="dataset",
+                    local_dir=str(workdir / Path(hf_path).stem),
+                )
+            except Exception as e:  # pragma: no cover - exercised via CLI guard
+                raise UploadGuardError(
+                    f"could not download existing {hf_path} from HuggingFace; "
+                    "refusing to upload because README counts could be clobbered"
+                ) from e
+
+            n = 0
+            with Path(local).open() as fh:
+                for line in fh:
+                    if line.strip():
+                        n += 1
+            if n:
+                counts[Path(hf_path).stem] = n
+    return counts
+
+
+def _readme_counts_for_upload(api, by_date: dict[str, list[dict]]) -> dict[str, int]:
+    counts = _remote_jsonl_counts(api)
+    for date, postings in by_date.items():
+        if postings:
+            counts[date] = len(postings)
+        else:
+            counts.pop(date, None)
     return counts
 
 
@@ -406,11 +448,15 @@ def push_to_hub(
                 for p in postings:
                     fh.write(json.dumps(p, ensure_ascii=False, default=str) + "\n")
 
-        # README counts cover **every** date on disk, not just the current
-        # scope (issue #2701). A per-date `--date X` upload otherwise rewrote
-        # README.md with a single-date counts line, silently clobbering the
-        # public multi-date breakdown.
-        counts_by_date = _all_local_counts()
+        from huggingface_hub import HfApi
+
+        api = HfApi(token=token)
+
+        # README counts cover every JSONL that will exist on HF after this
+        # upload. Start from remote truth, then overlay only the staged dates.
+        # This keeps scoped backfills from temp worktrees from dropping old
+        # dates from the public dataset card.
+        counts_by_date = _readme_counts_for_upload(api, by_date)
         (stage / "README.md").write_text(_readme_text(counts_by_date))
 
         local_schemas = stage / "schemas"
@@ -421,9 +467,6 @@ def push_to_hub(
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_bytes(p.read_bytes())
 
-        from huggingface_hub import HfApi
-
-        api = HfApi(token=token)
         allow_patterns: list[str] = []
         if run_date:
             allow_patterns.append(f"data/{run_date}.jsonl")
@@ -449,10 +492,13 @@ def _describe_upload(root: Path, by_date: dict[str, list[dict]], run_date: str |
     for date, rows in sorted(by_date.items(), reverse=True):
         lines.append(f"  data/{date}.jsonl  — {len(rows)} accepted posting(s)")
     lines.append("  schemas/**/*.json  : copied from apps/crawler/src/labeller/schemas/")
-    all_counts = _all_local_counts()
-    if all_counts:
-        rendered = ", ".join(f"{d}: {n}" for d, n in sorted(all_counts.items(), reverse=True))
-        lines.append(f"  README.md          : regenerated with counts for {rendered}")
+    staged_counts = {date: len(rows) for date, rows in by_date.items() if rows}
+    if staged_counts:
+        rendered = ", ".join(f"{d}: {n}" for d, n in sorted(staged_counts.items(), reverse=True))
+        lines.append(
+            "  README.md          : preserves existing HF counts and overlays "
+            f"staged counts for {rendered}"
+        )
     else:
-        lines.append("  README.md          : regenerated at upload time")
+        lines.append("  README.md          : preserves existing HF counts at upload time")
     return "\n".join(lines)
