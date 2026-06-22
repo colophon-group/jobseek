@@ -64,11 +64,12 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
 
   const allPostings = useMemo(() => {
     const seen = new Set<string>();
-    return [...result.postings, ...extraPostings].filter((p) => {
+    const deduped = [...result.postings, ...extraPostings].filter((p) => {
       if (seen.has(p.id)) return false;
       seen.add(p.id);
       return true;
     });
+    return sortPostingsByFreshness(deduped);
   }, [result.postings, extraPostings]);
 
   const hasMore = !exhausted && !isTruncated && allPostings.length < activeMatches;
@@ -142,6 +143,12 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
           // re-render of one row cannot reflow neighbouring rows.
           <div
             key={posting.id}
+            data-posting-id={posting.id}
+            data-first-seen-at={
+              typeof posting.firstSeenAt === "string"
+                ? posting.firstSeenAt
+                : posting.firstSeenAt.toISOString()
+            }
             className={`relative flex min-h-7 items-center gap-2 rounded px-1 py-1.5 transition-colors [contain:layout] ${posting.id === selectedPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
           >
             <button
@@ -192,6 +199,25 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
       </ScrollFade>
     </div>
   );
+}
+
+function firstSeenAtMs(posting: SearchResultPosting): number {
+  const value =
+    typeof posting.firstSeenAt === "string"
+      ? Date.parse(posting.firstSeenAt)
+      : posting.firstSeenAt.getTime();
+  return Number.isFinite(value) ? value : 0;
+}
+
+export function sortPostingsByFreshness(
+  postings: SearchResultPosting[],
+): SearchResultPosting[] {
+  if (postings.length <= 1) return postings;
+  return [...postings].sort((a, b) => {
+    const byTime = firstSeenAtMs(b) - firstSeenAtMs(a);
+    if (byTime !== 0) return byTime;
+    return a.id.localeCompare(b.id);
+  });
 }
 
 // --- Memoization (issue #3198) -----------------------------------------------
