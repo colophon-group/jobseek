@@ -29,7 +29,7 @@ User request
 ```
 /
 ├── AGENTS.md                    # Agent instructions (provider-agnostic)
-├── CLAUDE.md                    # @AGENTS.md import for Claude Code
+├── CLAUDE.md                    # @AGENTS.md import for Claude-compatible agents
 ├── data/
 │   ├── companies.csv            # Company registry (slug, name, website, logos)
 │   └── boards.csv               # Board configs (monitor type + scraper type per board)
@@ -73,7 +73,7 @@ User request
 
 ### 1. Company Onboarding (agent-driven)
 
-A user submits a company name or URL. The web app creates a GitHub issue labeled `company-request`. A coding agent (Claude Code via GitHub Actions, or a crowd-sourced user agent) picks the issue, researches the company, determines the best monitor and scraper types, test-crawls, and creates a PR adding rows to the CSV config files. The PR merges automatically for low-risk additions or gets human review for large/complex boards.
+A user submits a company name or URL. The web app creates a GitHub issue labeled `company-request`. A coding agent (Codex preferred for new automation, Claude-compatible paths still supported, or a crowd-sourced user agent) picks the issue, researches the company, determines the best monitor and scraper types, test-crawls, and creates a PR adding rows to the CSV config files. The PR merges automatically for low-risk additions or gets human review for large/complex boards.
 
 ### 2. Job Monitoring (crawler-driven)
 
@@ -84,7 +84,7 @@ The crawler runs continuously on Hetzner. `sync.py` loads CSV configs into local
 - **CSV as source of truth**: Git history provides audit trail, diffs are reviewable, agents can edit files directly. The DB is derived state -- rebuilt from CSVs on each deploy.
 - **Separated monitor + scraper**: A monitor discovers *which* jobs exist (URLs or full data). A scraper extracts *details* from individual pages. API monitors (Greenhouse, Lever) return full data and skip the scraper step entirely.
 - **Local Postgres + Redis**: Workers read/write local Postgres (~0.1ms latency). Redis tiered queues handle work distribution with Lua scripts for atomic operations. Supabase receives write-only batch exports via CDC.
-- **Agent-driven onboarding**: No custom AI resolver code needed. Standard coding agents (Claude Code, Copilot, Codex, etc.) follow AGENTS.md instructions to add companies. The instructions are the interface.
+- **Agent-driven onboarding**: No custom AI resolver code needed. Standard AGENTS.md-compatible coding agents (Codex, Claude Code, Copilot, Cursor, etc.) follow AGENTS.md instructions to add companies. The instructions are the interface.
 
 ## Related Documents
 
@@ -96,3 +96,5 @@ The crawler runs continuously on Hetzner. `sync.py` loads CSV configs into local
 - [07 -- System Design](./07-system-design.md): Infrastructure, subsystem details
 - [08 -- Job Data Fields](./08-job-data-fields.md): Field reference and mappings
 - [09 -- Enrichment](./09-enrichment.md): LLM-based enrichment pipeline
+- [16 -- Murmur Codex MCP Transition](./16-murmur-codex-mcp-transition.md): Codex-first Murmur MCP plan
+- [17 -- Codex Migration Verification Runbook](./17-codex-migration-verification-runbook.md): Pilot checklist and rollback criteria
