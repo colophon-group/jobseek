@@ -12,8 +12,9 @@ const EXPLORE_DEFAULTS_CACHE_LIFE = {
   revalidate: CACHE_TTL_SHORT,
   expire: CACHE_TTL_SHORT * 5,
 } as const;
+const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v3";
 
-// Cached for 60s. The anonymous, no-filter explore page is rendered
+// Cached for 60s. The anonymous, no-filter explore payload is rendered
 // server-side via `fetchExploreDefaults` and embedded as `initialData`.
 // `ExploreContent` is a client component that re-fetches a personalized
 // variant only when the `logged_in` hint cookie or a filter searchParam
@@ -57,12 +58,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function AppPage({ params }: Props) {
+async function renderExploreContent(
+  locale: string,
+  payloadVersion: string,
+) {
   "use cache";
   cacheLife(EXPLORE_DEFAULTS_CACHE_LIFE);
-  const { lang } = await params;
-  const locale = isLocale(lang) ? lang : defaultLocale;
+  if (payloadVersion !== EXPLORE_DEFAULTS_PAYLOAD_VERSION) {
+    throw new Error("Unexpected explore defaults cache version");
+  }
   const initialData = await fetchExploreDefaults({ locale });
 
   return <ExploreContent locale={locale} initialData={initialData} />;
+}
+
+export default async function AppPage({ params }: Props) {
+  const { lang } = await params;
+  const locale = isLocale(lang) ? lang : defaultLocale;
+
+  return renderExploreContent(locale, EXPLORE_DEFAULTS_PAYLOAD_VERSION);
 }
