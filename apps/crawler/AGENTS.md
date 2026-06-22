@@ -350,6 +350,13 @@ For agents running the guided setup workflow (`ws task --issue ...`), behavior i
 
 To change crawler setup agent behavior, edit those files. AGENTS/docs updates alone do not affect the runtime instruction stream.
 
+Codex is the preferred new automation surface. Use repo skills from
+`.agents/skills` when present, Codex app automations for scheduled background
+worktrees, and `codex exec --json` for traceable noninteractive fallback.
+Claude-compatible prompts may remain as alternate paths, but do not describe
+GitHub Actions automation as ChatGPT subscription billed; the Codex Action path
+is OpenAI API-key backed.
+
 ## Decision Mindset
 
 Use `ws` output as evidence, not as an instruction oracle.

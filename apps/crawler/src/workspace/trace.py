@@ -1,4 +1,4 @@
-"""Trace capture — discover, scope, and export Claude Code transcripts.
+"""Trace capture — discover, scope, and export agent transcripts.
 
 Finds the transcript for a ws workspace run by correlating ws command
 timestamps from log.yaml with Bash tool_use records in the transcript.
@@ -8,19 +8,44 @@ Exports a scoped, flattened JSONL with main + subagent records merged.
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from src.workspace import log as action_log
 from src.workspace.state import ws_log_path
 
 _CLAUDE_DIR = Path.home() / ".claude" / "projects"
+_CODEX_TRACE_ENV_VARS = (
+    "CODEX_EXEC_JSONL",
+    "CODEX_EVENTS_JSONL",
+    "CODEX_JSONL_PATH",
+    "CODEX_TRACE_PATH",
+)
+_CODEX_TRACE_FILENAMES = (
+    "codex-events.jsonl",
+    "codex-exec.jsonl",
+    "codex-output.jsonl",
+    "codex-trace.jsonl",
+)
 # Match ws commands at start of line, after && or ;, or after alias assignment
 _WS_CMD_RE = re.compile(
     r"(?:^|&&|;|\|)\s*(?:uv run )?ws\s+"
     r"(new|set|add|del|use|probe|select|run|feedback|submit|validate|task|reject|resume|status|help)\b"
 )
+_WS_TASK_ISSUE_RE = re.compile(r"\bws\s+task\b[^\n;|&]*--issue(?:=|\s+)(\d+)\b")
+_WS_NEW_RE = re.compile(r"\bws\s+new\s+(\S+)")
+
+
+def _slug_pattern(slug: str) -> str:
+    return rf"(?<![A-Za-z0-9_-]){re.escape(slug)}(?![A-Za-z0-9_-])"
+
+
+def _slug_re(slug: str) -> re.Pattern[str]:
+    """Return a slug matcher that does not match hyphen/underscore prefixes."""
+    return re.compile(_slug_pattern(slug))
 
 
 def _find_all_transcripts() -> list[Path]:
@@ -35,6 +60,56 @@ def _find_all_transcripts() -> list[Path]:
             if f.suffix == ".jsonl" and f.is_file():
                 transcripts.append(f)
     return transcripts
+
+
+def _add_existing_path(paths: list[Path], seen: set[Path], path: Path) -> None:
+    """Append an existing file path once."""
+    try:
+        resolved = path.expanduser().resolve()
+    except OSError:
+        resolved = path.expanduser()
+    if resolved in seen or not resolved.is_file():
+        return
+    paths.append(resolved)
+    seen.add(resolved)
+
+
+def _find_codex_event_files() -> list[Path]:
+    """Find candidate ``codex exec --json`` JSONL event files.
+
+    Codex exec JSONL is streamed to stdout, so automation that wants trace
+    export should write that stream to a file and point one of the explicit
+    env vars above at it. For CI conveniences, also check a few conventional
+    filenames in the GitHub workspace and runner temp directory.
+    """
+    paths: list[Path] = []
+    seen: set[Path] = set()
+
+    for key in _CODEX_TRACE_ENV_VARS:
+        raw = os.environ.get(key, "").strip()
+        if not raw:
+            continue
+        for part in raw.split(os.pathsep):
+            if not part.strip():
+                continue
+            candidate = Path(part.strip())
+            if candidate.is_dir():
+                for child in candidate.glob("*.jsonl"):
+                    _add_existing_path(paths, seen, child)
+            else:
+                _add_existing_path(paths, seen, candidate)
+
+    for key in ("GITHUB_WORKSPACE", "RUNNER_TEMP"):
+        raw = os.environ.get(key, "").strip()
+        if not raw:
+            continue
+        base = Path(raw)
+        for name in _CODEX_TRACE_FILENAMES:
+            _add_existing_path(paths, seen, base / name)
+            _add_existing_path(paths, seen, base / "apps" / "crawler" / name)
+
+    paths.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return paths
 
 
 def _read_jsonl(path: Path, max_lines: int = 0) -> list[dict]:
@@ -76,6 +151,72 @@ def _tail_jsonl(path: Path, n: int = 200) -> list[dict]:
         except json.JSONDecodeError:
             continue
     return records
+
+
+def _codex_item(rec: dict[str, Any]) -> dict[str, Any]:
+    item = rec.get("item")
+    return item if isinstance(item, dict) else {}
+
+
+def _codex_command(rec: dict[str, Any]) -> str:
+    item = _codex_item(rec)
+    if item.get("type") != "command_execution":
+        return ""
+    command = item.get("command") or item.get("cmd") or ""
+    return command if isinstance(command, str) else ""
+
+
+def _extract_codex_ws_commands(records: list[dict]) -> list[str]:
+    """Extract ws command strings from Codex ``command_execution`` items."""
+    commands: list[str] = []
+    for rec in records:
+        command = _codex_command(rec)
+        if command and _WS_CMD_RE.search(command):
+            commands.append(command)
+    return commands
+
+
+def _workspace_issue(slug: str) -> int | None:
+    try:
+        from src.workspace.state import load_workspace
+
+        return load_workspace(slug).issue
+    except Exception:
+        return None
+
+
+def _codex_command_matches_workspace(command: str, slug: str, issue: int | None) -> bool:
+    if _slug_re(slug).search(command):
+        return True
+    if issue is not None:
+        issue_match = _WS_TASK_ISSUE_RE.search(command)
+        if issue_match and issue_match.group(1) == str(issue):
+            return True
+    return False
+
+
+def _codex_records_match_workspace(records: list[dict], slug: str, issue: int | None) -> bool:
+    """Return True when a Codex JSONL stream looks like this workspace run."""
+    commands = _extract_codex_ws_commands(records)
+    if any(_codex_command_matches_workspace(cmd, slug, issue) for cmd in commands):
+        return True
+
+    if not commands:
+        return False
+
+    # Last-resort verification for streams where only output text mentions the
+    # workspace, while ws commands are issue-only or omit the slug.
+    return any(_slug_re(slug).search(json.dumps(rec, default=str)) for rec in records)
+
+
+def discover_codex_events(slug: str) -> Path | None:
+    """Find a Codex ``codex exec --json`` event stream for this workspace."""
+    issue = _workspace_issue(slug)
+    for path in _find_codex_event_files():
+        records = _tail_jsonl(path, 2000)
+        if _codex_records_match_workspace(records, slug, issue):
+            return path
+    return None
 
 
 def _extract_ws_commands(records: list[dict]) -> list[tuple[str, str]]:
@@ -213,10 +354,10 @@ def discover_transcript(slug: str) -> Path | None:
     candidates.sort(key=lambda x: x[1])
 
     # Slug pattern for verification
-    slug_re = re.compile(rf"\b{re.escape(slug)}\b")
+    slug_re = _slug_re(slug)
     # Pattern to confirm the slug was the PRIMARY target of this session
     # (not just mentioned in passing via ws task --pick output)
-    primary_re = re.compile(rf"ws\s+(?:new|submit|set|add\s+board)\s+{re.escape(slug)}\b")
+    primary_re = re.compile(rf"ws\s+(?:new|submit|set|add\s+board)\s+{_slug_pattern(slug)}")
 
     best_match: tuple[Path, int] | None = None
 
@@ -238,9 +379,9 @@ def discover_transcript(slug: str) -> Path | None:
             # Require the slug to appear in workspace status or submit output
             # (not just in issue titles or search results)
             workspace_re = re.compile(
-                rf"Workspace:\s*{re.escape(slug)}\b|"
-                rf"branch.*add-company/{re.escape(slug)}\b|"
-                rf"ws submit.*{re.escape(slug)}"
+                rf"Workspace:\s*{_slug_pattern(slug)}|"
+                rf"branch.*add-company/{_slug_pattern(slug)}|"
+                rf"ws submit.*{_slug_pattern(slug)}"
             )
             primary_match = bool(workspace_re.search(tail_text))
         if not primary_match:
@@ -288,7 +429,7 @@ def extract_scoped_trace(transcript_path: Path, slug: str) -> list[dict]:
     """
     flat = _flatten_transcript(transcript_path)
 
-    slug_re = re.compile(rf"\b{re.escape(slug)}\b")
+    slug_re = _slug_re(slug)
     new_cmd_re = re.compile(r"ws\s+new\s+(\S+)")
 
     # Find scope boundaries by scanning ws commands for slug transitions
@@ -360,6 +501,92 @@ def extract_scoped_trace(transcript_path: Path, slug: str) -> list[dict]:
     ]
 
 
+def extract_codex_trace(event_path: Path, slug: str) -> list[dict]:
+    """Parse and scope a Codex ``codex exec --json`` event stream."""
+    records = _read_jsonl(event_path)
+    if not records:
+        return []
+
+    issue = _workspace_issue(slug)
+
+    scope_start: int | None = None
+    scope_end: int | None = None
+    in_scope = False
+
+    for i, rec in enumerate(records):
+        command = _codex_command(rec)
+        if not command or not _WS_CMD_RE.search(command):
+            continue
+
+        if _codex_command_matches_workspace(command, slug, issue):
+            if scope_start is None:
+                scope_start = i
+            in_scope = True
+            continue
+
+        if not in_scope:
+            continue
+
+        new_match = _WS_NEW_RE.search(command)
+        if new_match and new_match.group(1) != slug:
+            scope_end = i
+            break
+
+        issue_match = _WS_TASK_ISSUE_RE.search(command)
+        if issue is not None and issue_match and issue_match.group(1) != str(issue):
+            scope_end = i
+            break
+
+    if scope_start is None:
+        if not _codex_records_match_workspace(records, slug, issue):
+            return []
+        scope_start = 0
+
+    scoped = records[scope_start:scope_end]
+    for rec in scoped:
+        rec.setdefault("_scope", "main")
+        rec["_source"] = "codex_exec_jsonl"
+    return scoped
+
+
+def _action_log_records(slug: str) -> list[dict[str, Any]]:
+    """Build a minimal trace from ws action logs when no transcript exists."""
+    from src.workspace.state import list_boards
+
+    records: list[dict[str, Any]] = []
+
+    for entry in action_log.read(ws_log_path(slug)):
+        records.append(
+            {
+                "type": "ws.action",
+                "timestamp": entry.get("ts", ""),
+                "command": entry.get("cmd", ""),
+                "ok": bool(entry.get("ok")),
+                "message": entry.get("msg", ""),
+                "_scope": "workspace",
+                "_source": "ws_action_log",
+            }
+        )
+
+    for board in list_boards(slug):
+        for entry in board.log:
+            records.append(
+                {
+                    "type": "ws.action",
+                    "timestamp": entry.get("ts", ""),
+                    "command": entry.get("cmd", ""),
+                    "ok": bool(entry.get("ok")),
+                    "message": entry.get("msg", ""),
+                    "board": board.alias,
+                    "_scope": f"board:{board.alias}",
+                    "_source": "ws_action_log",
+                }
+            )
+
+    records.sort(key=lambda r: r.get("timestamp", ""))
+    return records
+
+
 def _clean_records(records: list[dict]) -> list[dict]:
     """Strip Claude Code session metadata from records to reduce noise.
 
@@ -375,43 +602,57 @@ def _clean_records(records: list[dict]) -> list[dict]:
     return cleaned
 
 
-def _build_trace(slug: str) -> tuple[dict, list[dict]] | None:
-    """Discover transcript and build (header, records) for a slug.
-
-    Returns None if no matching transcript found.
-    """
-    transcript_path = discover_transcript(slug)
-    if not transcript_path:
-        return None
-
-    scoped = extract_scoped_trace(transcript_path, slug)
-    if not scoped:
-        return None
-
+def _build_trace_header(slug: str, record_count: int, source: str) -> dict[str, Any]:
     from src.workspace.state import list_boards, load_workspace
 
     ws = load_workspace(slug)
     boards = list_boards(slug)
     board_slugs = [b.slug for b in boards] if boards else []
 
-    header = {
+    return {
         "_trace_header": True,
         "slug": slug,
         "company_name": ws.name or "",
         "board_slugs": board_slugs,
         "date": datetime.now(UTC).strftime("%Y-%m-%d"),
         "issue": ws.issue,
-        "record_count": len(scoped),
+        "record_count": record_count,
+        "source": source,
     }
 
-    return header, _clean_records(scoped)
+
+def _build_trace(slug: str) -> tuple[dict, list[dict]] | None:
+    """Discover transcript/events/action log and build (header, records).
+
+    Returns None if no trace records are available.
+    """
+    transcript_path = discover_transcript(slug)
+    if transcript_path:
+        scoped = extract_scoped_trace(transcript_path, slug)
+        if scoped:
+            header = _build_trace_header(slug, len(scoped), "claude_code")
+            return header, _clean_records(scoped)
+
+    codex_path = discover_codex_events(slug)
+    if codex_path:
+        scoped = extract_codex_trace(codex_path, slug)
+        if scoped:
+            header = _build_trace_header(slug, len(scoped), "codex_exec_jsonl")
+            return header, _clean_records(scoped)
+
+    scoped = _action_log_records(slug)
+    if scoped:
+        header = _build_trace_header(slug, len(scoped), "ws_action_log")
+        return header, _clean_records(scoped)
+
+    return None
 
 
 def export_trace(slug: str, output_dir: Path) -> Path | None:
     """Discover, scope, and export trace to the single traces.jsonl file.
 
     Appends a header line + scoped records to ``{output_dir}/traces.jsonl``.
-    Returns the output path, or None if no matching transcript found.
+    Returns the output path, or None if no trace records are available.
     """
     result = _build_trace(slug)
     if not result:
@@ -435,14 +676,14 @@ _HF_REPO = "viktoroo/jobseek-agent-traces"
 
 
 def upload_trace_to_hf(slug: str) -> str | None:
-    """Discover transcript and upload trace to Hugging Face dataset.
+    """Discover and upload trace to Hugging Face dataset.
 
     Uploads as ``traces/{slug}/{date}.jsonl`` to support multiple traces
     per company (e.g. reconfigurations).  If the same slug+date already
     exists, appends a numeric suffix (``-2``, ``-3``, …).
 
     Requires ``HF_TOKEN`` environment variable.
-    Returns the HF URL, or None if no transcript found.
+    Returns the HF URL, or None if no trace records are available.
     """
     import os
 

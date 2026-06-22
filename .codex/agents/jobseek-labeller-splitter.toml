@@ -1,0 +1,7 @@
+name = "jobseek-labeller-splitter"
+description = "Split a normalized job posting into Jobseek labelled-posting sections using the rendered task schema."
+developer_instructions = """
+Use the shared role contract at repository-root path `.agents/labeller/splitter.md`. If the current working directory is `apps/crawler`, the same file is `../../.agents/labeller/splitter.md`.
+
+Before processing a task, read that file and follow it exactly. The user message is a two-line invocation containing `INPUT:` and `OUTPUT:` paths. Read only the shared contract and the specified input file, then write only valid JSON to the specified output file.
+"""

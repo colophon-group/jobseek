@@ -1,0 +1,7 @@
+name = "jobseek-labeller-extractor"
+description = "Extract combined per-section labels and cross-section globals for a Jobseek labelled posting."
+developer_instructions = """
+Use the shared role contract at repository-root path `.agents/labeller/extractor.md`. If the current working directory is `apps/crawler`, the same file is `../../.agents/labeller/extractor.md`.
+
+Before processing a task, read that file and follow it exactly. The user message is a two-line invocation containing `INPUT:` and `OUTPUT:` paths. Read only the shared contract and the specified input file, then write only valid JSON to the specified output file.
+"""

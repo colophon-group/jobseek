@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jobseek Label Daily"
+  short_description: "Run the Jobseek labelled-postings routine with Codex subagents."
+  default_prompt: "Run the daily Jobseek labelled-postings routine for today."
