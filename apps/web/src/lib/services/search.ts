@@ -276,6 +276,11 @@ type TopCompaniesParams = {
   limit: number;
 };
 
+// Bump when the default anonymous ordering semantics change. The explore
+// prerender embeds this payload, so old Redis values must be unreachable
+// after ranking fixes even if a page cache revalidates before Redis expires.
+const TOP_COMPANIES_DEFAULT_CACHE_VERSION = "v2";
+
 /**
  * Session-free implementation shared by :func:`listTopCompanies` (which
  * reads ``getSessionUserId`` to enforce the anonymous truncation cap)
@@ -320,7 +325,7 @@ async function _listTopCompaniesImpl(
   let result: SearchResponse;
   if (hasNoExplicitFilters) {
     result = await cached(
-      `top-companies:${params.locale}:${langKey}:${params.offset}:${params.limit}`,
+      `top-companies:${TOP_COMPANIES_DEFAULT_CACHE_VERSION}:${params.locale}:${langKey}:${params.offset}:${params.limit}`,
       fetch,
       { ttl: CACHE_TTL_SHORT, skipIf: (r: SearchResponse) => !!r.degraded },
     );

@@ -134,6 +134,19 @@ function mapHitToPosting(
   };
 }
 
+function mapHitsToPostingsByFreshness(
+  hits: SearchHit<JobPostingDoc>[],
+  filteredLocationIds?: number[],
+): SearchResultPosting[] {
+  if (hits.length <= 1) {
+    return hits.map((hit) => mapHitToPosting(hit, filteredLocationIds));
+  }
+
+  return [...hits]
+    .sort((a, b) => b.document.first_seen_at - a.document.first_seen_at)
+    .map((hit) => mapHitToPosting(hit, filteredLocationIds));
+}
+
 function emptyResponse(): SearchResponse {
   return { companies: [], totalCompanies: 0, degraded: true };
 }
@@ -284,7 +297,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
           company: { id: cid, name: first.company_name, slug: first.company_slug, icon: first.company_icon ?? null },
           activeMatches: activeMap.get(cid) ?? 0,
           yearMatches: yearMap.get(cid) ?? 0,
-          postings: g.hits.map((h) => mapHitToPosting(h, locationIds)),
+          postings: mapHitsToPostingsByFreshness(g.hits, locationIds),
         } satisfies SearchResultCompany;
       })
       .filter((c): c is SearchResultCompany => c !== null);
@@ -338,7 +351,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
           },
           activeMatches: compDoc?.active_posting_count ?? g.found ?? g.hits.length,
           yearMatches: compDoc?.year_posting_count ?? 0,
-          postings: g.hits.map((h) => mapHitToPosting(h)),
+          postings: mapHitsToPostingsByFreshness(g.hits),
         } satisfies SearchResultCompany;
       })
       .filter((c) => c.postings.length > 0);

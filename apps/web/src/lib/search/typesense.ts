@@ -118,6 +118,19 @@ function mapHitToPosting(
   };
 }
 
+function mapHitsToPostingsByFreshness(
+  hits: JobPostingHit[],
+  filteredLocationIds?: number[],
+): SearchResultPosting[] {
+  if (hits.length <= 1) {
+    return hits.map((hit) => mapHitToPosting(hit, filteredLocationIds));
+  }
+
+  return [...hits]
+    .sort((a, b) => b.document.first_seen_at - a.document.first_seen_at)
+    .map((hit) => mapHitToPosting(hit, filteredLocationIds));
+}
+
 /**
  * Map grouped search results to SearchResponse.
  */
@@ -384,9 +397,7 @@ export class TypesenseSearchProvider implements SearchProvider {
           },
           activeMatches: activeCountMap.get(companyId) ?? 0,
           yearMatches: yearCountMap.get(companyId) ?? 0,
-          postings: group.hits.map((hit: JobPostingHit) =>
-            mapHitToPosting(hit, locationIds),
-          ),
+          postings: mapHitsToPostingsByFreshness(group.hits, locationIds),
         };
       })
       .filter((c): c is SearchResultCompany => c !== null);
@@ -464,7 +475,7 @@ export class TypesenseSearchProvider implements SearchProvider {
           },
           activeMatches: compDoc?.active_posting_count ?? group.found ?? group.hits.length,
           yearMatches: compDoc?.year_posting_count ?? 0,
-          postings: group.hits.map((hit: JobPostingHit) => mapHitToPosting(hit)),
+          postings: mapHitsToPostingsByFreshness(group.hits),
         };
       })
       .filter((c) => c.postings.length > 0);
