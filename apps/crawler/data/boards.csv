@@ -2874,6 +2874,8 @@ midi-health,midi-health-greenhouse,https://job-boards.greenhouse.io/midihealth,g
 midstream,midstream-careers,https://jobs.ashbyhq.com/midstream,ashby,"{""token"": ""midstream""}",skip,
 migros,migros-careers,https://jobs.migros.ch/de/unsere-unternehmen/migros-gruppe/offene-stellen,sitemap,"{""url_filter"": {""include"": ""/de/unsere-unternehmen/job/"", ""exclude"": ""/job/galaxus/""}}",json-ld,"{""fallback"": {""type"": ""dom"", ""config"": {""steps"": [{""tag"": ""h3"", ""text"": ""beweg"", ""field"": ""description"", ""html"": true, ""stop"": ""Bewerbung & Kontakt""}]}, ""fields"": [""description""]}}"
 mill,mill-greenhouse,https://job-boards.greenhouse.io/mill,greenhouse,"{""token"": ""mill""}",skip,
+millennium-management,millennium-management-campus,https://campusjobs.mlp.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
+millennium-management,millennium-management-experienced,https://career.mlp.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 million-dollar-baby-co,million-dollar-baby-co-greenhouse,https://job-boards.greenhouse.io/milliondollarbabyco,greenhouse,"{""token"": ""milliondollarbabyco""}",skip,
 milomed-gmbh,milomed-gmbh-join,https://join.com/companies/milomedeu,join,"{""slug"": ""milomedeu""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 mimic,mimic-careers,https://jobs.gem.com/mimicrobotics-com,gem,"{""token"": ""mimicrobotics-com""}",skip,
