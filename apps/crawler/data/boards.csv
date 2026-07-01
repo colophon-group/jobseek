@@ -3790,6 +3790,7 @@ rigup,rigup-greenhouse,https://job-boards.greenhouse.io/rigup,greenhouse,"{""tok
 rillet,rillet-careers,https://jobs.ashbyhq.com/rillet,ashby,"{""token"": ""rillet""}",skip,
 riot-games,riot-games-greenhouse,https://job-boards.greenhouse.io/riotgames,greenhouse,"{""token"": ""riotgames""}",skip,
 ripple,ripple-careers,https://boards.greenhouse.io/ripple,greenhouse,"{""token"": ""ripple""}",skip,
+rippling,rippling-careers,https://ats.rippling.com/rippling/jobs,rippling,"{""slug"": ""rippling""}",rippling,
 rise8,rise8-greenhouse,https://job-boards.greenhouse.io/rise8,greenhouse,"{""token"": ""rise8""}",skip,
 riskified,riskified-greenhouse,https://job-boards.greenhouse.io/riskified,greenhouse,"{""token"": ""riskified""}",skip,
 risktec,risktec-careers,https://risktec.io/careers,dom,,dom,"{""steps"": [{""tag"": ""p"", ""text"": ""Open Position"", ""field"": ""date_posted"", ""regex"": ""(\\d{4}-\\d{2}-\\d{2})"", ""optional"": true}, {""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=flex flex-row"", ""field"": ""locations"", ""regex"": ""^(.+?)\\s+\\d""}, {""tag"": ""h2"", ""field"": ""description"", ""html"": true, ""stop"": ""Does this sound interesting""}]}"
