@@ -4,10 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/crawler/data/companies.csv'
-      - 'apps/crawler/data/boards.csv'
-      - 'apps/crawler/data/company_descriptions.csv'
+      - 'apps/crawler/data/*.csv'
   workflow_dispatch:
+
+concurrency:
+  group: crawler-production-sync
+  cancel-in-progress: false
 
 jobs:
   sync:

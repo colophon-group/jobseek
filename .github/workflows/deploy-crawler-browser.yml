@@ -5,10 +5,15 @@ on:
     branches: [main]
     paths:
       - 'apps/crawler/**'
+      - '!apps/crawler/data/**'
       - '.github/workflows/deploy-crawler-browser.yml'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: crawler-production-sync
+  cancel-in-progress: false
 
 jobs:
   deploy:
