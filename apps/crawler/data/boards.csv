@@ -1597,6 +1597,7 @@ ffg-finanzcheck-finanzportale-gmbh,ffg-finanzcheck-finanzportale-gmbh-join,https
 fgs-global,fgs-global-greenhouse,https://job-boards.greenhouse.io/fgsglobal,greenhouse,"{""token"": ""fgsglobal""}",skip,
 fhgr,fhgr-careers,https://recruitingapp-2865.umantis.com/Jobs/All,umantis,"{""customer_id"": ""2865""}",dom,"{""steps"": [{""tag"": ""div"", ""attr"": ""class=einleitung"", ""field"": ""description"", ""html"": true, ""stop_count"": 10, ""optional"": true}, {""tag"": ""h1"", ""field"": ""title"", ""from"": 0}]}"
 fictiv,fictiv-greenhouse,https://job-boards.greenhouse.io/fictiv,greenhouse,"{""token"": ""fictiv""}",skip,
+fidelity-investments,fidelity-investments-careers,https://jobs.fidelity.com/en/jobs/,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""url_filter"": ""/en/jobs/[0-9]+/"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 40, ""browser"": true}}",json-ld,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000}"
 fieldwire,fieldwire-greenhouse,https://job-boards.greenhouse.io/fieldwire,greenhouse,"{""token"": ""fieldwire""}",skip,
 figma,figma-careers,https://boards.greenhouse.io/figma,greenhouse,"{""token"": ""figma""}",skip,
 figure,figure-greenhouse,https://job-boards.greenhouse.io/figureai,greenhouse,"{""token"": ""figureai""}",skip,
