@@ -46,7 +46,8 @@ Minimum stated education requirement. "Or equivalent experience" still counts as
 
 ### `experience`
 
-Years of experience requirement. Object with `min` and `max` (decimal years, one fractional digit allowed; either can be null).
+Years of experience requirement. Object with integer `min` and `max` years; either
+can be null.
 
 | Input | Output |
 |---|---|
@@ -136,7 +137,7 @@ Standardized benefit identifiers. The LLM maps free-text benefits to these enum 
 └──────────────┬───────────────────────────┘
                │
 ┌──────────────▼───────────────────────────┐
-│  Enricher loop (entry point branch)      │
+│  Batch orchestration (core/enrich/batch) │
 │  Phase A: collect_completed_batches()    │
 │    - poll provider for finished batches  │
 │    - validate results against schema     │
@@ -196,19 +197,15 @@ The `v` field tracks the schema version. When the schema changes, `ENRICH_VERSIO
 
 ## Commands
 
-Confirm the current branch exposes an enrichment entry point before using these
-operator commands (`uv run enricher --help` or the replacement command added by
-the implementation branch). The provider abstraction and settings are present
-under `src/core/enrich/`; this docs change does not add a console script.
+Current `main` does not register an enrichment console script or crawler
+subcommand. `apps/crawler/pyproject.toml` registers only `crawler`, `ws`, and
+`labeller`, and `src/cli.py` has no `enrich` subcommand.
 
-```bash
-uv run enricher                     # Continuous loop
-uv run enricher --once              # One cycle then exit
-uv run enricher --limit 1000        # Process at most N items
-uv run enricher --dry-run           # Build prompts, estimate cost, no API calls
-uv run enricher --reprocess         # Re-queue items below current ENRICH_VERSION
-uv run enricher --collect-only      # Only check for completed batches
-```
+The provider abstraction and batch helpers under `src/core/enrich/` are library
+building blocks for an implementation branch. When an operator entry point is
+added, update this section with the exact `uv run ...` command, flags, dry-run
+mode, and rollback procedure. Until then, do not run `uv run enricher`; that
+script does not exist.
 
 ## Configuration
 
@@ -224,9 +221,12 @@ Set in environment variables (see `src/config.py`):
 | `ENRICH_MAX_WAIT_MINUTES` | `60` | Submit after this wait even if below min |
 | `ENRICH_POLL_INTERVAL` | `300` | Seconds between poll cycles |
 | `ENRICH_DAILY_SPEND_CAP_USD` | `5.0` | Daily budget limit |
+| `ENRICH_INPUT_PRICE_PER_M` | `0.10` | Estimated input-token price per million tokens for budget checks |
+| `ENRICH_OUTPUT_PRICE_PER_M` | `0.40` | Estimated output-token price per million tokens for budget checks |
 
-For OpenAI smoke verification, start with a tiny dry run and low daily cap.
-The central checklist is [17 — Codex migration verification runbook](./17-codex-migration-verification-runbook.md#enrichment-openai-smoke).
+For OpenAI smoke verification, first confirm the implementation branch has added
+an operator entry point, then start with a tiny dry run and low daily cap. The
+central checklist is [17 — Codex migration verification runbook](./17-codex-migration-verification-runbook.md#enrichment-openai-smoke).
 
 ## Key Files
 
