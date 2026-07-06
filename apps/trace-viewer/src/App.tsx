@@ -30,7 +30,6 @@ function App() {
     activeBundle,
     activeHeader,
     activateBundle,
-    serverLoaded,
     serverAttempted,
   } = useTrace()
 
