@@ -191,6 +191,11 @@ import {
   getWatchlistPostingYearCount,
   getWatchlistPostings,
 } from "../watchlists";
+import { typesenseQueryStringLength } from "@/lib/search/typesense-query-size";
+
+function makeUuid(index: number): string {
+  return `00000000-0000-0000-0000-${String(index).padStart(12, "0")}`;
+}
 
 describe("getWatchlistPostingYearCount fallback (#3056)", () => {
   beforeEach(() => {
@@ -310,6 +315,46 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
 
     expect(mocks.withTypesenseRetry).toHaveBeenCalledTimes(1);
     expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(rateLimitError);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("batches active posting queries before the Typesense GET limit (#3477)", async () => {
+    const companyIds = Array.from({ length: 99 }, (_, i) => makeUuid(i + 1));
+    mocks.tsSearch.mockResolvedValue({ found: 0, hits: [] });
+
+    const result = await getWatchlistPostings({
+      companyIds,
+      offset: 0,
+      limit: 20,
+    });
+
+    expect(result).toEqual({ postings: [], total: 0 });
+    expect(mocks.tsSearch.mock.calls.length).toBeGreaterThan(1);
+    for (const [params] of mocks.tsSearch.mock.calls) {
+      expect(typesenseQueryStringLength(params)).toBeLessThan(4000);
+      const filter = (params as { filter_by?: string }).filter_by ?? "";
+      const idsInFilter = filter.match(/[0-9a-f-]{36}/g) ?? [];
+      expect(idsInFilter.length).toBeLessThan(companyIds.length);
+    }
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("batches year-count queries instead of returning zero for large watchlists (#3477)", async () => {
+    const companyIds = Array.from({ length: 99 }, (_, i) => makeUuid(i + 1));
+    mocks.tsSearch.mockResolvedValue({ found: 5, hits: [] });
+
+    const count = await getWatchlistPostingYearCount({
+      companyIds,
+    });
+
+    expect(mocks.tsSearch.mock.calls.length).toBeGreaterThan(1);
+    expect(count).toBe(mocks.tsSearch.mock.calls.length * 5);
+    for (const [params] of mocks.tsSearch.mock.calls) {
+      expect(typesenseQueryStringLength(params)).toBeLessThan(4000);
+      const filter = (params as { filter_by?: string }).filter_by ?? "";
+      const idsInFilter = filter.match(/[0-9a-f-]{36}/g) ?? [];
+      expect(idsInFilter.length).toBeLessThan(companyIds.length);
+    }
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
 });

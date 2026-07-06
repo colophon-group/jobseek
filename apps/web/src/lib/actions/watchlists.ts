@@ -32,6 +32,10 @@ import {
   isTypesenseUnavailableError,
   withTypesenseRetry,
 } from "@/lib/search/typesense-retry";
+import {
+  isTypesenseQueryStringSafe,
+  splitValuesForTypesenseQuery,
+} from "@/lib/search/typesense-query-size";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import {
   upsertWatchlist as tsUpsertWatchlist,
@@ -1491,27 +1495,28 @@ export async function getWatchlistPostingYearCount(
     const hasKeywords = params.keywords && params.keywords.length > 0;
     const keywordsQ = hasKeywords ? params.keywords!.join(" ") : "*";
     const oneYearAgo = Math.floor((Date.now() - 365 * 24 * 3600 * 1000) / 1000);
-    const parts = [POSTING_FLOW_FILTER, `first_seen_at:>${oneYearAgo}`];
-    if (params.companyIds.length > 0 && params.companyIds.length <= COMPANY_BATCH_SIZE) {
-      parts.push(`company_id:[${params.companyIds.join(",")}]`);
-    } else if (params.companyIds.length > COMPANY_BATCH_SIZE) {
-      // Oversized company list: fall back to the batched helper's
-      // activeTotal flavour — conservatively skip year count instead
-      // of running N Typesense queries just for a stats number.
-      return 0;
-    }
-    if (filterStr) parts.push(filterStr);
-    const result = await withTypesenseRetry(
-      () =>
-        client.collections("job_posting").documents().search({
-          q: keywordsQ,
-          query_by: "title",
-          filter_by: parts.join(" && "),
-          per_page: 0,
-        }),
-      { label: "getWatchlistPostingYearCount" },
+    const baseParts = [POSTING_FLOW_FILTER, `first_seen_at:>${oneYearAgo}`];
+    const buildSearchParams = (companyIds: readonly string[]) => ({
+      q: keywordsQ,
+      query_by: "title",
+      filter_by: buildWatchlistPostingFilter(baseParts, companyIds, filterStr),
+      per_page: 0,
+    });
+    const batches = params.companyIds.length > 0
+      ? splitValuesForTypesenseQuery(params.companyIds, buildSearchParams, COMPANY_BATCH_SIZE)
+      : [[]];
+    const results = await Promise.all(
+      batches.map((batch) =>
+        withTypesenseRetry(
+          () =>
+            client.collections("job_posting").documents().search(
+              buildSearchParams(batch),
+            ),
+          { label: "getWatchlistPostingYearCount" },
+        ),
+      ),
     );
-    return result.found ?? 0;
+    return results.reduce((sum, result) => sum + (result.found ?? 0), 0);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
     console.error("[getWatchlistPostingYearCount] Typesense failed, falling back to Postgres", err);
@@ -1572,41 +1577,41 @@ export async function getWatchlistPostingDisplayCounts(
   const hasKeywords = f.keywords && f.keywords.length > 0;
   const q = hasKeywords ? f.keywords!.join(" ") : "*";
 
-  const companyClause = !isAny && companyIds.length > 0 && companyIds.length <= COMPANY_BATCH_SIZE
-    ? `company_id:[${companyIds.join(",")}]`
-    : null;
-  // Oversized company list (>COMPANY_BATCH_SIZE) would need fan-out
-  // batching to count correctly. The card is decorative, not load-
-  // bearing — fall back to "skip the stats" rather than running 10+
-  // Typesense queries for a number on a blog embed.
-  if (!isAny && companyIds.length > COMPANY_BATCH_SIZE) {
-    return { activeJobs: 0, yearJobs: 0 };
-  }
-
-  const baseFilterParts = (extra: string[]): string =>
-    [...extra, ...(companyClause ? [companyClause] : []), ...(filterStr ? [filterStr] : [])].join(" && ");
-
   const oneYearAgo = Math.floor((Date.now() - 365 * 24 * 3600 * 1000) / 1000);
-  const activeFilter = baseFilterParts([POSTING_BASE_FILTER]);
-  // Mirror `POSTING_FLOW_FILTER` (#2965) on the year filter so the
-  // year-count stays content-quality-consistent with the active filter
-  // (which already includes `has_content:!=false` via POSTING_BASE_FILTER).
-  // See issue #3029.
-  const yearFilter = baseFilterParts([POSTING_FLOW_FILTER, `first_seen_at:>${oneYearAgo}`]);
 
   try {
     const client = getSearchClient();
-    const [activeRes, yearRes] = await Promise.all([
-      client.collections("job_posting").documents().search({
-        q, query_by: "title", filter_by: activeFilter, per_page: 0,
-      }),
-      client.collections("job_posting").documents().search({
-        q, query_by: "title", filter_by: yearFilter, per_page: 0,
-      }),
+    const searchCount = async (baseParts: string[], label: string): Promise<number> => {
+      const buildSearchParams = (batch: readonly string[]) => ({
+        q,
+        query_by: "title",
+        filter_by: buildWatchlistPostingFilter(baseParts, !isAny ? batch : [], filterStr),
+        per_page: 0,
+      });
+      const batches = !isAny && companyIds.length > 0
+        ? splitValuesForTypesenseQuery(companyIds, buildSearchParams, COMPANY_BATCH_SIZE)
+        : [[]];
+      const results = await Promise.all(
+        batches.map((batch) =>
+          withTypesenseRetry(
+            () => client.collections("job_posting").documents().search(buildSearchParams(batch)),
+            { label },
+          ),
+        ),
+      );
+      return results.reduce((sum, result) => sum + (result.found ?? 0), 0);
+    };
+    // Mirror `POSTING_FLOW_FILTER` (#2965) on the year filter so the
+    // year-count stays content-quality-consistent with the active filter
+    // (which already includes `has_content:!=false` via POSTING_BASE_FILTER).
+    // See issue #3029.
+    const [activeJobs, yearJobs] = await Promise.all([
+      searchCount([POSTING_BASE_FILTER], "getWatchlistPostingDisplayCounts.active"),
+      searchCount([POSTING_FLOW_FILTER, `first_seen_at:>${oneYearAgo}`], "getWatchlistPostingDisplayCounts.year"),
     ]);
     return {
-      activeJobs: activeRes.found ?? 0,
-      yearJobs: yearRes.found ?? 0,
+      activeJobs,
+      yearJobs,
     };
   } catch (err) {
     console.error("[getWatchlistPostingDisplayCounts] Typesense failed", err);
@@ -1795,7 +1800,17 @@ function _mapWatchlistDoc(doc: Record<string, unknown>): PublicWatchlistEntry {
   };
 }
 
-/** Max company IDs per Typesense filter string batch (~7KB ≈ 200 UUIDs). */
+function buildWatchlistPostingFilter(
+  baseParts: readonly string[],
+  companyIds: readonly string[],
+  filterStr: string,
+): string {
+  return [
+    ...baseParts,
+    companyIds.length > 0 ? `company_id:[${companyIds.join(",")}]` : "",
+    filterStr,
+  ].filter(Boolean).join(" && ");
+}
 
 async function _getWatchlistPostingsTypesense(
   params: WatchlistPostingQueryParams,
@@ -1824,31 +1839,31 @@ async function _getWatchlistPostingsTypesense(
   const keywordsQ = hasKeywords ? params.keywords!.join(" ") : "*";
 
   // Build company_id filter — omit for "any company" mode
-  let companyFilter = "";
-  if (params.companyIds.length > 0) {
-    if (params.companyIds.length > COMPANY_BATCH_SIZE) {
-      // Large watchlist: batch queries and merge
-      return _getWatchlistPostingsBatched(params, userId);
-    }
-    companyFilter = `company_id:[${params.companyIds.join(",")}]`;
-  }
+  const fullFilter = buildWatchlistPostingFilter(
+    [POSTING_BASE_FILTER],
+    params.companyIds,
+    filterStr,
+  );
+  const searchParams = {
+    q: keywordsQ,
+    query_by: "title",
+    filter_by: fullFilter,
+    sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
+    per_page: params.limit === 0 ? 0 : params.limit,
+    page: params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,
+  };
 
-  // Combine all filter parts
-  const filterParts = [POSTING_BASE_FILTER];
-  if (companyFilter) filterParts.push(companyFilter);
-  if (filterStr) filterParts.push(filterStr);
-  const fullFilter = filterParts.join(" && ");
+  if (
+    params.companyIds.length > 0 &&
+    (params.companyIds.length > COMPANY_BATCH_SIZE ||
+      !isTypesenseQueryStringSafe(searchParams))
+  ) {
+    return _getWatchlistPostingsBatched(params, userId);
+  }
 
   const result = await withTypesenseRetry(
     () =>
-      client.collections("job_posting").documents().search({
-        q: keywordsQ,
-        query_by: "title",
-        filter_by: fullFilter,
-        sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
-        per_page: params.limit === 0 ? 0 : params.limit,
-        page: params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,
-      }),
+      client.collections("job_posting").documents().search(searchParams),
     { label: "getWatchlistPostings" },
   );
 
@@ -1879,7 +1894,7 @@ async function _getWatchlistPostingsTypesense(
   };
 }
 
-/** Batched version for large watchlists (200+ companies). */
+/** Batched version for large watchlists or large serialized filters. */
 async function _getWatchlistPostingsBatched(
   params: WatchlistPostingQueryParams,
   userId: string | null,
@@ -1903,26 +1918,39 @@ async function _getWatchlistPostingsBatched(
 
   const hasKeywords = params.keywords && params.keywords.length > 0;
   const keywordsQ = hasKeywords ? params.keywords!.join(" ") : "*";
+  const sortBy = hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc";
+  const needed = params.offset + params.limit;
+  const buildFilter = (batch: readonly string[]) =>
+    buildWatchlistPostingFilter([POSTING_BASE_FILTER], batch, filterStr);
+  const buildCountSearchParams = (batch: readonly string[]) => ({
+    q: keywordsQ,
+    query_by: "title",
+    filter_by: buildFilter(batch),
+    per_page: 0,
+  });
+  const buildRowsSearchParams = (batch: readonly string[]) => ({
+    q: keywordsQ,
+    query_by: "title",
+    filter_by: buildFilter(batch),
+    sort_by: sortBy,
+    per_page: needed,
+    page: 1,
+  });
 
-  // Split company IDs into batches
-  const batches: string[][] = [];
-  for (let i = 0; i < params.companyIds.length; i += COMPANY_BATCH_SIZE) {
-    batches.push(params.companyIds.slice(i, i + COMPANY_BATCH_SIZE));
-  }
+  const batches = splitValuesForTypesenseQuery(
+    params.companyIds,
+    buildRowsSearchParams,
+    COMPANY_BATCH_SIZE,
+  );
 
   // Query each batch for total count (per_page: 0)
   const countResults = await Promise.all(
     batches.map((batch) => {
-      const filterParts = [POSTING_BASE_FILTER, `company_id:[${batch.join(",")}]`];
-      if (filterStr) filterParts.push(filterStr);
       return withTypesenseRetry(
         () =>
-          client.collections("job_posting").documents().search({
-            q: keywordsQ,
-            query_by: "title",
-            filter_by: filterParts.join(" && "),
-            per_page: 0,
-          }),
+          client.collections("job_posting").documents().search(
+            buildCountSearchParams(batch),
+          ),
         { label: "getWatchlistPostings.batched.count" },
       );
     }),
@@ -1933,21 +1961,13 @@ async function _getWatchlistPostingsBatched(
 
   // For actual postings, query all batches with enough per_page to cover offset+limit,
   // then merge and sort by first_seen_at desc, slice to desired page.
-  const needed = params.offset + params.limit;
   const postingsResults = await Promise.all(
     batches.map((batch) => {
-      const filterParts = [POSTING_BASE_FILTER, `company_id:[${batch.join(",")}]`];
-      if (filterStr) filterParts.push(filterStr);
       return withTypesenseRetry(
         () =>
-          client.collections("job_posting").documents().search({
-            q: keywordsQ,
-            query_by: "title",
-            filter_by: filterParts.join(" && "),
-            sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
-            per_page: needed,
-            page: 1,
-          }),
+          client.collections("job_posting").documents().search(
+            buildRowsSearchParams(batch),
+          ),
         { label: "getWatchlistPostings.batched.rows" },
       );
     }),
