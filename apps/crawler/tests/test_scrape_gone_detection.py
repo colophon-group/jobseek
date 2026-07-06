@@ -138,10 +138,10 @@ async def test_do_one_scrape_passes_permanent_gone_true_on_404(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -263,10 +263,10 @@ async def test_do_one_scrape_routes_403_to_transient_sql(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -317,10 +317,10 @@ async def test_do_one_scrape_routes_5xx_to_transient_sql(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -369,10 +369,10 @@ async def test_do_one_scrape_routes_400_to_budget_sql(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -425,10 +425,10 @@ async def test_pipeline_skips_scrape_for_tombstoned_posting(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -505,10 +505,10 @@ async def test_pipeline_skips_scrape_when_next_scrape_at_null(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -596,10 +596,10 @@ async def test_eightfold_style_empty_jobcontent_takes_transient_path(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -652,10 +652,10 @@ async def test_pipeline_self_heal_does_not_reschedule_on_db_error(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -713,10 +713,10 @@ async def test_pipeline_self_heal_skips_invalid_posting_id(
             pool_acquire_called.append(True)
 
             class _Ctx:
-                async def __aenter__(self_inner):  # type: ignore[no-untyped-def]
+                async def __aenter__(self):  # type: ignore[no-untyped-def]
                     raise AssertionError("must short-circuit before DB acquire")
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -782,10 +782,10 @@ async def test_pipeline_self_heal_does_not_delete_redis_hash(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -859,10 +859,10 @@ async def test_pipeline_proceeds_for_active_posting_with_due_next_scrape(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
@@ -939,10 +939,10 @@ async def test_do_one_scrape_routes_timeout_to_transient_sql(
     class _StubPool:
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                async def __aexit__(self, *args):  # type: ignore[no-untyped-def]
                     pass
 
             return _Ctx()
