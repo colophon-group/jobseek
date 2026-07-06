@@ -13,6 +13,8 @@ Templates vary widely across customers; no shared structured data
 
 from __future__ import annotations
 
+import asyncio
+import random
 import re
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
@@ -21,12 +23,28 @@ import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register
+from src.shared.http_retry import (
+    END_OF_PAGINATION_STATUSES,
+    PaginationFetchError,
+    is_retryable_status,
+)
+from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
 MAX_JOBS = 50_000
 MAX_PAGES = 100
 PAGE_SIZE = 10  # Umantis default per page
+
+# Pagination retry budget. Symmetric with the dom monitor (#2737),
+# accenture (#2735), api_sniffer (#2733), PCSX (#2734), and workday
+# (#2748): 3 total attempts, exponential backoff with full jitter
+# starting at 0.5s. Pre-fix, a transient 5xx / 429 / network error
+# mid-pagination silently truncated the URL set, then
+# ``_MARK_GONE_BY_TIMESTAMP`` tombstoned every URL on unfetched pages —
+# the same shape of bug as the 2026-04-26 NHS spike (#2722).
+_RETRY_ATTEMPTS = 3
+_RETRY_BASE_DELAY = 0.5
 
 # recruitingapp-{ID}[.de|.ch].umantis.com
 _HOST_RE = re.compile(r"^recruitingapp-(\d+)(?:\.\w+)?\.umantis\.com$", re.IGNORECASE)
@@ -141,6 +159,99 @@ def _parse_jobs_from_html(html: str, base_url: str) -> list[tuple[str, str]]:
     return parser.jobs
 
 
+# ── Pagination fetch with retries ───────────────────────────────────────
+
+
+async def _get_page_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    retries: int = _RETRY_ATTEMPTS,
+    base_delay: float = _RETRY_BASE_DELAY,
+) -> str | None:
+    """GET an Umantis pagination page with bounded retries (#2747).
+
+    Mirrors the contract used by ``fetch_with_retry`` (#2722) and the
+    sibling monitor helpers (workday #2748, accenture #2735, api_sniffer
+    #2733, PCSX #2734): retryable failures back off exponentially and,
+    on budget exhaustion, raise :class:`PaginationFetchError` so the run
+    is recorded as a failure rather than silently truncating to whatever
+    pages happened to succeed.
+
+    Returns:
+        - ``str`` body on HTTP 200 (the listing HTML).
+        - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination —
+          Umantis returns 200 with empty markup beyond the last page,
+          but we accept the canonical "no content here" statuses for
+          symmetry with the rest of the monitor family).
+
+    Raises:
+        :class:`PaginationFetchError` when *retries* attempts have all
+        hit a retryable failure (transient 5xx, 429, 408, 425, network
+        error). The caller propagates so
+        ``_process_one_board_streaming`` records the run as a failure
+        rather than a partial success (which would tombstone every URL
+        on unfetched pages via ``_MARK_GONE_BY_TIMESTAMP``).
+
+    Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
+    with full jitter, identical cadence to dom and workday.
+    """
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+
+    for attempt in range(retries):
+        try:
+            resp = await client.get(url, follow_redirects=True)
+            last_status = resp.status_code
+            if resp.status_code == 200:
+                # TDM-Reservation respect (#2842). Umantis is HTML, so
+                # both the header and the body-meta check apply.
+                _tdm_check(resp, body_excerpt=resp.text)
+                return resp.text
+            if resp.status_code in END_OF_PAGINATION_STATUSES:
+                return None
+            if is_retryable_status(resp.status_code):
+                last_exc = None  # status-only, no exception
+            else:
+                # Non-retryable 4xx (auth, forbidden, etc.) — fail fast
+                # rather than burn the budget on a status that won't
+                # recover. ``PaginationFetchError`` keeps semantics
+                # symmetric with workday/accenture/PCSX so callers
+                # ``except PaginationFetchError`` route uniformly.
+                raise PaginationFetchError(
+                    url,
+                    attempts=attempt + 1,
+                    last_status=resp.status_code,
+                )
+        except (PaginationFetchError, TDMReservedError):
+            raise
+        except Exception as exc:  # noqa: BLE001 — timeout, connection error, etc.
+            last_exc = exc
+            last_status = None
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "umantis.page_backoff",
+                url=url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await asyncio.sleep(delay)
+
+    raise PaginationFetchError(
+        url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
+
+
 # ── Discovery ──────────────────────────────────────────────────────────
 
 
@@ -189,37 +300,44 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     jobs = _parse_jobs_from_html(html, base)
     table_nr = _extract_table_nr(html)
 
-    # Paginate
+    # Paginate. Page-fetch failures route through ``_get_page_with_retry``:
+    # transient 5xx / 429 / network errors are retried with exponential
+    # backoff, and on budget exhaustion ``PaginationFetchError`` propagates
+    # up to ``_process_one_board_streaming`` so the run is recorded as a
+    # failure rather than silently truncating (#2747). Legitimate
+    # end-of-pagination signals (404/410, or a 200 with no jobs / only
+    # duplicate jobs) terminate the loop as success.
+    truncated = False
     if table_nr:
         page = 2
-        while len(jobs) < MAX_JOBS and page <= MAX_PAGES:
-            page_url = f"{listing_url}?tc{table_nr}=p{page}"
-            try:
-                resp = await client.get(page_url, follow_redirects=True)
-                if resp.status_code != 200:
-                    break
-                page_jobs = _parse_jobs_from_html(resp.text, base)
-                if not page_jobs:
-                    break
-                # Check for duplicates (pagination loops)
-                new_urls = {url for url, _ in page_jobs}
-                existing_urls = {url for url, _ in jobs}
-                if not (new_urls - existing_urls):
-                    break
-                jobs.extend(page_jobs)
-                page += 1
-            except Exception as exc:
-                log.warning("umantis.page_error", page=page, error=str(exc))
+        while page <= MAX_PAGES:
+            if len(jobs) >= MAX_JOBS:
+                truncated = True
                 break
+            page_url = f"{listing_url}?tc{table_nr}=p{page}"
+            page_html = await _get_page_with_retry(client, page_url)
+            if page_html is None:
+                # 404/410 — legitimate end-of-pagination.
+                break
+            page_jobs = _parse_jobs_from_html(page_html, base)
+            if not page_jobs:
+                break
+            # Check for duplicates (pagination loops)
+            new_urls = {url for url, _ in page_jobs}
+            existing_urls = {url for url, _ in jobs}
+            if not (new_urls - existing_urls):
+                break
+            jobs.extend(page_jobs)
+            page += 1
+        else:
+            # Hit MAX_PAGES without hitting an end-of-pagination signal —
+            # also a truncation (the next page may have more jobs).
+            truncated = True
 
     label = cname or customer_id
     if not jobs:
         log.info("umantis.no_jobs", customer_id=label)
         return set()
-
-    if len(jobs) > MAX_JOBS:
-        log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
-        jobs = jobs[:MAX_JOBS]
 
     log.info("umantis.listed", customer_id=label, jobs=len(jobs))
 
@@ -231,6 +349,9 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
             seen.add(url)
             unique.add(url)
 
+    if truncated:
+        log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
+        return truncated_url_result(unique)
     return unique
 
 

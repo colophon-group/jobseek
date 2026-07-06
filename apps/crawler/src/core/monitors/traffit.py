@@ -20,7 +20,9 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -36,18 +38,11 @@ _PAGE_PATTERNS = [
 
 _IGNORE_SLUGS = frozenset({"www", "api", "cdn", "cdn3", "app", "help", "knowledge"})
 
-_EMPLOYMENT_TYPE_MAP = {
-    "Full time": "full-time",
-    "Part time": "part-time",
-    "Contract": "contract",
-    "Internship": "internship",
-}
-
-_RATE_MAP = {
-    "Monthly": "month",
-    "Yearly": "year",
-    "Hourly": "hour",
-}
+# Traffit emits English title-case labels (``Full time``/``Part time``
+# /``Contract``/``Internship``) which the central
+# :func:`src.core.enum_normalize.normalize_employment_type` handles.
+# Salary rate (``Monthly``/``Yearly``/``Hourly``) is funnelled through
+# :func:`src.core.enum_normalize.normalize_salary_unit`.
 
 
 def _slug_from_url(url: str) -> str | None:
@@ -104,8 +99,8 @@ def _parse_salary(options: dict) -> dict | None:
     if not currency or (min_val is None and max_val is None):
         return None
 
-    rate_raw = options.get("_Salary_Rate", "")
-    unit = _RATE_MAP.get(rate_raw, "month")
+    # Traffit defaults to ``month`` when ``_Salary_Rate`` is missing/unknown.
+    unit = normalize_salary_unit(options.get("_Salary_Rate")) or "month"
 
     def _to_num(v):
         if v is None:
@@ -137,11 +132,11 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
     description = _get_value(values, "description")
     locations = _parse_location(values)
 
-    # Employment type
+    # Employment type — pass through raw upstream label.
     job_types = options.get("job_type")
     employment_type = None
     if isinstance(job_types, list) and job_types:
-        employment_type = _EMPLOYMENT_TYPE_MAP.get(job_types[0])
+        employment_type = job_types[0] or None
 
     # Job location type
     job_location_type = None
@@ -276,7 +271,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     if len(jobs) > MAX_JOBS:
         log.warning("traffit.truncated", slug=slug, total=len(jobs), cap=MAX_JOBS)
-        jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
+        return truncated_rich_result(jobs)
 
     return jobs
 

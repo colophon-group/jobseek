@@ -206,7 +206,9 @@ class TestDiscoverReplay:
         board = {"board_url": "https://example.com/careers", "metadata": config}
 
         mock_page = AsyncMock()
-        mock_page.evaluate = AsyncMock(return_value=json.dumps(api_response))
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps(api_response)}
+        )
         mock_pw = _make_mock_pw(mock_page)
 
         http = AsyncMock()
@@ -236,7 +238,9 @@ class TestDiscoverReplay:
         board = {"board_url": "https://example.com/careers", "metadata": config}
 
         mock_page = AsyncMock()
-        mock_page.evaluate = AsyncMock(return_value=json.dumps(api_response))
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps(api_response)}
+        )
         mock_pw = _make_mock_pw(mock_page)
 
         http = AsyncMock()
@@ -386,7 +390,9 @@ class TestJsonPathValues:
         board = {"board_url": "https://example.com/careers", "metadata": config}
 
         mock_page = AsyncMock()
-        mock_page.evaluate = AsyncMock(return_value=json.dumps(api_response))
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps(api_response)}
+        )
         mock_pw = _make_mock_pw(mock_page)
 
         http = AsyncMock()
@@ -1337,3 +1343,512 @@ class TestHttpFetchWithRetry:
         assert out is None
         # 3 attempts (default), retries exhausted, exception caught + None returned.
         assert client.request.await_count == 3
+
+
+class TestMaxItemsTruncation:
+    """Regression tests for the MAX_ITEMS truncation guard (#3216 / #3267).
+
+    The two silent-truncation sites in ``api_sniffer`` (HTTP-only mode at
+    ``_discover_http`` and replay/browser mode at ``_discover_replay``)
+    used to slice ``items[:MAX_ITEMS]`` and return a plain
+    ``list[DiscoveredJob]`` / ``set[str]``. That dropped every URL
+    beyond the cap and looked like a clean cycle to the board
+    processor — so ``_MARK_GONE_BY_TIMESTAMP`` would tombstone the
+    unseen tail on the next pass (the same silent-data-loss shape
+    fixed by #2722 for fetch-failure-driven truncation).
+
+    The fix matches the pattern used by the 29 monitors migrated in
+    #3266: drop the slice, keep every collected item, and wrap the
+    result via :mod:`src.shared.truncation` helpers so
+    ``MonitorResult.truncated`` is ``True``. The board processor sees
+    the flag, marks the cycle partial, and skips gone-detection.
+    """
+
+    @pytest.mark.asyncio
+    async def test_http_mode_rich_returns_truncated_monitor_result(self):
+        """``_discover_http`` rich path: > ``max_items`` -> truncated rich result.
+
+        Uses ``max_items`` override in config (cheaper than 10k items)
+        so the slice triggers at 2; the test still pins the contract.
+        Returns a :class:`MonitorResult` with ``truncated=True`` and
+        all URLs preserved (no slicing).
+        """
+        from src.core.monitor import MonitorResult
+
+        # 3 items, max_items=2 → truncated.
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        api_response = {"results": items, "total": 3}
+
+        config = {
+            "api_url": "https://example.com/api/jobs",
+            "method": "GET",
+            "json_path": "results",
+            "url_field": "url",
+            "max_items": 2,
+            "fields": {"title": "title", "description": "desc"},
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = api_response
+        mock_resp.raise_for_status.return_value = None
+
+        http = AsyncMock()
+        http.request = AsyncMock(return_value=mock_resp)
+
+        result = await discover(board, http, pw=None)
+
+        assert isinstance(result, MonitorResult), (
+            "HTTP truncation must return a MonitorResult (not a plain "
+            "list[DiscoveredJob]) so the board processor sees "
+            "truncated=True and skips _MARK_GONE_BY_TIMESTAMP."
+        )
+        assert result.truncated is True
+        # All 3 URLs preserved — the cap is a safety stop, not a slice.
+        assert result.urls == {
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/2",
+            "https://example.com/jobs/3",
+        }
+        assert result.jobs_by_url is not None
+        assert set(result.jobs_by_url) == result.urls
+
+    @pytest.mark.asyncio
+    async def test_http_mode_url_only_returns_truncated_monitor_result(self):
+        """``_discover_http`` URL-only path: > ``max_items`` -> truncated URL result."""
+        from src.core.monitor import MonitorResult
+
+        items = [
+            {"id": "1", "url": "https://example.com/jobs/1"},
+            {"id": "2", "url": "https://example.com/jobs/2"},
+            {"id": "3", "url": "https://example.com/jobs/3"},
+        ]
+        api_response = {"results": items}
+
+        config = {
+            "api_url": "https://example.com/api/jobs",
+            "method": "GET",
+            "json_path": "results",
+            "url_field": "url",
+            "max_items": 2,
+            # No fields → URL-only mode.
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = api_response
+        mock_resp.raise_for_status.return_value = None
+
+        http = AsyncMock()
+        http.request = AsyncMock(return_value=mock_resp)
+
+        result = await discover(board, http, pw=None)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        # All 3 URLs preserved — no slicing.
+        assert result.urls == {
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/2",
+            "https://example.com/jobs/3",
+        }
+        # URL-only mode keeps jobs_by_url as None.
+        assert result.jobs_by_url is None
+
+    @pytest.mark.asyncio
+    async def test_http_mode_under_cap_returns_plain_list(self):
+        """Below ``max_items``: behaviour unchanged — plain list returned.
+
+        Verifies the helper only fires when ``len(items) > max_items``;
+        clean cycles must continue to return ``list[DiscoveredJob]`` /
+        ``set[str]`` so unrelated callers (and the gone-detection path)
+        keep working.
+
+        Uses 3 items because ``find_arrays`` (in ``src/shared/api_sniff.py``)
+        only surfaces arrays of 3+ dicts.
+        """
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        api_response = {"results": items, "total": 3}
+
+        config = {
+            "api_url": "https://example.com/api/jobs",
+            "method": "GET",
+            "json_path": "results",
+            "url_field": "url",
+            "max_items": 10,  # 3 items, cap=10 → not truncated
+            "fields": {"title": "title", "description": "desc"},
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = api_response
+        mock_resp.raise_for_status.return_value = None
+
+        http = AsyncMock()
+        http.request = AsyncMock(return_value=mock_resp)
+
+        result = await discover(board, http, pw=None)
+
+        # Below-cap path returns the plain list (not a MonitorResult).
+        assert isinstance(result, list)
+        assert len(result) == 3
+
+    @pytest.mark.asyncio
+    async def test_replay_mode_rich_returns_truncated_monitor_result(self, monkeypatch):
+        """``_discover_replay`` rich path: > ``MAX_ITEMS`` -> truncated rich result.
+
+        ``_discover_replay`` doesn't honour ``max_items`` (only ``_discover_http``
+        does), so the test patches the module-level ``MAX_ITEMS`` constant
+        instead of crafting 10k items. Same pattern as the silent-slice
+        regression suite in ``tests/test_truncation.py``.
+        """
+        from src.core.monitor import MonitorResult
+        from src.core.monitors import api_sniffer as api_sniffer_module
+
+        monkeypatch.setattr(api_sniffer_module, "MAX_ITEMS", 2)
+
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        api_response = {"results": items, "total": 3}
+
+        config = {
+            "api_url": "https://example.com/api/jobs",
+            "method": "GET",
+            "json_path": "results",
+            "url_field": "url",
+            "browser": True,
+            "fields": {"title": "title", "description": "desc"},
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps(api_response)}
+        )
+        mock_pw = _make_mock_pw(mock_page)
+
+        http = AsyncMock()
+
+        result = await discover(board, http, pw=mock_pw)
+
+        assert isinstance(result, MonitorResult), (
+            "Replay truncation must return a MonitorResult so the board "
+            "processor skips _MARK_GONE_BY_TIMESTAMP and the unseen tail "
+            "beyond the cap is not tombstoned."
+        )
+        assert result.truncated is True
+        # All 3 URLs preserved — no slicing.
+        assert result.urls == {
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/2",
+            "https://example.com/jobs/3",
+        }
+        assert result.jobs_by_url is not None
+        assert set(result.jobs_by_url) == result.urls
+
+    @pytest.mark.asyncio
+    async def test_replay_mode_url_only_returns_truncated_monitor_result(self, monkeypatch):
+        """``_discover_replay`` URL-only path: > ``MAX_ITEMS`` -> truncated URL result."""
+        from src.core.monitor import MonitorResult
+        from src.core.monitors import api_sniffer as api_sniffer_module
+
+        monkeypatch.setattr(api_sniffer_module, "MAX_ITEMS", 2)
+
+        items = [
+            {"id": "1", "url": "https://example.com/jobs/1"},
+            {"id": "2", "url": "https://example.com/jobs/2"},
+            {"id": "3", "url": "https://example.com/jobs/3"},
+        ]
+        api_response = {"results": items}
+
+        config = {
+            "api_url": "https://example.com/api/jobs",
+            "method": "GET",
+            "json_path": "results",
+            "url_field": "url",
+            "browser": True,
+            # No fields → URL-only.
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps(api_response)}
+        )
+        mock_pw = _make_mock_pw(mock_page)
+
+        http = AsyncMock()
+
+        result = await discover(board, http, pw=mock_pw)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/2",
+            "https://example.com/jobs/3",
+        }
+        assert result.jobs_by_url is None
+
+    @pytest.mark.asyncio
+    async def test_replay_mode_under_cap_returns_plain_list(self, monkeypatch):
+        """Below ``MAX_ITEMS``: behaviour unchanged — plain list returned.
+
+        Uses 3 items because ``find_arrays`` (in ``src/shared/api_sniff.py``)
+        only surfaces arrays of 3+ dicts.
+        """
+        from src.core.monitors import api_sniffer as api_sniffer_module
+
+        monkeypatch.setattr(api_sniffer_module, "MAX_ITEMS", 10)
+
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        api_response = {"results": items, "total": 3}
+
+        config = {
+            "api_url": "https://example.com/api/jobs",
+            "method": "GET",
+            "json_path": "results",
+            "url_field": "url",
+            "browser": True,
+            "fields": {"title": "title", "description": "desc"},
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps(api_response)}
+        )
+        mock_pw = _make_mock_pw(mock_page)
+
+        http = AsyncMock()
+
+        result = await discover(board, http, pw=mock_pw)
+
+        # Below-cap path returns the plain list (not a MonitorResult).
+        assert isinstance(result, list)
+        assert len(result) == 3
+
+
+class TestDiscoverAutoTruncation:
+    """Regression tests for the MAX_ITEMS truncation guard inside
+    ``_discover_auto`` (#3336).
+
+    ``_discover_auto`` is the auto-discover entry point (no ``api_url``
+    in metadata) — full capture + detect + paginate pipeline. The third
+    silent-slice site in ``api_sniffer.py`` used to slice
+    ``items[:MAX_ITEMS]`` and return a plain list/set; same mass-delisting
+    risk as #3216 / #3267 because the board processor never saw a
+    truncation flag and ``_MARK_GONE_BY_TIMESTAMP`` would tombstone every
+    URL beyond the cap.
+
+    Stubs the module-level helpers (``capture_exchanges``,
+    ``trigger_interactions``, ``detect_job_list``, ``infer_pagination``,
+    ``paginate_all``, ``extract_urls_via_dom_crossref``) plus the
+    locally-imported ``src.shared.browser`` symbols so the test exercises
+    only the truncation branch.
+    """
+
+    @staticmethod
+    def _patch_auto_pipeline(monkeypatch, items, *, url_field="url"):
+        """Stub the auto-discover pipeline so ``paginate_all`` returns *items*.
+
+        Returns the patched module so the caller can `setattr` ``MAX_ITEMS``.
+        """
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.shared import browser as browser_module
+        from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult
+
+        exchange = Exchange(
+            method="GET",
+            url="https://example.com/api/jobs",
+            request_headers={},
+            post_data=None,
+            status=200,
+            body={"results": items},
+            content_type="application/json",
+            phase="load",
+        )
+        candidate = ArrayCandidate(exchange=exchange, json_path="results", items=items)
+        job_list_result = JobListResult(
+            candidate=candidate,
+            url_field=url_field,
+            total_count=len(items),
+            pagination=None,
+        )
+
+        # Stubs on the api_sniffer module (where the names are bound).
+        async def _fake_capture_exchanges(_page, _host):
+            return [exchange]
+
+        async def _fake_trigger_interactions(_page, _exchanges):
+            return None
+
+        def _fake_detect_job_list(_exchanges, _board_url):
+            return job_list_result
+
+        def _fake_infer_pagination(_exchanges, _url, _page_size):
+            return None
+
+        async def _fake_paginate_all(_fetcher, _result, _max_pages):
+            return list(items)
+
+        async def _fake_extract_urls_via_dom_crossref(_page, _items, _board_url):
+            return []
+
+        def _fake_make_browser_fetcher(_page):
+            return None
+
+        monkeypatch.setattr(api_sniffer_module, "capture_exchanges", _fake_capture_exchanges)
+        monkeypatch.setattr(api_sniffer_module, "trigger_interactions", _fake_trigger_interactions)
+        monkeypatch.setattr(api_sniffer_module, "detect_job_list", _fake_detect_job_list)
+        monkeypatch.setattr(api_sniffer_module, "infer_pagination", _fake_infer_pagination)
+        monkeypatch.setattr(api_sniffer_module, "paginate_all", _fake_paginate_all)
+        monkeypatch.setattr(
+            api_sniffer_module,
+            "extract_urls_via_dom_crossref",
+            _fake_extract_urls_via_dom_crossref,
+        )
+        monkeypatch.setattr(api_sniffer_module, "make_browser_fetcher", _fake_make_browser_fetcher)
+
+        # Stub the locally-imported browser helpers. ``open_page`` is an
+        # ``@asynccontextmanager`` so swap it for one that yields a mock page.
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _fake_open_page(_pw, _config, use_proxy=False):
+            yield AsyncMock()
+
+        async def _fake_navigate(_page, _url, _opts):
+            return None
+
+        async def _fake_dismiss_overlays(_page):
+            return None
+
+        monkeypatch.setattr(browser_module, "open_page", _fake_open_page)
+        monkeypatch.setattr(browser_module, "navigate", _fake_navigate)
+        monkeypatch.setattr(browser_module, "dismiss_overlays", _fake_dismiss_overlays)
+
+        return api_sniffer_module
+
+    @pytest.mark.asyncio
+    async def test_auto_rich_returns_truncated_monitor_result(self, monkeypatch):
+        """``_discover_auto`` rich path: > ``MAX_ITEMS`` -> truncated rich result.
+
+        Patches ``MAX_ITEMS = 2`` and feeds 3 items so the cycle trips the
+        truncation guard. All 3 URLs must be preserved in the result.
+        """
+        from src.core.monitor import MonitorResult
+
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        api_sniffer_module = self._patch_auto_pipeline(monkeypatch, items)
+        monkeypatch.setattr(api_sniffer_module, "MAX_ITEMS", 2)
+        # _DEFAULT_SETTLE is autouse-patched to 0 elsewhere, keep symmetry.
+
+        config = {
+            # No api_url → auto-discover branch.
+            "fields": {"title": "title", "description": "desc"},
+            "settle": 0,
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        http = AsyncMock()
+        mock_pw = _make_mock_pw(AsyncMock())
+
+        result = await discover(board, http, pw=mock_pw)
+
+        assert isinstance(result, MonitorResult), (
+            "Auto-discover truncation must return a MonitorResult so the "
+            "board processor skips _MARK_GONE_BY_TIMESTAMP and the unseen "
+            "tail beyond the cap is not tombstoned."
+        )
+        assert result.truncated is True
+        assert result.urls == {
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/2",
+            "https://example.com/jobs/3",
+        }
+        assert result.jobs_by_url is not None
+        assert set(result.jobs_by_url) == result.urls
+
+    @pytest.mark.asyncio
+    async def test_auto_url_only_returns_truncated_monitor_result(self, monkeypatch):
+        """``_discover_auto`` URL-only path: > ``MAX_ITEMS`` -> truncated URL result."""
+        from src.core.monitor import MonitorResult
+
+        items = [
+            {"id": "1", "url": "https://example.com/jobs/1"},
+            {"id": "2", "url": "https://example.com/jobs/2"},
+            {"id": "3", "url": "https://example.com/jobs/3"},
+        ]
+        api_sniffer_module = self._patch_auto_pipeline(monkeypatch, items)
+        monkeypatch.setattr(api_sniffer_module, "MAX_ITEMS", 2)
+
+        config = {
+            # No api_url, no fields → URL-only auto-discover branch.
+            "settle": 0,
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        http = AsyncMock()
+        mock_pw = _make_mock_pw(AsyncMock())
+
+        result = await discover(board, http, pw=mock_pw)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/2",
+            "https://example.com/jobs/3",
+        }
+        assert result.jobs_by_url is None
+
+    @pytest.mark.asyncio
+    async def test_auto_under_cap_returns_plain_collection(self, monkeypatch):
+        """Below ``MAX_ITEMS``: behaviour unchanged — plain list/set returned.
+
+        Verifies the helper only fires when ``len(items) > MAX_ITEMS``;
+        an under-cap auto-discover must keep returning the original
+        ``list[DiscoveredJob]`` shape (regression: no MonitorResult wrap).
+        """
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        api_sniffer_module = self._patch_auto_pipeline(monkeypatch, items)
+        monkeypatch.setattr(api_sniffer_module, "MAX_ITEMS", 10)
+
+        config = {
+            "fields": {"title": "title", "description": "desc"},
+            "settle": 0,
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        http = AsyncMock()
+        mock_pw = _make_mock_pw(AsyncMock())
+
+        result = await discover(board, http, pw=mock_pw)
+
+        # Below-cap path returns the plain list (not a MonitorResult).
+        assert isinstance(result, list)
+        assert len(result) == 3

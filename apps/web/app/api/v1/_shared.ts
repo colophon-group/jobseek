@@ -1,13 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { apiLimiter } from "@/lib/rate-limit";
+import { apiLimiter, getClientIp } from "@/lib/rate-limit";
+import { CACHE_TTL_MEDIUM } from "@/lib/cache-ttl";
 import { siteConfig } from "@/content/config";
-
-/** Extract client IP from request headers. */
-export function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-  );
-}
 
 /** Rate-limit result to thread through to apiResponse(). */
 export type RateLimitInfo = { limit: number; remaining: number; reset: number };
@@ -16,7 +10,7 @@ export type RateLimitInfo = { limit: number; remaining: number; reset: number };
 export async function checkRateLimit(
   request: NextRequest,
 ): Promise<NextResponse | RateLimitInfo | null> {
-  const ip = getClientIp(request);
+  const ip = getClientIp(request.headers);
   try {
     const { success, limit, remaining, reset } = await apiLimiter.limit(ip);
     if (!success) {
@@ -36,8 +30,13 @@ export async function checkRateLimit(
       );
     }
     return { limit, remaining, reset };
-  } catch {
-    // Redis unavailable — allow request through
+  } catch (err) {
+    // Redis unavailable — allow request through. Log so a sustained Redis
+    // outage (which silently disables rate-limiting on every public
+    // `/api/v1/*` request) is visible in Vercel/Loki rather than looking
+    // like normal "no-rate-limit-headers" traffic. See #3175.
+    // Stable event prefix `[rate-limit] redis bypass` is queryable in Loki.
+    console.warn("[rate-limit] redis bypass", err);
   }
   return null;
 }
@@ -47,7 +46,7 @@ export function apiResponse(
   data: unknown,
   options?: { maxAge?: number; rateLimit?: RateLimitInfo | null },
 ): NextResponse {
-  const maxAge = options?.maxAge ?? 300;
+  const maxAge = options?.maxAge ?? CACHE_TTL_MEDIUM;
   const headers: Record<string, string> = {
     "Cache-Control": `public, max-age=${maxAge}, s-maxage=${maxAge}`,
     "Access-Control-Allow-Origin": "*",
@@ -72,7 +71,19 @@ export function exploreUrl(
   locale: string = "en",
 ): string {
   const kept = new URLSearchParams();
-  for (const key of ["q", "loc", "occ", "sen", "tech", "sal", "salcur", "exp"]) {
+  for (const key of [
+    "q",
+    "loc",
+    "occ",
+    "sen",
+    "tech",
+    "wm",
+    "etype",
+    "sal",
+    "salcur",
+    "exp",
+    "lang",
+  ]) {
     const val = params.get(key);
     if (val) kept.set(key, val);
   }

@@ -341,6 +341,8 @@ def _make_postings() -> list[dict]:
         tech_start = i % len(TECHNOLOGIES)
         techs = [TECHNOLOGIES[tech_start], TECHNOLOGIES[(tech_start + 1) % len(TECHNOLOGIES)]]
 
+        experience_min = -1 if i % 3 == 0 else (i + 1)
+        experience_max = -1 if experience_min == -1 else 99
         posting: dict = {
             "id": f"{_PREFIX}_posting_{i}",
             "company_id": company["id"],
@@ -358,7 +360,10 @@ def _make_postings() -> list[dict]:
             "seniority_name": sen["name"],
             "technology_ids": [t["technology_id"] for t in techs],
             "technology_names": [t["name"] for t in techs],
-            "experience_min": -1 if i % 3 == 0 else (i + 1),
+            "experience_min": experience_min,
+            "experience_max": experience_max,
+            "experience_min_years": float(experience_min),
+            "experience_max_years": float(experience_max),
             "locales": ["_none"] if i % 4 == 0 else ["en", "de"],
             "first_seen_at": PAST_TS + i * 3600,
             "last_seen_at": NOW_TS - i * 600,
@@ -504,15 +509,18 @@ class TestSchemas:
         assert fields_by_name["first_seen_at"]["type"] == "int64"
         assert fields_by_name["company_id"]["type"] == "string"
         assert fields_by_name["company_name"]["type"] == "string"
+        assert fields_by_name["experience_min_years"]["type"] == "float"
+        assert fields_by_name["experience_max_years"]["type"] == "float"
         assert fields_by_name["experience_min"]["type"] == "int32"
+        assert fields_by_name["experience_max"]["type"] == "int32"
         assert "coordinates" not in fields_by_name, (
             "coordinates should only be on location collection, not job_posting"
         )
 
     def test_job_posting_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """job_posting has the expected number of fields (23)."""
+        """job_posting has the expected number of fields (28)."""
         info = _col(ts_client, alias_map, "job_posting").retrieve()
-        assert len(info["fields"]) == 23
+        assert len(info["fields"]) == 28
 
     def test_location_schema_has_geopoint(self, ts_client: typesense.Client, alias_map: dict):
         """location collection has 'coordinates' field of type 'geopoint'."""
@@ -604,6 +612,8 @@ class TestDataIntegrity:
             assert doc["experience_min"] == -1, (
                 f"Expected sentinel -1 for experience_min, got {doc['experience_min']}"
             )
+            assert doc["experience_min_years"] == -1.0
+            assert doc["experience_max_years"] == -1.0
 
     def test_job_posting_sentinel_locales(self, ts_client: typesense.Client, alias_map: dict):
         """Postings with locales = ['_none'] in seed data should have

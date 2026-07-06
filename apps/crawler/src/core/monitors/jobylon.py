@@ -37,6 +37,7 @@ import httpx
 import structlog
 
 from src.core.monitors import BoardGoneError, DiscoveredJob, fetch_page_text, register
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -564,6 +565,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     raw_jobs = _parse_jobs_block(html)
     jobs: list[DiscoveredJob] = []
     seen: set[str] = set()
+    truncated = False
     for item in raw_jobs:
         parsed = _parse_job(item)
         if parsed is None:
@@ -574,6 +576,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         jobs.append(parsed)
         if len(jobs) >= MAX_JOBS:
             log.warning("jobylon.truncated", total=len(raw_jobs), cap=MAX_JOBS)
+            truncated = True
             break
 
     log.info(
@@ -582,6 +585,8 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         company_group_id=company_group_id,
         jobs=len(jobs),
     )
+    if truncated:
+        return truncated_rich_result(jobs)
     return jobs
 
 

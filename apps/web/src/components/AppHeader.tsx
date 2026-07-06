@@ -9,11 +9,12 @@ import { Compass, Briefcase, Eye, Settings, LogIn, LogOut } from "lucide-react";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/Button";
 import { SearchBar } from "@/components/search/search-bar";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
+import { UserAvatar } from "@/components/UserAvatar";
 
 const iconBtnClass =
   "inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors cursor-pointer";
@@ -47,7 +48,7 @@ function BottomBarLink({ href, label, children }: { href: string; label: string;
 export function AppHeader() {
   const { t } = useLingui();
   const lp = useLocalePath();
-  const { isLoggedIn, user, isPending } = useAuth();
+  const { isLoggedIn, user, isPending } = useSession();
 
   const appHref = lp(siteConfig.nav.app.href);
 
@@ -56,15 +57,6 @@ export function AppHeader() {
   const myJobsLabel = t({ id: "app.header.nav.myJobs", comment: "My Jobs nav icon tooltip", message: "My Jobs" });
   const settingsLabel = t({ id: "app.header.nav.settings", comment: "Settings nav icon tooltip", message: "Settings" });
 
-
-  function getInitials(name: string) {
-    return name
-      .split(" ")
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  }
 
   async function handleSignOut() {
     await authClient.signOut();
@@ -80,21 +72,20 @@ export function AppHeader() {
 
   const avatarButton = (
     <button
-      className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-contrast transition-opacity hover:opacity-90 cursor-pointer"
+      className="rounded-full transition-opacity hover:opacity-90 cursor-pointer"
       aria-label={t({
         id: "app.header.avatar.label",
         comment: "Aria label for user avatar menu",
         message: "Account menu",
       })}
     >
-      {user?.image ? (
-        // User avatars come from arbitrary OAuth providers.
-        // next/image remote host allowlist would block many of them.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={user.image} alt="" className="size-8 rounded-full object-cover" />
-      ) : (
-        getInitials(user?.name ?? user?.email ?? "?")
-      )}
+      <UserAvatar
+        image={user?.image}
+        name={user?.name}
+        email={user?.email}
+        size={32}
+        initialsTextClass="text-xs"
+      />
     </button>
   );
 
@@ -145,16 +136,16 @@ export function AppHeader() {
           {/* Nav icons (desktop only) */}
           <nav className="hidden items-center gap-1 md:flex">
             <NavIcon href={appHref} label={exploreLabel}>
-              <Compass size={18} />
+              <Compass size={18} aria-hidden="true" />
             </NavIcon>
             <NavIcon href={lp("/watchlists")} label={watchlistsLabel}>
-              <Eye size={18} />
+              <Eye size={18} aria-hidden="true" />
             </NavIcon>
             <NavIcon href={lp("/my-jobs")} label={myJobsLabel}>
-              <Briefcase size={18} />
+              <Briefcase size={18} aria-hidden="true" />
             </NavIcon>
             <NavIcon href={lp(siteConfig.nav.settings.href)} label={settingsLabel}>
-              <Settings size={18} />
+              <Settings size={18} aria-hidden="true" />
             </NavIcon>
           </nav>
 
@@ -205,15 +196,13 @@ export function AppHeader() {
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button className="flex flex-1 flex-col items-center gap-0.5 py-1.5 transition-colors cursor-pointer">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-contrast">
-                    {user.image ? (
-                      // User avatars come from arbitrary OAuth providers.
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={user.image} alt="" className="size-6 rounded-full object-cover" />
-                    ) : (
-                      getInitials(user.name ?? user.email ?? "?")
-                    )}
-                  </span>
+                  <UserAvatar
+                    image={user.image}
+                    name={user.name}
+                    email={user.email}
+                    size={24}
+                    initialsTextClass="text-[10px]"
+                  />
                   <span className="text-[10px] leading-tight text-foreground">
                     {t({ id: "app.header.nav.account", comment: "Account bottom bar label", message: "Account" })}
                   </span>

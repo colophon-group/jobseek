@@ -5,6 +5,8 @@
  * so links between them can carry filters across.
  */
 
+import { isEmploymentType, isWorkMode, type EmploymentType, type WorkMode } from "./types";
+
 export interface SerializableLocation {
   id: number;
   slug: string;
@@ -41,6 +43,50 @@ export interface SalaryExperienceFilters {
 }
 
 /**
+ * Parse the `wm` URL parameter into a list of valid {@link WorkMode}
+ * values. Drops any tokens that are not one of the canonical
+ * `onsite | hybrid | remote` values, deduplicates, and preserves input
+ * order. Returns an empty array for missing/empty input. (issue #2983)
+ */
+export function parseWorkModeParam(raw: string | null | undefined): WorkMode[] {
+  if (!raw) return [];
+  const seen = new Set<WorkMode>();
+  const out: WorkMode[] = [];
+  for (const token of raw.split(",")) {
+    const trimmed = token.trim().toLowerCase();
+    if (!trimmed) continue;
+    if (!isWorkMode(trimmed)) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+/**
+ * Parse the `etype` URL parameter into public employment-type filter
+ * values. Invalid tokens are dropped to match the existing `wm` behavior:
+ * callers can append unknown future values without breaking the endpoint,
+ * while search only receives canonical values it can safely filter on.
+ */
+export function parseEmploymentTypeParam(
+  raw: string | null | undefined,
+): EmploymentType[] {
+  if (!raw) return [];
+  const seen = new Set<EmploymentType>();
+  const out: EmploymentType[] = [];
+  for (const token of raw.split(",")) {
+    const trimmed = token.trim().toLowerCase();
+    if (!trimmed) continue;
+    if (!isEmploymentType(trimmed)) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+/**
  * Build a query string (without leading `?`) from keywords + locations + occupations + seniorities.
  * Returns an empty string when there are no filters.
  */
@@ -50,6 +96,7 @@ export function buildFilterQuery(
   occupations?: SerializableOccupation[],
   seniorities?: SerializableSeniority[],
   technologies?: SerializableTechnology[],
+  workMode?: WorkMode[],
 ): string {
   const params = new URLSearchParams();
   if (keywords.length > 0) params.set("q", keywords.join(","));
@@ -64,6 +111,9 @@ export function buildFilterQuery(
   }
   if (technologies && technologies.length > 0) {
     params.set("tech", technologies.map((t) => t.slug).join(","));
+  }
+  if (workMode && workMode.length > 0) {
+    params.set("wm", workMode.join(","));
   }
   return params.toString();
 }
@@ -79,6 +129,7 @@ export function buildFilteredPath(
   occupations?: SerializableOccupation[],
   seniorities?: SerializableSeniority[],
   technologies?: SerializableTechnology[],
+  workMode?: WorkMode[],
 ): string {
   const params = new URLSearchParams();
   if (keywords.length > 0) params.set("q", keywords.join(","));
@@ -93,6 +144,9 @@ export function buildFilteredPath(
   }
   if (technologies && technologies.length > 0) {
     params.set("tech", technologies.map((t) => t.slug).join(","));
+  }
+  if (workMode && workMode.length > 0) {
+    params.set("wm", workMode.join(","));
   }
   if (extra) {
     for (const [k, v] of Object.entries(extra)) {

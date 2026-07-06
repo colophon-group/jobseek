@@ -1,14 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { GitHubIcon } from "@/components/icons/GitHubIcon";
 import { authClient } from "@/lib/auth-client";
 import { isReservedUsername } from "@/lib/username";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { setPassword as setPasswordAction, recordPasswordResetRequest, getAccountPageData } from "@/lib/actions/preferences";
+import {
+  setPassword as setPasswordAction,
+  recordPasswordResetRequest,
+  getAccountPageData,
+  renameUsername,
+} from "@/lib/actions/preferences";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -51,7 +57,7 @@ function PasswordSection({ hasPassword, initialCooldown, onPasswordSet }: { hasP
 
 function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
   const { t } = useLingui();
-  const { user } = useAuth();
+  const { user } = useSession();
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -79,9 +85,9 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.password.title" comment="Password section heading">Password</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.password.setDescription" comment="Set password description for OAuth users">
           You signed in with a social account. Set a password to enable email changes and additional security.
@@ -113,7 +119,7 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
 
 function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
   const { t } = useLingui();
-  const { user } = useAuth();
+  const { user } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -149,10 +155,7 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
       return;
     }
 
-    const { error } = await (authClient as unknown as {
-      requestPasswordReset: (opts: { email: string; redirectTo: string }) =>
-        Promise<{ error: { message?: string } | null }>;
-    }).requestPasswordReset({
+    const { error } = await authClient.requestPasswordReset({
       email: user.email,
       redirectTo: "/reset-password",
     });
@@ -167,9 +170,9 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.password.title" comment="Password section heading">Password</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.password.description" comment="Password section description">
           Change your password via a secure email link.
@@ -194,6 +197,8 @@ const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 
 function UsernameSection({ currentUsername }: { currentUsername: string }) {
   const { t } = useLingui();
+  const router = useRouter();
+  const { refresh: refreshSession } = useSession();
   const [savedUsername, setSavedUsername] = useState(currentUsername);
   const [value, setValue] = useState(currentUsername);
   const [loading, setLoading] = useState(false);
@@ -232,7 +237,7 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await authClient.isUsernameAvailable({ username: norm });
-        setAvailable(!!(res.data as unknown as { available: boolean })?.available);
+        setAvailable(!!res.data?.available);
       } catch {
         setAvailable(null);
       }
@@ -246,15 +251,26 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
     setError("");
     setSuccess("");
     setLoading(true);
-    const { error } = await authClient.updateUser({ username: normalized });
-    setLoading(false);
+    // Server action wraps `auth.api.updateUser` AND fans out every
+    // cache layer the rename invalidates (Redis session, watchlist
+    // cache tags, Typesense `owner_username`, sitemap). See #3022 +
+    // the action's docstring.
+    const { error } = await renameUsername(normalized);
     if (error) {
-      setError(error.message ?? t({ id: "settings.account.username.error", comment: "Generic username update error", message: "Failed to update username" }));
-    } else {
-      setSavedUsername(normalized);
-      setAvailable(null);
-      setSuccess(t({ id: "settings.account.username.success", comment: "Username updated success message", message: "Username updated." }));
+      setLoading(false);
+      setError(error ?? t({ id: "settings.account.username.error", comment: "Generic username update error", message: "Failed to update username" }));
+      return;
     }
+    // Re-pull the bootstrap payload so SessionProvider stops handing
+    // the stale `user.username` to URL-building components like
+    // WatchlistCard / save-search / mirror. router.refresh() rebuilds
+    // any RSC tree currently rendered with the old slug.
+    await refreshSession();
+    router.refresh();
+    setLoading(false);
+    setSavedUsername(normalized);
+    setAvailable(null);
+    setSuccess(t({ id: "settings.account.username.success", comment: "Username updated success message", message: "Username updated." }));
   }
 
   // hint is derived from the validated flags above (which already use savedUsername)
@@ -278,9 +294,9 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.username.title" comment="Username section heading">Username</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.username.description" comment="Username section description">
           Your unique handle used in your public profile URL.
@@ -350,9 +366,9 @@ function ChangeEmailSection() {
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.email.title" comment="Change email section heading">Change email</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.email.description" comment="Change email section description">
           Update the email address associated with your account.
@@ -430,9 +446,9 @@ function ConnectedAccountsSection({ accounts, onDisconnect }: { accounts: Connec
 
   return (
     <section>
-      <h3 className="mb-1 text-base font-semibold">
+      <h2 className="mb-1 text-base font-semibold">
         <Trans id="settings.account.socials.title" comment="Connected accounts section heading">Connected accounts</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-muted">
         <Trans id="settings.account.socials.description" comment="Connected accounts section description">
           Manage your linked social accounts.
@@ -488,9 +504,9 @@ function DeleteAccountSection() {
 
   return (
     <section className="rounded-md border border-error-border bg-error-bg p-4">
-      <h3 className="mb-1 text-base font-semibold text-error">
+      <h2 className="mb-1 text-base font-semibold text-error">
         <Trans id="settings.account.delete.title" comment="Delete account section heading">Delete account</Trans>
-      </h3>
+      </h2>
       <p className="mb-4 text-sm text-error">
         <Trans id="settings.account.delete.description" comment="Delete account section description">
           Permanently delete your account and all associated data. This action cannot be undone.
@@ -532,7 +548,7 @@ type AccountPageData = {
 /* ── Main Component ── */
 
 export function AccountSettings({ initialData }: { initialData?: AccountPageData }) {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn } = useSession();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>(initialData?.accounts ?? []);
 
   const refreshAccounts = useCallback(() => {

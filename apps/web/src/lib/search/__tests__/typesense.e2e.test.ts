@@ -61,7 +61,7 @@ const LOC_NYC = 103;
 const LOC_REMOTE = 104;
 
 // 22 job postings spread across companies
-const JOB_POSTINGS = [
+const RAW_JOB_POSTINGS = [
   // ── Acme Corp (c1) — 6 active, 2 inactive ──
   {
     id: "jp1", company_id: "c1", company_name: "Acme Corp", company_slug: "acme-corp", company_icon: "acme.png",
@@ -265,6 +265,17 @@ const JOB_POSTINGS = [
   },
 ];
 
+const JOB_POSTINGS = RAW_JOB_POSTINGS.map((posting) => {
+  const experienceMin = posting.experience_min;
+  const experienceMax = experienceMin === -1 ? -1 : 99;
+  return {
+    ...posting,
+    experience_max: experienceMax,
+    experience_min_years: experienceMin,
+    experience_max_years: experienceMax,
+  };
+});
+
 // Postings that are active
 const ACTIVE_POSTINGS = JOB_POSTINGS.filter((jp) => jp.is_active);
 // Postings with sentinel experience (-1)
@@ -287,6 +298,13 @@ const JOB_POSTING_SCHEMA: CollectionCreateSchema = {
     { name: "company_icon", type: "string", index: false, optional: true },
     { name: "title", type: "string" },
     { name: "is_active", type: "bool", facet: true },
+    // `has_content` mirrors the production schema (issue #2917). Seed
+    // docs below do NOT set the field; the production filter
+    // `has_content:!=false` then matches them by virtue of `!=false`
+    // covering both `true` and absent values. This keeps the test data
+    // shape representative of the post-deploy-pre-backfill state where
+    // existing docs lack the field but stay visible until backfill.
+    { name: "has_content", type: "bool", facet: true, optional: true },
     { name: "location_ids", type: "int32[]", facet: true },
     { name: "location_names", type: "string[]", facet: true },
     { name: "location_types", type: "string[]", facet: true },
@@ -297,7 +315,10 @@ const JOB_POSTING_SCHEMA: CollectionCreateSchema = {
     { name: "technology_ids", type: "int32[]", facet: true },
     { name: "employment_type", type: "string", facet: true, optional: true },
     { name: "salary_eur", type: "int32", facet: true, optional: true },
+    { name: "experience_min_years", type: "float", facet: true, optional: true },
+    { name: "experience_max_years", type: "float", facet: true, optional: true },
     { name: "experience_min", type: "int32", facet: true },
+    { name: "experience_max", type: "int32", facet: true, optional: true },
     { name: "locales", type: "string[]", facet: true },
     { name: "source_url", type: "string", index: false, optional: true },
     { name: "first_seen_at", type: "int64" },
@@ -692,7 +713,7 @@ describe("search()", () => {
 // =====================================================================
 
 describe("listTopCompanies()", () => {
-  it("unfiltered returns companies sorted by posting count", async () => {
+  it("unfiltered returns companies sorted by freshest posting", async () => {
     if (skipIfUnavailable()) return;
 
     const result = await provider.listTopCompanies({
@@ -704,10 +725,16 @@ describe("listTopCompanies()", () => {
     expect(result.companies.length).toBeGreaterThan(0);
     expect(result.totalCompanies).toBeGreaterThan(0);
 
-    // Companies should be sorted by activeMatches descending
+    // Companies should be sorted by each company's newest visible posting.
     for (let i = 1; i < result.companies.length; i++) {
-      expect(result.companies[i - 1].activeMatches).toBeGreaterThanOrEqual(
-        result.companies[i].activeMatches,
+      const previousNewest = new Date(
+        result.companies[i - 1].postings[0].firstSeenAt,
+      ).getTime();
+      const currentNewest = new Date(
+        result.companies[i].postings[0].firstSeenAt,
+      ).getTime();
+      expect(previousNewest).toBeGreaterThanOrEqual(
+        currentNewest,
       );
     }
   });

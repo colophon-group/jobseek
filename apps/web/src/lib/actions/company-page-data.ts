@@ -1,13 +1,34 @@
 "use server";
 
-import { getCompanyBySlug, getCompanyPostings, type CompanyDetail } from "@/lib/actions/company";
+import {
+  getCompanyBySlug,
+  getCompanyPostings,
+  getCompanyPostingsAnonymous,
+  type CompanyDetail,
+} from "@/lib/actions/company";
+import { getCurrencyRates } from "@/lib/actions/search";
 import { parseSearchFilters, type ParsedSearchFilters } from "@/lib/actions/search-input";
 import { getPreferences } from "@/lib/actions/preferences";
+import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
+import { getSession } from "@/lib/sessionCache";
 import { resolveJobLanguages } from "@/lib/job-languages";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
+import { convertToEur } from "@/lib/salary";
 import type { SearchResultPosting } from "@/lib/search";
 
 const PAGE_SIZE = 20;
+
+const DEFAULT_DISPLAY_CURRENCY = "EUR";
+
+const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
+  keywords: [],
+  locations: [],
+  occupations: [],
+  seniorities: [],
+  technologies: [],
+  workMode: [],
+  employmentTypes: [],
+};
 
 export interface CompanyPageData {
   company: CompanyDetail;
@@ -44,6 +65,8 @@ export async function fetchCompanyPageData(params: {
   const occ = firstOf(searchParams.occ);
   const sen = firstOf(searchParams.sen);
   const tech = firstOf(searchParams.tech);
+  const wm = firstOf(searchParams.wm);
+  const etype = firstOf(searchParams.etype);
   const show = firstOf(searchParams.show);
   const sal = firstOf(searchParams.sal);
   const salcur = firstOf(searchParams.salcur);
@@ -51,12 +74,16 @@ export async function fetchCompanyPageData(params: {
 
   const { userLat, userLng } = await getGeoFromHeaders();
 
-  const [parsed, prefs] = await Promise.all([
-    parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }),
-    getPreferences(),
+  // Auth users persist `jobLanguages` in `user_preferences`; anon users
+  // mirror it into a cookie (issue #2850 + `anon-preferences.ts`).
+  const session = await getSession();
+  const [parsed, prefs, anonJobLangs] = await Promise.all([
+    parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }),
+    session ? getPreferences() : Promise.resolve(null),
+    session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
 
-  const jobLanguages = prefs?.jobLanguages ?? [];
+  const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
   const languages = resolveJobLanguages(jobLanguages, locale);
 
@@ -64,11 +91,22 @@ export async function fetchCompanyPageData(params: {
   const occupationIds = idsOrUndefined(parsed.occupations);
   const seniorityIds = idsOrUndefined(parsed.seniorities);
   const technologyIds = idsOrUndefined(parsed.technologies);
+  const workMode = parsed.workMode.length > 0 ? parsed.workMode : undefined;
+  const employmentTypes =
+    parsed.employmentTypes.length > 0 ? parsed.employmentTypes : undefined;
 
   const salaryCurrencyParam = salcur ?? displayCurrency;
   const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
-  const salaryMinEur = salaryMinDisplay;
-  const salaryMaxEur = salaryMaxDisplay;
+  // Convert user-currency filter amount to EUR — see explore-data.ts for the
+  // full rationale (issue #3178). `getCurrencyRates` is cache-backed
+  // (`cacheLife("hours")`), so this is not an extra DB round-trip in the
+  // steady state.
+  const rates =
+    salaryMinDisplay != null || salaryMaxDisplay != null
+      ? await getCurrencyRates()
+      : [];
+  const salaryMinEur = convertToEur(salaryMinDisplay, salaryCurrencyParam, rates);
+  const salaryMaxEur = convertToEur(salaryMaxDisplay, salaryCurrencyParam, rates);
   const { min: experienceMin, max: experienceMax } = parseRangeParam(exp);
 
   const postingsResult = await getCompanyPostings({
@@ -78,6 +116,8 @@ export async function fetchCompanyPageData(params: {
     occupationIds,
     seniorityIds,
     technologyIds,
+    employmentTypes,
+    workMode,
     salaryMinEur,
     salaryMaxEur,
     experienceMin,
@@ -106,5 +146,73 @@ export async function fetchCompanyPageData(params: {
     experienceMin,
     experienceMax,
     showPostingId: show ?? null,
+  };
+}
+
+/**
+ * Server-side prerender variant of :func:`fetchCompanyPageData` for the
+ * anonymous, no-filter company-detail page case (#3203).
+ *
+ * Mirrors :func:`fetchExploreDefaults` (#2640). Critically does NOT
+ * call :func:`getPreferences`/:func:`getSession`/:func:`readAnonJobLanguagesCookie`
+ * (read ``cookies()``) or :func:`getGeoFromHeaders` (reads ``headers()``)
+ * — those force dynamic rendering and would silently break the page's
+ * ISR eligibility (`revalidate = CACHE_TTL_DETAIL`). Returns the same
+ * ``CompanyPageData`` shape with anonymous defaults: EUR currency, no
+ * job-language filter, no geo proximity bias, no active filters,
+ * ``showPostingId: null``. The client component conditionally re-fetches
+ * the personalised variant via :func:`fetchCompanyPageData` when the
+ * ``logged_in`` hint cookie, the anonymous-job-languages hint cookie,
+ * or any filter searchParams are present.
+ *
+ * Returns ``null`` when the slug is unknown — caller renders the
+ * not-found shell. The cache layer in `getCompanyBySlug` ensures repeat
+ * unknown-slug hits don't churn Typesense/Postgres.
+ */
+export async function fetchCompanyPageDefaults(params: {
+  slug: string;
+  locale: string;
+}): Promise<CompanyPageData | null> {
+  const { slug, locale } = params;
+
+  const company = await getCompanyBySlug(slug, locale);
+  if (!company) return null;
+
+  const displayCurrency = DEFAULT_DISPLAY_CURRENCY;
+  const jobLanguages: string[] = [];
+  const languages = resolveJobLanguages(jobLanguages, locale);
+
+  // ``getCompanyPostingsAnonymous`` (not ``getCompanyPostings``) — the
+  // latter calls ``getSessionUserId`` which awaits ``headers()`` and
+  // would silently downgrade the page to dynamic rendering, defeating
+  // the ISR optimisation this function exists for. See the parallel
+  // pattern in `explore-data.ts::fetchExploreDefaults` (#2640).
+  const postingsResult = await getCompanyPostingsAnonymous({
+    companyId: company.id,
+    keywords: [],
+    languages,
+    locale,
+    offset: 0,
+    limit: PAGE_SIZE,
+  });
+
+  return {
+    company,
+    postings: postingsResult.postings,
+    activeCount: postingsResult.activeCount,
+    yearCount: postingsResult.yearCount,
+    truncated: postingsResult.truncated,
+    parsed: EMPTY_PARSED_FILTERS,
+    displayCurrency,
+    jobLanguages,
+    languages,
+    userLat: undefined,
+    userLng: undefined,
+    salaryCurrencyParam: displayCurrency,
+    salaryMinDisplay: undefined,
+    salaryMaxDisplay: undefined,
+    experienceMin: undefined,
+    experienceMax: undefined,
+    showPostingId: null,
   };
 }

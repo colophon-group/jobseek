@@ -75,7 +75,8 @@ Four scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub sec
   - The backfill script (`typesense-backfill-local.py`) must use the same logic.
 
   **Invariant**: `buildFilterString()` in the web app filters on `location_ids` and `occupation_ids` (plural array fields). If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin"). If ancestors are written to Postgres instead, the `location_ids`/`location_types` length constraint breaks and the Supabase exporter stalls.
-- **Sentinel values**: `experience_min = -1` for NULL (Typesense excludes missing optional fields from range queries). `locales = ["_none"]` for jobs with no detected language.
+- **Sentinel values**: `experience_min_years = -1` for NULL (and legacy `experience_min = -1` during the integer-field compatibility window). `locales = ["_none"]` for jobs with no detected language.
+- **Experience precision**: Postgres stores `experience_min` / `experience_max` as decimal years (`NUMERIC(3,1)`), so sub-year requirements such as "6 months" index as `0.5`. Typesense filters use `experience_min_years` / `experience_max_years` float fields, while legacy integer `experience_min` / `experience_max` fields remain for backfill compatibility.
 - **Denormalized names**: Taxonomy names (location, occupation, seniority, technology) are stored directly on each job posting document for search and faceting without joins.
 - **Versioned aliases**: `job_posting` is an alias pointing to `job_posting_v1`. To reindex with a new schema: create `_v2`, backfill, swap alias, drop `_v1`.
 
@@ -98,7 +99,7 @@ cd apps/crawler && uv run python ../../scripts/typesense-setup.py --force  # Dro
 uv run --no-sync crawler setup-typesense                                   # Same, from inside the image
 ```
 
-The deploy script (`apps/crawler/deploy.sh`) runs `crawler setup-typesense` between Alembic migrations and `crawler sync`, so a PR that adds new fields ships safely: schema is patched first, then `sync` upserts populate the new fields. The deploy workflow also smoke-runs `setup-typesense` twice against an ephemeral Typesense container before SSHing to prod (the second run exercises the patch path on existing collections), so a schema regression fails CI rather than aborting the deploy mid-stream. If any step between the worker `stop` and the final `up -d` does fail, an `ERR` trap in `deploy.sh` brings containers back up on the previous image so the box doesn't sit dark.
+The deploy script (`apps/crawler/deploy.sh`) runs Alembic migrations and `crawler setup-typesense` before stopping processors, then runs `crawler sync` while workers/exporter/drain/browser are quiesced. That keeps schema patching ahead of `sync` upserts, while avoiding a Redis reseed race with live workers. The deploy workflow also smoke-runs `setup-typesense` twice against an ephemeral Typesense container before SSHing to prod (the second run exercises the patch path on existing collections), so a schema regression fails CI rather than aborting the deploy mid-stream. The script keeps a rollback copy of `/home/deploy/.env`, starts the previous image again on failure, and only lets the workflow promote the new images to `latest` after the SSH deploy succeeds.
 
 ### Company Collection (extended for company detail page)
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, Search, Building2, Loader2, Check, ChevronDown } from "lucide-react";
+import { X, Search, Loader2, Check, ChevronDown } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import {
   searchCompaniesForWatchlist,
   suggestIndustries,
@@ -196,8 +196,11 @@ export function CompanySearchModal({
                 </button>
               )}
               <Dialog.Close asChild>
-                <button className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer">
-                  <X size={16} />
+                <button
+                  className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer"
+                  aria-label={t({ id: "watchlists.companyModal.close", comment: "Aria label for close button on add-companies modal", message: "Close" })}
+                >
+                  <X size={16} aria-hidden="true" />
                 </button>
               </Dialog.Close>
             </div>
@@ -289,8 +292,25 @@ export function CompanySearchModal({
           {/* Company list */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto">
             {loading && companies.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 size={20} className="animate-spin text-muted" />
+              <div
+                role="status"
+                aria-busy="true"
+                aria-live="polite"
+                className="flex items-center justify-center py-12"
+              >
+                <Loader2
+                  aria-hidden="true"
+                  size={20}
+                  className="animate-spin text-muted"
+                />
+                <span className="sr-only">
+                  <Trans
+                    id="watchlists.companyModal.loading"
+                    comment="Screen-reader announcement while the company search modal is fetching results"
+                  >
+                    Loading companies
+                  </Trans>
+                </span>
               </div>
             ) : visibleCompanies.length === 0 && !loading ? (
               <div className="px-5">
@@ -309,20 +329,7 @@ export function CompanySearchModal({
                         isSelected ? "bg-primary/5" : "hover:bg-border-soft"
                       }`}
                     >
-                      {c.icon ? (
-                        <Image
-                          src={c.icon}
-                          alt={c.name}
-                          width={32}
-                          height={32}
-                          sizes="32px"
-                          className="mt-0.5 size-8 shrink-0 rounded"
-                        />
-                      ) : (
-                        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-                          <Building2 size={16} />
-                        </div>
-                      )}
+                      <CompanyIcon icon={c.icon} alt={c.name} size={32} className="mt-0.5" />
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">

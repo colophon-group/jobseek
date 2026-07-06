@@ -196,7 +196,7 @@ export const applicationInterview = pgTable("application_interview", {
 	scheduledAt: timestamp("scheduled_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("idx_ai_saved_job_round").using("btree", table.savedJobId.asc().nullsLast(), table.round.asc().nullsLast()),
+	uniqueIndex("idx_ai_saved_job_round").using("btree", table.savedJobId.asc().nullsLast(), table.round.asc().nullsLast()),
 	foreignKey({
 			columns: [table.savedJobId],
 			foreignColumns: [savedJob.id],
@@ -399,13 +399,13 @@ export const jobPosting = pgTable("job_posting", {
 	salaryCurrency: text("salary_currency"),
 	salaryPeriod: text("salary_period"),
 	salaryEur: integer("salary_eur"),
-	experienceMin: integer("experience_min"),
-	experienceMax: integer("experience_max"),
+	experienceMin: numeric("experience_min", { precision: 3, scale: 1 }),
+	experienceMax: numeric("experience_max", { precision: 3, scale: 1 }),
 }, (table) => [
 	index("idx_jp_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`(is_active = true)`),
 	index("idx_jp_board_url").using("btree", table.boardId.asc().nullsLast().op("uuid_ops"), table.sourceUrl.asc().nullsLast().op("text_ops")),
 	index("idx_jp_company").using("btree", table.companyId.asc().nullsLast().op("uuid_ops")),
-	index("idx_jp_experience_min").using("btree", table.experienceMin.asc().nullsLast().op("int4_ops")).where(sql`(experience_min IS NOT NULL)`),
+	index("idx_jp_experience_min").using("btree", table.experienceMin.asc().nullsLast().op("numeric_ops")).where(sql`(experience_min IS NOT NULL)`),
 	index("idx_jp_lease").using("btree", table.leasedUntil.asc().nullsLast().op("timestamptz_ops")).where(sql`(leased_until IS NOT NULL)`),
 	index("idx_jp_location_ids").using("gin", table.locationIds.asc().nullsLast().op("array_ops")),
 	index("idx_jp_next_scrape").using("btree", table.nextScrapeAt.asc().nullsLast().op("timestamptz_ops")).where(sql`((is_active = true) AND (next_scrape_at IS NOT NULL))`),
@@ -436,7 +436,7 @@ export const jobPosting = pgTable("job_posting", {
 			name: "job_posting_seniority_id_fkey"
 		}),
 	unique("job_posting_source_url_unique").on(table.sourceUrl),
-	check("chk_employment_type", sql`(employment_type IS NULL) OR (employment_type = ANY (ARRAY['full_time'::text, 'part_time'::text, 'contract'::text, 'internship'::text, 'full_or_part'::text]))`),
+	check("chk_employment_type", sql`(employment_type IS NULL) OR (employment_type = ANY (ARRAY['full_time'::text, 'part_time'::text, 'contract'::text, 'internship'::text, 'temporary'::text, 'volunteer'::text, 'full_or_part'::text]))`),
 	check("chk_location_arrays_length", sql`((location_ids IS NULL) AND (location_types IS NULL)) OR (array_length(location_ids, 1) = array_length(location_types, 1))`),
 	check("chk_location_types", sql`location_types <@ ARRAY['onsite'::text, 'remote'::text, 'hybrid'::text]`),
 ]);

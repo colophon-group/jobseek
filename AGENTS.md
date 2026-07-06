@@ -29,7 +29,7 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │           ├── sync.py      # CSV -> DB + Redis + Typesense taxonomy sync
 │           ├── cli.py       # Entry point (crawler run/export/drain/sync/board/...)
 │           ├── config.py    # Settings
-│           └── labeller/    # Daily labelled-postings routine (Claude Code driven)
+│           └── labeller/    # Daily labelled-postings ops routine
 │               ├── cli.py           # labeller = src.labeller.cli:main
 │               ├── normalize.py     # deterministic HTML normalizer
 │               ├── blocks.py        # HTML -> block list
@@ -48,7 +48,9 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │   ├── 11-typesense.md      # Typesense deployment + architecture reference
 │   ├── 12-typesense-benchmarks.md  # Performance benchmarks
 │   ├── 14-error-review-routine.md  # Daily crawler error-review routine spec
-│   └── 15-data-sampling-routine.md # Daily labelled-postings routine spec
+│   ├── 15-data-sampling-routine.md # Daily labelled-postings routine spec
+│   ├── 16-murmur-codex-mcp-transition.md # Murmur Codex MCP transition plan
+│   └── 17-codex-migration-verification-runbook.md # Codex pilot verification
 └── .github/workflows/       # CI + agent automation
 ```
 
@@ -67,7 +69,7 @@ uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Red
 uv run crawler board <slug>       # Process single board (debug)
 uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
 uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
-uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (see docs/13-seo-and-indexnow.md)
+uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (RETIRED in #2821 — companies left the index; module preserved, not scheduled)
 
 # Labeller subsystem (daily gold-dataset routine — spec in docs/15-data-sampling-routine.md)
 uv run labeller sample --date today --count 10 --out <path>
@@ -78,21 +80,29 @@ uv run labeller merge --posting <id> --date <date> --out <path>
 uv run labeller upload --date <date>
 ```
 
-## Ops routines (Claude Code driven)
+## Ops routines (Codex-first, Claude-compatible)
 
-Two scheduled routines live as slash-commands + specs — orchestrated by a
-Claude Code session (Opus), with specialized Sonnet subagents invoked via
-the `Agent` tool. **No direct Anthropic API calls** — the data collected by
-this tool feeds a future production model trained on the dataset.
+Scheduled ops routines are documented as repo runbooks and skills. Prefer
+Codex app automations or local Codex CLI so routine execution stays
+subscription-backed; do not add scheduled API-billed Codex GitHub Actions for
+these routines. `codex exec --json` is the traceable noninteractive surface
+for manual CI fallback and agent trace collection. Legacy Claude Code slash
+commands remain compatibility fallbacks where present.
 
-- `.claude/commands/jobseek-label-daily.md` + `docs/15-data-sampling-routine.md` —
-  samples diverse postings from the last 24h, labels via
-  `.claude/agents/jobseek-labeller-*` subagents with tasks rendered from
-  Jinja templates at `apps/crawler/src/labeller/prompts/tasks/*.md.j2`,
-  validates (including a concrete QA rule gatekeeper), uploads accepted
-  gold to `viktoroo/jobseek-postings-labelled` on HuggingFace.
-- `docs/14-error-review-routine.md` — daily review of crawler errors on the
-  Hetzner box.
+- `.agents/skills/jobseek-error-review/SKILL.md` + `docs/14-error-review-routine.md` —
+  Codex-first daily review of crawler errors on the Hetzner box. The routine
+  reads logs, dedupes known issues, collects evidence, and files or updates
+  GitHub issues only when the documented criteria are met.
+- `.agents/skills/jobseek-label-daily/SKILL.md` + `docs/15-data-sampling-routine.md` —
+  Codex-first daily gold-dataset routine. It samples diverse postings from the
+  last 24h, labels via task-specific subagents with tasks rendered from Jinja
+  templates at `apps/crawler/src/labeller/prompts/tasks/*.md.j2`, validates
+  with schemas and the concrete QA rule gatekeeper, and uploads accepted gold
+  to `viktoroo/jobseek-postings-labelled` on HuggingFace. The legacy Claude
+  command path is `.claude/commands/jobseek-label-daily.md`.
+- `docs/17-codex-migration-verification-runbook.md` — central pilot
+  verification checklist for Codex migration surfaces, including agent trace
+  collection and manual API-billed fallback guardrails.
 
 Web app (from `apps/web/`):
 
@@ -105,12 +115,17 @@ pnpm extract      # Extract i18n strings to .po
 pnpm compile      # Compile .po to .js catalogs
 ```
 
+Web-app conventions live under `apps/web/docs/`. The ones contributors hit most:
+- [`apps/web/docs/i18n.md`](apps/web/docs/i18n.md) — Lingui translation rules; every macro needs `id` + `comment`.
+- [`apps/web/docs/cache-components.md`](apps/web/docs/cache-components.md) — Cache Components / PPR rendering rules. **Read before writing or modifying any server component, layout, or server action** — the build enforces them once `cacheComponents: true` is enabled (#2835).
+- [`apps/web/docs/data-fetching.md`](apps/web/docs/data-fetching.md), [`apps/web/docs/styling.md`](apps/web/docs/styling.md) — narrower, by topic.
+
 ## Crawler Setup Workflow (`ws` tool)
 
-The `ws` CLI is an **agent utility** — it is run exclusively by Claude Code
-agents, not by humans directly. It guides the agent through the company
-setup workflow by rendering instructions, managing state, and enforcing
-quality gates.
+The `ws` CLI is an **agent utility** — it is run by Codex/AGENTS-compatible
+agents, not by humans directly. It guides the agent through the company setup
+workflow by rendering instructions, managing state, and enforcing quality
+gates.
 
 **Entry point:** `ws task --issue <N>` — fetches the issue, renders
 pre-verification instructions, then (after `ws new`) renders the parallel
@@ -189,7 +204,7 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 
 ## SEO and IndexNow
 
-Company pages server-render stable facts + JSON-LD (posting list stays client-rendered). IndexNow notifies Bing/Yandex/Seznam/Naver/Yep on content changes; Google is out of scope. Crawler side runs a content-hash diff per (company, locale); web side fires from watchlist server actions via `after()`.
+`/{locale}/company/{slug}` is now `noindex,follow` (#2821) — pages stay as the in-app product surface but are excluded from the sitemap. The crawler-side IndexNow notifier (which only ever covered company URLs) was retired in the same PR. Watchlist-side IndexNow notification from web server actions via `after()` remains active for the qualifying-watchlist surface (#2823). Blog post URLs are pushed to IndexNow by `.github/workflows/notify-blog-indexnow.yml` on every blog content commit (see `apps/web/script/notify-blog-indexnow.ts`).
 
 See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md).
 

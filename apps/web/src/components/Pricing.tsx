@@ -4,7 +4,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
+import { eyebrowClass, sectionHeadingClass, sectionScrollMarginClass } from "@/lib/styles";
 import { Button } from "@/components/ui/Button";
 import { CircleCheck } from "lucide-react";
 
@@ -23,6 +23,12 @@ function FreeTier() {
   const cfg = siteConfig.pricing.free;
   const ctaHref = lp(cfg.href);
   const ctaLabel = t({ id: "home.pricing.free.cta", comment: "Free tier CTA", message: "Start for free" });
+  const priceLabel = t({
+    id: "home.pricing.free.price",
+    comment:
+      "Free tier price displayed prominently on the home pricing card. Source is USD ($0); translators may render the symbol+number per locale convention (e.g. German '0 $').",
+    message: "$0",
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-[500px] md:mx-0 md:max-w-[360px] md:flex-[1_1_320px]">
@@ -32,7 +38,7 @@ function FreeTier() {
             <Trans id="home.pricing.free.name" comment="Free tier name">Free</Trans>
           </p>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-bold">$0</span>
+            <span className="text-3xl font-bold">{priceLabel}</span>
             <span className="text-muted">
               <Trans id="home.pricing.free.period" comment="Free tier period">Forever</Trans>
             </span>
@@ -59,6 +65,12 @@ function FreeTier() {
 function ProTier() {
   const { t } = useLingui();
   const ctaLabel = t({ id: "home.pricing.pro.cta", comment: "Pro tier CTA — disabled until subscriptions launch", message: "Coming soon" });
+  const priceLabel = t({
+    id: "home.pricing.pro.price",
+    comment:
+      "Pro tier price displayed prominently on the home pricing card. Source is USD ($10/month); translators may render the symbol+number per locale convention (e.g. German '10 $').",
+    message: "$10",
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-[500px] md:mx-0 md:max-w-[360px] md:flex-[1_1_320px]">
@@ -68,7 +80,7 @@ function ProTier() {
             <Trans id="home.pricing.pro.name" comment="Pro tier name">Pro</Trans>
           </p>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-bold">$10</span>
+            <span className="text-3xl font-bold">{priceLabel}</span>
             <span className="text-muted">
               <Trans id="home.pricing.pro.period" comment="Pro tier period">per month</Trans>
             </span>
@@ -94,7 +106,10 @@ function ProTier() {
 
 export function Pricing() {
   return (
-    <section id={siteConfig.pricing.anchorId} className="mx-auto max-w-[1200px] px-4 py-12 md:py-20">
+    <section
+      id={siteConfig.pricing.anchorId}
+      className={`mx-auto max-w-[1200px] px-4 py-12 md:py-20 ${sectionScrollMarginClass}`}
+    >
       <div className="mx-auto flex max-w-[640px] flex-col gap-4 text-center">
         <span className={eyebrowClass}>
           <Trans id="home.pricing.eyebrow" comment="Pricing section eyebrow">Pricing</Trans>

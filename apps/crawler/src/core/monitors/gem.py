@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_job_location_type
 from src.core.monitors import (
     DiscoveredJob,
     fetch_page_text,
@@ -21,6 +22,7 @@ from src.core.monitors import (
     slug_guess_allowed,
     slugs_from_url,
 )
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -30,22 +32,14 @@ _URL_PATTERN = re.compile(r"jobs\.gem\.com/([\w-]+)")
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support"})
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "full_time": "Full-time",
-    "part_time": "Part-time",
-    "contract": "Contract",
-    "temporary": "Temporary",
-    "internship": "Intern",
-    "volunteer": "Volunteer",
-}
-
-_LOCATION_TYPE_MAP: dict[str, str] = {
-    "remote": "remote",
-    "hybrid": "hybrid",
-    "in_office": "onsite",
-    "on_site": "onsite",
-    "onsite": "onsite",
-}
+# Gem snake_case codes (``full_time``/``part_time``/``contract``/
+# ``temporary``/``internship``/``volunteer``) pass through unchanged
+# — the central
+# :func:`src.core.enum_normalize.normalize_employment_type` handles
+# them.  ``location_type``
+# (``remote``/``hybrid``/``in_office``/``on_site``/``onsite``) is
+# funnelled through
+# :func:`src.core.enum_normalize.normalize_job_location_type`.
 
 
 def _slug_from_url(url: str) -> str | None:
@@ -96,13 +90,12 @@ def _parse_job(post: dict) -> DiscoveredJob | None:
     if not url:
         return None
 
-    # Employment type
-    raw_type = post.get("employment_type") or ""
-    employment_type = _EMPLOYMENT_TYPE_MAP.get(raw_type, raw_type or None)
+    # Employment type — pass through raw upstream value.
+    employment_type = post.get("employment_type") or None
 
     # Location type
     raw_loc_type = post.get("location_type") or ""
-    job_location_type = _LOCATION_TYPE_MAP.get(raw_loc_type)
+    job_location_type = normalize_job_location_type(raw_loc_type, default=None)
 
     # Metadata
     metadata: dict = {}
@@ -151,7 +144,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     if len(jobs) > MAX_JOBS:
         log.warning("gem.truncated", slug=slug, total=len(jobs), cap=MAX_JOBS)
-        jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
+        return truncated_rich_result(jobs)
 
     return jobs
 

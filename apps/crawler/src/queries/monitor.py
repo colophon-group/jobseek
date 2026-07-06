@@ -147,16 +147,10 @@ RETURNING board_status
 
 # RETURNING ``last_success_at`` + the post-update ``is_enabled`` lets
 # the Python caller detect the single transition from enabled →
-# disabled and apply a recency gate before delisting. The board record
-# the caller already holds (from ``_FETCH_DUE_BOARDS``) is guaranteed
-# ``is_enabled=true`` (otherwise it wouldn't have been claimed), so
-# any post-update ``is_enabled=false`` is a fresh transition — no need
-# for a fragile ``consecutive_failures = N`` equality check that breaks
-# the moment ops manually re-enables a board without zeroing the
-# counter. Without this hand-off, 5-strike disables left active
-# postings stranded on a board the scheduler never polls again — a
-# phantom-active bleed that also dropped the corresponding ``gone``
-# Prometheus counter on the floor.
+# disabled and delist postings when the board is truly stale. A
+# recent-success board stays enabled as ``suspect`` after strike #5 so
+# the scheduler retries it after the backoff instead of freezing active
+# postings forever after a short provider outage.
 _RECORD_FAILURE = """
 UPDATE job_board
 SET consecutive_failures = consecutive_failures + 1,
@@ -165,8 +159,20 @@ SET consecutive_failures = consecutive_failures + 1,
         (5 * pow(2, consecutive_failures)) || ' minutes',
         '1440 minutes'
     )::interval,
-    is_enabled = CASE WHEN consecutive_failures + 1 >= 5 THEN false ELSE is_enabled END,
-    board_status = CASE WHEN consecutive_failures + 1 >= 5 THEN 'disabled' ELSE board_status END,
+    is_enabled = CASE
+        WHEN consecutive_failures + 1 >= 5
+         AND (last_success_at IS NULL OR last_success_at < now() - interval '24 hours')
+        THEN false
+        ELSE is_enabled
+    END,
+    board_status = CASE
+        WHEN consecutive_failures + 1 >= 5
+         AND (last_success_at IS NULL OR last_success_at < now() - interval '24 hours')
+        THEN 'disabled'
+        WHEN consecutive_failures + 1 >= 5
+        THEN 'suspect'
+        ELSE board_status
+    END,
     lease_owner = NULL,
     leased_until = NULL,
     updated_at = now()
@@ -178,9 +184,30 @@ _DIFF_BATCH = """
 WITH discovered AS (
   SELECT unnest($1::text[]) AS url
 ),
+-- Self-heal touched rows (#2996): when a previously-stuck rich-monitor
+-- posting (description_r2_hash IS NULL AND next_scrape_at IS NULL) is
+-- re-scanned by a board that NOW has enrich (is_rich_no_scrape = $3 =
+-- false), reset next_scrape_at = now() so the scrape worker picks the
+-- row up. Without this branch, scraper-config fixes shipped via PR
+-- (e.g. #2947, #2953, #2954, #2961, #2962, #2964, #2967, #2968, #2970,
+-- #2971, #2972) only affect FUTURE rows inserted via
+-- ``_INSERT_RICH_JOB_ENRICH``; existing rows inserted via the no-enrich
+-- ``_INSERT_RICH_JOB`` path stay stuck forever. Healthy rows
+-- (description_r2_hash already set, OR next_scrape_at already
+-- scheduled) are untouched. is_rich_no_scrape=true boards (rich
+-- monitor without enrich) intentionally keep next_scrape_at = NULL —
+-- the board delivers everything.
 touched AS (
   UPDATE job_posting
-  SET last_seen_at = now(), missing_count = 0
+  SET last_seen_at = now(),
+      missing_count = 0,
+      next_scrape_at = CASE
+          WHEN NOT $3::boolean
+               AND job_posting.description_r2_hash IS NULL
+               AND job_posting.next_scrape_at IS NULL
+          THEN now()
+          ELSE job_posting.next_scrape_at
+      END
   FROM discovered d
   WHERE job_posting.board_id = $2
     AND job_posting.is_active = true
@@ -353,7 +380,7 @@ CREATE TEMP TABLE _rich_updates (
     location_ids integer[], location_types text[],
     salary_min integer, salary_max integer,
     salary_currency text, salary_period text, salary_eur integer,
-    experience_min integer, experience_max integer,
+    experience_min numeric(3,1), experience_max numeric(3,1),
     technology_ids integer[],
     occupation_id integer, seniority_id integer
 ) ON COMMIT DROP

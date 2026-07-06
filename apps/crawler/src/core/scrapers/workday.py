@@ -14,6 +14,7 @@ import re
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_job_location_type
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -96,15 +97,14 @@ def _normalize_workday_location(raw: str) -> str:
 
 
 def _parse_location_type(value: str | None) -> str | None:
-    """Normalize Workday remoteType to our enum."""
-    if not value:
-        return None
-    lower = value.lower()
-    if lower == "remote":
-        return "remote"
-    if lower in ("flexible", "hybrid"):
-        return "hybrid"
-    return None
+    """Normalize Workday remoteType to our enum.
+
+    Workday emits ``remote`` / ``flexible`` / ``hybrid`` — the central
+    :func:`src.core.enum_normalize.normalize_job_location_type` already
+    knows ``flexible`` -> ``hybrid``.  Pass ``default=None`` so unknown
+    values surface as ``None`` (preserves pre-#2992 behaviour).
+    """
+    return normalize_job_location_type(value, default=None)
 
 
 def _parse_detail(data: dict) -> JobContent:

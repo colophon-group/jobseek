@@ -4,10 +4,15 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/crawler/data/companies.csv'
-      - 'apps/crawler/data/boards.csv'
-      - 'apps/crawler/data/company_descriptions.csv'
+      - 'apps/crawler/data/*.csv'
   workflow_dispatch:
+
+concurrency:
+  group: crawler-production-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   sync:
@@ -36,9 +41,12 @@ jobs:
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
+            set -euo pipefail
+            tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+            tag="${tag:-latest}"
             docker run --rm \
               --env-file /home/deploy/.env \
               --network host \
               -v /home/deploy/csv-overlay:/app/data \
-              ghcr.io/colophon-group/jobseek-crawler:latest \
+              "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
               uv run --no-sync crawler sync

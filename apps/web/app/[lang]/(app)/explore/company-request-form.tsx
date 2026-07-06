@@ -1,20 +1,25 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import { requestCompany } from "@/lib/actions/stats";
+import { requestCompany } from "@/lib/actions/request-company";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
-
-const GITHUB_ISSUE_URL = "https://github.com/colophon-group/jobseek/issues";
+import { RequestCompanySuccess } from "@/components/search/request-company-success";
+import {
+  requestAgentRun,
+  type AgentRunRequestResult,
+} from "@/lib/companies/request-agent-run";
+import { parseRequestInput } from "@/lib/companies/parse-request-input";
 
 const errorMessages = {
   empty: msg({ id: "app.home.request.error.empty", comment: "Error when company request input is empty", message: "Please enter a company name or URL." }),
   too_short: msg({ id: "app.home.request.error.tooShort", comment: "Error when company request input is too short", message: "Input is too short." }),
   too_long: msg({ id: "app.home.request.error.tooLong", comment: "Error when company request input is too long", message: "Input is too long." }),
   invalid: msg({ id: "app.home.request.error.invalid", comment: "Error when company request input has no alphanumeric characters", message: "Please enter a valid company name or URL." }),
+  rate_limited: msg({ id: "app.home.request.error.rateLimited", comment: "Error when the user has hit the per-hour limit on company-request submissions", message: "You've hit the hourly limit for company requests. Please try again later." }),
   unknown: msg({ id: "app.home.request.error.unknown", comment: "Generic error when company request fails", message: "Something went wrong. Please try again." }),
 } as const;
 
@@ -22,6 +27,9 @@ export function CompanyRequestForm({ locale }: { locale: string }) {
   const { _: t } = useLingui();
   const [state, action, isPending] = useActionState(requestCompany, null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [agentRun, setAgentRun] = useState<AgentRunRequestResult | null>(null);
+  const [submittedName, setSubmittedName] = useState<string>("");
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     if (state?.success) {
@@ -31,9 +39,36 @@ export function CompanyRequestForm({ locale }: { locale: string }) {
 
   const errorMessage = state?.errorCode ? t(errorMessages[state.errorCode]) : "";
 
+  function handleSubmit(formData: FormData) {
+    setAgentRun(null);
+    const raw = (formData.get("input") as string | null) ?? "";
+    const trimmed = raw.trim();
+
+    // Use the derived company_name (e.g. "stripe.com") in the success card
+    // heading when the input parsed as a URL, falling back to the raw trimmed
+    // input only when we couldn't derive a name (legacy GH-issue path).
+    const fields = parseRequestInput(raw);
+    setSubmittedName(fields?.company_name ?? trimmed);
+
+    startTransition(() => {
+      action(formData);
+    });
+
+    if (fields) {
+      void requestAgentRun({
+        companyName: fields.company_name,
+        website: fields.website,
+      }).then(setAgentRun);
+    }
+  }
+
   return (
     <div className="mt-4 w-full max-w-md">
-      <form ref={formRef} action={action} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
+      <form
+        ref={formRef}
+        action={handleSubmit}
+        className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end"
+      >
         <input type="hidden" name="locale" value={locale} />
         <div className="flex-1">
           <input
@@ -59,41 +94,14 @@ export function CompanyRequestForm({ locale }: { locale: string }) {
       </form>
       <div className="mt-3">
         {state?.success && (
-          <div role="status" className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
-            <p>
-              {state.issueNumber
-                ? t(msg({
-                    id: "app.home.request.success.withIssue",
-                    comment: "Success message after submitting a company request, with link to GitHub issue for tracking",
-                    message: "Request submitted! Track progress here:",
-                  }))
-                : t(msg({
-                    id: "app.home.request.success.noIssue",
-                    comment: "Success message when request was saved but GitHub issue could not be created",
-                    message: "Request submitted! We'll start tracking this company soon.",
-                  }))}
-              {state.issueNumber && (
-                <>
-                  {" "}
-                  <a
-                    href={`${GITHUB_ISSUE_URL}/${state.issueNumber}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline font-medium"
-                  >
-                    #{state.issueNumber}
-                  </a>
-                </>
-              )}
-            </p>
-            {state.issueCreationFailed && (
-              <p className="mt-1 text-xs opacity-80">
-                <Trans id="app.home.request.issueWarning" comment="Warning shown when the request was saved in DB but GitHub issue creation failed">
-                  Note: We couldn&apos;t create a tracking issue, but your request was saved.
-                </Trans>
-              </p>
-            )}
-          </div>
+          <RequestCompanySuccess
+            companyName={submittedName}
+            agentRun={agentRun}
+            serverActionState={{
+              issueNumber: state.issueNumber,
+              issueCreationFailed: state.issueCreationFailed,
+            }}
+          />
         )}
         <ErrorAlert message={errorMessage} />
       </div>

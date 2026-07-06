@@ -1,23 +1,29 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import Image from "next/image";
-import { Building2, Bookmark } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import { timeAgoShort } from "@/lib/time";
 import { type WatchlistPostingEntry } from "@/lib/actions/watchlists";
-import { runGetWatchlistPostings } from "@/lib/search/search-runner";
+import {
+  runGetWatchlistPostings,
+  runGetWatchlistPostingYearCount,
+} from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/SessionProvider";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { usePaginatedLoadMore } from "@/lib/use-paginated-load-more";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { LanguageStatsRow } from "@/components/search/language-stats-row";
+import { SearchUnavailable } from "@/components/search/search-unavailable";
+import { formatDateDivider, getDateKey } from "@/components/watchlist/format-date-divider";
 
 const BATCH = 20;
 
@@ -29,35 +35,15 @@ export interface WatchlistJobListFilters {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  /** Work-mode filter — `onsite | hybrid | remote` (issue #3037). */
+  workMode?: ("onsite" | "hybrid" | "remote")[];
+  /** Employment-type filter (issue #3037). */
+  employmentType?: string[];
   salaryMin?: number;
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
   languages?: string[];
-}
-
-function formatDateDivider(dateStr: string, todayLabel: string, yesterdayLabel: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  if (d.getTime() === today.getTime()) return todayLabel;
-  if (d.getTime() === yesterday.getTime()) return yesterdayLabel;
-
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function getDateKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function WatchlistJobList({
@@ -80,10 +66,6 @@ export function WatchlistJobList({
   const isLoggedInRef = useRef(isLoggedIn);
   isLoggedInRef.current = isLoggedIn;
   useClearTypesenseOnAuthChange(isLoggedIn);
-  const [postings, setPostings] = useState(initialPostings);
-  const [total, setTotal] = useState(initialTotal);
-  const [exhausted, setExhausted] = useState(initialPostings.length >= initialTotal);
-  const [isTruncated, setIsTruncated] = useState(false);
   const searchParams = useSearchParams();
   const [showPostingId, setShowPostingId] = useState<string | null>(searchParams.get("show"));
   const filtersRef = useRef(filters);
@@ -94,43 +76,58 @@ export function WatchlistJobList({
   const yesterdayLabel = t({ id: "watchlists.jobList.yesterday", comment: "Date divider label for yesterday", message: "Yesterday" });
 
   const filtersKey = JSON.stringify(filters);
-  const initialFiltersKey = useRef(filtersKey);
 
-  // Re-fetch only when filters actually change (not on initial mount —
-  // the server already provided initialPostings/initialTotal)
+  // Pagination state machine. `filtersKey` doubles as the reset key —
+  // changing filters re-fetches page 1 and clears local state.
+  const {
+    items: postings,
+    total,
+    truncated: isTruncated,
+    hasMore,
+    loadMore,
+  } = usePaginatedLoadMore<WatchlistPostingEntry>({
+    initialItems: initialPostings,
+    initialTotal,
+    batchSize: BATCH,
+    itemKey: (p) => p.id,
+    resetKey: filtersKey,
+    fetcher: ({ offset, limit }) =>
+      runGetWatchlistPostings(
+        { ...filtersRef.current, offset, limit },
+        isLoggedInRef.current,
+      ),
+  });
+
+  // Year-count refetch on filter change. The SSR-prerendered
+  // `yearTotal` only reflects the watchlist's stored filters at page
+  // load — when the owner edits filters in-place the active count
+  // updates (via `usePaginatedLoadMore`'s reset-on-filtersKey) but the
+  // year count went stale until a full reload. Mirror that reset by
+  // keying a `useEffect` on the same `filtersKey` so both badges stay
+  // in lockstep. Issue #3344.
+  //
+  // `initialFiltersKeyRef` skips the first fetch on mount — the SSR
+  // `yearTotal` already covers it. Cancel-on-stale guards a race
+  // between rapid filter changes (we only commit the latest
+  // in-flight result).
+  const [yearTotal_, setYearTotal] = useState(yearTotal);
+  const initialFiltersKeyRef = useRef(filtersKey);
   useEffect(() => {
-    if (filtersKey === initialFiltersKey.current) return;
-    runGetWatchlistPostings({ ...filters, offset: 0, limit: BATCH }, isLoggedInRef.current)
-      .then(({ postings: p, total: t, truncated }) => {
-        setPostings(p);
-        setTotal(t);
-        setExhausted(p.length >= t);
-        setIsTruncated(truncated ?? false);
-      });
+    if (filtersKey === initialFiltersKeyRef.current) return;
+    let cancelled = false;
+    runGetWatchlistPostingYearCount(filtersRef.current).then((next) => {
+      if (cancelled) return;
+      setYearTotal(next);
+    }).catch((err) => {
+      console.error("[WatchlistJobList] year-count refetch failed", err);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [filtersKey]);
 
-  async function handleLoadMore() {
-    const result = await runGetWatchlistPostings(
-      {
-        ...filtersRef.current,
-        offset: postings.length,
-        limit: BATCH,
-      },
-      isLoggedInRef.current,
-    );
-    if (result.truncated) setIsTruncated(true);
-    setTotal(result.total);
-    if (result.postings.length > 0) {
-      setPostings((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        return [...prev, ...result.postings.filter((p) => !seen.has(p.id))];
-      });
-    }
-    if (result.postings.length < BATCH) setExhausted(true);
-  }
-
-  const hasMore = !exhausted && !isTruncated;
-  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: handleLoadMore });
+  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: loadMore });
+  const showUnavailable = postings.length === 0 && !isLoading && total > 0;
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -156,45 +153,59 @@ export function WatchlistJobList({
     if (dateKey !== lastDateKey && !seenDividers.has(dateKey)) {
       lastDateKey = dateKey;
       seenDividers.add(dateKey);
+      // `min-h-7` (= 28px = the divider's natural rendered height with
+      // py-2 + ~12px text) locks vertical extent so the divider can never
+      // cause a layout shift during scroll (closes #3345).
       rows.push(
         <div
           key={`d-${dateKey}`}
-          className="flex items-center gap-3 px-2 py-2"
+          className="flex min-h-7 items-center gap-3 px-2 py-2"
           suppressHydrationWarning
         >
           <div className="h-px flex-1 bg-divider" />
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted" suppressHydrationWarning>
-            {formatDateDivider(entry.firstSeenAt, todayLabel, yesterdayLabel)}
+            {formatDateDivider(entry.firstSeenAt, todayLabel, yesterdayLabel, locale)}
           </span>
           <div className="h-px flex-1 bg-divider" />
         </div>,
       );
     }
 
+    // Un-nested layout (issue #3166): row open button + save button are
+    // siblings in a `relative` container, not nested. The open button is
+    // a positioned overlay covering the row's click area; the save
+    // button sits in normal flex flow with `relative z-10` so it stacks
+    // above the overlay AND receives its own click. Tab order: row open
+    // first, then save (DOM order). No `e.stopPropagation()` needed —
+    // the buttons are siblings, not nested.
     rows.push(
-      <button
+      // `min-h-10` (= 40px = current natural row height) locks vertical
+      // extent so any rounding / content-driven variation never causes a
+      // layout shift during scroll or pagination (closes #3345).
+      // `[contain:layout]` isolates per-row layout calculations so a
+      // re-render of one row cannot reflow neighbouring rows.
+      <div
         key={entry.id}
-        type="button"
-        onClick={() => handleOpenPosting(entry.id)}
-        className={`flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-border-soft ${
+        className={`relative flex min-h-10 w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors [contain:layout] hover:bg-border-soft ${
           showPostingId === entry.id ? "bg-border-soft" : ""
         }`}
       >
+        <button
+          type="button"
+          onClick={() => handleOpenPosting(entry.id)}
+          aria-label={
+            entry.title
+              ? `${entry.company.name} — ${entry.title}`
+              : t({
+                  id: "watchlists.jobList.openPosting",
+                  comment: "Aria label for the row open-posting button when the posting title is missing",
+                  message: "Open job posting",
+                })
+          }
+          className="absolute inset-0 z-0 cursor-pointer rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        />
         <TrackingDot postingId={entry.id} />
-        {entry.company.icon ? (
-          <Image
-            src={entry.company.icon}
-            alt={entry.company.name}
-            width={24}
-            height={24}
-            sizes="24px"
-            className="size-6 shrink-0 rounded"
-          />
-        ) : (
-          <div className="flex size-6 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-            <Building2 size={14} />
-          </div>
-        )}
+        <CompanyIcon icon={entry.company.icon} alt={entry.company.name} size={24} />
 
         <span className="shrink-0 text-xs text-muted">
           {entry.company.name}
@@ -204,14 +215,17 @@ export function WatchlistJobList({
           {entry.title ?? "—"}
         </span>
 
-        {!entry.title && <PendingJobIcon />}
-        <span
-          role="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggle(entry.id);
-          }}
-          className="shrink-0 cursor-pointer text-muted transition-opacity hover:opacity-70"
+        {!entry.title && (
+          // `relative z-10` so the warning icon's tooltip trigger remains
+          // above the absolute overlay button and still receives hover.
+          <span className="relative z-10 inline-flex shrink-0">
+            <PendingJobIcon />
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => toggle(entry.id)}
+          className="relative z-10 shrink-0 cursor-pointer text-muted transition-opacity hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           aria-label={
             isSaved(entry.id)
               ? t({ id: "watchlists.jobList.unsave", comment: "Unsave job aria label", message: "Unsave job" })
@@ -220,9 +234,10 @@ export function WatchlistJobList({
         >
           <Bookmark
             size={14}
+            aria-hidden="true"
             className={isSaved(entry.id) ? "fill-current" : ""}
           />
-        </span>
+        </button>
 
         <span
           suppressHydrationWarning
@@ -230,7 +245,7 @@ export function WatchlistJobList({
         >
           {timeAgoShort(entry.firstSeenAt)}
         </span>
-      </button>,
+      </div>,
     );
   }
 
@@ -246,12 +261,23 @@ export function WatchlistJobList({
         jobLanguages={jobLanguages}
         locale={locale}
         activeCount={total}
-        yearCount={yearTotal}
+        yearCount={yearTotal_}
       />
-      <div>
+      {/* `[overflow-anchor:none]` opts the whole postings list out of the
+          browser's automatic scroll-anchor selection. Without it, when
+          pagination appends new rows the anchoring heuristic can pick a
+          row near the viewport edge and adjust scroll position by a few
+          pixels, which the user perceives as cards "jumping up and down"
+          (closes #3345). The sentinel inside `InfiniteScrollSentinel`
+          already opts out for itself; this widens the opt-out to every
+          row + date divider so no element in the subtree can be picked
+          mid-scroll. */}
+      <div className="[overflow-anchor:none]">
         {rows}
 
-        {postings.length === 0 && !isLoading && (
+        {showUnavailable ? (
+          <SearchUnavailable />
+        ) : postings.length === 0 && !isLoading && (
           <div className="py-12 text-center text-sm text-muted">
             <Trans id="watchlists.jobList.empty" comment="Empty state when no jobs match the time range">
               No jobs found.

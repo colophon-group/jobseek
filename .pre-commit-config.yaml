@@ -11,8 +11,19 @@ repos:
       - id: web-lint
         name: ESLint (web)
         language: system
-        entry: pnpm --dir apps/web lint
+        entry: node scripts/pnpm-pinned.mjs --dir apps/web lint
         files: ^apps/web/.*\.(js|jsx|ts|tsx)$
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: web-i18n-coverage
+        name: Lingui translation coverage (web)
+        language: system
+        entry: scripts/check-i18n-coverage.sh
+        # Trigger when any source under apps/web changes (new strings
+        # may have been added) OR when the catalogs themselves change.
+        # This intentionally fires on .po edits too so a half-finished
+        # translation pass can't silently land.
+        files: ^(apps/web/(app|src|locales)/|scripts/check-i18n-coverage\.sh$)
         pass_filenames: false
         stages: [pre-commit]
       - id: no-push-to-merged-pr

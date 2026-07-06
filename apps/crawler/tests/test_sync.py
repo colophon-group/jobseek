@@ -6,17 +6,23 @@ import polars as pl
 import pytest
 
 from src.sync import (
+    _LOCATION_MACRO_ALIASES,
     _REALIGN_RENAMED_BOARD_URLS_SUPA,
     _UPSERT_BOARDS_SUPA,
     _UPSERT_COMPANIES,
     _UPSERT_OCCUPATION_DOMAIN_NAMES,
     _UPSERT_OCCUPATION_DOMAINS,
+    _fetch_active_facet_counts,
     _is_trivial_watchlist,
     _load_boards,
     _load_companies,
+    _populate_locations_if_empty,
+    refresh_typesense_counts,
     run_sync,
     sync_boards,
     sync_companies,
+    sync_companies_typesense,
+    sync_locations_typesense,
     sync_occupation_domains,
 )
 
@@ -885,3 +891,580 @@ class TestIsTrivialWatchlist:
     )
     def test_empty_filter_arrays_are_trivial(self, filters):
         assert _is_trivial_watchlist(filters, 0) is True
+
+
+# ---------------------------------------------------------------------------
+# TestSyncLocationsTypesense
+# ---------------------------------------------------------------------------
+
+
+class _StubRecord(dict):
+    """asyncpg.Record-compatible stub usable as a dict (``r["key"]``)."""
+
+
+def _make_loc_row(
+    *,
+    id: int,
+    slug: str,
+    type: str,
+    lat: float | None = None,
+    lng: float | None = None,
+    population: int | None = None,
+    parent_name: str | None = None,
+) -> _StubRecord:
+    return _StubRecord(
+        id=id,
+        slug=slug,
+        type=type,
+        lat=lat,
+        lng=lng,
+        population=population,
+        parent_name=parent_name,
+    )
+
+
+def _make_name_row(*, location_id: int, locale: str, name: str) -> _StubRecord:
+    return _StubRecord(location_id=location_id, locale=locale, name=name)
+
+
+class TestSyncLocationsTypesense:
+    """``sync_locations_typesense`` builds Typesense docs from Postgres rows.
+
+    The behaviour under test is the macro-region alias enrichment from
+    issue #2939: macro rows whose slug is in ``_LOCATION_MACRO_ALIASES``
+    must carry the ``aliases`` array; non-macro rows must not.
+    """
+
+    async def test_macro_rows_get_aliases(self):
+        loc_rows = [
+            _make_loc_row(id=4, slug="eu", type="macro"),
+            _make_loc_row(id=1, slug="emea", type="macro"),
+            _make_loc_row(id=5, slug="dach", type="macro"),
+            _make_loc_row(
+                id=100,
+                slug="berlin",
+                type="city",
+                lat=52.52,
+                lng=13.405,
+                population=3_700_000,
+                parent_name="Germany",
+            ),
+        ]
+        name_rows = [
+            _make_name_row(location_id=4, locale="en", name="EU"),
+            _make_name_row(location_id=1, locale="en", name="EMEA"),
+            _make_name_row(location_id=5, locale="en", name="DACH"),
+            _make_name_row(location_id=100, locale="en", name="Berlin"),
+            _make_name_row(location_id=100, locale="de", name="Berlin"),
+        ]
+
+        supa_conn = AsyncMock()
+        # Two ``fetch`` calls in order: location rows, then name rows.
+        supa_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows])
+
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(return_value=[])
+
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        client = MagicMock()
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await sync_locations_typesense(supa_conn, local_conn, client)
+
+        by_slug = {d["slug"]: d for d in captured_docs}
+        # All four locations were indexed.
+        assert set(by_slug) == {"eu", "emea", "dach", "berlin"}
+
+        # The EU macro row carries the suggested aliases verbatim.
+        assert by_slug["eu"]["aliases"] == [
+            "European Union",
+            "Europe",
+            "EEA",
+            "Schengen",
+        ]
+        # EMEA + DACH carry their respective alias bundles.
+        assert "Europe Middle East Africa" in by_slug["emea"]["aliases"]
+        assert "Germany Austria Switzerland" in by_slug["dach"]["aliases"]
+        # The non-macro Berlin row has no aliases attached — those rows
+        # are reachable via their own canonical name.
+        assert "aliases" not in by_slug["berlin"]
+
+    async def test_macro_alias_map_covers_seeded_macros(self):
+        """The 9 macros currently in the live Typesense index must all
+        have alias bundles. Drift between the alias map and the macro
+        seed list would silently degrade the typeahead.
+        """
+        seeded_macro_slugs = {
+            "eu",
+            "emea",
+            "dach",
+            "apac",
+            "americas",
+            "latam",
+            "nordics",
+            "mena",
+            "worldwide",
+        }
+        missing = seeded_macro_slugs - set(_LOCATION_MACRO_ALIASES)
+        assert not missing, f"macro slugs missing aliases: {missing}"
+        # Each bundle is non-empty and has only stripped strings.
+        for slug, aliases in _LOCATION_MACRO_ALIASES.items():
+            assert aliases, f"empty alias bundle for {slug}"
+            for alias in aliases:
+                assert alias and alias.strip() == alias
+
+    async def test_unknown_macro_slug_skips_aliases(self):
+        """A macro row whose slug is NOT in the hard-coded map should be
+        indexed without an ``aliases`` field (rather than crash or
+        invent one).
+        """
+        loc_rows = [
+            _make_loc_row(id=42, slug="oceania", type="macro"),
+        ]
+        name_rows = [
+            _make_name_row(location_id=42, locale="en", name="Oceania"),
+        ]
+        supa_conn = AsyncMock()
+        supa_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows])
+
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        client = MagicMock()
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await sync_locations_typesense(supa_conn, None, client)
+
+        assert len(captured_docs) == 1
+        assert captured_docs[0]["slug"] == "oceania"
+        assert "aliases" not in captured_docs[0]
+
+
+class TestFetchActiveFacetCounts:
+    """Tests for the Typesense facet-count helper used by both
+    ``sync_locations_typesense`` and ``refresh_typesense_counts`` to read
+    post-ancestor-expansion counts (issue #2978).
+    """
+
+    def test_extracts_facet_counts_for_field(self):
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {
+            "facet_counts": [
+                {
+                    "field_name": "location_ids",
+                    "counts": [
+                        {"value": "30", "count": 2416},
+                        {"value": "10", "count": 1086},
+                        {"value": "4", "count": 14523},
+                    ],
+                }
+            ]
+        }
+        out = _fetch_active_facet_counts(client, "location_ids")
+        assert out == {"30": 2416, "10": 1086, "4": 14523}
+        # Sanity-check the request shape — must include facet_by + a
+        # large max_facet_values + the web's POSTING_BASE_FILTER
+        # (issue #3238: facet counts must equal what users see when
+        # filtering by the doc).
+        params = client.collections["job_posting"].documents.search.call_args[0][0]
+        assert params["facet_by"] == "location_ids"
+        assert params["filter_by"] == "is_active:true && has_content:!=false"
+        assert params["max_facet_values"] >= 10000
+        assert params["per_page"] == 0
+
+    def test_empty_response_returns_empty_dict(self):
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
+        assert _fetch_active_facet_counts(client, "location_ids") == {}
+
+    def test_missing_facet_counts_returns_empty_dict(self):
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {}
+        assert _fetch_active_facet_counts(client, "location_ids") == {}
+
+
+class TestRefreshTypesenseCounts:
+    """The location count source must be the Typesense ``location_ids``
+    facet (post ancestor expansion), not ``unnest(local.location_ids)``
+    which is leaf-only and silently diverged from filter results
+    (issue #2978).
+    """
+
+    async def test_locations_counts_come_from_typesense_facet(self):
+        # Local Postgres returns leaf-only data, but the function should
+        # ignore it for locations and use the facet result instead.
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(
+            return_value=[
+                # Companies query at the bottom of the function still
+                # touches local_conn — we'll match its shape generically.
+            ]
+        )
+
+        # Typesense facet response: country has its full descendant
+        # roll-up (2416), city has its leaf count (1086), macro EU has
+        # its country fan-in (14523). These are the numbers an operator
+        # gets when filtering by id; without this fix, the displayed
+        # ``active_posting_count`` was leaf-only (e.g. 447 for Austria).
+        client = MagicMock()
+
+        def _search(params):
+            field = params.get("facet_by")
+            if field == "location_ids":
+                return {
+                    "facet_counts": [
+                        {
+                            "field_name": "location_ids",
+                            "counts": [
+                                {"value": "30", "count": 2416},  # country
+                                {"value": "10", "count": 1086},  # city
+                                {"value": "4", "count": 14523},  # macro
+                            ],
+                        }
+                    ]
+                }
+            if field == "occupation_ids":
+                return {
+                    "facet_counts": [
+                        {
+                            "field_name": "occupation_ids",
+                            "counts": [
+                                {"value": "100", "count": 50},
+                                {"value": "200", "count": 90},  # parent
+                            ],
+                        }
+                    ]
+                }
+            return {"facet_counts": []}
+
+        client.collections["job_posting"].documents.search.side_effect = _search
+
+        captured: list[tuple[str, list[dict]]] = []
+
+        def _capture_upsert(_client, collection, docs, *_a, **_kw):
+            captured.append((collection, list(docs)))
+
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await refresh_typesense_counts(local_conn, client)
+
+        # Locations: every facet entry produces an "update" doc with the
+        # facet count.
+        loc_docs = next((docs for c, docs in captured if c == "location"), [])
+        loc_by_id = {d["id"]: d for d in loc_docs}
+        assert loc_by_id["30"]["active_posting_count"] == 2416
+        assert loc_by_id["10"]["active_posting_count"] == 1086
+        assert loc_by_id["4"]["active_posting_count"] == 14523
+
+        # Occupations: same field strategy; one row per locale.
+        occ_docs = next((docs for c, docs in captured if c == "occupation"), [])
+        # 2 occupation ids * 4 locales = 8 docs
+        assert len(occ_docs) == 8
+        # Parent occupation 200 carries the rolled-up count of 90 in every locale
+        en_parent = next(d for d in occ_docs if d["id"] == "200-en")
+        assert en_parent["active_posting_count"] == 90
+
+    async def test_seniority_and_technology_counts_apply_has_content_filter(self):
+        """Issue #3288: seniority and technology precomputed counts must
+        match the web's ``POSTING_BASE_FILTER`` just like company,
+        location, and occupation counts do.
+        """
+        captured_sql: list[str] = []
+
+        async def _fetch(sql, *args, **kwargs):
+            captured_sql.append(sql)
+            return []
+
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=_fetch)
+
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
+
+        with patch("src.sync._ts_bulk_upsert"):
+            await refresh_typesense_counts(local_conn, client)
+
+        sen_sql = next(s for s in captured_sql if "SELECT seniority_id" in s)
+        tech_sql = next(s for s in captured_sql if "unnest(technology_ids)" in s)
+        for sql in (sen_sql, tech_sql):
+            assert "is_active" in sql
+            assert "description_r2_hash IS NOT NULL" in sql, (
+                f"missing description_r2_hash predicate in:\n{sql}"
+            )
+            assert "cardinality(titles) > 0" in sql, (
+                f"missing titles cardinality predicate in:\n{sql}"
+            )
+            assert "length(trim(titles[1])) > 0" in sql, (
+                f"missing titles non-blank predicate in:\n{sql}"
+            )
+
+    async def test_company_counts_apply_has_content_filter(self):
+        """Issue #3009: the precomputed `company.active_posting_count` /
+        `year_posting_count` numbers must use the same `has_content`
+        filter as the web's `POSTING_BASE_FILTER` so the unfiltered
+        `listTopCompanies` path can't structurally diverge from the
+        filtered facet path. Without `has_content`, McDonald's reads
+        55,591 from `company` collection vs ~44,161 from the live facet
+        (12k delta = postings whose exporter set `has_content=false`).
+
+        This test asserts:
+        1. Both company SQL queries (active + year) include the
+           has_content predicate equivalent to the exporter formula.
+        2. The resulting Typesense upsert docs propagate per-company
+           counts unchanged from whatever the SQL returns.
+        """
+        captured_sql: list[str] = []
+
+        async def _fetch(sql, *args, **kwargs):
+            captured_sql.append(sql)
+            # Dispatch by the column shape of the query so seniority/
+            # technology queries (also `WHERE is_active`) don't get
+            # confused with the company queries.
+            if "company_id::text" in sql and "first_seen_at" not in sql:
+                return [
+                    {"company_id": "co-mcdonalds", "cnt": 44161},
+                    {"company_id": "co-accenture", "cnt": 52273},
+                ]
+            if "company_id::text" in sql and "first_seen_at" in sql:
+                return [
+                    {"company_id": "co-mcdonalds", "cnt": 55026},
+                    {"company_id": "co-accenture", "cnt": 81971},
+                ]
+            # Seniority + technology queries also touch local_conn —
+            # return empty for them.
+            return []
+
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=_fetch)
+
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
+
+        captured_upserts: list[tuple[str, list[dict]]] = []
+
+        def _capture_upsert(_client, collection, docs, *_a, **_kw):
+            captured_upserts.append((collection, list(docs)))
+
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await refresh_typesense_counts(local_conn, client)
+
+        # 1. Both company SQL queries must include the has_content predicate.
+        company_sqls = [s for s in captured_sql if "company_id::text" in s]
+        assert len(company_sqls) == 2, (
+            f"expected active + year company queries, got {len(company_sqls)}"
+        )
+        for sql in company_sqls:
+            assert "description_r2_hash IS NOT NULL" in sql, (
+                f"missing description_r2_hash predicate in:\n{sql}"
+            )
+            assert "cardinality(titles) > 0" in sql, (
+                f"missing titles cardinality predicate in:\n{sql}"
+            )
+            assert "length(trim(titles[1])) > 0" in sql, (
+                f"missing titles non-blank predicate in:\n{sql}"
+            )
+
+        # 2. The active query keeps `is_active`; the year query keeps
+        #    `first_seen_at` and drops `is_active` (flow filter parity
+        #    with `POSTING_FLOW_FILTER` on the web side, issue #2965).
+        active_sql = next(s for s in company_sqls if "is_active" in s and "first_seen_at" not in s)
+        year_sql = next(s for s in company_sqls if "first_seen_at" in s)
+        assert "is_active" in active_sql
+        assert "is_active" not in year_sql, (
+            "year_posting_count is a flow query — should not gate on is_active"
+        )
+
+        # 3. Resulting upsert docs reflect the SQL counts.
+        company_docs = next((docs for c, docs in captured_upserts if c == "company"), [])
+        by_id = {d["id"]: d for d in company_docs}
+        assert by_id["co-mcdonalds"]["active_posting_count"] == 44161
+        assert by_id["co-mcdonalds"]["year_posting_count"] == 55026
+        assert by_id["co-accenture"]["active_posting_count"] == 52273
+        assert by_id["co-accenture"]["year_posting_count"] == 81971
+
+
+class TestSyncCompaniesTypesense:
+    """Issue #3238: ``sync_companies_typesense`` computes the initial
+    ``active_posting_count`` / ``year_posting_count`` on company docs.
+    Both queries must gate on the same ``has_content`` predicate as the
+    web's ``POSTING_BASE_FILTER`` so a company card's badge cannot
+    structurally exceed the filtered facet count the user sees on
+    `/explore?company=<slug>`.
+    """
+
+    async def test_company_counts_apply_has_content_filter(self):
+        """Both the active-count and year-count SQL must include the
+        ``has_content`` predicate mirror of the exporter formula:
+        ``description_r2_hash IS NOT NULL AND cardinality(titles) > 0
+        AND length(trim(titles[1])) > 0``. The resulting company doc
+        propagates only the gated count.
+        """
+        captured_sql: list[str] = []
+
+        async def _local_fetch(sql, *args, **kwargs):
+            captured_sql.append(sql)
+            if "company_id::text" in sql and "first_seen_at" not in sql:
+                # is_active branch — only gated rows show up.
+                return [
+                    {"company_id": "co-microsoft", "cnt": 1428},
+                ]
+            if "company_id::text" in sql and "first_seen_at" in sql:
+                # year branch — same gating.
+                return [
+                    {"company_id": "co-microsoft", "cnt": 9000},
+                ]
+            return []
+
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
+
+        supa_conn = AsyncMock()
+
+        async def _supa_fetch(sql, *args, **kwargs):
+            if "company" in sql and "industry" in sql:
+                return [
+                    _StubRecord(
+                        id="co-microsoft",
+                        name="Microsoft",
+                        slug="microsoft",
+                        icon=None,
+                        logo=None,
+                        website=None,
+                        description=None,
+                        industry=None,
+                        employee_count_range=None,
+                        founded_year=None,
+                        industry_name=None,
+                    )
+                ]
+            return []
+
+        supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
+
+        client = MagicMock()
+        captured_upserts: list[tuple[str, list[dict]]] = []
+
+        def _capture_upsert(_client, collection, docs, *_a, **_kw):
+            captured_upserts.append((collection, list(docs)))
+
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await sync_companies_typesense(supa_conn, local_conn, client)
+
+        # 1. Both company count SQLs must include the has_content predicate.
+        company_count_sqls = [s for s in captured_sql if "company_id::text" in s]
+        assert len(company_count_sqls) == 2, (
+            f"expected active + year company queries, got {len(company_count_sqls)}"
+        )
+        for sql in company_count_sqls:
+            assert "description_r2_hash IS NOT NULL" in sql, (
+                f"missing description_r2_hash predicate in:\n{sql}"
+            )
+            assert "cardinality(titles) > 0" in sql, (
+                f"missing titles cardinality predicate in:\n{sql}"
+            )
+            assert "length(trim(titles[1])) > 0" in sql, (
+                f"missing titles non-blank predicate in:\n{sql}"
+            )
+
+        # 2. The active SQL keeps `is_active`; the year SQL keeps
+        #    `first_seen_at` (and intentionally drops `is_active` to
+        #    measure activity over time — parity with the web's
+        #    POSTING_FLOW_FILTER).
+        active_sql = next(s for s in company_count_sqls if "is_active" in s)
+        year_sql = next(s for s in company_count_sqls if "first_seen_at" in s)
+        assert "is_active" in active_sql
+        assert "first_seen_at" in year_sql
+
+        # 3. The doc propagates the gated counts unchanged.
+        company_docs = next((docs for c, docs in captured_upserts if c == "company"), [])
+        by_id = {d["id"]: d for d in company_docs}
+        assert by_id["co-microsoft"]["active_posting_count"] == 1428
+        assert by_id["co-microsoft"]["year_posting_count"] == 9000
+
+
+class TestPopulateLocationsIfEmpty:
+    """Issue #2978: ``location_macro_member`` was never seeded into the
+    Hetzner local Postgres because the original
+    ``_populate_locations_if_empty`` only handled ``location`` and
+    ``location_name``. We now seed ``location_macro_member`` from
+    Supabase too — idempotently, every sync — so a fresh deploy or
+    restored DB still gets the macro->country links.
+    """
+
+    async def test_seeds_macro_members_when_table_is_empty(self):
+        """Empty location_macro_member -> seed from Supabase even when
+        ``location`` is already populated (i.e. the production failure
+        mode on Hetzner).
+        """
+        supa_conn = AsyncMock()
+        local_conn = AsyncMock()
+
+        # Local already has locations (so the location/location_name
+        # branch short-circuits) but zero macro members.
+        local_count_returns = iter(
+            [
+                5000,  # SELECT count(*) FROM location -> already populated
+                0,  # SELECT count(*) FROM location_macro_member -> empty
+                573,  # SELECT count(*) FROM location_macro_member -> after insert
+            ]
+        )
+        local_conn.fetchval = AsyncMock(side_effect=lambda *_a, **_kw: next(local_count_returns))
+
+        # Supabase returns the canonical macro members
+        macro_rows = [
+            {"macro_id": 4, "country_id": 2782113},  # EU -> Austria
+            {"macro_id": 4, "country_id": 2921044},  # EU -> Germany
+            {"macro_id": 5, "country_id": 2921044},  # DACH -> Germany
+        ]
+        supa_conn.fetch = AsyncMock(return_value=macro_rows)
+        local_conn.executemany = AsyncMock()
+
+        await _populate_locations_if_empty(supa_conn, local_conn)
+
+        # We executed the bulk INSERT exactly once with all 3 rows.
+        local_conn.executemany.assert_awaited_once()
+        sql, rows = local_conn.executemany.await_args[0]
+        assert "INSERT INTO location_macro_member" in sql
+        assert "ON CONFLICT (macro_id, country_id) DO NOTHING" in sql
+        assert rows == [(4, 2782113), (4, 2921044), (5, 2921044)]
+
+    async def test_skips_when_already_in_sync(self):
+        """Idempotency: if local already has every macro_member row,
+        skip the executemany call (cheap fast-path on every sync)."""
+        supa_conn = AsyncMock()
+        local_conn = AsyncMock()
+
+        local_count_returns = iter(
+            [
+                5000,  # location: populated
+                573,  # macro_members: same as supabase
+            ]
+        )
+        local_conn.fetchval = AsyncMock(side_effect=lambda *_a, **_kw: next(local_count_returns))
+        rows_573 = [{"macro_id": 1, "country_id": i} for i in range(573)]
+        supa_conn.fetch = AsyncMock(return_value=rows_573)
+        local_conn.executemany = AsyncMock()
+
+        await _populate_locations_if_empty(supa_conn, local_conn)
+
+        # No insert needed — already in sync.
+        local_conn.executemany.assert_not_called()
+
+    async def test_warns_when_supabase_macro_table_empty(self):
+        """If Supabase has nothing to seed from, log a warning and
+        return without crashing — local stays empty and the exporter's
+        own loud warning will surface this on the next refresh."""
+        supa_conn = AsyncMock()
+        local_conn = AsyncMock()
+
+        local_count_returns = iter([5000, 0])
+        local_conn.fetchval = AsyncMock(side_effect=lambda *_a, **_kw: next(local_count_returns))
+        supa_conn.fetch = AsyncMock(return_value=[])
+        local_conn.executemany = AsyncMock()
+
+        await _populate_locations_if_empty(supa_conn, local_conn)
+
+        local_conn.executemany.assert_not_called()

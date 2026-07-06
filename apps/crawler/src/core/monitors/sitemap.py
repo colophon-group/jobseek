@@ -114,15 +114,41 @@ async def _try_fetch_xml(url: str, client: httpx.AsyncClient) -> ET.Element | No
     retries. For *child sitemap* fetching from an index — where a
     silent failure causes URL truncation (#2722) — use
     :func:`_fetch_child_xml` instead.
+
+    TDM-Reservation respect (#2842, #2925). The W3C opt-out signal is
+    honored even on the lenient discovery path: a publisher who
+    declares ``tdm-reservation: 1`` on their sitemap doesn't lose the
+    signal just because we're walking candidate URLs.
+    :class:`TDMReservedError` is *not* swallowed by the broad
+    ``except`` — it propagates up to the discover/can_handle wrapper
+    and onward to ``_process_one_board_streaming`` for graceful skip.
+    Sitemap bodies are XML, not HTML, so the body-meta scan has no
+    realistic match surface — the check is effectively header-only
+    here, but we pass ``body_excerpt`` for parity with the static
+    httpx hook in ``http_retry.py`` (and on the chance a sitemap
+    serves HTML 200 with a meta declaration on the same origin).
     """
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
     try:
         resp = await client.get(url, headers=_SITEMAP_HEADERS)
         if resp.status_code != 200:
             return None
+        # Run the TDM check before content-type filtering so that an
+        # HTML 200 response declaring opt-out (rare but valid: a CDN
+        # serving its branded "no sitemap" page from the same origin
+        # while still emitting the publisher's policy header) is
+        # honored rather than silently dropped on the content-type
+        # gate.
+        _tdm_check(resp, body_excerpt=resp.text)
         content_type = resp.headers.get("content-type", "")
         if "xml" not in content_type:
             return None
         return ET.fromstring(resp.text)
+    except TDMReservedError:
+        # Publisher policy declaration — propagate, never swallow.
+        raise
     except (httpx.HTTPError, ET.ParseError):
         return None
 
@@ -132,8 +158,8 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
 
     Returns the parsed root on 200 + parseable XML, or ``None`` on
     legitimate not-found (404/410) and on non-parseable bodies. **Raises**
-    :exc:`PaginationFetchError` when transient errors (5xx, 429, timeout,
-    network) persist past the retry budget.
+    :exc:`PaginationFetchError` when transient errors (5xx, 429, 401,
+    403, timeout, network) persist past the retry budget.
 
     The 2026-04-26 NHS spike (#2722) showed why this distinction
     matters: a multi-shard sitemap (e.g. ``sitemap-jobs-1.xml`` …
@@ -146,10 +172,20 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
     here propagates the failure to ``_process_one_board_streaming``'s
     generic ``except Exception`` so the run is recorded as a
     failure (no delistings) instead.
+
+    The 2026-05-10 mchire flap (#2994) showed the same shape on the
+    4xx leg: mchire's awselb/2.0 issued 403 to ~18-44%% of child
+    shards per cycle from the production Webshare egress, while the
+    sitemap *index itself* returned 200. The default
+    ``fetch_with_retry`` non-retryable-4xx → ``None`` path interpreted
+    those 403s as "shard is gone" and the caller silently dropped
+    thousands of URLs. ``transient_403=True`` retries 401/403 through
+    the budget and raises ``PaginationFetchError`` on exhaustion —
+    same propagation path as the 5xx fix from #2722 / #2974.
     """
     from src.shared.http_retry import fetch_with_retry
 
-    text = await fetch_with_retry(client, url, headers=_SITEMAP_HEADERS)
+    text = await fetch_with_retry(client, url, headers=_SITEMAP_HEADERS, transient_403=True)
     if text is None:
         # 404 / 410 / non-retryable 4xx — child sitemap is gone or
         # the URL is wrong. Caller's ``continue`` is appropriate: a
@@ -209,16 +245,34 @@ async def _parse_robots_sitemaps(
     board_url: str,
     client: httpx.AsyncClient,
 ) -> list[str]:
+    """Discover sitemap URLs declared in /robots.txt.
+
+    TDM-Reservation respect (#2842, #2925). The W3C opt-out signal can
+    be declared on the robots.txt response itself; honor it before
+    parsing the body. ``TDMReservedError`` propagates out (not
+    swallowed by the broad ``except``) so a publisher who has opted
+    out doesn't have their policy implicitly bypassed by the
+    discovery probe. Robots.txt is plain text — meta-tag scan is
+    effectively a no-op there — but ``body_excerpt`` is passed for
+    symmetry with the other hooked helpers.
+    """
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
     parsed = urlparse(board_url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     try:
         resp = await client.get(robots_url, headers=_SITEMAP_HEADERS)
         if resp.status_code != 200:
             return []
+        _tdm_check(resp, body_excerpt=resp.text)
         if "xml" in resp.headers.get("content-type", ""):
             return []
         if "<html" in resp.text[:500].lower():
             return []
+    except TDMReservedError:
+        # Publisher policy declaration — propagate, never swallow.
+        raise
     except httpx.HTTPError:
         return []
 

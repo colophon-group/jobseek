@@ -166,9 +166,11 @@ uv run crawler sync                    # CSV -> local Postgres + Supabase + Redi
 uv run crawler reconcile               # Compare local vs Supabase, fix discrepancies (also runs daily in-process inside the exporter container)
 uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense (manual; workflow_dispatch in .github/workflows/crawler-scheduled-maintenance.yml)
 uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists (every 4h via .github/workflows/crawler-scheduled-maintenance.yml, plus inline at every deploy/CSV sync)
-uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (scheduled by the indexnow compose service's while/sleep loop; see docs/13-seo-and-indexnow.md)
+uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (RETIRED in #2821 — kept for revival; no scheduler invokes it)
 uv run crawler retry-stalled-scrapes   # Reset next_scrape_at for transient-3-strike-stalled postings (#2738; see docs/03-crawler-architecture.md "Delisting model" section 5)
 uv run crawler retry-stalled-scrapes --dry-run  # Report the count without writing
+uv run crawler reprocess-experience --dry-run   # Report active postings whose stored descriptions would update experience_min/max (#3289)
+uv run crawler reprocess-experience             # Apply the #3289 experience_min/max correction locally; exporter propagates changes
 uv run crawler board <slug>            # Process single board (debug)
 uv run crawler board <slug> --dry-run  # Test without DB writes
 uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields
@@ -349,6 +351,13 @@ For agents running the guided setup workflow (`ws task --issue ...`), behavior i
 - Troubleshooting KB used by `ws task troubleshoot`: `src/workspace/kb/*.md`
 
 To change crawler setup agent behavior, edit those files. AGENTS/docs updates alone do not affect the runtime instruction stream.
+
+Codex is the preferred new automation surface. Use repo skills from
+`.agents/skills` when present, Codex app automations for scheduled background
+worktrees, and `codex exec --json` for traceable noninteractive fallback.
+Claude-compatible prompts may remain as alternate paths, but do not describe
+GitHub Actions automation as ChatGPT subscription billed; the Codex Action path
+is OpenAI API-key backed.
 
 ## Decision Mindset
 

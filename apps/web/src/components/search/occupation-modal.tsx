@@ -8,6 +8,8 @@ import { getAllOccupationsGrouped } from "@/lib/actions/taxonomy";
 import type { OccupationGroup, OccupationItem } from "@/lib/actions/taxonomy";
 import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { useDisabledByAncestor } from "./use-disabled-by-ancestor";
+import { DisabledFilterPill } from "./disabled-filter-pill";
 
 interface OccupationModalProps {
   open: boolean;
@@ -34,6 +36,74 @@ export function OccupationModal({
   const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
+
+  // Build occupation -> parent map from the loaded groups. Family
+  // parents are top-level (parentId: null) within their domain; children
+  // point to the family parent's id. Standalones are top-level with no
+  // parent. Hook walks this chain to compute disable state.
+  const parentMap = useMemo(() => {
+    const map = new Map<number, number | null>();
+    if (!groups) return map;
+    for (const group of groups) {
+      for (const sg of group.subGroups) {
+        map.set(sg.parent.id, null);
+        for (const child of sg.children) {
+          map.set(child.id, sg.parent.id);
+        }
+      }
+      for (const item of group.standalone) {
+        map.set(item.id, null);
+      }
+    }
+    return map;
+  }, [groups]);
+
+  const { isDisabled, disabledByAncestor } = useDisabledByAncestor({
+    selectedIds,
+    parents: parentMap,
+  });
+
+  const nameById = useMemo(() => {
+    const map = new Map<number, string>();
+    if (!groups) return map;
+    for (const group of groups) {
+      for (const sg of group.subGroups) {
+        map.set(sg.parent.id, sg.parent.name);
+        for (const child of sg.children) map.set(child.id, child.name);
+      }
+      for (const item of group.standalone) map.set(item.id, item.name);
+    }
+    return map;
+  }, [groups]);
+
+  const ancestorNameOf = useCallback((id: number): string => {
+    const ancId = disabledByAncestor(id);
+    if (ancId == null) return "";
+    return nameById.get(ancId) ?? "";
+  }, [disabledByAncestor, nameById]);
+
+  /**
+   * Wrap onToggle so that selecting a family parent auto-deselects any
+   * children currently in `selected`. Parity with the location modals.
+   */
+  const handleToggle = useCallback((item: { id: number; slug: string; name: string }) => {
+    const wasSelected = selectedIds.has(item.id);
+    onToggle(item);
+    if (wasSelected) return;
+    // Find children of `item` currently in selection and toggle them off.
+    for (const s of selected) {
+      let cur = parentMap.get(s.id);
+      const seen = new Set<number>([s.id]);
+      while (cur != null && !seen.has(cur)) {
+        seen.add(cur);
+        if (cur === item.id) {
+          onToggle(s);
+          break;
+        }
+        cur = parentMap.get(cur);
+      }
+    }
+  }, [onToggle, selected, selectedIds, parentMap]);
 
   const filtersKey = filters ? JSON.stringify(filters) : "";
   const prevFiltersKeyRef = useRef(filtersKey);
@@ -117,33 +187,91 @@ export function OccupationModal({
     [filtered, search, onToggle, showWarning, t],
   );
 
-  /** Collect all selectable occupation items from a group (parents + children + standalone). */
-  function allItems(group: OccupationGroup): OccupationItem[] {
+  /**
+   * First-level descendants of a domain — the rows that render at depth-1
+   * in the modal tree. This is the set of items the domain header toggles
+   * (and the set used to compute the header's "all selected" indicator).
+   *
+   * Composition:
+   * - Family parents: `group.subGroups[].parent` — top-level occupations
+   *   in the domain that themselves have children (e.g. Software Engineer,
+   *   DevOps Engineer).
+   * - Standalones: `group.standalone[]` — top-level occupations in the
+   *   domain with no children (e.g. QA Engineer).
+   *
+   * Grandchildren (`sg.children`) are NOT first-level — selecting them via
+   * the domain header would be redundant once their family parent is
+   * selected. The disable hook handles their UI state via the
+   * parent-chain walk in `useDisabledByAncestor`.
+   */
+  function firstLevelItems(group: OccupationGroup): OccupationItem[] {
     const items: OccupationItem[] = [...group.standalone];
     for (const sg of group.subGroups) {
       items.push(sg.parent);
-      items.push(...sg.children);
     }
     return items;
   }
 
+  /**
+   * Domain header click selects every first-level descendant of the
+   * domain. Grandchildren (`sg.children`) are not added — they become
+   * disabled (greyed) via `useDisabledByAncestor` because their family
+   * parent is now selected. Mirrors the location modal's
+   * country-header / region-header semantics.
+   *
+   * On deselect: drops the first-level ids, and also drops any of their
+   * descendants currently in `selected` (which would otherwise be
+   * orphan-selected with no visible ancestor). Same rule as
+   * `handleToggle` for an individual family parent.
+   *
+   * #2978 follow-up — was previously a "select-all-children" loop that
+   * recursively activated grandchildren too.
+   */
   function handleDomainToggle(group: OccupationGroup) {
-    const items = allItems(group);
-    if (items.length === 0) return;
-    const allSelected = items.every((c) => selectedIds.has(c.id));
+    const firstLevel = firstLevelItems(group);
+    if (firstLevel.length === 0) return;
+    const allSelected = firstLevel.every((c) => selectedIds.has(c.id));
     if (allSelected) {
-      items.forEach((c) => { if (selectedIds.has(c.id)) onToggle(c); });
+      // Deselect every first-level row plus any of their descendants
+      // currently in the selection (grandchildren that were selected
+      // independently before the parent was committed).
+      const firstLevelIds = new Set(firstLevel.map((c) => c.id));
+      for (const c of firstLevel) onToggle(c);
+      for (const s of selected) {
+        if (firstLevelIds.has(s.id)) continue;
+        // Walk parent chain — drop if any ancestor is a first-level id.
+        let cur = parentMap.get(s.id);
+        const seen = new Set<number>([s.id]);
+        while (cur != null && !seen.has(cur)) {
+          seen.add(cur);
+          if (firstLevelIds.has(cur)) {
+            onToggle(s);
+            break;
+          }
+          cur = parentMap.get(cur);
+        }
+      }
     } else {
-      items.forEach((c) => { if (!selectedIds.has(c.id)) onToggle(c); });
+      firstLevel.forEach((c) => { if (!selectedIds.has(c.id)) onToggle(c); });
     }
   }
 
   function renderPill(item: OccupationItem) {
     const active = selectedIds.has(item.id);
+    if (!active && isDisabled(item.id)) {
+      return (
+        <DisabledFilterPill
+          key={item.id}
+          name={item.name}
+          count={item.count}
+          ancestorName={ancestorNameOf(item.id)}
+        />
+      );
+    }
     return (
       <button
         key={item.id}
-        onClick={() => onToggle(item)}
+        onClick={() => handleToggle(item)}
         className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
           active
             ? "bg-primary/10 text-primary"
@@ -174,8 +302,11 @@ export function OccupationModal({
               </Trans>
             </Dialog.Title>
             <Dialog.Close asChild>
-              <button className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer">
-                <X size={16} />
+              <button
+                className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer"
+                aria-label={t({ id: "search.occupationModal.close", comment: "Aria label for the occupation modal close button", message: "Close" })}
+              >
+                <X size={16} aria-hidden="true" />
               </button>
             </Dialog.Close>
           </div>
@@ -217,8 +348,12 @@ export function OccupationModal({
             ) : (
               <div className="space-y-5">
                 {filtered.map((group) => {
-                  const items = allItems(group);
-                  const allSelected = items.length > 0 && items.every((c) => selectedIds.has(c.id));
+                  // Domain header is "all selected" iff every first-level
+                  // descendant is selected — grandchildren don't count
+                  // because they're auto-disabled by the parent. Mirrors
+                  // the toggle semantics in `handleDomainToggle`.
+                  const firstLevel = firstLevelItems(group);
+                  const allSelected = firstLevel.length > 0 && firstLevel.every((c) => selectedIds.has(c.id));
 
                   return (
                     <div key={group.domain.slug}>
@@ -242,20 +377,38 @@ export function OccupationModal({
                       {/* Sub-groups (parent + children) */}
                       {group.subGroups.map((sg) => {
                         const parentActive = selectedIds.has(sg.parent.id);
+                        const parentDisabled = !parentActive && isDisabled(sg.parent.id);
+                        // `sg.parent.count` already encodes the parent's
+                        // subtree count (under the ancestor-expanded
+                        // `occupation_ids` facet), so display it directly
+                        // rather than re-summing children — summing
+                        // double-counts every posting tagged at the child
+                        // tier AND drops postings tagged only at the parent
+                        // tier (issue #3033).
+                        const totalCount = sg.parent.count;
                         return (
                           <div key={sg.parent.id} className="mb-3 rounded-lg border border-border-soft p-3">
                             {/* Parent header */}
-                            <button
-                              onClick={() => onToggle(sg.parent)}
-                              className={`group/parent mb-1.5 cursor-pointer text-sm font-medium transition-colors ${
-                                parentActive ? "text-primary" : "text-foreground hover:text-primary"
-                              }`}
-                            >
-                              <span className={parentActive ? "underline" : "group-hover/parent:underline"}>{sg.parent.name}</span>
-                              <span className={`ml-1 text-xs font-normal ${parentActive ? "text-primary/70" : "text-muted"}`}>
-                                ({sg.parent.count + sg.children.reduce((s, c) => s + c.count, 0)})
-                              </span>
-                            </button>
+                            {parentDisabled ? (
+                              <DisabledFilterPill
+                                name={sg.parent.name}
+                                ancestorName={ancestorNameOf(sg.parent.id)}
+                                variant="parent"
+                                auxText={`(${totalCount})`}
+                              />
+                            ) : (
+                              <button
+                                onClick={() => handleToggle(sg.parent)}
+                                className={`group/parent mb-1.5 cursor-pointer text-sm font-medium transition-colors ${
+                                  parentActive ? "text-primary" : "text-foreground hover:text-primary"
+                                }`}
+                              >
+                                <span className={parentActive ? "underline" : "group-hover/parent:underline"}>{sg.parent.name}</span>
+                                <span className={`ml-1 text-xs font-normal ${parentActive ? "text-primary/70" : "text-muted"}`}>
+                                  ({totalCount})
+                                </span>
+                              </button>
+                            )}
                             {/* Child pills */}
                             <div className="flex flex-wrap gap-2">
                               {sg.children.map(renderPill)}

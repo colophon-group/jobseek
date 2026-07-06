@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { getStats, type StatsData } from "@/lib/actions/my-jobs-stats";
+import { getViewerTz } from "@/lib/viewer-tz";
 import { StatsPage } from "./stats-page";
 
 export function StatsLoader({ locale: _locale }: { locale: string }) {
   const [data, setData] = useState<StatsData | null>(null);
 
   useEffect(() => {
-    getStats().then(setData);
+    // Pass the browser's resolved IANA timezone so server-side day
+    // bucketing for the activity heatmap matches what the client
+    // renders. See #3199.
+    getStats({ tz: getViewerTz() }).then(setData);
   }, []);
 
   if (!data) {

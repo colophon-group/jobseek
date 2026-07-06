@@ -78,6 +78,12 @@
   --code-border: rgba(24, 24, 27, 0.15);
   --tooltip-bg: rgba(50, 50, 50, 0.92);
   --tooltip-warning-bg: rgba(120, 53, 0, 0.92);
+
+  /* Chart palette — neutrals + one accent (used by blog data figures) */
+  --chart-bar-dominant: #52525b;
+  --chart-bar-accent: #2563eb;
+  --chart-bar-mid: #94a3b8;
+  --chart-bar-faint: #cbd5e1;
 }
 
 /* ── Dark ── */
@@ -111,6 +117,12 @@
   --code-border: rgba(255, 255, 255, 0.15);
   --tooltip-bg: rgba(30, 30, 30, 0.92);
   --tooltip-warning-bg: rgba(180, 83, 9, 0.92);
+
+  /* Chart palette — neutrals + one accent (dark-mode tints) */
+  --chart-bar-dominant: #71717a;
+  --chart-bar-accent: #60a5fa;
+  --chart-bar-mid: #475569;
+  --chart-bar-faint: #334155;
 }
 
 /* ── Job description typography ── */
@@ -152,6 +164,134 @@
 .job-description th, .job-description td { border: 1px solid var(--divider); padding: 0.35em 0.6em; text-align: left; }
 .job-description th { font-weight: 600; }
 .job-description *:first-child { margin-top: 0; }
+
+/* ── Blog post typography (#2828) ──
+ * Long-form reading rhythm: bumped sizes + larger line spacing vs.
+ * `.job-description` (which is tuned for shorter posting bodies). Same
+ * design tokens (`--muted`, `--divider`, `--info-color`, `--code-bg`)
+ * so light/dark mode and theme tweaks propagate automatically. */
+.blog-post h2,
+.blog-post h3,
+.blog-post h4 {
+  font-weight: 600;
+  margin-top: 2em;
+  margin-bottom: 0.6em;
+  line-height: 1.3;
+}
+.blog-post h2 { font-size: 1.5em; }
+.blog-post h3 { font-size: 1.25em; }
+.blog-post h4 { font-size: 1.1em; }
+.blog-post p {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  line-height: 1.6;
+}
+.blog-post ul,
+.blog-post ol {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+  line-height: 1.6;
+}
+.blog-post ul { list-style-type: disc; }
+.blog-post ol { list-style-type: decimal; }
+.blog-post li { margin-top: 0.3em; margin-bottom: 0.3em; }
+.blog-post li > p { margin-top: 0.3em; margin-bottom: 0.3em; }
+.blog-post a { color: var(--info-color); text-decoration: underline; }
+/* Mention pills + cards opt out of the prose link styling — see
+ * `src/components/blog/MdxMentions.tsx`. The pill / card chrome paints
+ * its own colors and never wants the underline-on-everything that
+ * works for inline links inside paragraphs. */
+.blog-post a.mention,
+.blog-post a.mention:hover {
+  color: inherit;
+  text-decoration: none;
+}
+/* The card body uses <ul>/<li> for the stats grid so screen readers
+ * announce it as a list. Without this reset the prose `.blog-post ul`
+ * + `.blog-post li` rules add 1em vertical margins, 1.5em padding-
+ * left, and a disc list-style — which throws the stat columns out of
+ * alignment with each other and adds an unwanted indent before each
+ * value. Scope-reset to defaults inside the mention card; the pill
+ * doesn't render any nested lists so it's a no-op there. */
+.blog-post a.mention ul,
+.blog-post a.mention ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.blog-post a.mention li {
+  margin: 0;
+}
+.blog-post strong, .blog-post b { font-weight: 600; }
+.blog-post hr { border-color: var(--divider); margin: 2em 0; border-style: solid; border-width: 1px 0 0 0; }
+.blog-post blockquote {
+  border-left: 3px solid var(--divider);
+  padding-left: 1em;
+  color: var(--muted);
+  margin: 1.25em 0;
+  font-style: italic;
+}
+.blog-post table { border-collapse: collapse; width: 100%; margin: 1.25em 0; }
+.blog-post th, .blog-post td { border: 1px solid var(--divider); padding: 0.5em 0.75em; text-align: left; }
+.blog-post th { font-weight: 600; }
+.blog-post pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--radius-sm);
+  padding: 1em;
+  margin: 1.25em 0;
+  overflow-x: auto;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+.blog-post pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+.blog-post *:first-child { margin-top: 0; }
+
+/* ── Inline horizontal stacked-bar figure (used by data posts) ── */
+.blog-post figure.share-bar {
+  margin: 1.75em 0;
+}
+.blog-post figure.share-bar svg {
+  display: block;
+  width: 100%;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.blog-post figure.share-bar .seg-onsite { fill: var(--chart-bar-dominant); }
+.blog-post figure.share-bar .seg-remote { fill: var(--chart-bar-accent); }
+.blog-post figure.share-bar .seg-hybrid { fill: var(--chart-bar-mid); }
+.blog-post figure.share-bar .seg-untagged { fill: var(--chart-bar-faint); }
+.blog-post figure.share-bar figcaption {
+  margin-top: 0.75em;
+  font-size: 0.85em;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1.25em;
+}
+.blog-post figure.share-bar figcaption span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+}
+.blog-post figure.share-bar .swatch {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.blog-post figure.share-bar .swatch.seg-onsite { background: var(--chart-bar-dominant); }
+.blog-post figure.share-bar .swatch.seg-remote { background: var(--chart-bar-accent); }
+.blog-post figure.share-bar .swatch.seg-hybrid { background: var(--chart-bar-mid); }
+.blog-post figure.share-bar .swatch.seg-untagged { background: var(--chart-bar-faint); }
 
 /* ── Scrollbar hide (keeps scroll, hides scrollbar) ── */
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -199,5 +339,48 @@
     border-radius: 4px;
     background: var(--code-bg);
     border: 1px solid var(--code-border);
+  }
+
+  /* ── Global keyboard focus indicator (WCAG 2.4.7, #3170) ──
+   *
+   * Tailwind v4 normalises away the browser default 2px focus outline. The
+   * codebase only has a handful of explicit focus rings (see
+   * `similar-companies-strip.tsx`, `similar-company-card.tsx`, the three
+   * `agent-prompt-card.tsx` sites). Every other interactive element — the
+   * `Button` primitive, icon buttons in headers/modals, filter chips, the
+   * watchlist cards, the bookmark/star buttons, the locale + theme toggles,
+   * the cookie banner, the close `X` buttons — has no visible focus
+   * indicator, leaving keyboard-only users with no way to track focus.
+   *
+   * The `:where()` wrapper keeps specificity at 0 so any per-component
+   * focus utility (e.g. the existing `focus-visible:outline-primary` sites,
+   * or `focus:outline-none focus:ring-2` on the agent-prompt-card copy
+   * buttons) still wins. Form inputs in `FormField.tsx` use
+   * `focus:border-primary` for their indicator — the global outline layers
+   * on top without disturbing the border colour.
+   *
+   * Uses `outline-offset: 2px` so the ring sits clear of rounded buttons
+   * (the `Button` primitive ships `rounded-full`) and `--primary` so it
+   * inverts cleanly between light and dark themes.
+   */
+  :where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [role="button"],
+    [role="link"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="menuitem"],
+    [role="tab"],
+    [role="switch"],
+    [tabindex]
+  ):focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 }

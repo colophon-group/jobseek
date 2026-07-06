@@ -1,11 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server";
+// Public REST routes import the plain service tier (`@/lib/services/*`)
+// rather than the `"use server"` action modules (`@/lib/actions/*`). The
+// service functions are functionally identical but avoid the
+// server-action machinery (per-call RPC URL, serialization boundary,
+// security IDs). See issues #3231 / #3329.
 import { suggestLocations } from "@/lib/actions/locations";
 import {
   suggestOccupations,
   suggestSeniorities,
   suggestTechnologies,
-} from "@/lib/actions/taxonomy";
+} from "@/lib/services/taxonomy";
 import { suggestIndustries } from "@/lib/actions/company";
+import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
+import { slugifyTitle } from "@/lib/watchlist-slug";
 import { checkRateLimit, apiResponse } from "../_shared";
 
 const VALID_TYPES = [
@@ -70,8 +77,19 @@ export async function GET(request: NextRequest) {
       break;
     }
     case "industries": {
+      // The `industry` table has no `slug` column today, but the response
+      // contract is uniform across taxonomies: callers expect `slug` to
+      // be a URL-stable slug-shaped string. Derive one from the localized
+      // display name with the same canonical slugifier the rest of the
+      // app uses, falling back to the numeric id if the name slugifies
+      // to empty (e.g., all-symbol pathological input). See issue #3228.
+      // Note: `/api/v1/search` does not currently accept an industry
+      // filter, so this is a response-shape fix; no roundtrip breakage.
       const data = await suggestIndustries({ query: q, locale });
-      matches = data.map((i) => ({ slug: String(i.id), name: i.name }));
+      matches = data.map((i) => ({
+        slug: slugifyTitle(i.name) || String(i.id),
+        name: i.name,
+      }));
       break;
     }
   }
@@ -86,6 +104,6 @@ export async function GET(request: NextRequest) {
       query: q,
       matches: matches.slice(0, 10),
     },
-    { maxAge: 3600, rateLimit: rl },
+    { maxAge: CACHE_TTL_LONG, rateLimit: rl },
   );
 }

@@ -37,44 +37,66 @@ local queue_key = prefix .. wtype .. ":" .. domain
 local added = redis.call("ZADD", queue_key, "NX", score, task_id)
 
 if added == 1 then
-    -- Determine the correct ready queue tier
+    -- Determine the correct ready queue tier and score.
+    --
+    -- First-time tasks always win (tier 0, ready_score=now to claim ASAP).
+    -- For recurring tasks, the tier is chosen by MIN next-due score
+    -- across the monitor and scrape buckets — this avoids the priority-
+    -- inversion bug (#3016) where a domain with a far-future recurring
+    -- monitor and a due-now scrape backlog gets parked in tier 1 at the
+    -- monitor's future score and never claims its scrapes.
+    -- Monitor wins ties vs scrape (strict-less-than).
     local has_ft = (
         redis.call("ZCARD", "ft_monitors_" .. wtype .. ":" .. domain) +
         redis.call("ZCARD", "ft_scrapes_" .. wtype .. ":" .. domain)
     )
 
-    local tier
-    if has_ft > 0 then
-        tier = 0
-    elseif redis.call("ZCARD", "monitors_" .. wtype .. ":" .. domain) > 0 then
-        tier = 1
-    else
-        tier = 2
-    end
-
-    -- Compute ready score: max(rate_limit_at, task_due)
     local rl_val = redis.call("GET", "ratelimit:" .. domain)
     local rl_at = 0
     if rl_val then
         rl_at = tonumber(rl_val)
     end
 
-    local ready_score
-    if first_time then
+    local next_tier = nil
+    local ready_score = nil
+
+    if has_ft > 0 then
+        next_tier = 0
         ready_score = math.max(rl_at, now)
     else
-        ready_score = math.max(rl_at, score)
-    end
+        local mon_score = nil
+        if redis.call("ZCARD", "monitors_" .. wtype .. ":" .. domain) > 0 then
+            local r3 = redis.call("ZRANGE", "monitors_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
+            if #r3 >= 2 then mon_score = tonumber(r3[2]) end
+        end
 
-    -- Remove from other tiers, add to correct one
-    for t = 0, 2 do
-        if t ~= tier then
-            redis.call("ZREM", "ready:" .. wtype .. ":" .. t, domain)
+        local scr_score = nil
+        if redis.call("ZCARD", "scrapes_" .. wtype .. ":" .. domain) > 0 then
+            local r4 = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
+            if #r4 >= 2 then scr_score = tonumber(r4[2]) end
+        end
+
+        if mon_score ~= nil then
+            next_tier = 1
+            ready_score = math.max(rl_at, mon_score)
+        end
+        if scr_score ~= nil and (mon_score == nil or scr_score < mon_score) then
+            next_tier = 2
+            ready_score = math.max(rl_at, scr_score)
         end
     end
 
-    -- Use plain ZADD (not NX) — upgrade tier if domain was in a lower tier
-    redis.call("ZADD", "ready:" .. wtype .. ":" .. tier, ready_score, domain)
+    if next_tier ~= nil then
+        -- Remove from other tiers, add to correct one
+        for t = 0, 2 do
+            if t ~= next_tier then
+                redis.call("ZREM", "ready:" .. wtype .. ":" .. t, domain)
+            end
+        end
+
+        -- Use plain ZADD (not NX) — upgrade tier if domain was in a lower tier
+        redis.call("ZADD", "ready:" .. wtype .. ":" .. next_tier, ready_score, domain)
+    end
 end
 
 return added

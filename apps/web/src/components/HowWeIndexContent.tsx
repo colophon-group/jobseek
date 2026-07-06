@@ -5,10 +5,8 @@ import { useLingui } from "@lingui/react/macro";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { TableOfContents } from "@/components/TableOfContents";
-import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
+import { eyebrowClass, sectionHeadingClass, sectionScrollMarginClass as sectionScroll } from "@/lib/styles";
 import { Info } from "lucide-react";
-
-const sectionScroll = "scroll-mt-24 md:scroll-mt-32";
 
 export function HowWeIndexContent() {
   const { t } = useLingui();
@@ -48,8 +46,8 @@ export function HowWeIndexContent() {
                   <Trans id="indexing.hero.title" comment="Indexing page title">How we find and process job postings</Trans>
                 </h1>
                 <p className="text-muted">
-                  <Trans id="indexing.hero.description" comment="Indexing page description">
-                    Job Seek is a search engine for both active candidates and professionals who passively track the market—it surfaces fresh roles while staying respectful of employer infrastructure. This page documents exactly how our crawler behaves, the controls that keep it polite, and how jobs ultimately land in the index.
+                  <Trans id="indexing.hero.description" comment="Indexing page description — company-tracking framing, not 'search engine'">
+                    Job Seek is a company-tracking tool — it monitors thousands of company career pages so users can build watchlists and get alerts on new postings. This page documents exactly how our crawler behaves, the controls that keep it polite, and how jobs ultimately land in the index.
                   </Trans>
                 </p>
               </div>

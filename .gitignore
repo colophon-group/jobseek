@@ -8,13 +8,14 @@ node_modules
 .next
 dist
 .turbo
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
 crawler.env.local
 
 # Lingui compiled catalogs (source .po files are tracked)
-locales/*.js
+apps/web/locales/*.js
 
 *.pem
 __pycache__/

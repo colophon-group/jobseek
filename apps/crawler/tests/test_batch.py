@@ -43,7 +43,7 @@ from src.batch import (
     process_monitor_batch,
     process_scrape_batch,
 )
-from src.core.location_resolve import LocationResolver
+from src.core.location_resolve import LocationResolver, ResolvedLocation
 from src.core.monitor import MonitorResult
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
@@ -473,6 +473,57 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
+    async def test_url_only_emits_posting_discovered_lifecycle_event(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        mock_pool,
+        mock_http,
+    ):
+        """The URL-only insert path must emit a per-posting ``posting.discovered``
+        event so an operator with only the posting_id (from the public URL)
+        can grep Loki to find when and from which board the row entered
+        the pipeline (closes #3192).
+
+        Mirrors the rich-insert path's lifecycle anchor.
+        """
+        import structlog
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1, url2}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            # DIFF_BATCH
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            # INSERT_URL_ONLY_JOBS
+            [_inserted_row("jp-aaa", url1), _inserted_row("jp-bbb", url2)],
+            # MARK_GONE_BY_TIMESTAMP
+            [],
+        ]
+        board = _mock_board(crawler_type="dom")
+
+        with structlog.testing.capture_logs() as logs:
+            await _process_one_board(board, pool, mock_http)
+
+        events = [
+            e
+            for e in logs
+            if e.get("event") == "posting.discovered" and e.get("path") == "url_only"
+        ]
+        # One event per inserted posting.
+        assert len(events) == 2, (
+            f"expected one posting.discovered event per insert; got {len(events)}: {events}"
+        )
+        ids = {e["posting_id"] for e in events}
+        urls = {e["source_url"] for e in events}
+        assert ids == {"jp-aaa", "jp-bbb"}
+        assert urls == {url1, url2}
+        # board_id must be carried so a Loki query can group by board too.
+        assert all(e["board_id"] == "board-1" for e in events)
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
     async def test_url_only_on_rich_crawler_type_keeps_next_scrape_null(
         self,
         mock_monitor,
@@ -835,15 +886,14 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_five_strike_disable_skips_delist_if_recently_successful(
+    async def test_five_strike_failure_stays_retryable_if_recently_successful(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
         """Recency gate: a board that succeeded inside the 24h window
-        but is now disabled (e.g. a brief greenhouse-wide outage that
-        burned through the 5-strike backoff in ~2.5h) MUST NOT have
-        its postings tombstoned. Mass-deleting them on a transient
-        provider blip would churn search results and IndexNow on
-        recovery for no real signal.
+        and burns through the 5-strike backoff remains retryable as
+        ``suspect``. Disabling it would freeze active postings on a
+        board the scheduler never polls again; delisting it would churn
+        search results and IndexNow during short provider outages.
         """
         from datetime import UTC, datetime, timedelta
 
@@ -851,8 +901,10 @@ class TestProcessOneBoard:
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("transient outage")
+        # _RECORD_FAILURE kept the board enabled because last_success_at
+        # is inside the 24h freshness window.
         conn.fetchrow.return_value = {
-            "is_enabled": False,
+            "is_enabled": True,
             "last_success_at": datetime.now(tz=UTC) - timedelta(hours=2),
         }
         board = _mock_board()
@@ -980,6 +1032,50 @@ class TestProcessOneBoard:
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after - before == 3
         mock_redis.delete.assert_awaited_with("cache:platform-stats")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_tdm_reserved_skips_gracefully(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """TDMReservedError (#2842) — publisher emitted W3C TDM opt-out
+        signal. The board run is treated as a clean skip:
+
+        - **No** ``_RECORD_FAILURE`` (the upstream technically responded).
+        - **No** delist / tombstoning of postings.
+        - **Counter increment** on ``monitor_skipped_tdm_total`` for the
+          board so operators can attribute opt-outs to specific origins.
+        - ``_process_one_board_streaming`` returns ``(True, elapsed)`` so
+          the worker treats this as a successful cycle and re-queues
+          normally.
+        """
+        from src.processing.board import monitor_skipped_tdm_total
+        from src.shared.tdm import TDMReservedError
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = TDMReservedError(
+            "https://opted-out.example/list",
+            source="header",
+            policy_url="https://opted-out.example/tdm-policy.json",
+        )
+        board = _mock_board()
+        before = _counter_value(monitor_skipped_tdm_total, board_id="board-1", source="header")
+
+        ok, _elapsed = await _process_one_board(board, pool, mock_http)
+
+        # Run reported success — TDM is not a failure.
+        assert ok is True
+        # No failure ramp.
+        failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
+        assert failure_calls == []
+        # No delist.
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert delist_calls == []
+        # Counter went up by 1 for this board's source label.
+        after = _counter_value(monitor_skipped_tdm_total, board_id="board-1", source="header")
+        assert after - before == 1
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -1226,6 +1322,65 @@ class TestCanonicalizeUrl:
         raw = "https://career042.sapsf.de/career?career_job_req_id=7&_s.crb=abc"
         assert self.canon(raw) == "https://career042.sapsf.de/career?career_job_req_id=7"
 
+    # ── tal.net / TalentLink (issue #2941) ────────────────────────────
+    #
+    # tal.net embeds a per-render CSRF token as a path segment
+    # ``/xf-<12 hex>/``. Without stripping, the same opportunity (e.g.
+    # ``opp/2968-Q1-2027-Internship-Programme-Frankfurt``) was inserted
+    # once per monitor cycle — Evercore inflated to ~12,340 rows for
+    # ~40 real postings.
+
+    def test_strips_tal_net_xf_path_segment(self):
+        raw = (
+            "https://evercore.tal.net/vx/lang-en-GB/mobile-0/appcentre-1/"
+            "brand-6/xf-767829ced96c/candidate/so/pm/1/pl/2/"
+            "opp/2968-Q1-2027-Internship-Programme-Frankfurt/en-GB"
+        )
+        out = self.canon(raw)
+        assert "xf-" not in out
+        # Identity-carrying segments stay intact.
+        assert "/brand-6/" in out
+        assert "/opp/2968-Q1-2027-Internship-Programme-Frankfurt/" in out
+        assert out.endswith("/en-GB")
+
+    def test_two_tal_net_renders_canonicalize_equal(self):
+        u1 = (
+            "https://evercore.tal.net/vx/lang-en-GB/mobile-0/appcentre-1/"
+            "brand-6/xf-767829ced96c/candidate/so/pm/1/pl/2/"
+            "opp/2968-Q1-2027-Internship-Programme-Frankfurt/en-GB"
+        )
+        u2 = (
+            "https://evercore.tal.net/vx/lang-en-GB/mobile-0/appcentre-1/"
+            "brand-6/xf-669053d7a42c/candidate/so/pm/1/pl/2/"
+            "opp/2968-Q1-2027-Internship-Programme-Frankfurt/en-GB"
+        )
+        assert self.canon(u1) == self.canon(u2)
+
+    def test_tal_net_url_without_xf_segment_unchanged(self):
+        # Some tal.net boards (e.g. ``moelis-careers.tal.net/candidate/...``)
+        # don't expose the ``xf-`` segment in the listing href. Leave them
+        # alone — no-op return preserves the existing dedup contract.
+        raw = "https://moelis-careers.tal.net/candidate/jobboard/vacancy/2/adv/"
+        assert self.canon(raw) == raw
+
+    def test_tal_net_subdomain_blackrock(self):
+        # Pattern verified against blackrock.tal.net production URLs.
+        raw = (
+            "https://blackrock.tal.net/vx/lang-en-GB/mobile-0/brand-3/"
+            "xf-ee99f2ab01fc/candidate/so/pm/1/pl/1/"
+            "opp/11985-2028-Full-Time-Analyst-Program-APAC/en-GB"
+        )
+        out = self.canon(raw)
+        assert "xf-" not in out
+        assert "/opp/11985-2028-Full-Time-Analyst-Program-APAC/" in out
+
+    def test_tal_net_does_not_strip_xf_inside_other_segments(self):
+        # Defensive: only ``/xf-<hex>/`` is stripped. A path segment that
+        # happens to start with ``xf`` but isn't the token shape (no hex,
+        # not a whole segment) must not match.
+        raw = "https://evercore.tal.net/vx/lang-en-GB/some/xforce/path/opp/1/en"
+        assert self.canon(raw) == raw
+
 
 # ── TestInsertSqlContract ────────────────────────────────────────────
 
@@ -1255,6 +1410,61 @@ class TestInsertSqlContract:
         # new_urls must check "any board", not "this board only".
         assert "NOT EXISTS" in _DIFF_BATCH
 
+    def test_diff_batch_touched_self_heals_stuck_next_scrape_at(self):
+        # #2996: the touched branch must reset next_scrape_at = now() when
+        # the row is stuck (description_r2_hash IS NULL AND
+        # next_scrape_at IS NULL) AND the board NOW has enrich
+        # (is_rich_no_scrape = $3 = false). Otherwise the
+        # _INSERT_RICH_JOB no-enrich path leaves rows permanently stuck
+        # whenever the operator adds enrich after onboarding — see the
+        # 20-company audit in #2996. Drop the CASE branch and the
+        # post-fix scraper-config PRs (#2947, #2953, #2954, #2961, #2962,
+        # #2964, #2967, #2968, #2970, #2971, #2972) silently regress.
+        # Style: collapse whitespace before substring-matching so
+        # cosmetic re-indents don't break the pin.
+        sql_compact = " ".join(_DIFF_BATCH.split())
+        # The touched UPDATE must SET next_scrape_at conditionally.
+        assert "next_scrape_at = CASE WHEN NOT $3::boolean" in sql_compact
+        # The condition must include both NULL checks.
+        assert "description_r2_hash IS NULL" in sql_compact
+        assert "next_scrape_at IS NULL" in sql_compact
+        # And it must promote to now() rather than NULL.
+        assert "THEN now() ELSE job_posting.next_scrape_at" in sql_compact
+
+    def test_diff_batch_touched_does_not_alter_healthy_rows(self):
+        # Defense-in-depth: ensure the SQL preserves the ELSE branch so
+        # rows that are NOT stuck (next_scrape_at already scheduled, or
+        # description_r2_hash already set, or the board still has no
+        # enrich) keep their existing next_scrape_at. A bare
+        # ``next_scrape_at = now()`` would re-schedule healthy rows on
+        # every touch and burn the proxy budget.
+        sql_compact = " ".join(_DIFF_BATCH.split())
+        # ELSE keeps the existing value.
+        assert "ELSE job_posting.next_scrape_at" in sql_compact
+        # The CASE must be inside the touched UPDATE, not the relisted
+        # one. Identify the touched UPDATE block by finding the
+        # ``touched AS (`` start and the first ``RETURNING ...
+        # description_r2_hash`` after it (which closes the touched CTE
+        # body — the relisted CTE has its own RETURNING further along).
+        touched_start = sql_compact.find("touched AS (")
+        assert touched_start != -1, "touched CTE missing"
+        cte_body_end = sql_compact.find(
+            "RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash",
+            touched_start,
+        )
+        assert cte_body_end != -1, "touched CTE has no RETURNING"
+        touched_section = sql_compact[touched_start:cte_body_end]
+        assert "description_r2_hash IS NULL" in touched_section
+        assert "next_scrape_at IS NULL" in touched_section
+        # And the same NULL checks must NOT bleed into the relisted CTE
+        # (which has its own NULL/now() decision based on $3 alone).
+        relisted_start = sql_compact.find("relisted AS (")
+        assert relisted_start != -1, "relisted CTE missing"
+        # The relisted block uses next_scrape_at = CASE WHEN $3 THEN
+        # NULL ELSE now() END — distinct from our self-heal CASE.
+        relisted_block = sql_compact[relisted_start : relisted_start + 1500]
+        assert "next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END" in relisted_block
+
     def test_record_failure_returns_disable_signal(self):
         # The RETURNING clause is what lets the Python layer detect the
         # enabled→disabled transition (post-update ``is_enabled=false``
@@ -1264,6 +1474,10 @@ class TestInsertSqlContract:
         assert "RETURNING" in _RECORD_FAILURE
         assert "is_enabled" in _RECORD_FAILURE
         assert "last_success_at" in _RECORD_FAILURE
+
+    def test_record_failure_keeps_recent_success_boards_retryable(self):
+        assert "last_success_at < now() - interval '24 hours'" in _RECORD_FAILURE
+        assert "THEN 'suspect'" in _RECORD_FAILURE
 
     def test_delist_board_postings_returns_ids(self):
         # RETURNING id is what lets _delist_and_count_gone size the
@@ -3914,3 +4128,166 @@ class TestMarkGoneGuardsIntegration:
         assert (
             _counter_value(monitor_jobs_discovered, profile="simple", action="gone") == before_gone
         )
+
+
+# ── #3206: batched location resolution in relisted/touched path ──────
+
+
+class _CountingLocationResolver(LocationResolver):
+    """LocationResolver test double with a backfill_misses() call counter.
+
+    Simulates 10 rows where 3 ("MissCity-1/2/3") miss the in-memory cache
+    on first ``resolve()``.  ``backfill_misses()`` is awaited once, after
+    which those 3 rows resolve to ``ResolvedLocation(location_id=99, ...)``.
+    The point of the test is that ``backfill_misses`` is called *exactly
+    once* for a batch (not once per missing row).
+    """
+
+    _HIT_ID = 1
+    _BACKFILLED_ID = 99
+    _MISS_NAMES: frozenset[str] = frozenset({"misscity-1", "misscity-2", "misscity-3"})
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.backfill_calls = 0
+        self.resolve_calls: list[list[str] | None] = []
+        self._backfilled = False
+
+    async def load(self, pool):  # type: ignore[override]
+        # Skip the real DB load; the test double doesn't use SQLite.
+        self._loaded = True
+        self._pool = pool
+
+    def resolve(self, raw_locations, job_location_type=None, posting_language=None):
+        # type: ignore[override]
+        self.resolve_calls.append(list(raw_locations) if raw_locations else None)
+        if not raw_locations:
+            return []
+        results = []
+        for raw in raw_locations:
+            key = raw.lower().strip()
+            if key in self._MISS_NAMES:
+                if self._backfilled:
+                    results.append(
+                        ResolvedLocation(
+                            location_id=self._BACKFILLED_ID,
+                            location_type=job_location_type or "onsite",
+                        )
+                    )
+                else:
+                    # Record the miss so backfill_misses() has work to do.
+                    self._location_misses.append((key, raw))
+                    results.append(
+                        ResolvedLocation(
+                            location_id=None,
+                            location_type=job_location_type or "onsite",
+                        )
+                    )
+            else:
+                results.append(
+                    ResolvedLocation(
+                        location_id=self._HIT_ID,
+                        location_type=job_location_type or "onsite",
+                    )
+                )
+        return results
+
+    async def backfill_misses(self) -> bool:  # type: ignore[override]
+        self.backfill_calls += 1
+        if self._location_misses:
+            self._backfilled = True
+            return True
+        return False
+
+
+class TestBatchedLocationResolve:
+    """#3206: relisted/touched path resolves locations once per batch.
+
+    Before the fix, ``_BATCH_UPDATE_RICH_CONTENT`` awaited
+    ``_resolve_locations`` per row, which hit ``backfill_misses()`` once
+    per miss (= N DB round-trips serialised in the inner loop).  After the
+    fix, the loop uses ``_resolve_locations_sync`` (cache-only) and a
+    single ``backfill_misses()`` runs after the loop, mirroring the
+    NEW-jobs path.
+    """
+
+    @pytest.fixture
+    def counting_resolver(self, monkeypatch):
+        resolver = _CountingLocationResolver()
+
+        async def _fake_get_resolver(pool):
+            return resolver
+
+        # Override the autouse fixture's resolver with our counting double.
+        monkeypatch.setattr("src.batch._get_location_resolver", _fake_get_resolver)
+        return resolver
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_batch_resolves_locations_with_single_backfill(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        counting_resolver,
+        mock_pool,
+        mock_http,
+    ):
+        """10 relisted rows with 3 cache misses -> backfill_misses called exactly once.
+
+        Asserts:
+        - ``backfill_misses()`` invoked exactly once (down from 3
+          serialised round-trips in the per-row path).
+        - All 10 rows in the ``_rich_updates`` payload end up with a
+          resolved ``location_ids`` array (no None after the second pass).
+        """
+        pool, conn = mock_pool
+
+        # 7 cache hits + 3 cache misses -> 10 relisted URLs.
+        urls = [f"https://example.com/job/{i}" for i in range(10)]
+        miss_indexes = {2, 5, 8}
+        jobs_by_url = {}
+        diff_rows = []
+        for i, url in enumerate(urls):
+            location = f"MissCity-{[2, 5, 8].index(i) + 1}" if i in miss_indexes else "HitCity"
+            jobs_by_url[url] = _discovered_job(url=url, locations=[location])
+            diff_rows.append(_diff_row("relisted", row_id=f"jp-{i}", url=url))
+
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls=set(urls), jobs_by_url=jobs_by_url, hybrid=False)
+        )
+        conn.fetch.return_value = diff_rows
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # 1. backfill_misses called exactly once (the whole point of #3206).
+        assert counting_resolver.backfill_calls == 1, (
+            f"expected 1 backfill_misses call for the whole batch, "
+            f"got {counting_resolver.backfill_calls}"
+        )
+
+        # 2. The relisted path ran (_BATCH_UPDATE_RICH_CONTENT executed and
+        #    we have a single copy_records_to_table call).
+        execute_calls = conn.execute.await_args_list
+        assert any(c.args[0] == _CREATE_RICH_UPDATES_TEMP for c in execute_calls)
+        assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in execute_calls)
+        conn.copy_records_to_table.assert_awaited_once()
+
+        # 3. All 10 records have a resolved location_ids array (non-None).
+        #    Records are passed as the ``records`` kwarg/positional to
+        #    ``conn.copy_records_to_table``.  Layout (from
+        #    ``_CREATE_RICH_UPDATES_TEMP``): id, employment_type, titles,
+        #    locales, location_ids, location_types, ...
+        copy_call = conn.copy_records_to_table.await_args_list[0]
+        records = copy_call.kwargs.get("records")
+        if records is None and len(copy_call.args) >= 2:
+            records = copy_call.args[1]
+        assert records is not None
+        records = list(records)
+        assert len(records) == 10
+        for rec in records:
+            location_ids = rec[4]
+            assert location_ids is not None and len(location_ids) > 0, (
+                f"row {rec[0]} ended up with no resolved location_ids "
+                f"(misses must be re-resolved after backfill)"
+            )

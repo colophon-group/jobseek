@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { BarChart3, Building2, CalendarDays, ChevronDown, ChevronUp, Clock, Code2, DollarSign, MapPin, X } from "lucide-react";
+import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Clock, Code2, DollarSign, MapPin, X } from "lucide-react";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import { Trans, useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
@@ -30,6 +30,7 @@ interface JobDetailPanelProps {
 }
 
 export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
+  const { t } = useLingui();
   const [detail, setDetail] = useState<PostingDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -88,8 +89,9 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
         <button
           onClick={onClose}
           className="rounded p-1 text-muted hover:bg-border-soft hover:text-foreground"
+          aria-label={t({ id: "search.detail.close", comment: "Aria label for job detail panel close button", message: "Close job details" })}
         >
-          <X size={14} />
+          <X size={14} aria-hidden="true" />
         </button>
       </div>
 
@@ -171,20 +173,7 @@ function DetailContent({ detail, descriptionLoaded }: { detail: PostingDetail; d
       {/* Company header */}
       <div className="flex items-center gap-3">
         <Link href={lp(`/company/${company.slug}`)} prefetch={false} className="flex items-center gap-3 transition-opacity hover:opacity-80">
-          {company.icon ? (
-            <Image
-              src={company.icon}
-              alt={company.name}
-              width={36}
-              height={36}
-              sizes="36px"
-              className="size-9 shrink-0 rounded"
-            />
-          ) : (
-            <div className="flex size-9 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-              <Building2 size={20} />
-            </div>
-          )}
+          <CompanyIcon icon={company.icon} alt={company.name} size={36} />
           <span className="text-sm font-semibold">{company.name}</span>
         </Link>
         <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -508,25 +497,42 @@ function formatExperience(min: number | null, max: number | null): string {
 }
 
 function DetailSkeleton() {
+  // WCAG 4.1.3 (status messages): the job-detail panel skeleton sits over the
+  // previous posting body until the new description streams in. Without an
+  // `aria-busy` / `aria-live` wrapper, an SR keeps reading the stale content
+  // (closes #3190).
   return (
-    <div className="animate-pulse space-y-4">
-      <div className="flex items-center gap-3">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      className="animate-pulse space-y-4"
+    >
+      <span className="sr-only">
+        <Trans
+          id="search.detail.loading"
+          comment="Screen-reader announcement while the job detail panel is loading"
+        >
+          Loading job details
+        </Trans>
+      </span>
+      <div aria-hidden="true" className="flex items-center gap-3">
         <div className="size-9 rounded bg-border-soft" />
         <div className="h-4 w-28 rounded bg-border-soft" />
       </div>
-      <div className="h-5 w-3/4 rounded bg-border-soft" />
-      <div className="flex gap-3">
+      <div aria-hidden="true" className="h-5 w-3/4 rounded bg-border-soft" />
+      <div aria-hidden="true" className="flex gap-3">
         <div className="h-3 w-16 rounded bg-border-soft" />
         <div className="h-3 w-10 rounded bg-border-soft" />
       </div>
-      <div className="space-y-1">
+      <div aria-hidden="true" className="space-y-1">
         <div className="h-2.5 w-16 rounded bg-border-soft" />
         <div className="h-3.5 w-40 rounded bg-border-soft" />
         <div className="h-3.5 w-36 rounded bg-border-soft" />
       </div>
-      <div className="h-3 w-32 rounded bg-border-soft" />
-      <hr className="border-divider" />
-      <div className="space-y-2">
+      <div aria-hidden="true" className="h-3 w-32 rounded bg-border-soft" />
+      <hr aria-hidden="true" className="border-divider" />
+      <div aria-hidden="true" className="space-y-2">
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className="h-3 rounded bg-border-soft" style={{ width: `${65 + Math.random() * 35}%` }} />
         ))}

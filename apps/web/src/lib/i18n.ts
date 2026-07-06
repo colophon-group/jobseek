@@ -9,6 +9,25 @@ export function isLocale(value: string): value is Locale {
   return locales.includes(value as Locale);
 }
 
+/**
+ * Open Graph locale codes (`language_TERRITORY`) per locale. Used by
+ * the OG protocol for `og:locale` and `og:locale:alternate` tags.
+ */
+const OG_LOCALES: Record<Locale, string> = {
+  en: "en_US",
+  de: "de_DE",
+  fr: "fr_FR",
+  it: "it_IT",
+};
+
+export function ogLocale(locale: Locale): string {
+  return OG_LOCALES[locale];
+}
+
+export function ogAlternateLocales(current: Locale): string[] {
+  return locales.filter((l) => l !== current).map((l) => OG_LOCALES[l]);
+}
+
 type CatalogResult = { i18n: I18n; messages: Messages };
 const catalogCache = new Map<string, CatalogResult>();
 

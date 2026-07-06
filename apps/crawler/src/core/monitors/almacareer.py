@@ -37,6 +37,7 @@ import httpx
 import structlog
 
 from src.core.monitors import BoardGoneError, DiscoveredJob, fetch_page_text, register
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -95,8 +96,12 @@ _WIDGET_ID_RE = re.compile(r'"id"\s*:\s*"([0-9a-fA-F-]{36})"')
 _API_KEY_RE = re.compile(r'"apiKey"\s*:\s*"([a-fA-F0-9]{32,})"')
 _DETAIL_PATH_RE = re.compile(r'"detailPath"\s*:\s*"([^"]+)"')
 
-# Employment-type mapping by stable numeric id (``employmentTypesObjects.id``).
-# Labels are locale-specific (CZ/SK vary), so keying on the id is robust.
+# Employment-type mapping by stable numeric id
+# (``employmentTypesObjects.id``).  Labels are locale-specific (CZ/SK
+# vary), so keying on the id is robust.  Values are passed straight to
+# :func:`src.core.enum_normalize.normalize_employment_type` and must be
+# something it knows how to normalise (``full-time``/``part-time``/
+# ``contract``/``internship``).
 _EMPLOYMENT_TYPE_BY_ID: dict[str, str] = {
     "201300001": "full-time",
     "201300002": "part-time",
@@ -107,29 +112,9 @@ _EMPLOYMENT_TYPE_BY_ID: dict[str, str] = {
     "201300007": "part-time",  # brigáda
 }
 
-# Fallback label map — used when ids are missing or unknown.  Keys are
-# locale-specific; matching is exact (after lowercasing).
-_EMPLOYMENT_TYPE_BY_LABEL: dict[str, str] = {
-    # CZ
-    "práce na plný úvazek": "full-time",
-    "práce na zkrácený úvazek": "part-time",
-    "brigáda": "part-time",
-    "dohoda o provedení práce": "contract",
-    "dohoda o pracovní činnosti": "contract",
-    "externí spolupráce": "contract",
-    "stáž": "internship",
-    # SK
-    "práca na plný úväzok": "full-time",
-    "práca na skrátený úväzok": "part-time",
-    "živnosť": "contract",
-    "dohoda": "contract",
-    "stáž/prax": "internship",
-    # EN (some tenants)
-    "full-time work": "full-time",
-    "part-time work": "part-time",
-    "internship": "internship",
-    "contract": "contract",
-}
+# When the upstream id is missing/unknown we pass the raw label through
+# unchanged — the central normaliser knows the CZ/SK vocabulary
+# (``práce na plný úvazek`` etc.).
 
 # Salary period -> unit mapping (localised → normalised).  CZ and SK share
 # most tokens ("hodina", "rok") — SK-only differences ("mesiac") are added.
@@ -433,9 +418,11 @@ def _parse_employment_type(params: dict | None) -> str | None:
         type_id = t.get("id")
         if type_id and type_id in _EMPLOYMENT_TYPE_BY_ID:
             return _EMPLOYMENT_TYPE_BY_ID[type_id]
-        label = (t.get("label") or "").strip().lower()
-        if label in _EMPLOYMENT_TYPE_BY_LABEL:
-            return _EMPLOYMENT_TYPE_BY_LABEL[label]
+        # Pass the raw locale-specific label through; the central
+        # normaliser knows ``práce na plný úvazek`` etc.
+        label = t.get("label")
+        if label:
+            return label
     return None
 
 
@@ -646,6 +633,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     raw_ads: list[dict] = []
     page = 1
     last_page = 1
+    truncated = False
     while page <= last_page:
         listing = await _fetch_list_page(
             client,
@@ -662,6 +650,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         page += 1
         if len(raw_ads) >= MAX_JOBS:
             log.warning("almacareer.truncated", host=host, collected=len(raw_ads), cap=MAX_JOBS)
+            truncated = True
             break
 
     # ---- 2. Parse into DiscoveredJob ----
@@ -709,6 +698,8 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
                     error=str(result),
                 )
 
+    if truncated:
+        return truncated_rich_result(jobs)
     return jobs
 
 

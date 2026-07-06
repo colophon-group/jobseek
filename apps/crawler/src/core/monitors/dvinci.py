@@ -15,7 +15,9 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -75,13 +77,12 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
         if name and name not in locations:
             locations.append(name)
 
-    # Employment type
+    # Employment type — pass through the schema.org-style code
+    # (``FULL_TIME`` / ``PART_TIME``) for the central normaliser.
     working_times = opening.get("workingTimes", [])
     employment_type = None
     if working_times:
-        internal = working_times[0].get("internalName", "")
-        _map = {"FULL_TIME": "full-time", "PART_TIME": "part-time"}
-        employment_type = _map.get(internal)
+        employment_type = working_times[0].get("internalName") or None
 
     # Salary
     salary_obj = opening.get("salary")
@@ -91,14 +92,14 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
         currency = salary_obj.get("currency")
         min_val = value.get("minValue")
         max_val = value.get("maxValue")
-        unit_text = value.get("unitText", "").lower()
-        unit_map = {"year": "year", "month": "month", "day": "day", "hour": "hour"}
+        # d.vinci defaults to ``year`` when ``unitText`` is missing or unrecognised.
+        unit = normalize_salary_unit(value.get("unitText")) or "year"
         if currency and (min_val is not None or max_val is not None):
             base_salary = {
                 "currency": currency,
                 "min": min_val,
                 "max": max_val,
-                "unit": unit_map.get(unit_text, "year"),
+                "unit": unit,
             }
 
     # Job location type (remote/onsite) — d.vinci doesn't have a dedicated field
@@ -175,7 +176,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     if len(jobs) > MAX_JOBS:
         log.warning("dvinci.truncated", url=url, total=len(jobs), cap=MAX_JOBS)
-        jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
+        return truncated_rich_result(jobs)
 
     return jobs
 

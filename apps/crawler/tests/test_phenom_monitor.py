@@ -431,3 +431,181 @@ async def test_can_handle_rejects_missing_sitemap():
     async with httpx.AsyncClient(transport=transport) as client:
         meta = await can_handle("https://example.com/", client)
     assert meta is None
+
+
+# ── Strict child-shard fetch (#2974) ─────────────────────────────────────
+#
+# A transient 5xx on a single child shard must propagate
+# ``PaginationFetchError`` from ``discover()`` rather than silently
+# dropping the shard's URLs. The 906-shard mchire sitemap made even a
+# tiny per-shard transient failure rate produce multi-thousand URL gaps,
+# which then false-tombstoned active postings via
+# ``_MARK_GONE_BY_TIMESTAMP``. ``can_handle()`` is treated as a probe and
+# returns a partial result instead of raising.
+
+
+@pytest.mark.asyncio
+async def test_discover_propagates_pagination_fetch_error_on_5xx_shard(monkeypatch):
+    """One shard returning persistent 503 → discover() raises
+    ``PaginationFetchError`` (caught by ``_process_one_board_streaming``
+    so the run is recorded as a failure, not a partial success).
+    """
+    import asyncio
+
+    from src.shared.http_retry import PaginationFetchError
+
+    async def _no_sleep(_):
+        return None
+
+    monkeypatch.setattr(asyncio, "sleep", _no_sleep)
+
+    def handler(request):
+        url = str(request.url)
+        if url == "https://careers.example.com/sitemap.xml":
+            return httpx.Response(
+                200,
+                content=_PHENOM_INDEX_SHARDED,
+                headers={"content-type": "application/xml"},
+            )
+        if url == "https://careers.example.com/sitemap-0001-en.xml":
+            return httpx.Response(
+                200,
+                content=_SHARD_1,
+                headers={"content-type": "application/xml"},
+            )
+        # Shard 2 is consistently 503 — should exhaust retries and raise.
+        if url == "https://careers.example.com/sitemap-0002-en.xml":
+            return httpx.Response(503)
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+    board = {"id": "b1", "board_url": "https://careers.example.com", "metadata": {}}
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(PaginationFetchError) as exc:
+            await discover(board, client)
+        assert exc.value.last_status == 503
+
+
+@pytest.mark.asyncio
+async def test_discover_skips_404_shard_without_raising():
+    """404 on a child shard is a genuinely-missing shard (e.g. removed
+    between index emit and our fetch) — skip it and return the rest of
+    the URLs without raising. Mirrors ``sitemap._fetch_child_xml``
+    semantics.
+    """
+
+    def handler(request):
+        url = str(request.url)
+        if url == "https://careers.example.com/sitemap.xml":
+            return httpx.Response(
+                200,
+                content=_PHENOM_INDEX_SHARDED,
+                headers={"content-type": "application/xml"},
+            )
+        if url == "https://careers.example.com/sitemap-0001-en.xml":
+            return httpx.Response(
+                200,
+                content=_SHARD_1,
+                headers={"content-type": "application/xml"},
+            )
+        # Shard 2 is missing — return None silently.
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+    board = {"id": "b1", "board_url": "https://careers.example.com", "metadata": {}}
+    async with httpx.AsyncClient(transport=transport) as client:
+        urls, _ = await discover(board, client)
+    # Only shard-1 URLs present; shard-2 silently skipped (no raise).
+    assert urls == {"https://careers.example.com/crew-member/job/P8-1"}
+
+
+@pytest.mark.asyncio
+async def test_can_handle_partial_on_pagination_error(monkeypatch):
+    """Probe path: a transient shard error doesn't fail the whole probe.
+    Operator still gets a positive Phenom signal; discover() will be
+    strict on production cycles.
+    """
+    import asyncio
+
+    async def _no_sleep(_):
+        return None
+
+    monkeypatch.setattr(asyncio, "sleep", _no_sleep)
+
+    def handler(request):
+        url = str(request.url)
+        if url == "https://careers.example.com/sitemap.xml":
+            return httpx.Response(
+                200,
+                content=_PHENOM_INDEX_SHARDED,
+                headers={"content-type": "application/xml"},
+            )
+        # Both shards 503 — _collect_urls would raise on the first.
+        return httpx.Response(503)
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        meta = await can_handle("https://careers.example.com/", client)
+    assert meta is not None
+    assert meta["sitemap_url"] == "https://careers.example.com/sitemap.xml"
+    assert meta["urls"] == 0
+    assert meta["jobs"] == 0
+
+
+@pytest.mark.asyncio
+async def test_discover_propagates_pagination_fetch_error_on_403_shard(monkeypatch):
+    """One shard returning persistent 403 (WAF/anti-bot block) →
+    discover() raises ``PaginationFetchError`` (#2994). Index loaded
+    successfully (200) but a child shard 403'd; default
+    ``fetch_with_retry`` semantics would interpret that as "shard is
+    gone" and silently drop its URLs, but child sitemap fetches now
+    opt into ``transient_403=True`` so the WAF block surfaces as a
+    failed cycle rather than a partial-success that triggers
+    ``_MARK_GONE_BY_TIMESTAMP`` on tens of thousands of postings
+    (mchire flap pattern from #2994).
+    """
+    import asyncio
+
+    from src.shared.http_retry import PaginationFetchError
+
+    async def _no_sleep(_):
+        return None
+
+    monkeypatch.setattr(asyncio, "sleep", _no_sleep)
+
+    def handler(request):
+        url = str(request.url)
+        if url == "https://careers.example.com/sitemap.xml":
+            return httpx.Response(
+                200,
+                content=_PHENOM_INDEX_SHARDED,
+                headers={"content-type": "application/xml"},
+            )
+        if url == "https://careers.example.com/sitemap-0001-en.xml":
+            return httpx.Response(
+                200,
+                content=_SHARD_1,
+                headers={"content-type": "application/xml"},
+            )
+        # Shard 2 is consistently 403 — should exhaust retries and
+        # raise. awselb/2.0 + generic-forbidden body shape mirrors the
+        # mchire production response (#2994 PR body has the curl
+        # transcript).
+        if url == "https://careers.example.com/sitemap-0002-en.xml":
+            forbidden_html = (
+                "<html><head><title>403 Forbidden</title></head>"
+                "<body><center><h1>403 Forbidden</h1></center></body></html>"
+            )
+            return httpx.Response(
+                403,
+                text=forbidden_html,
+                headers={"server": "awselb/2.0"},
+            )
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+    board = {"id": "b1", "board_url": "https://careers.example.com", "metadata": {}}
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(PaginationFetchError) as exc:
+            await discover(board, client)
+        assert exc.value.last_status == 403

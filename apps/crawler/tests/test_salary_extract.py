@@ -251,3 +251,196 @@ class TestEURBonus:
         result = extract_salary(html)
         assert len(result) == 1
         assert result[0].min == 3000
+
+
+class TestNonUSDDollarMarkers:
+    """In-text `$` currency markers (closes #3191).
+
+    Pre-fix: ``$120K AUD`` was stored as USD then inflated +80% to EUR.
+    The detector now recognises AUD/NZD/SGD/HKD/BRL/MXN markers in two
+    positions:
+      1. Pre-amount prefix:  ``A$80,000``, ``S$100k``, ``HK$500K``, ``R$50.000``
+      2. Post-amount ISO code adjacent to the amount: ``$120K AUD``
+    USD remains the fallback when no marker is present.
+    """
+
+    # ── Suffix ISO code (range form) ──
+
+    def test_dollar_range_aud_suffix(self):
+        html = "<p>The base salary range is $120,000-$150,000 AUD per year</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=120000, max=150000, currency="AUD", period="yearly")
+
+    def test_dollar_range_nzd_suffix(self):
+        html = "<p>Salary: $90,000 - $120,000 NZD annually + benefits</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "NZD"
+        assert result[0].min == 90000
+        assert result[0].max == 120000
+
+    # ── Prefix marker (single amount) ──
+
+    def test_prefix_a_dollar_single_aud(self):
+        html = "<p>Salary: A$80,000 per year</p>"
+        result = extract_salary(html)
+        aud = [r for r in result if r.currency == "AUD"]
+        assert len(aud) == 1
+        assert aud[0].min == 80000
+        assert aud[0].period == "yearly"
+
+    def test_prefix_au_dollar_single_aud(self):
+        html = "<p>Compensation: AU$95,000 annually</p>"
+        result = extract_salary(html)
+        aud = [r for r in result if r.currency == "AUD"]
+        assert len(aud) == 1
+        assert aud[0].min == 95000
+
+    def test_prefix_s_dollar_single_sgd(self):
+        html = "<p>Salary: S$100k annually + bonus</p>"
+        result = extract_salary(html)
+        sgd = [r for r in result if r.currency == "SGD"]
+        assert len(sgd) == 1
+        assert sgd[0].min == 100000
+
+    def test_prefix_hk_dollar_single_hkd(self):
+        html = "<p>Compensation: HK$500K per year</p>"
+        result = extract_salary(html)
+        hkd = [r for r in result if r.currency == "HKD"]
+        assert len(hkd) == 1
+        assert hkd[0].min == 500000
+
+    def test_prefix_r_dollar_brl_european_decimal(self):
+        # Brazilian decimal uses "." as thousands separator: R$50.000 = 50000.
+        html = "<p>Annual salary: R$50.000 per year</p>"
+        result = extract_salary(html)
+        brl = [r for r in result if r.currency == "BRL"]
+        assert len(brl) == 1
+        assert brl[0].min == 50000
+        assert brl[0].period == "yearly"
+
+    def test_prefix_mx_dollar_mxn(self):
+        html = "<p>Salary: MX$800,000 annually</p>"
+        result = extract_salary(html)
+        mxn = [r for r in result if r.currency == "MXN"]
+        assert len(mxn) == 1
+        assert mxn[0].min == 800000
+
+    # ── Prefix marker (range form) ──
+
+    def test_prefix_a_dollar_range_aud(self):
+        html = "<p>The base salary range is A$120,000 - A$150,000 per year</p>"
+        result = extract_salary(html)
+        aud = [r for r in result if r.currency == "AUD"]
+        assert len(aud) == 1
+        assert aud[0].min == 120000
+        assert aud[0].max == 150000
+
+    # ── USD preservation (no marker → still USD) ──
+
+    def test_plain_dollar_remains_usd(self):
+        html = "<p>Salary range: $80K-$120K + equity + benefits</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "USD"
+        assert result[0].min == 80000
+
+    def test_dollar_with_cad_suffix(self):
+        html = "<p>The salary range for this position is $100,000 - $150,000 CAD</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "CAD"
+        assert result[0].min == 100000
+
+    # ── Adjacency rule: ISO code far from amount should NOT flip currency ──
+
+    def test_non_adjacent_aud_does_not_flip_currency(self):
+        # A US posting that mentions AUD later in the description (e.g.
+        # "AUD performance bonus") must NOT be classified as AUD.
+        html = (
+            "<p>The US base salary range for this full-time position is "
+            "$80,000 - $120,000 + bonus + equity + benefits. "
+            "International candidates may also be eligible for an AUD "
+            "performance bonus depending on region.</p>"
+        )
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "USD"
+        assert result[0].min == 80000
+        assert result[0].max == 120000
+
+    def test_adjacent_after_token_does_not_flip(self):
+        # "+" / "plus" / "and" between amount and ISO code must not
+        # propagate the ISO code onto the amount.
+        html = "<p>Salary range: $80,000 - $120,000 plus AUD performance bonus</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "USD"
+
+    # ── Inflation bug from #3191 ──
+
+    def test_3191_inflation_bug_scenario(self):
+        # Pre-fix: this was stored as USD ($120,000) then inflated +53%
+        # when converted to EUR (~110,400 instead of the correct ~72,000).
+        html = (
+            "<p>Sydney, AU. Base salary range: $120,000 - $150,000 AUD "
+            "+ bonus + equity + benefits.</p>"
+        )
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=120000, max=150000, currency="AUD", period="yearly")
+
+    # ── US$/C$/CDN$ regression (#3191 follow-up) ──
+    # The original PR's word-boundary lookbehind on `_DOLLAR_RANGE_RE` and
+    # `_SINGLE_DOLLAR_PERIOD_RE` was too tight — it rejected any letter
+    # before `$`, including the legitimate ``US$``, ``C$``, ``CDN$`` and
+    # ``CA$`` conventions seen in international postings.
+
+    def test_us_dollar_prefix_returns_usd(self):
+        html = "<p>Salary: US$120,000 per year</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "USD"
+        assert result[0].min == 120000
+        assert result[0].period == "yearly"
+
+    def test_us_dollar_range(self):
+        html = "<p>Salary: US$100,000 - US$150,000 per year</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=100000, max=150000, currency="USD", period="yearly")
+
+    def test_c_dollar_prefix_returns_cad(self):
+        html = "<p>Salary: C$120,000 per year</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "CAD"
+        assert result[0].min == 120000
+        assert result[0].period == "yearly"
+
+    def test_cdn_dollar_prefix_returns_cad(self):
+        html = "<p>Salary: CDN$120,000 per year</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "CAD"
+        assert result[0].min == 120000
+        assert result[0].period == "yearly"
+
+    def test_ca_dollar_prefix_returns_cad(self):
+        # ``CA$`` is the less-common but still seen Canadian dollar prefix.
+        html = "<p>Compensation: CA$95,000 annually</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].currency == "CAD"
+        assert result[0].min == 95000
+
+    def test_bare_n_dollar_is_not_nzd(self):
+        # ``N$`` alone is ambiguous (could be Namibian Dollar). Only
+        # ``NZ$`` is treated as a New Zealand marker — ``N$`` falls back
+        # to USD (no explicit prefix mapping).
+        html = "<p>Salary: NZ$80,000 per year</p>"
+        result = extract_salary(html)
+        nzd = [r for r in result if r.currency == "NZD"]
+        assert len(nzd) == 1
+        assert nzd[0].min == 80000

@@ -2,13 +2,13 @@
 
 import { useLingui } from "@lingui/react/macro";
 import { Star } from "lucide-react";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useStarredCompanies } from "@/components/StarredCompaniesProvider";
 
 export function StarButton({ companyId }: { companyId: string }) {
   const { t } = useLingui();
-  const { isLoggedIn, isPending } = useAuth();
+  const { isLoggedIn, isPending } = useSession();
   const lp = useLocalePath();
   const { isStarred, toggle, isToggling } = useStarredCompanies();
 
@@ -40,6 +40,7 @@ export function StarButton({ companyId }: { companyId: string }) {
     >
       <Star
         size={18}
+        aria-hidden="true"
         className={starred ? "fill-accent text-accent" : "text-muted hover:text-accent"}
       />
     </button>

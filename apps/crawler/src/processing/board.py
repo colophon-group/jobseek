@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -24,6 +25,8 @@ from src.metrics import (
     monitor_dedup_total,
     monitor_gone_skipped_total,
     monitor_jobs_discovered,
+    monitor_skipped_tdm_total,
+    monitor_truncated_total,
     monitor_url_filtered_total,
     tasks_total,
 )
@@ -82,6 +85,7 @@ from src.queries.scrape import (
 from src.redis_queue import enqueue_scrape as _enqueue_scrape
 from src.shared.html_normalize import normalize_description_html
 from src.shared.langdetect import detect_all_languages, detect_language
+from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
 
@@ -187,15 +191,33 @@ _SUCCESSFACTORS_VOLATILE_PARAMS = frozenset(
 )
 
 
+# tal.net (TalentLink ATS) embeds a per-render CSRF/session token as a
+# *path* segment of the form ``/xf-<12 hex chars>/`` (e.g.
+# ``/brand-6/xf-767829ced96c/candidate/...``). Each Playwright render
+# emits a fresh token, so the same opportunity ID (``opp/2968-...``)
+# produces a different ``source_url`` every monitor cycle. Without
+# stripping, ``ON CONFLICT (source_url) DO NOTHING`` inflated Evercore
+# to ~12,340 rows for ~40 real postings before the pattern was caught
+# (issue #2941). The token is a path segment, not a query param, so
+# the SuccessFactors branch above doesn't touch it.
+_TAL_NET_XF_SEGMENT = re.compile(r"/xf-[a-f0-9]+(?=/)")
+
+
 def _canonicalize_url(url: str) -> str:
-    """Strip session-scoped query params from URLs on platforms where a
-    ``<a href>`` embeds a per-render CSRF/session token that otherwise
+    """Strip session-scoped tokens from URLs on platforms where a
+    ``<a href>`` embeds a per-render CSRF/session value that otherwise
     makes every monitor cycle rediscover the same posting as "new".
 
-    Currently handles the SuccessFactors family (``*.successfactors.*``
-    and ``*.sapsf.*``). The canonical form keeps identity-carrying params
-    (``career_job_req_id``, ``company``, ``rcm_site_locale`` …) and only
-    drops the ones listed in :data:`_SUCCESSFACTORS_VOLATILE_PARAMS`.
+    Currently handles two ATS platforms:
+
+    - **SuccessFactors family** (``*.successfactors.*`` / ``*.sapsf.*``)
+      — token is a *query param*; drop the ones listed in
+      :data:`_SUCCESSFACTORS_VOLATILE_PARAMS`. Identity-carrying params
+      (``career_job_req_id``, ``company``, ``rcm_site_locale`` …) stay.
+    - **tal.net / TalentLink** (``*.tal.net``) — token is a *path*
+      segment matching :data:`_TAL_NET_XF_SEGMENT` (``/xf-<hex>/``);
+      drop it. Everything else in the path (``/brand-N/``,
+      ``/opp/<id>``, ``/en-GB``, …) carries identity and stays.
     """
     if not url:
         return url
@@ -204,16 +226,21 @@ def _canonicalize_url(url: str) -> str:
     except ValueError:
         return url
     host = (p.netloc or "").lower()
-    if not (".successfactors." in host or ".sapsf." in host):
-        return url
-    # keep_blank_values=True preserves stable no-value keys like
-    # ``jobAlertController_jobAlertId=`` — filtering here would
-    # silently reshape URLs on boards we haven't analyzed yet.
-    params = parse_qsl(p.query, keep_blank_values=True)
-    kept = [(k, v) for k, v in params if k not in _SUCCESSFACTORS_VOLATILE_PARAMS]
-    if len(kept) == len(params):
-        return url
-    return urlunparse(p._replace(query=urlencode(kept)))
+    if ".successfactors." in host or ".sapsf." in host:
+        # keep_blank_values=True preserves stable no-value keys like
+        # ``jobAlertController_jobAlertId=`` — filtering here would
+        # silently reshape URLs on boards we haven't analyzed yet.
+        params = parse_qsl(p.query, keep_blank_values=True)
+        kept = [(k, v) for k, v in params if k not in _SUCCESSFACTORS_VOLATILE_PARAMS]
+        if len(kept) == len(params):
+            return url
+        return urlunparse(p._replace(query=urlencode(kept)))
+    if host.endswith(".tal.net") or host == "tal.net":
+        new_path = _TAL_NET_XF_SEGMENT.sub("", p.path or "")
+        if new_path == p.path:
+            return url
+        return urlunparse(p._replace(path=new_path))
+    return url
 
 
 # ── Dataclasses ──────────────────────────────────────────────────────
@@ -687,6 +714,10 @@ async def _process_one_board_streaming(
         total_new = 0
         total_relisted = 0
         batch_count = 0
+        # Any truncated batch flips the cycle to "partial" and suppresses
+        # gone-detection (#3216). The MAX_JOBS cap means the unseen tail
+        # would otherwise be tombstoned by _MARK_GONE_BY_TIMESTAMP.
+        any_truncated = False
 
         async for result in _batch.monitor_one_stream(
             board_url, crawler_type, metadata, effective_http, pw=pw
@@ -694,6 +725,8 @@ async def _process_one_board_streaming(
             batch_count += 1
             total_discovered += len(result.urls)
             is_rich = result.jobs_by_url is not None
+            if getattr(result, "truncated", False):
+                any_truncated = True
 
             # Pulse heartbeat + extend DB lease (shielded to avoid
             # destroying the pool connection on task cancellation)
@@ -948,7 +981,19 @@ async def _process_one_board_streaming(
                                 if row is None:
                                     n_rich_dedup += 1
                                     continue
-                                inserted_rich.append((j, t_ids, str(row["id"])))
+                                new_posting_id = str(row["id"])
+                                inserted_rich.append((j, t_ids, new_posting_id))
+                                # Lifecycle anchor: per-posting discovery event so
+                                # operators can grep Loki by posting_id from the
+                                # URL to find when (and from which board) the row
+                                # first entered the pipeline (#3192).
+                                board_log.info(
+                                    "posting.discovered",
+                                    posting_id=new_posting_id,
+                                    board_id=board_id,
+                                    source_url=j.url,
+                                    path="rich",
+                                )
                             if n_rich_dedup:
                                 monitor_dedup_total.labels(path="rich").inc(n_rich_dedup)
                                 board_log.info(
@@ -1019,15 +1064,48 @@ async def _process_one_board_streaming(
                                 if not j.language and j.description:
                                     j.language = detect_language(j.description)
 
-                            await conn.execute(_CREATE_RICH_UPDATES_TEMP)
-                            records = []
-                            for pid, j, _ in update_triples:
-                                loc_ids, loc_types = await _batch._resolve_locations(
+                            # Resolve locations with the cache-only sync helper
+                            # so the per-row loop doesn't await one DB round
+                            # trip per miss (#3206). A single batched backfill
+                            # runs after the loop, mirroring the NEW-jobs path
+                            # above (board.py:893-963).
+                            #
+                            # Unlike that path (INSERT with NULL is fine, the
+                            # next cycle fills it via touched-update),
+                            # _BATCH_UPDATE_RICH_CONTENT uses plain SET (not
+                            # COALESCE) for location_ids/location_types -- a
+                            # None here would null out a previously-resolved
+                            # value. So if backfill added new names, we re-
+                            # resolve every row in a second sync pass (pure
+                            # cache, zero DB round trips).
+                            resolved: list[tuple[list[int] | None, list[str] | None]] = [
+                                _resolve_locations_sync(
                                     loc_resolver,
                                     _coerce_locations(j.locations),
                                     _coerce_text(j.job_location_type),
                                     _coerce_text(j.language),
                                 )
+                                for _, j, _ in update_triples
+                            ]
+
+                            # Single DB round trip for any cache misses (rare).
+                            if await loc_resolver.backfill_misses():
+                                loc_resolver.drain_location_misses()
+                                resolved = [
+                                    _resolve_locations_sync(
+                                        loc_resolver,
+                                        _coerce_locations(j.locations),
+                                        _coerce_text(j.job_location_type),
+                                        _coerce_text(j.language),
+                                    )
+                                    for _, j, _ in update_triples
+                                ]
+
+                            await conn.execute(_CREATE_RICH_UPDATES_TEMP)
+                            records = []
+                            for (pid, j, _), (loc_ids, loc_types) in zip(
+                                update_triples, resolved, strict=True
+                            ):
                                 desc_text = _coerce_text(j.description)
                                 s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
                                     desc_text, rates
@@ -1120,6 +1198,20 @@ async def _process_one_board_streaming(
                                 count=n_deduped,
                             )
                         board_log.info("batch.inserted_for_scrape", count=len(inserted))
+                        # Lifecycle anchor: per-posting discovery event so an
+                        # operator with only the posting_id (from the public
+                        # URL) can grep Loki to find when and from which board
+                        # the row entered the pipeline (#3192). URL-only path
+                        # — rich data arrives later via the scrape branch's
+                        # ``posting.scraped`` event.
+                        for ins in inserted:
+                            board_log.info(
+                                "posting.discovered",
+                                posting_id=str(ins["id"]),
+                                board_id=board_id,
+                                source_url=ins["source_url"],
+                                path="url_only",
+                            )
                         await _enqueue_scrapes_for_new(
                             inserted, board_id, metadata, board_log, crawler_type=crawler_type
                         )
@@ -1186,23 +1278,42 @@ async def _process_one_board_streaming(
         gone_count = 0
         gone_skipped_reason: str | None = None
         delist_threshold = _resolve_delist_threshold(metadata, crawler_type)
-        async with pool.acquire() as conn, conn.transaction():
-            gone_count, gone_skipped_reason = await _mark_gone_with_guards(
-                conn,
-                board_id,
-                total_discovered,
-                monitor_start_ts,
-                metadata,
-                delist_threshold,
-                board_log,
+        # Truncation override (#3216) — when the monitor returned a partial
+        # discovery (any batch hit its MAX_JOBS cap), skip gone-detection
+        # entirely for this cycle. The 30% drop guard catches catastrophic
+        # under-counts but not smaller truncations: a board with 60k jobs
+        # capped at 50k still reports 50k discovered, well within tolerance,
+        # so the next ``_MARK_GONE_BY_TIMESTAMP`` would tombstone the 10k
+        # unseen tail. The run is still recorded as success so the failure
+        # budget doesn't escalate on a working-but-large board; the next
+        # cycle proceeds normally.
+        if any_truncated:
+            async with pool.acquire() as conn, conn.transaction():
+                await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+            board_log.warning(
+                "batch.monitor.truncated_partial",
+                discovered=total_discovered,
+                note="MAX_JOBS cap hit; suppressing gone-detection this cycle",
             )
-            await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+            monitor_truncated_total.labels(board_id=board_id).inc()
+        else:
+            async with pool.acquire() as conn, conn.transaction():
+                gone_count, gone_skipped_reason = await _mark_gone_with_guards(
+                    conn,
+                    board_id,
+                    total_discovered,
+                    monitor_start_ts,
+                    metadata,
+                    delist_threshold,
+                    board_log,
+                )
+                await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
 
-        # Emit the skip metric AFTER the transaction commits — same
-        # pattern as ``_emit_gone_counter`` (a rollback would otherwise
-        # over-report skipped cycles).
-        if gone_skipped_reason:
-            monitor_gone_skipped_total.labels(reason=gone_skipped_reason).inc()
+            # Emit the skip metric AFTER the transaction commits — same
+            # pattern as ``_emit_gone_counter`` (a rollback would otherwise
+            # over-report skipped cycles).
+            if gone_skipped_reason:
+                monitor_gone_skipped_total.labels(reason=gone_skipped_reason).inc()
 
         # Flush location misses to taxonomy_miss table
         await _batch._flush_location_misses(loc_resolver, pool)
@@ -1216,6 +1327,7 @@ async def _process_one_board_streaming(
             relisted=total_relisted,
             gone=gone_count,
             gone_skipped_reason=gone_skipped_reason,
+            truncated=any_truncated,
             batches=batch_count,
             duration_s=round(elapsed, 2),
         )
@@ -1236,6 +1348,32 @@ async def _process_one_board_streaming(
             with contextlib.suppress(Exception):
                 await _batch.get_redis().delete("cache:platform-stats")
 
+        return True, elapsed
+
+    except TDMReservedError as exc:
+        # Publisher emitted the W3C TDM-Reservation opt-out signal (#2842).
+        # Treat the run as a clean skip — log + counter increment, no
+        # tombstoning, no consecutive_failures bump, no _RECORD_FAILURE
+        # ramp. Distinct from the failure path because the upstream
+        # technically responded successfully; what they declined is
+        # text-and-data-mining, not the request itself.
+        elapsed = monotonic() - t0
+        board_log.info(
+            "batch.monitor.tdm_reserved",
+            url=getattr(exc, "url", None),
+            source=getattr(exc, "source", None),
+            tdm_policy_url=getattr(exc, "policy_url", None),
+            duration_s=round(elapsed, 2),
+        )
+        monitor_skipped_tdm_total.labels(
+            board_id=board_id,
+            source=getattr(exc, "source", "unknown"),
+        ).inc()
+        tasks_total.labels(kind="monitor", status="tdm_reserved").inc()
+        # Discard stale location misses from this skipped board. Mirrors
+        # the cleanup the failure path does.
+        loc_resolver.drain_location_misses()
+        # Return success-shaped: the run was not a failure.
         return True, elapsed
 
     except BoardGoneError as exc:

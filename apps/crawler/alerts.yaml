@@ -90,7 +90,127 @@ groups:
             Investigate queue backlog; consider `crawler sync` to
             reseed if state is stale, or scale `maxmemory` up.
 
+      # Catches the failure mode from #3169: a worker container is
+      # alive (so `up{job="crawler"}` stays 1 and NoMetricsFromCrawler
+      # does NOT fire) but its claim/dispatch loop is stuck — a
+      # Playwright-internal deadlock, an unawaited scraper hang, or a
+      # similar process-level wedge. `worker_heartbeat_ts` is updated
+      # at the top of every loop iteration in
+      # `src/workers/pipeline.py`; healthy workers tick every few
+      # seconds. 10 minutes is conservative — it sits well above
+      # normal monitor-run latency, so a single long board doesn't
+      # page. Tighten if it turns out to be too quiet.
+      #
+      # `max by (worker_id)` collapses across `instance` so a worker
+      # restart on a different container doesn't double-page; the
+      # worker_id label is the stable identity within a container.
+      - alert: WorkerStuck
+        expr: time() - max by (worker_id) (crawler_worker_heartbeat_timestamp_seconds) > 600
+        for: 5m
+        labels:
+          severity: page
+          service: crawler
+        annotations:
+          summary: "Crawler worker {{ $labels.worker_id }} heartbeat stale for >10 min"
+          description: |
+            Worker {{ $labels.worker_id }} hasn't updated heartbeat in
+            >10 minutes. Process may be stuck in a scraper deadlock,
+            Playwright internal hang, or similar. Container is likely
+            'up' but doing no work. SSH to the crawler box and inspect;
+            restart container if needed.
+          runbook: |
+            ssh -i ~/.ssh/hetzner_deploy root@$CRAWLER_BROWSER_IPv4
+            # Identify the wedged container by metrics port:
+            docker ps --format "{{.Names}}" | xargs -I {} sh -c \
+              'echo "=== {} ==="; docker exec {} ps -ef 2>/dev/null | head -5'
+            # Restart the stuck worker. Re-claim is automatic via the
+            # reaper (#3173) — inflight tasks come back to the queue.
+            docker restart <worker-name>
+
+      # Catches the failure mode from #3167: an ephemeral cron run
+      # (refresh-typesense every 4h, plus operator-triggered
+      # backfill-typesense) stops succeeding silently. The wrapping
+      # GitHub Actions workflow may also start failing for an
+      # unrelated reason, suppressing the workflow-failure email.
+      # `crawler_cron_last_run_ts` is pushed to Pushgateway at the
+      # end of every run by `src/cron_metrics.py`; the series
+      # persists between runs (Pushgateway PUT semantics) so its
+      # last value goes stale when the cron stops reporting.
+      # >6h since last report covers the worst case (4h cadence +
+      # a missed cycle), and the 1h `for:` debounces a single late
+      # run that's still in flight on a slow runner.
+      #
+      # NOTE: this alert is silently inactive until
+      # `CRAWLER_PUSHGATEWAY_URL` is wired into the runtime env of
+      # the cron container (see PR body for the operator follow-up).
+      # Without it, `_push_metrics` is a no-op and the series is
+      # never created. `absent()` would page on that missing state,
+      # but until the Pushgateway is reachable that would be noise —
+      # so this alert relies on the series existing once, then
+      # going stale.
+      - alert: CronJobMissing
+        expr: time() - max by (cron_job) (crawler_cron_last_run_ts) > 6 * 60 * 60
+        for: 1h
+        labels:
+          severity: page
+          service: crawler
+        annotations:
+          summary: "Cron job {{ $labels.cron_job }} hasn't reported in >6h"
+          description: |
+            `crawler_cron_last_run_ts{cron_job="{{ $labels.cron_job }}"}`
+            is more than 6 hours stale. The scheduled run stopped
+            completing — either the GitHub Actions workflow is
+            failing, the SSH dispatch to the Hetzner host failed,
+            the container started but its body raised before reaching
+            `cron.complete`, or Pushgateway is unreachable from the
+            cron runtime. Watchlist counts and Typesense facet
+            totals go stale fleet-wide while this is down.
+          runbook: |
+            # 1. Check the scheduled-maintenance workflow run history
+            gh run list --repo colophon-group/jobseek \
+              --workflow=crawler-scheduled-maintenance.yml --limit 5
+            # 2. SSH to the box and inspect recent cron logs
+            ssh -i ~/.ssh/hetzner_deploy root@$CRAWLER_BROWSER_IPv4
+            docker ps -a --format "{{.Names}}|{{.Status}}" | grep crawler-refresh-typesense
+            # 3. Re-run manually to confirm fix:
+            gh workflow run crawler-scheduled-maintenance.yml \
+              --repo colophon-group/jobseek
+
       # --- EMAIL ---------------------------------------------------
+
+      # Companion to CronJobMissing. The cron is reporting on
+      # schedule but the most recent run failed (the body raised
+      # inside `async with cron_run(...)`). Email severity (not
+      # page) because the next scheduled cycle will retry; only a
+      # sustained streak warrants on-call attention, which
+      # CronJobMissing catches by the 6h staleness threshold once
+      # consecutive failures stop emitting fresh `last_run_ts`
+      # samples... except they don't — `_push_metrics` is called
+      # in BOTH the success and failure branches, so `last_run_ts`
+      # advances even on failure. That's deliberate: it separates
+      # "this job is dead" (CronJobMissing) from "this job is
+      # running but broken" (CronJobFailing).
+      #
+      # 10m `for:` debounces single transient failures (Supabase
+      # blip, Typesense restart) — the next run usually recovers.
+      - alert: CronJobFailing
+        expr: crawler_cron_last_run_status == 0
+        for: 10m
+        labels:
+          severity: email
+          service: crawler
+        annotations:
+          summary: "Cron job {{ $labels.cron_job }} reported failure on last run"
+          description: |
+            `crawler_cron_last_run_status{cron_job="{{ $labels.cron_job }}"}`
+            is 0, meaning the most recent run raised an exception
+            inside `cron_run()`. The next scheduled cycle will
+            retry — if this clears, no action needed. If it
+            persists, the underlying body is broken (Typesense
+            outage, schema mismatch, Postgres unreachable from the
+            cron container, etc.). Loki carries the failure
+            details under `event="cron.complete"` with
+            `status="failure"`.
 
       # Catches "exporter container alive but stuck on a Supabase
       # write" — a partial-failure mode that does not trigger

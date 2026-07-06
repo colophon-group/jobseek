@@ -1,4 +1,4 @@
-import { buildFilterString } from "./typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "./typesense-filters";
 import {
   getTypesenseBrowserConfig,
   type TypesenseBrowserConfig,
@@ -30,7 +30,10 @@ interface JobPostingDoc {
   technology_ids: number[];
   employment_type?: string;
   salary_eur?: number;
+  experience_min_years?: number;
+  experience_max_years?: number;
   experience_min: number;
+  experience_max?: number;
   locales: string[];
   first_seen_at: number;
 }
@@ -134,6 +137,19 @@ function mapHitToPosting(
   };
 }
 
+function mapHitsToPostingsByFreshness(
+  hits: SearchHit<JobPostingDoc>[],
+  filteredLocationIds?: number[],
+): SearchResultPosting[] {
+  if (hits.length <= 1) {
+    return hits.map((hit) => mapHitToPosting(hit, filteredLocationIds));
+  }
+
+  return [...hits]
+    .sort((a, b) => b.document.first_seen_at - a.document.first_seen_at)
+    .map((hit) => mapHitToPosting(hit, filteredLocationIds));
+}
+
 function emptyResponse(): SearchResponse {
   return { companies: [], totalCompanies: 0, degraded: true };
 }
@@ -146,7 +162,7 @@ async function fetchYearCounts(
 ): Promise<Map<string, number>> {
   if (companyIds.length === 0) return new Map();
   const yearFilter =
-    `first_seen_at:>${oneYearAgoUnix()} && company_id:[${companyIds.join(",")}]` +
+    `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && company_id:[${companyIds.join(",")}]` +
     (filterStr ? ` && ${filterStr}` : "");
   const r = await searchOne<JobPostingDoc>(cfg, "job_posting", {
     q,
@@ -173,7 +189,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const cfg = await this.cfg();
       const { keywords, offset, limit, locationIds } = params;
       const filterStr = buildFilterString(params);
-      const activeFilter = `is_active:true${filterStr ? ` && ${filterStr}` : ""}`;
+      const activeFilter = `${POSTING_BASE_FILTER}${filterStr ? ` && ${filterStr}` : ""}`;
 
       const result = await searchOne<JobPostingDoc>(cfg, "job_posting", {
         q: keywords.join(" "),
@@ -238,7 +254,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
     limit: number,
     locationIds?: number[],
   ): Promise<SearchResponse> {
-    const activeFilter = `is_active:true && ${filterStr}`;
+    const activeFilter = `${POSTING_BASE_FILTER} && ${filterStr}`;
     const facetResult = await searchOne<JobPostingDoc>(cfg, "job_posting", {
       q: "*",
       filter_by: activeFilter,
@@ -284,7 +300,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
           company: { id: cid, name: first.company_name, slug: first.company_slug, icon: first.company_icon ?? null },
           activeMatches: activeMap.get(cid) ?? 0,
           yearMatches: yearMap.get(cid) ?? 0,
-          postings: g.hits.map((h) => mapHitToPosting(h, locationIds)),
+          postings: mapHitsToPostingsByFreshness(g.hits, locationIds),
         } satisfies SearchResultCompany;
       })
       .filter((c): c is SearchResultCompany => c !== null);
@@ -297,47 +313,51 @@ export class TypesenseBrowserProvider implements SearchProvider {
     offset: number,
     limit: number,
   ): Promise<SearchResponse> {
-    const companyResults = await searchOne<CompanyDoc>(cfg, "company", {
-      q: "*",
-      filter_by: "active_posting_count:>0",
-      sort_by: "active_posting_count:desc",
-      per_page: limit,
-      page: Math.floor(offset / limit) + 1,
-    });
-    const totalCompanies = companyResults.found;
-    const hits = companyResults.hits ?? [];
-    if (hits.length === 0) return { companies: [], totalCompanies };
-
-    const companyIds = hits.map((h) => h.document.id);
-    const compMap = new Map<string, CompanyDoc>(hits.map((h) => [h.document.id, h.document]));
     const postingResults = await searchOne<JobPostingDoc>(cfg, "job_posting", {
       q: "*",
-      filter_by: `company_id:[${companyIds.join(",")}] && is_active:true`,
+      filter_by: POSTING_BASE_FILTER,
       group_by: "company_id",
       group_limit: 10,
       sort_by: "first_seen_at:desc",
+      per_page: limit,
+      page: Math.floor(offset / limit) + 1,
+      facet_by: "company_id",
+      facet_strategy: "exhaustive",
+      max_facet_values: 1,
+    });
+    const groupedHits = (postingResults.grouped_hits ?? []) as GroupedHit<JobPostingDoc>[];
+    const totalCompanies =
+      postingResults.facet_counts?.[0]?.stats?.total_values ?? groupedHits.length;
+    if (groupedHits.length === 0) return { companies: [], totalCompanies };
+
+    const companyIds = groupedHits.map((g) => g.hits[0].document.company_id);
+    const companyResults = await searchOne<CompanyDoc>(cfg, "company", {
+      q: "*",
+      filter_by: `id:[${companyIds.join(",")}]`,
       per_page: companyIds.length,
     });
-
-    const groupMap = new Map<string, GroupedHit<JobPostingDoc>>(
-      (postingResults.grouped_hits ?? []).map(
-        (g) => [g.hits[0].document.company_id, g] as [string, GroupedHit<JobPostingDoc>],
-      ),
+    const compMap = new Map<string, CompanyDoc>(
+      (companyResults.hits ?? []).map((h) => [h.document.id, h.document]),
     );
 
-    const companies: SearchResultCompany[] = companyIds
-      .map((cid) => {
+    const companies: SearchResultCompany[] = groupedHits
+      .map((g) => {
+        const first = g.hits[0].document;
+        const cid = first.company_id;
         const compDoc = compMap.get(cid);
-        const g = groupMap.get(cid);
-        if (!compDoc) return null;
         return {
-          company: { id: cid, name: compDoc.name, slug: compDoc.slug, icon: compDoc.icon ?? null },
-          activeMatches: compDoc.active_posting_count,
-          yearMatches: compDoc.year_posting_count,
-          postings: g ? g.hits.map((h) => mapHitToPosting(h)) : [],
+          company: {
+            id: cid,
+            name: compDoc?.name ?? first.company_name,
+            slug: compDoc?.slug ?? first.company_slug,
+            icon: compDoc?.icon ?? first.company_icon ?? null,
+          },
+          activeMatches: compDoc?.active_posting_count ?? g.found ?? g.hits.length,
+          yearMatches: compDoc?.year_posting_count ?? 0,
+          postings: mapHitsToPostingsByFreshness(g.hits),
         } satisfies SearchResultCompany;
       })
-      .filter((c): c is SearchResultCompany => c !== null);
+      .filter((c) => c.postings.length > 0);
 
     return { companies, totalCompanies };
   }
@@ -355,7 +375,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const { companyId, keywords, offset, limit, locationIds } = params;
       const filterStr = buildFilterString(params);
       const activeFilter =
-        `company_id:=${companyId} && is_active:true` + (filterStr ? ` && ${filterStr}` : "");
+        `company_id:=${companyId} && ${POSTING_BASE_FILTER}` + (filterStr ? ` && ${filterStr}` : "");
       const q = keywords.length ? keywords.join(" ") : "*";
       const r = await searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
@@ -398,7 +418,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `is_active:true && ${baseFilter}`,
+        filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
         sort_by: keywords.length
           ? "_text_match:desc,first_seen_at:desc"
           : "first_seen_at:desc",
@@ -408,13 +428,13 @@ export class TypesenseBrowserProvider implements SearchProvider {
       searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `is_active:true && ${baseFilter}`,
+        filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
         per_page: 0,
       }),
       searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
+        filter_by: `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
         per_page: 0,
       }),
     ]);
@@ -439,7 +459,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const r = await searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `is_active:true && salary_eur:>0${filterStr ? ` && ${filterStr}` : ""}`,
+        filter_by: `${POSTING_BASE_FILTER} && salary_eur:>0${filterStr ? ` && ${filterStr}` : ""}`,
         facet_by: SALARY_FACET_BY,
         max_facet_values: 31,
         per_page: 0,
@@ -469,7 +489,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const r = await searchOne<JobPostingDoc>(cfg, "job_posting", {
         q,
         query_by: "title",
-        filter_by: `is_active:true && experience_min:>=0${filterStr ? ` && ${filterStr}` : ""}`,
+        filter_by: `${POSTING_BASE_FILTER} && experience_min:>=0${filterStr ? ` && ${filterStr}` : ""}`,
         facet_by: "experience_min",
         max_facet_values: 30,
         per_page: 0,

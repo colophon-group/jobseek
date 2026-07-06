@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
-import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
-import { LlmContentMirror } from "@/components/LlmContentMirror";
 import { TermsContent } from "@/components/TermsContent";
 
 type Props = {
@@ -25,7 +24,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates("/terms", locale),
-    openGraph: { title, description, url: `${siteConfig.url}/${locale}/terms` },
+    // Excluded from the index (#2822): footer link satisfies legal
+    // accessibility; nobody discovers the page via search. `follow`
+    // keeps PageRank flowing.
+    robots: { index: false, follow: true },
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}/terms`,
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+    },
   };
 }
 
@@ -45,19 +55,6 @@ export default async function TermsPage({ params }: Props) {
         lastReviewed: siteConfig.terms.lastUpdated,
       }} />
       <TermsContent />
-      <LlmContentMirror locale={locale}>
-        <h1>{i18n._("terms.hero.title")}</h1>
-        <p>{i18n._("terms.hero.description")}</p>
-        <h2>{i18n._("terms.short.title")}</h2>
-        <ul>
-          <li>{i18n._("terms.short.r1")}</li>
-          <li>{i18n._("terms.short.r2")}</li>
-          <li>{i18n._("terms.short.r3")}</li>
-          <li>{i18n._("terms.short.r4")}</li>
-          <li>{i18n._("terms.short.r5")}</li>
-        </ul>
-        <p>{i18n._("terms.contact.description")} {siteConfig.indexing.contactEmail}</p>
-      </LlmContentMirror>
     </>
   );
 }

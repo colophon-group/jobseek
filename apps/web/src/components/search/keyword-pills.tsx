@@ -47,7 +47,7 @@ export function KeywordPills({ keywords, onAdd, onRemove }: KeywordPillsProps) {
               message: "Remove keyword",
             })}
           >
-            <X size={12} />
+            <X size={12} aria-hidden="true" />
           </button>
         </span>
       ))}

@@ -5,12 +5,15 @@ import {
   getWatchlistPostings,
   getWatchlistPostingYearCount,
 } from "@/lib/actions/watchlists";
+import { getCurrencyRates } from "@/lib/actions/search";
 import { getSession } from "@/lib/sessionCache";
 import { getUserPlan, PLAN_LIMITS, canCreateWatchlist } from "@/lib/plans";
 import { resolveLocationSlugs } from "@/lib/actions/locations";
 import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getPreferences } from "@/lib/actions/preferences";
+import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 import { resolveJobLanguages } from "@/lib/job-languages";
+import { convertToEur } from "@/lib/salary";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 
 export interface WatchlistPageData {
@@ -43,15 +46,19 @@ export async function fetchWatchlistPageData(params: {
   const session = await getSession();
   const isOwner = session?.user?.id === detail.owner.id;
 
-  const [plan, limit, prefs] = await Promise.all([
+  // Auth users persist `jobLanguages` in `user_preferences`; anon
+  // users mirror it into a cookie (issue #2850 + `anon-preferences.ts`).
+  // Read whichever applies so the watchlist body filters consistently.
+  const [plan, limit, prefs, anonJobLangs] = await Promise.all([
     session ? getUserPlan(session.user.id) : ("free" as const),
     session ? canCreateWatchlist(session.user.id) : { allowed: false, current: 0, max: 0 },
     session ? getPreferences() : Promise.resolve(null),
+    session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
   const isPaidPlan = PLAN_LIMITS[plan].canReceiveAlerts;
   const limitReached = !limit.allowed;
 
-  const jobLanguages = prefs?.jobLanguages ?? [];
+  const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
   const languages = resolveJobLanguages(jobLanguages, locale);
 
   const filters = detail.filters;
@@ -88,6 +95,25 @@ export async function fetchWatchlistPageData(params: {
     .map((slug) => techMap.get(slug))
     .filter((t): t is NonNullable<typeof t> => t != null);
 
+  // Re-validate workMode strings before letting them flow into the
+  // Typesense filter — JSONB column means we can't trust the shape.
+  // Mirrors the same guard in the client-side editor (issue #3037).
+  const WORK_MODE_VALUES = new Set(["onsite", "hybrid", "remote"] as const);
+  const validatedWorkMode = (filters.workMode ?? []).filter(
+    (m): m is "onsite" | "hybrid" | "remote" => WORK_MODE_VALUES.has(m),
+  );
+  // `getCurrencyRates` is cache-backed (`cacheLife("hours")`), so this is
+  // cheap when the cache is warm. Only fetched when salary filters are set
+  // to avoid unnecessary work on watchlists without salary constraints.
+  // Full rationale in issue #3178 and PR #3298.
+  const salaryCurrency = filters.salaryCurrency ?? "EUR";
+  const rates =
+    filters.salaryMin != null || filters.salaryMax != null
+      ? await getCurrencyRates()
+      : [];
+  const salaryMinEur = convertToEur(filters.salaryMin, salaryCurrency, rates);
+  const salaryMaxEur = convertToEur(filters.salaryMax, salaryCurrency, rates);
+
   const sharedCountsParams = {
     companyIds: filters.anyCompany ? [] : detail.companies.map((c) => c.id),
     anyCompany: filters.anyCompany,
@@ -96,8 +122,10 @@ export async function fetchWatchlistPageData(params: {
     occupationIds: resolvedOccupations.map((o) => o.id),
     seniorityIds: resolvedSeniorities.map((s) => s.id),
     technologyIds: resolvedTechnologies.map((t) => t.id),
-    salaryMin: filters.salaryMin,
-    salaryMax: filters.salaryMax,
+    workMode: validatedWorkMode.length > 0 ? validatedWorkMode : undefined,
+    employmentType: filters.employmentType?.length ? filters.employmentType : undefined,
+    salaryMin: salaryMinEur,
+    salaryMax: salaryMaxEur,
     experienceMin: filters.experienceMin,
     experienceMax: filters.experienceMax,
     languages,

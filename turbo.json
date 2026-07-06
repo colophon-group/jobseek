@@ -19,6 +19,13 @@
         "UPSTASH_REDIS_REST_URL",
         "UPSTASH_REDIS_REST_TOKEN",
         "R2_DOMAIN_URL",
+        "R2_ENDPOINT_URL",
+        "R2_ACCESS_KEY_ID",
+        "R2_SECRET_ACCESS_KEY",
+        "R2_BUCKET",
+        "COMPANY_OG_CACHE_BYPASS",
+        "COMPANY_OG_PRERENDER_TOP_N",
+        "COMPANY_OG_RENDERER_VERSION_SALT",
         "TYPESENSE_HOST",
         "TYPESENSE_PORT",
         "TYPESENSE_PROTOCOL",
@@ -32,6 +39,10 @@
     },
     "lint": {
       "dependsOn": ["^build"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
     }
   }
 }

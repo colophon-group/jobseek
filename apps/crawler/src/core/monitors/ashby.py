@@ -12,6 +12,7 @@ import re
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_job_location_type, normalize_salary_unit
 from src.core.monitors import (
     BoardGoneError,
     DiscoveredJob,
@@ -19,6 +20,7 @@ from src.core.monitors import (
     register,
     slugs_from_url,
 )
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -31,19 +33,12 @@ _PAGE_PATTERNS = [
 
 _IGNORE_TOKENS = frozenset({"api", "js", "css", "assets", "posting-api"})
 
-_WORKPLACE_TYPE_MAP: dict[str, str] = {
-    "Remote": "remote",
-    "Hybrid": "hybrid",
-    "OnSite": "onsite",
-}
-
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "FullTime": "Full-time",
-    "PartTime": "Part-time",
-    "Intern": "Intern",
-    "Contract": "Contract",
-    "Temporary": "Temporary",
-}
+# Ashby emits PascalCase labels (``FullTime``/``PartTime``/``Intern``/
+# ``Contract``/``Temporary``).  These pass through unchanged — the
+# central :func:`src.core.enum_normalize.normalize_employment_type`
+# lowercases and looks them up.  ``workplaceType``
+# (``Remote``/``Hybrid``/``OnSite``) is funnelled through
+# :func:`src.core.enum_normalize.normalize_job_location_type`.
 
 
 def _parse_locations(job: dict) -> list[str] | None:
@@ -97,14 +92,10 @@ def _parse_compensation(job: dict, compensation: dict | None) -> dict | None:
             sal_min = tier.get("min")
             sal_max = tier.get("max")
             currency = tier.get("currency")
-            interval = tier.get("interval", "")
             if sal_min is None and sal_max is None:
                 return None
-            unit = "year"
-            if "hour" in interval.lower():
-                unit = "hour"
-            elif "month" in interval.lower():
-                unit = "month"
+            # Ashby defaults to ``year`` when interval is missing/unknown.
+            unit = normalize_salary_unit(tier.get("interval")) or "year"
             return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
 
     return None
@@ -127,14 +118,11 @@ def _parse_job(job: dict, compensation: dict | None = None) -> DiscoveredJob | N
         metadata["id"] = job_id
 
     workplace_type = job.get("workplaceType")
-    job_location_type = _WORKPLACE_TYPE_MAP.get(workplace_type, "") if workplace_type else None
-
-    employment_type_raw = job.get("employmentType")
-    employment_type = (
-        _EMPLOYMENT_TYPE_MAP.get(employment_type_raw, employment_type_raw)
-        if employment_type_raw
-        else None
+    job_location_type = (
+        normalize_job_location_type(workplace_type, default=None) if workplace_type else None
     )
+
+    employment_type = job.get("employmentType") or None
 
     return DiscoveredJob(
         url=url,
@@ -227,7 +215,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     if len(jobs) > MAX_JOBS:
         log.warning("ashby.truncated", url=url, total=len(jobs), cap=MAX_JOBS)
-        jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
+        return truncated_rich_result(jobs)
 
     return jobs
 

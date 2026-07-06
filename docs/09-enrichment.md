@@ -6,6 +6,11 @@ LLM-based structured data extraction from job posting descriptions. Runs as a ba
 
 The enricher reads job description HTML from R2, sends it through an LLM batch API, and writes structured fields back to the `job_posting.enrichment` JSONB column. It extracts information that scrapers cannot reliably determine from raw HTML — seniority, education requirements, work permit policy, and benefit categorization.
 
+OpenAI is the preferred documented provider for new Codex migration smokes.
+Anthropic and Gemini remain supported providers. Runtime defaults stay
+conservative: an empty `ENRICH_PROVIDER` disables enrichment until an operator
+explicitly configures a provider, model, API key, and spend cap.
+
 ## Extracted Fields
 
 All fields are nullable. The LLM returns `null` when information is absent or ambiguous.
@@ -41,7 +46,7 @@ Minimum stated education requirement. "Or equivalent experience" still counts as
 
 ### `experience`
 
-Years of experience requirement. Object with `min` and `max` (integers, either can be null).
+Years of experience requirement. Object with `min` and `max` (decimal years, one fractional digit allowed; either can be null).
 
 | Input | Output |
 |---|---|
@@ -131,7 +136,7 @@ Standardized benefit identifiers. The LLM maps free-text benefits to these enum 
 └──────────────┬───────────────────────────┘
                │
 ┌──────────────▼───────────────────────────┐
-│  Enricher loop (enricher.py)             │
+│  Enricher loop (entry point branch)      │
 │  Phase A: collect_completed_batches()    │
 │    - poll provider for finished batches  │
 │    - validate results against schema     │
@@ -144,12 +149,18 @@ Standardized benefit identifiers. The LLM maps free-text benefits to these enum 
 └──────────────┬───────────────────────────┘
                │
 ┌──────────────▼───────────────────────────┐
-│  LLM Providers (llm_providers/)          │
-│  - OpenAI Batch API (structured output)  │
-│  - Anthropic Message Batches (tool use)  │
-│  - Gemini Batch API (response schema)    │
+│  LLM Providers (core/enrich/providers/)  │
+│  - OpenAI Batch API                      │
+│  - Anthropic Message Batches             │
+│  - Gemini Batch API                      │
 └──────────────────────────────────────────┘
 ```
+
+Provider-specific code should stay limited to batch submission, status
+polling, result download, and provider response parsing. Prompts, JSON Schema,
+validation, taxonomy resolution, cost estimation, and persistence stay
+provider-neutral so OpenAI, Anthropic, and Gemini runs share the same behavior
+after provider parsing.
 
 ## Storage
 
@@ -185,6 +196,11 @@ The `v` field tracks the schema version. When the schema changes, `ENRICH_VERSIO
 
 ## Commands
 
+Confirm the current branch exposes an enrichment entry point before using these
+operator commands (`uv run enricher --help` or the replacement command added by
+the implementation branch). The provider abstraction and settings are present
+under `src/core/enrich/`; this docs change does not add a console script.
+
 ```bash
 uv run enricher                     # Continuous loop
 uv run enricher --once              # One cycle then exit
@@ -200,8 +216,8 @@ Set in environment variables (see `src/config.py`):
 
 | Variable | Default | Description |
 |---|---|---|
-| `ENRICH_PROVIDER` | `""` (disabled) | `openai`, `anthropic`, or `gemini` |
-| `ENRICH_MODEL` | `""` | Model ID (e.g. `gpt-4o-mini`, `claude-sonnet-4-5-20250514`) |
+| `ENRICH_PROVIDER` | `""` (disabled) | `openai`, `anthropic`, or `gemini`; prefer `openai` for new smokes |
+| `ENRICH_MODEL` | `""` | Provider model ID |
 | `ENRICH_API_KEY` | `""` | Provider API key |
 | `ENRICH_BATCH_SIZE` | `500` | Max items per batch |
 | `ENRICH_MIN_BATCH_SIZE` | `10` | Submit when >= this many pending |
@@ -209,12 +225,15 @@ Set in environment variables (see `src/config.py`):
 | `ENRICH_POLL_INTERVAL` | `300` | Seconds between poll cycles |
 | `ENRICH_DAILY_SPEND_CAP_USD` | `5.0` | Daily budget limit |
 
+For OpenAI smoke verification, start with a tiny dry run and low daily cap.
+The central checklist is [17 — Codex migration verification runbook](./17-codex-migration-verification-runbook.md#enrichment-openai-smoke).
+
 ## Key Files
 
 | File | Purpose |
 |---|---|
-| `src/core/enrich.py` | Schema (Pydantic model), prompt, user message builder |
-| `src/enricher.py` | CLI entry point, main loop |
-| `src/enrich_batch.py` | Batch processor (claim, prepare, submit, collect, persist) |
-| `src/core/llm_providers/` | Provider implementations (OpenAI, Anthropic, Gemini) |
+| `src/core/enrich/job.py` | Schema (Pydantic model), prompt, user message builder |
+| `src/core/enrich/batch.py` | Batch processor (claim, prepare, submit, collect, persist) |
+| `src/core/enrich/taxonomy.py` | Provider-neutral taxonomy resolution |
+| `src/core/enrich/providers/` | Provider adapters (OpenAI, Anthropic, Gemini) |
 | `src/core/description_store.py` | R2 read/write (HTML descriptions) |

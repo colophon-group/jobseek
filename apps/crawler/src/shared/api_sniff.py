@@ -32,7 +32,18 @@ FetchJsonFn = Callable[[str, str, dict, str | None], Awaitable[object]]
 
 
 def make_browser_fetcher(page) -> FetchJsonFn:
-    """Create a FetchJsonFn that executes fetch() inside the browser context."""
+    """Create a FetchJsonFn that executes fetch() inside the browser context.
+
+    TDM-Reservation respect (#2842, #2925). The response body is parsed
+    inside :func:`fetch_json` which now surfaces ``r.headers`` through
+    the page-evaluate bridge alongside the body text and invokes
+    :func:`check_browser_response` before returning. A
+    :class:`TDMReservedError` propagates out (not retried) and is
+    treated as a clean board skip by the wrapper in
+    ``processing/board.py``. Symmetric with the static-httpx
+    :func:`make_http_fetcher` path so paginate_all over Playwright
+    (api_sniffer.py:1127, 1347) honours the W3C TDM opt-out.
+    """
 
     async def _fetch(method: str, url: str, headers: dict, body: str | None) -> object:
         return await fetch_json(page, method, url, headers, body)
@@ -42,6 +53,7 @@ def make_browser_fetcher(page) -> FetchJsonFn:
 
 def make_http_fetcher(client) -> FetchJsonFn:
     """Create a FetchJsonFn that uses httpx for plain HTTP requests."""
+    from src.shared.tdm import check_response as _tdm_check
 
     async def _fetch(method: str, url: str, headers: dict, body: str | None) -> object:
         # Strip any case-variant of Accept before setting the canonical one,
@@ -55,6 +67,10 @@ def make_http_fetcher(client) -> FetchJsonFn:
             kw["headers"].setdefault("content-type", "application/json")
         resp = await client.request(method.upper(), url, **kw)
         resp.raise_for_status()
+        # TDM-Reservation respect (#2842) — header-only on the JSON
+        # API path. Header-canonical even when the publisher might also
+        # have set a body meta (the JSON shape would not contain HTML).
+        _tdm_check(resp)
         return resp.json()
 
     return _fetch
@@ -1027,16 +1043,41 @@ async def fetch_json(
     headers: dict,
     body: str | None,
 ) -> object:
-    """Execute a fetch inside the browser context, return parsed JSON."""
-    text = await page.evaluate(
+    """Execute a fetch inside the browser context, return parsed JSON.
+
+    TDM-Reservation respect (#2842, #2925). The page-evaluate bridge
+    surfaces ``r.headers`` (entries materialised into a plain object
+    with lower-cased keys, since ``Headers`` itself isn't directly
+    serialisable across the bridge) alongside the body text so
+    :func:`check_browser_response` can run on the Playwright path —
+    symmetric with the static-httpx ``make_http_fetcher`` hook. A
+    :class:`TDMReservedError` propagates out (not retried) per the
+    publisher-policy semantics.
+    """
+    from src.shared.tdm import check_browser_response
+
+    result = await page.evaluate(
         """async ([method, url, headers, body]) => {
         const opts = { method, headers: JSON.parse(headers) };
         if (body) opts.body = body;
         const resp = await fetch(url, opts);
-        return await resp.text();
+        const respHeaders = {};
+        for (const [k, v] of resp.headers.entries()) {
+            respHeaders[k.toLowerCase()] = v;
+        }
+        return { headers: respHeaders, text: await resp.text() };
     }""",
         [method, url, json.dumps(headers), body],
     )
+    # ``result`` is the JS object literal — ``{headers, text}``. If
+    # something upstream malformed it (a script substituting a
+    # rejection, a navigation completing with a non-dict value), the
+    # ``result["text"]`` lookup raises ``AttributeError`` /
+    # ``TypeError`` which is surfaced to the caller's retry budget in
+    # ``_fetch_page_with_retry``. No defensive shape-check needed.
+    text = result["text"]
+    resp_headers = result.get("headers") or {}
+    check_browser_response(resp_headers, text, url=url)
     return json.loads(text)
 
 
@@ -1081,13 +1122,33 @@ async def _fetch_page_with_retry(
     Playwright transports (see :func:`make_http_fetcher` /
     :func:`make_browser_fetcher`); the retry classifier handles each
     transport's exception shape uniformly.
+
+    TDM-Reservation respect (#2842, #2925) — :class:`TDMReservedError`
+    raised by either transport (httpx or browser) propagates
+    immediately, bypassing the retry budget, since the publisher's W3C
+    opt-out signal is not transient.
     """
+    # Retry observability (#3210). Same counter as ``http_retry.py`` so a
+    # Grafana ``rate(crawler_http_retry_attempts_total[5m])`` query
+    # aggregates the static-httpx and api_sniff paths into one view.
+    from src.metrics import http_retry_attempts_total, http_retry_host
+    from src.shared.tdm import TDMReservedError
+
+    host = http_retry_host(url)
+
     last_exc: BaseException | None = None
     last_status: int | None = None
+    retried = False
 
     for attempt in range(retries):
         try:
-            return await fetch_fn(method, url, headers, body)
+            result = await fetch_fn(method, url, headers, body)
+            if retried:
+                http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+            return result
+        except TDMReservedError:
+            # Publisher policy declaration — propagate, never retry.
+            raise
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
             last_status = status
@@ -1101,9 +1162,13 @@ async def _fetch_page_with_retry(
                     attempts=attempt + 1,
                     last_status=status,
                 ) from exc
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
         except Exception as exc:  # noqa: BLE001 — Playwright errors, timeouts, parse errors
             last_exc = exc
             last_status = None
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
 
         if attempt < retries - 1:
             delay = base_delay * (2**attempt) * (0.5 + random.random())
@@ -1117,6 +1182,7 @@ async def _fetch_page_with_retry(
             )
             await asyncio.sleep(delay)
 
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
     raise PaginationFetchError(
         url,
         attempts=retries,

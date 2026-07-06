@@ -70,9 +70,11 @@ from src.shared.api_sniff import (
 )
 from src.shared.http_retry import PaginationFetchError, is_retryable_status
 from src.shared.nextdata import extract_field, resolve_path
+from src.shared.truncation import truncated_rich_result, truncated_url_result
 
 if TYPE_CHECKING:
-    pass  # httpx now imported at runtime above (used in http_fetch_with_retry)
+    # httpx is imported at runtime above (used in http_fetch_with_retry).
+    from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
 
@@ -419,7 +421,7 @@ async def discover(
     board: dict,
     client: httpx.AsyncClient,
     pw=None,
-) -> list[DiscoveredJob] | set[str]:
+) -> list[DiscoveredJob] | set[str] | MonitorResult:
     """Discover jobs via API sniffing.
 
     - **HTTP mode** (config has ``api_url``, no ``browser``): plain httpx
@@ -567,6 +569,9 @@ async def http_fetch_with_retry(
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
     with full jitter.
     """
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
     last_exc: BaseException | None = None
     last_status: int | None = None
 
@@ -578,7 +583,15 @@ async def http_fetch_with_retry(
                 kw["headers"].setdefault("content-type", "application/json")
             resp = await client.request(method.upper(), url, **kw)
             resp.raise_for_status()
+            # TDM-Reservation respect (#2842). Header-only on the JSON
+            # API path. Runs after ``raise_for_status`` so we only check
+            # successful responses (errors fall through to the existing
+            # ``HTTPStatusError`` branch).
+            _tdm_check(resp)
             return resp.json()
+        except TDMReservedError:
+            # Publisher policy declaration — propagate, never retry.
+            raise
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
             last_status = status
@@ -679,7 +692,7 @@ async def _discover_http(
     client: httpx.AsyncClient,
     config: dict,
     pw=None,
-) -> list[DiscoveredJob] | set[str]:
+) -> list[DiscoveredJob] | set[str] | MonitorResult:
     """Discover jobs via plain httpx — no Playwright needed.
 
     After fetching JSON from *api_url*, the content at *json_path* is
@@ -910,10 +923,16 @@ async def _discover_http(
             page_cap = pagination_config.get("max_pages", _HTTP_MAX_PAGES)
             items = await paginate_all(make_http_fetcher(client), job_result, page_cap)
 
+        # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
+        # item so the URLs the monitor *did* collect are still inserted,
+        # but flag the cycle as truncated so the board processor skips
+        # ``_MARK_GONE_BY_TIMESTAMP`` and the unseen tail beyond the cap
+        # is not tombstoned. Matches the pattern used by the 29 monitors
+        # migrated in #3266 (lever, workday, greenhouse, ...).
         max_items = config.get("max_items", MAX_ITEMS)
-        if len(items) > max_items:
+        truncated = len(items) > max_items
+        if truncated:
             log.warning("api_sniffer.truncated", total=len(items), cap=max_items)
-            items = items[:max_items]
 
         log.info("api_sniffer.http_items_done", items=len(items))
 
@@ -930,9 +949,11 @@ async def _discover_http(
                 log.info("api_sniffer.auto_fields", fields=list(fields_map.keys()))
 
         if fields_map:
-            return _extract_rich(items, fields_map, url_field, url_template, board_url, root=data)
+            jobs = _extract_rich(items, fields_map, url_field, url_template, board_url, root=data)
+            return truncated_rich_result(jobs) if truncated else jobs
         if url_template:
-            return _extract_urls_from_template(items, url_template, board_url)
+            urls_from_tpl = _extract_urls_from_template(items, url_template, board_url)
+            return truncated_url_result(urls_from_tpl) if truncated else urls_from_tpl
         # Support nested url_field paths (e.g. "data.apply_url")
         if url_field and ("." in url_field or "[" in url_field):
             urls: set[str] = set()
@@ -940,8 +961,9 @@ async def _discover_http(
                 raw = extract_field(item, url_field)
                 if isinstance(raw, str) and raw:
                     urls.add(urljoin(board_url, raw))
-            return urls
-        return set(extract_urls(items, url_field, board_url))
+            return truncated_url_result(urls) if truncated else urls
+        urls = set(extract_urls(items, url_field, board_url))
+        return truncated_url_result(urls) if truncated else urls
 
     log.warning(
         "api_sniffer.unexpected_content_type",
@@ -1043,7 +1065,7 @@ async def _discover_replay(
     config: dict,
     pw,
     client=None,
-) -> list[DiscoveredJob] | set[str]:
+) -> list[DiscoveredJob] | set[str] | MonitorResult:
     """Replay a stored API call, optionally paginating.
 
     Supports HTTP fallback: if the in-browser fetch fails and *client* is
@@ -1242,10 +1264,15 @@ async def _discover_replay(
                     max_pg = min(needed, _HTTP_MAX_PAGES)
             items = await paginate_all(fetch_fn, job_result, max_pg)
 
-        # Cap
-        if len(items) > MAX_ITEMS:
+        # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
+        # item so the URLs the monitor *did* collect are still inserted,
+        # but flag the cycle as truncated so the board processor skips
+        # ``_MARK_GONE_BY_TIMESTAMP`` and the unseen tail beyond the cap
+        # is not tombstoned. Matches the pattern used by the 29 monitors
+        # migrated in #3266 (lever, workday, greenhouse, ...).
+        truncated = len(items) > MAX_ITEMS
+        if truncated:
             log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
-            items = items[:MAX_ITEMS]
 
         # Build URL map via DOM cross-ref if no url_field and no url_template
         url_map: dict[str, str] | None = None
@@ -1268,7 +1295,7 @@ async def _discover_replay(
                 log.debug("api_sniffer.dom_crossref_degraded", exc_info=True)
 
         if fields_map:
-            return _extract_rich(
+            jobs = _extract_rich(
                 items,
                 fields_map,
                 url_field,
@@ -1277,26 +1304,30 @@ async def _discover_replay(
                 url_map=url_map,
                 root=data,
             )
+            return truncated_rich_result(jobs) if truncated else jobs
 
         # URL-only mode
         if url_template:
-            return _extract_urls_from_template(items, url_template, board_url)
+            urls_from_tpl = _extract_urls_from_template(items, url_template, board_url)
+            return truncated_url_result(urls_from_tpl) if truncated else urls_from_tpl
         urls = extract_urls(items, url_field, board_url)
         if not urls and url_map:
-            return set(url_map.values())
+            urls_from_map = set(url_map.values())
+            return truncated_url_result(urls_from_map) if truncated else urls_from_map
         if not urls:
             try:
                 urls = await extract_urls_via_dom_crossref(page, items, board_url)
             except Exception:
                 log.debug("api_sniffer.dom_crossref_degraded", exc_info=True)
-        return set(urls)
+        urls_set = set(urls)
+        return truncated_url_result(urls_set) if truncated else urls_set
 
 
 async def _discover_auto(
     board_url: str,
     config: dict,
     pw,
-) -> list[DiscoveredJob] | set[str]:
+) -> list[DiscoveredJob] | set[str] | MonitorResult:
     """Full auto-discover: capture exchanges, detect, paginate."""
     from src.shared.browser import BROWSER_KEYS, dismiss_overlays, navigate, open_page
 
@@ -1335,8 +1366,16 @@ async def _discover_auto(
 
         items = await paginate_all(make_browser_fetcher(page), result, MAX_PAGES)
 
-        if len(items) > MAX_ITEMS:
-            items = items[:MAX_ITEMS]
+        # MAX_ITEMS cap (#3216 / #3267 / #3336). Don't slice silently: keep
+        # every item so the URLs the monitor *did* collect are still
+        # inserted, but flag the cycle as truncated so the board processor
+        # skips ``_MARK_GONE_BY_TIMESTAMP`` and the unseen tail beyond the
+        # cap is not tombstoned. Matches the pattern used by the 29
+        # monitors migrated in #3266 and the sibling
+        # ``_discover_http`` / ``_discover_replay`` paths wired in #3334.
+        truncated = len(items) > MAX_ITEMS
+        if truncated:
+            log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
 
         # Auto-map fields if not configured
         if not fields_map:
@@ -1365,7 +1404,7 @@ async def _discover_auto(
             # First-page body is the best available root; lookup tables
             # typically sit at response level, not per item.
             root = result.candidate.exchange.body if result and result.candidate else None
-            return _extract_rich(
+            jobs = _extract_rich(
                 items,
                 fields_map,
                 url_field,
@@ -1374,13 +1413,16 @@ async def _discover_auto(
                 url_map=url_map,
                 root=root,
             )
+            return truncated_rich_result(jobs) if truncated else jobs
 
         urls = extract_urls(items, url_field, board_url)
         if not urls and url_map:
-            return set(url_map.values())
+            urls_from_map = set(url_map.values())
+            return truncated_url_result(urls_from_map) if truncated else urls_from_map
         if not urls:
             urls = await extract_urls_via_dom_crossref(page, items, board_url)
-        return set(urls)
+        urls_set = set(urls)
+        return truncated_url_result(urls_set) if truncated else urls_set
 
 
 # ---------------------------------------------------------------------------

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
-import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
-import { LlmContentMirror } from "@/components/LlmContentMirror";
 import { LicenseContent } from "@/components/LicenseContent";
 
 type Props = {
@@ -25,7 +24,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates("/license", locale),
-    openGraph: { title, description, url: `${siteConfig.url}/${locale}/license` },
+    // Excluded from the index (#2822): nobody Googles "jobseek license";
+    // the page is reachable from the footer of every page, which is
+    // sufficient for legal accessibility. Indexing it dilutes the
+    // surface and wastes crawl budget. `follow` keeps PageRank flowing.
+    robots: { index: false, follow: true },
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}/license`,
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+    },
   };
 }
 
@@ -44,16 +55,6 @@ export default async function LicensePage({ params }: Props) {
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
       }} />
       <LicenseContent />
-      <LlmContentMirror locale={locale}>
-        <h1>{i18n._("license.hero.title")}</h1>
-        <p>{i18n._("license.hero.description")}</p>
-        <h2>{i18n._("license.code.title")}</h2>
-        <p>{i18n._("license.code.summary")}</p>
-        <h2>{i18n._("license.data.title")}</h2>
-        <p>{i18n._("license.data.summary")}</p>
-        <h2>{i18n._("license.contact.title")}</h2>
-        <p>{i18n._("license.contactCta")} {siteConfig.indexing.contactEmail}</p>
-      </LlmContentMirror>
     </>
   );
 }

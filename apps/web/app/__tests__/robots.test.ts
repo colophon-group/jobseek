@@ -66,8 +66,10 @@ describe("robots", () => {
     }
   });
 
-  it("includes sitemap URL", () => {
+  it("declares only the monolithic /sitemap.xml URL while the experiment runs", () => {
+    // TEMPORARY: while /sitemap.xml is a single <urlset>, listing
+    // shards too would have crawlers fetch overlapping content.
     const result = robots();
-    expect(result.sitemap).toContain("sitemap.xml");
+    expect(result.sitemap).toBe("https://jseek.co/sitemap.xml");
   });
 });

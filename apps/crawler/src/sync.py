@@ -48,6 +48,22 @@ log = structlog.get_logger()
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
+# Postgres-side mirror of the Typesense `has_content` flag computed in
+# `exporter._build_typesense_docs` as
+#   bool(title and title.strip()) and (description_r2_hash is not None)
+# where `title = titles[0] if titles else ""`.
+#
+# The web app filters every list/search/facet surface by
+# `is_active:true && has_content:!=false` (POSTING_BASE_FILTER, see
+# apps/web/src/lib/search/typesense-filters.ts), so any precomputed
+# "active_posting_count" stored on `company`, `location`, `occupation`,
+# `seniority`, or `technology` docs MUST use the same gate; otherwise
+# the user clicks a facet labelled "N postings" and sees fewer
+# postings than the label promised (issue #3009 / #3238).
+_HAS_CONTENT_SQL = (
+    "description_r2_hash IS NOT NULL AND cardinality(titles) > 0 AND length(trim(titles[1])) > 0"
+)
+
 _UPSERT_OCCUPATION_DOMAINS = """
 INSERT INTO occupation_domain (slug)
 SELECT * FROM unnest($1::text[])
@@ -1299,44 +1315,80 @@ async def _populate_locations_if_empty(
     Local DB is the source of truth.  This only runs when the local tables
     are empty (fresh deploy).  After that, GeoNames data lives in local
     Postgres and is never overwritten from Supabase.
+
+    Also populates ``location_macro_member`` (macro region -> member country
+    mappings) idempotently. Prior to issue #2978 this table was never seeded
+    on the Hetzner local Postgres, so macros never got stamped onto postings
+    via ancestor expansion in the exporter. We seed it whenever it is empty
+    so a fresh deploy / restored DB still gets the EU/EMEA/DACH/... links.
     """
     local_count = await local_conn.fetchval("SELECT count(*) FROM location")
     if local_count > 0:
         log.info("sync.locations.already_populated", count=local_count)
-        return
+    else:
+        loc_rows = await supa_conn.fetch(
+            "SELECT id, parent_id, type, population, languages FROM location"
+        )
+        if not loc_rows:
+            log.warning("sync.locations.supabase_empty")
+            return
 
-    loc_rows = await supa_conn.fetch(
-        "SELECT id, parent_id, type, population, languages FROM location"
-    )
-    if not loc_rows:
-        log.warning("sync.locations.supabase_empty")
-        return
-
-    name_rows = await supa_conn.fetch(
-        "SELECT location_id, locale, name, is_display FROM location_name"
-    )
-
-    await local_conn.copy_records_to_table(
-        "location",
-        records=[
-            (r["id"], r["parent_id"], r["type"], r["population"], r["languages"]) for r in loc_rows
-        ],
-        columns=["id", "parent_id", "type", "population", "languages"],
-    )
-
-    if name_rows:
-        await local_conn.copy_records_to_table(
-            "location_name",
-            records=[
-                (r["location_id"], r["locale"], r["name"], r["is_display"]) for r in name_rows
-            ],
-            columns=["location_id", "locale", "name", "is_display"],
+        name_rows = await supa_conn.fetch(
+            "SELECT location_id, locale, name, is_display FROM location_name"
         )
 
+        await local_conn.copy_records_to_table(
+            "location",
+            records=[
+                (r["id"], r["parent_id"], r["type"], r["population"], r["languages"])
+                for r in loc_rows
+            ],
+            columns=["id", "parent_id", "type", "population", "languages"],
+        )
+
+        if name_rows:
+            await local_conn.copy_records_to_table(
+                "location_name",
+                records=[
+                    (r["location_id"], r["locale"], r["name"], r["is_display"]) for r in name_rows
+                ],
+                columns=["location_id", "locale", "name", "is_display"],
+            )
+
+        log.info(
+            "sync.locations.populated_from_supabase",
+            locations=len(loc_rows),
+            names=len(name_rows),
+        )
+
+    # Macro-member seed (idempotent, runs every sync). Tracked separately
+    # from the location/location_name guard above because that guard
+    # short-circuits when the location table was already populated (which
+    # was the live state on Hetzner) — and the prior code missed seeding
+    # this table entirely. See issue #2978.
+    macro_count = await local_conn.fetchval("SELECT count(*) FROM location_macro_member")
+    macro_rows = await supa_conn.fetch("SELECT macro_id, country_id FROM location_macro_member")
+    if not macro_rows:
+        log.warning("sync.location_macro_member.supabase_empty")
+        return
+    if macro_count == len(macro_rows):
+        log.info("sync.location_macro_member.up_to_date", count=macro_count)
+        return
+    # Use INSERT ... ON CONFLICT DO NOTHING for idempotency. Falls back to
+    # row-by-row when the table has rows already (rare drift). The set is
+    # small (<1k rows), so this is cheap.
+    await local_conn.executemany(
+        "INSERT INTO location_macro_member (macro_id, country_id) "
+        "VALUES ($1, $2) "
+        "ON CONFLICT (macro_id, country_id) DO NOTHING",
+        [(r["macro_id"], r["country_id"]) for r in macro_rows],
+    )
+    new_count = await local_conn.fetchval("SELECT count(*) FROM location_macro_member")
     log.info(
-        "sync.locations.populated_from_supabase",
-        locations=len(loc_rows),
-        names=len(name_rows),
+        "sync.location_macro_member.populated_from_supabase",
+        before=macro_count,
+        after=new_count,
+        supabase=len(macro_rows),
     )
 
 
@@ -1564,6 +1616,60 @@ def _ts_bulk_delete_ids(
 # ---------------------------------------------------------------------------
 
 
+# Natural-language synonyms for macro-region location rows, keyed by
+# slug. Populated onto Typesense ``location.aliases`` so the autocomplete's
+# prefix search (``query_by=name_en,aliases``) surfaces e.g. the EU row
+# when the user types "Europe" or "European Union" — the canonical
+# ``name_en`` for these rows is just the abbreviation, which has no
+# user-typeable prefix overlap with the obvious natural-language phrases.
+# Hard-coded rather than column-driven because the macro set is small,
+# stable, and the alias choices are an editorial decision (see #2939).
+_LOCATION_MACRO_ALIASES: dict[str, list[str]] = {
+    "eu": ["European Union", "Europe", "EEA", "Schengen"],
+    "emea": [
+        "Europe Middle East Africa",
+        "Europe & Middle East",
+        "EMEA region",
+    ],
+    "dach": [
+        "D-A-CH",
+        "German-speaking countries",
+        "Germany Austria Switzerland",
+    ],
+    "apac": [
+        "Asia Pacific",
+        "Asia-Pacific",
+        "Asia and the Pacific",
+    ],
+    "americas": [
+        "North America",
+        "South America",
+        "Western Hemisphere",
+    ],
+    "latam": [
+        "Latin America",
+        "South America",
+        "Central America",
+    ],
+    "nordics": [
+        "Nordic countries",
+        "Scandinavia",
+        "Northern Europe",
+    ],
+    "mena": [
+        "Middle East and North Africa",
+        "Middle East North Africa",
+        "Arab world",
+    ],
+    "worldwide": [
+        "Global",
+        "Anywhere",
+        "Remote",
+        "International",
+    ],
+}
+
+
 async def sync_locations_typesense(
     supa_conn: asyncpg.Connection,
     local_conn: asyncpg.Connection | None,
@@ -1600,18 +1706,35 @@ async def sync_locations_typesense(
     for nr in name_rows:
         names_by_id.setdefault(nr["location_id"], {})[nr["locale"]] = nr["name"]
 
-    # Count active postings per location from local Postgres
+    # Count active postings per location. We read the count from the
+    # Typesense ``job_posting`` facet on ``location_ids`` (post ancestor
+    # expansion in ``exporter._build_typesense_docs``) so country / region
+    # / macro counts include their descendants — matching what filtering
+    # by that id returns. Reading ``unnest(location_ids)`` from local
+    # Postgres returned leaf-only counts and silently diverged from
+    # filter results (issue #2978).
     counts: dict[int, int] = {}
-    if local_conn is not None:
-        count_rows = await local_conn.fetch(
-            """
-            SELECT unnest(location_ids) AS loc_id, COUNT(*) AS cnt
-            FROM job_posting
-            WHERE is_active
-            GROUP BY 1
-            """
+    loop = asyncio.get_event_loop()
+    try:
+        facet_counts = await loop.run_in_executor(
+            None, _fetch_active_facet_counts, client, "location_ids"
         )
-        counts = {r["loc_id"]: r["cnt"] for r in count_rows}
+        counts = {int(k): v for k, v in facet_counts.items()}
+    except Exception as exc:
+        # First-time bootstrap: job_posting collection / index may not
+        # exist yet. Fall back to leaf-only Postgres counts so locations
+        # still get *some* count rather than zeros.
+        log.warning("typesense.locations.facet_unavailable", error=str(exc))
+        if local_conn is not None:
+            count_rows = await local_conn.fetch(
+                """
+                SELECT unnest(location_ids) AS loc_id, COUNT(*) AS cnt
+                FROM job_posting
+                WHERE is_active
+                GROUP BY 1
+                """
+            )
+            counts = {r["loc_id"]: r["cnt"] for r in count_rows}
 
     docs: list[dict] = []
     for r in rows:
@@ -1641,10 +1764,16 @@ async def sync_locations_typesense(
             doc["parent_name"] = r["parent_name"]
         if r["population"] is not None:
             doc["population"] = r["population"]
+        # Macro-region aliases (#2939): natural-language synonyms so
+        # "Europe" / "European Union" / "DACH" / "Asia Pacific" / etc.
+        # match the macro row whose ``name_en`` is just the abbreviation.
+        if r["type"] == "macro" and r["slug"]:
+            aliases = _LOCATION_MACRO_ALIASES.get(r["slug"])
+            if aliases:
+                doc["aliases"] = aliases
 
         docs.append(doc)
 
-    loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, _ts_bulk_upsert, client, "location", docs)
     log.info("typesense.locations.synced", count=len(docs))
 
@@ -1686,17 +1815,31 @@ async def sync_occupations_typesense(
     domain_slug_to_id = {r["slug"]: r["id"] for r in domain_rows}
 
     # Active posting counts from local Postgres
+    # Counts come from the Typesense ``job_posting`` facet on
+    # ``occupation_ids`` (post ancestor expansion in
+    # ``exporter._build_typesense_docs``) so a parent occupation's count
+    # includes all descendants — matching what filtering by it returns.
+    # Reading ``occupation_id`` from local Postgres was leaf-only
+    # (issue #2978).
     counts: dict[int, int] = {}
-    if local_conn is not None:
-        count_rows = await local_conn.fetch(
-            """
-            SELECT occupation_id, COUNT(*) AS cnt
-            FROM job_posting
-            WHERE is_active AND occupation_id IS NOT NULL
-            GROUP BY 1
-            """
+    loop = asyncio.get_event_loop()
+    try:
+        facet_counts = await loop.run_in_executor(
+            None, _fetch_active_facet_counts, client, "occupation_ids"
         )
-        counts = {r["occupation_id"]: r["cnt"] for r in count_rows}
+        counts = {int(k): v for k, v in facet_counts.items()}
+    except Exception as exc:
+        log.warning("typesense.occupations.facet_unavailable", error=str(exc))
+        if local_conn is not None:
+            count_rows = await local_conn.fetch(
+                """
+                SELECT occupation_id, COUNT(*) AS cnt
+                FROM job_posting
+                WHERE is_active AND occupation_id IS NOT NULL
+                GROUP BY 1
+                """
+            )
+            counts = {r["occupation_id"]: r["cnt"] for r in count_rows}
 
     # Group by (occupation_id, locale)
     # display names vs aliases
@@ -1754,7 +1897,6 @@ async def sync_occupations_typesense(
 
         docs.append(doc)
 
-    loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, _ts_bulk_upsert, client, "occupation", docs)
     log.info("typesense.occupations.synced", count=len(docs))
 
@@ -1946,21 +2088,27 @@ async def sync_companies_typesense(
     active_counts: dict[str, int] = {}
     year_counts: dict[str, int] = {}
     if local_conn is not None:
+        # Both queries gate on `has_content` so the precomputed counts
+        # match what the web's POSTING_BASE_FILTER /
+        # POSTING_FLOW_FILTER produce when filtering the
+        # `job_posting` collection. See `_HAS_CONTENT_SQL` for the
+        # formula and issue #3238 for the contract.
         active_rows = await local_conn.fetch(
-            """
+            f"""
             SELECT company_id::text, COUNT(*) AS cnt
             FROM job_posting
-            WHERE is_active
+            WHERE is_active AND {_HAS_CONTENT_SQL}
             GROUP BY 1
             """
         )
         active_counts = {r["company_id"]: r["cnt"] for r in active_rows}
 
         year_rows = await local_conn.fetch(
-            """
+            f"""
             SELECT company_id::text, COUNT(*) AS cnt
             FROM job_posting
             WHERE first_seen_at > now() - interval '1 year'
+              AND {_HAS_CONTENT_SQL}
             GROUP BY 1
             """
         )
@@ -2192,6 +2340,59 @@ async def sync_watchlists_typesense(
 # ---------------------------------------------------------------------------
 
 
+# Cap for the location/occupation facet count refresh. Typesense returns at
+# most this many distinct ids per facet field; we set it well above the
+# total number of unique ancestor-expanded ids that ever appear in
+# job_posting.location_ids (~11k as of 2026-05) so the count refresh
+# covers every taxonomy id with at least one posting. Higher values are
+# safe — Typesense streams the facet aggregation, memory is the only
+# constraint, and at this scale it's a sub-second query.
+_TS_FACET_REFRESH_MAX = 100000
+
+
+def _fetch_active_facet_counts(
+    client: typesense.Client,
+    field: str,
+) -> dict[str, int]:
+    """Read active-posting facet counts from the Typesense ``job_posting``
+    collection.
+
+    Returns ``{facet_value: count}`` for every distinct value of ``field``
+    among active postings. ``field`` is the Typesense facet field name —
+    ``location_ids`` and ``occupation_ids`` are *post* ancestor expansion
+    in the indexer (``exporter._build_typesense_docs``), so the resulting
+    counts include city -> country -> macro fan-in. This is the count the
+    user sees when clicking the facet in the UI; counting from local
+    Postgres ``unnest(location_ids)`` is leaf-only and silently diverges
+    from filter results (issue #2978).
+
+    The ``filter_by`` clause matches the web's ``POSTING_BASE_FILTER``
+    (``is_active:true && has_content:!=false``) so the count an operator
+    sees on a location / occupation / company card equals the count
+    they get when they filter the job-posting collection by that doc
+    (issue #3238).
+
+    Synchronous — designed to be called from
+    ``loop.run_in_executor(None, _fetch_active_facet_counts, ...)``.
+    """
+    resp = client.collections["job_posting"].documents.search(
+        {
+            "q": "*",
+            "query_by": "title",
+            "filter_by": "is_active:true && has_content:!=false",
+            "facet_by": field,
+            "max_facet_values": _TS_FACET_REFRESH_MAX,
+            "facet_strategy": "exhaustive",
+            "per_page": 0,
+        }
+    )
+    facets = resp.get("facet_counts", []) or []
+    if not facets:
+        return {}
+    counts = facets[0].get("counts", []) or []
+    return {fc["value"]: fc["count"] for fc in counts}
+
+
 async def refresh_typesense_counts(
     local_conn: asyncpg.Connection,
     client: typesense.Client,
@@ -2200,6 +2401,12 @@ async def refresh_typesense_counts(
 
     Idempotent — can be called after each sync run or on a timer.
     Counts are approximate.
+
+    Location and occupation counts are read from the Typesense ``job_posting``
+    facet (post ancestor expansion) so the count an operator sees on a
+    location/occupation card matches the count they get when they filter by
+    it. Reading ``unnest(location_ids)`` from local Postgres returned only
+    leaf ids and silently diverged from filter results (issue #2978).
     """
     loop = asyncio.get_event_loop()
 
@@ -2208,40 +2415,34 @@ async def refresh_typesense_counts(
     # the *_posting_count fields, so we must not require the schema's other
     # non-optional fields like `name`. See issue #2622.
 
-    # --- Locations ---
-    loc_rows = await local_conn.fetch(
-        """
-        SELECT unnest(location_ids) AS loc_id, COUNT(*) AS cnt
-        FROM job_posting WHERE is_active GROUP BY 1
-        """
-    )
-    if loc_rows:
+    # --- Locations (read from Typesense facet — see #2978) ---
+    loc_facet = await loop.run_in_executor(None, _fetch_active_facet_counts, client, "location_ids")
+    if loc_facet:
         loc_docs = [
             {
-                "id": str(r["loc_id"]),
-                "active_posting_count": r["cnt"],
+                "id": str(loc_id),
+                "active_posting_count": cnt,
                 "has_active_postings": True,
             }
-            for r in loc_rows
+            for loc_id, cnt in loc_facet.items()
         ]
         await loop.run_in_executor(None, _ts_bulk_upsert, client, "location", loc_docs, "update")
 
-    # --- Occupations ---
-    occ_rows = await local_conn.fetch(
-        """
-        SELECT occupation_id, COUNT(*) AS cnt
-        FROM job_posting WHERE is_active AND occupation_id IS NOT NULL GROUP BY 1
-        """
+    # --- Occupations (read from Typesense facet on `occupation_ids` —
+    # which carries the leaf occupation + its ancestors in
+    # exporter._build_typesense_docs) ---
+    occ_facet = await loop.run_in_executor(
+        None, _fetch_active_facet_counts, client, "occupation_ids"
     )
-    if occ_rows:
+    if occ_facet:
         # Update all locale variants
         occ_docs: list[dict] = []
-        for r in occ_rows:
+        for occ_id, cnt in occ_facet.items():
             for locale in ("en", "de", "fr", "it"):
                 occ_docs.append(
                     {
-                        "id": f"{r['occupation_id']}-{locale}",
-                        "active_posting_count": r["cnt"],
+                        "id": f"{occ_id}-{locale}",
+                        "active_posting_count": cnt,
                         "has_active_postings": True,
                     }
                 )
@@ -2249,9 +2450,11 @@ async def refresh_typesense_counts(
 
     # --- Seniorities ---
     sen_rows = await local_conn.fetch(
-        """
+        f"""
         SELECT seniority_id, COUNT(*) AS cnt
-        FROM job_posting WHERE is_active AND seniority_id IS NOT NULL GROUP BY 1
+        FROM job_posting
+        WHERE is_active AND seniority_id IS NOT NULL AND {_HAS_CONTENT_SQL}
+        GROUP BY 1
         """
     )
     if sen_rows:
@@ -2269,9 +2472,11 @@ async def refresh_typesense_counts(
 
     # --- Technologies ---
     tech_rows = await local_conn.fetch(
-        """
+        f"""
         SELECT unnest(technology_ids) AS tech_id, COUNT(*) AS cnt
-        FROM job_posting WHERE is_active GROUP BY 1
+        FROM job_posting
+        WHERE is_active AND {_HAS_CONTENT_SQL}
+        GROUP BY 1
         """
     )
     if tech_rows:
@@ -2286,16 +2491,28 @@ async def refresh_typesense_counts(
         await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs, "update")
 
     # --- Companies ---
+    # The web reads `company.active_posting_count` directly (unfiltered
+    # `listTopCompanies` path) but the live filtered path facets
+    # `job_posting` with `is_active:true && has_content:!=false`
+    # (POSTING_BASE_FILTER, see apps/web/src/lib/search/typesense-filters.ts).
+    # If we count without `has_content` here, the precomputed and live
+    # numbers structurally diverge — issue #3009 (McDonald's: 55,591 vs
+    # 44,161 on 2026-05-10). See `_HAS_CONTENT_SQL` for the formula.
     active_rows = await local_conn.fetch(
-        """
+        f"""
         SELECT company_id::text, COUNT(*) AS cnt
-        FROM job_posting WHERE is_active GROUP BY 1
+        FROM job_posting
+        WHERE is_active AND {_HAS_CONTENT_SQL}
+        GROUP BY 1
         """
     )
     year_rows = await local_conn.fetch(
-        """
+        f"""
         SELECT company_id::text, COUNT(*) AS cnt
-        FROM job_posting WHERE first_seen_at > now() - interval '1 year' GROUP BY 1
+        FROM job_posting
+        WHERE first_seen_at > now() - interval '1 year'
+          AND {_HAS_CONTENT_SQL}
+        GROUP BY 1
         """
     )
     if active_rows or year_rows:

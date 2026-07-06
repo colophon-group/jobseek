@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { Check, Crown } from "lucide-react";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
 import { Button } from "@/components/ui/Button";
@@ -79,7 +79,7 @@ function PlanCard({
 
 export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
   const { t } = useLingui();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn } = useSession();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState<"checkout" | "portal" | null>(null);
 

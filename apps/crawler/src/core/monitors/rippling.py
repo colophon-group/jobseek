@@ -16,6 +16,7 @@ import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register, slugs_from_url
+from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
@@ -76,12 +77,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
         return set()
 
     uuids = [j["uuid"] for j in job_list if j.get("uuid")]
+    log.info("rippling.listed", slug=slug, jobs=len(uuids))
 
     if len(uuids) > MAX_JOBS:
         log.warning("rippling.truncated", slug=slug, total=len(uuids), cap=MAX_JOBS)
-        uuids = uuids[:MAX_JOBS]
-
-    log.info("rippling.listed", slug=slug, jobs=len(uuids))
+        return truncated_url_result({_posting_url(slug, uuid) for uuid in uuids})
 
     return {_posting_url(slug, uuid) for uuid in uuids}
 

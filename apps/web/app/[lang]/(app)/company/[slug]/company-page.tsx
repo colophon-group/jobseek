@@ -6,6 +6,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
+import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
 import { runGetCompanyPostings } from "@/lib/search/search-runner";
@@ -16,10 +17,10 @@ import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
-import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
+import { useSalaryRates } from "@/components/SalaryDisplayProvider";
 import type { CompanyDetail } from "@/lib/actions/company";
 import { buildFilteredPath } from "@/lib/search/query-params";
-import type { SearchResultPosting, HistogramFilters } from "@/lib/search";
+import type { SearchResultPosting, HistogramFilters, WorkMode } from "@/lib/search";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import { useSearchStateStore } from "@/components/SearchStateProvider";
 
@@ -38,6 +39,8 @@ interface CompanyPageProps {
   initialOccupations: TaxonomyItem[];
   initialSeniorities: TaxonomyItem[];
   initialTechnologies: TaxonomyItem[];
+  initialEmploymentTypes: string[];
+  initialWorkMode: WorkMode[];
   initialSalaryCurrency?: string;
   initialSalaryMin?: number;
   initialSalaryMax?: number;
@@ -65,6 +68,8 @@ export function CompanyPage({
   initialOccupations,
   initialSeniorities,
   initialTechnologies,
+  initialEmploymentTypes,
+  initialWorkMode,
   initialSalaryCurrency,
   initialSalaryMin,
   initialSalaryMax,
@@ -99,7 +104,8 @@ export function CompanyPage({
   const [salaryMax, setSalaryMax] = useState<number | undefined>(initialSalaryMax);
   const [experienceMin, setExperienceMin] = useState<number | undefined>(initialExperienceMin);
   const [experienceMax, setExperienceMax] = useState<number | undefined>(initialExperienceMax);
-  const [employmentTypes, setEmploymentTypes] = useState<string[]>([]);
+  const [employmentTypes, setEmploymentTypes] = useState<string[]>(initialEmploymentTypes);
+  const [workMode, setWorkMode] = useState<WorkMode[]>(initialWorkMode);
   const [postings, setPostings] = useState<SearchResultPosting[]>(initialPostings);
   const [activeCount, setActiveCount] = useState(initialActiveCount);
   const [yearCount, setYearCount] = useState(initialYearCount);
@@ -110,11 +116,11 @@ export function CompanyPage({
   const [exhausted, setExhausted] = useState(initialPostings.length < PAGE_SIZE);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
 
-  // Currency rates for EUR conversion (fetched lazily)
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
-  useEffect(() => {
-    getCurrencyRates().then(setCurrencyRates);
-  }, []);
+  // Currency rates for EUR conversion — shared via `SalaryDisplayProvider`
+  // which fetches once at the (app) layout root. Previously this page
+  // fired a third `getCurrencyRates()` per view (alongside the provider
+  // and the salary modal); see #3181.
+  const currencyRates = useSalaryRates();
 
   // Refs for all filter state — single source of truth for updateUrl/runSearch
   const keywordsRef = useRef(keywords);
@@ -123,6 +129,7 @@ export function CompanyPage({
   const senioritiesRef = useRef(seniorities);
   const technologiesRef = useRef(technologies);
   const employmentTypesRef = useRef(employmentTypes);
+  const workModeRef = useRef(workMode);
   const salaryCurrencyRef = useRef(salaryCurrency);
   const salaryMinRef = useRef(salaryMin);
   const salaryMaxRef = useRef(salaryMax);
@@ -135,6 +142,7 @@ export function CompanyPage({
   senioritiesRef.current = seniorities;
   technologiesRef.current = technologies;
   employmentTypesRef.current = employmentTypes;
+  workModeRef.current = workMode;
   salaryCurrencyRef.current = salaryCurrency;
   salaryMinRef.current = salaryMin;
   salaryMaxRef.current = salaryMax;
@@ -143,7 +151,12 @@ export function CompanyPage({
   showPostingIdRef.current = showPostingId;
 
   const hasMore = !exhausted && !isTruncated && postings.length < yearCount;
-  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
+  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
+  const showUnavailable =
+    !isSearching &&
+    !hasFilters &&
+    postings.length === 0 &&
+    (isTruncated || activeCount > 0 || yearCount > 0);
 
   /** Convert a salary amount from the user's display currency to EUR. */
   function toEur(amount: number | undefined): number | undefined {
@@ -183,6 +196,9 @@ export function CompanyPage({
     if (experienceMinRef.current || experienceMaxRef.current) {
       extra.exp = `${experienceMinRef.current ?? ""}-${experienceMaxRef.current ?? ""}`;
     }
+    if (employmentTypesRef.current.length > 0) {
+      extra.etype = employmentTypesRef.current.join(",");
+    }
     const url = buildFilteredPath(
       pathname,
       keywordsRef.current,
@@ -191,6 +207,7 @@ export function CompanyPage({
       occupationsRef.current,
       senioritiesRef.current,
       technologiesRef.current,
+      workModeRef.current,
     );
     window.history.replaceState(null, "", url);
   }
@@ -203,6 +220,7 @@ export function CompanyPage({
     const seniorityIds = senioritiesRef.current.map((s) => s.id);
     const technologyIds = technologiesRef.current.map((t) => t.id);
     const etypes = employmentTypesRef.current;
+    const wm = workModeRef.current;
     const salMinEur = toEur(salaryMinRef.current);
     const salMaxEur = toEur(salaryMaxRef.current);
     const expMin = experienceMinRef.current;
@@ -217,6 +235,7 @@ export function CompanyPage({
           seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
           technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
           employmentTypes: etypes.length > 0 ? etypes : undefined,
+          workMode: wm.length > 0 ? wm : undefined,
           salaryMinEur: salMinEur,
           salaryMaxEur: salMaxEur,
           experienceMin: expMin,
@@ -287,6 +306,14 @@ export function CompanyPage({
         const updated = [...employmentTypesRef.current, type];
         setEmploymentTypes(updated);
         employmentTypesRef.current = updated;
+        updateUrl();
+        runSearch();
+      },
+      addWorkMode: (mode) => {
+        if (workModeRef.current.includes(mode)) return;
+        const updated = [...workModeRef.current, mode];
+        setWorkMode(updated);
+        workModeRef.current = updated;
         updateUrl();
         runSearch();
       },
@@ -453,6 +480,8 @@ export function CompanyPage({
     setOccupations([]); occupationsRef.current = [];
     setSeniorities([]); senioritiesRef.current = [];
     setTechnologies([]); technologiesRef.current = [];
+    setEmploymentTypes([]); employmentTypesRef.current = [];
+    setWorkMode([]); workModeRef.current = [];
     setSalaryCurrency(displayCurrency); salaryCurrencyRef.current = displayCurrency;
     setSalaryMin(undefined); salaryMinRef.current = undefined;
     setSalaryMax(undefined); salaryMaxRef.current = undefined;
@@ -469,6 +498,7 @@ export function CompanyPage({
     const seniorityIds = seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined;
     const technologyIds = technologies.length > 0 ? technologies.map((t) => t.id) : undefined;
     const etypes = employmentTypes.length > 0 ? employmentTypes : undefined;
+    const wm = workMode.length > 0 ? workMode : undefined;
     const salMinEur = toEur(salaryMin);
     const salMaxEur = toEur(salaryMax);
 
@@ -481,6 +511,7 @@ export function CompanyPage({
         seniorityIds,
         technologyIds,
         employmentTypes: etypes,
+        workMode: wm,
         salaryMinEur: salMinEur,
         salaryMaxEur: salMaxEur,
         experienceMin,
@@ -523,8 +554,15 @@ export function CompanyPage({
     occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
     seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
     technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
+    // #3066 — workMode + employmentTypes flow through so the work-mode and
+    // employment-type modals can cross-filter their per-option counts against
+    // each other (parity with watchlist-view-page). AdvancedSearchPanel strips
+    // the active dimension before passing this object down to the matching
+    // modal, so the counts answer "what would I see if I toggled this on".
+    workMode: workMode.length > 0 ? workMode : undefined,
+    employmentTypes: employmentTypes.length > 0 ? employmentTypes : undefined,
     languages: languages.length > 0 ? languages : undefined,
-  }), [company.id, keywords, locations, occupations, seniorities, technologies, languages]);
+  }), [company.id, keywords, locations, occupations, seniorities, technologies, workMode, employmentTypes, languages]);
 
   // Desktop: stats sit inline on the language-note row (right side).
   // Hidden on mobile so it can drop to its own row below, split
@@ -587,6 +625,15 @@ export function CompanyPage({
           updateUrl();
           runSearch();
         }}
+        workMode={workMode}
+        onToggleWorkMode={(mode) => {
+          const exists = workModeRef.current.includes(mode);
+          const updated = exists ? workModeRef.current.filter((m) => m !== mode) : [...workModeRef.current, mode];
+          setWorkMode(updated);
+          workModeRef.current = updated;
+          updateUrl();
+          runSearch();
+        }}
         onSalaryChange={handleSalaryChange}
         onExperienceChange={handleExperienceChange}
         histogramFilters={histogramFilters}
@@ -603,6 +650,8 @@ export function CompanyPage({
         <div className="flex items-center justify-center py-8">
           <Loader2 size={20} className="animate-spin text-muted" />
         </div>
+      ) : showUnavailable ? (
+        <SearchUnavailable />
       ) : postings.length === 0 && hasFilters ? (
         <p className="py-8 text-center text-sm text-muted">
           <Trans id="company.page.noResults" comment="No postings found message on company page">

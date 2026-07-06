@@ -7,6 +7,7 @@ import {
 import { getCompanyPostings as serverGetCompanyPostings } from "@/lib/actions/company";
 import {
   getWatchlistPostings as serverGetWatchlistPostings,
+  getWatchlistPostingYearCount as serverGetWatchlistPostingYearCount,
   type WatchlistPostingEntry,
 } from "@/lib/actions/watchlists";
 import type {
@@ -105,6 +106,10 @@ type WatchlistPostingsInput = {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  /** Work-mode filter — `onsite | hybrid | remote` (issue #3037). */
+  workMode?: ("onsite" | "hybrid" | "remote")[];
+  /** Employment-type filter (issue #3037). */
+  employmentType?: string[];
   salaryMin?: number;
   salaryMax?: number;
   experienceMin?: number;
@@ -133,6 +138,22 @@ export async function runGetWatchlistPostings(
     }
   }
   return serverGetWatchlistPostings(params);
+}
+
+/**
+ * Client runner for the watchlist "in the last year" count. Mirrors
+ * the active-count fetch shape so the two badges on the watchlist
+ * detail page can refetch in lockstep when filters change.
+ *
+ * Issue #3344 — before this, `yearTotal` was rendered as a static SSR
+ * prop and went stale until the next full page reload. The active
+ * count next to it kept updating via `runGetWatchlistPostings`, which
+ * produced visible "active changes but year doesn't" divergence.
+ */
+export async function runGetWatchlistPostingYearCount(
+  params: Omit<WatchlistPostingsInput, "offset" | "limit">,
+): Promise<number> {
+  return serverGetWatchlistPostingYearCount(params);
 }
 
 export async function runGetCompanyPostings(

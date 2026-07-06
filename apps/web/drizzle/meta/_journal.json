@@ -470,6 +470,41 @@
       "when": 1774934400001,
       "tag": "0071_add_board_browser_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1778198400000,
+      "tag": "0076_drop_api_credit",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1778716800000,
+      "tag": "0077_relax_chk_employment_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1778976000000,
+      "tag": "0078_application_interview_unique_round",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1779148800000,
+      "tag": "0079_tz_aware_auth_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1783335141000,
+      "tag": "0080_experience_decimal_years",
+      "breakpoints": true
     }
   ]
 }

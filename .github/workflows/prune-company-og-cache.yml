@@ -1,0 +1,60 @@
+name: Prune company OG cache
+
+on:
+  schedule:
+    # Weekly, after the usual deploy/maintenance windows.
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      retain_versions:
+        description: "Newest renderer-version namespaces to retain"
+        required: false
+        default: "8"
+      min_age_days:
+        description: "Only delete namespaces whose newest object is older than this"
+        required: false
+        default: "60"
+      max_delete:
+        description: "Safety cap for objects deleted in one run"
+        required: false
+        default: "20000"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prune-company-og-cache
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    name: Prune stale company OG versions
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      RETAIN_VERSIONS: ${{ inputs.retain_versions || '8' }}
+      MIN_AGE_DAYS: ${{ inputs.min_age_days || '60' }}
+      MAX_DELETE: ${{ inputs.max_delete || '20000' }}
+      R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET || vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prune old company OG renderer versions
+        run: >-
+          pnpm --filter @jobseek/web og:prune --
+          --yes
+          --retain-versions "$RETAIN_VERSIONS"
+          --min-age-days "$MIN_AGE_DAYS"
+          --max-delete "$MAX_DELETE"

@@ -28,8 +28,10 @@ export const user = pgTable("user", {
   image: text("image"),
   username: text("username").unique(),
   displayUsername: text("display_username"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
@@ -39,10 +41,12 @@ export const session = pgTable(
   "session",
   {
     id: text("id").primaryKey(),
-    expiresAt: timestamp("expires_at").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     token: text("token").notNull().unique(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .$onUpdate(() => new Date())
       .notNull(),
     ipAddress: text("ip_address"),
@@ -66,12 +70,18 @@ export const account = pgTable(
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at"),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", {
+      withTimezone: true,
+    }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
+      withTimezone: true,
+    }),
     scope: text("scope"),
     password: text("password"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .$onUpdate(() => new Date())
       .notNull(),
   },
@@ -84,9 +94,11 @@ export const verification = pgTable(
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -111,10 +123,12 @@ export const userPreferences = pgTable("user_preferences", {
   salaryPeriod: text("salary_period"),
   cookieConsent: boolean("cookie_consent").default(false).notNull(),
   dismissedBanners: text("dismissed_banners").array().notNull().default([]),
-  themeUpdatedAt: timestamp("theme_updated_at"),
-  localeUpdatedAt: timestamp("locale_updated_at"),
-  lastPasswordResetAt: timestamp("last_password_reset_at"),
-  updatedAt: timestamp("updated_at")
+  themeUpdatedAt: timestamp("theme_updated_at", { withTimezone: true }),
+  localeUpdatedAt: timestamp("locale_updated_at", { withTimezone: true }),
+  lastPasswordResetAt: timestamp("last_password_reset_at", {
+    withTimezone: true,
+  }),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
@@ -494,8 +508,8 @@ export const jobPosting = pgTable(
     salaryCurrency: text("salary_currency"),
     salaryPeriod: text("salary_period"),
     salaryEur: integer("salary_eur"),
-    experienceMin: integer("experience_min"),
-    experienceMax: integer("experience_max"),
+    experienceMin: numeric("experience_min", { precision: 3, scale: 1, mode: "number" }),
+    experienceMax: numeric("experience_max", { precision: 3, scale: 1, mode: "number" }),
 
     // ── Taxonomy FKs ──
     occupationId: integer("occupation_id").references(() => occupation.id),
@@ -613,7 +627,12 @@ export const applicationInterview = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index("idx_ai_saved_job_round").on(table.savedJobId, table.round),
+    // UNIQUE on (saved_job_id, round) — closes the duplicate-round race
+    // between concurrent addInterview calls and the updateJobStatus
+    // auto-create branch (#3114 / #3160). Application layer pairs this
+    // with ON CONFLICT DO NOTHING and a single-statement
+    // INSERT … SELECT max(round)+1 …
+    uniqueIndex("idx_ai_saved_job_round").on(table.savedJobId, table.round),
   ],
 );
 
@@ -858,4 +877,3 @@ export const murmurAcceptLog = pgTable(
   },
   (table) => [index("murmur_accept_log_applied_idx").on(table.appliedAt)],
 );
-

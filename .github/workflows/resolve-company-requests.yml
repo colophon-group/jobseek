@@ -11,16 +11,19 @@ concurrency:
 
 env:
   BUDGET_PER_5H: 5
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
-  contents: write       # push add-company/* branches
-  pull-requests: write  # create/update draft PRs, post comments
-  issues: write         # comment on issues, add labels, close
+  contents: read
 
 jobs:
   resolve:
     runs-on: ubuntu-latest
     if: ${{ vars.ENABLE_COMPANY_RESOLVER != 'false' }}
+    permissions:
+      contents: write       # push add-company/* branches
+      pull-requests: write  # create/update draft PRs, post comments
+      issues: write         # comment on issues, add labels, close
     steps:
       - name: Check required secrets
         run: |
@@ -52,7 +55,7 @@ jobs:
         if: >
           steps.select.outputs.selected != '' &&
           steps.budget.outputs.remaining > 0
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: "22"
 
@@ -61,6 +64,13 @@ jobs:
           steps.select.outputs.selected != '' &&
           steps.budget.outputs.remaining > 0
         run: npm install -g @anthropic-ai/claude-code
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        if: >
+          steps.select.outputs.selected != '' &&
+          steps.budget.outputs.remaining > 0
+        with:
+          python-version: "3.13"
 
       - name: Setup Python and crawler deps
         if: >

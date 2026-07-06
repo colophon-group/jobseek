@@ -7,9 +7,11 @@ import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import { createWatchlist, type WatchlistFilters } from "@/lib/actions/watchlists";
+import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import type { SelectedLocation } from "@/components/search/location-pills";
+import type { WorkMode } from "@/lib/search/types";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
 
@@ -19,6 +21,8 @@ interface SaveSearchButtonProps {
   occupations: TaxonomyItem[];
   seniorities: TaxonomyItem[];
   technologies?: TaxonomyItem[];
+  employmentTypes?: string[];
+  workMode?: WorkMode[];
   salaryMin?: number;
   salaryMax?: number;
   salaryCurrency?: string;
@@ -32,6 +36,8 @@ export function SaveSearchButton({
   occupations,
   seniorities,
   technologies,
+  employmentTypes,
+  workMode,
   salaryMin,
   salaryMax,
   salaryCurrency,
@@ -41,8 +47,9 @@ export function SaveSearchButton({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn } = useSession();
   const [saving, setSaving] = useState(false);
+  const upgrade = useUpgradeModal();
 
   async function handleSave() {
     if (!isLoggedIn) {
@@ -65,6 +72,8 @@ export function SaveSearchButton({
       if (occupations.length > 0) filters.occupationSlugs = occupations.map((o) => o.slug);
       if (seniorities.length > 0) filters.senioritySlugs = seniorities.map((s) => s.slug);
       if (technologies && technologies.length > 0) filters.technologySlugs = technologies.map((t) => t.slug);
+      if (employmentTypes && employmentTypes.length > 0) filters.employmentType = employmentTypes;
+      if (workMode && workMode.length > 0) filters.workMode = workMode;
       if (salaryMin != null) filters.salaryMin = salaryMin;
       if (salaryMax != null) filters.salaryMax = salaryMax;
       if (salaryCurrency) filters.salaryCurrency = salaryCurrency;
@@ -79,7 +88,16 @@ export function SaveSearchButton({
 
       if ("error" in result) {
         if (result.error === "limit_reached") {
-          router.push(lp("/settings"));
+          // Surface the upgrade modal with billing CTA instead of an
+          // opaque redirect to /settings — mirrors the pattern used by
+          // "make private", "enable alerts", and "mirror" in
+          // watchlist-action-bar. The modal itself links to
+          // /settings/billing (see upgrade-modal.tsx).
+          upgrade.show(t({
+            id: "upgrade.reason.saveSearch",
+            comment: "Reason shown in upgrade modal when saving a search hits the watchlist limit",
+            message: "You've reached your watchlist limit. Upgrade your plan to save more searches as watchlists.",
+          }));
         }
         return;
       }
@@ -111,25 +129,28 @@ export function SaveSearchButton({
       });
 
   return (
-    <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
-    <Tooltip.Root>
-      <Tooltip.Trigger asChild>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
-        >
-          {saving ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
-          {label}
-        </button>
-      </Tooltip.Trigger>
-      <Tooltip.Portal>
-        <Tooltip.Content className={tooltipClass} sideOffset={5}>
-          {tooltip}
-          <Tooltip.Arrow className="fill-surface" />
-        </Tooltip.Content>
-      </Tooltip.Portal>
-    </Tooltip.Root>
-    </Tooltip.Provider>
+    <>
+      <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
+            {label}
+          </button>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content className={tooltipClass} sideOffset={5}>
+            {tooltip}
+            <Tooltip.Arrow className="fill-surface" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+      </Tooltip.Provider>
+      <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
+    </>
   );
 }

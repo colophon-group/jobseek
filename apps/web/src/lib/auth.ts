@@ -5,6 +5,7 @@ import { username } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
+import { withDbRetry } from "@/lib/db-retry";
 import { sendVerificationEmail, sendResetPasswordEmail } from "@/lib/email";
 import { type Locale, defaultLocale, isLocale } from "@/lib/i18n";
 import { invalidateSessionCache } from "@/lib/sessionCache";
@@ -99,8 +100,7 @@ export const auth = betterAuth({
       // anonymous clients without a network round-trip. The real
       // session token remains httpOnly/Secure — this cookie carries
       // no security meaning. See docs/edge-requests.md and issue #2246.
-      const baseURL = ctx.context.options.baseURL ?? "";
-      const secure = baseURL.startsWith("https://");
+      const secure = ctx.context.baseURL.startsWith("https://");
 
       if (ctx.context.newSession) {
         // Sign-in (email/OAuth/username), autoSignInAfterVerification,
@@ -139,8 +139,12 @@ export const auth = betterAuth({
               candidate = withRandomSuffix(base);
               continue;
             }
-            const rows = await db.execute(
-              sql`SELECT 1 FROM "user" WHERE username = ${candidate} LIMIT 1`,
+            const rows = await withDbRetry(
+              () =>
+                db.execute(
+                  sql`SELECT 1 FROM "user" WHERE username = ${candidate} LIMIT 1`,
+                ),
+              { label: "auth.usernameAvailability" },
             );
             if (!rows.length) break;
             candidate = withRandomSuffix(base);

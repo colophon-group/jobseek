@@ -603,7 +603,7 @@ def status(slug: str | None):
         if ws.industry is not None:
             print(f"  Industry: {ws.industry}")
         if ws.employee_count_range is not None:
-            print(f"  Employees: {ws.employee_count_range}")
+            print("  Employees: (set)")
         if ws.founded_year is not None:
             print(f"  Founded: {ws.founded_year}")
         print()

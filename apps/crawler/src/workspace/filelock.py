@@ -15,7 +15,7 @@ _FILE_LOCK_TIMEOUT = 10.0
 
 
 @contextmanager
-def file_lock(path: Path, *, timeout: float | None = None) -> Generator[None, None, None]:
+def file_lock(path: Path, *, timeout: float | None = None) -> Generator[None]:
     """Acquire an advisory lock on *path* (blocking).
 
     Creates a ``.lock`` sidecar file next to the target.  The lock is

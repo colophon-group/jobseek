@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { ChevronUp } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 
 /** Floating button that appears after scrolling down, scrolls to top on click. */
 export function BackToTop() {
+  const { t } = useLingui();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -26,10 +27,14 @@ export function BackToTop() {
             <button
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              aria-label="Back to top"
+              aria-label={t({
+                id: "common.backToTop",
+                comment: "Tooltip for back to top button",
+                message: "Back to top",
+              })}
               className="flex size-10 items-center justify-center rounded-full border border-divider bg-surface-alpha shadow-lg backdrop-blur-md transition-colors hover:bg-border-soft"
             >
-              <ChevronUp size={20} />
+              <ChevronUp size={20} aria-hidden="true" />
             </button>
           </Tooltip.Trigger>
           <Tooltip.Portal>

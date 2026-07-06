@@ -57,7 +57,12 @@ export const siteConfig = {
     features: { href: "/#features" },
     pricing: { href: "/#pricing" },
     faq: { href: "/faq" },
-    company: { href: "/how-we-index" },
+    // Header nav slot for product+process content. Originally pointed
+    // at the static `/how-we-index` page (#2828: replaced by a more
+    // engaging /blog hub that includes the indexing-policy story as a
+    // post). The static page stays reachable from the about page +
+    // footer for the readers who want the spec-style summary.
+    blog: { href: "/blog" },
     license: { href: "/license" },
     login: { href: "/sign-in" },
     app: { href: "/explore" },
@@ -190,21 +195,34 @@ export const siteConfig = {
       "/reset-password",
       "/verify-email",
     ],
+    // Only pages users actually search for. Legal/policy pages
+    // (license, privacy-policy, terms, how-we-index) are reached from
+    // the footer of every page and are noindex per #2822 — adding
+    // them here would round-trip the discovery for no SEO benefit.
+    //
+    // Bump `lastModified` per entry whenever the page's bot-visible
+    // content (copy, hero, layout) substantively changes. Stable dates
+    // are an honest re-crawl signal for Bing — `new Date()` on every
+    // regen would always say "modified now" and the engine eventually
+    // discounts the signal (#2824).
     sitemap: [
-      { path: "/", changeFrequency: "weekly", priority: 1 },
-      { path: "/about", changeFrequency: "monthly", priority: 0.7 },
-      { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
-      { path: "/how-we-index", changeFrequency: "monthly", priority: 0.6 },
-      { path: "/license", changeFrequency: "monthly", priority: 0.5 },
-      { path: "/privacy-policy", changeFrequency: "monthly", priority: 0.5 },
-      { path: "/terms", changeFrequency: "monthly", priority: 0.5 },
+      { path: "/", changeFrequency: "weekly", priority: 1, lastModified: "2026-05-01" },
+      { path: "/about", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
+      { path: "/faq", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
+      // Blog index. Per-post URLs are emitted separately by
+      // `blogPostEntries` in `apps/web/src/lib/sitemap.ts` (#2828).
+      { path: "/blog", changeFrequency: "weekly", priority: 0.7, lastModified: "2026-05-01" },
     ],
+    // The /explore prerendered shell — bump when filter UI / hero /
+    // initial-data layout substantively changes (#2824).
+    exploreLastModified: "2026-05-01",
   },
 
   footer: {
     links: {
       github: { href: "https://github.com/colophon-group/jobseek", external: true },
       contact: { href: "mailto:business@colophon-group.org", external: true },
+      blog: { href: "/blog", external: false },
       api: { href: "/api/openapi.json", external: false },
       license: { href: "/license", external: false },
       privacy: { href: "/privacy-policy", external: false },

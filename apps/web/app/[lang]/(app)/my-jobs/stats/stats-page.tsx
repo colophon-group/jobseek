@@ -4,9 +4,10 @@ import { useState, useCallback } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { BackLink } from "@/components/BackLink";
-import { SankeyFunnel } from "@/components/my-jobs/sankey-funnel";
+import { SankeyFunnel } from "@/components/my-jobs/sankey-funnel-lazy";
 import { ActivityHeatmap } from "@/components/my-jobs/activity-heatmap";
 import { getStats, type StatsData } from "@/lib/actions/my-jobs-stats";
+import { getViewerTz } from "@/lib/viewer-tz";
 
 export function StatsPage({ initial }: { initial: StatsData }) {
   const lp = useLocalePath();
@@ -18,9 +19,13 @@ export function StatsPage({ initial }: { initial: StatsData }) {
   const handleFilter = useCallback(async (newFrom: string, newTo: string) => {
     setLoading(true);
     try {
+      // Pass the viewer's resolved IANA timezone so day bucketing and
+      // the `from`/`to` calendar-day filter both resolve at the user's
+      // local midnight, not Postgres-server midnight. See #3199.
       const result = await getStats({
         from: newFrom || undefined,
         to: newTo || undefined,
+        tz: getViewerTz(),
       });
       setData(result);
     } finally {

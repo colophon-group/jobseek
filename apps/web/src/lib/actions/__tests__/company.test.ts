@@ -1,27 +1,31 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // `vi.mock` hoists to the top of the file so its factories cannot close
 // over module-scope variables. Use `vi.hoisted` to share mocks between
 // the factory and the test bodies.
 const mocks = vi.hoisted(() => ({
-  cached: vi.fn(
-    async (
-      _key: string,
-      fetcher: () => Promise<unknown>,
-      _options: { ttl: number; skipIf?: (d: unknown) => boolean },
-    ) => fetcher(),
-  ),
+  cacheLife: vi.fn(),
+  cacheTag: vi.fn(),
   search: vi.fn(),
   dbExecute: vi.fn(),
+  buildFilterString: vi.fn(() => ""),
 }));
 
 vi.mock("server-only", () => ({}));
 
-// `cached` short-circuits to the fetcher in tests so we exercise the real
-// Typesense + Postgres branching, not the Redis cache layer (covered in
-// cache.test.ts). The skipIf null-poisoning behavior is asserted via call
-// shape, not via Redis writes.
-vi.mock("@/lib/cache", () => ({ cached: mocks.cached }));
+// `cacheLife` / `cacheTag` are no-ops outside a Cache Components-enabled
+// runtime — vitest doesn't load `next.config.ts`, so calling the real
+// implementations throws "cacheLife() is only available with the
+// cacheComponents config". Mock them to silent no-ops; the `'use cache'`
+// directive itself is removed by the test transform pipeline (Babel +
+// esbuild treat it as a no-op string-statement). Tests exercise the
+// underlying Typesense + Postgres branching directly. See #2884 bucket
+// 4 — `getCompanyBySlug` migrated from Redis-backed `cached()` to
+// `'use cache'` here.
+vi.mock("next/cache", () => ({
+  cacheLife: mocks.cacheLife,
+  cacheTag: mocks.cacheTag,
+}));
 
 vi.mock("@/lib/search/typesense-client", () => ({
   getSearchClient: () => ({
@@ -38,14 +42,49 @@ vi.mock("drizzle-orm", () => ({
     strings.join("?"),
 }));
 vi.mock("@/lib/sessionCache", () => ({ getSessionUserId: vi.fn() }));
-vi.mock("@/lib/actions/locations", () => ({ expandLocationIds: vi.fn() }));
-vi.mock("@/lib/actions/taxonomy", () => ({ expandOccupationIds: vi.fn() }));
+vi.mock("@/lib/actions/locations", () => ({
+  expandLocationIds: vi.fn(),
+  expandLocationIdsBatch: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("@/lib/actions/taxonomy", () => ({
+  expandOccupationIds: vi.fn(),
+  expandOccupationIdsBatch: vi.fn().mockResolvedValue([]),
+}));
 vi.mock("@/lib/search", () => ({ getSearchProvider: vi.fn() }));
 vi.mock("@/lib/search/constants", () => ({
   ANON_MAX_COMPANIES: 5,
   ANON_MAX_POSTINGS: 10,
 }));
-vi.mock("@/lib/search/typesense-filters", () => ({ buildFilterString: vi.fn() }));
+vi.mock("@/lib/search/typesense-filters", () => ({
+  POSTING_BASE_FILTER: "is_active:true && has_content:!=false",
+  buildFilterString: mocks.buildFilterString,
+}));
+vi.mock("@/lib/search/typesense-retry", () => ({
+  isRetryableError: (err: unknown) =>
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: unknown }).code === "ECONNRESET",
+  isTypesenseRateLimitError: (err: unknown) =>
+    typeof err === "object" &&
+    err !== null &&
+    (
+      ("httpStatus" in err && (err as { httpStatus?: unknown }).httpStatus === 429) ||
+      ("message" in err &&
+        typeof (err as { message?: unknown }).message === "string" &&
+        (err as { message: string }).message.includes("HTTP code 429"))
+    ),
+  isTypesenseUnavailableError: (err: unknown) =>
+    typeof err === "object" &&
+    err !== null &&
+    (
+      ("code" in err && (err as { code?: unknown }).code === "ECONNRESET") ||
+      ("message" in err &&
+        typeof (err as { message?: unknown }).message === "string" &&
+        (err as { message: string }).message.includes("TYPESENSE_SEARCH_KEY"))
+    ),
+  withTypesenseRetry: (fn: () => Promise<unknown>) => fn(),
+}));
 vi.mock("@/lib/search/pg-filters", () => ({ localesOrNoneClause: vi.fn() }));
 vi.mock("@/lib/actions/search-input", () => ({ parseSearchFilters: vi.fn() }));
 vi.mock("@/lib/search/params", () => ({
@@ -54,11 +93,18 @@ vi.mock("@/lib/search/params", () => ({
   parseRangeParam: vi.fn(),
 }));
 
-import { getCompanyBySlug } from "../company";
+import { getCompanyBySlug, searchCompaniesForWatchlist } from "../company";
 
 const searchMock = mocks.search;
 const dbExecuteMock = mocks.dbExecute;
-const cachedMock = mocks.cached;
+const cacheLifeMock = mocks.cacheLife;
+const cacheTagMock = mocks.cacheTag;
+const buildFilterStringMock = mocks.buildFilterString;
+const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
+const ORIGINAL_TYPESENSE_HOST = process.env.TYPESENSE_HOST;
+const ORIGINAL_TYPESENSE_PORT = process.env.TYPESENSE_PORT;
+const ORIGINAL_TYPESENSE_PROTOCOL = process.env.TYPESENSE_PROTOCOL;
+const ORIGINAL_TYPESENSE_SEARCH_KEY = process.env.TYPESENSE_SEARCH_KEY;
 
 const _hit = (overrides: Record<string, unknown> = {}) => ({
   id: "co-1",
@@ -85,13 +131,166 @@ beforeEach(() => {
   vi.clearAllMocks();
   searchMock.mockReset();
   dbExecuteMock.mockReset();
-  cachedMock.mockImplementation(
-    async (
-      _key: string,
-      fetcher: () => Promise<unknown>,
-      _options: { ttl: number; skipIf?: (d: unknown) => boolean },
-    ) => fetcher(),
-  );
+  buildFilterStringMock.mockReset();
+  buildFilterStringMock.mockReturnValue("");
+  process.env.DATABASE_URL =
+    ORIGINAL_DATABASE_URL ?? "postgresql://test:test@localhost:5432/test";
+});
+
+afterEach(() => {
+  if (ORIGINAL_DATABASE_URL === undefined) {
+    delete process.env.DATABASE_URL;
+  } else {
+    process.env.DATABASE_URL = ORIGINAL_DATABASE_URL;
+  }
+  if (ORIGINAL_TYPESENSE_HOST === undefined) {
+    delete process.env.TYPESENSE_HOST;
+  } else {
+    process.env.TYPESENSE_HOST = ORIGINAL_TYPESENSE_HOST;
+  }
+  if (ORIGINAL_TYPESENSE_PORT === undefined) {
+    delete process.env.TYPESENSE_PORT;
+  } else {
+    process.env.TYPESENSE_PORT = ORIGINAL_TYPESENSE_PORT;
+  }
+  if (ORIGINAL_TYPESENSE_PROTOCOL === undefined) {
+    delete process.env.TYPESENSE_PROTOCOL;
+  } else {
+    process.env.TYPESENSE_PROTOCOL = ORIGINAL_TYPESENSE_PROTOCOL;
+  }
+  if (ORIGINAL_TYPESENSE_SEARCH_KEY === undefined) {
+    delete process.env.TYPESENSE_SEARCH_KEY;
+  } else {
+    process.env.TYPESENSE_SEARCH_KEY = ORIGINAL_TYPESENSE_SEARCH_KEY;
+  }
+});
+
+describe("searchCompaniesForWatchlist", () => {
+  it("includes companies with zero active postings in unfiltered search", async () => {
+    searchMock.mockResolvedValue({
+      found: 1,
+      hits: [{ document: _hit({ active_posting_count: 0 }) }],
+    });
+
+    const out = await searchCompaniesForWatchlist({
+      query: "Acme",
+      locale: "en",
+      offset: 0,
+      limit: 20,
+    });
+
+    expect(out.companies).toHaveLength(1);
+    expect(out.companies[0].activeMatches).toBe(0);
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.not.objectContaining({ filter_by: expect.stringContaining("active_posting_count") }),
+    );
+  });
+
+  it("does not exclude zero-posting companies when filtering by industry", async () => {
+    searchMock.mockResolvedValue({
+      found: 1,
+      hits: [{ document: _hit({ active_posting_count: 0 }) }],
+    });
+
+    await searchCompaniesForWatchlist({
+      industryId: 7,
+      locale: "en",
+      offset: 0,
+      limit: 20,
+    });
+
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ filter_by: "industry_id:=7" }),
+    );
+  });
+
+  it("keeps starred ordering without requiring active postings", async () => {
+    searchMock
+      .mockResolvedValueOnce({
+        found: 1,
+        hits: [{ document: _hit({ active_posting_count: 0 }) }],
+      })
+      .mockResolvedValueOnce({ found: 0, hits: [] });
+
+    const out = await searchCompaniesForWatchlist({
+      locale: "en",
+      offset: 0,
+      limit: 20,
+      starredCompanyIds: ["co-1"],
+    });
+
+    expect(out.companies).toHaveLength(1);
+    expect(searchMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ filter_by: "id:[co-1]" }),
+    );
+    expect(searchMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ filter_by: "id:!=[co-1]" }),
+    );
+  });
+
+  it("includes a searched zero-posting company when the watchlist has filters", async () => {
+    buildFilterStringMock.mockReturnValue("location_ids:=[42]");
+    searchMock
+      .mockResolvedValueOnce({
+        facet_counts: [{ counts: [], stats: { total_values: 0 } }],
+      })
+      .mockResolvedValueOnce({
+        found: 1,
+        hits: [{ document: _hit({ active_posting_count: 0 }) }],
+      })
+      .mockResolvedValueOnce({
+        facet_counts: [{ counts: [], stats: { total_values: 0 } }],
+      })
+      .mockResolvedValueOnce({
+        hits: [{ document: _hit({ active_posting_count: 0 }) }],
+      });
+
+    const out = await searchCompaniesForWatchlist({
+      query: "Acme",
+      locale: "en",
+      offset: 0,
+      limit: 20,
+      locationIds: [42],
+    });
+
+    expect(out).toMatchObject({
+      total: 1,
+      companies: [{ id: "co-1", activeMatches: 0 }],
+    });
+  });
+
+  it("includes a searched active company with zero matches for the current watchlist filters", async () => {
+    buildFilterStringMock.mockReturnValue("technology_ids:=[99]");
+    searchMock
+      .mockResolvedValueOnce({
+        facet_counts: [{ counts: [], stats: { total_values: 0 } }],
+      })
+      .mockResolvedValueOnce({
+        found: 1,
+        hits: [{ document: _hit({ active_posting_count: 42 }) }],
+      })
+      .mockResolvedValueOnce({
+        facet_counts: [{ counts: [], stats: { total_values: 0 } }],
+      })
+      .mockResolvedValueOnce({
+        hits: [{ document: _hit({ active_posting_count: 42 }) }],
+      });
+
+    const out = await searchCompaniesForWatchlist({
+      query: "Acme",
+      locale: "en",
+      offset: 0,
+      limit: 20,
+      technologyIds: [99],
+    });
+
+    expect(out).toMatchObject({
+      total: 1,
+      companies: [{ id: "co-1", activeMatches: 0 }],
+    });
+  });
 });
 
 describe("getCompanyBySlug — Typesense path", () => {
@@ -205,8 +404,8 @@ describe("getCompanyBySlug — Postgres fallback", () => {
     founded_year: 2015,
   };
 
-  it("falls through to Postgres when Typesense throws", async () => {
-    searchMock.mockRejectedValue(new Error("typesense down"));
+  it("falls through to Postgres when Typesense is unavailable", async () => {
+    searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
     dbExecuteMock.mockResolvedValue([_pgRow]);
 
     const out = await getCompanyBySlug("acme", "en");
@@ -214,6 +413,57 @@ describe("getCompanyBySlug — Postgres fallback", () => {
     expect(out?.description).toBe("From Postgres");
     expect(out?.activeJobCount).toBe(0); // PG path doesn't compute this
     expect(dbExecuteMock).toHaveBeenCalled();
+  });
+
+  it("logs `[company] Typesense failed, falling back to Postgres` when Typesense is unavailable (so fallback rate is queryable per #3175)", async () => {
+    /** Issue colophon-group/jobseek#3175 — the silent `} catch {}` made a
+     * Cloudflare-tunnel outage indistinguishable from healthy traffic in
+     * the logs. Matches the precedent set by `searchCompaniesForWatchlist`
+     * and `_fetchSimilarUnfiltered` in the same file. */
+    searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
+    dbExecuteMock.mockResolvedValue([_pgRow]);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const out = await getCompanyBySlug("acme", "en");
+
+    // Fallback behaviour preserved — Postgres still serves the request.
+    expect(out?.description).toBe("From Postgres");
+    // Stable event prefix so the fallback rate is queryable in Loki.
+    const fallbackCalls = errorSpy.mock.calls.filter(
+      (call) => call[0] === "[company] Typesense failed, falling back to Postgres",
+    );
+    expect(fallbackCalls).toHaveLength(1);
+    expect(fallbackCalls[0][1]).toBeInstanceOf(Error);
+    expect((fallbackCalls[0][1] as Error).message).toBe("TYPESENSE_SEARCH_KEY is not set");
+    errorSpy.mockRestore();
+  });
+
+  it("does not fall through to Postgres when Typesense returns HTTP 429", async () => {
+    const rateLimitError = Object.assign(new Error("Request failed with HTTP code 429"), {
+      httpStatus: 429,
+    });
+    searchMock.mockRejectedValue(rateLimitError);
+
+    await expect(getCompanyBySlug("acme", "en")).rejects.toBe(rateLimitError);
+    expect(dbExecuteMock).not.toHaveBeenCalled();
+  });
+
+  it("does NOT log the fallback event when Typesense returns 0 hits (only thrown errors signal an outage)", async () => {
+    /** Zero hits is the brand-new-company path, not a Typesense outage —
+     * silencing it here keeps the fallback-rate metric an accurate
+     * signal of Typesense health, not company-freshness noise. */
+    searchMock.mockResolvedValue(_typesenseResponse(null));
+    dbExecuteMock.mockResolvedValue([_pgRow]);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const out = await getCompanyBySlug("acme", "en");
+
+    expect(out?.description).toBe("From Postgres");
+    const fallbackCalls = errorSpy.mock.calls.filter(
+      (call) => call[0] === "[company] Typesense failed, falling back to Postgres",
+    );
+    expect(fallbackCalls).toHaveLength(0);
+    errorSpy.mockRestore();
   });
 
   it("falls through to Postgres when Typesense returns 0 hits", async () => {
@@ -233,27 +483,99 @@ describe("getCompanyBySlug — Postgres fallback", () => {
     const out = await getCompanyBySlug("acme", "en");
     expect(out).toBeNull();
   });
+
+  it("returns null outside the cache boundary when lookup env is not configured", async () => {
+    searchMock.mockResolvedValue(_typesenseResponse(null));
+    delete process.env.DATABASE_URL;
+    delete process.env.TYPESENSE_HOST;
+    delete process.env.TYPESENSE_PORT;
+    delete process.env.TYPESENSE_PROTOCOL;
+    delete process.env.TYPESENSE_SEARCH_KEY;
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const out = await getCompanyBySlug("acme", "en");
+
+    expect(out).toBeNull();
+    expect(searchMock).not.toHaveBeenCalled();
+    expect(dbExecuteMock).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[company] lookup skipped because Typesense and DATABASE_URL are not configured",
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("retries the Postgres query on transient ECONNRESET (#2918 follow-up)", async () => {
+    /** The 2026-05-09 Vercel build died on a single `read ECONNRESET`
+     * during this exact code path (OG-image prerender →
+     * `_fetchCompanyBySlugFromPostgres`). The next build 2 min later
+     * succeeded — a flake, not a structural break. The retry helper
+     * must turn this single transient error into a successful query
+     * so the prerender finishes. */
+    searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
+    const econn = new Error("read ECONNRESET") as Error & { code: string };
+    econn.code = "ECONNRESET";
+    dbExecuteMock
+      .mockRejectedValueOnce(econn)
+      .mockResolvedValueOnce([_pgRow]);
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => {});
+
+    const out = await getCompanyBySlug("acme", "en");
+
+    expect(out?.description).toBe("From Postgres");
+    expect(dbExecuteMock).toHaveBeenCalledTimes(2);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
 });
 
 describe("getCompanyBySlug — caching contract", () => {
-  it("caches with TTL 600 and skipIf-null", async () => {
-    /** Brand-new slugs Typesense hasn't seen yet must not poison the
-     * cache as null — the skipIf predicate is the contract that lets
-     * Postgres fallback fill the gap on the next request. */
+  it("calls cacheLife('hours') + cacheTag(company:slug) + cacheTag(company-csv-data) on a hit", async () => {
+    /** #2884 bucket 4 footgun migration: under `'use cache'` a
+     * `null` return would pin a brand-new slug for the cacheLife
+     * window. The wrapper throws `CompanyNotFoundError` past the
+     * cache boundary on null and the outer catches → returns null,
+     * keeping the slot empty. The contract this test asserts is the
+     * tagging surface (so the page-level `revalidateTag` and the
+     * `/api/internal/invalidate-typeahead` CSV-driven sweep both
+     * still drop the slot when needed). The null-handling itself is
+     * covered by the Postgres-fallback `returns null` test above. */
     searchMock.mockResolvedValue(_typesenseResponse(_hit()));
 
-    await getCompanyBySlug("acme", "en");
+    const out = await getCompanyBySlug("acme", "en");
 
-    expect(cachedMock).toHaveBeenCalledWith(
-      "company-slug:acme:en",
-      expect.any(Function),
-      expect.objectContaining({
-        ttl: 600,
-        skipIf: expect.any(Function),
-      }),
-    );
-    const skipIf = cachedMock.mock.calls[0][2].skipIf;
-    expect(skipIf(null)).toBe(true);
-    expect(skipIf({ id: "x" })).toBe(false);
+    expect(out?.id).toBe("co-1");
+    expect(cacheLifeMock).toHaveBeenCalledWith("hours");
+    const tags = cacheTagMock.mock.calls.map((c) => c[0]);
+    expect(tags).toContain("company:acme");
+    expect(tags).toContain("company-csv-data");
+  });
+
+  it("returns null without re-throwing CompanyNotFoundError on miss", async () => {
+    /** Regression for the throw-and-catch wrapper: the inner
+     * `_fetchCompanyBySlugCached` throws `CompanyNotFoundError` so
+     * the `'use cache'` slot stays empty for the next attempt. The
+     * outer `getCompanyBySlug` MUST swallow that one error class
+     * and return null — leaking the throw would 500 the route. */
+    searchMock.mockResolvedValue(_typesenseResponse(null));
+    dbExecuteMock.mockResolvedValue([]);
+
+    const out = await getCompanyBySlug("ghost-slug", "en");
+    expect(out).toBeNull();
+  });
+
+  it("re-throws unexpected errors past the wrapper", async () => {
+    /** Empirical guard for #2884 bucket 4: the catch-and-null path is
+     * scoped to `CompanyNotFoundError` only. A genuine downstream
+     * failure (DB pool exhausted, Drizzle parse error, …) MUST
+     * propagate so Suspense / error boundaries trigger; silently
+     * nulling here would surface as a 404 instead of a 5xx and hide
+     * the outage. */
+    searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
+    const boom = new Error("postgres pool exhausted");
+    dbExecuteMock.mockRejectedValue(boom);
+
+    await expect(getCompanyBySlug("acme", "en")).rejects.toBe(boom);
   });
 });

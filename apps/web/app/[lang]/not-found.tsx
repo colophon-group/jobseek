@@ -1,28 +1,32 @@
-"use client";
+import type { Metadata } from "next";
+import { defaultLocale, isLocale, loadCatalog } from "@/lib/i18n";
+import { NotFoundContent } from "./not-found-content";
 
-import { Trans } from "@lingui/react/macro";
-import { useLocalePath } from "@/lib/useLocalePath";
+type Props = {
+  params: Promise<{ lang: string }>;
+};
+
+// Server wrapper so we can export `metadata` (client components can't).
+// Without this, the title would cascade from `[lang]/layout.tsx`'s
+// `default: "Job Seek"` and a 404 response would emit a misleading
+// `<title>Job Seek</title>`. Robots is also explicitly `noindex, nofollow`
+// since the 404 surface itself shouldn't be indexed AND its only
+// outgoing link goes to "/" which crawlers already know.
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang } = await params;
+  const locale = isLocale(lang) ? lang : defaultLocale;
+  const { i18n } = await loadCatalog(locale);
+
+  return {
+    title: i18n._({
+      id: "notFound.title",
+      comment: "Heading shown on the 404 page",
+      message: "Page not found",
+    }),
+    robots: { index: false, follow: false },
+  };
+}
 
 export default function NotFound() {
-  const localePath = useLocalePath();
-
-  return (
-    <main className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
-      <h1 className="mb-2 text-2xl font-bold text-foreground">
-        <Trans id="notFound.title" comment="Heading shown on the 404 page">
-          Page not found
-        </Trans>
-      </h1>
-      <p className="mb-6 text-sm text-muted">
-        <Trans id="notFound.body" comment="Body text on the 404 page">
-          The page you are looking for does not exist or has been moved.
-        </Trans>
-      </p>
-      <a className="inline-block rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-contrast no-underline hover:opacity-85" href={localePath("/")}>
-        <Trans id="notFound.goHome" comment="Link to return to the homepage from a 404 page">
-          Go home
-        </Trans>
-      </a>
-    </main>
-  );
+  return <NotFoundContent />;
 }

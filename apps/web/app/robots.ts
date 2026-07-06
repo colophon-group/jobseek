@@ -6,7 +6,7 @@ function expandDisallow(paths: readonly string[]): string[] {
   const out: string[] = [];
   for (const path of paths) {
     out.push(path);
-    // API routes are not locale-prefixed (middleware excludes /api/*),
+    // API routes are not locale-prefixed (proxy excludes /api/*),
     // so only expand non-API paths to their locale-prefixed variants.
     if (path.startsWith("/api/")) continue;
     for (const locale of locales) {

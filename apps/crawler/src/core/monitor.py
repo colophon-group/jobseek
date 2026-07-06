@@ -36,6 +36,13 @@ class MonitorResult:
     #: content-update path for "touched" jobs (which would otherwise overwrite
     #: previously-scraped fields with nulls from partial rich data).
     hybrid: bool = False
+    #: Set to True when the monitor's discovery hit its ``MAX_JOBS`` cap and
+    #: returned a truncated list (#3216). The pipeline treats the run as a
+    #: partial success: it inserts the URLs that ARE in the batch but skips
+    #: ``_MARK_GONE_BY_TIMESTAMP`` for the cycle, so the unseen tail beyond
+    #: the cap is not falsely tombstoned. Any single truncated batch in a
+    #: streamed monitor run is sufficient to flip this for the cycle.
+    truncated: bool = False
 
 
 def _normalize_discovered(
@@ -100,6 +107,7 @@ def _apply_url_filter(result: MonitorResult, config: dict) -> MonitorResult:
         filtered_count=removed,
         metadata_updates=result.metadata_updates,
         hybrid=result.hybrid,
+        truncated=result.truncated,
     )
 
 
@@ -140,6 +148,7 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
         new_sitemap_url=result.new_sitemap_url,
         metadata_updates=result.metadata_updates,
         hybrid=result.hybrid,
+        truncated=result.truncated,
     )
 
 
@@ -255,7 +264,7 @@ async def _save_raw(
                 resp = await http.get(feed, follow_redirects=True)
                 if resp.status_code == 200:
                     (artifact_dir / "response.xml").write_text(resp.text)
-        elif monitor_type == "dom":
+        elif monitor_type in ("dom", "talentbrew"):
             resp = await http.get(board_url, follow_redirects=True)
             if resp.status_code == 200:
                 (artifact_dir / "page.html").write_text(resp.text)

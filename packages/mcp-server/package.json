@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "jobseek-mcp": "dist/index.js"
+    "jobseek-mcp": "src/bin/jobseek-mcp.js"
   },
   "main": "./dist/index.js",
   "exports": {
@@ -15,13 +15,17 @@
     "./handler": "./dist/handler.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "src/bin/jobseek-mcp.js"
   ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "prepare": "tsc",
     "start": "node dist/index.js",
-    "start:http": "node dist/http.js"
+    "start:http": "node dist/http.js",
+    "test": "node scripts/verify-package.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",

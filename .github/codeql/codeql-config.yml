@@ -1,0 +1,6 @@
+name: jobseek-codeql
+
+paths-ignore:
+  - apps/crawler/tests/**
+  - apps/crawler/scripts/**
+  - scripts/**

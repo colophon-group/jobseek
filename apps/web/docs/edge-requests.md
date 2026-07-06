@@ -34,11 +34,14 @@ Pages that check authentication or read cookies are rendered on every request:
 
 This is correct — these pages genuinely need per-request data.
 
-### Middleware
+### Proxy (formerly Middleware)
 
-The middleware only runs for paths **without** a locale prefix (e.g. bare `/`, `/how-we-index`). It redirects to the locale-prefixed version based on `Accept-Language`.
+The proxy only runs for paths **without** a locale prefix (e.g. bare `/`, `/how-we-index`). It redirects to the locale-prefixed version based on `Accept-Language`.
 
-Paths that already have a locale prefix (`/en/...`, `/de/...`) **skip the middleware entirely** — no edge invocation.
+Paths that already have a locale prefix (`/en/...`, `/de/...`) **skip the proxy entirely** — no edge invocation.
+
+> Renamed from `middleware.ts` to `proxy.ts` for Next.js 16 (#2887).
+> Same APIs, same execution model — see https://nextjs.org/docs/messages/middleware-to-proxy.
 
 ### Theme
 
@@ -60,9 +63,9 @@ If you need request data, put it in a **route-group layout** that only wraps the
 
 This tells Next.js which locale variants to pre-render. Without it, `[lang]` is treated as a fully dynamic segment and every page requires an edge invocation.
 
-### Keep the middleware matcher narrow
+### Keep the proxy matcher narrow
 
-The middleware matcher explicitly excludes locale-prefixed paths. When adding a new locale, **add it to the matcher exclusion list** in `middleware.ts` — otherwise every request to that locale will unnecessarily invoke the middleware.
+The proxy matcher explicitly excludes locale-prefixed paths. When adding a new locale, **add it to the matcher exclusion list** in `proxy.ts` — otherwise every request to that locale will unnecessarily invoke the proxy.
 
 ### Use route groups to separate static from dynamic
 
@@ -314,7 +317,7 @@ invocations.
 | API route request | Node.js | `/api/v1/*`, `/api/auth/*`, `/api/stripe/*` |
 | OG image generation | Node.js | `opengraph-image.tsx` routes |
 | `sitemap.xml` / `robots.txt` | Node.js | Generated dynamically per request |
-| Middleware | Edge | Lightweight locale redirect only |
+| Proxy (formerly Middleware) | Edge | Lightweight locale redirect only |
 
 Static pages (`(public)`) and cached CDN assets do **not** invoke functions.
 
@@ -391,15 +394,16 @@ Durations assume warm instance (no cold start). Cold start adds 50-400ms.
 | **Shared watchlist** | 4 (parallel) | 6-10 (watchlist + filters + postings) | 10-14 | Sequential + parallel | None | 100-350ms |
 | **My Jobs** | 4 (parallel) | 2 (count + list) | 6 | Sequential | None | 50-150ms |
 | **My Jobs Stats** | 4 (parallel) | 2 (funnel + activity) | 6 | Sequential | None | 50-150ms |
-| **Watchlists** | 4 (parallel) | 1 + 5N (list + per-watchlist counts) | 5 + 5N | N+1 problem | None | 60-300ms+ |
+| **Watchlists** | 4 (parallel) | 1 (list + denormalized active counts via JOIN) | 5 | Constant in N | None | 50-100ms |
 | **Settings** | 4 (parallel) | 3 (prefs + languages + currencies) | 7 | Sequential | Languages: 1h | 40-120ms |
 | **Account** | 4 (parallel) | 1 (accounts) | 5 | Sequential | None | 40-100ms |
 | **Billing** | 4 (parallel) | 1 (plan info) | 5 | Sequential | None | 40-100ms |
 | **Progress** | 4 (parallel) | 2 (stats, parallel) | 6 | Parallel | Stats: 6h | 30-80ms |
 | **Sign-in / Sign-up** | 1 (session) | 0 | 1 | — | Session: 5min | 10-90ms |
 
-**N** = number of user's watchlists. A user with 10 watchlists triggers
-~51 queries on the watchlists page.
+Watchlist counts on the listing page are now denormalized via a single
+JOIN subquery (issue #3176). The watchlist detail page still runs the
+filter-precise count via `getWatchlistPostingDisplayCounts()`.
 
 ### Server action compute
 
@@ -464,8 +468,8 @@ Ranked by total GB-seconds impact (frequency × duration):
 3. **Shared watchlist SSR** — heaviest single render (10-14 queries). Lower
    traffic than explore but 100-350ms per render with no Redis caching.
 
-4. **Watchlists page SSR** — N+1 query pattern. For a user with N watchlists,
-   runs 1 + 5N queries. 10 watchlists = ~51 queries, 200-300ms+.
+4. **Watchlists page SSR** — *was* the N+1 hotspot pre-#3176; now a
+   constant 1 SQL query regardless of N. 50-100ms.
 
 5. **Company page SSR** — second-highest traffic dynamic page. 7-9 queries,
    60-200ms.
@@ -483,18 +487,22 @@ level queries. Never run independent DB calls sequentially.
 
 #### Avoid N+1 query patterns
 
-`getUserWatchlists()` fetches watchlists then resolves job counts per watchlist
-in a loop. Each resolution triggers 4 parallel taxonomy lookups + 1 count
-query. Batch these into a single SQL query that computes counts for all
-watchlists at once.
+Past offender — fixed in #3176: `getUserWatchlists()` used to loop over
+each watchlist and run a filter-applied Typesense count. The current
+shape returns the denormalized active count from a single SQL JOIN
+subquery. The same lesson applies elsewhere — never fan a per-row count
+query out of a list endpoint. Push it into a single SQL aggregation, or
+use Typesense `multi_search` if filter precision is required.
 
 #### Use Redis caching for expensive reads
 
 Search results and posting details are already cached (5-min TTL). Extend this
 to:
-- `getUserWatchlists()` — user-keyed, invalidate on watchlist mutation
 - `getWatchlistPostings()` — filter-keyed, short TTL
 - `getStats()` (my-jobs-stats) — user-keyed, invalidate on status change
+
+`getUserWatchlists()` is fast enough post-#3176 (single SQL query, ~12-38ms)
+that caching adds invalidation complexity without a meaningful win.
 
 #### Keep function duration under control
 

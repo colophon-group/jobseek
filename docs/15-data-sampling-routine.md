@@ -1,23 +1,25 @@
 # Daily labelled-postings routine
 
-Scheduled Claude Code routine that samples job postings, labels them via
-Claude Code subagents, and uploads a gold dataset to a public HuggingFace
-dataset repo (`viktoroo/jobseek-postings-labelled`). The dataset is the
-substrate for training a better structured-information extractor to
-replace the current crawler heuristics.
+Scheduled agent routine that samples job postings, labels them via
+task-specific subagents, and uploads a gold dataset to a public HuggingFace
+dataset repo (`viktoroo/jobseek-postings-labelled`). Codex is the preferred
+path for new pilots; the existing Claude Code slash command remains a
+compatible alternate path. The dataset is the substrate for training a better
+structured-information extractor to replace the current crawler heuristics.
 
-## Why Claude Code and not the API
+## Why an agent session and not direct provider APIs
 
-The routine runs entirely inside a Claude Code session. The orchestrator is
-the session itself (Opus); subagents are invoked via the `Agent` tool on
-Sonnet. No direct Anthropic API calls — that's the prod model's job, after
-it's trained on this dataset.
+The routine runs inside an interactive or noninteractive coding-agent session.
+The orchestrator is the session itself; subagents are invoked through the
+agent runtime, not by direct Anthropic/OpenAI API calls from repository code.
+That keeps the collected training data separate from the future production
+model that will be trained on this dataset.
 
 ## Architecture
 
 ```
-Claude Code session (Opus orchestrator)
-  ├─ Reads .claude/commands/jobseek-label-daily.md (its playbook)
+Agent session (Codex preferred, Claude Code compatible)
+  ├─ Reads the repo skill or slash command playbook
   ├─ Shell-calls `labeller <subcommand>` for deterministic steps
   │    ├─ sample       — diverse per-company selection from the last 24h
   │    ├─ prepare      — load raw HTML, normalize, compute blocks
@@ -26,28 +28,27 @@ Claude Code session (Opus orchestrator)
   │    ├─ merge        — assemble per-subagent outputs into one posting.json
   │    └─ upload       — push accepted postings to HF
   │
-  └─ `Agent` tool invocations for every LLM step (Sonnet)
+  └─ subagent invocations for every LLM step
+       ├─ jobseek-labeller-normalizer          Pass 0: clean HTML
        ├─ jobseek-labeller-splitter            Pass 1: sections
-       ├─ jobseek-labeller-extract-team        Pass 2: per-section fields
-       ├─ jobseek-labeller-extract-role          (5 extractors, one per
-       ├─ jobseek-labeller-extract-requirements   extractable kind)
-       ├─ jobseek-labeller-extract-preferred
-       ├─ jobseek-labeller-extract-benefits
-       └─ jobseek-labeller-extract-globals     Pass 3: cross-section fields
+       └─ jobseek-labeller-extractor           Pass 2: extract_all
 ```
 
-**7 subagents per posting**, not 9. The `company` and `application` section
-kinds are identified by the splitter (for span classification) but have no
-structured extractor — `company` fields are company-level metadata that
-belongs in `companies.csv`, not per-posting; `application` had a single
-sparsely-populated field not worth a Sonnet call.
+The preferred Codex path uses **3 subagent calls per posting**: normalize,
+split, and combined extraction. The legacy granular path with five
+per-section extractors plus globals remains available for rollback or focused
+debugging, but `extract_all` is the default because it reduces orchestration
+surface and retry coordination. The `company` and `application` section kinds
+are identified by the splitter for span classification and are preserved in
+the combined output with `extracted: null`.
 
 ### The "orchestrator never reads the subagent prompt" invariant
 
-Subagent system prompts live in `.claude/agents/jobseek-labeller-*.md`.
-Claude Code loads them from disk; the orchestrator's context never contains
-them. The orchestrator passes variables to a subagent by handing it a
-**rendered task-input file path**. The `Agent` tool's `prompt` argument is
+Subagent system prompts live in the agent-runtime layer. Codex repo skills
+belong under `.agents/skills`; the legacy Claude-compatible prompts live in
+`.claude/agents/jobseek-labeller-*.md`. The orchestrator's context must never
+contain those full subagent prompts. It passes variables to a subagent by
+handing it a **rendered task-input file path**. The subagent prompt body is
 always two lines:
 
 ```
@@ -56,12 +57,12 @@ OUTPUT: <path-to-write-output.json>
 ```
 
 - Jinja template (`prompts/tasks/<task>.md.j2`) owns variable-insertion and phrasing.
-- Subagent definition (`.claude/agents/jobseek-labeller-<task>.md`) owns the task contract and output discipline.
+- Subagent definition owns the task contract and output discipline.
 - Orchestrator owns only the workflow and paths.
 
 ### Retry protocol
 
-After every `Agent` invocation:
+After every subagent invocation:
 
 1. `labeller validate --kind <kind> --file <output_path>` runs schema + custom checks (block-ID coverage, overlap, enum membership, etc.).
 2. If it fails, the orchestrator renders a new input file with the validator's error appended to a `## Previous attempt failed` section and re-invokes the subagent. Up to 2 retries.
@@ -76,18 +77,18 @@ sample-batch (once)
 ┌───────────────────────────────────────────────────────────────┐
 │ for each posting_id:                                          │
 │                                                               │
-│   prepare        (Bash, deterministic)                        │
-│     load raw HTML → normalize → blocks → input.json           │
+│   prepare-pre-llm  (Bash)                                     │
+│     load raw HTML → raw_input.json                            │
+│                                                               │
+│   render normalize-in → Agent(normalizer) → normalized.html   │
+│                                                               │
+│   prepare-post-llm (Bash, deterministic)                      │
+│     normalized HTML → blocks → input.json                     │
 │                                                               │
 │   render split-in → Agent(splitter) → validate split-out      │
 │                                                               │
-│   for each EXTRACTABLE kind (team/role/requirements/          │
-│                              preferred/benefits) in split-out:│
-│     render extract-in → Agent(extract_<kind>) → validate      │
-│                                                               │
-│   render globals-in → Agent(extract_globals) → validate       │
-│     (globals renderer scans RUN_DIR for extract-*-out.json    │
-│      and packs them into the task input)                      │
+│   render extract-all-in → Agent(extractor)                    │
+│     → validate extract-all-out                                │
 │                                                               │
 │   merge (Bash) → postings/<date>/<id>.json                    │
 │   validate --kind posting  (schema)                           │
@@ -187,11 +188,16 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
 
 ### Invocation
 
-- Manual: `/jobseek-label-daily` (defaults: today UTC, 24 postings).
-  Override with `--date 2026-04-25 --count 10`.
-- Scheduled (Claude Code desktop app): point the schedule at the prompt
-  `/jobseek-label-daily`. The slash command file is the source of truth —
-  edits propagate to the next run without re-setting up the schedule.
+- Manual Codex pilot: invoke the repo skill when present, or run
+  `codex exec --json` with this runbook and the desired arguments
+  (`--date 2026-04-25 --count 10`).
+- Manual Claude-compatible path: `/jobseek-label-daily` (defaults: today UTC,
+  24 postings).
+- Scheduled Codex path: create a Codex app automation for the repo skill and
+  run it on a background worktree.
+- Scheduled Claude-compatible path: point the schedule at the prompt
+  `/jobseek-label-daily`. The slash command file remains a compatible source
+  of truth until the Codex skill is checked in and validated.
 
 ### Dependencies
 
@@ -204,7 +210,9 @@ Added to `apps/crawler/pyproject.toml`:
 
 ### Authentication
 
-- HF push: reuses `HF_TOKEN` from `apps/crawler/.env.local` (auto-loaded by `labeller/cli.py` via `python-dotenv`, same pattern as `src/workspace/trace.py`).
+- HF push: reuses `HF_TOKEN` from `apps/crawler/.env.local` when running the
+  labeller CLI locally; `labeller/cli.py` loads `.env.local` via
+  `python-dotenv`.
 - DB read for sampling: reuses `LOCAL_DATABASE_URL` from `.env.local`.
 - Nothing else needed.
 
@@ -230,4 +238,6 @@ Block-ID (current plan):
 
 ## Related routines
 
-- [14 — Daily error review](14-error-review-routine.md) — sibling scheduled routine, error surface rather than data collection.
+- [14 — Daily error review](14-error-review-routine.md) — sibling
+  Codex-first scheduled routine; primary runbook is
+  [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md).

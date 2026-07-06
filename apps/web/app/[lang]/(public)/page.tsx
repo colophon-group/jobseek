@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
-import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { Hero } from "@/components/Hero";
 import { Features } from "@/components/Features";
 import { Pricing } from "@/components/Pricing";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
-import { LlmContentMirror } from "@/components/LlmContentMirror";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 
@@ -18,17 +17,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" });
+  const title = i18n._({ id: "home.meta.title", message: "Track the companies you want to work at — Job Seek" });
   const description = i18n._({
     id: "home.meta.description",
-    message: "Search millions of jobs scraped directly from thousands of company career pages. Filter by seniority, tech stack, salary, and location, then track every application.",
+    message: "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
   });
 
   return {
     title,
     description,
     alternates: buildAlternates("", locale),
-    openGraph: { title, description, url: `${siteConfig.url}/${locale}` },
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}`,
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+    },
   };
 }
 
@@ -43,8 +49,8 @@ export default async function HomePage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: i18n._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" }),
-        description: i18n._({ id: "home.meta.description", message: "Search millions of jobs scraped directly from thousands of company career pages. Filter by seniority, tech stack, salary, and location, then track every application." }),
+        name: i18n._({ id: "home.meta.title", message: "Track the companies you want to work at — Job Seek" }),
+        description: i18n._({ id: "home.meta.description", message: "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings." }),
         url: `${siteConfig.url}/${locale}`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
@@ -67,44 +73,6 @@ export default async function HomePage({ params }: Props) {
           </div>
         </section>
       )}
-      <LlmContentMirror locale={locale}>
-        <h1>{i18n._("home.hero.title")}</h1>
-        <p>{i18n._("home.hero.description")}</p>
-
-        <h2>{i18n._("home.features.s1.eyebrow")}</h2>
-        <h3>{i18n._("home.features.s1.title")}</h3>
-        <p>{i18n._("home.features.s1.description")}</p>
-        <ul>
-          <li><strong>{i18n._("home.features.s1.p1.title")}</strong>: {i18n._("home.features.s1.p1.description")}</li>
-          <li><strong>{i18n._("home.features.s1.p2.title")}</strong>: {i18n._("home.features.s1.p2.description")}</li>
-          <li><strong>{i18n._("home.features.s1.p3.title")}</strong>: {i18n._("home.features.s1.p3.description")}</li>
-        </ul>
-
-        <h2>{i18n._("home.features.s2.eyebrow")}</h2>
-        <h3>{i18n._("home.features.s2.title")}</h3>
-        <p>{i18n._("home.features.s2.description")}</p>
-        <ul>
-          <li><strong>{i18n._("home.features.s2.p1.title")}</strong>: {i18n._("home.features.s2.p1.description")}</li>
-          <li><strong>{i18n._("home.features.s2.p2.title")}</strong>: {i18n._("home.features.s2.p2.description")}</li>
-          <li><strong>{i18n._("home.features.s2.p3.title")}</strong>: {i18n._("home.features.s2.p3.description")}</li>
-        </ul>
-
-        <h2>{i18n._("home.features.s3.eyebrow")}</h2>
-        <h3>{i18n._("home.features.s3.title")}</h3>
-        <p>{i18n._("home.features.s3.description")}</p>
-        <ul>
-          <li><strong>{i18n._("home.features.s3.p1.title")}</strong>: {i18n._("home.features.s3.p1.description")}</li>
-          <li><strong>{i18n._("home.features.s3.p2.title")}</strong>: {i18n._("home.features.s3.p2.description")}</li>
-          <li><strong>{i18n._("home.features.s3.p3.title")}</strong>: {i18n._("home.features.s3.p3.description")}</li>
-        </ul>
-
-        <h2>{i18n._("home.pricing.eyebrow")}</h2>
-        <h3>{i18n._("home.pricing.title")}</h3>
-        <p>{i18n._("home.pricing.description")}</p>
-        <p><strong>{i18n._("home.pricing.free.name")} — $0</strong>: {i18n._("home.pricing.free.description")}</p>
-        <p><strong>{i18n._("home.pricing.pro.name")} — $10/{i18n._("home.pricing.pro.period")}</strong>: {i18n._("home.pricing.pro.description")}</p>
-
-      </LlmContentMirror>
     </>
   );
 }

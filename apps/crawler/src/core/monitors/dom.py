@@ -39,14 +39,21 @@ _BROWSER_FETCH_RETRIES = 2
 _BROWSER_FETCH_BASE_DELAY = 0.5
 _BROWSER_FETCH_MAX_CHARS = 500_000
 
-# JS executed inside the Playwright page. Returns ``{status, text}`` so
-# HTTP-level errors (which ``fetch`` doesn't reject on in JS) are
+# JS executed inside the Playwright page. Returns ``{status, headers, text}``
+# so HTTP-level errors (which ``fetch`` doesn't reject on in JS) are
 # observable on the Python side. ``r.text()`` rejects on a body decode
 # error; that surfaces as a ``page.evaluate`` exception.
+#
+# ``headers`` is materialised into a plain object (``Headers`` is iterable
+# but not directly serialisable across the page-evaluate bridge) with
+# keys lower-cased so the Python TDM-Reservation check (#2842) can do a
+# uniform case-insensitive lookup without re-walking the dict.
 _BROWSER_FETCH_JS = (
     "async (url) => { "
     "const r = await fetch(url); "
-    "return { status: r.status, text: await r.text() }; "
+    "const headers = {}; "
+    "for (const [k, v] of r.headers.entries()) { headers[k.toLowerCase()] = v; } "
+    "return { status: r.status, headers: headers, text: await r.text() }; "
     "}"
 )
 
@@ -154,7 +161,8 @@ async def _fetch_via_page(
     """Fetch ``url`` via Playwright ``page.evaluate(fetch(...))`` with bounded retries.
 
     Returns:
-        - ``str`` (truncated to ``_BROWSER_FETCH_MAX_CHARS``) on HTTP 200.
+        - ``str`` (truncated to ``_BROWSER_FETCH_MAX_CHARS``) on HTTP 200
+          with a **non-empty** body.
         - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
           any other non-retryable 4xx (lenient stop, mirrors the
           httpx-side ``fetch_with_retry``).
@@ -162,11 +170,19 @@ async def _fetch_via_page(
     Raises:
         :exc:`PaginationFetchError` when *retries* attempts have all
         hit a retryable failure (5xx including Cloudflare 520-526/530,
-        408, 425, 429, or a Playwright ``page.evaluate`` exception —
-        timeout, network error, page closed). The caller is expected
-        to propagate so ``_process_one_board_streaming`` records the
-        run as a failure rather than a partial success — the fix for
-        the silent-truncation bug from #2737.
+        408, 425, 429, **200-with-empty-body**, or a Playwright
+        ``page.evaluate`` exception — timeout, network error, page
+        closed). The caller is expected to propagate so
+        ``_process_one_board_streaming`` records the run as a failure
+        rather than a partial success — the fix for the silent-
+        truncation bug from #2737, extended in #2739 to cover empty-200.
+
+    Empty-200 handling (#2739). Symmetric with the static httpx path:
+    a 200 with an empty body is transient (anti-bot challenge dropping
+    the body, partial Cloudflare response, origin glitch) — retry,
+    then raise. Returning ``""`` would cascade through
+    ``_paginate_urls``'s ``if not html: break`` and tombstone the
+    un-fetched tail.
 
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
     retries. Fewer retries than the static path (Playwright fetches
@@ -177,6 +193,10 @@ async def _fetch_via_page(
         PaginationFetchError,
         is_retryable_status,
     )
+    from src.shared.tdm import (
+        TDMReservedError,
+        check_browser_response,
+    )
 
     last_exc: BaseException | None = None
     last_status: int | None = None
@@ -185,8 +205,8 @@ async def _fetch_via_page(
         try:
             result = await page.evaluate(_BROWSER_FETCH_JS, url)
             # ``result`` is the JS object literal we constructed above —
-            # ``{status, text}``. If something upstream malformed it
-            # (anti-bot script substituting a Promise rejection, page
+            # ``{status, headers, text}``. If something upstream malformed
+            # it (anti-bot script substituting a Promise rejection, page
             # navigation completing the evaluate with a non-dict value),
             # ``result["status"]`` raises ``AttributeError`` /
             # ``TypeError`` and falls through to the ``except Exception``
@@ -194,12 +214,26 @@ async def _fetch_via_page(
             # ``PaginationFetchError``. No defensive shape-check needed.
             status = result["status"]
             text = result.get("text") or ""
+            resp_headers = result.get("headers") or {}
             last_status = status
             if status == 200:
-                return text[:_BROWSER_FETCH_MAX_CHARS]
-            if status in END_OF_PAGINATION_STATUSES:
+                if text:
+                    # TDM-Reservation respect (#2842). Symmetric with the
+                    # static httpx path: a publisher emitting the W3C
+                    # opt-out signal is honored even when the page is
+                    # reached via a Playwright fetch (``pagination.browser=true``).
+                    check_browser_response(resp_headers, text, url=url)
+                    return text[:_BROWSER_FETCH_MAX_CHARS]
+                # Empty-200 (#2739): transient, fall through to backoff.
+                last_exc = None
+                log.info(
+                    "dom.pagination.browser_fetch_empty_200",
+                    url=url,
+                    attempt=attempt + 1,
+                )
+            elif status in END_OF_PAGINATION_STATUSES:
                 return None
-            if is_retryable_status(status):
+            elif is_retryable_status(status):
                 last_exc = None  # status-only, no exception
             else:
                 # Other 4xx (auth, forbidden, bad-request) — not
@@ -212,6 +246,10 @@ async def _fetch_via_page(
                     status=status,
                 )
                 return None
+        except TDMReservedError:
+            # Publisher policy declaration — never retry, propagate to
+            # the monitor wrapper for graceful skip handling (#2842).
+            raise
         except Exception as exc:  # page.evaluate raised — timeout, navigation, page closed
             last_exc = exc
             last_status = None
@@ -251,10 +289,13 @@ async def _paginate_urls(
     - ``url_template``: formats a URL template containing ``{page}`` with the
       current page value — for path-based pagination.
 
-    Failure semantics (#2722, #2737). Both fetch paths use bounded
-    retries with exponential backoff and full jitter. (Empty-200
-    classification is symmetric across the two paths but still
-    "successful end-of-pagination" — see #2739 for the open hole.)
+    Failure semantics (#2722, #2737, #2739). Both fetch paths use
+    bounded retries with exponential backoff and full jitter. Empty-200
+    classification is symmetric across the two paths and treated as
+    transient (retry, then raise) rather than end-of-pagination — the
+    fix from #2739 closing the silent-truncation hole on empty bodies
+    served as 200 (anti-bot challenge dropping body, partial CDN
+    response, origin glitch).
 
     - Static httpx (``pagination.browser=false``) — :func:`fetch_with_retry`.
     - Browser (``pagination.browser=true``) — :func:`_fetch_via_page`, which

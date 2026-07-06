@@ -16,7 +16,9 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_job_location_type, normalize_salary_unit
 from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -30,26 +32,13 @@ _PAGE_PATTERNS = [
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support", "status"})
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "full_time": "Full-time",
-    "permanent_full_time": "Full-time",
-    "part_time": "Part-time",
-    "permanent_part_time": "Part-time",
-    "contract_temp": "Contract",
-    "contract_to_hire": "Contract",
-    "fixed_term_contract": "Contract",
-    "freelance": "Contract",
-    "temporary": "Temporary",
-    "internship": "Intern",
-    "permanent": "Full-time",
-    "volunteer": "Volunteer",
-}
-
-_WORKPLACE_MAP: dict[str, str] = {
-    "remote": "remote",
-    "hybrid": "hybrid",
-    "onsite": "onsite",
-}
+# Pinpoint employment_type codes are passed through unchanged — the
+# central :func:`src.core.enum_normalize.normalize_employment_type`
+# handles ``full_time``/``permanent_full_time``/``contract_temp``/
+# ``volunteer`` etc.  The ``employment_type_text`` fallback below is
+# used when the upstream code is missing/empty.  ``workplace_type``
+# (``remote``/``hybrid``/``onsite``) is funnelled through
+# :func:`src.core.enum_normalize.normalize_job_location_type`.
 
 
 def _slug_from_url(board_url: str) -> str | None:
@@ -118,16 +107,9 @@ def _parse_salary(posting: dict) -> dict | None:
         return None
 
     currency = posting.get("compensation_currency")
-    freq = (posting.get("compensation_frequency") or "").lower()
-    unit = "year"
-    if "hour" in freq:
-        unit = "hour"
-    elif "month" in freq:
-        unit = "month"
-    elif "week" in freq or "two_weeks" in freq:
-        unit = "week"
-    elif "day" in freq:
-        unit = "day"
+    # Pinpoint defaults to ``year`` when frequency is missing/unknown.
+    # ``two_weeks`` is normalised to ``week`` by the central helper.
+    unit = normalize_salary_unit(posting.get("compensation_frequency")) or "year"
 
     return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
 
@@ -138,16 +120,14 @@ def _parse_job(posting: dict) -> DiscoveredJob | None:
     if not url:
         return None
 
-    # Employment type
-    emp_raw = posting.get("employment_type") or ""
-    employment_type = _EMPLOYMENT_TYPE_MAP.get(emp_raw)
-    if not employment_type:
-        # Fallback to human-readable text
-        employment_type = posting.get("employment_type_text") or None
+    # Employment type — pass through raw upstream code; if the API
+    # didn't supply a code, fall back to the human-readable text field
+    # (the central normalizer handles both shapes).
+    employment_type = posting.get("employment_type") or posting.get("employment_type_text") or None
 
     # Workplace / job location type
     workplace_raw = posting.get("workplace_type") or ""
-    job_location_type = _WORKPLACE_MAP.get(workplace_raw)
+    job_location_type = normalize_job_location_type(workplace_raw, default=None)
 
     # Metadata
     metadata: dict = {}
@@ -202,7 +182,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     if len(jobs) > MAX_JOBS:
         log.warning("pinpoint.truncated", url=url, total=len(jobs), cap=MAX_JOBS)
-        jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
+        return truncated_rich_result(jobs)
 
     return jobs
 

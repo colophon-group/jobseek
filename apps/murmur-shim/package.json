@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e:murmur": "RUN_E2E_MURMUR=1 vitest run app/api/murmur/__tests__/e2e.test.ts",
@@ -14,7 +15,7 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
-    "next": "^16.2.3",
+    "next": "^16.2.6",
     "postgres": "^3.4.8",
     "react": "^19",
     "react-dom": "^19"
@@ -24,12 +25,12 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitest/ui": "^4.0.18",
+    "@vitest/ui": "^4.1.9",
     "eslint": "^9.39.3",
     "happy-dom": "^20.8.9",
     "typescript": "^5",
     "typescript-eslint": "^8.56.1",
-    "vitest": "^4.0.18",
+    "vitest": "^4.1.9",
     "yaml": "^2.6.1"
   }
 }

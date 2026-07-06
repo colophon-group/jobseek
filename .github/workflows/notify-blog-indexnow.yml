@@ -1,0 +1,150 @@
+name: Notify IndexNow on blog content changes
+
+# Submits blog post URLs to IndexNow (Bing/Yandex/Seznam/Naver/Yep)
+# whenever an MDX file under `apps/web/src/content/blog/` lands on
+# `main`. Per-post locales come from the same `getBlogPostLocales(slug)`
+# helper the sitemap and page hreflang use, so we never push engines
+# at locale variants that don't exist on disk.
+#
+# IndexNow accepts re-submitted URLs without churn — this fires on
+# every content commit, not just on first publish, and that's fine.
+# Re-submitting the same URL is a "please recrawl" signal, not a
+# duplicate. See docs/13-seo-and-indexnow.md.
+#
+# Vercel race: pushing to main triggers a Vercel prod deploy in
+# parallel. If we POST to IndexNow before Vercel's deploy completes,
+# engines get a brief 404 window on a brand-new post (translated MDX
+# file added in the same commit). To avoid blindly burning 5 min of
+# runner time per push, we poll the GitHub Deployments API (Vercel
+# publishes a `Production`-environment deployment per SHA via its
+# GitHub App). We bail out as soon as that deployment reaches
+# `success`; we time out at 10 min if it never does, which surfaces
+# real Vercel outages instead of silently submitting against a stale
+# build. Re-submission on the next blog commit re-pings the URL
+# anyway, so the 1–7-day engine retry cushion still covers the worst
+# case.
+#
+# Why a separate workflow vs piggybacking on a deploy hook: keeps the
+# secret scope narrow (only this workflow needs INDEXNOW_KEY in the
+# Actions runner; Vercel env stays the source of truth for the
+# request-handler watchlist notifier). Also lets the path filter run
+# at action-dispatch time so a runner doesn't even spin up unless
+# blog content actually changed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/src/content/blog/**/*.mdx'
+  workflow_dispatch:
+
+concurrency:
+  group: notify-blog-indexnow-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  notify:
+    name: Submit blog URLs to IndexNow
+    runs-on: ubuntu-latest
+    # `INDEXNOW_KEY` lives at the Production environment scope (alongside
+    # DATABASE_URL, R2_*, etc. — see `gh api repos/.../environments/`
+    # `Production/secrets`). Without this declaration `secrets.INDEXNOW_KEY`
+    # resolves to empty, the script's `if (!INDEXNOW_KEY)` short-circuits,
+    # and submissions silently no-op. Every other prod-secret consumer in
+    # this repo declares the same — see deploy-crawler-browser.yml,
+    # deploy-murmur-shim.yml, crawler-scheduled-maintenance.yml.
+    environment: production
+    # `deployments: read` lets the poll step query Vercel's prod
+    # deployment status via the GitHub Deployments API. All other
+    # default permissions stay at their workflow defaults.
+    permissions:
+      contents: read
+      deployments: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Wait for Vercel prod deploy to settle
+        # Poll GitHub Deployments API for a `success` status on the
+        # `Production` deployment matching this push's SHA. Vercel
+        # publishes one via its GitHub App per prod build, with
+        # state transitions `in_progress` -> `success` (or
+        # `failure`/`error`). We exit 0 the moment we see success,
+        # which typically saves ~3-4 min compared to a flat 5-min
+        # sleep, and we cap at 10 min so a stuck Vercel build fails
+        # the job loudly instead of submitting against a stale
+        # surface.
+        #
+        # We filter the deployment list by `creator.login == "vercel[bot]"`
+        # because multiple workflows in this repo (ci.yml's "Test Web ISR
+        # (slow)", crawler-scheduled-maintenance.yml,
+        # deploy-crawler-browser.yml, sync-data.yml, deploy-murmur-shim.yml)
+        # also declare `environment: production` and therefore create their
+        # own Production deployment records via the GitHub Actions runner.
+        # Without the creator filter we could match a CI workflow's
+        # short-lived deployment (which finishes in seconds) instead of
+        # Vercel's actual build, race past it, and submit to IndexNow
+        # before content is live — exactly the race the original
+        # 5-min sleep guarded against.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          deadline=$(( $(date +%s) + 600 ))
+          while :; do
+            # Collect every status state across every Vercel-bot deployment
+            # matching this SHA in the Production environment. In practice
+            # there's exactly one Vercel deployment per SHA, but we don't
+            # depend on that. The `creator.login` filter excludes Production
+            # deployment records this repo's own CI workflows create for
+            # their `environment: production` jobs. Statuses are returned
+            # newest-first, so the first terminal state in the stream wins.
+            states=$(gh api \
+              "repos/${REPO}/deployments?sha=${DEPLOY_SHA}&environment=Production&per_page=10" \
+              --jq '.[] | select(.creator.login == "vercel[bot]") | .statuses_url' \
+            | while read -r url; do
+                gh api "$url" --jq '.[].state'
+              done) || true
+            status=$(printf '%s\n' "$states" \
+              | grep -E '^(success|failure|error|inactive)$' \
+              | head -n1 || true)
+            case "$status" in
+              success)
+                echo "Vercel prod deploy succeeded for ${DEPLOY_SHA}"
+                exit 0
+                ;;
+              failure|error)
+                echo "Vercel prod deploy reported '${status}' for ${DEPLOY_SHA}" >&2
+                exit 1
+                ;;
+              inactive)
+                # Superseded by a newer deploy — the URL is live on
+                # the newer one, so we can proceed.
+                echo "Vercel prod deploy for ${DEPLOY_SHA} was superseded ('inactive'); proceeding"
+                exit 0
+                ;;
+            esac
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "Timed out after 10 min waiting for Vercel prod deploy on ${DEPLOY_SHA}" >&2
+              exit 1
+            fi
+            sleep 15
+          done
+
+      - name: Submit blog post URLs
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: pnpm --filter @jobseek/web notify-blog-indexnow

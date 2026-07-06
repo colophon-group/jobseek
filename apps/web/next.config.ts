@@ -1,10 +1,119 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
+import crypto from "node:crypto";
+import fs from "node:fs";
 import path from "node:path";
+
+/**
+ * Company OG image renderer version.
+ *
+ * The company OG route stores rendered PNGs in R2 under
+ * `og/company/<renderer-version>/<locale>/<slug>.png`. The version is a
+ * conservative content hash of files that can plausibly affect the PNG.
+ * That deliberately creates some false invalidations: changing nearby
+ * company route code may rerender images even when the pixels stay the
+ * same. The tradeoff is intentional because under-invalidation leaves
+ * stale social cards until a manual purge.
+ *
+ * Force controls:
+ * - `COMPANY_OG_RENDERER_VERSION_SALT=<ticket/date>`: included in the
+ *   hash at build time. Use this to force a new object namespace without
+ *   changing code.
+ * - `COMPANY_OG_CACHE_BYPASS=1`: used by the route at build/request time
+ *   to skip R2 reads and overwrite the current key. Useful for repairing
+ *   bad objects under the current hash; pair with a redeploy for CDN
+ *   freshness.
+ */
+const COMPANY_OG_HASH_VERSION = "company-og-v1";
+
+const COMPANY_OG_HASH_INPUTS = [
+  "app/[lang]/(app)/company/[slug]",
+  "src/lib/actions/company.ts",
+  "src/lib/actions/company-page-data.ts",
+  "src/lib/cache-tags.ts",
+  "src/lib/cache-ttl.ts",
+  "src/lib/i18n.ts",
+  "src/lib/og",
+  "public/fonts/JetBrainsMono-Bold.ttf",
+  "package.json",
+  "next.config.ts",
+  "../../pnpm-lock.yaml",
+];
+
+const HASHED_EXTENSIONS = new Set([
+  ".css",
+  ".json",
+  ".mjs",
+  ".ts",
+  ".tsx",
+  ".ttf",
+  ".yaml",
+]);
+
+function collectHashInputFiles(inputPath: string): string[] {
+  const absolute = path.join(__dirname, inputPath);
+  if (!fs.existsSync(absolute)) return [absolute];
+  const stat = fs.statSync(absolute);
+  if (stat.isFile()) return [absolute];
+  if (!stat.isDirectory()) return [];
+
+  const files: string[] = [];
+  const visit = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (
+        entry.name === "node_modules" ||
+        entry.name === ".next" ||
+        entry.name === "coverage"
+      ) {
+        continue;
+      }
+      const child = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(child);
+      } else if (entry.isFile() && HASHED_EXTENSIONS.has(path.extname(entry.name))) {
+        files.push(child);
+      }
+    }
+  };
+  visit(absolute);
+  return files;
+}
+
+function computeCompanyOgRendererVersion(): string {
+  const hash = crypto.createHash("sha256");
+  hash.update(`${COMPANY_OG_HASH_VERSION}\n`);
+  hash.update(`salt:${process.env.COMPANY_OG_RENDERER_VERSION_SALT ?? ""}\n`);
+
+  const files = COMPANY_OG_HASH_INPUTS
+    .flatMap(collectHashInputFiles)
+    .sort((a, b) => a.localeCompare(b));
+
+  for (const file of files) {
+    const relative = path.relative(__dirname, file);
+    hash.update(relative);
+    hash.update("\0");
+    if (fs.existsSync(file) && fs.statSync(file).isFile()) {
+      hash.update(fs.readFileSync(file));
+    } else {
+      hash.update("<missing>");
+    }
+    hash.update("\0");
+  }
+
+  return hash.digest("hex").slice(0, 16);
+}
 
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  env: {
+    COMPANY_OG_RENDERER_VERSION: computeCompanyOgRendererVersion(),
+  },
+  // Stable Cache Components / Partial Prerendering (Next 16). Static
+  // shells prerender; `'use cache'` content caches per region; dynamic
+  // subtrees stream inside Suspense. See apps/web/docs/cache-components.md
+  // and #2835 for the conventions.
+  cacheComponents: true,
   images: {
     // Cache optimized images for 1 year. Company logos rarely change, and
     // Vercel purges its CDN cache on every deploy anyway.
@@ -19,6 +128,31 @@ const nextConfig: NextConfig = {
       { hostname: "jobseek-assets.colophon-group.org" },
       { hostname: "icons.duckduckgo.com" },
     ],
+    // Bound the cache-key cardinality. A transformation is billed once per
+    // unique (url, w, q, format). Default lists give 8 deviceSizes × 8
+    // imageSizes — anything along the device ladder is reachable, doubling
+    // (or worse) the per-source variant fan-out for no visible win on
+    // sources that are pixel-bound at the source resolution.
+    //
+    // qualities=[75]: lock to the default; no caller passes quality={N}.
+    // formats: explicit single format (Next 15+ default is webp; AVIF
+    //   would double transformation count for negligible byte savings on
+    //   the largest optimizer surfaces — 156-304 KB Features 1200×630
+    //   screenshot PNGs and 550-1024 px PublicDomainArt PNGs.
+    // deviceSizes: 8→4. The largest source emitted through the optimizer
+    //   is the 1200×630 Features screenshot. deviceSize > 1200 only
+    //   upscales (blurry, no extra information). 1920 keeps a small
+    //   buffer for moderate retina without paying for 2048/3840 variants.
+    // imageSizes: 8→6. Each existing company-icon width (16/20/24/28/32/36)
+    //   snaps to a rung still on this list (16, 32, 32, 32, 32, 48 — every
+    //   width has a smallest-≥ match), so the narrower list is safe for
+    //   the current call sites and is also forward-compatible with #2867
+    //   (which moves icons to `unoptimized`, dropping their imageSize use
+    //   entirely).
+    qualities: [75],
+    formats: ["image/webp"],
+    deviceSizes: [640, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128],
   },
   rewrites: async () => {
     const key = process.env.INDEXNOW_KEY;

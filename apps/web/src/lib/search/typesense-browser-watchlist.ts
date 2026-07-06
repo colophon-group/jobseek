@@ -1,6 +1,7 @@
 import { getTypesenseBrowserConfig, type TypesenseBrowserConfig } from "./typesense-browser-key";
-import { buildFilterString } from "./typesense-filters";
+import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 import { COMPANY_BATCH_SIZE } from "./constants";
+import { isTypesenseQueryStringSafe } from "./typesense-query-size";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 
 interface JobPostingDoc {
@@ -69,6 +70,10 @@ export interface WatchlistPostingsParams {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  /** Work-mode filter — `onsite | hybrid | remote` (issue #3037). */
+  workMode?: ("onsite" | "hybrid" | "remote")[];
+  /** Employment-type filter (issue #3037). */
+  employmentType?: string[];
   salaryMin?: number;
   salaryMax?: number;
   experienceMin?: number;
@@ -77,12 +82,12 @@ export interface WatchlistPostingsParams {
 }
 
 /**
- * Browser-side watchlist postings fetch. Mirrors the server-side
- * `_getWatchlistPostingsTypesense` for ≤COMPANY_BATCH_SIZE companies.
+ * Browser-side watchlist postings fetch. Mirrors the server-side single-query
+ * path when the request fits Typesense's GET query-string limit.
  *
- * For watchlists tracking >COMPANY_BATCH_SIZE companies, throws so the
- * runner falls back to the server action (which has a batched/merge
- * implementation we don't need to duplicate browser-side).
+ * For larger requests, throws so the runner falls back to the server action
+ * (which has a batched/merge implementation we don't need to duplicate
+ * browser-side).
  */
 export async function getWatchlistPostingsBrowser(
   params: WatchlistPostingsParams,
@@ -94,12 +99,13 @@ export async function getWatchlistPostingsBrowser(
     throw new Error("watchlist exceeds COMPANY_BATCH_SIZE — falling back");
   }
 
-  const cfg = await getTypesenseBrowserConfig();
   const filterStr = buildFilterString({
     locationIds: params.locationIds,
     occupationIds: params.occupationIds,
     seniorityIds: params.seniorityIds,
     technologyIds: params.technologyIds,
+    workMode: params.workMode?.length ? params.workMode : undefined,
+    employmentTypes: params.employmentType?.length ? params.employmentType : undefined,
     salaryMinEur: params.salaryMin,
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,
@@ -109,20 +115,26 @@ export async function getWatchlistPostingsBrowser(
   const hasKeywords = params.keywords && params.keywords.length > 0;
   const q = hasKeywords ? params.keywords!.join(" ") : "*";
 
-  const filterParts = ["is_active:true"];
+  const filterParts = [POSTING_BASE_FILTER];
   if (params.companyIds.length > 0) {
     filterParts.push(`company_id:[${params.companyIds.join(",")}]`);
   }
   if (filterStr) filterParts.push(filterStr);
 
-  const result = await searchOne<JobPostingDoc>(cfg, "job_posting", {
+  const searchParams = {
     q,
     query_by: "title",
     filter_by: filterParts.join(" && "),
     sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
     per_page: params.limit === 0 ? 0 : params.limit,
     page: params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,
-  });
+  };
+  if (!isTypesenseQueryStringSafe(searchParams)) {
+    throw new Error("watchlist Typesense query exceeds GET limit — falling back");
+  }
+
+  const cfg = await getTypesenseBrowserConfig();
+  const result = await searchOne<JobPostingDoc>(cfg, "job_posting", searchParams);
 
   const total = result.found ?? 0;
   if (total === 0 || params.limit === 0) return { postings: [], total };

@@ -1,14 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { X, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2 } from "lucide-react";
+import { X, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2, Home } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import { SearchBar } from "@/components/search/search-bar";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
 import { LanguageNote } from "@/components/search/language-note";
 import { SaveSearchButton } from "@/components/search/save-search-button";
 import type { SelectedLocation } from "@/components/search/location-pills";
-import type { HistogramFilters } from "@/lib/search";
+import type { HistogramFilters, WorkMode } from "@/lib/search";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
 
@@ -41,6 +41,8 @@ interface SearchToolbarProps {
   onRemoveTechnology?: (id: number) => void;
   employmentTypes?: string[];
   onToggleEmploymentType?: (type: string) => void;
+  workMode?: WorkMode[];
+  onToggleWorkMode?: (mode: WorkMode) => void;
   onSalaryChange?: (currency: string, min: number | undefined, max: number | undefined) => void;
   onExperienceChange?: (min: number | undefined, max: number | undefined) => void;
   histogramFilters?: HistogramFilters;
@@ -88,6 +90,8 @@ export function SearchToolbar({
   onRemoveTechnology,
   employmentTypes,
   onToggleEmploymentType,
+  workMode,
+  onToggleWorkMode,
   onSalaryChange,
   onExperienceChange,
   histogramFilters,
@@ -104,6 +108,8 @@ export function SearchToolbar({
     occupations.length > 0 ||
     seniorities.length > 0 ||
     (technologies?.length ?? 0) > 0 ||
+    (employmentTypes?.length ?? 0) > 0 ||
+    (workMode?.length ?? 0) > 0 ||
     salaryMin != null ||
     salaryMax != null ||
     experienceMin != null ||
@@ -156,6 +162,8 @@ export function SearchToolbar({
           onRemoveTechnology={onRemoveTechnology}
           employmentTypes={employmentTypes}
           onToggleEmploymentType={onToggleEmploymentType}
+          workMode={workMode}
+          onToggleWorkMode={onToggleWorkMode}
           onSalaryChange={onSalaryChange}
           onExperienceChange={onExperienceChange}
           histogramFilters={histogramFilters}
@@ -167,6 +175,8 @@ export function SearchToolbar({
             occupations={occupations}
             seniorities={seniorities}
             technologies={technologies}
+            employmentTypes={employmentTypes}
+            workMode={workMode}
             salaryMin={salaryMin}
             salaryMax={salaryMax}
             salaryCurrency={salaryCurrency}
@@ -177,68 +187,107 @@ export function SearchToolbar({
       </div>
       {hasFilters && (
         <div className="flex flex-wrap items-center gap-2">
-          {occupations.map((occ) => (
-            <span
-              key={`occ-${occ.id}`}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-            >
-              <Briefcase size={12} className="shrink-0" />
-              {occ.name}
-              <button
-                onClick={() => onRemoveOccupation(occ.id)}
-                className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+          {occupations.map((occ) => {
+            const name = occ.name;
+            return (
+              <span
+                key={`occ-${occ.id}`}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
               >
-                <X size={12} />
-              </button>
-            </span>
-          ))}
-          {seniorities.map((sen) => (
-            <span
-              key={`sen-${sen.id}`}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-            >
-              <BarChart3 size={12} className="shrink-0" />
-              {sen.name}
-              <button
-                onClick={() => onRemoveSeniority(sen.id)}
-                className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
-              >
-                <X size={12} />
-              </button>
-            </span>
-          ))}
-          {(technologies ?? []).map((tech) => (
-            <span
-              key={`tech-${tech.id}`}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-            >
-              <Code2 size={12} className="shrink-0" />
-              {tech.name}
-              {onRemoveTechnology && (
+                <Briefcase size={12} className="shrink-0" />
+                {name}
                 <button
-                  onClick={() => onRemoveTechnology(tech.id)}
+                  onClick={() => onRemoveOccupation(occ.id)}
                   className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                  aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}
                 >
-                  <X size={12} />
+                  <X size={12} aria-hidden="true" />
                 </button>
-              )}
-            </span>
-          ))}
-          {onToggleEmploymentType && employmentTypes && employmentTypes.map((et) => (
-            <span
-              key={et}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm capitalize text-primary"
-            >
-              <CalendarDays size={12} className="shrink-0" />
-              {et.replace(/_/g, " ")}
-              <button
-                onClick={() => onToggleEmploymentType(et)}
-                className="ml-0.5 cursor-pointer rounded-full p-0.5 transition-colors hover:bg-primary/20"
+              </span>
+            );
+          })}
+          {seniorities.map((sen) => {
+            const name = sen.name;
+            return (
+              <span
+                key={`sen-${sen.id}`}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
               >
-                <X size={12} />
-              </button>
-            </span>
-          ))}
+                <BarChart3 size={12} className="shrink-0" />
+                {name}
+                <button
+                  onClick={() => onRemoveSeniority(sen.id)}
+                  className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                  aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}
+                >
+                  <X size={12} aria-hidden="true" />
+                </button>
+              </span>
+            );
+          })}
+          {(technologies ?? []).map((tech) => {
+            const name = tech.name;
+            return (
+              <span
+                key={`tech-${tech.id}`}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+              >
+                <Code2 size={12} className="shrink-0" />
+                {name}
+                {onRemoveTechnology && (
+                  <button
+                    onClick={() => onRemoveTechnology(tech.id)}
+                    className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                    aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}
+                  >
+                    <X size={12} aria-hidden="true" />
+                  </button>
+                )}
+              </span>
+            );
+          })}
+          {onToggleEmploymentType && employmentTypes && employmentTypes.map((et) => {
+            const name = et.replace(/_/g, " ");
+            return (
+              <span
+                key={et}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm capitalize text-primary"
+              >
+                <CalendarDays size={12} className="shrink-0" />
+                {name}
+                <button
+                  onClick={() => onToggleEmploymentType(et)}
+                  className="ml-0.5 cursor-pointer rounded-full p-0.5 transition-colors hover:bg-primary/20"
+                  aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}
+                >
+                  <X size={12} aria-hidden="true" />
+                </button>
+              </span>
+            );
+          })}
+          {onToggleWorkMode && workMode && workMode.map((wm) => {
+            const name = wm === "onsite"
+              ? t({ id: "search.workMode.onsite", comment: "Work mode: onsite (in-office)", message: "On-site" })
+              : wm === "hybrid"
+                ? t({ id: "search.workMode.hybrid", comment: "Work mode: hybrid (mixed onsite/remote)", message: "Hybrid" })
+                : t({ id: "search.workMode.remote", comment: "Work mode: remote (work-from-home)", message: "Remote" });
+            return (
+              <span
+                key={`wm-${wm}`}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+              >
+                <Home size={12} className="shrink-0" />
+                {name}
+                <button
+                  onClick={() => onToggleWorkMode(wm)}
+                  className="ml-0.5 cursor-pointer rounded-full p-0.5 transition-colors hover:bg-primary/20"
+                  aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}
+                >
+                  <X size={12} aria-hidden="true" />
+                </button>
+              </span>
+            );
+          })}
           {onSalaryChange && (salaryMin != null || salaryMax != null) && (
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
               <DollarSign size={12} className="shrink-0" />
@@ -250,8 +299,9 @@ export function SearchToolbar({
               <button
                 onClick={() => onSalaryChange(salaryCurrency ?? "EUR", undefined, undefined)}
                 className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                aria-label={t({ id: "search.filters.removeSalary", comment: "Aria label for the X button that clears the salary-range filter", message: "Remove salary filter" })}
               >
-                <X size={12} />
+                <X size={12} aria-hidden="true" />
               </button>
             </span>
           )}
@@ -266,42 +316,51 @@ export function SearchToolbar({
               <button
                 onClick={() => onExperienceChange(undefined, undefined)}
                 className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                aria-label={t({ id: "search.filters.removeExperience", comment: "Aria label for the X button that clears the experience-range filter", message: "Remove experience filter" })}
               >
-                <X size={12} />
+                <X size={12} aria-hidden="true" />
               </button>
             </span>
           )}
-          {keywords.map((kw) => (
-            <span
-              key={kw}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-            >
-              {kw}
-              <button
-                onClick={() => onRemoveKeyword(kw)}
-                className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+          {keywords.map((kw) => {
+            const name = kw;
+            return (
+              <span
+                key={kw}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
               >
-                <X size={12} />
-              </button>
-            </span>
-          ))}
-          {locations.map((loc) => (
-            <span
-              key={loc.id}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-            >
-              <MapPin size={12} className="shrink-0" />
-              {loc.parentName && loc.type !== "country" && loc.type !== "macro"
-                ? `${loc.name}, ${loc.parentName}`
-                : loc.name}
-              <button
-                onClick={() => onRemoveLocation(loc.id)}
-                className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                {name}
+                <button
+                  onClick={() => onRemoveKeyword(kw)}
+                  className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                  aria-label={t({ id: "search.filters.removeKeyword", comment: "Aria label for remove-keyword X button; {name} is the keyword", message: `Remove keyword ${name}` })}
+                >
+                  <X size={12} aria-hidden="true" />
+                </button>
+              </span>
+            );
+          })}
+          {locations.map((loc) => {
+            const name = loc.parentName && loc.type !== "country" && loc.type !== "macro"
+              ? `${loc.name}, ${loc.parentName}`
+              : loc.name;
+            return (
+              <span
+                key={loc.id}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
               >
-                <X size={12} />
-              </button>
-            </span>
-          ))}
+                <MapPin size={12} className="shrink-0" />
+                {name}
+                <button
+                  onClick={() => onRemoveLocation(loc.id)}
+                  className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                  aria-label={t({ id: "search.filters.removeLocation", comment: "Aria label for remove-location X button; {name} is the location label", message: `Remove location ${name}` })}
+                >
+                  <X size={12} aria-hidden="true" />
+                </button>
+              </span>
+            );
+          })}
           <button
             onClick={onClearAll}
             className="cursor-pointer text-xs text-muted transition-colors hover:text-foreground"

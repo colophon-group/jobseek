@@ -152,6 +152,16 @@ async def _fetch_page(
         "start": offset,
         "num": num,
     }
+    # Retry observability (#3210). Same counter as ``http_retry.py`` so
+    # cross-monitor "retry storm" queries aggregate PCSX in. The PCSX
+    # ``host`` arg is already the tenant hostname (e.g. ``careers.kering.com``)
+    # — pass it through ``http_retry_host`` to normalize (lowercase, no port).
+    from src.metrics import http_retry_attempts_total, http_retry_host
+    from src.shared.tdm import check_response as _tdm_check
+
+    metric_host = http_retry_host(_api_url(host))
+    retried = False
+
     last_status = None
     last_exc: Exception | None = None
     for attempt in range(PCSX_DEFAULT_RETRY_MAX):
@@ -159,10 +169,16 @@ async def _fetch_page(
             resp = await http.get(_api_url(host), params=params, timeout=PCSX_TIMEOUT_S)
         except Exception as exc:
             last_exc = exc
+            http_retry_attempts_total.labels(host=metric_host, outcome="retry").inc()
+            retried = True
             await asyncio.sleep(1.0 * (attempt + 1))
             continue
         last_status = resp.status_code
         if resp.status_code == 200:
+            # TDM-Reservation respect (#2842). Header-only check; PCSX
+            # is a JSON API. ``TDMReservedError`` propagates out of the
+            # retry loop — publisher policy is not a transient error.
+            _tdm_check(resp)
             # Safety valve against a malicious / broken tenant returning
             # an enormous response body. ``resp.content`` is the already-
             # buffered body; httpx streams it up to this point regardless.
@@ -182,6 +198,8 @@ async def _fetch_page(
                 data = resp.json()
             except Exception as exc:  # noqa: BLE001 — log and retry
                 last_exc = exc
+                http_retry_attempts_total.labels(host=metric_host, outcome="retry").inc()
+                retried = True
                 await asyncio.sleep(0.5 * (attempt + 1))
                 continue
             # Defensive: PCSX could respond with an unexpected shape.
@@ -200,6 +218,8 @@ async def _fetch_page(
                     last_status=200,
                 )
             positions = (data_inner or {}).get("positions") or []
+            if retried:
+                http_retry_attempts_total.labels(host=metric_host, outcome="recovered").inc()
             return positions
         if resp.status_code == 403:
             # Distinguish "PCSX not enabled" from other 403s.
@@ -242,6 +262,8 @@ async def _fetch_page(
             # the polite-cadence intent is preserved.
             base_delay = 5.0 * (2**attempt)
             jittered = base_delay * random.uniform(0.8, 1.2)
+            http_retry_attempts_total.labels(host=metric_host, outcome="retry").inc()
+            retried = True
             await asyncio.sleep(jittered)
             continue
         # Other unexpected status — fail fast.
@@ -251,6 +273,7 @@ async def _fetch_page(
             last_status=resp.status_code,
         )
 
+    http_retry_attempts_total.labels(host=metric_host, outcome="exhausted").inc()
     raise PcsxFetchError(
         f"PCSX fetch failed after {PCSX_DEFAULT_RETRY_MAX} attempts "
         f"(last_status={last_status}, last_exc={last_exc!r})",

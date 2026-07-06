@@ -164,6 +164,14 @@ Combining them gives bounded delisting latency in both cases — at most one ful
 
 The asymmetry is deliberate: the monitor cycle is the *fast* path (minutes) when the listing is honest; the scrape budget is the *slow but eventual* path (~90 min) when it isn't. We trust the monitor first because per-cycle URL sets are cheaper than 3 per-URL retries; the budget exists because we can't trust every monitor to be authoritative about every URL.
 
+## TDM-Reservation respect
+
+Every fetch helper inspects upstream responses for the W3C [TDM Reservation Protocol](https://www.w3.org/TR/tdmrep/) opt-out signal before treating a body as crawlable content. Two channels are checked, in canonical-precedence order: the `tdm-reservation` HTTP response header (canonical, integer `1` = opt-out), and — when the header is absent — an `<meta name="tdm-reservation" content="1">` tag in the HTML body excerpt. Header `0` (explicit opt-in) takes precedence over any body meta. Non-integer values (`"true"`, `"yes"`, multi-value lists) are treated as absent, per the spec's "implementation-defined" clause for non-conformant values; we choose lenient over strict because false positives cost real boards while the spec gives us no obligation either way.
+
+Implementation lives in `apps/crawler/src/shared/tdm.py` (#2842). The helper `check_response(resp, body_excerpt=...)` is invoked by every shared and per-monitor fetch retry helper after a 200 status check: `fetch_with_retry` (http_retry.py), `_fetch_via_page` (dom-browser path with a Playwright-shaped `check_browser_response`), the per-monitor `_post_page_with_retry` / `_get_page_with_retry` in workday/lever/smartrecruiters/hireology/umantis, the api-sniffer `http_fetch_with_retry`, the PCSX `_fetch_page`, and the shared `make_http_fetcher` wrapper used by api_sniff and accenture. A positive signal raises `TDMReservedError`, which is **not** retried (publisher policy is not transient) and is caught at the monitor wrapper in `_process_one_board_streaming`. The wrapper logs `batch.monitor.tdm_reserved` (with `url`, `source` ∈ {`header`, `meta`}, `tdm_policy_url` for the optional companion `tdm-policy` header), increments `crawler_monitor_skipped_tdm_total{board_id, source}`, and returns success-shaped — no `_RECORD_FAILURE` ramp, no `_MARK_GONE_BY_TIMESTAMP` tombstoning, no `consecutive_failures` bump. The board is treated as a clean skip so that an opted-out publisher doesn't cascade into the 5-strike disable path.
+
+Empirically (#2842 blast-radius probe, 2026-05-09): 0 of 4709 active boards / 0 of 881 distinct origins emit the signal today, including all major ATS (greenhouse, ashby, lever, workday, smartrecruiters). The check exists ahead of any emergence — a single `boards.greenhouse.io` TDM declaration would skip thousands of boards at once, and we'd rather honor it on day one than after the next deploy. No feature flag: enforce-direct.
+
 ## R2 Drain
 
 Producer-consumer pipeline polling `descriptions WHERE NOT r2_uploaded`:
@@ -258,8 +266,8 @@ crawler board <slug>     # Process single board (debug)
 
 ```bash
 # docker-compose.yml defines: redis, worker (x3), browser, exporter, drain, alloy
-# deploy.sh: writes .env, pulls images, docker compose up, alembic migrate, crawler sync
-# CI: .github/workflows/deploy-crawler-browser.yml builds slim + full images
+# deploy.sh: writes rollback-backed .env, pulls the requested tag, preflights alembic + setup-typesense, stops processors, runs crawler sync, starts + gates services
+# CI: .github/workflows/deploy-crawler-browser.yml builds versioned slim + full images, then promotes them to latest after deploy succeeds
 ```
 
 Docker images:

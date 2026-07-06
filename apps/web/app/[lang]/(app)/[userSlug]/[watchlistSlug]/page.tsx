@@ -1,39 +1,54 @@
 import type { Metadata } from "next";
-import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { cacheLife, cacheTag } from "next/cache";
+import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
+import { watchlistCacheTag } from "@/lib/cache-tags";
+import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import {
   getPublicWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
 } from "@/lib/actions/watchlists";
-import { isTrivialWatchlist } from "@/lib/watchlist-utils";
+import { isQualifyingWatchlist } from "@/lib/watchlist-utils";
 import { siteConfig } from "@/content/config";
-import { buildAlternates } from "@/lib/seo";
+import { buildAlternates, buildWatchlistItemListJsonLd, JsonLd } from "@/lib/seo";
 import { WatchlistContent } from "./watchlist-content";
 
-// ISR window for the rendered metadata + page shell.
-//
-// The previous 10-minute window cycled the (DB lookup + Typesense facet
-// count) on every regen × every public watchlist. Watchlist metadata is
-// shared via the CDN, so freshness from a viewer's perspective comes from
-// the client-hydrated body, not metadata. Search engines re-crawl on a
-// much slower cadence than 10 minutes anyway. See issue #2648.
-export const revalidate = 3600;
+// 1-hour cache for both the metadata and the page body. Each is its
+// own `'use cache'` boundary — under cacheComponents they run in
+// separate clean AsyncLocalStorage snapshots, so React's `cache()`
+// wouldn't dedupe the watchlist lookup across them. Cross-boundary
+// dedup lives one level down: `getPublicWatchlistByUserAndSlug` is
+// wrapped in Redis `cached()` (60s TTL) so the two callers share a
+// single SQL roundtrip. Watchlist metadata is shared via the CDN, so
+// per-viewer freshness comes from the client-hydrated body — search
+// engines re-crawl on a much slower cadence than an hour anyway. See
+// issue #2648.
 
 type Props = {
   params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  "use cache";
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   const { userSlug, watchlistSlug, lang } = await params;
+  cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [detail, { i18n }] = await Promise.all([
     // Public-only fetch: never reads session, so the page stays
-    // statically prerenderable (revalidate=600 above). The session-aware
-    // variant is only used by the client-fired server action that
-    // hydrates the page body. See issue #2244.
+    // statically prerenderable. The session-aware variant is only used
+    // by the client-fired server action that hydrates the page body.
+    // See issue #2244. The Redis `cached()` wrapper inside
+    // `getPublicWatchlistByUserAndSlug` shares this lookup with the
+    // page-render call below.
     getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug),
     loadCatalog(locale),
   ]);
-  if (!detail) return {};
+  // No detail = watchlist doesn't exist or is private. Returning bare
+  // `{}` would let `[lang]/layout.tsx`'s `metadata.title.default`
+  // ("Job Seek") cascade and leave the page indexable. Tag explicitly
+  // as `noindex,follow` so search engines don't surface ghost
+  // watchlist URLs.
+  if (!detail) return { robots: { index: false, follow: true } };
 
   const ownerLabel = detail.owner.displayUsername ?? detail.owner.username ?? detail.owner.name;
   const title = `${detail.title} — @${ownerLabel}`;
@@ -94,23 +109,69 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const path = `/${userSlug}/${watchlistSlug}`;
-  const trivial = isTrivialWatchlist(detail.filters, detail.companies.length);
+  // Mirror the sitemap quality gate (#2823): if the watchlist wouldn't
+  // be in the sitemap, also `noindex,follow` it on direct discovery
+  // (someone shares the link, Google crawls it). Predicate lives in
+  // `watchlist-utils.ts::isQualifyingWatchlist` so SQL and JS stay in
+  // lockstep.
+  const indexable = isQualifyingWatchlist({
+    title: detail.title,
+    filters: detail.filters,
+    companyCount: detail.companies.length,
+    createdAt: detail.createdAt,
+  });
   return {
     title,
     description,
     alternates: buildAlternates(path, locale),
+    // No `images` override — the per-watchlist `opengraph-image.tsx`
+    // sibling generates richer cards (title + owner + company count +
+    // filter count). Setting `images` here would bypass it.
     openGraph: {
       title,
       description,
       url: `${siteConfig.url}/${locale}${path}`,
       type: "website",
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
     },
-    ...(trivial && { robots: { index: false, follow: true } }),
+    ...(!indexable && { robots: { index: false, follow: true } }),
   };
 }
 
 export default async function WatchlistRoute({ params }: Props) {
+  "use cache";
+  cacheLife({ revalidate: CACHE_TTL_LONG });
   const { lang, userSlug, watchlistSlug } = await params;
+  cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
+  const locale = isLocale(lang) ? lang : defaultLocale;
 
-  return <WatchlistContent lang={lang} userSlug={userSlug} watchlistSlug={watchlistSlug} />;
+  // Re-fetch the watchlist detail. The Redis `cached()` layer inside
+  // `getPublicWatchlistByUserAndSlug` shares the result with the
+  // `generateMetadata` call above (single SQL per cold cache fill).
+  // The body is client-rendered via WatchlistContent, but the
+  // structured data must reach non-JS consumers (AI retrievers,
+  // search-engine crawlers that don't execute JS) — emitting it
+  // server-side is the only path.
+  const detail = await getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug);
+
+  // For `anyCompany` watchlists, `detail.companies` is unrelated to
+  // what the watchlist actually tracks (it holds leftover rows from
+  // source copies — see existing comment in `generateMetadata`).
+  // Emitting `Organization` references for that noise would mislead
+  // schema consumers. Skip JSON-LD entirely for those; the page
+  // metadata description still describes the watchlist correctly.
+  const itemListJsonLd = detail && !detail.filters.anyCompany
+    ? buildWatchlistItemListJsonLd(
+        { title: detail.title, companies: detail.companies },
+        locale,
+      )
+    : null;
+
+  return (
+    <>
+      {itemListJsonLd && <JsonLd data={itemListJsonLd} />}
+      <WatchlistContent lang={lang} userSlug={userSlug} watchlistSlug={watchlistSlug} />
+    </>
+  );
 }

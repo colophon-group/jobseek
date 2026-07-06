@@ -67,6 +67,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "workday",
     "ycombinator",
     "sitemap",
+    "talentbrew",
     "phenom",
     "nextdata",
     "notion",
@@ -93,6 +94,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "eightfold",
         "embedded",
         "json-ld",
+        "mokahr",
         "nextdata",
         "notion",
         "oracle_hcm",
@@ -264,6 +266,8 @@ def auto_scraper_type(
         # Every tenant has a JSON-LD JobPosting on the detail page.
         # Tenants whose pages need Playwright render (mcdonalds-*, nationwide
         # detail) override with ``{"render": true}`` in boards.csv.
+        return ("json-ld", None)
+    if monitor_type == "talentbrew":
         return ("json-ld", None)
     if monitor_type == "softgarden":
         return ("json-ld", None)

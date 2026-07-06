@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import (
     BoardGoneError,
     DiscoveredJob,
@@ -21,6 +22,7 @@ from src.core.monitors import (
     slug_guess_allowed,
     slugs_from_url,
 )
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -33,21 +35,15 @@ _PAGE_PATTERNS = [
     re.compile(r"recruiteecdn\.com"),
     re.compile(r"window\.recruitee"),
 ]
+_PAGE_MARKER_RE = re.compile(r"\b(?:recruiteecdn\.com|window\.recruitee)\b")
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support", "status"})
 
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "fulltime": "Full-time",
-    "fulltime_permanent": "Full-time",
-    "fulltime_fixed_term": "Full-time",
-    "parttime": "Part-time",
-    "parttime_permanent": "Part-time",
-    "parttime_fixed_term": "Part-time",
-    "freelance": "Contract",
-    "internship": "Intern",
-    "traineeship": "Intern",
-    "volunteer": "Volunteer",
-}
+# Recruitee employment-type codes (``fulltime_permanent``,
+# ``parttime_fixed_term``, ``freelance``, ``traineeship``, …) pass
+# through unchanged — the central
+# :func:`src.core.enum_normalize.normalize_employment_type` handles
+# them.
 
 
 def _slug_from_url(board_url: str) -> str | None:
@@ -121,14 +117,8 @@ def _parse_salary(offer: dict) -> dict | None:
     if sal_min is None and sal_max is None:
         return None
     currency = salary.get("currency")
-    period = (salary.get("period") or "").lower()
-    unit = "year"
-    if "hour" in period:
-        unit = "hour"
-    elif "month" in period:
-        unit = "month"
-    elif "week" in period:
-        unit = "week"
+    # Recruitee defaults to ``year`` when period is missing/unknown.
+    unit = normalize_salary_unit(salary.get("period")) or "year"
     return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
 
 
@@ -148,9 +138,8 @@ def _parse_job(offer: dict) -> DiscoveredJob | None:
         parts.append(reqs)
     description = "\n".join(parts) if parts else None
 
-    # Employment type
-    emp_code = offer.get("employment_type_code") or ""
-    employment_type = _EMPLOYMENT_TYPE_MAP.get(emp_code, emp_code or None)
+    # Employment type — pass through raw upstream code.
+    employment_type = offer.get("employment_type_code") or None
 
     # Metadata
     metadata: dict = {}
@@ -241,7 +230,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     if len(jobs) > MAX_JOBS:
         log.warning("recruitee.truncated", url=url, total=len(jobs), cap=MAX_JOBS)
-        jobs = sorted(jobs, key=lambda j: j.url)[:MAX_JOBS]
+        return truncated_rich_result(jobs)
 
     return jobs
 
@@ -283,8 +272,8 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                             result["jobs"] = count
                         return result
 
-        # Also check for recruiteecdn.com or window.recruitee
-        if "recruiteecdn.com" in html or "window.recruitee" in html:
+        # Also check for Recruitee markers.
+        if _PAGE_MARKER_RE.search(html):
             log.info("recruitee.detected_marker", url=url)
             api_base = _api_base_from_url(url)
             if api_base:

@@ -1,0 +1,73 @@
+---
+title: "Seguire un annuncio di lavoro dalla pagina carriere al tuo feed"
+description: "Un nuovo ruolo compare alle 10:14 del mattino. Alle 11:32 è nel nostro indice. Questo è il percorso che fa — e il motivo per cui esiste ogni passaggio."
+datePublished: "2026-05-07"
+dateModified: "2026-05-07"
+author: "Viktor Shcherbakov"
+tags: ["how-we-index", "infrastructure", "crawler"]
+relatedWatchlists: ["colophongroup/big-tech-jobs-in-switzerland"]
+---
+
+Un nuovo ruolo compare alle 10:14 del mattino sulla pagina carriere di <Company slug="anthropic" />. Alle 11:32 è nel nostro indice. Al successivo aggiornamento della tua watchlist, è nel tuo feed.
+
+Se cerchi il riassunto in stile specifica — stringa User-Agent esatta, frequenza delle richieste per host, retry policy, elenco ATS completo — quello sta sulla [pagina della policy di indicizzazione](/it/how-we-index). Questo articolo è la storia.
+
+## Passaggio 1: una stretta di mano di trenta secondi
+
+Anthropic usa Greenhouse; SAP usa SuccessFactors; Stripe ha un sistema proprio; Workday è Workday. Ci sono circa 30 piattaforme ATS distinte nella fascia alta e una coda molto più lunga oltre. Gran parte del lavoro di gestione di Job Seek consiste nel trattare ognuna come un protocollo leggermente diverso, pur sembrando uguali dall'esterno.
+
+Per ogni azienda manteniamo una riga in `boards.csv` che specifica: quale tipo di monitor usare, dove si trova il board, un filtro regex opzionale per i link delle offerte, talvolta un flag che dice «questo è dietro un WAF, instrada la richiesta tramite proxy». Quando il crawler raccoglie quell'azienda nel suo tick, la riga guida tutto il resto.
+
+Per Anthropic nello specifico — un board Greenhouse — il monitor chiama `https://boards-api.greenhouse.io/v1/boards/<token>/jobs` e riceve una lista JSON. Per Workday inviamo POST a `/wday/cxs/<tenant>/<site>/jobs` con un payload di ricerca JSON. Per i board senza nessuno dei due, percorriamo una sitemap, parsiamo `__NEXT_DATA__` o ripieghiamo sull'estrazione DOM via Playwright.
+
+## Passaggio 2: il ritmo cortese
+
+Due regole governano ogni richiesta del crawler:
+
+- **Qualche secondo tra richieste allo stesso host.** Default 2s, scendendo a 0,5s per domini ATS noti come amichevoli. Un re-check completo di un board parte al massimo una volta l'ora. Anche presso le aziende più grandi della nostra lista, non siamo mai il visitatore più rumoroso della pagina carriere. Budget di concurrency per IP, backoff esponenziale sugli errori, disabilitazione automatica dopo 5 fallimenti consecutivi, perché un board mal configurato o spostato fallisca in modo rumoroso anziché silenzioso.
+- **`robots.txt` è vincolante.** Se la robots.txt di un'azienda vieta ciò che stiamo provando a recuperare, ci fermiamo. Rispettiamo anche l'header EU TDM-Reservation (opt-out per text and data mining) per le aziende che lo emettono. Il nostro User-Agent ci identifica — `Job-Seek-Crawler/X.Y +https://jseek.co/how-we-index` — così chi legge i log del server sa esattamente chi sta chiamando.
+
+Non è generosità: è come si resta benvenuti negli anni. Il numero di aziende che ci hanno chiesto di rallentare o di fermarci è piccolo — ed è l'unica metrica che conta qui.
+
+## Passaggio 3: estrarre l'annuncio vero e proprio
+
+Dal monitoring emerge un nuovo URL. Il worker successivo lo prende, scarica la pagina e prova a estrarre l'annuncio strutturato.
+
+Percorso veloce: la maggior parte degli ATS moderni include `application/ld+json` di tipo `JobPosting` — titolo, sede, tipo di impiego, retribuzione, `datePosted`, `validThrough`. L'API di Greenhouse restituisce un JSON normalizzato; quella di Lever pure; Ashby, Rippling, Workable più o meno uguali.
+
+Dove i dati strutturati mancano o sono sbagliati, ripieghiamo sull'estrazione DOM a passaggi — piccole ricette per board che dicono «prendi il titolo da questo selettore, la sede da quello, la descrizione dal corpo dell'articolo». Ognuna è stata scritta per un board in cui tutto il resto aveva già fallito.
+
+L'output è un record `JobContent` con campi normalizzati: un tipo di impiego scelto tra cinque enum (`full_time`, `part_time`, `contract`, `internship`, `full_or_part`), un job-location-type da un set di tre (`onsite`, `remote`, `hybrid`), località risolte in ID [GeoNames](https://www.geonames.org/), una retribuzione parsata in currency-min-max strutturato con frequenza. Ciò che arriva nel nostro database è più uniforme della pagina carriere da cui proviene. Senza quell'uniformità, confrontare ruoli tra aziende è senza speranza.
+
+## Passaggio 4: quando i datacenter non sono i benvenuti
+
+Alcune pagine carriere non vogliono bot dai datacenter. Il board eightfold di Starbucks restituisce un captcha 405 a qualunque cosa sembri un IP Hetzner, per quanto cortesemente chiediamo. Workday per un paio di grandi clienti, idem. Rispettiamo il segnale — se un'azienda blocca attivamente il traffico datacenter, è una richiesta di rallentare — ma perdere visibilità su ~5% degli annunci era più di quanto volessimo accettare.
+
+Il compromesso: un piccolo, trasparente insieme di board sceglie un provider di proxy residenziali. I board sul percorso proxy sono rate-limited ancora più aggressivamente. Se un IP proxy viene bloccato da un'origine, perdiamo quell'IP e non discutiamo.
+
+Non fingiamo mai di essere un utente vero. Lo User-Agent resta onesto. Instradiamo solo la richiesta tramite un'uscita residenziale, perché il filtro di reputazione IP dell'origine non la rifiuti prima che il suo filtro di contenuto abbia avuto modo di vedere chi chiama.
+
+## Passaggio 5: da «nel database» a «nel tuo feed»
+
+Il Postgres locale sul nostro server crawler è la fonte di verità. Da lì, due pipeline girano di continuo:
+
+- Un **exporter change-data-capture** invia le righe di posting nuove e modificate a Supabase (il database pubblico di lettura) e a Typesense (l'indice di ricerca). Due cursori, due destinazioni, deduplicazione sull'identifier, aggiornamenti condizionali perché un nuovo scrape senza cambiamenti reali non sposti `updated_at`.
+- Un **R2 drain** spinge i blob di descrizione delle offerte su Cloudflare R2 e scrive l'hash di contenuto risultante nel Postgres locale; l'exporter trasporta poi l'hash a Supabase. Separiamo la descrizione dalla riga perché è il campo più voluminoso, usato meno spesso (solo nella vista di dettaglio) e che cambia meno frequentemente.
+
+Una watchlist che corrisponde al nuovo annuncio lo prende al successivo idratamento della pagina contro Typesense. Per chi ha già l'app aperta, è il prossimo refresh — tipicamente entro pochi minuti dall'ingestione delle 11:32 di sopra.
+
+## Passaggio 6: come decidiamo che un annuncio è andato
+
+Le aziende pubblicano annunci e si dimenticano di toglierli. Gli ATS delistano in modo pigro. I monitor basati su sitemap possono essere troncati. Il costo di un delisting falso-positivo è alto: una watchlist che lascia cadere un annuncio ancora aperto presso il datore di lavoro dei sogni di qualcuno è il tipo di errore che chiude la relazione.
+
+Quindi calibriamo in base all'affidabilità della fonte. Per i monitor API con semantica di lista definitiva — Greenhouse, Lever, la ricerca tenant di Workday, ecc., dove «non nella risposta» significa «non sul board» — delistiamo al primo mancato riscontro. Per i monitor URL-only fragili (sitemap, estrazione DOM) aspettiamo quattro cicli mancati consecutivi, più drop-guard a livello di flotta che sopprimono delisting di massa quando una sitemap o una risposta API sembra sospettosamente troncata. Una volta delistato, conserviamo l'URL della fonte (linkabile, valore d'archivio) e smettiamo di mostrare l'annuncio nei feed attivi. Se ricompare alla fonte, lo rilistiamo con il `first_seen_at` originale — quel dettaglio pesa più di quanto sembri, perché impedisce che una rotazione accidentale faccia sembrare freschi vecchi ruoli.
+
+## Passaggio 7: opt-out
+
+Se gestisci una pagina carriere e vuoi che smettiamo di indicizzarla, scrivi a `business@colophon-group.org`. L'azienda esce da `companies.csv` e il sync successivo cancella le sue offerte. L'opt-out è più veloce dell'opt-in, per design.
+
+---
+
+Questo è il percorso da un clic su un form di admin di pagina carriere a una riga nel tuo feed. L'architettura ha più pezzi di così — uno strumento di workflow `ws` che gli umani (be', adesso gli agenti) usano per onboardare nuove aziende, una routine quotidiana di revisione errori, un dataset di annunci etichettati per il modello che stiamo costruendo — ma quelle sono storie per altri articoli.
+
+Se qualcosa qui ti ha sorpreso o suonato strano, la [pagina della policy di indicizzazione](/it/how-we-index) ha la versione contrattuale. Il crawler è open source ([github.com/colophon-group/jobseek](https://github.com/colophon-group/jobseek)) e la maggior parte di quanto descritto sopra è lì, se vuoi leggere il codice vero.

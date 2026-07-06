@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import math
 import time
 import uuid
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import asyncpg
@@ -12,6 +14,7 @@ from prometheus_client import Gauge
 
 from src.config import settings
 from src.metrics import (
+    export_errors_total,
     exporter_export_lag,
     exporter_flush_duration,
     exporter_last_flush_ts,
@@ -55,9 +58,42 @@ log = structlog.get_logger()
 _EPOCH = datetime.min.replace(tzinfo=UTC)
 _ZERO_UUID = uuid.UUID(int=0)
 
+# Sentinel stamped on Typesense `experience_max` for rows the extractor
+# treated as open-ended ("N+ years" → Postgres `experience_max IS NULL`).
+# Chosen well above any plausible real requirement so range-overlap
+# filters built from the UI (whose pills top out at single-digit years)
+# always include these rows when the user's upper bound ≥ N. See #3217.
+_EXPERIENCE_MAX_OPEN_ENDED = 99
+
 # Cursor is a (timestamp, id) pair for keyset pagination.
 # Stored as "ts_iso|uuid" in exporter_state.
 Cursor = tuple[datetime, uuid.UUID]
+
+
+def _encode_experience_for_typesense(
+    exp_min: object,
+    exp_max: object,
+) -> tuple[int, int, float, float]:
+    """Encode decimal-year experience values for Typesense.
+
+    ``experience_min``/``experience_max`` are legacy integer facets retained so
+    older documents keep matching during the float-field rollout. They are
+    conservative for decimal values: min rounds up and bounded max rounds down,
+    preventing the fallback branch from broadening precise float matches.
+    """
+    if exp_min is None:
+        return -1, -1, -1.0, -1.0
+
+    min_years = float(exp_min)
+    if exp_max is None:
+        max_years = float(_EXPERIENCE_MAX_OPEN_ENDED)
+        legacy_max = _EXPERIENCE_MAX_OPEN_ENDED
+    else:
+        max_years = float(exp_max)
+        legacy_max = math.floor(max_years)
+
+    legacy_min = math.ceil(min_years)
+    return legacy_min, legacy_max, min_years, max_years
 
 
 async def _get_cursor(pool: asyncpg.Pool, table: str) -> Cursor:
@@ -88,6 +124,39 @@ async def _save_cursor(pool: asyncpg.Pool, table: str, cursor: Cursor) -> None:
     )
 
 
+async def _save_cursors_atomic(
+    pool: asyncpg.Pool,
+    cursors: list[tuple[str, Cursor]],
+) -> None:
+    """Persist multiple export cursors in a single transaction.
+
+    Issue #3171: the exporter previously called ``_save_cursor`` twice
+    in sequence (Supabase first, Typesense second). A crash between the
+    two writes — OOM, SIGKILL, host reboot — left the Supabase cursor
+    advanced but the Typesense cursor stale. On restart the entire
+    just-exported batch was re-pushed to Typesense (or vice versa),
+    burning CPU and re-touching every doc in the batch.
+
+    Wrapping the upserts in a single transaction makes the pair atomic:
+    either both cursors land or neither does. If neither lands, the
+    next tick just re-fetches the same rows and re-upserts to both
+    targets (which is idempotent — Supabase ON CONFLICT and Typesense
+    ``import_(..., {"action": "upsert"})``).
+    """
+    if not cursors:
+        return
+    async with pool.acquire() as conn, conn.transaction():
+        for table, cursor in cursors:
+            ts, last_id = cursor
+            await conn.execute(
+                "INSERT INTO exporter_state (key, value, updated_at) "
+                "VALUES ($1, $2, now()) "
+                "ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now()",
+                f"last_export_ts:{table}",
+                f"{ts.isoformat()}|{last_id}",
+            )
+
+
 # ---------------------------------------------------------------------------
 # Taxonomy name maps for Typesense denormalization
 # ---------------------------------------------------------------------------
@@ -95,21 +164,29 @@ async def _save_cursor(pool: asyncpg.Pool, table: str, cursor: Cursor) -> None:
 _TAXONOMY_REFRESH_INTERVAL = 600  # 10 minutes
 
 
+@dataclass
 class TaxonomyMaps:
-    """In-memory lookup tables for denormalizing Typesense documents."""
+    """In-memory lookup tables for denormalizing Typesense documents.
 
-    def __init__(self) -> None:
-        self.location_names: dict[int, dict[str, str]] = {}
-        self.location_types: dict[int, str] = {}
-        self.company_info: dict[uuid.UUID, dict[str, str | None]] = {}
-        self.occupation_names: dict[int, str] = {}
-        self.occupation_ancestors: dict[int, list[int]] = {}
-        self.seniority_names: dict[int, str] = {}
-        self.technology_names: dict[int, str] = {}
-        # Ancestor lookup maps for hierarchy-free Typesense filtering
-        self.location_ancestors: dict[int, list[int]] = {}
-        self.occupation_ancestors: dict[int, list[int]] = {}
-        self._last_refresh: float = 0.0
+    Declared as a ``@dataclass`` to make field uniqueness auditable —
+    ``dataclasses.fields(TaxonomyMaps)`` returns one entry per logical
+    slot, so a regression test can assert there is exactly one
+    ``occupation_ancestors`` field. Issue #3124: the prior class-body
+    ``__init__`` defined ``self.occupation_ancestors`` twice, and the
+    second assignment silently shadowed the first.
+    """
+
+    # Name maps (per-locale where applicable)
+    location_names: dict[int, dict[str, str]] = field(default_factory=dict)
+    location_types: dict[int, str] = field(default_factory=dict)
+    company_info: dict[uuid.UUID, dict[str, str | None]] = field(default_factory=dict)
+    occupation_names: dict[int, str] = field(default_factory=dict)
+    seniority_names: dict[int, str] = field(default_factory=dict)
+    technology_names: dict[int, str] = field(default_factory=dict)
+    # Ancestor lookup maps for hierarchy-free Typesense filtering
+    location_ancestors: dict[int, list[int]] = field(default_factory=dict)
+    occupation_ancestors: dict[int, list[int]] = field(default_factory=dict)
+    _last_refresh: float = 0.0
 
     @property
     def stale(self) -> bool:
@@ -178,19 +255,6 @@ class TaxonomyMaps:
         )
         self.occupation_names = {r["occupation_id"]: r["name"] for r in rows}
 
-    async def _load_occupation_ancestors(self, pool: asyncpg.Pool) -> None:
-        rows = await pool.fetch("SELECT id, parent_id FROM occupation")
-        parents: dict[int, int | None] = {r["id"]: r["parent_id"] for r in rows}
-        ancestors: dict[int, list[int]] = {}
-        for oid in parents:
-            chain: set[int] = set()
-            current: int | None = oid
-            while current is not None:
-                chain.add(current)
-                current = parents.get(current)
-            ancestors[oid] = list(chain)
-        self.occupation_ancestors = ancestors
-
     async def _load_seniority_names(self, pool: asyncpg.Pool) -> None:
         rows = await pool.fetch(
             "SELECT seniority_id, name FROM seniority_name "
@@ -219,12 +283,33 @@ class TaxonomyMaps:
         for r in rows:
             loc_parents[r["id"]] = r["parent_id"]
 
-        # Macro-region membership (country_id -> [macro_ids])
+        # Macro-region membership (country_id -> [macro_ids]).
+        # Empty / missing -> macros never get stamped onto postings, which
+        # silently breaks the EU/EMEA/DACH macro filter (issue #2978). Be
+        # loud when the table is empty or unreadable so the operator can
+        # re-seed from Supabase, instead of swallowing the failure.
         macro_members: dict[int, list[int]] = defaultdict(list)
-        with contextlib.suppress(Exception):
+        try:
             rows = await local_pool.fetch("SELECT country_id, macro_id FROM location_macro_member")
-            for r in rows:
-                macro_members[r["country_id"]].append(r["macro_id"])
+        except Exception as exc:
+            # Table missing or transient DB error — fail open so the
+            # exporter keeps running, but make sure we surface it.
+            log.warning(
+                "exporter.location_macro_member.unreadable",
+                error=str(exc),
+            )
+            rows = []
+        for r in rows:
+            macro_members[r["country_id"]].append(r["macro_id"])
+        if not macro_members:
+            # Table exists but is empty: this is the failure mode we hit
+            # when the local Postgres has never been seeded with the
+            # macro->country links. Postings will be missing macro
+            # ancestors in their location_ids until this is fixed.
+            log.warning(
+                "exporter.location_macro_member.empty",
+                hint="seed location_macro_member from Supabase to enable macro filters",
+            )
 
         # Build ancestor map
         ancestors: dict[int, list[int]] = {}
@@ -240,11 +325,22 @@ class TaxonomyMaps:
         self.location_ancestors = ancestors
 
     async def _load_occupation_ancestors(self, pool: asyncpg.Pool) -> None:
-        """Build occupation_id -> [self + all ancestor IDs] map."""
+        """Build occupation_id -> [self + all ancestor IDs] map.
+
+        Walks the ``parent_id`` chain AND unions in ``domain_id`` so that
+        a posting tagged with a specific occupation carries the domain
+        root in its expanded ``occupation_ids``. Without this, filtering
+        by domain id (e.g. ``occupation_ids:=<software_engineering>``)
+        returns 0 because no posting has the domain id stamped (#2980).
+        Mirrors the location macro expansion in
+        ``_load_location_ancestors`` (#2977).
+        """
         occ_parents: dict[int, int | None] = {}
-        rows = await pool.fetch("SELECT id, parent_id FROM occupation")
+        occ_domains: dict[int, int | None] = {}
+        rows = await pool.fetch("SELECT id, parent_id, domain_id FROM occupation")
         for r in rows:
             occ_parents[r["id"]] = r["parent_id"]
+            occ_domains[r["id"]] = r["domain_id"]
 
         ancestors: dict[int, list[int]] = {}
         for oid in occ_parents:
@@ -253,6 +349,11 @@ class TaxonomyMaps:
             while current is not None:
                 anc.add(current)
                 current = occ_parents.get(current)
+            # Union in the domain id so domain-as-single-filter works
+            # (parity with location macro membership).
+            domain_id = occ_domains.get(oid)
+            if domain_id is not None and domain_id != oid:
+                anc.add(domain_id)
             ancestors[oid] = list(anc)
         self.occupation_ancestors = ancestors
 
@@ -331,9 +432,16 @@ def _build_typesense_docs(
         tech_ids = row["technology_ids"] or []
         tech_names = [maps.technology_names.get(tid, "") for tid in tech_ids]
 
-        exp_min = row["experience_min"]
-        if exp_min is None:
-            exp_min = -1
+        # Experience encoding for Typesense (issues #3217, #3289):
+        # - `experience_min_years` / `experience_max_years` are precise float
+        #   fields. Sentinel -1.0 means the extractor found no requirement;
+        #   open-ended ranges use 99.0 for max.
+        # - `experience_min` / `experience_max` remain integer compatibility
+        #   fields so existing docs keep matching while the new fields backfill.
+        exp_min, exp_max, exp_min_years, exp_max_years = _encode_experience_for_typesense(
+            row["experience_min"],
+            row["experience_max"],
+        )
 
         locales = row["locales"] or []
         if not locales:
@@ -345,6 +453,13 @@ def _build_typesense_docs(
         last_seen = row.get("last_seen_at") if hasattr(row, "get") else row["last_seen_at"]
         last_seen_ts = int(last_seen.timestamp()) if last_seen else None
 
+        # `has_content` flag drives the issue #2917 web filter — postings
+        # without a usable title or with no description blob in R2 are
+        # excluded from search/listing surfaces. Emitted as a boolean on
+        # every doc (not gated like `optional` fields) so it always
+        # reflects the latest title/description state on update.
+        has_content = bool(title and title.strip()) and (row["description_r2_hash"] is not None)
+
         doc: dict = {
             "id": str(row["id"]),
             "company_id": str(company_id),
@@ -352,6 +467,7 @@ def _build_typesense_docs(
             "company_slug": company_slug,
             "title": title,
             "is_active": row["is_active"],
+            "has_content": has_content,
             "location_ids": expanded_location_ids,
             "location_names": location_names,
             "location_types": list(row["location_types"] or []),
@@ -360,6 +476,9 @@ def _build_typesense_docs(
             "technology_names": tech_names,
             "employment_type": row["employment_type"] or "",
             "experience_min": exp_min,
+            "experience_max": exp_max,
+            "experience_min_years": exp_min_years,
+            "experience_max_years": exp_max_years,
             "locales": list(locales),
             "first_seen_at": first_seen_ts,
         }
@@ -394,33 +513,77 @@ def _build_typesense_docs(
 
 async def _upsert_to_typesense(
     docs: list[dict],
-) -> None:
+) -> set[str]:
     """Batch upsert documents to Typesense job_posting collection.
 
-    Instruments typesense_export_docs_total and typesense_export_duration_seconds.
-    The typesense client is synchronous, so we run it in an executor.
+    Instruments ``typesense_export_docs_total`` and
+    ``typesense_export_duration_seconds``. The typesense client is
+    synchronous, so we run it in an executor.
+
+    Returns the set of document IDs that failed to import. The
+    Typesense ``import_`` endpoint returns a per-doc result list
+    (``[{"success": true|false, "error": "..."}, ...]``) so a single
+    bad doc no longer poisons the whole batch (#3180). Each failure is
+    logged with the doc id and error string and counted in
+    ``export_errors_total{phase="typesense"}``. The caller advances the
+    Typesense cursor past failed docs so the exporter doesn't loop on
+    them forever.
+
+    A whole-batch transport failure (Typesense unreachable, 5xx, etc.)
+    still raises — that's not a per-doc poison-pill, it's a downstream
+    incident the caller (``_export_postings_dual``) is expected to
+    treat as a leg failure (cursor stays put for that leg).
     """
     from src.typesense_client import get_typesense_client
 
     client = get_typesense_client()
     if client is None or not docs:
-        return
+        return set()
 
     loop = asyncio.get_running_loop()
     t0 = time.monotonic()
     try:
-        await loop.run_in_executor(
+        results = await loop.run_in_executor(
             None,
             lambda: client.collections["job_posting"].documents.import_(docs, {"action": "upsert"}),
         )
         duration = time.monotonic() - t0
         typesense_export_duration_seconds.observe(duration)
-        typesense_export_docs_total.labels(status="success").inc(len(docs))
     except Exception:
         duration = time.monotonic() - t0
         typesense_export_duration_seconds.observe(duration)
         typesense_export_docs_total.labels(status="error").inc(len(docs))
         raise
+
+    # Per-doc result parsing (#3180). The import endpoint returns one
+    # dict per submitted doc, in the same order as the input. A typical
+    # success entry is ``{"success": true}``; a failure entry is
+    # ``{"success": false, "error": "...", "document": "..."}`` — the
+    # ``document`` field, when present, is a JSON-encoded copy of the
+    # offending input.
+    failed_ids: set[str] = set()
+    if isinstance(results, list):
+        for doc, result in zip(docs, results, strict=False):
+            if isinstance(result, dict) and not result.get("success", True):
+                doc_id = str(doc.get("id", ""))
+                failed_ids.add(doc_id)
+                export_errors_total.labels(table="job_posting", phase="typesense").inc()
+                # ``[exporter] row dropped`` is the grep anchor for the
+                # Loki query ``{app="crawler"} |~ "row dropped"``.
+                log.error(
+                    "exporter.row_dropped",
+                    target="typesense",
+                    posting_id=doc_id,
+                    error=result.get("error"),
+                    code=result.get("code"),
+                )
+
+    succeeded = len(docs) - len(failed_ids)
+    if succeeded > 0:
+        typesense_export_docs_total.labels(status="success").inc(succeeded)
+    if failed_ids:
+        typesense_export_docs_total.labels(status="error").inc(len(failed_ids))
+    return failed_ids
 
 
 # ---------------------------------------------------------------------------
@@ -525,36 +688,115 @@ def _exc_fields(exc: BaseException) -> dict[str, object]:
 async def _upsert_to_supabase(
     supa_pool: asyncpg.Pool,
     rows: list,
-) -> None:
-    """Upsert rows to Supabase (extracted from _export_changed_postings)."""
+) -> set[uuid.UUID]:
+    """Upsert rows to Supabase, falling back to per-row on batch failure.
+
+    Fast path: a single COPY-into-temp-table + ``INSERT ... ON CONFLICT``
+    inside one transaction. If any row in the batch trips a constraint
+    (FK on company_id/board_id/occupation_id, value-out-of-range on
+    salary, unique-index conflict on source_url, etc.), the whole
+    transaction rolls back — this is the poison-pill failure mode that
+    used to halt CDC forever (#3180).
+
+    Fallback: on batch failure, re-attempt each row in its own
+    transaction. Successful rows commit; failed rows are logged + counted
+    in ``export_errors_total{phase="supabase"}`` and returned in the
+    set of failed IDs so the caller advances the cursor past them (data
+    is dropped; quarantine table is a follow-up).
+
+    The caller is expected to advance the cursor to the last row's
+    ``(updated_at, id)`` regardless of which rows failed — the
+    successfully-upserted rows are already in Supabase, the failed
+    ones are dropped on purpose.
+    """
+    if not rows:
+        return set()
+
     col_names = _POSTING_COLUMNS.split(", ")
-    async with supa_pool.acquire() as conn, conn.transaction():
-        await conn.execute(
-            "CREATE TEMP TABLE _export_postings ("
-            "  id UUID, company_id UUID, board_id UUID, source_url TEXT,"
-            "  is_active BOOLEAN, titles TEXT[], locales TEXT[],"
-            "  location_ids INT[], location_types TEXT[],"
-            "  employment_type TEXT,"
-            "  salary_min INT, salary_max INT, salary_currency TEXT,"
-            "  salary_period TEXT, salary_eur INT,"
-            "  experience_min INT, experience_max INT,"
-            "  occupation_id INT, seniority_id INT,"
-            "  technology_ids INT[], description_r2_hash BIGINT,"
-            "  first_seen_at TIMESTAMPTZ"
-            ") ON COMMIT DROP"
+
+    # Fast path: batch INSERT inside a single transaction.
+    try:
+        async with supa_pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                "CREATE TEMP TABLE _export_postings ("
+                "  id UUID, company_id UUID, board_id UUID, source_url TEXT,"
+                "  is_active BOOLEAN, titles TEXT[], locales TEXT[],"
+                "  location_ids INT[], location_types TEXT[],"
+                "  employment_type TEXT,"
+                "  salary_min INT, salary_max INT, salary_currency TEXT,"
+                "  salary_period TEXT, salary_eur INT,"
+                "  experience_min NUMERIC(3,1), experience_max NUMERIC(3,1),"
+                "  occupation_id INT, seniority_id INT,"
+                "  technology_ids INT[], description_r2_hash BIGINT,"
+                "  first_seen_at TIMESTAMPTZ"
+                ") ON COMMIT DROP"
+            )
+
+            await conn.copy_records_to_table(
+                "_export_postings",
+                records=[tuple(r[c] for c in col_names) for r in rows],
+                columns=col_names,
+            )
+
+            await conn.execute(
+                f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
+                "SELECT * FROM _export_postings "
+                f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
+            )
+        return set()
+    except Exception as batch_exc:
+        # Single bad row poisoned the whole transaction. Fall back to
+        # per-row upserts so the surviving N-1 rows still land in
+        # Supabase and the cursor can advance.
+        log.warning(
+            "exporter.supabase_batch_failed_falling_back",
+            batch_size=len(rows),
+            **_exc_fields(batch_exc),
         )
 
-        await conn.copy_records_to_table(
-            "_export_postings",
-            records=[tuple(r[c] for c in col_names) for r in rows],
-            columns=col_names,
-        )
+    return await _upsert_to_supabase_per_row(supa_pool, rows)
 
-        await conn.execute(
-            f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
-            "SELECT * FROM _export_postings "
-            f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
-        )
+
+async def _upsert_to_supabase_per_row(
+    supa_pool: asyncpg.Pool,
+    rows: list,
+) -> set[uuid.UUID]:
+    """Per-row Supabase upsert fallback used after a batch failure (#3180).
+
+    Each row gets its own transaction. Successful rows commit; failed
+    rows are logged, counted in ``export_errors_total``, and returned
+    in the failed-ID set so the caller can advance the cursor past them.
+
+    Extracted from ``_upsert_to_supabase`` so it can be unit-tested in
+    isolation and so the fast-path COPY stays the steady-state hot path.
+    """
+    col_names = _POSTING_COLUMNS.split(", ")
+    insert_sql = (
+        f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
+        f"VALUES ({', '.join(f'${i + 1}' for i in range(len(col_names)))}) "
+        f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
+    )
+
+    failed_ids: set[uuid.UUID] = set()
+    async with supa_pool.acquire() as conn:
+        for row in rows:
+            row_id = row["id"]
+            values = tuple(row[c] for c in col_names)
+            try:
+                async with conn.transaction():
+                    await conn.execute(insert_sql, *values)
+            except Exception as exc:
+                failed_ids.add(row_id)
+                export_errors_total.labels(table="job_posting", phase="supabase").inc()
+                # ``[exporter] row dropped`` is the grep anchor for the
+                # Loki query ``{app="crawler"} |~ "row dropped"``.
+                log.error(
+                    "exporter.row_dropped",
+                    target="supabase",
+                    posting_id=str(row_id),
+                    **_exc_fields(exc),
+                )
+    return failed_ids
 
 
 async def _export_postings_dual(
@@ -604,24 +846,63 @@ async def _export_postings_dual(
     new_supa_cursor = supa_cursor
     if supa_rows:
         if isinstance(results[0], BaseException):
+            # A bare exception escaping the upsert means the per-row
+            # fallback itself blew up (e.g. pool/network unavailable),
+            # not a single poison-pill row. Keep the cursor where it is
+            # so we retry next tick — same shape as the original
+            # implementation. ``_upsert_to_supabase`` swallows per-row
+            # poison-pills and returns them as a set instead.
             log.error(
                 "exporter.supabase_upsert_error",
                 **_exc_fields(results[0]),
             )
         else:
+            failed_supa_ids: set[uuid.UUID] = results[0] or set()
             last = supa_rows[-1]
+            # Advance the cursor past the whole batch even if some rows
+            # failed — successful rows are already in Supabase, the
+            # failed rows are dropped on purpose (logged + counted in
+            # ``export_errors_total``; quarantine table is a follow-up).
+            # Not advancing past failures was the poison-pill bug (#3180).
             new_supa_cursor = (last["updated_at"], last["id"])
+            # Lifecycle anchor: surface a few sample posting_ids so an
+            # operator with the posting_id from a public URL can grep
+            # for "was THIS posting in any recent batch?" without
+            # filtering by raw counts only (#3192).
+            log.info(
+                "exporter.exported_postings",
+                target="supabase",
+                batch_size=len(supa_rows),
+                succeeded=len(supa_rows) - len(failed_supa_ids),
+                failed=len(failed_supa_ids),
+                sample_ids=[str(r["id"]) for r in supa_rows[:5]],
+            )
 
     new_ts_cursor = ts_cursor
     if ts_rows:
         if isinstance(results[1], BaseException):
+            # Whole-batch transport failure (Typesense unreachable, 5xx,
+            # etc.) — cursor stays put so we retry next tick. Per-doc
+            # failures are returned as a set, not raised, so this branch
+            # is now strictly for downstream incidents.
             log.error(
                 "exporter.typesense_upsert_error",
                 **_exc_fields(results[1]),
             )
         else:
+            failed_ts_ids: set[str] = results[1] or set()
             last = ts_rows[-1]
+            # Advance past the whole batch even if some docs failed —
+            # see the matching comment on the Supabase leg above.
             new_ts_cursor = (last["updated_at"], last["id"])
+            log.info(
+                "exporter.exported_postings",
+                target="typesense",
+                batch_size=len(ts_rows),
+                succeeded=len(ts_rows) - len(failed_ts_ids),
+                failed=len(failed_ts_ids),
+                sample_ids=[str(r["id"]) for r in ts_rows[:5]],
+            )
 
     return len(rows), new_supa_cursor, new_ts_cursor
 
@@ -671,6 +952,10 @@ async def _export_changed_postings(
     Uses keyset pagination on (updated_at, id) to avoid skipping rows
     when many share the same updated_at timestamp (e.g. bulk mark-gone).
     Returns (count_exported, new_cursor).
+
+    Delegates to ``_upsert_to_supabase`` so the per-row fallback path
+    (#3180) covers the Typesense-disabled deployment too. A bad row no
+    longer halts the cursor.
     """
     last_ts, last_id = cursor
     rows = await local_pool.fetch(
@@ -684,36 +969,23 @@ async def _export_changed_postings(
     if not rows:
         return 0, cursor
 
-    col_names = _POSTING_COLUMNS.split(", ")
-    async with supa_pool.acquire() as conn, conn.transaction():
-        await conn.execute(
-            "CREATE TEMP TABLE _export_postings ("
-            "  id UUID, company_id UUID, board_id UUID, source_url TEXT,"
-            "  is_active BOOLEAN, titles TEXT[], locales TEXT[],"
-            "  location_ids INT[], location_types TEXT[],"
-            "  employment_type TEXT,"
-            "  salary_min INT, salary_max INT, salary_currency TEXT,"
-            "  salary_period TEXT, salary_eur INT,"
-            "  experience_min INT, experience_max INT,"
-            "  occupation_id INT, seniority_id INT,"
-            "  technology_ids INT[], description_r2_hash BIGINT,"
-            "  first_seen_at TIMESTAMPTZ"
-            ") ON COMMIT DROP"
-        )
+    failed_ids = await _upsert_to_supabase(supa_pool, rows)
 
-        await conn.copy_records_to_table(
-            "_export_postings",
-            records=[tuple(r[c] for c in col_names) for r in rows],
-            columns=col_names,
-        )
-
-        await conn.execute(
-            f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
-            "SELECT * FROM _export_postings "
-            f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
-        )
+    # Lifecycle anchor: surface sample posting_ids so an operator can
+    # grep "was THIS posting in any recent Supabase batch?" (#3192).
+    log.info(
+        "exporter.exported_postings",
+        target="supabase",
+        batch_size=len(rows),
+        succeeded=len(rows) - len(failed_ids),
+        failed=len(failed_ids),
+        sample_ids=[str(r["id"]) for r in rows[:5]],
+    )
 
     last_row = rows[-1]
+    # Cursor advances past the entire batch even when some rows were
+    # dropped by the per-row fallback (#3180). The failed rows have
+    # already been logged and counted in ``export_errors_total``.
     new_cursor = (last_row["updated_at"], last_row["id"])
     return len(rows), new_cursor
 
@@ -875,8 +1147,16 @@ async def run_exporter(
                 exported, posting_cursor, ts_cursor = await _export_postings_dual(
                     local_pool, supa_pool, posting_cursor, ts_cursor, maps
                 )
-                await _save_cursor(local_pool, "job_posting", posting_cursor)
-                await _save_cursor(local_pool, "typesense:job_posting", ts_cursor)
+                # Save both cursors in a single transaction so a crash
+                # between writes cannot leave one cursor advanced while
+                # the other is stale (issue #3171).
+                await _save_cursors_atomic(
+                    local_pool,
+                    [
+                        ("job_posting", posting_cursor),
+                        ("typesense:job_posting", ts_cursor),
+                    ],
+                )
             else:
                 # Supabase-only export (original path)
                 exported, posting_cursor = await _export_changed_postings(

@@ -105,10 +105,24 @@ _STREAM_BATCH = 200
 
 
 def _make_chunked_stream(discover_fn: DiscoverFunc):
-    """Create a generic streaming wrapper that chunks discover() results."""
+    """Create a generic streaming wrapper that chunks discover() results.
+
+    A monitor that returned a ``MonitorResult`` directly (e.g. with
+    ``truncated=True`` per #3216) is yielded whole rather than reshaped:
+    the per-batch flags it carries (``truncated``, ``new_sitemap_url``,
+    ``metadata_updates``, ``hybrid``) need to reach the pipeline intact.
+    A plain ``list[DiscoveredJob]`` keeps the original 200-item chunking
+    so heartbeats fire on large boards.
+    """
 
     async def _chunked_stream(board, client, pw=None):
         result = await discover_fn(board, client, pw=pw)
+        # Local import to avoid the circular dep with src.core.monitor.
+        from src.core.monitor import MonitorResult as _MR
+
+        if isinstance(result, _MR):
+            yield result
+            return
         if isinstance(result, list):
             for i in range(0, len(result), _STREAM_BATCH):
                 yield result[i : i + _STREAM_BATCH]
@@ -272,12 +286,27 @@ async def fetch_page_text(
     client: httpx.AsyncClient,
     max_chars: int = 500_000,
 ) -> str | None:
-    """Fetch a page and return its text content (capped), or None on error."""
+    """Fetch a page and return its text content (capped), or None on error.
+
+    TDM-Reservation respect (#2842). Lenient wrapper but still honors the
+    W3C opt-out signal — :class:`TDMReservedError` is **not** swallowed by
+    the broad ``except Exception``; it propagates so the caller (typically
+    a discovery probe path) can surface the publisher policy decision
+    rather than silently returning None and treating the board as
+    fetch-failed.
+    """
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
     try:
         resp = await client.get(url, follow_redirects=True)
         if resp.status_code != 200:
             return None
-        return resp.text[:max_chars]
+        text = resp.text[:max_chars]
+        _tdm_check(resp, body_excerpt=text)
+        return text
+    except TDMReservedError:
+        raise
     except Exception:
         return None
 
@@ -352,6 +381,17 @@ def _build_comment(name: str, metadata: dict) -> str:
         if urls is not None:
             return f"Sitemap \u2014 {urls} URLs at {sitemap_url}"
         return f"Sitemap \u2014 {sitemap_url}"
+    if name == "talentbrew":
+        jobs = metadata.get("jobs")
+        pages = metadata.get("pages")
+        if jobs is not None and pages is not None:
+            return f"TalentBrew/Radancy \u2014 {jobs} jobs across {pages} pages"
+        if jobs is not None:
+            return f"TalentBrew/Radancy \u2014 {jobs} jobs"
+        urls = metadata.get("urls")
+        if urls is not None:
+            return f"TalentBrew/Radancy \u2014 {urls} job links found"
+        return "TalentBrew/Radancy"
     if name == "dom":
         urls = metadata.get("urls")
         if urls is not None:
@@ -581,6 +621,7 @@ from src.core.monitors import (  # noqa: E402
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
+    talentbrew,  # noqa: F401
     traffit,  # noqa: F401
     umantis,  # noqa: F401
     workable,  # noqa: F401

@@ -9,6 +9,7 @@ import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
+import { scrollToTopOnNav } from "@/lib/scroll-on-nav";
 import { Button } from "@/components/ui/Button";
 import { Menu } from "lucide-react";
 
@@ -32,9 +33,14 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
   const appLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
 
   return (
-    <header className="border-b border-divider bg-surface-alpha backdrop-blur-md">
+    <header className="border-b border-divider bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex h-12 max-w-[1200px] items-center gap-4 px-4">
-        <Link href={lp("/")} prefetch={false} className="inline-flex shrink-0 items-center gap-2">
+        <Link
+          href={lp("/")}
+          prefetch={false}
+          onClick={() => scrollToTopOnNav(lp("/"))}
+          className="inline-flex shrink-0 items-center gap-2"
+        >
           <ThemedImage
             lightSrc={siteConfig.logoWide.light}
             darkSrc={siteConfig.logoWide.dark}
@@ -52,20 +58,20 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
             toward Vercel's edge request quota. Dynamic pages (/explore, /sign-in)
             would trigger full SSR with DB queries on prefetch. */}
         <nav className="hidden items-center gap-5 lg:flex">
-          <Link href={lp(siteConfig.nav.about.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
+          <Link href={lp(siteConfig.nav.about.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.about.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
             <Trans id="common.nav.about" comment="Nav link: About">About</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.features.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
+          <Link href={lp(siteConfig.nav.features.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.features.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
             <Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
+          <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.pricing.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
             <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.faq.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
+          <Link href={lp(siteConfig.nav.faq.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.faq.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
             <Trans id="common.nav.faq" comment="Nav link: FAQ">FAQ</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.company.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
-            <Trans id="common.nav.company" comment="Nav link: Job indexing">Job indexing</Trans>
+          <Link href={lp(siteConfig.nav.blog.href)} prefetch={false} onClick={() => scrollToTopOnNav(siteConfig.nav.blog.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.blog.href))}>
+            <Trans id="common.nav.blog" comment="Nav link: Blog">Blog</Trans>
           </Link>
         </nav>
 
@@ -82,7 +88,7 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
           className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft cursor-pointer lg:hidden"
           aria-label={t({ id: "common.header.openMenu", comment: "Aria label for mobile menu button", message: "Open main menu" })}
         >
-          <Menu size={20} />
+          <Menu size={20} aria-hidden="true" />
         </button>
       </div>
     </header>

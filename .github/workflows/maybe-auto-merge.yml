@@ -21,6 +21,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Capture trusted scripts
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/trusted-scripts"
+          cp .github/scripts/label-pr.sh "$RUNNER_TEMP/trusted-scripts/label-pr.sh"
+          cp .github/scripts/close-linked-company-request-issues.sh "$RUNNER_TEMP/trusted-scripts/close-linked-company-request-issues.sh"
+          chmod +x "$RUNNER_TEMP/trusted-scripts/"*.sh
+
       - name: Check for pending images
         id: images
         run: |
@@ -40,7 +48,7 @@ jobs:
       - name: Label PR
         id: label
         if: steps.images.outputs.pending == 'false'
-        run: .github/scripts/label-pr.sh
+        run: "$RUNNER_TEMP/trusted-scripts/label-pr.sh"
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
@@ -133,7 +141,7 @@ jobs:
 
       - name: Close linked company-request issues
         if: steps.rebase.outputs.rebased == 'true' && steps.images.outputs.pending == 'false'
-        run: .github/scripts/close-linked-company-request-issues.sh
+        run: "$RUNNER_TEMP/trusted-scripts/close-linked-company-request-issues.sh"
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}

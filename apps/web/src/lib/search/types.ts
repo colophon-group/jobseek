@@ -4,6 +4,47 @@ export interface PostingLocation {
   geoType?: "city" | "region" | "country" | "macro";
 }
 
+/**
+ * Work-mode (location_types) filter values. Source of truth lives in the
+ * crawler's ``enum_normalize.py`` (canonical: onsite | remote | hybrid).
+ * Issue #2983 — filter-wide multi-select reusing the existing
+ * ``location_types`` field on ``job_posting``. No schema change.
+ */
+export type WorkMode = "onsite" | "hybrid" | "remote";
+
+export const WORK_MODE_VALUES: readonly WorkMode[] = ["onsite", "hybrid", "remote"] as const;
+
+export function isWorkMode(value: string): value is WorkMode {
+  return (WORK_MODE_VALUES as readonly string[]).includes(value);
+}
+
+/**
+ * Public employment-type filter values exposed by the search UI and API.
+ * Crawler normalization also has importer-only aliases such as
+ * `full_or_part`; those are intentionally not accepted as URL filter
+ * values because the user-facing filter controls do not expose them.
+ */
+export type EmploymentType =
+  | "full_time"
+  | "part_time"
+  | "contract"
+  | "internship"
+  | "temporary"
+  | "volunteer";
+
+export const EMPLOYMENT_TYPE_VALUES: readonly EmploymentType[] = [
+  "full_time",
+  "part_time",
+  "contract",
+  "internship",
+  "temporary",
+  "volunteer",
+] as const;
+
+export function isEmploymentType(value: string): value is EmploymentType {
+  return (EMPLOYMENT_TYPE_VALUES as readonly string[]).includes(value);
+}
+
 export interface SearchResultPosting {
   id: string;
   title: string | null;
@@ -33,6 +74,7 @@ export interface SearchFilters {
   seniorityIds?: number[];
   technologyIds?: number[];
   employmentTypes?: string[];
+  workMode?: WorkMode[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;
@@ -48,6 +90,14 @@ export interface HistogramFilters {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  workMode?: WorkMode[];
+  /**
+   * Cross-filter context for the employment-type modal facet counts.
+   * Added in #3032 so toggling work-mode/occupation/etc. live-updates
+   * employment-type counts in the same way that location/level already
+   * cross-filter into the seniority and technology modals.
+   */
+  employmentTypes?: string[];
   languages?: string[];
 }
 

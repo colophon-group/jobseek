@@ -12,6 +12,7 @@ from src.labeller.validate import (
     qa_report,
     run_qa_rules,
     validate_file,
+    validate_globals_consistency,
     validate_schema,
     validate_sections_custom,
 )
@@ -203,6 +204,13 @@ def _minimal_section_payload(kind: str) -> dict:
 def test_minimal_section_payload_validates(kind: str):
     payload = _minimal_section_payload(kind)
     assert validate_schema(kind, payload) == []
+
+
+def test_requirements_schema_accepts_decimal_experience_years():
+    payload = _minimal_section_payload("requirements")
+    payload["years_experience_min"] = 0.5
+    payload["years_experience_max"] = 1.5
+    assert validate_schema("requirements", payload) == []
 
 
 def test_skill_category_closed_set_enforced():
@@ -398,3 +406,160 @@ def test_validate_file_qa_kind(tmp_path: Path):
     errs = validate_file("qa", p2)
     assert errs
     assert any("profession_non_empty" in e for e in errs)
+
+
+# ---------- globals consistency (leadership / IC-suffix mismatch) ----------
+
+
+def test_globals_consistency_passes_when_either_field_is_null():
+    assert validate_globals_consistency({"profession": None, "seniority": "head of"}) == []
+    g = {"profession": "compliance specialist", "seniority": None}
+    assert validate_globals_consistency(g) == []
+    assert validate_globals_consistency({}) == []
+
+
+def test_globals_consistency_passes_no_ic_suffix():
+    """Bare role nouns or non-suffix role names — no rule fires regardless of seniority."""
+    assert (
+        validate_globals_consistency({"profession": "compliance officer", "seniority": "head of"})
+        == []
+    )
+    assert validate_globals_consistency({"profession": "engineering", "seniority": "head of"}) == []
+    assert (
+        validate_globals_consistency({"profession": "account executive", "seniority": "director"})
+        == []
+    )
+
+
+def test_globals_consistency_passes_ic_suffix_without_leadership():
+    """Specialist/analyst at non-leadership rank is the legitimate IC pairing."""
+    assert validate_globals_consistency({"profession": "data analyst", "seniority": "senior"}) == []
+    assert (
+        validate_globals_consistency({"profession": "events coordinator", "seniority": "junior"})
+        == []
+    )
+    assert (
+        validate_globals_consistency({"profession": "marketing specialist", "seniority": "mid"})
+        == []
+    )
+    # `lead` is ambiguous (team lead vs lead engineer) — kept out of leadership markers
+    assert validate_globals_consistency({"profession": "data analyst", "seniority": "lead"}) == []
+
+
+def test_globals_consistency_passes_avp_carve_out():
+    """AVP / Associate VP at banks is a mid-level IC role, not actual leadership.
+    The rule must NOT fire on legitimate analyst+AVP pairings (Swiss Re-style)."""
+    assert (
+        validate_globals_consistency(
+            {"profession": "market analyst", "seniority": "assistant vice president"}
+        )
+        == []
+    )
+    assert (
+        validate_globals_consistency(
+            {"profession": "data analyst", "seniority": "associate vice president"}
+        )
+        == []
+    )
+
+
+def test_globals_consistency_catches_compliance_specialist_head_of():
+    """The HRT 2026-05-09 case: profession ends in 'specialist' but title is 'Head of'."""
+    errs = validate_globals_consistency(
+        {"profession": "compliance specialist", "seniority": "head of"}
+    )
+    assert errs
+    assert "compliance specialist" in errs[0]
+    assert "head of" in errs[0]
+    assert "specialist" in errs[0]
+
+
+@pytest.mark.parametrize(
+    "profession,seniority",
+    [
+        ("marketing analyst", "director"),
+        ("program coordinator", "vp"),
+        ("events coordinator", "chief"),
+        ("legal associate", "principal"),
+        ("research assistant", "vice president"),
+        ("compliance specialist", "Head of"),  # case-insensitive
+        # `manager` seniority + IC-suffix profession (Clearway-class):
+        ("wind plant operator", "manager"),
+        ("data analyst", "manager"),
+        ("warehouse associate", "manager"),
+    ],
+)
+def test_globals_consistency_catches_other_leadership_pairings(profession: str, seniority: str):
+    errs = validate_globals_consistency({"profession": profession, "seniority": seniority})
+    assert errs, f"expected violation for {profession!r} + {seniority!r}"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["#LI-Hybrid", "#LI-Remote", "#LI-Onsite", "#BI-Remote", "#anywhere", " #LI-Hybrid"],
+)
+def test_globals_consistency_catches_hashtag_locations(raw: str):
+    """The 2026-05-08 Datadog case: #LI-Hybrid in locations[] is a recruiter
+    work-mode tag, not a place. Validator must catch it deterministically."""
+    g = {
+        "profession": "product manager",
+        "seniority": "senior",
+        "locations": [
+            {"raw": raw, "city": None, "region": None, "country": None, "type": "hybrid"}
+        ],
+    }
+    errs = validate_globals_consistency(g)
+    assert errs
+    assert any("hashtag" in e.lower() and raw.strip() in e for e in errs)
+
+
+def test_globals_consistency_passes_normal_locations():
+    """Real place names with leading whitespace stay valid."""
+    g = {
+        "profession": "engineer",
+        "seniority": None,
+        "locations": [
+            {"raw": "Berlin", "city": "Berlin", "country": "DE", "type": "onsite"},
+            {"raw": "  San Francisco", "city": "San Francisco", "country": "US", "type": "hybrid"},
+        ],
+    }
+    assert validate_globals_consistency(g) == []
+
+
+def test_globals_consistency_passes_canonical_manager_titles():
+    """Canonical "<X> manager" professions don't end in IC-suffix, so they pass
+    through even at seniority='manager' (e.g. engineering manager, store manager
+    are recognized role titles per the prompt's exception list)."""
+    cases = [
+        ("engineering manager", "manager"),
+        ("store manager", "manager"),
+        ("project manager", "manager"),
+        ("customer success manager", "manager"),
+        ("channel sales manager", "manager"),
+    ]
+    for profession, seniority in cases:
+        assert (
+            validate_globals_consistency({"profession": profession, "seniority": seniority}) == []
+        ), f"unexpected violation for {profession!r} + {seniority!r}"
+
+
+def test_validate_file_globals_kind_runs_consistency_rule(tmp_path: Path):
+    """Consistency rule fires through the granular globals validation path."""
+    bad = _minimal_globals(profession="compliance specialist", seniority="head of")
+    p = _write(tmp_path / "globals.json", bad)
+    errs = validate_file("globals", p)
+    assert any("subordinate-rank suffix" in e for e in errs)
+
+
+def test_validate_file_extract_all_runs_consistency_rule(tmp_path: Path):
+    """Consistency rule fires through the combined extractor validation path."""
+    payload = {
+        "sections": [
+            {"kind": "company", "block_ids": [0], "extracted": None},
+        ],
+        "globals": _minimal_globals(profession="compliance specialist", seniority="head of"),
+    }
+    f = _write(tmp_path / "out.json", payload)
+    ctx = _write(tmp_path / "ctx.json", {"input": {"blocks": [{"id": 0}]}})
+    errs = validate_file("extract_all", f, context_path=ctx)
+    assert any("subordinate-rank suffix" in e for e in errs)

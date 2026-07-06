@@ -35,6 +35,14 @@ COLLECTIONS: list[dict] = [
             {"name": "company_icon", "type": "string", "index": False, "optional": True},
             {"name": "title", "type": "string"},
             {"name": "is_active", "type": "bool", "facet": True},
+            # `has_content` is True iff the posting has both a non-empty title
+            # AND a description blob in R2 (description_r2_hash IS NOT NULL).
+            # Web search surfaces filter on `has_content:!=false` so postings
+            # without title or description are hidden (issue #2917). Optional
+            # so existing docs stay visible until backfill replays the field;
+            # `!=false` matches `true` and absent values, only excluding docs
+            # the exporter has explicitly stamped as `false`.
+            {"name": "has_content", "type": "bool", "facet": True, "optional": True},
             {"name": "location_ids", "type": "int32[]", "facet": True},
             {"name": "location_names", "type": "string[]", "facet": True},
             {"name": "location_types", "type": "string[]", "facet": True},
@@ -48,7 +56,25 @@ COLLECTIONS: list[dict] = [
             {"name": "technology_names", "type": "string[]", "facet": True},
             {"name": "employment_type", "type": "string", "facet": True, "optional": True},
             {"name": "salary_eur", "type": "int32", "facet": True, "optional": True},
+            # Precise decimal-year experience fields. Added alongside the
+            # legacy integer fields below so production can add them in-place
+            # without rebuilding the existing job_posting collection first.
+            {"name": "experience_min_years", "type": "float", "facet": True, "optional": True},
+            {"name": "experience_max_years", "type": "float", "facet": True, "optional": True},
+            # Legacy whole-year compatibility fields. New decimal rows are
+            # encoded conservatively by exporter.py (min ceil, max floor) so
+            # fallback filters cannot broaden precise float matches.
             {"name": "experience_min", "type": "int32", "facet": True},
+            # `experience_max` is stamped alongside `experience_min` so the web
+            # filter can do range-overlap matching (e.g. user wants "exactly 6
+            # years"; a row stored as 5-10 years must match). Sentinels:
+            # `-1` when `experience_min` is also `-1` (no info from the
+            # extractor) and `99` for open-ended ("5+ years") rows where the
+            # extractor returns `max=None` — see exporter.py. Optional so
+            # docs that haven't been backfilled yet stay valid; the filter
+            # treats absent `experience_max` as part of the "no required
+            # experience" sentinel bucket. See #3217.
+            {"name": "experience_max", "type": "int32", "facet": True, "optional": True},
             {"name": "locales", "type": "string[]", "facet": True},
             {"name": "source_url", "type": "string", "index": False, "optional": True},
             {"name": "first_seen_at", "type": "int64"},
@@ -66,6 +92,12 @@ COLLECTIONS: list[dict] = [
             {"name": "name_de", "type": "string", "locale": "de", "optional": True},
             {"name": "name_fr", "type": "string", "locale": "fr", "optional": True},
             {"name": "name_it", "type": "string", "locale": "it", "optional": True},
+            # Natural-language synonyms queried alongside ``name_*`` so users
+            # who type "Europe" or "European Union" surface the EU macro row
+            # whose canonical ``name_en`` is just "EU". Currently populated
+            # for macro regions only (sync.py — ``_LOCATION_MACRO_ALIASES``);
+            # countries fall through to ``name_*``. See #2939.
+            {"name": "aliases", "type": "string[]", "optional": True},
             {"name": "parent_name", "type": "string", "optional": True},
             {"name": "type", "type": "string", "facet": True},
             {"name": "coordinates", "type": "geopoint", "optional": True},
@@ -121,7 +153,14 @@ COLLECTIONS: list[dict] = [
         "fields": [
             {"name": "id", "type": "string"},
             {"name": "name", "type": "string"},
-            {"name": "slug", "type": "string", "index": False},
+            # `slug` MUST be indexed: web/_fetchCompanyBySlugFromTypesense uses
+            # `filter_by: slug:=<slug>` for every company detail page. With
+            # `index: false`, Typesense rejects the filter ("Cannot filter on
+            # non-indexed field"), so every lookup falls through to Postgres
+            # — the OG-image prerender (4400 × 4 locales) caused #2918 (build
+            # ECONNRESET) by hitting Supabase 17,600 times per build. See
+            # #2931.
+            {"name": "slug", "type": "string"},
             {"name": "icon", "type": "string", "index": False, "optional": True},
             {"name": "logo", "type": "string", "index": False, "optional": True},
             {"name": "website", "type": "string", "index": False, "optional": True},
@@ -185,7 +224,7 @@ def _collection_exists(client: typesense.Client, name: str) -> bool:
 def _drop_collection(client: typesense.Client, name: str) -> None:
     try:
         client.collections[name].delete()
-        print(f"  dropped collection {name}")
+        log.info("typesense.collection.dropped", name=name)
     except ObjectNotFound:
         pass
 
@@ -193,9 +232,27 @@ def _drop_collection(client: typesense.Client, name: str) -> None:
 def _drop_alias(client: typesense.Client, name: str) -> None:
     try:
         client.aliases[name].delete()
-        print(f"  dropped alias {name}")
+        log.info("typesense.alias.dropped", name=name)
     except ObjectNotFound:
         pass
+
+
+# Default values Typesense applies when a field-shape attribute is omitted
+# from the create-collection / patch payload. Used by ``_index_drift`` to
+# compare a sparsely-specified desired schema (e.g. just `{"name": "slug",
+# "type": "string"}`) against the live cluster's fully-populated retrieve()
+# response (which always returns explicit booleans for all attributes).
+_FIELD_INDEX_DEFAULT = True
+
+
+def _index_drift(live: dict, desired: dict) -> bool:
+    """Return True iff the field's `index` setting differs between live and spec.
+
+    The live response always carries an explicit ``index`` boolean (Typesense
+    populates defaults on retrieve); the desired dict may omit ``index`` to
+    mean "default true". Compare normalised values.
+    """
+    return live.get("index", _FIELD_INDEX_DEFAULT) != desired.get("index", _FIELD_INDEX_DEFAULT)
 
 
 def _warn_field_drift(
@@ -221,7 +278,9 @@ def _warn_field_drift(
       imately read back as ``"int64"``. The right fix is to widen the spec,
       not to drop and re-add.
 
-    Field-shape drift (``facet``/``optional``/``index``/``sort``) is out of
+    ``index`` drift is handled separately by ``_patch_missing_fields`` — that
+    one is auto-repaired via drop + re-add (Typesense supports a single-PATCH
+    drop+add pair). ``facet``/``optional``/``sort`` drift is still out of
     scope here.
     """
     live_by_name = {f["name"]: f for f in live_fields}
@@ -245,15 +304,20 @@ def _warn_field_drift(
 def _patch_missing_fields(
     client: typesense.Client, collection_name: str, desired_fields: list[dict]
 ) -> None:
-    """Add fields present in the desired schema but absent from the live one.
+    """Add missing fields and re-toggle ``index`` drift on existing fields.
 
     Typesense supports adding/removing fields in-place via PATCH on a
-    collection. We only ever ADD here — removals are intentionally manual to
-    avoid accidental data loss. ``id`` and existing fields are left alone.
+    collection. ``type`` drift is NOT auto-repaired (only warned about) —
+    that requires a backfill the patcher can't perform. ``index`` drift IS
+    auto-repaired here via a single-PATCH drop + re-add pair (Typesense's
+    documented mechanism for "any modifications to an existing field"). The
+    re-added field has no documents indexed under it until the next
+    exporter / sync pass repopulates them — fine for the company-detail
+    use-case (#2931) since data lives in Postgres and the next ``crawler
+    sync`` rewrites these docs anyway.
 
-    Also runs a passive type-drift check: if a field exists in both schemas
-    with a different ``type``, a warning is emitted to stderr (no auto-
-    recovery — Typesense doesn't support type changes in place).
+    ``facet``/``sort``/``optional`` drift is still out of scope. ``id`` is
+    skipped throughout — Typesense rejects any PATCH touching it.
     """
     try:
         live = client.collections[collection_name].retrieve()
@@ -266,20 +330,47 @@ def _patch_missing_fields(
     live_fields = live.get("fields", [])
     _warn_field_drift(collection_name, live_fields, desired_fields)
 
-    existing_names = {f["name"] for f in live_fields}
-    missing = [f for f in desired_fields if f["name"] != "id" and f["name"] not in existing_names]
-    if not missing:
-        print(f"  schema up to date for {collection_name}")
+    live_by_name = {f["name"]: f for f in live_fields}
+    payload_fields: list[dict] = []
+    added_names: list[str] = []
+    rebuilt_names: list[str] = []
+
+    for desired in desired_fields:
+        name = desired["name"]
+        if name == "id":
+            continue
+        field_live = live_by_name.get(name)
+        if field_live is None:
+            payload_fields.append(desired)
+            added_names.append(name)
+            continue
+        # Field exists; check if `index` flipped. The live response always
+        # carries `index` explicitly, but compare via _index_drift so a future
+        # variant where Typesense omits it stays correct.
+        if _index_drift(field_live, desired):
+            payload_fields.append({"name": name, "drop": True})
+            payload_fields.append(desired)
+            rebuilt_names.append(name)
+
+    if not payload_fields:
+        log.info("typesense.collection.up_to_date", collection=collection_name)
         return
 
-    print(
-        f"  adding {len(missing)} field(s) to {collection_name}: "
-        f"{', '.join(f['name'] for f in missing)}"
+    log.info(
+        "typesense.collection.patching",
+        collection=collection_name,
+        added=added_names,
+        rebuilt=rebuilt_names,
     )
     try:
-        client.collections[collection_name].update({"fields": missing})
+        client.collections[collection_name].update({"fields": payload_fields})
     except Exception as exc:
-        print(f"  ERROR patching {collection_name}: {exc}", file=sys.stderr)
+        log.error(
+            "typesense.collection.patch_error",
+            collection=collection_name,
+            error=str(exc),
+            exc_info=True,
+        )
         raise
 
 
@@ -288,7 +379,7 @@ def setup_collections(client: typesense.Client, *, force: bool = False) -> None:
         alias_name = schema["name"]
         versioned_name = f"{alias_name}_v1"
 
-        print(f"\n--- {alias_name} ---")
+        log.info("typesense.setup.collection.start", alias=alias_name)
 
         if force:
             _drop_alias(client, alias_name)
@@ -296,26 +387,43 @@ def setup_collections(client: typesense.Client, *, force: bool = False) -> None:
 
         existing_target = _alias_exists(client, alias_name)
         if existing_target:
-            print(f"  alias '{alias_name}' already exists -> {existing_target}")
+            log.info(
+                "typesense.alias.exists",
+                alias=alias_name,
+                target=existing_target,
+            )
             _patch_missing_fields(client, existing_target, schema["fields"])
             continue
 
         versioned_schema = {**schema, "name": versioned_name}
         if _collection_exists(client, versioned_name):
-            print(f"  collection '{versioned_name}' already exists (no alias), creating alias")
+            log.info(
+                "typesense.collection.exists_without_alias",
+                collection=versioned_name,
+            )
             _patch_missing_fields(client, versioned_name, schema["fields"])
         else:
             try:
                 client.collections.create(versioned_schema)
-                print(f"  created collection {versioned_name}")
+                log.info("typesense.collection.created", name=versioned_name)
             except ObjectAlreadyExists:
-                print(f"  collection '{versioned_name}' already exists")
+                log.info("typesense.collection.already_exists", name=versioned_name)
 
         try:
             client.aliases.upsert(alias_name, {"collection_name": versioned_name})
-            print(f"  created alias {alias_name} -> {versioned_name}")
+            log.info(
+                "typesense.alias.created",
+                alias=alias_name,
+                target=versioned_name,
+            )
         except Exception as exc:
-            print(f"  ERROR creating alias {alias_name}: {exc}", file=sys.stderr)
+            log.error(
+                "typesense.alias.create_error",
+                alias=alias_name,
+                target=versioned_name,
+                error=str(exc),
+                exc_info=True,
+            )
             raise
 
 
@@ -330,10 +438,16 @@ def run_setup(*, force: bool = False) -> None:
     from src.config import settings
 
     if not settings.typesense_admin_key:
-        print("ERROR: TYPESENSE_ADMIN_KEY not set. Cannot proceed.", file=sys.stderr)
+        log.error(
+            "typesense.setup.missing_admin_key",
+            message="TYPESENSE_ADMIN_KEY not set. Cannot proceed.",
+        )
         sys.exit(1)
     if not settings.typesense_host:
-        print("ERROR: TYPESENSE_HOST not set. Cannot proceed.", file=sys.stderr)
+        log.error(
+            "typesense.setup.missing_host",
+            message="TYPESENSE_HOST not set. Cannot proceed.",
+        )
         sys.exit(1)
 
     client = typesense.Client(
@@ -352,12 +466,21 @@ def run_setup(*, force: bool = False) -> None:
 
     try:
         if not client.operations.is_healthy():
-            print("ERROR: Typesense reports unhealthy", file=sys.stderr)
+            log.error(
+                "typesense.setup.unhealthy",
+                message="Typesense reports unhealthy",
+            )
             sys.exit(1)
-        print("Typesense is healthy")
+        log.info("typesense.setup.healthy")
+    except SystemExit:
+        raise
     except Exception as exc:
-        print(f"ERROR: Cannot connect to Typesense: {exc}", file=sys.stderr)
+        log.error(
+            "typesense.setup.connect_error",
+            error=str(exc),
+            exc_info=True,
+        )
         sys.exit(1)
 
     setup_collections(client, force=force)
-    print("\nDone.")
+    log.info("typesense.setup.done")

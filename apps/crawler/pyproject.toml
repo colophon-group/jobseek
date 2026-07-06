@@ -2,13 +2,13 @@
 name = "jobseek-crawler"
 dynamic = ["version"]
 description = "Job listing monitor and extraction crawler"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "asyncpg>=0.30",
     "boto3>=1.35",
     "click>=8.1",
     "httpx>=0.28",
-    "pydantic-settings>=2.7",
+    "pydantic-settings>=2.14.2",
     "pyyaml>=6.0",
     "structlog>=24.4",
     "python-dotenv>=1.2.2",
@@ -24,10 +24,10 @@ dependencies = [
     "alembic>=1.13",
     "psycopg2-binary>=2.9",
     "selectolax>=0.4.7",
-    "pypdf>=6.10.2",
+    "pypdf>=6.13.3",
     "jinja2>=3.1",
     "huggingface-hub>=1.7.2",
-    "cryptography>=46.0.5",
+    "cryptography>=48.0.1",
     "typesense>=0.21",
     "beautifulsoup4>=4.12",
     "jsonschema>=4.23",
@@ -58,7 +58,7 @@ asyncio_mode = "auto"
 timeout = 30
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py313"
 line-length = 100
 
 [tool.ruff.lint]

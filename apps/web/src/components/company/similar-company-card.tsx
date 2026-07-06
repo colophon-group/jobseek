@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { Building2 } from "lucide-react";
 import { Plural } from "@lingui/react/macro";
+import { CompanyIcon } from "@/components/CompanyIcon";
 import type { SimilarCompany } from "@/lib/actions/company";
 import type { Locale } from "@/lib/i18n";
 
@@ -32,23 +31,7 @@ export function SimilarCompanyCard({ company, locale, preserveParams }: Props) {
         prefetch={false}
         className="flex h-full w-36 flex-col items-start gap-2 overflow-hidden rounded-md border border-border-soft bg-surface p-3 text-left transition-colors hover:border-primary/30 hover:bg-border-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        {company.icon ? (
-          <Image
-            src={company.icon}
-            alt=""
-            width={28}
-            height={28}
-            sizes="28px"
-            className="size-7 shrink-0 rounded"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="flex size-7 shrink-0 items-center justify-center rounded bg-border-soft text-muted"
-          >
-            <Building2 size={16} />
-          </div>
-        )}
+        <CompanyIcon icon={company.icon} alt="" size={28} />
         <span className="line-clamp-2 w-full min-w-0 text-sm font-medium text-foreground [overflow-wrap:anywhere]">
           {company.name}
         </span>

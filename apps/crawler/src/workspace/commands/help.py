@@ -98,6 +98,7 @@ Monitor Types (cheapest first):
   recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      URL set           Yes
   nextdata          20      URLs or full      If URL-only
+  talentbrew        45      URL set           Yes
   sitemap           50      URL set           Yes
   api_sniffer       80      URLs or full      If URL-only (no fields)
   dom               100     URL set           Yes
@@ -645,6 +646,33 @@ phenom — Phenom People Careers Platform (sitemap + json-ld)
   Browser flags on the board (persistent_context, channel=chrome,
   proxy) only matter for the scraper path; the monitor itself uses
   plain httpx and runs in ~5 seconds regardless of job count."""
+
+MONITOR_TALENTBREW = """\
+talentbrew — TalentBrew / Radancy Search Results
+
+  Returns:  URL set only (needs scraper)
+  Cap:      50,000 URLs
+
+  TalentBrew search pages render job links in #search-results-list and expose
+  pagination metadata on #search-results:
+    data-total-job-results, data-total-pages, data-records-per-page
+
+  Why a dedicated monitor vs. plain sitemap:
+    Some TalentBrew tenants publish incomplete sitemaps. The search results
+    page is the complete listing source and can be paged with ?p=N.
+
+  Config:
+    {}  — no configuration required
+    {"page_size": 1000}  Optional AJAX page size (default 1000, max 10000).
+    {"max_pages": 500}   Optional safety cap, rarely needed.
+    {"page_max_chars": 8000000}
+                         Optional first-page/pagination HTML read cap
+                         (default 5,000,000; max 25,000,000).
+
+  Detection:  ws probe shows "TalentBrew/Radancy — N jobs across M pages"
+              Looks for TalentBrew/Radancy static markers plus #search-results.
+
+  Pair with:  json-ld (try first) or dom scraper"""
 
 MONITOR_NEXTDATA = """\
 nextdata — Next.js __NEXT_DATA__ Discovery
@@ -2026,6 +2054,7 @@ MONITOR_CARDS: dict[str, str] = {
     "personio": MONITOR_PERSONIO,
     "rss": MONITOR_RSS,
     "sitemap": MONITOR_SITEMAP,
+    "talentbrew": MONITOR_TALENTBREW,
     "phenom": MONITOR_PHENOM,
     "nextdata": MONITOR_NEXTDATA,
     "notion": MONITOR_NOTION,
@@ -2150,6 +2179,22 @@ skip — Placeholder scraper (auto-configured)
   that the scraper step should be skipped. Never selected manually.
 """
 
+SCRAPER_MOKAHR = """\
+mokahr — Mokahr ATS Detail API scraper
+
+  API:      POST https://app.mokahr.com/api/outer/ats-apply/website/job
+  Returns:  title, HTML description (jobDescription), locations,
+            employment_type (mapped from commitment), date_posted,
+            metadata (department)
+  Config:   locale (optional, default "zh-CN") — passed to the detail API
+  Note:     Pair with the mokahr monitor and declare
+            scraper_config: {"enrich": ["description"]} in boards.csv.
+            The Mokahr listing API returns metadata only — descriptions
+            live on the encrypted detail endpoint, decrypted via the
+            per-site AES IV (extracted from the SPA's init-data attribute)
+            and per-response key (necromancer field). No browser needed.
+"""
+
 SCRAPER_NOTION = """\
 notion — Notion Page API scraper
 
@@ -2189,6 +2234,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
   scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
     "bite": SCRAPER_BITE,
+    "mokahr": SCRAPER_MOKAHR,
     "rippling": SCRAPER_RIPPLING,
     "smartrecruiters": SCRAPER_SMARTRECRUITERS,
     "workable": SCRAPER_WORKABLE,

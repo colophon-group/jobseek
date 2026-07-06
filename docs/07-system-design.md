@@ -58,8 +58,8 @@ WORKER_ID_PREFIX                # Container identity prefix (e.g. hetzner)
 METRICS_PORT                    # Prometheus metrics port (9091-9094)
 
 # Enrichment
-ENRICH_PROVIDER                 # openai, anthropic, or gemini
-ENRICH_MODEL                    # Model ID
+ENRICH_PROVIDER                 # empty disables; prefer openai for new smokes; anthropic/gemini supported
+ENRICH_MODEL                    # Provider model ID
 ENRICH_API_KEY                  # Provider API key
 
 # Web only

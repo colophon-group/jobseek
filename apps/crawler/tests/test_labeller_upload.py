@@ -47,11 +47,24 @@ def stub_hf(monkeypatch: pytest.MonkeyPatch) -> dict:
     returning, since the real ``push_to_hub`` deletes the tempdir on exit
     and tests that assert on README contents need a stable handle.
     """
-    calls: dict = {"upload_folder": []}
+    calls: dict = {"upload_folder": [], "remote_files": {}}
 
     class _Stub:
         def __init__(self, token: str | None = None):
             calls["init_token"] = token
+
+        def list_repo_files(self, **kwargs):
+            calls.setdefault("list_repo_files", []).append(kwargs)
+            return sorted(calls["remote_files"])
+
+        def hf_hub_download(self, **kwargs):
+            calls.setdefault("hf_hub_download", []).append(kwargs)
+            filename = kwargs["filename"]
+            local_dir = Path(kwargs["local_dir"])
+            target = local_dir / filename
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(calls["remote_files"][filename])
+            return str(target)
 
         def upload_folder(self, **kwargs):
             folder = Path(kwargs["folder_path"])
@@ -209,17 +222,17 @@ def test_unscoped_run_with_empty_string_date_still_requires_confirm(
 # --- README counts cover all dates regardless of --date scope -----------
 
 
-def test_scoped_run_regenerates_readme_with_all_local_dates(data_root: Path, stub_hf: dict) -> None:
-    """A scoped `--date X` upload must regenerate README counts for X *and* for
-    previously-uploaded date Y still on local disk (issue #2701).
+def test_scoped_run_regenerates_readme_with_all_remote_dates(
+    data_root: Path, stub_hf: dict
+) -> None:
+    """A scoped `--date X` upload must preserve existing remote date Y counts.
 
-    The pre-fix behavior built `counts_by_date` from the scoped `by_date`,
-    which contained only X's rows, so the README on HF showed a single-
-    date counts line that silently overwrote the multi-date breakdown.
+    Scoped uploads stage only X's JSONL. Since `upload_folder` is additive and
+    does not delete Y on HF, README counts must start from remote truth and
+    overlay X's staged count.
     """
-    # Y: previously uploaded date still on disk
-    _write_posting(data_root, "2026-04-24", "p1", verdict="accepted")
-    _write_posting(data_root, "2026-04-24", "p2", verdict="accepted")
+    # Y: previously uploaded date on HF, not restaged by this scoped upload.
+    stub_hf["remote_files"]["data/2026-04-24.jsonl"] = '{"id":"p1"}\n{"id":"p2"}\n'
     # X: today's scoped upload
     _write_posting(data_root, "2026-04-25", "p3", verdict="accepted")
 
@@ -241,23 +254,37 @@ def test_scoped_run_regenerates_readme_with_all_local_dates(data_root: Path, stu
     assert "data/2026-04-24.jsonl" not in snapshot
 
 
-def test_readme_counts_skip_rejected_and_optout_for_other_dates(
+def test_scoped_run_overlays_staged_count_over_existing_remote_count(
     data_root: Path, stub_hf: dict
 ) -> None:
-    """`_all_local_counts` shares filtering with `_accepted_by_date`:
-
-    rejected verdicts must not contribute to README counts for previously-
-    uploaded dates either, otherwise the public dataset card would over-
-    report rows.
-    """
-    _write_posting(data_root, "2026-04-24", "p1", verdict="accepted")
-    _write_posting(data_root, "2026-04-24", "p2", verdict="rejected")
+    """The staged date's local accepted count replaces its old remote count."""
+    stub_hf["remote_files"]["data/2026-04-24.jsonl"] = '{"id":"p1"}\n'
+    stub_hf["remote_files"]["data/2026-04-25.jsonl"] = (
+        '{"id":"old1"}\n{"id":"old2"}\n{"id":"old3"}\n'
+    )
     _write_posting(data_root, "2026-04-25", "p3", verdict="accepted")
+    _write_posting(data_root, "2026-04-25", "p4", verdict="rejected")
 
     push_to_hub(run_date="2026-04-25", dry_run=False)
 
     readme = stub_hf["upload_folder"][0]["_snapshot"]["README.md"]
     assert "2026-04-24: 1" in readme
     assert "2026-04-25: 1" in readme
-    # Make sure we didn't accidentally count 2 for 2026-04-24
-    assert "2026-04-24: 2" not in readme
+    assert "2026-04-25: 3" not in readme
+
+
+def test_scoped_run_preserves_remote_counts_when_local_history_absent(
+    data_root: Path, stub_hf: dict
+) -> None:
+    """Backfill temp worktrees should not collapse README counts to one date."""
+    stub_hf["remote_files"]["data/2026-04-24.jsonl"] = '{"id":"p1"}\n{"id":"p2"}\n'
+    stub_hf["remote_files"]["data/2026-05-09.jsonl"] = '{"id":"p3"}\n'
+
+    _write_posting(data_root, "2026-05-10", "p4", verdict="accepted")
+
+    push_to_hub(run_date="2026-05-10", dry_run=False)
+
+    readme = stub_hf["upload_folder"][0]["_snapshot"]["README.md"]
+    assert "2026-05-10: 1" in readme
+    assert "2026-05-09: 1" in readme
+    assert "2026-04-24: 2" in readme

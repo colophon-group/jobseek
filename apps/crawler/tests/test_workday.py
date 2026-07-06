@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import httpx
 import pytest
 
 from src.core.monitors.workday import (
+    PAGE_SIZE,
     _api_base,
     _api_list_url,
     _discover_sites,
     _job_url,
+    _paginate_query,
     _parse_components,
     _pick_split_facet,
+    _post_page_with_retry,
     can_handle,
     discover,
 )
@@ -21,6 +26,7 @@ from src.core.scrapers.workday import (
     _parse_location_type,
     scrape,
 )
+from src.shared.http_retry import PaginationFetchError
 
 
 class TestParseComponents:
@@ -87,10 +93,24 @@ class TestParseLocationtype:
         assert _parse_location_type(None) is None
 
     def test_onsite(self):
-        assert _parse_location_type("On-Site") is None
+        # Centralized via #2992 — Workday's ``remoteType`` enum does emit
+        # ``onsite`` per the public API, and the central map handles
+        # ``On-Site`` / ``OnSite``.  Pre-#2992 the local
+        # ``_parse_location_type`` only knew ``remote``/``flexible``/
+        # ``hybrid`` and silently dropped ``On-Site`` to ``None`` — that
+        # was a bug, not an invariant.
+        assert _parse_location_type("On-Site") == "onsite"
+        assert _parse_location_type("OnSite") == "onsite"
 
     def test_case_insensitive(self):
         assert _parse_location_type("REMOTE") == "remote"
+
+    def test_unknown_falls_back_to_none(self):
+        # Local fallback is ``None`` (not the central default of
+        # ``onsite``) so unknown upstream values surface as ``None`` in
+        # ``JobContent.job_location_type`` — matches pre-#2992
+        # behaviour.
+        assert _parse_location_type("Mystery type") is None
 
 
 class TestNormalizeWorkdayLocation:
@@ -620,3 +640,323 @@ class TestScrape:
                     {},
                     client,
                 )
+
+
+# ---------------------------------------------------------------------------
+# Pagination retry semantics (#2748)
+# ---------------------------------------------------------------------------
+
+
+_LIST_URL = "https://co.wd1.myworkdayjobs.com/wday/cxs/co/Site/jobs"
+
+
+class TestPostPageWithRetry:
+    """``_post_page_with_retry`` mirrors ``fetch_with_retry``'s contract on
+    Workday's POST list endpoint: 5xx / 408 / 425 / 429 / network errors
+    are retried, non-retryable 4xx fail fast, and persistent failures
+    raise :class:`PaginationFetchError` so a single broken pagination
+    page doesn't silently truncate the run (#2748).
+    """
+
+    async def test_returns_on_success(self):
+        def handler(request):
+            return httpx.Response(200, json={"total": 0, "jobPostings": [], "facets": []})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _post_page_with_retry(client, _LIST_URL, {"limit": 20, "offset": 0})
+            assert data == {"total": 0, "jobPostings": [], "facets": []}
+
+    async def test_retries_on_429_then_succeeds(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return httpx.Response(429, text="rate limited")
+            return httpx.Response(
+                200, json={"total": 1, "jobPostings": [{"externalPath": "/x"}], "facets": []}
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _post_page_with_retry(
+                client, _LIST_URL, {"limit": 20, "offset": 0}, base_delay=0.001
+            )
+            assert data["jobPostings"] == [{"externalPath": "/x"}]
+            assert calls["n"] == 3
+
+    async def test_retries_on_503_then_succeeds(self, monkeypatch):
+        """Issue #2748's load-bearing case: pre-fix, a non-429 retryable
+        status (503, etc.) was not retried — ``raise_for_status`` raised
+        out and the run was recorded as a scrape-level failure rather
+        than retried. Now 503 is retried like every other transient.
+        """
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return httpx.Response(503, text="service unavailable")
+            return httpx.Response(
+                200, json={"total": 1, "jobPostings": [{"externalPath": "/x"}], "facets": []}
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _post_page_with_retry(
+                client, _LIST_URL, {"limit": 20, "offset": 0}, base_delay=0.001
+            )
+            assert data["jobPostings"] == [{"externalPath": "/x"}]
+            assert calls["n"] == 3
+
+    async def test_retries_on_cloudflare_5xx(self, monkeypatch):
+        """Cloudflare origin codes 520-526/530 are retried (parity with
+        dom + accenture + PCSX). Pinned for one representative code; the
+        full set is exercised by ``test_http_retry``."""
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 2:
+                return httpx.Response(520, text="cf origin error")
+            return httpx.Response(200, json={"total": 0, "jobPostings": [], "facets": []})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _post_page_with_retry(
+                client, _LIST_URL, {"limit": 20, "offset": 0}, base_delay=0.001
+            )
+            assert data == {"total": 0, "jobPostings": [], "facets": []}
+            assert calls["n"] == 2
+
+    async def test_raises_after_persistent_5xx(self, monkeypatch):
+        """Issue #2748 acceptance: persistent 5xx exhausts the retry budget
+        and raises ``PaginationFetchError`` — no silent truncation.
+        """
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(500, text="internal")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _post_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 20, "offset": 0},
+                    retries=3,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status == 500
+            assert exc_info.value.attempts == 3
+            assert calls["n"] == 3
+
+    async def test_raises_on_non_retryable_4xx_immediately(self, monkeypatch):
+        """A 401 / 403 / 400 indicates a hard error — no point retrying.
+        Raise ``PaginationFetchError`` on the first attempt."""
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(401, text="unauthorized")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _post_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 20, "offset": 0},
+                    retries=3,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status == 401
+            # Exactly one attempt — no retry on non-retryable 4xx.
+            assert calls["n"] == 1
+
+    async def test_raises_after_persistent_network_error(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            raise httpx.ConnectError("conn refused")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _post_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 20, "offset": 0},
+                    retries=2,
+                    base_delay=0.001,
+                )
+            assert exc_info.value.last_status is None
+            assert exc_info.value.last_error == "ConnectError"
+
+    async def test_raises_on_empty_200_body(self, monkeypatch):
+        """Per the issue, a 200 with a body that decodes to ``null`` (or
+        any non-dict shape) used to leave ``data is None`` and silently
+        ``break`` the pagination loop. Now the helper treats it as a
+        transient failure (retry, then raise) so the run surfaces.
+        """
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            # JSON ``null`` decodes to Python ``None``.
+            return httpx.Response(
+                200, content=b"null", headers={"content-type": "application/json"}
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await _post_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 20, "offset": 0},
+                    retries=2,
+                    base_delay=0.001,
+                )
+
+
+class TestPaginateQueryRetry:
+    """Issue #2748 acceptance: the inner pagination loop propagates the
+    new retry-then-raise contract end-to-end. Pre-fix, a 5xx on page N>0
+    raised ``HTTPStatusError`` straight out of the page fetch — caller
+    treated it as a scrape-level failure but ``data is None`` could also
+    silently break the loop on any future change. Now both transients
+    are retried and persistent failures raise ``PaginationFetchError``.
+    """
+
+    async def test_503_then_200_pagination_continues(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+
+        # Total 30 (PAGE_SIZE=20 → two pages). First page succeeds with
+        # 20 postings; second page returns 503 once then 200 with 10.
+        page2_calls = {"n": 0}
+
+        def handler(request):
+            body = request.read().decode()
+            offset = 0
+            if '"offset": 20' in body or '"offset":20' in body:
+                offset = 20
+            if offset == 0:
+                return httpx.Response(
+                    200,
+                    json={
+                        "total": 30,
+                        "jobPostings": [{"externalPath": f"/job/{i}"} for i in range(PAGE_SIZE)],
+                        "facets": [],
+                    },
+                )
+            page2_calls["n"] += 1
+            if page2_calls["n"] < 2:
+                return httpx.Response(503, text="unavailable")
+            return httpx.Response(
+                200,
+                json={
+                    "total": 30,
+                    "jobPostings": [{"externalPath": f"/job/{20 + i}"} for i in range(10)],
+                    "facets": [],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            paths, total, _ = await _paginate_query(_LIST_URL, {}, client)
+            assert total == 30
+            assert len(paths) == 30
+            # Page 2 was retried once before succeeding.
+            assert page2_calls["n"] == 2
+
+    async def test_persistent_500_raises_not_silent_break(self, monkeypatch):
+        """Pre-fix, ``data is None`` after the retry loop hit a silent
+        ``break`` and returned the partial ``paths`` list. Now the helper
+        raises ``PaginationFetchError`` instead.
+        """
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            body = request.read().decode()
+            if '"offset": 20' in body or '"offset":20' in body:
+                return httpx.Response(500, text="internal")
+            return httpx.Response(
+                200,
+                json={
+                    "total": 30,
+                    "jobPostings": [{"externalPath": f"/job/{i}"} for i in range(PAGE_SIZE)],
+                    "facets": [],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _paginate_query(_LIST_URL, {}, client)
+            assert exc_info.value.last_status == 500
+
+    async def test_persistent_connection_error_raises(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            body = request.read().decode()
+            if '"offset": 20' in body or '"offset":20' in body:
+                raise httpx.ConnectError("conn reset")
+            return httpx.Response(
+                200,
+                json={
+                    "total": 30,
+                    "jobPostings": [{"externalPath": f"/job/{i}"} for i in range(PAGE_SIZE)],
+                    "facets": [],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _paginate_query(_LIST_URL, {}, client)
+            assert exc_info.value.last_error == "ConnectError"
+
+    async def test_empty_200_body_raises(self, monkeypatch):
+        """Per the issue: ``data is None`` from a 200 with a ``null`` /
+        non-dict body must raise rather than silently break the loop.
+        """
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+
+        def handler(request):
+            body = request.read().decode()
+            if '"offset": 20' in body or '"offset":20' in body:
+                return httpx.Response(
+                    200, content=b"null", headers={"content-type": "application/json"}
+                )
+            return httpx.Response(
+                200,
+                json={
+                    "total": 30,
+                    "jobPostings": [{"externalPath": f"/job/{i}"} for i in range(PAGE_SIZE)],
+                    "facets": [],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await _paginate_query(_LIST_URL, {}, client)

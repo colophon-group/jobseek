@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Loader2 } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   getCurrencyRates,
   getSalaryHistogram,
@@ -155,6 +155,7 @@ export function SalaryModal({
   onApply,
   histogramFilters,
 }: SalaryModalProps) {
+  const { t } = useLingui();
   const salaryDisplay = useSalaryDisplay();
 
   // Data — prefer context rates, fetch only histogram
@@ -248,8 +249,11 @@ export function SalaryModal({
               </Trans>
             </Dialog.Title>
             <Dialog.Close asChild>
-              <button className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer">
-                <X size={16} />
+              <button
+                className="rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground cursor-pointer"
+                aria-label={t({ id: "search.salaryModal.close", comment: "Aria label for the salary modal close button", message: "Close" })}
+              >
+                <X size={16} aria-hidden="true" />
               </button>
             </Dialog.Close>
           </div>

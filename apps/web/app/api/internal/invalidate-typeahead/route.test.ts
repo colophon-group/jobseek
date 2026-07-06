@@ -4,9 +4,11 @@ vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => ({
   invalidatePattern: vi.fn(),
+  revalidateTag: vi.fn(),
 }));
 
 vi.mock("@/lib/cache", () => ({ invalidatePattern: mocks.invalidatePattern }));
+vi.mock("next/cache", () => ({ revalidateTag: mocks.revalidateTag }));
 
 import { POST } from "./route";
 
@@ -15,6 +17,7 @@ const _ORIGINAL_TOKEN = process.env.INTERNAL_REVALIDATE_TOKEN;
 beforeEach(() => {
   mocks.invalidatePattern.mockReset();
   mocks.invalidatePattern.mockResolvedValue(0);
+  mocks.revalidateTag.mockReset();
   process.env.INTERNAL_REVALIDATE_TOKEN = "secret-token";
 });
 
@@ -36,18 +39,49 @@ describe("POST /api/internal/invalidate-typeahead", () => {
     const res = await POST(_request("Bearer secret-token") as never);
     expect(res.status).toBe(503);
     expect(mocks.invalidatePattern).not.toHaveBeenCalled();
+    expect(mocks.revalidateTag).not.toHaveBeenCalled();
   });
 
   it("returns 401 when bearer token is missing", async () => {
     const res = await POST(_request() as never);
     expect(res.status).toBe(401);
     expect(mocks.invalidatePattern).not.toHaveBeenCalled();
+    expect(mocks.revalidateTag).not.toHaveBeenCalled();
   });
 
   it("returns 401 when bearer token is wrong", async () => {
     const res = await POST(_request("Bearer wrong-token") as never);
     expect(res.status).toBe(401);
     expect(mocks.invalidatePattern).not.toHaveBeenCalled();
+    expect(mocks.revalidateTag).not.toHaveBeenCalled();
+  });
+
+  it("revalidates the migrated `'use cache'` tags on auth", async () => {
+    /** PR #2907 follow-up + #2884 bucket 4: the 5 migrated typeaheads
+     * write to Next's per-region runtime cache via `'use cache'`, plus
+     * (as of #2884 bucket 4) the CSV-driven per-company tag covering
+     * `getCompanyBySlug` and `getSimilarCompanies`. Only `revalidateTag`
+     * evicts those slots. The legacy Redis prefix sweep stays as a
+     * rollout-window backstop. */
+    const res = await POST(_request("Bearer secret-token") as never);
+
+    expect(res.status).toBe(200);
+    const tags = mocks.revalidateTag.mock.calls.map((c) => c[0]);
+    expect(tags).toEqual([
+      "typeahead:locations",
+      "typeahead:occupations",
+      "typeahead:seniorities",
+      "typeahead:technologies",
+      "typeahead:companies",
+      "company-csv-data",
+    ]);
+    // Each call passes the Next 16 "max" profile so the tag does not
+    // expire — see route handler comment.
+    for (const call of mocks.revalidateTag.mock.calls) {
+      expect(call[1]).toBe("max");
+    }
+    const body = await res.json();
+    expect(body.revalidatedTags).toEqual(tags);
   });
 
   it("invokes invalidatePattern for every typeahead prefix", async () => {

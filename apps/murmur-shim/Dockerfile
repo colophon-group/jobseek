@@ -150,9 +150,21 @@ COPY apps/trace-viewer/package.json ./apps/trace-viewer/
 COPY apps/crawler/murmur/package.json ./apps/crawler/murmur/
 COPY packages/mcp-server/package.json ./packages/mcp-server/
 
-# Frozen install: fail fast on lockfile drift. `--prefer-offline`
-# reduces network round-trips on warm builds.
-RUN pnpm install --frozen-lockfile --prefer-offline
+# The shim imports apps/web/src/db/schema.ts. Node resolves that file's
+# dependencies from apps/web/node_modules, so install the web dependency
+# graph too. The web package depends on @jseek/mcp-server, whose prepare
+# script compiles with tsc during install; copy its compile inputs before
+# the filtered install so that lifecycle has a real project to build.
+COPY packages/mcp-server/tsconfig.json ./packages/mcp-server/tsconfig.json
+COPY packages/mcp-server/src/ ./packages/mcp-server/src/
+
+# Frozen install: fail fast on lockfile drift. The filters keep this
+# image independent from unrelated workspace package lifecycle scripts.
+# `--prefer-offline` reduces network round-trips on warm builds.
+RUN pnpm \
+    --filter @jobseek/murmur-shim... \
+    --filter @jobseek/web... \
+    install --frozen-lockfile --prefer-offline
 
 # Copy the rest of the workspace. Dockerfile.dockerignore filters out
 # .git, .next, coverage, *.test.ts, etc.

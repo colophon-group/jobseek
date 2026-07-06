@@ -1,10 +1,17 @@
 "use client";
 
-import { MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock } from "lucide-react";
+import { MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Home, CalendarDays } from "lucide-react";
 import type { WatchlistFilters } from "@/lib/actions/watchlists";
 import type { SelectedLocation } from "@/components/search/location-pills";
+import type { WorkMode } from "@/lib/search/types";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
+
+const WORK_MODE_LABEL: Record<WorkMode, string> = {
+  onsite: "On-site",
+  hybrid: "Hybrid",
+  remote: "Remote",
+};
 
 export function FilterPillsReadOnly({
   filters,
@@ -12,12 +19,29 @@ export function FilterPillsReadOnly({
   occupations,
   seniorities,
   technologies,
+  workMode,
+  employmentType,
 }: {
   filters: WatchlistFilters;
   locations?: SelectedLocation[];
   occupations?: TaxonomyItem[];
   seniorities?: TaxonomyItem[];
   technologies?: TaxonomyItem[];
+  /**
+   * Work-mode pills (issue #2983). The watchlist filter shape persists
+   * `workMode` on `WatchlistFilters`; callers may either pass the
+   * already-validated array here, or rely on `filters.workMode` if they
+   * have re-validated it themselves. We accept both so the explore-page
+   * "save snapshot" view (which only has the in-memory array, not a
+   * persisted filter row) can render too.
+   */
+  workMode?: WorkMode[];
+  /**
+   * Employment-type pills (issue #3037). Same defensive pattern as
+   * workMode — callers either pre-validate and pass it, or omit and
+   * fall back to `filters.employmentType`.
+   */
+  employmentType?: string[];
 }) {
   const pills: { key: string; icon: React.ReactNode; label: string }[] = [];
 
@@ -63,6 +87,25 @@ export function FilterPillsReadOnly({
   } else if (filters.technologySlugs?.length) {
     for (const slug of filters.technologySlugs) {
       pills.push({ key: `tech-${slug}`, icon: <Code2 size={12} />, label: slug });
+    }
+  }
+  const effectiveEmploymentType = employmentType ?? filters.employmentType;
+  if (effectiveEmploymentType && effectiveEmploymentType.length > 0) {
+    for (const et of effectiveEmploymentType) {
+      pills.push({
+        key: `et-${et}`,
+        icon: <CalendarDays size={12} />,
+        // Same display rule as search-toolbar pills: replace underscores
+        // and rely on Tailwind `capitalize` if the consumer wants — we
+        // keep it lowercase here to match the unfiltered text rendering
+        // and avoid mismatches with the localised labels in the modal.
+        label: et.replace(/_/g, " "),
+      });
+    }
+  }
+  if (workMode && workMode.length > 0) {
+    for (const mode of workMode) {
+      pills.push({ key: `wm-${mode}`, icon: <Home size={12} />, label: WORK_MODE_LABEL[mode] });
     }
   }
   if (filters.salaryMin != null || filters.salaryMax != null) {

@@ -2,6 +2,7 @@
 
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import { withDbRetry } from "@/lib/db-retry";
 import { getSession } from "@/lib/sessionCache";
 import type { SavedJobStatus } from "@/lib/actions/saved-jobs";
 
@@ -56,35 +57,39 @@ async function _fetchBootstrapForUser(userId: string): Promise<{
     starred_ids: { company_id: string }[];
   };
 
-  const rows = await db.execute<Row & Record<string, unknown>>(sql`
-    SELECT
-      (SELECT row_to_json(p) FROM (
+  const rows = await withDbRetry(
+    () =>
+      db.execute<Row & Record<string, unknown>>(sql`
         SELECT
-          theme,
-          theme_updated_at AS "themeUpdatedAt",
-          locale,
-          locale_updated_at AS "localeUpdatedAt",
-          cookie_consent AS "cookieConsent",
-          display_currency AS "displayCurrency",
-          salary_period AS "salaryPeriod",
-          dismissed_banners AS "dismissedBanners",
-          job_languages AS "jobLanguages"
-        FROM user_preferences
-        WHERE user_id = ${userId}
-        LIMIT 1
-      ) p) AS prefs,
-      (SELECT coalesce(json_agg(s), '[]'::json) FROM (
-        SELECT
-          job_posting_id AS "postingId",
-          id AS "savedJobId",
-          status
-        FROM saved_job
-        WHERE user_id = ${userId}
-      ) s) AS saved_statuses,
-      (SELECT coalesce(json_agg(c), '[]'::json) FROM (
-        SELECT company_id FROM followed_company WHERE user_id = ${userId}
-      ) c) AS starred_ids
-  `);
+          (SELECT row_to_json(p) FROM (
+            SELECT
+              theme,
+              theme_updated_at AS "themeUpdatedAt",
+              locale,
+              locale_updated_at AS "localeUpdatedAt",
+              cookie_consent AS "cookieConsent",
+              display_currency AS "displayCurrency",
+              salary_period AS "salaryPeriod",
+              dismissed_banners AS "dismissedBanners",
+              job_languages AS "jobLanguages"
+            FROM user_preferences
+            WHERE user_id = ${userId}
+            LIMIT 1
+          ) p) AS prefs,
+          (SELECT coalesce(json_agg(s), '[]'::json) FROM (
+            SELECT
+              job_posting_id AS "postingId",
+              id AS "savedJobId",
+              status
+            FROM saved_job
+            WHERE user_id = ${userId}
+          ) s) AS saved_statuses,
+          (SELECT coalesce(json_agg(c), '[]'::json) FROM (
+            SELECT company_id FROM followed_company WHERE user_id = ${userId}
+          ) c) AS starred_ids
+      `),
+    { label: "appBootstrap" },
+  );
 
   const row = (rows as unknown as Row[])[0];
   if (!row) return { prefs: null, savedStatuses: [], starredIds: [] };

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { listTopCompanies, searchJobs } from "@/lib/actions/search";
-import { parseSearchFilters } from "@/lib/actions/search-input";
+// Public REST routes use the plain service tier — see issue #3231.
+import { listTopCompanies, searchJobs } from "@/lib/services/search";
+import { parseSearchFilters } from "@/lib/services/search-input";
 import { checkRateLimit, apiResponse, siteUrl } from "../../_shared";
 
 export async function GET(request: NextRequest) {
@@ -22,6 +23,8 @@ export async function GET(request: NextRequest) {
   const occ = sp.get("occ") ?? undefined;
   const sen = sp.get("sen") ?? undefined;
   const tech = sp.get("tech") ?? undefined;
+  const wm = sp.get("wm") ?? undefined;
+  const etype = sp.get("etype") ?? undefined;
   const sal = sp.get("sal") ?? undefined;
   const salcur = sp.get("salcur") ?? undefined;
   const exp = sp.get("exp") ?? undefined;
@@ -29,7 +32,7 @@ export async function GET(request: NextRequest) {
   const companies = sp.get("companies") ?? undefined;
 
   // Resolve slugs to get matching counts for the preview
-  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, locale });
+  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
 
   const locationIds =
     parsed.locations.length > 0 ? parsed.locations.map((l) => l.id) : undefined;
@@ -67,6 +70,9 @@ export async function GET(request: NextRequest) {
     occupationIds,
     seniorityIds,
     technologyIds,
+    workMode: parsed.workMode.length > 0 ? parsed.workMode : undefined,
+    employmentTypes:
+      parsed.employmentTypes.length > 0 ? parsed.employmentTypes : undefined,
     salaryMinEur,
     salaryMaxEur,
     experienceMin,
@@ -97,6 +103,8 @@ export async function GET(request: NextRequest) {
   if (occ) createParams.set("occ", occ);
   if (sen) createParams.set("sen", sen);
   if (tech) createParams.set("tech", tech);
+  if (wm) createParams.set("wm", wm);
+  if (etype) createParams.set("etype", etype);
   if (sal) createParams.set("sal", sal);
   if (salcur) createParams.set("salcur", salcur);
   if (exp) createParams.set("exp", exp);

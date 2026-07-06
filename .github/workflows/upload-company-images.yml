@@ -7,6 +7,11 @@ on:
     paths:
       - "apps/crawler/data/images/**"
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Same-repo branch to update, e.g. add-company/intuit"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -14,8 +19,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: upload-images-${{ github.head_ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || inputs.branch || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   upload:
@@ -31,9 +36,23 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          ref: ${{ github.head_ref || github.ref }}
+          ref: main
           token: ${{ github.token }}
           fetch-depth: 0
+
+      - name: Prepare trusted scripts and target branch
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref || inputs.branch || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          git check-ref-format --branch "$BRANCH" >/dev/null
+          git fetch --no-tags origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+
+          mkdir -p "$RUNNER_TEMP/trusted-scripts"
+          cp .github/scripts/label-pr.sh "$RUNNER_TEMP/trusted-scripts/label-pr.sh"
+          cp .github/scripts/close-linked-company-request-issues.sh "$RUNNER_TEMP/trusted-scripts/close-linked-company-request-issues.sh"
+          chmod +x "$RUNNER_TEMP/trusted-scripts/"*.sh
 
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
 
@@ -44,44 +63,57 @@ jobs:
       - run: uv sync
         working-directory: apps/crawler
 
-      - name: Upload images to R2
-        working-directory: apps/crawler
-        run: uv run python -m src.image_sync
+      - name: Upload images to R2 and push cleanup
         env:
+          BRANCH: ${{ github.event.pull_request.head.ref || inputs.branch || github.ref_name }}
           R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
           R2_DOMAIN_URL: ${{ vars.R2_DOMAIN_URL }}
-
-      - name: Commit R2 URLs and image cleanup
-        env:
-          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
 
+          git check-ref-format --branch "$BRANCH" >/dev/null
+          trusted_ref="$(git rev-parse HEAD)"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps/crawler/data/
 
-          if git diff --cached --quiet; then
-            echo "No R2 URL or image cleanup changes to commit"
-            exit 0
-          fi
+          for attempt in 1 2 3; do
+            echo "Image upload commit attempt $attempt"
 
-          git commit -m "Upload images to R2"
+            git fetch --no-tags origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+            git checkout -f -B "$BRANCH" "refs/remotes/origin/$BRANCH"
 
-          # maybe-auto-merge can rebase/force-push the same PR branch in parallel.
-          # Rebase this commit on top of the latest remote branch before pushing.
-          git fetch origin "$BRANCH"
-          git rebase "origin/$BRANCH"
+            # The workflow has production R2 secrets. Keep PR-controlled data,
+            # but run only trusted crawler code and dependency metadata.
+            git restore --source="$trusted_ref" --staged --worktree -- \
+              apps/crawler/src \
+              apps/crawler/pyproject.toml \
+              apps/crawler/uv.lock
 
-          # Retry once in case branch moved again between fetch and push.
-          git push --force-with-lease origin "HEAD:$BRANCH" || {
-            git fetch origin "$BRANCH"
-            git rebase "origin/$BRANCH"
-            git push --force-with-lease origin "HEAD:$BRANCH"
-          }
+            (cd apps/crawler && uv run python -m src.image_sync)
+
+            if git diff --quiet -- apps/crawler/data; then
+              echo "No R2 URL or image cleanup changes to commit"
+              exit 0
+            fi
+
+            git add apps/crawler/data/
+            git commit -m "Upload images to R2"
+
+            if git push --force-with-lease origin "HEAD:$BRANCH"; then
+              exit 0
+            fi
+
+            echo "Branch moved while uploading images; retrying against latest branch"
+            git reset --hard
+            sleep "$attempt"
+          done
+
+          echo "Unable to commit image upload after 3 attempts" >&2
+          exit 1
 
       - name: Post image preview comment
         if: github.event_name != 'workflow_dispatch'
@@ -159,7 +191,8 @@ jobs:
       - name: Label PR
         id: label
         if: github.event_name != 'workflow_dispatch'
-        run: .github/scripts/label-pr.sh
+        run: |
+          "$RUNNER_TEMP/trusted-scripts/label-pr.sh"
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
@@ -201,7 +234,8 @@ jobs:
 
       - name: Close linked company-request issues
         if: github.event_name != 'workflow_dispatch' && steps.merge.outputs.merged == 'true'
-        run: .github/scripts/close-linked-company-request-issues.sh
+        run: |
+          "$RUNNER_TEMP/trusted-scripts/close-linked-company-request-issues.sh"
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}

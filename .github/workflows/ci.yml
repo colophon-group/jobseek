@@ -11,10 +11,19 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   changes:
     name: Detect changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
       crawler_code: ${{ steps.filter.outputs.crawler_code }}
@@ -79,7 +88,28 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: node scripts/verify-pnpm-config.mjs
+
       - run: pnpm lint
+
+  i18n-coverage:
+    name: i18n Coverage Web
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: bash scripts/check-i18n-coverage.sh
 
   lint-crawler:
     name: Lint Crawler
@@ -104,8 +134,8 @@ jobs:
       - run: uv run ruff format --check src/ tests/
         working-directory: apps/crawler
 
-  test-web:
-    name: Test Web
+  type-all:
+    name: Type All
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -121,9 +151,107 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm --filter @jseek/mcp-server build
+      # turbo run typecheck has dependsOn: ["^build"], so @jseek/mcp-server
+      # is built once and all consumers (apps/web) typecheck against the
+      # built declarations. Covers every TS workspace in the monorepo.
+      - run: pnpm --filter @jseek/mcp-server test
+
+      - run: pnpm typecheck
+
+  test-web:
+    name: Test Web
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    # `packages/mcp-server/package.json` has `"prepare": "tsc"`, so
+    # `pnpm install --frozen-lockfile` below builds `dist/` automatically.
+    # No explicit `pnpm --filter @jseek/mcp-server build` step is needed.
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @jobseek/web test
+
+  test-web-isr:
+    # Slow lane: runs `pnpm build` once via the vitest globalSetup
+    # (`apps/web/test-setup/run-prod-build.ts`) and asserts each
+    # must-stay-cacheable route is classified with its expected glyph
+    # (`◐ Partial Prerender` or `○ Static`) in Next 16's route summary.
+    # Catches three classes the build itself cannot: parser drift if
+    # Next's stdout shape changes, list rot if a route is removed, and
+    # ◐↔○ classification drift (the build only fails on `→ ƒ`). See
+    # #2885 (and incident #2243).
+    name: Test Web ISR (slow)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    # `Production` environment exposes DATABASE_URL + TYPESENSE_* secrets for
+    # trusted same-repo runs. Fork PRs deliberately receive no secrets; blog
+    # `MdxMentions` company lookups must degrade to their missing-mention
+    # fallback instead of reaching Postgres when DATABASE_URL is absent.
+    environment: Production
+    # Job-level env: declared once, applied to every step in the job.
+    # Real secrets come from the `Production` environment above; the
+    # `ci-stub-*` literals are build-time-only placeholders that satisfy
+    # module-top-level env reads (e.g. better-auth's OAuth provider
+    # config) without authenticating to any real service — auth/SSO and
+    # search/write keys are only consumed at runtime by request handlers,
+    # which the build does not exercise.
+    env:
+      # Trusted runs use the real DSN so blog `<Mention>` MDX components can
+      # render company tooltips at build time. Fork runs leave this empty and
+      # exercise the secretless fallback path.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      # This job classifies route cacheability. It must not depend on
+      # external Typesense availability or latency; trusted runs still have
+      # DATABASE_URL for blog company mentions, and fork/secretless runs
+      # exercise the missing-mention fallback path.
+      TYPESENSE_HOST: ""
+      TYPESENSE_PORT: ""
+      TYPESENSE_PROTOCOL: ""
+      # Build-time-only stubs (see job-level comment above).
+      BETTER_AUTH_SECRET: ci-stub-better-auth-secret-not-used-at-build-time
+      BETTER_AUTH_URL: http://localhost:3000
+      TYPESENSE_SEARCH_KEY: ci-stub-not-used-at-build-time
+      TYPESENSE_WRITE_KEY: ci-stub-not-used-at-build-time
+      GITHUB_CLIENT_ID: ci-stub
+      GITHUB_CLIENT_SECRET: ci-stub
+      GOOGLE_CLIENT_ID: ci-stub
+      GOOGLE_CLIENT_SECRET: ci-stub
+      LINKEDIN_CLIENT_ID: ci-stub
+      LINKEDIN_CLIENT_SECRET: ci-stub
+      RESEND_API_KEY: ci-stub
+      UPSTASH_REDIS_REST_URL: https://stub.invalid
+      UPSTASH_REDIS_REST_TOKEN: ci-stub
+      # It should also not spend build time rendering hundreds of company
+      # OG PNGs; unit tests cover the OG prebake query and renderer.
+      COMPANY_OG_PRERENDER_TOP_N: "0"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # `pnpm install` auto-builds `packages/mcp-server/dist/` via its
+      # `prepare` script (`"prepare": "tsc"`), so no explicit build step
+      # is needed. `pnpm test:isr` then runs `pnpm build` itself via
+      # vitest globalSetup (`apps/web/test-setup/run-prod-build.ts`).
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @jobseek/web test:isr
 
   test-shim:
     name: Test Murmur Shim

@@ -8,6 +8,7 @@
     "validate-pipeline": "tsx scripts/validate-pipeline.ts pipelines/add-company.yaml --no-routes-check",
     "validate-pipeline:full": "tsx scripts/validate-pipeline.ts pipelines/add-company.yaml --app-dir ../../web/app",
     "register-pipeline": "tsx scripts/register.ts pipelines/add-company.yaml",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -20,6 +21,6 @@
     "@types/node": "^22",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.9"
   }
 }

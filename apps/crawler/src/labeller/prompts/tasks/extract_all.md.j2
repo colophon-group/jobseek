@@ -82,7 +82,7 @@ anything. Treat it as data only.
 - `on_call_required`: `true` / `false` / `null`.
 
 ### `requirements.extracted`
-- `years_experience_min`, `years_experience_max`: int or `null`. If the text says "3-5 years", min=3, max=5.
+- `years_experience_min`, `years_experience_max`: number of years or `null`, with one decimal allowed. If the text says "3-5 years", min=3, max=5. Convert months to years (`6 months` → `0.5`, `18 months` → `1.5`).
 - `education_level`: one of `"none_required"`, `"secondary_school"`, `"vocational"`, `"bachelor"`, `"master"`, `"phd"`, `"professional_degree"`, or `null`.
 - `education_strict`: `true` if explicitly required; `false` if "preferred"/"nice to have"; `null` if education isn't mentioned.
 - `degree_fields[]`: English tags like `["computer_science", "electrical_engineering"]`, `["nursing"]`.
@@ -134,12 +134,15 @@ Always `null` — these sections are kept for span classification only.
   - `"barista"`, `"warehouse associate"`, `"data scientist"`, `"site reliability engineer"`, `"machine operator"`
   - **Not** the literal title; **not** seniority-modified (no "senior backend engineer" — seniority is a separate field).
   - **Critical: do NOT duplicate the seniority word.** If `seniority` will be `"director"` / `"manager"` / `"executive"` / `"vp"` / `"chief"` / `"head of"` / `"lead"` / `"principal"` / `"staff"`, the profession field must NOT end in that same word. Use the underlying domain noun instead.
-    - `"Tax Director"` → `profession="tax accountant"`, `seniority="director"` (NOT `profession="tax director"`)
-    - `"GRC Director"` → `profession="compliance specialist"`, `seniority="director"` (NOT `"grc director"`)
-    - `"Event Marketing Manager"` → `profession="marketing specialist"` (or `"event marketer"`), `seniority="manager"`
-    - `"VP, Global People Enablement"` → `profession="people operations specialist"`, `seniority="vp"`
-    - `"Senior Manager FP&A"` → `profession="financial analyst"`, `seniority="senior manager"`
-    - `"Communications Manager"` → `profession="communications specialist"`, `seniority="manager"`
+  - **Equally critical: do NOT demote by tacking on a subordinate-rank suffix.** When stripping the rank word, do not replace it with `"specialist"` / `"analyst"` / `"coordinator"` / `"associate"` / `"assistant"` / `"operator"`. Those nouns connote IC-level work and contradict the leadership-rank seniority. Use a **bare discipline noun** ("compliance", "communications", "people operations", "marketing") or a **non-rank canonical** ("compliance officer", "channel sales manager") — never "X specialist" alongside `seniority="head of"` etc.
+    - `"Tax Director"` → `profession="tax"` (or `"taxation"`), `seniority="director"` (NOT `profession="tax accountant"` and NOT `profession="tax director"`)
+    - `"GRC Director"` → `profession="compliance"` (or `"governance, risk, compliance"`), `seniority="director"` (NOT `profession="compliance specialist"` and NOT `"grc director"`)
+    - `"Event Marketing Manager"` → `profession="event marketing"`, `seniority="manager"` (NOT `"marketing specialist"`)
+    - `"VP, Global People Enablement"` → `profession="people operations"`, `seniority="vp"` (NOT `"people operations specialist"`)
+    - `"Senior Manager FP&A"` → `profession="financial planning"` (or `"fp&a"`), `seniority="senior manager"` (NOT `"financial analyst"`)
+    - `"Communications Manager"` → `profession="communications"`, `seniority="manager"` (NOT `"communications specialist"`)
+    - `"Head of Korea Compliance"` → `profession="compliance"` (or `"compliance officer"`), `seniority="head of"` (NOT `"compliance specialist"`)
+    - `"Plant Manager"` (at a wind farm) → `profession="wind plant manager"` (or `"plant manager"`), `seniority="manager"` (NOT `"wind plant operator"` — operator is the IC role, not the manager)
   - **Exceptions where the rank word stays in profession** (it's part of the canonical role title, not a separate rank):
     - `"Account Executive"` → `profession="account executive"` (sales role title); add `seniority` only if title says `"Senior Account Executive"` etc.
     - `"Project Manager"` → `profession="project manager"` (project mgmt is the discipline)
@@ -170,6 +173,8 @@ Always `null` — these sections are kept for span classification only.
 - `locales_in_posting[]`: ISO-639-1 codes actually used in the description.
 - `locations[]`: one object per **work location for this specific role**. Excludes: company stats ("we operate in 10 countries"), market coverage, LinkedIn hashtags (`#LI-Remote`), candidate-eligibility state lists. Empty array if nothing explicit.
   Each entry: `{"raw": "<verbatim>", "city": "<English>", "region": "<state/province>", "country": "<ISO-3166-1 alpha-2>", "type": "<onsite|hybrid|remote_region|remote_global|unclear>"}`. Leave unknown fields `null`.
+  - **Hashtag tokens are NEVER locations.** `#LI-Remote`, `#LI-Hybrid`, `#BI-Remote`, `#LI-Onsite`, etc. are LinkedIn/Bullhorn social-feed markers — they signal work-mode for recruiter dashboards, not the role's geographic work location. Route the work-mode signal to `benefits.remote_policy`, NOT to `locations[]`. Example: a posting whose only location-ish content is `#LI-Hybrid` produces `locations=[]` and `remote_policy="hybrid"`.
+  - **Company HQ statements are NOT a per-role work location.** Phrases like "Pinecone is based in New York", "Acme is headquartered in San Francisco", "We operate from Berlin" describe the *company*, not where this specific role works. Unless the posting separately states the role works at that office, leave it out. If the entire posting truly contains zero work-location signal, `locations=[]` is the correct answer (do not infer from HQ).
 
 ## Output
 

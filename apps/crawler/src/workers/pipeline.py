@@ -24,9 +24,15 @@ import structlog
 
 from src.config import settings
 from src.metrics import (
+    inflight_deadletter_depth,
+    inflight_depth,
+    inflight_heartbeat_total,
+    inflight_reaped_total,
     monitor_duration_seconds,
     monitor_failed_per_board_total,
     scrape_duration_seconds,
+    shutdown_cancelled_total,
+    shutdown_drain_total,
     tasks_total,
     worker_heartbeat_ts,
 )
@@ -34,8 +40,13 @@ from src.redis_queue import (
     BoardWork,
     ScrapeWork,
     claim_work,
+    complete_task,
     enqueue_monitor,
     enqueue_scrape,
+    get_deadletter_depth,
+    get_inflight_depth,
+    heartbeat_task,
+    reap_expired,
     reschedule_task,
 )
 
@@ -46,6 +57,177 @@ _ERROR_BACKOFF_S = 300  # 5 minutes
 
 # Idle backoff when no work is available (seconds).
 _IDLE_BACKOFF_S = 2.0
+
+
+# ---------------------------------------------------------------------------
+# Inflight lease heartbeat (#3159 / #3173)
+# ---------------------------------------------------------------------------
+
+
+@contextlib.asynccontextmanager
+async def _lease_heartbeat(
+    task_type: str,
+    domain: str,
+    task_id: str,
+    *,
+    browser: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+):
+    """Run a background heartbeat for an in-flight task.
+
+    Atomically extends the inflight lease every
+    ``inflight_heartbeat_interval_seconds``. The heartbeat returns 0
+    when the reaper has already reclaimed the lease — at that point the
+    work is effectively orphaned (another worker may have re-claimed
+    it) and continuing is unsafe, so the heartbeat exits silently and
+    the caller's own work continues until completion. We don't cancel
+    the parent task: orphaned writes are harmless because the
+    underlying SQL is idempotent (UPSERTs / ON CONFLICT) and the second
+    worker just replays them.
+
+    Safety net (#3159 / #3173): on non-cancelled exit, this context
+    manager calls ``complete_task`` to make sure the inflight lease
+    entry is cleared even if the work code returned through an
+    early-drop path without calling ``reschedule_task``. ``complete_task``
+    is idempotent (a successful ``reschedule_task`` already removed the
+    entry, so the second ZREM is a no-op). This guarantees: anything we
+    successfully finished — for any value of "finished" — leaves no
+    orphan in the inflight ZSET, even if a future drop path is added
+    without explicit cleanup.
+
+    Cancellation is different: a task cancelled during bounded shutdown
+    did not finish, so clearing its lease would make the work disappear.
+    In that path we leave the inflight entry intact and let the reaper
+    recover it after the lease expires.
+    """
+    interval = max(1.0, float(settings.inflight_heartbeat_interval_seconds))
+    wtype = "browser" if browser else "simple"
+    stop = asyncio.Event()
+
+    async def _beat():
+        try:
+            while not stop.is_set():
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(stop.wait(), timeout=interval)
+                if stop.is_set():
+                    return
+                try:
+                    extended = await heartbeat_task(
+                        domain,
+                        task_id,
+                        task_type,
+                        browser=browser,
+                    )
+                except Exception:
+                    worker_log.warning("pipeline.heartbeat.error", exc_info=True)
+                    inflight_heartbeat_total.labels(wtype=wtype, outcome="lost").inc()
+                    continue
+                if extended:
+                    inflight_heartbeat_total.labels(wtype=wtype, outcome="extended").inc()
+                else:
+                    inflight_heartbeat_total.labels(wtype=wtype, outcome="lost").inc()
+                    worker_log.warning(
+                        "pipeline.heartbeat.lost",
+                        task_type=task_type,
+                        domain=domain,
+                        task_id=task_id,
+                    )
+                    return
+        except asyncio.CancelledError:
+            return
+
+    beat_task = asyncio.create_task(_beat(), name=f"hb-{task_type}-{task_id[:8]}")
+    cancelled = False
+    try:
+        yield
+    except asyncio.CancelledError:
+        cancelled = True
+        raise
+    finally:
+        stop.set()
+        beat_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await beat_task
+        if cancelled:
+            worker_log.info(
+                "pipeline.complete_task.skipped_cancelled",
+                task_type=task_type,
+                domain=domain,
+                task_id=task_id,
+            )
+        else:
+            # Safety-net cleanup — idempotent if ``reschedule_task`` already
+            # cleared the inflight entry. Suppress errors so a Redis blip on
+            # cleanup never escalates into a worker crash.
+            try:
+                await complete_task(domain, task_id, task_type, browser=browser)
+            except Exception:
+                worker_log.warning("pipeline.complete_task.failed", exc_info=True)
+
+
+# ---------------------------------------------------------------------------
+# Reaper coroutine (#3159 / #3173)
+# ---------------------------------------------------------------------------
+
+
+async def _reaper_loop(
+    shutdown_event: asyncio.Event,
+    *,
+    browser: bool,
+) -> None:
+    """Periodically sweep expired inflight leases back to per-domain queues.
+
+    Runs once per pipeline (not per worker) to avoid stampedes on the
+    Lua reaper. Sweeps both worker types' inflight ZSETs every tick so
+    a simple/browser worker doing the sweep covers the cross-type case
+    (e.g. a slim worker reaping a browser task that's been orphaned by
+    a Playwright OOM, and vice-versa).
+    """
+    interval = max(1.0, float(settings.reaper_interval_seconds))
+    reaper_log = log.bind(component="reaper", browser=browser)
+    reaper_log.info("pipeline.reaper.started")
+    try:
+        while not shutdown_event.is_set():
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(shutdown_event.wait(), timeout=interval)
+            if shutdown_event.is_set():
+                break
+            for wtype, is_browser in (("simple", False), ("browser", True)):
+                try:
+                    result = await reap_expired(browser=is_browser)
+                except Exception:
+                    reaper_log.warning("pipeline.reaper.error", wtype=wtype, exc_info=True)
+                    continue
+                if result["reenqueued"]:
+                    inflight_reaped_total.labels(wtype=wtype, outcome="reenqueued").inc(
+                        result["reenqueued"]
+                    )
+                if result["dead_lettered"]:
+                    inflight_reaped_total.labels(wtype=wtype, outcome="dead_lettered").inc(
+                        result["dead_lettered"]
+                    )
+                if result["missing_config"]:
+                    inflight_reaped_total.labels(wtype=wtype, outcome="missing_config").inc(
+                        result["missing_config"]
+                    )
+                if result["reenqueued"] or result["dead_lettered"] or result["missing_config"]:
+                    reaper_log.info(
+                        "pipeline.reaper.swept",
+                        wtype=wtype,
+                        **result,
+                    )
+                # Refresh observability gauges every tick.
+                try:
+                    inflight_depth.labels(wtype=wtype).set(
+                        await get_inflight_depth(browser=is_browser)
+                    )
+                    inflight_deadletter_depth.labels(wtype=wtype).set(
+                        await get_deadletter_depth(browser=is_browser)
+                    )
+                except Exception:
+                    pass
+    finally:
+        reaper_log.info("pipeline.reaper.stopped")
 
 
 # ---------------------------------------------------------------------------
@@ -225,8 +407,24 @@ async def _discovery_worker(
 
             try:
                 if work.kind == "monitor" and work.board_work is not None:
-                    if monitor_semaphore is not None:
-                        async with monitor_semaphore:
+                    async with _lease_heartbeat(
+                        "monitor",
+                        work.board_work.domain,
+                        work.board_work.board_id,
+                        browser=browser,
+                        worker_log=worker_log,
+                    ):
+                        if monitor_semaphore is not None:
+                            async with monitor_semaphore:
+                                await _process_monitor_work(
+                                    worker_log,
+                                    work.board_work,
+                                    local_pool,
+                                    http,
+                                    browser=browser,
+                                    pw=pw,
+                                )
+                        else:
                             await _process_monitor_work(
                                 worker_log,
                                 work.board_work,
@@ -235,26 +433,40 @@ async def _discovery_worker(
                                 browser=browser,
                                 pw=pw,
                             )
-                    else:
-                        await _process_monitor_work(
+                elif work.kind == "scrape" and work.scrape_work is not None:
+                    async with _lease_heartbeat(
+                        "scrape",
+                        work.scrape_work.domain,
+                        work.scrape_work.posting_id,
+                        browser=browser,
+                        worker_log=worker_log,
+                    ):
+                        await _process_scrape_work(
                             worker_log,
-                            work.board_work,
+                            work.scrape_work,
                             local_pool,
                             http,
                             browser=browser,
                             pw=pw,
                         )
-                elif work.kind == "scrape" and work.scrape_work is not None:
-                    await _process_scrape_work(
-                        worker_log,
-                        work.scrape_work,
-                        local_pool,
-                        http,
-                        browser=browser,
-                        pw=pw,
-                    )
                 else:
                     worker_log.warning("pipeline.unknown_work_kind", kind=work.kind)
+                    # Unknown kind — drop the lease so reaper doesn't loop on it.
+                    try:
+                        await complete_task(
+                            work.domain or "",
+                            work.task_id or "",
+                            "monitor",
+                            browser=browser,
+                        )
+                        await complete_task(
+                            work.domain or "",
+                            work.task_id or "",
+                            "scrape",
+                            browser=browser,
+                        )
+                    except Exception:
+                        pass
             except Exception:
                 worker_log.exception("pipeline.worker.task_escaped")
     finally:
@@ -361,6 +573,12 @@ async def _process_monitor_work(
             # Drop the Redis task instead of rescheduling — the board
             # is now filtered by the self-heal check above so it
             # won't return to the queue.
+            #
+            # Explicit ``status="gone"`` (not silent / not ``failed``):
+            # gone is an upstream signal, not a crawler defect, and
+            # operators need a separate rollup so it doesn't dilute
+            # the failure-rate alert (#3200).
+            tasks_total.labels(kind="monitor", status="gone").inc()
             return
 
         profile = "browser" if browser else "simple"
@@ -370,6 +588,17 @@ async def _process_monitor_work(
         check_interval = int(config.get("check_interval_minutes", "60"))
         next_check_at = time.time() + check_interval * 60
         await reschedule_task(domain, board_id, "monitor", next_check_at, browser=browser)
+
+        # Emit the success/failure rollup for monitor tasks so Grafana
+        # panels and ``TaskFailureRateHigh`` (which sum over
+        # ``tasks_total{kind="monitor"}``) reflect monitor outcomes —
+        # the scrape path already does this at the matching site
+        # (#3200; mirrors the ``status = "succeeded" if success else
+        # "failed"`` increment in ``_process_scrape_work``).
+        tasks_total.labels(
+            kind="monitor",
+            status="succeeded" if success else "failed",
+        ).inc()
 
         worker_log.info(
             "pipeline.monitor.done",
@@ -382,6 +611,11 @@ async def _process_monitor_work(
         # downstream Redis failure in the reschedule path doesn't hide
         # the original monitor failure from the metric.
         monitor_failed_per_board_total.labels(board_id=board_id).inc()
+        # Also emit the low-cardinality rollup so the failure rate
+        # panel and ``TaskFailureRateHigh`` see monitor exceptions
+        # (#3200). The per-board counter alone is high-cardinality and
+        # not what the alert sums over.
+        tasks_total.labels(kind="monitor", status="failed").inc()
         worker_log.exception("pipeline.monitor.error", board_id=board_id)
         # Reschedule with backoff — guard so Redis errors don't kill the worker
         try:
@@ -410,6 +644,12 @@ async def _process_scrape_work(
     domain = scrape_work.domain
     worker_log = worker_log.bind(posting_id=posting_id, url=scrape_work.source_url)
 
+    # Bind posting_id as a contextvar so every downstream log line —
+    # including from third-party code that uses structlog — carries the
+    # correlation id (#3192). The merge_contextvars processor is already
+    # configured in shared/logging.py. We unbind on the way out to keep
+    # the next claim's events clean.
+    structlog.contextvars.bind_contextvars(posting_id=posting_id)
     try:
         # Self-heal: production scheduling is via Redis ZSETs, NOT
         # Postgres ``next_scrape_at``. Without this check, the worker
@@ -663,6 +903,20 @@ async def _process_scrape_work(
         next_scrape_at = time.time() + scrape_work.scrape_interval_hours * 3600
         await reschedule_task(domain, posting_id, "scrape", next_scrape_at, browser=browser)
 
+        # Lifecycle anchor: emit ``posting.scraped`` only on success so an
+        # operator with the posting_id can confirm "yes, this URL completed
+        # a scrape cycle" without filtering out failure noise (#3192). The
+        # adjacent ``pipeline.scrape.done`` line above is intentionally kept
+        # — it still carries success/failure for the existing dashboards.
+        if success:
+            worker_log.info(
+                "posting.scraped",
+                posting_id=posting_id,
+                board_id=scrape_work.board_id,
+                source_url=scrape_work.source_url,
+                duration_s=round(duration, 2),
+            )
+
         worker_log.info(
             "pipeline.scrape.done",
             success=success,
@@ -678,6 +932,10 @@ async def _process_scrape_work(
             await reschedule_task(domain, posting_id, "scrape", backoff_ts, browser=browser)
         except Exception:
             worker_log.warning("pipeline.scrape.reschedule_failed", exc_info=True)
+    finally:
+        # Clear the contextvar so the next claim's events don't inherit
+        # this posting_id (#3192).
+        structlog.contextvars.unbind_contextvars("posting_id")
 
 
 # ---------------------------------------------------------------------------
@@ -703,34 +961,140 @@ async def run_pipeline(
         http: Shared httpx client for HTTP requests.
         shutdown_event: Set this event to trigger graceful shutdown.
         browser: If True, claim from browser queues only.
+
+    Shutdown semantics (#3205): when ``shutdown_event`` is set, workers
+    stop claiming new work between iterations. ``run_pipeline`` then
+    waits up to ``settings.shutdown_grace_seconds`` for in-flight tasks
+    to finish before cancelling the remaining workers. Anything still
+    in flight at cancellation time is recovered by the reaper through
+    the inflight lease set up in ``_lease_heartbeat`` / ``claim_work``
+    (#3259). Without the bounded drain, ``docker stop`` would SIGKILL
+    the container after 10s and any task mid-``_process_one_board_streaming``
+    would be silently abandoned (claimed-then-lost).
     """
     concurrency = settings.discovery_concurrency
     monitor_cap = settings.monitor_concurrency
     monitor_sem = asyncio.Semaphore(monitor_cap) if monitor_cap > 0 else None
+    grace_s = max(0, int(settings.shutdown_grace_seconds))
+    wtype = "browser" if browser else "simple"
     log.info(
         "pipeline.starting",
         concurrency=concurrency,
         monitor_concurrency=monitor_cap,
         browser=browser,
+        shutdown_grace_seconds=grace_s,
     )
 
+    # Spawn workers as plain tasks (no TaskGroup) so we can drive the
+    # shutdown drain ourselves — TaskGroup's __aexit__ waits unbounded
+    # for children, which is exactly the failure mode we're fixing.
+    tasks: list[asyncio.Task] = []
+    for i in range(concurrency):
+        tasks.append(
+            asyncio.create_task(
+                _discovery_worker(
+                    i,
+                    local_pool,
+                    http,
+                    shutdown_event,
+                    browser=browser,
+                    monitor_semaphore=monitor_sem,
+                ),
+                name=f"discovery-{i}",
+            )
+        )
+    # Reaper: one per pipeline. Sweeps inflight leases for
+    # tasks orphaned by worker SIGKILL / OOM / segfault back
+    # onto the per-domain queue. See #3159 / #3173.
+    reaper_task = asyncio.create_task(
+        _reaper_loop(shutdown_event, browser=browser),
+        name="reaper",
+    )
+    tasks.append(reaper_task)
+
     try:
-        async with asyncio.TaskGroup() as tg:
-            for i in range(concurrency):
-                tg.create_task(
-                    _discovery_worker(
-                        i,
-                        local_pool,
-                        http,
-                        shutdown_event,
-                        browser=browser,
-                        monitor_semaphore=monitor_sem,
-                    ),
-                    name=f"discovery-{i}",
+        # Phase 1: wait until either shutdown_event fires or a worker
+        # exits unexpectedly. Workers normally only exit when
+        # shutdown_event is set; an early exit means an unhandled
+        # exception escaped — propagate it after best-effort cleanup
+        # of siblings.
+        shutdown_waiter = asyncio.create_task(shutdown_event.wait(), name="shutdown-waiter")
+        try:
+            done, _pending = await asyncio.wait(
+                [*tasks, shutdown_waiter],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+        finally:
+            shutdown_waiter.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await shutdown_waiter
+
+        # If a worker exited before shutdown_event, surface its error.
+        early_exits = [t for t in tasks if t.done()]
+        if early_exits and not shutdown_event.is_set():
+            # Make sure we actually stop the rest, then re-raise via
+            # the normal cancellation path below.
+            log.error(
+                "pipeline.worker.early_exit",
+                count=len(early_exits),
+                browser=browser,
+            )
+            shutdown_event.set()
+
+        # Phase 2: bounded drain. Allow in-flight tasks up to
+        # ``grace_s`` to honour shutdown_event and exit on their own.
+        # Use ALL_COMPLETED so we wait for every worker, not just the
+        # first one — a single slow monitor shouldn't force us to
+        # cancel its peers prematurely.
+        remaining = [t for t in tasks if not t.done()]
+        cancelled_count = 0
+        if remaining:
+            log.info(
+                "pipeline.draining",
+                in_flight=len(remaining),
+                grace_seconds=grace_s,
+                browser=browser,
+            )
+            if grace_s > 0:
+                _done, pending = await asyncio.wait(
+                    remaining,
+                    timeout=grace_s,
+                    return_when=asyncio.ALL_COMPLETED,
                 )
-    except* Exception as eg:
-        # Log any worker exceptions that escaped
-        for exc in eg.exceptions:
-            log.error("pipeline.worker_exception", error=str(exc), exc_info=exc)
+            else:
+                pending = set(remaining)
+
+            if pending:
+                cancelled_count = len(pending)
+                log.warning(
+                    "pipeline.drain.timeout",
+                    cancelled=cancelled_count,
+                    grace_seconds=grace_s,
+                    browser=browser,
+                )
+                for t in pending:
+                    t.cancel()
+                # Drain the cancellations so we don't leak warnings on
+                # event loop close. ``return_exceptions=True`` because
+                # we expect CancelledError here.
+                await asyncio.gather(*pending, return_exceptions=True)
+                shutdown_drain_total.labels(wtype=wtype, outcome="timeout").inc()
+                shutdown_cancelled_total.labels(wtype=wtype).inc(cancelled_count)
+            else:
+                log.info("pipeline.drain.complete", browser=browser)
+                shutdown_drain_total.labels(wtype=wtype, outcome="drained").inc()
+    finally:
+        # Surface any non-cancellation exceptions from the workers so
+        # they don't get swallowed.
+        for t in tasks:
+            if t.cancelled():
+                continue
+            exc = t.exception() if t.done() else None
+            if exc is not None and not isinstance(exc, asyncio.CancelledError):
+                log.error(
+                    "pipeline.worker_exception",
+                    error=str(exc),
+                    exc_info=exc,
+                )
 
     log.info("pipeline.stopped", browser=browser)

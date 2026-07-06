@@ -19,6 +19,23 @@ async def _init_connection(conn: asyncpg.Connection) -> None:
     await conn.execute("SET tcp_keepalives_count = 3")
 
 
+async def _init_local_connection(conn: asyncpg.Connection) -> None:
+    """Init for the local Postgres pool used by workers.
+
+    Tighter ``statement_timeout`` (30s) than the Supabase pool because worker
+    queries are all narrow single-row reads or small upserts — a slow query is
+    a bug to surface, not a feature to wait through. Keepalives match the
+    remote pool: they cost nothing on the local socket but recycle dead
+    connections within ~90s if the Postgres backend ever becomes unreachable.
+    """
+
+    await conn.execute("SET statement_timeout = '30s'")
+    await conn.execute("SET idle_in_transaction_session_timeout = '5min'")
+    await conn.execute("SET tcp_keepalives_idle = 60")
+    await conn.execute("SET tcp_keepalives_interval = 10")
+    await conn.execute("SET tcp_keepalives_count = 3")
+
+
 async def create_pool() -> asyncpg.Pool:
     """Create the Supabase pool (remote, used by exporter + sync only)."""
     global _pool
@@ -49,6 +66,7 @@ async def create_local_pool() -> asyncpg.Pool:
             command_timeout=60,
             statement_cache_size=0,
             max_inactive_connection_lifetime=300.0,
+            init=_init_local_connection,
         )
     return _local_pool
 

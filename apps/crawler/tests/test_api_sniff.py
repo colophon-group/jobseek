@@ -528,10 +528,18 @@ class TestExtractItems:
 class TestFetchFactories:
     @pytest.mark.asyncio
     async def test_make_browser_fetcher_delegates_to_page(self):
-        """make_browser_fetcher delegates to fetch_json via page.evaluate."""
+        """make_browser_fetcher delegates to fetch_json via page.evaluate.
+
+        The page-evaluate bridge now returns ``{headers, text}`` (#2925)
+        so the TDM-Reservation check (#2842) can run on the Playwright
+        path symmetric with the static httpx fetcher. Empty headers
+        bypass the TDM check; the body text is returned as parsed JSON.
+        """
         items = [{"title": "Dev"}, {"title": "PM"}, {"title": "QA"}]
         mock_page = AsyncMock()
-        mock_page.evaluate = AsyncMock(return_value=json.dumps({"jobs": items}))
+        mock_page.evaluate = AsyncMock(
+            return_value={"headers": {}, "text": json.dumps({"jobs": items})}
+        )
 
         fetch_fn = make_browser_fetcher(mock_page)
         result = await fetch_fn("GET", "https://example.com/api", {}, None)

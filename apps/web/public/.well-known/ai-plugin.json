@@ -2,8 +2,8 @@
   "schema_version": "v1",
   "name_for_human": "Job Seek",
   "name_for_model": "jobseek",
-  "description_for_human": "Monitor company career pages, get alerts on new job postings, and track applications.",
-  "description_for_model": "Job Seek is a job aggregator that monitors company career pages. Users can browse jobs by company, create watchlists, filter by location/occupation/seniority, and get alerts when new positions are posted. The explore page at /explore allows searching all indexed jobs. Company pages at /company/{slug} show all open positions for a specific company. The site is free to use with optional paid plans for advanced features.",
+  "description_for_human": "Track the companies you actually want to work at. Build watchlists, get email alerts when new roles open up, and track applications in one place — postings sourced directly from company career pages.",
+  "description_for_model": "Job Seek is a company-tracking tool for job seekers who already know which companies they want to work at. Built around per-company watchlists and email alerts as the primary workflow — not broad search. Users can build watchlists, get email alerts when new postings match their filters (location, occupation, seniority, salary, language), and track applications in one place. Postings are indexed directly from company career pages, typically appearing within hours of going live — before LinkedIn or Indeed cross-post them. The explore page at /explore allows browsing all indexed jobs; per-company pages exist at /company/{slug}. Free tier includes full search, 1 watchlist, and an application tracker; Pro tier ($10/month) adds unlimited watchlists and email alerts. Open-source crawler (MIT) by Colophon Group, a small developer studio in Switzerland.",
   "auth": { "type": "none" },
   "api": {
     "type": "openapi",

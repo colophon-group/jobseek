@@ -9,7 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import type { SelectedLocation } from "@/components/search/location-pills";
-import type { SearchResultCompany } from "@/lib/search";
+import type { SearchResultCompany, WorkMode } from "@/lib/search";
+import { canonicalStringCompare } from "@/lib/sort";
 
 export interface SearchStateSnapshot {
   keywords: string[];
@@ -17,6 +18,8 @@ export interface SearchStateSnapshot {
   occupations: { id: number; slug: string; name: string }[];
   seniorities: { id: number; slug: string; name: string }[];
   technologies: { id: number; slug: string; name: string }[];
+  employmentTypes?: string[];
+  workMode: WorkMode[];
   salaryMinEur: number | undefined;
   salaryMaxEur: number | undefined;
   salaryCurrency: string;
@@ -24,6 +27,7 @@ export interface SearchStateSnapshot {
   experienceMax: number | undefined;
   companies: SearchResultCompany[];
   totalCompanies: number;
+  degraded?: boolean;
   showPostingId: string | null;
   scrollY: number;
   cacheKey: string;
@@ -35,15 +39,102 @@ export function buildCacheKey(
   occupationIds?: number[],
   seniorityIds?: number[],
   technologyIds?: number[],
+  filters?: {
+    employmentTypes?: string[];
+    workMode?: string[];
+    salaryMin?: number;
+    salaryMax?: number;
+    salaryCurrency?: string;
+    experienceMin?: number;
+    experienceMax?: number;
+  },
 ): string {
+  // String dimensions (keywords) sort with `canonicalStringCompare`
+  // (locale-independent `Intl.Collator("en", { sensitivity: "base" })`)
+  // so that `["python","übung"]` and `["übung","python"]` hash to the
+  // same in-memory snapshot key. Numeric dimensions sort numerically so
+  // `[10, 2]` doesn't coerce to `["10","2"]` and split the slot.
+  // See #3276 (follow-up to #3221/#3187).
+  const numCmp = (a: number, b: number) => a - b;
   const parts = [
-    [...keywords].sort().join(","),
-    [...locationIds].sort().join(","),
-    [...(occupationIds ?? [])].sort().join(","),
-    [...(seniorityIds ?? [])].sort().join(","),
-    [...(technologyIds ?? [])].sort().join(","),
+    [...keywords].sort(canonicalStringCompare).join(","),
+    [...locationIds].sort(numCmp).join(","),
+    [...(occupationIds ?? [])].sort(numCmp).join(","),
+    [...(seniorityIds ?? [])].sort(numCmp).join(","),
+    [...(technologyIds ?? [])].sort(numCmp).join(","),
   ];
+  if (filters) {
+    parts.push(
+      [...(filters.employmentTypes ?? [])].sort(canonicalStringCompare).join(","),
+      [...(filters.workMode ?? [])].sort(canonicalStringCompare).join(","),
+      filters.salaryMin == null ? "" : String(filters.salaryMin),
+      filters.salaryMax == null ? "" : String(filters.salaryMax),
+      filters.salaryCurrency ?? "",
+      filters.experienceMin == null ? "" : String(filters.experienceMin),
+      filters.experienceMax == null ? "" : String(filters.experienceMax),
+    );
+  }
   return parts.join("|");
+}
+
+/**
+ * Decide whether the cached SearchStateProvider snapshot should hydrate
+ * the SearchPage that's about to mount.
+ *
+ * Returns ``true`` only when the snapshot's cache key matches the URL-
+ * derived cache key. The previous predicate also restored whenever the
+ * URL had no filters, which let a snapshot from a previous filtered
+ * search — including ``companies: []`` from an empty-result search —
+ * leak into a fresh ``/explore`` visit. The user then saw
+ * ``ZeroResults`` even though the URL had no filters and the
+ * prerendered ``initialData`` had ~10 top companies. See #2989.
+ *
+ * Additional guard (#3354): never restore a snapshot whose
+ * ``companies`` is empty AND whose ``cacheKey`` represents the no-
+ * filter view (``||||``). The snapshot only serves the
+ * "return to the same view after a posting-detail dive" use case — but
+ * an empty unfiltered result is never a legitimate destination (the
+ * homepage always has top companies). The empty state arises only from
+ * transient Typesense / cache degradation poisoning the snapshot, and
+ * restoring it traps the user on a permanently empty page even after
+ * the back end recovers, because the fresh prerendered top-10 in
+ * ``initialCompanies`` is overridden by the empty snapshot.
+ *
+ * Restoration semantics now:
+ *   - Same URL filters (or both empty), snapshot has results → restore.
+ *   - Same URL filters (or both empty), snapshot has empty companies
+ *     AND the no-filter cacheKey → ignore (#3354 poison guard).
+ *   - Different URL filters → ignore the snapshot, render the fresh
+ *     ``initialData`` from the server prerender / re-fetch.
+ *
+ * The strict match preserves the original intent of the cache (return
+ * to the same view after a posting-detail dive) without the poisoning
+ * footgun.
+ */
+const LEGACY_NO_FILTER_CACHE_KEY = "||||";
+const NO_FILTER_CACHE_KEY = buildCacheKey([], [], [], [], [], {});
+
+export function shouldRestoreSnapshot(
+  cached: SearchStateSnapshot | null,
+  currentCacheKey: string,
+): boolean {
+  if (cached === null) return false;
+  if (cached.cacheKey !== currentCacheKey) return false;
+  // #3354 poison guard: an unfiltered snapshot with 0 companies is
+  // always a degraded prior state (Typesense glitch / silent failure)
+  // and never a legitimate "saved view" worth restoring. Reject it so
+  // the fresh ``initialCompanies`` from the server prerender / refetch
+  // can render. Filtered empty snapshots stay restorable because a
+  // 0-result keyword search IS a legitimate destination the user may
+  // want to return to.
+  if (
+    (cached.cacheKey === NO_FILTER_CACHE_KEY ||
+      cached.cacheKey === LEGACY_NO_FILTER_CACHE_KEY) &&
+    cached.companies.length === 0
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /** Live callbacks the search page registers so the header SearchBar can interact directly. */
@@ -53,6 +144,12 @@ export interface SearchPageActions {
   addSeniority: (seniority: { id: number; slug: string; name: string }) => void;
   addTechnology?: (technology: { id: number; slug: string; name: string }) => void;
   addEmploymentType?: (type: string) => void;
+  /**
+   * Add a work-mode (onsite/hybrid/remote) to the active filter set.
+   * Idempotent — implementations should no-op when the mode is already
+   * selected. Used by the global search-bar autocomplete (#2983).
+   */
+  addWorkMode?: (mode: WorkMode) => void;
   setSalaryFilter?: (currency: string, min: number | undefined, max: number | undefined) => void;
   setExperienceFilter?: (min: number | undefined, max: number | undefined) => void;
   submitSearch: (

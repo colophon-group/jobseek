@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
-import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
-import { LlmContentMirror } from "@/components/LlmContentMirror";
 import { FaqContent } from "./faq-content";
 
 type Props = {
@@ -25,7 +24,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates("/faq", locale),
-    openGraph: { title, description, url: `${siteConfig.url}/${locale}/faq` },
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}/faq`,
+      locale: ogLocale(locale),
+      alternateLocale: ogAlternateLocales(locale),
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+    },
   };
 }
 
@@ -36,15 +42,19 @@ export default async function FaqPage({ params }: Props) {
   const faqItems = [
     {
       q: i18n._({ id: "faq.q.whatIsJobseek", message: "What is Job Seek?" }),
-      a: i18n._({ id: "faq.a.whatIsJobseek", message: "Job Seek is a job search engine that scrapes career pages directly from company websites. Roles appear here before they hit large aggregators like LinkedIn or Indeed." }),
+      a: i18n._({ id: "faq.a.whatIsJobseek", message: "Job Seek helps you track the companies you actually want to work at. Build a watchlist, get email alerts when new roles open up, and track applications in one place. Postings come straight from company career pages, so you see them within hours of going live — typically before LinkedIn or Indeed cross-post them." }),
+    },
+    {
+      q: i18n._({ id: "faq.q.targetedSeeker", message: "Is Job Seek for me if I already know which companies I want to work for?" }),
+      a: i18n._({ id: "faq.a.targetedSeeker", message: "Yes — that's the use case we built around. Add the companies you care about to a watchlist, set your filters (role, location, seniority, salary), and Job Seek monitors their career pages and alerts you the moment new roles match. You don't have to keep checking each company's site by hand or fight LinkedIn's algorithm." }),
     },
     {
       q: i18n._({ id: "faq.q.howOftenUpdated", message: "How often are job listings updated?" }),
       a: i18n._({ id: "faq.a.howOftenUpdated", message: "The crawler discovers new postings on an hourly cycle and refreshes job details daily. Most roles appear within hours of being published on a company's careers page." }),
     },
     {
-      q: i18n._({ id: "faq.q.whichAts", message: "Which ATS platforms do you support?" }),
-      a: i18n._({ id: "faq.a.whichAts", message: "We integrate with Workday, Greenhouse, Lever, Ashby, Rippling, SmartRecruiters, Workable, and over a dozen other platforms. We also parse sitemaps and JSON APIs from any careers page." }),
+      q: i18n._({ id: "faq.q.differentiation", message: "What makes Job Seek different from LinkedIn or Indeed?" }),
+      a: i18n._({ id: "faq.a.differentiation", message: "We index company career pages directly, not third-party feeds. No recruiter spam, no reposted ghost jobs, and we re-check companies frequently — so most roles show up here within hours of being published. We're built for users who already know which companies they want to work at, not broad 'find me any job' searches." }),
     },
     {
       q: i18n._({ id: "faq.q.requestCompany", message: "How do I request a company that isn't listed?" }),
@@ -101,16 +111,6 @@ export default async function FaqPage({ params }: Props) {
         inLanguage: locale,
       }} />
       <FaqContent items={faqItems} />
-      <LlmContentMirror locale={locale}>
-        <h1>{i18n._("faq.title")}</h1>
-        <p>Everything you need to know about Job Seek. Can&apos;t find what you&apos;re looking for? Email us at {siteConfig.indexing.contactEmail}.</p>
-        {faqItems.map((item, idx) => (
-          <div key={idx}>
-            <h2>{item.q}</h2>
-            <p>{item.a}</p>
-          </div>
-        ))}
-      </LlmContentMirror>
     </>
   );
 }

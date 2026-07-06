@@ -1,16 +1,21 @@
-import Link from "next/link";
 import { Trans } from "@lingui/react/macro";
 import { msg } from "@lingui/core/macro";
 import { getI18n } from "@lingui/react/server";
 import { siteConfig } from "@/content/config";
+import { NavLink } from "@/components/NavLink";
 
 type FooterProps = {
   lang?: string;
 };
 
+// Captured at module load (deploy time) so the render path stays
+// deterministic — `new Date()` inside a server-render function is
+// rejected under cacheComponents. Refreshes on every deploy.
+const COPYRIGHT_YEAR = new Date().getFullYear();
+
 export function Footer({ lang }: FooterProps) {
   const i18n = getI18n()!;
-  const year = new Date().getFullYear();
+  const year = COPYRIGHT_YEAR;
   const links = siteConfig.footer.links;
   const prefix = lang ? `/${lang}` : "";
 
@@ -43,19 +48,24 @@ export function Footer({ lang }: FooterProps) {
               </a>
             </li>
             <li>
-              <Link className={linkClass} prefetch={false} href={`${prefix}${links.license.href}`}>
+              <NavLink className={linkClass} prefetch={false} href={`${prefix}${links.blog.href}`}>
+                <Trans id="common.footer.blog" comment="Footer link to /blog index page">Blog</Trans>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink className={linkClass} prefetch={false} href={`${prefix}${links.license.href}`}>
                 <Trans id="common.footer.licenseLink" comment="Footer link to license page">License</Trans>
-              </Link>
+              </NavLink>
             </li>
             <li>
-              <Link className={linkClass} prefetch={false} href={`${prefix}${links.privacy.href}`}>
+              <NavLink className={linkClass} prefetch={false} href={`${prefix}${links.privacy.href}`}>
                 <Trans id="common.footer.privacyLink" comment="Footer link to privacy policy page">Privacy</Trans>
-              </Link>
+              </NavLink>
             </li>
             <li>
-              <Link className={linkClass} prefetch={false} href={`${prefix}${links.terms.href}`}>
+              <NavLink className={linkClass} prefetch={false} href={`${prefix}${links.terms.href}`}>
                 <Trans id="common.footer.termsLink" comment="Footer link to terms of service page">Terms</Trans>
-              </Link>
+              </NavLink>
             </li>
           </ul>
         </nav>

@@ -53,7 +53,12 @@ name: Deploy murmur-shim
 
 on:
   push:
-    branches: [murmur-demo]
+    # `murmur-demo` was the long-lived integration branch during H1–H3
+    # and was squash-merged into `main` in #2793; subsequent work flows
+    # through main like the rest of jobseek. Both branches stay in the
+    # trigger list — main is the load-bearing one, `murmur-demo` is
+    # kept for the unlikely case anyone still pushes there.
+    branches: [main, murmur-demo]
     paths:
       - apps/murmur-shim/**
       - apps/crawler/docker-compose.yml
@@ -64,6 +69,9 @@ on:
 concurrency:
   group: deploy-murmur-shim
   cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
@@ -105,7 +113,7 @@ jobs:
             ghcr.io/colophon-group/jobseek-murmur-shim:latest
             ghcr.io/colophon-group/jobseek-murmur-shim:${{ github.sha }}
           cache-from: type=gha,scope=murmur-shim
-          cache-to: type=gha,mode=max,scope=murmur-shim
+          cache-to: type=gha,mode=max,scope=murmur-shim,ignore-error=true
 
   deploy:
     needs: build

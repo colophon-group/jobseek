@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { X, Loader2, MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Building2, Pencil } from "lucide-react";
+import { X, Loader2, MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Building2, Pencil, CalendarDays, Home } from "lucide-react";
 import { BackLink } from "@/components/BackLink";
 import { useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useAuth } from "@/lib/useAuth";
+import { useSession } from "@/components/SessionProvider";
 import type {
   WatchlistDetail,
   WatchlistFilters,
@@ -25,7 +25,15 @@ import { WatchlistJobList } from "@/components/watchlist/watchlist-job-list";
 import { FilterPillsReadOnly } from "@/components/search/filter-pills-readonly";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
 import type { SelectedLocation } from "@/components/search/location-pills";
-import type { HistogramFilters } from "@/lib/search";
+import type { HistogramFilters, WorkMode } from "@/lib/search";
+
+// Sentinel set used to re-validate the JSONB-stored `workMode` strings
+// before they reach Typesense. The watchlist column accepts arbitrary
+// JSON, so older clients (or hand-written DB writes) could leave
+// garbage here that would otherwise corrupt the `location_types:[…]`
+// filter. Issue #3037 (mirrors the same defensive guard documented on
+// `WatchlistFilters.workMode`).
+const WORK_MODE_VALUES = new Set<WorkMode>(["onsite", "hybrid", "remote"]);
 
 type Company = { id: string; name: string; slug: string; icon: string | null };
 type TaxonomyItem = { id: number; slug: string; name: string };
@@ -64,7 +72,7 @@ export function WatchlistViewPage({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { user } = useAuth();
+  const { user } = useSession();
 
   // ── Editable title ──
   const [title, setTitle] = useState(detail.title);
@@ -160,14 +168,32 @@ export function WatchlistViewPage({
   const [salaryMax, setSalaryMax] = useState<number | undefined>(detail.filters.salaryMax);
   const [experienceMin, setExperienceMin] = useState<number | undefined>(detail.filters.experienceMin);
   const [experienceMax, setExperienceMax] = useState<number | undefined>(detail.filters.experienceMax);
+  // Issue #3037 — close the watchlist/explore filter-parity gap. Both
+  // arrays are seeded defensively: workMode strings come from JSONB so
+  // we re-validate against `WORK_MODE_VALUES` before letting them flow
+  // into Typesense (mirrors the comment on `WatchlistFilters.workMode`),
+  // and employmentType values pass through untouched (handled raw by
+  // `buildFilterString` downstream).
+  const [workMode, setWorkMode] = useState<WorkMode[]>(
+    (detail.filters.workMode ?? []).filter((m): m is WorkMode => WORK_MODE_VALUES.has(m as WorkMode)),
+  );
+  const [employmentTypes, setEmploymentTypes] = useState<string[]>(detail.filters.employmentType ?? []);
 
   const histogramFilters: HistogramFilters = useMemo(() => ({
     locationIds: locations.length > 0 ? locations.map((l) => l.id) : undefined,
     occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
     seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
     technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
+    // workMode + employmentTypes flow through so the modal-side facet
+    // helpers can cross-filter their counts against each other (#3032).
+    // The advanced-search-panel strips the active dimension before
+    // passing this object down to the matching modal — e.g. the
+    // work-mode modal sees `employmentTypes` but NOT `workMode`, so
+    // counts represent "what would I see if I toggled this mode on".
+    workMode: workMode.length > 0 ? workMode : undefined,
+    employmentTypes: employmentTypes.length > 0 ? employmentTypes : undefined,
     languages: languages.length > 0 ? languages : undefined,
-  }), [locations, occupations, seniorities, technologies, languages]);
+  }), [locations, occupations, seniorities, technologies, workMode, employmentTypes, languages]);
 
   // Persist filters to DB (debounced, cleaned up on unmount)
   const saveFiltersTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -190,6 +216,7 @@ export function WatchlistViewPage({
   function buildFilters(overrides: Partial<{
     kw: string[]; locs: SelectedLocation[]; occs: TaxonomyItem[];
     sens: TaxonomyItem[]; techs: TaxonomyItem[];
+    wm: WorkMode[]; et: string[];
     salCur: string; salMin: number | undefined; salMax: number | undefined;
     expMin: number | undefined; expMax: number | undefined;
     ac: boolean;
@@ -199,6 +226,8 @@ export function WatchlistViewPage({
     const occs = overrides.occs ?? occupations;
     const sens = overrides.sens ?? seniorities;
     const techs = overrides.techs ?? technologies;
+    const wm = overrides.wm ?? workMode;
+    const et = overrides.et ?? employmentTypes;
     const ac = overrides.ac ?? anyCompany;
     return {
       keywords: kw.length > 0 ? kw : undefined,
@@ -206,6 +235,8 @@ export function WatchlistViewPage({
       occupationSlugs: occs.length > 0 ? occs.map((o) => o.slug) : undefined,
       senioritySlugs: sens.length > 0 ? sens.map((s) => s.slug) : undefined,
       technologySlugs: techs.length > 0 ? techs.map((t) => t.slug) : undefined,
+      workMode: wm.length > 0 ? wm : undefined,
+      employmentType: et.length > 0 ? et : undefined,
       salaryCurrency: overrides.salCur ?? salaryCurrency,
       salaryMin: overrides.salMin !== undefined ? overrides.salMin : salaryMin,
       salaryMax: overrides.salMax !== undefined ? overrides.salMax : salaryMax,
@@ -261,6 +292,20 @@ export function WatchlistViewPage({
     setTechnologies(next);
     persistFilters(buildFilters({ techs: next }));
   }
+  function onToggleEmploymentType(type: string) {
+    const next = employmentTypes.includes(type)
+      ? employmentTypes.filter((t) => t !== type)
+      : [...employmentTypes, type];
+    setEmploymentTypes(next);
+    persistFilters(buildFilters({ et: next }));
+  }
+  function onToggleWorkMode(mode: WorkMode) {
+    const next = workMode.includes(mode)
+      ? workMode.filter((m) => m !== mode)
+      : [...workMode, mode];
+    setWorkMode(next);
+    persistFilters(buildFilters({ wm: next }));
+  }
   function onSalaryChange(currency: string, min: number | undefined, max: number | undefined) {
     setSalaryCurrency(currency);
     setSalaryMin(min);
@@ -278,6 +323,8 @@ export function WatchlistViewPage({
     setOccupations([]);
     setSeniorities([]);
     setTechnologies([]);
+    setWorkMode([]);
+    setEmploymentTypes([]);
     setSalaryMin(undefined);
     setSalaryMax(undefined);
     setExperienceMin(undefined);
@@ -291,6 +338,8 @@ export function WatchlistViewPage({
     occupations.length > 0 ||
     seniorities.length > 0 ||
     technologies.length > 0 ||
+    workMode.length > 0 ||
+    employmentTypes.length > 0 ||
     salaryMin != null ||
     salaryMax != null ||
     experienceMin != null ||
@@ -491,40 +540,77 @@ export function WatchlistViewPage({
               onRemoveSeniority={onRemoveSeniority}
               onAddTechnology={onAddTechnology}
               onRemoveTechnology={onRemoveTechnology}
+              employmentTypes={employmentTypes}
+              onToggleEmploymentType={onToggleEmploymentType}
+              workMode={workMode}
+              onToggleWorkMode={onToggleWorkMode}
               onSalaryChange={onSalaryChange}
               onExperienceChange={onExperienceChange}
               histogramFilters={histogramFilters}
             />
             {hasFilters && (
               <div className="flex flex-wrap items-center gap-2">
-                {occupations.map((occ) => (
-                  <span key={`occ-${occ.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                    <Briefcase size={12} className="shrink-0" />
-                    {occ.name}
-                    <button onClick={() => onRemoveOccupation(occ.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
-                  </span>
-                ))}
-                {seniorities.map((sen) => (
-                  <span key={`sen-${sen.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                    <BarChart3 size={12} className="shrink-0" />
-                    {sen.name}
-                    <button onClick={() => onRemoveSeniority(sen.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
-                  </span>
-                ))}
-                {technologies.map((tech) => (
-                  <span key={`tech-${tech.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                    <Code2 size={12} className="shrink-0" />
-                    {tech.name}
-                    <button onClick={() => onRemoveTechnology(tech.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
-                  </span>
-                ))}
+                {occupations.map((occ) => {
+                  const name = occ.name;
+                  return (
+                    <span key={`occ-${occ.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
+                      <Briefcase size={12} className="shrink-0" />
+                      {name}
+                      <button onClick={() => onRemoveOccupation(occ.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
+                {seniorities.map((sen) => {
+                  const name = sen.name;
+                  return (
+                    <span key={`sen-${sen.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
+                      <BarChart3 size={12} className="shrink-0" />
+                      {name}
+                      <button onClick={() => onRemoveSeniority(sen.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
+                {technologies.map((tech) => {
+                  const name = tech.name;
+                  return (
+                    <span key={`tech-${tech.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
+                      <Code2 size={12} className="shrink-0" />
+                      {name}
+                      <button onClick={() => onRemoveTechnology(tech.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
+                {employmentTypes.map((et) => {
+                  const name = et.replace(/_/g, " ");
+                  return (
+                    <span key={`et-${et}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm capitalize text-primary">
+                      <CalendarDays size={12} className="shrink-0" />
+                      {name}
+                      <button onClick={() => onToggleEmploymentType(et)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
+                {workMode.map((wm) => {
+                  const name = wm === "onsite"
+                    ? t({ id: "search.workMode.onsite", comment: "Work mode: onsite (in-office)", message: "On-site" })
+                    : wm === "hybrid"
+                      ? t({ id: "search.workMode.hybrid", comment: "Work mode: hybrid (mixed onsite/remote)", message: "Hybrid" })
+                      : t({ id: "search.workMode.remote", comment: "Work mode: remote (work-from-home)", message: "Remote" });
+                  return (
+                    <span key={`wm-${wm}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
+                      <Home size={12} className="shrink-0" />
+                      {name}
+                      <button onClick={() => onToggleWorkMode(wm)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${name} filter` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
                 {(salaryMin != null || salaryMax != null) && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
                     <DollarSign size={12} className="shrink-0" />
                     {salaryMin != null && salaryMax != null
                       ? `${salaryCurrency} ${Math.round(salaryMin / 1000)}K – ${Math.round(salaryMax / 1000)}K`
                       : salaryMin != null ? `${salaryCurrency} ${Math.round(salaryMin / 1000)}K+` : `${salaryCurrency} ≤${Math.round(salaryMax! / 1000)}K`}
-                    <button onClick={() => onSalaryChange(salaryCurrency, undefined, undefined)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
+                    <button onClick={() => onSalaryChange(salaryCurrency, undefined, undefined)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeSalary", comment: "Aria label for the X button that clears the salary-range filter", message: "Remove salary filter" })}><X size={12} aria-hidden="true" /></button>
                   </span>
                 )}
                 {(experienceMin != null || experienceMax != null) && (
@@ -533,22 +619,28 @@ export function WatchlistViewPage({
                     {experienceMin != null && experienceMax != null
                       ? `${experienceMin}–${experienceMax}y`
                       : experienceMin != null ? `${experienceMin}y+` : `≤${experienceMax}y`}
-                    <button onClick={() => onExperienceChange(undefined, undefined)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
+                    <button onClick={() => onExperienceChange(undefined, undefined)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeExperience", comment: "Aria label for the X button that clears the experience-range filter", message: "Remove experience filter" })}><X size={12} aria-hidden="true" /></button>
                   </span>
                 )}
-                {keywords.map((kw) => (
-                  <span key={kw} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                    {kw}
-                    <button onClick={() => onRemoveKeyword(kw)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
-                  </span>
-                ))}
-                {locations.map((loc) => (
-                  <span key={loc.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                    <MapPin size={12} className="shrink-0" />
-                    {loc.parentName && loc.type !== "country" && loc.type !== "macro" ? `${loc.name}, ${loc.parentName}` : loc.name}
-                    <button onClick={() => onRemoveLocation(loc.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"><X size={12} /></button>
-                  </span>
-                ))}
+                {keywords.map((kw) => {
+                  const name = kw;
+                  return (
+                    <span key={kw} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
+                      {name}
+                      <button onClick={() => onRemoveKeyword(kw)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeKeyword", comment: "Aria label for remove-keyword X button; {name} is the keyword", message: `Remove keyword ${name}` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
+                {locations.map((loc) => {
+                  const name = loc.parentName && loc.type !== "country" && loc.type !== "macro" ? `${loc.name}, ${loc.parentName}` : loc.name;
+                  return (
+                    <span key={loc.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
+                      <MapPin size={12} className="shrink-0" />
+                      {name}
+                      <button onClick={() => onRemoveLocation(loc.id)} className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer" aria-label={t({ id: "search.filters.removeLocation", comment: "Aria label for remove-location X button; {name} is the location label", message: `Remove location ${name}` })}><X size={12} aria-hidden="true" /></button>
+                    </span>
+                  );
+                })}
                 <button onClick={onClearAll} className="cursor-pointer text-xs text-muted transition-colors hover:text-foreground">
                   {t({ id: "search.filters.clearAll", comment: "Button to clear all active search filters", message: "Clear all" })}
                 </button>
@@ -562,6 +654,10 @@ export function WatchlistViewPage({
             occupations={resolvedOccupations}
             seniorities={resolvedSeniorities}
             technologies={resolvedTechnologies}
+            workMode={
+              (detail.filters.workMode ?? []).filter((m): m is WorkMode => WORK_MODE_VALUES.has(m as WorkMode))
+            }
+            employmentType={detail.filters.employmentType}
           />
         )}
       </div>
@@ -579,6 +675,8 @@ export function WatchlistViewPage({
           occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
           seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
           technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
+          workMode: workMode.length > 0 ? workMode : undefined,
+          employmentType: employmentTypes.length > 0 ? employmentTypes : undefined,
           salaryMin,
           salaryMax,
           experienceMin,

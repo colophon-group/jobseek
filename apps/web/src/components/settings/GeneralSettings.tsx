@@ -96,6 +96,15 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
   function handleLocaleSwitch(locale: Locale) {
     if (locale === currentLocale) return;
     const now = new Date().toISOString();
+    // Mirror `LocaleSwitcher.handleSelect` — write the same `NEXT_LOCALE`
+    // cookie that the proxy reads on root-path requests AND that
+    // `LocaleGuard` reads on every client-side navigation. Without the
+    // cookie write, browser-back from /settings to /explore would land
+    // on the previous-locale URL and `LocaleGuard` would have no signal
+    // to redirect — the in-app product surface (search results, OG meta,
+    // visible UI strings) would render in the user's *previous* locale
+    // until a hard reload (#2988).
+    document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
     localPrefs.localeTimestamp.set(now);
     localPrefs.locale.set(locale);
     const newPath = pathname.replace(`/${currentLocale}`, `/${locale}`);
@@ -139,15 +148,25 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
     [currentLocale],
   );
 
-  // Persist language preference changes (outside updater to avoid setState-during-render)
+  // Persist language preference changes (outside updater to avoid setState-during-render).
+  // After the server-action resolves, `router.refresh()` flushes Next.js's
+  // client-side router cache so the next navigation back to /explore
+  // (or any other page that reads `jobLanguages`) refetches the RSC
+  // payload — without this, the user lands on a stale prerender that
+  // predates the toggle and only sees the new filter after a hard
+  // reload (#2916). The server-action already invalidates the
+  // per-region `'use cache'` layer via `revalidatePath`; both layers
+  // need clearing.
   const initialLangsRef = useRef(true);
   useEffect(() => {
     if (initialLangsRef.current) {
       initialLangsRef.current = false;
       return;
     }
-    void updatePreferences({ jobLanguages });
-  }, [jobLanguages]);
+    void updatePreferences({ jobLanguages }).then(() => {
+      router.refresh();
+    });
+  }, [jobLanguages, router]);
 
   return (
     <div className="space-y-10">

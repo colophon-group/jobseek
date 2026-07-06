@@ -49,7 +49,7 @@ services:
 
   # -- Workers (3x HTTP, each on its own metrics port) -------------
   worker-1:
-    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -76,7 +76,7 @@ services:
     cpus: 1.0
 
   worker-2:
-    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -101,7 +101,7 @@ services:
     cpus: 1.0
 
   worker-3:
-    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -127,7 +127,7 @@ services:
 
   # -- Exporter ----------------------------------------------------
   exporter:
-    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -143,7 +143,7 @@ services:
 
   # -- R2 Drain ----------------------------------------------------
   drain:
-    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -157,37 +157,16 @@ services:
         condition: service_healthy
     mem_limit: 256m
 
-  # -- IndexNow notifier ------------------------------------------
-  # Diffs company content hashes against indexnow_submission and POSTs
-  # changed URLs to api.indexnow.org (propagates to Bing, Yandex,
-  # Seznam, Naver, Yep — Google does NOT participate). The
-  # `crawler notify-indexnow` subcommand is one-shot; a shell loop
-  # wraps it on the INDEXNOW_INTERVAL cadence. Disabled at runtime
-  # when INDEXNOW_KEY is empty — the notifier short-circuits and the
-  # loop just sleeps between no-op runs.
-  indexnow:
-    image: ghcr.io/${OWNER}/jobseek-crawler:latest
-    init: true
-    restart: unless-stopped
-    network_mode: host
-    stop_grace_period: 15s
-    command: >
-      sh -c 'while true; do
-        uv run --no-sync crawler notify-indexnow || true;
-        sleep "${INDEXNOW_INTERVAL:-3600}";
-      done'
-    environment:
-      <<: *common-env
-      METRICS_PORT: "9099"
-      INDEXNOW_KEY: ${INDEXNOW_KEY:-}
-      INDEXNOW_SITE_URL: ${INDEXNOW_SITE_URL:-}
-      INDEXNOW_KEY_URL: ${INDEXNOW_KEY_URL:-}
-      INDEXNOW_INTERVAL: ${INDEXNOW_INTERVAL:-3600}
-    mem_limit: 256m
+  # IndexNow notifier removed in #2821. Companies are no longer indexed
+  # (`/company/{slug}` is `noindex,follow` and the URLs are out of the
+  # sitemap), so there is no remaining set of URLs to push to Bing /
+  # Yandex / Seznam / Naver / Yep. `crawler notify-indexnow` and
+  # `apps/crawler/src/indexnow.py` are kept in the codebase but no
+  # longer scheduled — they short-circuit on `INDEXNOW_KEY` unset.
 
   # -- Browser -----------------------------------------------------
   browser-1:
-    image: ghcr.io/${OWNER}/jobseek-crawler-browser:latest
+    image: ghcr.io/${OWNER}/jobseek-crawler-browser:${CRAWLER_IMAGE_TAG:-latest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -230,16 +209,15 @@ services:
   # without an additional host-provisioning step.
   #
   # `pull_policy: always` forces compose to fetch the crawler image's
-  # current `:latest` digest on every `up`, so a new crawler build
-  # rehydrates the volume the next time this init runs. Without it,
-  # compose would skip the pull (the tag is unchanged) and the volume
-  # would keep stale dep snapshots indefinitely.
+  # requested tag on every `up`, so a new crawler build rehydrates the
+  # volume the next time this init runs. Without it, compose could skip
+  # the pull and the volume would keep stale dep snapshots indefinitely.
   #
   # `restart: "no"` makes this a true one-shot. The shim's
   # `depends_on` with `service_completed_successfully` is the gate
   # that withholds the shim until the copy finishes (or fails loudly).
   murmur-shim-runtime-init:
-    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
     pull_policy: always
     restart: "no"
     # `cp -a` preserves modes + symlinks, which we need for the venv's
@@ -261,15 +239,15 @@ services:
         # new copy. The volume itself persists across deploys; only its
         # contents get refreshed.
         rm -rf /runtime/venv /runtime/src /runtime/code
-        # `cp -a /usr/local/bin/python3.12 /runtime/venv/bin/python3.12`
+        # `cp -a /usr/local/bin/python3.13 /runtime/venv/bin/python3.13`
         # below requires the destination's parent dir to already exist —
         # cp does NOT auto-create `bin/` even with `-a`. Without this
         # explicit `mkdir -p /runtime/venv/bin`, the init service exits 1
-        # with `cp: cannot create regular file '/runtime/venv/bin/python3.12':
+        # with `cp: cannot create regular file '/runtime/venv/bin/python3.13':
         # No such file or directory`, the `service_completed_successfully`
         # depends-on gate stays red, and the shim never starts.
         # Live evidence: deploy run 25137948546 init container logs.
-        mkdir -p /runtime/venv /runtime/venv/bin /runtime/venv/lib/python3.12 /runtime/code
+        mkdir -p /runtime/venv /runtime/venv/bin /runtime/venv/lib/python3.13 /runtime/code
 
         # Build a relocatable Python install at /runtime/venv/. CPython
         # locates stdlib relative to the executable, so co-locating the
@@ -277,22 +255,22 @@ services:
         # prefix lets the shim invoke `/.../venv/bin/python3` without
         # any `PYTHONPATH`/`PYTHONHOME` gymnastics — invoke-lib only
         # sets PYTHONPATH=MURMUR_CRAWLER_ROOT for `-m` discovery.
-        cp -a /usr/local/bin/python3.12 /runtime/venv/bin/python3.12
-        ln -sf python3.12 /runtime/venv/bin/python3
-        ln -sf python3.12 /runtime/venv/bin/python
-        # libpython is loaded via `../lib/libpython3.12.so.1.0` (RPATH),
+        cp -a /usr/local/bin/python3.13 /runtime/venv/bin/python3.13
+        ln -sf python3.13 /runtime/venv/bin/python3
+        ln -sf python3.13 /runtime/venv/bin/python
+        # libpython is loaded via `../lib/libpython3.13.so.1.0` (RPATH),
         # so it must live at /runtime/venv/lib/.
-        cp -a /usr/local/lib/libpython3.12.so* /runtime/venv/lib/ 2>/dev/null || true
+        cp -a /usr/local/lib/libpython3.13.so* /runtime/venv/lib/ 2>/dev/null || true
         cp -a /usr/local/lib/libpython3.so /runtime/venv/lib/ 2>/dev/null || true
         # stdlib + shared site-packages root.
-        cp -a /usr/local/lib/python3.12/. /runtime/venv/lib/python3.12/
+        cp -a /usr/local/lib/python3.13/. /runtime/venv/lib/python3.13/
         # Merge the crawler venv's site-packages on top of the base
         # interpreter's stdlib site-packages. Order matters: cp -a
         # over the existing dir is additive — pre-existing files win
         # only if `cp -a` is told to skip-existing, which it isn't, so
         # the venv's site-packages overwrite duplicates (intended).
-        cp -a /app/.venv/lib/python3.12/site-packages/. \
-              /runtime/venv/lib/python3.12/site-packages/
+        cp -a /app/.venv/lib/python3.13/site-packages/. \
+              /runtime/venv/lib/python3.13/site-packages/
 
         # Crawler source (cli_shim et al.). Lives at a peer path so
         # invoke-lib's `cwd: MURMUR_CRAWLER_ROOT` lands somewhere with

@@ -59,6 +59,21 @@ class PaginationFetchError(Exception):
 # / 530 origin-error codes that real jobs sites behind CDNs commonly emit.
 _EXTRA_RETRYABLE_STATUSES = frozenset({408, 425, 429})
 
+# Auth/forbidden statuses that some callers want treated as transient. By
+# default these route through the "non-retryable 4xx → return None" path,
+# matching the prior tolerant ``fetch_page_text`` behaviour: a 403 from a
+# pagination sub-page (Indeed company pages, etc.) is a permanent block on
+# *that* URL, so dropping the page and continuing is the right move.
+#
+# Sitemap-shard fetchers behave differently — see #2994. mchire's
+# (Phenom-managed AWS ELB) 403s a fraction of child shards on every cycle
+# from a single egress IP, even though the sitemap *index* itself returns
+# 200. Treating those 403s as "shard is gone" silently drops thousands of
+# URLs and tombstones real postings via ``_MARK_GONE_BY_TIMESTAMP`` — the
+# same bug class as #2722 / #2974, just on the 4xx leg of the WAF instead
+# of the 5xx leg. ``_fetch_child_xml`` opts in via ``transient_403=True``.
+_TRANSIENT_403_STATUSES = frozenset({401, 403})
+
 # Statuses that mean "no content here, but the request was understood".
 # Pagination treats these as legitimate end-of-pagination signals so the
 # monitor returns its accumulated set as a successful run. Public so
@@ -99,11 +114,13 @@ async def fetch_with_retry(
     max_chars: int = 500_000,
     timeout: float | None = None,
     headers: dict | None = None,
+    transient_403: bool = False,
 ) -> str | None:
     """Fetch ``url`` and return its text body.
 
     Returns:
-        - ``str`` (truncated to ``max_chars``) on HTTP 200.
+        - ``str`` (truncated to ``max_chars``) on HTTP 200 with a
+          **non-empty** body.
         - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
           any other non-retryable 4xx (caller should treat as "no more
           content here" — same semantic as the prior tolerant
@@ -112,16 +129,60 @@ async def fetch_with_retry(
     Raises:
         :exc:`PaginationFetchError` when *retries* attempts have all
         hit a retryable failure (transient 5xx, 429, timeout, network
-        error). The caller is expected to propagate so
-        ``_process_one_board_streaming`` records the run as a failure
-        rather than a partial success.
+        error, **or 200-with-empty-body**). The caller is expected to
+        propagate so ``_process_one_board_streaming`` records the run
+        as a failure rather than a partial success.
+
+    Empty-200 handling (#2739). A 200 with an empty body is treated
+    as transient — retry, then raise. Real career pages always have
+    at least a skeleton HTML body; an empty 200 is an anti-bot
+    challenge, partial CDN response, or origin glitch. Returning
+    ``""`` (which is falsy) caused ``_paginate_urls`` and other
+    callers to treat it as legitimate end-of-pagination and tombstone
+    the un-fetched tail via ``_MARK_GONE_BY_TIMESTAMP`` — the same
+    silent-truncation shape as the bug fixed in #2722 / #2737, just
+    on a different input (empty body rather than 5xx).
+
+    Transient-403 opt-in (#2994). When ``transient_403=True``, 401 and
+    403 statuses are treated as retryable and surface as
+    ``PaginationFetchError`` after retry exhaustion instead of
+    returning ``None``. This is for callers fetching child shards from
+    an index that succeeded — a 403 there is empirically a WAF /
+    anti-bot block on the egress IP (mchire's awselb/2.0 returned 403
+    on 18-44%% of phenom-monitor child shards from the production
+    Webshare egress while the index returned 200), not the shard being
+    permanently removed. Default ``False`` preserves the dom-monitor
+    pagination contract where a 403 on Indeed company pages means
+    "this URL is permanently blocked, drop it" — silently turning that
+    into a hard failure would 5-strike-disable boards on first
+    encounter.
 
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
     retries — exponential with full jitter. Defaults to ~0.5–1s,
     1–2s, 2–4s for 3 attempts.
     """
+    # Imported lazily inside the loop to keep the hot-path import graph
+    # narrow — :mod:`src.shared.tdm` re-exports the sentinel exception
+    # type so tests can ``except TDMReservedError`` without importing
+    # http_retry first. The check itself runs only on 200 responses.
+    # Retry observability (#3210). Imported lazily so test environments
+    # that stub out ``src.metrics`` (or import this module without the
+    # full crawler runtime) don't pay the cost on the happy path. The
+    # counter is bumped at each retry-causing site, plus once on
+    # ``recovered`` / ``exhausted``; ``host`` is bounded cardinality.
+    from src.metrics import (
+        http_retry_attempts_total,
+        http_retry_empty_200_total,
+        http_retry_host,
+        http_retry_transient_403_total,
+    )
+    from src.shared.tdm import check_response as _tdm_check
+
+    host = http_retry_host(url)
+
     last_exc: BaseException | None = None
     last_status: int | None = None
+    retried = False  # observability: did we burn at least one retry?
 
     for attempt in range(retries):
         try:
@@ -133,11 +194,56 @@ async def fetch_with_retry(
             )
             last_status = resp.status_code
             if resp.status_code == 200:
-                return resp.text[:max_chars]
-            if resp.status_code in END_OF_PAGINATION_STATUSES:
+                text = resp.text
+                if text:
+                    # TDM-Reservation respect (#2842). Inspect the response
+                    # for the W3C TDM opt-out signal before returning the
+                    # body. ``TDMReservedError`` is *not* retried — it's a
+                    # publisher policy declaration, not a transient
+                    # failure — and propagates up the call stack to the
+                    # monitor wrapper in ``processing/board.py``.
+                    _tdm_check(resp, body_excerpt=text)
+                    if retried:
+                        http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+                    return text[:max_chars]
+                # Empty-200 (#2739): treat as transient, fall through
+                # to backoff. ``last_exc`` stays None so retry-budget
+                # exhaustion raises with last_status=200 and a
+                # null last_error, which an operator pattern-matches
+                # in logs as the empty-body signal.
+                last_exc = None
+                http_retry_empty_200_total.labels(host=host).inc()
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
+                log.info(
+                    "http_retry.empty_200",
+                    url=url,
+                    attempt=attempt + 1,
+                )
+            elif resp.status_code in END_OF_PAGINATION_STATUSES:
                 return None
-            if is_retryable_status(resp.status_code):
+            elif is_retryable_status(resp.status_code):
                 last_exc = None  # status-only, no exception
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
+            elif transient_403 and resp.status_code in _TRANSIENT_403_STATUSES:
+                # WAF/anti-bot block on a sitemap-shard fetch (#2994). The
+                # caller (``_fetch_child_xml``) opted in: retry through
+                # the budget, then raise so the cycle records as a
+                # failure rather than silently dropping this shard's
+                # URLs. ``last_exc`` stays None so the raised
+                # PaginationFetchError carries ``last_status=403`` for
+                # operator log pattern-matching.
+                last_exc = None
+                http_retry_transient_403_total.labels(host=host).inc()
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
+                log.info(
+                    "http_retry.transient_403",
+                    url=url,
+                    status=resp.status_code,
+                    attempt=attempt + 1,
+                )
             else:
                 # Other 4xx (auth, forbidden, bad-request, etc.) — not
                 # transient, but also not "end of pagination" in the
@@ -152,8 +258,17 @@ async def fetch_with_retry(
                 )
                 return None
         except Exception as exc:  # httpx.TimeoutException, NetworkError, etc.
+            # TDM-Reservation (#2842) is a publisher policy decision, not
+            # a transient failure — never retry, propagate to the monitor
+            # wrapper for graceful skip handling.
+            from src.shared.tdm import TDMReservedError as _TDMReservedError
+
+            if isinstance(exc, _TDMReservedError):
+                raise
             last_exc = exc
             last_status = None
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
 
         if attempt < retries - 1:
             # Exponential backoff with full jitter.
@@ -168,6 +283,7 @@ async def fetch_with_retry(
             )
             await asyncio.sleep(delay)
 
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
     raise PaginationFetchError(
         url,
         attempts=retries,

@@ -15,6 +15,7 @@ from html.parser import HTMLParser
 import httpx
 import structlog
 
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -61,13 +62,20 @@ class _JsonLdExtractor(HTMLParser):
         self._in_jsonld = False
         self._data: list[str] = []
         self.results: list[dict] = []
+        self.meta: dict[str, str] = {}
 
     def handle_starttag(self, tag, attrs):
-        if tag == "script":
-            attr_dict = dict(attrs)
-            if attr_dict.get("type") == "application/ld+json":
-                self._in_jsonld = True
-                self._data = []
+        attr_dict = dict(attrs)
+        if tag == "meta":
+            key = attr_dict.get("name") or attr_dict.get("property")
+            content = attr_dict.get("content")
+            if key and content:
+                self.meta[key.lower()] = content
+            return
+
+        if tag == "script" and attr_dict.get("type") == "application/ld+json":
+            self._in_jsonld = True
+            self._data = []
 
     def handle_data(self, data):
         if self._in_jsonld:
@@ -169,28 +177,75 @@ def _extract_locations(posting: dict) -> list[str] | None:
     return locations or None
 
 
+def _normalize_meta_locations(raw: str | None) -> list[str] | None:
+    """Normalize TalentBrew/Radancy meta location values.
+
+    Some TalentBrew job pages omit schema.org ``jobLocation`` while exposing
+    the same location in tracking meta fields, usually as
+    ``City~Region~Country`` values separated by ``;`` or ``|``.  Use this only
+    as a fallback when JSON-LD has no location.
+    """
+    if not raw:
+        return None
+
+    locations: list[str] = []
+    seen: set[str] = set()
+    for chunk in re.split(r"\s*[;|]\s*", raw):
+        parts = [part.strip() for part in chunk.split("~") if part.strip()]
+        text = ", ".join(parts) if parts else chunk.strip()
+        text = re.sub(r"\s+", " ", text)
+        text = re.sub(r"\s*,\s*", ", ", text).strip(" ,")
+        if text and text not in seen:
+            seen.add(text)
+            locations.append(text)
+
+    return locations or None
+
+
+def _extract_meta_locations(meta: dict[str, str]) -> list[str] | None:
+    """Extract fallback locations from common TalentBrew/Radancy meta tags."""
+    for key in ("gtm_tbcn_location", "dimension7"):
+        locations = _normalize_meta_locations(meta.get(key))
+        if locations:
+            return locations
+    return None
+
+
 def _extract_salary(posting: dict) -> dict | None:
-    """Extract salary from baseSalary field."""
+    """Extract salary from baseSalary field.
+
+    Per schema.org/MonetaryAmount, ``unitText`` can appear on the OUTER
+    ``baseSalary`` object regardless of whether ``value`` is a scalar or a
+    nested ``QuantitativeValue``.  When both levels carry a ``unitText`` the
+    nested one wins (it is closer to the value it qualifies).  See #3226.
+    """
     base_salary = posting.get("baseSalary")
     if not isinstance(base_salary, dict):
         return None
 
     currency = base_salary.get("currency")
     value = base_salary.get("value")
+    # schema.org uses ``MONTH``/``HOUR``/``DAY``/``WEEK``/``YEAR`` —
+    # the central :func:`src.core.enum_normalize.normalize_salary_unit`
+    # already covers the lowercase forms (and substring fallback for
+    # future schema.org extensions).  Unrecognised tokens resolve to
+    # ``None`` so the outer/inner fallback degrades cleanly.
+    outer_unit = normalize_salary_unit(base_salary.get("unitText"))
 
     if isinstance(value, dict):
+        inner_unit = normalize_salary_unit(value.get("unitText"))
         return {
             "currency": currency,
             "min": value.get("minValue"),
             "max": value.get("maxValue"),
-            "unit": value.get("unitText", "").lower() or None,
+            "unit": inner_unit or outer_unit,
         }
     elif isinstance(value, (int, float)):
         return {
             "currency": currency,
             "min": value,
             "max": value,
-            "unit": None,
+            "unit": outer_unit,
         }
 
     return None
@@ -254,7 +309,10 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
     for block in extractor.results:
         posting = _find_job_posting(block)
         if posting:
-            return _parse_posting(posting)
+            content = _parse_posting(posting)
+            if not content.locations:
+                content.locations = _extract_meta_locations(extractor.meta)
+            return content
 
     return JobContent()
 

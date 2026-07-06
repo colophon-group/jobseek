@@ -18,6 +18,7 @@ import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register
+from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
@@ -112,11 +113,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
         log.info("softgarden.no_jobs", slug=slug)
         return set()
 
+    log.info("softgarden.listed", slug=slug, jobs=len(job_ids))
+
     if len(job_ids) > MAX_JOBS:
         log.warning("softgarden.truncated", slug=slug, total=len(job_ids), cap=MAX_JOBS)
-        job_ids = job_ids[:MAX_JOBS]
-
-    log.info("softgarden.listed", slug=slug, jobs=len(job_ids))
+        return truncated_url_result({_job_url(base, jid, pattern) for jid in job_ids})
 
     return {_job_url(base, jid, pattern) for jid in job_ids}
 

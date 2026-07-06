@@ -19,6 +19,15 @@ class Settings(BaseSettings):
     webshare_proxy_url: str = ""
     decodo_proxy_url: str = ""
 
+    # SSRF guard — comma-separated list of ``host`` or ``host:port``
+    # entries that bypass the private-IP rejection in
+    # ``src.shared.ssrf``. The deployment's Postgres / Redis / Typesense
+    # hosts are derived automatically from their ``*_URL`` / ``*_HOST``
+    # settings; this knob is for ad-hoc boards or test fixtures that
+    # legitimately point at an internal service. Leave empty in
+    # production. See ``src/shared/ssrf.py`` for the threat model.
+    internal_hosts_allow: str = ""
+
     # Redis (local instance, not Upstash)
     redis_url: str = "redis://localhost:6379/0"
     # Pool size MUST be >= ``discovery_concurrency + monitor_concurrency``
@@ -30,6 +39,57 @@ class Settings(BaseSettings):
     redis_max_connections: int = 60
     throttle_delay_default: float = 2.0
     throttle_delay_ats: float = 0.5
+
+    # Inflight lease + reaper (#3159 / #3173). When ``claim_work``
+    # atomically pops a task off the per-domain ZSET it also records
+    # an inflight lease entry in ``inflight:<wtype>``. If the worker
+    # dies between claim and ``reschedule_task``/``complete_task`` the
+    # reaper sweeps expired leases back onto the per-domain queue so
+    # the task isn't permanently lost.
+    #
+    # ``inflight_lease_ttl_seconds`` is the initial budget per task.
+    # Long-running monitors/scrapes extend the lease by sending
+    # heartbeats every ``inflight_heartbeat_interval_seconds`` — pick
+    # a value smaller than the TTL so we have headroom on a slow tick.
+    # Default 600 / 120 mirrors the Postgres-side
+    # ``leased_until = now() + interval '10 minutes'`` budget used by
+    # the legacy batch path (``queries/monitor.py:28``,
+    # ``queries/scrape.py:81``).
+    inflight_lease_ttl_seconds: int = 600
+    inflight_heartbeat_interval_seconds: int = 120
+    # Reaper tick interval. The reaper is cheap (one Lua EVALSHA per
+    # tick per worker type, capped at ``reaper_batch_size`` entries),
+    # but running it too aggressively wastes Redis CPU when the
+    # inflight set is empty. 30s gives <30s reaper latency on a
+    # SIGKILL'd worker — within the deploy.sh restart window.
+    reaper_interval_seconds: int = 30
+    reaper_batch_size: int = 200
+    # Strikes before a task is dead-lettered. The reaper bumps a
+    # per-task counter every time it has to re-enqueue. A genuinely
+    # poison task (Playwright always segfaults, etc.) would otherwise
+    # loop the reaper forever — at >= ``reaper_max_strikes`` reaps,
+    # the entry is moved to ``deadletter:<wtype>`` for operator
+    # investigation instead. Default 5: deploy churn / OOM-once
+    # patterns won't trip it; persistent failure modes will.
+    reaper_max_strikes: int = 5
+
+    # Bounded graceful drain on SIGTERM/SIGINT (#3205). When
+    # ``shutdown_event`` is set, ``run_pipeline`` stops claiming new
+    # work (existing behaviour) and then waits up to this many seconds
+    # for in-flight monitor/scrape tasks to finish before cancelling
+    # them. Cancellation alone would lose work — but in combination
+    # with the inflight lease (#3259), the reaper re-enqueues anything
+    # that didn't complete in time. Default 30s exceeds the 99th
+    # percentile monitor latency for HTTP boards (~2-15s) and gives
+    # browser workers room to close Playwright cleanly. Streaming
+    # monitors that legitimately run >30s (rare, large boards) will be
+    # cancelled and recovered by the reaper from the inflight lease.
+    #
+    # NOTE: deploy.sh sends ``docker stop --time=N`` which translates
+    # to a SIGTERM grace of N seconds before SIGKILL. This setting
+    # must be strictly less than that value or the kernel will SIGKILL
+    # us mid-drain. We use 30s here against a 60s docker stop budget.
+    shutdown_grace_seconds: int = 30
 
     # Upstash (web app only, kept for backward compat)
     upstash_redis_rest_url: str = ""
@@ -52,6 +112,11 @@ class Settings(BaseSettings):
     drain_producers: int = 2
     drain_consumers: int = 30
     drain_buffer_size: int = 200
+    # Periodic reaper for orphaned r2_uploaded=NULL rows (#3168). The
+    # startup reaper always runs once before producers; this sweep
+    # catches consumer crashes that happen later in the process
+    # lifetime. Default 300s (5 minutes).
+    drain_reaper_interval: int = 300
 
     # Exporter
     export_interval: int = 1

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { ChevronDown } from "lucide-react";
 import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
@@ -8,25 +7,23 @@ import { siteConfig } from "@/content/config";
 
 type FaqItem = { q: string; a: string };
 
-function FaqAccordion({ item }: { item: FaqItem }) {
-  const [open, setOpen] = useState(false);
-
+// Native `<details>/<summary>` accordion — no client state, the answer
+// paragraph is in the initial HTML for every item. Crawlers / AI fetchers
+// that don't execute JavaScript see the full Q&A text without needing a
+// `<noscript>` mirror. The chevron rotation uses Tailwind's `group-open`
+// modifier to reflect the open state without React.
+function FaqItem({ item }: { item: FaqItem }) {
   return (
-    <div className="border-b border-border-soft">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full cursor-pointer items-center justify-between gap-4 py-5 text-left font-medium transition-colors hover:text-muted"
-      >
+    <details className="group border-b border-border-soft">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-medium transition-colors hover:text-muted [&::-webkit-details-marker]:hidden">
         <span>{item.q}</span>
         <ChevronDown
           size={18}
-          className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          className="shrink-0 transition-transform group-open:rotate-180"
         />
-      </button>
-      {open && (
-        <p className="pb-5 text-muted">{item.a}</p>
-      )}
-    </div>
+      </summary>
+      <p className="pb-5 text-muted">{item.a}</p>
+    </details>
   );
 }
 
@@ -51,7 +48,7 @@ export function FaqContent({ items }: { items: FaqItem[] }) {
 
         <div className="mt-12">
           {items.map((item, i) => (
-            <FaqAccordion key={i} item={item} />
+            <FaqItem key={i} item={item} />
           ))}
         </div>
       </div>

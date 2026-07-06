@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { getEmploymentTypeCounts } from "@/lib/actions/taxonomy";
 
 function useEmploymentTypes() {
   const { t } = useLingui();
@@ -23,6 +24,15 @@ interface EmploymentTypeModalProps {
   onOpenChange: (open: boolean) => void;
   selected: string[];
   onToggle: (type: string) => void;
+  /**
+   * Cross-filter context used to compute per-option counts via Typesense
+   * facets — mirrors the seniority/technology modal pattern. Pass the
+   * currently-applied filter set (minus `employmentTypes`, since that's
+   * the dimension being faceted) so counts reflect what the user would
+   * see if they toggled that option. Optional: when omitted, counts are
+   * fetched against the unfiltered active-postings universe. See #3032.
+   */
+  filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; workMode?: string[]; languages?: string[] };
 }
 
 export function EmploymentTypeModal({
@@ -30,9 +40,26 @@ export function EmploymentTypeModal({
   onOpenChange,
   selected,
   onToggle,
+  filters,
 }: EmploymentTypeModalProps) {
+  const { t } = useLingui();
   const EMPLOYMENT_TYPES = useEmploymentTypes();
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const filtersKey = filters ? JSON.stringify(filters) : "";
+  const prevFiltersKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    if (counts !== null && filtersKey === prevFiltersKeyRef.current) return;
+    prevFiltersKeyRef.current = filtersKey;
+    setLoading(true);
+    getEmploymentTypeCounts(filters)
+      .then(setCounts)
+      .finally(() => setLoading(false));
+  }, [open, filtersKey]);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -50,32 +77,45 @@ export function EmploymentTypeModal({
               </Trans>
             </Dialog.Title>
             <Dialog.Close asChild>
-              <button className="cursor-pointer rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground">
-                <X size={16} />
+              <button
+                className="cursor-pointer rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground"
+                aria-label={t({ id: "search.employmentTypeModal.close", comment: "Aria label for the employment-type modal close button", message: "Close" })}
+              >
+                <X size={16} aria-hidden="true" />
               </button>
             </Dialog.Close>
           </div>
 
           {/* Body */}
           <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
-            <div className="flex flex-col gap-2">
-              {EMPLOYMENT_TYPES.map((opt) => {
-                const active = selectedSet.has(opt.value);
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => onToggle(opt.value)}
-                    className={`flex cursor-pointer items-center rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-primary/10 text-primary"
-                        : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
+            {loading && counts === null ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 size={20} className="animate-spin text-muted" />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {EMPLOYMENT_TYPES.map((opt) => {
+                  const active = selectedSet.has(opt.value);
+                  const count = counts?.[opt.value] ?? 0;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => onToggle(opt.value)}
+                      className={`flex cursor-pointer items-center justify-between rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-primary/10 text-primary"
+                          : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
+                        ({count})
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </ScrollFade>
         </Dialog.Content>
       </Dialog.Portal>

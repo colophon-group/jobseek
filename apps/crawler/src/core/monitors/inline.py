@@ -28,6 +28,7 @@ from src.core.monitors import DiscoveredJob, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, safe_content
 from src.shared.extract import flatten, walk_steps
 from src.shared.slug import slugify
+from src.shared.truncation import truncated_rich_result
 
 if TYPE_CHECKING:
     import httpx
@@ -147,7 +148,11 @@ async def discover(
         )
         jobs.append(job)
 
+    truncated = len(jobs) >= _MAX_JOBS and cursor < len(elements)
     log.info("inline.discovered", url=board_url, jobs=len(jobs))
+    if truncated:
+        log.warning("inline.truncated", url=board_url, total=len(jobs), cap=_MAX_JOBS)
+        return truncated_rich_result(jobs)
     return jobs
 
 
