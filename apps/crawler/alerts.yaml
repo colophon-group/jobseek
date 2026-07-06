@@ -212,6 +212,36 @@ groups:
             details under `event="cron.complete"` with
             `status="failure"`.
 
+      # Dead-letter entries mean the inflight reaper gave up after
+      # repeated expired leases for the same task. This is usually a
+      # poison task, worker crash loop, or lease TTL mismatch. Email
+      # severity because the fleet can keep processing other work, but
+      # the parked task will never self-heal without operator review.
+      - alert: DeadletterQueueNotEmpty
+        expr: max by (wtype) (crawler_inflight_deadletter_depth) > 0
+        for: 1h
+        labels:
+          severity: email
+          service: crawler
+        annotations:
+          summary: "Crawler dead-letter queue {{ $labels.wtype }} is non-empty"
+          description: |
+            `crawler_inflight_deadletter_depth{wtype="{{ $labels.wtype }}"}`
+            has been nonzero for more than 1 hour. The inflight reaper
+            moved one or more tasks to `deadletter:{{ $labels.wtype }}`
+            after repeated expired leases. Inspect the task descriptors
+            before removing anything from Redis.
+          runbook: |
+            ssh -i ~/.ssh/hetzner_deploy root@$CRAWLER_BROWSER_IPv4
+            docker exec deploy-redis-1 redis-cli ZCARD deadletter:{{ $labels.wtype }}
+            docker exec deploy-redis-1 redis-cli ZRANGE deadletter:{{ $labels.wtype }} 0 -1 WITHSCORES
+            # Members are "task_type|domain|task_id". Check recent logs
+            # for the affected task and reaper outcomes before draining:
+            #   {container=~"worker-.*|browser-.*"} |= "pipeline.reaper.swept"
+            # After the root cause is fixed, re-enqueue through the
+            # normal crawler path or remove the reviewed member:
+            docker exec deploy-redis-1 redis-cli ZREM deadletter:{{ $labels.wtype }} '<member>'
+
       # Catches "exporter container alive but stuck on a Supabase
       # write" — a partial-failure mode that does not trigger
       # NoMetricsFromCrawler. Threshold is 10 expected flush cycles
