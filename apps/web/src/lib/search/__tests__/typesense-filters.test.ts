@@ -142,7 +142,7 @@ describe("buildFilterString — input hardening", () => {
 // to active-count (an active job, by definition, was first-seen in the
 // past — so the time window selects no extra docs once is_active is on).
 //
-// Also (#3029): apply the same invariant to `actions/watchlists.ts`,
+// Also (#3029): apply the same invariant to `services/watchlists.ts`,
 // where the watchlist-page year-count was constructed without any
 // content-quality clause, inflating the year badge vs the active badge.
 // =====================================================================
@@ -151,7 +151,7 @@ describe("year-count badge filters reference POSTING_FLOW_FILTER (#2965, #3029)"
   const SOURCES = [
     "../typesense.ts",
     "../typesense-browser.ts",
-    "../../actions/watchlists.ts",
+    "../../services/watchlists.ts",
   ] as const;
 
   for (const rel of SOURCES) {

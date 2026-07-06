@@ -1,4 +1,4 @@
-import type { WatchlistFilters } from "@/lib/actions/watchlists";
+import type { WatchlistFilters } from "@/lib/services/watchlists";
 import { canonicalStringCompare } from "@/lib/sort";
 
 
@@ -8,7 +8,7 @@ import { canonicalStringCompare } from "@/lib/sort";
 // `anyCompany` and `salaryCurrency` alone don't count (they're defaults/prefs).
 //
 // Mirror of the `nonTrivialWatchlistPredicate` SQL fragment in
-// `@/lib/actions/watchlists`. Keep the two in sync — see the drift-guard
+// `@/lib/services/watchlists`. Keep the two in sync — see the drift-guard
 // test in `__tests__/watchlist-utils.test.ts` which fails if a new key
 // is added to `WatchlistFilters` without being checked here.
 export function isTrivialWatchlist(

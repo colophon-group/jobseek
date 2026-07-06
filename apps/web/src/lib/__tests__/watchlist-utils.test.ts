@@ -7,7 +7,7 @@ import {
   isQualifyingWatchlist,
 } from "../watchlist-utils";
 import { buildWatchlistItemListJsonLd } from "../seo";
-import type { WatchlistFilters } from "../actions/watchlists";
+import type { WatchlistFilters } from "../services/watchlists";
 
 describe("isTrivialWatchlist", () => {
   it("returns true for empty filters and zero companies", () => {
@@ -41,7 +41,7 @@ describe("isTrivialWatchlist", () => {
 
   // Drift-guard: every meaningful key in WatchlistFilters must be
   // checked by `isTrivialWatchlist` AND by the SQL predicate
-  // `nonTrivialWatchlistPredicate` in `src/lib/actions/watchlists.ts`.
+  // `nonTrivialWatchlistPredicate` in `src/lib/services/watchlists.ts`.
   // If you add a new filter to WatchlistFilters, update both predicates
   // or extend the IGNORED_KEYS allowlist with a justification comment.
   describe("drift-guard vs WatchlistFilters keys", () => {
@@ -87,7 +87,7 @@ describe("isTrivialWatchlist", () => {
       // Read the SQL fragment as source text so a future contributor
       // adding a filter sees this test fail until they update the SQL.
       const src = readFileSync(
-        join(__dirname, "..", "actions", "watchlists.ts"),
+        join(__dirname, "..", "services", "watchlists.ts"),
         "utf-8",
       );
       const sqlMatch = src.match(

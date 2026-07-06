@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import {
   searchPublicWatchlists,
   getPopularWatchlists,
-} from "@/lib/actions/watchlists";
+} from "@/lib/services/watchlists";
 import { checkRateLimit, apiResponse, siteUrl } from "../_shared";
 
 const MAX_RESULTS = 10;

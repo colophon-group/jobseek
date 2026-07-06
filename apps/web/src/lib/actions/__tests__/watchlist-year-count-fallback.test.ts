@@ -99,6 +99,13 @@ vi.mock("@/lib/actions/taxonomy", () => ({
   resolveTechnologySlugs: vi.fn().mockResolvedValue(new Map()),
 }));
 
+vi.mock("@/lib/services/taxonomy", () => ({
+  expandOccupationIdsBatch: mocks.expandOccupationIdsBatch,
+  resolveOccupationSlugs: vi.fn().mockResolvedValue(new Map()),
+  resolveSenioritySlugs: vi.fn().mockResolvedValue(new Map()),
+  resolveTechnologySlugs: vi.fn().mockResolvedValue(new Map()),
+}));
+
 vi.mock("@/lib/cache", () => ({
   cached: vi.fn((_key: string, factory: () => Promise<unknown>) => factory()),
   invalidate: vi.fn(),

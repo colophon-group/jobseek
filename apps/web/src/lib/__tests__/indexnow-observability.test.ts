@@ -1,7 +1,7 @@
 /**
  * Observability tests for `logIndexNowResult` (#3202).
  *
- * The 5 web-side call sites in `apps/web/src/lib/actions/watchlists.ts`
+ * The 5 web-side call sites in `apps/web/src/lib/services/watchlists.ts`
  * used to discard the `NotifyIndexNowResult` envelope, leaving operators
  * blind to rejection storms (e.g. a stale INDEXNOW_KEY cached on Bing
  * for 24h after a rotation, with Yandex/Seznam returning 422/403). The
