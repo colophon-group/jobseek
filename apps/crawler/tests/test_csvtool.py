@@ -1,8 +1,19 @@
 from __future__ import annotations
 
-import pytest
+import ast
+from pathlib import Path
 
-from src.csvtool import _read_csv, board_add, board_del, company_add, company_del
+import pytest
+import structlog
+
+from src.csvtool import (
+    _read_csv,
+    board_add,
+    board_del,
+    company_add,
+    company_del,
+    company_description_set,
+)
 from src.workspace.errors import (
     BoardNotFoundError,
     InvalidSlugError,
@@ -285,3 +296,68 @@ class TestBoardDel:
         _, rows = _read_csv(tmp_path / "boards.csv")
         assert len(rows) == 1
         assert rows[0]["company_slug"] == "other"
+
+
+class TestStructuredLogging:
+    def _setup(self, tmp_path, monkeypatch, companies="", boards=""):
+        (tmp_path / "companies.csv").write_text(COMPANIES_HEADER + companies)
+        (tmp_path / "boards.csv").write_text(BOARDS_HEADER + boards)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.csvtool.get_data_dir", lambda: tmp_path)
+
+    def test_csv_mutations_emit_structured_logs_without_stdout(self, tmp_path, monkeypatch, capsys):
+        self._setup(tmp_path, monkeypatch)
+
+        with structlog.testing.capture_logs() as logs:
+            company_add("test-co", name="Test", website="https://test.com")
+            company_description_set("test-co", "en", "A test company")
+            board_add(
+                "test-co",
+                board_slug="test-co-careers",
+                board_url="https://test.com/jobs",
+                monitor_type="greenhouse",
+            )
+            board_del("test-co", board_url="https://test.com/jobs")
+            company_del("test-co")
+
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == ""
+
+        events = {entry["event"]: entry for entry in logs}
+        assert events["csvtool.company.added"]["slug"] == "test-co"
+        assert events["csvtool.company.added"]["fields"] == ["name", "website"]
+        assert events["csvtool.company_description.set"]["locale"] == "en"
+        assert events["csvtool.board.added"]["board_url"] == "https://test.com/jobs"
+        assert events["csvtool.board.removed"]["removed"] == 1
+        assert events["csvtool.company.removed"]["removed_boards"] == 0
+
+
+def _print_call_lines(path: Path) -> list[int]:
+    tree = ast.parse(path.read_text())
+    lines: list[int] = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "print"
+        ):
+            lines.append(node.lineno)
+    return sorted(lines)
+
+
+def test_logging_sensitive_entrypoints_do_not_call_print() -> None:
+    """Deploy/container log paths should stay parseable by structlog JSON processors."""
+    source_root = Path(__file__).resolve().parents[1] / "src"
+    targets = [
+        source_root / "typesense_schema.py",
+        source_root / "cli.py",
+        source_root / "csvtool.py",
+    ]
+
+    print_calls = {
+        str(path.relative_to(source_root)): lines
+        for path in targets
+        if (lines := _print_call_lines(path))
+    }
+    assert print_calls == {}

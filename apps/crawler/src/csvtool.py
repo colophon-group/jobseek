@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import structlog
+
 from src.shared.constants import SLUG_RE, get_data_dir
 from src.shared.csv_io import read_csv as _read_csv
 from src.shared.csv_io import write_csv as _write_csv
+from src.shared.output import tty_message
 from src.workspace.errors import (
     BoardNotFoundError,
     InvalidSlugError,
@@ -20,6 +23,7 @@ from src.workspace.errors import (
 )
 
 _SLUG_RE = SLUG_RE
+log = structlog.get_logger()
 
 
 def sort_csvs() -> None:
@@ -83,7 +87,8 @@ def company_description_set(slug: str, locale: str, description: str) -> None:
         target[locale] = description
 
     _write_csv(descs_path, headers, rows)
-    print(f"Set {locale} description for {slug!r}")
+    log.info("csvtool.company_description.set", slug=slug, locale=locale)
+    tty_message(f"Set {locale} description for {slug!r}")
 
 
 def company_add(
@@ -142,8 +147,9 @@ def company_add(
         _write_csv(companies_path, headers, rows)
 
         fields = [k for k, v in new_row.items() if v and k != "slug"]
+        log.info("csvtool.company.added", slug=slug, fields=fields)
         extra = f" ({', '.join(fields)})" if fields else ""
-        print(f"Added company {slug!r}{extra}")
+        tty_message(f"Added company {slug!r}{extra}")
     else:
         # Update existing row
         if not field_map:
@@ -152,8 +158,9 @@ def company_add(
         target.update(field_map)
         _write_csv(companies_path, headers, rows)
 
+        log.info("csvtool.company.updated", slug=slug, fields=list(field_map))
         fields = ", ".join(field_map)
-        print(f"Updated company {slug!r}: {fields}")
+        tty_message(f"Updated company {slug!r}: {fields}")
 
 
 def company_del(slug: str) -> None:
@@ -177,8 +184,9 @@ def company_del(slug: str) -> None:
     _write_csv(boards_path, b_headers, b_rows)
 
     removed_boards = b_original_len - len(b_rows)
+    log.info("csvtool.company.removed", slug=slug, removed_boards=removed_boards)
     board_msg = f" and {removed_boards} board(s)" if removed_boards else ""
-    print(f"Removed company {slug!r}{board_msg}")
+    tty_message(f"Removed company {slug!r}{board_msg}")
 
 
 def board_add(
@@ -233,8 +241,14 @@ def board_add(
         target.update(updates)
         _write_csv(boards_path, headers, rows)
 
+        log.info(
+            "csvtool.board.updated",
+            slug=slug,
+            board=board_url or board_slug,
+            fields=list(updates),
+        )
         fields = ", ".join(f"{k}={v!r}" for k, v in updates.items())
-        print(f"Updated board {board_url or board_slug!r}: {fields}")
+        tty_message(f"Updated board {board_url or board_slug!r}: {fields}")
     else:
         # Create new board
         if not board_url:
@@ -256,7 +270,13 @@ def board_add(
         rows.append(new_row)
 
         _write_csv(boards_path, headers, rows)
-        print(f"Added board for {slug!r}: {board_url} (monitor: {monitor_type or ''})")
+        log.info(
+            "csvtool.board.added",
+            slug=slug,
+            board_url=board_url,
+            monitor_type=monitor_type or "",
+        )
+        tty_message(f"Added board for {slug!r}: {board_url} (monitor: {monitor_type or ''})")
 
 
 def board_del(slug: str, *, board_url: str | None = None) -> None:
@@ -270,7 +290,8 @@ def board_del(slug: str, *, board_url: str | None = None) -> None:
         if len(rows) == original_len:
             raise BoardNotFoundError(f"Board ({slug!r}, {board_url!r}) not found in boards.csv")
         _write_csv(boards_path, headers, rows)
-        print(f"Removed board {board_url!r} for {slug!r}")
+        log.info("csvtool.board.removed", slug=slug, board_url=board_url, removed=1)
+        tty_message(f"Removed board {board_url!r} for {slug!r}")
     else:
         original_len = len(rows)
         rows = [r for r in rows if r["company_slug"] != slug]
@@ -278,4 +299,5 @@ def board_del(slug: str, *, board_url: str | None = None) -> None:
         if removed == 0:
             raise BoardNotFoundError(f"No boards found for {slug!r}")
         _write_csv(boards_path, headers, rows)
-        print(f"Removed {removed} board(s) for {slug!r}")
+        log.info("csvtool.board.removed", slug=slug, board_url=None, removed=removed)
+        tty_message(f"Removed {removed} board(s) for {slug!r}")
