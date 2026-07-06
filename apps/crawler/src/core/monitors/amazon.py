@@ -27,7 +27,7 @@ import httpx
 import structlog
 
 from src.core.enum_normalize import normalize_salary_unit
-from src.core.monitors import DiscoveredJob, register
+from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -264,6 +264,8 @@ async def _fetch_page(
     """Fetch a single page. Returns (raw_jobs, total_hits)."""
     async with semaphore:
         resp = await client.get(API_URL, params=params)
+        if resp.status_code == 404 and params.get("offset", 0) == 0:
+            raise BoardGoneError("Amazon Jobs API returned 404", url=str(resp.url))
         resp.raise_for_status()
         data = resp.json()
 
