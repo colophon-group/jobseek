@@ -22,27 +22,33 @@ type Props = {
 export function CompanyHead({ company, locale }: Props) {
   const i18n = getI18n()!;
 
-  const metaParts: string[] = [];
-  if (company.industryName) metaParts.push(company.industryName);
+  const metaParts: { id: string; label: string }[] = [];
+  if (company.industryName) metaParts.push({ id: "industry", label: company.industryName });
   const employees = formatEmployeeCount(company.employeeCountRange);
   if (employees) {
     metaParts.push(
-      i18n._({
-        id: "company.head.employees",
-        comment: "Employee count range shown on company page header",
-        message: "{range} employees",
-        values: { range: employees },
-      }),
+      {
+        id: "employees",
+        label: i18n._({
+          id: "company.head.employees",
+          comment: "Employee count range shown on company page header",
+          message: "{range} employees",
+          values: { range: employees },
+        }),
+      },
     );
   }
   if (company.foundedYear) {
     metaParts.push(
-      i18n._({
-        id: "company.head.founded",
-        comment: "Founded year shown on company page header",
-        message: "Founded {year}",
-        values: { year: company.foundedYear },
-      }),
+      {
+        id: "founded",
+        label: i18n._({
+          id: "company.head.founded",
+          comment: "Founded year shown on company page header",
+          message: "Founded {year}",
+          values: { year: company.foundedYear },
+        }),
+      },
     );
   }
 
@@ -95,8 +101,8 @@ export function CompanyHead({ company, locale }: Props) {
 
       {metaParts.length > 0 && (
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
-          {metaParts.map((part, i) => (
-            <span key={i}>{part}</span>
+          {metaParts.map((part) => (
+            <span key={part.id}>{part.label}</span>
           ))}
         </div>
       )}
@@ -115,4 +121,3 @@ export function CompanyHead({ company, locale }: Props) {
     </div>
   );
 }
-
