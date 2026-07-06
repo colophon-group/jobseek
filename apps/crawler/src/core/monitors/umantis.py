@@ -49,8 +49,6 @@ _RETRY_BASE_DELAY = 0.5
 # recruitingapp-{ID}[.de|.ch].umantis.com
 _HOST_RE = re.compile(r"^recruitingapp-(\d+)(?:\.\w+)?\.umantis\.com$", re.IGNORECASE)
 
-_CUSTOM_HOST_RE = re.compile(r"\.umantis\.com$", re.IGNORECASE)
-
 _IGNORE_SUBDOMAINS = {"www", "api", "app", "static", "cdn", "mail", "help"}
 
 _PAGE_MARKERS = [

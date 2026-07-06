@@ -4,6 +4,23 @@ from __future__ import annotations
 
 from src.workspace._compat import auto_skip_crawler_types
 
+__all__ = [
+    "_CLEAR_SCRAPE_FOR_RICH",
+    "_EXTEND_SCRAPE_LEASE",
+    "_FETCH_BOARD_ALL_ACTIVE",
+    "_FETCH_BOARD_BY_SLUG",
+    "_FETCH_BOARD_SCRAPE_ITEMS",
+    "_FETCH_BOARD_SCRAPERS",
+    "_FETCH_DUE_JOB_POSTINGS",
+    "_FETCH_POSTING_FOR_ENRICH",
+    "_RECORD_SCRAPE_FAILURE",
+    "_RECORD_SCRAPE_SUCCESS",
+    "_RECORD_SCRAPE_TRANSIENT",
+    "_UPDATE_ENRICH_CONTENT",
+    "_UPDATE_JOB_CONTENT",
+    "_build_skip_no_scrape_predicate",
+]
+
 
 def _build_skip_no_scrape_predicate(board_alias: str = "jb") -> str:
     """Build the SQL predicate for 'board is rich-monitor, no scraping'.

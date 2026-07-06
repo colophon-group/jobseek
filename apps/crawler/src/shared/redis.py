@@ -11,6 +11,12 @@ if TYPE_CHECKING:
 _client: Any = None
 _checked = False
 
+__all__ = [
+    "_checked",
+    "_client",
+    "get_redis",
+]
+
 
 def get_redis() -> Redis | None:
     """Return the shared async Redis client, creating it on first call.

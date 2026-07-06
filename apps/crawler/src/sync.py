@@ -258,9 +258,6 @@ ON CONFLICT (board_url) DO UPDATE SET
     updated_at = now()
 """
 
-# Keep backward-compatible alias for tests
-_UPSERT_BOARDS = _UPSERT_BOARDS_SUPA
-
 _UPSERT_BOARD_LOCAL = """
 INSERT INTO job_board (id, company_id, board_slug, board_url,
                        crawler_type, metadata,

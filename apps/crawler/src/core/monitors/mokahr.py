@@ -26,7 +26,6 @@ from src.shared.truncation import truncated_rich_result
 log = structlog.get_logger()
 
 _API_URL = "https://app.mokahr.com/api/outer/ats-apply/website/jobs/v2"
-_DETAIL_URL = "https://app.mokahr.com/api/outer/ats-apply/website/job"
 _PAGE_SIZE = 20
 _MAX_JOBS = 50_000
 

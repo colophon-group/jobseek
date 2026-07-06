@@ -111,16 +111,6 @@ def _estimate_monitor_cost(name: str, n_jobs: int, metadata: dict | None = None)
     return 2.0
 
 
-#: Default per-job scraper cost assumptions by scraper type.
-_SCRAPER_COST_PER_JOB: dict[str, float] = {
-    "json-ld": 0.3,
-    "nextdata": 0.3,
-    "embedded": 0.3,
-    "dom": 0.5,
-    "dom_render": 4.0,
-    "api_sniffer": 3.0,
-}
-
 _DEFAULT_SCRAPER_COST = 0.3  # json-ld / httpx-based
 
 
