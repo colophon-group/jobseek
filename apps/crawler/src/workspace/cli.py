@@ -249,6 +249,7 @@ def _detect_repo_root() -> Path | None:
         if (root / "apps" / "crawler" / "data").exists():
             return root
     except (subprocess.CalledProcessError, FileNotFoundError):
+        # Fall back to the managed clone when git is unavailable or outside a repo.
         pass
 
     # 3. Managed clone
@@ -307,6 +308,7 @@ def main():
     try:
         ws(standalone_mode=False)
     except click.exceptions.Exit:
+        # Click already handled normal command termination.
         pass
     except click.ClickException as e:
         e.show()

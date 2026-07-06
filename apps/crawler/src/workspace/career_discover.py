@@ -778,6 +778,7 @@ async def _probe_specific_monitor(
                 )
             ]
     except Exception:
+        # One failed ATS probe should not suppress candidates from other probes.
         pass
     return []
 

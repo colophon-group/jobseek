@@ -231,6 +231,7 @@ async def _fetch_page(
             except PcsxDisabled:
                 raise
             except Exception:
+                # Non-JSON 403 bodies still fall through to the generic 403 error.
                 pass
             raise PcsxFetchError(
                 f"403 from {host}",

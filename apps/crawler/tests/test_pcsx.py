@@ -94,6 +94,14 @@ class TestGetCount:
 
 
 class TestFetchAll:
+    async def test_403_with_unparseable_body_raises_generic_fetch_error(self):
+        async def handler(request):
+            return httpx.Response(403, text="<html>Forbidden</html>")
+
+        async with _make_client(handler) as http:
+            with pytest.raises(PcsxFetchError, match="403 from careers.example.com"):
+                await fetch_all("careers.example.com", "example", http)
+
     async def test_paginates_until_empty(self):
         pages = [
             [{"id": i, "postedTs": 1000 - i} for i in range(10)],

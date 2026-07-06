@@ -206,6 +206,14 @@ class TestCanHandle:
             assert result["token"] == "acme"
             assert result["jobs"] == 42
 
+    async def test_direct_url_fetch_failure_returns_none(self):
+        def handler(request):
+            raise httpx.ConnectError("connection failed", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://careers.smartrecruiters.com/acme", client)
+            assert result is None
+
     async def test_detects_in_page_html(self):
         def handler(request):
             url = str(request.url)
@@ -220,6 +228,14 @@ class TestCanHandle:
             result = await can_handle("https://www.example.com/careers", client)
             assert result is not None
             assert result["token"] == "myco"
+
+    async def test_custom_url_fetch_failure_returns_none(self):
+        def handler(request):
+            raise httpx.ConnectError("connection failed", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://www.example.com/careers", client)
+            assert result is None
 
     async def test_no_match(self):
         def handler(request):

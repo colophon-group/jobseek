@@ -261,6 +261,7 @@ def _flatten_transcript(main_path: Path) -> list[dict]:
                         meta = json.loads(meta_path.read_text())
                         agent_type = meta.get("agentType", "")
                     except (json.JSONDecodeError, OSError):
+                        # Missing or corrupt metadata only omits the optional agent type label.
                         pass
                 sub_records = _read_jsonl(f)
                 for rec in sub_records:

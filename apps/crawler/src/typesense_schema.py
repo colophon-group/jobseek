@@ -236,6 +236,7 @@ def _drop_collection(client: typesense.Client, name: str) -> None:
         client.collections[name].delete()
         log.info("typesense.collection.dropped", name=name)
     except ObjectNotFound:
+        # Force setup is idempotent; an already-absent collection is fine.
         pass
 
 
@@ -244,6 +245,7 @@ def _drop_alias(client: typesense.Client, name: str) -> None:
         client.aliases[name].delete()
         log.info("typesense.alias.dropped", name=name)
     except ObjectNotFound:
+        # Force setup is idempotent; an already-absent alias is fine.
         pass
 
 

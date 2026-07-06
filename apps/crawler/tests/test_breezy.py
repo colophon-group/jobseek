@@ -144,6 +144,14 @@ class TestCanHandle:
             result = await can_handle("https://jobs.example.com/careers", client)
             assert result == {"portal_url": "https://jobs.example.com", "jobs": 1}
 
+    async def test_custom_domain_fetch_failure_returns_none(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("connection failed", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.example.com/careers", client)
+            assert result is None
+
     async def test_non_breezy_url(self):
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(200, text="<html>no breezy markers</html>")

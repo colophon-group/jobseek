@@ -527,6 +527,7 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
                 ),
             )
         except Exception:
+            # Traversal evidence is advisory; rendering candidates should continue.
             pass
     print()
 
@@ -612,6 +613,7 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
                             "  whether jobs differ before creating separate boards.",
                         )
         except Exception:
+            # Hreflang host hints are advisory and must not block the command.
             pass
 
 
@@ -1058,6 +1060,7 @@ def save_image_to_path(slug: str, label: str, data: bytes, content_type: str) ->
 
                 _save_jpeg_thumbnail(png_path, artifact_dir / f"{name}.jpg")
             except Exception:
+                # PNG output is the source of truth; the JPEG preview is optional.
                 pass
             return png_path
         except ImportError:

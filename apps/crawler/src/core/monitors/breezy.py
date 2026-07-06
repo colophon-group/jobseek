@@ -225,6 +225,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         if resp.status_code == 200:
             html = resp.text
     except Exception:
+        # Fetch failures simply mean this URL provided no Breezy evidence.
         pass
 
     # 1) Redirect target is a Breezy portal

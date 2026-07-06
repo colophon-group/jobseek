@@ -323,6 +323,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
             if resp.status_code == 200:
                 html = resp.text
         except Exception:
+            # Network failures leave only the original URL token to validate below.
             pass
 
         final_token = _token_from_url(final_url)
@@ -347,6 +348,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         if resp.status_code == 200:
             html = resp.text
     except Exception:
+        # Fetch failures mean no page signal was observed for this URL.
         pass
 
     signal = _has_smartrecruiters_signal(final_url, html)
