@@ -97,7 +97,7 @@ async function setTheme(page: Page, theme: "light" | "dark") {
     localStorage.setItem("theme", t);
     document.documentElement.classList.remove("light", "dark");
     document.documentElement.classList.add(t);
-    window.dispatchEvent(new StorageEvent("storage", { key: "theme", newValue: t }));
+    window.dispatchEvent(new Event("storage"));
   }, theme);
   await page.waitForTimeout(300);
 }
