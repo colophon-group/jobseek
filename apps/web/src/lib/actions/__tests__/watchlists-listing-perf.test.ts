@@ -36,40 +36,81 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const mocks = vi.hoisted(() => ({
-  getSessionUserId: vi.fn(),
-  dbExecute: vi.fn(),
-  withDbRetry: vi.fn(),
-  cached: vi.fn(),
+const mocks = vi.hoisted(() => {
+  type SqlChunk = { text: string; values: unknown[] };
 
-  // Typesense search call counter — every collection().documents().search()
-  // routes through this one mock so we can assert call count + which
-  // collection was hit.
-  tsSearch: vi.fn(),
-  tsCollectionsCalls: [] as string[],
+  function isSqlChunk(value: unknown): value is SqlChunk {
+    return (
+      typeof value === "object" &&
+      value !== null &&
+      "text" in value &&
+      "values" in value
+    );
+  }
 
-  getViewerLanguages: vi.fn().mockResolvedValue(["en"]),
-  canCreateWatchlist: vi.fn().mockResolvedValue({ allowed: true }),
-  notifyIndexNow: vi.fn(),
-  tsUpsertWatchlist: vi.fn(),
-  tsDeleteWatchlist: vi.fn(),
-  tsUpdateWatchlistField: vi.fn(),
-  generateUniqueSlug: vi.fn(),
-  // #3201: pass-through that runs the inserter once with the picker's
-  // slug. Listing-perf tests don't exercise the createWatchlist path
-  // but the module-level import needs the export.
-  insertWatchlistWithUniqueSlug: vi.fn(
-    async (
-      userId: string,
-      title: string,
-      insert: (slug: string) => Promise<unknown>,
-    ) => {
-      const slug = await mocks.generateUniqueSlug(userId, title);
-      const row = await insert(slug);
-      return { row, slug };
+  const sqlTag = Object.assign(
+    (strings: TemplateStringsArray, ...values: unknown[]): SqlChunk => {
+      const chunk: SqlChunk = { text: "", values: [] };
+      strings.forEach((part, index) => {
+        chunk.text += part;
+        if (index >= values.length) return;
+        const value = values[index];
+        if (isSqlChunk(value)) {
+          chunk.text += value.text;
+          chunk.values.push(...value.values);
+        } else {
+          chunk.text += "?";
+          chunk.values.push(value);
+        }
+      });
+      return chunk;
     },
-  ),
-}));
+    {
+      join: (chunks: SqlChunk[], separator: SqlChunk): SqlChunk => ({
+        text: chunks.map((chunk) => chunk.text).join(separator.text),
+        values: chunks.flatMap((chunk, index) =>
+          index === 0 ? chunk.values : [...separator.values, ...chunk.values],
+        ),
+      }),
+    },
+  );
+
+  return {
+    getSessionUserId: vi.fn(),
+    dbExecute: vi.fn(),
+    withDbRetry: vi.fn(),
+    cached: vi.fn(),
+    sqlTag,
+
+    // Typesense search call counter — every collection().documents().search()
+    // routes through this one mock so we can assert call count + which
+    // collection was hit.
+    tsSearch: vi.fn(),
+    tsCollectionsCalls: [] as string[],
+
+    getViewerLanguages: vi.fn().mockResolvedValue(["en"]),
+    canCreateWatchlist: vi.fn().mockResolvedValue({ allowed: true }),
+    notifyIndexNow: vi.fn(),
+    tsUpsertWatchlist: vi.fn(),
+    tsDeleteWatchlist: vi.fn(),
+    tsUpdateWatchlistField: vi.fn(),
+    generateUniqueSlug: vi.fn(),
+    // #3201: pass-through that runs the inserter once with the picker's
+    // slug. Listing-perf tests don't exercise the createWatchlist path
+    // but the module-level import needs the export.
+    insertWatchlistWithUniqueSlug: vi.fn(
+      async (
+        userId: string,
+        title: string,
+        insert: (slug: string) => Promise<unknown>,
+      ) => {
+        const slug = await mocks.generateUniqueSlug(userId, title);
+        const row = await insert(slug);
+        return { row, slug };
+      },
+    ),
+  };
+});
 
 vi.mock("next/server", () => ({ after: (cb: () => unknown) => cb() }));
 vi.mock("next/cache", () => ({ updateTag: vi.fn() }));
@@ -174,7 +215,7 @@ vi.mock("@/lib/actions/taxonomy", () => ({
 }));
 
 vi.mock("drizzle-orm", () => ({
-  sql: (..._args: unknown[]) => ({ _isSql: true }),
+  sql: mocks.sqlTag,
   eq: (..._args: unknown[]) => ({ _isEq: true }),
   and: (..._args: unknown[]) => ({ _isAnd: true }),
 }));
@@ -479,6 +520,35 @@ describe("searchPublicWatchlists — Typesense path (#3176)", () => {
     });
 
     expect(result.watchlists.map((w) => w.activeJobCount)).toEqual([99, 77]);
+  });
+
+  it("binds Discover filter lookup ids as one uuid[] literal (#3491)", async () => {
+    const hits = [
+      fakePublicWatchlistHit(0, 99),
+      fakePublicWatchlistHit(1, 77),
+    ];
+    mocks.tsSearch.mockResolvedValueOnce({ hits, found: 2 });
+    mocks.dbExecute.mockResolvedValueOnce(
+      hits.map((h) => ({ id: h.document.id, filters: { keywords: ["x"] } })),
+    );
+
+    await searchPublicWatchlists({
+      query: "enterprise sales",
+      offset: 0,
+      limit: 20,
+      locale: "en",
+    });
+
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
+    const query = mocks.dbExecute.mock.calls[0]?.[0] as
+      | { text: string; values: unknown[] }
+      | undefined;
+
+    expect(query?.text.replace(/\s+/g, " ")).toContain(
+      "WHERE w.id = ANY(?::uuid[])",
+    );
+    expect(query?.values).toEqual(["{wl-0,wl-1}"]);
+    expect(Array.isArray(query?.values[0])).toBe(false);
   });
 
   it("short-circuits empty query without any I/O", async () => {
