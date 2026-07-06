@@ -649,7 +649,6 @@ class TestDomGoneUrlPattern:
         """Verify the live boards.csv config pattern actually matches the
         L'Oreal error redirect URL we observed in production probes."""
         import csv
-        import json
         import re
 
         from src.shared.constants import DATA_DIR
