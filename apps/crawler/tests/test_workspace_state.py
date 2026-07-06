@@ -468,9 +468,14 @@ class TestUpdateWorkspace:
         monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
         monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="test", name="Original"))
-        with pytest.raises(ValueError, match="boom"), update_workspace("test") as ws:
-            ws.name = "Changed"
-            raise ValueError("boom")
+
+        def _raise_inside_update():
+            with update_workspace("test") as ws:
+                ws.name = "Changed"
+                raise ValueError("boom")
+
+        with pytest.raises(ValueError, match="boom"):
+            _raise_inside_update()
         loaded = load_workspace("test")
         assert loaded.name == "Original"
 

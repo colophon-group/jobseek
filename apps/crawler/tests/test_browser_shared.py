@@ -441,9 +441,13 @@ class TestOpenPage:
 
     async def test_closes_browser_on_exception(self):
         pw = _make_pw()
-        with pytest.raises(RuntimeError):
+
+        async def _raise_inside_page():
             async with open_page(pw):
                 raise RuntimeError("test error")
+
+        with pytest.raises(RuntimeError):
+            await _raise_inside_page()
         pw.chromium.launch.return_value.close.assert_awaited_once()
 
     async def test_closes_context_before_browser(self):
@@ -457,9 +461,13 @@ class TestOpenPage:
 
     async def test_closes_context_on_exception(self):
         pw = _make_pw()
-        with pytest.raises(RuntimeError):
+
+        async def _raise_inside_page():
             async with open_page(pw):
                 raise RuntimeError("test error")
+
+        with pytest.raises(RuntimeError):
+            await _raise_inside_page()
         pw.chromium.launch.return_value.new_context.return_value.close.assert_awaited_once()
         pw.chromium.launch.return_value.close.assert_awaited_once()
 
@@ -754,9 +762,13 @@ class TestOpenPagePersistentContext:
         import os
 
         pw = self._make_persist_pw()
-        with pytest.raises(RuntimeError):
+
+        async def _raise_inside_persistent_page():
             async with open_page(pw, {"persistent_context": True}):
                 raise RuntimeError("boom")
+
+        with pytest.raises(RuntimeError):
+            await _raise_inside_persistent_page()
         user_data_dir = pw.chromium.launch_persistent_context.await_args.args[0]
         assert not os.path.exists(user_data_dir)
 
