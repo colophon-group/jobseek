@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Sequence
 
 import asyncpg
 import dotenv
@@ -97,10 +98,44 @@ _POSTING_COLUMNS_SUPA_LOCAL = _POSTING_COLUMNS_SUPA
 BATCH_SIZE = 5000
 
 
+def _column_list(columns: Sequence[str]) -> str:
+    return ", ".join(columns)
+
+
+def _upsert_set(columns: Sequence[str]) -> str:
+    return ", ".join(column + " = EXCLUDED." + column for column in columns if column != "id")
+
+
+_BOARD_COLUMN_LIST = _column_list(_BOARD_COLUMNS)
+_BOARD_UPSERT_SET = _upsert_set(_BOARD_COLUMNS)
+_BOARD_SELECT_SQL = "SELECT " + _BOARD_COLUMN_LIST + " FROM job_board ORDER BY id"
+_IMPORT_BOARDS_UPSERT_SQL = (
+    "INSERT INTO job_board ("
+    + _BOARD_COLUMN_LIST
+    + ") SELECT "
+    + _BOARD_COLUMN_LIST
+    + " FROM _import_boards ON CONFLICT (id) DO UPDATE SET "
+    + _BOARD_UPSERT_SET
+)
+
+_POSTING_COLUMN_LIST_SUPA = _column_list(_POSTING_COLUMNS_SUPA)
+_POSTING_UPSERT_SET_SUPA = _upsert_set(_POSTING_COLUMNS_SUPA)
+_POSTING_SELECT_BATCH_SQL = (
+    "SELECT " + _POSTING_COLUMN_LIST_SUPA + " FROM job_posting ORDER BY id OFFSET $1 LIMIT $2"
+)
+_IMPORT_POSTINGS_UPSERT_SQL = (
+    "INSERT INTO job_posting ("
+    + _POSTING_COLUMN_LIST_SUPA
+    + ") SELECT "
+    + _POSTING_COLUMN_LIST_SUPA
+    + " FROM _import_postings ON CONFLICT (id) DO UPDATE SET "
+    + _POSTING_UPSERT_SET_SUPA
+)
+
+
 async def _copy_boards(supa: asyncpg.Pool, local: asyncpg.Pool) -> int:
     """Copy all job_board rows from Supabase to local Postgres."""
-    cols = ", ".join(_BOARD_COLUMNS)
-    rows = await supa.fetch(f"SELECT {cols} FROM job_board ORDER BY id")
+    rows = await supa.fetch(_BOARD_SELECT_SQL)
     if not rows:
         return 0
 
@@ -115,20 +150,13 @@ async def _copy_boards(supa: asyncpg.Pool, local: asyncpg.Pool) -> int:
             records=[tuple(r[c] for c in _BOARD_COLUMNS) for r in rows],
             columns=_BOARD_COLUMNS,
         )
-        placeholders = ", ".join(_BOARD_COLUMNS)
-        updates = ", ".join(f"{c} = EXCLUDED.{c}" for c in _BOARD_COLUMNS if c != "id")
-        await conn.execute(f"""
-            INSERT INTO job_board ({placeholders})
-            SELECT {placeholders} FROM _import_boards
-            ON CONFLICT (id) DO UPDATE SET {updates}
-        """)
+        await conn.execute(_IMPORT_BOARDS_UPSERT_SQL)
 
     return len(rows)
 
 
 async def _copy_postings(supa: asyncpg.Pool, local: asyncpg.Pool) -> int:
     """Copy all job_posting rows from Supabase to local Postgres in batches."""
-    cols = ", ".join(_POSTING_COLUMNS_SUPA)
     total = await supa.fetchval("SELECT count(*) FROM job_posting")
     log.info("bootstrap.postings_count", total=total)
 
@@ -137,7 +165,7 @@ async def _copy_postings(supa: asyncpg.Pool, local: asyncpg.Pool) -> int:
 
     while offset < total:
         rows = await supa.fetch(
-            f"SELECT {cols} FROM job_posting ORDER BY id OFFSET $1 LIMIT $2",
+            _POSTING_SELECT_BATCH_SQL,
             offset,
             BATCH_SIZE,
         )
@@ -154,13 +182,7 @@ async def _copy_postings(supa: asyncpg.Pool, local: asyncpg.Pool) -> int:
                 records=[tuple(r[c] for c in _POSTING_COLUMNS_SUPA) for r in rows],
                 columns=_POSTING_COLUMNS_SUPA,
             )
-            placeholders = ", ".join(_POSTING_COLUMNS_SUPA)
-            updates = ", ".join(f"{c} = EXCLUDED.{c}" for c in _POSTING_COLUMNS_SUPA if c != "id")
-            await conn.execute(f"""
-                INSERT INTO job_posting ({placeholders})
-                SELECT {placeholders} FROM _import_postings
-                ON CONFLICT (id) DO UPDATE SET {updates}
-            """)
+            await conn.execute(_IMPORT_POSTINGS_UPSERT_SQL)
 
         copied += len(rows)
         offset += BATCH_SIZE
