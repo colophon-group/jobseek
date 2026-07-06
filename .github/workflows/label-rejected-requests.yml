@@ -14,12 +14,12 @@ jobs:
       - name: Extract reason and apply label
         env:
           GH_TOKEN: ${{ github.token }}
+          COMMENT_ID: ${{ github.event.comment.id }}
           ISSUE: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
         run: |
-          # Fetch comment body via API to avoid shell injection from
-          # ${{ github.event.comment.body }} interpolation.
-          BODY=$(gh api "repos/$REPO/issues/comments/${{ github.event.comment.id }}" --jq '.body')
+          # Fetch comment body via API so user-provided text never enters this shell script through workflow expressions.
+          BODY=$(gh api "repos/$REPO/issues/comments/$COMMENT_ID" --jq '.body')
           REASON=$(echo "$BODY" | grep -oP '<!-- validation-failed: \K[a-z-]+')
           if [ -n "$REASON" ]; then
             gh issue edit "$ISSUE" -R "$REPO" --add-label "$REASON"
