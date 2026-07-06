@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type InputHTMLAttributes } from "react";
+import { forwardRef, useId, useState, type InputHTMLAttributes } from "react";
 import { useLingui } from "@lingui/react/macro";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -10,20 +10,44 @@ const inputClass =
 type FormFieldProps = {
   label: string;
   className?: string;
+  error?: string | null;
+  hint?: string | null;
+  hintClassName?: string;
 } & InputHTMLAttributes<HTMLInputElement>;
 
-export function FormField({ label, className, type, ...inputProps }: FormFieldProps) {
+export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(function FormField({
+  label,
+  className,
+  type,
+  id,
+  error,
+  hint,
+  hintClassName,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
+  ...inputProps
+}, ref) {
   const { t } = useLingui();
+  const generatedId = useId();
   const isPassword = type === "password";
   const [showPassword, setShowPassword] = useState(false);
+  const inputId = id ?? generatedId;
+  const hintId = hint ? `${inputId}-hint` : undefined;
+  const errorId = error ? `${inputId}-error` : undefined;
+  const describedBy = [ariaDescribedBy, hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const invalid = error ? true : ariaInvalid;
 
   return (
-    <label className={`block ${className ?? ""}`}>
-      <span className="mb-1 block text-sm font-medium">{label}</span>
+    <div className={`block ${className ?? ""}`}>
+      <label htmlFor={inputId} className="mb-1 block text-sm font-medium">{label}</label>
       <div className="relative">
         <input
+          id={inputId}
+          ref={ref}
           className={`${inputClass}${isPassword ? " pr-9" : ""}`}
           type={isPassword && showPassword ? "text" : type}
+          aria-describedby={describedBy}
+          aria-invalid={invalid}
           {...inputProps}
         />
         {isPassword && (
@@ -41,6 +65,16 @@ export function FormField({ label, className, type, ...inputProps }: FormFieldPr
           </button>
         )}
       </div>
-    </label>
+      {hint && (
+        <p id={hintId} className={hintClassName ?? "mt-1 text-xs text-muted"}>
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={errorId} className="mt-1 text-xs text-error">
+          {error}
+        </p>
+      )}
+    </div>
   );
-}
+});

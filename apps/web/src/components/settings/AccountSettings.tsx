@@ -61,20 +61,25 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [newPasswordError, setNewPasswordError] = useState("");
   const [success, setSuccess] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setNewPasswordError("");
     setSuccess("");
     if (!newPassword) {
-      setError(t({ id: "settings.account.password.newRequired", comment: "Error when new password is empty", message: "Please enter a password" }));
+      const message = t({ id: "settings.account.password.newRequired", comment: "Error when new password is empty", message: "Please enter a password" });
+      setNewPasswordError(message);
+      setError(message);
       return;
     }
     setLoading(true);
     const result = await setPasswordAction(newPassword);
     setLoading(false);
     if (result.error) {
+      setNewPasswordError("");
       setError(result.error ?? t({ id: "settings.account.password.setError", comment: "Generic set password error", message: "Failed to set password" }));
     } else {
       setSuccess(t({ id: "settings.account.password.setSuccess", comment: "Success message after setting password", message: "Password set successfully." }));
@@ -93,7 +98,7 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
           You signed in with a social account. Set a password to enable email changes and additional security.
         </Trans>
       </p>
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
       <SuccessAlert message={success} />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
         <input type="hidden" name="username" autoComplete="username" value={user?.email ?? ""} />
@@ -104,7 +109,11 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
             required
             autoComplete="new-password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              setNewPasswordError("");
+            }}
+            error={newPasswordError}
           />
         </div>
         <Button type="submit" disabled={loading} size="sm">
@@ -178,7 +187,7 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
           Change your password via a secure email link.
         </Trans>
       </p>
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
       <SuccessAlert message={success} />
       <Button onClick={handleReset} disabled={loading || cooldown > 0} size="sm">
         {loading
@@ -297,6 +306,13 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
               : available === false
                 ? t({ id: "settings.account.username.taken", comment: "Username is taken", message: "Already taken" })
                 : null;
+  const usernameValidationInvalid = !unchanged && (tooShort || tooLong || invalidChars || reserved || available === false);
+  const usernameInvalid = usernameValidationInvalid || !!error;
+  const hintClassName = available === true
+    ? "mt-1 text-xs text-green-600 dark:text-green-400"
+    : usernameInvalid
+      ? "mt-1 text-xs text-error"
+      : "mt-1 text-xs text-muted";
 
   return (
     <section>
@@ -308,7 +324,7 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
           Your unique handle used in your public profile URL.
         </Trans>
       </p>
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
           <div className="flex-1">
@@ -319,6 +335,10 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
               value={value}
               onChange={(e) => handleChange(e.target.value)}
               maxLength={30}
+              hint={hint}
+              hintClassName={hintClassName}
+              error={error}
+              aria-invalid={usernameInvalid || undefined}
             />
           </div>
           <Button type="submit" disabled={loading || unchanged || tooShort || tooLong || invalidChars || reserved || available === false || checking} size="sm">
@@ -327,11 +347,6 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
               : t({ id: "settings.account.username.save", comment: "Username save button", message: "Update username" })}
           </Button>
         </div>
-        {hint && (
-          <p className={`mt-1 text-xs ${available === true ? "text-green-600 dark:text-green-400" : available === false || invalidChars || tooShort || tooLong || reserved ? "text-error" : "text-muted"}`}>
-            {hint}
-          </p>
-        )}
         {success && <div className="mt-3"><SuccessAlert message={success} /></div>}
       </form>
     </section>
@@ -346,14 +361,18 @@ function ChangeEmailSection() {
   const [newEmail, setNewEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [success, setSuccess] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setEmailError("");
     setSuccess("");
     if (!newEmail) {
-      setError(t({ id: "settings.account.email.required", comment: "Error when email field is empty", message: "Please enter a new email address" }));
+      const message = t({ id: "settings.account.email.required", comment: "Error when email field is empty", message: "Please enter a new email address" });
+      setEmailError(message);
+      setError(message);
       return;
     }
     setLoading(true);
@@ -363,6 +382,7 @@ function ChangeEmailSection() {
     });
     setLoading(false);
     if (error) {
+      setEmailError("");
       setError(error.message ?? t({ id: "settings.account.email.error", comment: "Generic email change error", message: "Failed to change email" }));
     } else {
       setSuccess(t({ id: "settings.account.email.success", comment: "Success message after email change request", message: "Verification email sent. Please check your inbox. It may take a few minutes to arrive." }));
@@ -380,7 +400,7 @@ function ChangeEmailSection() {
           Update the email address associated with your account.
         </Trans>
       </p>
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
       <SuccessAlert message={success} />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
         <div className="flex-1">
@@ -390,7 +410,11 @@ function ChangeEmailSection() {
             required
             autoComplete="email"
             value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
+            onChange={(e) => {
+              setNewEmail(e.target.value);
+              setEmailError("");
+            }}
+            error={emailError}
           />
         </div>
         <Button type="submit" disabled={loading} size="sm">
@@ -460,7 +484,7 @@ function ConnectedAccountsSection({ accounts, onDisconnect }: { accounts: Connec
           Manage your linked social accounts.
         </Trans>
       </p>
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
       <div className="space-y-2">
         {socialProviders.map((p) => {
           const connected = isConnected(p.id);
@@ -518,7 +542,7 @@ function DeleteAccountSection() {
           Permanently delete your account and all associated data. This action cannot be undone.
         </Trans>
       </p>
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
       {!showConfirm ? (
         <Button onClick={() => setShowConfirm(true)} variant="danger" size="sm">
           {t({ id: "settings.account.delete.button", comment: "Delete account button", message: "Delete my account" })}

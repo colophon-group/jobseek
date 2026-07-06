@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
@@ -41,6 +41,7 @@ export function RequestCompanyPrompt() {
   }, [state]);
 
   const errorMessage = state?.errorCode ? t(errorMessages[state.errorCode]) : "";
+  const errorId = useId();
 
   function handleSubmit(formData: FormData) {
     // Clear previous agent-run state so old success cards don't linger.
@@ -99,6 +100,8 @@ export function RequestCompanyPrompt() {
               }))}
               className="w-full rounded-md border border-divider bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary"
               disabled={isPending}
+              aria-invalid={errorMessage ? true : undefined}
+              aria-describedby={errorMessage ? errorId : undefined}
             />
           </div>
           <Button type="submit" disabled={isPending} size="sm">
@@ -118,7 +121,7 @@ export function RequestCompanyPrompt() {
               }}
             />
           )}
-          <ErrorAlert message={errorMessage} />
+          <ErrorAlert id={errorId} message={errorMessage} focusOnRender />
         </div>
       </div>
     </div>

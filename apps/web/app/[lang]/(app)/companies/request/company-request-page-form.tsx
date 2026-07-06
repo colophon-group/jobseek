@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
@@ -76,6 +76,7 @@ export function CompanyRequestPageForm({
   }, [state]);
 
   const errorMessage = state?.errorCode ? t(errorMessages[state.errorCode]) : "";
+  const errorId = useId();
 
   const initialValue = pickDefaultValue(defaultName, defaultWebsite);
 
@@ -122,6 +123,8 @@ export function CompanyRequestPageForm({
             }))}
             className="w-full rounded-md border border-divider bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary"
             disabled={isPending}
+            aria-invalid={errorMessage ? true : undefined}
+            aria-describedby={errorMessage ? errorId : undefined}
           />
         </div>
         <Button type="submit" disabled={isPending} size="sm">
@@ -141,7 +144,7 @@ export function CompanyRequestPageForm({
             }}
           />
         )}
-        <ErrorAlert message={errorMessage} />
+        <ErrorAlert id={errorId} message={errorMessage} focusOnRender />
       </div>
     </div>
   );

@@ -21,6 +21,8 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -76,22 +78,28 @@ export default function ResetPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setPasswordError("");
+    setConfirmPasswordError("");
 
     if (!password) {
-      setError(t({
+      const message = t({
         id: "auth.resetPassword.error.required",
         comment: "Error when new password is empty",
         message: "Please enter a new password",
-      }));
+      });
+      setPasswordError(message);
+      setError(message);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError(t({
+      const message = t({
         id: "auth.resetPassword.error.mismatch",
         comment: "Error when passwords do not match",
         message: "Passwords do not match",
-      }));
+      });
+      setConfirmPasswordError(message);
+      setError(message);
       return;
     }
 
@@ -103,6 +111,8 @@ export default function ResetPasswordPage() {
     setLoading(false);
 
     if (error) {
+      setPasswordError("");
+      setConfirmPasswordError("");
       setError(error.message ?? t({
         id: "auth.resetPassword.error.generic",
         comment: "Generic reset password error",
@@ -126,7 +136,7 @@ export default function ResetPasswordPage() {
         </Trans>
       </p>
 
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
 
       <form onSubmit={handleSubmit} noValidate>
         <FormField
@@ -135,8 +145,12 @@ export default function ResetPasswordPage() {
           required
           autoComplete="new-password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setPasswordError("");
+          }}
           className="mb-4"
+          error={passwordError}
         />
         <FormField
           label={t({ id: "auth.resetPassword.confirmPassword", comment: "Confirm password input label", message: "Confirm password" })}
@@ -144,8 +158,12 @@ export default function ResetPasswordPage() {
           required
           autoComplete="new-password"
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          onChange={(e) => {
+            setConfirmPassword(e.target.value);
+            setConfirmPasswordError("");
+          }}
           className="mb-6"
+          error={confirmPasswordError}
         />
         <Button type="submit" disabled={loading} className="w-full">
           {loading

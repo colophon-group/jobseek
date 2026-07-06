@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
@@ -38,6 +38,7 @@ export function CompanyRequestForm({ locale }: { locale: string }) {
   }, [state]);
 
   const errorMessage = state?.errorCode ? t(errorMessages[state.errorCode]) : "";
+  const errorId = useId();
 
   function handleSubmit(formData: FormData) {
     setAgentRun(null);
@@ -84,6 +85,8 @@ export function CompanyRequestForm({ locale }: { locale: string }) {
             }))}
             className="w-full rounded-md border border-divider bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary"
             disabled={isPending}
+            aria-invalid={errorMessage ? true : undefined}
+            aria-describedby={errorMessage ? errorId : undefined}
           />
         </div>
         <Button type="submit" disabled={isPending} size="sm">
@@ -103,7 +106,7 @@ export function CompanyRequestForm({ locale }: { locale: string }) {
             }}
           />
         )}
-        <ErrorAlert message={errorMessage} />
+        <ErrorAlert id={errorId} message={errorMessage} focusOnRender />
       </div>
     </div>
   );

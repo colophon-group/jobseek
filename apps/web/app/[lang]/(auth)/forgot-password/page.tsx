@@ -16,19 +16,23 @@ export default function ForgotPasswordPage() {
   const lp = useLocalePath();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setEmailError("");
 
     if (!email) {
-      setError(t({
+      const message = t({
         id: "auth.forgotPassword.error.required",
         comment: "Error when email field is empty",
         message: "Please enter your email address",
-      }));
+      });
+      setEmailError(message);
+      setError(message);
       return;
     }
 
@@ -40,6 +44,7 @@ export default function ForgotPasswordPage() {
     setLoading(false);
 
     if (error) {
+      setEmailError("");
       setError(error.message ?? t({
         id: "auth.forgotPassword.error.generic",
         comment: "Generic forgot password error",
@@ -86,7 +91,7 @@ export default function ForgotPasswordPage() {
         </Trans>
       </p>
 
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
 
       <form onSubmit={handleSubmit} noValidate>
         <FormField
@@ -95,8 +100,12 @@ export default function ForgotPasswordPage() {
           required
           autoComplete="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setEmailError("");
+          }}
           className="mb-6"
+          error={emailError}
         />
         <Button type="submit" disabled={loading} className="w-full">
           {loading
