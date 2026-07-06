@@ -51,7 +51,7 @@ meta,meta-careers,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""h
 | `board_url` | Yes | The career page URL to monitor. |
 | `monitor_type` | Yes | How to discover listings. Use any registered monitor type from `ws help monitors` (for example `greenhouse`, `workday`, `dom`, `api_sniffer`, `sitemap`). |
 | `monitor_config` | No | JSON object with monitor-specific settings. |
-| `scraper_type` | No | How to extract job details. One of: `json-ld`, `dom`, `nextdata`, `embedded`, `api_sniffer`. Empty when API monitor provides full data. |
+| `scraper_type` | No | How to extract job details. One of: `json-ld`, `dom`, `nextdata`, `embedded`, `api_sniffer`, `skip`. Empty when an API/rich monitor provides full data; use `skip` only as an explicit no-scrape marker for rich monitor output. |
 | `scraper_config` | No | JSON object with scraper-specific settings. |
 
 ### Rules
@@ -60,7 +60,7 @@ meta,meta-careers,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""h
 - `board_slug` must be unique across all rows and match slug format
 - `board_url` must be unique across all rows
 - `monitor_config` and `scraper_config` are JSON strings (use `""` for quotes inside CSV)
-- **Rich monitors** (ashby, amazon, dvinci, gem, greenhouse, hireology, lever, pinpoint, recruitee, rss, traffit; also `api_sniffer`/`nextdata` with `fields`) return full job data — `scraper_type` is empty
+- **Rich monitors** (ashby, amazon, dvinci, gem, greenhouse, hireology, lever, pinpoint, recruitee, rss, traffit; also `api_sniffer`/`nextdata` with `fields`) return full job data — `scraper_type` is empty or `skip`
 - **URL-only monitors with auto-scraper** (bite, breezy, join, rippling, smartrecruiters, softgarden, workable, workday) return URLs only — `scraper_type` is auto-configured and can be left empty in the CSV
 - **URL-only monitors without auto-scraper** (`sitemap`, `dom`, `nextdata`, `api_sniffer` without `fields`) return URLs only — `scraper_type` must be set explicitly
 
@@ -68,8 +68,8 @@ meta,meta-careers,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""h
 
 | Monitor Type | Returns | Scraper Needed? | Typical Scraper |
 |-------------|---------|-----------------|-----------------|
-| Rich monitors (greenhouse, lever, ashby, etc.) | Full job data | No | *(empty)* |
-| `api_sniffer`/`nextdata` with `fields` | Full job data | No | *(empty)* |
+| Rich monitors (greenhouse, lever, ashby, etc.) | Full job data | No | *(empty or `skip`)* |
+| `api_sniffer`/`nextdata` with `fields` | Full job data | No | *(empty or `skip`)* |
 | URL-only with auto-scraper (workday, rippling, etc.) | URLs only | Auto-configured | *(empty or override)* |
 | `sitemap` | URLs only | Yes (manual) | `json-ld` or `dom` |
 | `nextdata` without `fields` | URLs only | Yes (manual) | `nextdata` or `json-ld` |

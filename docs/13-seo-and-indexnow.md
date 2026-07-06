@@ -215,14 +215,18 @@ psql -c "SELECT url, last_submitted_at FROM indexnow_submission ORDER BY last_su
 ## Metrics
 
 The active web and blog IndexNow paths do not expose Prometheus metrics today;
-they rely on application logs and GitHub Actions logs.
+the broader web-app metrics gap is tracked in #3182. Watchlist-side submissions
+emit structured Vercel log lines through `logIndexNowResult()` with the stable
+`indexnow.result` event name (#3202), and blog submissions rely on GitHub
+Actions logs.
 
 The legacy `notify-indexnow` crawler subcommand starts a Prometheus metrics
 server on `METRICS_PORT=9099` only for the duration of a manual run. There is
 no production container loop anymore, so durable metrics + a Grafana dashboard
-remain a TODO if company-page submission is ever revived.
+should be added under #3182 if company-page submission is ever revived.
 
-Until then, observability is structured log events emitted by `indexnow.py`:
+Until then, legacy crawler observability is structured log events emitted by
+`indexnow.py`:
 
 | Event | Level | When |
 |-------|-------|------|
