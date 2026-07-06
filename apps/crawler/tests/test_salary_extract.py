@@ -351,6 +351,22 @@ class TestNonUSDDollarMarkers:
         assert sgd[0].min == 25000
         assert sgd[0].period == "hourly"
 
+    def test_prefix_single_defaults_hourly_below_monthly_boundary(self):
+        html = "<p>Pay rate: S$499 plus shift allowance</p>"
+        result = extract_salary(html)
+        sgd = [r for r in result if r.currency == "SGD"]
+        assert len(sgd) == 1
+        assert sgd[0].min == 49900
+        assert sgd[0].period == "hourly"
+
+    def test_prefix_single_defaults_monthly_at_boundary(self):
+        html = "<p>Compensation: S$500 plus bonus</p>"
+        result = extract_salary(html)
+        sgd = [r for r in result if r.currency == "SGD"]
+        assert len(sgd) == 1
+        assert sgd[0].min == 500
+        assert sgd[0].period == "monthly"
+
     def test_prefix_single_rejects_tiny_amount_without_period(self):
         html = "<p>Salary: A$4 plus benefits</p>"
         assert extract_salary(html) == []

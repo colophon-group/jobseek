@@ -613,7 +613,7 @@ def _extract_prefix_dollar_single(text: str) -> list[SalaryRange]:
                 period = "yearly"
             elif val >= 500:
                 period = "monthly"
-            elif 5 <= val <= 500:
+            elif val >= 5:
                 period = "hourly"
             else:
                 continue
