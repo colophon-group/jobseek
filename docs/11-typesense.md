@@ -256,5 +256,6 @@ All IPs, API keys, and connection strings are in `apps/crawler/.env.local` on th
 | `TYPESENSE_PORT` | 8108 |
 | `TYPESENSE_PROTOCOL` | `http` (private network, no TLS) |
 | `TYPESENSE_ADMIN_KEY` | Admin API key |
-| `TYPESENSE_SEARCH_KEY` | Search-only key (web app, via tunnel uses `https`) |
+| `TYPESENSE_SEARCH_KEY` | Search/read key for web server-side Typesense calls (via tunnel uses `https`) |
+| `TYPESENSE_BROWSER_PARENT_KEY` | Search-only parent key for `/api/typesense-key` scoped browser keys |
 | `TYPESENSE_WRITE_KEY` | Watchlist write key (web app) |

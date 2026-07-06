@@ -41,7 +41,7 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │               ├── upload.py        # HuggingFace dataset push
 │               ├── prompts/tasks/*.md.j2  # per-task Jinja templates
 │               └── schemas/         # per-task + posting JSON Schemas
-├── scripts/
+├── scripts/                 # Monorepo-wide operator/dev scripts; app-local scripts live under apps/*/scripts/
 │   ├── typesense-setup.py       # Create/recreate Typesense collections + aliases
 │   └── typesense-backfill-local.py  # One-shot backfill from Postgres to Typesense
 ├── docs/                    # Architecture documentation
@@ -154,13 +154,14 @@ See [docs/11-typesense.md](docs/11-typesense.md) for full deployment details, in
 
 ### API Keys
 
-Three scoped keys (stored in `apps/crawler/.env.local`, GitHub secrets, and Vercel env vars):
+Four scoped keys (stored in `apps/crawler/.env.local`, GitHub secrets, and Vercel env vars):
 
 | Key | Scope | Used by |
 |-----|-------|---------|
-| `TYPESENSE_ADMIN_KEY` | Full access | Exporter, sync, backfill (crawler machine) |
-| `TYPESENSE_SEARCH_KEY` | `documents:search` on all collections | Web app (via Cloudflare tunnel) |
-| `TYPESENSE_WRITE_KEY` | `documents:upsert/delete/update` on `watchlist` only | Web app watchlist mutations |
+| `TYPESENSE_ADMIN_KEY` | Full access | Exporter, sync, backfill, setup scripts (crawler machine) |
+| `TYPESENSE_SEARCH_KEY` | `documents:search` + `documents:get` on all collections | Web app server-side search (via Cloudflare tunnel) |
+| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` on all collections only | Web app `/api/typesense-key` route; mints scoped keys for direct browser -> Typesense calls |
+| `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` only | Web app watchlist mutations |
 
 ### Collections
 

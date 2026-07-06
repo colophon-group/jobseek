@@ -192,8 +192,9 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `embedded` | Static | Extracts from embedded JSON/JS data in page source |
 | `dom` | Static or Playwright | Step-based extraction engine |
 | `api_sniffer` | Playwright | Captures XHR/fetch API responses |
+| `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |
 
-> **Note:** API monitors (ashby, greenhouse, lever, etc.) return full job data directly — no scraper is needed. The `scraper_type` column is left empty for these.
+> **Note:** API monitors (ashby, greenhouse, lever, etc.) return full job data directly — no scraper is needed. The `scraper_type` column is left empty for these, or set to `skip` when an explicit no-scrape marker is useful.
 
 ### json-ld
 
