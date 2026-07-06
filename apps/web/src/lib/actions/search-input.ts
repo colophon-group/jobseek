@@ -36,6 +36,5 @@ export async function parseSearchFilters(
 // through the server-action transform, so plain `export type { ... }
 // from "..."` is safe here.
 export type {
-  ParsedSearchLocation,
   ParsedSearchFilters,
 } from "@/lib/services/search-input";

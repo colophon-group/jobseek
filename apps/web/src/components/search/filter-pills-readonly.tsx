@@ -2,7 +2,7 @@
 
 import { MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Home, CalendarDays } from "lucide-react";
 import type { WatchlistFilters } from "@/lib/actions/watchlists";
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/types";
 import type { WorkMode } from "@/lib/search/types";
 
 type TaxonomyItem = { id: number; slug: string; name: string };

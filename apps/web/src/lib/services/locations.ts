@@ -13,12 +13,13 @@ import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/t
 import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
 import { canonicalStringCompare, makeDisplayStringCompare } from "@/lib/sort";
 import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
+import type { LocationType } from "@/lib/search/types";
 
 export interface LocationSuggestion {
   id: number;
   slug: string;
   name: string;
-  type: "macro" | "country" | "region" | "city";
+  type: LocationType;
   parentName: string | null;
 }
 
@@ -252,7 +253,7 @@ export interface ResolvedLocation {
   id: number;
   slug: string;
   name: string;
-  type: string;
+  type: LocationType;
   parentName: string | null;
 }
 
@@ -318,7 +319,7 @@ async function _resolveLocationSlugsCached(
     { label: "resolveLocationSlugs" },
   );
   const result: Record<string, ResolvedLocation> = {};
-  for (const r of rows as unknown as { id: number; slug: string; type: string; name: string; parent_name: string | null }[]) {
+  for (const r of rows as unknown as { id: number; slug: string; type: LocationType; name: string; parent_name: string | null }[]) {
     result[r.slug] = {
       id: r.id,
       slug: r.slug,
@@ -342,7 +343,7 @@ export interface GlobalLocationGroup {
     regionSlug: string;
     regionName: string;
     regionCount: number;
-    locations: { id: number; slug: string; name: string; type: string; count: number }[];
+    locations: { id: number; slug: string; name: string; type: LocationType; count: number }[];
   }[];
 }
 
@@ -490,7 +491,7 @@ export interface GlobalLocationSearchHit {
   id: number;
   slug: string;
   name: string;
-  type: "macro" | "country" | "region" | "city";
+  type: LocationType;
   parentName: string | null;
   /** Active posting count for this location (for the chip suffix). */
   count: number;
@@ -585,7 +586,7 @@ const MACRO_DISPLAY_NAMES: Record<string, string> = {
 interface LocationMeta {
   id: number;
   slug: string;
-  type: string;
+  type: LocationType;
   parentId: number | null;
   names: Record<string, string>; // locale -> display name
 }
@@ -631,7 +632,7 @@ async function _fetchLocationHierarchyData(): Promise<Record<string, LocationMet
   }
 
   const result: Record<string, LocationMeta> = {};
-  for (const r of rows as unknown as { id: number; slug: string; type: string; parent_id: number | null }[]) {
+  for (const r of rows as unknown as { id: number; slug: string; type: LocationType; parent_id: number | null }[]) {
     result[String(r.id)] = {
       id: r.id,
       slug: r.slug,

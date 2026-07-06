@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/types";
 import type { SearchResultCompany, WorkMode } from "@/lib/search";
 import { canonicalStringCompare } from "@/lib/sort";
 

@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { SlidersHorizontal, ChevronDown, ChevronUp, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2, Home } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/types";
 import { LocationSearchModal } from "./location-search-modal";
 import { OccupationModal } from "./occupation-modal";
 import { SeniorityModal } from "./seniority-modal";
@@ -238,7 +238,7 @@ export function AdvancedSearchPanel({
         open={locationModalOpen}
         onOpenChange={setLocationModalOpen}
         locale={locale}
-        selected={locations.map((l) => ({ id: l.id, slug: l.slug, name: l.name, type: l.type }))}
+        selected={locations}
         onToggle={handleToggleLocation}
         filters={locationFilters}
       />
