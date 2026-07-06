@@ -159,6 +159,16 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
 
+    refresh_currency_p = sub.add_parser(
+        "refresh-currency-rates",
+        help="Fetch ECB daily reference rates and upsert currency_rate",
+    )
+    refresh_currency_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Fetch and parse ECB rates, but do not write currency_rate",
+    )
+
     setup_ts_p = sub.add_parser(
         "setup-typesense",
         help="Create / update Typesense collections + aliases (idempotent)",
@@ -402,6 +412,29 @@ async def run() -> None:
                     await refresh_typesense_counts(local_conn, ts_client)
                     await sync_watchlists_typesense(supa_conn, local_conn, ts_client)
                 log.info("refresh-typesense: done")
+
+        elif args.command == "refresh-currency-rates":
+            from src.cron_metrics import cron_run
+            from src.scripts.refresh_currency_rates import refresh_currency_rates
+
+            async with cron_run("refresh-currency-rates"):
+                local_pool = None if args.dry_run else await create_local_pool()
+                http = create_http_client()
+                try:
+                    result = await refresh_currency_rates(
+                        local_pool,
+                        http,
+                        dry_run=args.dry_run,
+                    )
+                finally:
+                    await http.aclose()
+                log.info(
+                    "refresh-currency-rates.done",
+                    dry_run=result.dry_run,
+                    rate_date=result.rate_date.isoformat(),
+                    updated_at=result.updated_at.isoformat(),
+                    count=result.count,
+                )
 
         elif args.command == "setup-typesense":
             from src.typesense_schema import run_setup

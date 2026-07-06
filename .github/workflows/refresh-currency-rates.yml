@@ -1,0 +1,37 @@
+name: Refresh currency rates
+
+on:
+  schedule:
+    # ECB publishes reference rates on TARGET business days around 16:00 CET.
+    # Weekly is enough for salary filters and keeps the local lookup fresh.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-currency-rates
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Run via SSH
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            NAME="crawler-refresh-currency-rates-$(date -u +%Y%m%dT%H%M%SZ)"
+            tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+            tag="${tag:-latest}"
+            docker run --rm \
+              --name "$NAME" \
+              --env-file /home/deploy/.env \
+              --network host \
+              "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
+              uv run --no-sync crawler refresh-currency-rates
