@@ -5,10 +5,10 @@ from __future__ import annotations
 import io
 import json
 
-import src.workspace.logo_discover as logo_discover
 from src.workspace.logo_discover import (
     LogoCandidate,
     _dedup_candidates,
+    _fetch_image,
     _is_image_data,
     discover_logos,
     download_candidates,
@@ -452,8 +452,7 @@ class TestDownloadCandidates:
         svg_bytes = b'<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"></svg>'
 
         monkeypatch.setattr(
-            logo_discover,
-            "_fetch_image",
+            "src.workspace.logo_discover._fetch_image",
             lambda *_args, **_kwargs: (svg_bytes, "image/svg+xml"),
         )
 
@@ -463,7 +462,7 @@ class TestDownloadCandidates:
             Image.new("RGBA", (120, 40), (0, 0, 0, 0)).save(png_path, "PNG")
             return png_path
 
-        monkeypatch.setattr(logo_discover, "_try_svg_to_png", _mock_svg_to_png)
+        monkeypatch.setattr("src.workspace.logo_discover._try_svg_to_png", _mock_svg_to_png)
 
         successful = download_candidates([candidate], tmp_path)
         assert len(successful) == 1
@@ -483,8 +482,7 @@ class TestDownloadCandidates:
         png_bytes = buf.getvalue()
 
         monkeypatch.setattr(
-            logo_discover,
-            "_fetch_image",
+            "src.workspace.logo_discover._fetch_image",
             lambda *_args, **_kwargs: (png_bytes, "image/png"),
         )
 
@@ -513,8 +511,7 @@ class TestDownloadCandidates:
         html_bytes = b"<!DOCTYPE html><html><body>Not an image</body></html>"
 
         monkeypatch.setattr(
-            logo_discover,
-            "_fetch_image",
+            "src.workspace.logo_discover._fetch_image",
             # Simulate a server that returns HTML with text/html content-type
             # (our new _fetch_image validation would reject this, but test
             # the download_candidates gate too by returning it as png data)
@@ -541,7 +538,7 @@ class TestDownloadCandidates:
             headers = {"content-type": "text/html; charset=utf-8"}
 
         monkeypatch.setattr(httpx, "get", lambda *a, **kw: FakeResponse())
-        data, ct = logo_discover._fetch_image("https://example.com/logo.png", 5.0)
+        data, ct = _fetch_image("https://example.com/logo.png", 5.0)
         assert data is None
 
     def test_fetch_image_rejects_non_image_magic_bytes(self, monkeypatch):
@@ -554,7 +551,7 @@ class TestDownloadCandidates:
             headers = {"content-type": "application/octet-stream"}
 
         monkeypatch.setattr(httpx, "get", lambda *a, **kw: FakeResponse())
-        data, ct = logo_discover._fetch_image("https://example.com/logo.png", 5.0)
+        data, ct = _fetch_image("https://example.com/logo.png", 5.0)
         assert data is None
 
 

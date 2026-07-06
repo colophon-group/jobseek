@@ -24,6 +24,7 @@ from src.batch import (
     _UPSERT_DESCRIPTION,
     BatchResult,
     BoardScraperConfig,
+    DeadlineExtender,
     ScrapeItem,
     _board_has_enrich,
     _coerce_datetime,
@@ -47,7 +48,6 @@ from src.core.location_resolve import LocationResolver, ResolvedLocation
 from src.core.monitor import MonitorResult
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
-from src.processing.board import DeadlineExtender
 
 
 @pytest.fixture(autouse=True)
@@ -1735,8 +1735,8 @@ class TestDuplicateSourceUrl:
         """All-rows-deduped edge case: every fetchrow returns None. The loop
         must complete, no description upserts should fire, and nothing
         should be enqueued for scraping."""
-        import src.processing.board as board_mod
         from src.metrics import monitor_dedup_total
+        from src.processing.board import _enqueue_scrapes_for_new
 
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -1760,7 +1760,7 @@ class TestDuplicateSourceUrl:
         # Ensure the label set is registered before we read it.
         monitor_dedup_total.labels(path="rich")
         before = _counter_value(monitor_dedup_total, path="rich")
-        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy = _enqueue_scrapes_for_new
         enqueue_spy.reset_mock()
 
         await _process_one_board(board, pool, mock_http)
@@ -1782,7 +1782,7 @@ class TestDuplicateSourceUrl:
         """Enrich path + all-conflict: the `if enrich_fields and inserted_rich`
         branch must NOT fire, so no deduped URLs leak into the scrape queue.
         This is the branch the base all-conflict test can't reach."""
-        import src.processing.board as board_mod
+        from src.processing.board import _enqueue_scrapes_for_new
 
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -1796,7 +1796,7 @@ class TestDuplicateSourceUrl:
         conn.fetchrow.return_value = None  # conflict
         board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
 
-        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy = _enqueue_scrapes_for_new
         enqueue_spy.reset_mock()
 
         await _process_one_board(board, pool, mock_http)
@@ -1814,7 +1814,7 @@ class TestDuplicateSourceUrl:
         via ON CONFLICT, that URL must NOT be enqueued for scraping. Only
         the surviving inserted row should be passed to
         _enqueue_scrapes_for_new."""
-        import src.processing.board as board_mod
+        from src.processing.board import _enqueue_scrapes_for_new
 
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -1828,7 +1828,7 @@ class TestDuplicateSourceUrl:
 
         # _enqueue_scrapes_for_new is already AsyncMock() via the autouse
         # _mock_enqueue_scrapes fixture; inspect its calls directly.
-        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy = _enqueue_scrapes_for_new
         enqueue_spy.reset_mock()
         board = _mock_board()
 
@@ -1854,8 +1854,8 @@ class TestDuplicateSourceUrl:
         The owning row's last_seen_at is refreshed inside _DIFF_BATCH
         itself, so nothing else is needed from the Python side.
         """
-        import src.processing.board as board_mod
         from src.metrics import monitor_dedup_total
+        from src.processing.board import _enqueue_scrapes_for_new
 
         pool, conn = mock_pool
         foreign = "https://jobs.example.com/foreign/role"
@@ -1865,7 +1865,7 @@ class TestDuplicateSourceUrl:
             [],  # MARK_GONE
         ]
 
-        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy = _enqueue_scrapes_for_new
         enqueue_spy.reset_mock()
         # Ensure label set is registered before reading.
         monitor_dedup_total.labels(path="cross_board")

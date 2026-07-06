@@ -3698,7 +3698,7 @@ class TestProbeAllBoards:
 
         probed_urls = []
 
-        import src.workspace.commands.crawl as crawl_mod
+        from src.workspace.commands.crawl import _process_probe_results
 
         def patched_probe_all(slug, current_jobs):
             from src.workspace import output as _out
@@ -3709,11 +3709,11 @@ class TestProbeAllBoards:
                 results = [
                     ("greenhouse", {"jobs": 10, "token": "acme"}, "Greenhouse API — 10 jobs")
                 ]
-                crawl_mod._process_probe_results(slug, b, results, current_jobs)
+                _process_probe_results(slug, b, results, current_jobs)
 
             _out.info("probe", f"Batch probe complete — {len(boards_list)} boards")
 
-        monkeypatch.setattr(crawl_mod, "_probe_all_boards", patched_probe_all)
+        monkeypatch.setattr("src.workspace.commands.crawl._probe_all_boards", patched_probe_all)
 
         runner = CliRunner()
         result = runner.invoke(ws, ["probe", "monitor", "-n", "10", "--all-boards"])
@@ -3737,7 +3737,7 @@ class TestProbeAllBoards:
             Board(alias="careers-de", slug="test-careers-de", url="https://acme.com/de/karriere"),
         )
 
-        import src.workspace.commands.crawl as crawl_mod
+        from src.workspace.commands.crawl import _process_probe_results
 
         def patched_probe_all(slug, current_jobs):
             from src.workspace import output as _out
@@ -3748,11 +3748,11 @@ class TestProbeAllBoards:
                     ("greenhouse", {"jobs": 42, "token": "acme"}, "Greenhouse API — 42 jobs"),
                     ("dom", None, "Not detected"),
                 ]
-                crawl_mod._process_probe_results(slug, b, results, current_jobs)
+                _process_probe_results(slug, b, results, current_jobs)
 
             _out.info("probe", f"Batch probe complete — {len(boards_list)} boards")
 
-        monkeypatch.setattr(crawl_mod, "_probe_all_boards", patched_probe_all)
+        monkeypatch.setattr("src.workspace.commands.crawl._probe_all_boards", patched_probe_all)
 
         runner = CliRunner()
         result = runner.invoke(ws, ["probe", "monitor", "-n", "42", "--all-boards"])

@@ -11,7 +11,6 @@ import pytest
 import structlog
 
 import src.redis_queue as rq
-from src.redis_queue import ScrapeWork
 from src.workers.pipeline import (
     _BoardRecord,
     _lease_heartbeat,
@@ -61,7 +60,7 @@ class TestBoardRecord:
 
 class TestScrapeItemFromRedis:
     def test_basic_conversion(self):
-        work = ScrapeWork(
+        work = rq.ScrapeWork(
             posting_id="post-1",
             source_url="https://example.com/job/123",
             board_id="board-1",
@@ -77,7 +76,7 @@ class TestScrapeItemFromRedis:
         assert step == 0
 
     def test_with_scrape_step(self):
-        work = ScrapeWork(
+        work = rq.ScrapeWork(
             posting_id="post-2",
             source_url="https://example.com/job/456",
             board_id="board-2",
@@ -91,7 +90,7 @@ class TestScrapeItemFromRedis:
         assert step == 2
 
     def test_null_hash(self):
-        work = ScrapeWork(
+        work = rq.ScrapeWork(
             posting_id="post-3",
             source_url="https://example.com/job/789",
             board_id="board-3",
@@ -350,7 +349,7 @@ async def test_process_scrape_work_emits_posting_scraped_on_success(mock_redis):
     from src.workers.pipeline import _process_scrape_work
 
     posting_id = "12345678-aaaa-bbbb-cccc-1234567890ab"
-    work = ScrapeWork(
+    work = rq.ScrapeWork(
         posting_id=posting_id,
         source_url="https://example.com/job/abc",
         board_id="board-xyz",
@@ -422,7 +421,7 @@ async def test_process_scrape_work_binds_posting_id_contextvar(mock_redis):
     from src.workers.pipeline import _process_scrape_work
 
     posting_id = "abcdef01-2222-3333-4444-555555555555"
-    work = ScrapeWork(
+    work = rq.ScrapeWork(
         posting_id=posting_id,
         source_url="https://example.com/job/xyz",
         board_id="board-context",
@@ -525,9 +524,7 @@ def _make_board_work():
     keeps the test in the happy path without needing to patch the
     registry.
     """
-    from src.redis_queue import BoardWork
-
-    return BoardWork(
+    return rq.BoardWork(
         board_id="board-3200",
         config={
             "crawler_type": "sitemap",

@@ -141,9 +141,7 @@ class TestDiscover:
             assert call_count == 2
 
     async def test_retries_on_429(self, monkeypatch):
-        import src.core.monitors.workable as wmod
-
-        monkeypatch.setattr(wmod, "_RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0))
+        monkeypatch.setattr("src.core.monitors.workable._RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0))
 
         call_count = 0
 
@@ -170,9 +168,7 @@ class TestDiscover:
             assert call_count == 3
 
     async def test_exhausted_retries_returns_empty(self, monkeypatch):
-        import src.core.monitors.workable as wmod
-
-        monkeypatch.setattr(wmod, "_RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0))
+        monkeypatch.setattr("src.core.monitors.workable._RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0))
 
         def handler(request):
             return httpx.Response(429)

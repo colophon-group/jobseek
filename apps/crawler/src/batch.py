@@ -97,17 +97,6 @@ from src.processing.scrape import (  # noqa: F401
     process_scrape_batch,
 )
 
-# ── Re-exports: queries/lookups.py ───────────────────────────────────
-from src.queries.lookups import (  # noqa: F401
-    _flush_location_misses,
-    _get_currency_rates,
-    _get_location_resolver,
-    _get_occupation_ids,
-    _get_seniority_ids,
-    _get_technology_ids,
-    _resolve_locations,
-)
-
 # ── Re-exports: queries/monitor.py ───────────────────────────────────
 from src.queries.monitor import (  # noqa: F401
     _BATCH_UPDATE_RICH_CONTENT,
@@ -156,6 +145,15 @@ from src.queries.scrape import (  # noqa: F401
     _UPDATE_JOB_CONTENT,
 )
 from src.shared.redis import get_redis  # noqa: F401
+
+# ── Re-exports: queries/lookups.py ───────────────────────────────────
+_flush_location_misses = _lookups_mod._flush_location_misses
+_get_currency_rates = _lookups_mod._get_currency_rates
+_get_location_resolver = _lookups_mod._get_location_resolver
+_get_occupation_ids = _lookups_mod._get_occupation_ids
+_get_seniority_ids = _lookups_mod._get_seniority_ids
+_get_technology_ids = _lookups_mod._get_technology_ids
+_resolve_locations = _lookups_mod._resolve_locations
 
 __all__ = (
     "_BATCH_UPDATE_RICH_CONTENT",
