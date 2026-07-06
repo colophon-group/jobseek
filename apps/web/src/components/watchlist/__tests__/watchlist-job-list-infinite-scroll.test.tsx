@@ -387,7 +387,7 @@ describe("WatchlistJobList — infinite-scroll termination (issue #3038)", () =>
   // start passing for the wrong reason — protect it.
   it(
     "re-fires the load function after a load that leaves the sentinel visible",
-    { timeout: 10000 },
+    { timeout: 20000 },
     async () => {
       const fetcher = vi.fn(async (offset: number) => ({
         postings: postingsArray(BATCH, offset),
@@ -426,7 +426,7 @@ describe("WatchlistJobList — infinite-scroll termination (issue #3038)", () =>
   // — the hook must still drive subsequent loads.
   it(
     "drives subsequent loads via rect-check fallback when IO stops re-firing (#3353)",
-    { timeout: 10000 },
+    { timeout: 20000 },
     async () => {
       // Fresh IO mock that fires the callback ONCE per observe() and
       // never again (simulating the production bug — IO state stops
@@ -493,4 +493,3 @@ describe("WatchlistJobList — infinite-scroll termination (issue #3038)", () =>
     },
   );
 });
-

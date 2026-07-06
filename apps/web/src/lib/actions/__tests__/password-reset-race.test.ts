@@ -272,6 +272,7 @@ vi.mock("@/db", () => ({
 }));
 
 beforeEach(() => {
+  vi.resetModules();
   mocks.reset();
   mocks.getSession.mockResolvedValue({ user: { id: "user-1" } });
 });

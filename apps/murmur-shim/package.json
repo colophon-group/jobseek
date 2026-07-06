@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts",
     "test:watch": "vitest",
     "test:e2e:murmur": "RUN_E2E_MURMUR=1 vitest run app/api/murmur/__tests__/e2e.test.ts",
     "grep:validateurl-boundary": "bash scripts/grep-validateurl-boundary.sh"
