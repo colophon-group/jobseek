@@ -9,6 +9,11 @@ import pytest
 from src.cron_metrics import cron_run
 
 
+async def _raise_inside_cron_run(job: str) -> None:
+    async with cron_run(job):
+        raise RuntimeError("boom")
+
+
 class TestCronRunStructuredLogs:
     """``cron_run`` always emits structured logs (start + complete)
     regardless of Pushgateway configuration. Tests assert the log
@@ -55,8 +60,7 @@ class TestCronRunStructuredLogs:
             mock_log.exception.side_effect = _capture_exception
 
             with pytest.raises(RuntimeError, match="boom"):
-                async with cron_run("test-job"):
-                    raise RuntimeError("boom")
+                await _raise_inside_cron_run("test-job")
 
         # cron.start (info) + cron.complete with status=failure (exception).
         assert events[0] == ("info", "cron.start", {"job": "test-job"})
@@ -129,8 +133,7 @@ class TestCronRunPushgateway:
             patch("prometheus_client.push_to_gateway") as mock_push,
             pytest.raises(RuntimeError),
         ):
-            async with cron_run("test-job"):
-                raise RuntimeError("boom")
+            await _raise_inside_cron_run("test-job")
 
         # Push fired even on failure — that's how operators see "this
         # job is running, but it's failing".
@@ -219,8 +222,7 @@ class TestCronRunPushgateway:
             patch("prometheus_client.push_to_gateway", side_effect=_capture_registry),
             pytest.raises(RuntimeError),
         ):
-            async with cron_run("refresh-typesense"):
-                raise RuntimeError("boom")
+            await _raise_inside_cron_run("refresh-typesense")
 
         assert len(captured_registry) == 1
         registry = captured_registry[0]

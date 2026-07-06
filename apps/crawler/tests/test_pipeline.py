@@ -230,9 +230,12 @@ async def test_lease_heartbeat_clears_inflight_on_exception(mock_redis):
 
     log = structlog.get_logger()
 
-    with pytest.raises(RuntimeError, match="boom"):
+    async def _raise_inside_lease():
         async with _lease_heartbeat("scrape", domain, task_id, browser=False, worker_log=log):
             raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await _raise_inside_lease()
 
     # Cleanup happened despite the exception.
     assert await r.zcard("inflight:simple") == 0
