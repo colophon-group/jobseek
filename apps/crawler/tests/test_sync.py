@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -928,15 +929,30 @@ class TestSyncWatchlistsTypesenseLocalTaxonomy:
                 return []
             raise AssertionError(f"unexpected Supabase query: {query}")
 
+        in_local_fetch = False
+
         async def local_fetch(query: str, slugs):
+            nonlocal in_local_fetch
             if "FROM location" in query:
+                assert not in_local_fetch
+                in_local_fetch = True
+                await asyncio.sleep(0)
+                in_local_fetch = False
                 return [_StubRecord(slug="switzerland", id=2658434)]
             if "FROM occupation" in query:
+                assert not in_local_fetch
+                in_local_fetch = True
+                await asyncio.sleep(0)
+                in_local_fetch = False
                 return [
                     _StubRecord(slug="account-executive", id=36),
                     _StubRecord(slug="sales-manager", id=105),
                 ]
             if "FROM seniority" in query or "FROM technology" in query:
+                assert not in_local_fetch
+                in_local_fetch = True
+                await asyncio.sleep(0)
+                in_local_fetch = False
                 return []
             raise AssertionError(f"unexpected local query: {query} {slugs}")
 
@@ -970,6 +986,82 @@ class TestSyncWatchlistsTypesenseLocalTaxonomy:
             "occupationIds": [36, 105],
             "occupationSlugs": ["account-executive", "sales-manager"],
         }
+
+    async def test_filter_id_resolution_falls_back_to_supabase_when_local_is_empty(self):
+        watchlist_id = "4ce80d85-2631-47e9-922e-e345e5551afe"
+        created_at = datetime(2026, 7, 6, 12, 0, tzinfo=UTC)
+
+        async def supa_fetch(query: str, *args):
+            if "FROM watchlist w" in query:
+                return [
+                    _StubRecord(
+                        id=watchlist_id,
+                        slug="enterprise-sales-in-switzerland",
+                        title="Enterprise Sales in Switzerland",
+                        description=None,
+                        is_public=True,
+                        created_at=created_at,
+                        filters={
+                            "anyCompany": True,
+                            "locationSlugs": ["switzerland"],
+                            "occupationSlugs": [
+                                "account-executive",
+                                "sales-manager",
+                                "sales-engineer",
+                            ],
+                        },
+                        owner_name="Public User",
+                        owner_username="public-user",
+                    ),
+                ]
+            if "FROM location WHERE slug" in query:
+                return [_StubRecord(slug="switzerland", id=2658434)]
+            if "FROM occupation WHERE slug" in query:
+                return [
+                    _StubRecord(slug="account-executive", id=36),
+                    _StubRecord(slug="sales-manager", id=105),
+                    _StubRecord(slug="sales-engineer", id=24),
+                ]
+            if "FROM watchlist_company" in query:
+                return []
+            if "source_watchlist_id" in query:
+                return []
+            raise AssertionError(f"unexpected Supabase query: {query} {args}")
+
+        async def local_fetch(query: str, *_args):
+            if any(
+                table in query
+                for table in (
+                    "FROM location",
+                    "FROM occupation",
+                    "FROM seniority",
+                    "FROM technology",
+                )
+            ):
+                return []
+            raise AssertionError(f"unexpected local query: {query}")
+
+        supa_conn = AsyncMock()
+        supa_conn.fetch = AsyncMock(side_effect=supa_fetch)
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=local_fetch)
+
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        client = MagicMock()
+        with (
+            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
+            patch("src.sync._ts_bulk_delete_ids"),
+        ):
+            await sync_watchlists_typesense(supa_conn, local_conn, client)
+
+        assert len(captured_docs) == 1
+        filters_payload = json.loads(captured_docs[0]["filters_json"])
+        assert filters_payload["locationIds"] == [2658434]
+        assert filters_payload["occupationIds"] == [36, 105, 24]
 
 
 # ---------------------------------------------------------------------------

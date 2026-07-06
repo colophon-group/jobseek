@@ -2278,6 +2278,8 @@ def _watchlist_filters_json(
 async def _resolve_watchlist_filter_ids(
     conn: asyncpg.Connection,
     filters_by_watchlist: dict[str, dict | None],
+    *,
+    fallback_conn: asyncpg.Connection | None = None,
 ) -> dict[str, dict[str, list[int]]]:
     """Resolve watchlist filter slugs to numeric taxonomy IDs in batches."""
     location_slugs: set[str] = set()
@@ -2292,29 +2294,54 @@ async def _resolve_watchlist_filter_ids(
         seniority_slugs.update(_string_list(f.get("senioritySlugs")))
         technology_slugs.update(_string_list(f.get("technologySlugs")))
 
-    async def _fetch_id_map(sql: str, slugs: set[str]) -> dict[str, int]:
+    async def _fetch_id_map(label: str, sql: str, slugs: set[str]) -> dict[str, int]:
         if not slugs:
             return {}
-        rows = await conn.fetch(sql, sorted(slugs))
-        return {r["slug"]: int(r["id"]) for r in rows}
+        use_fallback = fallback_conn is not None and fallback_conn is not conn
+        try:
+            rows = await conn.fetch(sql, sorted(slugs))
+            found = {r["slug"]: int(r["id"]) for r in rows}
+        except Exception:
+            if not use_fallback:
+                raise
+            log.warning("typesense.watchlists.filter_ids_primary_failed", taxonomy=label)
+            found = {}
 
-    location_ids, occupation_ids, seniority_ids, technology_ids = await asyncio.gather(
-        _fetch_id_map(
-            "SELECT slug, id FROM location WHERE slug = ANY($1::text[])",
-            location_slugs,
-        ),
-        _fetch_id_map(
-            "SELECT slug, id FROM occupation WHERE slug = ANY($1::text[])",
-            occupation_slugs,
-        ),
-        _fetch_id_map(
-            "SELECT slug, id FROM seniority WHERE slug = ANY($1::text[])",
-            seniority_slugs,
-        ),
-        _fetch_id_map(
-            "SELECT slug, id FROM technology WHERE slug = ANY($1::text[])",
-            technology_slugs,
-        ),
+        missing = slugs - set(found)
+        if missing and use_fallback:
+            assert fallback_conn is not None
+            try:
+                rows = await fallback_conn.fetch(sql, sorted(missing))
+                found.update({r["slug"]: int(r["id"]) for r in rows})
+            except Exception:
+                if not found:
+                    raise
+                log.warning(
+                    "typesense.watchlists.filter_ids_fallback_failed",
+                    taxonomy=label,
+                    missing=len(missing),
+                )
+        return found
+
+    location_ids = await _fetch_id_map(
+        "location",
+        "SELECT slug, id FROM location WHERE slug = ANY($1::text[])",
+        location_slugs,
+    )
+    occupation_ids = await _fetch_id_map(
+        "occupation",
+        "SELECT slug, id FROM occupation WHERE slug = ANY($1::text[])",
+        occupation_slugs,
+    )
+    seniority_ids = await _fetch_id_map(
+        "seniority",
+        "SELECT slug, id FROM seniority WHERE slug = ANY($1::text[])",
+        seniority_slugs,
+    )
+    technology_ids = await _fetch_id_map(
+        "technology",
+        "SELECT slug, id FROM technology WHERE slug = ANY($1::text[])",
+        technology_slugs,
     )
 
     result: dict[str, dict[str, list[int]]] = {}
@@ -2380,6 +2407,7 @@ async def sync_watchlists_typesense(
         resolved_filter_ids_by_id = await _resolve_watchlist_filter_ids(
             local_conn or supa_conn,
             parsed_filters_by_id,
+            fallback_conn=supa_conn if local_conn is not None else None,
         )
     except Exception:
         log.exception("typesense.watchlists.filter_ids_failed")
