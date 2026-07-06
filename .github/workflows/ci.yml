@@ -20,7 +20,8 @@ env:
 jobs:
   dependency-review:
     name: Dependency Review
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -67,41 +68,44 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Test change classifier
+        run: node scripts/ci-classify-changes.test.mjs
+
       - name: Check for code changes
         id: filter
+        shell: bash
         run: |
+          set -euo pipefail
+
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
             echo "crawler_code=false" >> "$GITHUB_OUTPUT"
             echo "boards_csv=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
           if [ "${{ github.event_name }}" = "push" ]; then
-            FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "force")
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.sha }}"
+            ZERO_SHA="0000000000000000000000000000000000000000"
+
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "$ZERO_SHA" ]; then
+              if ! FILES=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null); then
+                FILES=force
+              fi
+            elif ! FILES=$(git diff-tree --no-commit-id --name-only -r "$AFTER" 2>/dev/null); then
+              FILES=force
+            fi
           else
             # Use paginated files API — gh pr diff fails on large diffs (>20k lines)
-            FILES=$(gh api --paginate "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --jq '.[].filename' 2>/dev/null || echo "force")
+            if ! FILES=$(gh api --paginate "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --jq '.[].filename' 2>/dev/null); then
+              FILES=force
+            fi
           fi
-          CODE=false
-          CRAWLER_CODE=false
-          BOARDS_CSV=false
-          while IFS= read -r f; do
-            [ -z "$f" ] && continue
-            case "$f" in
-              force) CODE=true; CRAWLER_CODE=true ;;
-              apps/crawler/data/boards.csv) BOARDS_CSV=true ;;
-              apps/crawler/data/*) ;;
-              apps/crawler/traces/*) ;;
-              apps/crawler/VERSION) ;;
-              *.md) ;;
-              apps/crawler/*) CODE=true; CRAWLER_CODE=true ;;
-              *) CODE=true ;;
-            esac
-          done <<< "$FILES"
-          echo "code=$CODE" >> "$GITHUB_OUTPUT"
-          echo "crawler_code=$CRAWLER_CODE" >> "$GITHUB_OUTPUT"
-          echo "boards_csv=$BOARDS_CSV" >> "$GITHUB_OUTPUT"
-          echo "Code changes detected: $CODE (crawler: $CRAWLER_CODE, boards.csv: $BOARDS_CSV)"
+
+          RESULTS="$(printf '%s\n' "$FILES" | node scripts/ci-classify-changes.mjs)"
+          printf '%s\n' "$RESULTS" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$RESULTS"
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -642,7 +646,7 @@ jobs:
           requireSuccess("workflow-security");
           requireSuccess("changes");
           requireSuccess("data-validation");
-          requireSuccess("dependency-review", eventName === "pull_request");
+          requireSuccess("dependency-review", eventName === "pull_request" && code);
 
           for (const job of [
             "lint-web",

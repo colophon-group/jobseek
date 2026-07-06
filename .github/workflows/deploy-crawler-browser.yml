@@ -6,6 +6,9 @@ on:
     paths:
       - 'apps/crawler/**'
       - '!apps/crawler/data/**'
+      - '!apps/crawler/traces/**'
+      - '!apps/crawler/*.md'
+      - '!apps/crawler/**/*.md'
       - '.github/workflows/deploy-crawler-browser.yml'
 
 env:
