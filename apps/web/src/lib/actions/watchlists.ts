@@ -1289,12 +1289,13 @@ async function _patchAnyCompanyCountsForDiscover(
   let filtersById: Map<string, WatchlistFilters>;
   try {
     const ids = entries.map((e) => e.id);
+    const pgIds = `{${ids.join(",")}}`;
     const rows = await withDbRetry(
       () =>
         db.execute<{ [key: string]: unknown; id: string; filters: WatchlistFilters }>(sql`
           SELECT w.id, w.filters
           FROM watchlist w
-          WHERE w.id = ANY(${ids}::uuid[])
+          WHERE w.id = ANY(${pgIds}::uuid[])
         `),
       { label: "discoverAnyCompanyFilters" },
     );
