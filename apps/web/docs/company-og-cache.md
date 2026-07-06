@@ -77,12 +77,13 @@ environment variables are set on your Vercel project, but missing from "turbo.js
 ## Force Controls
 
 Use `COMPANY_OG_PRERENDER_TOP_N` to adjust how many high-traffic company
-cards are rendered during `next build`. It defaults to `200`; set it to `0`
-only for build-classification CI lanes that must not depend on external
-company data:
+cards are rendered during `next build`. It defaults to `0` and is therefore
+explicit opt-in. Leave it unset for routine builds that must not fan out live
+Typesense company-detail reads; set it to a bounded positive value only for
+an intentional prebake:
 
 ```bash
-COMPANY_OG_PRERENDER_TOP_N=0 pnpm --filter @jobseek/web build
+COMPANY_OG_PRERENDER_TOP_N=25 pnpm --filter @jobseek/web build
 ```
 
 Use `COMPANY_OG_RENDERER_VERSION_SALT` to force a new namespace at build time:
@@ -114,15 +115,19 @@ pnpm --filter @jobseek/web build
 
 ## Build Behavior
 
-`generateStaticParams` still fetches the top company slugs from Typesense so
-popular cards are prebaked. During the actual OG render step, cache hits come
-from R2 and do not call `getCompanyBySlug`. That keeps routine builds from
-issuing hundreds of company detail reads and prevents Typesense 429s from
-cascading into Postgres fallback load.
+When `COMPANY_OG_PRERENDER_TOP_N` is unset or `0`, `generateStaticParams`
+returns no company-card paths and the build performs no company OG prebake.
+Long-tail cards still render on first request and then cache in R2/CDN.
+
+When `COMPANY_OG_PRERENDER_TOP_N` is a positive integer, `generateStaticParams`
+fetches that many top company slugs from Typesense so popular cards are
+prebaked. During the actual OG render step, cache hits come from R2 and do not
+call `getCompanyBySlug`. Keep the number small enough that slug count times
+locale count does not burst Typesense or the R2 cache.
 
 If Typesense rate-limits the top-slug query, the query retries in place. If it
 still fails in production with Typesense configured, the build fails loud
-instead of silently shipping a zero-prebake deploy.
+instead of silently shipping a partial-prebake deploy.
 
 ## Retention
 
