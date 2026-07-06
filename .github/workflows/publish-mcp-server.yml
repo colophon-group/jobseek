@@ -7,6 +7,9 @@ on:
     paths:
       - ".github/workflows/publish-mcp-server.yml"
       - "packages/mcp-server/package.json"
+      - "packages/mcp-server/server.json"
+      - "packages/mcp-server/src/**"
+      - "packages/mcp-server/scripts/**"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
