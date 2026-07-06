@@ -41,6 +41,8 @@ concurrency:
   group: crawler-scheduled-maintenance
   cancel-in-progress: false
 
+permissions: {}
+
 jobs:
   run:
     runs-on: ubuntu-latest
