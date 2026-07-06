@@ -462,13 +462,13 @@ class TestRejectLazyDescriptions:
         "lazy_en",
         [
             "Recruitee-based career board operating under the Test token. "
-            "No company website was found.",
+            + "No company website was found.",
             "Test is a company listed on Greenhouse with limited publicly available information.",
             "Test operates through the Greenhouse job board under the token "
-            "test. Limited public information is available.",
+            + "test. Limited public information is available.",
             "Test recruits through Greenhouse under the token test.",
             "This is a Greenhouse system test board used for posting jobs "
-            "exclusively to external aggregators and is not an actual company.",
+            + "exclusively to external aggregators and is not an actual company.",
             "No company website or identifying information was found during automated discovery.",
         ],
     )
