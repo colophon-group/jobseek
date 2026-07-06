@@ -1,15 +1,17 @@
 /**
- * Tests for the OG prebake's `generateStaticParams` fail-loud condition
- * (issue #2891 / PR #2888 round-3 critic ask).
+ * Tests for the OG prebake's `generateStaticParams` opt-in and fail-loud
+ * conditions (issues #2891 and #3422).
  *
  * The module under test exports `generateStaticParams`, which dynamically
  * imports `@/lib/search/typesense-client` so the dependency can be mocked
  * here without touching the surrounding `ImageResponse` handler.
  *
- * The fail-loud gate: `isProductionBuild && hasTypesenseConfig`. When both
- * are true and Typesense throws, we re-throw to fail the Vercel deploy
- * (silently shipping zero prerender hides a real outage). All three other
- * quadrants soft-fail with a console.warn and an empty array.
+ * The prebake is disabled unless `COMPANY_OG_PRERENDER_TOP_N` is explicitly
+ * positive. Once enabled, the fail-loud gate remains
+ * `isProductionBuild && hasTypesenseConfig`. When both are true and Typesense
+ * throws, we re-throw to fail the Vercel deploy (silently shipping a partial
+ * prebake hides a real outage). All three other quadrants soft-fail with a
+ * console.warn and an empty array.
  */
 import {
   afterEach,
@@ -84,6 +86,7 @@ describe("opengraph-image generateStaticParams", () => {
     async () => {
       process.env.VERCEL_ENV = "production";
       process.env.TYPESENSE_HOST = "typesense.example.com";
+      process.env.COMPANY_OG_PRERENDER_TOP_N = "200";
       const err = new Error("connection refused");
       searchMock.mockRejectedValue(err);
 
@@ -99,6 +102,7 @@ describe("opengraph-image generateStaticParams", () => {
     async () => {
       process.env.VERCEL_ENV = "production";
       process.env.TYPESENSE_HOST = "typesense.example.com";
+      process.env.COMPANY_OG_PRERENDER_TOP_N = "200";
       searchMock.mockResolvedValue({ hits: [] });
 
       const result = await generateStaticParams();
@@ -115,6 +119,7 @@ describe("opengraph-image generateStaticParams", () => {
     "preview env + Typesense throws -> warns and returns []",
     async () => {
       process.env.VERCEL_ENV = "preview";
+      process.env.COMPANY_OG_PRERENDER_TOP_N = "200";
       // TYPESENSE_HOST may or may not be set on previews; clear it
       // to exercise the "not configured" branch alongside non-prod
       // env. Either way this quadrant must NOT throw.
@@ -136,12 +141,28 @@ describe("opengraph-image generateStaticParams", () => {
     async () => {
       delete process.env.VERCEL_ENV;
       delete process.env.TYPESENSE_HOST;
+      process.env.COMPANY_OG_PRERENDER_TOP_N = "200";
       searchMock.mockRejectedValue(new Error("invalid request"));
 
       const result = await generateStaticParams();
 
       expect(result).toEqual([]);
       expect(warnSpy).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it(
+    "unset COMPANY_OG_PRERENDER_TOP_N skips Typesense prebake by default",
+    async () => {
+      process.env.VERCEL_ENV = "production";
+      process.env.TYPESENSE_HOST = "typesense.example.com";
+      delete process.env.COMPANY_OG_PRERENDER_TOP_N;
+
+      const result = await generateStaticParams();
+
+      expect(result).toEqual([]);
+      expect(searchMock).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
     },
   );
 
@@ -165,6 +186,7 @@ describe("opengraph-image generateStaticParams", () => {
     async () => {
       process.env.VERCEL_ENV = "production";
       process.env.TYPESENSE_HOST = "typesense.example.com";
+      process.env.COMPANY_OG_PRERENDER_TOP_N = "2";
       searchMock.mockResolvedValue({
         hits: [{ document: { slug: "stripe" } }, { document: { slug: "airbnb" } }],
       });
@@ -178,6 +200,9 @@ describe("opengraph-image generateStaticParams", () => {
         .map((entry) => entry.lang)
         .sort();
       expect(stripeLocales).toEqual(["de", "en", "fr", "it"]);
+      expect(searchMock).toHaveBeenCalledWith(
+        expect.objectContaining({ per_page: 2 }),
+      );
       expect(warnSpy).not.toHaveBeenCalled();
     },
   );

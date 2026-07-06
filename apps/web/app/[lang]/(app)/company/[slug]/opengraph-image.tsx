@@ -24,22 +24,21 @@ import { join } from "node:path";
 
 /**
  * How many top companies (by active posting count) to prerender at build
- * time, across every supported locale. The actual count of cells baked
- * into the build is `getCompanyOgPrerenderTopN() × locales.length` (4 today). At
- * ~50 KB per PNG that's a ~40 MB increase to the build artifact for N=200.
+ * time, across every supported locale. This is opt-in: the default is 0
+ * because each company slug fans out across every locale and each generated
+ * image may need a company-detail read. At N=200 that is 800 route renders.
  *
  * Long-tail companies still generate on first request and then live in
- * Vercel's CDN for the `revalidate` window. Prebaking the top tier
- * absorbs Twitter/LinkedIn/Slack crawl spikes that otherwise cold-start
- * a function per (slug, locale).
+ * Vercel's CDN for the `revalidate` window. Operators can prebake a bounded
+ * top tier for a specific deploy by setting `COMPANY_OG_PRERENDER_TOP_N`.
  *
- * See issue #2645.
+ * See issues #2645 and #3422.
  */
 function getCompanyOgPrerenderTopN(): number {
   const raw = process.env.COMPANY_OG_PRERENDER_TOP_N;
-  if (!raw) return 200;
+  if (!raw) return 0;
   const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed)) return 200;
+  if (!Number.isFinite(parsed)) return 0;
   return Math.max(0, Math.min(parsed, 500));
 }
 
