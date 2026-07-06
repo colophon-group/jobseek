@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import polars as pl
@@ -24,6 +26,7 @@ from src.sync import (
     sync_companies_typesense,
     sync_locations_typesense,
     sync_occupation_domains,
+    sync_watchlists_typesense,
 )
 
 _COMPANY_COLS = ["slug", "name", "website", "logo_url", "icon_url", "logo_type"]
@@ -868,6 +871,8 @@ class TestIsTrivialWatchlist:
             {"occupationSlugs": ["engineer"]},
             {"senioritySlugs": ["senior"]},
             {"technologySlugs": ["react"]},
+            {"workMode": ["remote"]},
+            {"employmentType": ["full_time"]},
             {"salaryMin": 100000},
             {"salaryMax": 200000},
             {"experienceMin": 2},
@@ -893,6 +898,80 @@ class TestIsTrivialWatchlist:
         assert _is_trivial_watchlist(filters, 0) is True
 
 
+class TestSyncWatchlistsTypesenseLocalTaxonomy:
+    async def test_any_company_filters_are_indexed_with_resolved_ids(self):
+        watchlist_id = "4ce80d85-2631-47e9-922e-e345e5551afe"
+        created_at = datetime(2026, 7, 6, 12, 0, tzinfo=UTC)
+
+        async def supa_fetch(query: str, *_args):
+            if "FROM watchlist w" in query:
+                return [
+                    _StubRecord(
+                        id=watchlist_id,
+                        slug="enterprise-sales-in-switzerland",
+                        title="Enterprise Sales in Switzerland",
+                        description=None,
+                        is_public=True,
+                        created_at=created_at,
+                        filters={
+                            "anyCompany": True,
+                            "locationSlugs": ["switzerland"],
+                            "occupationSlugs": ["account-executive", "sales-manager"],
+                        },
+                        owner_name="Public User",
+                        owner_username="public-user",
+                    ),
+                ]
+            if "FROM watchlist_company" in query:
+                return []
+            if "source_watchlist_id" in query:
+                return []
+            raise AssertionError(f"unexpected Supabase query: {query}")
+
+        async def local_fetch(query: str, slugs):
+            if "FROM location" in query:
+                return [_StubRecord(slug="switzerland", id=2658434)]
+            if "FROM occupation" in query:
+                return [
+                    _StubRecord(slug="account-executive", id=36),
+                    _StubRecord(slug="sales-manager", id=105),
+                ]
+            if "FROM seniority" in query or "FROM technology" in query:
+                return []
+            raise AssertionError(f"unexpected local query: {query} {slugs}")
+
+        supa_conn = AsyncMock()
+        supa_conn.fetch = AsyncMock(side_effect=supa_fetch)
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=local_fetch)
+
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        client = MagicMock()
+        with (
+            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
+            patch("src.sync._ts_bulk_delete_ids"),
+        ):
+            await sync_watchlists_typesense(supa_conn, local_conn, client)
+
+        assert len(captured_docs) == 1
+        doc = captured_docs[0]
+        assert doc["company_count"] == 0
+        assert doc["active_job_count"] == 0
+
+        filters_payload = json.loads(doc["filters_json"])
+        assert filters_payload == {
+            "anyCompany": True,
+            "locationIds": [2658434],
+            "locationSlugs": ["switzerland"],
+            "occupationIds": [36, 105],
+            "occupationSlugs": ["account-executive", "sales-manager"],
+        }
+
+
 # ---------------------------------------------------------------------------
 # TestSyncLocationsTypesense
 # ---------------------------------------------------------------------------
@@ -900,6 +979,75 @@ class TestIsTrivialWatchlist:
 
 class _StubRecord(dict):
     """asyncpg.Record-compatible stub usable as a dict (``r["key"]``)."""
+
+
+class TestSyncWatchlistsTypesense:
+    async def test_any_company_filters_json_is_self_contained_without_companies(self):
+        filters = {
+            "anyCompany": True,
+            "locationSlugs": ["switzerland"],
+            "occupationSlugs": ["account-executive", "sales-manager"],
+            "workMode": ["remote"],
+        }
+
+        async def _supa_fetch(sql, *args):
+            if "FROM watchlist w" in sql:
+                return [
+                    {
+                        "id": "4ce80d85-2631-47e9-922e-e345e5551afe",
+                        "slug": "enterprise-sales-in-switzerland",
+                        "title": "Enterprise Sales in Switzerland",
+                        "description": None,
+                        "is_public": True,
+                        "created_at": datetime(2026, 7, 6, tzinfo=UTC),
+                        "filters": filters,
+                        "owner_name": "Colophon Group",
+                        "owner_username": "colophongroup",
+                    }
+                ]
+            if "FROM location WHERE slug" in sql:
+                return [{"slug": "switzerland", "id": 30}]
+            if "FROM occupation WHERE slug" in sql:
+                return [
+                    {"slug": "account-executive", "id": 101},
+                    {"slug": "sales-manager", "id": 102},
+                ]
+            if "FROM watchlist_company" in sql:
+                # Regression fixture: anyCompany watchlists intentionally
+                # have no join rows, but still need a usable Discover count.
+                return []
+            if "source_watchlist_id" in sql:
+                return []
+            raise AssertionError(f"unexpected SQL: {sql}")
+
+        supa_conn = AsyncMock()
+        supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
+        client = MagicMock()
+
+        captured: list[tuple[str, list[dict]]] = []
+
+        def _capture_upsert(_client, collection, docs, *_a, **_kw):
+            captured.append((collection, list(docs)))
+
+        with (
+            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
+            patch("src.sync._ts_bulk_delete_ids"),
+        ):
+            await sync_watchlists_typesense(supa_conn, None, client)
+
+        docs = next((docs for collection, docs in captured if collection == "watchlist"), [])
+        assert len(docs) == 1
+        doc = docs[0]
+        assert doc["company_count"] == 0
+        assert doc["active_job_count"] == 0
+
+        payload = json.loads(doc["filters_json"])
+        assert payload["anyCompany"] is True
+        assert payload["locationSlugs"] == ["switzerland"]
+        assert payload["locationIds"] == [30]
+        assert payload["occupationSlugs"] == ["account-executive", "sales-manager"]
+        assert payload["occupationIds"] == [101, 102]
+        assert payload["workMode"] == ["remote"]
 
 
 def _make_loc_row(

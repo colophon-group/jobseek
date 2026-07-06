@@ -43,6 +43,7 @@ const mocks = vi.hoisted(() => ({
   }),
 
   notifyIndexNow: vi.fn().mockResolvedValue({ kind: "submitted", status: 200, urlCount: 0 }),
+  logIndexNowResult: vi.fn(),
   tsUpsertWatchlist: vi.fn(),
   tsDeleteWatchlist: vi.fn(),
   tsUpdateWatchlistField: vi.fn(),
@@ -100,7 +101,10 @@ vi.mock("@/lib/watchlist-slug", () => ({
   insertWatchlistWithUniqueSlug: mocks.insertWatchlistWithUniqueSlug,
 }));
 
-vi.mock("@/lib/indexnow", () => ({ notifyIndexNow: mocks.notifyIndexNow }));
+vi.mock("@/lib/indexnow", () => ({
+  notifyIndexNow: mocks.notifyIndexNow,
+  logIndexNowResult: mocks.logIndexNowResult,
+}));
 
 vi.mock("@/lib/search/typesense-watchlist", () => ({
   upsertWatchlist: mocks.tsUpsertWatchlist,
@@ -312,6 +316,46 @@ describe("watchlist mutator cache invalidation", () => {
     expect(tagCalls.sort()).toEqual(expectedTagPair(SLUG).sort());
     const invalidateCalls = mocks.invalidate.mock.calls.map((c) => c[0]);
     expect(invalidateCalls.sort()).toEqual(expectedInvalidateKeyPair(SLUG).sort());
+  });
+
+  it("createWatchlist upserts indexed filters_json for public anyCompany watchlists", async () => {
+    queueOwnerInfo();
+    mocks.insertReturningResult.mockResolvedValue([{ id: WATCHLIST_ID }]);
+    const { resolveLocationSlugs } = await import("@/lib/actions/locations");
+    const { resolveOccupationSlugs } = await import("@/lib/actions/taxonomy");
+    vi.mocked(resolveLocationSlugs).mockResolvedValueOnce(
+      new Map([
+        ["switzerland", { id: 30, slug: "switzerland", name: "Switzerland", type: "country", parentName: null }],
+      ]),
+    );
+    vi.mocked(resolveOccupationSlugs).mockResolvedValueOnce(
+      new Map([
+        ["account-executive", { id: 101, slug: "account-executive", name: "Account Executive" }],
+      ]),
+    );
+
+    await createWatchlist({
+      title: "Enterprise Sales in Switzerland",
+      companyIds: [],
+      filters: {
+        anyCompany: true,
+        locationSlugs: ["switzerland"],
+        occupationSlugs: ["account-executive"],
+      },
+      isPublic: true,
+    });
+    await flushAfterQueue();
+
+    expect(mocks.tsUpsertWatchlist).toHaveBeenCalledTimes(1);
+    const doc = mocks.tsUpsertWatchlist.mock.calls[0][0];
+    const payload = JSON.parse(doc.filters_json);
+    expect(payload).toMatchObject({
+      anyCompany: true,
+      locationSlugs: ["switzerland"],
+      locationIds: [30],
+      occupationSlugs: ["account-executive"],
+      occupationIds: [101],
+    });
   });
 
   it("updateWatchlist invalidates current slug pair when title is unchanged", async () => {

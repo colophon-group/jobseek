@@ -17,6 +17,7 @@ export interface WatchlistDoc {
   description?: string;
   owner_name: string;
   owner_username?: string;
+  filters_json?: string;
   company_count: number;
   active_job_count: number;
   mirror_count: number;

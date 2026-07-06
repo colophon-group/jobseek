@@ -395,6 +395,7 @@ WATCHLISTS = [
         "title": "Top Tech Companies",
         "description": "A curated watchlist of tech companies",
         "owner_name": "Test User",
+        "filters_json": '{"keywords":["python"]}',
         "company_count": 3,
         "active_job_count": 10,
         "mirror_count": 2,
@@ -562,9 +563,9 @@ class TestSchemas:
         assert len(info["fields"]) == 8
 
     def test_watchlist_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """watchlist collection has 10 fields (id is implicit)."""
+        """watchlist collection has 11 fields (id is implicit)."""
         info = _col(ts_client, alias_map, "watchlist").retrieve()
-        assert len(info["fields"]) == 10
+        assert len(info["fields"]) == 11
 
 
 # ============================================================================

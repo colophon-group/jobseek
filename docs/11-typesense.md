@@ -225,12 +225,13 @@ Three data tiers, three read paths:
 | Supabase Postgres | Mirror of `job_posting` + companies + taxonomies; **only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, ...) | Auth, watchlist mutations, watchlist company-pair lookups, posting detail (full description blob), Postgres fallbacks |
 | Typesense | In-memory search + denormalized read layer | Job search, all typeaheads, browse-all modals, watchlist search, company detail page, similar-company strip |
 
-Aggregation queries against `job_posting` are deliberately kept on local Postgres, not Supabase, to keep Supabase compute reserved for user-facing CRUD. Two notable examples:
+Aggregation queries against `job_posting` are deliberately kept on local Postgres, not Supabase, to keep Supabase compute reserved for user-facing CRUD. Notable examples:
 
 - **Watchlist active-posting counts** (`refresh-typesense`): pulls `(watchlist_id, company_id)` pairs from Supabase, runs `COUNT(*) WHERE is_active GROUP BY company_id` on local Postgres restricted to those companies, sums per watchlist in Python. Uses the partial index `idx_jp_company_active ON job_posting(company_id) WHERE is_active`.
+- **Public Discover `anyCompany` counts**: the `watchlist` Typesense doc carries a sanitized `filters_json` payload with public filters plus resolved taxonomy IDs. Discover cards use that payload to run an exact live `job_posting` count for `anyCompany` watchlists without hydrating `watchlist.filters` from Postgres. Company-scoped public cards keep using the denormalized `active_job_count` field.
 - **Per-company taxonomy counts** (`refresh_typesense_counts`): aggregated against local Postgres directly, then upserted to the `company` / `location` / `occupation` / `seniority` / `technology` collections as `active_posting_count`.
 
-Web pages do not aggregate `job_posting` directly -- they read precomputed counts from the Typesense doc fields above.
+Most web pages do not aggregate `job_posting` directly -- they read precomputed counts from the Typesense doc fields above. Public Discover is the exception for `anyCompany` watchlists: it computes a live, exact Typesense count from the indexed filter payload because the company join is intentionally empty.
 
 ## Monitoring (Grafana/Prometheus)
 
