@@ -611,7 +611,7 @@ def _extract_prefix_dollar_single(text: str) -> list[SalaryRange]:
             # No explicit period — default to yearly if value is salary-sized
             if val >= 15000:
                 period = "yearly"
-            elif 500 <= val <= 30_000:
+            elif val >= 500:
                 period = "monthly"
             elif 5 <= val <= 500:
                 period = "hourly"
@@ -1985,7 +1985,7 @@ def parse_salary_text(text: str) -> dict | None:
     if sr.period == "hourly":
         sal_min = round(sr.min / 100, 2)
         if sal_max is not None:
-            sal_max = round(sr.max / 100, 2)
+            sal_max = round(sal_max / 100, 2)
     return {
         "currency": sr.currency,
         "min": sal_min,

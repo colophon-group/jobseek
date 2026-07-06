@@ -327,6 +327,34 @@ class TestNonUSDDollarMarkers:
         assert len(mxn) == 1
         assert mxn[0].min == 800000
 
+    def test_prefix_single_defaults_yearly_without_period(self):
+        html = "<p>Salary: A$80,000 plus benefits</p>"
+        result = extract_salary(html)
+        aud = [r for r in result if r.currency == "AUD"]
+        assert len(aud) == 1
+        assert aud[0].min == 80000
+        assert aud[0].period == "yearly"
+
+    def test_prefix_single_defaults_monthly_without_period(self):
+        html = "<p>Compensation: S$8,000 plus bonus</p>"
+        result = extract_salary(html)
+        sgd = [r for r in result if r.currency == "SGD"]
+        assert len(sgd) == 1
+        assert sgd[0].min == 8000
+        assert sgd[0].period == "monthly"
+
+    def test_prefix_single_defaults_hourly_without_period(self):
+        html = "<p>Pay rate: S$250 plus shift allowance</p>"
+        result = extract_salary(html)
+        sgd = [r for r in result if r.currency == "SGD"]
+        assert len(sgd) == 1
+        assert sgd[0].min == 25000
+        assert sgd[0].period == "hourly"
+
+    def test_prefix_single_rejects_tiny_amount_without_period(self):
+        html = "<p>Salary: A$4 plus benefits</p>"
+        assert extract_salary(html) == []
+
     # ── Prefix marker (range form) ──
 
     def test_prefix_a_dollar_range_aud(self):
