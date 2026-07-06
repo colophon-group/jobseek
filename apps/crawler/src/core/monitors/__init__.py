@@ -13,11 +13,15 @@ import contextlib
 import contextvars
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     import httpx
+
+    from src.core.monitor import MonitorResult
+else:
+    MonitorResult = Any
 
 
 @dataclass(slots=True)
@@ -56,11 +60,11 @@ class DiscoveredJob:
             self.base_salary = parse_salary_text(self.base_salary)
 
 
-# Discover functions return either set[str] (URL-only), list[DiscoveredJob] (rich),
-# or tuple[set[str], str | None] (URL-only + metadata, e.g. sitemap).
-DiscoverFunc = Callable[
-    ..., Awaitable[set[str] | list[DiscoveredJob] | tuple[set[str], str | None]]
-]
+# Discover functions return either set[str] (URL-only), list[DiscoveredJob]
+# (rich), tuple[set[str], str | None] (URL-only + metadata, e.g. sitemap), or
+# MonitorResult for hybrid/truncated monitors that need to preserve flags.
+type DiscoverResult = set[str] | list[DiscoveredJob] | tuple[set[str], str | None] | MonitorResult
+DiscoverFunc = Callable[..., Awaitable[DiscoverResult]]
 
 # can_handle: async (url, client) -> dict | None.
 # Returns metadata dict (truthy) when the monitor can handle the URL,

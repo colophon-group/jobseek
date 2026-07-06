@@ -88,13 +88,18 @@ export function usePaginatedLoadMore<T>({
   useEffect(() => {
     if (resetKey === initialResetKeyRef.current) return;
     let cancelled = false;
-    fetcherRef.current({ offset: 0, limit: batchSize }).then((result) => {
-      if (cancelled) return;
-      setItems(result.postings);
-      setTotal(result.total);
-      setExhausted(result.postings.length >= result.total);
-      setTruncated(result.truncated ?? false);
-    });
+    void fetcherRef
+      .current({ offset: 0, limit: batchSize })
+      .then((result) => {
+        if (cancelled) return;
+        setItems(result.postings);
+        setTotal(result.total);
+        setExhausted(result.postings.length >= result.total);
+        setTruncated(result.truncated ?? false);
+      })
+      .catch(() => {
+        // Keep the previous page intact; the caller can retry by changing the reset key.
+      });
     return () => {
       cancelled = true;
     };

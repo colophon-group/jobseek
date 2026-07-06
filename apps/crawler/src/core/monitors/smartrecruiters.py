@@ -368,7 +368,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         found, count = await _probe_token(slug, client)
         if found:
             log.info("smartrecruiters.detected_by_probe", url=url, board_token=slug)
-            result = {"token": slug}
+            result: dict[str, str | int] = {"token": slug}
             if count is not None:
                 result["jobs"] = count
             return result

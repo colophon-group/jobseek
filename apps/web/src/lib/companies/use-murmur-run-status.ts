@@ -194,7 +194,7 @@ export function useMurmurRunStatus(
         elapsedAfter >= BACKOFF_AFTER_MS
           ? BACKOFF_INTERVAL_MS
           : INITIAL_INTERVAL_MS;
-      timer = setTimeout(tick, nextDelay);
+      timer = setTimeout(() => void tick(), nextDelay);
     }
 
     void tick();

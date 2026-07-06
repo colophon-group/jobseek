@@ -1,0 +1,12 @@
+{
+  "include": [
+    "src/core/monitors/__init__.py",
+    "src/core/monitors/recruitee.py",
+    "src/core/monitors/smartrecruiters.py",
+    "src/core/monitors/talentbrew.py",
+    "scripts/validate_data_csv.py"
+  ],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": false
+}

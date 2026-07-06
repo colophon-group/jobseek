@@ -8,6 +8,7 @@ Also works on custom domains: GET https://{custom-domain}/api/offers
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import httpx
@@ -23,6 +24,9 @@ from src.core.monitors import (
     slugs_from_url,
 )
 from src.shared.truncation import truncated_rich_result
+
+if TYPE_CHECKING:
+    from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
 
@@ -184,7 +188,9 @@ async def _probe_api(api_base: str, client: httpx.AsyncClient) -> tuple[bool, in
         return False, None
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
+async def discover(
+    board: dict, client: httpx.AsyncClient, pw=None
+) -> list[DiscoveredJob] | MonitorResult:
     """Fetch job listings from the Recruitee public API."""
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]

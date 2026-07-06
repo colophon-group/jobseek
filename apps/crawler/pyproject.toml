@@ -48,6 +48,8 @@ dev = [
     "pytest-timeout>=2.4.0",
     "ruff>=0.15.4",
     "fakeredis[lua]>=2.0",
+    "pyright>=1.1.411",
+    "pytest-cov>=7.1.0",
 ]
 
 [tool.hatch.build.targets.wheel]
