@@ -1020,7 +1020,7 @@ async def run_pipeline(
         # of siblings.
         shutdown_waiter = asyncio.create_task(shutdown_event.wait(), name="shutdown-waiter")
         try:
-            done, _pending = await asyncio.wait(
+            await asyncio.wait(
                 [*tasks, shutdown_waiter],
                 return_when=asyncio.FIRST_COMPLETED,
             )
