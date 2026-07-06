@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING
@@ -50,6 +51,11 @@ _VOID_TAGS = frozenset(
         "wbr",
     }
 )
+_PLATFORM_MARKER_RE = re.compile(
+    r"\b(?:tbcdn\.talentbrew\.com|radancy\.net|tmpwebeng\.com/magicbullet)\b",
+    re.IGNORECASE,
+)
+_SEARCH_RESULTS_RE = re.compile(r'\bid=["\']search-results["\']', re.IGNORECASE)
 
 
 @dataclass(slots=True)
@@ -155,13 +161,7 @@ def _parse_page(html: str, base_url: str) -> _ParsedPage:
 
 
 def _looks_like_talentbrew(html: str) -> bool:
-    lower = html.lower()
-    has_platform_marker = (
-        "tbcdn.talentbrew.com" in lower
-        or "radancy.net" in lower
-        or "tmpwebeng.com/magicbullet" in lower
-    )
-    return has_platform_marker and 'id="search-results"' in lower
+    return bool(_PLATFORM_MARKER_RE.search(html)) and bool(_SEARCH_RESULTS_RE.search(html))
 
 
 def _page_url(board_url: str, page: int) -> str:

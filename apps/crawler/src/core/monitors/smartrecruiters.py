@@ -40,17 +40,21 @@ _PAGE_PATTERNS = [
 ]
 
 _IGNORE_TOKENS = frozenset({"api", "v1", "js", "css", "assets", "postings", "companies"})
+_HTML_SIGNAL_RE = re.compile(r"\b(?:smartrecruiters\.com|smartrecruiters)\b", re.IGNORECASE)
+
+
+def _is_smartrecruiters_host(host: str) -> bool:
+    return host == "smartrecruiters.com" or host.endswith(".smartrecruiters.com")
 
 
 def _has_smartrecruiters_signal(url: str, html: str | None) -> bool:
     """Return True when URL or page HTML indicates SmartRecruiters presence."""
     host = (urlparse(url).hostname or "").lower()
-    if "smartrecruiters.com" in host:
+    if _is_smartrecruiters_host(host):
         return True
     if not html:
         return False
-    lowered = html.lower()
-    return "smartrecruiters.com" in lowered or "smartrecruiters" in lowered
+    return bool(_HTML_SIGNAL_RE.search(html))
 
 
 def _token_from_url(board_url: str) -> str | None:

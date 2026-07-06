@@ -35,6 +35,7 @@ _PAGE_PATTERNS = [
     re.compile(r"recruiteecdn\.com"),
     re.compile(r"window\.recruitee"),
 ]
+_PAGE_MARKER_RE = re.compile(r"\b(?:recruiteecdn\.com|window\.recruitee)\b")
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support", "status"})
 
@@ -271,8 +272,8 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                             result["jobs"] = count
                         return result
 
-        # Also check for recruiteecdn.com or window.recruitee
-        if "recruiteecdn.com" in html or "window.recruitee" in html:
+        # Also check for Recruitee markers.
+        if _PAGE_MARKER_RE.search(html):
             log.info("recruitee.detected_marker", url=url)
             api_base = _api_base_from_url(url)
             if api_base:

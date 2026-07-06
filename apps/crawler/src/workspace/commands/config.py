@@ -137,7 +137,7 @@ def set_(
         updates.append(f"industry={industry}")
     if employee_count_range is not None:
         ws.employee_count_range = employee_count_range
-        updates.append(f"employee_count_range={employee_count_range}")
+        updates.append("employee_count_range")
     if founded_year is not None:
         ws.founded_year = founded_year
         updates.append(f"founded_year={founded_year}")
