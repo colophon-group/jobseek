@@ -1,7 +1,7 @@
 import { pgTable, text, integer, uuid, timestamp, numeric, uniqueIndex, index, foreignKey, unique, serial, boolean, jsonb, smallint, real, check, bigint, primaryKey, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-export const locationType = pgEnum("location_type", ['macro', 'country', 'region', 'city'])
+export const locationType = pgEnum("location_type", ['macro', 'country', 'region', 'city']);
 
 
 export const enrichBatch = pgTable("enrich_batch", {
