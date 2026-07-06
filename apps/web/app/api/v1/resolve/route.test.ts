@@ -39,6 +39,11 @@ vi.mock("@/lib/actions/company", () => ({
   suggestIndustries: mocks.suggestIndustries,
 }));
 vi.mock("@/lib/actions/locations", () => ({
+  suggestLocations: vi.fn(() => {
+    throw new Error("route must not import location server actions");
+  }),
+}));
+vi.mock("@/lib/services/locations", () => ({
   suggestLocations: mocks.suggestLocations,
 }));
 // The route handler now imports taxonomy helpers from the service tier
@@ -152,5 +157,39 @@ describe("GET /api/v1/resolve?type=industries (issue #3228)", () => {
     for (const m of body.matches!) {
       expect(m.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
     }
+  });
+});
+
+describe("GET /api/v1/resolve location service boundary (#3330)", () => {
+  beforeEach(() => {
+    mocks.suggestLocations.mockReset();
+  });
+
+  it("resolves locations through the service tier without the server-action module", async () => {
+    mocks.suggestLocations.mockResolvedValue([
+      {
+        id: 1,
+        slug: "zurich",
+        name: "Zurich",
+        type: "city",
+        parentName: "Switzerland",
+      },
+    ]);
+
+    const { res, body } = await call("?type=locations&q=zur&locale=de");
+
+    expect(res.status).toBe(200);
+    expect(mocks.suggestLocations).toHaveBeenCalledWith({
+      query: "zur",
+      locale: "de",
+    });
+    expect(body.matches).toEqual([
+      {
+        slug: "zurich",
+        name: "Zurich",
+        type: "city",
+        parentName: "Switzerland",
+      },
+    ]);
   });
 });

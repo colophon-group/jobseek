@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 // service functions are functionally identical but avoid the
 // server-action machinery (per-call RPC URL, serialization boundary,
 // security IDs). See issues #3231 / #3329.
-import { suggestLocations } from "@/lib/actions/locations";
+import { suggestLocations } from "@/lib/services/locations";
 import {
   suggestOccupations,
   suggestSeniorities,
