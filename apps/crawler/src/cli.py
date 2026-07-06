@@ -129,6 +129,17 @@ def parse_args() -> argparse.Namespace:
         help="Run extraction and report would-change rows; make no writes.",
     )
 
+    reprocess_salary_p = sub.add_parser(
+        "reprocess-salary-eu",
+        help=(
+            "Recompute salary fields from stored descriptions for the EU "
+            "country sets used by #3324/#3341/#3359."
+        ),
+    )
+    from src.salary_reprocess import add_salary_reprocess_arguments
+
+    add_salary_reprocess_arguments(reprocess_salary_p)
+
     retry_p = sub.add_parser(
         "retry-stalled-scrapes",
         help=(
@@ -367,6 +378,13 @@ async def run() -> None:
                 only_suspect=not args.all_candidates,
                 slugs=args.slug,
             )
+
+        elif args.command == "reprocess-salary-eu":
+            from src.salary_reprocess import run_from_args
+
+            exit_code = await run_from_args(args)
+            if exit_code != 0:
+                raise SystemExit(exit_code)
 
         elif args.command == "retry-stalled-scrapes":
             local_pool = await create_local_pool()
