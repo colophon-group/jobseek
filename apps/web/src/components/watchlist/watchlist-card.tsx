@@ -5,6 +5,7 @@ import { Plus, Eye, Lock, Loader2, AlertTriangle } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useLocalePath } from "@/lib/useLocalePath";
+import { scrollToTopOnNav } from "@/lib/scroll-on-nav";
 import type { WatchlistSummary } from "@/lib/actions/watchlists";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import { tooltipWarningClass } from "@/components/ui/tooltip-styles";
@@ -18,6 +19,7 @@ export function WatchlistCard({ watchlist, ownerUsername }: { watchlist: Watchli
     <Link
       href={href}
       prefetch={false}
+      onClick={() => scrollToTopOnNav(href)}
       className="flex h-28 w-28 shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border border-border-soft bg-surface p-3 text-center transition-colors hover:border-primary/30 hover:bg-border-soft"
     >
       <div className="flex items-center gap-1 text-muted">

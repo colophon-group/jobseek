@@ -7,6 +7,7 @@ import { Search, Loader2, Copy } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { scrollToTopOnNav } from "@/lib/scroll-on-nav";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import {
   searchPublicWatchlists,
@@ -104,37 +105,42 @@ export function PublicWatchlistSearch() {
 
       {results.length > 0 && (
         <div className="space-y-2">
-          {results.map((wl) => (
-            <Link
-              key={wl.id}
-              href={wl.ownerUsername ? lp(`/${wl.ownerUsername}/${wl.slug}`) : "#"}
-              prefetch={false}
-              className="flex items-center gap-3 rounded-md border border-border-soft p-3 transition-colors hover:bg-border-soft"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{wl.title}</p>
-                {wl.description && (
-                  <p className="line-clamp-1 text-xs text-muted">{wl.description}</p>
-                )}
-                <p className="text-xs text-muted">
-                  @{wl.ownerUsername ?? t({ id: "watchlists.explore.unknownUser", comment: "Fallback username for watchlist owner", message: "user" })} · {wl.activeJobCount} {wl.activeJobCount === 1
-                    ? t({ id: "watchlists.explore.jobSingular", comment: "Singular job count in public watchlist", message: "job" })
-                    : t({ id: "watchlists.explore.jobPlural", comment: "Plural job count in public watchlist", message: "jobs" })}
-                  {wl.mirrorCount > 0 && (
-                    <>
-                      {" · "}
-                      <span className="inline-flex items-center gap-0.5">
-                        <Copy size={10} />
-                        {wl.mirrorCount} {wl.mirrorCount === 1
-                          ? t({ id: "watchlists.explore.mirrorSingular", comment: "Singular mirror count", message: "mirror" })
-                          : t({ id: "watchlists.explore.mirrorPlural", comment: "Plural mirror count", message: "mirrors" })}
-                      </span>
-                    </>
+          {results.map((wl) => {
+            const href = wl.ownerUsername ? lp(`/${wl.ownerUsername}/${wl.slug}`) : "#";
+
+            return (
+              <Link
+                key={wl.id}
+                href={href}
+                prefetch={false}
+                onClick={() => scrollToTopOnNav(href)}
+                className="flex items-center gap-3 rounded-md border border-border-soft p-3 transition-colors hover:bg-border-soft"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{wl.title}</p>
+                  {wl.description && (
+                    <p className="line-clamp-1 text-xs text-muted">{wl.description}</p>
                   )}
-                </p>
-              </div>
-            </Link>
-          ))}
+                  <p className="text-xs text-muted">
+                    @{wl.ownerUsername ?? t({ id: "watchlists.explore.unknownUser", comment: "Fallback username for watchlist owner", message: "user" })} · {wl.activeJobCount} {wl.activeJobCount === 1
+                      ? t({ id: "watchlists.explore.jobSingular", comment: "Singular job count in public watchlist", message: "job" })
+                      : t({ id: "watchlists.explore.jobPlural", comment: "Plural job count in public watchlist", message: "jobs" })}
+                    {wl.mirrorCount > 0 && (
+                      <>
+                        {" · "}
+                        <span className="inline-flex items-center gap-0.5">
+                          <Copy size={10} />
+                          {wl.mirrorCount} {wl.mirrorCount === 1
+                            ? t({ id: "watchlists.explore.mirrorSingular", comment: "Singular mirror count", message: "mirror" })
+                            : t({ id: "watchlists.explore.mirrorPlural", comment: "Plural mirror count", message: "mirrors" })}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
 
           {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={loadingMore} size="sm" />}
         </div>
