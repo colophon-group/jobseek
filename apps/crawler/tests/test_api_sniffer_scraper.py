@@ -176,31 +176,6 @@ class TestExtractFromObject:
         assert content.metadata == {"team": "Eng"}
 
 
-def _make_mock_pw(exchanges_per_url: dict[str, list]):
-    """Create a mock Playwright that yields pages with preset exchanges.
-
-    ``exchanges_per_url`` maps URL → list of Exchange objects that
-    ``capture_exchanges`` should populate when that URL is navigated to.
-    """
-    pw = MagicMock()
-
-    class _FakePage:
-        """Async-context-manager page that populates exchanges on navigate."""
-
-        def __init__(self):
-            self._exchanges: list = []
-            self._url: str | None = None
-
-        def on(self, event, callback):
-            pass
-
-        async def goto(self, url, **kwargs):
-            self._url = url
-
-    # We patch open_page and capture_exchanges + navigate at the module level
-    return pw, exchanges_per_url
-
-
 class TestProbePw:
     async def test_detects_job_data(self):
         """probe_pw detects single-job XHR responses and returns metadata."""

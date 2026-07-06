@@ -2652,7 +2652,7 @@ class TestSubmitLastError:
     """Submit stores last_error on critical failure."""
 
     def test_stores_last_error_on_critical_failure(self, tmp_path, monkeypatch):
-        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        _setup_submittable_workspace(tmp_path, monkeypatch)
 
         from src.workspace.errors import GitCommandError
 
