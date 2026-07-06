@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { unstable_cache } from "next/cache";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import { locales } from "@/lib/i18n";
 
@@ -12,7 +13,7 @@ export const contentType = "image/png";
 // the cache anyway.
 export const revalidate = 2592000;
 
-import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -69,8 +70,15 @@ export async function generateStaticParams(): Promise<
   }
 }
 
-// Satori only supports TTF/OTF, not woff2.
-const fontPromise = readFile(
+const getOgCompany = unstable_cache(
+  async (slug: string, lang: string) => getCompanyBySlug(slug, lang),
+  ["company-opengraph"],
+  { revalidate },
+);
+
+// Satori only supports TTF/OTF, not woff2. Keep this synchronous at module
+// load so the static renderer does not see uncached async filesystem IO.
+const fontData = readFileSync(
   join(process.cwd(), "public/fonts/JetBrainsMono-Bold.ttf"),
 );
 
@@ -80,7 +88,7 @@ export default async function OgImage({
   params: Promise<{ lang: string; slug: string }>;
 }) {
   const { slug, lang } = await params;
-  const company = await getCompanyBySlug(slug, lang);
+  const company = await getOgCompany(slug, lang);
   if (!company) {
     return new ImageResponse(
       <div
@@ -102,8 +110,10 @@ export default async function OgImage({
     );
   }
 
-  const fontData = await fontPromise;
-  const hasIcon = company.icon && company.icon.startsWith("http");
+  const hasIcon =
+    company.icon &&
+    company.icon.startsWith("http") &&
+    !company.icon.toLowerCase().endsWith(".webp");
 
   return new ImageResponse(
     <div
