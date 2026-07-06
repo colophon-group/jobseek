@@ -14,14 +14,16 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
-  contents: write       # push add-company/* branches
-  pull-requests: write  # create/update draft PRs, post comments
-  issues: write         # comment on issues, add labels, close
+  contents: read
 
 jobs:
   resolve:
     runs-on: ubuntu-latest
     if: ${{ vars.ENABLE_COMPANY_RESOLVER != 'false' }}
+    permissions:
+      contents: write       # push add-company/* branches
+      pull-requests: write  # create/update draft PRs, post comments
+      issues: write         # comment on issues, add labels, close
     steps:
       - name: Check required secrets
         run: |

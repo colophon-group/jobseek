@@ -141,8 +141,8 @@ def company_add(
         rows.append(new_row)
         _write_csv(companies_path, headers, rows)
 
-        fields = {k: v for k, v in new_row.items() if v and k != "slug"}
-        extra = f" ({', '.join(f'{k}={v!r}' for k, v in fields.items())})" if fields else ""
+        fields = [k for k, v in new_row.items() if v and k != "slug"]
+        extra = f" ({', '.join(fields)})" if fields else ""
         print(f"Added company {slug!r}{extra}")
     else:
         # Update existing row
@@ -152,7 +152,7 @@ def company_add(
         target.update(field_map)
         _write_csv(companies_path, headers, rows)
 
-        fields = ", ".join(f"{k}={v!r}" for k, v in field_map.items())
+        fields = ", ".join(field_map)
         print(f"Updated company {slug!r}: {fields}")
 
 

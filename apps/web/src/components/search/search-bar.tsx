@@ -22,6 +22,7 @@ import type { WorkMode } from "@/lib/search/types";
 import { useSearchStateStore, usePageActions } from "@/components/SearchStateProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { getBrowserCoordinatesOnce } from "@/lib/search/browser-geolocation";
 
 /**
  * Work-mode autocomplete entries — fixed three values, matched
@@ -161,25 +162,20 @@ export function SearchBar({
   const userLat = serverLat ?? browserGeo?.lat;
   const userLng = serverLng ?? browserGeo?.lng;
 
-  // Request browser geolocation once per session if server didn't provide coords
+  // Request browser geolocation once per page load if server didn't provide coords.
   useEffect(() => {
-    if (serverLat != null || !navigator.geolocation) return;
-    const cached = sessionStorage.getItem("browser-geo");
-    if (cached) {
-      setBrowserGeo(JSON.parse(cached));
-      return;
-    }
-    if (sessionStorage.getItem("browser-geo-asked")) return;
-    sessionStorage.setItem("browser-geo-asked", "1");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        sessionStorage.setItem("browser-geo", JSON.stringify(geo));
+    if (serverLat != null) return;
+    let cancelled = false;
+
+    void getBrowserCoordinatesOnce().then((geo) => {
+      if (!cancelled && geo) {
         setBrowserGeo(geo);
-      },
-      () => {},
-      { maximumAge: 600_000, timeout: 5_000 },
-    );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [serverLat]);
 
   // Current filter state: from props if available, otherwise derive from URL

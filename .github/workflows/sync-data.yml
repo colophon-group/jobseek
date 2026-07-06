@@ -11,6 +11,9 @@ concurrency:
   group: crawler-production-sync
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   sync:
     runs-on: ubuntu-latest

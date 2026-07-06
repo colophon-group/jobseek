@@ -7,6 +7,7 @@ import type { LocationSuggestion } from "@/lib/actions/locations";
 import { runSuggestLocations as suggestLocations } from "@/lib/search/typeahead-runner";
 import type { SelectedLocation } from "@/lib/search/selected-location";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { getBrowserCoordinatesOnce } from "@/lib/search/browser-geolocation";
 
 // Re-export so existing `import type { SelectedLocation } from
 // "@/components/search/location-pills"` callers compile while #3220
@@ -57,25 +58,20 @@ export function LocationPills({
   const userLat = serverLat ?? browserGeo?.lat;
   const userLng = serverLng ?? browserGeo?.lng;
 
-  // Request browser geolocation once per session if server didn't provide coords
+  // Request browser geolocation once per page load if server didn't provide coords.
   useEffect(() => {
-    if (serverLat != null || !navigator.geolocation) return;
-    const cached = sessionStorage.getItem("browser-geo");
-    if (cached) {
-      setBrowserGeo(JSON.parse(cached));
-      return;
-    }
-    if (sessionStorage.getItem("browser-geo-asked")) return;
-    sessionStorage.setItem("browser-geo-asked", "1");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        sessionStorage.setItem("browser-geo", JSON.stringify(geo));
+    if (serverLat != null) return;
+    let cancelled = false;
+
+    void getBrowserCoordinatesOnce().then((geo) => {
+      if (!cancelled && geo) {
         setBrowserGeo(geo);
-      },
-      () => {},  // silently ignore denial
-      { maximumAge: 600_000, timeout: 5_000 },
-    );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [serverLat]);
 
   const fetchSuggestions = useCallback(
