@@ -17,7 +17,6 @@ export function markdownToHtml(text: string): string {
   const out: string[] = []
   let inCodeBlock = false
   let codeLines: string[] = []
-  let codeLang = ''
   let inList = false
 
   for (const line of lines) {
@@ -35,7 +34,6 @@ export function markdownToHtml(text: string): string {
           inList = false
         }
         inCodeBlock = true
-        codeLang = line.trim().slice(3)
       }
       continue
     }
