@@ -9,7 +9,7 @@ import { CompanyRequestForm } from "./company-request-form";
 
 type StatsData = { companyCount: number; jobPostingCount: number };
 
-export function ProgressLoader({ locale: _locale, lang }: { locale: string; lang: string }) {
+export function ProgressLoader({ locale, lang }: { locale: string; lang: string }) {
   const [stats, setStats] = useState<StatsData | null>(null);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export function ProgressLoader({ locale: _locale, lang }: { locale: string; lang
       <div className="mt-10 flex gap-6">
         <div className="flex flex-col items-center rounded-md border border-divider bg-surface px-8 py-6">
           <Building2 className="mb-2 h-6 w-6 text-muted" />
-          <span className="text-3xl font-bold">{stats ? stats.companyCount.toLocaleString() : "—"}</span>
+          <span className="text-3xl font-bold">{stats ? stats.companyCount.toLocaleString(locale) : "—"}</span>
           <span className="mt-1 text-sm text-muted">
             <Trans id="app.home.stats.companies" comment="Label for the company counter on the app home page">
               Companies Tracked
@@ -42,7 +42,7 @@ export function ProgressLoader({ locale: _locale, lang }: { locale: string; lang
         </div>
         <div className="flex flex-col items-center rounded-md border border-divider bg-surface px-8 py-6">
           <Briefcase className="mb-2 h-6 w-6 text-muted" />
-          <span className="text-3xl font-bold">{stats ? stats.jobPostingCount.toLocaleString() : "—"}</span>
+          <span className="text-3xl font-bold">{stats ? stats.jobPostingCount.toLocaleString(locale) : "—"}</span>
           <span className="mt-1 text-sm text-muted">
             <Trans id="app.home.stats.jobPostings" comment="Label for the job postings counter on the app home page">
               Job Postings

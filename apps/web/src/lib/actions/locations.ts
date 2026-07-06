@@ -11,7 +11,7 @@ import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-cl
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
-import { canonicalStringCompare } from "@/lib/sort";
+import { canonicalStringCompare, makeDisplayStringCompare } from "@/lib/sort";
 import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
 
 export interface LocationSuggestion {
@@ -929,11 +929,12 @@ async function _fetchGlobalLocationsGrouped(
     // city" filter dropped countries whose postings are tagged purely at
     // the country level — a regression introduced alongside #3033's
     // sum-of-children count.
+    const compareCountryNames = makeDisplayStringCompare(locale);
     const sortedCountries = [...countries.values()]
       .filter((g) => g.countryCount > 0 || g.regions.some((r) => r.locations.length > 0))
       .sort((a, b) => {
         // Sort by country name alphabetically
-        return a.countryName.localeCompare(b.countryName);
+        return compareCountryNames(a.countryName, b.countryName);
       });
 
     return { macros, countries: sortedCountries };

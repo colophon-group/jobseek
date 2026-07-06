@@ -202,7 +202,12 @@ export async function listBlogPosts(locale?: Locale): Promise<BlogPostSummary[]>
     // but the type system needs a fallthrough.
     throw new Error(`[blog] post '${slug}' disappeared between listdir and read`);
   }));
-  return posts.sort((a, b) => b.datePublished.localeCompare(a.datePublished));
+  return posts.sort((a, b) => compareIsoDateDesc(a.datePublished, b.datePublished));
+}
+
+function compareIsoDateDesc(a: string, b: string): number {
+  if (a === b) return 0;
+  return a < b ? 1 : -1;
 }
 
 /**
@@ -333,7 +338,7 @@ export function selectRelatedPosts(
       .filter(({ overlap }) => overlap > 0)
       .sort((a, b) => {
         if (b.overlap !== a.overlap) return b.overlap - a.overlap;
-        return b.post.datePublished.localeCompare(a.post.datePublished);
+        return compareIsoDateDesc(a.post.datePublished, b.post.datePublished);
       });
     for (const { post } of scored) {
       picked.push(post);
@@ -344,7 +349,7 @@ export function selectRelatedPosts(
   // 3. Recency fallback.
   const remaining = others
     .filter((p) => !picked.some((q) => q.slug === p.slug))
-    .sort((a, b) => b.datePublished.localeCompare(a.datePublished));
+    .sort((a, b) => compareIsoDateDesc(a.datePublished, b.datePublished));
   for (const post of remaining) {
     picked.push(post);
     if (picked.length >= max) return picked;
