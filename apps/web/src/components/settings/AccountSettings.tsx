@@ -255,10 +255,16 @@ function UsernameSection({ currentUsername }: { currentUsername: string }) {
     // cache layer the rename invalidates (Redis session, watchlist
     // cache tags, Typesense `owner_username`, sitemap). See #3022 +
     // the action's docstring.
-    const { error } = await renameUsername(normalized);
-    if (error) {
+    try {
+      const { error } = await renameUsername(normalized);
+      if (error) {
+        setLoading(false);
+        setError(error);
+        return;
+      }
+    } catch {
       setLoading(false);
-      setError(error ?? t({ id: "settings.account.username.error", comment: "Generic username update error", message: "Failed to update username" }));
+      setError(t({ id: "settings.account.username.error", comment: "Generic username update error", message: "Failed to update username" }));
       return;
     }
     // Re-pull the bootstrap payload so SessionProvider stops handing
