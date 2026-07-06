@@ -51,6 +51,11 @@ updates:
       day: "monday"
       time: "05:00"
       timezone: "Etc/UTC"
+    ignore:
+      # Dependabot's uv updater currently errors with
+      # dependency_file_content_not_changed for this crawler entry before
+      # invoking uv; sibling uv projects still receive Pillow updates.
+      - dependency-name: "pillow"
 
   - package-ecosystem: "uv"
     directory: "/apps/crawler/ws-package"
