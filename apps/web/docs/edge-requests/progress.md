@@ -20,7 +20,7 @@
 ## Server-side data fetching (during SSR)
 
 - App layout: `getSession()`, `getPreferences()`, `getSavedJobStatuses()`, `getStarredCompanyIds()`
-- `getStats()` — company count and job posting count
+- `getSiteStats()` — company count and job posting count
 
 ## Client-side requests (user interaction)
 
@@ -44,7 +44,7 @@
 | `getPreferences()` | 1 | parallel | None | 10-30ms |
 | `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
 | `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
-| `getStats()` (public) | 2 | parallel | Redis 6h | 10-30ms |
+| `getSiteStats()` (public) | 2 | parallel | Redis 6h | 10-30ms |
 
 **Total DB queries:** 6 (4 if stats cached)
 **Estimated function duration:** 30-80ms (warm instance)

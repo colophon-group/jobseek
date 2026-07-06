@@ -41,7 +41,7 @@ vi.mock("@/lib/actions/search-input", () => ({
   parseSearchFilters: mocks.parseSearchFilters,
 }));
 
-import { fetchExploreData } from "../explore-data";
+import { fetchExplorePageData } from "../explore-page-data";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -77,7 +77,7 @@ beforeEach(() => {
   ]);
 });
 
-describe("fetchExploreData — salary EUR conversion (#3178)", () => {
+describe("fetchExplorePageData — salary EUR conversion (#3178)", () => {
   it("converts USD 100K filter to ~92000 EUR before calling Typesense (was 100000 pre-fix)", async () => {
     // The headline #3178 scenario: a US user with salcur=USD enters "$100K+".
     // Pre-fix, salaryMinEur was passed through as 100000, so the filter
@@ -85,7 +85,7 @@ describe("fetchExploreData — salary EUR conversion (#3178)", () => {
     // Post-fix, the converted EUR value is what reaches the Typesense query.
     mocks.parseRangeParam.mockReturnValueOnce({ min: 100000, max: undefined });
 
-    await fetchExploreData({
+    await fetchExplorePageData({
       searchParams: { sal: "100000-", salcur: "USD" },
       locale: "en",
     });
@@ -100,7 +100,7 @@ describe("fetchExploreData — salary EUR conversion (#3178)", () => {
   it("converts CHF 100K filter to ~95000 EUR", async () => {
     mocks.parseRangeParam.mockReturnValueOnce({ min: 100000, max: undefined });
 
-    await fetchExploreData({
+    await fetchExplorePageData({
       searchParams: { sal: "100000-", salcur: "CHF" },
       locale: "en",
     });
@@ -115,7 +115,7 @@ describe("fetchExploreData — salary EUR conversion (#3178)", () => {
     // which excludes every posting on the platform. Now: ~60000 EUR.
     mocks.parseRangeParam.mockReturnValueOnce({ min: 10_000_000, max: undefined });
 
-    await fetchExploreData({
+    await fetchExplorePageData({
       searchParams: { sal: "10000000-", salcur: "JPY" },
       locale: "en",
     });
@@ -127,7 +127,7 @@ describe("fetchExploreData — salary EUR conversion (#3178)", () => {
   it("leaves EUR 100K unchanged (identity branch — no rate lookup needed)", async () => {
     mocks.parseRangeParam.mockReturnValueOnce({ min: 100000, max: undefined });
 
-    await fetchExploreData({
+    await fetchExplorePageData({
       searchParams: { sal: "100000-", salcur: "EUR" },
       locale: "en",
     });
@@ -141,7 +141,7 @@ describe("fetchExploreData — salary EUR conversion (#3178)", () => {
     // renders where the user actually has a salary filter applied.
     mocks.parseRangeParam.mockReturnValueOnce({ min: undefined, max: undefined });
 
-    await fetchExploreData({
+    await fetchExplorePageData({
       searchParams: {},
       locale: "en",
     });
@@ -160,7 +160,7 @@ describe("fetchExploreData — salary EUR conversion (#3178)", () => {
     });
     mocks.parseRangeParam.mockReturnValueOnce({ min: 100000, max: undefined });
 
-    await fetchExploreData({
+    await fetchExplorePageData({
       searchParams: { sal: "100000-" },
       locale: "en",
     });
@@ -172,7 +172,7 @@ describe("fetchExploreData — salary EUR conversion (#3178)", () => {
   it("preserves both min and max conversion (range filter)", async () => {
     mocks.parseRangeParam.mockReturnValueOnce({ min: 50000, max: 150000 });
 
-    await fetchExploreData({
+    await fetchExplorePageData({
       searchParams: { sal: "50000-150000", salcur: "USD" },
       locale: "en",
     });

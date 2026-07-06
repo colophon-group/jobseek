@@ -17,7 +17,7 @@
 // implementation.
 //
 // Existing UI callers (search-bar, search-page, company-page-data,
-// explore-data, etc.) continue importing from this module so their
+// explore-page-data, etc.) continue importing from this module so their
 // invocation remains a server-action call. The public REST routes go
 // straight to `@/lib/services/search-input` so they don't pay the
 // server-action machinery cost.

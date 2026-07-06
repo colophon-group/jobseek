@@ -1086,7 +1086,7 @@ async function _parseSimilarFilters(
   // threshold MUST be in EUR-equivalent units. Without this, "100K USD" was
   // compared against EUR-indexed values, silently excluding US roles paying
   // $100K (their `salary_eur` ≈ 92,000 < 100,000). Mirrors the fix in
-  // `explore-data.ts` / `company-page-data.ts` (issue #3178).
+  // `explore-page-data.ts` / `company-page-data.ts` (issue #3178).
   //
   // The strip is a client component that calls this server action with the
   // URL search params from `useSearchParams()`. The toolbar omits `salcur`

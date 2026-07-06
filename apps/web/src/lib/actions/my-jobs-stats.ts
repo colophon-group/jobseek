@@ -46,7 +46,7 @@ export interface StatsData {
   activityTotal: number;
 }
 
-export async function getStats(params?: {
+export async function getMyJobsStats(params?: {
   from?: string;
   to?: string;
   /**

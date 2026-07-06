@@ -4,7 +4,7 @@ import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } fr
 import { CACHE_TTL_SHORT } from "@/lib/cache-ttl";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
-import { fetchExploreDefaults } from "@/lib/actions/explore-data";
+import { fetchExplorePageDefaults } from "@/lib/actions/explore-page-data";
 import { ExploreContent } from "./explore-content";
 
 const EXPLORE_DEFAULTS_CACHE_LIFE = {
@@ -15,7 +15,7 @@ const EXPLORE_DEFAULTS_CACHE_LIFE = {
 const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v3";
 
 // Cached for 60s. The anonymous, no-filter explore payload is rendered
-// server-side via `fetchExploreDefaults` and embedded as `initialData`.
+// server-side via `fetchExplorePageDefaults` and embedded as `initialData`.
 // `ExploreContent` is a client component that re-fetches a personalized
 // variant only when the `logged_in` hint cookie or a filter searchParam
 // is present, so anonymous no-filter visitors hit the static prerender
@@ -67,7 +67,7 @@ async function renderExploreContent(
   if (payloadVersion !== EXPLORE_DEFAULTS_PAYLOAD_VERSION) {
     throw new Error("Unexpected explore defaults cache version");
   }
-  const initialData = await fetchExploreDefaults({ locale });
+  const initialData = await fetchExplorePageDefaults({ locale });
 
   return <ExploreContent locale={locale} initialData={initialData} />;
 }

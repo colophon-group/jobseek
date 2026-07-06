@@ -7,7 +7,7 @@ import type { ActivityDay } from "@/lib/actions/my-jobs-stats";
 // Renders a YYYY-MM-DD key from a JS Date using the *browser's* TZ
 // (Date.getFullYear/Month/Date are local-TZ accessors). The server
 // side now buckets `saved_at` in the same IANA TZ passed by the
-// caller (see `getStats({ tz })`), so cell keys and data keys agree
+// caller (see `getMyJobsStats({ tz })`), so cell keys and data keys agree
 // even at the day boundary in the viewer's local time. See #3199.
 function formatLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

@@ -11,7 +11,7 @@ export const LOGGED_IN_COOKIE = "logged_in";
  * Name of the non-httpOnly cookie that persists anonymous-viewer
  * `jobLanguages` preferences. The same cookie is the canonical source
  * of truth on the server (read by `viewer.ts::getViewerLanguages` and
- * `explore-data.ts::fetchExploreData`); the client only needs to know
+ * `explore-page-data.ts::fetchExplorePageData`); the client only needs to know
  * whether it's set so it can decide to re-fetch the personalised
  * `ExploreData` instead of using the anon-default static prerender
  * (#2850). MUST stay in sync with `lib/anon-preferences.ts`.

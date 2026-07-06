@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { Construction, Building2, Briefcase } from "lucide-react";
 import { siteConfig } from "@/content/config";
-import { getStats } from "@/lib/actions/stats";
+import { getSiteStats } from "@/lib/actions/stats";
 import { CompanyRequestForm } from "./company-request-form";
 
 type StatsData = { companyCount: number; jobPostingCount: number };
@@ -13,7 +13,7 @@ export function ProgressLoader({ locale, lang }: { locale: string; lang: string 
   const [stats, setStats] = useState<StatsData | null>(null);
 
   useEffect(() => {
-    getStats().then(setStats);
+    getSiteStats().then(setStats);
   }, []);
 
   return (

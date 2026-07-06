@@ -71,10 +71,10 @@ export async function getExperienceHistogram(
   return service.getExperienceHistogram(...args);
 }
 
-export async function loadMorePostings(
-  ...args: Parameters<typeof service.loadMorePostings>
-): ReturnType<typeof service.loadMorePostings> {
-  return service.loadMorePostings(...args);
+export async function getMorePostings(
+  ...args: Parameters<typeof service.getMorePostings>
+): ReturnType<typeof service.getMorePostings> {
+  return service.getMorePostings(...args);
 }
 
 export type {

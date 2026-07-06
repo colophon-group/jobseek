@@ -10,7 +10,7 @@ import { company, jobPosting } from "@/db/schema";
 // from Redis-backed `cached(..., { ttl: 21600 })` in #2884 (bucket 5).
 // Returns a plain serializable object; Number coercions stay inside the
 // cache boundary so the cached value is the final shape consumers see.
-export async function getStats() {
+export async function getSiteStats() {
   "use cache";
   cacheLife("hours");
   const [[companyRow], [jobRow]] = await Promise.all([

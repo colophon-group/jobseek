@@ -14,7 +14,7 @@ export default defineConfig({
     environment: "happy-dom",
     globals: true,
     include: [
-      "src/lib/actions/__tests__/{bootstrap,company-page-data-defaults,explore-data-salary-currency,locations-hierarchical-counts,locations-macro,request-company}.test.ts",
+      "src/lib/actions/__tests__/{bootstrap,company-page-data-defaults,explore-page-data-salary-currency,locations-hierarchical-counts,locations-macro,request-company}.test.ts",
       "src/lib/search/**/*.test.{ts,tsx}",
       "src/lib/__tests__/{salary,sanitize}.test.ts",
       "app/api/v1/**/*.test.{ts,tsx}",
@@ -31,7 +31,7 @@ export default defineConfig({
         "app/api/v1/watchlist/create/route.ts",
         "src/lib/actions/bootstrap.ts",
         "src/lib/actions/company-page-data.ts",
-        "src/lib/actions/explore-data.ts",
+        "src/lib/actions/explore-page-data.ts",
         "src/lib/services/locations.ts",
         "src/lib/actions/request-company.ts",
         "src/lib/search/canonicalize-filters.ts",

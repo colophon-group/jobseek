@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // `vi.mock` hoists to the top of the file so its factories cannot close
 // over module-scope variables. Use `vi.hoisted` to share mocks between
 // the factory and the test bodies. Mirrors the pattern in
-// `company.test.ts` and `explore-data-salary-currency.test.ts`.
+// `company.test.ts` and `explore-page-data-salary-currency.test.ts`.
 const mocks = vi.hoisted(() => ({
   cacheLife: vi.fn(),
   cacheTag: vi.fn(),
@@ -229,7 +229,7 @@ describe("getSimilarCompanies — salary EUR conversion (#3178)", () => {
     // Defensive guard so the strip doesn't hit the rates cache on every
     // unfiltered render (e.g. when the user is only filtering by
     // location). Mirrors the same guard in
-    // `explore-data.ts::fetchExploreData` and
+    // `explore-page-data.ts::fetchExplorePageData` and
     // `company-page-data.ts::fetchCompanyPageData`.
     mocks.parseRangeParam.mockReturnValueOnce({
       min: undefined,

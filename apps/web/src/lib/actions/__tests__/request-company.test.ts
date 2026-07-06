@@ -3,10 +3,10 @@ import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 /**
  * #3193 — `requestCompany` was previously colocated in `stats.ts` together
- * with `getStats`, which forced `@octokit/rest` + `@octokit/auth-app`
+ * with `getSiteStats`, which forced `@octokit/rest` + `@octokit/auth-app`
  * (~500–700 KB raw, ~150 KB gzipped) to be eagerly loaded into the server
  * bundle of every route importing anything from `stats.ts`, including
- * `/progress` which only needs the octokit-free `getStats`.
+ * `/progress` which only needs the octokit-free `getSiteStats`.
  *
  * These specs lock in the split:
  *   1. Importing `stats.ts` must NOT pull octokit into the module graph

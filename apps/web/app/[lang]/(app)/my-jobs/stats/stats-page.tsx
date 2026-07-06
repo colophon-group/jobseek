@@ -6,7 +6,7 @@ import { useLocalePath } from "@/lib/useLocalePath";
 import { BackLink } from "@/components/BackLink";
 import { SankeyFunnel } from "@/components/my-jobs/sankey-funnel-lazy";
 import { ActivityHeatmap } from "@/components/my-jobs/activity-heatmap";
-import { getStats, type StatsData } from "@/lib/actions/my-jobs-stats";
+import { getMyJobsStats, type StatsData } from "@/lib/actions/my-jobs-stats";
 import { getViewerTz } from "@/lib/viewer-tz";
 
 export function StatsPage({ initial }: { initial: StatsData }) {
@@ -22,7 +22,7 @@ export function StatsPage({ initial }: { initial: StatsData }) {
       // Pass the viewer's resolved IANA timezone so day bucketing and
       // the `from`/`to` calendar-day filter both resolve at the user's
       // local midnight, not Postgres-server midnight. See #3199.
-      const result = await getStats({
+      const result = await getMyJobsStats({
         from: newFrom || undefined,
         to: newTo || undefined,
         tz: getViewerTz(),
