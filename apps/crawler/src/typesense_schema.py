@@ -201,6 +201,7 @@ COLLECTIONS: list[dict] = [
             {"name": "description", "type": "string", "optional": True},
             {"name": "owner_name", "type": "string"},
             {"name": "owner_username", "type": "string", "index": False, "optional": True},
+            {"name": "filters_json", "type": "string", "index": False, "optional": True},
             {"name": "company_count", "type": "int32"},
             {"name": "active_job_count", "type": "int32"},
             {"name": "mirror_count", "type": "int32"},

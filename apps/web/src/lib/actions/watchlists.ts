@@ -82,6 +82,17 @@ export type WatchlistFilters = {
   anyCompany?: boolean;
 };
 
+type WorkMode = NonNullable<WatchlistFilters["workMode"]>[number];
+
+type IndexedWatchlistFilters = WatchlistFilters & {
+  locationIds?: number[];
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+};
+
+const WORK_MODE_VALUES = new Set<WorkMode>(["onsite", "hybrid", "remote"]);
+
 export type WatchlistSummary = {
   id: string;
   slug: string;
@@ -233,6 +244,10 @@ export async function createWatchlist(params: {
       try {
         const owner = await _getOwnerInfo(userId);
         if (!owner) return;
+        const filtersJson = await safeBuildIndexedWatchlistFiltersJson(
+          mergedFilters,
+          "createWatchlist",
+        );
         tsUpsertWatchlist({
           id: row.id,
           slug,
@@ -240,6 +255,7 @@ export async function createWatchlist(params: {
           description: params.description,
           owner_name: owner.name,
           owner_username: owner.username ?? undefined,
+          filters_json: filtersJson,
           company_count: params.companyIds.length,
           active_job_count: 0, // will be refreshed by reconciliation cron
           mirror_count: 0,
@@ -366,6 +382,10 @@ export async function updateWatchlist(params: {
         const owner = await _getOwnerInfo(userId);
         if (!owner) return;
         const desc = params.description !== undefined ? params.description : wl.description;
+        const filtersJson = await safeBuildIndexedWatchlistFiltersJson(
+          newFilters,
+          "updateWatchlist",
+        );
         tsUpsertWatchlist({
           id: params.watchlistId,
           slug: newSlug,
@@ -373,6 +393,7 @@ export async function updateWatchlist(params: {
           description: desc ?? undefined,
           owner_name: owner.name,
           owner_username: owner.username ?? undefined,
+          filters_json: filtersJson,
           company_count: newCompanyCount,
           active_job_count: 0, // refreshed by reconciliation cron
           mirror_count: 0,
@@ -542,6 +563,10 @@ export async function copyWatchlist(
       try {
         const owner = await _getOwnerInfo(userId);
         if (!owner) return;
+        const filtersJson = await safeBuildIndexedWatchlistFiltersJson(
+          sourceFilters,
+          "copyWatchlist",
+        );
         tsUpsertWatchlist({
           id: row.id,
           slug,
@@ -549,6 +574,7 @@ export async function copyWatchlist(
           description: source.description ?? undefined,
           owner_name: owner.name,
           owner_username: owner.username ?? undefined,
+          filters_json: filtersJson,
           company_count: companies.length,
           active_job_count: 0, // refreshed by reconciliation cron
           mirror_count: 0,
@@ -833,6 +859,48 @@ async function _resolveAnyCompanyActiveCount(
   }, { ttl: CACHE_TTL_SHORT });
 }
 
+async function _resolveIndexedAnyCompanyActiveCount(
+  filters: IndexedWatchlistFilters,
+  filterCacheKey: string,
+  languages: string[],
+): Promise<number> {
+  const langKey = languagesCacheKey(languages);
+  const key = `wl-any-active-indexed:${filterCacheKey}:${langKey}`;
+  return cached(key, async () => {
+    const filterStr = buildFilterString({
+      locationIds: filters.locationIds?.length ? filters.locationIds : undefined,
+      occupationIds: filters.occupationIds?.length ? filters.occupationIds : undefined,
+      seniorityIds: filters.seniorityIds?.length ? filters.seniorityIds : undefined,
+      technologyIds: filters.technologyIds?.length ? filters.technologyIds : undefined,
+      workMode: filters.workMode?.length ? filters.workMode : undefined,
+      employmentTypes: filters.employmentType?.length ? filters.employmentType : undefined,
+      salaryMinEur: filters.salaryMin,
+      salaryMaxEur: filters.salaryMax,
+      experienceMin: filters.experienceMin,
+      experienceMax: filters.experienceMax,
+      languages: languages.length > 0 ? languages : undefined,
+    });
+
+    const fullFilter = `${POSTING_BASE_FILTER}${filterStr ? " && " + filterStr : ""}`;
+    const hasKeywords = filters.keywords && filters.keywords.length > 0;
+    const q = hasKeywords ? filters.keywords!.join(" ") : "*";
+
+    try {
+      const client = getSearchClient();
+      const result = await client.collections("job_posting").documents().search({
+        q,
+        query_by: "title",
+        filter_by: fullFilter,
+        per_page: 0,
+      });
+      return result.found ?? 0;
+    } catch (err) {
+      console.error("[_resolveIndexedAnyCompanyActiveCount] Typesense failed", err);
+      return 0;
+    }
+  }, { ttl: CACHE_TTL_SHORT });
+}
+
 export async function getWatchlistByUserAndSlug(
   userSlug: string,
   watchlistSlug: string,
@@ -1064,10 +1132,156 @@ export type PublicWatchlistEntry = WatchlistSummary & {
   mirrorCount: number;
 };
 
+type InternalPublicWatchlistEntry = PublicWatchlistEntry & {
+  indexedFilters: IndexedWatchlistFilters | null;
+  indexedFilterCacheKey: string | null;
+};
+
 /** Stable cache-key fragment for a viewer's language filter. */
 function languagesCacheKey(languages: string[] | undefined): string {
   if (!languages || languages.length === 0) return "all";
   return languages.join(",");
+}
+
+function stringList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const result = value.filter((item): item is string => typeof item === "string" && item.length > 0);
+  return result.length > 0 ? result : undefined;
+}
+
+function workModeList(value: unknown): WorkMode[] | undefined {
+  const result = stringList(value)?.filter((item): item is WorkMode =>
+    WORK_MODE_VALUES.has(item as WorkMode),
+  );
+  return result && result.length > 0 ? result : undefined;
+}
+
+function numberValue(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function numberList(value: unknown): number[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const seen = new Set<number>();
+  const result: number[] = [];
+  for (const item of value) {
+    if (typeof item !== "number" || !Number.isInteger(item) || item < 0 || seen.has(item)) continue;
+    seen.add(item);
+    result.push(item);
+  }
+  return result.length > 0 ? result : undefined;
+}
+
+function buildIndexedWatchlistFiltersPayload(
+  filters: WatchlistFilters | IndexedWatchlistFilters | null | undefined,
+  ids?: Pick<
+    IndexedWatchlistFilters,
+    "locationIds" | "occupationIds" | "seniorityIds" | "technologyIds"
+  >,
+): IndexedWatchlistFilters {
+  const f = (filters ?? {}) as Record<string, unknown>;
+  const payload: IndexedWatchlistFilters = {};
+
+  if (f.anyCompany === true) payload.anyCompany = true;
+
+  const keywords = stringList(f.keywords);
+  if (keywords) payload.keywords = keywords;
+  const locationSlugs = stringList(f.locationSlugs);
+  if (locationSlugs) payload.locationSlugs = locationSlugs;
+  const occupationSlugs = stringList(f.occupationSlugs);
+  if (occupationSlugs) payload.occupationSlugs = occupationSlugs;
+  const senioritySlugs = stringList(f.senioritySlugs);
+  if (senioritySlugs) payload.senioritySlugs = senioritySlugs;
+  const technologySlugs = stringList(f.technologySlugs);
+  if (technologySlugs) payload.technologySlugs = technologySlugs;
+  const workMode = workModeList(f.workMode);
+  if (workMode) payload.workMode = workMode;
+  const employmentType = stringList(f.employmentType);
+  if (employmentType) payload.employmentType = employmentType;
+  if (typeof f.salaryCurrency === "string" && f.salaryCurrency.length > 0) {
+    payload.salaryCurrency = f.salaryCurrency;
+  }
+
+  const salaryMin = numberValue(f.salaryMin);
+  if (salaryMin !== undefined) payload.salaryMin = salaryMin;
+  const salaryMax = numberValue(f.salaryMax);
+  if (salaryMax !== undefined) payload.salaryMax = salaryMax;
+  const experienceMin = numberValue(f.experienceMin);
+  if (experienceMin !== undefined) payload.experienceMin = experienceMin;
+  const experienceMax = numberValue(f.experienceMax);
+  if (experienceMax !== undefined) payload.experienceMax = experienceMax;
+
+  const locationIds = numberList(ids?.locationIds ?? f.locationIds);
+  if (locationIds) payload.locationIds = locationIds;
+  const occupationIds = numberList(ids?.occupationIds ?? f.occupationIds);
+  if (occupationIds) payload.occupationIds = occupationIds;
+  const seniorityIds = numberList(ids?.seniorityIds ?? f.seniorityIds);
+  if (seniorityIds) payload.seniorityIds = seniorityIds;
+  const technologyIds = numberList(ids?.technologyIds ?? f.technologyIds);
+  if (technologyIds) payload.technologyIds = technologyIds;
+
+  return payload;
+}
+
+async function buildIndexedWatchlistFiltersJson(filters: WatchlistFilters): Promise<string | undefined> {
+  let resolvedIds:
+    | Pick<IndexedWatchlistFilters, "locationIds" | "occupationIds" | "seniorityIds" | "technologyIds">
+    | undefined;
+  try {
+    const [locMap, occMap, senMap, techMap] = await Promise.all([
+      filters.locationSlugs?.length ? resolveLocationSlugs(filters.locationSlugs, "en") : Promise.resolve(new Map()),
+      filters.occupationSlugs?.length ? resolveOccupationSlugs(filters.occupationSlugs, "en") : Promise.resolve(new Map()),
+      filters.senioritySlugs?.length ? resolveSenioritySlugs(filters.senioritySlugs, "en") : Promise.resolve(new Map()),
+      filters.technologySlugs?.length ? resolveTechnologySlugs(filters.technologySlugs) : Promise.resolve(new Map()),
+    ]);
+
+    resolvedIds = {
+      locationIds: locMap.size > 0 ? [...locMap.values()].map((l) => l.id) : undefined,
+      occupationIds: occMap.size > 0 ? [...occMap.values()].map((o) => o.id) : undefined,
+      seniorityIds: senMap.size > 0 ? [...senMap.values()].map((s) => s.id) : undefined,
+      technologyIds: techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined,
+    };
+  } catch (err) {
+    console.error("[buildIndexedWatchlistFiltersJson] taxonomy resolve failed", err);
+  }
+
+  const payload = buildIndexedWatchlistFiltersPayload(filters, resolvedIds);
+
+  return Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined;
+}
+
+async function safeBuildIndexedWatchlistFiltersJson(
+  filters: WatchlistFilters,
+  label: string,
+): Promise<string | undefined> {
+  try {
+    return await buildIndexedWatchlistFiltersJson(filters);
+  } catch (err) {
+    console.error(`[${label}] indexed watchlist filters build failed`, err);
+    return undefined;
+  }
+}
+
+function parseIndexedWatchlistFilters(raw: unknown): IndexedWatchlistFilters | null {
+  if (typeof raw !== "string" || raw.length === 0) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return null;
+    }
+    return buildIndexedWatchlistFiltersPayload(parsed as IndexedWatchlistFilters);
+  } catch {
+    return null;
+  }
+}
+
+function hasUnresolvedIndexedTaxonomy(filters: IndexedWatchlistFilters): boolean {
+  return Boolean(
+    (filters.locationSlugs?.length && !filters.locationIds?.length) ||
+      (filters.occupationSlugs?.length && !filters.occupationIds?.length) ||
+      (filters.senioritySlugs?.length && !filters.seniorityIds?.length) ||
+      (filters.technologySlugs?.length && !filters.technologyIds?.length),
+  );
 }
 
 /**
@@ -1260,60 +1474,45 @@ async function queryPublicWatchlists(params: {
  * helper mirrors that patch for the public Discover surfaces.
  *
  * Shape:
- * 1. Look up `filters` JSONB for each entry's `id` in a single batched
- *    Postgres query (Typesense doesn't index `filters`, so we can't
- *    detect `anyCompany` from the doc alone).
- * 2. For rows where `filters.anyCompany` is set, fan out one
- *    `_resolveAnyCompanyActiveCount(filters, locale, languages)` per
- *    row in parallel via `Promise.all`. Each call is cached by
- *    `_resolveAnyCompanyActiveCount` itself, so repeat renders with the
- *    same viewer-language scope hit Redis instead of Typesense.
- * 3. Patch the `activeJobCount` on the matching entry; non-anyCompany
- *    rows are returned unchanged.
+ * 1. Read the self-contained, sanitized `filters_json` payload from each
+ *    Typesense `watchlist` hit. It carries both the public filter fields
+ *    and pre-resolved taxonomy IDs, so the card path does not hydrate
+ *    `watchlist.filters` from Postgres.
+ * 2. For rows where `filters_json.anyCompany` is set, fan out one live
+ *    `job_posting` Typesense count per row in parallel via `Promise.all`.
+ *    Each call is cached by the indexed payload + viewer-language scope.
+ * 3. Patch `activeJobCount` on the matching entry; non-anyCompany rows
+ *    are returned unchanged.
  *
  * Fan-out is bounded by the page size (typically 10-20 tiles on the
  * Discover surface) times the fraction that are `anyCompany`. Same
  * trade-off as the `getUserWatchlists` patch in #3340.
  *
- * Failures (Postgres unreachable, Typesense per-row count failure)
- * degrade to the Typesense doc's denormalized 0 — same as the rest of
- * the Discover surface. Logged for visibility.
+ * Failures or missing resolved taxonomy IDs degrade to the Typesense
+ * doc's denormalized count. Missing IDs are not broadened into a less
+ * selective query.
  */
 async function _patchAnyCompanyCountsForDiscover(
-  entries: PublicWatchlistEntry[],
-  locale: string,
+  entries: InternalPublicWatchlistEntry[],
   languages: string[],
-): Promise<PublicWatchlistEntry[]> {
+): Promise<InternalPublicWatchlistEntry[]> {
   if (entries.length === 0) return entries;
 
-  let filtersById: Map<string, WatchlistFilters>;
-  try {
-    const ids = entries.map((e) => e.id);
-    const pgIds = `{${ids.join(",")}}`;
-    const rows = await withDbRetry(
-      () =>
-        db.execute<{ [key: string]: unknown; id: string; filters: WatchlistFilters }>(sql`
-          SELECT w.id, w.filters
-          FROM watchlist w
-          WHERE w.id = ANY(${pgIds}::uuid[])
-        `),
-      { label: "discoverAnyCompanyFilters" },
-    );
-    const typed = rows as unknown as { id: string; filters: WatchlistFilters }[];
-    filtersById = new Map(typed.map((r) => [r.id, r.filters]));
-  } catch (err) {
-    console.error("[_patchAnyCompanyCountsForDiscover] filter lookup failed", err);
-    return entries;
-  }
-
-  const anyCompanyEntries = entries.filter((e) => filtersById.get(e.id)?.anyCompany);
+  const anyCompanyEntries = entries.filter((e) =>
+    e.indexedFilters?.anyCompany &&
+    !hasUnresolvedIndexedTaxonomy(e.indexedFilters) &&
+    e.indexedFilterCacheKey,
+  );
   if (anyCompanyEntries.length === 0) return entries;
 
   const pairs = await Promise.all(
     anyCompanyEntries.map(async (e) => {
-      const f = filtersById.get(e.id)!;
       try {
-        const c = await _resolveAnyCompanyActiveCount(f, locale, languages);
+        const c = await _resolveIndexedAnyCompanyActiveCount(
+          e.indexedFilters!,
+          e.indexedFilterCacheKey!,
+          languages,
+        );
         return [e.id, c] as const;
       } catch (err) {
         console.error("[_patchAnyCompanyCountsForDiscover] anyCompany count failed", {
@@ -1351,24 +1550,19 @@ export async function searchPublicWatchlists(params: {
       try {
         const tsResult = await _searchPublicWatchlistsTypesense(q, params.offset, params.limit);
         if (tsResult.watchlists.length > 0) {
-          // Perf (#3176): trust the denormalized `active_job_count` carried
-          // on each Typesense `watchlist` doc — refreshed every 4h by the
-          // crawler's `refresh-typesense` job (and inline on every CSV
-          // sync). The previous shape re-computed N filtered counts per
-          // listing render, costing N Typesense round-trips for a search
-          // surface that shows 20+ results per page.
+          // Perf (#3176/#3492): company-scoped cards trust the
+          // denormalized `active_job_count` carried on each Typesense
+          // `watchlist` doc. `anyCompany` cards use the doc's
+          // self-contained `filters_json` payload for a live count, with
+          // no Postgres filter hydration.
           //
           // EXCEPTION (#3352): `anyCompany` rows carry a denormalized 0
           // (same root cause as the `getUserWatchlists` patch in #3333 /
           // PR #3340). Patch those rows with a live Typesense count
           // bounded by the page size — see `_patchAnyCompanyCountsForDiscover`.
-          const patched = await _patchAnyCompanyCountsForDiscover(
-            tsResult.watchlists,
-            params.locale,
-            languages,
-          );
+          const patched = await _patchAnyCompanyCountsForDiscover(tsResult.watchlists, languages);
           return {
-            watchlists: patched,
+            watchlists: stripIndexedWatchlistFields(patched),
             total: tsResult.total,
           };
         }
@@ -1402,20 +1596,15 @@ export async function getPopularWatchlists(params: {
       try {
         const tsResult = await _getPopularWatchlistsTypesense(params.offset, params.limit);
         if (tsResult.watchlists.length > 0) {
-          // Perf (#3176): trust the denormalized `active_job_count`
-          // already on each Typesense `watchlist` doc — see the matching
-          // comment in `searchPublicWatchlists`.
+          // Perf (#3176/#3492): use the same count semantics as
+          // `searchPublicWatchlists`.
           //
           // EXCEPTION (#3352): patch `anyCompany` rows from their
           // structural 0 — see the matching comment in
           // `searchPublicWatchlists`.
-          const patched = await _patchAnyCompanyCountsForDiscover(
-            tsResult.watchlists,
-            params.locale,
-            languages,
-          );
+          const patched = await _patchAnyCompanyCountsForDiscover(tsResult.watchlists, languages);
           return {
-            watchlists: patched,
+            watchlists: stripIndexedWatchlistFields(patched),
             total: tsResult.total,
           };
         }
@@ -1735,7 +1924,7 @@ async function _searchPublicWatchlistsTypesense(
   query: string,
   offset: number,
   limit: number,
-): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
+): Promise<{ watchlists: InternalPublicWatchlistEntry[]; total: number }> {
   const client = getSearchClient();
 
   const result = await client.collections("watchlist").documents().search({
@@ -1761,7 +1950,7 @@ async function _searchPublicWatchlistsTypesense(
 async function _getPopularWatchlistsTypesense(
   offset: number,
   limit: number,
-): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
+): Promise<{ watchlists: InternalPublicWatchlistEntry[]; total: number }> {
   const client = getSearchClient();
 
   const result = await client.collections("watchlist").documents().search({
@@ -1782,8 +1971,10 @@ async function _getPopularWatchlistsTypesense(
   };
 }
 
-function _mapWatchlistDoc(doc: Record<string, unknown>): PublicWatchlistEntry {
+function _mapWatchlistDoc(doc: Record<string, unknown>): InternalPublicWatchlistEntry {
   const createdAtTs = doc.created_at as number;
+  const rawFiltersJson = doc.filters_json;
+  const indexedFilters = parseIndexedWatchlistFilters(rawFiltersJson);
   return {
     id: doc.id as string,
     slug: doc.slug as string,
@@ -1798,7 +1989,17 @@ function _mapWatchlistDoc(doc: Record<string, unknown>): PublicWatchlistEntry {
     ownerName: (doc.owner_name as string) ?? "",
     ownerUsername: (doc.owner_username as string) ?? null,
     mirrorCount: (doc.mirror_count as number) ?? 0,
+    indexedFilters,
+    indexedFilterCacheKey: typeof rawFiltersJson === "string" && rawFiltersJson.length > 0
+      ? rawFiltersJson
+      : null,
   };
+}
+
+function stripIndexedWatchlistFields(
+  entries: InternalPublicWatchlistEntry[],
+): PublicWatchlistEntry[] {
+  return entries.map(({ indexedFilters: _indexedFilters, indexedFilterCacheKey: _key, ...entry }) => entry);
 }
 
 function buildWatchlistPostingFilter(

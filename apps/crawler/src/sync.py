@@ -2185,11 +2185,160 @@ def _is_trivial_watchlist(filters: dict | None, company_count: int) -> bool:
         or f.get("occupationSlugs")
         or f.get("senioritySlugs")
         or f.get("technologySlugs")
+        or f.get("workMode")
+        or f.get("employmentType")
         or f.get("salaryMin") is not None
         or f.get("salaryMax") is not None
         or f.get("experienceMin") is not None
         or f.get("experienceMax") is not None
     )
+
+
+def _parse_watchlist_filters(raw_filters) -> dict | None:
+    if isinstance(raw_filters, str):
+        try:
+            parsed = json.loads(raw_filters)
+        except (ValueError, TypeError):
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return raw_filters if isinstance(raw_filters, dict) else None
+
+
+def _string_list(value) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item]
+
+
+def _number_value(value) -> int | float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return value
+
+
+def _resolved_ids_for_slugs(slugs: list[str], id_by_slug: dict[str, int]) -> list[int]:
+    seen: set[int] = set()
+    result: list[int] = []
+    for slug in slugs:
+        resolved_id = id_by_slug.get(slug)
+        if resolved_id is None or resolved_id in seen:
+            continue
+        seen.add(resolved_id)
+        result.append(resolved_id)
+    return result
+
+
+def _watchlist_filters_json(
+    filters: dict | None,
+    resolved_ids: dict[str, list[int]],
+) -> str | None:
+    """Build the public, self-contained filter payload for Typesense.
+
+    Public Discover cards use this payload to compute live any-company
+    counts without hydrating ``watchlist.filters`` from Supabase/Postgres.
+    Keep the shape in sync with ``apps/web/src/lib/actions/watchlists.ts``.
+    """
+    f = filters or {}
+    payload: dict = {}
+
+    if f.get("anyCompany") is True:
+        payload["anyCompany"] = True
+
+    for key in (
+        "keywords",
+        "locationSlugs",
+        "occupationSlugs",
+        "senioritySlugs",
+        "technologySlugs",
+        "workMode",
+        "employmentType",
+    ):
+        values = _string_list(f.get(key))
+        if values:
+            payload[key] = values
+
+    salary_currency = f.get("salaryCurrency")
+    if isinstance(salary_currency, str) and salary_currency:
+        payload["salaryCurrency"] = salary_currency
+
+    for key in ("salaryMin", "salaryMax", "experienceMin", "experienceMax"):
+        value = _number_value(f.get(key))
+        if value is not None:
+            payload[key] = value
+
+    for key, values in resolved_ids.items():
+        if values:
+            payload[key] = values
+
+    if not payload:
+        return None
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+async def _resolve_watchlist_filter_ids(
+    conn: asyncpg.Connection,
+    filters_by_watchlist: dict[str, dict | None],
+) -> dict[str, dict[str, list[int]]]:
+    """Resolve watchlist filter slugs to numeric taxonomy IDs in batches."""
+    location_slugs: set[str] = set()
+    occupation_slugs: set[str] = set()
+    seniority_slugs: set[str] = set()
+    technology_slugs: set[str] = set()
+
+    for filters in filters_by_watchlist.values():
+        f = filters or {}
+        location_slugs.update(_string_list(f.get("locationSlugs")))
+        occupation_slugs.update(_string_list(f.get("occupationSlugs")))
+        seniority_slugs.update(_string_list(f.get("senioritySlugs")))
+        technology_slugs.update(_string_list(f.get("technologySlugs")))
+
+    async def _fetch_id_map(sql: str, slugs: set[str]) -> dict[str, int]:
+        if not slugs:
+            return {}
+        rows = await conn.fetch(sql, sorted(slugs))
+        return {r["slug"]: int(r["id"]) for r in rows}
+
+    location_ids, occupation_ids, seniority_ids, technology_ids = await asyncio.gather(
+        _fetch_id_map(
+            "SELECT slug, id FROM location WHERE slug = ANY($1::text[])",
+            location_slugs,
+        ),
+        _fetch_id_map(
+            "SELECT slug, id FROM occupation WHERE slug = ANY($1::text[])",
+            occupation_slugs,
+        ),
+        _fetch_id_map(
+            "SELECT slug, id FROM seniority WHERE slug = ANY($1::text[])",
+            seniority_slugs,
+        ),
+        _fetch_id_map(
+            "SELECT slug, id FROM technology WHERE slug = ANY($1::text[])",
+            technology_slugs,
+        ),
+    )
+
+    result: dict[str, dict[str, list[int]]] = {}
+    for wid, filters in filters_by_watchlist.items():
+        f = filters or {}
+        result[wid] = {
+            "locationIds": _resolved_ids_for_slugs(
+                _string_list(f.get("locationSlugs")),
+                location_ids,
+            ),
+            "occupationIds": _resolved_ids_for_slugs(
+                _string_list(f.get("occupationSlugs")),
+                occupation_ids,
+            ),
+            "seniorityIds": _resolved_ids_for_slugs(
+                _string_list(f.get("senioritySlugs")),
+                seniority_ids,
+            ),
+            "technologyIds": _resolved_ids_for_slugs(
+                _string_list(f.get("technologySlugs")),
+                technology_ids,
+            ),
+        }
+    return result
 
 
 async def sync_watchlists_typesense(
@@ -2226,6 +2375,15 @@ async def sync_watchlists_typesense(
         return
 
     watchlist_ids = [r["id"] for r in rows]
+    parsed_filters_by_id = {str(r["id"]): _parse_watchlist_filters(r["filters"]) for r in rows}
+    try:
+        resolved_filter_ids_by_id = await _resolve_watchlist_filter_ids(
+            local_conn or supa_conn,
+            parsed_filters_by_id,
+        )
+    except Exception:
+        log.exception("typesense.watchlists.filter_ids_failed")
+        resolved_filter_ids_by_id = {}
 
     wc_pairs = await supa_conn.fetch(
         """
@@ -2289,15 +2447,7 @@ async def sync_watchlists_typesense(
         created_ts = int(r["created_at"].timestamp()) if r["created_at"] else 0
         company_count = company_counts.get(wid, 0)
 
-        raw_filters = r["filters"]
-        filters: dict | None
-        if isinstance(raw_filters, str):
-            try:
-                filters = json.loads(raw_filters)
-            except (ValueError, TypeError):
-                filters = None
-        else:
-            filters = raw_filters
+        filters = parsed_filters_by_id.get(wid)
 
         if _is_trivial_watchlist(filters, company_count):
             trivial_ids.append(wid)
@@ -2320,6 +2470,12 @@ async def sync_watchlists_typesense(
             doc["description"] = r["description"]
         if r["owner_username"]:
             doc["owner_username"] = r["owner_username"]
+        filters_json = _watchlist_filters_json(
+            filters,
+            resolved_filter_ids_by_id.get(wid, {}),
+        )
+        if filters_json:
+            doc["filters_json"] = filters_json
         docs.append(doc)
 
     loop = asyncio.get_event_loop()
