@@ -166,17 +166,24 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 
 | Cost | Type              | Return   | Auto-scraper | Method                                  |
 |------|-------------------|----------|-------------|-----------------------------------------|
+| 8    | `eightfold`       | URL-only | eightfold   | Eightfold AI sitemap + position API fallback |
 | 9    | `join`            | URL-only | nextdata    | JOIN (join.com) Next.js data            |
+| 9    | `phenom`          | URL-only | json-ld     | Phenom People sitemap-based discovery   |
+| 10   | `accenture`       | Rich     | skip        | Accenture career API                    |
+| 10   | `almacareer`      | Rich     | skip        | AlmaCareer / Capybara GraphQL API       |
 | 10   | `amazon`          | Rich     | skip        | Amazon Jobs                             |
 | 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |
 | 10   | `bite`            | URL-only | bite        | b-ite.com ATS API                       |
 | 10   | `breezy`          | URL-only | json-ld     | Breezy HR listing endpoint              |
+| 10   | `deel`            | Rich     | skip        | Deel ATS API                            |
 | 10   | `dvinci`          | Rich     | skip        | d.vinci ATS API                         |
 | 10   | `gem`             | Rich     | skip        | Gem ATS API                             |
 | 10   | `greenhouse`      | Rich     | skip        | Greenhouse JSON API                     |
 | 10   | `hireology`       | Rich     | skip        | Hireology Careers API                   |
+| 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
-| 10   | `personio`        | Rich*    | --          | Personio XML Feed (*HTML fallback needs scraper) |
+| 10   | `mokahr`          | Rich     | skip        | Mokahr encrypted listing API            |
+| 10   | `personio`        | Conditional* | --     | Personio XML feed; HTML fallback needs scraper |
 | 10   | `pinpoint`        | Rich     | skip        | Pinpoint API                            |
 | 10   | `recruitee`       | Rich     | skip        | Recruitee Careers API                   |
 | 10   | `rippling`        | URL-only | rippling    | Rippling ATS API                        |
@@ -186,10 +193,21 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `traffit`         | Rich     | skip        | Traffit ATS API                         |
 | 10   | `workable`        | URL-only | workable    | Workable API                            |
 | 10   | `workday`         | URL-only | workday     | Workday Job Board API                   |
-| 20   | `nextdata`        | URL-only | --          | Next.js `__NEXT_DATA__` extraction      |
+| 10   | `ycombinator`     | URL-only | json-ld     | YCombinator Jobs fallback pages         |
+| 15   | `notion`          | URL-only | --          | Notion internal API enumeration         |
+| 15   | `oracle_hcm`      | Rich     | oracle_hcm  | Oracle HCM REST API + description enrich |
+| 15   | `recruiter_co_kr` | Rich     | skip        | Recruiter.co.kr API                     |
+| 15   | `umantis`         | URL-only | --          | Umantis HTML listings                   |
+| 20   | `nextdata`        | Conditional* | skip/-- | Embedded JSON / Next.js data extraction |
+| 45   | `talentbrew`      | URL-only | json-ld     | TalentBrew/Radancy search results       |
 | 50   | `sitemap`         | URL-only | --          | XML sitemap parsing (auto-discovery)    |
-| 80   | `api_sniffer`     | URL-only | --          | Playwright XHR/fetch capture            |
+| 60   | `inline`          | Rich     | skip        | Inline single-page job extraction       |
+| 80   | `api_sniffer`     | Conditional* | skip/-- | Playwright XHR/fetch capture            |
 | 100  | `dom`             | URL-only | --          | Static/Playwright DOM link extraction   |
+
+*Conditional monitors return rich data only when their runtime source/config
+provides full fields. Without that condition, they behave like URL-only
+monitors and need an explicit or auto-resolved scraper.
 
 ---
 
@@ -209,11 +227,22 @@ src/core/scrape.py               # scrape_one() dispatcher
 
 | Type           | Method                                             | Config Required        |
 |----------------|----------------------------------------------------|------------------------|
+| `api_sniffer`  | Capture XHR/fetch network requests on job pages    | `{api_url, fields, pagination}` |
+| `bite`         | Fetch BITE detail JSON                             | None                   |
+| `dom`          | Step-based DOM extraction (static or Playwright)   | `{steps, render, ...}` |
+| `eightfold`    | JSON-LD extraction with Eightfold position API fallback | None              |
+| `embedded`     | Parse embedded JSON/RSC data from page source      | `{pattern/script_id/source, path, fields}` |
 | `json-ld`      | Parse `<script type="application/ld+json">` (JobPosting schema) | None (auto)    |
+| `mokahr`       | Fetch and decrypt Mokahr detail API records        | None                   |
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |
-| `embedded`     | Parse embedded JSON (script tags, data attributes)  | `{pattern, path, fields}` |
-| `dom`          | Step-based DOM extraction (static or Playwright)    | `{steps, render, ...}` |
-| `api_sniffer`  | Capture XHR/fetch network requests                  | `{api_url, fields, pagination}` |
+| `notion`       | Convert Notion API blocks to structured content    | `property_map` optional |
+| `oracle_hcm`   | Fetch Oracle HCM detail REST responses             | `{host, site}`         |
+| `pdf`          | Download PDF files and extract text content        | Title extraction optional |
+| `rippling`     | Fetch Rippling detail API records                  | None                   |
+| `skip`         | No-scrape marker for rich monitor output           | None                   |
+| `smartrecruiters` | Fetch SmartRecruiters detail API records        | None                   |
+| `workable`     | Fetch Workable detail API records                  | None                   |
+| `workday`      | Fetch Workday detail API records                   | None                   |
 
 ---
 

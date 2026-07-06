@@ -32,32 +32,46 @@ A monitor takes a board config and returns either **full job data** (rich monito
 
 | Type | Kind | Auto-scraper | When to Use |
 |------|------|-------------|-------------|
+| `eightfold` | URL-only | eightfold | Eightfold AI sitemap-backed portals |
+| `join` | URL-only | nextdata | JOIN (join.com) Next.js pages |
+| `phenom` | URL-only | json-ld | Phenom People career sites |
+| `accenture` | Rich | skip | Accenture careers API |
+| `almacareer` | Rich | skip | AlmaCareer / Capybara GraphQL boards |
 | `amazon` | Rich | skip | Amazon Jobs |
 | `ashby` | Rich | skip | Ashby ATS |
+| `bite` | URL-only | bite | b-ite.com ATS |
+| `breezy` | URL-only | json-ld (+dom fallback) | Breezy HR |
+| `deel` | Rich | skip | Deel ATS |
 | `dvinci` | Rich | skip | d.vinci ATS |
 | `gem` | Rich | skip | Gem ATS |
 | `greenhouse` | Rich | skip | Greenhouse ATS |
 | `hireology` | Rich | skip | Hireology ATS |
+| `jobylon` | Rich | skip | Jobylon iframe embeds |
 | `lever` | Rich | skip | Lever ATS |
+| `mokahr` | Rich | skip | Mokahr ATS |
+| `personio` | Conditional* | — | Personio XML feed; HTML fallback needs scraper |
 | `pinpoint` | Rich | skip | Pinpoint ATS |
 | `recruitee` | Rich | skip | Recruitee ATS |
-| `rss` | Rich | skip | RSS 2.0 feeds (SuccessFactors, Teamtailor, etc.) |
-| `traffit` | Rich | skip | Traffit ATS |
-| `personio` | Rich* | — | Personio (*rich via XML feed, HTML fallback needs scraper) |
-| `bite` | URL-only | bite | b-ite.com ATS |
-| `breezy` | URL-only | json-ld (+dom fallback) | Breezy HR |
-| `join` | URL-only | nextdata | JOIN (join.com) |
 | `rippling` | URL-only | rippling | Rippling ATS |
+| `rss` | Rich | skip | RSS 2.0 feeds (SuccessFactors, Teamtailor, etc.) |
 | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters ATS |
 | `softgarden` | URL-only | json-ld | Softgarden ATS |
+| `traffit` | Rich | skip | Traffit ATS |
 | `workable` | URL-only | workable | Workable ATS |
 | `workday` | URL-only | workday | Workday ATS |
-| `api_sniffer` | Rich* | skip/— | XHR/fetch capture (*rich when `fields` configured) |
-| `nextdata` | URL-only* | skip/— | Next.js `__NEXT_DATA__` (*rich when `fields` configured) |
+| `ycombinator` | URL-only | json-ld | YC Jobs fallback pages |
+| `notion` | URL-only | — | Public Notion job pages/databases |
+| `oracle_hcm` | Rich | oracle_hcm | Oracle HCM listings plus description enrichment |
+| `recruiter_co_kr` | Rich | skip | Recruiter.co.kr ATS |
+| `umantis` | URL-only | — | Umantis server-rendered listings |
+| `nextdata` | Conditional* | skip/— | Embedded JSON / Next.js data; rich when `fields` is configured |
+| `talentbrew` | URL-only | json-ld | TalentBrew / Radancy search pages |
 | `sitemap` | URL-only | — | Site has an XML sitemap with job URLs |
+| `inline` | Rich | skip | Single-page inline job listings |
+| `api_sniffer` | Conditional* | skip/— | XHR/fetch capture; rich when `fields` is configured |
 | `dom` | URL-only | — | Last resort — link extraction from page HTML |
 
-Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection.
+Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection. Conditional monitors return rich data only under the condition named in the table; otherwise they need a scraper or runtime coverage check.
 
 ### greenhouse
 
@@ -187,12 +201,22 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 
 | Type | Fetch mode | How it works |
 |------|-----------|-------------|
-| `json-ld` | Static | Parses `<script type="application/ld+json">` |
-| `nextdata` | Static or Playwright | Extracts from Next.js `__NEXT_DATA__` props |
-| `embedded` | Static | Extracts from embedded JSON/JS data in page source |
+| `api_sniffer` | Playwright | Captures XHR/fetch API responses on job detail pages |
+| `bite` | Static | Fetches BITE detail JSON |
 | `dom` | Static or Playwright | Step-based extraction engine |
-| `api_sniffer` | Playwright | Captures XHR/fetch API responses |
+| `eightfold` | Static | JSON-LD extraction with Eightfold position API fallback |
+| `embedded` | Static | Extracts from embedded JSON/JS data in page source |
+| `json-ld` | Static | Parses `<script type="application/ld+json">` |
+| `mokahr` | Static | Fetches and decrypts Mokahr detail API records |
+| `nextdata` | Static or Playwright | Extracts from Next.js `__NEXT_DATA__` props |
+| `notion` | Static | Loads Notion blocks through Notion's internal API |
+| `oracle_hcm` | Static | Fetches Oracle HCM detail REST responses |
+| `pdf` | Static | Downloads PDFs and extracts text content |
+| `rippling` | Static | Fetches Rippling detail API records |
 | `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |
+| `smartrecruiters` | Static | Fetches SmartRecruiters detail API records |
+| `workable` | Static | Fetches Workable detail API records |
+| `workday` | Static | Fetches Workday detail API records |
 
 > **Note:** API monitors (ashby, greenhouse, lever, etc.) return full job data directly — no scraper is needed. The `scraper_type` column is left empty for these, or set to `skip` when an explicit no-scrape marker is useful.
 
