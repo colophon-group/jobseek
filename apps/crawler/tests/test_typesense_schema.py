@@ -16,6 +16,7 @@ from unittest.mock import MagicMock
 
 import pytest
 import structlog
+from typesense.exceptions import ObjectNotFound, ObjectUnprocessable
 
 # Same env-stub pattern as test_exporter.py — src.config requires it at import.
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
@@ -481,6 +482,112 @@ def test_patch_logs_added_and_rebuilt_names() -> None:
     assert patching["collection"] == "company"
     assert patching["added"] == ["logo"]
     assert patching["rebuilt"] == ["slug"]
+
+
+def test_patch_tolerates_in_progress_alter_when_schema_is_already_applied() -> None:
+    """A deploy PATCH can time out while Typesense keeps altering the schema.
+    If the client retry then sees the cluster-wide "another update is in
+    progress" 422, setup must re-read the schema and accept success once the
+    desired field is present instead of aborting the deploy."""
+    client = MagicMock()
+    collection = client.collections.__getitem__.return_value
+    collection.retrieve.side_effect = [
+        {"fields": [{"name": "name", "type": "string", "index": True}]},
+        {
+            "fields": [
+                {"name": "name", "type": "string", "index": True},
+                {"name": "logo", "type": "string", "optional": True, "index": True},
+            ]
+        },
+    ]
+    collection.update.side_effect = ObjectUnprocessable(
+        "[Errno 422] Another collection update operation is in progress."
+    )
+    client.api_call.get.return_value = []
+
+    _patch_missing_fields(
+        client,
+        "company",
+        desired_fields=[
+            {"name": "name", "type": "string"},
+            {"name": "logo", "type": "string", "optional": True},
+        ],
+    )
+
+    collection.update.assert_called_once()
+    assert collection.retrieve.call_count == 2
+
+
+def test_patch_retries_in_progress_alter_when_status_endpoint_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Typesense 27.1 does not expose ``GET /operations/schema_changes``.
+    The deploy path still needs to back off and retry when it sees the
+    in-progress 422, because the original PATCH may finish server-side."""
+    import src.typesense_schema as ts_mod
+
+    monkeypatch.setattr(ts_mod.time, "sleep", lambda _seconds: None)
+
+    client = MagicMock()
+    collection = client.collections.__getitem__.return_value
+    collection.retrieve.side_effect = [
+        {"fields": [{"name": "name", "type": "string", "index": True}]},
+        {"fields": [{"name": "name", "type": "string", "index": True}]},
+    ]
+    collection.update.side_effect = [
+        ObjectUnprocessable("[Errno 422] Another collection update operation is in progress."),
+        None,
+    ]
+    client.api_call.get.side_effect = ObjectNotFound("missing")
+
+    _patch_missing_fields(
+        client,
+        "company",
+        desired_fields=[
+            {"name": "name", "type": "string"},
+            {"name": "logo", "type": "string", "optional": True},
+        ],
+    )
+
+    assert client.api_call.get.called
+    assert collection.update.call_count == 2
+
+
+def test_run_setup_uses_long_timeout_for_schema_alters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The deploy setup client needs a timeout longer than Typesense's default
+    retry window so large in-place schema alters do not self-retry too early."""
+    import typesense
+
+    import src.config as config_mod
+    import src.typesense_schema as ts_mod
+
+    created_config: dict = {}
+
+    class FakeOperations:
+        @staticmethod
+        def is_healthy() -> bool:
+            return True
+
+    class FakeClient:
+        operations = FakeOperations()
+
+        def __init__(self, config: dict) -> None:
+            created_config.update(config)
+
+    setup_collections = MagicMock()
+    monkeypatch.setattr(typesense, "Client", FakeClient)
+    monkeypatch.setattr(ts_mod, "setup_collections", setup_collections)
+    monkeypatch.setattr(config_mod.settings, "typesense_admin_key", "admin-key")
+    monkeypatch.setattr(config_mod.settings, "typesense_host", "typesense.local")
+    monkeypatch.setattr(config_mod.settings, "typesense_port", 8108)
+    monkeypatch.setattr(config_mod.settings, "typesense_protocol", "http")
+
+    ts_mod.run_setup()
+
+    assert created_config["connection_timeout_seconds"] == ts_mod._SETUP_CONNECTION_TIMEOUT_SECONDS
+    setup_collections.assert_called_once()
 
 
 def test_setup_collections_alias_create_error_logs_structured_event() -> None:
