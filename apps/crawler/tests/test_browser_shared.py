@@ -441,11 +441,10 @@ class TestOpenPage:
 
     async def test_closes_browser_on_exception(self):
         pw = _make_pw()
-        browser = pw.chromium.launch.return_value
         with pytest.raises(RuntimeError):
             async with open_page(pw):
                 raise RuntimeError("test error")
-        browser.close.assert_awaited_once()
+        pw.chromium.launch.return_value.close.assert_awaited_once()
 
     async def test_closes_context_before_browser(self):
         pw = _make_pw()
@@ -459,11 +458,10 @@ class TestOpenPage:
     async def test_closes_context_on_exception(self):
         pw = _make_pw()
         browser = pw.chromium.launch.return_value
-        context = browser.new_context.return_value
         with pytest.raises(RuntimeError):
             async with open_page(pw):
                 raise RuntimeError("test error")
-        context.close.assert_awaited_once()
+        browser.new_context.return_value.close.assert_awaited_once()
         browser.close.assert_awaited_once()
 
     async def test_use_proxy_false_does_not_pass_proxy_kwarg(self):
