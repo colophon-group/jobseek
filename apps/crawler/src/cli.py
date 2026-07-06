@@ -25,6 +25,7 @@ from src.db import close_all_pools, create_local_pool, create_pool  # noqa: E402
 from src.metrics import start_metrics_server  # noqa: E402
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
+from src.shared.output import tty_message  # noqa: E402
 
 log = structlog.get_logger()
 
@@ -479,7 +480,13 @@ async def run() -> None:
             local_pool = await create_local_pool()
             async with local_pool.acquire() as conn:
                 output = await report_stale_boards(conn, days=args.days, fmt=args.format)
-            print(output)
+            log.info(
+                "retire_stale_boards.report",
+                days=args.days,
+                format=args.format,
+                output=output,
+            )
+            tty_message(output)
 
     finally:
         log.info("cli.shutting_down")
