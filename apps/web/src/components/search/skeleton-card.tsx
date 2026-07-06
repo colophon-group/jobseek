@@ -7,6 +7,8 @@ import { Trans } from "@lingui/react/macro";
 // in a busy state. The visually-hidden child gives the SR an actual phrase
 // to announce when the skeleton mounts (closes #3190).
 export function SkeletonCards({ count = 3 }: { count?: number }) {
+  const skeletonKeys = Array.from({ length: count }, (_, index) => `skeleton-card-${index}`);
+
   return (
     <div
       role="status"
@@ -22,9 +24,9 @@ export function SkeletonCards({ count = 3 }: { count?: number }) {
           Loading results
         </Trans>
       </span>
-      {Array.from({ length: count }, (_, i) => (
+      {skeletonKeys.map((key) => (
         <div
-          key={i}
+          key={key}
           aria-hidden="true"
           className="animate-pulse rounded-md border border-divider bg-surface p-4"
         >

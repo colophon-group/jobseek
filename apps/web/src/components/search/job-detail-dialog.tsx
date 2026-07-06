@@ -24,6 +24,16 @@ import { usePageActions } from "@/components/SearchStateProvider";
 import { useSalaryDisplay } from "@/components/SalaryDisplayProvider";
 import { timeAgoShort } from "@/lib/time";
 
+const TRACKING_SKELETON_CHIPS = ["saved", "applied", "interviewing", "offered"] as const;
+const DETAIL_DESCRIPTION_SKELETON_LINES = [
+  { id: "description-line-1", width: "94%" },
+  { id: "description-line-2", width: "82%" },
+  { id: "description-line-3", width: "88%" },
+  { id: "description-line-4", width: "72%" },
+  { id: "description-line-5", width: "97%" },
+  { id: "description-line-6", width: "79%" },
+] as const;
+
 interface JobDetailPanelProps {
   postingId: string | null;
   onClose: () => void;
@@ -251,7 +261,9 @@ function DetailContent({ detail, descriptionLoaded }: { detail: PostingDetail; d
           {!interviewsLoaded ? (
             <div className="animate-pulse space-y-2">
               <div className="flex gap-1">
-                {Array.from({ length: 4 }, (_, i) => <div key={i} className="h-5 w-16 rounded-full bg-border-soft" />)}
+                {TRACKING_SKELETON_CHIPS.map((slot) => (
+                  <div key={slot} className="h-5 w-16 rounded-full bg-border-soft" />
+                ))}
               </div>
               <div className="h-4 w-24 rounded bg-border-soft" />
             </div>
@@ -314,8 +326,8 @@ function LocationList({ locations, onClickLocation }: { locations: PostingDetail
         <Trans id="search.detail.locations" comment="Locations heading in job detail">Locations</Trans>
       </p>
       <ul className="space-y-0.5">
-        {visible.map((loc, i) => (
-          <li key={i} className="flex items-center gap-1.5 text-sm">
+        {visible.map((loc) => (
+          <li key={loc.id} className="flex items-center gap-1.5 text-sm">
             <MapPin size={12} className="shrink-0 text-muted" />
             {onClickLocation ? (
               <Tooltip.Root>
@@ -533,8 +545,8 @@ function DetailSkeleton() {
       <div aria-hidden="true" className="h-3 w-32 rounded bg-border-soft" />
       <hr aria-hidden="true" className="border-divider" />
       <div aria-hidden="true" className="space-y-2">
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="h-3 rounded bg-border-soft" style={{ width: `${65 + Math.random() * 35}%` }} />
+        {DETAIL_DESCRIPTION_SKELETON_LINES.map((line) => (
+          <div key={line.id} className="h-3 rounded bg-border-soft" style={{ width: line.width }} />
         ))}
       </div>
     </div>
@@ -580,5 +592,4 @@ function FilterPill({
     </Tooltip.Root>
   );
 }
-
 

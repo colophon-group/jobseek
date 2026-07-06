@@ -175,9 +175,9 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
         height={svgH}
       >
         {/* Month labels */}
-        {monthHeaders.map((m, i) => (
+        {monthHeaders.map((m) => (
           <text
-            key={i}
+            key={`month-${m.col}`}
             x={labelW + m.col * STEP}
             y={11}
             className="fill-muted"
@@ -188,12 +188,12 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
         ))}
 
         {/* Day labels */}
-        {DAY_LABELS.map((label, i) =>
+        {DAY_LABELS.map((label, day) =>
           label ? (
             <text
-              key={i}
+              key={`day-${day}`}
               x={0}
-              y={monthH + i * STEP + CELL - 1}
+              y={monthH + day * STEP + CELL - 1}
               className="fill-muted"
               style={{ fontSize: 8, fontFamily: "'JetBrains Mono', monospace" }}
             >

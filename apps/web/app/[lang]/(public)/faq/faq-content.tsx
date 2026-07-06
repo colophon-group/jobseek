@@ -47,8 +47,8 @@ export function FaqContent({ items }: { items: FaqItem[] }) {
         </div>
 
         <div className="mt-12">
-          {items.map((item, i) => (
-            <FaqItem key={i} item={item} />
+          {items.map((item) => (
+            <FaqItem key={item.q} item={item} />
           ))}
         </div>
       </div>

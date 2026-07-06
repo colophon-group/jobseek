@@ -21,6 +21,13 @@ import { useSavedJobs } from "@/components/SavedJobsProvider";
 
 const BATCH = 20;
 const LS_KEY = "my-jobs-view";
+const MY_JOBS_SKELETON_ROWS = [
+  "job-row-skeleton-1",
+  "job-row-skeleton-2",
+  "job-row-skeleton-3",
+  "job-row-skeleton-4",
+  "job-row-skeleton-5",
+] as const;
 
 function useStatusGroupLabels(): Record<ApplicationStatus, string> {
   const { t } = useLingui();
@@ -271,8 +278,8 @@ export function MyJobsPage({
             <div className="h-7 w-32 rounded-md bg-border-soft" />
             <div className="h-7 w-24 rounded-md bg-border-soft" />
           </div>
-          {Array.from({ length: 5 }, (_, i) => (
-            <div key={i} className="flex items-center gap-2.5 px-2 py-2">
+          {MY_JOBS_SKELETON_ROWS.map((slot) => (
+            <div key={slot} className="flex items-center gap-2.5 px-2 py-2">
               <div className="size-6 rounded bg-border-soft" />
               <div className="h-4 w-20 rounded bg-border-soft" />
               <div className="h-4 flex-1 rounded bg-border-soft" />
