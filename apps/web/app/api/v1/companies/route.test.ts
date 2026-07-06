@@ -36,6 +36,15 @@ describe("GET /api/v1/companies service boundary (#3331)", () => {
     mocks.suggestCompanies.mockReset();
   });
 
+  it("returns 400 when the required `q` param is missing (#3213)", async () => {
+    const res = await GET(makeReq("?locale=en"));
+    const body = (await res.json()) as { error?: string };
+
+    expect(res.status).toBe(400);
+    expect(body.error).toMatch(/Missing required 'q' param/);
+    expect(mocks.suggestCompanies).not.toHaveBeenCalled();
+  });
+
   it("resolves company suggestions through the service tier", async () => {
     mocks.suggestCompanies.mockResolvedValue([
       {

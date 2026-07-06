@@ -82,6 +82,22 @@ describe("GET /api/v1/resolve?type=industries (issue #3228)", () => {
     mocks.suggestIndustries.mockReset();
   });
 
+  it("returns 400 when the required `type` param is missing (#3213)", async () => {
+    const { res, body } = await call("?q=tech");
+
+    expect(res.status).toBe(400);
+    expect(body.error).toMatch(/Missing or invalid 'type' param/);
+    expect(mocks.suggestIndustries).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when the required `q` param is missing or too short (#3213)", async () => {
+    const { res, body } = await call("?type=industries&q=t");
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("Missing or too short 'q' param (min 2 chars)");
+    expect(mocks.suggestIndustries).not.toHaveBeenCalled();
+  });
+
   it("emits a slug-shaped string for each industry, NOT the stringified id", async () => {
     mocks.suggestIndustries.mockResolvedValue([
       { id: 3, name: "Technology" },

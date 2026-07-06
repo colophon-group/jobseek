@@ -37,14 +37,14 @@ export async function GET(request: NextRequest) {
       {
         error: `Missing or invalid 'type' param. Valid: ${VALID_TYPES.join(", ")}`,
       },
-      { maxAge: 0 },
+      { maxAge: 0, status: 400 },
     );
   }
 
   if (!q || q.trim().length < 2) {
     return apiResponse(
       { error: "Missing or too short 'q' param (min 2 chars)" },
-      { maxAge: 0 },
+      { maxAge: 0, status: 400 },
     );
   }
 

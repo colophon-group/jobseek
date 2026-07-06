@@ -41,10 +41,19 @@ export async function checkRateLimit(
   return null;
 }
 
-/** Build a JSON response with standard headers. */
+/** Build a JSON response with standard API headers.
+ *
+ * Public `/api/v1/*` contract errors should pass an explicit non-2xx status
+ * so standard `response.ok` callers do not treat malformed requests as
+ * successful empty payloads.
+ */
 export function apiResponse(
   data: unknown,
-  options?: { maxAge?: number; rateLimit?: RateLimitInfo | null },
+  options?: {
+    maxAge?: number;
+    rateLimit?: RateLimitInfo | null;
+    status?: number;
+  },
 ): NextResponse {
   const maxAge = options?.maxAge ?? CACHE_TTL_MEDIUM;
   const headers: Record<string, string> = {
@@ -57,7 +66,7 @@ export function apiResponse(
     headers["X-RateLimit-Remaining"] = String(options.rateLimit.remaining);
     headers["X-RateLimit-Reset"] = String(options.rateLimit.reset);
   }
-  return NextResponse.json(data, { headers });
+  return NextResponse.json(data, { headers, status: options?.status });
 }
 
 /** Build the full URL to the site for a given path. */

@@ -104,3 +104,12 @@ describe("checkRateLimit — Redis bypass observability (#3175)", () => {
     expect(result && "status" in result && result.status).toBe(429);
   });
 });
+
+describe("apiResponse status contract (#3213)", () => {
+  it("uses 200 by default but honors explicit non-2xx status codes", async () => {
+    const { apiResponse } = await import("./_shared");
+
+    expect(apiResponse({ ok: true }).status).toBe(200);
+    expect(apiResponse({ error: "Bad request" }, { status: 400 }).status).toBe(400);
+  });
+});

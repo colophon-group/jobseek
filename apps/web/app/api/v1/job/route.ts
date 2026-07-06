@@ -12,18 +12,18 @@ export async function GET(request: NextRequest) {
   const locale = sp.get("locale") ?? "en";
 
   if (!id) {
-    return NextResponse.json(
+    return apiResponse(
       { error: "Missing required parameter: id" },
-      { status: 400 },
+      { maxAge: 0, status: 400 },
     );
   }
 
   const detail = await getPostingDetail({ postingId: id, locale });
 
   if (!detail) {
-    return NextResponse.json(
+    return apiResponse(
       { error: "Job posting not found" },
-      { status: 404 },
+      { maxAge: 0, status: 404 },
     );
   }
 

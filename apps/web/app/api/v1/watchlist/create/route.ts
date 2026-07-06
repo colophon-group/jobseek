@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   if (!title) {
     return apiResponse(
       { error: "Missing required 'title' param" },
-      { maxAge: 0 },
+      { maxAge: 0, status: 400 },
     );
   }
 

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   if (!type || !VALID_TYPES.includes(type)) {
     return apiResponse(
       { error: `Missing or invalid 'type' param. Valid: ${VALID_TYPES.join(", ")}` },
-      { maxAge: 0 },
+      { maxAge: 0, status: 400 },
     );
   }
 
