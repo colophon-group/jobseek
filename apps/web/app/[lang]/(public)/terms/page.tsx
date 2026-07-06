@@ -14,9 +14,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n._({ id: "terms.meta.title", message: "Terms of Service" });
+  const title = i18n._({
+    id: "terms.meta.title",
+    comment: "SEO title for the public Terms of Service page.",
+    message: "Terms of Service",
+  });
   const description = i18n._({
     id: "terms.meta.description",
+    comment: "SEO description for the public Terms of Service page.",
     message: "Terms of Service for Job Seek — usage rules, intellectual property, account responsibilities, limitation of liability, and governing law for the job search platform.",
   });
 
@@ -47,8 +52,16 @@ export default async function TermsPage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: i18n._({ id: "terms.meta.title", message: "Terms of Service" }),
-        description: i18n._({ id: "terms.meta.description", message: "Terms of Service for Job Seek — usage rules, intellectual property, account responsibilities, limitation of liability, and governing law for the job search platform." }),
+        name: i18n._({
+          id: "terms.meta.title",
+          comment: "JSON-LD page name for the public Terms of Service page.",
+          message: "Terms of Service",
+        }),
+        description: i18n._({
+          id: "terms.meta.description",
+          comment: "JSON-LD page description for the public Terms of Service page.",
+          message: "Terms of Service for Job Seek — usage rules, intellectual property, account responsibilities, limitation of liability, and governing law for the job search platform.",
+        }),
         url: `${siteConfig.url}/${locale}/terms`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

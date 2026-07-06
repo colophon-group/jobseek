@@ -14,9 +14,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n._({ id: "indexing.meta.title", message: "How We Index" });
+  const title = i18n._({
+    id: "indexing.meta.title",
+    comment: "SEO title for the public Job Indexing methodology page.",
+    message: "How We Index",
+  });
   const description = i18n._({
     id: "indexing.meta.description",
+    comment: "SEO description for the public Job Indexing methodology page.",
     message: "How Job Seek discovers and indexes job postings: our sourcing approach, crawl frequency, rate limits, robots.txt and TDM-Reservation compliance, and how to opt out.",
   });
 
@@ -46,8 +51,16 @@ export default async function HowWeIndexPage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: i18n._({ id: "indexing.meta.title", message: "How We Index" }),
-        description: i18n._({ id: "indexing.meta.description", message: "How Job Seek discovers and indexes job postings: our sourcing approach, crawl frequency, rate limits, robots.txt and TDM-Reservation compliance, and how to opt out." }),
+        name: i18n._({
+          id: "indexing.meta.title",
+          comment: "JSON-LD page name for the public Job Indexing methodology page.",
+          message: "How We Index",
+        }),
+        description: i18n._({
+          id: "indexing.meta.description",
+          comment: "JSON-LD page description for the public Job Indexing methodology page.",
+          message: "How Job Seek discovers and indexes job postings: our sourcing approach, crawl frequency, rate limits, robots.txt and TDM-Reservation compliance, and how to opt out.",
+        }),
         url: `${siteConfig.url}/${locale}/how-we-index`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

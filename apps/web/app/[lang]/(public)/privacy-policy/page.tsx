@@ -14,9 +14,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n._({ id: "privacy.meta.title", message: "Privacy Policy" });
+  const title = i18n._({
+    id: "privacy.meta.title",
+    comment: "SEO title for the public Privacy Policy page.",
+    message: "Privacy Policy",
+  });
   const description = i18n._({
     id: "privacy.meta.description",
+    comment: "SEO description for the public Privacy Policy page.",
     message: "Job Seek privacy policy — what personal data we collect, how we use it, your GDPR rights, cookie policy, and how to request deletion of your account and data.",
   });
 
@@ -47,8 +52,16 @@ export default async function PrivacyPolicyPage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: i18n._({ id: "privacy.meta.title", message: "Privacy Policy" }),
-        description: i18n._({ id: "privacy.meta.description", message: "Job Seek privacy policy — what personal data we collect, how we use it, your GDPR rights, cookie policy, and how to request deletion of your account and data." }),
+        name: i18n._({
+          id: "privacy.meta.title",
+          comment: "JSON-LD page name for the public Privacy Policy page.",
+          message: "Privacy Policy",
+        }),
+        description: i18n._({
+          id: "privacy.meta.description",
+          comment: "JSON-LD page description for the public Privacy Policy page.",
+          message: "Job Seek privacy policy — what personal data we collect, how we use it, your GDPR rights, cookie policy, and how to request deletion of your account and data.",
+        }),
         url: `${siteConfig.url}/${locale}/privacy-policy`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
