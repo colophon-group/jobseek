@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import math
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -67,6 +68,32 @@ _EXPERIENCE_MAX_OPEN_ENDED = 99
 # Cursor is a (timestamp, id) pair for keyset pagination.
 # Stored as "ts_iso|uuid" in exporter_state.
 Cursor = tuple[datetime, uuid.UUID]
+
+
+def _encode_experience_for_typesense(
+    exp_min: object,
+    exp_max: object,
+) -> tuple[int, int, float, float]:
+    """Encode decimal-year experience values for Typesense.
+
+    ``experience_min``/``experience_max`` are legacy integer facets retained so
+    older documents keep matching during the float-field rollout. They are
+    conservative for decimal values: min rounds up and bounded max rounds down,
+    preventing the fallback branch from broadening precise float matches.
+    """
+    if exp_min is None:
+        return -1, -1, -1.0, -1.0
+
+    min_years = float(exp_min)
+    if exp_max is None:
+        max_years = float(_EXPERIENCE_MAX_OPEN_ENDED)
+        legacy_max = _EXPERIENCE_MAX_OPEN_ENDED
+    else:
+        max_years = float(exp_max)
+        legacy_max = math.floor(max_years)
+
+    legacy_min = math.ceil(min_years)
+    return legacy_min, legacy_max, min_years, max_years
 
 
 async def _get_cursor(pool: asyncpg.Pool, table: str) -> Cursor:
@@ -405,24 +432,16 @@ def _build_typesense_docs(
         tech_ids = row["technology_ids"] or []
         tech_names = [maps.technology_names.get(tid, "") for tid in tech_ids]
 
-        # Experience encoding for Typesense (issue #3217):
-        # - `experience_min = -1` (sentinel) when Postgres has NULL → "no
-        #   information from the extractor". `experience_max` mirrors -1 so
-        #   neither field gates the sentinel-OR clause in the web filter.
-        # - Open-ended ("N+ years"): Postgres stores `min=N, max=NULL`. We
-        #   stamp `experience_max = _EXPERIENCE_MAX_OPEN_ENDED` so the range
-        #   filter still matches users whose stated max is ≥ N (a "5+ years"
-        #   role is a valid hit for "5-10" or "exactly 6", but NOT for a
-        #   "2-4" filter — the row's `experience_min=5` excludes it via the
-        #   `experience_min <= user_max` half of the overlap test).
-        # - Bounded ("N-M years"): `min=N, max=M` straight through.
-        exp_min = row["experience_min"]
-        exp_max = row["experience_max"]
-        if exp_min is None:
-            exp_min = -1
-            exp_max = -1
-        elif exp_max is None:
-            exp_max = _EXPERIENCE_MAX_OPEN_ENDED
+        # Experience encoding for Typesense (issues #3217, #3289):
+        # - `experience_min_years` / `experience_max_years` are precise float
+        #   fields. Sentinel -1.0 means the extractor found no requirement;
+        #   open-ended ranges use 99.0 for max.
+        # - `experience_min` / `experience_max` remain integer compatibility
+        #   fields so existing docs keep matching while the new fields backfill.
+        exp_min, exp_max, exp_min_years, exp_max_years = _encode_experience_for_typesense(
+            row["experience_min"],
+            row["experience_max"],
+        )
 
         locales = row["locales"] or []
         if not locales:
@@ -458,6 +477,8 @@ def _build_typesense_docs(
             "employment_type": row["employment_type"] or "",
             "experience_min": exp_min,
             "experience_max": exp_max,
+            "experience_min_years": exp_min_years,
+            "experience_max_years": exp_max_years,
             "locales": list(locales),
             "first_seen_at": first_seen_ts,
         }
@@ -704,7 +725,7 @@ async def _upsert_to_supabase(
                 "  employment_type TEXT,"
                 "  salary_min INT, salary_max INT, salary_currency TEXT,"
                 "  salary_period TEXT, salary_eur INT,"
-                "  experience_min INT, experience_max INT,"
+                "  experience_min NUMERIC(3,1), experience_max NUMERIC(3,1),"
                 "  occupation_id INT, seniority_id INT,"
                 "  technology_ids INT[], description_r2_hash BIGINT,"
                 "  first_seen_at TIMESTAMPTZ"

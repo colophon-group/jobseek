@@ -36,6 +36,36 @@ class TestBasicPatterns:
         result = extract_experience(html)
         assert result == ExperienceRequirement(min_years=7, max_years=None)
 
+    def test_decimal_years(self):
+        html = "<li>Minimum 2.5 years of software engineering experience</li>"
+        result = extract_experience(html)
+        assert result == ExperienceRequirement(min_years=2.5, max_years=None)
+
+    def test_decimal_years_does_not_start_matching_after_dot(self):
+        html = "<li>At least 1.5+ years of sourcing or buying experience</li>"
+        result = extract_experience(html)
+        assert result == ExperienceRequirement(min_years=1.5, max_years=None)
+
+    def test_months(self):
+        html = "<li>8 months experience supporting enterprise customers</li>"
+        result = extract_experience(html)
+        assert result == ExperienceRequirement(min_years=0.7, max_years=None)
+
+    def test_plus_months(self):
+        html = "<li>6+ months of relevant experience in customer support</li>"
+        result = extract_experience(html)
+        assert result == ExperienceRequirement(min_years=0.5, max_years=None)
+
+    def test_month_range(self):
+        html = "<li>6-18 months of professional experience with logistics operations</li>"
+        result = extract_experience(html)
+        assert result == ExperienceRequirement(min_years=0.5, max_years=1.5)
+
+    def test_mixed_month_year_range(self):
+        html = "<li>Minimum 6 months to 1 year work experience in a similar BPO field</li>"
+        result = extract_experience(html)
+        assert result == ExperienceRequirement(min_years=0.5, max_years=1.0)
+
 
 class TestMultipleRequirements:
     """When multiple experience requirements exist, return the highest minimum."""
@@ -142,4 +172,19 @@ class TestFalsePositives:
 
     def test_since_year(self):
         html = "<p>Since 2005, we have spent 20 years building the best platform.</p>"
+        assert extract_experience(html) is None
+
+    def test_internship_duration_months_is_not_experience_requirement(self):
+        html = (
+            "<li>Able to commit at least 3 months, preferably in a business "
+            "administration or data analytics major.</li>"
+            "<li>Experience with Excel and data analytical tools.</li>"
+        )
+        assert extract_experience(html) is None
+
+    def test_commitment_duration_months_is_not_experience_requirement(self):
+        html = (
+            "<li>Able to commit to a full-time internship for at least 3 months.</li>"
+            "<li>Preferred Qualifications: Proven experience in procurement.</li>"
+        )
         assert extract_experience(html) is None

@@ -206,6 +206,13 @@ def test_minimal_section_payload_validates(kind: str):
     assert validate_schema(kind, payload) == []
 
 
+def test_requirements_schema_accepts_decimal_experience_years():
+    payload = _minimal_section_payload("requirements")
+    payload["years_experience_min"] = 0.5
+    payload["years_experience_max"] = 1.5
+    assert validate_schema("requirements", payload) == []
+
+
 def test_skill_category_closed_set_enforced():
     payload = _minimal_section_payload("requirements")
     payload["required_skills"] = [{"skill": "python", "category": "invented_category"}]

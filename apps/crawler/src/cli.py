@@ -90,6 +90,44 @@ def parse_args() -> argparse.Namespace:
         help="Report the count that would be affected; make no writes.",
     )
 
+    reprocess_exp_p = sub.add_parser(
+        "reprocess-experience",
+        help=(
+            "Recompute experience_min/experience_max from stored descriptions. "
+            "Default scope targets likely #3289 stale rows: active postings "
+            "with month or decimal-year requirements and current "
+            "experience_min NULL or 5."
+        ),
+    )
+    reprocess_exp_p.add_argument(
+        "--slug",
+        action="append",
+        default=None,
+        help="Limit to this company slug. Pass multiple times for several companies.",
+    )
+    reprocess_exp_p.add_argument(
+        "--all-candidates",
+        action="store_true",
+        help="Scan all active postings with stored descriptions instead of only likely stale rows.",
+    )
+    reprocess_exp_p.add_argument(
+        "--batch-size",
+        type=int,
+        default=1000,
+        help="Number of postings to scan per database batch (default 1000).",
+    )
+    reprocess_exp_p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Stop after this many changed postings; useful for staged production runs.",
+    )
+    reprocess_exp_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run extraction and report would-change rows; make no writes.",
+    )
+
     retry_p = sub.add_parser(
         "retry-stalled-scrapes",
         help=(
@@ -294,6 +332,28 @@ async def run() -> None:
                 "backfill_descriptions.done",
                 dry_run=args.dry_run,
                 count=n,
+                slugs=args.slug,
+            )
+
+        elif args.command == "reprocess-experience":
+            local_pool = await create_local_pool()
+            from src.backfill import reprocess_experience
+
+            summary = await reprocess_experience(
+                local_pool,
+                company_slugs=args.slug,
+                only_suspect=not args.all_candidates,
+                dry_run=args.dry_run,
+                batch_size=args.batch_size,
+                limit=args.limit,
+            )
+            log.info(
+                "reprocess_experience.done",
+                dry_run=args.dry_run,
+                scanned_postings=summary.scanned_postings,
+                changed_postings=summary.changed_postings,
+                updated_postings=summary.updated_postings,
+                only_suspect=not args.all_candidates,
                 slugs=args.slug,
             )
 

@@ -1236,8 +1236,8 @@ def _make_posting_record(
     occupation_id: int | None = None,
     titles: list[str] | None = None,
     description_r2_hash: int | None = 12345,
-    experience_min: int | None = None,
-    experience_max: int | None = None,
+    experience_min: float | None = None,
+    experience_max: float | None = None,
 ) -> MagicMock:
     """Simulate an asyncpg.Record for a job_posting row."""
     company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -1405,6 +1405,8 @@ class TestBuildTypesenseDocsExperience:
         docs = _build_typesense_docs([row], maps)
         assert docs[0]["experience_min"] == 5
         assert docs[0]["experience_max"] == 10
+        assert docs[0]["experience_min_years"] == 5.0
+        assert docs[0]["experience_max_years"] == 10.0
 
     def test_open_ended_uses_high_sentinel_for_max(self):
         """`5+ years` (Postgres `min=5, max=NULL`) → max stamped as 99 so the
@@ -1415,6 +1417,8 @@ class TestBuildTypesenseDocsExperience:
         docs = _build_typesense_docs([row], maps)
         assert docs[0]["experience_min"] == 5
         assert docs[0]["experience_max"] == 99
+        assert docs[0]["experience_min_years"] == 5.0
+        assert docs[0]["experience_max_years"] == 99.0
 
     def test_no_info_uses_minus_one_sentinel_for_both(self):
         """Postgres `min=NULL, max=NULL` (no extraction) → both fields -1 so
@@ -1425,6 +1429,8 @@ class TestBuildTypesenseDocsExperience:
         docs = _build_typesense_docs([row], maps)
         assert docs[0]["experience_min"] == -1
         assert docs[0]["experience_max"] == -1
+        assert docs[0]["experience_min_years"] == -1.0
+        assert docs[0]["experience_max_years"] == -1.0
 
     def test_exact_year_passes_through(self):
         """`exactly 6 years` (`min=6, max=6`) round-trips unchanged."""
@@ -1433,6 +1439,18 @@ class TestBuildTypesenseDocsExperience:
         docs = _build_typesense_docs([row], maps)
         assert docs[0]["experience_min"] == 6
         assert docs[0]["experience_max"] == 6
+        assert docs[0]["experience_min_years"] == 6.0
+        assert docs[0]["experience_max_years"] == 6.0
+
+    def test_decimal_years_use_precise_float_fields_and_conservative_legacy_fields(self):
+        """Decimal years stay precise while legacy fields cannot broaden matches."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10], experience_min=1.5, experience_max=2.5)
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["experience_min_years"] == 1.5
+        assert docs[0]["experience_max_years"] == 2.5
+        assert docs[0]["experience_min"] == 2
+        assert docs[0]["experience_max"] == 2
 
 
 class TestLoadLocationNames:

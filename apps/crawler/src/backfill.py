@@ -23,12 +23,17 @@ Usage::
 
 from __future__ import annotations
 
+import re
 import time
+from dataclasses import dataclass
+from decimal import Decimal
 from urllib.parse import urlparse
+from uuid import UUID
 
 import asyncpg
 import structlog
 
+from src.core.experience_extract import ExperienceRequirement, extract_experience
 from src.redis_queue import enqueue_scrape, get_redis
 
 log = structlog.get_logger()
@@ -51,6 +56,7 @@ log = structlog.get_logger()
 # Pass 2 (FETCH-ONLY): ``next_scrape_at IS NOT NULL`` rows. Already
 # scrape-eligible; just enqueue them. ``OFFSET`` walks the table.
 _BACKFILL_BATCH_SIZE = 5000
+_EXPERIENCE_REPROCESS_BATCH_SIZE = 1000
 
 _PROMOTE_NEXT_SCRAPE_BATCH = """
 WITH targets AS (
@@ -416,3 +422,235 @@ async def backfill_descriptions(
     else:
         log.info("backfill.descriptions.enqueued", enqueued=enqueued, slugs=slugs)
     return enqueued
+
+
+# ── reprocess_experience (#3289) ─────────────────────────────────────
+
+
+@dataclass(frozen=True, slots=True)
+class ExperienceReprocessSummary:
+    """Operator-facing counts for ``crawler reprocess-experience``."""
+
+    scanned_postings: int
+    changed_postings: int
+    updated_postings: int
+
+
+_FETCH_EXPERIENCE_REPROCESS_CANDIDATES = r"""
+WITH candidates AS (
+    SELECT
+        jp.id,
+        jp.experience_min::float8 AS experience_min,
+        jp.experience_max::float8 AS experience_max
+    FROM job_posting jp
+    JOIN company c ON c.id = jp.company_id
+    WHERE jp.is_active = true
+      AND ($1::uuid IS NULL OR jp.id > $1::uuid)
+      AND ($2::text[] IS NULL OR c.slug = ANY($2::text[]))
+      AND (
+        $3::boolean = false
+        OR jp.experience_min IS NULL
+        OR jp.experience_min = 5
+      )
+      AND EXISTS (
+        SELECT 1
+        FROM descriptions d
+        WHERE d.posting_id = jp.id
+          AND d.html IS NOT NULL
+          AND length(trim(d.html)) > 0
+      )
+    ORDER BY jp.id
+    LIMIT $4
+)
+SELECT
+    candidate.id::text AS id,
+    candidate.experience_min,
+    candidate.experience_max,
+    array_agg(
+        d.html
+        ORDER BY CASE WHEN d.locale = 'en' THEN 0 ELSE 1 END,
+                 d.updated_at DESC NULLS LAST
+    ) AS descriptions
+FROM candidates candidate
+JOIN descriptions d ON d.posting_id = candidate.id
+WHERE d.html IS NOT NULL
+  AND length(trim(d.html)) > 0
+GROUP BY candidate.id, candidate.experience_min, candidate.experience_max
+ORDER BY candidate.id
+"""
+
+
+_UPDATE_EXPERIENCE_REPROCESS_BATCH = """
+UPDATE job_posting AS jp
+SET
+    experience_min = u.experience_min,
+    experience_max = u.experience_max,
+    updated_at = now()
+FROM unnest($1::uuid[], $2::numeric[], $3::numeric[]) AS u(id, experience_min, experience_max)
+WHERE jp.id = u.id
+  AND (
+    jp.experience_min IS DISTINCT FROM u.experience_min
+    OR jp.experience_max IS DISTINCT FROM u.experience_max
+  )
+"""
+
+
+_SUSPECT_EXPERIENCE_REPROCESS_RE = re.compile(
+    r"\d{1,2}\s*(?:months?|Monate?|mois|mesi|meses|maanden|månader|måneder)"
+    r"|"
+    r"\d{1,2}[\.,]\d\s*[+＋]?\s*(?:years?|Jahre?|ans?|anni?|años?|jaar|år)",
+    re.IGNORECASE,
+)
+
+
+def _year_decimal(value: float | None) -> Decimal | None:
+    if value is None:
+        return None
+    return Decimal(str(value)).quantize(Decimal("0.1"))
+
+
+def _stored_year(value: object | None) -> Decimal | None:
+    if value is None:
+        return None
+    return Decimal(str(float(value))).quantize(Decimal("0.1"))
+
+
+def _best_experience(descriptions: list[str]) -> ExperienceRequirement | None:
+    best: ExperienceRequirement | None = None
+    for html in descriptions:
+        result = extract_experience(html)
+        if result is None:
+            continue
+        if best is None or result.min_years > best.min_years:
+            best = result
+    return best
+
+
+def _experience_changed(row: asyncpg.Record, extracted: ExperienceRequirement) -> bool:
+    return _stored_year(row["experience_min"]) != _year_decimal(
+        extracted.min_years
+    ) or _stored_year(row["experience_max"]) != _year_decimal(extracted.max_years)
+
+
+def _parse_update_count(status: str) -> int:
+    try:
+        return int(status.rsplit(" ", 1)[1])
+    except (IndexError, ValueError):
+        return 0
+
+
+async def reprocess_experience(
+    pool: asyncpg.Pool,
+    *,
+    company_slugs: list[str] | None = None,
+    only_suspect: bool = True,
+    dry_run: bool = False,
+    batch_size: int = _EXPERIENCE_REPROCESS_BATCH_SIZE,
+    limit: int | None = None,
+) -> ExperienceReprocessSummary:
+    """Recompute experience fields from stored descriptions.
+
+    The default scope is intentionally narrow for #3289 cleanup:
+    active postings whose stored descriptions mention months or decimal
+    years and whose current ``experience_min`` is either NULL (missed
+    months) or 5 (old decimal-year regex starting after the decimal
+    point). The helper only updates rows where the extractor now finds a
+    concrete value, so descriptions with internship durations such as
+    "3 months internship" stay untouched.
+
+    ``limit`` caps the number of changed postings considered, which is
+    useful for staged production runs. ``dry_run`` still performs the
+    extractor pass so the reported count is the number of rows that
+    would actually change, not just the SQL candidate count.
+    """
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+    if limit is not None and limit <= 0:
+        raise ValueError("limit must be positive when provided")
+
+    slugs = list(company_slugs) if company_slugs else None
+    last_id: str | None = None
+    scanned = 0
+    changed = 0
+    updated = 0
+
+    while True:
+        rows = await pool.fetch(
+            _FETCH_EXPERIENCE_REPROCESS_CANDIDATES,
+            last_id,
+            slugs,
+            only_suspect,
+            batch_size,
+        )
+        if not rows:
+            break
+
+        last_id = rows[-1]["id"]
+        updates: list[tuple[str, Decimal, Decimal | None]] = []
+        for row in rows:
+            scanned += 1
+            descriptions = [html for html in row["descriptions"] if html]
+            if only_suspect:
+                descriptions = [
+                    html for html in descriptions if _SUSPECT_EXPERIENCE_REPROCESS_RE.search(html)
+                ]
+            extracted = _best_experience(descriptions)
+            if extracted is None or not _experience_changed(row, extracted):
+                continue
+            min_years = _year_decimal(extracted.min_years)
+            if min_years is None:
+                continue
+            updates.append(
+                (
+                    row["id"],
+                    min_years,
+                    _year_decimal(extracted.max_years),
+                )
+            )
+
+        if limit is not None:
+            remaining = limit - changed
+            if remaining <= 0:
+                break
+            updates = updates[:remaining]
+
+        changed += len(updates)
+
+        if updates and not dry_run:
+            status = await pool.execute(
+                _UPDATE_EXPERIENCE_REPROCESS_BATCH,
+                [UUID(row_id) for row_id, _, _ in updates],
+                [min_years for _, min_years, _ in updates],
+                [max_years for _, _, max_years in updates],
+            )
+            updated += _parse_update_count(status)
+
+        log.info(
+            "backfill.experience.batch",
+            scanned=scanned,
+            changed=changed,
+            updated=updated,
+            dry_run=dry_run,
+            last_id=last_id,
+            only_suspect=only_suspect,
+            slugs=slugs,
+        )
+
+        if limit is not None and changed >= limit:
+            break
+
+    summary = ExperienceReprocessSummary(
+        scanned_postings=scanned,
+        changed_postings=changed,
+        updated_postings=updated,
+    )
+    log.info(
+        "backfill.experience.done",
+        scanned_postings=summary.scanned_postings,
+        changed_postings=summary.changed_postings,
+        updated_postings=summary.updated_postings,
+        dry_run=dry_run,
+        only_suspect=only_suspect,
+        slugs=slugs,
+    )
+    return summary

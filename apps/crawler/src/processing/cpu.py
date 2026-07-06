@@ -151,7 +151,7 @@ def _extract_salary_fields(
     return sal_min, sal_max, sr.currency, sr.period, salary_eur
 
 
-def _extract_experience_fields(html: str | None) -> tuple[int | None, int | None]:
+def _extract_experience_fields(html: str | None) -> tuple[float | None, float | None]:
     """Extract experience requirement from HTML.
 
     Returns (experience_min, experience_max). max is None for open-ended ("5+ years").

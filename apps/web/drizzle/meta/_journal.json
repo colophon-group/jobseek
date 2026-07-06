@@ -498,6 +498,13 @@
       "when": 1779148800000,
       "tag": "0079_tz_aware_auth_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1783335141000,
+      "tag": "0080_experience_decimal_years",
+      "breakpoints": true
     }
   ]
 }

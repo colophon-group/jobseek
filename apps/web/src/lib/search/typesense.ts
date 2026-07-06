@@ -38,7 +38,10 @@ interface JobPostingDoc {
   technology_ids: number[];
   employment_type?: string;
   salary_eur?: number;
+  experience_min_years?: number;
+  experience_max_years?: number;
   experience_min: number;
+  experience_max?: number;
   locales: string[];
   first_seen_at: number;
   last_seen_at?: number;

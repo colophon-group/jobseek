@@ -19,8 +19,8 @@
   ],
   "additionalProperties": false,
   "properties": {
-    "years_experience_min": {"type": ["integer", "null"], "minimum": 0},
-    "years_experience_max": {"type": ["integer", "null"], "minimum": 0},
+    "years_experience_min": {"type": ["number", "null"], "minimum": 0, "multipleOf": 0.1},
+    "years_experience_max": {"type": ["number", "null"], "minimum": 0, "multipleOf": 0.1},
     "education_level": {
       "type": ["string", "null"],
       "enum": [

@@ -10,11 +10,13 @@ Usage:
     TYPESENSE_ADMIN_KEY=local_dev_typesense_key \
     uv run python ../../scripts/typesense-backfill-local.py [--limit N]
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
 import csv
+import math
 import os
 import sys
 import time
@@ -27,6 +29,7 @@ log = structlog.get_logger()
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "apps", "crawler", "data")
 BATCH_SIZE = 500
+EXPERIENCE_MAX_OPEN_ENDED = 99
 
 
 def _build_typesense_client() -> typesense.Client:
@@ -43,6 +46,21 @@ def _build_typesense_client() -> typesense.Client:
             "connection_timeout_seconds": 10,
         }
     )
+
+
+def _encode_experience(exp_min: object, exp_max: object) -> tuple[int, int, float, float]:
+    if exp_min is None:
+        return -1, -1, -1.0, -1.0
+
+    min_years = float(exp_min)
+    if exp_max is None:
+        max_years = float(EXPERIENCE_MAX_OPEN_ENDED)
+        legacy_max = EXPERIENCE_MAX_OPEN_ENDED
+    else:
+        max_years = float(exp_max)
+        legacy_max = math.floor(max_years)
+    legacy_min = math.ceil(min_years)
+    return legacy_min, legacy_max, min_years, max_years
 
 
 def _load_companies_csv() -> dict[str, dict]:
@@ -65,8 +83,7 @@ async def _load_taxonomy_maps(conn: asyncpg.Connection) -> dict:
     # Location names (en only for denormalization)
     loc_names = {}
     rows = await conn.fetch(
-        "SELECT location_id, name FROM location_name "
-        "WHERE locale = 'en' AND is_display = true"
+        "SELECT location_id, name FROM location_name WHERE locale = 'en' AND is_display = true"
     )
     for r in rows:
         loc_names[r["location_id"]] = r["name"]
@@ -84,9 +101,7 @@ async def _load_taxonomy_maps(conn: asyncpg.Connection) -> dict:
         loc_parents[r["id"]] = r["parent_id"]
 
     macro_members: dict[int, list[int]] = defaultdict(list)
-    rows = await conn.fetch(
-        "SELECT country_id, macro_id FROM location_macro_member"
-    )
+    rows = await conn.fetch("SELECT country_id, macro_id FROM location_macro_member")
     for r in rows:
         macro_members[r["country_id"]].append(r["macro_id"])
 
@@ -104,8 +119,7 @@ async def _load_taxonomy_maps(conn: asyncpg.Connection) -> dict:
     # Occupation names
     occ_names = {}
     rows = await conn.fetch(
-        "SELECT occupation_id, name FROM occupation_name "
-        "WHERE locale = 'en' AND is_display = true"
+        "SELECT occupation_id, name FROM occupation_name WHERE locale = 'en' AND is_display = true"
     )
     for r in rows:
         occ_names[r["occupation_id"]] = r["name"]
@@ -128,8 +142,7 @@ async def _load_taxonomy_maps(conn: asyncpg.Connection) -> dict:
     # Seniority names
     sen_names = {}
     rows = await conn.fetch(
-        "SELECT seniority_id, name FROM seniority_name "
-        "WHERE locale = 'en' AND is_display = true"
+        "SELECT seniority_id, name FROM seniority_name WHERE locale = 'en' AND is_display = true"
     )
     for r in rows:
         sen_names[r["seniority_id"]] = r["name"]
@@ -213,8 +226,10 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
     tech_ids = row["technology_ids"] or []
     tech_names = [maps["tech_names"].get(tid, f"tech-{tid}") for tid in tech_ids]
 
-    exp_min = row["experience_min"]
-    experience_min = exp_min if exp_min is not None else -1
+    exp_min, exp_max, exp_min_years, exp_max_years = _encode_experience(
+        row["experience_min"],
+        row["experience_max"],
+    )
 
     locales = list(row["locales"]) if row["locales"] else ["_none"]
     if not locales:
@@ -237,7 +252,10 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
         "technology_ids": tech_ids,
         "technology_names": tech_names,
         "employment_type": row["employment_type"] or None,
-        "experience_min": experience_min,
+        "experience_min": exp_min,
+        "experience_max": exp_max,
+        "experience_min_years": exp_min_years,
+        "experience_max_years": exp_max_years,
         "locales": locales,
         "source_url": row["source_url"] or None,
         "first_seen_at": int(first_seen.timestamp()) if first_seen else 0,
@@ -283,6 +301,7 @@ async def backfill(limit: int | None = None):
     except Exception:
         # Try alternate health check
         import requests
+
         host = os.environ.get("TYPESENSE_HOST", "localhost")
         port = os.environ.get("TYPESENSE_PORT", "8108")
         proto = os.environ.get("TYPESENSE_PROTOCOL", "http")
@@ -324,7 +343,7 @@ async def backfill(limit: int | None = None):
             "SELECT id, company_id, board_id, is_active, locales, titles, "
             "location_ids, location_types, employment_type, source_url, "
             "first_seen_at, last_seen_at, salary_eur, experience_min, "
-            "occupation_id, seniority_id, technology_ids "
+            "experience_max, occupation_id, seniority_id, technology_ids "
             f"FROM job_posting ORDER BY first_seen_at, id "
             f"LIMIT {batch_limit} OFFSET {offset}"
         )
@@ -342,9 +361,7 @@ async def backfill(limit: int | None = None):
 
         if docs:
             try:
-                result = ts.collections["job_posting"].documents.import_(
-                    docs, {"action": "upsert"}
-                )
+                result = ts.collections["job_posting"].documents.import_(docs, {"action": "upsert"})
                 # Count failures in batch
                 batch_errors = sum(
                     1 for r in result if isinstance(r, dict) and not r.get("success", True)

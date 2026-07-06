@@ -151,10 +151,10 @@ export function buildFilterString(filters?: TypesenseFilterInput | null): string
     parts.push(`salary_eur:[${min}..${max}]`);
   }
 
-  // experience_min uses sentinel -1 for "not specified" (NULL in Postgres).
-  // experience_max uses 99 for open-ended ("5+ years") rows and -1 in lockstep
-  // with experience_min for the "no info" rows — both written by the exporter
-  // (see exporter.py: _EXPERIENCE_MAX_OPEN_ENDED + #3217).
+  // experience_min_years / experience_max_years preserve decimal-year
+  // requirements ("8 months" => 0.7, "1.5 years" => 1.5). The legacy
+  // experience_min / experience_max integer fields remain in the filter as a
+  // fallback for documents not yet backfilled into the precise fields.
   //
   // Range-overlap test: a row "needs N to M years" matches a user range
   // "wants X to Y years" iff `N <= Y && M >= X` (the two ranges intersect).
@@ -170,19 +170,19 @@ export function buildFilterString(filters?: TypesenseFilterInput | null): string
   const experienceMax = finiteNumber(filters.experienceMax);
   if (experienceMin != null && experienceMax != null) {
     parts.push(
-      `((experience_min:<=${experienceMax} && experience_max:>=${experienceMin}) || experience_min:=-1)`,
+      `((experience_min_years:<=${experienceMax} && experience_max_years:>=${experienceMin}) || experience_min_years:=-1 || (experience_min:<=${experienceMax} && experience_max:>=${experienceMin}) || experience_min:=-1)`,
     );
   } else if (experienceMin != null) {
     // No upper bound from the user → range is `[min, ∞)`. The row's
     // experience_max must reach the user's lower bound (or above).
     parts.push(
-      `(experience_max:>=${experienceMin} || experience_min:=-1)`,
+      `(experience_max_years:>=${experienceMin} || experience_min_years:=-1 || experience_max:>=${experienceMin} || experience_min:=-1)`,
     );
   } else if (experienceMax != null) {
     // No lower bound → range is `[0, max]`. The row's experience_min must
     // sit at or below the user's upper bound.
     parts.push(
-      `(experience_min:<=${experienceMax} || experience_min:=-1)`,
+      `(experience_min_years:<=${experienceMax} || experience_min_years:=-1 || experience_min:<=${experienceMax} || experience_min:=-1)`,
     );
   }
 

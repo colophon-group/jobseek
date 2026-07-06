@@ -46,7 +46,7 @@ Minimum stated education requirement. "Or equivalent experience" still counts as
 
 ### `experience`
 
-Years of experience requirement. Object with `min` and `max` (integers, either can be null).
+Years of experience requirement. Object with `min` and `max` (decimal years, one fractional digit allowed; either can be null).
 
 | Input | Output |
 |---|---|
