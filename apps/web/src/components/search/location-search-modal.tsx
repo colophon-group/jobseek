@@ -19,6 +19,7 @@ import {
   getCachedLocationsFirstPageSync,
   prefetchLocationsFirstPage,
 } from "@/lib/search/location-prefetch";
+import type { SelectedLocation } from "@/lib/search/types";
 import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
 import { findBestGuess } from "./best-guess";
@@ -31,8 +32,6 @@ const REGION_THRESHOLD = 8;
 
 /** Debounce window for the server-side search input fetch (ms). */
 const SEARCH_DEBOUNCE_MS = 180;
-
-type SelectedLocation = { id: number; slug: string; name: string; type: string; parentName?: string | null };
 
 interface LocationSearchModalProps {
   open: boolean;

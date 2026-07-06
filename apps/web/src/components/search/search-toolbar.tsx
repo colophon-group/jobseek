@@ -7,7 +7,7 @@ import { SearchBar } from "@/components/search/search-bar";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
 import { LanguageNote } from "@/components/search/language-note";
 import { SaveSearchButton } from "@/components/search/save-search-button";
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/types";
 import type { HistogramFilters, WorkMode } from "@/lib/search";
 
 type TaxonomyItem = { id: number; slug: string; name: string };

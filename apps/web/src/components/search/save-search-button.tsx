@@ -10,7 +10,7 @@ import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/SessionProvider";
 import { createWatchlist, type WatchlistFilters } from "@/lib/actions/watchlists";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/types";
 import type { WorkMode } from "@/lib/search/types";
 
 type TaxonomyItem = { id: number; slug: string; name: string };

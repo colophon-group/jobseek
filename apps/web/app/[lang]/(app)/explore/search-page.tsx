@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/types";
 import { SearchResults } from "@/components/search/search-results";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { ZeroResults } from "@/components/search/zero-results";

@@ -24,7 +24,7 @@ import { WatchlistActionBar } from "@/components/watchlist/watchlist-action-bar"
 import { WatchlistJobList } from "@/components/watchlist/watchlist-job-list";
 import { FilterPillsReadOnly } from "@/components/search/filter-pills-readonly";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/types";
 import type { HistogramFilters, WorkMode } from "@/lib/search";
 
 // Sentinel set used to re-validate the JSONB-stored `workMode` strings

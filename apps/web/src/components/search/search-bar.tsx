@@ -16,7 +16,7 @@ import {
   runSuggestTechnologies as suggestTechnologies,
 } from "@/lib/search/typeahead-runner";
 import { parseSearchFilters } from "@/lib/actions/search-input";
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/types";
 import { buildFilteredPath, parseWorkModeParam } from "@/lib/search/query-params";
 import type { WorkMode } from "@/lib/search/types";
 import { useSearchStateStore, usePageActions } from "@/components/SearchStateProvider";

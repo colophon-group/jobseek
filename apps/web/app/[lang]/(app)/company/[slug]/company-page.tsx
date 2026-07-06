@@ -21,7 +21,7 @@ import { useSalaryRates } from "@/components/SalaryDisplayProvider";
 import type { CompanyDetail } from "@/lib/actions/company";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SearchResultPosting, HistogramFilters, WorkMode } from "@/lib/search";
-import type { SelectedLocation } from "@/components/search/location-pills";
+import type { SelectedLocation } from "@/lib/search/types";
 import { useSearchStateStore } from "@/components/SearchStateProvider";
 
 const PAGE_SIZE = 20;

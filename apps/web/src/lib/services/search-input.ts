@@ -16,15 +16,12 @@ import {
   suggestTechnologies,
 } from "@/lib/services/taxonomy";
 import type { TaxonomySuggestion } from "@/lib/services/taxonomy";
-import type { SelectedLocation } from "@/lib/search/selected-location";
 import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query-params";
-import type { EmploymentType, WorkMode } from "@/lib/search/types";
-
-export type ParsedSearchLocation = SelectedLocation;
+import type { EmploymentType, SelectedLocation, WorkMode } from "@/lib/search/types";
 
 export interface ParsedSearchFilters {
   keywords: string[];
-  locations: ParsedSearchLocation[];
+  locations: SelectedLocation[];
   occupations: { id: number; slug: string; name: string }[];
   seniorities: { id: number; slug: string; name: string }[];
   technologies: { id: number; slug: string; name: string }[];
@@ -231,7 +228,7 @@ export async function parseSearchFilters(params: {
       : Promise.resolve(new Map()),
   ]);
 
-  const locations: ParsedSearchLocation[] = explicitLocSlugs
+  const locations: SelectedLocation[] = explicitLocSlugs
     .map((slug) => resolvedExplicitLocs.get(slug))
     .filter((location): location is NonNullable<typeof location> => location !== undefined)
     .map((location) => ({

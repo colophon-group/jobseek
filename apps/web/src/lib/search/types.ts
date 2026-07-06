@@ -4,6 +4,21 @@ export interface PostingLocation {
   geoType?: "city" | "region" | "country" | "macro";
 }
 
+export type LocationType = "macro" | "country" | "region" | "city";
+
+/**
+ * Domain shape for a user-selected location across search/watchlist
+ * surfaces. This is part of the search wire vocabulary, so keep it in
+ * `lib/` instead of a client UI component.
+ */
+export interface SelectedLocation {
+  id: number;
+  slug: string;
+  name: string;
+  type: LocationType;
+  parentName: string | null;
+}
+
 /**
  * Work-mode (location_types) filter values. Source of truth lives in the
  * crawler's ``enum_normalize.py`` (canonical: onsite | remote | hybrid).
