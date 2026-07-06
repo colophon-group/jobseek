@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 vi.mock("server-only", () => ({}));
 
@@ -12,19 +13,12 @@ vi.mock("next/cache", () => ({ revalidateTag: mocks.revalidateTag }));
 
 import { POST } from "./route";
 
-const _ORIGINAL_TOKEN = process.env.INTERNAL_REVALIDATE_TOKEN;
+withTestEnv({ INTERNAL_REVALIDATE_TOKEN: "secret-token" });
 
 beforeEach(() => {
   mocks.invalidatePattern.mockReset();
   mocks.invalidatePattern.mockResolvedValue(0);
   mocks.revalidateTag.mockReset();
-  process.env.INTERNAL_REVALIDATE_TOKEN = "secret-token";
-});
-
-afterEach(() => {
-  if (_ORIGINAL_TOKEN === undefined)
-    delete process.env.INTERNAL_REVALIDATE_TOKEN;
-  else process.env.INTERNAL_REVALIDATE_TOKEN = _ORIGINAL_TOKEN;
 });
 
 const _request = (auth?: string) =>
@@ -35,7 +29,7 @@ const _request = (auth?: string) =>
 
 describe("POST /api/internal/invalidate-typeahead", () => {
   it("returns 503 when INTERNAL_REVALIDATE_TOKEN is unset", async () => {
-    delete process.env.INTERNAL_REVALIDATE_TOKEN;
+    setTestEnv({ INTERNAL_REVALIDATE_TOKEN: undefined });
     const res = await POST(_request("Bearer secret-token") as never);
     expect(res.status).toBe(503);
     expect(mocks.invalidatePattern).not.toHaveBeenCalled();

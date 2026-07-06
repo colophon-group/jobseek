@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 vi.mock("server-only", () => ({}));
 
@@ -63,10 +64,13 @@ function makeRequest(): Request {
 }
 
 describe("GET /api/web/companies/request/[run_id]/status", () => {
+  withTestEnv({
+    MURMUR_RUN_TRIGGER_ENABLED: "true",
+    MURMUR_URL: "https://murmur.example.com",
+    MURMUR_TOKEN: "tok-secret",
+  });
+
   beforeEach(() => {
-    process.env.MURMUR_RUN_TRIGGER_ENABLED = "true";
-    process.env.MURMUR_URL = "https://murmur.example.com";
-    process.env.MURMUR_TOKEN = "tok-secret";
     mockGetSessionUserId.mockReset();
     mockGetSessionUserId.mockResolvedValue(USER_ID);
     mockFetchMurmurRunStatus.mockReset();
@@ -74,12 +78,6 @@ describe("GET /api/web/companies/request/[run_id]/status", () => {
     mockLookup.mockResolvedValue(null);
     mockRevalidatePath.mockReset();
     mockRevalidateTag.mockReset();
-  });
-
-  afterEach(() => {
-    delete process.env.MURMUR_RUN_TRIGGER_ENABLED;
-    delete process.env.MURMUR_URL;
-    delete process.env.MURMUR_TOKEN;
   });
 
   it("rejects unauthenticated calls with 401", async () => {
@@ -97,7 +95,7 @@ describe("GET /api/web/companies/request/[run_id]/status", () => {
   });
 
   it("returns 503 when the feature flag is unset", async () => {
-    delete process.env.MURMUR_RUN_TRIGGER_ENABLED;
+    setTestEnv({ MURMUR_RUN_TRIGGER_ENABLED: undefined });
     const res = await GET(makeRequest() as never, makeContext("r_abc"));
     expect(res.status).toBe(503);
     await expect(res.json()).resolves.toEqual({

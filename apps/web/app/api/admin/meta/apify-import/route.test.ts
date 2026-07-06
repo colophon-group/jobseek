@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { withTestEnv } from "@/test-utils/env";
 
 vi.mock("server-only", () => ({}));
 
@@ -17,8 +18,9 @@ import { importLatestMetaApifyRun } from "@/lib/admin/meta-apify-import";
 import { POST } from "./route";
 
 describe("POST /api/admin/meta/apify-import", () => {
+  withTestEnv({ ADMIN_SECRET: "secret-token" });
+
   beforeEach(() => {
-    process.env.ADMIN_SECRET = "secret-token";
     vi.mocked(importLatestMetaApifyRun).mockReset();
   });
 

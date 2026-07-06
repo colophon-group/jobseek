@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { withTestEnv } from "@/test-utils/env";
 
 /**
  * Issue #2930: extends `withDbRetry` (#2929 / #2918) to additional
@@ -131,24 +132,20 @@ const econnreset = (): Error => {
   return e;
 };
 
-const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
+const TEST_DATABASE_URL =
+  process.env.DATABASE_URL ?? "postgresql://test:test@localhost:5432/test";
 
 describe("issue #2930 — withDbRetry covers additional call sites", () => {
+  withTestEnv({ DATABASE_URL: TEST_DATABASE_URL });
+
   beforeEach(() => {
     dbExecuteMock.mockReset();
     cachedMock.mockClear();
-    process.env.DATABASE_URL =
-      ORIGINAL_DATABASE_URL ?? "postgresql://test:test@localhost:5432/test";
     vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    if (ORIGINAL_DATABASE_URL === undefined) {
-      delete process.env.DATABASE_URL;
-    } else {
-      process.env.DATABASE_URL = ORIGINAL_DATABASE_URL;
-    }
   });
 
   it("retries _fetchPublicWatchlistByUserAndSlug after ECONNRESET", async () => {

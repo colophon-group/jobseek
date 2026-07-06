@@ -3,10 +3,12 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 import { notifyIndexNow } from "../indexnow";
 
-const ORIGINAL_KEY = process.env.INDEXNOW_KEY;
 const fetchMock = vi.fn();
+
+withTestEnv({ INDEXNOW_KEY: undefined });
 
 beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
@@ -16,28 +18,26 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  if (ORIGINAL_KEY === undefined) delete process.env.INDEXNOW_KEY;
-  else process.env.INDEXNOW_KEY = ORIGINAL_KEY;
   vi.restoreAllMocks();
 });
 
 describe("notifyIndexNow", () => {
   it("no-ops when INDEXNOW_KEY is unset", async () => {
-    delete process.env.INDEXNOW_KEY;
+    setTestEnv({ INDEXNOW_KEY: undefined });
     const result = await notifyIndexNow(["/foo"]);
     expect(result).toEqual({ kind: "skipped", reason: "no-key" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("no-ops when paths is empty", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     const result = await notifyIndexNow([]);
     expect(result).toEqual({ kind: "skipped", reason: "no-paths" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("expands one path to one URL per locale and posts a single batch", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     await notifyIndexNow(["/u/wl"]);
 
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -57,7 +57,7 @@ describe("notifyIndexNow", () => {
   });
 
   it("encodes path segments with spaces and unicode", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     await notifyIndexNow(["/user name/lübeck-jobs"]);
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(body.urlList[0]).toBe(
@@ -66,7 +66,7 @@ describe("notifyIndexNow", () => {
   });
 
   it("dedupes URLs across paths and pins ordering", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     await notifyIndexNow(["/foo", "/foo"]);
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(body.urlList).toEqual([
@@ -78,7 +78,7 @@ describe("notifyIndexNow", () => {
   });
 
   it("caps the batch at 10_000 URLs (IndexNow protocol limit)", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     // 2_501 paths × 4 locales = 10_004 expanded URLs → must be trimmed.
     const paths = Array.from({ length: 2_501 }, (_, i) => `/p${i}`);
     await notifyIndexNow(paths);
@@ -88,14 +88,14 @@ describe("notifyIndexNow", () => {
   });
 
   it("does not log on a 200 response (success is silent)", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     await notifyIndexNow(["/foo"]);
     expect(errSpy).not.toHaveBeenCalled();
   });
 
   it("returns rejected (does not throw) when the endpoint rejects with 4xx", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     fetchMock.mockResolvedValue(new Response("bad key", { status: 403 }));
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await notifyIndexNow(["/foo"]);
@@ -105,7 +105,7 @@ describe("notifyIndexNow", () => {
   });
 
   it("returns errored (does not throw) on network errors", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     const networkErr = new Error("ECONNRESET");
     fetchMock.mockRejectedValue(networkErr);
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -115,13 +115,13 @@ describe("notifyIndexNow", () => {
   });
 
   it("returns submitted with the URL count on a 200 response", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     const result = await notifyIndexNow(["/foo"]);
     expect(result).toEqual({ kind: "submitted", status: 200, urlCount: 4 });
   });
 
   it("restricts locale fan-out when availableLocales is provided (#2843, blog)", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     await notifyIndexNow(["/blog/welcome"], ["en", "de"]);
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(body.urlList).toEqual([
@@ -133,14 +133,14 @@ describe("notifyIndexNow", () => {
   });
 
   it("emits a single locale URL for an EN-only post", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     await notifyIndexNow(["/blog/en-only"], ["en"]);
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(body.urlList).toEqual(["https://jseek.co/en/blog/en-only"]);
   });
 
   it("no-ops when availableLocales is an empty array (defensive)", async () => {
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     const result = await notifyIndexNow(["/blog/no-locales"], []);
     expect(result).toEqual({ kind: "skipped", reason: "no-locales" });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -168,7 +168,7 @@ describe("notifyIndexNow", () => {
     // callers wrapped notifyIndexNow in a detached .then() chain. The
     // current contract is: notifyIndexNow awaits fetch directly and
     // the caller is responsible for invoking it inside after().
-    process.env.INDEXNOW_KEY = "test-key";
+    setTestEnv({ INDEXNOW_KEY: "test-key" });
     let resolved = false;
     let release!: () => void;
     const gate = new Promise<void>((r) => {

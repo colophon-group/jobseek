@@ -35,6 +35,7 @@
  *     hand the caller `[]`, not `null` or `undefined`).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 vi.mock("server-only", () => ({}));
 
@@ -207,22 +208,18 @@ import {
 } from "../watchlists";
 
 const USER_ID = "user-1";
-const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
+const TEST_DATABASE_URL =
+  process.env.DATABASE_URL ?? "postgresql://test:test@localhost:5432/test";
+
+withTestEnv({ DATABASE_URL: TEST_DATABASE_URL });
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getSessionUserId.mockResolvedValue(USER_ID);
-  process.env.DATABASE_URL =
-    ORIGINAL_DATABASE_URL ?? "postgresql://test:test@localhost:5432/test";
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  if (ORIGINAL_DATABASE_URL === undefined) {
-    delete process.env.DATABASE_URL;
-  } else {
-    process.env.DATABASE_URL = ORIGINAL_DATABASE_URL;
-  }
 });
 
 // ---- helpers ----------------------------------------------------------
@@ -411,7 +408,7 @@ describe("getPublicWatchlistByUserAndSlug — single-query fold (#3211)", () => 
   });
 
   it("returns null before the cache/DB path when DATABASE_URL is not configured", async () => {
-    delete process.env.DATABASE_URL;
+    setTestEnv({ DATABASE_URL: undefined });
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const detail = await getPublicWatchlistByUserAndSlug("alice", "my-watchlist");

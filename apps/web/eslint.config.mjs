@@ -44,4 +44,24 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
   },
+  {
+    files: ["**/*.{test,spec}.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "AssignmentExpression[left.object.name='process'][left.property.name='env']",
+          message: "Use src/test-utils/env helpers instead of replacing process.env in tests.",
+        },
+        {
+          selector: "AssignmentExpression[left.object.object.name='process'][left.object.property.name='env']",
+          message: "Use src/test-utils/env helpers so test env changes are restored.",
+        },
+        {
+          selector: "UnaryExpression[operator='delete'][argument.object.object.name='process'][argument.object.property.name='env']",
+          message: "Use setTestEnv({ KEY: undefined }) so test env changes are restored.",
+        },
+      ],
+    },
+  },
 );
