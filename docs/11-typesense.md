@@ -75,7 +75,8 @@ Four scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub sec
   - The backfill script (`typesense-backfill-local.py`) must use the same logic.
 
   **Invariant**: `buildFilterString()` in the web app filters on `location_ids` and `occupation_ids` (plural array fields). If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin"). If ancestors are written to Postgres instead, the `location_ids`/`location_types` length constraint breaks and the Supabase exporter stalls.
-- **Sentinel values**: `experience_min = -1` for NULL (Typesense excludes missing optional fields from range queries). `locales = ["_none"]` for jobs with no detected language.
+- **Sentinel values**: `experience_min_years = -1` for NULL (and legacy `experience_min = -1` during the integer-field compatibility window). `locales = ["_none"]` for jobs with no detected language.
+- **Experience precision**: Postgres stores `experience_min` / `experience_max` as decimal years (`NUMERIC(3,1)`), so sub-year requirements such as "6 months" index as `0.5`. Typesense filters use `experience_min_years` / `experience_max_years` float fields, while legacy integer `experience_min` / `experience_max` fields remain for backfill compatibility.
 - **Denormalized names**: Taxonomy names (location, occupation, seniority, technology) are stored directly on each job posting document for search and faceting without joins.
 - **Versioned aliases**: `job_posting` is an alias pointing to `job_posting_v1`. To reindex with a new schema: create `_v2`, backfill, swap alias, drop `_v1`.
 

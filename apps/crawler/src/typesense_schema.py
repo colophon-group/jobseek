@@ -56,6 +56,14 @@ COLLECTIONS: list[dict] = [
             {"name": "technology_names", "type": "string[]", "facet": True},
             {"name": "employment_type", "type": "string", "facet": True, "optional": True},
             {"name": "salary_eur", "type": "int32", "facet": True, "optional": True},
+            # Precise decimal-year experience fields. Added alongside the
+            # legacy integer fields below so production can add them in-place
+            # without rebuilding the existing job_posting collection first.
+            {"name": "experience_min_years", "type": "float", "facet": True, "optional": True},
+            {"name": "experience_max_years", "type": "float", "facet": True, "optional": True},
+            # Legacy whole-year compatibility fields. New decimal rows are
+            # encoded conservatively by exporter.py (min ceil, max floor) so
+            # fallback filters cannot broaden precise float matches.
             {"name": "experience_min", "type": "int32", "facet": True},
             # `experience_max` is stamped alongside `experience_min` so the web
             # filter can do range-overlap matching (e.g. user wants "exactly 6

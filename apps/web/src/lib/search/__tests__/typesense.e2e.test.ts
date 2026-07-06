@@ -61,7 +61,7 @@ const LOC_NYC = 103;
 const LOC_REMOTE = 104;
 
 // 22 job postings spread across companies
-const JOB_POSTINGS = [
+const RAW_JOB_POSTINGS = [
   // ── Acme Corp (c1) — 6 active, 2 inactive ──
   {
     id: "jp1", company_id: "c1", company_name: "Acme Corp", company_slug: "acme-corp", company_icon: "acme.png",
@@ -265,6 +265,17 @@ const JOB_POSTINGS = [
   },
 ];
 
+const JOB_POSTINGS = RAW_JOB_POSTINGS.map((posting) => {
+  const experienceMin = posting.experience_min;
+  const experienceMax = experienceMin === -1 ? -1 : 99;
+  return {
+    ...posting,
+    experience_max: experienceMax,
+    experience_min_years: experienceMin,
+    experience_max_years: experienceMax,
+  };
+});
+
 // Postings that are active
 const ACTIVE_POSTINGS = JOB_POSTINGS.filter((jp) => jp.is_active);
 // Postings with sentinel experience (-1)
@@ -304,7 +315,10 @@ const JOB_POSTING_SCHEMA: CollectionCreateSchema = {
     { name: "technology_ids", type: "int32[]", facet: true },
     { name: "employment_type", type: "string", facet: true, optional: true },
     { name: "salary_eur", type: "int32", facet: true, optional: true },
+    { name: "experience_min_years", type: "float", facet: true, optional: true },
+    { name: "experience_max_years", type: "float", facet: true, optional: true },
     { name: "experience_min", type: "int32", facet: true },
+    { name: "experience_max", type: "int32", facet: true, optional: true },
     { name: "locales", type: "string[]", facet: true },
     { name: "source_url", type: "string", index: false, optional: true },
     { name: "first_seen_at", type: "int64" },

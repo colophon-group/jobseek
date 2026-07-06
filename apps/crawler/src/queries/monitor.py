@@ -380,7 +380,7 @@ CREATE TEMP TABLE _rich_updates (
     location_ids integer[], location_types text[],
     salary_min integer, salary_max integer,
     salary_currency text, salary_period text, salary_eur integer,
-    experience_min integer, experience_max integer,
+    experience_min numeric(3,1), experience_max numeric(3,1),
     technology_ids integer[],
     occupation_id integer, seniority_id integer
 ) ON COMMIT DROP

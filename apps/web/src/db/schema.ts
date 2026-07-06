@@ -508,8 +508,8 @@ export const jobPosting = pgTable(
     salaryCurrency: text("salary_currency"),
     salaryPeriod: text("salary_period"),
     salaryEur: integer("salary_eur"),
-    experienceMin: integer("experience_min"),
-    experienceMax: integer("experience_max"),
+    experienceMin: numeric("experience_min", { precision: 3, scale: 1, mode: "number" }),
+    experienceMax: numeric("experience_max", { precision: 3, scale: 1, mode: "number" }),
 
     // ── Taxonomy FKs ──
     occupationId: integer("occupation_id").references(() => occupation.id),
@@ -877,4 +877,3 @@ export const murmurAcceptLog = pgTable(
   },
   (table) => [index("murmur_accept_log_applied_idx").on(table.appliedAt)],
 );
-

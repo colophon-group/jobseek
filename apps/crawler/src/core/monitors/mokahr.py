@@ -314,7 +314,7 @@ def _parse_metadata(job: dict) -> dict:
 def _parse_experience(job: dict) -> dict | None:
     """Pack Mokahr's ``minExperience``/``maxExperience`` into ``extras``.
 
-    Both fields are optional integers (years). Returned shape mirrors
+    Both fields are optional numbers (years). Returned shape mirrors
     the ``ExperienceRange`` used by
     :func:`src.core.experience_extract.extract_experience` — ``min_years``
     + ``max_years`` (the latter ``None`` for open-ended).
@@ -325,9 +325,9 @@ def _parse_experience(job: dict) -> dict | None:
         return None
     out: dict = {}
     if isinstance(raw_min, (int, float)):
-        out["min_years"] = int(raw_min)
+        out["min_years"] = float(raw_min)
     if isinstance(raw_max, (int, float)):
-        out["max_years"] = int(raw_max)
+        out["max_years"] = float(raw_max)
     return out or None
 
 
