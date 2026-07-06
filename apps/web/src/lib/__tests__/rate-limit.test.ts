@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // Mock server-only to prevent import error
@@ -16,16 +16,21 @@ vi.mock("@/lib/redis", () => ({
   },
 }));
 
-let mockLimitResult = {
-  success: true,
-  limit: 30,
-  remaining: 29,
-  reset: Date.now() + 60000,
-};
-
-// Captures the identifier that was passed to `Ratelimit.limit()` so tests can
-// assert the rate-limit key, not just the response.
-const limitCalls: string[] = [];
+const mockRateLimitState = vi.hoisted(() => ({
+  limitResult: {
+    success: true,
+    limit: 30,
+    remaining: 29,
+    reset: Date.now() + 60000,
+  },
+  limiterConstructors: [] as Array<{
+    limiter: { type: "slidingWindow"; tokens: number; window: string };
+    prefix: string;
+  }>,
+  // Captures the identifier that was passed to `Ratelimit.limit()` so tests can
+  // assert the rate-limit key, not just the response.
+  limitCalls: [] as string[],
+}));
 
 // Mock @upstash/ratelimit
 vi.mock("@upstash/ratelimit", () => {
@@ -38,15 +43,21 @@ vi.mock("@upstash/ratelimit", () => {
       this.redis = opts.redis;
       this.limiter = opts.limiter;
       this.prefix = opts.prefix;
+      mockRateLimitState.limiterConstructors.push(
+        opts as {
+          limiter: { type: "slidingWindow"; tokens: number; window: string };
+          prefix: string;
+        },
+      );
     }
 
     async limit(identifier: string) {
-      limitCalls.push(identifier);
-      return { ...mockLimitResult };
+      mockRateLimitState.limitCalls.push(identifier);
+      return { ...mockRateLimitState.limitResult };
     }
 
-    static slidingWindow(_tokens: number, _window: string) {
-      return { type: "slidingWindow" };
+    static slidingWindow(tokens: number, window: string) {
+      return { type: "slidingWindow", tokens, window };
     }
   }
 
@@ -59,10 +70,6 @@ vi.mock("@/content/config", () => ({
 }));
 
 import {
-  authLimiter,
-  passwordResetLimiter,
-  companyRequestLimiter,
-  apiLimiter,
   getClientIp,
 } from "../rate-limit";
 import { checkRateLimit } from "../../../app/api/v1/_shared";
@@ -77,44 +84,36 @@ function makeHeaders(init: Record<string, string>): Headers {
   return new Headers(init);
 }
 
-describe("rate-limit exports", () => {
-  it("authLimiter exists and has limit method", () => {
-    expect(authLimiter).toBeDefined();
-    expect(typeof authLimiter.limit).toBe("function");
-  });
-
-  it("passwordResetLimiter exists and has limit method", () => {
-    expect(passwordResetLimiter).toBeDefined();
-    expect(typeof passwordResetLimiter.limit).toBe("function");
-  });
-
-  it("companyRequestLimiter exists and has limit method", () => {
-    expect(companyRequestLimiter).toBeDefined();
-    expect(typeof companyRequestLimiter.limit).toBe("function");
-  });
-
-  it("apiLimiter exists and has limit method", () => {
-    expect(apiLimiter).toBeDefined();
-    expect(typeof apiLimiter.limit).toBe("function");
-  });
-
-  it("limiter.limit returns a rate limit result", async () => {
-    const result = await authLimiter.limit("127.0.0.1");
-    expect(result).toHaveProperty("success");
-    expect(result).toHaveProperty("limit");
-    expect(result).toHaveProperty("remaining");
-    expect(result).toHaveProperty("reset");
+describe("rate-limit configuration", () => {
+  it("constructs every limiter with the intended prefix and sliding window", () => {
+    expect(
+      mockRateLimitState.limiterConstructors.map(({ limiter, prefix }) => ({
+        prefix,
+        tokens: limiter.tokens,
+        window: limiter.window,
+      })),
+    ).toEqual([
+      { prefix: "rl:auth", tokens: 10, window: "60 s" },
+      { prefix: "rl:pw-reset", tokens: 3, window: "300 s" },
+      { prefix: "rl:company-req", tokens: 5, window: "3600 s" },
+      { prefix: "rl:api", tokens: 30, window: "60 s" },
+    ]);
   });
 });
 
 describe("checkRateLimit", () => {
   beforeEach(() => {
-    mockLimitResult = {
+    mockRateLimitState.limitCalls.length = 0;
+    mockRateLimitState.limitResult = {
       success: true,
       limit: 30,
       remaining: 29,
       reset: Date.now() + 60000,
     };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("returns rate limit info when under limit", async () => {
@@ -125,7 +124,10 @@ describe("checkRateLimit", () => {
   });
 
   it("returns 429 NextResponse when limit exceeded", async () => {
-    mockLimitResult = {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    mockRateLimitState.limitResult = {
       success: false,
       limit: 30,
       remaining: 0,
@@ -137,9 +139,29 @@ describe("checkRateLimit", () => {
     expect((result as Response).status).toBe(429);
 
     const headers = (result as Response).headers;
-    expect(headers.get("Retry-After")).toBeDefined();
+    expect(headers.get("Retry-After")).toBe("30");
     expect(headers.get("X-RateLimit-Limit")).toBe("30");
     expect(headers.get("X-RateLimit-Remaining")).toBe("0");
+    expect(headers.get("X-RateLimit-Reset")).toBe(
+      String(mockRateLimitState.limitResult.reset),
+    );
+    await expect((result as Response).json()).resolves.toEqual({
+      error: "Too many requests",
+    });
+  });
+
+  it("passes the last x-forwarded-for hop to the limiter", async () => {
+    await checkRateLimit(fakeRequest("9.9.9.9, 10.0.0.1, 203.0.113.7"));
+
+    expect(mockRateLimitState.limitCalls).toEqual(["203.0.113.7"]);
+  });
+
+  it("falls back to a deterministic shared key when no IP headers are present", async () => {
+    const req = new NextRequest("https://example.com/api/v1/test");
+
+    await checkRateLimit(req);
+
+    expect(mockRateLimitState.limitCalls).toEqual(["unknown"]);
   });
 });
 
@@ -207,8 +229,8 @@ describe("getClientIp (issue #3219 — x-forwarded-for spoofing)", () => {
 // site must call it correctly.
 describe("checkRateLimit identifier (issue #3219)", () => {
   beforeEach(() => {
-    limitCalls.length = 0;
-    mockLimitResult = {
+    mockRateLimitState.limitCalls.length = 0;
+    mockRateLimitState.limitResult = {
       success: true,
       limit: 30,
       remaining: 29,
@@ -225,9 +247,9 @@ describe("checkRateLimit identifier (issue #3219)", () => {
 
     await checkRateLimit(req);
 
-    expect(limitCalls).toHaveLength(1);
-    expect(limitCalls[0]).toBe(real);
-    expect(limitCalls[0]).not.toBe(spoofed);
+    expect(mockRateLimitState.limitCalls).toHaveLength(1);
+    expect(mockRateLimitState.limitCalls[0]).toBe(real);
+    expect(mockRateLimitState.limitCalls[0]).not.toBe(spoofed);
   });
 
   it("prefers x-real-ip even when x-forwarded-for is present", async () => {
@@ -240,8 +262,8 @@ describe("checkRateLimit identifier (issue #3219)", () => {
 
     await checkRateLimit(req);
 
-    expect(limitCalls).toHaveLength(1);
-    expect(limitCalls[0]).toBe("203.0.113.7");
+    expect(mockRateLimitState.limitCalls).toHaveLength(1);
+    expect(mockRateLimitState.limitCalls[0]).toBe("203.0.113.7");
   });
 
   it("buckets repeated requests with different spoofed first entries under the same real IP", async () => {
@@ -253,6 +275,6 @@ describe("checkRateLimit identifier (issue #3219)", () => {
       await checkRateLimit(req);
     }
 
-    expect(limitCalls).toEqual([real, real, real]);
+    expect(mockRateLimitState.limitCalls).toEqual([real, real, real]);
   });
 });
