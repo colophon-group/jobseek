@@ -34,18 +34,18 @@ class BatchProvider(Protocol):
         response_schema: dict,
     ) -> str:
         """Submit a batch. Returns provider batch ID."""
-        ...
+        raise NotImplementedError
 
     async def check_batch(self, batch_id: str) -> str:
         """Check batch status. Returns submitted|completed|failed|expired."""
-        ...
+        raise NotImplementedError
 
     async def collect_results(
         self,
         batch_id: str,
     ) -> list[tuple[str, dict | None, LLMUsage | None]]:
         """Download results. Returns [(custom_id, parsed_json, usage), ...]."""
-        ...
+        raise NotImplementedError
 
 
 def create_provider(provider: str, model: str, api_key: str) -> BatchProvider:
