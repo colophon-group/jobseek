@@ -10,6 +10,8 @@ Roles land here within hours of the company posting them — once, in canonical 
 
 [![MIT License](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 [![Job data CC BY-NC 4.0](https://img.shields.io/badge/data-CC%20BY--NC%204.0-lightgrey.svg)](LICENSE-JOB-DATA)
+[![CI](https://github.com/colophon-group/jobseek/actions/workflows/ci.yml/badge.svg)](https://github.com/colophon-group/jobseek/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/colophon-group/jobseek/actions/workflows/codeql.yml/badge.svg)](https://github.com/colophon-group/jobseek/actions/workflows/codeql.yml)
 [![PyPI](https://img.shields.io/pypi/v/jobseek-crawler-setup.svg)](https://pypi.org/project/jobseek-crawler-setup/)
 [![GitHub stars](https://img.shields.io/github/stars/colophon-group/jobseek?style=social)](https://github.com/colophon-group/jobseek)
 
@@ -125,5 +127,5 @@ scripts/               Typesense setup, backfill, IndexNow notifications
 ---
 
 <div align="center">
-<sub>Built in Switzerland by <a href="https://colophon-group.org">Colophon Group</a>. <a href="https://github.com/colophon-group/jobseek/issues">Issues</a> and PRs welcome.</sub>
+<sub>Built in Switzerland by <a href="https://colophon-group.org">Colophon Group</a>. <a href="PRIVACY-POLICY">Privacy</a> · <a href="TERMS-OF-SERVICE">Terms</a> · <a href="https://github.com/colophon-group/jobseek/issues">Issues</a> and PRs welcome.</sub>
 </div>
