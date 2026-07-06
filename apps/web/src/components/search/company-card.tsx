@@ -216,7 +216,8 @@ export function sortPostingsByFreshness(
   return [...postings].sort((a, b) => {
     const byTime = firstSeenAtMs(b) - firstSeenAtMs(a);
     if (byTime !== 0) return byTime;
-    return a.id.localeCompare(b.id);
+    if (a.id === b.id) return 0;
+    return a.id < b.id ? -1 : 1;
   });
 }
 

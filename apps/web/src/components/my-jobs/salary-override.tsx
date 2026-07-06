@@ -38,7 +38,7 @@ export function SalaryOverride({
     override.period ?? crawlerSalary.period ?? "yearly",
   );
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
   const minLabel = t({ id: "myJobs.salary.min", comment: "Minimum salary label", message: "Min" });
   const maxLabel = t({ id: "myJobs.salary.max", comment: "Maximum salary label", message: "Max" });
   const yearlyLabel = t({ id: "myJobs.salary.yearly", comment: "Yearly salary period option", message: "Yearly" });
@@ -87,7 +87,7 @@ export function SalaryOverride({
             type="number"
             value={min}
             onChange={(e) => handleChange("min", e.target.value)}
-            placeholder={crawlerSalary.min?.toLocaleString() ?? "—"}
+            placeholder={crawlerSalary.min?.toLocaleString(i18n.locale) ?? "—"}
             className="w-full rounded border border-border-soft bg-surface px-2 py-1 text-xs placeholder:text-muted/50"
           />
         </div>
@@ -97,7 +97,7 @@ export function SalaryOverride({
             type="number"
             value={max}
             onChange={(e) => handleChange("max", e.target.value)}
-            placeholder={crawlerSalary.max?.toLocaleString() ?? "—"}
+            placeholder={crawlerSalary.max?.toLocaleString(i18n.locale) ?? "—"}
             className="w-full rounded border border-border-soft bg-surface px-2 py-1 text-xs placeholder:text-muted/50"
           />
         </div>

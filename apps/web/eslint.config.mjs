@@ -10,6 +10,14 @@ const typedSourceIgnores = [
   "**/*.test.{ts,tsx}",
   "src/test-utils/**",
 ];
+const appSourceFiles = ["app/**/*.{ts,tsx}", "src/**/*.{ts,tsx}"];
+const appSourceIgnores = [
+  "**/__tests__/**",
+  "**/*.test.{ts,tsx}",
+  "src/test-utils/**",
+  "script/**",
+  "scripts/**",
+];
 
 export default tseslint.config(
   {
@@ -30,6 +38,33 @@ export default tseslint.config(
       "@typescript-eslint/no-misused-promises": [
         "error",
         { checksVoidReturn: { attributes: false } },
+      ],
+    },
+  },
+  {
+    files: appSourceFiles,
+    ignores: appSourceIgnores,
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.property.name='toLocaleString'][arguments.length=0]",
+          message:
+            "Pass the app locale to toLocaleString(); browser defaults can differ from the selected UI language.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='toLocaleDateString'][arguments.length=0]",
+          message:
+            "Pass the app locale to toLocaleDateString(); browser defaults can differ from the selected UI language.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='localeCompare'][arguments.length=1]",
+          message:
+            "Pass an explicit locale for display sorting, or use deterministic < > comparison for canonical keys.",
+        },
       ],
     },
   },
