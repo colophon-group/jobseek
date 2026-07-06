@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { fetchExploreData, type ExploreData } from "@/lib/actions/explore-data";
+import { fetchExplorePageData, type ExploreData } from "@/lib/actions/explore-page-data";
 import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { SearchPage } from "./search-page";
 
 /**
- * Retry policy for the personalized `fetchExploreData` server action
+ * Retry policy for the personalized `fetchExplorePageData` server action
  * on cold-start. When the Vercel function instance is cold and
  * Typesense's first-request TLS handshake takes a few hundred ms, the
  * client-side fetch can be aborted (`net::ERR_ABORTED`) by the browser
@@ -22,15 +22,15 @@ import { SearchPage } from "./search-page";
  * function instance + warm Typesense connection). If both fail,
  * surface the error so the existing initialData stays.
  */
-async function fetchExploreDataWithRetry(
-  args: Parameters<typeof fetchExploreData>[0],
+async function fetchExplorePageDataWithRetry(
+  args: Parameters<typeof fetchExplorePageData>[0],
 ): Promise<ExploreData> {
   try {
-    return await fetchExploreData(args);
+    return await fetchExplorePageData(args);
   } catch (err) {
-    console.warn("[explore] fetchExploreData failed, retrying once", err);
+    console.warn("[explore] fetchExplorePageData failed, retrying once", err);
     await new Promise((resolve) => setTimeout(resolve, 250));
-    return fetchExploreData(args);
+    return fetchExplorePageData(args);
   }
 }
 
@@ -47,7 +47,7 @@ type ExploreContentProps = {
 };
 
 /**
- * URL searchParams that ``fetchExploreData`` consumes. If any of these
+ * URL searchParams that ``fetchExplorePageData`` consumes. If any of these
  * are present, the prerendered ``initialData`` doesn't reflect the
  * filters and we must re-fetch the personalized variant.
  */
@@ -70,7 +70,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   // preferences / job-language filter / display currency would change
   // the result set), OR they have an anonymous job-language cookie
   // set (#2850 — anon viewers persist `jobLanguages` via a cookie
-  // that the server side reads in `fetchExploreData`). Anonymous, no-
+  // that the server side reads in `fetchExplorePageData`). Anonymous, no-
   // filter, no-job-lang-cookie visitors still get the prerendered data
   // with zero function invocations — the bulk of organic traffic per
   // #2640.
@@ -101,7 +101,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     searchParams.forEach((value, key) => {
       sp[key] = value;
     });
-    fetchExploreDataWithRetry({ searchParams: sp, locale })
+    fetchExplorePageDataWithRetry({ searchParams: sp, locale })
       .then(setData)
       .catch((err) => {
         // Both attempts failed. Fall back to the prerendered
@@ -111,7 +111,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
         // toolbar because the prerender doesn't carry them, but that
         // matches the pre-#2746 cold-error behaviour and beats a
         // permanent skeleton.
-        console.error("[explore] fetchExploreData failed twice", err);
+        console.error("[explore] fetchExplorePageData failed twice", err);
         if (initialData) setData(initialData);
       });
     // Empty deps: the conditional-fetch decision is made once on

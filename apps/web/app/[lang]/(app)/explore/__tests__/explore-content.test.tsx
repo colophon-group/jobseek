@@ -1,20 +1,20 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { act, render, waitFor } from "@testing-library/react";
-import type { ExploreData } from "@/lib/actions/explore-data";
+import type { ExploreData } from "@/lib/actions/explore-page-data";
 
-// `@/lib/actions/explore-data` is a server action that transitively imports
+// `@/lib/actions/explore-page-data` is a server action that transitively imports
 // `server-only`, which throws when loaded in a non-Next runtime. Neutralise
 // the gate, then swap the action itself for a spy.
 vi.mock("server-only", () => ({}));
 const mockFetchExploreData = vi.fn();
-vi.mock("@/lib/actions/explore-data", async () => {
+vi.mock("@/lib/actions/explore-page-data", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/actions/explore-data")>(
-      "@/lib/actions/explore-data",
+    await vi.importActual<typeof import("@/lib/actions/explore-page-data")>(
+      "@/lib/actions/explore-page-data",
     );
   return {
     ...actual,
-    fetchExploreData: (...args: unknown[]) => mockFetchExploreData(...args),
+    fetchExplorePageData: (...args: unknown[]) => mockFetchExploreData(...args),
   };
 });
 
@@ -100,7 +100,7 @@ afterEach(() => {
 });
 
 describe("ExploreContent — server-render initial-data path (#2640)", () => {
-  it("does NOT call fetchExploreData for an anonymous, no-filter visit with prerendered initialData", async () => {
+  it("does NOT call fetchExplorePageData for an anonymous, no-filter visit with prerendered initialData", async () => {
     const initialData = makeInitialData();
     render(<ExploreContent locale="en" initialData={initialData} />);
 
@@ -108,7 +108,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     expect(mockFetchExploreData).not.toHaveBeenCalled();
   });
 
-  it("calls fetchExploreData when the `logged_in` hint cookie is present even without filters", async () => {
+  it("calls fetchExplorePageData when the `logged_in` hint cookie is present even without filters", async () => {
     setDocumentCookie("logged_in=1");
 
     const initialData = makeInitialData();
@@ -119,7 +119,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     });
   });
 
-  it("calls fetchExploreData when a filter searchParam is present", async () => {
+  it("calls fetchExplorePageData when a filter searchParam is present", async () => {
     currentSearchParams = new URLSearchParams("q=python");
 
     const initialData = makeInitialData();
@@ -137,7 +137,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     expect(callArgs.searchParams.q).toBe("python");
   });
 
-  it("calls fetchExploreData when initialData is omitted (legacy path)", async () => {
+  it("calls fetchExplorePageData when initialData is omitted (legacy path)", async () => {
     render(<ExploreContent locale="en" />);
 
     await waitFor(() => {
@@ -145,7 +145,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     });
   });
 
-  it("does NOT call fetchExploreData when a non-filter searchParam is present (e.g. utm tracking)", async () => {
+  it("does NOT call fetchExplorePageData when a non-filter searchParam is present (e.g. utm tracking)", async () => {
     currentSearchParams = new URLSearchParams("utm_source=google");
 
     const initialData = makeInitialData();
@@ -333,7 +333,7 @@ describe("ExploreContent — cold-start retry (#3008)", () => {
     vi.restoreAllMocks();
   });
 
-  it("retries fetchExploreData once when the first call rejects (cold-start abort)", async () => {
+  it("retries fetchExplorePageData once when the first call rejects (cold-start abort)", async () => {
     setDocumentCookie("logged_in=1");
     const successData = makeInitialData();
     mockFetchExploreData

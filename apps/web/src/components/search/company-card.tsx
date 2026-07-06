@@ -6,7 +6,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { CompanyIcon } from "@/components/CompanyIcon";
 import { useParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
-import { loadMorePostings } from "@/lib/actions/search";
+import { getMorePostings } from "@/lib/actions/search";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
@@ -76,7 +76,7 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
   const offsetRef = useRef(result.postings.length);
 
   async function handleLoadMore() {
-    const result = await loadMorePostings({
+    const result = await getMorePostings({
       companyId: company.id,
       keywords,
       locationIds,

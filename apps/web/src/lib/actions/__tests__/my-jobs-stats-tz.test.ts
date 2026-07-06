@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * #3199 — Activity-heatmap TZ bug.
  *
- * Before the fix, `getStats()` bucketed `saved_at` via
+ * Before the fix, `getMyJobsStats()` bucketed `saved_at` via
  * `to_char(saved_at, 'YYYY-MM-DD')` in Postgres's TZ (UTC on Supabase),
  * while the client built cell keys with `Date.getFullYear/Month/Date`
  * (browser TZ). A NYC user saving at 23:00 local time would see the
@@ -22,7 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * The cell grid on the client still uses browser-TZ `Date` accessors,
  * but with the server bucketing in the same TZ the day keys align.
  *
- * This spec asserts the SQL produced by `getStats({ tz })` reaches
+ * This spec asserts the SQL produced by `getMyJobsStats({ tz })` reaches
  * Postgres parameterised with the right TZ and the right shape, and
  * that malformed inputs are coerced to "UTC".
  */
@@ -122,7 +122,7 @@ function flatten(
   return { text: parts.join(""), params };
 }
 
-describe("#3199 — getStats TZ-aware day bucketing", () => {
+describe("#3199 — getMyJobsStats TZ-aware day bucketing", () => {
   beforeEach(() => {
     captured.sqlObjects = [];
   });
@@ -131,8 +131,8 @@ describe("#3199 — getStats TZ-aware day bucketing", () => {
   });
 
   it("buckets activity in the viewer-supplied IANA TZ", async () => {
-    const { getStats } = await import("@/lib/actions/my-jobs-stats");
-    await getStats({ tz: "America/New_York" });
+    const { getMyJobsStats } = await import("@/lib/actions/my-jobs-stats");
+    await getMyJobsStats({ tz: "America/New_York" });
 
     // Two queries: funnel + activity. The activity query is the one
     // that references `to_char(... 'YYYY-MM-DD')`.
@@ -152,8 +152,8 @@ describe("#3199 — getStats TZ-aware day bucketing", () => {
   });
 
   it("interprets from/to date filters at the viewer's local midnight", async () => {
-    const { getStats } = await import("@/lib/actions/my-jobs-stats");
-    await getStats({
+    const { getMyJobsStats } = await import("@/lib/actions/my-jobs-stats");
+    await getMyJobsStats({
       from: "2026-05-13",
       to: "2026-05-14",
       tz: "America/New_York",
@@ -181,8 +181,8 @@ describe("#3199 — getStats TZ-aware day bucketing", () => {
   });
 
   it("falls back to UTC when no tz is supplied (preserves legacy behaviour)", async () => {
-    const { getStats } = await import("@/lib/actions/my-jobs-stats");
-    await getStats({});
+    const { getMyJobsStats } = await import("@/lib/actions/my-jobs-stats");
+    await getMyJobsStats({});
 
     const activity = captured.sqlObjects
       .map(flatten)
@@ -192,7 +192,7 @@ describe("#3199 — getStats TZ-aware day bucketing", () => {
   });
 
   it("rejects malformed TZ inputs and falls back to UTC", async () => {
-    const { getStats } = await import("@/lib/actions/my-jobs-stats");
+    const { getMyJobsStats } = await import("@/lib/actions/my-jobs-stats");
 
     const malformed = [
       "'; DROP TABLE saved_job; --",
@@ -205,7 +205,7 @@ describe("#3199 — getStats TZ-aware day bucketing", () => {
 
     for (const tz of malformed) {
       captured.sqlObjects = [];
-      await getStats({ tz });
+      await getMyJobsStats({ tz });
       const activity = captured.sqlObjects
         .map(flatten)
         .find((q) => q.text.includes("to_char"));
@@ -218,7 +218,7 @@ describe("#3199 — getStats TZ-aware day bucketing", () => {
   });
 
   it("accepts canonical IANA names with subzones", async () => {
-    const { getStats } = await import("@/lib/actions/my-jobs-stats");
+    const { getMyJobsStats } = await import("@/lib/actions/my-jobs-stats");
 
     const valid = [
       "Europe/Zurich",
@@ -230,7 +230,7 @@ describe("#3199 — getStats TZ-aware day bucketing", () => {
 
     for (const tz of valid) {
       captured.sqlObjects = [];
-      await getStats({ tz });
+      await getMyJobsStats({ tz });
       const activity = captured.sqlObjects
         .map(flatten)
         .find((q) => q.text.includes("to_char"));

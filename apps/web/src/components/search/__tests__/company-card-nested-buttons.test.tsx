@@ -90,7 +90,7 @@ vi.mock("@/lib/use-infinite-scroll", () => ({
 }));
 
 vi.mock("@/lib/actions/search", () => ({
-  loadMorePostings: vi.fn(),
+  getMorePostings: vi.fn(),
 }));
 
 vi.mock("@/lib/time", () => ({

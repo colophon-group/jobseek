@@ -241,7 +241,7 @@ function driftDiagnostic(route: string, expected: Classification, actual: Classi
       "render path reads runtime APIs (`cookies()`, `headers()`, `searchParams`",
       "without `await`-then-passing-into-a-cache-fn). Helpers that internally",
       "read request state — `getSession`, `getSessionUserId`, `getViewerLanguages`,",
-      "`getGeoFromHeaders`, `getPreferences`, `fetchExploreData`, `listTopCompanies` —",
+      "`getGeoFromHeaders`, `getPreferences`, `fetchExplorePageData`, `listTopCompanies` —",
       "must move into a `<Suspense>`-wrapped child or a server action fired",
       "from the client. See `apps/web/docs/cache-components.md` and #2243.",
     );

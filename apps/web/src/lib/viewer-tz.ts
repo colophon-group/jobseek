@@ -8,7 +8,7 @@
  *    WebViews, exotic regex shenanigans, etc.)
  *
  * The fallback matches the server-side default in
- * `getStats({ tz })`, so the worst case is pre-#3199 behaviour
+ * `getMyJobsStats({ tz })`, so the worst case is pre-#3199 behaviour
  * (UTC-bucketed days) instead of a crash.
  */
 export function getViewerTz(): string {

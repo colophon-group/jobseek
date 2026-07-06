@@ -53,6 +53,32 @@ Server actions were chosen for the UI because:
 Server actions called from client components are POST requests under the
 hood — functionally equivalent to API calls, but with better DX.
 
+## Server Action Naming
+
+Server action names are part of the UI data contract, so read-action verbs
+carry meaning:
+
+- **Granular reads** use `getX` when they return one independently useful
+  resource or aggregate (`getPostingDetail`, `getSiteStats`,
+  `getMyJobsStats`). Existing domain verbs such as `searchX`, `listX`,
+  `suggestX`, `resolveX`, and `expandX` remain valid when they describe the
+  operation more precisely than `get`.
+- **Composite page/bootstrap bundles** use `fetchX` and live in
+  `bootstrap.ts` or `*-page-data.ts`. These actions collect several granular
+  reads into the full shape a loader needs, so their names include the bundle
+  type: `fetchAppBootstrap`, `fetchExplorePageData`,
+  `fetchExplorePageDefaults`, `fetchCompanyPageData`,
+  `fetchCompanyPageDefaults`, and `fetchWatchlistPageData`.
+- **Cursor or infinite-scroll reads** are still reads; use `getX` or a
+  domain verb, not `loadX`. The company-card posting action is
+  `getMorePostings`.
+
+Exported server action function names must be unique across
+`src/lib/actions/*.ts`; add a domain qualifier when the noun would otherwise
+be ambiguous across modules. `src/lib/actions/__tests__/naming-conventions.test.ts`
+enforces the uniqueness rule, blocks `load*` exports, and keeps `fetch*`
+reserved for bootstrap/page-data bundlers.
+
 ## Anonymous Truncation
 
 Unauthenticated users see limited results to prevent data scraping while
@@ -72,7 +98,7 @@ Constants are in `src/lib/search/constants.ts`.
 ### Enforcement
 
 Truncation is **enforced server-side** in each server action
-(`searchJobs`, `listTopCompanies`, `loadMorePostings`,
+(`searchJobs`, `listTopCompanies`, `getMorePostings`,
 `getCompanyPostings`, `getWatchlistPostings`). Each checks
 `getSessionUserId()` — if null, caps results at the limit and sets
 `truncated: true` in the response.

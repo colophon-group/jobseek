@@ -97,7 +97,7 @@ export async function fetchCompanyPageData(params: {
 
   const salaryCurrencyParam = salcur ?? displayCurrency;
   const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
-  // Convert user-currency filter amount to EUR — see explore-data.ts for the
+  // Convert user-currency filter amount to EUR — see explore-page-data.ts for the
   // full rationale (issue #3178). `getCurrencyRates` is cache-backed
   // (`cacheLife("hours")`), so this is not an extra DB round-trip in the
   // steady state.
@@ -153,7 +153,7 @@ export async function fetchCompanyPageData(params: {
  * Server-side prerender variant of :func:`fetchCompanyPageData` for the
  * anonymous, no-filter company-detail page case (#3203).
  *
- * Mirrors :func:`fetchExploreDefaults` (#2640). Critically does NOT
+ * Mirrors :func:`fetchExplorePageDefaults` (#2640). Critically does NOT
  * call :func:`getPreferences`/:func:`getSession`/:func:`readAnonJobLanguagesCookie`
  * (read ``cookies()``) or :func:`getGeoFromHeaders` (reads ``headers()``)
  * — those force dynamic rendering and would silently break the page's
@@ -186,7 +186,7 @@ export async function fetchCompanyPageDefaults(params: {
   // latter calls ``getSessionUserId`` which awaits ``headers()`` and
   // would silently downgrade the page to dynamic rendering, defeating
   // the ISR optimisation this function exists for. See the parallel
-  // pattern in `explore-data.ts::fetchExploreDefaults` (#2640).
+  // pattern in `explore-page-data.ts::fetchExplorePageDefaults` (#2640).
   const postingsResult = await getCompanyPostingsAnonymous({
     companyId: company.id,
     keywords: [],

@@ -452,7 +452,7 @@ export async function getExperienceHistogram(filters?: HistogramFilters): Promis
 
 // ── Load more postings ─────────────────────────────────────────────
 
-export async function loadMorePostings(params: {
+export async function getMorePostings(params: {
   companyId: string;
   keywords: string[];
   locationIds?: number[];

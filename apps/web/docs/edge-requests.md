@@ -175,7 +175,7 @@ the `(app)` route group serves static shells from CDN, and most page data loads
 through client-fired server actions on mount. A few high-traffic anonymous paths
 embed cacheable defaults in the shell:
 
-- `/explore` embeds anonymous, no-filter defaults via `fetchExploreDefaults()`.
+- `/explore` embeds anonymous, no-filter defaults via `fetchExplorePageDefaults()`.
 - `/company/[slug]` embeds anonymous, no-filter defaults via
   `fetchCompanyPageDefaults()`.
 - Watchlist and company metadata use cached server reads for SEO, then hydrate
@@ -389,7 +389,7 @@ invoked.
 
 | Route | Shell behavior | Dynamic work | Pattern | Redis/cache | Est. duration |
 |-------|----------------|--------------|---------|-------------|---------------|
-| **Explore** | Cached anonymous defaults | Personalized `fetchExploreData()` / search actions when signed in or filtered | Mixed | Defaults 60s; search 5min | 30-250ms when invoked |
+| **Explore** | Cached anonymous defaults | Personalized `fetchExplorePageData()` / search actions when signed in or filtered | Mixed | Defaults 60s; search 5min | 30-250ms when invoked |
 | **Company** | Cached anonymous defaults + metadata | Personalized `fetchCompanyPageData()` when signed in, filtered, or language cookie present | Mixed | Company/detail caches | 30-200ms when invoked |
 | **Shared watchlist** | Cached metadata/body shell | `fetchWatchlistPageData()` after mount | Sequential + parallel | Watchlist lookup cached | 60-300ms |
 | **My Jobs** | Static shell | `getMyJobs()` after mount | Sequential | None | 20-100ms |
@@ -502,7 +502,7 @@ use Typesense `multi_search` if filter precision is required.
 Search results and posting details are already cached (5-min TTL). Extend this
 to:
 - `getWatchlistPostings()` — filter-keyed, short TTL
-- `getStats()` (my-jobs-stats) — user-keyed, invalidate on status change
+- `getMyJobsStats()` (my-jobs-stats) — user-keyed, invalidate on status change
 
 `getUserWatchlists()` is fast enough post-#3176 (single SQL query, ~12-38ms)
 that caching adds invalidation complexity without a meaningful win.

@@ -91,7 +91,7 @@ vi.mock("@/lib/use-infinite-scroll", () => ({
 }));
 
 vi.mock("@/lib/actions/search", () => ({
-  loadMorePostings: vi.fn().mockResolvedValue({ postings: [], truncated: false }),
+  getMorePostings: vi.fn().mockResolvedValue({ postings: [], truncated: false }),
 }));
 
 vi.mock("@/lib/time", () => ({

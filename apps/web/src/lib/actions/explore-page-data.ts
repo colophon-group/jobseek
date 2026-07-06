@@ -44,7 +44,7 @@ export interface ExploreData {
   experienceMax: number | undefined;
 }
 
-export async function fetchExploreData(params: {
+export async function fetchExplorePageData(params: {
   searchParams: Record<string, string | string[] | undefined>;
   locale: string;
 }): Promise<ExploreData> {
@@ -157,7 +157,7 @@ export async function fetchExploreData(params: {
 }
 
 /**
- * Server-side prerender variant of :func:`fetchExploreData` for the
+ * Server-side prerender variant of :func:`fetchExplorePageData` for the
  * unauthenticated, no-filter homepage case (#2640).
  *
  * Critically does NOT call :func:`getPreferences` (reads
@@ -166,17 +166,17 @@ export async function fetchExploreData(params: {
  * ISR eligibility. Returns the same ``ExploreData`` shape with
  * anonymous defaults: EUR currency, no job-language filter, no geo
  * proximity bias. The client component conditionally re-fetches the
- * personalized variant via :func:`fetchExploreData` when the
+ * personalized variant via :func:`fetchExplorePageData` when the
  * ``logged_in`` hint cookie or any filter searchParams are present.
  *
  * Net effect: anonymous visitors hitting ``/explore`` with no
  * filters get a CDN-cached prerendered page with embedded
  * ``initialData``, no Vercel function invocation. Logged-in users
  * still pay the function call (one fetch on mount, same as today).
- * Filter changes always go through ``fetchExploreData`` because the
+ * Filter changes always go through ``fetchExplorePageData`` because the
  * defaults can't reflect them.
  */
-export async function fetchExploreDefaults(params: {
+export async function fetchExplorePageDefaults(params: {
   locale: string;
 }): Promise<ExploreData> {
   const { locale } = params;

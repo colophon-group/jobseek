@@ -81,7 +81,7 @@ async function AuthAwareNav() {
 When you're writing a new server component (or porting an existing one), walk this in order and stop at the first match.
 
 1. **Does it read `cookies()`, `headers()`, `searchParams`, `connection()`, `draftMode()`, or call any helper that internally does?**
-   The canonical "tainted helpers" — server functions that internally read request state — are: `getSession`, `getSessionUserId`, `getViewerLanguages`, `getGeoFromHeaders`, `getPreferences`, `fetchExploreData`, `listTopCompanies`. Extend the list (and grep callers in PRs) whenever you add another helper that reads `headers()` / `cookies()` / `getSession()` under the hood.
+   The canonical "tainted helpers" — server functions that internally read request state — are: `getSession`, `getSessionUserId`, `getViewerLanguages`, `getGeoFromHeaders`, `getPreferences`, `fetchExplorePageData`, `listTopCompanies`. Extend the list (and grep callers in PRs) whenever you add another helper that reads `headers()` / `cookies()` / `getSession()` under the hood.
    - **Yes** → it's dynamic. Wrap the component (or its parent) in `<Suspense>`. Provide a meaningful fallback (we have `SearchSkeleton`, `WatchlistSkeleton`, `CompanySkeleton` already; reuse before inventing).
    - **No** → continue.
 

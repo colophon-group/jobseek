@@ -4,7 +4,7 @@ import "@/test-utils/lingui-mock";
 import type { SearchResultCompany, SearchResultPosting } from "@/lib/search";
 
 const mocks = vi.hoisted(() => ({
-  loadMorePostings: vi.fn(),
+  getMorePostings: vi.fn(),
   load: undefined as undefined | (() => Promise<void>),
 }));
 
@@ -60,7 +60,7 @@ vi.mock("@/lib/use-infinite-scroll", () => ({
 }));
 
 vi.mock("@/lib/actions/search", () => ({
-  loadMorePostings: mocks.loadMorePostings,
+  getMorePostings: mocks.getMorePostings,
 }));
 
 vi.mock("@/lib/time", () => ({
@@ -125,7 +125,7 @@ function visiblePostingIds(container: HTMLElement): string[] {
 describe("CompanyCard posting order", () => {
   beforeEach(() => {
     mocks.load = undefined;
-    mocks.loadMorePostings.mockReset();
+    mocks.getMorePostings.mockReset();
   });
 
   it("sorts initial postings by newest first before rendering", () => {
@@ -144,7 +144,7 @@ describe("CompanyCard posting order", () => {
       posting("visible-oldest", "Visible oldest role", "2026-06-22T11:20:00.000Z"),
     ]);
 
-    mocks.loadMorePostings.mockResolvedValueOnce({
+    mocks.getMorePostings.mockResolvedValueOnce({
       postings: [
         posting("loaded-fresh", "Loaded fresh role", "2026-06-22T11:55:00.000Z"),
       ],

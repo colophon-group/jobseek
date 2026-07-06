@@ -20,7 +20,7 @@
 ## Server-side data fetching (during SSR)
 
 - App layout: `getSession()`, `getPreferences()`, `getSavedJobStatuses()`, `getStarredCompanyIds()`
-- `getStats()` — funnel data, conversion rates, activity heatmap
+- `getMyJobsStats()` — funnel data, conversion rates, activity heatmap
 
 ## Notes
 
@@ -38,8 +38,8 @@
 | `getPreferences()` | 1 | parallel | None | 10-30ms |
 | `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
 | `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
-| `getStats()` funnel | 1 | sequential | None | 15-40ms |
-| `getStats()` activity | 1 | sequential | None | 15-40ms |
+| `getMyJobsStats()` funnel | 1 | sequential | None | 15-40ms |
+| `getMyJobsStats()` activity | 1 | sequential | None | 15-40ms |
 
 **Total DB queries:** 6
 **Estimated function duration:** 50-150ms (warm instance)
