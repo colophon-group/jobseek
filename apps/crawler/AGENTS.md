@@ -466,6 +466,10 @@ When existing monitors/scrapers can't handle a site, agents may propose code cha
 
 All crawler services run on Hetzner. Machine IPs, credentials, and API keys are in `apps/crawler/.env.local` — never hardcode them.
 
+See [docs/16-hetzner-maintenance.md](../../docs/16-hetzner-maintenance.md)
+for disk triage, Docker image garbage collection, Redis disk-full recovery,
+and resize procedures.
+
 ### SSH Access
 
 ```bash
@@ -509,6 +513,30 @@ rsync -az --delete --exclude='.venv' --exclude='__pycache__' --exclude='.env*' -
   -e "ssh -i ~/.ssh/hetzner_deploy" apps/crawler/ root@<WORKER_IP>:/home/deploy/crawler-src/
 ssh ... 'cd /home/deploy/crawler-src && docker build --target slim -t crawler-slim:latest .'
 ssh ... 'cd /home/deploy/crawler-src && docker build --target full -t crawler-full:latest .'
+```
+
+### Disk and Docker GC
+
+All Hetzner hosts should run the `jobseek-docker-gc.timer` systemd timer.
+It prunes stale Docker builder cache and unused images, and on the crawler
+host it keeps the active plus recent rollback crawler/browser release images
+while removing older unused version tags. Do not prune Docker volumes.
+
+```bash
+systemctl is-active jobseek-docker-gc.timer
+systemctl list-timers --all jobseek-docker-gc.timer --no-pager
+journalctl -u jobseek-docker-gc.service -n 80 --no-pager
+df -h /
+docker system df
+```
+
+If Redis reports `MISCONF` after a disk-full event, free disk first, then
+verify Redis persistence and writes:
+
+```bash
+docker exec deploy-redis-1 redis-cli INFO persistence | tr -d '\r' \
+  | grep -E '^(rdb_bgsave_in_progress|rdb_last_bgsave_status|aof_enabled):'
+docker exec deploy-redis-1 redis-cli SET disk_probe ok EX 60
 ```
 
 ### Current Container Layout (metrics ports)
