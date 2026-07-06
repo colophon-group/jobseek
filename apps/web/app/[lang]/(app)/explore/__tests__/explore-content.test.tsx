@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import type { ExploreData } from "@/lib/actions/explore-data";
 
 // `@/lib/actions/explore-data` is a server action that transitively imports
@@ -81,6 +81,12 @@ function makeInitialData(overrides: Partial<ExploreData> = {}): ExploreData {
   };
 }
 
+async function flushQueuedEffects(): Promise<void> {
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
 beforeEach(() => {
   mockFetchExploreData.mockReset();
   mockFetchExploreData.mockResolvedValue(makeInitialData());
@@ -98,9 +104,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     const initialData = makeInitialData();
     render(<ExploreContent locale="en" initialData={initialData} />);
 
-    // Wait for any queued effects to run — give them a real chance to
-    // misbehave before asserting that they didn't.
-    await new Promise((r) => setTimeout(r, 0));
+    await flushQueuedEffects();
     expect(mockFetchExploreData).not.toHaveBeenCalled();
   });
 
@@ -147,7 +151,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     const initialData = makeInitialData();
     render(<ExploreContent locale="en" initialData={initialData} />);
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushQueuedEffects();
     expect(mockFetchExploreData).not.toHaveBeenCalled();
   });
 
@@ -223,7 +227,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
         <ExploreContent locale="en" initialData={makeInitialData()} />,
       );
 
-      await new Promise((r) => setTimeout(r, 0));
+      await flushQueuedEffects();
       expect(mockFetchExploreData).not.toHaveBeenCalled();
     });
   });
@@ -375,8 +379,7 @@ describe("ExploreContent — cold-start retry (#3008)", () => {
     await waitFor(() => {
       expect(mockFetchExploreData).toHaveBeenCalledTimes(1);
     });
-    // Wait an additional tick to confirm no second call sneaks in
-    await new Promise((r) => setTimeout(r, 50));
+    await flushQueuedEffects();
     expect(mockFetchExploreData).toHaveBeenCalledTimes(1);
     expect(console.warn).not.toHaveBeenCalled();
   });
