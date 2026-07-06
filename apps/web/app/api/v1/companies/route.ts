@@ -1,5 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { suggestCompanies } from "@/lib/actions/company";
+// Public REST routes import the plain service tier (`@/lib/services/*`)
+// rather than the `"use server"` action modules (`@/lib/actions/*`). See
+// issues #3231 / #3331.
+import { suggestCompanies } from "@/lib/services/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { checkRateLimit, apiResponse, siteUrl } from "../_shared";
 

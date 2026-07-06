@@ -43,11 +43,11 @@ vi.mock("drizzle-orm", () => ({
     strings.join("?"),
 }));
 vi.mock("@/lib/sessionCache", () => ({ getSessionUserId: vi.fn() }));
-vi.mock("@/lib/actions/locations", () => ({
+vi.mock("@/lib/services/locations", () => ({
   expandLocationIds: vi.fn(),
   expandLocationIdsBatch: vi.fn().mockResolvedValue([]),
 }));
-vi.mock("@/lib/actions/taxonomy", () => ({
+vi.mock("@/lib/services/taxonomy", () => ({
   expandOccupationIds: vi.fn(),
   expandOccupationIdsBatch: vi.fn().mockResolvedValue([]),
 }));
@@ -87,7 +87,7 @@ vi.mock("@/lib/search/typesense-retry", () => ({
   withTypesenseRetry: (fn: () => Promise<unknown>) => fn(),
 }));
 vi.mock("@/lib/search/pg-filters", () => ({ localesOrNoneClause: vi.fn() }));
-vi.mock("@/lib/actions/search-input", () => ({ parseSearchFilters: vi.fn() }));
+vi.mock("@/lib/services/search-input", () => ({ parseSearchFilters: vi.fn() }));
 vi.mock("@/lib/search/params", () => ({
   firstOf: vi.fn(),
   idsOrUndefined: vi.fn(),

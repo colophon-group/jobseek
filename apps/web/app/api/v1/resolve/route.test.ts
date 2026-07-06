@@ -36,6 +36,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/actions/company", () => ({
+  suggestIndustries: vi.fn(() => {
+    throw new Error("route must not import company server actions");
+  }),
+}));
+vi.mock("@/lib/services/company", () => ({
   suggestIndustries: mocks.suggestIndustries,
 }));
 vi.mock("@/lib/actions/locations", () => ({
