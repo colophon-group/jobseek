@@ -14,12 +14,21 @@ Field removals are intentionally manual to avoid accidental data loss.
 from __future__ import annotations
 
 import sys
+import time
 from typing import TYPE_CHECKING
 
+import httpx
 import structlog
-from typesense.exceptions import ObjectAlreadyExists, ObjectNotFound
+from typesense.exceptions import ObjectAlreadyExists, ObjectNotFound, ObjectUnprocessable
 
 log = structlog.get_logger()
+
+_SETUP_CONNECTION_TIMEOUT_SECONDS = 120
+_SCHEMA_CHANGE_ENDPOINT = "/operations/schema_changes"
+_SCHEMA_ALTER_DEADLINE_SECONDS = 300.0
+_SCHEMA_ALTER_POLL_INTERVAL_SECONDS = 5.0
+_SCHEMA_ALTER_RETRY_INITIAL_SECONDS = 2.0
+_SCHEMA_ALTER_RETRY_MAX_SECONDS = 30.0
 
 if TYPE_CHECKING:
     import typesense
@@ -301,35 +310,9 @@ def _warn_field_drift(
             )
 
 
-def _patch_missing_fields(
-    client: typesense.Client, collection_name: str, desired_fields: list[dict]
-) -> None:
-    """Add missing fields and re-toggle ``index`` drift on existing fields.
-
-    Typesense supports adding/removing fields in-place via PATCH on a
-    collection. ``type`` drift is NOT auto-repaired (only warned about) —
-    that requires a backfill the patcher can't perform. ``index`` drift IS
-    auto-repaired here via a single-PATCH drop + re-add pair (Typesense's
-    documented mechanism for "any modifications to an existing field"). The
-    re-added field has no documents indexed under it until the next
-    exporter / sync pass repopulates them — fine for the company-detail
-    use-case (#2931) since data lives in Postgres and the next ``crawler
-    sync`` rewrites these docs anyway.
-
-    ``facet``/``sort``/``optional`` drift is still out of scope. ``id`` is
-    skipped throughout — Typesense rejects any PATCH touching it.
-    """
-    try:
-        live = client.collections[collection_name].retrieve()
-    except ObjectNotFound:
-        return
-
-    # Typesense's implicit ``id`` field never appears in retrieve()['fields'],
-    # so a name-based diff would always flag it missing — and Typesense rejects
-    # any PATCH that touches ``id`` with a 400 ``cannot be altered``.
-    live_fields = live.get("fields", [])
-    _warn_field_drift(collection_name, live_fields, desired_fields)
-
+def _fields_patch_payload(
+    live_fields: list[dict], desired_fields: list[dict]
+) -> tuple[list[dict], list[str], list[str]]:
     live_by_name = {f["name"]: f for f in live_fields}
     payload_fields: list[dict] = []
     added_names: list[str] = []
@@ -352,26 +335,207 @@ def _patch_missing_fields(
             payload_fields.append(desired)
             rebuilt_names.append(name)
 
-    if not payload_fields:
-        log.info("typesense.collection.up_to_date", collection=collection_name)
-        return
+    return payload_fields, added_names, rebuilt_names
 
-    log.info(
-        "typesense.collection.patching",
-        collection=collection_name,
-        added=added_names,
-        rebuilt=rebuilt_names,
-    )
+
+def _is_schema_alter_in_progress(exc: ObjectUnprocessable) -> bool:
+    return "another collection update operation is in progress" in str(exc).lower()
+
+
+def _schema_changes_active(response: object) -> bool | None:
+    """Return whether Typesense reports an active schema change.
+
+    Current Typesense versions expose ``GET /operations/schema_changes`` as an
+    empty response when idle and a list/object when active. Older servers may
+    not have the endpoint; callers represent that as ``None`` so the patcher can
+    fall back to schema re-read/backoff.
+    """
+    if response is None:
+        return None
+    if isinstance(response, str):
+        return bool(response.strip())
+    if isinstance(response, list):
+        return bool(response)
+    if isinstance(response, dict):
+        if not response:
+            return False
+        for key in ("schema_changes", "operations", "results"):
+            value = response.get(key)
+            if isinstance(value, list):
+                return bool(value)
+        return True
+    return bool(response)
+
+
+def _get_schema_changes(client: typesense.Client) -> object:
+    api_call = getattr(client, "api_call", None)
+    get = getattr(api_call, "get", None)
+    if get is None:
+        return None
     try:
-        client.collections[collection_name].update({"fields": payload_fields})
-    except Exception as exc:
-        log.error(
-            "typesense.collection.patch_error",
-            collection=collection_name,
-            error=str(exc),
-            exc_info=True,
+        return get(_SCHEMA_CHANGE_ENDPOINT, entity_type=list, as_json=True)
+    except ObjectNotFound:
+        log.info(
+            "typesense.schema_changes.unavailable",
+            endpoint=_SCHEMA_CHANGE_ENDPOINT,
         )
-        raise
+        return None
+    except Exception as exc:
+        log.warning(
+            "typesense.schema_changes.poll_error",
+            endpoint=_SCHEMA_CHANGE_ENDPOINT,
+            error=str(exc),
+        )
+        return None
+
+
+def _wait_for_schema_alter_clear(
+    client: typesense.Client, collection_name: str, deadline: float
+) -> bool:
+    """Wait until Typesense says no schema alter is active.
+
+    Returns ``False`` when the server/client cannot report schema-change state,
+    which is expected on the deployed Typesense 27.1 node. In that case the
+    caller uses bounded backoff and fresh collection retrieves instead.
+    """
+    while True:
+        active = _schema_changes_active(_get_schema_changes(client))
+        if active is None:
+            return False
+        if not active:
+            return True
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(
+                f"Timed out waiting for Typesense schema alter to finish for {collection_name}"
+            )
+        sleep_for = min(_SCHEMA_ALTER_POLL_INTERVAL_SECONDS, remaining)
+        log.info(
+            "typesense.collection.schema_alter_wait",
+            collection=collection_name,
+            sleep_seconds=sleep_for,
+        )
+        time.sleep(sleep_for)
+
+
+def _sleep_before_schema_patch_retry(collection_name: str, deadline: float, delay: float) -> None:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError(f"Timed out retrying Typesense schema patch for {collection_name}")
+    sleep_for = min(delay, remaining)
+    log.info(
+        "typesense.collection.patch_retry_wait",
+        collection=collection_name,
+        sleep_seconds=sleep_for,
+    )
+    time.sleep(sleep_for)
+
+
+def _patch_missing_fields(
+    client: typesense.Client, collection_name: str, desired_fields: list[dict]
+) -> None:
+    """Add missing fields and re-toggle ``index`` drift on existing fields.
+
+    Typesense supports adding/removing fields in-place via PATCH on a
+    collection. ``type`` drift is NOT auto-repaired (only warned about) —
+    that requires a backfill the patcher can't perform. ``index`` drift IS
+    auto-repaired here via a single-PATCH drop + re-add pair (Typesense's
+    documented mechanism for "any modifications to an existing field"). The
+    re-added field has no documents indexed under it until the next
+    exporter / sync pass repopulates them — fine for the company-detail
+    use-case (#2931) since data lives in Postgres and the next ``crawler
+    sync`` rewrites these docs anyway.
+
+    ``facet``/``sort``/``optional`` drift is still out of scope. ``id`` is
+    skipped throughout — Typesense rejects any PATCH touching it.
+    """
+    deadline = time.monotonic() + _SCHEMA_ALTER_DEADLINE_SECONDS
+    retry_delay = _SCHEMA_ALTER_RETRY_INITIAL_SECONDS
+
+    while True:
+        try:
+            live = client.collections[collection_name].retrieve()
+        except ObjectNotFound:
+            return
+
+        # Typesense's implicit ``id`` field never appears in retrieve()['fields'],
+        # so a name-based diff would always flag it missing — and Typesense rejects
+        # any PATCH that touches ``id`` with a 400 ``cannot be altered``.
+        live_fields = live.get("fields", [])
+        _warn_field_drift(collection_name, live_fields, desired_fields)
+        payload_fields, added_names, rebuilt_names = _fields_patch_payload(
+            live_fields, desired_fields
+        )
+
+        if not payload_fields:
+            log.info("typesense.collection.up_to_date", collection=collection_name)
+            return
+
+        log.info(
+            "typesense.collection.patching",
+            collection=collection_name,
+            added=added_names,
+            rebuilt=rebuilt_names,
+        )
+        try:
+            client.collections[collection_name].update({"fields": payload_fields})
+            return
+        except ObjectUnprocessable as exc:
+            if not _is_schema_alter_in_progress(exc):
+                log.error(
+                    "typesense.collection.patch_error",
+                    collection=collection_name,
+                    error=str(exc),
+                    exc_info=True,
+                )
+                raise
+            log.warning(
+                "typesense.collection.patch_in_progress",
+                collection=collection_name,
+                error=str(exc),
+            )
+            try:
+                endpoint_confirmed_clear = _wait_for_schema_alter_clear(
+                    client, collection_name, deadline
+                )
+                if not endpoint_confirmed_clear:
+                    _sleep_before_schema_patch_retry(collection_name, deadline, retry_delay)
+                    retry_delay = min(retry_delay * 2, _SCHEMA_ALTER_RETRY_MAX_SECONDS)
+            except TimeoutError as wait_exc:
+                log.error(
+                    "typesense.collection.patch_error",
+                    collection=collection_name,
+                    error=str(wait_exc),
+                    exc_info=True,
+                )
+                raise wait_exc from exc
+        except httpx.TimeoutException as exc:
+            log.warning(
+                "typesense.collection.patch_timeout",
+                collection=collection_name,
+                error=str(exc),
+            )
+            try:
+                _wait_for_schema_alter_clear(client, collection_name, deadline)
+                _sleep_before_schema_patch_retry(collection_name, deadline, retry_delay)
+                retry_delay = min(retry_delay * 2, _SCHEMA_ALTER_RETRY_MAX_SECONDS)
+            except TimeoutError as wait_exc:
+                log.error(
+                    "typesense.collection.patch_error",
+                    collection=collection_name,
+                    error=str(wait_exc),
+                    exc_info=True,
+                )
+                raise wait_exc from exc
+        except Exception as exc:
+            log.error(
+                "typesense.collection.patch_error",
+                collection=collection_name,
+                error=str(exc),
+                exc_info=True,
+            )
+            raise
 
 
 def setup_collections(client: typesense.Client, *, force: bool = False) -> None:
@@ -460,7 +624,7 @@ def run_setup(*, force: bool = False) -> None:
                 }
             ],
             "api_key": settings.typesense_admin_key,
-            "connection_timeout_seconds": 10,
+            "connection_timeout_seconds": _SETUP_CONNECTION_TIMEOUT_SECONDS,
         }
     )
 
