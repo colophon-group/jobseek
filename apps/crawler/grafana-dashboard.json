@@ -947,7 +947,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
+        "w": 5,
         "x": 0,
         "y": 44
       },
@@ -999,8 +999,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 6,
+        "w": 5,
+        "x": 5,
         "y": 44
       },
       "fieldConfig": {
@@ -1051,8 +1051,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 12,
+        "w": 5,
+        "x": 10,
         "y": 44
       },
       "fieldConfig": {
@@ -1103,8 +1103,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 18,
+        "w": 5,
+        "x": 15,
         "y": 44
       },
       "fieldConfig": {
@@ -1144,6 +1144,65 @@
         }
       ],
       "description": "All browser domains across tiers. ~80 domains total for browser-dependent boards."
+    },
+    {
+      "id": 907,
+      "type": "stat",
+      "title": "Dead-letter Depth",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 20,
+        "y": 44
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "max by (wtype) (crawler_inflight_deadletter_depth)",
+          "legendFormat": "{{wtype}}"
+        }
+      ],
+      "description": "Tasks parked in Redis deadletter:<wtype> after the inflight reaper reaches max strikes. Nonzero for >1h fires DeadletterQueueNotEmpty. Inspect with ZRANGE deadletter:simple 0 -1 WITHSCORES or ZRANGE deadletter:browser 0 -1 WITHSCORES."
     },
     {
       "id": 14,

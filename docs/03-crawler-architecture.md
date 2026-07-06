@@ -61,6 +61,28 @@ ready:browser:2   -- Tier 2: browser scrapes
 
 **Per-domain rate limiting** via `ratelimit:{domain}` keys prevents hammering shared ATS APIs (e.g. all Greenhouse boards share `boards-api.greenhouse.io`).
 
+### Inflight Leases And Dead-Letter Recovery
+
+`claim_work.lua` moves claimed tasks into `inflight:<wtype>` with a lease deadline. Workers clear the lease when they reschedule or complete the task, and the reaper moves expired leases back to the appropriate per-domain queue. If the same task expires too many times (`redis_reaper_max_strikes`), the reaper stops retrying it and parks the descriptor in `deadletter:<wtype>`.
+
+The exported `crawler_inflight_deadletter_depth{wtype}` gauge is shown on the Queue Health dashboard row and alerts as `DeadletterQueueNotEmpty` when it stays nonzero for more than 1 hour. A nonzero value means the task will not be retried automatically until an operator reviews it.
+
+Read-only inspection:
+
+```bash
+ssh -i ~/.ssh/hetzner_deploy root@$CRAWLER_BROWSER_IPv4
+docker exec deploy-redis-1 redis-cli ZCARD deadletter:simple
+docker exec deploy-redis-1 redis-cli ZRANGE deadletter:simple 0 -1 WITHSCORES
+docker exec deploy-redis-1 redis-cli ZCARD deadletter:browser
+docker exec deploy-redis-1 redis-cli ZRANGE deadletter:browser 0 -1 WITHSCORES
+```
+
+Dead-letter members are encoded as `task_type|domain|task_id`; `task_id` may contain `|`, so split only the first two separators. Before draining, check recent worker logs for `pipeline.reaper.swept` and the `crawler_inflight_reaped_total{outcome="dead_lettered"}` counter to understand whether the root cause is a poison board, a worker crash loop, or a lease TTL mismatch. Do not blindly clear the ZSET: after the root cause is fixed, re-enqueue through the normal crawler path or remove only the reviewed member:
+
+```bash
+docker exec deploy-redis-1 redis-cli ZREM deadletter:simple '<member>'
+```
+
 ## Worker Pipeline
 
 All workers use the same internal pattern. HTTP workers claim from `ready:simple:*` queues, browser workers from `ready:browser:*`.
