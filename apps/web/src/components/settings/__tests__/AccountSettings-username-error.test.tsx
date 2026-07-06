@@ -112,6 +112,11 @@ describe("AccountSettings username errors", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe("Username already taken");
+    expect(document.activeElement).toBe(alert);
+
+    const username = screen.getByLabelText("Username");
+    expect(username.getAttribute("aria-invalid")).toBe("true");
+    expect(username.getAttribute("aria-describedby")).toBeTruthy();
     expect(mocks.sessionRefresh).not.toHaveBeenCalled();
     expect(mocks.routerRefresh).not.toHaveBeenCalled();
   });
@@ -128,7 +133,23 @@ describe("AccountSettings username errors", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe("Failed to update username");
+    expect(document.activeElement).toBe(alert);
     expect(mocks.sessionRefresh).not.toHaveBeenCalled();
     expect(mocks.routerRefresh).not.toHaveBeenCalled();
+  });
+
+  it("links the username availability hint to the input", async () => {
+    mocks.isUsernameAvailable.mockResolvedValueOnce({ data: { available: false } });
+    const user = userEvent.setup();
+
+    render(<AccountSettings initialData={{ ...initialData }} />);
+
+    const username = screen.getByLabelText("Username");
+    await user.clear(username);
+    await user.type(username, "taken-name");
+
+    const hint = await screen.findByText("Already taken");
+    expect(username.getAttribute("aria-invalid")).toBe("true");
+    expect(username.getAttribute("aria-describedby")?.split(" ")).toContain(hint.id);
   });
 });

@@ -13,6 +13,11 @@ describe("ErrorAlert", () => {
     render(<ErrorAlert message="Something went wrong" />);
     expect(screen.getByRole("alert").textContent).toBe("Something went wrong");
   });
+
+  it("can move focus to the alert when requested", () => {
+    render(<ErrorAlert message="Something went wrong" focusOnRender />);
+    expect(document.activeElement).toBe(screen.getByRole("alert"));
+  });
 });
 
 describe("SuccessAlert", () => {

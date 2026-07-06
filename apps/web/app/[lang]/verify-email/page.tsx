@@ -63,7 +63,7 @@ export default function VerifyEmailPage() {
               Verification failed
             </Trans>
           </h2>
-          <ErrorAlert message={error} />
+          <ErrorAlert message={error} focusOnRender />
           <Button href={lp("/sign-in")} prefetch={false} className="mt-4">
             <Trans id="auth.verify.error.backToSignIn" comment="Link back to sign-in after failed verification">
               Back to sign in

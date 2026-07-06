@@ -27,6 +27,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
 
   const isSignUp = mode === "sign-up";
@@ -40,14 +41,21 @@ export function AuthForm({ mode }: AuthFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
 
     // Client-side validation
     if (!email || !password || (isSignUp && !name)) {
-      setError(t({
+      const message = t({
         id: "auth.error.fieldsRequired",
         comment: "Error when required fields are empty",
         message: "Please fill in all fields",
-      }));
+      });
+      setFieldErrors({
+        name: isSignUp && !name ? message : undefined,
+        email: !email ? message : undefined,
+        password: !password ? message : undefined,
+      });
+      setError(message);
       return;
     }
 
@@ -62,6 +70,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         callbackURL: dashboardUrl,
       });
       if (error) {
+        setFieldErrors({});
         setError(error.message ?? t({
           id: "auth.signUp.error.generic",
           comment: "Generic sign-up error fallback",
@@ -88,6 +97,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           goToCheckEmail();
           return;
         }
+        setFieldErrors({});
         setError(error.message ?? t({
           id: "auth.signIn.error.generic",
           comment: "Generic sign-in error fallback",
@@ -155,7 +165,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           : <Trans id="auth.signIn.subtitle" comment="Sign-in page subtitle">Welcome back</Trans>}
       </p>
 
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
 
       <form onSubmit={handleSubmit} noValidate>
         {isSignUp && (
@@ -164,8 +174,12 @@ export function AuthForm({ mode }: AuthFormProps) {
             required
             autoComplete="name"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              setFieldErrors((current) => ({ ...current, name: undefined }));
+            }}
             className="mb-4"
+            error={fieldErrors.name}
           />
         )}
         <FormField
@@ -176,8 +190,12 @@ export function AuthForm({ mode }: AuthFormProps) {
           required
           autoComplete={isSignUp ? "email" : "username email"}
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setFieldErrors((current) => ({ ...current, email: undefined }));
+          }}
           className="mb-4"
+          error={fieldErrors.email}
         />
         <FormField
           label={t({ id: "auth.field.password", comment: "Password input label", message: "Password" })}
@@ -185,8 +203,12 @@ export function AuthForm({ mode }: AuthFormProps) {
           required
           autoComplete={isSignUp ? "new-password" : "current-password"}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setFieldErrors((current) => ({ ...current, password: undefined }));
+          }}
           className={isSignUp ? "mb-6" : "mb-2"}
+          error={fieldErrors.password}
         />
         {!isSignUp && (
           <div className="mb-6 text-right">

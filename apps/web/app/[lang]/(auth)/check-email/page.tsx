@@ -98,7 +98,7 @@ export default function CheckEmailPage() {
             ? t({ id: "auth.verify.cooldown", comment: "Resend button during cooldown with seconds remaining", message: `Resend in ${cooldown}s` })
             : t({ id: "auth.verify.resend", comment: "Button to resend verification email", message: "Resend verification email" })}
       </button>
-      <ErrorAlert message={error} />
+      <ErrorAlert message={error} focusOnRender />
     </div>
   );
 }

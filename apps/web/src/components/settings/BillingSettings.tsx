@@ -156,7 +156,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
           />
         </div>
 
-        {error && <div className="mt-4"><ErrorAlert message={error} /></div>}
+        {error && <div className="mt-4"><ErrorAlert message={error} focusOnRender /></div>}
 
         <div className="mt-4">
           {isFree ? (
