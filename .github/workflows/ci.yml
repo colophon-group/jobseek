@@ -82,6 +82,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: node scripts/verify-pnpm-config.mjs
+
       - run: pnpm lint
 
   i18n-coverage:
