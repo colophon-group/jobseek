@@ -386,15 +386,11 @@ class TestSetUrlParam:
 class TestSetBodyParam:
     def test_set_value(self):
         result = set_body_param('{"offset": 0}', "offset", 20)
-        import json
-
         parsed = json.loads(result)
         assert parsed["offset"] == 20
 
     def test_nested(self):
         result = set_body_param('{"paging": {"offset": 0}}', "paging.offset", 20)
-        import json
-
         parsed = json.loads(result)
         assert parsed["paging"]["offset"] == 20
 
