@@ -2,11 +2,16 @@
 
 ## How it works
 
-The app splits pages into **static** (served from CDN, zero edge cost) and **dynamic** (rendered per-request on edge functions) using Next.js App Router conventions.
+The app splits work into **static shells** (served from CDN, zero function
+compute) and **dynamic work** (server actions, API routes, selected dynamic
+subtrees, and generated assets). See `data-fetching.md` for the full UI data
+flow; this document focuses on the cost and rendering implications.
 
-### Static pages (public, auth)
+### Static pages and shells
 
-Public marketing pages and auth pages contain no user-specific data. They are **pre-rendered at build time** for every locale via `generateStaticParams` in `app/[lang]/layout.tsx`:
+Public marketing pages, most auth page shells, and the `(app)` layout shell are
+pre-rendered for every locale via `generateStaticParams` in
+`app/[lang]/layout.tsx`:
 
 ```
 /en/              — static
@@ -19,20 +24,30 @@ Public marketing pages and auth pages contain no user-specific data. They are **
 /en/sign-up       — static
 /en/check-email   — static (client component, reads sessionStorage)
 /en/verify-email  — static (client component, reads ?token query param)
+/en/explore       — cached shell with anonymous default data
+/en/company/*     — cached shell with anonymous default data
+/en/my-jobs       — static shell; data loads through a server action
 ```
 
-These pages produce **zero edge function invocations** — Vercel serves them directly from the CDN.
+The shell itself produces **zero function invocations** when served from cache.
+Personalized data is fetched later by client components through server actions,
+or by page-specific dynamic subtrees wrapped in `<Suspense>`.
 
-### Dynamic pages (app, API)
+### Dynamic work
 
-Pages that check authentication or read cookies are rendered on every request:
+Dynamic work now lives at narrower boundaries:
 
 ```
-/en/app/*         — dynamic (reads headers() for session)
-/api/auth/*       — dynamic (Better Auth handler)
+server actions    — UI data fetches, mutations, session-aware reads
+/api/auth/*       — Better Auth handler
+/api/v1/*         — external API routes
+/api/stripe/*     — Stripe webhook
+dynamic subtrees   — e.g. settings page data under Suspense
+generated assets   — OG images, sitemap, robots
 ```
 
-This is correct — these pages genuinely need per-request data.
+Keep the shared layouts static; move request-specific reads into one of these
+narrow dynamic surfaces.
 
 ### Proxy (formerly Middleware)
 
@@ -57,7 +72,9 @@ The root layout sets `lang="en"` as default. An inline script reads the locale f
 
 The root layout (`app/layout.tsx`) and the locale layout (`app/[lang]/layout.tsx`) must **never** call `cookies()`, `headers()`, or any function that reads request data. These layouts are shared by every page — a single dynamic call here forces the **entire app** into per-request rendering.
 
-If you need request data, put it in a **route-group layout** that only wraps the pages that need it (e.g. `(app)/layout.tsx`).
+If you need request data, put it in the smallest page, server action, API
+route, or Suspense-wrapped subtree that needs it. Do not add request reads to
+`(app)/layout.tsx`; it is intentionally a static shell.
 
 ### Keep `generateStaticParams` in `[lang]/layout.tsx`
 
@@ -72,11 +89,12 @@ The proxy matcher explicitly excludes locale-prefixed paths. When adding a new l
 ```
 app/[lang]/
   (public)/    ← no cookies/headers in layout → static
-  (auth)/      ← client component layout → static
-  (app)/       ← reads headers() for auth → dynamic (intentional)
+  (auth)/      ← static shell; redirect check streams in a child
+  (app)/       ← static shell; data loads in actions/page subtrees
 ```
 
-If you add a new section, choose the right route group. Don't put static content pages inside `(app)/`.
+If you add a new section, choose the route group by navigation chrome and data
+needs. Static content pages should stay under `(public)`.
 
 ### Don't read cookies/headers for cosmetic data
 
@@ -97,8 +115,8 @@ invocation** — the two billable Vercel metrics. It also re-fires on every
 single visit generates repeated requests.
 
 **Current rule**: public pages always render the anonymous CTA state. Auth
-checks only happen inside the `(app)` route group, where the user is already
-authenticated and the session check is genuinely needed.
+checks belong in the `(app)` route group, auth redirects, server actions, or
+API routes where the session is genuinely needed.
 
 If a future feature needs auth-dependent UI on a public page (e.g. showing
 a user avatar in the header), consider one of these alternatives instead of
@@ -114,41 +132,34 @@ re-adding `useSession()`:
   auth-dependent fragment only after the main page renders, so it doesn't
   block or slow initial paint.
 
-## SessionProvider — zero-cost client auth
+## App bootstrap and client auth
 
-The `(app)/layout.tsx` already fetches the session server-side via
-`getSession()`. Instead of having client components re-fetch it with
-`authClient.useSession()` (which triggers `GET /api/auth/get-session`),
-we pass the session through React context:
+`(app)/layout.tsx` renders `AppBootstrapProvider`, but does not fetch the
+session on the server. The provider runs on the client:
 
 ```
-Server: (app)/layout.tsx → getSession() → <SessionProvider user={session.user}>
-Client: useAuth() → reads from SessionProvider context (zero network requests)
+Anonymous: no logged_in hint cookie → use anonymous context, no RPC
+Signed in: AppBootstrapProvider → fetchAppBootstrap() server action
+  → getSession()
+  → one combined bootstrap query for preferences, saved jobs, starred companies
+  → SessionProvider / SavedJobsProvider / StarredCompaniesProvider
 ```
 
-**What this eliminates:**
-
-- `GET /api/auth/get-session` on every app page mount
-- Re-fetch on every window focus event (tab switching)
-- localStorage caching workaround (no longer needed)
-
-**Trade-off:** If the session changes externally (e.g. user changes name on
-another tab), the data won't refresh until the next page navigation. This is
-acceptable because account changes already redirect the user, causing a fresh
-server render.
-
-The `useAuth()` hook in `src/lib/useAuth.ts` is a thin wrapper over
-`useSession()` from `SessionProvider.tsx`.
+This keeps the shared shell static while still avoiding repeated
+`GET /api/auth/get-session` calls from UI components. `useSession()` reads
+`SessionProvider` context; identity mutation flows call the provider's
+`refresh()` method to reload the bootstrap payload in place.
 
 ## Cached session deduplication
 
-`src/lib/sessionCache.ts` wraps `auth.api.getSession()` with React's
-`cache()`. This deduplicates session lookups within a single server render:
+`src/lib/sessionCache.ts` wraps `auth.api.getSession()` with React's `cache()`.
+This deduplicates session lookups within a single server action or dynamic
+server subtree:
 
 ```
-(app)/layout.tsx  → getSession()  → DB query #1
-getPreferences()  → getSession()  → cache hit (no query)
-getAccountPageData() → getSession() → cache hit (no query)
+fetchAppBootstrap() → getSession() → Redis/DB lookup
+getPreferences()    → getSession() → cache hit in same request
+server action       → getSession() → separate request, separate cache scope
 ```
 
 Without caching, each call independently queries the database for the same
@@ -157,28 +168,25 @@ session token. With `cache()`, only one query runs per request.
 **Note:** `cache()` scopes to a single request. Separate HTTP requests
 (e.g. client-triggered server actions) each get their own cache scope.
 
-## Server-side data fetching for app pages
+## Data fetching for app pages
 
-App pages fetch data in their server components and pass it as props to client
-components. The data rides along with the RSC navigation payload — no extra
-network request after mount.
+`data-fetching.md` is the canonical guide for the current pattern. In short:
+the `(app)` route group serves static shells from CDN, and most page data loads
+through client-fired server actions on mount. A few high-traffic anonymous paths
+embed cacheable defaults in the shell:
 
-**Key principle:** Avoid `useEffect` → server action fetch patterns on page
-load. These create a sequential waterfall: the browser first downloads the RSC
-payload (page shell), then mounts the component, then fires a second request
-for data. Fetching in the server component collapses this into a single request.
+- `/explore` embeds anonymous, no-filter defaults via `fetchExploreDefaults()`.
+- `/company/[slug]` embeds anonymous, no-filter defaults via
+  `fetchCompanyPageDefaults()`.
+- Watchlist and company metadata use cached server reads for SEO, then hydrate
+  personalized page bodies client-side.
+- Settings keeps a page-specific dynamic subtree under `<Suspense>` because it
+  benefits from server-side parallel reads.
 
 ### Account settings page
 
-`getAccountPageData()` returns connected accounts in the page server component
-and passes them as `initialData` to `<AccountSettings>`:
-
-```
-Before: RSC navigation (60ms) → mount → server action (280ms) = 2 requests, 340ms
-After:  RSC navigation (~80ms, includes DB query)             = 1 request,  80ms
-```
-
-The server action uses the neon HTTP driver (stateless, fast) to query the
+`account-loader.tsx` calls `getAccountPageData()` from the client after mount.
+The server action uses the shared Drizzle/postgres.js `db` client to query the
 `account` table. It does NOT use `withRLS` — the `account` table has no RLS
 policies, and the query filters by `userId` from the validated session.
 
@@ -187,35 +195,31 @@ mutations (e.g. setting a password), not on page load.
 
 ### General settings page
 
-No server-side data fetching needed. Theme comes from `next-themes`
-(`useTheme()`), locale comes from the URL. Both are available client-side
-without a DB query.
+`settings-loader.tsx` is a deliberate page-specific dynamic subtree. It gates
+on `getSession()`, then fetches preferences, viewer job languages, available
+job languages, and currency rates in parallel. This avoids the old sequential
+client waterfall without making the shared `(app)` layout dynamic.
 
 ### When adding new app pages
 
-Follow this pattern: fetch data in the page server component, pass as props.
-Only use client-side fetches for data that changes after user interaction
-(e.g. refreshing account list after linking a social provider).
+Default to the static shell + client server-action loader pattern described in
+`data-fetching.md`. Use a server component/dynamic subtree only when it has a
+measured benefit and can stay isolated from shared layouts.
 
 ### Why no RLS on user_preferences
 
-Row-Level Security was removed from `user_preferences`. While RLS provides
-defense-in-depth, it required the WebSocket Pool driver (`@neondatabase/serverless`
-Pool) for transactions (`set_config` + query), which added ~1-1.5s per write
-on Vercel serverless due to cold WebSocket connections and 4 round-trips
-(BEGIN → set_config → query → COMMIT).
-
-All `user_preferences` queries already go through server actions that validate
-the session and filter by the authenticated `userId`. The auth check in the
-server action IS the security boundary. Use the stateless HTTP neon driver
-(`db`) for all preference queries.
+Row-Level Security was removed from `user_preferences`. All
+`user_preferences` queries go through server actions that validate the session
+and filter by the authenticated `userId`. The auth check in the server action
+is the security boundary. Use the shared Drizzle/postgres.js `db` client for
+preference queries.
 
 ## Link prefetch strategy
 
-Next.js `<Link>` prefetches the RSC payload for every linked route when the
-link enters the viewport. Each prefetch of a **dynamic** route triggers a full
-serverless function invocation with all DB queries from the layout — this is
-both an edge request and a function invocation, billed twice.
+Next.js `<Link>` prefetches route data when the link enters the viewport. For
+dynamic routes this can trigger a serverless function invocation; for cached
+or static routes it still creates extra CDN/edge traffic. The cost is easy to
+multiply across card grids and navigation bars.
 
 **Policy: all links use `prefetch={false}`.** No exceptions.
 
@@ -223,10 +227,9 @@ both an edge request and a function invocation, billed twice.
 
 A previous version of this doc designated certain links as "hot paths" with
 prefetch enabled (CTA buttons to `/explore`, `/sign-in`, `/sign-up`). This was
-wrong — those pages are all **dynamic** (the `(app)` layout runs 4+ DB queries,
-the `(auth)` layout checks session). Each prefetch triggered full SSR for
-nothing. On the explore page, 10 company card links could prefetch 10 company
-detail pages — 10 phantom SSR invocations per page view.
+wrong for cost control: prefetching spends requests before the user intent is
+known. On list pages, many visible cards can prefetch many detail routes that
+the user never opens.
 
 Even static pages (About, FAQ, etc.) count toward Vercel's edge request quota
 when prefetched. The navigation speed benefit from prefetch is marginal (~100-
@@ -311,15 +314,15 @@ invocations.
 
 | Trigger | Runtime | Notes |
 |---------|---------|-------|
-| Dynamic page render (SSR) | Node.js | All `(app)` pages (`force-dynamic`) |
-| Auth page render | Node.js | `(auth)` layout calls `getSession()` |
+| Dynamic server subtree | Node.js | Page-specific Suspense islands such as settings data |
 | Server action call | Node.js | Each client-triggered `.bind()` or `useActionState` |
 | API route request | Node.js | `/api/v1/*`, `/api/auth/*`, `/api/stripe/*` |
 | OG image generation | Node.js | `opengraph-image.tsx` routes |
 | `sitemap.xml` / `robots.txt` | Node.js | Generated dynamically per request |
 | Proxy (formerly Middleware) | Edge | Lightweight locale redirect only |
 
-Static pages (`(public)`) and cached CDN assets do **not** invoke functions.
+Static pages, cached shells, and CDN assets do **not** invoke functions when
+served from cache.
 
 ### Database driver and connection model
 
@@ -344,7 +347,8 @@ requests on the same instance reuse the pooled connection.
 
 ### Session resolution chain
 
-Every `(app)` page calls `getSession()` from `sessionCache.ts`. The chain:
+Any server action or dynamic server subtree that needs auth calls
+`getSession()` from `sessionCache.ts`. The chain:
 
 ```
 headers() → extract cookie token
@@ -360,46 +364,42 @@ headers() → extract cookie token
 React's `cache()` deduplicates within a single render — the session is
 fetched once regardless of how many server components call `getSession()`.
 
-### The app layout tax
+### Removed app layout tax
 
-Every `(app)` page pays a fixed compute cost from the shared layout
-(`app/[lang]/(app)/layout.tsx`). This runs **before** any page-specific
-queries:
+The old `(app)` layout fetched session, preferences, saved job statuses, and
+starred companies during every server render. That is no longer true.
+`app/[lang]/(app)/layout.tsx` is a static shell that renders
+`AppBootstrapProvider`.
 
-| Query | Condition | Approx duration |
-|-------|-----------|-----------------|
-| `getSession()` | Always | 5-90ms (Redis hit vs DB) |
-| `getPreferences()` | If authenticated | 10-30ms (1 SELECT) |
-| `getSavedJobStatuses()` | If authenticated | 10-30ms (1 SELECT) |
-| `getStarredCompanyIds()` | If authenticated | 10-30ms (1 SELECT) |
+Current bootstrap behavior:
 
-The last three run in **`Promise.all()`** — they execute in parallel, so the
-cost is the slowest of the three, not the sum.
+| Viewer | Work on initial shell | Follow-up function work |
+|--------|-----------------------|--------------------------|
+| Anonymous, no `logged_in` hint | None | None from bootstrap |
+| Signed in | None | `fetchAppBootstrap()` server action: `getSession()` + one combined bootstrap query |
 
-**Authenticated layout cost:** ~15-120ms (session + max(prefs, saved, starred))
-**Unauthenticated layout cost:** ~5-90ms (session only, other queries skipped)
-
-This is the **floor** for every `(app)` route. Page-specific queries add on
-top.
+There is no universal per-route layout query floor. Page-specific loaders,
+server actions, and dynamic subtrees define the compute cost.
 
 ### Per-route compute profile
 
-Estimated serverless function duration per route (SSR render, wall-clock).
-Durations assume warm instance (no cold start). Cold start adds 50-400ms.
+Estimated serverless function duration for the dynamic part of each route.
+Durations assume a warm instance. Cold start adds 50-400ms when a function is
+invoked.
 
-| Route | Layout queries | Page queries | Total DB queries | Pattern | Redis cache | Est. duration |
-|-------|---------------|-------------|-----------------|---------|-------------|---------------|
-| **Explore** | 4 (parallel) | 3-8 (search + filters) | 7-12 | Mixed | Search: 5min | 80-250ms |
-| **Company** | 4 (parallel) | 3-5 (company + postings) | 7-9 | Mixed | Company: 5min | 60-200ms |
-| **Shared watchlist** | 4 (parallel) | 6-10 (watchlist + filters + postings) | 10-14 | Sequential + parallel | None | 100-350ms |
-| **My Jobs** | 4 (parallel) | 2 (count + list) | 6 | Sequential | None | 50-150ms |
-| **My Jobs Stats** | 4 (parallel) | 2 (funnel + activity) | 6 | Sequential | None | 50-150ms |
-| **Watchlists** | 4 (parallel) | 1 (list + denormalized active counts via JOIN) | 5 | Constant in N | None | 50-100ms |
-| **Settings** | 4 (parallel) | 3 (prefs + languages + currencies) | 7 | Sequential | Languages: 1h | 40-120ms |
-| **Account** | 4 (parallel) | 1 (accounts) | 5 | Sequential | None | 40-100ms |
-| **Billing** | 4 (parallel) | 1 (plan info) | 5 | Sequential | None | 40-100ms |
-| **Progress** | 4 (parallel) | 2 (stats, parallel) | 6 | Parallel | Stats: 6h | 30-80ms |
-| **Sign-in / Sign-up** | 1 (session) | 0 | 1 | — | Session: 5min | 10-90ms |
+| Route | Shell behavior | Dynamic work | Pattern | Redis/cache | Est. duration |
+|-------|----------------|--------------|---------|-------------|---------------|
+| **Explore** | Cached anonymous defaults | Personalized `fetchExploreData()` / search actions when signed in or filtered | Mixed | Defaults 60s; search 5min | 30-250ms when invoked |
+| **Company** | Cached anonymous defaults + metadata | Personalized `fetchCompanyPageData()` when signed in, filtered, or language cookie present | Mixed | Company/detail caches | 30-200ms when invoked |
+| **Shared watchlist** | Cached metadata/body shell | `fetchWatchlistPageData()` after mount | Sequential + parallel | Watchlist lookup cached | 60-300ms |
+| **My Jobs** | Static shell | `getMyJobs()` after mount | Sequential | None | 20-100ms |
+| **My Jobs Stats** | Static shell | stats loader action after mount | Parallel | Stats cache | 30-100ms |
+| **Watchlists** | Static shell | bootstrap context + `getUserWatchlistsWithLimit()` after mount | Constant in N | None | 30-120ms |
+| **Settings** | Static shell + dynamic Suspense subtree | `getSession()` gate, then prefs/languages/currencies in parallel | Parallel | Languages/currencies cached | 40-150ms |
+| **Account** | Static shell | `getAccountPageData()` after mount | Sequential | None | 40-120ms |
+| **Billing** | Static shell | billing loader action after mount | Sequential | None | 40-120ms |
+| **Progress** | Static shell | progress loader action after mount | Parallel | Stats cache | 30-100ms |
+| **Sign-in / Sign-up** | Static form shell | Suspended redirect check if already signed in | Session check | Session cache | 10-90ms |
 
 Watchlist counts on the listing page are now denormalized via a single
 JOIN subquery (issue #3176). The watchlist detail page still runs the
@@ -458,32 +458,35 @@ CPU-heavy per invocation.
 
 Ranked by total GB-seconds impact (frequency × duration):
 
-1. **Explore page SSR** — highest traffic + heaviest queries (search with
-   multi-CTE SQL, location/occupation expansion, geolocation sorting). Each
-   render: 7-12 DB queries, 80-250ms.
+1. **Search server actions** — `searchJobs()` and related explore filtering
+   paths are high frequency and run the heaviest search queries.
 
-2. **Server action: searchJobs** — fires on every search input change and
-   filter toggle. High frequency. 3-5 queries, 30-150ms each.
+2. **Personalized explore/company hydration** — signed-in viewers, filters, or
+   language cookies bypass the cached anonymous defaults and call server
+   actions.
 
-3. **Shared watchlist SSR** — heaviest single render (10-14 queries). Lower
-   traffic than explore but 100-350ms per render with no Redis caching.
+3. **Shared watchlist hydration** — the public shell is cacheable, but the page
+   body still fetches personalized watchlist data after mount.
 
-4. **Watchlists page SSR** — *was* the N+1 hotspot pre-#3176; now a
-   constant 1 SQL query regardless of N. 50-100ms.
+4. **Settings dynamic subtree** — deliberate request-time work with several
+   parallel reads. Lower traffic but useful to watch because it mixes session,
+   Typesense, and Postgres reads.
 
-5. **Company page SSR** — second-highest traffic dynamic page. 7-9 queries,
-   60-200ms.
+5. **Mutating server actions** — saved jobs, watchlist edits, preferences, and
+   billing operations. Lower frequency but more sensitive to retries and
+   invalidation work.
 
-6. **Auth pages** — every sign-in/sign-up page view calls `getSession()` to
-   check for redirect. Usually a Redis hit (~10ms), but frequency adds up.
+6. **Auth redirect checks** — sign-in/sign-up shells are static, but the
+   suspended redirect check still resolves session state.
 
 ### Rules to minimize fluid compute
 
 #### Parallelize independent queries
 
-The app layout already runs `getPreferences()`, `getSavedJobStatuses()`, and
-`getStarredCompanyIds()` in `Promise.all()`. Apply the same pattern to page-
-level queries. Never run independent DB calls sequentially.
+Use `Promise.all()` for independent page-level reads. The bootstrap action goes
+one step further and combines preferences, saved job statuses, and starred
+companies into one SQL round-trip; prefer that shape when the data is always
+needed together.
 
 #### Avoid N+1 query patterns
 
