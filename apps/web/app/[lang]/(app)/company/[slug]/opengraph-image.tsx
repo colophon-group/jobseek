@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { unstable_cache } from "next/cache";
 import { getCompanyBySlug, type CompanyDetail } from "@/lib/actions/company";
 import { locales } from "@/lib/i18n";
 import {
@@ -19,8 +20,10 @@ const CACHE_HEADERS = {
   "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
 };
 
-import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
+const COMPANY_OG_CACHE_TTL_SECONDS = 2592000;
 
 /**
  * How many top companies (by active posting count) to prerender at build
@@ -123,8 +126,29 @@ export async function generateStaticParams(): Promise<
   }
 }
 
-// Satori only supports TTF/OTF, not woff2.
-const fontPromise = readFile(
+const getCachedOgCompany = unstable_cache(
+  async (slug: string, lang: string) => getCompanyBySlug(slug, lang),
+  ["company-opengraph"],
+  { revalidate: COMPANY_OG_CACHE_TTL_SECONDS },
+);
+
+async function getOgCompany(slug: string, lang: string): Promise<CompanyDetail | null> {
+  try {
+    return await getCachedOgCompany(slug, lang);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("incrementalCache missing")
+    ) {
+      return getCompanyBySlug(slug, lang);
+    }
+    throw error;
+  }
+}
+
+// Satori only supports TTF/OTF, not woff2. Keep this synchronous at module
+// load so the static renderer does not see uncached async filesystem IO.
+const fontData = readFileSync(
   join(process.cwd(), "public/fonts/JetBrainsMono-Bold.ttf"),
 );
 
@@ -164,7 +188,10 @@ function renderNotFound(fontData: Buffer): ImageResponse {
 }
 
 function renderCompanyImage(company: CompanyDetail, fontData: Buffer): ImageResponse {
-  const hasIcon = company.icon && company.icon.startsWith("http");
+  const hasIcon =
+    company.icon &&
+    company.icon.startsWith("http") &&
+    !company.icon.toLowerCase().endsWith(".webp");
 
   return new ImageResponse(
     <div
@@ -269,10 +296,7 @@ export default async function OgImage({
     if (cached) return asPngResponse(cached);
   }
 
-  const [company, fontData] = await Promise.all([
-    getCompanyBySlug(slug, lang),
-    fontPromise,
-  ]);
+  const company = await getOgCompany(slug, lang);
   if (!company) {
     return renderNotFound(fontData);
   }
