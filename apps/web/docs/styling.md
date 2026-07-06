@@ -1,60 +1,93 @@
 # Styling Guidelines
 
-## Three layers, strict boundaries
+The web app uses Tailwind v4 utilities backed by CSS custom properties in
+`apps/web/app/globals.css`. Start with semantic Tailwind classes in JSX, and
+keep global CSS limited to theme tokens, resets, and shared prose/rendering
+surfaces that cannot reasonably live on a single component.
 
-| Layer | Where | What goes here |
-| --- | --- | --- |
-| `globals.css` | `app/globals.css` | CSS custom properties for non-MUI code, resets, `body` defaults. Nothing component-specific. |
-| CSS Modules | `*.module.css` co-located with the component | All component-scoped styles. Automatically scoped, tree-shaken when the component isn't rendered. |
-| MUI `sx` prop | Inline on MUI components | Theme-aware values only (spacing, breakpoints, palette tokens). |
+## Design tokens
 
-## Single source of truth
+`globals.css` is the source of truth for the visual vocabulary:
 
-`src/theme/tokens.ts` owns every design token as a JS object. Two consumers read from it:
+- `:root` defines the light color values.
+- `.dark` defines the dark color values.
+- `@theme` exposes those variables to Tailwind classes such as `bg-surface`,
+  `text-muted`, `border-border-soft`, `bg-success-bg`, and `text-error`.
+- Radius and font tokens are also exported through `@theme`.
 
-- **`createMuiTheme.ts`** — imports `tokens` directly, builds separate light and dark MUI themes with real hex values. `ThemeProvider` swaps the active theme based on `mode` state. The `.dark` class on `<html>` triggers the dark scheme for custom CSS properties.
-- **`globals.css`** — mirrors the same values as CSS custom properties (`--background`, `--foreground`, etc.) for CSS Modules and server components that can't access MUI's theme.
+Prefer semantic token classes over raw colors. If a color, radius, or surface is
+part of the product theme, add or update the token in `globals.css` first, then
+consume it through a Tailwind class. Keep raw hex values out of component JSX
+unless the value represents fixed external artwork or a third-party brand color.
 
-When changing a token, update `tokens.ts` first, then update the matching variable in `globals.css`.
+## Component styling
 
-## Rules
+1. Use Tailwind utilities directly in `className` for layout, spacing, type,
+   borders, state, and responsive behavior.
+2. Extract repeated class groups into small components when the same visual
+   pattern appears in more than one place.
+3. Keep component-specific selectors out of `globals.css`. Global classes are
+   reserved for cross-cutting rendered content such as job descriptions, blog
+   prose, resets, fonts, and tokens.
+4. Prefer token classes like `bg-surface`, `text-foreground`, `text-muted`,
+   `border-divider`, and `hover:bg-border-soft` over one-off values.
+5. Use Tailwind state variants (`hover:`, `focus-visible:`, `disabled:`,
+   `data-[state=open]:`, `dark:`) instead of adding imperative style state.
+6. Keep class strings readable. If a component becomes hard to scan, split the
+   component or move repeated variants behind a typed helper.
 
-1. **Never add component styles to `globals.css`.** If a rule only matters when a specific component is rendered, it belongs in a CSS Module.
-2. **Co-locate CSS Modules with their component.** `Foo.tsx` → `Foo.module.css`, same directory.
-3. **In CSS Modules, use `var(--name)` for colors and tokens** — never hardcode hex values.
-4. **Reference global classes from modules with `:global()`** when needed (e.g., `:global(.dark) .light { display: none; }`).
-5. **Prefer CSS Modules over `sx` for non-MUI elements.** Reserve `sx` for MUI components that need theme-aware responsive values.
-6. **No CSS-in-JS libraries** (Emotion `css`, styled-components) outside of MUI's built-in `sx`/`styled` API.
-7. **Never hardcode hex values in `createMuiTheme.ts`.** Import from `tokens.ts`.
-8. **Keep `globals.css` minimal.** Token definitions (`:root`, `.dark`) + body reset. No component rules, no utility classes.
+## Theme handling
+
+`next-themes` sets the active theme and applies `.dark` on `<html>` before the
+app paints. Build most components with semantic token classes so light and dark
+mode follow the variables automatically. Reach for explicit `dark:` variants
+only when the layout or contrast needs a distinct dark-mode treatment that a
+token cannot express.
+
+Components that need the current resolved theme, such as charts or artwork,
+should read it through `useTheme()` in a client component and still prefer the
+same token values or CSS variables where possible.
+
+## UI primitives and icons
+
+Use Radix primitives for interactions that need accessibility semantics and
+keyboard behavior: dialogs, alert dialogs, dropdown menus, and tooltips. Style
+Radix parts with Tailwind classes and data-state variants.
+
+Use `lucide-react` for icons. Icon-only controls need an accessible label, and
+less obvious controls should have a tooltip. Keep icons sized with Tailwind
+utilities or the component's `size` prop so hit targets stay stable.
+
+## Text and translations
+
+Visible UI copy must follow `apps/web/docs/i18n.md`. Use Lingui `<Trans>`,
+`t()`, or `plural()` with explicit IDs and comments. When styled inline JSX is
+part of translated copy, keep the element structure simple and avoid splitting a
+sentence into separately translated fragments just to apply styling.
 
 ## Example
 
-```
-src/components/
-  ThemedImage.tsx
-  ThemedImage.module.css
-```
-
-```css
-/* ThemedImage.module.css */
-.dark {
-  display: none;
-}
-
-:global(.dark) .light {
-  display: none;
-}
-
-:global(.dark) .dark {
-  display: block;
-}
-```
-
 ```tsx
-// ThemedImage.tsx — server component, no "use client"
-import styles from "./ThemedImage.module.css";
+import { Search } from "lucide-react";
 
-<Image className={styles.light} ... />
-<Image className={styles.dark} ... />
+export function SearchField({
+  label,
+  placeholder,
+}: {
+  label: string;
+  placeholder: string;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5 text-sm font-medium">
+      <span>{label}</span>
+      <span className="flex items-center gap-2 rounded-md border border-border-soft bg-surface px-3 py-2 focus-within:border-primary">
+        <Search size={14} className="shrink-0 text-muted" aria-hidden="true" />
+        <input
+          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
+          placeholder={placeholder}
+        />
+      </span>
+    </label>
+  );
+}
 ```
