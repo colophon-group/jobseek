@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 // `vi.mock` hoists to the top of the file so its factories cannot close
 // over module-scope variables. Use `vi.hoisted` to share mocks between
@@ -100,11 +101,14 @@ const dbExecuteMock = mocks.dbExecute;
 const cacheLifeMock = mocks.cacheLife;
 const cacheTagMock = mocks.cacheTag;
 const buildFilterStringMock = mocks.buildFilterString;
-const ORIGINAL_DATABASE_URL = process.env.DATABASE_URL;
-const ORIGINAL_TYPESENSE_HOST = process.env.TYPESENSE_HOST;
-const ORIGINAL_TYPESENSE_PORT = process.env.TYPESENSE_PORT;
-const ORIGINAL_TYPESENSE_PROTOCOL = process.env.TYPESENSE_PROTOCOL;
-const ORIGINAL_TYPESENSE_SEARCH_KEY = process.env.TYPESENSE_SEARCH_KEY;
+const TEST_ENV = {
+  DATABASE_URL:
+    process.env.DATABASE_URL ?? "postgresql://test:test@localhost:5432/test",
+  TYPESENSE_HOST: process.env.TYPESENSE_HOST,
+  TYPESENSE_PORT: process.env.TYPESENSE_PORT,
+  TYPESENSE_PROTOCOL: process.env.TYPESENSE_PROTOCOL,
+  TYPESENSE_SEARCH_KEY: process.env.TYPESENSE_SEARCH_KEY,
+};
 
 const _hit = (overrides: Record<string, unknown> = {}) => ({
   id: "co-1",
@@ -127,42 +131,14 @@ const _hit = (overrides: Record<string, unknown> = {}) => ({
 const _typesenseResponse = (hit: Record<string, unknown> | null) =>
   hit ? { hits: [{ document: hit }] } : { hits: [] };
 
+withTestEnv(TEST_ENV);
+
 beforeEach(() => {
   vi.clearAllMocks();
   searchMock.mockReset();
   dbExecuteMock.mockReset();
   buildFilterStringMock.mockReset();
   buildFilterStringMock.mockReturnValue("");
-  process.env.DATABASE_URL =
-    ORIGINAL_DATABASE_URL ?? "postgresql://test:test@localhost:5432/test";
-});
-
-afterEach(() => {
-  if (ORIGINAL_DATABASE_URL === undefined) {
-    delete process.env.DATABASE_URL;
-  } else {
-    process.env.DATABASE_URL = ORIGINAL_DATABASE_URL;
-  }
-  if (ORIGINAL_TYPESENSE_HOST === undefined) {
-    delete process.env.TYPESENSE_HOST;
-  } else {
-    process.env.TYPESENSE_HOST = ORIGINAL_TYPESENSE_HOST;
-  }
-  if (ORIGINAL_TYPESENSE_PORT === undefined) {
-    delete process.env.TYPESENSE_PORT;
-  } else {
-    process.env.TYPESENSE_PORT = ORIGINAL_TYPESENSE_PORT;
-  }
-  if (ORIGINAL_TYPESENSE_PROTOCOL === undefined) {
-    delete process.env.TYPESENSE_PROTOCOL;
-  } else {
-    process.env.TYPESENSE_PROTOCOL = ORIGINAL_TYPESENSE_PROTOCOL;
-  }
-  if (ORIGINAL_TYPESENSE_SEARCH_KEY === undefined) {
-    delete process.env.TYPESENSE_SEARCH_KEY;
-  } else {
-    process.env.TYPESENSE_SEARCH_KEY = ORIGINAL_TYPESENSE_SEARCH_KEY;
-  }
 });
 
 describe("searchCompaniesForWatchlist", () => {
@@ -486,11 +462,13 @@ describe("getCompanyBySlug — Postgres fallback", () => {
 
   it("returns null outside the cache boundary when lookup env is not configured", async () => {
     searchMock.mockResolvedValue(_typesenseResponse(null));
-    delete process.env.DATABASE_URL;
-    delete process.env.TYPESENSE_HOST;
-    delete process.env.TYPESENSE_PORT;
-    delete process.env.TYPESENSE_PROTOCOL;
-    delete process.env.TYPESENSE_SEARCH_KEY;
+    setTestEnv({
+      DATABASE_URL: undefined,
+      TYPESENSE_HOST: undefined,
+      TYPESENSE_PORT: undefined,
+      TYPESENSE_PROTOCOL: undefined,
+      TYPESENSE_SEARCH_KEY: undefined,
+    });
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const out = await getCompanyBySlug("acme", "en");

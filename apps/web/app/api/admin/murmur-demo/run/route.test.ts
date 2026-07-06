@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 vi.mock("server-only", () => ({}));
 
@@ -21,14 +22,13 @@ const ADMIN_SECRET = "secret-token";
 const URL_BASE = "http://localhost/api/admin/murmur-demo/run";
 
 describe("POST /api/admin/murmur-demo/run", () => {
-  beforeEach(() => {
-    process.env.ADMIN_SECRET = ADMIN_SECRET;
-    process.env.MURMUR_RUN_TRIGGER_ENABLED = "true";
-    vi.mocked(startRun).mockReset();
+  withTestEnv({
+    ADMIN_SECRET,
+    MURMUR_RUN_TRIGGER_ENABLED: "true",
   });
 
-  afterEach(() => {
-    delete process.env.MURMUR_RUN_TRIGGER_ENABLED;
+  beforeEach(() => {
+    vi.mocked(startRun).mockReset();
   });
 
   it("rejects requests without basic auth (401)", async () => {
@@ -46,7 +46,7 @@ describe("POST /api/admin/murmur-demo/run", () => {
   });
 
   it("returns 503 when the feature flag is not 'true'", async () => {
-    process.env.MURMUR_RUN_TRIGGER_ENABLED = "false";
+    setTestEnv({ MURMUR_RUN_TRIGGER_ENABLED: "false" });
     const res = await POST(
       new Request(URL_BASE, {
         method: "POST",

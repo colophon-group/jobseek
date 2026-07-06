@@ -14,14 +14,9 @@
  * @vitest-environment node
  */
 
-// Set env vars BEFORE any imports so the client factory picks them up.
-process.env.TYPESENSE_HOST = "localhost";
-process.env.TYPESENSE_PORT = "8108";
-process.env.TYPESENSE_PROTOCOL = "http";
-process.env.TYPESENSE_SEARCH_KEY = "local_dev_typesense_key";
-
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "typesense";
+import { withTestEnvForAll } from "@/test-utils/env";
 import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections";
 import { TypesenseSearchProvider } from "../typesense";
 
@@ -32,8 +27,15 @@ const COLLECTION_PREFIX = "e2e_test_";
 const JOB_POSTING_COLLECTION = `${COLLECTION_PREFIX}job_posting`;
 const COMPANY_COLLECTION = `${COLLECTION_PREFIX}company`;
 
+withTestEnvForAll({
+  TYPESENSE_HOST: "localhost",
+  TYPESENSE_PORT: "8108",
+  TYPESENSE_PROTOCOL: "http",
+  TYPESENSE_SEARCH_KEY: API_KEY,
+});
+
 // We use a direct admin client for seeding/cleanup. The provider uses the
-// search client singleton (getSearchClient), which reads env vars above.
+// search client singleton (getSearchClient), which reads env vars lazily.
 let adminClient: Client;
 let provider: TypesenseSearchProvider;
 let suiteSkipped = false;

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 /**
  * #3193 — `requestCompany` was previously colocated in `stats.ts` together
@@ -115,6 +116,12 @@ vi.mock("@/db/schema", () => ({
   },
 }));
 
+const GITHUB_APP_TEST_ENV = {
+  GITHUB_APP_ID: "12345",
+  GITHUB_APP_PRIVATE_KEY: "-----BEGIN KEY-----\nabc\n-----END KEY-----",
+  GITHUB_APP_INSTALLATION_ID: "67890",
+};
+
 /**
  * Build the headers a real Next-Action POST would carry. Always includes the
  * `next-action` magic header (issue #3235 Layer 3 — server-action header
@@ -126,7 +133,7 @@ function actionHeaders(extra: Record<string, string> = {}): Headers {
 }
 
 describe("requestCompany e2e (#3193) — GitHub issue shape preserved", () => {
-  const env = process.env;
+  withTestEnv(GITHUB_APP_TEST_ENV);
 
   beforeEach(() => {
     mocks.issuesCreate.mockReset();
@@ -141,13 +148,6 @@ describe("requestCompany e2e (#3193) — GitHub issue shape preserved", () => {
     mocks.rateLimit.mockReset();
     mocks.getClientIp.mockReset();
 
-    process.env = {
-      ...env,
-      GITHUB_APP_ID: "12345",
-      GITHUB_APP_PRIVATE_KEY: "-----BEGIN KEY-----\nabc\n-----END KEY-----",
-      GITHUB_APP_INSTALLATION_ID: "67890",
-    };
-
     // Default to "allow" so existing happy-path specs are unchanged.
     mocks.rateLimit.mockResolvedValue({ success: true, remaining: 4 });
     mocks.getClientIp.mockReturnValue("203.0.113.7");
@@ -155,7 +155,6 @@ describe("requestCompany e2e (#3193) — GitHub issue shape preserved", () => {
   });
 
   afterEach(() => {
-    process.env = env;
     vi.resetModules();
   });
 
@@ -204,10 +203,11 @@ describe("requestCompany e2e (#3193) — GitHub issue shape preserved", () => {
   });
 
   it("returns issueCreationFailed=true when GH credentials are missing", async () => {
-    process.env = { ...env };
-    delete process.env.GITHUB_APP_ID;
-    delete process.env.GITHUB_APP_PRIVATE_KEY;
-    delete process.env.GITHUB_APP_INSTALLATION_ID;
+    setTestEnv({
+      GITHUB_APP_ID: undefined,
+      GITHUB_APP_PRIVATE_KEY: undefined,
+      GITHUB_APP_INSTALLATION_ID: undefined,
+    });
 
     mocks.selectLimitResult.mockResolvedValue([]);
     mocks.insertReturningResult.mockResolvedValue([{ id: "row-1" }]);
@@ -267,7 +267,7 @@ describe("requestCompany e2e (#3193) — GitHub issue shape preserved", () => {
  *      rejected before any side effect.
  */
 describe("requestCompany security hardening (#3235)", () => {
-  const env = process.env;
+  withTestEnv(GITHUB_APP_TEST_ENV);
 
   beforeEach(() => {
     mocks.issuesCreate.mockReset();
@@ -282,20 +282,12 @@ describe("requestCompany security hardening (#3235)", () => {
     mocks.rateLimit.mockReset();
     mocks.getClientIp.mockReset();
 
-    process.env = {
-      ...env,
-      GITHUB_APP_ID: "12345",
-      GITHUB_APP_PRIVATE_KEY: "-----BEGIN KEY-----\nabc\n-----END KEY-----",
-      GITHUB_APP_INSTALLATION_ID: "67890",
-    };
-
     mocks.rateLimit.mockResolvedValue({ success: true, remaining: 4 });
     mocks.getClientIp.mockReturnValue("203.0.113.7");
     mocks.headers.mockResolvedValue(actionHeaders({ "cf-ipcountry": "CH" }));
   });
 
   afterEach(() => {
-    process.env = env;
     vi.resetModules();
   });
 

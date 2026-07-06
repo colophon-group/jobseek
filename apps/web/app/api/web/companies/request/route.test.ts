@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 // `server-only` is a build-time guard the route imports transitively via
 // `@/lib/sessionCache`. The admin-route tests use the same shim.
@@ -45,16 +46,16 @@ function makeRequest(body: unknown, init?: RequestInit): Request {
 }
 
 describe("POST /api/web/companies/request", () => {
+  withTestEnv({
+    MURMUR_RUN_TRIGGER_ENABLED: "true",
+    MURMUR_TOKEN: undefined,
+  });
+
   beforeEach(() => {
-    process.env.MURMUR_RUN_TRIGGER_ENABLED = "true";
     vi.mocked(startRun).mockReset();
     mockGetSessionUserId.mockReset();
     mockGetSessionUserId.mockResolvedValue(USER_ID);
     __resetRateLimitForTests();
-  });
-
-  afterEach(() => {
-    delete process.env.MURMUR_RUN_TRIGGER_ENABLED;
   });
 
   it("rejects unauthenticated calls with 401", async () => {
@@ -71,7 +72,7 @@ describe("POST /api/web/companies/request", () => {
   });
 
   it("returns 503 when the feature flag is unset", async () => {
-    delete process.env.MURMUR_RUN_TRIGGER_ENABLED;
+    setTestEnv({ MURMUR_RUN_TRIGGER_ENABLED: undefined });
     const res = await POST(
       makeRequest({ company_name: "Stripe", website: "https://stripe.com" }),
     );
@@ -84,7 +85,7 @@ describe("POST /api/web/companies/request", () => {
   });
 
   it("returns 503 when the feature flag is set to a non-true value", async () => {
-    process.env.MURMUR_RUN_TRIGGER_ENABLED = "false";
+    setTestEnv({ MURMUR_RUN_TRIGGER_ENABLED: "false" });
     const res = await POST(
       makeRequest({ company_name: "Stripe", website: "https://stripe.com" }),
     );
@@ -182,7 +183,7 @@ describe("POST /api/web/companies/request", () => {
   });
 
   it("install_command carries the literal <token-from-jobseek-team> placeholder, never a real token", async () => {
-    process.env.MURMUR_TOKEN = "super_secret_token_42";
+    setTestEnv({ MURMUR_TOKEN: "super_secret_token_42" });
     vi.mocked(startRun).mockResolvedValue({ run_id: "r_x" });
     const res = await POST(
       makeRequest({ company_name: "Stripe", website: "https://stripe.com" }),
@@ -202,7 +203,6 @@ describe("POST /api/web/companies/request", () => {
       " " +
       body.data.agent_prompt.prompt_text;
     expect(joined).not.toContain("super_secret_token_42");
-    delete process.env.MURMUR_TOKEN;
   });
 
   it("trims whitespace on company_name and website before forwarding", async () => {
@@ -317,7 +317,7 @@ describe("POST /api/web/companies/request", () => {
   });
 
   it("does not echo the website value or env var values in error envelopes", async () => {
-    process.env.MURMUR_TOKEN = "super_secret_token_42";
+    setTestEnv({ MURMUR_TOKEN: "super_secret_token_42" });
     vi.mocked(startRun).mockRejectedValue(
       new StartRunError("network", "DNS failed for https://stripe.com"),
     );
@@ -331,7 +331,6 @@ describe("POST /api/web/companies/request", () => {
     const joined = body.errors.join(" ");
     expect(joined).not.toContain("https://stripe.com");
     expect(joined).not.toContain("super_secret_token_42");
-    delete process.env.MURMUR_TOKEN;
   });
 
   it("returns 401 (not 500) when the session lookup itself throws", async () => {

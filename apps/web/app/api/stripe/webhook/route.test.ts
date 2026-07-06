@@ -11,6 +11,7 @@
  * AND the fail-closed behaviour when a signature is missing or invalid.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 // We never touch the DB in these tests — the request must be rejected
 // before any handler logic runs. We still need to mock `@/db` because the
@@ -74,15 +75,17 @@ const FORGED_CHECKOUT_EVENT = {
 
 let warnSpy: ReturnType<typeof vi.spyOn>;
 
+withTestEnv({
+  STRIPE_WEBHOOK_SECRET: undefined,
+  STRIPE_SECRET_KEY: undefined,
+});
+
 beforeEach(() => {
   warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-  delete process.env.STRIPE_WEBHOOK_SECRET;
 });
 
 afterEach(() => {
   warnSpy.mockRestore();
-  delete process.env.STRIPE_WEBHOOK_SECRET;
-  delete process.env.STRIPE_SECRET_KEY;
 });
 
 describe("POST /api/stripe/webhook — fail-closed when STRIPE_WEBHOOK_SECRET unset", () => {
@@ -107,7 +110,7 @@ describe("POST /api/stripe/webhook — fail-closed when STRIPE_WEBHOOK_SECRET un
   });
 
   it("returns 503 when STRIPE_WEBHOOK_SECRET is the empty string", async () => {
-    process.env.STRIPE_WEBHOOK_SECRET = "";
+    setTestEnv({ STRIPE_WEBHOOK_SECRET: "" });
     const res = await POST(
       makeRequest(FORGED_CHECKOUT_EVENT, { signature: "t=1,v1=anything" }),
     );
@@ -125,8 +128,10 @@ describe("POST /api/stripe/webhook — fail-closed when STRIPE_WEBHOOK_SECRET un
 
 describe("POST /api/stripe/webhook — signature verification when STRIPE_WEBHOOK_SECRET set", () => {
   beforeEach(() => {
-    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_only_not_a_real_secret";
-    process.env.STRIPE_SECRET_KEY = "sk_test_unused";
+    setTestEnv({
+      STRIPE_WEBHOOK_SECRET: "whsec_test_only_not_a_real_secret",
+      STRIPE_SECRET_KEY: "sk_test_unused",
+    });
   });
 
   it("returns 400 when stripe-signature header is missing", async () => {

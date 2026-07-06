@@ -1,25 +1,21 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 import { useClearTypesenseOnAuthChange } from "../use-clear-typesense-on-auth-change";
 import * as keyModule from "../typesense-browser-key";
 
 describe("useClearTypesenseOnAuthChange", () => {
   let clearSpy: ReturnType<typeof vi.spyOn>;
-  const ORIGINAL_FLAG = process.env.NEXT_PUBLIC_TYPESENSE_DIRECT;
+
+  withTestEnv({ NEXT_PUBLIC_TYPESENSE_DIRECT: "1" });
 
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_TYPESENSE_DIRECT = "1";
     clearSpy = vi.spyOn(keyModule, "clearTypesenseBrowserConfig").mockImplementation(() => {});
   });
 
   afterEach(() => {
     clearSpy.mockRestore();
-    if (ORIGINAL_FLAG === undefined) {
-      delete process.env.NEXT_PUBLIC_TYPESENSE_DIRECT;
-    } else {
-      process.env.NEXT_PUBLIC_TYPESENSE_DIRECT = ORIGINAL_FLAG;
-    }
   });
 
   it("does NOT clear on first mount (would waste a key fetch on every soft nav)", () => {
@@ -61,7 +57,7 @@ describe("useClearTypesenseOnAuthChange", () => {
   });
 
   it("no-ops when feature flag is off, even on auth flip", () => {
-    process.env.NEXT_PUBLIC_TYPESENSE_DIRECT = "0";
+    setTestEnv({ NEXT_PUBLIC_TYPESENSE_DIRECT: "0" });
     const { rerender } = renderHook(
       (p: boolean) => useClearTypesenseOnAuthChange(p),
       { initialProps: false },
