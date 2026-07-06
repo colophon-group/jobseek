@@ -25,10 +25,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const webRoot = join(here, "..");
 const defaultLogPath = join(webRoot, ".next", "build-output.log");
 
-export default async function setup(): Promise<void> {
+type SetupContext = {
+  provide: (key: "buildOutputLog", value: string) => void;
+};
+
+export default async function setup(context: SetupContext): Promise<void> {
   const explicit = process.env.BUILD_OUTPUT_LOG;
   if (explicit && existsSync(explicit)) {
     process.env.BUILD_OUTPUT_LOG = explicit;
+    context.provide("buildOutputLog", explicit);
     return;
   }
 
@@ -43,6 +48,10 @@ export default async function setup(): Promise<void> {
     output = execSync("pnpm build", {
       cwd: webRoot,
       encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+      },
       stdio: ["ignore", "pipe", "pipe"],
       maxBuffer: 1024 * 1024 * 64,
     });
@@ -55,4 +64,5 @@ export default async function setup(): Promise<void> {
 
   writeFileSync(defaultLogPath, output, "utf8");
   process.env.BUILD_OUTPUT_LOG = defaultLogPath;
+  context.provide("buildOutputLog", defaultLogPath);
 }

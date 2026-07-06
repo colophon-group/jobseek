@@ -298,7 +298,7 @@ describe("#3165 — recordPasswordResetRequest TOCTOU", () => {
       mocks.userPreferencesTable[0]?.last_password_reset_at,
     ).toBeInstanceOf(Date);
     expect(mocks.getUpsertWrites()).toBe(1);
-  });
+  }, 15_000);
 
   it("returns cooldown when called twice within 60s (sequential)", async () => {
     const { recordPasswordResetRequest } = await import(

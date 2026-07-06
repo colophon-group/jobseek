@@ -14,14 +14,14 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "polars>=1.38.1",
     "jmespath>=1.0",
-    "upstash-redis>=1.6.0",
+    "upstash-redis>=1.7.0",
     "Pillow>=12.2.0",
     "cairosvg>=2.9.0",
     "playwright>=1.58.0",
-    "fast-langdetect>=0.3",
+    "fast-langdetect>=1.0.1",
     "prometheus-client>=0.21",
     "redis>=5.0",
-    "alembic>=1.13",
+    "alembic>=1.18.5",
     "psycopg2-binary>=2.9",
     "selectolax>=0.4.7",
     "pypdf>=6.13.3",
@@ -39,7 +39,7 @@ ws = "src.workspace.cli:main"
 labeller = "src.labeller.cli:main"
 
 [project.optional-dependencies]
-enrich = ["openai>=1.0", "anthropic>=0.40", "google-genai>=1.0"]
+enrich = ["openai>=1.0", "anthropic>=0.116.0", "google-genai>=1.0"]
 
 [dependency-groups]
 dev = [
@@ -47,7 +47,7 @@ dev = [
     "pytest-asyncio>=0.25",
     "pytest-timeout>=2.4.0",
     "ruff>=0.15.4",
-    "fakeredis[lua]>=2.0",
+    "fakeredis[lua]>=2.36.2",
     "pyright>=1.1.411",
     "pytest-cov>=7.1.0",
 ]
