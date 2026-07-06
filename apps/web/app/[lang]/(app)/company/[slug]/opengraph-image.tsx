@@ -1,7 +1,6 @@
 import { ImageResponse } from "next/og";
 import { unstable_cache } from "next/cache";
 import { getCompanyBySlug, type CompanyDetail } from "@/lib/actions/company";
-import { locales } from "@/lib/i18n";
 import {
   companyOgCacheKey,
   readCompanyOgCache,
@@ -12,6 +11,7 @@ import {
 export const alt = "Company jobs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+export const dynamic = "force-dynamic";
 // Long-cache via explicit headers. The durable cache key includes a
 // renderer hash, so unchanged deploys reuse R2 PNGs and renderer changes
 // naturally move to a new key.
@@ -24,107 +24,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const COMPANY_OG_CACHE_TTL_SECONDS = 2592000;
-
-/**
- * How many top companies (by active posting count) to prerender at build
- * time, across every supported locale. This is opt-in: the default is 0
- * because each company slug fans out across every locale and each generated
- * image may need a company-detail read. At N=200 that is 800 route renders.
- *
- * Long-tail companies still generate on first request and then live in
- * Vercel's CDN for the `revalidate` window. Operators can prebake a bounded
- * top tier for a specific deploy by setting `COMPANY_OG_PRERENDER_TOP_N`.
- *
- * See issues #2645 and #3422.
- */
-function getCompanyOgPrerenderTopN(): number {
-  const raw = process.env.COMPANY_OG_PRERENDER_TOP_N;
-  if (!raw) return 0;
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, Math.min(parsed, 500));
-}
-
-/**
- * Pick the top-N companies to prerender. Fails the build only when
- * Typesense is configured AND unreachable on a production build —
- * that's the failure mode where a silent zero-prerender translates
- * into every Twitter/LinkedIn/Slack crawl cold-starting a function.
- *
- * Soft-fails (returns `[]` + warn) in two other cases:
- *   1. Typesense isn't configured (preview deploys without secrets,
- *      local builds without `.env.local`).
- *   2. Typesense responded successfully but with 0 results — could be
- *      a legitimately empty index (during reindex / fresh deploy) or
- *      an `active_posting_count:>0` filter mismatch. Failing the
- *      production deploy on a transient empty-index state would couple
- *      Vercel deploy availability to a specific Typesense data shape.
- *
- * See #2835 critic rounds 2 and 3.
- */
-export async function generateStaticParams(): Promise<
-  { lang: string; slug: string }[]
-> {
-  const prerenderTopN = getCompanyOgPrerenderTopN();
-  if (prerenderTopN === 0) return [];
-
-  const isProductionBuild = process.env.VERCEL_ENV === "production";
-  const hasTypesenseConfig = !!process.env.TYPESENSE_HOST;
-  try {
-    const [{ getSearchClient }, {
-      isRetryableError,
-      isTypesenseRateLimitError,
-      withTypesenseRetry,
-    }] = await Promise.all([
-      import("@/lib/search/typesense-client"),
-      import("@/lib/search/typesense-retry"),
-    ]);
-    const client = getSearchClient();
-    const result = await withTypesenseRetry(
-      () =>
-        client.collections("company").documents().search({
-          q: "*",
-          query_by: "name",
-          filter_by: "active_posting_count:>0",
-          sort_by: "active_posting_count:desc",
-          per_page: prerenderTopN,
-          page: 1,
-          include_fields: "slug",
-        }),
-      {
-        attempts: 5,
-        baseDelaysMs: [250, 500, 1000, 2000],
-        isRetryable: (err) => isRetryableError(err) || isTypesenseRateLimitError(err),
-        label: "company-og.generateStaticParams",
-      },
-    );
-    const slugs = (result.hits ?? [])
-      .map((h) => (h.document as Record<string, unknown>).slug)
-      .filter((s): s is string => typeof s === "string");
-    if (slugs.length === 0) {
-      console.warn(
-        "[opengraph-image] generateStaticParams: 0 companies returned from " +
-          "Typesense — index empty or filter mismatch. Long-tail OG generation " +
-          "will fall back to per-request rendering.",
-      );
-    }
-    return slugs.flatMap((slug) => locales.map((lang) => ({ lang, slug })));
-  } catch (err) {
-    if (isProductionBuild && hasTypesenseConfig) {
-      // Typesense was configured but the call threw (network error,
-      // misconfigured secret, etc.) on a production build. Fail loud —
-      // silently shipping zero prerender hides a real outage.
-      throw err;
-    }
-    // Typesense not configured (preview without secrets) OR local build —
-    // log loudly but don't fail; dynamic OG rendering still works.
-    console.warn(
-      "[opengraph-image] generateStaticParams: skipping prerender",
-      err,
-    );
-    return [];
-  }
-}
 
 const getCachedOgCompany = unstable_cache(
   async (slug: string, lang: string) => getCompanyBySlug(slug, lang),
