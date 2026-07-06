@@ -70,7 +70,6 @@ async function bodyToBytes(body: unknown): Promise<Uint8Array | null> {
   if (!body) return null;
   if (
     typeof body === "object" &&
-    body !== null &&
     "transformToByteArray" in body &&
     typeof body.transformToByteArray === "function"
   ) {

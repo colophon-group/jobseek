@@ -3,6 +3,47 @@ import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 vi.mock("server-only", () => ({}));
 
+const s3Mock = vi.hoisted(() => ({
+  send: vi.fn(),
+}));
+
+vi.mock("@aws-sdk/client-s3", () => {
+  class MockGetObjectCommand {
+    input: unknown;
+
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
+
+  class MockPutObjectCommand {
+    input: unknown;
+
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
+
+  class MockS3Client {
+    send = s3Mock.send;
+  }
+
+  return {
+    GetObjectCommand: MockGetObjectCommand,
+    PutObjectCommand: MockPutObjectCommand,
+    S3Client: MockS3Client,
+  };
+});
+
+function configureR2Env() {
+  setTestEnv({
+    R2_ENDPOINT_URL: "https://r2.example.test",
+    R2_ACCESS_KEY_ID: "access-key",
+    R2_SECRET_ACCESS_KEY: "secret-key",
+    R2_BUCKET: "bucket",
+  });
+}
+
 describe("company OG cache", () => {
   withTestEnv({
     COMPANY_OG_RENDERER_VERSION: "renderer123",
@@ -15,6 +56,7 @@ describe("company OG cache", () => {
 
   beforeEach(() => {
     vi.resetModules();
+    s3Mock.send.mockReset();
   });
 
   it("uses the renderer version in sanitized object keys", async () => {
@@ -39,5 +81,33 @@ describe("company OG cache", () => {
     await expect(
       writeCompanyOgCache("og/company/x/en/acme.png", new Uint8Array([1, 2, 3])),
     ).resolves.toBeUndefined();
+  });
+
+  it("reads R2 bodies with transformToByteArray", async () => {
+    configureR2Env();
+    const transformToByteArray = vi.fn().mockResolvedValue(new Uint8Array([4, 5, 6]));
+    s3Mock.send.mockResolvedValueOnce({ Body: { transformToByteArray } });
+    const { readCompanyOgCache } = await import("../company-og-cache");
+
+    const bytes = await readCompanyOgCache("og/company/x/en/acme.png");
+
+    expect(Array.from(bytes ?? [])).toEqual([4, 5, 6]);
+    expect(transformToByteArray).toHaveBeenCalledOnce();
+    expect(s3Mock.send).toHaveBeenCalledOnce();
+  });
+
+  it("reads iterable R2 bodies", async () => {
+    configureR2Env();
+    async function* chunks() {
+      yield new Uint8Array([1, 2]);
+      yield new Uint8Array([3]);
+    }
+    s3Mock.send.mockResolvedValueOnce({ Body: chunks() });
+    const { readCompanyOgCache } = await import("../company-og-cache");
+
+    const bytes = await readCompanyOgCache("og/company/x/en/acme.png");
+
+    expect(Array.from(bytes ?? [])).toEqual([1, 2, 3]);
+    expect(s3Mock.send).toHaveBeenCalledOnce();
   });
 });
