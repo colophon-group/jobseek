@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS builder
+FROM node:26-bookworm-slim AS builder
 
 WORKDIR /app
 ENV NODE_ENV=production
@@ -13,7 +13,7 @@ RUN pnpm install --frozen-lockfile
 WORKDIR /app/apps/web
 RUN pnpm build
 
-FROM node:22-bookworm-slim AS runner
+FROM node:26-bookworm-slim AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
