@@ -142,10 +142,10 @@ async def test_process_monitor_work_failure_emits_per_board_counter(
     class _StubPool:
         def acquire(self) -> Any:
             class _Ctx:
-                async def __aenter__(self_inner) -> _StubConn:
+                async def __aenter__(self) -> _StubConn:
                     return _StubConn()
 
-                async def __aexit__(self_inner, *args: Any) -> None:
+                async def __aexit__(self, *args: Any) -> None:
                     pass
 
             return _Ctx()

@@ -709,16 +709,16 @@ class TestRunSync:
         class _FakeAcquireCtx:
             """Simulates asyncpg PoolAcquireContext: awaitable + async CM."""
 
-            def __await__(self_inner):
+            def __await__(self):
                 async def _aw():
                     return mock_local_conn
 
                 return _aw().__await__()
 
-            async def __aenter__(self_inner):
+            async def __aenter__(self):
                 return mock_local_conn
 
-            async def __aexit__(self_inner, *a):
+            async def __aexit__(self, *a):
                 pass
 
         mock_local_pool = MagicMock()
