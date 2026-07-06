@@ -394,7 +394,16 @@ SET employment_type = u.employment_type,
     salary_min = u.salary_min, salary_max = u.salary_max,
     salary_currency = u.salary_currency, salary_period = u.salary_period,
     salary_eur = u.salary_eur,
-    experience_min = u.experience_min, experience_max = u.experience_max,
+    experience_min = CASE
+        WHEN u.experience_min IS NULL AND u.experience_max IS NULL
+        THEN jp.experience_min
+        ELSE u.experience_min
+    END,
+    experience_max = CASE
+        WHEN u.experience_min IS NULL AND u.experience_max IS NULL
+        THEN jp.experience_max
+        ELSE u.experience_max
+    END,
     technology_ids = COALESCE(u.technology_ids, jp.technology_ids),
     occupation_id = COALESCE(u.occupation_id, jp.occupation_id),
     seniority_id = COALESCE(u.seniority_id, jp.seniority_id)

@@ -796,8 +796,7 @@ class TestProcessOneBoard:
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
         """Sanity check: non-hybrid rich monitors (greenhouse, lever, etc.) still
-        go through the update path for relisted — they always return full rich
-        data, so SET-based _BATCH_UPDATE_RICH_CONTENT is safe for them."""
+        go through the update path for relisted."""
         pool, conn = mock_pool
         relisted_url = "https://example.com/job/back"
         relisted_job = _discovered_job(url=relisted_url)
@@ -817,6 +816,63 @@ class TestProcessOneBoard:
 
         execute_calls = conn.execute.await_args_list
         assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in execute_calls)
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_nonhybrid_partial_description_preserves_stored_experience(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Partial non-hybrid monitor rows must not erase scraped experience.
+
+        Some api_sniffer monitors are non-hybrid but still omit descriptions on
+        touched/relisted rows. The update row will carry NULL/NULL experience;
+        the SQL must treat that as "no new signal" rather than clearing stored
+        values from the enrichment scraper or historical backfill.
+        """
+        pool, conn = mock_pool
+        touched_url = "https://example.com/job/touched"
+        touched_job = _discovered_job(url=touched_url, description=None)
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={touched_url},
+                jobs_by_url={touched_url: touched_job},
+                hybrid=False,
+            )
+        )
+        conn.fetch.return_value = [
+            _diff_row("touched", row_id="jp-touched", url=touched_url),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        execute_calls = conn.execute.await_args_list
+        assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in execute_calls)
+
+        conn.copy_records_to_table.assert_awaited_once()
+        copy_call = conn.copy_records_to_table.await_args_list[0]
+        records = copy_call.kwargs.get("records")
+        if records is None and len(copy_call.args) >= 2:
+            records = copy_call.args[1]
+        assert records is not None
+        record = list(records)[0]
+        assert record[11] is None
+        assert record[12] is None
+
+        sql = " ".join(_BATCH_UPDATE_RICH_CONTENT.split())
+        assert (
+            "WHEN u.experience_min IS NULL AND u.experience_max IS NULL THEN jp.experience_min"
+        ) in sql
+        assert (
+            "WHEN u.experience_min IS NULL AND u.experience_max IS NULL THEN jp.experience_max"
+        ) in sql
+
+    def test_rich_update_allows_open_ended_experience_to_clear_previous_max(self):
+        sql = " ".join(_BATCH_UPDATE_RICH_CONTENT.split())
+
+        assert "ELSE u.experience_min" in sql
+        assert "ELSE u.experience_max" in sql
+        assert "experience_max = COALESCE(u.experience_max, jp.experience_max)" not in sql
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
