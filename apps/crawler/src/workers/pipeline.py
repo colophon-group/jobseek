@@ -147,7 +147,7 @@ async def _lease_heartbeat(
         stop.set()
         beat_task.cancel()
         with contextlib.suppress(asyncio.CancelledError, Exception):
-            await beat_task
+            _ = await beat_task
         if cancelled:
             worker_log.info(
                 "pipeline.complete_task.skipped_cancelled",
@@ -1027,7 +1027,7 @@ async def run_pipeline(
         finally:
             shutdown_waiter.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
-                await shutdown_waiter
+                _ = await shutdown_waiter
 
         # If a worker exited before shutdown_event, surface its error.
         early_exits = [t for t in tasks if t.done()]

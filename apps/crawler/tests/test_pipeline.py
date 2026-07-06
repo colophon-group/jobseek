@@ -268,7 +268,7 @@ async def test_lease_heartbeat_leaves_cancelled_lease_for_reaper(mock_redis):
 
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await task
+        _ = await task
 
     assert await r.zcard("inflight:simple") == 1
     assert await r.zscore("inflight:simple", member) is not None

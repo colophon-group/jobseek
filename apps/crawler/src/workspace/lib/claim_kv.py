@@ -72,11 +72,11 @@ class ClaimKV(Protocol):
 
     async def get(self, name: str) -> Any | None:  # noqa: ANN401
         """Return the value stored under ``name``, or ``None`` if missing."""
-        ...
+        raise NotImplementedError
 
     async def set(self, name: str, value: Any) -> None:  # noqa: ANN401
         """Store ``value`` under ``name`` (overwrite if present)."""
-        ...
+        raise NotImplementedError
 
     async def list_all(self) -> dict[str, Any]:
         """Return a snapshot mapping name → value.
@@ -84,19 +84,19 @@ class ClaimKV(Protocol):
         Implementations SHOULD exclude :data:`ACTIVE_KEY` from the result
         so callers iterating "named configs" don't see the sentinel.
         """
-        ...
+        raise NotImplementedError
 
     async def clear(self) -> None:
         """Remove every slot belonging to this claim."""
-        ...
+        raise NotImplementedError
 
     async def get_active(self) -> str | None:
         """Return the active config name set by :meth:`set_active`."""
-        ...
+        raise NotImplementedError
 
     async def set_active(self, name: str) -> None:
         """Mark ``name`` as the active config slot."""
-        ...
+        raise NotImplementedError
 
 
 class InMemoryClaimKV:

@@ -194,8 +194,12 @@ async def test_feedback_maps_demo_verdict_to_lib_vocab() -> None:
     received: dict[str, Any] = {}
 
     class _StubKV:
-        async def set(self, *a: Any, **kw: Any) -> None: ...
-        async def set_active(self, *a: Any, **kw: Any) -> None: ...
+        async def set(self, *a: Any, **kw: Any) -> None:
+            return None
+
+        async def set_active(self, *a: Any, **kw: Any) -> None:
+            return None
+
         async def get(self, *a: Any, **kw: Any) -> Any:
             return None
 

@@ -25,7 +25,8 @@ log = structlog.get_logger()
 class ProxyProvider(Protocol):
     name: str
 
-    def proxy_url(self) -> str | None: ...
+    def proxy_url(self) -> str | None:
+        raise NotImplementedError
 
 
 class StaticProxyProvider:
