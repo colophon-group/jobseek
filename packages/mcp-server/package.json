@@ -1,12 +1,12 @@
 {
   "name": "@jseek/mcp-server",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "mcpName": "io.github.colophon-group/jobseek",
   "description": "MCP server for Job Seek — search jobs, companies, and watchlists on jseek.co",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "jobseek-mcp": "dist/index.js"
+    "jobseek-mcp": "src/bin/jobseek-mcp.js"
   },
   "main": "./dist/index.js",
   "exports": {
@@ -15,7 +15,8 @@
     "./handler": "./dist/handler.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "src/bin/jobseek-mcp.js"
   ],
   "scripts": {
     "build": "tsc",
@@ -23,6 +24,7 @@
     "prepare": "tsc",
     "start": "node dist/index.js",
     "start:http": "node dist/http.js",
+    "test": "node scripts/verify-package.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

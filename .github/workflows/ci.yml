@@ -146,6 +146,8 @@ jobs:
       # turbo run typecheck has dependsOn: ["^build"], so @jseek/mcp-server
       # is built once and all consumers (apps/web) typecheck against the
       # built declarations. Covers every TS workspace in the monorepo.
+      - run: pnpm --filter @jseek/mcp-server test
+
       - run: pnpm typecheck
 
   test-web:
