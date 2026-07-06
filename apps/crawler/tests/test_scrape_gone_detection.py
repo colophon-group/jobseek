@@ -28,6 +28,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+import src.redis_queue as rq
 from src.processing.scrape import (
     _is_budget_eligible_failure,
     _is_permanent_gone,
@@ -412,7 +413,6 @@ async def test_pipeline_skips_scrape_for_tombstoned_posting(
     the work every ``scrape_interval_hours`` (default 24h) regardless
     of Postgres state — the central regression critic-E found in the
     first iteration of #2708's worker-side fix."""
-    from src.redis_queue import ScrapeWork
     from src.workers import pipeline
 
     posting_id = "00000000-0000-0000-0000-000000000fff"
@@ -443,8 +443,6 @@ async def test_pipeline_skips_scrape_for_tombstoned_posting(
         async def hgetall(self, key: str):  # type: ignore[no-untyped-def]
             raise AssertionError("must not load board config when tombstoned")
 
-    import src.redis_queue as rq
-
     monkeypatch.setattr(rq, "get_redis", lambda: _StubRedis())
 
     async def _no_reschedule(*args, **kwargs):  # type: ignore[no-untyped-def]
@@ -452,7 +450,7 @@ async def test_pipeline_skips_scrape_for_tombstoned_posting(
 
     monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
 
-    work = ScrapeWork(
+    work = rq.ScrapeWork(
         posting_id=posting_id,
         source_url="https://apply.deloitte.com/en_US/careers/JobDetail/X/305820",
         board_id="board-1",
@@ -493,7 +491,6 @@ async def test_pipeline_skips_scrape_when_next_scrape_at_null(
     (FAILURE) or the budget exhaustion (TRANSIENT). Either way, the
     scrape side has decided "stop trying"; the worker must honour
     that and not let Redis perpetually re-fire."""
-    from src.redis_queue import ScrapeWork
     from src.workers import pipeline
 
     posting_id = "00000000-0000-0000-0000-000000000bbb"
@@ -522,8 +519,6 @@ async def test_pipeline_skips_scrape_when_next_scrape_at_null(
         async def hgetall(self, key: str):  # type: ignore[no-untyped-def]
             raise AssertionError("must not load board config")
 
-    import src.redis_queue as rq
-
     monkeypatch.setattr(rq, "get_redis", lambda: _StubRedis())
 
     async def _no_reschedule(*args, **kwargs):  # type: ignore[no-untyped-def]
@@ -531,7 +526,7 @@ async def test_pipeline_skips_scrape_when_next_scrape_at_null(
 
     monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
 
-    work = ScrapeWork(
+    work = rq.ScrapeWork(
         posting_id=posting_id,
         source_url="https://example.com/jobs/x",
         board_id="board-1",
@@ -640,7 +635,6 @@ async def test_pipeline_self_heal_does_not_reschedule_on_db_error(
 
     Drop the work for this cycle; the monitor's relisted path will
     re-enqueue if the URL is still listed."""
-    from src.redis_queue import ScrapeWork
     from src.workers import pipeline
 
     posting_id = "00000000-0000-0000-0000-000000000ddd"
@@ -667,7 +661,7 @@ async def test_pipeline_self_heal_does_not_reschedule_on_db_error(
 
     monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
 
-    work = ScrapeWork(
+    work = rq.ScrapeWork(
         posting_id=posting_id,
         source_url="https://example.com/jobs/x",
         board_id="board-1",
@@ -703,7 +697,6 @@ async def test_pipeline_self_heal_skips_invalid_posting_id(
     dropped without rescheduling — otherwise the ``$1::uuid`` cast
     would crash the SELECT and the outer except would reschedule
     the bad work forever."""
-    from src.redis_queue import ScrapeWork
     from src.workers import pipeline
 
     pool_acquire_called = []
@@ -728,7 +721,7 @@ async def test_pipeline_self_heal_skips_invalid_posting_id(
 
     monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
 
-    work = ScrapeWork(
+    work = rq.ScrapeWork(
         posting_id="not-a-uuid-at-all",
         source_url="https://example.com/jobs/x",
         board_id="board-1",
@@ -770,7 +763,6 @@ async def test_pipeline_self_heal_does_not_delete_redis_hash(
 
     The hash leaks (one entry per tombstoned posting, ~100B each);
     steady-state cost is bounded and the recovery path is correct."""
-    from src.redis_queue import ScrapeWork
     from src.workers import pipeline
 
     posting_id = "00000000-0000-0000-0000-000000000eee"
@@ -796,8 +788,6 @@ async def test_pipeline_self_heal_does_not_delete_redis_hash(
         async def delete(self, key: str) -> None:
             deleted.append(key)
 
-    import src.redis_queue as rq
-
     monkeypatch.setattr(rq, "get_redis", lambda: _StubRedis())
 
     rescheduled: list[tuple] = []
@@ -807,7 +797,7 @@ async def test_pipeline_self_heal_does_not_delete_redis_hash(
 
     monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
 
-    work = ScrapeWork(
+    work = rq.ScrapeWork(
         posting_id=posting_id,
         source_url="https://example.com/jobs/x",
         board_id="board-1",
@@ -844,7 +834,6 @@ async def test_pipeline_proceeds_for_active_posting_with_due_next_scrape(
     """Sanity check on the self-heal: an active posting with a
     non-NULL next_scrape_at must NOT be skipped — otherwise the
     self-heal would silently disable all scraping."""
-    from src.redis_queue import ScrapeWork
     from src.workers import pipeline
 
     posting_id = "00000000-0000-0000-0000-000000000ccc"
@@ -878,8 +867,6 @@ async def test_pipeline_proceeds_for_active_posting_with_due_next_scrape(
             proceeded.append("hgetall")
             return {}
 
-    import src.redis_queue as rq
-
     monkeypatch.setattr(rq, "get_redis", lambda: _StubRedis())
 
     # Stub out reschedule_task so the test doesn't hit Redis.
@@ -888,7 +875,7 @@ async def test_pipeline_proceeds_for_active_posting_with_due_next_scrape(
 
     monkeypatch.setattr(pipeline, "reschedule_task", _noop)
 
-    work = ScrapeWork(
+    work = rq.ScrapeWork(
         posting_id=posting_id,
         source_url="https://example.com/jobs/x",
         board_id="board-1",

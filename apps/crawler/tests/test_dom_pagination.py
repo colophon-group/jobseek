@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import src.core.monitors.dom as dom_module
 from src.core.monitors.dom import (
     _build_url_matcher,
     _extract_links_static,
@@ -306,7 +305,7 @@ class TestPaginateUrls:
 
     async def test_system_cap(self, monkeypatch):
         """max_pages is capped at _MAX_PAGINATION_PAGES."""
-        monkeypatch.setattr(dom_module, "_MAX_PAGINATION_PAGES", 7)
+        monkeypatch.setattr("src.core.monitors.dom._MAX_PAGINATION_PAGES", 7)
         initial = set()
         call_count = 0
 

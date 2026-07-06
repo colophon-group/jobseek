@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.metrics import tasks_total
+from src.metrics import _read_version, build_info, start_metrics_server, tasks_total
 from src.processing.board import (
     _enqueue_scrapes_for_new,
     _enqueue_scrapes_for_relisted,
@@ -705,8 +705,6 @@ class TestBuildInfoMetric:
         """
         import pathlib
 
-        from src.metrics import _read_version
-
         version_file = pathlib.Path(__file__).resolve().parent.parent / "VERSION"
         expected = version_file.read_text().strip()
         assert _read_version() == expected
@@ -714,14 +712,12 @@ class TestBuildInfoMetric:
 
     def test_read_version_handles_missing_file(self, tmp_path, monkeypatch):
         """``_read_version()`` must not raise when VERSION is missing."""
-        import src.metrics as metrics_mod
-
         # Point ``_read_version`` at a directory with no VERSION file.
         fake_module_path = tmp_path / "src" / "metrics.py"
         fake_module_path.parent.mkdir()
         fake_module_path.touch()
-        monkeypatch.setattr(metrics_mod, "__file__", str(fake_module_path))
-        assert metrics_mod._read_version() == "unknown"
+        monkeypatch.setattr("src.metrics.__file__", str(fake_module_path))
+        assert _read_version() == "unknown"
 
     def test_start_metrics_server_labels_build_info(self):
         """``start_metrics_server`` must emit ``crawler_build_info`` at startup.
@@ -733,14 +729,12 @@ class TestBuildInfoMetric:
         """
         from unittest.mock import patch
 
-        import src.metrics as metrics_mod
-
         with patch("src.metrics.start_http_server") as mock_start:
-            metrics_mod.start_metrics_server(0)
+            start_metrics_server(0)
             mock_start.assert_called_once_with(0)
 
-        expected_version = metrics_mod._read_version()
-        samples = list(metrics_mod.build_info.collect())[0].samples
+        expected_version = _read_version()
+        samples = list(build_info.collect())[0].samples
         matching = [
             s for s in samples if s.labels.get("version") == expected_version and s.value == 1.0
         ]

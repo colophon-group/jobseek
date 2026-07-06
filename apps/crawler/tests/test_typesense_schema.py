@@ -22,10 +22,12 @@ from typesense.exceptions import ObjectNotFound, ObjectUnprocessable
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
 
 from src.typesense_schema import (
+    _SETUP_CONNECTION_TIMEOUT_SECONDS,
     COLLECTIONS,
     _index_drift,
     _patch_missing_fields,
     _warn_field_drift,
+    run_setup,
     setup_collections,
 )
 
@@ -524,9 +526,7 @@ def test_patch_retries_in_progress_alter_when_status_endpoint_is_unavailable(
     """Typesense 27.1 does not expose ``GET /operations/schema_changes``.
     The deploy path still needs to back off and retry when it sees the
     in-progress 422, because the original PATCH may finish server-side."""
-    import src.typesense_schema as ts_mod
-
-    monkeypatch.setattr(ts_mod.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr("src.typesense_schema.time.sleep", lambda _seconds: None)
 
     client = MagicMock()
     collection = client.collections.__getitem__.return_value
@@ -561,7 +561,6 @@ def test_run_setup_uses_long_timeout_for_schema_alters(
     import typesense
 
     import src.config as config_mod
-    import src.typesense_schema as ts_mod
 
     created_config: dict = {}
 
@@ -578,19 +577,21 @@ def test_run_setup_uses_long_timeout_for_schema_alters(
 
     setup_collections = MagicMock()
     monkeypatch.setattr(typesense, "Client", FakeClient)
-    monkeypatch.setattr(ts_mod, "setup_collections", setup_collections)
+    monkeypatch.setattr("src.typesense_schema.setup_collections", setup_collections)
     monkeypatch.setattr(config_mod.settings, "typesense_admin_key", "admin-key")
     monkeypatch.setattr(config_mod.settings, "typesense_host", "typesense.local")
     monkeypatch.setattr(config_mod.settings, "typesense_port", 8108)
     monkeypatch.setattr(config_mod.settings, "typesense_protocol", "http")
 
-    ts_mod.run_setup()
+    run_setup()
 
-    assert created_config["connection_timeout_seconds"] == ts_mod._SETUP_CONNECTION_TIMEOUT_SECONDS
+    assert created_config["connection_timeout_seconds"] == _SETUP_CONNECTION_TIMEOUT_SECONDS
     setup_collections.assert_called_once()
 
 
-def test_setup_collections_alias_create_error_logs_structured_event() -> None:
+def test_setup_collections_alias_create_error_logs_structured_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A failure creating the alias is operationally significant — it leaves
     a new collection without a routable alias, so search queries against
     the alias 404. The structured event must carry both alias + target."""
@@ -603,15 +604,12 @@ def test_setup_collections_alias_create_error_logs_structured_event() -> None:
     client.aliases.upsert.side_effect = RuntimeError("alias upsert failed")
 
     # Limit to a single tiny collection to keep the test focused.
-    import src.typesense_schema as ts_mod
-
-    original_collections = ts_mod.COLLECTIONS
-    ts_mod.COLLECTIONS = [{"name": "watchlist", "fields": [{"name": "title", "type": "string"}]}]
-    try:
-        with structlog.testing.capture_logs() as logs, pytest.raises(RuntimeError):
-            setup_collections(client)
-    finally:
-        ts_mod.COLLECTIONS = original_collections
+    monkeypatch.setattr(
+        "src.typesense_schema.COLLECTIONS",
+        [{"name": "watchlist", "fields": [{"name": "title", "type": "string"}]}],
+    )
+    with structlog.testing.capture_logs() as logs, pytest.raises(RuntimeError):
+        setup_collections(client)
 
     errors = [e for e in logs if e["log_level"] == "error"]
     assert any(e["event"] == "typesense.alias.create_error" for e in errors)
