@@ -225,6 +225,7 @@ async def _reaper_loop(
                         await get_deadletter_depth(browser=is_browser)
                     )
                 except Exception:
+                    # Gauge refresh is best-effort; the reaper must keep sweeping leases.
                     pass
     finally:
         reaper_log.info("pipeline.reaper.stopped")
@@ -466,6 +467,7 @@ async def _discovery_worker(
                             browser=browser,
                         )
                     except Exception:
+                        # Cleanup is best-effort; the worker loop must continue after bad payloads.
                         pass
             except Exception:
                 worker_log.exception("pipeline.worker.task_escaped")

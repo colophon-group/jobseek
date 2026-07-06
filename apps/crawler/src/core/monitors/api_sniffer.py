@@ -1477,6 +1477,7 @@ def _extract_rich(
                 safe = {k: v for k, v in item.items() if isinstance(v, (str, int, float))}
                 url = url_template.format_map(safe)
             except (KeyError, IndexError, ValueError):
+                # A bad template only disables this URL path; fallbacks below may recover it.
                 pass
         if not url and url_map and id_field:
             item_id = str(item.get(id_field, ""))

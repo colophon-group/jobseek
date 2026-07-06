@@ -196,6 +196,7 @@ def validate_csvs() -> list[ValidationError]:
                     cfg = json.loads(monitor_config)
                     has_fields = bool(cfg.get("fields"))
                 except (json.JSONDecodeError, AttributeError):
+                    # The later JSON-validation block reports malformed configs.
                     pass
             if not has_fields:
                 errors.append(
@@ -225,6 +226,8 @@ def validate_csvs() -> list[ValidationError]:
                     if isinstance(parsed, dict):
                         mc_obj = parsed
                 except (json.JSONDecodeError, TypeError):
+                    # Malformed config is validated below; this branch only
+                    # needs auto-scraper context.
                     pass
             if auto_scraper_type(monitor_type, mc_obj) is None:
                 errors.append(
@@ -252,6 +255,7 @@ def validate_csvs() -> list[ValidationError]:
                     if isinstance(parsed, dict):
                         mc_obj_skip = parsed
                 except (json.JSONDecodeError, TypeError):
+                    # Malformed config is validated below; skip eligibility treats it as absent.
                     pass
             skip_allowed = api_monitor_types() | {"personio"}
             is_skip_ok = monitor_type in skip_allowed or (

@@ -97,6 +97,7 @@ class _JsonLdExtractor(HTMLParser):
                         parsed = json.loads(cleaned)
                         self.results.append(parsed)
                     except json.JSONDecodeError:
+                        # Malformed JSON-LD blocks are optional metadata; skip this block.
                         pass
 
 

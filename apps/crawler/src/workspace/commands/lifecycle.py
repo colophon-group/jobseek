@@ -674,6 +674,7 @@ def status(slug: str | None):
                 print(f"    Career discovery: {career}")
                 print(f"    Enrichment:       {enrich}")
             except Exception:
+                # Corrupt discovery status should not hide the rest of workspace status.
                 pass
 
         # Last error

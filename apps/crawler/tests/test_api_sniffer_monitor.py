@@ -70,6 +70,21 @@ class TestExtractRich:
         assert len(jobs) == 1
         assert jobs[0].url == "https://example.com/jobs/123/developer"
 
+    def test_bad_url_template_falls_back_to_url_field(self):
+        items = [
+            {"title": "Dev", "id": "123", "url": "/jobs/123"},
+        ]
+        fields = {"title": "title"}
+        jobs = _extract_rich(
+            items,
+            fields,
+            "url",
+            "https://example.com/jobs/{id}/{missing}",
+            "https://example.com",
+        )
+        assert len(jobs) == 1
+        assert jobs[0].url == "https://example.com/jobs/123"
+
     def test_metadata_fields(self):
         items = [{"title": "Dev", "url": "/jobs/1", "department": "Eng"}]
         fields = {"title": "title", "metadata.team": "department"}

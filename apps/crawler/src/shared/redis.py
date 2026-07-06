@@ -30,6 +30,7 @@ def get_redis() -> Redis | None:
                 url = url or settings.upstash_redis_rest_url
                 token = token or settings.upstash_redis_rest_token
             except (ImportError, ModuleNotFoundError):
+                # Workspace tooling may import this module without crawler settings installed.
                 pass
         if url and token:
             from upstash_redis.asyncio import Redis

@@ -624,6 +624,7 @@ def infer_pagination(
                     observed_value=val,
                 )
             except (ValueError, TypeError):
+                # Non-numeric candidate; keep scanning other pagination parameter names.
                 pass
 
     for param in ("page", "pageNumber", "p", "pageNo"):
@@ -639,6 +640,7 @@ def infer_pagination(
                     observed_value=val,
                 )
             except (ValueError, TypeError):
+                # Non-numeric candidate; keep scanning other pagination parameter names.
                 pass
 
     # Check POST body
@@ -659,6 +661,7 @@ def infer_pagination(
                                 observed_value=val,
                             )
                         except (ValueError, TypeError):
+                            # Non-numeric candidate; keep scanning other known parameter names.
                             pass
                 for param in ("page", "pageNumber", "p", "pageNo"):
                     if param in body:
@@ -673,8 +676,10 @@ def infer_pagination(
                                 observed_value=val,
                             )
                         except (ValueError, TypeError):
+                            # Non-numeric candidate; keep scanning other known parameter names.
                             pass
         except (json.JSONDecodeError, TypeError):
+            # Non-JSON bodies are not JSON pagination candidates.
             pass
 
     return None
@@ -773,6 +778,7 @@ def detect_size_param(url: str, post_data: str | None) -> tuple[str, str, int] |
             try:
                 return (param, "query", int(qs[param][0]))
             except (ValueError, TypeError):
+                # Non-numeric candidate; keep scanning other size parameter names.
                 pass
     if post_data:
         if _is_multipart(post_data):
@@ -782,6 +788,7 @@ def detect_size_param(url: str, post_data: str | None) -> tuple[str, str, int] |
                     try:
                         return (param, "body", int(val))
                     except (ValueError, TypeError):
+                        # Non-numeric candidate; keep scanning other size parameter names.
                         pass
         else:
             try:
@@ -792,8 +799,10 @@ def detect_size_param(url: str, post_data: str | None) -> tuple[str, str, int] |
                             try:
                                 return (param, "body", int(body[param]))
                             except (ValueError, TypeError):
+                                # Non-numeric candidate; keep scanning other size parameter names.
                                 pass
             except (json.JSONDecodeError, TypeError):
+                # Non-JSON bodies are not JSON size-parameter candidates.
                 pass
     return None
 
