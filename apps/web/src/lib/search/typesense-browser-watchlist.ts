@@ -1,6 +1,7 @@
 import { getTypesenseBrowserConfig, type TypesenseBrowserConfig } from "./typesense-browser-key";
 import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 import { COMPANY_BATCH_SIZE } from "./constants";
+import { isTypesenseQueryStringSafe } from "./typesense-query-size";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 
 interface JobPostingDoc {
@@ -81,12 +82,12 @@ export interface WatchlistPostingsParams {
 }
 
 /**
- * Browser-side watchlist postings fetch. Mirrors the server-side
- * `_getWatchlistPostingsTypesense` for ≤COMPANY_BATCH_SIZE companies.
+ * Browser-side watchlist postings fetch. Mirrors the server-side single-query
+ * path when the request fits Typesense's GET query-string limit.
  *
- * For watchlists tracking >COMPANY_BATCH_SIZE companies, throws so the
- * runner falls back to the server action (which has a batched/merge
- * implementation we don't need to duplicate browser-side).
+ * For larger requests, throws so the runner falls back to the server action
+ * (which has a batched/merge implementation we don't need to duplicate
+ * browser-side).
  */
 export async function getWatchlistPostingsBrowser(
   params: WatchlistPostingsParams,
@@ -98,7 +99,6 @@ export async function getWatchlistPostingsBrowser(
     throw new Error("watchlist exceeds COMPANY_BATCH_SIZE — falling back");
   }
 
-  const cfg = await getTypesenseBrowserConfig();
   const filterStr = buildFilterString({
     locationIds: params.locationIds,
     occupationIds: params.occupationIds,
@@ -121,14 +121,20 @@ export async function getWatchlistPostingsBrowser(
   }
   if (filterStr) filterParts.push(filterStr);
 
-  const result = await searchOne<JobPostingDoc>(cfg, "job_posting", {
+  const searchParams = {
     q,
     query_by: "title",
     filter_by: filterParts.join(" && "),
     sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
     per_page: params.limit === 0 ? 0 : params.limit,
     page: params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,
-  });
+  };
+  if (!isTypesenseQueryStringSafe(searchParams)) {
+    throw new Error("watchlist Typesense query exceeds GET limit — falling back");
+  }
+
+  const cfg = await getTypesenseBrowserConfig();
+  const result = await searchOne<JobPostingDoc>(cfg, "job_posting", searchParams);
 
   const total = result.found ?? 0;
   if (total === 0 || params.limit === 0) return { postings: [], total };
