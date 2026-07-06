@@ -5,11 +5,14 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
+from src.workspace.errors import WorkspaceError
 from src.workspace.git import (
+    _run,
     check_existing_prs,
     check_gh_auth,
     create_draft_pr,
     current_branch,
+    sync_branch_with_main,
 )
 
 
@@ -57,3 +60,26 @@ class TestGitWrappers:
             mock.return_value.stdout = "https://github.com/owner/repo/pull/42\n"
             pr_number = create_draft_pr("Add stripe", "Closes #10")
             assert pr_number == 42
+
+    def test_run_rejects_negative_retries(self):
+        with patch("src.workspace.git.subprocess.run") as mock:
+            try:
+                _run(["git", "status"], retries=-1)
+            except ValueError as exc:
+                assert str(exc) == "retries must be non-negative"
+            else:
+                raise AssertionError("_run should reject negative retries")
+            mock.assert_not_called()
+
+    def test_sync_branch_with_main_requires_repo_root(self):
+        with (
+            patch("src.workspace.git._repo_cwd", return_value=None),
+            patch("src.workspace.git.get_main_branch_remote") as get_main,
+        ):
+            try:
+                sync_branch_with_main("feature")
+            except WorkspaceError as exc:
+                assert "inside a git repository" in str(exc)
+            else:
+                raise AssertionError("sync_branch_with_main should require a repo root")
+            get_main.assert_not_called()
