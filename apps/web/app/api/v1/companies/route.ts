@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   if (!q) {
     return apiResponse(
       { error: "Missing required 'q' param (company name query)" },
-      { maxAge: 0 },
+      { maxAge: 0, status: 400 },
     );
   }
 

@@ -60,6 +60,16 @@ describe("GET /api/v1/watchlist/create — filter params", () => {
     mocks.listTopCompanies.mockResolvedValue(emptyResult);
   });
 
+  it("returns 400 when the required `title` param is missing (#3213)", async () => {
+    const { res, body } = await callRoute("?locale=en");
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("Missing required 'title' param");
+    expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+  });
+
   it("forwards `etype=` to the parser, preview search, and create URL", async () => {
     mocks.parseSearchFilters.mockResolvedValue({
       ...emptyParsed,

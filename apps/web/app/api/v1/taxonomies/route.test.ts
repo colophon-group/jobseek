@@ -44,6 +44,18 @@ describe("GET /api/v1/taxonomies industries service boundary (#3331)", () => {
     vi.clearAllMocks();
   });
 
+  it("returns 400 when the required `type` param is missing (#3213)", async () => {
+    const res = await GET(makeReq("?locale=en"));
+    const body = (await res.json()) as { error?: string };
+
+    expect(res.status).toBe(400);
+    expect(body.error).toMatch(/Missing or invalid 'type' param/);
+    expect(mocks.suggestIndustries).not.toHaveBeenCalled();
+    expect(mocks.getAllSeniorities).not.toHaveBeenCalled();
+    expect(mocks.getAllOccupationsGrouped).not.toHaveBeenCalled();
+    expect(mocks.getAllTechnologiesGrouped).not.toHaveBeenCalled();
+  });
+
   it("resolves industries through the company service tier", async () => {
     mocks.suggestIndustries.mockResolvedValue([
       { id: 3, name: "Technology" },
