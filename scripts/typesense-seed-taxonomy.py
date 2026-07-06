@@ -9,12 +9,14 @@ Usage:
     TYPESENSE_ADMIN_KEY=local_dev_typesense_key \
     uv run python ../../scripts/typesense-seed-taxonomy.py
 """
+
 from __future__ import annotations
 
 import asyncio
 import csv
 import os
 import sys
+from contextlib import suppress
 
 import asyncpg
 import typesense
@@ -104,21 +106,11 @@ async def seed():
     # --- Locations ---
     print("Seeding locations...")
     loc_rows = await conn.fetch(
-        "SELECT l.id, l.type::text AS type, l.population, l.lat, l.lng, l.parent_id, "
-        "lo.slug "
-        "FROM location l LEFT JOIN location lo ON lo.id = l.id "
-        "WHERE l.id IN (SELECT DISTINCT unnest(location_ids) FROM job_posting WHERE is_active)"
-    )
-    # Actually slug is on location table itself in newer schema
-    loc_rows = await conn.fetch(
-        "SELECT id, type::text AS type, population, lat, lng, parent_id, slug "
-        "FROM location"
+        "SELECT id, type::text AS type, population, lat, lng, parent_id, slug FROM location"
     )
 
     # Load all locale names
-    name_rows = await conn.fetch(
-        "SELECT location_id, locale, name, is_display FROM location_name"
-    )
+    name_rows = await conn.fetch("SELECT location_id, locale, name, is_display FROM location_name")
     loc_name_map: dict[int, dict[str, str]] = {}
     for r in name_rows:
         lid = r["location_id"]
@@ -278,9 +270,7 @@ async def seed():
             csv_companies[row["slug"]] = row
 
     # Map company_id to slug via job_board
-    board_rows = await conn.fetch(
-        "SELECT DISTINCT company_id, board_slug FROM job_board"
-    )
+    board_rows = await conn.fetch("SELECT DISTINCT company_id, board_slug FROM job_board")
     cid_to_slug: dict[str, str] = {}
     for r in board_rows:
         cid = str(r["company_id"])
@@ -304,10 +294,8 @@ async def seed():
         if csv_row.get("icon_url"):
             doc["icon"] = csv_row["icon_url"]
         if csv_row.get("industry"):
-            try:
+            with suppress(ValueError):
                 doc["industry_id"] = int(csv_row["industry"])
-            except ValueError:
-                pass
         docs.append(doc)
 
     _upsert(ts, "company", docs)
