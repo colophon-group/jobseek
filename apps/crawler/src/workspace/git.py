@@ -197,6 +197,9 @@ def sync_branch_with_main(branch: str) -> None:
     from src.workspace.errors import WorkspaceError
 
     cwd = _repo_cwd()
+    if cwd is None:
+        raise WorkspaceError("sync_branch_with_main must run inside a git repository")
+
     main = get_main_branch_remote(cwd=cwd)
 
     _run(["git", "fetch", "origin"], cwd=cwd)
@@ -305,6 +308,9 @@ def _run(
     ``GitCommandError`` (for ``git``) or ``GitHubApiError`` (for ``gh``).
     Transient failures are retried up to *retries* times.
     """
+    if retries < 0:
+        raise ValueError("retries must be non-negative")
+
     if cwd is None:
         cwd = _repo_cwd()
 
@@ -329,8 +335,8 @@ def _run(
                 continue
             raise last_err from exc
 
-    # Should not reach here, but satisfy type checker
-    raise last_err  # type: ignore[misc]
+    # Should not reach here, but satisfy type checker if the loop invariant changes.
+    raise RuntimeError("subprocess retry loop exited without a result")
 
 
 def _repo_root() -> Path:
