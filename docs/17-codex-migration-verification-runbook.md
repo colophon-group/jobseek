@@ -77,9 +77,9 @@ OpenAI is the preferred provider for migration smokes; Anthropic and Gemini
 remain supported. Do not change runtime defaults for the smoke: an empty
 `ENRICH_PROVIDER` still means disabled.
 
-1. Confirm the pilot branch has an enrichment entry point before running API
-   work, for example `uv run enricher --help` or the replacement command added
-   by the implementation branch.
+1. Confirm the pilot branch has added an enrichment entry point before running
+   API work. Current `main` does not register `uv run enricher`; use the exact
+   replacement command added by the implementation branch.
 2. Use a tiny batch and daily cap:
 
    ```bash
@@ -89,7 +89,7 @@ remain supported. Do not change runtime defaults for the smoke: an empty
    ENRICH_BATCH_SIZE=2 \
    ENRICH_MIN_BATCH_SIZE=1 \
    ENRICH_DAILY_SPEND_CAP_USD=1 \
-   uv run enricher --dry-run --limit 2
+   <enrichment-command> --dry-run --limit 2
    ```
 
 3. After dry-run output is sane, run one live batch and one collect pass.
