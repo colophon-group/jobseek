@@ -32,7 +32,7 @@ export default defineConfig({
         "src/lib/actions/bootstrap.ts",
         "src/lib/actions/company-page-data.ts",
         "src/lib/actions/explore-data.ts",
-        "src/lib/actions/locations.ts",
+        "src/lib/services/locations.ts",
         "src/lib/actions/request-company.ts",
         "src/lib/search/canonicalize-filters.ts",
         "src/lib/search/histogram-filters.ts",

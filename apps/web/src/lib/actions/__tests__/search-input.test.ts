@@ -13,6 +13,14 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/actions/locations", () => ({
+  suggestLocations: vi.fn(() => {
+    throw new Error("search-input service must not import location server actions");
+  }),
+  resolveLocationSlugs: vi.fn(() => {
+    throw new Error("search-input service must not import location server actions");
+  }),
+}));
+vi.mock("@/lib/services/locations", () => ({
   suggestLocations: mocks.suggestLocations,
   resolveLocationSlugs: mocks.resolveLocationSlugs,
 }));
