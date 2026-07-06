@@ -84,6 +84,7 @@ export default async function LocaleLayout({ children, params }: Props) {
               logo: `${siteConfig.url}${siteConfig.logo.src}`,
               description: i18n._({
                 id: "app.schema.org.description",
+                comment: "Organization JSON-LD description for Job Seek and Colophon Group.",
                 message: "Company-tracking tool for targeted job seekers — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
               }),
               foundingDate: "2025",
@@ -119,6 +120,7 @@ export default async function LocaleLayout({ children, params }: Props) {
               inLanguage: locale,
               description: i18n._({
                 id: "app.schema.description",
+                comment: "WebApplication JSON-LD description for Job Seek.",
                 message: "Company-tracking tool for job seekers who already know which companies they want to work at. Build watchlists, get email alerts when new roles open up, and track applications in one place — postings sourced directly from company career pages.",
               }),
               offers: [
@@ -127,7 +129,11 @@ export default async function LocaleLayout({ children, params }: Props) {
                   name: "Free",
                   price: "0",
                   priceCurrency: "USD",
-                  description: i18n._({ id: "app.schema.offer.free", message: "Full search, 1 watchlist, application tracker" }),
+                  description: i18n._({
+                    id: "app.schema.offer.free",
+                    comment: "WebApplication JSON-LD offer description for the Free plan.",
+                    message: "Full search, 1 watchlist, application tracker",
+                  }),
                 },
                 {
                   "@type": "Offer",
@@ -135,14 +141,34 @@ export default async function LocaleLayout({ children, params }: Props) {
                   price: "10",
                   priceCurrency: "USD",
                   billingPeriod: "P1M",
-                  description: i18n._({ id: "app.schema.offer.pro", message: "Unlimited watchlists, email alerts on new matches" }),
+                  description: i18n._({
+                    id: "app.schema.offer.pro",
+                    comment: "WebApplication JSON-LD offer description for the Pro plan.",
+                    message: "Unlimited watchlists, email alerts on new matches",
+                  }),
                 },
               ],
               featureList: [
-                i18n._({ id: "app.schema.feature.monitor", message: "Monitor company career pages" }),
-                i18n._({ id: "app.schema.feature.alerts", message: "Real-time job posting alerts" }),
-                i18n._({ id: "app.schema.feature.languages", message: "Multi-language support" }),
-                i18n._({ id: "app.schema.feature.watchlists", message: "Watchlists and application tracking" }),
+                i18n._({
+                  id: "app.schema.feature.monitor",
+                  comment: "WebApplication JSON-LD feature list item about career-page monitoring.",
+                  message: "Monitor company career pages",
+                }),
+                i18n._({
+                  id: "app.schema.feature.alerts",
+                  comment: "WebApplication JSON-LD feature list item about job alert notifications.",
+                  message: "Real-time job posting alerts",
+                }),
+                i18n._({
+                  id: "app.schema.feature.languages",
+                  comment: "WebApplication JSON-LD feature list item about supported interface languages.",
+                  message: "Multi-language support",
+                }),
+                i18n._({
+                  id: "app.schema.feature.watchlists",
+                  comment: "WebApplication JSON-LD feature list item about watchlists and application tracking.",
+                  message: "Watchlists and application tracking",
+                }),
               ],
             }} />
             {children}

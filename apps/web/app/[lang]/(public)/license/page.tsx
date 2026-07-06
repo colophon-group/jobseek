@@ -14,9 +14,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n._({ id: "license.meta.title", message: "License" });
+  const title = i18n._({
+    id: "license.meta.title",
+    comment: "SEO title for the public License page.",
+    message: "License",
+  });
   const description = i18n._({
     id: "license.meta.description",
+    comment: "SEO description for the public License page.",
     message: "Licensing for Job Seek — application source code is MIT-licensed, job posting data is CC BY-NC 4.0. Learn what you can and cannot do with our code and data.",
   });
 
@@ -48,8 +53,16 @@ export default async function LicensePage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: i18n._({ id: "license.meta.title", message: "License" }),
-        description: i18n._({ id: "license.meta.description", message: "Licensing for Job Seek — application source code is MIT-licensed, job posting data is CC BY-NC 4.0. Learn what you can and cannot do with our code and data." }),
+        name: i18n._({
+          id: "license.meta.title",
+          comment: "JSON-LD page name for the public License page.",
+          message: "License",
+        }),
+        description: i18n._({
+          id: "license.meta.description",
+          comment: "JSON-LD page description for the public License page.",
+          message: "Licensing for Job Seek — application source code is MIT-licensed, job posting data is CC BY-NC 4.0. Learn what you can and cannot do with our code and data.",
+        }),
         url: `${siteConfig.url}/${locale}/license`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

@@ -14,9 +14,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n._({ id: "about.meta.title", message: "About" });
+  const title = i18n._({
+    id: "about.meta.title",
+    comment: "SEO title for the public About page.",
+    message: "About",
+  });
   const description = i18n._({
     id: "about.meta.description",
+    comment: "SEO description for the public About page.",
     message: "Job Seek helps you track the companies you want to work at — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
   });
 
@@ -43,8 +48,16 @@ export default async function AboutPage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: i18n._({ id: "about.meta.title", message: "About" }),
-        description: i18n._({ id: "about.meta.description", message: "Job Seek helps you track the companies you want to work at — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland." }),
+        name: i18n._({
+          id: "about.meta.title",
+          comment: "JSON-LD page name for the public About page.",
+          message: "About",
+        }),
+        description: i18n._({
+          id: "about.meta.description",
+          comment: "JSON-LD page description for the public About page.",
+          message: "Job Seek helps you track the companies you want to work at — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
+        }),
         url: `${siteConfig.url}/${locale}/about`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

@@ -10,7 +10,12 @@
 #      `msgstr ""` in any of de/fr/it. The PO file header is
 #      `msgid ""\nmsgstr ""` and is excluded by the `[^"]` filter.
 #
-#   2. **Stale catalog** — runs `pnpm --dir apps/web extract` in a
+#   2. **Missing translator comments** — every `i18n._({ id, ... })`
+#      descriptor under `apps/web/app` and `apps/web/src` must include
+#      a `comment` field, matching the project convention documented
+#      in `apps/web/docs/i18n.md`.
+#
+#   3. **Stale catalog** — runs `pnpm --dir apps/web extract` in a
 #      sandboxed temp copy of the catalogs and diffs against the
 #      committed ones. Any non-trivial diff means the user added or
 #      removed a macro call without running extract, so the catalogs
@@ -80,7 +85,26 @@ for locale in "${NON_SOURCE_LOCALES[@]}"; do
   fi
 done
 
-# ── Check 2: catalogs stale vs source (#3031) ───────────────────────
+# ── Check 2: translator comments on imperative i18n calls ───────────
+#
+# Lingui extracts `i18n._({ id, message })` descriptors from metadata and
+# JSON-LD code, but those sites used to miss the translator context that
+# `<Trans>` / `t({ ... })` call sites already carry. Use the TypeScript
+# parser instead of grep so multi-line object literals are checked
+# correctly. This check is skipped only in dependency-stripped local
+# sandboxes, mirroring the stale-catalog check below.
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "i18n-coverage: node not found — skipping i18n comment check"
+elif [[ ! -d "$REPO_ROOT/apps/web/node_modules" ]]; then
+  echo "i18n-coverage: apps/web/node_modules missing — skipping i18n comment check"
+elif [[ ! -d "$REPO_ROOT/node_modules" ]]; then
+  echo "i18n-coverage: repo node_modules missing — skipping i18n comment check"
+elif ! node "$REPO_ROOT/scripts/check-i18n-comments.mjs" "$REPO_ROOT"; then
+  failed=1
+fi
+
+# ── Check 3: catalogs stale vs source (#3031) ───────────────────────
 #
 # Run `pnpm extract` in a worktree-local sandbox so we don't mutate the
 # committed catalogs, then diff against them on normalized content. The

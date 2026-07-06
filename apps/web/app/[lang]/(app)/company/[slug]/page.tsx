@@ -33,6 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = i18n._({
     id: "company.meta.title",
+    comment: "SEO title for a company detail page; {name} is the company name.",
     message: "Jobs at {name}",
     values: { name: company.name },
   });
@@ -40,18 +41,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const countText = count > 0
     ? i18n._({
         id: "company.meta.positionCount",
+        comment: "SEO metadata count text for a company page; {count} is the active job count.",
         message: "{count, plural, one {# open position} other {# open positions}}",
         values: { count },
       })
-    : i18n._({ id: "company.meta.openPositions", message: "Open positions" });
+    : i18n._({
+        id: "company.meta.openPositions",
+        comment: "Fallback SEO metadata count text for a company with no active jobs.",
+        message: "Open positions",
+      });
   const description = company.description
     ? i18n._({
         id: "company.meta.descriptionWithInfo",
+        comment: "SEO description for a company page; includes job count, company name, and company summary.",
         message: "{countText} at {name}. {description}",
         values: { countText, name: company.name, description: company.description },
       })
     : i18n._({
         id: "company.meta.descriptionBasic",
+        comment: "SEO description for a company page when no company summary is available.",
         message: "{countText} at {name}",
         values: { countText, name: company.name },
       });

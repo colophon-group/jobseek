@@ -61,12 +61,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       if (detail.companies.length > 3) {
         names.push(i18n._({
           id: "watchlist.meta.moreCompanies",
+          comment: "SEO metadata suffix when a watchlist includes more companies than can be listed by name.",
           message: "{count} more",
           values: { count: detail.companies.length - 3 },
         }));
       }
       parts.push(i18n._({
         id: "watchlist.meta.jobsAt",
+        comment: "SEO metadata phrase listing companies tracked by a public watchlist.",
         message: "Jobs at {names}",
         values: { names: names.join(", ") },
       }));
@@ -77,6 +79,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (detail.filters.locationSlugs?.length) {
       parts.push(i18n._({
         id: "watchlist.meta.inLocations",
+        comment: "SEO metadata phrase listing locations filtered by a public watchlist.",
         message: "in {locations}",
         values: { locations: detail.filters.locationSlugs.slice(0, 2).map((s) => s.replace(/-/g, " ")).join(", ") },
       }));
@@ -85,6 +88,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ? parts.join(" · ")
       : i18n._({
           id: "watchlist.meta.fallback",
+          comment: "Fallback SEO description for a public watchlist with no description or filters.",
           message: "Job watchlist by @{owner}",
           values: { owner: ownerLabel },
         });
@@ -103,6 +107,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (companyCount > 0) {
     description = i18n._({
       id: "watchlist.meta.tracking",
+      comment: "SEO description prefix for a public watchlist; {description} is the existing watchlist summary.",
       message: "{count, plural, one {Tracking # company} other {Tracking # companies}}. {description}",
       values: { count: companyCount, description },
     });
