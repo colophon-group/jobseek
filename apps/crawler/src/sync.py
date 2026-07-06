@@ -1288,11 +1288,13 @@ async def _mirror_table(
     ids: list[int],
     slugs: list[str],
 ) -> None:
-    """Re-insert rows into a local lookup table with Supabase-assigned IDs.
+    """Upsert rows into a local lookup table with Supabase-assigned IDs.
 
-    Caller is responsible for deleting rows in the correct FK order before
-    calling this.  After insert, advances the serial sequence past max(ids)
-    to prevent future auto-increment collisions.
+    The normal path calls this only after verifying there is no local ID drift,
+    so existing rows either have the same ID or are missing. The repair path
+    deletes rows in FK-safe order before calling this. After insert, advances
+    the serial sequence past max(ids) to prevent future auto-increment
+    collisions.
     """
     await local_conn.execute(mirror_sql, ids, slugs)
     max_id = max(ids)

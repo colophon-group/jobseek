@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 DEPLOY_SH = Path(__file__).resolve().parent.parent / "deploy.sh"
+DOCKERFILE = Path(__file__).resolve().parent.parent / "Dockerfile"
 
 
 def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
@@ -46,3 +47,10 @@ def test_deploy_disk_preflight_only_prunes_builder_cache() -> None:
     assert "df -Pk" in script
     assert "docker system prune" not in script
     assert "docker volume prune" not in script
+
+
+def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
+    dockerfile = DOCKERFILE.read_text()
+
+    assert "FROM python:3.13-slim AS base" in dockerfile
+    assert "python:3.14" not in dockerfile

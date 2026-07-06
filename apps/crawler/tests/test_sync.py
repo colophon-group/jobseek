@@ -28,6 +28,7 @@ from src.sync import (
     sync_companies,
     sync_companies_typesense,
     sync_locations_typesense,
+    sync_lookup_tables_local,
     sync_occupation_domains,
     sync_occupations,
     sync_watchlists_typesense,
@@ -938,6 +939,131 @@ class TestIsTrivialWatchlist:
     )
     def test_empty_filter_arrays_are_trivial(self, filters):
         assert _is_trivial_watchlist(filters, 0) is True
+
+
+class TestSyncLookupTablesLocal:
+    async def test_aligned_ids_skip_job_posting_constraint_rebuild(self):
+        """Routine deploy sync must not take ACCESS EXCLUSIVE locks on
+        job_posting when local lookup IDs already match Supabase.
+        """
+
+        domain_rows = [_StubRecord(id=7, slug="engineering")]
+        occupation_rows = [_StubRecord(id=36, slug="account-executive")]
+        seniority_rows = [_StubRecord(id=4, slug="senior")]
+
+        async def _supa_fetch(sql, *args):
+            if "FROM occupation_domain" in sql:
+                return domain_rows
+            if "FROM occupation" in sql:
+                return occupation_rows
+            if "FROM seniority" in sql:
+                return seniority_rows
+            raise AssertionError(f"unexpected Supabase query: {sql} {args}")
+
+        async def _local_fetch(sql, *args):
+            if "FROM occupation_domain" in sql:
+                return domain_rows
+            if "FROM occupation" in sql:
+                return occupation_rows
+            if "FROM seniority" in sql:
+                return seniority_rows
+            raise AssertionError(f"unexpected local query: {sql} {args}")
+
+        supa_conn = AsyncMock()
+        supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
+        local_conn.execute = AsyncMock()
+
+        with (
+            patch("src.sync.sync_occupation_domains", new_callable=AsyncMock),
+            patch("src.sync.sync_occupations", new_callable=AsyncMock),
+            patch("src.sync.sync_seniority", new_callable=AsyncMock),
+            patch("src.sync.sync_technologies", new_callable=AsyncMock),
+            patch("src.sync.sync_industries", new_callable=AsyncMock),
+            patch("src.sync._populate_locations_if_empty", new_callable=AsyncMock),
+            patch("src.sync._populate_currency_rates_if_empty", new_callable=AsyncMock),
+        ):
+            await sync_lookup_tables_local(
+                supa_conn,
+                local_conn,
+                pl.DataFrame({"slug": ["engineering"]}),
+                pl.DataFrame({"slug": ["account-executive"]}),
+                pl.DataFrame({"slug": ["senior"]}),
+                pl.DataFrame({"slug": ["python"]}),
+                pl.DataFrame({"id": [1]}),
+                dry_run=False,
+            )
+
+        executed_sql = [call.args[0] for call in local_conn.execute.await_args_list]
+        assert not any("ALTER TABLE job_posting" in sql for sql in executed_sql)
+        assert not any(sql == "DELETE FROM occupation" for sql in executed_sql)
+        assert any("INSERT INTO occupation (id, slug)" in sql for sql in executed_sql)
+
+    async def test_id_drift_uses_constraint_rebuild_repair_path(self):
+        """If an existing local slug has the wrong ID, keep the repair path
+        that drops/re-adds FKs before replacing lookup rows.
+        """
+
+        domain_rows = [_StubRecord(id=7, slug="engineering")]
+        occupation_rows = [_StubRecord(id=36, slug="account-executive")]
+        seniority_rows = [_StubRecord(id=4, slug="senior")]
+
+        async def _supa_fetch(sql, *args):
+            if "FROM occupation_domain" in sql:
+                return domain_rows
+            if "FROM occupation" in sql:
+                return occupation_rows
+            if "FROM seniority" in sql:
+                return seniority_rows
+            raise AssertionError(f"unexpected Supabase query: {sql} {args}")
+
+        async def _local_fetch(sql, *args):
+            if "FROM occupation_domain" in sql:
+                return domain_rows
+            if "FROM occupation" in sql:
+                return [_StubRecord(id=999, slug="account-executive")]
+            if "FROM seniority" in sql:
+                return seniority_rows
+            raise AssertionError(f"unexpected local query: {sql} {args}")
+
+        supa_conn = AsyncMock()
+        supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
+        local_conn.execute = AsyncMock()
+
+        with (
+            patch("src.sync.sync_occupation_domains", new_callable=AsyncMock),
+            patch("src.sync.sync_occupations", new_callable=AsyncMock),
+            patch("src.sync.sync_seniority", new_callable=AsyncMock),
+            patch("src.sync.sync_technologies", new_callable=AsyncMock),
+            patch("src.sync.sync_industries", new_callable=AsyncMock),
+            patch("src.sync._populate_locations_if_empty", new_callable=AsyncMock),
+            patch("src.sync._populate_currency_rates_if_empty", new_callable=AsyncMock),
+        ):
+            await sync_lookup_tables_local(
+                supa_conn,
+                local_conn,
+                pl.DataFrame({"slug": ["engineering"]}),
+                pl.DataFrame({"slug": ["account-executive"]}),
+                pl.DataFrame({"slug": ["senior"]}),
+                pl.DataFrame({"slug": ["python"]}),
+                pl.DataFrame({"id": [1]}),
+                dry_run=False,
+            )
+
+        executed_sql = [call.args[0] for call in local_conn.execute.await_args_list]
+        assert any(
+            "DROP CONSTRAINT IF EXISTS job_posting_occupation_id_fkey" in sql
+            for sql in executed_sql
+        )
+        assert any(
+            "DROP CONSTRAINT IF EXISTS job_posting_seniority_id_fkey" in sql for sql in executed_sql
+        )
+        assert "DELETE FROM occupation" in executed_sql
+        assert any("ADD CONSTRAINT job_posting_occupation_id_fkey" in sql for sql in executed_sql)
+        assert any("ADD CONSTRAINT job_posting_seniority_id_fkey" in sql for sql in executed_sql)
 
 
 class TestSyncWatchlistsTypesenseLocalTaxonomy:
