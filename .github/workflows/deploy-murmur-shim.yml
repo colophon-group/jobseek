@@ -43,10 +43,10 @@
 #
 # Action SHA pins (mirror apps/crawler/.github/workflows/deploy-crawler-browser.yml
 # so all jobseek deploys pin to the same versions):
-#   actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd            # v6
-#   docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
-#   docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8    # v6
-#   appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634         # v0.1.7
+#   actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0            # v6
+#   docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+#   docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a    # v7.3.0
+#   appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345         # v1.0.0
 #   appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2         # v1
 
 name: Deploy murmur-shim
@@ -84,10 +84,10 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       # Direct `docker login` (NOT docker/login-action). The action's
       # auth probe is incompatible with classic PATs against GHCR even
@@ -99,7 +99,7 @@ jobs:
         run: echo "$GHCR_PAT" | docker login ghcr.io -u viktor-shcherb --password-stdin
 
       - name: Build & push jobseek-murmur-shim
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           # Build context is the monorepo root because the Dockerfile COPYs
           # apps/web/src/db/schema.ts (wildcard re-export) plus pnpm-lock.yaml
@@ -128,7 +128,7 @@ jobs:
 
     steps:
       - name: Checkout (for compose file)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
 
       # Single SCP, single file. `strip_components: 2` strips
       # `apps/crawler/`, landing the file at
@@ -137,7 +137,7 @@ jobs:
       # box's deploy.sh expects. Do NOT mix multi-depth sources here
       # (see lesson #3); add a second SCP step instead.
       - name: Copy docker-compose.yml to box
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
