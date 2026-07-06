@@ -20,7 +20,7 @@ from html import unescape
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, register
+from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -84,7 +84,12 @@ def _decrypt(data_b64: str, key_str: str, iv_str: str) -> dict:
     return json.loads(plaintext)
 
 
-async def _get_init_data(page_url: str, client: httpx.AsyncClient) -> dict | None:
+async def _get_init_data(
+    page_url: str,
+    client: httpx.AsyncClient,
+    *,
+    raise_on_404: bool = False,
+) -> dict | None:
     """Return the SPA's parsed ``init-data`` payload, or ``None`` on failure.
 
     The payload exposes the AES IV (``aesIv``) plus rich auxiliary data
@@ -94,6 +99,8 @@ async def _get_init_data(page_url: str, client: httpx.AsyncClient) -> dict | Non
     map to produce human-readable city names.
     """
     resp = await client.get(page_url, follow_redirects=True)
+    if resp.status_code == 404 and raise_on_404:
+        raise BoardGoneError("Mokahr board page returned 404", url=str(resp.url))
     if resp.status_code != 200:
         return None
     m = re.search(r'id="init-data"[^>]*value="([^"]*)"', resp.text)
@@ -386,7 +393,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     )
 
     page_url = _build_board_url(org_id, site_id, path)
-    init_data = await _get_init_data(page_url, client)
+    init_data = await _get_init_data(page_url, client, raise_on_404=True)
     iv = init_data.get("aesIv") if init_data else None
     if not iv:
         raise RuntimeError(f"Could not extract AES IV from {page_url}")
