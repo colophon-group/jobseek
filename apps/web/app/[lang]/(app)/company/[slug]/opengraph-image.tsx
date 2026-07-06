@@ -86,11 +86,68 @@ function renderNotFound(fontData: Buffer): ImageResponse {
   );
 }
 
+const RENDERABLE_COMPANY_OG_ICON_EXTENSIONS = new Set([".png", ".jpg", ".jpeg"]);
+
+type CompanyOgIconRenderModel =
+  | { kind: "image"; src: string }
+  | { kind: "fallback"; label: string }
+  | { kind: "none" };
+
+function parseHttpUrl(value: string | null | undefined): URL | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getRenderableCompanyOgIconUrl(
+  icon: string | null | undefined,
+): string | null {
+  const url = parseHttpUrl(icon);
+  if (!url) return null;
+
+  const pathname = url.pathname.toLowerCase();
+  for (const extension of RENDERABLE_COMPANY_OG_ICON_EXTENSIONS) {
+    if (pathname.endsWith(extension)) return icon!;
+  }
+  return null;
+}
+
+export function getCompanyOgFallbackInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return parts
+      .slice(0, 2)
+      .map((part) => Array.from(part)[0])
+      .join("")
+      .toUpperCase();
+  }
+
+  const firstPart = parts[0] ?? "";
+  return Array.from(firstPart).slice(0, 2).join("").toUpperCase() || "?";
+}
+
+export function getCompanyOgIconRenderModel(
+  company: Pick<CompanyDetail, "icon" | "name">,
+): CompanyOgIconRenderModel {
+  const src = getRenderableCompanyOgIconUrl(company.icon);
+  if (src) return { kind: "image", src };
+
+  // `next/og` logs noisy parse errors for some valid-but-unsupported SVGs
+  // and does not support WebP reliably in this renderer path. Keep the card
+  // stable with a deterministic mark instead of handing those URLs to Satori.
+  if (parseHttpUrl(company.icon)) {
+    return { kind: "fallback", label: getCompanyOgFallbackInitials(company.name) };
+  }
+
+  return { kind: "none" };
+}
+
 function renderCompanyImage(company: CompanyDetail, fontData: Buffer): ImageResponse {
-  const hasIcon =
-    company.icon &&
-    company.icon.startsWith("http") &&
-    !company.icon.toLowerCase().endsWith(".webp");
+  const icon = getCompanyOgIconRenderModel(company);
 
   return new ImageResponse(
     <div
@@ -107,13 +164,33 @@ function renderCompanyImage(company: CompanyDetail, fontData: Buffer): ImageResp
     >
       {/* Top: company icon + name */}
       <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-        {hasIcon && (
+        {icon.kind === "image" && (
           <img
-            src={company.icon!}
+            src={icon.src}
             width={72}
             height={72}
             style={{ borderRadius: 12 }}
           />
+        )}
+        {icon.kind === "fallback" && (
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 12,
+              backgroundColor: "#18181b",
+              border: "1px solid #27272a",
+              color: "#fafafa",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              fontWeight: 700,
+              lineHeight: 1,
+            }}
+          >
+            {icon.label}
+          </div>
         )}
         <span style={{ fontSize: 52, fontWeight: 700 }}>{company.name}</span>
       </div>
