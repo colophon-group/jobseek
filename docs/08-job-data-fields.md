@@ -188,23 +188,28 @@ Examples:
 | Greenhouse | Not available | — |
 | Workday | Not available | — |
 
-#### `language` — Content language
+#### `language` / `locales` — Content languages
 
 | Property | Value |
 |----------|-------|
-| Type | `str` |
-| Format | ISO 639-1 code (e.g. `"en"`, `"de"`, `"fr"`) |
-| DB column | `job_posting.language` (text) / `job_posting.locales` (text[]) |
+| Type | `str` input, `list[str]` stored |
+| Format | ISO 639-1 code(s), e.g. `"en"`, `"de"`, `"fr"` |
+| Crawler fields | `language`, plus `detect_all_languages()` output |
+| DB column | `job_posting.locales` (text[]) |
 
-Detected automatically from the description using lingua-py, or provided by the monitor (Greenhouse API, Personio). When a monitor already knows the language, detection is skipped. Stored in both `language` (legacy) and `locales[]` (new array of all available locales).
+Detected automatically from normalized description HTML using
+`fast-langdetect` / fastText (`apps/crawler/src/shared/langdetect.py`), or
+provided directly by a monitor when available. When a monitor already knows the
+language, detection is skipped for the primary language. Long descriptions are
+also chunked to detect significant additional languages for `locales[]`.
 
-#### `localizations` — All language versions
+#### `localizations` — Monitor-provided language variants
 
 | Property | Value |
 |----------|-------|
 | Type | `dict` |
-| Format | JSONB keyed by locale, each containing `{title, description, locations}` |
-| DB column | `job_posting.localizations` (jsonb) |
+| Format | Dict keyed by locale, each containing `{title, description, locations}` when available |
+| Storage | Processing input; current DB stores derived `titles[]`, `locales[]`, and staged R2 description content |
 
 ```python
 {
@@ -213,9 +218,10 @@ Detected automatically from the description using lingua-py, or provided by the 
 }
 ```
 
-Top-level `title`/`description`/`locations` always hold the English version when available. Frontend selects user's locale from `localizations` at display time.
-
-Currently only populated by the Personio monitor (fetches per-language XML feeds).
+When a monitor provides variants, processing folds localized titles into
+`titles[]` and locale keys into `locales[]`. Description HTML is staged through
+the R2 description pipeline for the selected posting locale; there is no current
+localization JSONB column on `job_posting`.
 
 #### `extras` — Structured supplementary data
 
@@ -488,7 +494,7 @@ These heuristics often need manual correction — a detected pattern with wrong 
 | `job_location_type` | `str` | Important | text | No | `remote`/`hybrid`/`onsite` |
 | `date_posted` | `str` | Optional | timestamptz | No | ISO 8601 preferred |
 | `base_salary` | `dict` | Optional | jsonb | No | `{currency, min, max, unit}` |
-| `language` | `str` | Auto | text | No | ISO 639-1; detected or monitor-provided |
-| `localizations` | `dict` | Optional | jsonb | No | Keyed by locale |
+| `language` | `str` | Auto | text[] via `locales` | No | ISO 639-1 input; detected or monitor-provided |
+| `localizations` | `dict` | Optional | derived / R2 | Yes | Optional monitor input; keyed by locale |
 | `extras` | `dict` | Optional | jsonb | No | `{skills, responsibilities, qualifications, valid_through}` |
 | `metadata` | `dict` | Optional | jsonb | No | Free-form, ATS-specific |
