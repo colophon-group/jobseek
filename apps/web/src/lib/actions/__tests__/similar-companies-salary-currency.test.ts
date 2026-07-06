@@ -40,13 +40,17 @@ vi.mock("drizzle-orm", () => ({
 vi.mock("@/lib/sessionCache", () => ({
   getSessionUserId: mocks.getSessionUserId,
 }));
-vi.mock("@/lib/actions/locations", () => ({
+vi.mock("@/lib/services/locations", () => ({
   expandLocationIds: vi.fn(),
   expandLocationIdsBatch: vi.fn().mockResolvedValue([]),
+  resolveLocationSlugs: vi.fn().mockResolvedValue(new Map()),
 }));
-vi.mock("@/lib/actions/taxonomy", () => ({
+vi.mock("@/lib/services/taxonomy", () => ({
   expandOccupationIds: vi.fn(),
   expandOccupationIdsBatch: vi.fn().mockResolvedValue([]),
+  resolveOccupationSlugs: vi.fn().mockResolvedValue(new Map()),
+  resolveSenioritySlugs: vi.fn().mockResolvedValue(new Map()),
+  resolveTechnologySlugs: vi.fn().mockResolvedValue(new Map()),
 }));
 vi.mock("@/lib/search", () => ({ getSearchProvider: vi.fn() }));
 vi.mock("@/lib/search/constants", () => ({
@@ -60,10 +64,10 @@ vi.mock("@/lib/search/typesense-filters", () => ({
   POSTING_BASE_FILTER: "is_active:=true",
 }));
 vi.mock("@/lib/search/pg-filters", () => ({ localesOrNoneClause: vi.fn() }));
-vi.mock("@/lib/actions/search-input", () => ({
+vi.mock("@/lib/services/search-input", () => ({
   parseSearchFilters: mocks.parseSearchFilters,
 }));
-vi.mock("@/lib/actions/search", () => ({
+vi.mock("@/lib/services/search", () => ({
   getCurrencyRates: mocks.getCurrencyRates,
 }));
 vi.mock("@/lib/search/params", () => ({
