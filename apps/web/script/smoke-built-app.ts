@@ -7,6 +7,19 @@ import { chromium, type Browser } from "playwright";
 const port = Number(process.env.SMOKE_PORT ?? "3100");
 const baseUrl = `http://127.0.0.1:${port}`;
 const routes = ["/en", "/en/explore", "/en/companies/request"];
+const discoveryNotFoundRoutes = [
+  "/api",
+  "/api-docs",
+  "/api-reference",
+  "/developer",
+  "/developers",
+  "/mcp.json",
+  "/openapi.yaml",
+] as const;
+const discoveryRedirectRoutes = [
+  ["/llms.txt", "/.well-known/llms.txt"],
+  ["/openapi.json", "/api/openapi.json"],
+] as const;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,12 +82,38 @@ async function smoke(browser: Browser, route: string) {
   await page.close();
 }
 
+async function smokeDiscoveryRoute(route: string, expectedStatus: number) {
+  const response = await fetch(`${baseUrl}${route}`, { redirect: "manual" });
+  if (response.status !== expectedStatus) {
+    throw new Error(`${route} returned HTTP ${response.status}, expected ${expectedStatus}`);
+  }
+  console.log(`smoke ok ${route} ${expectedStatus}`);
+}
+
+async function smokeDiscoveryRedirect(route: string, location: string) {
+  const response = await fetch(`${baseUrl}${route}`, { redirect: "manual" });
+  if (response.status !== 308) {
+    throw new Error(`${route} returned HTTP ${response.status}, expected 308`);
+  }
+  const actualLocation = response.headers.get("location");
+  if (actualLocation !== location) {
+    throw new Error(`${route} redirected to ${actualLocation}, expected ${location}`);
+  }
+  console.log(`smoke ok ${route} 308 ${location}`);
+}
+
 async function main() {
   const server = startServer();
   let browser: Browser | undefined;
   try {
     await waitForServer();
     browser = await chromium.launch();
+    for (const route of discoveryNotFoundRoutes) {
+      await smokeDiscoveryRoute(route, 404);
+    }
+    for (const [route, location] of discoveryRedirectRoutes) {
+      await smokeDiscoveryRedirect(route, location);
+    }
     for (const route of routes) {
       await smoke(browser, route);
     }
