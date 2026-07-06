@@ -51,6 +51,8 @@ DEPLOY_DIR="/home/deploy"
 ENV_FILE="$DEPLOY_DIR/.env"
 ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 IMAGE_TAG="${CRAWLER_IMAGE_TAG:-latest}"
+DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
+DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
 
 rollback_deploy() {
   local exit_code=$?
@@ -111,6 +113,32 @@ wait_for_core_services() {
   return 1
 }
 
+deploy_disk_free_kb() {
+  df -Pk "$DEPLOY_DIR" | awk 'NR == 2 {print $4}'
+}
+
+ensure_deploy_disk_headroom() {
+  local free_kb
+
+  free_kb="$(deploy_disk_free_kb)"
+  if (( free_kb < DEPLOY_PRUNE_FREE_KB )); then
+    echo "Low deploy disk headroom (${free_kb} KiB available); pruning Docker builder cache" >&2
+    # The crawler host should run pulled images, not depend on local build
+    # cache. Keep containers, images, and volumes intact.
+    docker builder prune -af >/dev/null || true
+    free_kb="$(deploy_disk_free_kb)"
+  fi
+
+  if (( free_kb < DEPLOY_MIN_FREE_KB )); then
+    echo "ERROR: insufficient deploy disk headroom (${free_kb} KiB available; need ${DEPLOY_MIN_FREE_KB} KiB)" >&2
+    df -h "$DEPLOY_DIR" >&2 || true
+    docker system df >&2 || true
+    return 1
+  fi
+
+  echo "Deploy disk headroom OK: ${free_kb} KiB available" >&2
+}
+
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
 # kept here to clean up boxes that still have a manually-started one.
@@ -161,6 +189,8 @@ chmod 600 "$ENV_FILE"
 # ── Pull images and preflight while the old stack is still serving ────
 cd "$DEPLOY_DIR"
 trap rollback_deploy ERR
+
+ensure_deploy_disk_headroom
 
 docker compose pull
 
