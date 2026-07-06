@@ -37,6 +37,9 @@ updates:
       typesense:
         patterns:
           - "typesense"
+      aws-sdk:
+        patterns:
+          - "@aws-sdk/*"
       test-tooling:
         dependency-type: "development"
         patterns:
