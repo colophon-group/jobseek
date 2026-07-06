@@ -84,7 +84,7 @@ class TestExtractByPattern:
     def test_af_init_data_callback(self):
         data = [1, "hello", [3, 4]]
         html = f"AF_initDataCallback({{key: 'ds:1', data: {json.dumps(data)}}});"
-        result = extract_by_pattern(html, r"AF_initDataCallback\s*\(\s*\{[^}}]*data\s*:\s*")
+        result = extract_by_pattern(html, r"AF_initDataCallback\s*\(\s*\{[^}]*data\s*:\s*")
         assert result == data
 
     def test_custom_pattern(self):
@@ -176,6 +176,7 @@ class TestExtractScriptById:
         data = {"props": {"pageProps": {"title": "Test"}}}
         html = f'<script id="__NEXT_DATA__" type="application/json">{json.dumps(data)}</script>'
         result = extract_script_by_id(html, "__NEXT_DATA__")
+        assert result is not None
         assert json.loads(result) == data
 
 
