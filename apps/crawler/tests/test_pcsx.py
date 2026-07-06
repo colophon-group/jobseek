@@ -5,7 +5,6 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitors import DiscoveredJob  # noqa: F401 — used via mapping return type
 from src.core.monitors._pcsx import (
     PcsxDisabled,
     PcsxFetchError,

@@ -18,6 +18,7 @@ Run from the crawler directory so that ``src.shared.*`` resolves:
     cd apps/crawler
     uv run python ../../scripts/jobroom-discover.py [--max-postings N] [--all-cantons]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +28,6 @@ import os
 import re
 import sys
 import time
-import unicodedata
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -52,9 +52,32 @@ LANG_NG = "ZW4="  # base64("en"); the SPA includes this on every backend call
 
 # 26 Swiss cantons (ISO 3166-2:CH).
 SWISS_CANTONS: tuple[str, ...] = (
-    "ZH", "BE", "LU", "UR", "SZ", "OW", "NW", "GL", "ZG", "FR", "SO", "BS",
-    "BL", "SH", "AR", "AI", "SG", "GR", "AG", "TG", "TI", "VD", "VS", "NE",
-    "GE", "JU",
+    "ZH",
+    "BE",
+    "LU",
+    "UR",
+    "SZ",
+    "OW",
+    "NW",
+    "GL",
+    "ZG",
+    "FR",
+    "SO",
+    "BS",
+    "BL",
+    "SH",
+    "AR",
+    "AI",
+    "SG",
+    "GR",
+    "AG",
+    "TG",
+    "TI",
+    "VD",
+    "VS",
+    "NE",
+    "GE",
+    "JU",
 )
 
 # All-defaults filter body (as captured from the SPA).
@@ -147,7 +170,6 @@ _PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"(?:^|\.)krippenstellen\.ch$", re.I), "krippenstellen", "aggregator"),
     (re.compile(r"(?:^|\.)swiss-architects\.com$", re.I), "swiss_architects", "aggregator"),
     (re.compile(r"(?:^|\.)jobeo\.ch$", re.I), "jobeo", "aggregator"),
-
     # Recruitment agencies / staffing — URL-based detection.
     # Only definitive recruiter hosts go here; name-based detection
     # (classify_by_name) catches many more that post via jobs.ch.
@@ -188,12 +210,10 @@ _PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"(?:^|\.)persigo\.ch$", re.I), "persigo", "recruiter"),
     (re.compile(r"(?:^|\.)mt-jobs\.ch$", re.I), "mt_jobs", "recruiter"),
     (re.compile(r"(?:^|\.)spitexjobs\.ch$", re.I), "spitexjobs", "recruiter"),
-
     # Federal admin
     (re.compile(r"(?:^|\.)admin\.ch$", re.I), "swiss_federal", "federal"),
     (re.compile(r"(?:^|\.)stadt-zuerich\.ch$", re.I), "swiss_federal", "federal"),
     (re.compile(r"\.apps\.(?:be|bs|ge|zh|vd|ag|sg|lu)\.ch$", re.I), "cantonal", "federal"),
-
     # ATS — turnkey rich monitors that jobseek already supports
     (re.compile(r"(?:^|\.)greenhouse\.io$", re.I), "greenhouse", "ats"),
     (re.compile(r"\.myworkdayjobs\.com$", re.I), "workday", "ats"),
@@ -210,7 +230,6 @@ _PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"(?:^|\.)teamtailor\.com$", re.I), "teamtailor", "ats"),
     (re.compile(r"(?:^|\.)successfactors\.(?:eu|com)$", re.I), "successfactors", "ats"),
     (re.compile(r"(?:^|\.)join\.com$", re.I), "join", "ats"),
-
     # ATS — Swiss-specific, NOT YET supported by jobseek (Phase 3 candidates)
     (re.compile(r"(?:^|\.)refline\.ch$", re.I), "refline", "ats"),
     (re.compile(r"(?:^|\.)link\.ostendis\.com$", re.I), "ostendis", "ats"),
@@ -230,19 +249,36 @@ _PATTERNS: list[tuple[re.Pattern, str, str]] = [
 ]
 
 # ATS names that jobseek does NOT yet have a monitor for (flagged in stats).
-UNSUPPORTED_ATS = frozenset({
-    "refline", "ostendis", "dualoo", "jacando", "abacus", "prospective",
-    "solique",
-})
+UNSUPPORTED_ATS = frozenset(
+    {
+        "refline",
+        "ostendis",
+        "dualoo",
+        "jacando",
+        "abacus",
+        "prospective",
+        "solique",
+    }
+)
 
 # Self-branded aggregator company names to skip entirely. These appear
 # when an aggregator cross-posts its own listings INTO job-room with
 # company.name set to the aggregator brand (e.g. "Jobup" with 1689 postings
 # linking back to jobup.ch). Not real employers.
-_SELF_AGGREGATOR_NAMES: frozenset[str] = frozenset({
-    "jobup", "jobs.ch", "jobs ch", "jobscout24", "jobscout", "indeed",
-    "linkedin", "stepstone", "monster", "xing",
-})
+_SELF_AGGREGATOR_NAMES: frozenset[str] = frozenset(
+    {
+        "jobup",
+        "jobs.ch",
+        "jobs ch",
+        "jobscout24",
+        "jobscout",
+        "indeed",
+        "linkedin",
+        "stepstone",
+        "monster",
+        "xing",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -326,9 +362,12 @@ _RECRUITER_NAME_PATTERNS: tuple[re.Pattern, ...] = (
     # Stellenpartner, Stellenvermittlung, Stellenmarkt, Stellenprofi).
     # "Stellen" literally means "job positions" — any company name built
     # around it is a staffing firm.
-    re.compile(r"\bstellen(?:partner|treff|bern|büro|buero|vermittlung|"
-               r"markt|profi|profis|haus|finder|meister|boerse|börse|"
-               r"suche|welt|zentrum)", re.I),
+    re.compile(
+        r"\bstellen(?:partner|treff|bern|büro|buero|vermittlung|"
+        r"markt|profi|profis|haus|finder|meister|boerse|börse|"
+        r"suche|welt|zentrum)",
+        re.I,
+    ),
     # "Interim AG" — temp placement agency
     re.compile(r"\binterim\s+(?:ag|gmbh|sa|sàrl|sagl)\s*$", re.I),
     # "Talent*" staffing brands: Talentzio, SIGMA Talent, talent pool, etc.
@@ -426,17 +465,17 @@ _FEDERAL_NAME_PATTERNS: tuple[re.Pattern, ...] = (
 # edge cases like "Personalamt Kanton Bern" are protected.
 _RECRUITER_SUBSTRINGS: tuple[str, ...] = (
     # German staffing vocabulary
-    "personal",          # Personal AG, Personalpartner, Personalverleih,
-                         # Personalmanagement, Personalberatung, A4personal,
-                         # InnoPersonal, DAM Personalverleih, Trio Personalconsulting
-    "stellen",           # Stellentreff, Stellenpartner, Stellenbern, Stellenvermittlung
+    "personal",  # Personal AG, Personalpartner, Personalverleih,
+    # Personalmanagement, Personalberatung, A4personal,
+    # InnoPersonal, DAM Personalverleih, Trio Personalconsulting
+    "stellen",  # Stellentreff, Stellenpartner, Stellenbern, Stellenvermittlung
     "zeitarbeit",
-    "vermittlung",       # Arbeitsvermittlung, Stellenvermittlung
-    "personaldienst",    # explicit just in case the "personal" substring is tightened
+    "vermittlung",  # Arbeitsvermittlung, Stellenvermittlung
+    "personaldienst",  # explicit just in case the "personal" substring is tightened
     # French staffing vocabulary
-    "emploi",            # Emplois, Tac-Tic Emploi, Calani Emplois, BM Emplois
-    "interim",           # "Max Studer Interim", "SWISS LINK Interim", "Project Interim"
-    "temporaire",        # "Placements fixes et temporaires"
+    "emploi",  # Emplois, Tac-Tic Emploi, Calani Emplois, BM Emplois
+    "interim",  # "Max Studer Interim", "SWISS LINK Interim", "Project Interim"
+    "temporaire",  # "Placements fixes et temporaires"
     # English staffing vocabulary
     "human capital",
     "human resources",
@@ -495,20 +534,20 @@ _RECRUITER_SUBSTRINGS: tuple[str, ...] = (
     "job4life",
     "job 4 life",
     "hardworker",
-    "das team",       # das-team.ag is a Swiss staffing brand
+    "das team",  # das-team.ag is a Swiss staffing brand
     "jobfactory",
-    "rh s",           # "... RH Sàrl" / "... RH SA" — French HR staffing
+    "rh s",  # "... RH Sàrl" / "... RH SA" — French HR staffing
     "work24",
-    "synergie",       # French-origin staffing brand
+    "synergie",  # French-origin staffing brand
     "coopers group",  # recruitment consultancy
     "beeworx",
-    "äsk us",         # German "frag uns" staffing brand
-    "asku s",         # non-umlaut variant
+    "äsk us",  # German "frag uns" staffing brand
+    "asku s",  # non-umlaut variant
     "jobdoor",
-    "arbeitskraft",   # German "labor / workforce"
+    "arbeitskraft",  # German "labor / workforce"
     "jobpoint",
-    "büetzer",        # Swiss German slang for "worker"
-    "buetzer",        # non-umlaut
+    "büetzer",  # Swiss German slang for "worker"
+    "buetzer",  # non-umlaut
     "wigumar",
     "yellowshark",
 )
@@ -787,11 +826,7 @@ def parse_posting(raw: dict) -> RawPosting | None:
     ]
 
     publication = jc.get("publication") or {}
-    pub_date = (
-        publication.get("startDate")
-        or ja.get("createdTime")
-        or ""
-    )
+    pub_date = publication.get("startDate") or ja.get("createdTime") or ""
     if pub_date:
         pub_date = pub_date.split("T", 1)[0]  # YYYY-MM-DD only
 
@@ -856,6 +891,7 @@ def _better_source_kind(a: str, b: str) -> str:
 @dataclass
 class AggregationStats:
     """Counters that the aggregation stage emits alongside the employer dict."""
+
     parsed: int = 0
     skipped_recruiter_by_name: int = 0
     skipped_recruiter_by_url: int = 0
@@ -891,9 +927,7 @@ def aggregate_employers(
     # Per-employer ATS-name votes, bucketed by source_kind so that the
     # resolved detected_ats matches the employer's final source_kind.
     # Structure: {key: {kind: Counter(name)}}.
-    ats_votes: dict[tuple[str, str], dict[str, Counter]] = defaultdict(
-        lambda: defaultdict(Counter)
-    )
+    ats_votes: dict[tuple[str, str], dict[str, Counter]] = defaultdict(lambda: defaultdict(Counter))
     # Track per-employer best (ats-link) URL sample.
     best_url: dict[tuple[str, str], tuple[int, str]] = {}
     # Name-based override cache: employer_key -> 'federal' (recruiters
@@ -1128,10 +1162,19 @@ def print_summary(
     new = total_employers - matched
     matched_host = sum(1 for e in employers.values() if e.matched_by == "host")
     matched_name = sum(1 for e in employers.values() if e.matched_by == "name")
-    pct = (lambda n: f"{(100 * n / total_employers):.0f}%" if total_employers else "n/a")
+
+    def pct(n: int) -> str:
+        return f"{(100 * n / total_employers):.0f}%" if total_employers else "n/a"
 
     print(f"Unique employers:        {total_employers}", file=sys.stderr)
-    print(f"  Matched (existing):    {matched} ({pct(matched)})  by host={matched_host} name={matched_name}", file=sys.stderr)
+    matched_detail = (
+        f"  Matched (existing):    {matched} ({pct(matched)})  "
+        f"by host={matched_host} name={matched_name}"
+    )
+    print(
+        matched_detail,
+        file=sys.stderr,
+    )
     print(f"  New:                   {new} ({pct(new)})", file=sys.stderr)
 
     canton_counts: Counter = Counter()
@@ -1185,21 +1228,37 @@ def print_summary(
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--max-postings", type=int, default=200,
-                   help="Maximum postings to fetch (default: 200)")
-    p.add_argument("--output", type=Path, default=DEFAULT_OUTPUT,
-                   help=f"Output CSV path (default: {DEFAULT_OUTPUT})")
-    p.add_argument("--cache-jsonl", type=Path, default=DEFAULT_CACHE,
-                   help=f"Raw posting cache path (default: {DEFAULT_CACHE})")
-    p.add_argument("--all-cantons", action="store_true",
-                   help="Iterate over all 26 Swiss cantons (full sweep)")
-    p.add_argument("--canton", type=str, default=None,
-                   help="Filter to a single canton (e.g. ZH); ignored with --all-cantons")
-    p.add_argument("--no-cache", action="store_true",
-                   help="Force re-fetch even if the cache file exists")
-    p.add_argument("-v", "--verbose", action="store_true",
-                   help="Verbose (DEBUG) logging")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--max-postings", type=int, default=200, help="Maximum postings to fetch (default: 200)"
+    )
+    p.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_OUTPUT,
+        help=f"Output CSV path (default: {DEFAULT_OUTPUT})",
+    )
+    p.add_argument(
+        "--cache-jsonl",
+        type=Path,
+        default=DEFAULT_CACHE,
+        help=f"Raw posting cache path (default: {DEFAULT_CACHE})",
+    )
+    p.add_argument(
+        "--all-cantons", action="store_true", help="Iterate over all 26 Swiss cantons (full sweep)"
+    )
+    p.add_argument(
+        "--canton",
+        type=str,
+        default=None,
+        help="Filter to a single canton (e.g. ZH); ignored with --all-cantons",
+    )
+    p.add_argument(
+        "--no-cache", action="store_true", help="Force re-fetch even if the cache file exists"
+    )
+    p.add_argument("-v", "--verbose", action="store_true", help="Verbose (DEBUG) logging")
     return p.parse_args()
 
 
@@ -1239,7 +1298,11 @@ async def amain() -> int:
     else:
         t0 = time.monotonic()
         fetched = await fetch_postings(args.cache_jsonl, cantons, max_postings, page_size)
-        log.info("jobroom_discover.fetch_done", fetched=fetched, elapsed_s=round(time.monotonic() - t0, 1))
+        log.info(
+            "jobroom_discover.fetch_done",
+            fetched=fetched,
+            elapsed_s=round(time.monotonic() - t0, 1),
+        )
 
     # Parse
     skipped_surrogate = 0
@@ -1258,7 +1321,9 @@ async def amain() -> int:
             continue
         parsed_postings.append(posting)
 
-    log.info("jobroom_discover.parsed", parsed=len(parsed_postings), skipped_surrogate=skipped_surrogate)
+    log.info(
+        "jobroom_discover.parsed", parsed=len(parsed_postings), skipped_surrogate=skipped_surrogate
+    )
 
     # Aggregate per employer (recruiters skipped here, not in output)
     employers, agg_stats = aggregate_employers(parsed_postings)
