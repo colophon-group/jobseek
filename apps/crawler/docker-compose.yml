@@ -29,7 +29,7 @@ x-common-env: &common-env
 services:
   # -- Redis -------------------------------------------------------
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     network_mode: host
     # Sized for the steady-state scrape backlog, not the initial reseed.

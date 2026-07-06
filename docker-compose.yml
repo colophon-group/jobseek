@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     ports:
       - "5432:5432"
     environment:
@@ -11,7 +11,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   typesense:
-    image: typesense/typesense:27.1
+    image: typesense/typesense:30.2
     restart: unless-stopped
     ports:
       - "8108:8108"

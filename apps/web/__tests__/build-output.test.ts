@@ -1,6 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, inject, it } from "vitest";
+
+declare module "vitest" {
+  export interface ProvidedContext {
+    buildOutputLog?: string;
+  }
+}
 
 /**
  * Build-output classifier (#2885 — successor to the retired
@@ -296,7 +302,7 @@ function missingRouteDiagnostic(route: string, expected: Classification): string
 }
 
 describe("build-output classifier (slow lane, #2885)", () => {
-  const logPath = process.env.BUILD_OUTPUT_LOG;
+  const logPath = inject("buildOutputLog") ?? process.env.BUILD_OUTPUT_LOG;
   const distDir = logPath ? dirname(logPath) : null;
 
   /** Parse-guard: the globalSetup must have produced a log path. */
@@ -350,6 +356,9 @@ describe("build-output classifier (slow lane, #2885)", () => {
         "Next.js artifact/stdout format changed. Re-run `pnpm build` and",
         "inspect `.next/app-path-routes-manifest.json`, `.next/server/app/**/*.meta`,",
         "and the build-output log tail.",
+        "",
+        "Build log tail:",
+        tail(buildOutput),
       ].join("\n"),
     ).toBeGreaterThan(0);
   });
