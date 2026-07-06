@@ -216,6 +216,14 @@ vi.mock("@/lib/actions/taxonomy", () => ({
   resolveTechnologySlugs: vi.fn().mockResolvedValue(new Map()),
 }));
 
+vi.mock("@/lib/services/taxonomy", () => ({
+  expandOccupationIds: vi.fn().mockResolvedValue([]),
+  expandOccupationIdsBatch: vi.fn().mockResolvedValue([]),
+  resolveOccupationSlugs: vi.fn().mockResolvedValue(new Map()),
+  resolveSenioritySlugs: vi.fn().mockResolvedValue(new Map()),
+  resolveTechnologySlugs: vi.fn().mockResolvedValue(new Map()),
+}));
+
 vi.mock("drizzle-orm", () => ({
   sql: mocks.sqlTag,
   eq: (..._args: unknown[]) => ({ _isEq: true }),

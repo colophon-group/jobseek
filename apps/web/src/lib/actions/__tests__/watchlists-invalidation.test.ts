@@ -145,6 +145,14 @@ vi.mock("@/lib/actions/taxonomy", () => ({
   resolveTechnologySlugs: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("@/lib/services/taxonomy", () => ({
+  expandOccupationIds: vi.fn().mockResolvedValue([]),
+  expandOccupationIdsBatch: vi.fn().mockResolvedValue([]),
+  resolveOccupationSlugs: vi.fn().mockResolvedValue([]),
+  resolveSenioritySlugs: vi.fn().mockResolvedValue([]),
+  resolveTechnologySlugs: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock("drizzle-orm", () => ({
   sql: (..._args: unknown[]) => ({ _isSql: true }),
   eq: (..._args: unknown[]) => ({ _isEq: true }),
@@ -322,7 +330,7 @@ describe("watchlist mutator cache invalidation", () => {
     queueOwnerInfo();
     mocks.insertReturningResult.mockResolvedValue([{ id: WATCHLIST_ID }]);
     const { resolveLocationSlugs } = await import("@/lib/actions/locations");
-    const { resolveOccupationSlugs } = await import("@/lib/actions/taxonomy");
+    const { resolveOccupationSlugs } = await import("@/lib/services/taxonomy");
     vi.mocked(resolveLocationSlugs).mockResolvedValueOnce(
       new Map([
         ["switzerland", { id: 30, slug: "switzerland", name: "Switzerland", type: "country", parentName: null }],
@@ -611,7 +619,7 @@ describe("toggleWatchlistAlerts (private-only mutation)", () => {
  * (mutates? invalidates?), and fails with a named diagnostic for the
  * offending function whenever a mutator drifts from its declared bucket.
  */
-const SOURCE_PATH = join(__dirname, "..", "watchlists.ts");
+const SOURCE_PATH = join(__dirname, "..", "..", "services", "watchlists.ts");
 
 /** Mutators that MUST call `_invalidateWatchlistCaches`. */
 const EXPECTED_INVALIDATING_MUTATORS = new Set<string>([

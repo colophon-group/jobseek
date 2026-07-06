@@ -152,7 +152,7 @@ describe("notifyIndexNow", () => {
     // when callers wrapped it inside a detached `_getOwnerInfo(...)
     // .then(...)` chain (request scope already torn down). The fix
     // moved after() up to the call sites in
-    // apps/web/src/lib/actions/watchlists.ts. A future refactor that
+    // apps/web/src/lib/services/watchlists.ts. A future refactor that
     // re-imports `after` from "next/server" into indexnow.ts would
     // re-introduce the same failure mode.
     const src = readFileSync(
