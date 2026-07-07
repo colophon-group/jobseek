@@ -3,14 +3,16 @@
 These tests verify collection schemas, data integrity, search behaviour,
 and special-character handling against a **local** Typesense instance.
 
-All tests are skipped automatically when Typesense is unreachable at
-localhost:8108.  The suite seeds a small synthetic dataset on startup
-and cleans it up after every run.
+Local development runs are skipped when Typesense is unreachable at
+localhost:8108. CI/REQUIRE_TYPESENSE_E2E runs fail instead of skipping.
+The suite seeds a small synthetic dataset on startup and cleans it up
+after every run.
 """
 
 from __future__ import annotations
 
 import contextlib
+import os
 import time
 import uuid
 
@@ -22,10 +24,13 @@ from typesense.exceptions import ObjectNotFound
 # Typesense connectivity check
 # ---------------------------------------------------------------------------
 
-TYPESENSE_HOST = "localhost"
-TYPESENSE_PORT = "8108"
-TYPESENSE_PROTOCOL = "http"
-TYPESENSE_API_KEY = "local_dev_typesense_key"
+TYPESENSE_HOST = os.environ.get("TYPESENSE_HOST", "localhost")
+TYPESENSE_PORT = os.environ.get("TYPESENSE_PORT", "8108")
+TYPESENSE_PROTOCOL = os.environ.get("TYPESENSE_PROTOCOL", "http")
+TYPESENSE_API_KEY = os.environ.get(
+    "TYPESENSE_ADMIN_KEY",
+    os.environ.get("TYPESENSE_API_KEY", "local_dev_typesense_key"),
+)
 
 # Alias -> versioned collection name mapping.  The test suite operates on
 # versioned names (required for document CRUD) but verifies aliases exist.
@@ -64,6 +69,25 @@ def _typesense_is_reachable() -> bool:
         return False
 
 
+def _typesense_e2e_required() -> bool:
+    return os.environ.get("CI") == "true" or os.environ.get("REQUIRE_TYPESENSE_E2E") == "true"
+
+
+def _skip_or_fail_when_unreachable() -> None:
+    if _typesense_is_reachable():
+        return
+
+    message = (
+        f"Typesense is not reachable at {TYPESENSE_PROTOCOL}://{TYPESENSE_HOST}:{TYPESENSE_PORT}"
+    )
+    if _typesense_e2e_required():
+        pytest.exit(
+            f"{message}; refusing to skip Typesense E2E suite when CI/REQUIRE_TYPESENSE_E2E is set",
+            returncode=1,
+        )
+    pytest.skip(message)
+
+
 def _resolve_aliases(client: typesense.Client) -> dict[str, str]:
     """Return {alias_name: versioned_collection_name} for every expected alias.
 
@@ -80,11 +104,6 @@ def _resolve_aliases(client: typesense.Client) -> dict[str, str]:
             mapping[alias] = f"{alias}_v1"
     return mapping
 
-
-pytestmark = pytest.mark.skipif(
-    not _typesense_is_reachable(),
-    reason="Typesense is not reachable at localhost:8108",
-)
 
 # ---------------------------------------------------------------------------
 # Seed data constants
@@ -421,6 +440,7 @@ def ts_client():
     ``company`` -> ``company_v1``) because Typesense's ``/collections/``
     endpoint requires the real collection name, not the alias.
     """
+    _skip_or_fail_when_unreachable()
     client = _make_client()
     alias_map = _resolve_aliases(client)
 

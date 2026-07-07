@@ -248,7 +248,48 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm --filter @jobseek/web test
+      - run: >
+          pnpm --filter @jobseek/web exec vitest run
+          --exclude src/lib/search/__tests__/typesense.e2e.test.ts
+
+  test-web-typesense-e2e:
+    name: Test Web Typesense E2E
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    services:
+      typesense:
+        image: typesense/typesense:27.1
+        ports:
+          - 8108:8108
+        env:
+          TYPESENSE_API_KEY: local_dev_typesense_key
+          TYPESENSE_DATA_DIR: /tmp/typesense-data
+    env:
+      REQUIRE_TYPESENSE_E2E: "true"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+
+      - name: Wait for Typesense
+        run: |
+          for _ in {1..60}; do
+            if curl -fsS http://localhost:8108/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8108/health
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @jobseek/web exec vitest run src/lib/search/__tests__/typesense.e2e.test.ts
 
   test-web-isr:
     # Slow lane: runs `pnpm build` once via the vitest globalSetup
@@ -367,7 +408,57 @@ jobs:
       - run: uv sync --group dev
         working-directory: apps/crawler
 
-      - run: uv run pytest tests/ -v
+      - run: uv run pytest tests/ -v --ignore=tests/e2e/test_typesense_indexing.py
+        working-directory: apps/crawler
+
+  test-crawler-typesense-e2e:
+    name: Test Crawler Typesense E2E
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    services:
+      typesense:
+        image: typesense/typesense:27.1
+        ports:
+          - 8108:8108
+        env:
+          TYPESENSE_API_KEY: local_dev_typesense_key
+          TYPESENSE_DATA_DIR: /tmp/typesense-data
+    env:
+      TYPESENSE_HOST: localhost
+      TYPESENSE_PORT: "8108"
+      TYPESENSE_PROTOCOL: http
+      TYPESENSE_ADMIN_KEY: local_dev_typesense_key
+      REQUIRE_TYPESENSE_E2E: "true"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+
+      - name: Wait for Typesense
+        run: |
+          for _ in {1..60}; do
+            if curl -fsS http://localhost:8108/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8108/health
+
+      - uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+
+      - run: uv sync --group dev
+        working-directory: apps/crawler
+
+      - run: uv run python ../../scripts/typesense-setup.py --force
+        working-directory: apps/crawler
+
+      - run: uv run pytest tests/e2e/test_typesense_indexing.py -v
         working-directory: apps/crawler
 
   coverage-crawler:
@@ -420,7 +511,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm --filter @jobseek/web test:coverage
+      - run: >
+          pnpm --filter @jobseek/web exec vitest run
+          --config vitest.coverage.config.ts
+          --exclude src/lib/search/__tests__/typesense.e2e.test.ts
 
   coverage-shim:
     name: Coverage Murmur Shim
@@ -625,9 +719,11 @@ jobs:
       - type-python
       - type-all
       - test-web
+      - test-web-typesense-e2e
       - test-web-isr
       - test-shim
       - test-crawler
+      - test-crawler-typesense-e2e
       - coverage-crawler
       - coverage-web
       - coverage-shim
@@ -676,9 +772,11 @@ jobs:
             "type-python",
             "type-all",
             "test-web",
+            "test-web-typesense-e2e",
             "test-web-isr",
             "test-shim",
             "test-crawler",
+            "test-crawler-typesense-e2e",
             "coverage-crawler",
             "coverage-web",
             "coverage-shim",

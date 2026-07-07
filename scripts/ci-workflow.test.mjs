@@ -20,6 +20,14 @@ function setupUvBlocks(workflowSource) {
   ].map((match) => match[0]);
 }
 
+function jobBlock(jobId) {
+  const match = workflow.match(
+    new RegExp(`\\n  ${jobId}:\\n[\\s\\S]*?(?=\\n  [a-zA-Z0-9_-]+:\\n|\\n$)`),
+  );
+  assert.ok(match, `missing workflow job ${jobId}`);
+  return match[0];
+}
+
 test("CI change detection uses the pinned paths-filter action", () => {
   assert.match(
     workflow,
@@ -59,6 +67,55 @@ test("workflow-security runs repository script tests", () => {
     workflow,
     /node --test\n          scripts\/ci-workflow\.test\.mjs\n          scripts\/docs-index\.test\.mjs\n          scripts\/dealroom-company-requests\.test\.mjs/,
   );
+});
+
+test("CI runs Typesense E2E suites against a service container", () => {
+  const webJob = jobBlock("test-web-typesense-e2e");
+  assert.match(webJob, /services:\n      typesense:/);
+  assert.match(webJob, /image: typesense\/typesense:27\.1/);
+  assert.match(webJob, /TYPESENSE_API_KEY: local_dev_typesense_key/);
+  assert.match(webJob, /REQUIRE_TYPESENSE_E2E: "true"/);
+  assert.match(webJob, /name: Wait for Typesense[\s\S]*curl -fsS http:\/\/localhost:8108\/health/);
+  assert.match(
+    webJob,
+    /pnpm --filter @jobseek\/web exec vitest run src\/lib\/search\/__tests__\/typesense\.e2e\.test\.ts/,
+  );
+
+  const crawlerJob = jobBlock("test-crawler-typesense-e2e");
+  assert.match(crawlerJob, /services:\n      typesense:/);
+  assert.match(crawlerJob, /image: typesense\/typesense:27\.1/);
+  assert.match(crawlerJob, /TYPESENSE_ADMIN_KEY: local_dev_typesense_key/);
+  assert.match(crawlerJob, /REQUIRE_TYPESENSE_E2E: "true"/);
+  assert.match(
+    crawlerJob,
+    /name: Wait for Typesense[\s\S]*curl -fsS http:\/\/localhost:8108\/health/,
+  );
+  assert.match(crawlerJob, /uv run python \.\.\/\.\.\/scripts\/typesense-setup\.py --force/);
+  assert.match(crawlerJob, /uv run pytest tests\/e2e\/test_typesense_indexing\.py -v/);
+});
+
+test("broad CI test jobs exclude service-backed Typesense E2E suites", () => {
+  const webJob = jobBlock("test-web");
+  assert.match(
+    webJob,
+    /pnpm --filter @jobseek\/web exec vitest run[\s\S]*--exclude src\/lib\/search\/__tests__\/typesense\.e2e\.test\.ts/,
+  );
+
+  const crawlerJob = jobBlock("test-crawler");
+  assert.match(crawlerJob, /uv run pytest tests\/ -v --ignore=tests\/e2e\/test_typesense_indexing\.py/);
+
+  const coverageWebJob = jobBlock("coverage-web");
+  assert.match(
+    coverageWebJob,
+    /pnpm --filter @jobseek\/web exec vitest run[\s\S]*--config vitest\.coverage\.config\.ts[\s\S]*--exclude src\/lib\/search\/__tests__\/typesense\.e2e\.test\.ts/,
+  );
+});
+
+test("Required CI gates Typesense E2E jobs", () => {
+  assert.match(workflow, /needs:[\s\S]*- test-web-typesense-e2e/);
+  assert.match(workflow, /needs:[\s\S]*- test-crawler-typesense-e2e/);
+  assert.match(workflow, /"test-web-typesense-e2e"/);
+  assert.match(workflow, /"test-crawler-typesense-e2e"/);
 });
 
 test("setup-uv steps cache uv downloads by crawler lockfile", () => {

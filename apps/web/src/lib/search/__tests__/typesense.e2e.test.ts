@@ -40,6 +40,10 @@ let adminClient: Client;
 let provider: TypesenseSearchProvider;
 let suiteSkipped = false;
 
+function shouldRequireTypesenseE2E(): boolean {
+  return process.env.CI === "true" || process.env.REQUIRE_TYPESENSE_E2E === "true";
+}
+
 // ── Seed data ───────────────────────────────────────────────────────
 
 const NOW_UNIX = Math.floor(Date.now() / 1000);
@@ -403,6 +407,11 @@ async function removeAliases(): Promise<void> {
 beforeAll(async () => {
   const reachable = await isTypesenseReachable();
   if (!reachable) {
+    if (shouldRequireTypesenseE2E()) {
+      throw new Error(
+        "Typesense not reachable at localhost:8108; refusing to skip Typesense E2E suite when CI/REQUIRE_TYPESENSE_E2E is set",
+      );
+    }
     suiteSkipped = true;
     console.warn(
       "Typesense not reachable at localhost:8108 — skipping E2E suite",
