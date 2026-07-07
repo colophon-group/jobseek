@@ -1105,6 +1105,44 @@ class TestTerveystaloJobylonHasEnrich:
         assert _board_has_enrich(metadata) == enrich
 
 
+class TestCaterpillarRateLimitConfig:
+    """Caterpillar detail pages rate-limit plain HTTP scrapes (#4965).
+
+    The sitemap monitor is healthy, but detail pages are protected by
+    Cloudflare/Radancy and have produced recurring 429s from crawler egress.
+    Browser rendering can extract the JobPosting JSON-LD, and
+    ``rescrape_policy=never`` prevents already-filled postings from entering
+    the daily refresh tail that caused most of the scrape pressure.
+    """
+
+    def test_caterpillar_uses_browser_scrape_and_one_shot_rescrape_policy(self):
+        import json
+
+        from src.core.scrapers import scraper_needs_browser
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("caterpillar-careers")
+        assert row is not None, "caterpillar-careers row missing from boards.csv"
+
+        assert row.get("monitor_type") == "sitemap"
+        mc = json.loads(row.get("monitor_config") or "{}")
+        assert mc.get("url_filter") == "/en/jobs/r"
+        assert mc.get("rescrape_policy") == "never", (
+            "Caterpillar should not periodically re-scrape filled postings; "
+            "the Cloudflare/Radancy detail pages rate-limit crawler egress."
+        )
+
+        assert row.get("scraper_type") == "json-ld"
+        sc = json.loads(row.get("scraper_config") or "{}")
+        assert sc.get("render") is True
+        assert sc.get("wait") == "load"
+        assert scraper_needs_browser("json-ld", sc) is True
+
+
 class TestZteMokahrHasMokahrScraperAndEnrich:
     """ZTE's mokahr boards MUST use the mokahr scraper with enrich (#2963).
 

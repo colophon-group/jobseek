@@ -614,6 +614,77 @@ async def test_process_scrape_work_drops_when_post_scrape_schedule_is_null(mock_
 
 
 @pytest.mark.asyncio
+async def test_process_scrape_work_reroutes_render_aware_scraper_to_browser(mock_redis):
+    """Slim workers must reroute ``render: true`` scrapers to browser workers.
+
+    Caterpillar relies on this path: the sitemap monitor emits URL-only rows,
+    while its JSON-LD detail pages require Playwright rendering to get past
+    Cloudflare/Radancy throttling.
+    """
+    from datetime import UTC, datetime
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.workers.pipeline import _process_scrape_work
+
+    posting_id = "12345678-2222-4333-8444-1234567890ab"
+    domain = "careers.caterpillar.com"
+    work = rq.ScrapeWork(
+        posting_id=posting_id,
+        source_url=f"https://{domain}/en/jobs/r0000381345/warehouse-associate/",
+        board_id="board-caterpillar",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        domain=domain,
+    )
+
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow = AsyncMock(return_value={"is_active": True, "next_scrape_at": datetime.now(UTC)})
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+
+    await mock_redis.hset(
+        f"board:{work.board_id}",
+        mapping={
+            "crawler_type": "sitemap",
+            "metadata": json.dumps({"scraper_type": "json-ld", "scraper_config": {"render": True}}),
+        },
+    )
+    await mock_redis.hset(
+        f"scrape:{posting_id}",
+        mapping={"source_url": work.source_url, "board_id": work.board_id, "domain": domain},
+    )
+
+    with (
+        patch("src.workers.pipeline.enqueue_scrape", new=AsyncMock()) as enqueue,
+        patch("src.processing.scrape._process_one_scrape", new=AsyncMock()) as process_one,
+    ):
+        await _process_scrape_work(
+            structlog.get_logger().bind(worker_id=1),
+            work,
+            local_pool,
+            http=AsyncMock(),
+            browser=False,
+        )
+
+    process_one.assert_not_awaited()
+    enqueue.assert_awaited_once()
+    args = enqueue.await_args.args
+    kwargs = enqueue.await_args.kwargs
+    assert args[0] == domain
+    assert args[1] == posting_id
+    assert args[2] == pytest.approx(time.time(), abs=5)
+    assert args[3]["source_url"] == work.source_url
+    assert args[3]["board_id"] == work.board_id
+    assert "domain" not in args[3]
+    assert kwargs["browser"] is True
+    assert kwargs["first_time"] is False
+
+
+@pytest.mark.asyncio
 async def test_process_scrape_work_binds_posting_id_contextvar(mock_redis):
     """The scrape coroutine must bind ``posting_id`` to a structlog
     contextvar so downstream code (e.g. third-party libraries using
