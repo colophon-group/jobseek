@@ -9,7 +9,7 @@ import httpx
 import pytest
 import structlog
 
-import src.core.monitors as monitor_registry
+from src.core import monitors as monitor_registry
 
 ProbeCall = Callable[[httpx.AsyncClient], Awaitable[Any]]
 
