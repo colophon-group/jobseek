@@ -58,6 +58,9 @@ Status tags:
 - [17 - Codex Migration Verification Runbook](17-codex-migration-verification-runbook.md)
   `[runbook]` - pilot checks and rollback criteria for Codex migration
   surfaces.
+- [18 - Codex Automation Deployment](18-codex-automation-deployment.md)
+  `[runbook]` - recurring Codex automation registry, deployment procedure,
+  maintenance checks, and harness-invariant contracts.
 
 ## Operations And Routines
 

@@ -50,7 +50,8 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │   ├── 14-error-review-routine.md  # Daily crawler error-review routine spec
 │   ├── 15-data-sampling-routine.md # Daily labelled-postings routine spec
 │   ├── 16-murmur-codex-mcp-transition.md # Murmur Codex MCP transition plan
-│   └── 17-codex-migration-verification-runbook.md # Codex pilot verification
+│   ├── 17-codex-migration-verification-runbook.md # Codex pilot verification
+│   └── 18-codex-automation-deployment.md # Codex automation deployment + maintenance
 └── .github/workflows/       # CI + agent automation
 ```
 
@@ -87,7 +88,9 @@ Codex app automations or local Codex CLI so routine execution stays
 subscription-backed; do not add scheduled API-billed Codex GitHub Actions for
 these routines. `codex exec --json` is the traceable noninteractive surface
 for manual CI fallback and agent trace collection. Legacy Claude Code slash
-commands remain compatibility fallbacks where present.
+commands remain compatibility fallbacks where present. Deployment and
+maintenance rules live in
+`docs/18-codex-automation-deployment.md`.
 
 - `.agents/skills/jobseek-error-review/SKILL.md` + `docs/14-error-review-routine.md` —
   Codex-first daily review of crawler errors on the Hetzner box. The routine
@@ -103,6 +106,8 @@ commands remain compatibility fallbacks where present.
 - `docs/17-codex-migration-verification-runbook.md` — central pilot
   verification checklist for Codex migration surfaces, including agent trace
   collection and manual API-billed fallback guardrails.
+- `docs/18-codex-automation-deployment.md` — active automation registry,
+  harness-invariant contracts, deployment procedure, and maintenance checks.
 
 Web app (from `apps/web/`):
 
