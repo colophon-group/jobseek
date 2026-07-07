@@ -871,4 +871,17 @@ describe("invalidation registry guard", () => {
     const source = readFileSync(SOURCE_PATH, "utf-8");
     expect(source).not.toMatch(/\.catch\(\s*\(\)\s*=>\s*\{\s*\}\s*\)/);
   });
+
+  it("centralizes public watchlist Typesense upsert payload construction", () => {
+    const source = readFileSync(SOURCE_PATH, "utf-8");
+    const upsertPayloads = source.match(/tsUpsertWatchlist\(\s*\{/g) || [];
+    const featuredFields = source.match(/^\s+is_featured:/gm) || [];
+    const createdAtFields = source.match(
+      /created_at:\s*(?:Math\.floor\(Date\.now\(\) \/ 1000\)|_unixNowSeconds\(\))/g,
+    ) || [];
+
+    expect(upsertPayloads).toHaveLength(1);
+    expect(featuredFields).toHaveLength(1);
+    expect(createdAtFields).toHaveLength(1);
+  });
 });
