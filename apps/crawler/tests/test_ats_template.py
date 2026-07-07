@@ -190,11 +190,13 @@ async def test_ats_can_handle_can_disable_slug_guessing():
 def test_migrated_monitors_delegate_can_handle_flow_to_ats_template():
     migrated = (
         "ashby",
+        "dvinci",
         "greenhouse",
         "hireology",
         "lever",
         "pinpoint",
         "rippling",
+        "softgarden",
         "traffit",
         "workable",
     )
