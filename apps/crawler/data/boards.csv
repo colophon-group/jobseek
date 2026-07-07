@@ -4979,6 +4979,7 @@ yugabytedb,yugabytedb-greenhouse,https://job-boards.greenhouse.io/yugabyte,green
 yuno,yuno-careers,https://jobs.lever.co/yuno,lever,"{""token"": ""yuno""}",skip,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
 zam,zam-greenhouse,https://job-boards.greenhouse.io/zam,greenhouse,"{""token"": ""zam""}",skip,
+zama,zama-careers,https://jobs.zama.org,dom,"{""render"": false, ""url_filter"": {""include"": ""/jobs/"", ""exclude"": ""candidatures-spontanees""}}",json-ld,
 zapier,zapier-ashby,https://jobs.ashbyhq.com/zapier,ashby,"{""token"": ""zapier""}",skip,
 zara,zara-join,https://join.com/companies/zara,join,"{""slug"": ""zara""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 zayzoon,zayzoon-ashby,https://jobs.ashbyhq.com/zayzoon,ashby,"{""token"": ""zayzoon""}",skip,
