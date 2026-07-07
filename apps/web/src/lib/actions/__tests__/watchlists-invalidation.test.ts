@@ -247,6 +247,19 @@ function expectedInvalidateKeyPair(slug: string) {
   ];
 }
 
+function spyAuditLog() {
+  return vi.spyOn(console, "info").mockImplementation(() => {});
+}
+
+function expectSingleAuditPayload(
+  spy: ReturnType<typeof spyAuditLog>,
+): Record<string, unknown> {
+  expect(spy).toHaveBeenCalledTimes(1);
+  const [line] = spy.mock.calls[0];
+  expect(typeof line).toBe("string");
+  return JSON.parse(line as string) as Record<string, unknown>;
+}
+
 /**
  * Queue the `_getOwnerInfo` SQL response — `db.execute` is called with the
  * SELECT username/display_username query inside `_invalidateWatchlistCaches`.
@@ -524,6 +537,43 @@ describe("watchlist mutator cache invalidation", () => {
   });
 });
 
+describe("watchlist mutation audit logs", () => {
+  it("deleteWatchlist emits a privacy-safe audit log for successful deletes", async () => {
+    const audit = spyAuditLog();
+    queueOwnerInfo();
+    mocks.selectLimitResult.mockResolvedValue([
+      { userId: USER_ID, slug: SLUG, isPublic: true },
+    ]);
+
+    await deleteWatchlist(WATCHLIST_ID);
+    await flushAfterQueue();
+
+    const payload = expectSingleAuditPayload(audit);
+    expect(payload).toMatchObject({
+      event: "watchlist.audit",
+      action: "watchlist.delete",
+      watchlist_id: WATCHLIST_ID,
+      slug_before: SLUG,
+      slug_after: null,
+      is_public_before: true,
+      is_public_after: null,
+    });
+    expect(payload.user_ref).toMatch(/^[a-f0-9]{12}$/);
+    expect(JSON.stringify(payload)).not.toContain(USER_ID);
+    expect(Date.parse(payload.occurred_at as string)).not.toBeNaN();
+  });
+
+  it("does not emit an audit log when deleteWatchlist finds no owned row", async () => {
+    const audit = spyAuditLog();
+    mocks.selectLimitResult.mockResolvedValue([]);
+
+    await expect(deleteWatchlist(WATCHLIST_ID)).resolves.toEqual({ ok: false });
+    await flushAfterQueue();
+
+    expect(audit).not.toHaveBeenCalled();
+  });
+});
+
 // ---- Special-case behavior ------------------------------------------
 
 describe("updateWatchlist title rename", () => {
@@ -664,6 +714,17 @@ const EXPECTED_NON_INVALIDATING = new Set<string>([
   // lastAccessedAt is a private after-queued analytics touch on the
   // owner's read path; it never appears in any public render.
   "getWatchlistByUserAndSlug",
+]);
+
+/** Successful watchlist mutators that MUST emit a structured audit log. */
+const EXPECTED_AUDITING_MUTATORS = new Set<string>([
+  "createWatchlist",
+  "updateWatchlist",
+  "deleteWatchlist",
+  "copyWatchlist",
+  "addCompanyToWatchlist",
+  "clearWatchlistCompanies",
+  "removeCompanyFromWatchlist",
 ]);
 
 /**
@@ -846,6 +907,33 @@ describe("invalidation registry guard", () => {
       EXPECTED_NON_INVALIDATING.has(n),
     );
     expect(overlap).toEqual([]);
+  });
+
+  it("successful public/user watchlist mutators all emit audit logs", () => {
+    const source = readFileSync(SOURCE_PATH, "utf-8");
+    const matches = enumerateExportedAsyncFunctions(source);
+    const errors: string[] = [];
+
+    for (let i = 0; i < matches.length; i++) {
+      const { name } = matches[i];
+      if (!EXPECTED_AUDITING_MUTATORS.has(name)) continue;
+      const body = functionBody(source, matches, i);
+      if (!body.includes("_logWatchlistAudit(")) {
+        errors.push(`Function \`${name}\` is missing _logWatchlistAudit().`);
+      }
+    }
+
+    expect(errors).toEqual([]);
+  });
+
+  it("EXPECTED_AUDITING_MUTATORS members all exist as exported async functions", () => {
+    const source = readFileSync(SOURCE_PATH, "utf-8");
+    const exportedNames = new Set(
+      enumerateExportedAsyncFunctions(source).map((m) => m.name),
+    );
+    for (const name of EXPECTED_AUDITING_MUTATORS) {
+      expect(exportedNames.has(name), `${name} not found as exported async function`).toBe(true);
+    }
   });
 
   it("toggleWatchlistAlerts is in EXPECTED_NON_INVALIDATING (private-only field)", () => {

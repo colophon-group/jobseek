@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import { after } from "next/server";
 import { updateTag } from "next/cache";
 import { eq, and, sql, type SQL } from "drizzle-orm";
@@ -166,6 +167,49 @@ type WatchlistPostingQueryParams = WatchlistPostingFilterParams & {
   limit: number;
 };
 
+type WatchlistAuditAction =
+  | "watchlist.create"
+  | "watchlist.update"
+  | "watchlist.delete"
+  | "watchlist.copy"
+  | "watchlist.company.add"
+  | "watchlist.companies.clear"
+  | "watchlist.company.remove";
+
+type WatchlistAuditPayload = {
+  event: "watchlist.audit";
+  occurred_at: string;
+  action: WatchlistAuditAction;
+  user_ref: string;
+  watchlist_id: string;
+  slug_before?: string | null;
+  slug_after?: string | null;
+  is_public_before?: boolean | null;
+  is_public_after?: boolean | null;
+  company_count_delta?: number | null;
+};
+
+type WatchlistAuditInput = Omit<
+  WatchlistAuditPayload,
+  "event" | "occurred_at" | "user_ref"
+> & {
+  userId: string;
+};
+
+function _watchlistAuditUserRef(userId: string): string {
+  return createHash("sha256").update(userId).digest("hex").slice(0, 12);
+}
+
+function _logWatchlistAudit({ userId, ...entry }: WatchlistAuditInput): void {
+  const payload: WatchlistAuditPayload = {
+    event: "watchlist.audit",
+    occurred_at: new Date().toISOString(),
+    user_ref: _watchlistAuditUserRef(userId),
+    ...entry,
+  };
+  console.info(JSON.stringify(payload));
+}
+
 // ── Actions ─────────────────────────────────────────────────────────
 
 export async function createWatchlist(params: {
@@ -223,6 +267,17 @@ export async function createWatchlist(params: {
   const isPublic = params.isPublic ?? true;
   const mergedFilters = { anyCompany: true, ...params.filters };
   const trivial = isTrivialWatchlist(mergedFilters, params.companyIds.length);
+
+  _logWatchlistAudit({
+    action: "watchlist.create",
+    userId,
+    watchlist_id: row.id,
+    slug_before: null,
+    slug_after: slug,
+    is_public_before: null,
+    is_public_after: isPublic,
+    company_count_delta: params.companyIds.length,
+  });
 
   // Cache invalidation runs unconditionally for public watchlists
   // (even trivial ones): if the URL was visited before the watchlist
@@ -340,6 +395,21 @@ export async function updateWatchlist(params: {
   const newFilters = params.filters !== undefined
     ? params.filters
     : (wl.filters ?? {}) as WatchlistFilters;
+  const didUpdateWatchlist = Object.keys(updates).length > 0;
+  const didReplaceCompanies = params.companyIds !== undefined;
+
+  if (didUpdateWatchlist || didReplaceCompanies) {
+    _logWatchlistAudit({
+      action: "watchlist.update",
+      userId,
+      watchlist_id: params.watchlistId,
+      slug_before: wl.slug,
+      slug_after: newSlug,
+      is_public_before: wasPublic,
+      is_public_after: nowPublic,
+      company_count_delta: didReplaceCompanies ? null : undefined,
+    });
+  }
 
   after(async () => {
     try {
@@ -405,6 +475,17 @@ export async function deleteWatchlist(
   if (!wl || wl.userId !== userId) return { ok: false };
 
   await db.delete(watchlist).where(eq(watchlist.id, watchlistId));
+
+  _logWatchlistAudit({
+    action: "watchlist.delete",
+    userId,
+    watchlist_id: watchlistId,
+    slug_before: wl.slug,
+    slug_after: null,
+    is_public_before: wl.isPublic,
+    is_public_after: null,
+    company_count_delta: null,
+  });
 
   // Typesense delete + IndexNow re-crawl trigger + Next/Redis cache
   // invalidation. The page-level `'use cache'` keeps a 1-hour cached
@@ -494,6 +575,17 @@ export async function copyWatchlist(
       })),
     );
   }
+
+  _logWatchlistAudit({
+    action: "watchlist.copy",
+    userId,
+    watchlist_id: row.id,
+    slug_before: null,
+    slug_after: slug,
+    is_public_before: null,
+    is_public_after: true,
+    company_count_delta: companies.length,
+  });
 
   // Typesense + IndexNow hooks. Wrapped in after() so work registers
   // in the request scope; the previous detached .then() pattern broke
@@ -1867,6 +1959,17 @@ export async function addCompanyToWatchlist(
     .values({ watchlistId, companyId })
     .onConflictDoNothing();
 
+  _logWatchlistAudit({
+    action: "watchlist.company.add",
+    userId,
+    watchlist_id: watchlistId,
+    slug_before: wl.slug,
+    slug_after: wl.slug,
+    is_public_before: wl.isPublic,
+    is_public_after: wl.isPublic,
+    company_count_delta: 1,
+  });
+
   // The companies array drives the cached page's JSON-LD ItemList,
   // metadata description ("Jobs at X, Y, Z"), and OG image. Bust the
   // page cache + Redis layer so the change is visible on the next read.
@@ -1901,6 +2004,17 @@ export async function clearWatchlistCompanies(
   await db
     .delete(watchlistCompany)
     .where(eq(watchlistCompany.watchlistId, watchlistId));
+
+  _logWatchlistAudit({
+    action: "watchlist.companies.clear",
+    userId,
+    watchlist_id: watchlistId,
+    slug_before: wl.slug,
+    slug_after: wl.slug,
+    is_public_before: wl.isPublic,
+    is_public_after: wl.isPublic,
+    company_count_delta: null,
+  });
 
   if (wl.isPublic) {
     after(async () => {
@@ -1939,6 +2053,17 @@ export async function removeCompanyFromWatchlist(
         eq(watchlistCompany.companyId, companyId),
       ),
     );
+
+  _logWatchlistAudit({
+    action: "watchlist.company.remove",
+    userId,
+    watchlist_id: watchlistId,
+    slug_before: wl.slug,
+    slug_after: wl.slug,
+    is_public_before: wl.isPublic,
+    is_public_after: wl.isPublic,
+    company_count_delta: -1,
+  });
 
   if (wl.isPublic) {
     after(async () => {
