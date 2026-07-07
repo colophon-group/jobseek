@@ -75,7 +75,6 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   // with zero function invocations — the bulk of organic traffic per
   // #2640.
   useEffect(() => {
-    window.scrollTo(0, 0);
     const needsPersonalizedFetch =
       hasLoggedInHint() ||
       hasAnonJobLanguagesHint() ||
