@@ -47,17 +47,18 @@ const mocks = vi.hoisted(() => ({
   // fire from these loaders — the read path is now pure raw-SQL.
   dbSelect: vi.fn(),
   // `update(...)`/`delete(...)` chains are still allowed (the owner
-  // path fires `db.update(watchlist).set({ lastAccessedAt: … })` as a
-  // detached side-effect). The test ignores them; the assertion is on
-  // `dbExecute` round-trips, which is the user-visible serial latency.
+  // path queues `db.update(watchlist).set({ lastAccessedAt: … })` in
+  // `after`). The assertion is on `dbExecute` round-trips, which is the
+  // user-visible serial latency.
   dbUpdate: vi.fn(),
+  after: vi.fn((cb: () => unknown) => cb()),
 
   getSessionUserId: vi.fn(),
   cached: vi.fn(),
   withDbRetry: vi.fn(),
 }));
 
-vi.mock("next/server", () => ({ after: (cb: () => unknown) => cb() }));
+vi.mock("next/server", () => ({ after: mocks.after }));
 vi.mock("next/cache", () => ({ updateTag: vi.fn() }));
 
 vi.mock("@/lib/cache", () => ({
@@ -188,10 +189,6 @@ function makeUpdateChain() {
   }
   chain.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
     Promise.resolve(undefined).then(resolve, reject);
-  // Drizzle's update chain also supports `.catch(...)` for the
-  // fire-and-forget owner-touch — the production code path uses
-  // `.catch(() => {})` directly on the chain (not after `await`).
-  chain.catch = () => Promise.resolve(undefined);
   return chain;
 }
 
@@ -274,6 +271,15 @@ describe("getWatchlistByUserAndSlug — single-query fold (#3211)", () => {
     // Asserting that `db.select` is NOT touched pins that the companies
     // array now arrives via the same `db.execute` round-trip.
     expect(mocks.dbSelect).not.toHaveBeenCalled();
+  });
+
+  it("queues the owner lastAccessedAt touch through next/server after()", async () => {
+    mocks.dbExecute.mockResolvedValueOnce([fakeWatchlistRow()]);
+
+    await getWatchlistByUserAndSlug("alice", "my-watchlist");
+
+    expect(mocks.after).toHaveBeenCalledTimes(1);
+    expect(mocks.dbUpdate).toHaveBeenCalledTimes(1);
   });
 
   it("returns the full WatchlistDetail shape callers consume", async () => {

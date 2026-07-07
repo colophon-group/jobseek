@@ -641,7 +641,7 @@ const EXPECTED_NON_INVALIDATING = new Set<string>([
   // alertsEnabled is a private field — never rendered on the public page,
   // so no public cache key is affected by toggling it.
   "toggleWatchlistAlerts",
-  // lastAccessedAt is a private "fire-and-forget" analytics touch on the
+  // lastAccessedAt is a private after-queued analytics touch on the
   // owner's read path; it never appears in any public render.
   "getWatchlistByUserAndSlug",
 ]);
@@ -845,5 +845,10 @@ describe("invalidation registry guard", () => {
     );
     const callSites = (withoutDef.match(/_invalidateWatchlistCaches\s*\(/g) || []).length;
     expect(callSites).toBe(EXPECTED_INVALIDATING_MUTATORS.size);
+  });
+
+  it("does not use silent detached promise catches for watchlist side effects", () => {
+    const source = readFileSync(SOURCE_PATH, "utf-8");
+    expect(source).not.toMatch(/\.catch\(\s*\(\)\s*=>\s*\{\s*\}\s*\)/);
   });
 });

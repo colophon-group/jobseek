@@ -1022,12 +1022,19 @@ export async function getWatchlistByUserAndSlug(
   // Access check: public or owner
   if (!row.is_public && row.user_id !== sessionUserId) return null;
 
-  // Touch lastAccessedAt (fire-and-forget — doesn't affect response)
+  // Touch lastAccessedAt after the response; it is private analytics state
+  // and should not affect the watchlist detail read path.
   if (row.user_id === sessionUserId) {
-    db.update(watchlist)
-      .set({ lastAccessedAt: new Date() })
-      .where(eq(watchlist.id, row.wl_id))
-      .catch(() => {});
+    after(async () => {
+      try {
+        await db
+          .update(watchlist)
+          .set({ lastAccessedAt: new Date() })
+          .where(eq(watchlist.id, row.wl_id));
+      } catch (err) {
+        console.error("[getWatchlistByUserAndSlug] lastAccessedAt touch failed", err);
+      }
+    });
   }
 
   return {
