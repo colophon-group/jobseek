@@ -11,11 +11,13 @@ is handled by the scraper (``src/core/scrapers/rippling``).
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register, slugs_from_url
+from src.core.monitors.raw import save_json_response
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
@@ -143,4 +145,16 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("rippling", discover, cost=10, can_handle=can_handle, rich=False)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    slug = metadata.get("slug") or _slug_from_url(board_url)
+    if not slug:
+        return
+    await save_json_response(artifact_dir, client, _api_list_url(slug))
+
+
+register("rippling", discover, cost=10, can_handle=can_handle, rich=False, save_raw=save_raw)

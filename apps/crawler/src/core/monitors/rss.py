@@ -14,12 +14,14 @@ import html
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import httpx
 import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.core.monitors.raw import save_text_response
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -464,4 +466,26 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("rss", discover, cost=10, can_handle=can_handle, rich=True)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    feed = metadata.get("feed_url")
+    if not feed:
+        preset = _PRESETS.get(metadata.get("preset", "generic"))
+        if preset:
+            feed = _build_feed_url(board_url, preset.feed_paths[0])
+    if not feed:
+        return
+    await save_text_response(
+        artifact_dir,
+        client,
+        feed,
+        filename="response.xml",
+        follow_redirects=True,
+    )
+
+
+register("rss", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)

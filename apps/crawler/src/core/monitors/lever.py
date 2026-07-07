@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import random
 import re
+from pathlib import Path
 
 import httpx
 import structlog
@@ -21,6 +22,7 @@ from src.core.monitors import (
     register,
     slugs_from_url,
 )
+from src.core.monitors.raw import save_json_response
 from src.shared.http_retry import PaginationFetchError, is_retryable_status
 from src.shared.truncation import truncated_rich_result
 
@@ -440,4 +442,23 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("lever", discover, cost=10, can_handle=can_handle, rich=True)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    token = metadata.get("token") or _token_from_url(board_url)
+    if not token:
+        return
+    region = metadata.get("region") or _region_from_url(board_url)
+    await save_json_response(
+        artifact_dir,
+        client,
+        _api_url(token, region),
+        params={"limit": 100},
+        headers=_API_HEADERS,
+    )
+
+
+register("lever", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)

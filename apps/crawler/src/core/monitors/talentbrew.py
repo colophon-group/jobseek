@@ -13,12 +13,14 @@ import math
 import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
+from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import structlog
 
 from src.core.monitors import fetch_page_text, register
+from src.core.monitors.raw import save_text_response
 from src.shared.http_retry import fetch_with_retry
 
 if TYPE_CHECKING:
@@ -453,4 +455,19 @@ async def discover(
     return urls
 
 
-register("talentbrew", discover, cost=45, can_handle=can_handle)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    await save_text_response(
+        artifact_dir,
+        client,
+        board_url,
+        filename="page.html",
+        follow_redirects=True,
+    )
+
+
+register("talentbrew", discover, cost=45, can_handle=can_handle, save_raw=save_raw)

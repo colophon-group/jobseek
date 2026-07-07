@@ -8,6 +8,7 @@ No authentication required.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import httpx
 import structlog
@@ -20,6 +21,7 @@ from src.core.monitors import (
     register,
     slugs_from_url,
 )
+from src.core.monitors.raw import save_json_response
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -259,4 +261,21 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("ashby", discover, cost=10, can_handle=can_handle, rich=True)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    token = metadata.get("token") or _token_from_url(board_url)
+    if not token:
+        return
+    await save_json_response(
+        artifact_dir,
+        client,
+        _api_url(token),
+        params={"includeCompensation": "true"},
+    )
+
+
+register("ashby", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)

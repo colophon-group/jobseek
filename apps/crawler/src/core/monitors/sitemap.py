@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
 import structlog
 
 from src.core.monitors import register
+from src.core.monitors.raw import save_text_response
 
 log = structlog.get_logger()
 
@@ -411,4 +413,22 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         return None
 
 
-register("sitemap", discover, cost=50, can_handle=can_handle)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    sitemap_url = metadata.get("sitemap_url")
+    if not sitemap_url:
+        return
+    await save_text_response(
+        artifact_dir,
+        client,
+        sitemap_url,
+        filename="sitemap.xml",
+        headers=_SITEMAP_HEADERS,
+    )
+
+
+register("sitemap", discover, cost=50, can_handle=can_handle, save_raw=save_raw)

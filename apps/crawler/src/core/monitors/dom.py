@@ -15,12 +15,14 @@ import asyncio
 import random
 import re
 from html.parser import HTMLParser
+from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 import structlog
 
 from src.core.monitors import register
+from src.core.monitors.raw import save_text_response
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions
 
 if TYPE_CHECKING:
@@ -480,4 +482,19 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
     return urls
 
 
-register("dom", dom_discover, cost=100, can_handle=can_handle)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    await save_text_response(
+        artifact_dir,
+        client,
+        board_url,
+        filename="page.html",
+        follow_redirects=True,
+    )
+
+
+register("dom", dom_discover, cost=100, can_handle=can_handle, save_raw=save_raw)

@@ -44,6 +44,8 @@ Offset mode (Phenom Canvas-style ``?from=25&from=50...``)::
 from __future__ import annotations
 
 import asyncio
+import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
@@ -741,4 +743,28 @@ def _extract_urls(
     return urls
 
 
-register("nextdata", discover, cost=20, can_handle=can_handle, stream=discover_stream)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    resp = await client.get(board_url, follow_redirects=True)
+    if resp.status_code != 200:
+        return
+    data = extract_next_data(resp.text)
+    if data:
+        (artifact_dir / "nextdata.json").write_text(
+            json.dumps(data, indent=2, default=str),
+            encoding="utf-8",
+        )
+
+
+register(
+    "nextdata",
+    discover,
+    cost=20,
+    can_handle=can_handle,
+    stream=discover_stream,
+    save_raw=save_raw,
+)

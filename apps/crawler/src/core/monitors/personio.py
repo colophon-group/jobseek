@@ -13,12 +13,14 @@ from __future__ import annotations
 import json
 import re
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
 import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.core.monitors.raw import save_text_response
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -577,4 +579,24 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("personio", discover, cost=10, can_handle=can_handle, rich=False)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    slug = metadata.get("slug") or _slug_from_url(board_url)
+    if not slug:
+        return
+    domain = metadata.get("domain") or _tld_from_url(board_url)
+    lang = metadata.get("language", _DEFAULT_LANGUAGE)
+    await save_text_response(
+        artifact_dir,
+        client,
+        _api_url(slug, domain, lang=lang),
+        filename="response.xml",
+        follow_redirects=True,
+    )
+
+
+register("personio", discover, cost=10, can_handle=can_handle, rich=False, save_raw=save_raw)
