@@ -57,7 +57,7 @@ test("CI no longer shells out to custom diff classification", () => {
 test("workflow-security runs repository script tests", () => {
   assert.match(
     workflow,
-    /node --test\n          scripts\/ci-workflow\.test\.mjs\n          scripts\/dealroom-company-requests\.test\.mjs/,
+    /node --test\n          scripts\/ci-workflow\.test\.mjs\n          scripts\/docs-index\.test\.mjs\n          scripts\/dealroom-company-requests\.test\.mjs/,
   );
 });
 
