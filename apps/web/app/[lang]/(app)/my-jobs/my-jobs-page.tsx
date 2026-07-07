@@ -17,6 +17,7 @@ import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { SortFilterBar, type SortBy, type GroupBy } from "@/components/my-jobs/sort-filter-bar";
 import { MyJobRow } from "@/components/my-jobs/my-job-row";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
+import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { useSavedJobs } from "@/components/providers/SavedJobsProvider";
 
 const BATCH = 20;
@@ -349,20 +350,10 @@ export function MyJobsPage({
               onClose={handleCloseDetail}
             />
           </div>
-          <div
-            className="fixed inset-0 z-50 bg-black/40 lg:hidden"
-            onClick={handleCloseDetail}
-          >
-            <div
-              className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <JobDetailPanel
-                postingId={selectedJob.postingId}
-                onClose={handleCloseDetail}
-              />
-            </div>
-          </div>
+          <MobileJobDetailDialog
+            postingId={selectedJob.postingId}
+            onClose={handleCloseDetail}
+          />
         </>
       )}
     </div>

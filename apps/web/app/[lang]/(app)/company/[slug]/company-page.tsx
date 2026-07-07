@@ -8,6 +8,7 @@ import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
+import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
 import { runGetCompanyPostings } from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
@@ -680,17 +681,7 @@ export function CompanyPage({
           <div className="sticky top-[4.5rem] z-40 hidden h-[calc(100vh-5.5rem)] w-[420px] shrink-0 lg:block">
             <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
           </div>
-          {/* Small screens: full-height slide-out overlay with dim
-              backdrop. Matches explore / my-jobs / watchlist patterns
-              so the job detail card behaves identically across pages. */}
-          <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
-            <div
-              className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
-            </div>
-          </div>
+          <MobileJobDetailDialog postingId={showPostingId} onClose={handleClosePosting} />
         </>
       )}
     </div>
