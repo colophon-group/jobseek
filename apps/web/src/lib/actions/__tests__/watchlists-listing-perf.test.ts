@@ -3,7 +3,9 @@
  *
  * Asserts that the watchlist listing surfaces — `getUserWatchlists`,
  * `getPopularWatchlists`, and `searchPublicWatchlists` — do NOT fan out
- * per-watchlist Typesense `job_posting` count queries.
+ * per-watchlist Typesense `job_posting` count queries. Filtered rows
+ * may request precise counts, but they must do it in a single
+ * `multi_search` batch per listing render (#3261).
  *
  * Pre-fix:
  *   `getUserWatchlists(locale)` loaded N watchlist rows from Postgres,
@@ -16,10 +18,11 @@
  *   Typesense `watchlist` collection (1 round-trip), then re-ran the
  *   same N-fanout via `_enrichWatchlistsWithRealCounts`.
  *
- * Post-fix:
+ * #3176 post-fix:
  *   - `getUserWatchlists`  one SQL query against Postgres with the
  *     active count denormalized via a `watchlist_company JOIN
- *     job_posting WHERE is_active` subquery. Zero Typesense round-trips.
+ *     job_posting WHERE is_active` subquery. Zero Typesense round-trips
+ *     for unfiltered company-scoped rows.
  *   - `searchPublicWatchlists` / `getPopularWatchlists`  one Typesense
  *     `watchlist` collection search whose returned docs already carry
  *     `active_job_count` for company-scoped watchlists. `anyCompany`
@@ -27,12 +30,10 @@
  *     hit and run a bounded live `job_posting` count without Postgres
  *     hydration.
  *
- * The trade-off: non-anyCompany listing counts ignore the per-watchlist
- * filters (keywords, locations, work_mode, …) and the viewer's language
- * preference. The watchlist-detail page still surfaces the precise
- * filter-applied count via `getWatchlistPostingDisplayCounts`. The
- * follow-up issue (#3261) tracks restoring per-viewer / per-filter
- * accuracy via a batched `multi_search` if the UX warrants it.
+ * #3261 post-fix:
+ *   filtered rows patch the denormalized count through one batched
+ *   `multi_search`, using viewer languages and the same filter shape as
+ *   the watchlist-detail active count.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -88,9 +89,14 @@ const mocks = vi.hoisted(() => {
     // routes through this one mock so we can assert call count + which
     // collection was hit.
     tsSearch: vi.fn(),
+    tsMultiSearch: vi.fn(),
     tsCollectionsCalls: [] as string[],
 
     getViewerLanguages: vi.fn().mockResolvedValue(["en"]),
+    resolveLocationSlugs: vi.fn(),
+    resolveOccupationSlugs: vi.fn(),
+    resolveSenioritySlugs: vi.fn(),
+    resolveTechnologySlugs: vi.fn(),
     canCreateWatchlist: vi.fn().mockResolvedValue({ allowed: true }),
     notifyIndexNow: vi.fn(),
     tsUpsertWatchlist: vi.fn(),
@@ -176,6 +182,9 @@ vi.mock("@/lib/watchlist-slug", () => ({
 // assert which collections were hit and how often.
 vi.mock("@/lib/search/typesense-client", () => ({
   getSearchClient: () => ({
+    multiSearch: {
+      perform: mocks.tsMultiSearch,
+    },
     collections: (name: string) => {
       mocks.tsCollectionsCalls.push(name);
       return {
@@ -188,7 +197,26 @@ vi.mock("@/lib/search/typesense-client", () => ({
 }));
 
 vi.mock("@/lib/search/typesense-filters", () => ({
-  buildFilterString: vi.fn(() => ""),
+  buildFilterString: vi.fn((filters?: Record<string, unknown> | null) => {
+    if (!filters) return "";
+    const parts: string[] = [];
+    if (Array.isArray(filters.locationIds) && filters.locationIds.length) {
+      parts.push(`location_ids:[${filters.locationIds.join(",")}]`);
+    }
+    if (Array.isArray(filters.occupationIds) && filters.occupationIds.length) {
+      parts.push(`occupation_ids:[${filters.occupationIds.join(",")}]`);
+    }
+    if (Array.isArray(filters.seniorityIds) && filters.seniorityIds.length) {
+      parts.push(`seniority_id:[${filters.seniorityIds.join(",")}]`);
+    }
+    if (Array.isArray(filters.technologyIds) && filters.technologyIds.length) {
+      parts.push(`technology_ids:[${filters.technologyIds.join(",")}]`);
+    }
+    if (Array.isArray(filters.languages) && filters.languages.length) {
+      parts.push(`locales:[${[...filters.languages, "_none"].join(",")}]`);
+    }
+    return parts.join(" && ");
+  }),
   POSTING_BASE_FILTER: "is_active:true",
   POSTING_FLOW_FILTER: "has_content:!=false",
 }));
@@ -205,23 +233,23 @@ vi.mock("@/lib/search/constants", () => ({
 vi.mock("@/lib/actions/locations", () => ({
   expandLocationIds: vi.fn().mockResolvedValue([]),
   expandLocationIdsBatch: vi.fn().mockResolvedValue([]),
-  resolveLocationSlugs: vi.fn().mockResolvedValue(new Map()),
+  resolveLocationSlugs: mocks.resolveLocationSlugs,
 }));
 
 vi.mock("@/lib/actions/taxonomy", () => ({
   expandOccupationIds: vi.fn().mockResolvedValue([]),
   expandOccupationIdsBatch: vi.fn().mockResolvedValue([]),
-  resolveOccupationSlugs: vi.fn().mockResolvedValue(new Map()),
-  resolveSenioritySlugs: vi.fn().mockResolvedValue(new Map()),
-  resolveTechnologySlugs: vi.fn().mockResolvedValue(new Map()),
+  resolveOccupationSlugs: mocks.resolveOccupationSlugs,
+  resolveSenioritySlugs: mocks.resolveSenioritySlugs,
+  resolveTechnologySlugs: mocks.resolveTechnologySlugs,
 }));
 
 vi.mock("@/lib/services/taxonomy", () => ({
   expandOccupationIds: vi.fn().mockResolvedValue([]),
   expandOccupationIdsBatch: vi.fn().mockResolvedValue([]),
-  resolveOccupationSlugs: vi.fn().mockResolvedValue(new Map()),
-  resolveSenioritySlugs: vi.fn().mockResolvedValue(new Map()),
-  resolveTechnologySlugs: vi.fn().mockResolvedValue(new Map()),
+  resolveOccupationSlugs: mocks.resolveOccupationSlugs,
+  resolveSenioritySlugs: mocks.resolveSenioritySlugs,
+  resolveTechnologySlugs: mocks.resolveTechnologySlugs,
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -257,6 +285,15 @@ beforeEach(() => {
   mocks.getSessionUserId.mockResolvedValue(USER_ID);
   mocks.canCreateWatchlist.mockResolvedValue({ allowed: true });
   mocks.getViewerLanguages.mockResolvedValue(["en"]);
+  mocks.resolveLocationSlugs.mockResolvedValue(new Map([
+    ["zurich", { id: 2657896, slug: "zurich", name: "Zurich" }],
+    ["switzerland", { id: 2658434, slug: "switzerland", name: "Switzerland" }],
+  ]));
+  mocks.resolveOccupationSlugs.mockResolvedValue(new Map([
+    ["software-engineer", { id: 1, slug: "software-engineer", name: "Software Engineer" }],
+  ]));
+  mocks.resolveSenioritySlugs.mockResolvedValue(new Map());
+  mocks.resolveTechnologySlugs.mockResolvedValue(new Map());
 });
 
 afterEach(() => {
@@ -265,7 +302,15 @@ afterEach(() => {
 
 // ---- helpers ----------------------------------------------------------
 
-function fakeUserWatchlistRow(i: number, activeJobCount: number) {
+function fakeUserWatchlistRow(
+  i: number,
+  activeJobCount: number,
+  overrides: Partial<{
+    filters: Record<string, unknown>;
+    company_ids: string[];
+    company_count: number;
+  }> = {},
+) {
   return {
     id: `wl-${i}`,
     slug: `slug-${i}`,
@@ -273,15 +318,12 @@ function fakeUserWatchlistRow(i: number, activeJobCount: number) {
     description: null,
     is_public: i % 2 === 0,
     alerts_enabled: false,
-    filters: {
-      keywords: ["python", "remote"],
-      locationSlugs: ["zurich"],
-      workMode: ["remote"],
-    },
+    filters: overrides.filters ?? {},
     last_accessed_at: new Date("2026-05-14T00:00:00Z"),
     created_at: new Date("2026-05-01T00:00:00Z"),
-    company_count: 3,
+    company_count: overrides.company_count ?? 3,
     active_job_count: activeJobCount,
+    company_ids: overrides.company_ids ?? [`company-${i}-a`, `company-${i}-b`],
   };
 }
 
@@ -352,6 +394,60 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     expect(result.map((w) => w.activeJobCount)).toEqual([42, 7, 0]);
   });
 
+  it("patches filtered company-scoped rows with one batched Typesense multi_search (#3261)", async () => {
+    const rows = [
+      fakeUserWatchlistRow(0, 108, {
+        filters: {
+          locationSlugs: ["switzerland"],
+          occupationSlugs: ["software-engineer"],
+        },
+        company_ids: ["company-a", "company-b"],
+      }),
+      fakeUserWatchlistRow(1, 44, {
+        filters: {
+          keywords: ["python"],
+        },
+        company_ids: ["company-c"],
+      }),
+      fakeUserWatchlistRow(2, 12),
+    ];
+    mocks.dbExecute.mockResolvedValueOnce(rows);
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: [
+        { found: 6, hits: [] },
+        { found: 3, hits: [] },
+      ],
+    });
+
+    const result = await getUserWatchlists("en");
+
+    expect(result.map((w) => w.activeJobCount)).toEqual([6, 3, 12]);
+    expect(mocks.tsSearch).not.toHaveBeenCalled();
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch.mock.calls[0]?.[0]).toMatchObject({
+      searches: [
+        {
+          collection: "job_posting",
+          q: "*",
+          query_by: "title",
+          per_page: 0,
+        },
+        {
+          collection: "job_posting",
+          q: "python",
+          query_by: "title",
+          per_page: 0,
+        },
+      ],
+    });
+    const searches = mocks.tsMultiSearch.mock.calls[0]?.[0].searches;
+    expect(searches[0].filter_by).toContain("company_id:[company-a,company-b]");
+    expect(searches[0].filter_by).toContain("location_ids:[2658434]");
+    expect(searches[0].filter_by).toContain("occupation_ids:[1]");
+    expect(searches[0].filter_by).toContain("locales:[en,_none]");
+    expect(searches[1].filter_by).toContain("company_id:[company-c]");
+  });
+
   it("returns [] without touching the database when unauthenticated", async () => {
     mocks.getSessionUserId.mockResolvedValueOnce(null);
 
@@ -373,7 +469,10 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     };
     const normalRow = fakeUserWatchlistRow(1, 12);
     mocks.dbExecute.mockResolvedValueOnce([anyRow, normalRow]);
-    mocks.tsSearch.mockResolvedValueOnce({ found: 38717, hits: [] });
+    mocks.resolveLocationSlugs.mockResolvedValueOnce(new Map([
+      ["eu", { id: 6255148, slug: "eu", name: "European Union" }],
+    ]));
+    mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 38717, hits: [] }] });
 
     const result = await getUserWatchlists("en");
 
@@ -386,8 +485,9 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
 
     // Exactly one Typesense call (the anyCompany count). The normal
     // row goes straight from SQL.
-    expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
-    expect(mocks.tsCollectionsCalls).toEqual(["job_posting"]);
+    expect(mocks.tsSearch).not.toHaveBeenCalled();
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsCollectionsCalls).toEqual([]);
   });
 
   it("returns 0 (not the SQL 0 either) when the anyCompany Typesense count fails", async () => {
@@ -396,7 +496,10 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
       filters: { anyCompany: true, locationSlugs: ["eu"] },
     };
     mocks.dbExecute.mockResolvedValueOnce([anyRow]);
-    mocks.tsSearch.mockRejectedValueOnce(new Error("typesense unreachable"));
+    mocks.resolveLocationSlugs.mockResolvedValueOnce(new Map([
+      ["eu", { id: 6255148, slug: "eu", name: "European Union" }],
+    ]));
+    mocks.tsMultiSearch.mockRejectedValueOnce(new Error("typesense unreachable"));
 
     const result = await getUserWatchlists("en");
 
@@ -416,9 +519,9 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
   // Regression for #3344. The `anyCompany` Typesense patch previously
   // omitted the viewer-language scope, so the tile count diverged from
   // the watchlist-detail page (which DOES scope by `locales:[lang,
-  // _none]` via `_getWatchlistPostingsTypesense`). The fix threads the
-  // viewer's resolved languages through `_resolveAnyCompanyActiveCount`
-  // so both surfaces issue the same Typesense filter shape.
+  // _none]` via `_getWatchlistPostingsTypesense`). The batched listing
+  // count path must keep forwarding the viewer's resolved languages so
+  // both surfaces issue the same Typesense filter shape.
   it("passes viewer languages through to the anyCompany Typesense count (#3344)", async () => {
     const anyRow = {
       ...fakeUserWatchlistRow(0, 0),
@@ -426,7 +529,10 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     };
     mocks.dbExecute.mockResolvedValueOnce([anyRow]);
     mocks.getViewerLanguages.mockResolvedValueOnce(["en"]);
-    mocks.tsSearch.mockResolvedValueOnce({ found: 39126, hits: [] });
+    mocks.resolveLocationSlugs.mockResolvedValueOnce(new Map([
+      ["eu", { id: 6255148, slug: "eu", name: "European Union" }],
+    ]));
+    mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 39126, hits: [] }] });
 
     const buildFilterStringMock = vi.mocked(
       await import("@/lib/search/typesense-filters"),
@@ -573,7 +679,7 @@ describe("getPopularWatchlists — anyCompany count patch (#3352)", () => {
     }); // Typesense doc says 0
     const normalHit = fakePublicWatchlistHit(1, 12);
     mocks.tsSearch.mockResolvedValueOnce({ hits: [anyHit, normalHit], found: 2 });
-    mocks.tsSearch.mockResolvedValueOnce({ found: 38717, hits: [] });
+    mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 38717, hits: [] }] });
 
     const result = await getPopularWatchlists({ offset: 0, limit: 20, locale: "en" });
 
@@ -583,11 +689,39 @@ describe("getPopularWatchlists — anyCompany count patch (#3352)", () => {
     // The non-anyCompany row: denormalized doc count survives unchanged.
     expect(result.watchlists[1].activeJobCount).toBe(12);
 
-    // Two Typesense calls: one for the watchlist collection, one for the
-    // job_posting count of the single anyCompany row.
-    expect(mocks.tsSearch).toHaveBeenCalledTimes(2);
-    expect(mocks.tsCollectionsCalls).toEqual(["watchlist", "job_posting"]);
+    // One watchlist search plus one batched job_posting multi_search.
+    expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsCollectionsCalls).toEqual(["watchlist"]);
     expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("patches filtered company-scoped rows with one company-id query and one multi_search (#3261)", async () => {
+    const filteredHit = fakePublicWatchlistHit(0, 1000, {
+      locationSlugs: ["switzerland"],
+      locationIds: [2658434],
+      occupationSlugs: ["software-engineer"],
+      occupationIds: [1],
+    });
+    const unfilteredHit = fakePublicWatchlistHit(1, 12);
+    mocks.tsSearch.mockResolvedValueOnce({ hits: [filteredHit, unfilteredHit], found: 2 });
+    mocks.dbExecute.mockResolvedValueOnce([
+      { watchlist_id: "wl-0", company_ids: ["company-a", "company-b"] },
+    ]);
+    mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 14, hits: [] }] });
+
+    const result = await getPopularWatchlists({ offset: 0, limit: 20, locale: "en" });
+
+    expect(result.watchlists.map((w) => w.activeJobCount)).toEqual([14, 12]);
+    expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    const searches = mocks.tsMultiSearch.mock.calls[0]?.[0].searches;
+    expect(searches).toHaveLength(1);
+    expect(searches[0].filter_by).toContain("company_id:[company-a,company-b]");
+    expect(searches[0].filter_by).toContain("location_ids:[2658434]");
+    expect(searches[0].filter_by).toContain("occupation_ids:[1]");
+    expect(searches[0].filter_by).toContain("locales:[en,_none]");
   });
 
   it("fires no per-row count when no anyCompany rows are present", async () => {
@@ -601,6 +735,7 @@ describe("getPopularWatchlists — anyCompany count patch (#3352)", () => {
 
     // Only the watchlist search — no job_posting count fan-out.
     expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch).not.toHaveBeenCalled();
     expect(mocks.tsCollectionsCalls).toEqual(["watchlist"]);
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
@@ -617,6 +752,7 @@ describe("getPopularWatchlists — anyCompany count patch (#3352)", () => {
     expect(result.watchlists).toHaveLength(1);
     expect(result.watchlists[0].activeJobCount).toBe(0);
     expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch).not.toHaveBeenCalled();
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
 
@@ -631,6 +767,7 @@ describe("getPopularWatchlists — anyCompany count patch (#3352)", () => {
 
     expect(result.watchlists[0].activeJobCount).toBe(0);
     expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch).not.toHaveBeenCalled();
     expect(mocks.tsCollectionsCalls).toEqual(["watchlist"]);
   });
 
@@ -638,7 +775,7 @@ describe("getPopularWatchlists — anyCompany count patch (#3352)", () => {
     const anyHit = fakePublicWatchlistHit(0, 0, { anyCompany: true });
     mocks.tsSearch.mockResolvedValueOnce({ hits: [anyHit], found: 1 });
     mocks.getViewerLanguages.mockResolvedValueOnce(["de"]);
-    mocks.tsSearch.mockResolvedValueOnce({ found: 4242, hits: [] });
+    mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 4242, hits: [] }] });
 
     const buildFilterStringMock = vi.mocked(
       await import("@/lib/search/typesense-filters"),
@@ -662,7 +799,7 @@ describe("searchPublicWatchlists — anyCompany count patch (#3352)", () => {
     const anyHit = fakePublicWatchlistHit(0, 0, { anyCompany: true });
     const normalHit = fakePublicWatchlistHit(1, 42);
     mocks.tsSearch.mockResolvedValueOnce({ hits: [anyHit, normalHit], found: 2 });
-    mocks.tsSearch.mockResolvedValueOnce({ found: 1234, hits: [] });
+    mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 1234, hits: [] }] });
 
     const result = await searchPublicWatchlists({
       query: "python",
@@ -675,9 +812,46 @@ describe("searchPublicWatchlists — anyCompany count patch (#3352)", () => {
     expect(result.watchlists[0].activeJobCount).toBe(1234);
     expect(result.watchlists[1].activeJobCount).toBe(42);
 
-    expect(mocks.tsSearch).toHaveBeenCalledTimes(2);
-    expect(mocks.tsCollectionsCalls).toEqual(["watchlist", "job_posting"]);
+    expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsCollectionsCalls).toEqual(["watchlist"]);
     expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("patches filtered company-scoped rows with one multi_search (#3261)", async () => {
+    const filteredHit = fakePublicWatchlistHit(0, 250, {
+      keywords: ["python"],
+      locationSlugs: ["zurich"],
+      locationIds: [2657896],
+    });
+    const unfilteredHit = fakePublicWatchlistHit(1, 42);
+    mocks.tsSearch.mockResolvedValueOnce({ hits: [filteredHit, unfilteredHit], found: 2 });
+    mocks.dbExecute.mockResolvedValueOnce([
+      { watchlist_id: "wl-0", company_ids: ["company-a"] },
+    ]);
+    mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 8, hits: [] }] });
+
+    const result = await searchPublicWatchlists({
+      query: "python",
+      offset: 0,
+      limit: 20,
+      locale: "en",
+    });
+
+    expect(result.watchlists.map((w) => w.activeJobCount)).toEqual([8, 42]);
+    expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    const searches = mocks.tsMultiSearch.mock.calls[0]?.[0].searches;
+    expect(searches).toHaveLength(1);
+    expect(searches[0]).toMatchObject({
+      collection: "job_posting",
+      q: "python",
+      query_by: "title",
+      per_page: 0,
+    });
+    expect(searches[0].filter_by).toContain("company_id:[company-a]");
+    expect(searches[0].filter_by).toContain("location_ids:[2657896]");
   });
 
   it("fires no per-row count when no anyCompany rows are present", async () => {
@@ -687,6 +861,7 @@ describe("searchPublicWatchlists — anyCompany count patch (#3352)", () => {
     await searchPublicWatchlists({ query: "python", offset: 0, limit: 20, locale: "en" });
 
     expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch).not.toHaveBeenCalled();
     expect(mocks.tsCollectionsCalls).toEqual(["watchlist"]);
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
@@ -694,7 +869,7 @@ describe("searchPublicWatchlists — anyCompany count patch (#3352)", () => {
   it("returns 0 when the per-row anyCompany count fails", async () => {
     const anyHit = fakePublicWatchlistHit(0, 0, { anyCompany: true });
     mocks.tsSearch.mockResolvedValueOnce({ hits: [anyHit], found: 1 });
-    mocks.tsSearch.mockRejectedValueOnce(new Error("typesense unreachable"));
+    mocks.tsMultiSearch.mockRejectedValueOnce(new Error("typesense unreachable"));
 
     const result = await searchPublicWatchlists({
       query: "python",
