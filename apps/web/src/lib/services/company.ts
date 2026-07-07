@@ -731,8 +731,8 @@ async function _fetchSimilarFilteredCached(
   // CSV-driven sweep — an industry move (changing `industry_id` on a
   // company row) changes the candidate pool for every other company in
   // the source AND target industry. Conservative: drop on every CSV
-  // sync. Mirrors the legacy `company-similar:` Redis-prefix sweep
-  // (#2715). See #2884.
+  // sync. Mirrors the legacy company-similar Redis namespace from the
+  // cache invalidation registry (#2715). See #2884.
   cacheTag(companyCsvDataCacheTag());
   return _fetchSimilarFiltered(companyId, industryId, limit, filters);
 }

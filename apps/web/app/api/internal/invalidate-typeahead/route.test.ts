@@ -78,7 +78,7 @@ describe("POST /api/internal/invalidate-typeahead", () => {
     expect(body.revalidatedTags).toEqual(tags);
   });
 
-  it("invokes invalidatePattern for every typeahead prefix", async () => {
+  it("invokes invalidatePattern for every crawler-sync Redis prefix", async () => {
     mocks.invalidatePattern.mockImplementation(async (prefix: string) =>
       prefix === "loc-suggest:" ? 5 : prefix === "company-suggest:" ? 2 : 0,
     );
@@ -131,8 +131,8 @@ describe("POST /api/internal/invalidate-typeahead", () => {
 
   it("does not accept arbitrary prefixes from the caller", async () => {
     /** Defense-in-depth: even an authenticated caller cannot direct the
-     * sweep at, say, `cache:session:*` — the prefix list is owned by
-     * this route, not the request body. */
+     * sweep at, say, `cache:session:*` — the synced-prefix registry, not
+     * the request body, owns the sweep scope. */
     const res = await POST(
       new Request("http://localhost/api/internal/invalidate-typeahead", {
         method: "POST",

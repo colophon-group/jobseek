@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { CACHE_TTL_DETAIL } from "@/lib/cache-ttl";
 import { cached } from "@/lib/cache";
+import { companyDetailCacheKey } from "@/lib/cache-registry";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import {
@@ -32,7 +33,7 @@ export async function getCompanyBySlug(
     console.warn("[company] lookup skipped because Typesense and DATABASE_URL are not configured");
     return null;
   }
-  const key = `company-slug:${slug}:${locale}`;
+  const key = companyDetailCacheKey(slug, locale);
   // Empty-result skipping is load-bearing here: a not-yet-indexed company
   // should be retried on the next request, but throwing a sentinel from a
   // `'use cache'` boundary leaks that error into the RSC payload (#3603).

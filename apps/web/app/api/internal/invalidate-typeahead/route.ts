@@ -5,13 +5,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { invalidatePattern } from "@/lib/cache";
 import {
-  companyCsvDataCacheTag,
-  typeaheadCompaniesCacheTag,
-  typeaheadLocationsCacheTag,
-  typeaheadOccupationsCacheTag,
-  typeaheadSenioritiesCacheTag,
-  typeaheadTechnologiesCacheTag,
-} from "@/lib/cache-tags";
+  CACHE_PREFIXES_INVALIDATED_ON_SYNC,
+  CACHE_TAGS_INVALIDATED_ON_SYNC,
+} from "@/lib/cache-registry";
 
 function _safeBearerEqual(presented: string | null, expected: string): boolean {
   if (presented === null) return false;
@@ -23,28 +19,6 @@ function _safeBearerEqual(presented: string | null, expected: string): boolean {
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
 }
-
-// Closed list — every cache key prefix that would go stale after a
-// `crawler sync` mutation (taxonomy renames, company CSV edits). Defined
-// here (not in the caller) so the crawler can't accidentally request a
-// sweep of an unrelated namespace. Mirrors the keys built in
-// apps/web/src/lib/actions/{locations,taxonomy,company}.ts.
-//
-// company-slug: + company-similar: were added in #2715 — a company
-// rename / industry change otherwise leaves /company/<slug> stale up to
-// the 10-minute company-slug TTL. The posting-derived caches
-// (company-top-locs:, company-locs-grouped:, company-postings:) key off
-// job_posting data, which a CSV sync doesn't touch, so they're left to
-// their TTLs.
-const TYPEAHEAD_PREFIXES = [
-  "loc-suggest:",
-  "occ-suggest:",
-  "sen-suggest:",
-  "tech-suggest:",
-  "company-suggest:",
-  "company-slug:",
-  "company-similar:",
-] as const;
 
 // `'use cache'` tags for the 5 typeahead slots migrated in #2907 plus
 // the CSV-driven per-company tag covering `getCompanyBySlug` and
@@ -61,22 +35,14 @@ const TYPEAHEAD_PREFIXES = [
 // `revalidateTag(companyCacheTag(slug))` calls. The per-slug
 // `companyCacheTag(slug)` is reserved for future targeted invalidation
 // (e.g., a server action that mutates a single company).
-const INVALIDATE_TAGS = [
-  typeaheadLocationsCacheTag(),
-  typeaheadOccupationsCacheTag(),
-  typeaheadSenioritiesCacheTag(),
-  typeaheadTechnologiesCacheTag(),
-  typeaheadCompaniesCacheTag(),
-  companyCsvDataCacheTag(),
-] as const;
-
 /**
  * POST /api/internal/invalidate-typeahead
  *
  * Called by the crawler after `sync_typesense` to drop stale typeahead
  * suggestions and company-detail caches across all locales (see the
- * `TYPEAHEAD_PREFIXES` list for the full scope — kept under the original
- * route name so the crawler caller doesn't need a URL change).
+ * `CACHE_PREFIXES_INVALIDATED_ON_SYNC` registry for the full legacy Redis
+ * sweep scope — kept under the original route name so the crawler caller
+ * doesn't need a URL change).
  * Authenticated via a bearer token shared out-of-band
  * (`INTERNAL_REVALIDATE_TOKEN` env var on both sides).
  *
@@ -106,7 +72,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // expire — the tag is fired once per `crawler sync` and the slot
   // must drop until the next call refills it.
   const revalidatedTags: string[] = [];
-  for (const tag of INVALIDATE_TAGS) {
+  for (const tag of CACHE_TAGS_INVALIDATED_ON_SYNC) {
     try {
       revalidateTag(tag, "max");
       revalidatedTags.push(tag);
@@ -129,7 +95,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // path under one of these prefixes). Each call resolves to 0 deletes
   // in the steady state.
   const deleted: Record<string, number> = {};
-  for (const prefix of TYPEAHEAD_PREFIXES) {
+  for (const prefix of CACHE_PREFIXES_INVALIDATED_ON_SYNC) {
     deleted[prefix] = await invalidatePattern(prefix);
   }
   const total = Object.values(deleted).reduce((a, b) => a + b, 0);
