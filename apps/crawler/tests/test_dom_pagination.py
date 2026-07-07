@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
+import pytest
+
 from src.core.monitors.dom import (
     _build_url_matcher,
     _extract_links_static,
     _fetch_via_page,
     _paginate_urls,
+    dom_discover,
 )
 
 # ---------------------------------------------------------------------------
@@ -108,6 +112,54 @@ class TestBuildUrlMatcher:
     def test_none_filter(self):
         assert _build_url_matcher(None) is None
         assert _build_url_matcher("") is None
+
+
+class TestDomDiscoverInitialFetch:
+    async def test_initial_403_raises_instead_of_successful_empty(self, monkeypatch):
+        """A blocked listing page must fail the monitor cycle.
+
+        Returning an empty set records a healthy empty crawl and masks
+        missing jobs, which is the mcdonalds-ph failure mode from #4945.
+        """
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.shared.http_retry.asyncio.sleep", AsyncMock())
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(403, text="Forbidden")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await dom_discover(
+                    {
+                        "board_url": "https://blocked.example/careers",
+                        "metadata": {"url_filter": "/career/"},
+                    },
+                    client,
+                )
+
+        assert attempts == 3
+        assert exc_info.value.last_status == 403
+
+    async def test_initial_404_remains_empty(self):
+        """A missing static page keeps the existing lenient empty-result path."""
+
+        def handler(request):
+            return httpx.Response(404, text="Not found")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": "https://missing.example/careers",
+                    "metadata": {"url_filter": "/career/"},
+                },
+                client,
+            )
+
+        assert result == set()
 
 
 # ---------------------------------------------------------------------------
