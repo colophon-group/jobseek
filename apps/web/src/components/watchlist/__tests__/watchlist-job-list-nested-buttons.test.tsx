@@ -53,10 +53,10 @@ vi.mock("@/lib/search/use-clear-typesense-on-auth-change", () => ({
 }));
 
 const toggleMock = vi.fn();
-vi.mock("@/components/SessionProvider", () => ({
+vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({ isLoggedIn: true, isPending: false }),
 }));
-vi.mock("@/components/SavedJobsProvider", () => ({
+vi.mock("@/components/providers/SavedJobsProvider", () => ({
   useSavedJobs: () => ({
     isSaved: () => false,
     toggle: toggleMock,

@@ -22,11 +22,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 
-vi.mock("@/components/SessionProvider", () => ({
+vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({ isLoggedIn: false }),
 }));
 
-vi.mock("@/components/SearchStateProvider", () => ({
+vi.mock("@/components/providers/SearchStateProvider", () => ({
   useSearchStateStore: () => ({
     get: () => null,
     set: vi.fn(),

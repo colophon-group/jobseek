@@ -7,7 +7,7 @@ import { useLingui } from "@lingui/react/macro";
 import { GitHubIcon } from "@/components/icons/GitHubIcon";
 import { authClient } from "@/lib/auth-client";
 import { isReservedUsername } from "@/lib/username";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import {
   setPassword as setPasswordAction,

@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { LinguiClientProvider } from "@/components/LinguiProvider";
+import { LinguiClientProvider } from "@/components/providers/LinguiProvider";
 import { LocaleGuard } from "@/components/LocaleGuard";
 import { type Locale, isLocale, locales, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";

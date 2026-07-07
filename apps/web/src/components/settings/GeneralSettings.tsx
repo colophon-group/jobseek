@@ -14,7 +14,7 @@ import { CountryFlag } from "@/components/country-flag";
 import { localPrefs } from "@/lib/preference-timestamps";
 import { getLanguage } from "@/lib/job-languages";
 import { JobLanguageModal } from "@/components/settings/JobLanguageModal";
-import { useSalaryDisplay } from "@/components/SalaryDisplayProvider";
+import { useSalaryDisplay } from "@/components/providers/SalaryDisplayProvider";
 
 /** How many languages to show inline before the "Find more" button. */
 const INLINE_LIMIT = 12;

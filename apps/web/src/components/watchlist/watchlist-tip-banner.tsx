@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Lightbulb } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useBanner } from "@/components/BannerProvider";
+import { useBanner } from "@/components/providers/BannerProvider";
 import { updatePreferences } from "@/lib/actions/preferences";
 
 const BANNER_ID = "watchlist-tip-dismissed";

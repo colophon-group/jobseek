@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, Loader2, LogIn } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import type { WatchlistSummary, WatchlistFilters } from "@/lib/actions/watchlists";
 import { createWatchlist } from "@/lib/actions/watchlists";
 import { WatchlistCard, CreateWatchlistCard } from "@/components/watchlist/watchlist-card";

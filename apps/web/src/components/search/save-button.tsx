@@ -3,9 +3,9 @@
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useSavedJobs } from "@/components/SavedJobsProvider";
+import { useSavedJobs } from "@/components/providers/SavedJobsProvider";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 
 export function SaveButton({ postingId }: { postingId: string }) {

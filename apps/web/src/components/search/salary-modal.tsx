@@ -11,7 +11,7 @@ import {
   type SalaryBucket,
 } from "@/lib/actions/search";
 import type { HistogramFilters } from "@/lib/search";
-import { useSalaryDisplay } from "@/components/SalaryDisplayProvider";
+import { useSalaryDisplay } from "@/components/providers/SalaryDisplayProvider";
 
 // Fixed EUR buckets for the slider — 0 to 300K in 10K steps
 const BUCKET_WIDTH = 10000;

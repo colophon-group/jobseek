@@ -14,7 +14,7 @@ import {
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { RequestCompanyPrompt } from "@/components/search/request-company";
-import { useStarredCompanies } from "@/components/StarredCompaniesProvider";
+import { useStarredCompanies } from "@/components/providers/StarredCompaniesProvider";
 
 type SelectedCompany = { id: string; name: string; slug: string; icon: string | null };
 

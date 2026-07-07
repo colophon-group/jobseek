@@ -12,8 +12,8 @@ import {
   runGetWatchlistPostingYearCount,
 } from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
-import { useSession } from "@/components/SessionProvider";
-import { useSavedJobs } from "@/components/SavedJobsProvider";
+import { useSession } from "@/components/providers/SessionProvider";
+import { useSavedJobs } from "@/components/providers/SavedJobsProvider";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { usePaginatedLoadMore } from "@/lib/use-paginated-load-more";

@@ -54,7 +54,7 @@ vi.mock("@/lib/actions/preferences", () => ({
 vi.mock("server-only", () => ({}));
 
 // SalaryDisplayProvider context — minimal stub so the component renders.
-vi.mock("@/components/SalaryDisplayProvider", () => ({
+vi.mock("@/components/providers/SalaryDisplayProvider", () => ({
   useSalaryDisplay: () => ({
     displayCurrency: "EUR",
     displayPeriod: null,

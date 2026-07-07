@@ -28,7 +28,7 @@ vi.mock("@/lib/useLocalePath", () => ({
   useLocalePath: () => (p: string) => `/en${p}`,
 }));
 
-vi.mock("@/components/SessionProvider", () => ({
+vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({ user: { username: "alice" }, isLoggedIn: true }),
 }));
 

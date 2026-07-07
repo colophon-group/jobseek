@@ -31,7 +31,7 @@ import {
   SalaryDisplayProvider,
   useSalaryRates,
   useSalaryDisplay,
-} from "../SalaryDisplayProvider";
+} from "../providers/SalaryDisplayProvider";
 
 function RatesProbe({ testId }: { testId: string }) {
   const rates = useSalaryRates();
