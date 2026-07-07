@@ -164,6 +164,14 @@ async def _probe_token(
             return True, count
         return False, None
     except Exception:
+        log.debug(
+            "lever.probe_failed",
+            probe="token",
+            token=token,
+            region=region,
+            url=_api_url(token, region),
+            exc_info=True,
+        )
         return False, None
 
 
@@ -182,6 +190,14 @@ async def _fetch_job_count(
             return "100+" if len(data) >= 100 else len(data)
         return None
     except Exception:
+        log.debug(
+            "lever.probe_failed",
+            probe="job_count",
+            token=token,
+            region=region,
+            url=_api_url(token, region),
+            exc_info=True,
+        )
         return None
 
 

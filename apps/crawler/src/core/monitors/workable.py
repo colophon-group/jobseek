@@ -144,6 +144,13 @@ async def _probe_slug(slug: str, client: httpx.AsyncClient) -> tuple[bool, int |
             return True, len(results)
         return False, None
     except Exception:
+        log.debug(
+            "workable.probe_failed",
+            probe="slug",
+            slug=slug,
+            url=_api_list_url(slug),
+            exc_info=True,
+        )
         return False, None
 
 
@@ -158,6 +165,13 @@ async def _fetch_job_count(slug: str, client: httpx.AsyncClient) -> int | None:
         total = data.get("total")
         return total if isinstance(total, int) else None
     except Exception:
+        log.debug(
+            "workable.probe_failed",
+            probe="job_count",
+            slug=slug,
+            url=_api_list_url(slug),
+            exc_info=True,
+        )
         return None
 
 

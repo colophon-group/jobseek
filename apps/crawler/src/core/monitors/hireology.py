@@ -146,6 +146,13 @@ async def _probe_slug(slug: str, client: httpx.AsyncClient) -> tuple[bool, int |
             return True, len(items)
         return False, None
     except Exception:
+        log.debug(
+            "hireology.probe_failed",
+            probe="slug",
+            slug=slug,
+            url=_api_url(slug),
+            exc_info=True,
+        )
         return False, None
 
 
