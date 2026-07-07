@@ -997,8 +997,8 @@ class TestSyncLookupTablesLocal:
 
         executed_sql = [call.args[0] for call in local_conn.execute.await_args_list]
         assert not any("ALTER TABLE job_posting" in sql for sql in executed_sql)
-        assert not any(sql == "DELETE FROM occupation" for sql in executed_sql)
-        assert any("INSERT INTO occupation (id, slug)" in sql for sql in executed_sql)
+        assert not any(sql.startswith("DELETE FROM ") for sql in executed_sql)
+        assert not any("INSERT INTO occupation" in sql for sql in executed_sql)
 
     async def test_id_drift_uses_constraint_rebuild_repair_path(self):
         """If an existing local slug has the wrong ID, keep the repair path
