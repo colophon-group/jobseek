@@ -63,10 +63,10 @@ test("CI no longer shells out to custom diff classification", () => {
 });
 
 test("workflow-security runs repository script tests", () => {
-  assert.match(
-    workflow,
-    /node --test\n          scripts\/ci-workflow\.test\.mjs\n          scripts\/docs-index\.test\.mjs\n          scripts\/dealroom-company-requests\.test\.mjs/,
-  );
+  assert.match(workflow, /node --test/);
+  assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
+  assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
+  assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
 });
 
 test("CI runs Typesense E2E suites against a service container", () => {

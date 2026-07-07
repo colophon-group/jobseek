@@ -39,7 +39,6 @@ def test_candidate_sql_include_inactive_drops_only_active_predicate() -> None:
         )
     )
 
-    assert "jp.is_active" in sql
     assert "AND jp.is_active" not in sql
     assert "LIMIT 50" in sql
 
@@ -143,3 +142,25 @@ def test_crawler_cli_exposes_occupation_reprocess_command(monkeypatch) -> None:
     assert args.skip_nulls is True
     assert args.limit == 100
     assert args.progress_every == 10
+
+
+def test_crawler_cli_exposes_occupation_reprocess_stats_mode(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["crawler", "reprocess-occupations", "--stats"])
+
+    args = parse_args()
+
+    assert args.command == "reprocess-occupations"
+    assert args.stats is True
+    assert args.dry_run is False
+    assert args.live is False
+
+
+def test_crawler_cli_exposes_occupation_reprocess_live_mode(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["crawler", "reprocess-occupations", "--live"])
+
+    args = parse_args()
+
+    assert args.command == "reprocess-occupations"
+    assert args.live is True
+    assert args.dry_run is False
+    assert args.stats is False

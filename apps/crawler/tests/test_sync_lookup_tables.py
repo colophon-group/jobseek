@@ -72,11 +72,11 @@ async def test_lookup_table_sync_skips_exclusive_ddl_when_identities_match(monke
 
 async def test_lookup_table_sync_mirrors_when_identities_drift(monkeypatch):
     _patch_non_identity_sync(monkeypatch)
-    mirrored: list[tuple[str, list[int], list[str]]] = []
+    mirrored: list[tuple[str, str, list[int], list[str]]] = []
 
     async def fake_mirror_table(conn, table: str, sql: str, ids: list[int], slugs: list[str]):
-        del conn, sql
-        mirrored.append((table, ids, slugs))
+        del conn
+        mirrored.append((table, sql, ids, slugs))
 
     monkeypatch.setattr(sync, "_mirror_table", fake_mirror_table)
     supa_conn = FakeConn(
@@ -109,13 +109,21 @@ async def test_lookup_table_sync_mirrors_when_identities_drift(monkeypatch):
         "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_occupation_id_fkey" in sql
         for sql in local_conn.executed
     )
+    assert any(
+        "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_seniority_id_fkey" in sql
+        for sql in local_conn.executed
+    )
     assert any(sql == "DELETE FROM occupation" for sql in local_conn.executed)
     assert any(
         "ALTER TABLE job_posting ADD CONSTRAINT job_posting_occupation_id_fkey" in sql
         for sql in local_conn.executed
     )
+    assert any(
+        "ALTER TABLE job_posting ADD CONSTRAINT job_posting_seniority_id_fkey" in sql
+        for sql in local_conn.executed
+    )
     assert mirrored == [
-        ("occupation_domain", [1], ["domain"]),
-        ("occupation", [2], ["occupation"]),
-        ("seniority", [3], ["seniority"]),
+        ("occupation_domain", sync._MIRROR_OCCUPATION_DOMAINS, [1], ["domain"]),
+        ("occupation", sync._MIRROR_OCCUPATIONS, [2], ["occupation"]),
+        ("seniority", sync._MIRROR_SENIORITY, [3], ["seniority"]),
     ]
