@@ -228,15 +228,24 @@ export function SearchPage({
     return filtered.toString();
   }
 
+  function buildExternalSearchKey(sp: URLSearchParams): string {
+    return [
+      locale,
+      userLat ?? "",
+      userLng ?? "",
+      buildSearchKey(sp),
+    ].join("|");
+  }
+
   // Track the last search key we've processed so we only react to genuine
   // external URL changes — not mount, StrictMode double-runs, or our own
   // replaceState calls.
-  const lastSearchKeyRef = useRef(buildSearchKey(searchParams));
+  const lastSearchKeyRef = useRef(buildExternalSearchKey(searchParams));
 
   // Detect external URL changes (e.g. header search bar → router.push)
   // and re-parse filters + search, without remounting the component.
   useEffect(() => {
-    const currentKey = buildSearchKey(searchParams);
+    const currentKey = buildExternalSearchKey(searchParams);
     if (internalUrlChangeRef.current) {
       internalUrlChangeRef.current = false;
       lastSearchKeyRef.current = currentKey;
@@ -286,7 +295,7 @@ export function SearchPage({
       setWorkMode(parsed.workMode); workModeRef.current = parsed.workMode;
       runSearch();
     });
-  }, [searchParams]);
+  }, [searchParams, locale, userLat, userLng]);
 
   /** Convert a salary amount from the user's display currency to EUR. */
   function toEur(amount: number | undefined): number | undefined {
@@ -419,7 +428,9 @@ export function SearchPage({
     });
   }, [setPageActions]);
 
-  // Restore scroll position and sync URL on mount when restoring from cache
+  // Restore scroll position and sync URL on mount when restoring from cache.
+  // This is intentionally snapshot-only: re-running after the user edits
+  // filters would overwrite the live URL and scroll state with stale cache.
   useEffect(() => {
     if (shouldRestore) {
       const extra: Record<string, string> = {};

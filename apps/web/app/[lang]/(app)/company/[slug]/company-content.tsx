@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { fetchCompanyPageData, type CompanyPageData } from "@/lib/actions/company-page-data";
@@ -69,6 +69,8 @@ function CompanyNotFound() {
 
 export function CompanyContent({ locale, slug, initialData }: CompanyContentProps) {
   const searchParams = useSearchParams();
+  const paramsKey = searchParams.toString();
+  const fetchIdRef = useRef(0);
   const [data, setData] = useState<CompanyPageData | null | "not-found">(initialData ?? null);
 
   // Re-fetch on mount only when the prerendered ``initialData``
@@ -82,16 +84,23 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
   // visitors still get the prerendered data with zero server-action
   // invocations — the bulk of organic traffic per #3203 + #2640.
   //
-  // After this effect, CompanyPage owns all filter changes and
-  // searches — URL sync via replaceState is for bookmarkability only
-  // and does not trigger a re-fetch here.
+  // After this effect, CompanyPage owns interactive filter changes and
+  // searches — URL sync via replaceState is for bookmarkability only.
+  // The deps below are the page identity/snapshot inputs that can
+  // change when App Router reuses this client boundary across company
+  // slug or locale navigation.
   useEffect(() => {
+    const fetchId = ++fetchIdRef.current;
+    const params = new URLSearchParams(paramsKey);
     const needsPersonalizedFetch =
       hasLoggedInHint() ||
       hasAnonJobLanguagesHint() ||
-      hasAnyFilterParam(searchParams) ||
+      hasAnyFilterParam(params) ||
       initialData === undefined;
-    if (!needsPersonalizedFetch) return;
+    if (!needsPersonalizedFetch) {
+      setData(initialData ?? null);
+      return;
+    }
 
     // Clear stale prerendered data before the personalised fetch so
     // CompanyPage unmounts. Its filters/postings are useState-initialised
@@ -100,21 +109,18 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
     setData(null);
 
     const sp: Record<string, string | undefined> = {};
-    searchParams.forEach((value, key) => {
+    params.forEach((value, key) => {
       sp[key] = value;
     });
     fetchCompanyPageData({ slug, searchParams: sp, locale }).then((result) => {
+      if (fetchIdRef.current !== fetchId) return;
       setData(result ?? "not-found");
     }).catch((err) => {
+      if (fetchIdRef.current !== fetchId) return;
       console.error("[company] fetchCompanyPageData failed", err);
       if (initialData) setData(initialData);
     });
-    // Empty deps: the conditional-fetch decision is made once on
-    // mount. ``initialData`` is stable across re-renders (page
-    // identity), and ``CompanyPage`` owns subsequent filter changes
-    // via its own state — re-running this effect on ``searchParams``
-    // change would clobber the user's interactive filter selection.
-  }, []);
+  }, [initialData, locale, paramsKey, slug]);
 
   if (data === null) return <CompanySkeleton />;
   if (data === "not-found") return <CompanyNotFound />;

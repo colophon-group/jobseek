@@ -72,7 +72,10 @@ export function WatchlistsPage({
     }
   }
 
-  // Auto-create watchlist from URL params (e.g. from /api/v1/watchlist/create)
+  // Auto-create watchlist from URL params (e.g. from /api/v1/watchlist/create).
+  // Intentionally one-shot on mount: adding live deps here would retry
+  // the mutating create flow on unrelated session/limit/render changes.
+  // The login path returns to this page with the session already present.
   useEffect(() => {
     const title = searchParams.get("title");
     if (!title || !isLoggedIn) return;

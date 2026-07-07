@@ -25,14 +25,17 @@ vi.mock("@/lib/actions/company-page-data", async () => {
 // stale-ISR-data regression test can assert which dataset mounted it.
 vi.mock("../company-page", () => ({
   CompanyPage: ({
+    company,
     initialActiveCount,
     initialEmploymentTypes,
   }: {
+    company: CompanyPageData["company"];
     initialActiveCount: number;
     initialEmploymentTypes: string[];
   }) => (
     <div
       data-testid="company-page"
+      data-company={company.slug}
       data-active={initialActiveCount}
       data-etypes={initialEmploymentTypes.join(",")}
     />
@@ -331,6 +334,66 @@ describe("CompanyContent — server-render initial-data path (#3203)", () => {
     );
     expect(queryByTestId("company-page")?.getAttribute("data-etypes")).toBe(
       "internship",
+    );
+  });
+
+  it("refetches on page identity changes and ignores stale responses", async () => {
+    let resolveAlpha: (v: CompanyPageData) => void = () => {};
+    let resolveBeta: (v: CompanyPageData) => void = () => {};
+    mockFetchCompanyPageData
+      .mockReturnValueOnce(
+        new Promise<CompanyPageData>((resolve) => {
+          resolveAlpha = resolve;
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise<CompanyPageData>((resolve) => {
+          resolveBeta = resolve;
+        }),
+      );
+
+    const { queryByTestId, rerender } = render(
+      <CompanyContent locale="en" slug="alpha" />,
+    );
+
+    await waitFor(() => {
+      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
+    });
+    expect(mockFetchCompanyPageData.mock.calls[0]?.[0]).toMatchObject({
+      slug: "alpha",
+      locale: "en",
+    });
+
+    rerender(<CompanyContent locale="en" slug="beta" />);
+
+    await waitFor(() => {
+      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(2);
+    });
+    expect(mockFetchCompanyPageData.mock.calls[1]?.[0]).toMatchObject({
+      slug: "beta",
+      locale: "en",
+    });
+
+    resolveAlpha(makeInitialData({
+      company: { ...makeCompany(), slug: "alpha" },
+      activeCount: 1,
+    }));
+
+    await new Promise((r) => setTimeout(r, 0));
+    expect(queryByTestId("company-page")).toBeNull();
+
+    resolveBeta(makeInitialData({
+      company: { ...makeCompany(), slug: "beta" },
+      activeCount: 2,
+    }));
+
+    await waitFor(() => {
+      expect(queryByTestId("company-page")?.getAttribute("data-company")).toBe(
+        "beta",
+      );
+    });
+    expect(queryByTestId("company-page")?.getAttribute("data-active")).toBe(
+      "2",
     );
   });
 
