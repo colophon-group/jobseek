@@ -48,6 +48,7 @@ from src.redis_queue import (
     heartbeat_task,
     reap_expired,
     reschedule_task,
+    update_board_metadata_cache,
 )
 
 log = structlog.get_logger()
@@ -310,6 +311,29 @@ class _BoardRecord:
 
     def get(self, key: str, default=None):
         return self._data.get(key, default)
+
+
+async def _refresh_board_metadata_cache(
+    local_pool: asyncpg.Pool,
+    board_id: str,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> None:
+    """Copy the current Postgres board metadata into the Redis board hash."""
+    try:
+        async with local_pool.acquire() as conn:
+            metadata = await conn.fetchval(
+                "SELECT metadata FROM job_board WHERE id = $1::uuid",
+                board_id,
+            )
+        updated = await update_board_metadata_cache(board_id, metadata)
+        if not updated:
+            worker_log.warning("pipeline.monitor.metadata_cache_missing", board_id=board_id)
+    except Exception:
+        worker_log.warning(
+            "pipeline.monitor.metadata_cache_refresh_failed",
+            board_id=board_id,
+            exc_info=True,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -582,6 +606,8 @@ async def _process_monitor_work(
             # the failure-rate alert (#3200).
             tasks_total.labels(kind="monitor", status="gone").inc()
             return
+
+        await _refresh_board_metadata_cache(local_pool, board_id, worker_log)
 
         profile = "browser" if browser else "simple"
         monitor_duration_seconds.labels(profile=profile).observe(duration)
