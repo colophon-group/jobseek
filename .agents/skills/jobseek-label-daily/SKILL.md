@@ -9,7 +9,7 @@ description: Run Jobseek's daily labelled-postings gold-dataset routine with Cod
 
 This routine samples public job postings from the last 24 hours, labels them with Codex project custom agents, validates the outputs, merges accepted records, and uploads accepted gold data to `viktoroo/jobseek-postings-labelled`.
 
-The Python labeller code is deterministic orchestration only: database reads, Jinja task rendering, JSON Schema/custom validation, merge, QA, and HuggingFace upload. Do not add provider SDK calls or call OpenAI or Anthropic endpoints from `apps/crawler/src/labeller`. LLM judgment happens through the already-running, subscription-backed Codex session and project custom agents in `.codex/agents/`.
+The Python labeller code is deterministic orchestration only: database reads, Jinja task rendering, JSON Schema/custom validation, merge, QA, and HuggingFace upload. Do not add provider SDK calls or call OpenAI or Anthropic endpoints from `apps/crawler/src/labeller`. LLM judgment happens through the already-running, subscription-backed Codex session and project custom agents configured in the active harness; the repo mirrors durable subagent contracts under `.agents/labeller/`.
 
 ## Agents
 
@@ -30,7 +30,7 @@ The Jinja task prompts in `apps/crawler/src/labeller/prompts/tasks/` own task-sp
 
 ## Workflow
 
-Run commands from `apps/crawler` with `uv run labeller ...`. Default `RUN_DATE` is `today`; default `SAMPLE_SIZE` is `24` unless the user provides overrides.
+Run commands from `apps/crawler` with `uv run labeller ...`. Default `RUN_DATE` is `today`; default accepted-record target is `10` unless the user provides overrides. Start with `SAMPLE_SIZE=10`; if QA rejections leave fewer than 10 accepted local records for the date, sample additional candidates and continue until the accepted target is met or the sampling pool is exhausted.
 
 1. Sample postings:
 
@@ -144,12 +144,15 @@ For changes to this orchestration surface, run:
 git status --short
 uv run --with 'pyyaml>=6' python /Users/Viktor/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/jobseek-label-daily
 python3 - <<'PY'
-import pathlib, tomllib
-for path in sorted(pathlib.Path(".codex/agents").glob("*.toml")):
-    data = tomllib.loads(path.read_text())
-    assert set(data) == {"name", "description", "developer_instructions"}, path
-    assert "model" not in data, path
-print("codex agents valid")
+import pathlib
+expected = {
+    ".agents/labeller/normalizer.md",
+    ".agents/labeller/splitter.md",
+    ".agents/labeller/extractor.md",
+}
+missing = [path for path in expected if not pathlib.Path(path).exists()]
+assert not missing, missing
+print("labeller agent contracts present")
 PY
 legacy_terms="$(printf '%s' 'son' 'net|op' 'us|Agent[(]|[.]Codex|Claude Code ' 'session|Anthropic ' 'API')"
 rg -n "$legacy_terms" .codex .agents .claude || true

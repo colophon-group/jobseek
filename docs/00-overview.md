@@ -64,7 +64,8 @@ User request
 │           ├── config.py        # Settings
 │           └── metrics.py       # Prometheus metrics
 └── .github/workflows/
-    ├── resolve-company-requests.yml  # Agent picks issues hourly
+    ├── resolve-company-requests.yml  # Legacy scheduled company resolver fallback
+    ├── manual-codex-company-resolver.yml # Manual API-billed Codex resolver fallback
     ├── auto-merge-config.yml         # Auto-merge low-risk config PRs
     └── deploy-crawler-browser.yml    # Build + deploy to Hetzner
 ```
@@ -73,7 +74,13 @@ User request
 
 ### 1. Company Onboarding (agent-driven)
 
-A user submits a company name or URL. The web app creates a GitHub issue labeled `company-request`. A coding agent (Codex preferred for new automation, Claude-compatible paths still supported, or a crowd-sourced user agent) picks the issue, researches the company, determines the best monitor and scraper types, test-crawls, and creates a PR adding rows to the CSV config files. The PR merges automatically for low-risk additions or gets human review for large/complex boards.
+A user submits a company name or URL. The web app creates a GitHub issue
+labeled `company-request`. A coding agent (Codex automation preferred,
+Claude-compatible paths still supported during migration, or a crowd-sourced
+user agent) picks the issue, researches the company, determines the best
+monitor and scraper types, test-crawls, and creates a PR adding rows to the
+CSV config files. The PR merges automatically for low-risk additions or gets
+human review for large/complex boards.
 
 ### 2. Job Monitoring (crawler-driven)
 
@@ -101,3 +108,4 @@ plans, and ADRs, start with [docs/README.md](./README.md).
 - [09 -- Enrichment](./09-enrichment.md): LLM-based enrichment pipeline
 - [16 -- Murmur Codex MCP Transition](./16-murmur-codex-mcp-transition.md): Codex-first Murmur MCP plan
 - [17 -- Codex Migration Verification Runbook](./17-codex-migration-verification-runbook.md): Pilot checklist and rollback criteria
+- [18 -- Codex Automation Deployment](./18-codex-automation-deployment.md): Automation registry, deployment, and maintenance

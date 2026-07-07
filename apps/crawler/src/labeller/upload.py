@@ -82,8 +82,8 @@ configs:
 # jobseek-postings-labelled
 
 Gold-standard **labelled job postings** sampled daily from public company
-career pages. Produced by a Claude-Code-orchestrated pipeline with
-specialised Sonnet subagents for section splitting and per-section
+career pages. Produced by a Codex-first agent pipeline with task-specific
+subagents for HTML normalization, section splitting, and structured
 extraction. The dataset is the substrate for training an improved
 structured-information extractor for [jseek.co](https://jseek.co).
 __COUNTS_LINE__

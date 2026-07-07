@@ -45,10 +45,11 @@ the combined output with `extracted: null`.
 ### The "orchestrator never reads the subagent prompt" invariant
 
 Subagent system prompts live in the agent-runtime layer. Codex repo skills
-belong under `.agents/skills`; the legacy Claude-compatible prompts live in
+belong under `.agents/skills`; harness-neutral subagent contracts are mirrored
+under `.agents/labeller`; the legacy Claude-compatible prompts live in
 `.claude/agents/jobseek-labeller-*.md`. The orchestrator's context must never
 contain those full subagent prompts. It passes variables to a subagent by
-handing it a **rendered task-input file path**. The subagent prompt body is
+handing it a **rendered task-input file path**. The subagent invocation body is
 always two lines:
 
 ```
@@ -142,8 +143,8 @@ pushing.
 ### HuggingFace dataset layout (`viktoroo/jobseek-postings-labelled`)
 
 ```
-postings/{{date}}/<id>.json     # accepted gold records only
-schemas/posting.schema.json     # versioned
+data/{{date}}.jsonl             # accepted gold records, one posting per line
+schemas/posting.schema.json     # versioned schema mirror
 schemas/*/*.schema.json
 README.md
 ```
@@ -191,10 +192,12 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
 - Manual Codex pilot: invoke the repo skill when present, or run
   `codex exec --json` with this runbook and the desired arguments
   (`--date 2026-04-25 --count 10`).
-- Manual Claude-compatible path: `/jobseek-label-daily` (defaults: today UTC,
-  24 postings).
+- Manual Claude-compatible path: `/jobseek-label-daily`; pass an explicit
+  count when using it so it matches the Codex production target.
 - Scheduled Codex path: create a Codex app automation for the repo skill and
-  run it on a background worktree.
+  run it on a background worktree. Deployment settings, target count, model
+  policy, and maintenance checks live in
+  [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
 - Scheduled Claude-compatible path: point the schedule at the prompt
   `/jobseek-label-daily`. The slash command file remains a compatible source
   of truth until the Codex skill is checked in and validated.

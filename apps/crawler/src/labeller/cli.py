@@ -1,8 +1,8 @@
 """CLI entry point for the labeller subsystem.
 
-Invoked by the orchestrator (a Claude Code session) via Bash. Every
-subcommand is side-effect-explicit and stdout-friendly so the orchestrator
-can pipe output and read files the next step needs.
+Invoked by the agent orchestrator (Codex preferred, Claude-compatible) via
+Bash. Every subcommand is side-effect-explicit and stdout-friendly so the
+orchestrator can pipe output and read files the next step needs.
 """
 
 from __future__ import annotations

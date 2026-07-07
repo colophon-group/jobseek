@@ -125,9 +125,16 @@ When config alone can't handle a site, the agent can propose source code changes
 
 The CSV config for the company should be included in the same PR alongside the code change.
 
-## GitHub Actions Automation
+## Company Resolver Automation
 
-The `resolve-company-requests.yml` workflow runs hourly:
+The primary recurring path is the Codex app automation documented in
+[18 - Codex Automation Deployment](18-codex-automation-deployment.md). It
+selects at most one open `company-request` issue per run, claims it with the
+shared `ws` claim protocol, and runs `ws task --issue <N>` from
+`apps/crawler`.
+
+The legacy `resolve-company-requests.yml` workflow still runs hourly while
+the migration is in progress:
 
 ```yaml
 on:
@@ -138,15 +145,22 @@ on:
 
 Budget: max 5 issues per 5-hour rolling window to control costs.
 
-The workflow:
+The recurring resolver:
 1. Selects the oldest open `company-request` issue that has no active PR (or whose PR is stale)
 2. Checks the budget (how many were processed recently)
-3. Runs the configured coding-agent action to resolve the selected issue
+3. Runs the configured coding-agent path to resolve the selected issue
 4. The agent follows the AGENTS.md instructions to create a PR
 
-Codex migration target: use `codex exec --json` for traceable manual fallback
-and the Codex GitHub Action with an OpenAI API key for CI/CD. Do not model the
-GitHub Action path as ChatGPT subscription billing.
+Codex migration target: keep the scheduled route on Codex app automation or
+local Codex CLI where possible. Use `codex exec --json` for traceable manual
+fallback. The Codex GitHub Action in
+`.github/workflows/manual-codex-company-resolver.yml` is API-billed and
+manual-only; use it for missed runs or bounded backlog recovery, not as a
+scheduled replacement.
+
+Once the Codex resolver has enough clean production cycles, disable the legacy
+scheduled workflow by setting the repository variable
+`ENABLE_COMPANY_RESOLVER=false`.
 
 Conflict resolution: if an open PR already claims an issue, the workflow checks
 staleness based on the last commit date — 24h threshold for config-only PRs, 72h

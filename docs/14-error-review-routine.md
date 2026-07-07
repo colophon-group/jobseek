@@ -13,6 +13,8 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
 - **Preferred scheduled route:** Codex app automation in this repository.
   Codex automations for Git repos run on dedicated background worktrees, so
   the routine can use the repo skill without touching an active worktree.
+  Deployment settings and maintenance checks live in
+  [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
 - **Preferred manual route:** local Codex CLI from the repo root, asking it to
   use the `jobseek-error-review` skill.
 - **Manual traceable pilot:** run `codex exec --json` with the skill/runbook as
