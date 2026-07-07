@@ -4,6 +4,7 @@ import csv
 import json
 import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -11,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$")
+LOCALE_RE = re.compile(r"^[a-z]{2}$")
 HTTP_SCHEMES = {"http", "https"}
 
 REQUIRED_COLUMNS = {
@@ -109,15 +111,38 @@ class ValidationError(Exception):
     pass
 
 
+def validate_header(name: str, fieldnames: Sequence[str] | None) -> None:
+    expected = REQUIRED_COLUMNS[name]
+    if name != "occupations.csv":
+        if fieldnames != expected:
+            raise ValidationError(f"{name}: expected header {expected!r}, got {fieldnames!r}")
+        return
+
+    if fieldnames is None:
+        raise ValidationError(f"{name}: missing header")
+
+    missing = [column for column in expected if column not in fieldnames]
+    if missing:
+        raise ValidationError(f"{name}: missing required header column(s) {missing!r}")
+
+    if fieldnames[:3] != ["slug", "parent", "domain"] or fieldnames[-1:] != ["aliases"]:
+        raise ValidationError(
+            f"{name}: expected slug,parent,domain first and aliases last, got {fieldnames!r}"
+        )
+
+    for column in fieldnames[3:-1]:
+        if not LOCALE_RE.fullmatch(column):
+            raise ValidationError(
+                f"{name}: unexpected non-locale column {column!r}; "
+                "occupation display-name columns must be two-letter locale codes"
+            )
+
+
 def read_csv(name: str) -> list[dict[str, str]]:
     path = DATA / name
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
-        expected = REQUIRED_COLUMNS[name]
-        if reader.fieldnames != expected:
-            raise ValidationError(
-                f"{name}: expected header {expected!r}, got {reader.fieldnames!r}"
-            )
+        validate_header(name, reader.fieldnames)
         return list(reader)
 
 

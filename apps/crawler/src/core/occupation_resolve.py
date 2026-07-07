@@ -16,6 +16,7 @@ from __future__ import annotations
 import functools
 import re
 import unicodedata
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,6 +26,12 @@ if TYPE_CHECKING:
     import asyncpg
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+_OCCUPATION_METADATA_COLUMNS = frozenset({"slug", "parent", "domain", "aliases"})
+
+
+def occupation_locale_columns(columns: Sequence[str]) -> list[str]:
+    """Return CSV columns that carry localized occupation display names."""
+    return [column for column in columns if column not in _OCCUPATION_METADATA_COLUMNS]
 
 
 def _normalize(text: str) -> str:
@@ -48,7 +55,7 @@ def _load_aliases() -> dict[str, str]:
     df = pl.read_csv(path, infer_schema_length=0)
 
     mapping: dict[str, str] = {}
-    locales = ["en", "de", "fr", "it"]
+    locales = occupation_locale_columns(df.columns)
 
     for row in df.iter_rows(named=True):
         slug = row["slug"]

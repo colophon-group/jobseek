@@ -418,6 +418,77 @@ class TestUmbrellaParentsStillResolve:
         assert match_occupation(title) == expected
 
 
+class TestEuropeanLocaleOccupationCoverage:
+    @pytest.mark.parametrize(
+        "title,expected",
+        [
+            ("Inżynier oprogramowania", "software-engineer"),
+            ("Analityk danych", "data-analyst"),
+            ("Ingeniero de software", "software-engineer"),
+            ("Analista de datos", "data-analyst"),
+            ("Softwareontwikkelaar", "software-engineer"),
+            ("Data-analist", "data-analyst"),
+            ("Engenheiro de software", "software-engineer"),
+            ("Analista de dados", "data-analyst"),
+            ("Softwarový inženýr", "software-engineer"),
+            ("Datový analytik", "data-analyst"),
+            ("Mjukvaruingenjör", "software-engineer"),
+            ("Dataanalytiker", "data-analyst"),
+            ("Szoftvermérnök", "software-engineer"),
+            ("Adatelemző", "data-analyst"),
+            ("Inginer software", "software-engineer"),
+            ("Analist de date", "data-analyst"),
+            ("Софтуерен инженер", "software-engineer"),
+            ("Анализатор на данни", "data-analyst"),
+            ("Μηχανικός λογισμικού", "software-engineer"),
+            ("Αναλυτής δεδομένων", "data-analyst"),
+            ("Softwareingeniør", "software-engineer"),
+            ("Dataanalytiker", "data-analyst"),
+            ("Ohjelmistoinsinööri", "software-engineer"),
+            ("Data-analyytikko", "data-analyst"),
+            ("Softverski inženjer", "software-engineer"),
+            ("Analitičar podataka", "data-analyst"),
+            ("Softvérový inžinier", "software-engineer"),
+            ("Dátový analytik", "data-analyst"),
+            ("Programski inženir", "software-engineer"),
+            ("Podatkovni analitik", "data-analyst"),
+            ("Programinės įrangos inžinierius", "software-engineer"),
+            ("Duomenų analitikas", "data-analyst"),
+            ("Programmatūras inženieris", "software-engineer"),
+            ("Datu analītiķis", "data-analyst"),
+            ("Tarkvarainsener", "software-engineer"),
+            ("Andmeanalüütik", "data-analyst"),
+        ],
+    )
+    def test_resolves_requested_eu_locale_titles(self, title: str, expected: str):
+        assert match_occupation(title) == expected
+
+    @pytest.mark.parametrize(
+        "title,expected",
+        [
+            ("Inzynier Jakosci", "quality-manager"),
+            ("Desarrollador/a Senior Salesforce_Platform Event", "software-engineer"),
+            ("PLC Programátor (m/ž)", "automation-engineer"),
+            ("Projektový inženýr mechanik (m/ž)", "mechanical-engineer"),
+            ("Karbantartó Mérnök", "maintenance-technician"),
+            ("Inginer grupuri electrogene si DSI - telecom & data centers", "electrical-engineer"),
+        ],
+    )
+    def test_resolves_native_engineering_samples(self, title: str, expected: str):
+        assert match_occupation(title) == expected
+
+    @pytest.mark.parametrize(
+        "title",
+        [
+            "Desarrollador de negocio",
+            "Programador CNC",
+            "Inżynier sprzedaży",
+        ],
+    )
+    def test_broad_native_terms_do_not_match_software(self, title: str):
+        assert match_occupation(title) != "software-engineer"
+
+
 class TestPrunedAliasesNoLongerMatch:
     """Negative tests for Phase 1 alias prunes."""
 

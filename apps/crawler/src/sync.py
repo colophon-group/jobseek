@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 from src.config import settings
 from src.core.monitors import api_monitor_types, monitor_needs_browser
-from src.core.occupation_resolve import match_occupation
+from src.core.occupation_resolve import match_occupation, occupation_locale_columns
 from src.core.scrapers import scraper_needs_browser
 from src.db import close_all_pools, create_local_pool, create_pool
 from src.redis_queue import close_redis, enqueue_monitor, remove_monitor
@@ -647,7 +647,7 @@ async def sync_occupations(
     if len(occupations) == 0:
         return
 
-    locales = ["en", "de", "fr", "it"]
+    locales = occupation_locale_columns(occupations.columns)
     slugs: list[str] = []
     name_slugs: list[str] = []
     name_locales: list[str] = []
