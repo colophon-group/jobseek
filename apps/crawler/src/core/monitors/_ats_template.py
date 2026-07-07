@@ -34,6 +34,16 @@ class ApiProbe(Protocol[Context]):
     ) -> Awaitable[ProbeResult]: ...
 
 
+class DirectTokenResolver(Protocol[Context]):
+    def __call__(
+        self,
+        url: str,
+        token: str,
+        client: httpx.AsyncClient,
+        context: Context,
+    ) -> Awaitable[tuple[str, Context] | None]: ...
+
+
 def token_result(token: str, count: ProbeCount | None, context: object = None) -> dict:
     _ = context
     result: dict = {"token": token}
@@ -54,6 +64,8 @@ async def ats_can_handle[Context](
     api_probe: ApiProbe[Context],
     initial_context: Context,
     result_builder: Callable[[str, ProbeCount | None, Context], dict] = token_result,
+    direct_token_resolver: DirectTokenResolver[Context] | None = None,
+    require_direct_count: bool = False,
     context_from_match: Callable[[re.Match[str], Context], Context] | None = None,
     page_token_probe: ApiProbe[Context] | None = None,
     extra_probe_tokens: Callable[[str, str, Context], Iterable[str]] | None = None,
@@ -75,11 +87,19 @@ async def ats_can_handle[Context](
     """
     token = token_from_url(url)
     if token:
+        context = initial_context
         if client is not None:
-            count = await fetch_job_count(token, client, initial_context)
+            if direct_token_resolver is not None:
+                resolved = await direct_token_resolver(url, token, client, context)
+                if resolved is None:
+                    return None
+                token, context = resolved
+            count = await fetch_job_count(token, client, context)
             if count is not None:
-                return result_builder(token, count, initial_context)
-        return result_builder(token, None, initial_context)
+                return result_builder(token, count, context)
+            if require_direct_count:
+                return None
+        return result_builder(token, None, context)
 
     if client is None:
         return None
@@ -107,18 +127,18 @@ async def ats_can_handle[Context](
                 count = await fetch_job_count(found, client, context)
             return result_builder(found, count, context)
 
-        if extra_probe_tokens is not None:
-            for candidate in extra_probe_tokens(url, html, initial_context):
-                if candidate in ignore_tokens:
-                    continue
-                found, count = await api_probe(candidate, client, initial_context)
-                if found:
-                    log.info(
-                        extra_probe_log_event or f"{monitor_name}.detected_by_extra_probe",
-                        url=url,
-                        **{log_token_field: candidate},
-                    )
-                    return result_builder(candidate, count, initial_context)
+    if extra_probe_tokens is not None:
+        for candidate in extra_probe_tokens(url, html or "", initial_context):
+            if candidate in ignore_tokens:
+                continue
+            found, count = await api_probe(candidate, client, initial_context)
+            if found:
+                log.info(
+                    extra_probe_log_event or f"{monitor_name}.detected_by_extra_probe",
+                    url=url,
+                    **{log_token_field: candidate},
+                )
+                return result_builder(candidate, count, initial_context)
 
     if allow_slug_guess:
         for slug in slugs_from_url(url):

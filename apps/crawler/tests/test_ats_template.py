@@ -52,6 +52,91 @@ async def test_ats_can_handle_uses_direct_token_before_fetching_page():
     assert result == {"token": "acme", "jobs": 3, "context": "direct"}
 
 
+async def test_ats_can_handle_can_resolve_direct_token_before_counting():
+    async def fetch_count(
+        token: str,
+        client: httpx.AsyncClient,
+        context: str,
+    ) -> ProbeCount | None:
+        _ = client
+        assert token == "renamed"
+        assert context == "redirected"
+        return 11
+
+    async def resolve_direct(
+        url: str,
+        token: str,
+        client: httpx.AsyncClient,
+        context: str,
+    ) -> tuple[str, str] | None:
+        _ = (url, client)
+        assert token == "legacy"
+        assert context == "direct"
+        return "renamed", "redirected"
+
+    async def probe_slug(
+        token: str,
+        client: httpx.AsyncClient,
+        context: str,
+    ) -> ProbeResult:
+        _ = (token, client, context)
+        raise AssertionError("direct token detection should not probe slug guesses")
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200))
+    ) as client:
+        result = await ats_can_handle(
+            "https://careers.example.com/jobs",
+            client,
+            monitor_name="example",
+            token_from_url=lambda url: "legacy",
+            page_patterns=[re.compile(r"ats\.example/([\w-]+)")],
+            ignore_tokens=frozenset(),
+            fetch_job_count=fetch_count,
+            api_probe=probe_slug,
+            initial_context="direct",
+            direct_token_resolver=resolve_direct,
+        )
+
+    assert result == {"token": "renamed", "jobs": 11}
+
+
+async def test_ats_can_handle_can_require_direct_count():
+    async def fetch_count(
+        token: str,
+        client: httpx.AsyncClient,
+        context: None,
+    ) -> ProbeCount | None:
+        _ = (token, client, context)
+        return None
+
+    async def probe_slug(
+        token: str,
+        client: httpx.AsyncClient,
+        context: None,
+    ) -> ProbeResult:
+        _ = (token, client, context)
+        raise AssertionError("direct token detection should not probe slug guesses")
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200))
+    ) as client:
+        result = await ats_can_handle(
+            "https://careers.example.com/jobs",
+            client,
+            monitor_name="example",
+            token_from_url=lambda url: "acme",
+            page_patterns=[re.compile(r"ats\.example/([\w-]+)")],
+            ignore_tokens=frozenset(),
+            fetch_job_count=fetch_count,
+            api_probe=probe_slug,
+            initial_context=None,
+            require_direct_count=True,
+        )
+
+    assert result is None
+
+
 async def test_ats_can_handle_passes_match_context_to_page_detection():
     async def fetch_count(
         token: str,
@@ -244,6 +329,7 @@ def test_migrated_monitors_delegate_can_handle_flow_to_ats_template():
         "lever",
         "pinpoint",
         "rippling",
+        "smartrecruiters",
         "softgarden",
         "traffit",
         "workable",
