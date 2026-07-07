@@ -260,9 +260,21 @@ def _job_content(**kw):
     return JobContent(**defaults)
 
 
-def _diff_row(action, row_id=None, url="https://example.com/job/1", r2_hash=None):
+def _diff_row(
+    action,
+    row_id=None,
+    url="https://example.com/job/1",
+    r2_hash=None,
+    needs_scrape_enqueue=False,
+):
     """Create a dict-like mock for a DIFF_URLS result row."""
-    data = {"action": action, "id": row_id, "url": url, "description_r2_hash": r2_hash}
+    data = {
+        "action": action,
+        "id": row_id,
+        "url": url,
+        "description_r2_hash": r2_hash,
+        "needs_scrape_enqueue": needs_scrape_enqueue,
+    }
     row = MagicMock()
     row.__getitem__ = lambda self, key: data[key]
     return row
@@ -1504,14 +1516,13 @@ class TestInsertSqlContract:
         # body — the relisted CTE has its own RETURNING further along).
         touched_start = sql_compact.find("touched AS (")
         assert touched_start != -1, "touched CTE missing"
-        cte_body_end = sql_compact.find(
-            "RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash",
-            touched_start,
-        )
+        cte_body_end = sql_compact.find("), relisted AS (", touched_start)
         assert cte_body_end != -1, "touched CTE has no RETURNING"
         touched_section = sql_compact[touched_start:cte_body_end]
         assert "description_r2_hash IS NULL" in touched_section
         assert "next_scrape_at IS NULL" in touched_section
+        assert "needs_scrape_enqueue" in touched_section
+        assert "job_posting.next_scrape_at <= now()" in touched_section
         # And the same NULL checks must NOT bleed into the relisted CTE
         # (which has its own NULL/now() decision based on $3 alone).
         relisted_start = sql_compact.find("relisted AS (")
@@ -1839,6 +1850,57 @@ class TestDuplicateSourceUrl:
         passed_rows = enqueue_spy.await_args.args[0]
         passed_urls = {r["source_url"] for r in passed_rows}
         assert passed_urls == {url1}, f"deduped url2 leaked into scrape queue: {passed_urls}"
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_touched_missing_due_row_reenters_scrape_queue(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Touched no-content rows can be due in Postgres but absent from Redis.
+
+        A healthy monitor cycle must re-enqueue those rows; otherwise a
+        deploy/Redis-loss window leaves valid upstream jobs permanently hidden
+        behind ``has_content=false`` even though the board keeps succeeding.
+        """
+        pool, conn = mock_pool
+        url = "https://gcaa.wd3.myworkdayjobs.com/GCAA_Careers/job/Albinia/Role_JR1"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [
+                _diff_row(
+                    "touched",
+                    row_id="jp-stale",
+                    url=url,
+                    r2_hash=None,
+                    needs_scrape_enqueue=True,
+                )
+            ],
+            [],  # MARK_GONE
+        ]
+
+        board = _mock_board(
+            id="glencore-board",
+            crawler_type="workday",
+            board_url="https://gcaa.wd3.myworkdayjobs.com/GCAA_Careers",
+            metadata={"scraper_type": "workday"},
+        )
+
+        with patch("src.processing.board._enqueue_scrape", new_callable=AsyncMock) as enqueue:
+            await _process_one_board(board, pool, mock_http)
+
+        enqueue.assert_awaited_once_with(
+            "gcaa.wd3.myworkdayjobs.com",
+            "jp-stale",
+            0,
+            {
+                "source_url": url,
+                "board_id": "glencore-board",
+                "description_r2_hash": "",
+                "scrape_step": "0",
+            },
+            browser=False,
+            first_time=True,
+        )
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")

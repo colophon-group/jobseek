@@ -214,11 +214,16 @@ _DIFF_BATCH = """
 WITH discovered AS (
   SELECT unnest($1::text[]) AS url
 ),
--- Self-heal touched rows (#2996): when a previously-stuck rich-monitor
--- posting (description_r2_hash IS NULL AND next_scrape_at IS NULL) is
--- re-scanned by a board that NOW has enrich (is_rich_no_scrape = $3 =
--- false), reset next_scrape_at = now() so the scrape worker picks the
--- row up. Without this branch, scraper-config fixes shipped via PR
+-- Self-heal touched rows (#2996, #4952): when a previously-stuck
+-- rich-monitor posting (description_r2_hash IS NULL AND next_scrape_at
+-- IS NULL) is re-scanned by a board that NOW has enrich
+-- (is_rich_no_scrape = $3 = false), reset next_scrape_at = now() and
+-- mark it for Redis enqueue so the scrape worker picks the row up.
+-- Also mark already-due missing-content rows for enqueue: production
+-- workers claim from Redis, not Postgres next_scrape_at, so a DB-due row
+-- with a lost scrape ZSET entry otherwise stays active but unscraped
+-- forever while monitor cycles only refresh last_seen_at.
+-- Without this branch, scraper-config fixes shipped via PR
 -- (e.g. #2947, #2953, #2954, #2961, #2962, #2964, #2967, #2968, #2970,
 -- #2971, #2972) only affect FUTURE rows inserted via
 -- ``_INSERT_RICH_JOB_ENRICH``; existing rows inserted via the no-enrich
@@ -242,7 +247,14 @@ touched AS (
   WHERE job_posting.board_id = $2
     AND job_posting.is_active = true
     AND job_posting.source_url = d.url
-  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
+  RETURNING job_posting.id,
+            job_posting.source_url,
+            job_posting.description_r2_hash,
+            (
+              NOT $3::boolean
+              AND job_posting.description_r2_hash IS NULL
+              AND job_posting.next_scrape_at <= now()
+            ) AS needs_scrape_enqueue
 ),
 relisted AS (
   UPDATE job_posting
@@ -261,7 +273,10 @@ relisted AS (
   WHERE job_posting.board_id = $2
     AND job_posting.is_active = false
     AND job_posting.source_url = d.url
-  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
+  RETURNING job_posting.id,
+            job_posting.source_url,
+            job_posting.description_r2_hash,
+            false AS needs_scrape_enqueue
 ),
 -- Cross-tenant URLs: the same source_url exists under another board
 -- (e.g. ByteDance/TikTok share jobs.bytedance.com, Glencore reaches
@@ -291,15 +306,35 @@ new_urls AS (
     WHERE jp.source_url = d.url
   )
 )
-SELECT 'touched' AS action, id::text, source_url AS url, description_r2_hash FROM touched
+SELECT 'touched' AS action,
+       id::text,
+       source_url AS url,
+       description_r2_hash,
+       needs_scrape_enqueue
+FROM touched
 UNION ALL
-SELECT 'relisted' AS action, id::text, source_url AS url, description_r2_hash FROM relisted
+SELECT 'relisted' AS action,
+       id::text,
+       source_url AS url,
+       description_r2_hash,
+       needs_scrape_enqueue
+FROM relisted
 UNION ALL
 -- id is NULL for foreign rows: the owning board's id has no meaning
 -- for the calling board, and the Python layer only counts this action.
-SELECT 'foreign' AS action, NULL::text, source_url AS url, NULL::bigint FROM foreign_touched
+SELECT 'foreign' AS action,
+       NULL::text,
+       source_url AS url,
+       NULL::bigint,
+       false AS needs_scrape_enqueue
+FROM foreign_touched
 UNION ALL
-SELECT 'new', NULL, url, NULL::bigint FROM new_urls
+SELECT 'new',
+       NULL,
+       url,
+       NULL::bigint,
+       false AS needs_scrape_enqueue
+FROM new_urls
 """
 
 _MARK_GONE = """

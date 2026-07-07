@@ -608,6 +608,54 @@ async def _enqueue_scrapes_for_relisted(
         board_log.info("batch.enqueued_scrapes", count=count, relisted=True)
 
 
+async def _enqueue_scrapes_for_touched_missing(
+    touched: list[dict],
+    board_id: str,
+    metadata: dict,
+    board_log: structlog.stdlib.BoundLogger,
+    *,
+    crawler_type: str | None = None,
+) -> None:
+    """Re-enqueue touched rows that are still missing content and due."""
+    rows = [r for r in touched if r.get("needs_scrape_enqueue") and r.get("r2_hash") is None]
+    if not rows:
+        return
+    if _is_skip_no_scrape(metadata, crawler_type):
+        board_log.debug(
+            "batch.enqueue_scrape.skipped_rich",
+            count=len(rows),
+            reason="rich monitor, no enrich",
+        )
+        return
+    scraper_type = metadata.get("scraper_type", "json-ld")
+    scraper_config = metadata.get("scraper_config")
+    if not isinstance(scraper_config, dict):
+        scraper_config = None
+    needs_browser = _scraper_needs_browser(scraper_type, scraper_config)
+    for r in rows:
+        url = r["url"]
+        domain = urlparse(url).hostname or ""
+        await _enqueue_scrape(
+            domain,
+            r["id"],
+            0,
+            {
+                "source_url": url,
+                "board_id": board_id,
+                "description_r2_hash": "",
+                "scrape_step": "0",
+            },
+            browser=needs_browser,
+            first_time=True,
+        )
+    board_log.info(
+        "batch.enqueued_scrapes",
+        count=len(rows),
+        touched_missing=True,
+        first_time=True,
+    )
+
+
 class DeadlineExtender:
     """Shared between work item and pool to extend the timeout deadline.
 
@@ -855,6 +903,7 @@ async def _process_one_board_streaming(
                                     "id": row["id"],
                                     "url": row["url"],
                                     "r2_hash": int(r2h) if r2h is not None else None,
+                                    "needs_scrape_enqueue": bool(row["needs_scrape_enqueue"]),
                                 }
                             )
                         elif action == "foreign":
@@ -1220,6 +1269,13 @@ async def _process_one_board_streaming(
                     if not is_rich_no_scrape:
                         await _enqueue_scrapes_for_relisted(
                             relisted,
+                            board_id,
+                            metadata,
+                            board_log,
+                            crawler_type=crawler_type,
+                        )
+                        await _enqueue_scrapes_for_touched_missing(
+                            touched,
                             board_id,
                             metadata,
                             board_log,
