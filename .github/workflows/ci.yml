@@ -68,8 +68,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Test change classifier
-        run: node scripts/ci-classify-changes.test.mjs
+      - name: Test repository scripts
+        run: >
+          node --test
+          scripts/ci-classify-changes.test.mjs
+          scripts/dealroom-company-requests.test.mjs
 
       - name: Check for code changes
         id: filter
