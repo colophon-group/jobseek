@@ -454,9 +454,9 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                         url_matcher,
                     )
     else:
-        from src.core.monitors import fetch_page_text
+        from src.shared.http_retry import fetch_with_retry
 
-        html = await fetch_page_text(board_url, client)
+        html = await fetch_with_retry(client, board_url, transient_403=True)
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
             return set()

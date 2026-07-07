@@ -1566,8 +1566,27 @@ async def dry_run_single_board(
     # Catch failures (e.g. ApiSnifferFallbackError from a broken sniffer) so
     # `crawler board <slug> --dry-run` reports a clean log line instead of
     # exiting with an unhandled traceback that noises up agent troubleshooting.
+    monitor_http = http
+    monitor_http_owned: httpx.AsyncClient | None = None
+    monitor_ssl_verify = metadata.get("ssl_verify", True)
+    monitor_use_proxy = bool(metadata.get("proxy"))
+    if not monitor_ssl_verify or monitor_use_proxy:
+        from src.shared.http import create_http_client
+
+        monitor_http_owned = create_http_client(
+            verify=monitor_ssl_verify,
+            use_proxy=monitor_use_proxy,
+        )
+        monitor_http = monitor_http_owned
+
     try:
-        result = await _batch.monitor_one(board["board_url"], crawler_type, metadata, http, pw=pw)
+        result = await _batch.monitor_one(
+            board["board_url"],
+            crawler_type,
+            metadata,
+            monitor_http,
+            pw=pw,
+        )
     except Exception as exc:
         log.error(
             "dry_run.monitor.failed",
@@ -1576,6 +1595,9 @@ async def dry_run_single_board(
             exc_info=True,
         )
         return
+    finally:
+        if monitor_http_owned is not None:
+            await monitor_http_owned.aclose()
 
     is_rich = result.jobs_by_url is not None
     log.info(
@@ -1648,43 +1670,76 @@ async def dry_run_single_board(
     log.info("dry_run.scraper.start", sample_size=len(sample_urls), total=len(result.urls))
 
     cfg = scraper_config or {}
-    for url in sample_urls:
-        try:
-            content = await _batch.scrape_one(url, scraper_type, scraper_config, http, pw=pw)
-            content = _apply_defaults(content, cfg)
-            content.description = normalize_description_html(content.description)
+    scrape_http = http
+    scrape_http_owned: httpx.AsyncClient | None = None
+    scrape_ssl_verify = metadata.get("ssl_verify", True)
+    scrape_use_proxy = bool(cfg.get("proxy"))
+    if not scrape_ssl_verify or scrape_use_proxy:
+        from src.shared.http import create_http_client
 
-            if enrich_fields:
-                has_data = any(getattr(content, f, None) is not None for f in enrich_fields)
-                status = "ok" if has_data else "EMPTY (would fail)"
-            elif content.title:
-                status = "ok"
-            else:
-                status = "EMPTY (no title)"
+        scrape_http_owned = create_http_client(
+            verify=scrape_ssl_verify,
+            use_proxy=scrape_use_proxy,
+        )
+        scrape_http = scrape_http_owned
 
-            log.info(
-                "dry_run.scraper.result",
-                url=url,
-                status=status,
-                title=content.title,
-                description_len=len(content.description) if content.description else 0,
-                locations=content.locations,
-                employment_type=content.employment_type,
-            )
+    try:
+        for url in sample_urls:
+            try:
+                content = await _batch.scrape_one(
+                    url,
+                    scraper_type,
+                    scraper_config,
+                    scrape_http,
+                    pw=pw,
+                )
+                content = _apply_defaults(content, cfg)
+                content.description = normalize_description_html(content.description)
 
-            if verbose:
-                for f in dc_fields(content):
-                    val = getattr(content, f.name)
-                    if val is not None:
-                        display = val
-                        if f.name == "description" and isinstance(val, str) and len(val) > 300:
-                            display = val[:300] + "..."
-                        log.info("dry_run.scraper.field", url=url, field=f.name, value=display)
-                    else:
-                        log.info("dry_run.scraper.field", url=url, field=f.name, value="(null)")
+                if enrich_fields:
+                    has_data = any(getattr(content, f, None) is not None for f in enrich_fields)
+                    status = "ok" if has_data else "EMPTY (would fail)"
+                elif content.title:
+                    status = "ok"
+                else:
+                    status = "EMPTY (no title)"
 
-        except Exception as exc:
-            log.error("dry_run.scraper.error", url=url, error=_error_message(exc))
+                log.info(
+                    "dry_run.scraper.result",
+                    url=url,
+                    status=status,
+                    title=content.title,
+                    description_len=len(content.description) if content.description else 0,
+                    locations=content.locations,
+                    employment_type=content.employment_type,
+                )
+
+                if verbose:
+                    for f in dc_fields(content):
+                        val = getattr(content, f.name)
+                        if val is not None:
+                            display = val
+                            if f.name == "description" and isinstance(val, str) and len(val) > 300:
+                                display = val[:300] + "..."
+                            log.info(
+                                "dry_run.scraper.field",
+                                url=url,
+                                field=f.name,
+                                value=display,
+                            )
+                        else:
+                            log.info(
+                                "dry_run.scraper.field",
+                                url=url,
+                                field=f.name,
+                                value="(null)",
+                            )
+
+            except Exception as exc:
+                log.error("dry_run.scraper.error", url=url, error=_error_message(exc))
+    finally:
+        if scrape_http_owned is not None:
+            await scrape_http_owned.aclose()
 
     log.info("dry_run.complete", board_slug=board_slug)
 
