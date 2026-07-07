@@ -1680,6 +1680,18 @@ class TestRefreshTypesenseCounts:
                         }
                     ]
                 }
+            if field == "technology_ids":
+                return {
+                    "facet_counts": [
+                        {
+                            "field_name": "technology_ids",
+                            "counts": [
+                                {"value": "7", "count": 440},
+                                {"value": "13", "count": 95},
+                            ],
+                        }
+                    ]
+                }
             return {"facet_counts": []}
 
         client.collections["job_posting"].documents.search.side_effect = _search
@@ -1708,10 +1720,17 @@ class TestRefreshTypesenseCounts:
         en_parent = next(d for d in occ_docs if d["id"] == "200-en")
         assert en_parent["active_posting_count"] == 90
 
-    async def test_seniority_and_technology_counts_apply_has_content_filter(self):
-        """Issue #3288: seniority and technology precomputed counts must
-        match the web's ``POSTING_BASE_FILTER`` just like company,
-        location, and occupation counts do.
+        # Technologies use the same facet strategy. This avoids the
+        # production Postgres unnest aggregate that timed out in #4961.
+        tech_docs = next((docs for c, docs in captured if c == "technology"), [])
+        tech_by_id = {d["id"]: d for d in tech_docs}
+        assert tech_by_id["7"]["active_posting_count"] == 440
+        assert tech_by_id["13"]["active_posting_count"] == 95
+
+    async def test_seniority_count_sql_and_technology_facet_apply_has_content_filter(self):
+        """Issue #3288/#4961: precomputed counts must match the web's
+        ``POSTING_BASE_FILTER`` without reintroducing the slow technology
+        unnest aggregate in the scheduled refresh path.
         """
         captured_sql: list[str] = []
 
@@ -1729,18 +1748,24 @@ class TestRefreshTypesenseCounts:
             await refresh_typesense_counts(local_conn, client)
 
         sen_sql = next(s for s in captured_sql if "SELECT seniority_id" in s)
-        tech_sql = next(s for s in captured_sql if "unnest(technology_ids)" in s)
-        for sql in (sen_sql, tech_sql):
-            assert "is_active" in sql
-            assert "description_r2_hash IS NOT NULL" in sql, (
-                f"missing description_r2_hash predicate in:\n{sql}"
-            )
-            assert "cardinality(titles) > 0" in sql, (
-                f"missing titles cardinality predicate in:\n{sql}"
-            )
-            assert "length(trim(titles[1])) > 0" in sql, (
-                f"missing titles non-blank predicate in:\n{sql}"
-            )
+        assert "is_active" in sen_sql
+        assert "description_r2_hash IS NOT NULL" in sen_sql, (
+            f"missing description_r2_hash predicate in:\n{sen_sql}"
+        )
+        assert "cardinality(titles) > 0" in sen_sql, (
+            f"missing titles cardinality predicate in:\n{sen_sql}"
+        )
+        assert "length(trim(titles[1])) > 0" in sen_sql, (
+            f"missing titles non-blank predicate in:\n{sen_sql}"
+        )
+
+        assert not any("unnest(technology_ids)" in sql for sql in captured_sql)
+        search_params = [
+            call.args[0]
+            for call in client.collections["job_posting"].documents.search.call_args_list
+        ]
+        tech_params = next(p for p in search_params if p.get("facet_by") == "technology_ids")
+        assert tech_params["filter_by"] == "is_active:true && has_content:!=false"
 
     def test_seniority_count_has_matching_partial_index_migration(self):
         """Issue #4947: the seniority aggregate needs a matching partial
