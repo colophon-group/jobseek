@@ -36,9 +36,12 @@ Rate limiting (shared across worker types):
 
 from __future__ import annotations
 
+import json
 import time
+from collections.abc import Awaitable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import redis.asyncio as aioredis
 import structlog
@@ -74,6 +77,35 @@ async def close_redis() -> None:
     if _pool is not None:
         await _pool.aclose()
         _pool = None
+
+
+def encode_metadata_for_redis(metadata: object) -> str:
+    """Serialize board metadata for Redis hashes.
+
+    asyncpg may return json/jsonb columns as strings, while tests and callers
+    often work with dictionaries. Redis only stores strings, so normalize both
+    forms through JSON to avoid writing Python reprs into ``board:{id}``.
+    """
+    if isinstance(metadata, str):
+        try:
+            parsed = json.loads(metadata)
+        except (json.JSONDecodeError, TypeError):
+            parsed = {}
+    elif isinstance(metadata, dict):
+        parsed = metadata
+    else:
+        parsed = {}
+    return json.dumps(parsed) if parsed else "{}"
+
+
+async def update_board_metadata_cache(board_id: str, metadata: object) -> bool:
+    """Refresh the ``metadata`` field in an existing Redis board hash."""
+    r = get_redis()
+    key = f"board:{board_id}"
+    if not await cast(Awaitable[int], r.exists(key)):
+        return False
+    await cast(Awaitable[object], r.hset(key, "metadata", encode_metadata_for_redis(metadata)))
+    return True
 
 
 # ---------------------------------------------------------------------------

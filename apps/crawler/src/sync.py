@@ -38,7 +38,7 @@ from src.core.monitors import api_monitor_types, monitor_needs_browser
 from src.core.occupation_resolve import match_occupation, occupation_locale_columns
 from src.core.scrapers import scraper_needs_browser
 from src.db import close_all_pools, create_local_pool, create_pool
-from src.redis_queue import close_redis, enqueue_monitor, remove_monitor
+from src.redis_queue import close_redis, encode_metadata_for_redis, enqueue_monitor, remove_monitor
 from src.shared.logging import setup_logging
 from src.typesense_client import get_typesense_client
 
@@ -353,6 +353,7 @@ ON CONFLICT (id) DO UPDATE SET
         ELSE EXCLUDED.is_enabled
     END,
     updated_at = now()
+RETURNING metadata
 """
 
 _DISABLE_REMOVED_BOARDS = """
@@ -1239,7 +1240,7 @@ async def sync_boards(
         scrape_interval = 24  # default
 
         # Target 2: local Postgres (full board config with scheduling)
-        await local_conn.execute(
+        merged_metadata = await local_conn.fetchval(
             _UPSERT_BOARD_LOCAL,
             board_id,
             company_id,
@@ -1261,7 +1262,7 @@ async def sync_boards(
             "board_url": board_url,
             "crawler_type": mon_type,
             "company_id": str(company_id),
-            "metadata": json.dumps(metadata_objs[i]) if metadata_objs[i] else "{}",
+            "metadata": encode_metadata_for_redis(merged_metadata),
             "check_interval_minutes": str(check_interval),
             "scrape_interval_hours": str(scrape_interval),
             "throttle_key": throttle_key,

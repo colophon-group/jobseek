@@ -14,6 +14,7 @@ import src.redis_queue as rq
 from src.workers.pipeline import (
     _BoardRecord,
     _lease_heartbeat,
+    _process_monitor_work,
     _resolve_scraper,
     _scrape_item_from_redis,
 )
@@ -184,6 +185,75 @@ def mock_redis(monkeypatch):
     monkeypatch.setattr(rq, "_HEARTBEAT_SHA", None)
     monkeypatch.setattr(rq, "_REAP_SHA", None)
     return fake
+
+
+@pytest.mark.asyncio
+async def test_process_monitor_work_refreshes_runtime_metadata_in_redis(mock_redis):
+    """Monitor metadata updates persisted in Postgres must reach Redis too."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    board_id = "11111111-1111-4111-8111-111111111111"
+    await mock_redis.hset(
+        f"board:{board_id}",
+        mapping={
+            "board_url": "https://mercadolibre.eightfold.ai/careers",
+            "crawler_type": "eightfold",
+            "metadata": "{}",
+        },
+    )
+
+    refreshed_metadata = {
+        "url_filter": "/careers/job/",
+        "pcsx_watermark": {
+            "max_ts": 1783430000,
+            "last_incremental_at": "2026-07-07T14:49:06+00:00",
+            "enabled": True,
+        },
+    }
+
+    async def fetchval(query: str, *args):
+        if "SELECT board_status" in query:
+            return "active"
+        if "SELECT metadata" in query:
+            return refreshed_metadata
+        raise AssertionError(f"unexpected query: {query} {args}")
+
+    conn = AsyncMock()
+    conn.fetchval = AsyncMock(side_effect=fetchval)
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool = MagicMock()
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+
+    work = rq.BoardWork(
+        board_id=board_id,
+        domain="eightfold",
+        config={
+            "board_url": "https://mercadolibre.eightfold.ai/careers",
+            "crawler_type": "eightfold",
+            "metadata": "{}",
+            "check_interval_minutes": "60",
+        },
+    )
+
+    with (
+        patch(
+            "src.processing.board._process_one_board_streaming",
+            new=AsyncMock(return_value=(True, 0.1)),
+        ),
+        patch("src.workers.pipeline.reschedule_task", new=AsyncMock()),
+    ):
+        await _process_monitor_work(
+            structlog.get_logger(),
+            work,
+            local_pool,
+            AsyncMock(),
+            browser=False,
+        )
+
+    cached = json.loads(await mock_redis.hget(f"board:{board_id}", "metadata"))
+    assert cached == refreshed_metadata
 
 
 @pytest.mark.asyncio

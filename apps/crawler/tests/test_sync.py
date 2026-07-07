@@ -518,6 +518,7 @@ class TestSyncBoards:
 
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetchval = AsyncMock(return_value={})
         # Two orphan rows: one from a just-disabled board, one that was already
         # disabled in a previous sync (covers the historical-orphan case).
         stale_rows = [
@@ -579,6 +580,7 @@ class TestSyncBoards:
 
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetchval = AsyncMock(return_value={})
         mock_local_conn.fetch = AsyncMock(return_value=[])
 
         await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
@@ -633,6 +635,7 @@ class TestSyncBoards:
 
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetchval = AsyncMock(return_value={})
         mock_local_conn.fetch = AsyncMock(return_value=[])
 
         await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
@@ -645,6 +648,66 @@ class TestSyncBoards:
         assert len(rehome_calls) == 1
         assert rehome_calls[0].args[1] == ["https://acme.com/careers"]
         assert "updated_at = now()" in rehome_calls[0].args[0]
+
+    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    async def test_local_path_enqueues_merged_metadata_to_redis(
+        self,
+        mock_enqueue,
+        mock_remove,
+        mock_conn,
+    ):
+        """Redis board hashes must receive runtime-preserved local metadata."""
+        import uuid
+
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["mercado-libre"],
+                "board_slug": ["mercado-libre-eightfold"],
+                "board_url": ["https://mercadolibre.eightfold.ai/careers"],
+                "monitor_type": ["eightfold"],
+                "monitor_config": ['{"url_filter": "/careers/job/"}'],
+                "scraper_type": ["eightfold"],
+                "scraper_config": ['{"enrich": ["description"]}'],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+
+        board_id = uuid.uuid4()
+        company_id = uuid.uuid4()
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": board_id,
+                    "company_id": company_id,
+                    "board_url": "https://mercadolibre.eightfold.ai/careers",
+                }
+            ]
+        )
+
+        merged_metadata = {
+            "url_filter": "/careers/job/",
+            "scraper_type": "eightfold",
+            "scraper_config": {"enrich": ["description"]},
+            "pcsx_watermark": {
+                "max_ts": 1783430000,
+                "last_incremental_at": "2026-07-07T14:49:06+00:00",
+                "enabled": True,
+                "extra": {"host": "mercadolibre.eightfold.ai", "domain": "mercadolibre.com"},
+            },
+        }
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetchval = AsyncMock(return_value=merged_metadata)
+        mock_local_conn.fetch = AsyncMock(return_value=[])
+
+        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+
+        mock_enqueue.assert_awaited_once()
+        config = mock_enqueue.await_args.args[3]
+        assert json.loads(config["metadata"]) == merged_metadata
+        assert config["crawler_type"] == "eightfold"
+        mock_remove.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
