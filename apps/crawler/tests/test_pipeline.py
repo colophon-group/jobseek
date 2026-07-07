@@ -478,6 +478,142 @@ async def test_process_scrape_work_emits_posting_scraped_on_success(mock_redis):
 
 
 @pytest.mark.asyncio
+async def test_process_scrape_work_reschedules_failed_scrape_to_db_backoff(mock_redis):
+    """Failure SQL owns retry backoff; Redis must mirror that DB schedule.
+
+    Newly discovered URL-only rows are most sensitive here: after a transient
+    first scrape failure, Postgres schedules a short retry, while the board's
+    normal scrape interval may be 24h. Redis must not hide the retry for a day.
+    """
+    from datetime import UTC, datetime, timedelta
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.workers.pipeline import _process_scrape_work
+
+    posting_id = "12345678-1111-4222-8333-1234567890ab"
+    domain = "www.mcdonalds.com.ph"
+    retry_at = datetime.now(UTC) + timedelta(minutes=30)
+    work = rq.ScrapeWork(
+        posting_id=posting_id,
+        source_url=f"https://{domain}/career/manager-trainee",
+        board_id="board-mcd-ph",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        domain=domain,
+    )
+
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow = AsyncMock(
+        side_effect=[
+            {"is_active": True, "next_scrape_at": datetime.now(UTC)},
+            {"is_active": True, "next_scrape_at": retry_at},
+        ]
+    )
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+
+    await mock_redis.hset(
+        f"board:{work.board_id}",
+        mapping={
+            "crawler_type": "dom",
+            "metadata": json.dumps({"scraper_type": "dom"}),
+        },
+    )
+
+    worker_log = structlog.get_logger().bind(worker_id=1)
+    with (
+        patch(
+            "src.processing.scrape._process_one_scrape",
+            new=AsyncMock(return_value=(False, 0.5)),
+        ),
+        patch(
+            "src.workers.pipeline.reschedule_task",
+            new=AsyncMock(return_value=None),
+        ) as reschedule,
+    ):
+        await _process_scrape_work(
+            worker_log,
+            work,
+            local_pool,
+            http=AsyncMock(),
+            browser=False,
+        )
+
+    reschedule.assert_awaited_once()
+    await_args = reschedule.await_args
+    assert await_args is not None
+    assert await_args.args[:3] == (domain, posting_id, "scrape")
+    redis_score = await_args.args[3]
+    assert redis_score == pytest.approx(retry_at.timestamp(), abs=1.0)
+    assert redis_score < time.time() + 3600, (
+        "failed scrape should retry on the DB backoff, not the 24h board interval"
+    )
+
+
+@pytest.mark.asyncio
+async def test_process_scrape_work_drops_when_post_scrape_schedule_is_null(mock_redis):
+    """If scrape SQL clears ``next_scrape_at``, Redis must not resurrect it."""
+    from datetime import UTC, datetime
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.workers.pipeline import _process_scrape_work
+
+    posting_id = "12345678-aaaa-4bbb-8ccc-1234567890ab"
+    domain = "example.com"
+    work = rq.ScrapeWork(
+        posting_id=posting_id,
+        source_url=f"https://{domain}/job/one-shot",
+        board_id="board-never",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        domain=domain,
+    )
+
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow = AsyncMock(
+        side_effect=[
+            {"is_active": True, "next_scrape_at": datetime.now(UTC)},
+            {"is_active": True, "next_scrape_at": None},
+        ]
+    )
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+
+    await mock_redis.hset(
+        f"board:{work.board_id}",
+        mapping={
+            "crawler_type": "dom",
+            "metadata": json.dumps({"scraper_type": "dom"}),
+        },
+    )
+
+    with (
+        patch(
+            "src.processing.scrape._process_one_scrape",
+            new=AsyncMock(return_value=(True, 0.5)),
+        ),
+        patch("src.workers.pipeline.reschedule_task", new=AsyncMock()) as reschedule,
+    ):
+        await _process_scrape_work(
+            structlog.get_logger().bind(worker_id=1),
+            work,
+            local_pool,
+            http=AsyncMock(),
+            browser=False,
+        )
+
+    reschedule.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_process_scrape_work_binds_posting_id_contextvar(mock_redis):
     """The scrape coroutine must bind ``posting_id`` to a structlog
     contextvar so downstream code (e.g. third-party libraries using

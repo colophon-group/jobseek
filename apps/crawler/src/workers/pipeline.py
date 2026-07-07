@@ -60,6 +60,24 @@ _ERROR_BACKOFF_S = 300  # 5 minutes
 _IDLE_BACKOFF_S = 2.0
 
 
+def _timestamp(value) -> float:
+    """Return a Redis ZSET score for a DB timestamp-like value."""
+    if hasattr(value, "timestamp"):
+        return float(value.timestamp())
+    return float(value)
+
+
+async def _fetch_scrape_schedule_state(
+    local_pool: asyncpg.Pool,
+    posting_id: str,
+):
+    async with local_pool.acquire() as conn:
+        return await conn.fetchrow(
+            "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid",
+            posting_id,
+        )
+
+
 # ---------------------------------------------------------------------------
 # Inflight lease heartbeat (#3159 / #3173)
 # ---------------------------------------------------------------------------
@@ -734,11 +752,7 @@ async def _process_scrape_work(
             return
 
         try:
-            async with local_pool.acquire() as conn:
-                posting_state = await conn.fetchrow(
-                    "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid",
-                    posting_id,
-                )
+            posting_state = await _fetch_scrape_schedule_state(local_pool, posting_id)
         except Exception:
             tasks_total.labels(kind="scrape", status="skipped_db_error").inc()
             worker_log.warning("pipeline.scrape.self_heal_db_error", exc_info=True)
@@ -927,9 +941,38 @@ async def _process_scrape_work(
         status = "succeeded" if success else "failed"
         tasks_total.labels(kind="scrape", status=status).inc()
 
-        # Reschedule in Redis
-        next_scrape_at = time.time() + scrape_work.scrape_interval_hours * 3600
-        await reschedule_task(domain, posting_id, "scrape", next_scrape_at, browser=browser)
+        # Reschedule Redis from Postgres, which is where scrape success/failure
+        # paths record rescrape policy and transient backoff. Recomputing the
+        # board interval here hides failed first-time scrapes for up to a day.
+        try:
+            posting_state = await _fetch_scrape_schedule_state(local_pool, posting_id)
+        except Exception:
+            worker_log.warning("pipeline.scrape.schedule_state_error", exc_info=True)
+            fallback_due = time.time() + (
+                scrape_work.scrape_interval_hours * 3600 if success else _ERROR_BACKOFF_S
+            )
+            await reschedule_task(domain, posting_id, "scrape", fallback_due, browser=browser)
+        else:
+            if (
+                posting_state is None
+                or not posting_state["is_active"]
+                or posting_state["next_scrape_at"] is None
+            ):
+                worker_log.info(
+                    "pipeline.scrape.reschedule_skipped",
+                    is_active=posting_state["is_active"] if posting_state else None,
+                    next_scrape_at_null=(
+                        posting_state["next_scrape_at"] is None if posting_state else None
+                    ),
+                )
+            else:
+                await reschedule_task(
+                    domain,
+                    posting_id,
+                    "scrape",
+                    _timestamp(posting_state["next_scrape_at"]),
+                    browser=browser,
+                )
 
         # Lifecycle anchor: emit ``posting.scraped`` only on success so an
         # operator with the posting_id can confirm "yes, this URL completed
