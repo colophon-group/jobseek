@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import polars as pl
+from structlog.testing import capture_logs
 
 import src.sync as sync
 
@@ -51,19 +52,22 @@ async def test_lookup_table_sync_skips_exclusive_ddl_when_identities_match(monke
     supa_conn = FakeConn(rows_by_query)
     local_conn = FakeConn(rows_by_query)
 
-    await sync.sync_lookup_tables_local(
-        supa_conn,
-        local_conn,
-        occupation_domains=_df(),
-        occupations=_df(),
-        seniority_df=_df(),
-        technologies=_df(),
-        industries=_df(),
-        dry_run=False,
-    )
+    with capture_logs() as logs:
+        await sync.sync_lookup_tables_local(
+            supa_conn,
+            local_conn,
+            occupation_domains=_df(),
+            occupations=_df(),
+            seniority_df=_df(),
+            technologies=_df(),
+            industries=_df(),
+            dry_run=False,
+        )
 
     assert not any("ALTER TABLE job_posting" in sql for sql in local_conn.executed)
     assert not any(sql.startswith("DELETE FROM") for sql in local_conn.executed)
+    assert any(log["event"] == "sync.lookup_tables_local.identity_up_to_date" for log in logs)
+    assert not any(log["event"] == "sync.lookup_tables_local.mirrored" for log in logs)
 
 
 async def test_lookup_table_sync_mirrors_when_identities_drift(monkeypatch):
