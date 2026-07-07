@@ -10,15 +10,6 @@ import pytest
 import structlog
 
 import src.core.monitors as monitor_registry
-from src.core.monitors import (
-    ashby,
-    fetch_page_text,
-    greenhouse,
-    hireology,
-    lever,
-    recruitee,
-    workable,
-)
 
 ProbeCall = Callable[[httpx.AsyncClient], Awaitable[Any]]
 
@@ -26,12 +17,12 @@ ProbeCall = Callable[[httpx.AsyncClient], Awaitable[Any]]
 def _rebind_probe_loggers(monkeypatch: pytest.MonkeyPatch) -> None:
     for module in (
         monitor_registry,
-        ashby,
-        greenhouse,
-        hireology,
-        lever,
-        recruitee,
-        workable,
+        monitor_registry.ashby,
+        monitor_registry.greenhouse,
+        monitor_registry.hireology,
+        monitor_registry.lever,
+        monitor_registry.recruitee,
+        monitor_registry.workable,
     ):
         monkeypatch.setattr(module, "log", structlog.get_logger())
 
@@ -67,61 +58,63 @@ def _invalid_json_response(request: httpx.Request) -> httpx.Response:
     [
         (
             "greenhouse.probe_failed",
-            lambda client: greenhouse._probe_token("acme", client),
+            lambda client: monitor_registry.greenhouse._probe_token("acme", client),
             (False, None),
             {"probe": "token", "token": "acme"},
         ),
         (
             "greenhouse.probe_failed",
-            lambda client: greenhouse._fetch_job_count("acme", client),
+            lambda client: monitor_registry.greenhouse._fetch_job_count("acme", client),
             None,
             {"probe": "job_count", "token": "acme"},
         ),
         (
             "lever.probe_failed",
-            lambda client: lever._probe_token("acme", client),
+            lambda client: monitor_registry.lever._probe_token("acme", client),
             (False, None),
             {"probe": "token", "token": "acme"},
         ),
         (
             "lever.probe_failed",
-            lambda client: lever._fetch_job_count("acme", client),
+            lambda client: monitor_registry.lever._fetch_job_count("acme", client),
             None,
             {"probe": "job_count", "token": "acme"},
         ),
         (
             "ashby.probe_failed",
-            lambda client: ashby._probe_token("acme", client),
+            lambda client: monitor_registry.ashby._probe_token("acme", client),
             (False, None),
             {"probe": "token", "token": "acme"},
         ),
         (
             "ashby.probe_failed",
-            lambda client: ashby._fetch_job_count("acme", client),
+            lambda client: monitor_registry.ashby._fetch_job_count("acme", client),
             None,
             {"probe": "job_count", "token": "acme"},
         ),
         (
             "workable.probe_failed",
-            lambda client: workable._probe_slug("acme", client),
+            lambda client: monitor_registry.workable._probe_slug("acme", client),
             (False, None),
             {"probe": "slug", "slug": "acme"},
         ),
         (
             "workable.probe_failed",
-            lambda client: workable._fetch_job_count("acme", client),
+            lambda client: monitor_registry.workable._fetch_job_count("acme", client),
             None,
             {"probe": "job_count", "slug": "acme"},
         ),
         (
             "hireology.probe_failed",
-            lambda client: hireology._probe_slug("acme", client),
+            lambda client: monitor_registry.hireology._probe_slug("acme", client),
             (False, None),
             {"probe": "slug", "slug": "acme"},
         ),
         (
             "recruitee.probe_failed",
-            lambda client: recruitee._probe_api("https://acme.recruitee.com", client),
+            lambda client: monitor_registry.recruitee._probe_api(
+                "https://acme.recruitee.com", client
+            ),
             (False, None),
             {"probe": "api", "api_base": "https://acme.recruitee.com"},
         ),
@@ -158,7 +151,7 @@ async def test_fetch_page_text_logs_transient_fetch_failures(
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with _capture_probe_logs(monkeypatch) as logs:
-            result = await fetch_page_text("https://example.com/careers", client)
+            result = await monitor_registry.fetch_page_text("https://example.com/careers", client)
 
     assert result is None
     matching = [event for event in logs if event["event"] == "monitors.fetch_page_text_failed"]
