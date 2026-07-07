@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
+import { readFileSync } from "node:fs";
 import { ActivityHeatmap } from "../activity-heatmap";
 
 /**
@@ -22,10 +23,35 @@ import { ActivityHeatmap } from "../activity-heatmap";
  *     same component to prove the alignment matters.
  */
 
+const linguiState = vi.hoisted(() => ({ locale: "en" }));
+const translateDescriptor = vi.hoisted(() => (
+  {
+    format({
+      id,
+      message,
+      values = {},
+    }: {
+      id?: string;
+      message?: string;
+      values?: Record<string, unknown>;
+    }) {
+      if (id === "myJobs.heatmap.tooltip") {
+        const count = Number(values.count ?? 0);
+        const date = String(values.date ?? "");
+        if (count === 0) return `No applications on ${date}`;
+        if (count === 1) return `1 application on ${date}`;
+        return `${count} applications on ${date}`;
+      }
+      return (message ?? "").replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""));
+    },
+  }
+));
+
 // Lingui hook is required by the component for label rendering; stub it.
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
-    t: ({ message }: { message?: string }) => message ?? "",
+    i18n: { locale: linguiState.locale, _: translateDescriptor.format },
+    t: translateDescriptor.format,
   }),
 }));
 
@@ -51,6 +77,7 @@ function findCellByDate(
 
 describe("ActivityHeatmap — TZ-aligned cell rendering (#3199)", () => {
   beforeEach(() => {
+    linguiState.locale = "en";
     vi.useFakeTimers();
   });
   afterEach(() => {
@@ -143,5 +170,67 @@ describe("ActivityHeatmap — TZ-aligned cell rendering (#3199)", () => {
     for (const cell of cells) {
       expect(cell.getAttribute("data-count")).toBe("0");
     }
+  });
+});
+
+describe("ActivityHeatmap — locale labels and plural tooltip (#3150)", () => {
+  beforeEach(() => {
+    linguiState.locale = "en";
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("uses a single ICU tooltip key and browser Intl labels instead of catalog-backed month/day keys", () => {
+    const source = readFileSync("src/components/my-jobs/activity-heatmap.tsx", "utf8");
+
+    expect(source).toContain('id: "myJobs.heatmap.tooltip"');
+    expect(source).toContain("{count, plural, =0");
+    expect(source).toContain("Intl.DateTimeFormat");
+    expect(source).not.toContain("myJobs.heatmap.tooltipNone");
+    expect(source).not.toContain("myJobs.heatmap.tooltipOne");
+    expect(source).not.toContain("myJobs.heatmap.tooltipMultiple");
+    expect(source).not.toContain("myJobs.heatmap.month.");
+    expect(source).not.toContain("myJobs.heatmap.day.");
+  });
+
+  it("renders weekday and month labels from the active locale", () => {
+    linguiState.locale = "de";
+    vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0, 0));
+
+    const { container } = render(<ActivityHeatmap data={[]} />);
+    const labels = Array.from(container.querySelectorAll("text"))
+      .map((el) => el.textContent)
+      .filter(Boolean);
+
+    expect(labels).toContain(new Intl.DateTimeFormat("de", { weekday: "short" }).format(new Date(2026, 0, 5)));
+    expect(labels).toContain(new Intl.DateTimeFormat("de", { weekday: "short" }).format(new Date(2026, 0, 7)));
+    expect(labels).toContain(new Intl.DateTimeFormat("de", { weekday: "short" }).format(new Date(2026, 0, 9)));
+    expect(labels).toContain(new Intl.DateTimeFormat("de", { month: "short" }).format(new Date(2026, 6, 1)));
+  });
+
+  const tooltipCases: Array<[number, string]> = [
+    [0, "No applications"],
+    [1, "1 application"],
+    [4, "4 applications"],
+  ];
+
+  it.each(tooltipCases)("renders tooltip plural branch for count %i", (count, prefix) => {
+    const now = new Date();
+    now.setHours(12, 0, 0, 0);
+    vi.setSystemTime(now);
+
+    const todayKey = formatLocal(now);
+    const { container } = render(
+      <ActivityHeatmap data={count > 0 ? [{ date: todayKey, count }] : []} />,
+    );
+
+    const todayCell = findCellByDate(container, todayKey);
+    expect(todayCell).toBeDefined();
+    fireEvent.mouseEnter(todayCell!);
+
+    expect(container.textContent).toContain(`${prefix} on ${todayKey}`);
   });
 });

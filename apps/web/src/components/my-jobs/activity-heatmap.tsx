@@ -43,46 +43,29 @@ function getLevel(count: number): number {
   return 4;
 }
 
-function useDayLabels(): string[] {
-  const { t } = useLingui();
-  return [
-    "",
-    t({ id: "myJobs.heatmap.day.mon", comment: "Short Monday label for heatmap", message: "Mon" }),
-    "",
-    t({ id: "myJobs.heatmap.day.wed", comment: "Short Wednesday label for heatmap", message: "Wed" }),
-    "",
-    t({ id: "myJobs.heatmap.day.fri", comment: "Short Friday label for heatmap", message: "Fri" }),
-    "",
-  ];
+function useDayLabels(locale: string): string[] {
+  return useMemo(() => {
+    const formatter = new Intl.DateTimeFormat(locale, { weekday: "short" });
+    return Array.from({ length: DAYS }, (_, day) => {
+      if (day % 2 === 0) return "";
+      return formatter.format(new Date(2026, 0, 5 + (day - 1)));
+    });
+  }, [locale]);
 }
 
-function useMonthLabels(): string[] {
-  const { t } = useLingui();
-  return [
-    t({ id: "myJobs.heatmap.month.jan", comment: "Short January label", message: "Jan" }),
-    t({ id: "myJobs.heatmap.month.feb", comment: "Short February label", message: "Feb" }),
-    t({ id: "myJobs.heatmap.month.mar", comment: "Short March label", message: "Mar" }),
-    t({ id: "myJobs.heatmap.month.apr", comment: "Short April label", message: "Apr" }),
-    t({ id: "myJobs.heatmap.month.may", comment: "Short May label", message: "May" }),
-    t({ id: "myJobs.heatmap.month.jun", comment: "Short June label", message: "Jun" }),
-    t({ id: "myJobs.heatmap.month.jul", comment: "Short July label", message: "Jul" }),
-    t({ id: "myJobs.heatmap.month.aug", comment: "Short August label", message: "Aug" }),
-    t({ id: "myJobs.heatmap.month.sep", comment: "Short September label", message: "Sep" }),
-    t({ id: "myJobs.heatmap.month.oct", comment: "Short October label", message: "Oct" }),
-    t({ id: "myJobs.heatmap.month.nov", comment: "Short November label", message: "Nov" }),
-    t({ id: "myJobs.heatmap.month.dec", comment: "Short December label", message: "Dec" }),
-  ];
+function useMonthLabels(locale: string): string[] {
+  return useMemo(() => {
+    const formatter = new Intl.DateTimeFormat(locale, { month: "short" });
+    return Array.from({ length: 12 }, (_, month) => formatter.format(new Date(2026, month, 1)));
+  }, [locale]);
 }
 
 export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const DAY_LABELS = useDayLabels();
-  const MONTHS = useMonthLabels();
-  const { t } = useLingui();
-  const noApplications = t({ id: "myJobs.heatmap.tooltipNone", comment: "Heatmap tooltip when no applications on a date", message: "No applications on {date}" });
-  const oneApplication = t({ id: "myJobs.heatmap.tooltipOne", comment: "Heatmap tooltip for 1 application", message: "1 application on {date}" });
-  const multipleApplications = t({ id: "myJobs.heatmap.tooltipMultiple", comment: "Heatmap tooltip for multiple applications", message: "{count} applications on {date}" });
+  const { i18n } = useLingui();
+  const DAY_LABELS = useDayLabels(i18n.locale);
+  const MONTHS = useMonthLabels(i18n.locale);
 
   const { grid, monthHeaders } = useMemo(() => {
     const map = new Map(data.map((d) => [d.date, d.count]));
@@ -118,7 +101,7 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
     }
 
     return { grid: columns, monthHeaders };
-  }, [data]);
+  }, [data, MONTHS]);
 
   const labelW = 26;
   const monthH = 15;
@@ -131,11 +114,12 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
     const rect = (e.target as SVGElement).getBoundingClientRect();
     const container = containerRef.current?.getBoundingClientRect();
     if (!container) return;
-    const text = cell.count === 0
-      ? noApplications.replace("{date}", cell.date)
-      : cell.count === 1
-        ? oneApplication.replace("{date}", cell.date)
-        : multipleApplications.replace("{count}", String(cell.count)).replace("{date}", cell.date);
+    const text = i18n._({
+      id: "myJobs.heatmap.tooltip",
+      comment: "Heatmap tooltip shown when hovering an application-activity day; {date} is a YYYY-MM-DD date and {count} is the number of applications that day.",
+      message: "{count, plural, =0 {No applications on {date}} one {# application on {date}} other {# applications on {date}}}",
+      values: { count: cell.count, date: cell.date },
+    });
     setTooltip({ x: rect.left - container.left + CELL / 2, y: rect.top - container.top - 4, text });
   }
 

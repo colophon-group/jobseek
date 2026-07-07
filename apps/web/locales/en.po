@@ -93,11 +93,11 @@ msgstr "{count, plural, one {company} other {companies}}"
 msgid "watchlist.meta.tracking"
 msgstr "{count, plural, one {Tracking # company} other {Tracking # companies}}. {description}"
 
-#. Heatmap tooltip for multiple applications
+#. Heatmap tooltip shown when hovering an application-activity day; {date} is a YYYY-MM-DD date and {count} is the number of applications that day.
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:85
-msgid "myJobs.heatmap.tooltipMultiple"
-msgstr "{count} applications on {date}"
+#: src/components/my-jobs/activity-heatmap.tsx:117
+msgid "myJobs.heatmap.tooltip"
+msgstr "{count, plural, =0 {No applications on {date}} one {# application on {date}} other {# applications on {date}}}"
 
 #. SEO metadata suffix when a watchlist includes more companies than can be listed by name.
 #. js-lingui-explicit-id
@@ -158,12 +158,6 @@ msgstr "$10"
 #: src/components/settings/BillingSettings.tsx:152
 msgid "settings.billing.plan.proPrice"
 msgstr "$10 / month"
-
-#. Heatmap tooltip for 1 application
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:84
-msgid "myJobs.heatmap.tooltipOne"
-msgstr "1 application on {date}"
 
 #. Free feature: one watchlist
 #. js-lingui-explicit-id
@@ -479,12 +473,6 @@ msgstr "Apply"
 msgid "search.detail.apply"
 msgstr "Apply"
 
-#. Short April label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:65
-msgid "myJobs.heatmap.month.apr"
-msgstr "Apr"
-
 #. Step 3 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:129
@@ -502,12 +490,6 @@ msgstr "At least 3 characters"
 #: src/components/settings/AccountSettings.tsx:288
 msgid "settings.account.username.tooLong"
 msgstr "At most 30 characters"
-
-#. Short August label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:69
-msgid "myJobs.heatmap.month.aug"
-msgstr "Aug"
 
 #. Username is available
 #. js-lingui-explicit-id
@@ -1215,12 +1197,6 @@ msgstr "Data analyses, news, and breakdowns of industry reports and papers — d
 msgid "myJobs.sort.dateSaved"
 msgstr "Date saved"
 
-#. Short December label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:73
-msgid "myJobs.heatmap.month.dec"
-msgstr "Dec"
-
 #. Delete watchlist tooltip
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx:210
@@ -1560,12 +1536,6 @@ msgstr "FAQ"
 msgid "common.nav.features"
 msgstr "Features"
 
-#. Short February label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:63
-msgid "myJobs.heatmap.month.feb"
-msgstr "Feb"
-
 #. Button to add a filter to watchlist
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx:352
@@ -1695,12 +1665,6 @@ msgstr "Free gives you full search across all companies, one watchlist, and the 
 #: app/[lang]/(public)/faq/faq-content.tsx:39
 msgid "faq.title"
 msgstr "Frequently asked questions"
-
-#. Short Friday label for heatmap
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:54
-msgid "myJobs.heatmap.day.fri"
-msgstr "Fri"
 
 #. Feature section 2 heading
 #. js-lingui-explicit-id
@@ -2074,12 +2038,6 @@ msgstr "Is the crawler open source?"
 msgid "faq.q.trackerLimit"
 msgstr "Is there a limit to how many jobs I can track?"
 
-#. Short January label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:62
-msgid "myJobs.heatmap.month.jan"
-msgstr "Jan"
-
 #. Singular job count on watchlist card
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-card.tsx:31
@@ -2221,18 +2179,6 @@ msgstr "Jobs at {name}"
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:69
 msgid "watchlist.meta.jobsAt"
 msgstr "Jobs at {names}"
-
-#. Short July label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:68
-msgid "myJobs.heatmap.month.jul"
-msgstr "Jul"
-
-#. Short June label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:67
-msgid "myJobs.heatmap.month.jun"
-msgstr "Jun"
 
 #. Add keyword filter
 #. js-lingui-explicit-id
@@ -2458,12 +2404,6 @@ msgstr "Manage subscription"
 msgid "settings.account.socials.description"
 msgstr "Manage your linked social accounts."
 
-#. Short March label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:64
-msgid "myJobs.heatmap.month.mar"
-msgstr "Mar"
-
 #. Quick action tooltip: mark job as applied
 #. js-lingui-explicit-id
 #: src/components/my-jobs/quick-actions.tsx:18
@@ -2493,12 +2433,6 @@ msgstr "Matches"
 #: src/components/my-jobs/salary-override.tsx:43
 msgid "myJobs.salary.max"
 msgstr "Max"
-
-#. Short May label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:66
-msgid "myJobs.heatmap.month.may"
-msgstr "May"
 
 #. Aria label for the region containing the MCP install one-liner
 #. js-lingui-explicit-id
@@ -2543,12 +2477,6 @@ msgstr "mirrors"
 #: src/components/Features.tsx:308
 msgid "home.features.s3.p2.description"
 msgstr "Missing a company? Paste its careers page URL and we start indexing it for you."
-
-#. Short Monday label for heatmap
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:50
-msgid "myJobs.heatmap.day.mon"
-msgstr "Mon"
 
 #. WebApplication JSON-LD feature list item about career-page monitoring.
 #. js-lingui-explicit-id
@@ -2663,12 +2591,6 @@ msgstr "New password"
 #: src/components/settings/AccountSettings.tsx:102
 msgid "settings.account.password.newLabel"
 msgstr "New password"
-
-#. Heatmap tooltip when no applications on a date
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:83
-msgid "myJobs.heatmap.tooltipNone"
-msgstr "No applications on {date}"
 
 #. CC right 2
 #. js-lingui-explicit-id
@@ -2808,23 +2730,11 @@ msgstr "Not applied"
 msgid "app.home.request.issueWarning"
 msgstr "Note: We couldn't create a tracking issue, but your request was saved."
 
-#. Short November label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:72
-msgid "myJobs.heatmap.month.nov"
-msgstr "Nov"
-
 #. Add occupation filter
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx:213
 msgid "watchlists.filters.occupation"
 msgstr "Occupation"
-
-#. Short October label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:71
-msgid "myJobs.heatmap.month.oct"
-msgstr "Oct"
 
 #. Application tracker status: offer
 #. js-lingui-explicit-id
@@ -3923,12 +3833,6 @@ msgstr "Sending..."
 msgid "watchlists.filters.seniority"
 msgstr "Seniority"
 
-#. Short September label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:70
-msgid "myJobs.heatmap.month.sep"
-msgstr "Sep"
-
 #. Reset password page heading
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:119
@@ -4792,12 +4696,6 @@ msgstr "We'll start tracking it"
 #: src/components/search/request-company-success.tsx:90
 msgid "app.home.request.agent.headingPrefix"
 msgstr "We're working on adding"
-
-#. Short Wednesday label for heatmap
-#. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:52
-msgid "myJobs.heatmap.day.wed"
-msgstr "Wed"
 
 #. Sign-in page subtitle
 #. js-lingui-explicit-id
