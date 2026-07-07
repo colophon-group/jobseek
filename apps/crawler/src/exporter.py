@@ -69,6 +69,20 @@ _EXPERIENCE_MAX_OPEN_ENDED = 99
 # Stored as "ts_iso|uuid" in exporter_state.
 Cursor = tuple[datetime, uuid.UUID]
 
+__all__ = [
+    "Cursor",
+    "PostingSchema",
+    "TaxonomyMaps",
+    "_POSTING_COLUMNS",
+    "_POSTING_UPSERT_SET",
+    "backfill_typesense",
+    "redis_connected",
+    "run_exporter",
+    "run_exporter_with_reconciliation",
+    "run_reconciliation",
+    "typesense_healthy",
+]
+
 
 def _encode_experience_for_typesense(
     exp_min: object,

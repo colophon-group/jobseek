@@ -7,6 +7,7 @@ CodeQL and future refactors can distinguish real exports from dead globals.
 
 from __future__ import annotations
 
+from src import exporter
 from src.core.enrich import taxonomy
 from src.queries import monitor as monitor_queries
 from src.queries import scrape as scrape_queries
@@ -77,3 +78,10 @@ def test_shared_compatibility_globals_are_explicit_exports():
     assert "_RETRYABLE_STATUSES" in http_retry.__all__
     assert "_checked" in redis_module.__all__
     assert "_warned_empty" in taxonomy.__all__
+
+
+def test_exporter_posting_schema_aliases_are_explicit_exports():
+    assert "_POSTING_COLUMNS" in exporter.__all__
+    assert "_POSTING_UPSERT_SET" in exporter.__all__
+    assert exporter.PostingSchema.column_list() == exporter._POSTING_COLUMNS
+    assert exporter.PostingSchema.upsert_set() == exporter._POSTING_UPSERT_SET
