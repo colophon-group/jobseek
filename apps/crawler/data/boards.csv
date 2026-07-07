@@ -4993,6 +4993,7 @@ zenline-ai,zenline-ai-careers,https://zenline.notion.site/Careers-at-Zenline-AI-
 zenni-optical,zenni-optical-greenhouse,https://job-boards.greenhouse.io/zennioptical,greenhouse,"{""token"": ""zennioptical""}",skip,
 zenoti,zenoti-greenhouse,https://job-boards.greenhouse.io/zenoti,greenhouse,"{""token"": ""zenoti""}",skip,
 zenty-lp,zenty-lp-join,https://join.com/companies/zentyie,join,"{""slug"": ""zentyie""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+zeotap,zeotap-careers,https://zeotap.recruitee.com,recruitee,"{""slug"": ""zeotap"", ""api_base"": ""https://zeotap.recruitee.com""}",skip,
 zephyr,zephyr-greenhouse,https://job-boards.greenhouse.io/zephyrhome,greenhouse,"{""token"": ""zephyrhome""}",skip,
 zerion,zerion-careers,https://jobs.lever.co/zerion,lever,"{""token"": ""zerion""}",skip,
 zero,zero-ashby,https://jobs.ashbyhq.com/zero,ashby,"{""token"": ""zero""}",skip,
