@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 export type BrowserCoordinates = {
   lat: number;
   lng: number;
@@ -21,4 +23,31 @@ export function getBrowserCoordinatesOnce(): Promise<BrowserCoordinates | null> 
   });
 
   return browserCoordinatesRequest;
+}
+
+export function useBrowserCoordinates(
+  serverLat: number | null | undefined,
+): BrowserCoordinates | null {
+  const [coordinates, setCoordinates] = useState<BrowserCoordinates | null>(null);
+
+  useEffect(() => {
+    if (serverLat != null) {
+      setCoordinates(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    void getBrowserCoordinatesOnce().then((geo) => {
+      if (!cancelled) {
+        setCoordinates(geo);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [serverLat]);
+
+  return coordinates;
 }

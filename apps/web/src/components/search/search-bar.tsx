@@ -22,7 +22,7 @@ import type { WorkMode } from "@/lib/search/types";
 import { useSearchStateStore, usePageActions } from "@/components/providers/SearchStateProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { ScrollFade } from "@/components/ui/scroll-fade";
-import { getBrowserCoordinatesOnce } from "@/lib/search/browser-geolocation";
+import { useBrowserCoordinates } from "@/lib/search/browser-geolocation";
 
 /**
  * Work-mode autocomplete entries — fixed three values, matched
@@ -151,32 +151,15 @@ export function SearchBar({
   const [technologyResults, setTechnologyResults] = useState<TaxonomySuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [browserGeo, setBrowserGeo] = useState<{ lat: number; lng: number } | null>(null);
-
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const isKeyboardNav = useRef(false);
 
+  const browserGeo = useBrowserCoordinates(serverLat);
   const userLat = serverLat ?? browserGeo?.lat;
   const userLng = serverLng ?? browserGeo?.lng;
-
-  // Request browser geolocation once per page load if server didn't provide coords.
-  useEffect(() => {
-    if (serverLat != null) return;
-    let cancelled = false;
-
-    void getBrowserCoordinatesOnce().then((geo) => {
-      if (!cancelled && geo) {
-        setBrowserGeo(geo);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [serverLat]);
 
   // Current filter state: from props if available, otherwise derive from URL
   const currentKeywords = keywordsProp ?? (searchParams.get("q")?.split(",").filter(Boolean) ?? []);
