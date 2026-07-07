@@ -24,14 +24,13 @@ only the configured site, set ``"all_sites": false`` in board metadata.
 from __future__ import annotations
 
 import asyncio
-import random
 import re
 
 import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register
-from src.shared.http_retry import PaginationFetchError, is_retryable_status
+from src.shared.http_retry import fetch_json_page_with_retry
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
@@ -109,113 +108,18 @@ async def _post_page_with_retry(
     retries: int = _RETRY_ATTEMPTS,
     base_delay: float = _RETRY_BASE_DELAY,
 ) -> dict:
-    """POST a Workday list-API page with bounded retries (#2748).
-
-    Mirrors the contract used by ``fetch_with_retry`` (#2722) and the
-    sibling monitor helpers (accenture #2735, api_sniffer #2733, PCSX
-    #2734): retryable failures back off exponentially and, on budget
-    exhaustion, raise :class:`PaginationFetchError` so the run is
-    recorded as a failure rather than silently truncating to whatever
-    pages happened to succeed.
-
-    Retried:
-      - HTTP 5xx (Cloudflare 520-526/530 included), 408, 425, 429.
-      - Arbitrary network exceptions (timeout, connection reset, JSON
-        parse error on a captcha/HTML body served as 200).
-
-    Fail-fast (non-retryable 4xx — auth-expired 401, misconfigured 400,
-    etc.): raises :class:`PaginationFetchError` on the first attempt.
-    These won't recover within the retry budget and we'd rather surface
-    the misconfiguration than burn the budget.
-
-    Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
-    with full jitter, identical cadence to accenture (#2735).
-    """
-    # Retry observability (#3210). Same counter as ``http_retry.py`` so
-    # cross-monitor "retry storm" queries aggregate workday in.
-    from src.metrics import http_retry_attempts_total, http_retry_host
-    from src.shared.tdm import TDMReservedError
-    from src.shared.tdm import check_response as _tdm_check
-
-    host = http_retry_host(list_url)
-
-    last_exc: BaseException | None = None
-    last_status: int | None = None
-    retried = False
-
-    for attempt in range(retries):
-        try:
-            resp = await client.post(
-                list_url,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            last_status = resp.status_code
-            if resp.status_code == 200:
-                # TDM-Reservation respect (#2842) — header-only check on
-                # API endpoints (the body is JSON, not HTML, so the meta
-                # scan is uninformative).
-                _tdm_check(resp)
-                # ``resp.json()`` may raise ``json.JSONDecodeError`` on a
-                # captcha/HTML body served as 200 — falls into the
-                # ``except Exception`` branch below, retried, then
-                # surfaced as ``PaginationFetchError``. No silent break.
-                data = resp.json()
-                # Workday returns a dict with ``total`` / ``jobPostings``
-                # / ``facets`` on success. A body that decodes to ``null``
-                # or to a non-dict shape (e.g. an unexpected error
-                # envelope) is treated as a transient failure: retry,
-                # then raise. Without this guard ``data.get("total", 0)``
-                # in ``_paginate_query`` ``AttributeError``s — the same
-                # shape of silent-break bug the issue (#2748) is fixing.
-                if not isinstance(data, dict):
-                    raise ValueError(
-                        f"workday list endpoint returned non-dict body: {type(data).__name__}"
-                    )
-                if retried:
-                    http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
-                return data
-            if is_retryable_status(resp.status_code):
-                last_exc = None  # status-only, no exception
-                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
-                retried = True
-            else:
-                # Non-retryable 4xx — fail fast. ``resp.raise_for_status``
-                # would raise ``HTTPStatusError`` which the caller doesn't
-                # uniformly handle; raise ``PaginationFetchError`` directly
-                # for cross-monitor symmetry (callers ``except
-                # PaginationFetchError`` will route to ``_RECORD_FAILURE``).
-                raise PaginationFetchError(
-                    list_url,
-                    attempts=attempt + 1,
-                    last_status=resp.status_code,
-                )
-        except (PaginationFetchError, TDMReservedError):
-            raise
-        except Exception as exc:  # noqa: BLE001 — timeout, network, JSON parse
-            last_exc = exc
-            last_status = None
-            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
-            retried = True
-
-        if attempt < retries - 1:
-            delay = base_delay * (2**attempt) * (0.5 + random.random())
-            log.info(
-                "workday.list_backoff",
-                url=list_url,
-                attempt=attempt + 1,
-                delay_s=round(delay, 2),
-                last_status=last_status,
-                last_error=type(last_exc).__name__ if last_exc else None,
-            )
-            await asyncio.sleep(delay)
-
-    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
-    raise PaginationFetchError(
+    """POST a Workday list-API page with bounded retries (#2748)."""
+    return await fetch_json_page_with_retry(
+        client,
         list_url,
-        attempts=retries,
-        last_status=last_status,
-        last_error=type(last_exc).__name__ if last_exc else None,
+        method="POST",
+        json_body=payload,
+        headers={"Content-Type": "application/json"},
+        expect_shape=dict,
+        retries=retries,
+        base_delay=base_delay,
+        log_event="workday.list_backoff",
+        sleep=asyncio.sleep,
     )
 
 

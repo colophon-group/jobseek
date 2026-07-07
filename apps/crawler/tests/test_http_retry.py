@@ -15,6 +15,8 @@ from src.shared.http_retry import (
     _RETRYABLE_STATUSES,
     END_OF_PAGINATION_STATUSES,
     PaginationFetchError,
+    fetch_json_page_with_retry,
+    fetch_text_page_with_retry,
     fetch_with_retry,
 )
 
@@ -46,6 +48,10 @@ def _value_for(metric_name: str, **labels: str) -> float:
 def _resp(status: int, text: str = "") -> httpx.Response:
     """Build an httpx.Response for stubbing AsyncMock returns."""
     return httpx.Response(status, text=text, request=httpx.Request("GET", "https://x"))
+
+
+def _json_resp(status: int, payload: Any) -> httpx.Response:
+    return httpx.Response(status, json=payload, request=httpx.Request("GET", "https://x"))
 
 
 class TestFetchWithRetry:
@@ -351,6 +357,109 @@ class TestFetchWithRetry:
 
         assert out is None
         assert client.get.await_count == 1
+
+
+class TestFetchJsonPageWithRetry:
+    async def test_get_returns_expected_dict_shape(self):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_json_resp(200, {"items": []}))
+
+        out = await fetch_json_page_with_retry(
+            client,
+            "https://api.example.com/jobs",
+            params={"limit": 100},
+            expect_shape=dict,
+        )
+
+        assert out == {"items": []}
+        assert client.get.await_args.kwargs["params"] == {"limit": 100}
+
+    async def test_post_forwards_json_body_and_headers(self):
+        client = AsyncMock()
+        client.post = AsyncMock(return_value=_json_resp(200, {"total": 0}))
+
+        out = await fetch_json_page_with_retry(
+            client,
+            "https://api.example.com/jobs",
+            method="POST",
+            json_body={"limit": 20},
+            headers={"Content-Type": "application/json"},
+            expect_shape=dict,
+        )
+
+        assert out == {"total": 0}
+        assert client.post.await_args.kwargs["json"] == {"limit": 20}
+        assert client.post.await_args.kwargs["headers"] == {"Content-Type": "application/json"}
+
+    async def test_retries_wrong_json_shape_then_succeeds(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[
+                _json_resp(200, None),
+                _json_resp(200, [{"id": "p1"}]),
+            ]
+        )
+
+        out = await fetch_json_page_with_retry(
+            client,
+            "https://api.example.com/jobs",
+            expect_shape=list,
+            base_delay=0.001,
+            sleep=sleep,
+        )
+
+        assert out == [{"id": "p1"}]
+        assert client.get.await_count == 2
+        assert sleep.await_count == 1
+
+    async def test_non_retryable_4xx_fails_fast(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(403, "forbidden"))
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await fetch_json_page_with_retry(
+                client,
+                "https://api.example.com/jobs",
+                expect_shape=dict,
+                retries=3,
+                base_delay=0.001,
+                sleep=sleep,
+            )
+
+        assert exc_info.value.last_status == 403
+        assert client.get.await_count == 1
+        sleep.assert_not_awaited()
+
+
+class TestFetchTextPageWithRetry:
+    async def test_returns_text_and_none_for_end_status(self):
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=[_resp(200, "<html>ok</html>"), _resp(404)])
+
+        assert await fetch_text_page_with_retry(client, "https://example.com/page") == (
+            "<html>ok</html>"
+        )
+        assert await fetch_text_page_with_retry(client, "https://example.com/missing") is None
+
+    async def test_strict_non_retryable_4xx_raises(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(401, "unauthorized"))
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await fetch_text_page_with_retry(
+                client,
+                "https://example.com/page",
+                retries=3,
+                base_delay=0.001,
+                sleep=sleep,
+            )
+
+        assert exc_info.value.last_status == 401
+        assert client.get.await_count == 1
+        sleep.assert_not_awaited()
 
 
 # ─── Retry observability (#3210) ────────────────────────────────────────

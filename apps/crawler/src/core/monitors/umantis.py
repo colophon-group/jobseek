@@ -14,7 +14,6 @@ Templates vary widely across customers; no shared structured data
 from __future__ import annotations
 
 import asyncio
-import random
 import re
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
@@ -23,11 +22,7 @@ import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register
-from src.shared.http_retry import (
-    END_OF_PAGINATION_STATUSES,
-    PaginationFetchError,
-    is_retryable_status,
-)
+from src.shared.http_retry import fetch_text_page_with_retry
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
@@ -167,86 +162,15 @@ async def _get_page_with_retry(
     retries: int = _RETRY_ATTEMPTS,
     base_delay: float = _RETRY_BASE_DELAY,
 ) -> str | None:
-    """GET an Umantis pagination page with bounded retries (#2747).
-
-    Mirrors the contract used by ``fetch_with_retry`` (#2722) and the
-    sibling monitor helpers (workday #2748, accenture #2735, api_sniffer
-    #2733, PCSX #2734): retryable failures back off exponentially and,
-    on budget exhaustion, raise :class:`PaginationFetchError` so the run
-    is recorded as a failure rather than silently truncating to whatever
-    pages happened to succeed.
-
-    Returns:
-        - ``str`` body on HTTP 200 (the listing HTML).
-        - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination —
-          Umantis returns 200 with empty markup beyond the last page,
-          but we accept the canonical "no content here" statuses for
-          symmetry with the rest of the monitor family).
-
-    Raises:
-        :class:`PaginationFetchError` when *retries* attempts have all
-        hit a retryable failure (transient 5xx, 429, 408, 425, network
-        error). The caller propagates so
-        ``_process_one_board_streaming`` records the run as a failure
-        rather than a partial success (which would tombstone every URL
-        on unfetched pages via ``_MARK_GONE_BY_TIMESTAMP``).
-
-    Backoff: ``base_delay × 2^attempt × (0.5 + random())`` — exponential
-    with full jitter, identical cadence to dom and workday.
-    """
-    from src.shared.tdm import TDMReservedError
-    from src.shared.tdm import check_response as _tdm_check
-
-    last_exc: BaseException | None = None
-    last_status: int | None = None
-
-    for attempt in range(retries):
-        try:
-            resp = await client.get(url, follow_redirects=True)
-            last_status = resp.status_code
-            if resp.status_code == 200:
-                # TDM-Reservation respect (#2842). Umantis is HTML, so
-                # both the header and the body-meta check apply.
-                _tdm_check(resp, body_excerpt=resp.text)
-                return resp.text
-            if resp.status_code in END_OF_PAGINATION_STATUSES:
-                return None
-            if is_retryable_status(resp.status_code):
-                last_exc = None  # status-only, no exception
-            else:
-                # Non-retryable 4xx (auth, forbidden, etc.) — fail fast
-                # rather than burn the budget on a status that won't
-                # recover. ``PaginationFetchError`` keeps semantics
-                # symmetric with workday/accenture/PCSX so callers
-                # ``except PaginationFetchError`` route uniformly.
-                raise PaginationFetchError(
-                    url,
-                    attempts=attempt + 1,
-                    last_status=resp.status_code,
-                )
-        except (PaginationFetchError, TDMReservedError):
-            raise
-        except Exception as exc:  # noqa: BLE001 — timeout, connection error, etc.
-            last_exc = exc
-            last_status = None
-
-        if attempt < retries - 1:
-            delay = base_delay * (2**attempt) * (0.5 + random.random())
-            log.info(
-                "umantis.page_backoff",
-                url=url,
-                attempt=attempt + 1,
-                delay_s=round(delay, 2),
-                last_status=last_status,
-                last_error=type(last_exc).__name__ if last_exc else None,
-            )
-            await asyncio.sleep(delay)
-
-    raise PaginationFetchError(
+    """GET an Umantis pagination page with bounded retries (#2747)."""
+    return await fetch_text_page_with_retry(
+        client,
         url,
-        attempts=retries,
-        last_status=last_status,
-        last_error=type(last_exc).__name__ if last_exc else None,
+        retries=retries,
+        base_delay=base_delay,
+        follow_redirects=True,
+        log_event="umantis.page_backoff",
+        sleep=asyncio.sleep,
     )
 
 
