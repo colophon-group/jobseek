@@ -13,29 +13,76 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  actions: read
-  contents: read
-  packages: read
-  security-events: write
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  changes:
+    name: Detect CodeQL changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      codeql: ${{ steps.default.outputs.codeql || steps.filter.outputs.codeql }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Non-PR CodeQL default
+        id: default
+        if: github.event_name != 'pull_request'
+        run: echo "codeql=true" >> "$GITHUB_OUTPUT"
+
+      - name: Detect changed paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
+        with:
+          predicate-quantifier: every
+          filters: |
+            codeql:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!.github/dependabot.yml'
+              - '!.github/dependabot.yaml'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/DISCUSSION_TEMPLATE/**'
+              - '!apps/crawler/data/**'
+              - '!apps/crawler/traces/**'
+              - '!apps/crawler/VERSION'
+
   analyze:
     name: Analyze (${{ matrix.language }})
+    needs: changes
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
         language: [actions, javascript-typescript, python]
 
     steps:
+      - name: Skip CodeQL analysis for non-code PR
+        if: needs.changes.outputs.codeql != 'true'
+        run: echo "Only non-code paths changed; preserving the required CodeQL status without running analysis."
+
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        if: needs.changes.outputs.codeql == 'true'
 
       - name: Initialize CodeQL
+        if: needs.changes.outputs.codeql == 'true'
         uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4
         with:
           languages: ${{ matrix.language }}
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Perform CodeQL Analysis
+        if: needs.changes.outputs.codeql == 'true'
         uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4

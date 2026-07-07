@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+const codeqlWorkflow = readFileSync(".github/workflows/codeql.yml", "utf8");
 const uploadCompanyImagesWorkflow = readFileSync(
   ".github/workflows/upload-company-images.yml",
   "utf8",
@@ -22,6 +23,14 @@ function setupUvBlocks(workflowSource) {
 
 function jobBlock(jobId) {
   const match = workflow.match(
+    new RegExp(`\\n  ${jobId}:\\n[\\s\\S]*?(?=\\n  [a-zA-Z0-9_-]+:\\n|\\n$)`),
+  );
+  assert.ok(match, `missing workflow job ${jobId}`);
+  return match[0];
+}
+
+function workflowJobBlock(workflowSource, jobId) {
+  const match = workflowSource.match(
     new RegExp(`\\n  ${jobId}:\\n[\\s\\S]*?(?=\\n  [a-zA-Z0-9_-]+:\\n|\\n$)`),
   );
   assert.ok(match, `missing workflow job ${jobId}`);
@@ -67,6 +76,37 @@ test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
   assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
+});
+
+test("CodeQL skips full analysis for non-code pull requests", () => {
+  const changesJob = workflowJobBlock(codeqlWorkflow, "changes");
+  assert.match(changesJob, /name: Detect CodeQL changes/);
+  assert.match(changesJob, /uses: dorny\/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3/);
+  assert.match(changesJob, /predicate-quantifier: every/);
+  assert.match(changesJob, /codeql:\n(?:              - .+\n)+/);
+
+  for (const pattern of [
+    "'!**/*.md'",
+    "'!docs/**'",
+    "'!.github/dependabot.yml'",
+    "'!.github/dependabot.yaml'",
+    "'!.github/ISSUE_TEMPLATE/**'",
+    "'!.github/DISCUSSION_TEMPLATE/**'",
+    "'!apps/crawler/data/**'",
+    "'!apps/crawler/traces/**'",
+    "'!apps/crawler/VERSION'",
+  ]) {
+    assert.ok(changesJob.includes(pattern), `missing CodeQL filter pattern ${pattern}`);
+  }
+
+  const analyzeJob = workflowJobBlock(codeqlWorkflow, "analyze");
+  assert.match(analyzeJob, /name: Analyze \(\$\{\{ matrix\.language \}\}\)/);
+  assert.match(analyzeJob, /needs: changes/);
+  assert.doesNotMatch(analyzeJob, /\n    if: needs\.changes\.outputs\.codeql/);
+  assert.match(analyzeJob, /name: Skip CodeQL analysis for non-code PR/);
+  assert.match(analyzeJob, /if: needs\.changes\.outputs\.codeql != 'true'/);
+  assert.match(analyzeJob, /Initialize CodeQL[\s\S]*if: needs\.changes\.outputs\.codeql == 'true'/);
+  assert.match(analyzeJob, /Perform CodeQL Analysis[\s\S]*if: needs\.changes\.outputs\.codeql == 'true'/);
 });
 
 test("CI runs Typesense E2E suites against a service container", () => {
