@@ -88,6 +88,9 @@ The crawler runs continuously on Hetzner. `sync.py` loads CSV configs into local
 
 ## Related Documents
 
+For the full documentation index, including routines, runbooks, historical
+plans, and ADRs, start with [docs/README.md](./README.md).
+
 - [01 -- Agent Workflow](./01-agent-workflow.md): How agents resolve company requests
 - [02 -- Data Schema](./02-data-schema.md): CSV schemas, DB sync, config format
 - [03 -- Crawler Architecture](./03-crawler-architecture.md): Redis pipeline, workers, exporter

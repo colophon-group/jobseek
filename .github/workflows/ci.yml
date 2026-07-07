@@ -44,6 +44,7 @@ jobs:
         run: >
           node --test
           scripts/ci-workflow.test.mjs
+          scripts/docs-index.test.mjs
           scripts/dealroom-company-requests.test.mjs
 
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
