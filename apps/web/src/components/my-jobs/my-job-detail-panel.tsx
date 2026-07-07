@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { CompanyIcon } from "@/components/CompanyIcon";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { getPostingDetail } from "@/lib/actions/search";
 import type { PostingDetail } from "@/lib/actions/search";
 import {
   getMyJobDetail,
@@ -28,6 +27,7 @@ import { InterviewList } from "./interview-list";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { usePostingDetail } from "@/lib/use-posting-detail";
 
 function useStatusOptionLabels(): Record<ApplicationStatus, string> {
   const { t } = useLingui();
@@ -53,58 +53,55 @@ export function MyJobDetailPanel({
   onClose,
   onStatusChanged,
 }: MyJobDetailPanelProps) {
-  const [postingDetail, setPostingDetail] = useState<PostingDetail | null>(
-    null,
-  );
+  const {
+    detail: postingDetail,
+    loading: postingLoading,
+    error: postingError,
+    descriptionLoaded,
+  } = usePostingDetail(postingId);
   const [jobDetail, setJobDetail] = useState<MyJobDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [jobLoading, setJobLoading] = useState(true);
+  const [jobError, setJobError] = useState(false);
+  const jobDetailRequestIdRef = useRef(0);
   const { t } = useLingui();
   const statusOptionLabels = useStatusOptionLabels();
   const changePlaceholder = t({ id: "myJobs.detail.changePlaceholder", comment: "Placeholder in status change dropdown", message: "Change..." });
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    const locale = document.documentElement.lang || "en";
-
-    try {
-      const [posting, detail] = await Promise.all([
-        getPostingDetail({ postingId, locale }),
-        getMyJobDetail(savedJobId),
-      ]);
-
-      if (!posting || !detail) {
-        setError(true);
-        return;
-      }
-
-      // Show structured data immediately
-      setPostingDetail(posting);
-      setJobDetail(detail);
-      setLoading(false);
-
-      // Fetch description in background
-      if (posting.descriptionUrl && !posting.descriptionHtml) {
-        fetch(posting.descriptionUrl)
-          .then((r) => r.ok ? r.text() : null)
-          .then((html) => {
-            if (!html) return;
-            setPostingDetail((prev) => prev ? { ...prev, descriptionHtml: html } : prev);
-          })
-          .catch(() => {});
-      }
-      return;
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [postingId, savedJobId]);
-
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const requestId = ++jobDetailRequestIdRef.current;
+    setJobDetail(null);
+    setJobLoading(true);
+    setJobError(false);
+
+    getMyJobDetail(savedJobId)
+      .then((detail) => {
+        if (jobDetailRequestIdRef.current !== requestId) return;
+        if (!detail) {
+          setJobError(true);
+          return;
+        }
+        setJobDetail(detail);
+      })
+      .catch(() => {
+        if (jobDetailRequestIdRef.current === requestId) {
+          setJobError(true);
+        }
+      })
+      .finally(() => {
+        if (jobDetailRequestIdRef.current === requestId) {
+          setJobLoading(false);
+        }
+      });
+
+    return () => {
+      if (jobDetailRequestIdRef.current === requestId) {
+        jobDetailRequestIdRef.current += 1;
+      }
+    };
+  }, [savedJobId]);
+
+  const loading = postingLoading || jobLoading;
+  const error = !loading && (postingError || jobError);
 
   async function handleStatusChange(newStatus: ApplicationStatus) {
     if (!jobDetail) return;
@@ -255,7 +252,7 @@ export function MyJobDetailPanel({
                   }}
                 />
               </>
-            ) : postingDetail.descriptionUrl ? (
+            ) : !descriptionLoaded && postingDetail.descriptionUrl ? (
               <div className="space-y-2 py-4">
                 <div className="h-3 w-full animate-pulse rounded bg-border-soft" />
                 <div className="h-3 w-5/6 animate-pulse rounded bg-border-soft" />
