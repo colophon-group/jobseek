@@ -2605,13 +2605,15 @@ def _fetch_active_facet_counts(
     collection.
 
     Returns ``{facet_value: count}`` for every distinct value of ``field``
-    among active postings. ``field`` is the Typesense facet field name —
+    among active postings. ``field`` is the Typesense facet field name.
     ``location_ids`` and ``occupation_ids`` are *post* ancestor expansion
     in the indexer (``exporter._build_typesense_docs``), so the resulting
     counts include city -> country -> macro fan-in. This is the count the
     user sees when clicking the facet in the UI; counting from local
     Postgres ``unnest(location_ids)`` is leaf-only and silently diverges
-    from filter results (issue #2978).
+    from filter results (issue #2978). Other indexed facet arrays such as
+    ``technology_ids`` use the same web-visible base filter without forcing
+    Postgres to rescan and unnest active postings during refresh.
 
     The ``filter_by`` clause matches the web's ``POSTING_BASE_FILTER``
     (``is_active:true && has_content:!=false``) so the count an operator
@@ -2649,11 +2651,12 @@ async def refresh_typesense_counts(
     Idempotent — can be called after each sync run or on a timer.
     Counts are approximate.
 
-    Location and occupation counts are read from the Typesense ``job_posting``
-    facet (post ancestor expansion) so the count an operator sees on a
-    location/occupation card matches the count they get when they filter by
-    it. Reading ``unnest(location_ids)`` from local Postgres returned only
-    leaf ids and silently diverged from filter results (issue #2978).
+    Location, occupation, and technology counts are read from the Typesense
+    ``job_posting`` facets so the count an operator sees on a taxonomy card
+    matches the count they get when they filter by it. Reading from local
+    Postgres ``unnest(...)`` either silently diverges from filter results
+    (issue #2978) or can exceed the crawler's statement timeout on the
+    active posting set (issue #4961).
     """
     loop = asyncio.get_event_loop()
 
@@ -2717,23 +2720,19 @@ async def refresh_typesense_counts(
                 )
         await loop.run_in_executor(None, _ts_bulk_upsert, client, "seniority", sen_docs, "update")
 
-    # --- Technologies ---
-    tech_rows = await local_conn.fetch(
-        f"""
-        SELECT unnest(technology_ids) AS tech_id, COUNT(*) AS cnt
-        FROM job_posting
-        WHERE is_active AND {_HAS_CONTENT_SQL}
-        GROUP BY 1
-        """
+    # --- Technologies (read from Typesense facet to avoid the production
+    # Postgres unnest aggregate timing out on the active posting set; #4961) ---
+    tech_facet = await loop.run_in_executor(
+        None, _fetch_active_facet_counts, client, "technology_ids"
     )
-    if tech_rows:
+    if tech_facet:
         tech_docs = [
             {
-                "id": str(r["tech_id"]),
-                "active_posting_count": r["cnt"],
+                "id": str(tech_id),
+                "active_posting_count": cnt,
                 "has_active_postings": True,
             }
-            for r in tech_rows
+            for tech_id, cnt in tech_facet.items()
         ]
         await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs, "update")
 
