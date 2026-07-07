@@ -3095,7 +3095,7 @@ nivoda,nivoda-ashby,https://jobs.ashbyhq.com/nivoda,ashby,"{""token"": ""nivoda"
 nmi,nmi-greenhouse,https://job-boards.greenhouse.io/nmi,greenhouse,"{""token"": ""nmi""}",skip,
 no-limits-academy-b-v,no-limits-academy-b-v-join,https://join.com/companies/nolimitsacademynl,join,"{""slug"": ""nolimitsacademynl""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 noise-labs,noise-labs-ashby,https://jobs.ashbyhq.com/noise-labs,ashby,"{""token"": ""noise-labs""}",skip,
-nokia,nokia-careers,https://jobs.nokia.com/en/sites/CX_1/jobs,sitemap,"{""url"": ""https://jobs.nokia.com/sitemaps/sitemapIndex""}",oracle_hcm,"{""host"": ""fa-evmr-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_1""}"
+nokia,nokia-careers,https://jobs.nokia.com/en/sites/CX_1/jobs,sitemap,"{""sitemap_url"": ""https://jobs.nokia.com/sitemaps/sitemapIndex"", ""url_filter"": ""^https://jobs\\.nokia\\.com/[a-z]{2}(?:-[A-Z]{2})?/job/\\d+(?:[/?#]|$)""}",oracle_hcm,"{""host"": ""fa-evmr-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_1""}"
 nomad,nomad-ashby,https://jobs.ashbyhq.com/nomad,ashby,"{""token"": ""nomad""}",skip,
 nomagic,nomagic-careers,https://jobs.lever.co/Nomagic,lever,"{""token"": ""Nomagic""}",skip,
 nomiso,nomiso-greenhouse,https://job-boards.greenhouse.io/nomiso,greenhouse,"{""token"": ""nomiso""}",skip,
