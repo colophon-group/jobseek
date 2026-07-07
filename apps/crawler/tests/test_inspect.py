@@ -641,6 +641,56 @@ class TestHasbroBoardConfig:
         assert row["scraper_config"] == ""
 
 
+class TestNokiaSitemapFilter:
+    """Nokia's Oracle HCM sitemap contains localized non-job pages (#4964)."""
+
+    def test_nokia_sitemap_only_emits_job_detail_urls(self):
+        import json
+        import re
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("nokia-careers")
+        assert row is not None, "nokia-careers row missing from boards.csv"
+        assert row["monitor_type"] == "sitemap"
+        assert row["scraper_type"] == "oracle_hcm"
+
+        monitor_config = json.loads(row["monitor_config"])
+        assert monitor_config["sitemap_url"] == "https://jobs.nokia.com/sitemaps/sitemapIndex"
+
+        url_filter = re.compile(monitor_config["url_filter"])
+        valid_urls = [
+            "https://jobs.nokia.com/en/job/36037",
+            "https://jobs.nokia.com/de/job/20886",
+            "https://jobs.nokia.com/pt-BR/job/31878",
+            "https://jobs.nokia.com/zh-CN/job/23161?src=JB-10040",
+        ]
+        invalid_urls = [
+            "https://jobs.nokia.com/en/sites/CX_1",
+            "https://jobs.nokia.com/en/sites/CX_1/jobs",
+            "https://jobs.nokia.com/en/sites/CX_1/join-talent-community",
+            "https://jobs.nokia.com/de/sites/CX_1",
+            "https://jobs.nokia.com/de/sites/CX_1/jobs",
+            "https://jobs.nokia.com/de/sites/CX_1/join-talent-community",
+            "https://jobs.nokia.com/fr/sites/CX_1",
+            "https://jobs.nokia.com/fr/sites/CX_1/jobs",
+            "https://jobs.nokia.com/fr/sites/CX_1/join-talent-community",
+            "https://jobs.nokia.com/pt-BR/sites/CX_1",
+            "https://jobs.nokia.com/pt-BR/sites/CX_1/jobs",
+            "https://jobs.nokia.com/pt-BR/sites/CX_1/join-talent-community",
+            "https://jobs.nokia.com/zh-CN/sites/CX_1",
+            "https://jobs.nokia.com/zh-CN/sites/CX_1/jobs",
+            "https://jobs.nokia.com/zh-CN/sites/CX_1/join-talent-community",
+        ]
+
+        assert all(url_filter.search(url) for url in valid_urls)
+        assert not any(url_filter.search(url) for url in invalid_urls)
+
+
 class TestTeslaScraperHasEnrich:
     """Tesla's api_sniffer detail scraper MUST declare ``enrich`` (#2952).
 
