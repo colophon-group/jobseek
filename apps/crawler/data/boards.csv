@@ -1956,7 +1956,7 @@ harrison-ai,harrison-ai-ashby,https://jobs.ashbyhq.com/harrison.ai,ashby,"{""tok
 harrow-inc,harrow-inc-greenhouse,https://job-boards.greenhouse.io/harrowhealth,greenhouse,"{""token"": ""harrowhealth""}",skip,
 harry-s,harry-s-greenhouse,https://job-boards.greenhouse.io/harrys,greenhouse,"{""token"": ""harrys""}",skip,
 harvey,harvey-ashby,https://jobs.ashbyhq.com/harvey,ashby,"{""token"": ""harvey""}",skip,
-hasbro,hasbro-eightfold,https://hasbro.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+hasbro,hasbro-greenhouse,https://job-boards.greenhouse.io/hasbro,greenhouse,"{""token"": ""hasbro""}",skip,
 hatch,hatch-ashby,https://jobs.ashbyhq.com/hatch,ashby,"{""token"": ""hatch""}",skip,
 hatch,hatch-greenhouse,https://job-boards.greenhouse.io/hatchcareers,greenhouse,"{""token"": ""hatchcareers""}",skip,
 hauskrankenpflege-stolley-gmbh,hauskrankenpflege-stolley-gmbh-join,https://join.com/companies/hauskrankenpflege-stolleyde,join,"{""slug"": ""hauskrankenpflege-stolleyde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"

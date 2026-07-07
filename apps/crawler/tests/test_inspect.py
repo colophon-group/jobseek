@@ -613,6 +613,34 @@ class TestMigratedBoardsHaveProxy:
         )
 
 
+class TestHasbroBoardConfig:
+    """Hasbro's retired Eightfold board returns 404; keep it on Greenhouse."""
+
+    def test_hasbro_uses_greenhouse_board(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        hasbro_rows = [r for r in rows if r["company_slug"] == "hasbro"]
+        by_slug = {r["board_slug"]: r for r in hasbro_rows}
+
+        assert "hasbro-eightfold" not in by_slug, (
+            "hasbro-eightfold points at retired https://hasbro.eightfold.ai/careers "
+            "and causes recurring sitemap discovery failures. Use the active "
+            "Greenhouse board instead."
+        )
+
+        row = by_slug.get("hasbro-greenhouse")
+        assert row is not None, "hasbro-greenhouse row missing from boards.csv"
+        assert row["board_url"] == "https://job-boards.greenhouse.io/hasbro"
+        assert row["monitor_type"] == "greenhouse"
+        assert json.loads(row["monitor_config"]) == {"token": "hasbro"}
+        assert row["scraper_type"] == "skip"
+        assert row["scraper_config"] == ""
+
+
 class TestTeslaScraperHasEnrich:
     """Tesla's api_sniffer detail scraper MUST declare ``enrich`` (#2952).
 
