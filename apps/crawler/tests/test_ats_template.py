@@ -188,7 +188,16 @@ async def test_ats_can_handle_can_disable_slug_guessing():
 
 
 def test_migrated_monitors_delegate_can_handle_flow_to_ats_template():
-    migrated = ("ashby", "greenhouse", "hireology", "lever", "pinpoint", "rippling", "workable")
+    migrated = (
+        "ashby",
+        "greenhouse",
+        "hireology",
+        "lever",
+        "pinpoint",
+        "rippling",
+        "traffit",
+        "workable",
+    )
 
     for monitor_name in migrated:
         module = importlib.import_module(f"src.core.monitors.{monitor_name}")
