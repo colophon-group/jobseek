@@ -3,8 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import { CACHE_TTL_MEDIUM, CACHE_TTL_LONG, CACHE_TTL_DETAIL } from "@/lib/cache-ttl";
-import { cached } from "@/lib/cache";
+import { CACHE_TTL_MEDIUM, CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResultPosting, WorkMode } from "@/lib/search";
@@ -19,12 +18,7 @@ import { expandOccupationIdsBatch } from "@/lib/services/taxonomy";
 import { ANON_MAX_COMPANIES, ANON_MAX_POSTINGS } from "@/lib/search/constants";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
-import {
-  isRetryableError as isRetryableTypesenseError,
-  isTypesenseRateLimitError,
-  isTypesenseUnavailableError,
-  withTypesenseRetry,
-} from "@/lib/search/typesense-retry";
+import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import { parseSearchFilters } from "@/lib/services/search-input";
 import { getCurrencyRates } from "@/lib/services/search";
@@ -32,9 +26,8 @@ import { firstOf, idsOrUndefined, parseRangeParam } from "@/lib/search/params";
 import { convertToEur } from "@/lib/salary";
 import { canonicalStringCompare } from "@/lib/sort";
 
-function shouldRetryCompanyTypesenseRead(err: unknown): boolean {
-  return isRetryableTypesenseError(err) || isTypesenseRateLimitError(err);
-}
+export { getCompanyBySlug } from "@/lib/services/company-detail";
+export type { CompanyDetail } from "@/lib/services/company-detail";
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
 
@@ -618,219 +611,6 @@ export async function suggestIndustries(params: {
 
   type Row = { id: number; name: string };
   return (rows as unknown as Row[]).map((r) => ({ id: r.id, name: r.name }));
-}
-
-// ── Company detail ──────────────────────────────────────────────────
-
-export interface CompanyDetail {
-  id: string;
-  name: string;
-  slug: string;
-  icon: string | null;
-  logo: string | null;
-  website: string | null;
-  description: string | null;
-  industryId: number | null;
-  industryName: string | null;
-  employeeCountRange: number | null;
-  foundedYear: number | null;
-  activeJobCount: number;
-}
-
-export async function getCompanyBySlug(
-  slug: string,
-  locale: string,
-): Promise<CompanyDetail | null> {
-  if (!canResolveCompanyBySlug()) {
-    console.warn("[company] lookup skipped because Typesense and DATABASE_URL are not configured");
-    return null;
-  }
-  const key = `company-slug:${slug}:${locale}`;
-  // Empty-result skipping is load-bearing here: a not-yet-indexed company
-  // should be retried on the next request, but throwing a sentinel from a
-  // `'use cache'` boundary leaks that error into the RSC payload (#3603).
-  return cached(key, () => _fetchCompanyBySlug(slug, locale), {
-    ttl: CACHE_TTL_DETAIL,
-    skipIf: (data) => data === null,
-  });
-}
-
-async function _fetchCompanyBySlug(slug: string, locale: string): Promise<CompanyDetail | null> {
-  // Primary path: Typesense. Falls back to Postgres on either error or 0 hits
-  // so brand-new companies (whose Typesense upsert lagged the latest sync)
-  // still render. Bot traffic to nonexistent slugs pays the Postgres cost
-  // (a cheap PK lookup on company.slug); cache layer above prevents
-  // poisoning by not storing nulls.
-  let typesenseError: unknown;
-  try {
-    const fromTypesense = await _fetchCompanyBySlugFromTypesense(slug, locale);
-    if (fromTypesense) return fromTypesense;
-  } catch (err) {
-    typesenseError = err;
-  }
-  if (typesenseError && !isTypesenseUnavailableError(typesenseError)) {
-    throw typesenseError;
-  }
-  if (!process.env.DATABASE_URL) {
-    if (typesenseError) {
-      console.error("[company] Typesense failed and Postgres fallback is unavailable", typesenseError);
-    }
-    console.warn("[company] Postgres fallback skipped because DATABASE_URL is not configured");
-    return null;
-  }
-  if (typesenseError) {
-    // Typesense unreachable — fall through to Postgres. Log at error so the
-    // fallback rate is queryable (e.g. Cloudflare-tunnel blip pushing 100%
-    // of company-page traffic to Supabase). Matches the precedent set by
-    // `searchCompaniesForWatchlist` / `_fetchSimilarUnfiltered` /
-    // `_fetchSimilarFiltered` in this same file. See #3175.
-    console.error("[company] Typesense failed, falling back to Postgres", typesenseError);
-  }
-  return _fetchCompanyBySlugFromPostgres(slug, locale);
-}
-
-function canResolveCompanyBySlug(): boolean {
-  return Boolean(
-    process.env.DATABASE_URL ||
-      (
-        process.env.TYPESENSE_HOST &&
-        process.env.TYPESENSE_PORT &&
-        process.env.TYPESENSE_PROTOCOL &&
-        process.env.TYPESENSE_SEARCH_KEY
-      ),
-  );
-}
-
-// Canonical company-slug shape: lowercase alphanumeric segments separated
-// by single hyphens (mirrors apps/crawler SLUG_RE). The slug reaches here
-// from a URL path segment, so a hostile caller could craft a string that
-// escapes the Typesense filter clause when raw-interpolated. Reject
-// non-conforming slugs up front; null falls through to a regular 404.
-const SLUG_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-
-async function _fetchCompanyBySlugFromTypesense(
-  slug: string,
-  locale: string,
-): Promise<CompanyDetail | null> {
-  if (!SLUG_SHAPE.test(slug)) return null;
-  const client = getSearchClient();
-  const result = await withTypesenseRetry(
-    () =>
-      client.collections("company").documents().search({
-        q: "*",
-        filter_by: `slug:=${slug}`,
-        per_page: 1,
-      }),
-    {
-      attempts: 5,
-      baseDelaysMs: [250, 500, 1000, 2000],
-      isRetryable: shouldRetryCompanyTypesenseRead,
-      label: `companyBySlug[${slug}]`,
-    },
-  );
-  const hit = result.hits?.[0]?.document as Record<string, unknown> | undefined;
-  if (!hit) return null;
-
-  const localeKey = (loc: string, base: string): string =>
-    loc === "en" ? base : `${base}_${loc}`;
-  const pickLocalized = (base: string): string | null => {
-    const localized = hit[localeKey(locale, base)];
-    if (typeof localized === "string" && localized.length > 0) return localized;
-    const en = hit[base];
-    return typeof en === "string" && en.length > 0 ? en : null;
-  };
-
-  return {
-    id: String(hit.id),
-    name: String(hit.name ?? ""),
-    slug: String(hit.slug ?? slug),
-    icon: typeof hit.icon === "string" ? hit.icon : null,
-    logo: typeof hit.logo === "string" ? hit.logo : null,
-    website: typeof hit.website === "string" ? hit.website : null,
-    description: pickLocalized("description"),
-    industryId: typeof hit.industry_id === "number" ? hit.industry_id : null,
-    industryName: pickLocalized("industry_name"),
-    employeeCountRange:
-      typeof hit.employee_count_range === "number" ? hit.employee_count_range : null,
-    foundedYear: typeof hit.founded_year === "number" ? hit.founded_year : null,
-    activeJobCount: typeof hit.active_posting_count === "number" ? hit.active_posting_count : 0,
-  };
-}
-
-async function _fetchCompanyBySlugFromPostgres(
-  slug: string,
-  locale: string,
-): Promise<CompanyDetail | null> {
-  // Retry on transient connection-class errors (#2918): the build that
-  // killed prerender at 2026-05-09T15:41:49Z hit `read ECONNRESET` from
-  // the Supabase pooler on this exact query. The next build 2 min later
-  // succeeded → flake, not structural break. `withDbRetry` only retries
-  // ECONNRESET / ETIMEDOUT / ECONNREFUSED / EPIPE / "Connection
-  // terminated"-class messages; syntax / constraint / business errors
-  // propagate immediately so the original signal is preserved.
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        name: string;
-        slug: string;
-        icon: string | null;
-        logo: string | null;
-        website: string | null;
-        description: string | null;
-        industry_id: number | null;
-        industry_name: string | null;
-        employee_count_range: number | null;
-        founded_year: number | null;
-      }>(sql`
-        SELECT c.id, c.name, c.slug, c.icon, c.logo, c.website,
-          COALESCE(cd.description, c.description) AS description,
-          c.industry AS industry_id,
-          COALESCE(ind_name.name, i.name) AS industry_name,
-          c.employee_count_range,
-          c.founded_year
-        FROM company c
-        LEFT JOIN industry i ON i.id = c.industry
-        LEFT JOIN company_description cd
-          ON cd.company_id = c.id AND cd.locale = ${locale}
-        LEFT JOIN LATERAL (
-          SELECT name FROM industry_name
-          WHERE industry_id = c.industry AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) ind_name ON c.industry IS NOT NULL
-        WHERE c.slug = ${slug}
-      `),
-    { label: `companyBySlug[${slug}]` },
-  );
-
-  type Row = {
-    id: string; name: string; slug: string; icon: string | null;
-    logo: string | null; website: string | null; description: string | null;
-    industry_id: number | null; industry_name: string | null;
-    employee_count_range: number | null; founded_year: number | null;
-  };
-  const row = (rows as unknown as Row[])[0];
-  if (!row) return null;
-
-  return {
-    id: row.id,
-    name: row.name,
-    slug: row.slug,
-    icon: row.icon,
-    logo: row.logo,
-    website: row.website,
-    description: row.description,
-    industryId: row.industry_id,
-    industryName: row.industry_name,
-    employeeCountRange: row.employee_count_range,
-    foundedYear: row.founded_year,
-    // Postgres fallback skips the active count (the only Typesense-only fact).
-    // Effect on the page: header strip shows "0 open positions" until Typesense
-    // recovers; the postings list itself comes from a separate Typesense call
-    // (getCompanyPostings) so its rendering is unaffected by this path.
-    activeJobCount: 0,
-  };
 }
 
 // ── Similar companies (same industry, active, excluding self) ───────

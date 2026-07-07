@@ -11,7 +11,7 @@ vi.mock("server-only", () => ({}));
  * Shared mocks must live in `vi.hoisted` because `vi.mock` hoists to the
  * top of the file; closure references against module-scope variables
  * become `undefined` at the time the factory runs. (Same pattern used
- * in apps/web/src/lib/actions/__tests__/company.test.ts.)
+ * in apps/web/src/lib/services/__tests__/company-detail.test.ts.)
  */
 const mocks = vi.hoisted(() => ({
   // Drizzle fluent-API surface used by mutators. Each call returns the

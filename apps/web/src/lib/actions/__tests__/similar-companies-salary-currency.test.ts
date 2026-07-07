@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // `vi.mock` hoists to the top of the file so its factories cannot close
 // over module-scope variables. Use `vi.hoisted` to share mocks between
 // the factory and the test bodies. Mirrors the pattern in
-// `company.test.ts` and `explore-page-data-salary-currency.test.ts`.
+// `company-detail.test.ts` and `explore-page-data-salary-currency.test.ts`.
 const mocks = vi.hoisted(() => ({
   cacheLife: vi.fn(),
   cacheTag: vi.fn(),
@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("server-only", () => ({}));
 
 // `cacheLife` / `cacheTag` are no-ops outside a Cache Components-enabled
-// runtime — see `company.test.ts` for the full rationale. The `'use cache'`
+// runtime — see `company-detail.test.ts` for the full rationale. The `'use cache'`
 // directive itself is removed by the test transform pipeline.
 vi.mock("next/cache", () => ({
   cacheLife: mocks.cacheLife,
