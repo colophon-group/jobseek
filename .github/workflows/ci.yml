@@ -262,9 +262,10 @@ jobs:
         image: typesense/typesense:27.1
         ports:
           - 8108:8108
+        options: --tmpfs /data:rw
         env:
           TYPESENSE_API_KEY: local_dev_typesense_key
-          TYPESENSE_DATA_DIR: /tmp/typesense-data
+          TYPESENSE_DATA_DIR: /data
     env:
       REQUIRE_TYPESENSE_E2E: "true"
     steps:
@@ -421,9 +422,10 @@ jobs:
         image: typesense/typesense:27.1
         ports:
           - 8108:8108
+        options: --tmpfs /data:rw
         env:
           TYPESENSE_API_KEY: local_dev_typesense_key
-          TYPESENSE_DATA_DIR: /tmp/typesense-data
+          TYPESENSE_DATA_DIR: /data
     env:
       TYPESENSE_HOST: localhost
       TYPESENSE_PORT: "8108"

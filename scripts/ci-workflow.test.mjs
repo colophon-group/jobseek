@@ -73,7 +73,9 @@ test("CI runs Typesense E2E suites against a service container", () => {
   const webJob = jobBlock("test-web-typesense-e2e");
   assert.match(webJob, /services:\n      typesense:/);
   assert.match(webJob, /image: typesense\/typesense:27\.1/);
+  assert.match(webJob, /options: --tmpfs \/data:rw/);
   assert.match(webJob, /TYPESENSE_API_KEY: local_dev_typesense_key/);
+  assert.match(webJob, /TYPESENSE_DATA_DIR: \/data/);
   assert.match(webJob, /REQUIRE_TYPESENSE_E2E: "true"/);
   assert.match(webJob, /name: Wait for Typesense[\s\S]*curl -fsS http:\/\/localhost:8108\/health/);
   assert.match(
@@ -84,6 +86,8 @@ test("CI runs Typesense E2E suites against a service container", () => {
   const crawlerJob = jobBlock("test-crawler-typesense-e2e");
   assert.match(crawlerJob, /services:\n      typesense:/);
   assert.match(crawlerJob, /image: typesense\/typesense:27\.1/);
+  assert.match(crawlerJob, /options: --tmpfs \/data:rw/);
+  assert.match(crawlerJob, /TYPESENSE_DATA_DIR: \/data/);
   assert.match(crawlerJob, /TYPESENSE_ADMIN_KEY: local_dev_typesense_key/);
   assert.match(crawlerJob, /REQUIRE_TYPESENSE_E2E: "true"/);
   assert.match(
