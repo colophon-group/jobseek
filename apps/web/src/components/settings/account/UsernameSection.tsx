@@ -11,6 +11,7 @@ import { FormField } from "@/components/ui/FormField";
 import { SuccessAlert } from "@/components/ui/SuccessAlert";
 import { authClient } from "@/lib/auth-client";
 import { renameUsername } from "@/lib/actions/preferences";
+import { translateActionError } from "@/lib/action-error-messages";
 import { isReservedUsername } from "@/lib/username";
 
 const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
@@ -81,7 +82,7 @@ export function UsernameSection({ currentUsername }: { currentUsername: string }
       const { error } = await renameUsername(normalized);
       if (error) {
         setLoading(false);
-        setError(error);
+        setError(translateActionError(t, error));
         return;
       }
     } catch {

@@ -9,6 +9,12 @@ import { getUserPlan, PLAN_LIMITS, type PlanId } from "@/lib/plans";
 // import Stripe from "stripe";
 // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+export type BillingActionErrorCode =
+  | "not_authenticated"
+  | "payments_unavailable"
+  | "billing_account_not_found"
+  | "billing_portal_unavailable";
+
 export async function getPlanInfo(): Promise<{
   plan: PlanId;
   canReceiveAlerts: boolean;
@@ -26,10 +32,10 @@ export async function getPlanInfo(): Promise<{
 
 export async function createCheckoutSession(): Promise<{
   url: string | null;
-  error?: string;
+  error?: BillingActionErrorCode;
 }> {
   const userId = await getSessionUserId();
-  if (!userId) return { url: null, error: "Not authenticated" };
+  if (!userId) return { url: null, error: "not_authenticated" };
 
   // TODO: Uncomment when Stripe is configured
   //
@@ -44,15 +50,15 @@ export async function createCheckoutSession(): Promise<{
   //
   // return { url: session.url };
 
-  return { url: null, error: "Payments not yet available" };
+  return { url: null, error: "payments_unavailable" };
 }
 
 export async function createPortalSession(): Promise<{
   url: string | null;
-  error?: string;
+  error?: BillingActionErrorCode;
 }> {
   const userId = await getSessionUserId();
-  if (!userId) return { url: null, error: "Not authenticated" };
+  if (!userId) return { url: null, error: "not_authenticated" };
 
   const [sub] = await db
     .select({ stripeCustomerId: subscription.stripeCustomerId })
@@ -61,7 +67,7 @@ export async function createPortalSession(): Promise<{
     .limit(1);
 
   if (!sub?.stripeCustomerId) {
-    return { url: null, error: "No billing account found" };
+    return { url: null, error: "billing_account_not_found" };
   }
 
   // TODO: Uncomment when Stripe is configured
@@ -73,5 +79,5 @@ export async function createPortalSession(): Promise<{
   //
   // return { url: session.url };
 
-  return { url: null, error: "Billing portal not yet available" };
+  return { url: null, error: "billing_portal_unavailable" };
 }

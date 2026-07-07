@@ -7,6 +7,7 @@ import { Check, Crown } from "lucide-react";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
+import { translateActionError } from "@/lib/action-error-messages";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import type { PlanId } from "@/lib/plans";
@@ -104,7 +105,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
     const result = await createCheckoutSession();
     setLoading(null);
     if (result.error) {
-      setError(result.error);
+      setError(translateActionError(t, result.error));
       return;
     }
     if (result.url) {
@@ -118,7 +119,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
     const result = await createPortalSession();
     setLoading(null);
     if (result.error) {
-      setError(result.error);
+      setError(translateActionError(t, result.error));
       return;
     }
     if (result.url) {

@@ -13,6 +13,7 @@ import {
   recordPasswordResetRequest,
   setPassword as setPasswordAction,
 } from "@/lib/actions/preferences";
+import { translateActionError } from "@/lib/action-error-messages";
 
 export function PasswordSection({
   hasPassword,
@@ -55,7 +56,7 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
 
     if (result.error) {
       setNewPasswordError("");
-      setError(result.error ?? t({ id: "settings.account.password.setError", comment: "Generic set password error", message: "Failed to set password" }));
+      setError(translateActionError(t, result.error));
       return;
     }
 
@@ -139,7 +140,7 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
     }
 
     if (result.error) {
-      setError(result.error);
+      setError(translateActionError(t, result.error));
       setLoading(false);
       return;
     }

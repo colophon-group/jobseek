@@ -152,7 +152,7 @@ describe("renameUsername", () => {
 
     const result = await renameUsername("newname");
 
-    expect(result).toEqual({ error: "Not authenticated" });
+    expect(result).toEqual({ error: "not_authenticated" });
     expect(mocks.updateUser).not.toHaveBeenCalled();
   });
 
@@ -161,11 +161,11 @@ describe("renameUsername", () => {
     const { renameUsername } = await import("../preferences");
 
     expect(await renameUsername("ab")).toEqual({
-      error: "Username must be 3-30 characters",
+      error: "username_length",
     });
     expect(
       await renameUsername("a".repeat(31)),
-    ).toEqual({ error: "Username must be 3-30 characters" });
+    ).toEqual({ error: "username_length" });
     expect(mocks.updateUser).not.toHaveBeenCalled();
   });
 
@@ -176,17 +176,17 @@ describe("renameUsername", () => {
     // Hyphen at the start / end is rejected by the regex (matches the
     // client-side check in `UsernameSection`).
     expect(await renameUsername("-leading-hyphen")).toEqual({
-      error: "Username has invalid characters",
+      error: "username_invalid_characters",
     });
     expect(await renameUsername("trailing-")).toEqual({
-      error: "Username has invalid characters",
+      error: "username_invalid_characters",
     });
     // Special chars that survive normalization but aren't [a-z0-9-].
     expect(await renameUsername("has space")).toEqual({
-      error: "Username has invalid characters",
+      error: "username_invalid_characters",
     });
     expect(await renameUsername("with.dot")).toEqual({
-      error: "Username has invalid characters",
+      error: "username_invalid_characters",
     });
     expect(mocks.updateUser).not.toHaveBeenCalled();
   });
@@ -196,7 +196,7 @@ describe("renameUsername", () => {
     const { renameUsername } = await import("../preferences");
 
     expect(await renameUsername("admin")).toEqual({
-      error: "Username is reserved",
+      error: "username_reserved",
     });
     expect(mocks.updateUser).not.toHaveBeenCalled();
   });
@@ -362,7 +362,7 @@ describe("renameUsername", () => {
     );
   });
 
-  it("surfaces Better Auth errors and does NOT run the fanout", async () => {
+  it("returns an opaque Better Auth error code and does NOT run the fanout", async () => {
     mocks.getSession.mockResolvedValue({ user: { id: "u4" } });
     mocks.selectQueue.push([{ username: "old", displayUsername: null }]);
     mocks.executeQueue.push([
@@ -378,7 +378,7 @@ describe("renameUsername", () => {
     const { renameUsername } = await import("../preferences");
 
     const result = await renameUsername("taken");
-    expect(result).toEqual({ error: "Username already taken" });
+    expect(result).toEqual({ error: "username_update_failed" });
     expect(mocks.updateTag).not.toHaveBeenCalled();
     expect(mocks.invalidateRedis).not.toHaveBeenCalled();
     expect(mocks.tsUpdateWatchlistField).not.toHaveBeenCalled();

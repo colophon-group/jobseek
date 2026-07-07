@@ -25,6 +25,15 @@ import type { WatchlistFilters } from "@/lib/actions/watchlists";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 
+export type PreferencesActionErrorCode =
+  | "not_authenticated"
+  | "password_set_failed"
+  | "username_length"
+  | "username_invalid_characters"
+  | "username_reserved"
+  | "username_update_failed"
+  | "user_not_found";
+
 /**
  * jobLanguages flows into Typesense `filter_by` strings and Postgres array
  * literals via raw interpolation, so we whitelist at the write boundary.
@@ -346,9 +355,9 @@ export async function getPasswordResetCooldown(): Promise<number> {
  * here, because doing so would re-open the same TOCTOU window the
  * single-statement upsert exists to close.
  */
-export async function recordPasswordResetRequest(): Promise<{ error?: string; cooldown?: number }> {
+export async function recordPasswordResetRequest(): Promise<{ error?: PreferencesActionErrorCode; cooldown?: number }> {
   const session = await getSession();
-  if (!session) return { error: "Not authenticated" };
+  if (!session) return { error: "not_authenticated" };
 
   // Single-statement upsert + cooldown gate. The `WHERE` clause on the
   // `DO UPDATE` branch is evaluated atomically inside the upsert; if it
@@ -382,9 +391,9 @@ export async function recordPasswordResetRequest(): Promise<{ error?: string; co
   return { cooldown: Math.max(1, remaining) };
 }
 
-export async function setPassword(newPassword: string): Promise<{ error?: string }> {
+export async function setPassword(newPassword: string): Promise<{ error?: PreferencesActionErrorCode }> {
   const session = await getSession();
-  if (!session) return { error: "Not authenticated" };
+  if (!session) return { error: "not_authenticated" };
 
   try {
     await auth.api.setPassword({
@@ -392,9 +401,8 @@ export async function setPassword(newPassword: string): Promise<{ error?: string
       headers: await headers(),
     });
     return {};
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Failed to set password";
-    return { error: message };
+  } catch {
+    return { error: "password_set_failed" };
   }
 }
 
@@ -435,22 +443,22 @@ const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
  */
 export async function renameUsername(
   newUsername: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: PreferencesActionErrorCode }> {
   const currentSession = await getSession();
-  if (!currentSession) return { error: "Not authenticated" };
+  if (!currentSession) return { error: "not_authenticated" };
   const userId = currentSession.user.id;
 
   // Mirror the client-side validation in `UsernameSection` so a stray
   // direct call to this server action can't bypass it.
   const normalized = newUsername.toLowerCase().trim();
   if (normalized.length < 3 || normalized.length > 30) {
-    return { error: "Username must be 3-30 characters" };
+    return { error: "username_length" };
   }
   if (!USERNAME_RE.test(normalized)) {
-    return { error: "Username has invalid characters" };
+    return { error: "username_invalid_characters" };
   }
   if (isReservedUsername(normalized)) {
-    return { error: "Username is reserved" };
+    return { error: "username_reserved" };
   }
 
   // Snapshot the pre-rename state BEFORE handing off to Better Auth.
@@ -466,7 +474,7 @@ export async function renameUsername(
     .from(user)
     .where(eq(user.id, userId))
     .limit(1);
-  if (!oldUserRow) return { error: "User not found" };
+  if (!oldUserRow) return { error: "user_not_found" };
 
   if (oldUserRow.username === normalized) return {}; // no-op rename
 
@@ -519,16 +527,14 @@ export async function renameUsername(
 
   // Delegate the actual DB write + cookie re-sign to Better Auth so the
   // username plugin's uniqueness check and the `usernameValidator`
-  // configured in `auth.ts` run authoritatively. Failures (taken, format,
-  // etc.) surface as APIErrors with messages we forward to the caller.
+  // configured in `auth.ts` run authoritatively.
   try {
     await auth.api.updateUser({
       body: { username: normalized },
       headers: await headers(),
     });
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Failed to update username";
-    return { error: message };
+  } catch {
+    return { error: "username_update_failed" };
   }
 
   // ── Fanout below this point — best-effort, never rollback the rename ──
