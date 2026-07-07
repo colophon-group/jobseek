@@ -102,21 +102,13 @@ for tier = 0, 2 do
 
                 -- Recompute domain's tier and re-add if tasks remain.
                 --
-                -- Pick the bucket with the lowest next-due score (clamped to
-                -- now + rate_delay). This avoids the priority-inversion bug
-                -- where a domain with a far-future recurring monitor and a
-                -- due-now scrape backlog gets parked in tier 1 at the
-                -- monitor's future score and never claims its scrapes.
-                -- See issue #3016 for the empirical reproduction.
-                --
-                -- Tier semantics preserved:
-                --   - first-time tasks (ft_*) always land in tier 0
-                --   - recurring monitors land in tier 1
-                --   - recurring scrapes land in tier 2
-                -- When ft has any task, ft wins (highest priority).
-                -- Otherwise monitor vs scrape compete by next-due score with
-                -- monitor as tiebreaker (strict-less-than means monitor wins
-                -- when scores are equal — original tier ordering).
+                -- First-time tasks are strict inter-domain priority: if any
+                -- ft_* queue has work, the domain must stay in tier 0 even
+                -- when a recurring task has an older due timestamp (#3019).
+                -- Only after ft is empty do recurring monitors and scrapes
+                -- compete by next-due score. That preserves the #3016 fix
+                -- where due-now scrapes are not parked behind far-future
+                -- recurring monitors; monitor still wins exact ties.
                 local ft_mon_count = redis.call("ZCARD", "ft_monitors_" .. wtype .. ":" .. domain)
                 local ft_scr_count = redis.call("ZCARD", "ft_scrapes_" .. wtype .. ":" .. domain)
 
@@ -150,21 +142,18 @@ for tier = 0, 2 do
                 local next_score = nil
                 local next_tier = nil
                 if ft_score ~= nil then
-                    next_score = ft_score
+                    next_score = math.max(now + rate_delay, ft_score)
                     next_tier = 0
-                end
-                if mon_score ~= nil and (next_score == nil or mon_score < next_score) then
-                    next_score = mon_score
+                elseif mon_score ~= nil and (scr_score == nil or mon_score <= scr_score) then
+                    next_score = math.max(now + rate_delay, mon_score)
                     next_tier = 1
-                end
-                if scr_score ~= nil and (next_score == nil or scr_score < next_score) then
-                    next_score = scr_score
+                elseif scr_score ~= nil then
+                    next_score = math.max(now + rate_delay, scr_score)
                     next_tier = 2
                 end
 
                 if next_score ~= nil then
-                    redis.call("ZADD", "ready:" .. wtype .. ":" .. next_tier,
-                               math.max(now + rate_delay, next_score), domain)
+                    redis.call("ZADD", "ready:" .. wtype .. ":" .. next_tier, next_score, domain)
                 end
                 -- else: domain fully drained, don't re-add
 
