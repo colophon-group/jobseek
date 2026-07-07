@@ -18,11 +18,10 @@ import httpx
 import structlog
 
 from src.core.monitors import (
-    fetch_page_text,
     register,
     slug_guess_allowed,
-    slugs_from_url,
 )
+from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
@@ -175,44 +174,39 @@ async def _fetch_job_count(slug: str, client: httpx.AsyncClient) -> int | None:
         return None
 
 
+async def _fetch_template_count(
+    token: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeCount | None:
+    _ = context
+    return await _fetch_job_count(token, client)
+
+
+async def _probe_template_slug(
+    token: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeResult:
+    _ = context
+    return await _probe_slug(token, client)
+
+
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Workable: URL pattern -> page HTML scan -> slug-based API probe."""
-    token = _token_from_url(url)
-    if token:
-        if client is not None:
-            count = await _fetch_job_count(token, client)
-            if count is not None:
-                return {"token": token, "jobs": count}
-        return {"token": token}
-
-    if client is None:
-        return None
-
-    html = await fetch_page_text(url, client)
-    if html:
-        for pattern in _PAGE_PATTERNS:
-            match = pattern.search(html)
-            if match:
-                found = match.group(1)
-                if found not in _IGNORE_TOKENS:
-                    log.info("workable.detected_in_page", url=url, board_token=found)
-                    count = await _fetch_job_count(found, client)
-                    result: dict = {"token": found}
-                    if count is not None:
-                        result["jobs"] = count
-                    return result
-
-    if slug_guess_allowed():
-        for slug in slugs_from_url(url):
-            found, count = await _probe_slug(slug, client)
-            if found:
-                log.info("workable.detected_by_probe", url=url, board_token=slug)
-                result = {"token": slug}
-                if count is not None:
-                    result["jobs"] = count
-                return result
-
-    return None
+    _ = pw
+    return await ats_can_handle(
+        url,
+        client,
+        monitor_name="workable",
+        token_from_url=_token_from_url,
+        page_patterns=_PAGE_PATTERNS,
+        ignore_tokens=_IGNORE_TOKENS,
+        fetch_job_count=_fetch_template_count,
+        api_probe=_probe_template_slug,
+        initial_context=None,
+        allow_slug_guess=slug_guess_allowed(),
+    )
 
 
 register("workable", discover, cost=10, can_handle=can_handle, rich=False)

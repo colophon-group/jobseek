@@ -19,7 +19,8 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.core.monitors import DiscoveredJob, register
+from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.raw import save_json_response
 from src.shared.http_retry import fetch_json_page_with_retry
 from src.shared.truncation import truncated_rich_result
@@ -155,6 +156,33 @@ async def _probe_slug(slug: str, client: httpx.AsyncClient) -> tuple[bool, int |
         return False, None
 
 
+async def _fetch_template_count(
+    slug: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeCount | None:
+    _ = context
+    found, count = await _probe_slug(slug, client)
+    return count if found else None
+
+
+async def _probe_template_slug(
+    slug: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeResult:
+    _ = context
+    return await _probe_slug(slug, client)
+
+
+def _build_template_result(slug: str, count: ProbeCount | None, context: None) -> dict:
+    _ = context
+    result: dict = {"slug": slug}
+    if count is not None:
+        result["jobs"] = count
+    return result
+
+
 async def _get_page_with_retry(
     client: httpx.AsyncClient,
     url: str,
@@ -235,45 +263,21 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Hireology: URL pattern -> page HTML scan -> slug-based API probe."""
-    slug = _slug_from_url(url)
-    if slug:
-        if client is not None:
-            found, count = await _probe_slug(slug, client)
-            if found:
-                result: dict = {"slug": slug}
-                if count is not None:
-                    result["jobs"] = count
-                return result
-        return {"slug": slug}
-
-    if client is None:
-        return None
-
-    html = await fetch_page_text(url, client)
-    if html:
-        for pattern in _PAGE_PATTERNS:
-            match = pattern.search(html)
-            if match:
-                found_slug = match.group(1)
-                if found_slug not in _IGNORE_SLUGS:
-                    log.info("hireology.detected_in_page", url=url, slug=found_slug)
-                    found, count = await _probe_slug(found_slug, client)
-                    if found:
-                        result = {"slug": found_slug}
-                        if count is not None:
-                            result["jobs"] = count
-                        return result
-
-    for slug_candidate in slugs_from_url(url):
-        found, count = await _probe_slug(slug_candidate, client)
-        if found:
-            log.info("hireology.detected_by_probe", url=url, slug=slug_candidate)
-            result = {"slug": slug_candidate}
-            if count is not None:
-                result["jobs"] = count
-            return result
-
-    return None
+    _ = pw
+    return await ats_can_handle(
+        url,
+        client,
+        monitor_name="hireology",
+        token_from_url=_slug_from_url,
+        page_patterns=_PAGE_PATTERNS,
+        ignore_tokens=_IGNORE_SLUGS,
+        fetch_job_count=_fetch_template_count,
+        api_probe=_probe_template_slug,
+        initial_context=None,
+        result_builder=_build_template_result,
+        page_token_probe=_probe_template_slug,
+        log_token_field="slug",
+    )
 
 
 async def save_raw(

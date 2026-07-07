@@ -18,10 +18,9 @@ from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import (
     BoardGoneError,
     DiscoveredJob,
-    fetch_page_text,
     register,
-    slugs_from_url,
 )
+from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.raw import save_json_response
 from src.shared.http_retry import PaginationFetchError, fetch_json_page_with_retry
 from src.shared.truncation import truncated_rich_result
@@ -201,6 +200,44 @@ async def _fetch_job_count(
         return None
 
 
+async def _fetch_template_count(
+    token: str,
+    client: httpx.AsyncClient,
+    region: str | None,
+) -> ProbeCount | None:
+    return await _fetch_job_count(token, client, region)
+
+
+async def _probe_template_token(
+    token: str,
+    client: httpx.AsyncClient,
+    region: str | None,
+) -> ProbeResult:
+    return await _probe_token(token, client, region)
+
+
+def _build_template_result(
+    token: str,
+    count: ProbeCount | None,
+    region: str | None,
+) -> dict:
+    result: dict = {"token": token}
+    if region:
+        result["region"] = region
+    if count is not None:
+        result["jobs"] = count
+    return result
+
+
+def _region_from_template_match(
+    match: re.Match[str],
+    region: str | None,
+) -> str | None:
+    if region:
+        return region
+    return "eu" if ".eu.lever.co" in match.group(0) else None
+
+
 async def _get_page_with_retry(
     client: httpx.AsyncClient,
     url: str,
@@ -295,56 +332,21 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Lever: domain check -> page HTML scan -> slug-based API probe."""
+    _ = pw
     region = _region_from_url(url)
-    token = _token_from_url(url)
-    if token:
-        if client is not None:
-            count = await _fetch_job_count(token, client, region)
-            if count is not None:
-                result: dict = {"token": token, "jobs": count}
-                if region:
-                    result["region"] = region
-                return result
-        result = {"token": token}
-        if region:
-            result["region"] = region
-        return result
-
-    if client is None:
-        return None
-
-    html = await fetch_page_text(url, client)
-    if html:
-        for pattern in _PAGE_PATTERNS:
-            match = pattern.search(html)
-            if match:
-                found = match.group(1)
-                if found not in _IGNORE_TOKENS:
-                    log.info("lever.detected_in_page", url=url, board_token=found)
-                    # Detect region from the matched URL in the HTML
-                    html_region = region
-                    if not html_region and match.group(0) and ".eu.lever.co" in match.group(0):
-                        html_region = "eu"
-                    count = await _fetch_job_count(found, client, html_region)
-                    result = {"token": found}
-                    if html_region:
-                        result["region"] = html_region
-                    if count is not None:
-                        result["jobs"] = count
-                    return result
-
-    for slug in slugs_from_url(url):
-        found, count = await _probe_token(slug, client, region)
-        if found:
-            log.info("lever.detected_by_probe", url=url, board_token=slug)
-            result = {"token": slug}
-            if region:
-                result["region"] = region
-            if count is not None:
-                result["jobs"] = count
-            return result
-
-    return None
+    return await ats_can_handle(
+        url,
+        client,
+        monitor_name="lever",
+        token_from_url=_token_from_url,
+        page_patterns=_PAGE_PATTERNS,
+        ignore_tokens=_IGNORE_TOKENS,
+        fetch_job_count=_fetch_template_count,
+        api_probe=_probe_template_token,
+        initial_context=region,
+        result_builder=_build_template_result,
+        context_from_match=_region_from_template_match,
+    )
 
 
 async def save_raw(

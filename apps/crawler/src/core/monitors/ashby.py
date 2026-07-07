@@ -17,10 +17,9 @@ from src.core.enum_normalize import normalize_job_location_type, normalize_salar
 from src.core.monitors import (
     BoardGoneError,
     DiscoveredJob,
-    fetch_page_text,
     register,
-    slugs_from_url,
 )
+from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.raw import save_json_response
 from src.shared.truncation import truncated_rich_result
 
@@ -192,6 +191,24 @@ async def _fetch_job_count(token: str, client: httpx.AsyncClient) -> int | None:
         return None
 
 
+async def _fetch_template_count(
+    token: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeCount | None:
+    _ = context
+    return await _fetch_job_count(token, client)
+
+
+async def _probe_template_token(
+    token: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeResult:
+    _ = context
+    return await _probe_token(token, client)
+
+
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
     """Fetch job listings with full content from the Ashby public API."""
     metadata = board.get("metadata") or {}
@@ -238,41 +255,18 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Ashby: domain check -> page HTML scan -> slug-based API probe."""
-    token = _token_from_url(url)
-    if token:
-        if client is not None:
-            count = await _fetch_job_count(token, client)
-            if count is not None:
-                return {"token": token, "jobs": count}
-        return {"token": token}
-
-    if client is None:
-        return None
-
-    html = await fetch_page_text(url, client)
-    if html:
-        for pattern in _PAGE_PATTERNS:
-            match = pattern.search(html)
-            if match:
-                found = match.group(1)
-                if found not in _IGNORE_TOKENS:
-                    log.info("ashby.detected_in_page", url=url, board_token=found)
-                    count = await _fetch_job_count(found, client)
-                    result: dict = {"token": found}
-                    if count is not None:
-                        result["jobs"] = count
-                    return result
-
-    for slug in slugs_from_url(url):
-        found, count = await _probe_token(slug, client)
-        if found:
-            log.info("ashby.detected_by_probe", url=url, board_token=slug)
-            result = {"token": slug}
-            if count is not None:
-                result["jobs"] = count
-            return result
-
-    return None
+    _ = pw
+    return await ats_can_handle(
+        url,
+        client,
+        monitor_name="ashby",
+        token_from_url=_token_from_url,
+        page_patterns=_PAGE_PATTERNS,
+        ignore_tokens=_IGNORE_TOKENS,
+        fetch_job_count=_fetch_template_count,
+        api_probe=_probe_template_token,
+        initial_context=None,
+    )
 
 
 async def save_raw(
