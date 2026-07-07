@@ -18,6 +18,7 @@ import httpx
 import structlog
 
 from src.core.monitors import register, slugs_from_url
+from src.core.monitors._ats_template import ProbeResult, ats_can_handle
 from src.shared.http_retry import fetch_json_page_with_retry
 from src.shared.truncation import truncated_url_result
 
@@ -163,8 +164,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     return urls
 
 
-async def _probe_token(token: str, client: httpx.AsyncClient) -> tuple[bool, int | None]:
+async def _probe_token(
+    token: str,
+    client: httpx.AsyncClient,
+    context: None = None,
+) -> tuple[bool, int | None]:
     """Probe the SmartRecruiters API for a token. Returns (found, job_count)."""
+    _ = context
     try:
         resp = await client.get(
             _api_list_url(token),
@@ -185,8 +191,13 @@ async def _probe_token(token: str, client: httpx.AsyncClient) -> tuple[bool, int
         return False, None
 
 
-async def _fetch_job_count(token: str, client: httpx.AsyncClient) -> int | None:
+async def _fetch_job_count(
+    token: str,
+    client: httpx.AsyncClient,
+    context: None = None,
+) -> int | None:
     """Lightweight API call to get the job count for a token."""
+    _ = context
     try:
         resp = await client.get(
             _api_list_url(token),
@@ -201,39 +212,22 @@ async def _fetch_job_count(token: str, client: httpx.AsyncClient) -> int | None:
         return None
 
 
-async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
-    """Detect SmartRecruiters: URL pattern -> page HTML scan -> slug-based API probe."""
-    token = _token_from_url(url)
-    if token:
-        if client is None:
-            return {"token": token}
+async def _probe_token_with_count(
+    token: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeResult:
+    count = await _fetch_job_count(token, client, context)
+    return count is not None, count
 
-        # Validate direct SmartRecruiters URLs against the API and final redirect URL.
-        final_url = url
-        html: str | None = None
-        try:
-            resp = await client.get(url, follow_redirects=True)
-            final_url = str(resp.url)
-            if resp.status_code == 200:
-                html = resp.text
-        except Exception:
-            # Network failures leave only the original URL token to validate below.
-            pass
 
-        final_token = _token_from_url(final_url)
-        if final_token:
-            token = final_token
-        elif not _has_smartrecruiters_signal(final_url, html):
-            return None
-
-        count = await _fetch_job_count(token, client)
-        if count is None:
-            return None
-        return {"token": token, "jobs": count}
-
-    if client is None:
-        return None
-
+async def _resolve_direct_token(
+    url: str,
+    token: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> tuple[str, None] | None:
+    _ = context
     final_url = url
     html: str | None = None
     try:
@@ -242,34 +236,44 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         if resp.status_code == 200:
             html = resp.text
     except Exception:
-        # Fetch failures mean no page signal was observed for this URL.
-        pass
+        # Network failures leave only the original URL token to validate below.
+        return token, None
 
-    signal = _has_smartrecruiters_signal(final_url, html)
-    if html:
-        for pattern in _PAGE_PATTERNS:
-            match = pattern.search(html)
-            if match:
-                found = match.group(1)
-                if found not in _IGNORE_TOKENS:
-                    log.info("smartrecruiters.detected_in_page", url=url, board_token=found)
-                    count = await _fetch_job_count(found, client)
-                    if count is not None:
-                        return {"token": found, "jobs": count}
-
-    if not signal:
+    final_token = _token_from_url(final_url)
+    if final_token:
+        return final_token, None
+    if not _has_smartrecruiters_signal(final_url, html):
         return None
+    return token, None
 
-    for slug in slugs_from_url(url):
-        found, count = await _probe_token(slug, client)
-        if found:
-            log.info("smartrecruiters.detected_by_probe", url=url, board_token=slug)
-            result: dict[str, str | int] = {"token": slug}
-            if count is not None:
-                result["jobs"] = count
-            return result
 
-    return None
+def _signal_slug_candidates(url: str, html: str, context: None) -> tuple[str, ...]:
+    _ = context
+    if not _has_smartrecruiters_signal(url, html):
+        return ()
+    return tuple(slug for slug in slugs_from_url(url) if slug not in _IGNORE_TOKENS)
+
+
+async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
+    """Detect SmartRecruiters: URL pattern -> page HTML scan -> slug-based API probe."""
+    _ = pw
+    return await ats_can_handle(
+        url,
+        client,
+        monitor_name="smartrecruiters",
+        token_from_url=_token_from_url,
+        page_patterns=_PAGE_PATTERNS,
+        ignore_tokens=_IGNORE_TOKENS,
+        fetch_job_count=_fetch_job_count,
+        api_probe=_probe_token,
+        initial_context=None,
+        direct_token_resolver=_resolve_direct_token,
+        require_direct_count=True,
+        page_token_probe=_probe_token_with_count,
+        extra_probe_tokens=_signal_slug_candidates,
+        extra_probe_log_event="smartrecruiters.detected_by_probe",
+        allow_slug_guess=False,
+    )
 
 
 register("smartrecruiters", discover, cost=10, can_handle=can_handle, rich=False)
