@@ -328,6 +328,7 @@ def test_migrated_monitors_delegate_can_handle_flow_to_ats_template():
         "hireology",
         "lever",
         "pinpoint",
+        "recruitee",
         "rippling",
         "smartrecruiters",
         "softgarden",

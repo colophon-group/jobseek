@@ -515,6 +515,29 @@ class TestCanHandle:
             assert result["jobs"] == 2
             assert result["api_base"] == "https://acme.recruitee.com"
 
+    async def test_url_match_with_client_keeps_direct_detection_on_probe_failure(self):
+        def handler(request):
+            assert str(request.url) == "https://acme.recruitee.com/api/offers"
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://acme.recruitee.com", client)
+            assert result == {"slug": "acme", "api_base": "https://acme.recruitee.com"}
+
+    async def test_marker_match_requires_custom_domain_api_probe_success(self):
+        def handler(request):
+            url = str(request.url)
+            if "/api/offers" in url:
+                return httpx.Response(404)
+            return httpx.Response(
+                200,
+                text="<html><script>window.recruitee = {company_id: 123}</script></html>",
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.example.com/careers", client)
+            assert result is None
+
     async def test_slug_guess_mode_enables_probe_fallback(self):
         def handler(request):
             url = str(request.url)

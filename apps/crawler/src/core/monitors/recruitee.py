@@ -19,11 +19,10 @@ from src.core.enum_normalize import normalize_salary_unit
 from src.core.monitors import (
     BoardGoneError,
     DiscoveredJob,
-    fetch_page_text,
     register,
     slug_guess_allowed,
-    slugs_from_url,
 )
+from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.raw import save_json_response
 from src.shared.truncation import truncated_rich_result
 
@@ -36,7 +35,10 @@ MAX_JOBS = 50_000
 
 _DOMAIN_RE = re.compile(r"^([\w-]+)\.recruitee\.com$")
 
-_PAGE_MARKER_RE = re.compile(r"\b(?:recruiteecdn\.com|window\.recruitee)\b")
+_PAGE_PATTERNS = (
+    re.compile(r"([\w-]+)\.recruitee\.com"),
+    re.compile(r"\b(?:recruiteecdn\.com|window\.recruitee)\b()"),
+)
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support", "status"})
 
@@ -192,6 +194,63 @@ async def _probe_api(api_base: str, client: httpx.AsyncClient) -> tuple[bool, in
         return False, None
 
 
+def _api_base_from_slug(slug: str) -> str | None:
+    if not slug:
+        return None
+    return f"https://{slug}.recruitee.com"
+
+
+async def _fetch_template_count(
+    token: str,
+    client: httpx.AsyncClient,
+    context: str | None,
+) -> ProbeCount | None:
+    base = context or _api_base_from_slug(token)
+    if base is None:
+        return None
+    found, count = await _probe_api(base, client)
+    return count if found else None
+
+
+async def _probe_template_slug(
+    token: str,
+    client: httpx.AsyncClient,
+    context: str | None,
+) -> ProbeResult:
+    _ = context
+    base = _api_base_from_slug(token)
+    if base is None:
+        return False, None
+    return await _probe_api(base, client)
+
+
+async def _probe_page_token(
+    token: str,
+    client: httpx.AsyncClient,
+    context: str | None,
+) -> ProbeResult:
+    _ = token
+    if context is None:
+        return False, None
+    return await _probe_api(context, client)
+
+
+def _build_template_result(
+    slug: str,
+    count: ProbeCount | None,
+    api_base: str | None,
+) -> dict:
+    base = api_base or _api_base_from_slug(slug)
+    result: dict = {}
+    if slug:
+        result["slug"] = slug
+    if base is not None:
+        result["api_base"] = base
+    if count is not None:
+        result["jobs"] = count
+    return result
+
+
 async def discover(
     board: dict, client: httpx.AsyncClient, pw=None
 ) -> list[DiscoveredJob] | MonitorResult:
@@ -247,66 +306,31 @@ async def discover(
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Recruitee: domain check -> page HTML scan -> slug-based API probe."""
-    # 1. Direct *.recruitee.com URL
-    slug = _slug_from_url(url)
-    if slug:
-        api_base = f"https://{slug}.recruitee.com"
-        if client is not None:
-            found, count = await _probe_api(api_base, client)
-            if found:
-                result: dict = {"slug": slug, "api_base": api_base}
-                if count is not None:
-                    result["jobs"] = count
-                return result
-        return {"slug": slug, "api_base": api_base}
+    _ = pw
 
-    if client is None:
-        return None
+    def context_from_match(
+        match: re.Match[str],
+        context: str | None,
+    ) -> str | None:
+        _ = (match, context)
+        return _api_base_from_url(url)
 
-    # 2. HTML scan for Recruitee markers (custom domains)
-    html = await fetch_page_text(url, client)
-    if html:
-        # Look for {slug}.recruitee.com references in page source
-        slug_match = re.search(r"([\w-]+)\.recruitee\.com", html)
-        if slug_match:
-            found_slug = slug_match.group(1)
-            if found_slug not in _IGNORE_SLUGS:
-                log.info("recruitee.detected_in_page", url=url, slug=found_slug)
-                # Custom domain: API is on the custom domain itself
-                api_base = _api_base_from_url(url)
-                if api_base:
-                    found, count = await _probe_api(api_base, client)
-                    if found:
-                        result = {"slug": found_slug, "api_base": api_base}
-                        if count is not None:
-                            result["jobs"] = count
-                        return result
-
-        # Also check for Recruitee markers.
-        if _PAGE_MARKER_RE.search(html):
-            log.info("recruitee.detected_marker", url=url)
-            api_base = _api_base_from_url(url)
-            if api_base:
-                found, count = await _probe_api(api_base, client)
-                if found:
-                    result = {"api_base": api_base}
-                    if count is not None:
-                        result["jobs"] = count
-                    return result
-
-    # 3. Slug-based probe as fallback (explicit blind-probe mode only)
-    if slug_guess_allowed():
-        for slug in slugs_from_url(url):
-            api_base = f"https://{slug}.recruitee.com"
-            found, count = await _probe_api(api_base, client)
-            if found:
-                log.info("recruitee.detected_by_probe", url=url, slug=slug)
-                result = {"slug": slug, "api_base": api_base}
-                if count is not None:
-                    result["jobs"] = count
-                return result
-
-    return None
+    return await ats_can_handle(
+        url,
+        client,
+        monitor_name="recruitee",
+        token_from_url=_slug_from_url,
+        page_patterns=_PAGE_PATTERNS,
+        ignore_tokens=_IGNORE_SLUGS,
+        fetch_job_count=_fetch_template_count,
+        api_probe=_probe_template_slug,
+        initial_context=None,
+        result_builder=_build_template_result,
+        context_from_match=context_from_match,
+        page_token_probe=_probe_page_token,
+        allow_slug_guess=slug_guess_allowed(),
+        log_token_field="slug",
+    )
 
 
 async def save_raw(
