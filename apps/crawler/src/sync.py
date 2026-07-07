@@ -362,6 +362,25 @@ WHERE board_url NOT IN (SELECT unnest($1::text[]))
   AND is_enabled = true
 """
 
+_REALIGN_BOARD_POSTING_COMPANIES_SUPA = """
+UPDATE job_posting jp
+SET company_id = jb.company_id
+FROM job_board jb
+WHERE jp.board_id = jb.id
+  AND jb.board_url = ANY($1::text[])
+  AND jp.company_id IS DISTINCT FROM jb.company_id
+"""
+
+_REALIGN_BOARD_POSTING_COMPANIES_LOCAL = """
+UPDATE job_posting jp
+SET company_id = jb.company_id,
+    updated_at = now()
+FROM job_board jb
+WHERE jp.board_id = jb.id
+  AND jb.board_url = ANY($1::text[])
+  AND jp.company_id IS DISTINCT FROM jb.company_id
+"""
+
 # Every row that should NOT be in Redis. A board appearing here while its
 # board_id is still live in ``monitors_*:{domain}`` is why dead boards keep
 # producing ``batch.monitor.error`` after being removed from ``boards.csv`` —
@@ -1159,6 +1178,7 @@ async def sync_boards(
     )
     log.info("sync.boards.upserted_supa", count=len(board_urls), skipped=skipped)
 
+    await conn.execute(_REALIGN_BOARD_POSTING_COMPANIES_SUPA, board_urls)
     await conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
 
     # --- Targets 2 & 3: local Postgres + Redis ---
@@ -1257,6 +1277,8 @@ async def sync_boards(
             first_time=True,
         )
         redis_enqueued += 1
+
+    await local_conn.execute(_REALIGN_BOARD_POSTING_COMPANIES_LOCAL, board_urls)
 
     # Disable removed boards in local Postgres too
     await local_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)

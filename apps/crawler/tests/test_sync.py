@@ -10,6 +10,8 @@ import pytest
 
 from src.sync import (
     _LOCATION_MACRO_ALIASES,
+    _REALIGN_BOARD_POSTING_COMPANIES_LOCAL,
+    _REALIGN_BOARD_POSTING_COMPANIES_SUPA,
     _REALIGN_RENAMED_BOARD_URLS_SUPA,
     _UPSERT_BOARDS_SUPA,
     _UPSERT_COMPANIES,
@@ -302,8 +304,8 @@ class TestSyncBoards:
         """Upserts boards to Supabase, no local writes without local_conn."""
         await sync_boards(mock_conn, sample_boards, dry_run=False)
 
-        # Realign stale URLs + Supabase upsert + disable queries
-        assert mock_conn.execute.call_count == 3
+        # Realign stale URLs + Supabase upsert + posting rehome + disable queries
+        assert mock_conn.execute.call_count == 4
 
     async def test_invalid_json_skips_row(self, mock_conn):
         """monitor_config has invalid JSON -> row skipped, valid rows still collected."""
@@ -322,8 +324,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Valid row (globex) collected, so realign + upsert + disable called
-        assert mock_conn.execute.call_count == 3
+        # Valid row (globex) collected, so realign + upsert + rehome + disable called.
+        assert mock_conn.execute.call_count == 4
 
     async def test_all_invalid_json_skips_upsert(self, mock_conn):
         """All rows have invalid JSON -> no upsert, no disable."""
@@ -362,8 +364,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Realign stale URLs + Supabase upsert + disable queries
-        assert mock_conn.execute.call_count == 3
+        # Realign stale URLs + Supabase upsert + posting rehome + disable queries
+        assert mock_conn.execute.call_count == 4
 
     async def test_scraper_fields_embedded_in_metadata(self, mock_conn):
         """scraper_type + scraper_config parsed and upserted to Supabase."""
@@ -382,8 +384,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Realign stale URLs + Supabase upsert + disable queries
-        assert mock_conn.execute.call_count == 3
+        # Realign stale URLs + Supabase upsert + posting rehome + disable queries
+        assert mock_conn.execute.call_count == 4
 
     async def test_invalid_scraper_json_skips_row(self, mock_conn):
         boards = pl.DataFrame(
@@ -429,7 +431,8 @@ class TestSyncBoards:
         await sync_boards(mock_conn, boards, dry_run=False)
 
         calls = mock_conn.execute.call_args_list
-        # Realign is call #0, upsert call #1, disable call #2.
+        # Realign is call #0, upsert call #1, posting rehome call #2,
+        # disable call #3.
         assert calls[0].args[0] == _REALIGN_RENAMED_BOARD_URLS_SUPA
         assert calls[0].args[1] == ["apartmentiq"]
         assert calls[0].args[2] == ["apartmentiq-greenhouse"]
@@ -437,6 +440,20 @@ class TestSyncBoards:
         # No metadata/crawler_type passed to realign — just the 3-tuple.
         assert len(calls[0].args) == 4
         assert calls[1].args[0] == _UPSERT_BOARDS_SUPA
+
+    async def test_rehomes_existing_postings_after_board_company_change(
+        self,
+        mock_conn,
+        sample_boards,
+    ):
+        """If a CSV row moves an existing board URL to another company,
+        postings already tied to that board must move with it.
+        """
+        await sync_boards(mock_conn, sample_boards, dry_run=False)
+
+        calls = mock_conn.execute.call_args_list
+        assert calls[2].args[0] == _REALIGN_BOARD_POSTING_COMPANIES_SUPA
+        assert calls[2].args[1] == ["https://acme.com/careers"]
 
     async def test_disables_removed_boards(self, mock_conn):
         """Boards upserted and removed boards disabled on Supabase."""
@@ -455,8 +472,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Realign stale URLs + Supabase upsert + disable queries
-        assert mock_conn.execute.call_count == 3
+        # Realign stale URLs + Supabase upsert + posting rehome + disable queries
+        assert mock_conn.execute.call_count == 4
 
     @patch("src.sync.remove_monitor", new_callable=AsyncMock)
     @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
@@ -575,6 +592,59 @@ class TestSyncBoards:
         assert "id != ALL" in sql
         assert first_call.args[1] == ["acme-careers"]
         assert first_call.args[2] == [str(supa_board_id)]
+
+    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    async def test_local_path_rehomes_postings_and_touches_export_cursor(
+        self,
+        mock_enqueue,
+        mock_remove,
+        mock_conn,
+    ):
+        """Local posting ownership updates must bump updated_at so the
+        exporter re-sends corrected company ids to Supabase and Typesense.
+        """
+        import uuid
+
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme"],
+                "board_slug": ["acme-careers"],
+                "board_url": ["https://acme.com/careers"],
+                "monitor_type": ["greenhouse"],
+                "monitor_config": ["{}"],
+                "scraper_type": [""],
+                "scraper_config": [""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+
+        board_id = uuid.uuid4()
+        company_id = uuid.uuid4()
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": board_id,
+                    "company_id": company_id,
+                    "board_url": "https://acme.com/careers",
+                }
+            ]
+        )
+
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetch = AsyncMock(return_value=[])
+
+        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+
+        rehome_calls = [
+            call
+            for call in mock_local_conn.execute.await_args_list
+            if call.args[0] == _REALIGN_BOARD_POSTING_COMPANIES_LOCAL
+        ]
+        assert len(rehome_calls) == 1
+        assert rehome_calls[0].args[1] == ["https://acme.com/careers"]
+        assert "updated_at = now()" in rehome_calls[0].args[0]
 
 
 # ---------------------------------------------------------------------------
