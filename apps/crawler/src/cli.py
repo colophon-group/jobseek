@@ -140,6 +140,17 @@ def parse_args() -> argparse.Namespace:
 
     add_salary_reprocess_arguments(reprocess_salary_p)
 
+    reprocess_occ_p = sub.add_parser(
+        "reprocess-occupations",
+        help=(
+            "Recompute occupation_id from posting titles for rows likely stale "
+            "after taxonomy splits (#3360)."
+        ),
+    )
+    from src.occupation_reprocess import add_occupation_reprocess_arguments
+
+    add_occupation_reprocess_arguments(reprocess_occ_p)
+
     retry_p = sub.add_parser(
         "retry-stalled-scrapes",
         help=(
@@ -381,6 +392,13 @@ async def run() -> None:
 
         elif args.command == "reprocess-salary-eu":
             from src.salary_reprocess import run_from_args
+
+            exit_code = await run_from_args(args)
+            if exit_code != 0:
+                raise SystemExit(exit_code)
+
+        elif args.command == "reprocess-occupations":
+            from src.occupation_reprocess import run_from_args
 
             exit_code = await run_from_args(args)
             if exit_code != 0:
