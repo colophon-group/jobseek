@@ -20,6 +20,8 @@ import pytest
 import typesense
 from typesense.exceptions import ObjectNotFound
 
+from src.typesense_schema import COLLECTIONS
+
 # ---------------------------------------------------------------------------
 # Typesense connectivity check
 # ---------------------------------------------------------------------------
@@ -43,6 +45,7 @@ ALIAS_NAMES = [
     "company",
     "watchlist",
 ]
+SCHEMA_BY_NAME = {schema["name"]: schema for schema in COLLECTIONS}
 
 
 def _make_client() -> typesense.Client:
@@ -418,6 +421,8 @@ WATCHLISTS = [
         "company_count": 3,
         "active_job_count": 10,
         "mirror_count": 2,
+        "is_featured": False,
+        "has_description": True,
         "created_at": PAST_TS,
         "is_public": True,
     },
@@ -498,6 +503,15 @@ def _col(client: typesense.Client, alias_map: dict[str, str], alias: str):
     return client.collections[alias_map[alias]]
 
 
+def _assert_field_count(client: typesense.Client, alias_map: dict[str, str], alias: str) -> None:
+    info = _col(client, alias_map, alias).retrieve()
+    expected_names = {
+        field["name"] for field in SCHEMA_BY_NAME[alias]["fields"] if field["name"] != "id"
+    }
+    actual_names = {field["name"] for field in info["fields"]}
+    assert actual_names == expected_names
+
+
 # ============================================================================
 # Schema tests
 # ============================================================================
@@ -539,9 +553,8 @@ class TestSchemas:
         )
 
     def test_job_posting_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """job_posting has the expected number of fields (28)."""
-        info = _col(ts_client, alias_map, "job_posting").retrieve()
-        assert len(info["fields"]) == 28
+        """job_posting has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "job_posting")
 
     def test_location_schema_has_geopoint(self, ts_client: typesense.Client, alias_map: dict):
         """location collection has 'coordinates' field of type 'geopoint'."""
@@ -558,34 +571,28 @@ class TestSchemas:
         assert set(info.get("symbols_to_index", [])) == {"+", "#", "."}
 
     def test_location_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """location collection has 12 fields."""
-        info = _col(ts_client, alias_map, "location").retrieve()
-        assert len(info["fields"]) == 12
+        """location collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "location")
 
     def test_occupation_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """occupation collection has 8 fields."""
-        info = _col(ts_client, alias_map, "occupation").retrieve()
-        assert len(info["fields"]) == 8
+        """occupation collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "occupation")
 
     def test_seniority_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """seniority collection has 7 fields."""
-        info = _col(ts_client, alias_map, "seniority").retrieve()
-        assert len(info["fields"]) == 7
+        """seniority collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "seniority")
 
     def test_technology_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """technology collection has 6 fields."""
-        info = _col(ts_client, alias_map, "technology").retrieve()
-        assert len(info["fields"]) == 6
+        """technology collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "technology")
 
     def test_company_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """company collection has 8 fields (id is implicit)."""
-        info = _col(ts_client, alias_map, "company").retrieve()
-        assert len(info["fields"]) == 8
+        """company collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "company")
 
     def test_watchlist_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """watchlist collection has 11 fields (id is implicit)."""
-        info = _col(ts_client, alias_map, "watchlist").retrieve()
-        assert len(info["fields"]) == 11
+        """watchlist collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "watchlist")
 
 
 # ============================================================================
