@@ -108,6 +108,19 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     expect(mockFetchExploreData).not.toHaveBeenCalled();
   });
 
+  it("does NOT reset scroll on the prerendered initial-data mount", async () => {
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+
+    try {
+      render(<ExploreContent locale="en" initialData={makeInitialData()} />);
+
+      await flushQueuedEffects();
+      expect(scrollTo).not.toHaveBeenCalled();
+    } finally {
+      scrollTo.mockRestore();
+    }
+  });
+
   it("calls fetchExplorePageData when the `logged_in` hint cookie is present even without filters", async () => {
     setDocumentCookie("logged_in=1");
 
