@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 vi.mock("server-only", () => ({}));
 
@@ -37,6 +37,7 @@ vi.mock("@/lib/useLocalePath", () => ({
 }));
 
 import { SearchToolbar } from "../search/search-toolbar";
+import { FilterPillsReadOnly } from "../search/filter-pills-readonly";
 import { WatchlistFilterEditor } from "../watchlist/watchlist-filter-editor";
 
 describe("filter pill remove buttons", () => {
@@ -124,5 +125,92 @@ describe("filter pill remove buttons", () => {
     ]) {
       expect(screen.queryByRole("button", { name })).not.toBeNull();
     }
+  });
+
+  it("renders shared watchlist pills read-only when removal callbacks are absent", () => {
+    render(
+      <FilterPillsReadOnly
+        filters={{
+          keywords: ["backend"],
+          salaryCurrency: "CHF",
+          salaryMin: 120000,
+        }}
+        locations={[{ id: 1, slug: "zurich", name: "Zurich", type: "city", parentName: "Switzerland" }]}
+      />,
+    );
+
+    expect(screen.queryByText("backend")).not.toBeNull();
+    expect(screen.queryByText("Zurich, Switzerland")).not.toBeNull();
+    expect(screen.queryByText("CHF 120K+")).not.toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("renders shared watchlist pills with owner removal callbacks", () => {
+    const onRemoveKeyword = vi.fn();
+    const onRemoveLocation = vi.fn();
+    const onRemoveOccupation = vi.fn();
+    const onRemoveSeniority = vi.fn();
+    const onRemoveTechnology = vi.fn();
+    const onToggleEmploymentType = vi.fn();
+    const onToggleWorkMode = vi.fn();
+    const onRemoveSalary = vi.fn();
+    const onRemoveExperience = vi.fn();
+    const onClearAll = vi.fn();
+
+    render(
+      <FilterPillsReadOnly
+        filters={{
+          keywords: ["backend"],
+          salaryCurrency: "CHF",
+          salaryMin: 120000,
+          salaryMax: 180000,
+          experienceMin: 4,
+          experienceMax: 8,
+        }}
+        locations={[{ id: 1, slug: "zurich", name: "Zurich", type: "city", parentName: "Switzerland" }]}
+        occupations={[{ id: 2, slug: "software-engineer", name: "Software Engineer" }]}
+        seniorities={[{ id: 3, slug: "senior", name: "Senior" }]}
+        technologies={[{ id: 4, slug: "python", name: "Python" }]}
+        employmentType={["full_time"]}
+        workMode={["hybrid"]}
+        onRemoveKeyword={onRemoveKeyword}
+        onRemoveLocation={onRemoveLocation}
+        onRemoveOccupation={onRemoveOccupation}
+        onRemoveSeniority={onRemoveSeniority}
+        onRemoveTechnology={onRemoveTechnology}
+        onToggleEmploymentType={onToggleEmploymentType}
+        onToggleWorkMode={onToggleWorkMode}
+        onRemoveSalary={onRemoveSalary}
+        onRemoveExperience={onRemoveExperience}
+        onClearAll={onClearAll}
+      />,
+    );
+
+    for (const name of [
+      "Remove keyword backend",
+      "Remove location Zurich, Switzerland",
+      "Remove Software Engineer filter",
+      "Remove Senior filter",
+      "Remove Python filter",
+      "Remove full time filter",
+      "Remove Hybrid filter",
+      "Remove salary filter",
+      "Remove experience filter",
+      "Clear all",
+    ]) {
+      expect(screen.queryByRole("button", { name })).not.toBeNull();
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove keyword backend" }));
+    expect(onRemoveKeyword).toHaveBeenCalledWith("backend");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove location Zurich, Switzerland" }));
+    expect(onRemoveLocation).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove salary filter" }));
+    expect(onRemoveSalary).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(onClearAll).toHaveBeenCalledOnce();
   });
 });
