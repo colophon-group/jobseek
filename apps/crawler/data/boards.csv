@@ -4843,6 +4843,7 @@ we-communications,we-communications-greenhouse,https://job-boards.greenhouse.io/
 we-love-x-gmbh,we-love-x-gmbh-join,https://join.com/companies/we-love-x,join,"{""slug"": ""we-love-x""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 we-singapore,we-singapore-greenhouse,https://job-boards.greenhouse.io/wesingapore,greenhouse,"{""token"": ""wesingapore""}",skip,
 wealthfront,wealthfront-lever,https://jobs.lever.co/wealthfront,lever,"{""token"": ""wealthfront""}",skip,
+weaviate,weaviate-careers,https://jobs.ashbyhq.com/weaviate,ashby,"{""token"": ""weaviate""}",skip,
 webai,webai-ashby,https://jobs.ashbyhq.com/webai,ashby,"{""token"": ""webai""}",skip,
 webchart,webchart-greenhouse,https://job-boards.greenhouse.io/webchartnow,greenhouse,"{""token"": ""webchartnow""}",skip,
 webflow,webflow-greenhouse,https://job-boards.greenhouse.io/webflow,greenhouse,"{""token"": ""webflow""}",skip,
