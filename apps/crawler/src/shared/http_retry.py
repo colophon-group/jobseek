@@ -134,7 +134,8 @@ async def fetch_json_page_with_retry(
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
-) -> dict[str, Any]: ...
+) -> dict[str, Any]:
+    pass
 
 
 @overload
@@ -153,7 +154,8 @@ async def fetch_json_page_with_retry(
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
-) -> list[Any]: ...
+) -> list[Any]:
+    pass
 
 
 async def fetch_json_page_with_retry(
