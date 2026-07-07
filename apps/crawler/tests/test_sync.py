@@ -15,6 +15,8 @@ from src.sync import (
     _UPSERT_COMPANIES,
     _UPSERT_OCCUPATION_DOMAIN_NAMES,
     _UPSERT_OCCUPATION_DOMAINS,
+    _UPSERT_OCCUPATION_NAMES,
+    _UPSERT_OCCUPATIONS,
     _fetch_active_facet_counts,
     _is_trivial_watchlist,
     _load_boards,
@@ -27,6 +29,7 @@ from src.sync import (
     sync_companies_typesense,
     sync_locations_typesense,
     sync_occupation_domains,
+    sync_occupations,
     sync_watchlists_typesense,
 )
 
@@ -188,6 +191,44 @@ class TestSyncOccupationDomains:
     async def test_empty_dataframe(self, mock_conn):
         await sync_occupation_domains(mock_conn, pl.DataFrame(), dry_run=False)
         mock_conn.execute.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# TestSyncOccupations
+# ---------------------------------------------------------------------------
+
+
+class TestSyncOccupations:
+    async def test_upserts_all_occupation_locale_columns(self, mock_conn):
+        df = pl.DataFrame(
+            {
+                "slug": ["software-engineer"],
+                "parent": [""],
+                "domain": ["software-engineering"],
+                "en": ["Software Engineer"],
+                "de": ["Softwareingenieur"],
+                "fr": ["Ingénieur logiciel"],
+                "it": ["Ingegnere del software"],
+                "pl": ["Inżynier oprogramowania"],
+                "es": ["Ingeniero de software"],
+                "aliases": ["Developer|Desarrollador de software"],
+            },
+            schema_overrides={
+                c: pl.Utf8
+                for c in ["slug", "parent", "domain", "en", "de", "fr", "it", "pl", "es", "aliases"]
+            },
+        )
+
+        await sync_occupations(mock_conn, df, dry_run=False)
+
+        assert mock_conn.execute.call_args_list[0][0][0] == _UPSERT_OCCUPATIONS
+        name_call = mock_conn.execute.call_args_list[1][0]
+        assert name_call[0] == _UPSERT_OCCUPATION_NAMES
+
+        name_rows = set(zip(name_call[1], name_call[2], name_call[3], name_call[4], strict=True))
+        assert ("software-engineer", "pl", "Inżynier oprogramowania", True) in name_rows
+        assert ("software-engineer", "es", "Ingeniero de software", True) in name_rows
+        assert ("software-engineer", "*", "Desarrollador de software", False) in name_rows
 
 
 # ---------------------------------------------------------------------------
