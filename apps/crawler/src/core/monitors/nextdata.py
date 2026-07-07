@@ -104,11 +104,6 @@ _PHENOM_CANVAS_PATHS = [
     "eagerLoadRefineSearch.data.jobs",
 ]
 
-# Backward-compatible aliases for test imports
-_resolve_path = resolve_path
-_extract_field = extract_field
-_extract_next_data = extract_next_data
-
 
 def _build_url(
     item: dict,

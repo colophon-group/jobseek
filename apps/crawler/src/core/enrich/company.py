@@ -181,20 +181,6 @@ _WIKIDATA_USER_AGENT = (
     "(https://github.com/colophon-group/jobseek; bot-contact@colophon-group.org)"
 )
 
-# Properties we extract from Wikidata entities
-_PROPS = {
-    "P571": "inception",  # founding date
-    "P1128": "employees",  # number of employees
-    "P452": "industry",  # industry (entity ref → needs label)
-    "P749": "parent",  # parent org (entity ref → needs label)
-    "P414": "ticker",  # stock ticker (string)
-    "P1448": "legal_name",  # official name (monolingual text)
-    "P856": "website",  # official website (URL)
-    "P4264": "linkedin",  # LinkedIn company ID
-    "P2037": "github",  # GitHub username
-    "P2002": "twitter",  # Twitter/X username
-}
-
 
 async def _wikidata_api(http: httpx.AsyncClient, params: dict) -> dict | None:
     """Call Wikidata action API."""

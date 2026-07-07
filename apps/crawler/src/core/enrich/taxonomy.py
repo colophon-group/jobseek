@@ -23,6 +23,13 @@ log = structlog.get_logger()
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data"
 
+__all__ = [
+    "TaxonomyMiss",
+    "TaxonomyResult",
+    "_warned_empty",
+    "resolve_taxonomy",
+]
+
 
 @dataclass
 class TaxonomyMiss:

@@ -22,7 +22,6 @@ from src.core.scrape import scrape_one  # noqa: F401
 # ── Re-exports: processing/board.py ──────────────────────────────────
 from src.processing.board import (  # noqa: F401
     _SLOW_MONITOR_SECONDS,
-    _SLOW_SCRAPE_SECONDS,
     BatchResult,
     BoardBatch,
     BoardDone,
@@ -74,6 +73,7 @@ from src.processing.r2_stage import (  # noqa: F401
 # ── Re-exports: processing/scrape.py ─────────────────────────────────
 from src.processing.scrape import (  # noqa: F401
     _JOBCONTENT_FIELDS,
+    _SLOW_SCRAPE_SECONDS,
     _UPSERT_DESCRIPTION,
     BoardScraperConfig,
     ScrapeError,

@@ -23,19 +23,6 @@ from typing import Any
 from src.workspace.lib.board_config import BoardConfigState
 from src.workspace.lib.exceptions import WsProbeFailed
 
-# ── Cost scoring (lifted verbatim — same constants as the CLI module) ──
-
-_SUSPICIOUS_ROUND_THRESHOLDS = {1000, 5000, 10000, 50000, 100000}
-
-_SCRAPER_COST_PER_JOB: dict[str, float] = {
-    "json-ld": 0.3,
-    "nextdata": 0.3,
-    "embedded": 0.3,
-    "dom": 0.5,
-    "dom_render": 4.0,
-    "api_sniffer": 3.0,
-}
-
 _DEFAULT_SCRAPER_COST = 0.3
 
 

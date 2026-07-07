@@ -9,15 +9,24 @@ from src.core.monitors import DiscoveredJob
 from src.core.monitors.nextdata import (
     _add_query_param,
     _build_url,
-    _extract_field,
-    _extract_next_data,
     _extract_salary,
     _resolve_field,
-    _resolve_path,
     can_handle,
     discover,
 )
-from src.shared.nextdata import extract_react_router_data, extract_rsc_data
+from src.shared.nextdata import (
+    extract_field as _extract_field,
+)
+from src.shared.nextdata import (
+    extract_next_data as _extract_next_data,
+)
+from src.shared.nextdata import (
+    extract_react_router_data,
+    extract_rsc_data,
+)
+from src.shared.nextdata import (
+    resolve_path as _resolve_path,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures

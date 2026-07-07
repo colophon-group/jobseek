@@ -61,10 +61,6 @@ _CODE_RE = re.compile(
     r"-([A-Z][A-Z ]+)"  # city (all-caps, may contain spaces)
 )
 
-# Space-separated display format without commas: "New York New York United States"
-# Collapse multiple spaces before further processing.
-_MULTI_SPACE_RE = re.compile(r" {2,}")
-
 
 def _normalize_workday_location(raw: str) -> str:
     """Normalize a Workday location string for the resolver.

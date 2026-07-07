@@ -34,11 +34,6 @@ MAX_JOBS = 50_000
 
 _DOMAIN_RE = re.compile(r"^([\w-]+)\.recruitee\.com$")
 
-_PAGE_PATTERNS = [
-    re.compile(r"([\w-]+)\.recruitee\.com"),
-    re.compile(r"recruiteecdn\.com"),
-    re.compile(r"window\.recruitee"),
-]
 _PAGE_MARKER_RE = re.compile(r"\b(?:recruiteecdn\.com|window\.recruitee)\b")
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support", "status"})

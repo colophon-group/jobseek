@@ -92,9 +92,6 @@ _POSTING_COLUMNS_SUPA = [
     "last_enriched_at",
 ]
 
-# Same columns used for INSERT into local Postgres
-_POSTING_COLUMNS_SUPA_LOCAL = _POSTING_COLUMNS_SUPA
-
 BATCH_SIZE = 5000
 
 

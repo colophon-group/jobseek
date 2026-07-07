@@ -39,12 +39,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-import structlog
-
 if TYPE_CHECKING:
     import httpx
-
-log = structlog.get_logger()
 
 
 __all__ = [

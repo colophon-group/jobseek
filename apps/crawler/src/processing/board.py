@@ -109,7 +109,6 @@ _API_MONITOR_TYPES = api_monitor_types()
 # Max R2 backfill uploads per board run (touched postings without hashes).
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _SLOW_MONITOR_SECONDS = 30.0
-_SLOW_SCRAPE_SECONDS = 15.0
 
 
 # ── URL sanity check ─────────────────────────────────────────────────

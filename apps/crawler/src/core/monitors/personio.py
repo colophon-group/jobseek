@@ -27,11 +27,6 @@ MAX_JOBS = 50_000
 
 _DOMAIN_RE = re.compile(r"^([\w-]+)\.jobs\.personio\.(\w+)$")
 
-_PAGE_PATTERNS = [
-    re.compile(r"([\w-]+)\.jobs\.personio\.(\w+)"),
-    re.compile(r"personio\.\w+/job/"),
-]
-
 # Known Personio TLDs, ordered by prevalence for probing
 _KNOWN_TLDS = ("de", "com")
 
