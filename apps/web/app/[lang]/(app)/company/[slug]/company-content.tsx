@@ -86,7 +86,6 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
   // searches — URL sync via replaceState is for bookmarkability only
   // and does not trigger a re-fetch here.
   useEffect(() => {
-    window.scrollTo(0, 0);
     const needsPersonalizedFetch =
       hasLoggedInHint() ||
       hasAnonJobLanguagesHint() ||
