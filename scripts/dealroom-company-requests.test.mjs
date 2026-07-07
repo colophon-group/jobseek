@@ -7,8 +7,10 @@ import {
   buildIssueTitle,
   buildRegistryIndex,
   extractDealroomCompaniesFromHtml,
+  issueTitleKey,
   normalizeHost,
   normalizeName,
+  parseCreatedIssueResponse,
   parseCsvRows,
   parseListSitemapXml,
   slugify,
@@ -185,4 +187,48 @@ test("builds company-request issue title and body with parent evidence", () => {
   assert.match(body, /Company name:\*\* ICEYE/);
   assert.match(body, /Space startups in Europe #2/);
   assert.match(body, /Parent tracking issue: #3570/);
+});
+
+test("normalizes issue titles for idempotent company-request dedupe", () => {
+  assert.equal(issueTitleKey(" Add company: ICEYE "), "add company: iceye");
+  assert.equal(issueTitleKey(null), "");
+});
+
+test("parses and validates GitHub issue create responses", () => {
+  assert.deepEqual(
+    parseCreatedIssueResponse(
+      JSON.stringify({
+        number: 123,
+        title: "Add company: ICEYE",
+        html_url: "https://github.com/colophon-group/jobseek/issues/123",
+      }),
+      "Add company: ICEYE",
+    ),
+    {
+      number: 123,
+      title: "Add company: ICEYE",
+      url: "https://github.com/colophon-group/jobseek/issues/123",
+    },
+  );
+
+  assert.throws(
+    () => parseCreatedIssueResponse("", "Add company: ICEYE"),
+    /Could not parse GitHub issue create response/,
+  );
+  assert.throws(
+    () => parseCreatedIssueResponse(JSON.stringify({ number: 123 }), "Add company: ICEYE"),
+    /did not include html_url/,
+  );
+  assert.throws(
+    () =>
+      parseCreatedIssueResponse(
+        JSON.stringify({
+          number: 123,
+          title: "Add company: Different",
+          html_url: "https://github.com/colophon-group/jobseek/issues/123",
+        }),
+        "Add company: ICEYE",
+      ),
+    /title mismatch/,
+  );
 });
