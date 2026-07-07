@@ -315,6 +315,19 @@ class TestCanHandle:
             assert result is not None
             assert result["token"] == "myco"
 
+    async def test_detects_tracking_context_path_candidate(self):
+        def handler(request):
+            url = str(request.url)
+            if "api.gem.com/job_board/v0/acme/job_posts" in url:
+                return httpx.Response(200, json=[{"absolute_url": "u", "title": "J"}])
+            return httpx.Response(200, text="<script>__GEM_TRACKING_CONTEXT__</script>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://www.example.com/acme/careers", client)
+            assert result is not None
+            assert result["token"] == "acme"
+            assert result["jobs"] == 1
+
     async def test_no_match(self):
         def handler(request):
             url = str(request.url)

@@ -187,10 +187,58 @@ async def test_ats_can_handle_can_disable_slug_guessing():
     assert result is None
 
 
+async def test_ats_can_handle_can_probe_extra_page_candidates():
+    async def fetch_count(
+        token: str,
+        client: httpx.AsyncClient,
+        context: None,
+    ) -> ProbeCount | None:
+        _ = (token, client, context)
+        raise AssertionError("extra_probe_tokens should own candidate validation")
+
+    async def probe_token(
+        token: str,
+        client: httpx.AsyncClient,
+        context: None,
+    ) -> ProbeResult:
+        _ = (client, context)
+        if token == "from-page-path":
+            return True, 4
+        return False, None
+
+    def extra_tokens(url: str, html: str, context: None) -> tuple[str, ...]:
+        _ = context
+        assert url == "https://example.com/from-page-path/jobs"
+        assert "tracking-context" in html
+        return ("from-page-path",)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        _ = request
+        return httpx.Response(200, text="<script>tracking-context</script>")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await ats_can_handle(
+            "https://example.com/from-page-path/jobs",
+            client,
+            monitor_name="example",
+            token_from_url=lambda url: None,
+            page_patterns=[re.compile(r"ats\.example/([\w-]+)")],
+            ignore_tokens=frozenset(),
+            fetch_job_count=fetch_count,
+            api_probe=probe_token,
+            initial_context=None,
+            extra_probe_tokens=extra_tokens,
+            allow_slug_guess=False,
+        )
+
+    assert result == {"token": "from-page-path", "jobs": 4}
+
+
 def test_migrated_monitors_delegate_can_handle_flow_to_ats_template():
     migrated = (
         "ashby",
         "dvinci",
+        "gem",
         "greenhouse",
         "hireology",
         "lever",
