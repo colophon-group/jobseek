@@ -1544,13 +1544,6 @@ async def sync_lookup_tables_local(
     if len(seniority_df) > 0:
         await sync_seniority(local_conn, seniority_df, dry_run)
 
-    log.info(
-        "sync.lookup_tables_local.mirrored",
-        occupation_domains=len(domain_rows),
-        occupations=len(occ_rows),
-        seniority=len(sen_rows),
-    )
-
     # Technologies and industries don't have the same problem:
     # - technologies use slug as the natural key (not auto-increment FK)
     # - industries have explicit IDs in the CSV
