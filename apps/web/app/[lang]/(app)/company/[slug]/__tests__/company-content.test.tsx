@@ -121,6 +121,30 @@ afterEach(() => {
 });
 
 describe("CompanyContent — server-render initial-data path (#3203)", () => {
+  it("does not force-scroll to the top on mount or remount", async () => {
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const initialData = makeInitialData();
+
+    try {
+      const { unmount } = render(
+        <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(scrollTo).not.toHaveBeenCalled();
+
+      unmount();
+      render(
+        <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+      );
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(scrollTo).not.toHaveBeenCalled();
+    } finally {
+      scrollTo.mockRestore();
+    }
+  });
+
   it("does NOT call fetchCompanyPageData for an anonymous, no-filter visit with prerendered initialData", async () => {
     const initialData = makeInitialData();
     render(
