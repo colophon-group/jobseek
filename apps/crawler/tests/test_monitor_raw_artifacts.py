@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import json
 from pathlib import Path
 from typing import Any
@@ -32,26 +31,37 @@ class _Client:
         return self.response
 
 
-def _save_raw_source() -> str:
-    return inspect.getsource(monitor_module._save_raw)
+@pytest.mark.asyncio
+async def test_save_raw_unknown_monitor_type_is_ignored(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    async def fake_save_raw(
+        artifact_dir: Path,
+        board_url: str,
+        metadata: dict[str, Any],
+        client: object,
+    ) -> None:
+        raise AssertionError("unregistered saver should not be called")
 
+    monkeypatch.setattr(
+        monitor_module,
+        "get_save_raw",
+        lambda name: fake_save_raw if name == "known" else None,
+    )
 
-def test_save_raw_dispatcher_has_no_monitor_type_switch() -> None:
-    source = _save_raw_source()
-
-    assert 'if monitor_type == "' not in source
-    assert "elif monitor_type" not in source
-
-
-def test_save_raw_dispatcher_does_not_silently_pass_exceptions() -> None:
-    source = _save_raw_source()
-
-    assert "pass  # Best-effort" not in source
-    assert "monitor.save_raw_failed" in source
+    await monitor_module._save_raw(
+        tmp_path,
+        "https://example.com/jobs",
+        "unknown",
+        {"token": "acme"},
+        object(),
+    )
 
 
 @pytest.mark.asyncio
-async def test_save_raw_dispatches_registered_hook(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+async def test_save_raw_dispatches_registered_hook(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     seen: list[tuple[Path, str, dict[str, Any], object]] = []
 
     async def fake_save_raw(
@@ -77,7 +87,9 @@ async def test_save_raw_dispatches_registered_hook(monkeypatch: pytest.MonkeyPat
 
 
 @pytest.mark.asyncio
-async def test_save_raw_logs_handler_failures(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+async def test_save_raw_logs_handler_failures(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     async def broken_save_raw(
         artifact_dir: Path,
         board_url: str,

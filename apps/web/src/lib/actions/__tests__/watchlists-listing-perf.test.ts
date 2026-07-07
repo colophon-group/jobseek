@@ -275,7 +275,7 @@ import {
   getUserWatchlists,
   getPopularWatchlists,
   searchPublicWatchlists,
-} from "../watchlists";
+} from "../../services/watchlists";
 
 const USER_ID = "user-1";
 
