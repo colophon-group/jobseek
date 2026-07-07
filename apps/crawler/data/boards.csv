@@ -4833,6 +4833,7 @@ waters-corporation,waters-corporation-careers-intl,https://internationalcareers-
 waters-corporation,waters-corporation-careers-us,https://uscareers-waters.icims.com/jobs/search?ss=1,sitemap,"{""sitemap_url"": ""https://uscareers-waters.icims.com/sitemap.xml"", ""url_filter"": ""/jobs/"", ""url_transform"": {""find"": ""/job$"", ""replace"": ""/job?in_iframe=1""}}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""tag"": ""dt"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""Overview"", ""field"": ""description"", ""stop"": ""Company Description"", ""html"": true}]}"
 watershed,watershed-ashby,https://jobs.ashbyhq.com/watershed,ashby,"{""token"": ""watershed""}",skip,
 watershed-informatics,watershed-informatics-greenhouse,https://job-boards.greenhouse.io/watershed,greenhouse,"{""token"": ""watershed""}",skip,
+wavenet,wavenet-smartrecruiters,https://careers.smartrecruiters.com/Wavenet,smartrecruiters,"{""token"": ""Wavenet""}",smartrecruiters,
 wayflyer,wayflyer-ashby,https://jobs.ashbyhq.com/wayflyer,ashby,"{""token"": ""wayflyer""}",skip,
 waymark,waymark-greenhouse,https://job-boards.greenhouse.io/waymark,greenhouse,"{""token"": ""waymark""}",skip,
 waymo,waymo-greenhouse,https://job-boards.greenhouse.io/waymo,greenhouse,"{""token"": ""waymo""}",skip,
