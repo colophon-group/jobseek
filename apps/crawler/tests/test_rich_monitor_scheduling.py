@@ -21,6 +21,7 @@ See ``dev/browser-errors/01-rich-monitor-scheduling.md``.
 from __future__ import annotations
 
 import json
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.metrics import _read_version, build_info, start_metrics_server, tasks_total
@@ -262,6 +263,12 @@ class TestProcessScrapeWorkSkipGuard:
         pool = AsyncMock()
         conn = AsyncMock()
         conn.execute = AsyncMock(return_value="UPDATE 1")
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "is_active": True,
+                "next_scrape_at": time.time() + 60,
+            }
+        )
         acq_cm = AsyncMock()
         acq_cm.__aenter__ = AsyncMock(return_value=conn)
         acq_cm.__aexit__ = AsyncMock(return_value=False)
