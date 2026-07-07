@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import TYPE_CHECKING
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import structlog
 
@@ -30,6 +31,8 @@ __all__ = [
     "END_OF_PAGINATION_STATUSES",
     "PaginationFetchError",
     "_RETRYABLE_STATUSES",
+    "fetch_json_page_with_retry",
+    "fetch_text_page_with_retry",
     "fetch_with_retry",
     "is_retryable_status",
 ]
@@ -111,6 +114,222 @@ def is_retryable_status(status: int) -> bool:
 # union of explicit + range-based retryable statuses for documentation
 # purposes; the real check uses ``is_retryable_status``.
 _RETRYABLE_STATUSES = _EXTRA_RETRYABLE_STATUSES | frozenset(range(500, 600))
+
+_RequestMethod = Literal["GET", "POST"]
+
+
+@overload
+async def fetch_json_page_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    expect_shape: type[dict],
+    method: _RequestMethod = "GET",
+    params: dict[str, Any] | None = None,
+    json_body: Any | None = None,
+    headers: dict[str, str] | None = None,
+    timeout: float | None = None,
+    follow_redirects: bool = False,
+    retries: int = 3,
+    base_delay: float = 0.5,
+    log_event: str = "http_retry.json_page_backoff",
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> dict[str, Any]: ...
+
+
+@overload
+async def fetch_json_page_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    expect_shape: type[list],
+    method: _RequestMethod = "GET",
+    params: dict[str, Any] | None = None,
+    json_body: Any | None = None,
+    headers: dict[str, str] | None = None,
+    timeout: float | None = None,
+    follow_redirects: bool = False,
+    retries: int = 3,
+    base_delay: float = 0.5,
+    log_event: str = "http_retry.json_page_backoff",
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> list[Any]: ...
+
+
+async def fetch_json_page_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    expect_shape: type[dict] | type[list],
+    method: _RequestMethod = "GET",
+    params: dict[str, Any] | None = None,
+    json_body: Any | None = None,
+    headers: dict[str, str] | None = None,
+    timeout: float | None = None,
+    follow_redirects: bool = False,
+    retries: int = 3,
+    base_delay: float = 0.5,
+    log_event: str = "http_retry.json_page_backoff",
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> dict[str, Any] | list[Any]:
+    """Fetch a JSON pagination page with strict retry semantics.
+
+    This is the shared form of the list-API helper that several monitors
+    previously copied locally. It differs from :func:`fetch_with_retry`
+    in two load-bearing ways:
+
+    - non-retryable 4xx statuses fail fast with :class:`PaginationFetchError`
+      instead of returning ``None``;
+    - successful JSON responses must decode to *expect_shape* or the page is
+      treated as transient and retried before surfacing.
+    """
+    from src.metrics import http_retry_attempts_total, http_retry_host
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
+    if method not in ("GET", "POST"):
+        raise ValueError(f"unsupported retry method: {method!r}")
+
+    host = http_retry_host(url)
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+    retried = False
+
+    for attempt in range(retries):
+        try:
+            if method == "GET":
+                resp = await client.get(
+                    url,
+                    params=params,
+                    headers=headers,
+                    timeout=timeout,
+                    follow_redirects=follow_redirects,
+                )
+            else:
+                resp = await client.post(
+                    url,
+                    params=params,
+                    json=json_body,
+                    headers=headers,
+                    timeout=timeout,
+                    follow_redirects=follow_redirects,
+                )
+            last_status = resp.status_code
+            if resp.status_code == 200:
+                _tdm_check(resp)
+                data = resp.json()
+                if not isinstance(data, expect_shape):
+                    raise ValueError(
+                        f"JSON page from {url} returned {type(data).__name__}, "
+                        f"expected {expect_shape.__name__}"
+                    )
+                if retried:
+                    http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+                return data
+            if is_retryable_status(resp.status_code):
+                last_exc = None
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
+            else:
+                raise PaginationFetchError(
+                    url,
+                    attempts=attempt + 1,
+                    last_status=resp.status_code,
+                )
+        except (PaginationFetchError, TDMReservedError):
+            raise
+        except Exception as exc:  # noqa: BLE001 - timeout, network, JSON parse, shape
+            last_exc = exc
+            last_status = None
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                log_event,
+                url=url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await sleep(delay)
+
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
+    raise PaginationFetchError(
+        url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
+
+
+async def fetch_text_page_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    retries: int = 3,
+    base_delay: float = 0.5,
+    timeout: float | None = None,
+    headers: dict[str, str] | None = None,
+    follow_redirects: bool = True,
+    log_event: str = "http_retry.text_page_backoff",
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> str | None:
+    """Fetch a text pagination page with strict non-retryable-4xx handling."""
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
+
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+
+    for attempt in range(retries):
+        try:
+            resp = await client.get(
+                url,
+                follow_redirects=follow_redirects,
+                timeout=timeout,
+                headers=headers,
+            )
+            last_status = resp.status_code
+            if resp.status_code == 200:
+                _tdm_check(resp, body_excerpt=resp.text)
+                return resp.text
+            if resp.status_code in END_OF_PAGINATION_STATUSES:
+                return None
+            if is_retryable_status(resp.status_code):
+                last_exc = None
+            else:
+                raise PaginationFetchError(
+                    url,
+                    attempts=attempt + 1,
+                    last_status=resp.status_code,
+                )
+        except (PaginationFetchError, TDMReservedError):
+            raise
+        except Exception as exc:  # noqa: BLE001 - timeout, network, etc.
+            last_exc = exc
+            last_status = None
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                log_event,
+                url=url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await sleep(delay)
+
+    raise PaginationFetchError(
+        url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
 
 
 async def fetch_with_retry(
