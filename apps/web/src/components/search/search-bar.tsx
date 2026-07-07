@@ -19,7 +19,7 @@ import { parseSearchFilters } from "@/lib/actions/search-input";
 import type { SelectedLocation } from "@/lib/search/types";
 import { buildFilteredPath, parseWorkModeParam } from "@/lib/search/query-params";
 import type { WorkMode } from "@/lib/search/types";
-import { useSearchStateStore, usePageActions } from "@/components/SearchStateProvider";
+import { useSearchStateStore, usePageActions } from "@/components/providers/SearchStateProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { getBrowserCoordinatesOnce } from "@/lib/search/browser-geolocation";

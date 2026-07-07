@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { Check, Crown } from "lucide-react";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
 import { Button } from "@/components/ui/Button";

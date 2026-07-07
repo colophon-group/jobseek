@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { SessionProvider, useSession } from "../SessionProvider";
+import { SessionProvider, useSession } from "../providers/SessionProvider";
 
 function SessionDisplay() {
   const { user, isLoggedIn } = useSession();

@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { fetchAppBootstrap, type AppBootstrapData } from "@/lib/actions/bootstrap";
-import { SessionProvider } from "@/components/SessionProvider";
-import { SavedJobsProvider } from "@/components/SavedJobsProvider";
-import { StarredCompaniesProvider } from "@/components/StarredCompaniesProvider";
-import { SalaryDisplayProvider } from "@/components/SalaryDisplayProvider";
-import { BannerProvider } from "@/components/BannerProvider";
-import { PreferencesInitializer } from "@/components/PreferencesInitializer";
+import { SessionProvider } from "@/components/providers/SessionProvider";
+import { SavedJobsProvider } from "@/components/providers/SavedJobsProvider";
+import { StarredCompaniesProvider } from "@/components/providers/StarredCompaniesProvider";
+import { SalaryDisplayProvider } from "@/components/providers/SalaryDisplayProvider";
+import { BannerProvider } from "@/components/providers/BannerProvider";
+import { PreferencesInitializer } from "@/components/providers/PreferencesInitializer";
 import { clearLoggedInHint, hasLoggedInHint } from "@/lib/client-cookies";
 
 const ANON_BOOTSTRAP: AppBootstrapData = {

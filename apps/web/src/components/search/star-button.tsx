@@ -2,9 +2,9 @@
 
 import { useLingui } from "@lingui/react/macro";
 import { Star } from "lucide-react";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useStarredCompanies } from "@/components/StarredCompaniesProvider";
+import { useStarredCompanies } from "@/components/providers/StarredCompaniesProvider";
 
 export function StarButton({ companyId }: { companyId: string }) {
   const { t } = useLingui();

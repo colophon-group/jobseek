@@ -6,7 +6,7 @@ import {
   useSearchStateStore,
   shouldRestoreSnapshot,
   buildCacheKey,
-} from "@/components/SearchStateProvider";
+} from "@/components/providers/SearchStateProvider";
 import type { SearchResultCompany } from "@/lib/search";
 
 /**

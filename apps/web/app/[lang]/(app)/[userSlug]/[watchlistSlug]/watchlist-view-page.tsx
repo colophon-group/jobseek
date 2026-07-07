@@ -6,7 +6,7 @@ import { Loader2, Building2, Pencil } from "lucide-react";
 import { BackLink } from "@/components/BackLink";
 import { useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import type {
   WatchlistDetail,
   WatchlistFilters,

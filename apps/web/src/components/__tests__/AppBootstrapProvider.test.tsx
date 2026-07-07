@@ -4,7 +4,7 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 // `useLingui()` for the period-suffix label (#3144). Stub the Lingui
 // surface so the provider hierarchy can render without an I18n setup.
 import "@/test-utils/lingui-mock";
-import { useSession } from "../SessionProvider";
+import { useSession } from "../providers/SessionProvider";
 
 // The real `@/lib/actions/bootstrap` is a server action that transitively
 // imports `server-only`, which throws when loaded in a non-Next runtime.
@@ -42,7 +42,7 @@ if (typeof window !== "undefined") {
 }
 
 // Import after the mock is installed.
-import { AppBootstrapProvider } from "../AppBootstrapProvider";
+import { AppBootstrapProvider } from "../providers/AppBootstrapProvider";
 
 function SessionProbe() {
   const { user, isLoggedIn, isPending } = useSession();

@@ -5,7 +5,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { updatePreferences } from "@/lib/actions/preferences";
-import { useBanner } from "@/components/BannerProvider";
+import { useBanner } from "@/components/providers/BannerProvider";
 import { NavLink } from "@/components/NavLink";
 import { Info } from "lucide-react";
 

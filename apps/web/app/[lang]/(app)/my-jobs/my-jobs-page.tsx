@@ -17,7 +17,7 @@ import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { SortFilterBar, type SortBy, type GroupBy } from "@/components/my-jobs/sort-filter-bar";
 import { MyJobRow } from "@/components/my-jobs/my-job-row";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
-import { useSavedJobs } from "@/components/SavedJobsProvider";
+import { useSavedJobs } from "@/components/providers/SavedJobsProvider";
 
 const BATCH = 20;
 const LS_KEY = "my-jobs-view";

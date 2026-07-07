@@ -48,10 +48,10 @@ vi.mock("@/lib/search/use-clear-typesense-on-auth-change", () => ({
   useClearTypesenseOnAuthChange: () => {},
 }));
 
-vi.mock("@/components/SessionProvider", () => ({
+vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({ isLoggedIn: true, isPending: false }),
 }));
-vi.mock("@/components/SavedJobsProvider", () => ({
+vi.mock("@/components/providers/SavedJobsProvider", () => ({
   useSavedJobs: () => ({
     isSaved: () => false,
     toggle: () => {},

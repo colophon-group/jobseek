@@ -11,10 +11,10 @@ import { ZeroResults } from "@/components/search/zero-results";
 import { SkeletonCards } from "@/components/search/skeleton-card";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
-import { useSalaryRates } from "@/components/SalaryDisplayProvider";
+import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
 import { runSearchJobs, runListTopCompanies } from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
@@ -22,7 +22,7 @@ import {
   useSearchStateStore,
   buildCacheKey,
   shouldRestoreSnapshot,
-} from "@/components/SearchStateProvider";
+} from "@/components/providers/SearchStateProvider";
 
 const PAGE_SIZE = 10;
 

@@ -13,7 +13,7 @@ import {
   updateWatchlist,
 } from "@/lib/actions/watchlists";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { tooltipClass, tooltipWarningClass } from "@/components/ui/tooltip-styles";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 

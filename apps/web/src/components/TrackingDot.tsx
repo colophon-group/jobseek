@@ -1,6 +1,6 @@
 "use client";
 
-import { useSavedJobs } from "@/components/SavedJobsProvider";
+import { useSavedJobs } from "@/components/providers/SavedJobsProvider";
 
 const statusColor: Record<string, string> = {
   saved: "bg-muted",

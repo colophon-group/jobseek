@@ -7,7 +7,7 @@ import { LogIn } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { getSimilarCompanies, type SimilarCompany } from "@/lib/actions/company";
 import type { Locale } from "@/lib/i18n";

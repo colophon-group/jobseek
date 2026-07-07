@@ -29,7 +29,7 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-vi.mock("@/components/SessionProvider", () => ({
+vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({
     user: { email: "test@example.com", username: "testuser" },
     isLoggedIn: true,

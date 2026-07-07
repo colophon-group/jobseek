@@ -26,7 +26,7 @@ vi.mock("next/navigation", () => ({
 // AccountSettings reads its viewer via useSession() — stub a logged-in
 // user so the component renders its real sections rather than the
 // LoginPrompt short-circuit.
-vi.mock("@/components/SessionProvider", () => ({
+vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({
     user: { email: "test@example.com", username: "test" },
     isLoggedIn: true,

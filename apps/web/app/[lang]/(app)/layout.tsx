@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
-import { AppBootstrapProvider } from "@/components/AppBootstrapProvider";
+import { AppBootstrapProvider } from "@/components/providers/AppBootstrapProvider";
 import { AppHeader } from "@/components/AppHeader";
 import { CookieBanner } from "@/components/CookieBanner";
-import { SearchStateProvider } from "@/components/SearchStateProvider";
+import { SearchStateProvider } from "@/components/providers/SearchStateProvider";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { WatchlistTipBanner } from "@/components/watchlist/watchlist-tip-banner";
 import { BackToTop } from "@/components/ui/back-to-top";

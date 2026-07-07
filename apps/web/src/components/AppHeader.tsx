@@ -9,7 +9,7 @@ import { Compass, Briefcase, Eye, Settings, LogIn, LogOut } from "lucide-react";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/Button";
 import { SearchBar } from "@/components/search/search-bar";

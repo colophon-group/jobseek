@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getUserWatchlistsWithLimit, type WatchlistSummary } from "@/lib/actions/watchlists";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/providers/SessionProvider";
 import { WatchlistsPage } from "./watchlists-page";
 
 type WatchlistsData = {
