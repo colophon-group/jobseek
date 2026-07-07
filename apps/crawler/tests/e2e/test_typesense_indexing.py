@@ -3,14 +3,16 @@
 These tests verify collection schemas, data integrity, search behaviour,
 and special-character handling against a **local** Typesense instance.
 
-All tests are skipped automatically when Typesense is unreachable at
-localhost:8108.  The suite seeds a small synthetic dataset on startup
-and cleans it up after every run.
+Local development runs are skipped when Typesense is unreachable at
+localhost:8108. CI/REQUIRE_TYPESENSE_E2E runs fail instead of skipping.
+The suite seeds a small synthetic dataset on startup and cleans it up
+after every run.
 """
 
 from __future__ import annotations
 
 import contextlib
+import os
 import time
 import uuid
 
@@ -18,14 +20,19 @@ import pytest
 import typesense
 from typesense.exceptions import ObjectNotFound
 
+from src.typesense_schema import COLLECTIONS
+
 # ---------------------------------------------------------------------------
 # Typesense connectivity check
 # ---------------------------------------------------------------------------
 
-TYPESENSE_HOST = "localhost"
-TYPESENSE_PORT = "8108"
-TYPESENSE_PROTOCOL = "http"
-TYPESENSE_API_KEY = "local_dev_typesense_key"
+TYPESENSE_HOST = os.environ.get("TYPESENSE_HOST", "localhost")
+TYPESENSE_PORT = os.environ.get("TYPESENSE_PORT", "8108")
+TYPESENSE_PROTOCOL = os.environ.get("TYPESENSE_PROTOCOL", "http")
+TYPESENSE_API_KEY = os.environ.get(
+    "TYPESENSE_ADMIN_KEY",
+    os.environ.get("TYPESENSE_API_KEY", "local_dev_typesense_key"),
+)
 
 # Alias -> versioned collection name mapping.  The test suite operates on
 # versioned names (required for document CRUD) but verifies aliases exist.
@@ -38,6 +45,7 @@ ALIAS_NAMES = [
     "company",
     "watchlist",
 ]
+SCHEMA_BY_NAME = {schema["name"]: schema for schema in COLLECTIONS}
 
 
 def _make_client() -> typesense.Client:
@@ -64,6 +72,25 @@ def _typesense_is_reachable() -> bool:
         return False
 
 
+def _typesense_e2e_required() -> bool:
+    return os.environ.get("CI") == "true" or os.environ.get("REQUIRE_TYPESENSE_E2E") == "true"
+
+
+def _skip_or_fail_when_unreachable() -> None:
+    if _typesense_is_reachable():
+        return
+
+    message = (
+        f"Typesense is not reachable at {TYPESENSE_PROTOCOL}://{TYPESENSE_HOST}:{TYPESENSE_PORT}"
+    )
+    if _typesense_e2e_required():
+        pytest.exit(
+            f"{message}; refusing to skip Typesense E2E suite when CI/REQUIRE_TYPESENSE_E2E is set",
+            returncode=1,
+        )
+    pytest.skip(message)
+
+
 def _resolve_aliases(client: typesense.Client) -> dict[str, str]:
     """Return {alias_name: versioned_collection_name} for every expected alias.
 
@@ -80,11 +107,6 @@ def _resolve_aliases(client: typesense.Client) -> dict[str, str]:
             mapping[alias] = f"{alias}_v1"
     return mapping
 
-
-pytestmark = pytest.mark.skipif(
-    not _typesense_is_reachable(),
-    reason="Typesense is not reachable at localhost:8108",
-)
 
 # ---------------------------------------------------------------------------
 # Seed data constants
@@ -399,6 +421,8 @@ WATCHLISTS = [
         "company_count": 3,
         "active_job_count": 10,
         "mirror_count": 2,
+        "is_featured": False,
+        "has_description": True,
         "created_at": PAST_TS,
         "is_public": True,
     },
@@ -421,6 +445,7 @@ def ts_client():
     ``company`` -> ``company_v1``) because Typesense's ``/collections/``
     endpoint requires the real collection name, not the alias.
     """
+    _skip_or_fail_when_unreachable()
     client = _make_client()
     alias_map = _resolve_aliases(client)
 
@@ -478,6 +503,15 @@ def _col(client: typesense.Client, alias_map: dict[str, str], alias: str):
     return client.collections[alias_map[alias]]
 
 
+def _assert_field_count(client: typesense.Client, alias_map: dict[str, str], alias: str) -> None:
+    info = _col(client, alias_map, alias).retrieve()
+    expected_names = {
+        field["name"] for field in SCHEMA_BY_NAME[alias]["fields"] if field["name"] != "id"
+    }
+    actual_names = {field["name"] for field in info["fields"]}
+    assert actual_names == expected_names
+
+
 # ============================================================================
 # Schema tests
 # ============================================================================
@@ -519,9 +553,8 @@ class TestSchemas:
         )
 
     def test_job_posting_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """job_posting has the expected number of fields (28)."""
-        info = _col(ts_client, alias_map, "job_posting").retrieve()
-        assert len(info["fields"]) == 28
+        """job_posting has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "job_posting")
 
     def test_location_schema_has_geopoint(self, ts_client: typesense.Client, alias_map: dict):
         """location collection has 'coordinates' field of type 'geopoint'."""
@@ -538,34 +571,28 @@ class TestSchemas:
         assert set(info.get("symbols_to_index", [])) == {"+", "#", "."}
 
     def test_location_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """location collection has 12 fields."""
-        info = _col(ts_client, alias_map, "location").retrieve()
-        assert len(info["fields"]) == 12
+        """location collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "location")
 
     def test_occupation_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """occupation collection has 8 fields."""
-        info = _col(ts_client, alias_map, "occupation").retrieve()
-        assert len(info["fields"]) == 8
+        """occupation collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "occupation")
 
     def test_seniority_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """seniority collection has 7 fields."""
-        info = _col(ts_client, alias_map, "seniority").retrieve()
-        assert len(info["fields"]) == 7
+        """seniority collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "seniority")
 
     def test_technology_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """technology collection has 6 fields."""
-        info = _col(ts_client, alias_map, "technology").retrieve()
-        assert len(info["fields"]) == 6
+        """technology collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "technology")
 
     def test_company_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """company collection has 8 fields (id is implicit)."""
-        info = _col(ts_client, alias_map, "company").retrieve()
-        assert len(info["fields"]) == 8
+        """company collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "company")
 
     def test_watchlist_field_count(self, ts_client: typesense.Client, alias_map: dict):
-        """watchlist collection has 11 fields (id is implicit)."""
-        info = _col(ts_client, alias_map, "watchlist").retrieve()
-        assert len(info["fields"]) == 11
+        """watchlist collection has the expected schema fields."""
+        _assert_field_count(ts_client, alias_map, "watchlist")
 
 
 # ============================================================================
