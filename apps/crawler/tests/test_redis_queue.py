@@ -595,6 +595,97 @@ async def test_enqueue_scrape_does_not_park_in_monitor_tier(mock_redis):
 
 
 # ---------------------------------------------------------------------------
+# Issue #3019: first-time work keeps strict tier-0 priority
+# ---------------------------------------------------------------------------
+
+
+async def test_enqueue_first_time_scrape_overrides_overdue_recurring_monitor(mock_redis):
+    """A new first-time task must move the domain back to tier 0.
+
+    This guards enqueue_task.lua: an overdue recurring monitor may be due
+    earlier by timestamp, but first-time work is the top inter-domain priority.
+    """
+    r = mock_redis
+    domain = "ft-priority-enqueue.example"
+    now = time.time()
+
+    await rq.enqueue_monitor(
+        domain,
+        "mon-overdue",
+        now - 3600,
+        {"monitor": "greenhouse"},
+        browser=False,
+    )
+    assert await r.zscore("ready:simple:1", domain) is not None
+
+    added = await rq.enqueue_scrape(
+        domain,
+        "ft-scrape",
+        now,
+        {"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+        browser=False,
+        first_time=True,
+    )
+    assert added is True
+
+    assert await r.zscore("ready:simple:0", domain) is not None
+    assert await r.zscore("ready:simple:1", domain) is None
+
+
+async def test_claim_readds_remaining_first_time_work_to_tier_zero(mock_redis):
+    """claim_work.lua must keep the domain in tier 0 while ft work remains."""
+    r = mock_redis
+    domain = "ft-priority-claim.example"
+    now = time.time()
+
+    await r.set(f"delay:{domain}", "0")
+    await r.zadd(f"ft_monitors_simple:{domain}", {"ft-monitor": now})
+    await r.hset("board:ft-monitor", mapping={"monitor": "greenhouse", "domain": domain})
+    await r.zadd(f"ft_scrapes_simple:{domain}", {"ft-scrape": now})
+    await r.hset(
+        "scrape:ft-scrape",
+        mapping={"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+    )
+    await r.zadd(f"monitors_simple:{domain}", {"mon-overdue": now - 3600})
+    await r.hset("board:mon-overdue", mapping={"monitor": "greenhouse", "domain": domain})
+    await r.zadd("ready:simple:0", {domain: now - 1})
+
+    work = await rq.claim_work(browser=False)
+
+    assert work is not None
+    assert work.kind == "monitor"
+    assert work.board_work is not None
+    assert work.board_work.board_id == "ft-monitor"
+    assert await r.zcard(f"ft_scrapes_simple:{domain}") == 1
+    assert await r.zscore("ready:simple:0", domain) is not None
+    assert await r.zscore("ready:simple:1", domain) is None
+
+
+async def test_reschedule_keeps_first_time_scrape_ahead_of_overdue_monitor(mock_redis):
+    """reschedule_task.lua must not demote domains that still have ft work."""
+    r = mock_redis
+    domain = "ft-priority-reschedule.example"
+    now = time.time()
+
+    await r.zadd(f"ft_scrapes_simple:{domain}", {"ft-scrape": now})
+    await r.hset(
+        "scrape:ft-scrape",
+        mapping={"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+    )
+
+    await rq.reschedule_task(
+        domain,
+        "mon-overdue",
+        "monitor",
+        now - 3600,
+        browser=False,
+    )
+
+    assert await r.zscore("ready:simple:0", domain) is not None
+    assert await r.zscore("ready:simple:1", domain) is None
+
+
+# ---------------------------------------------------------------------------
 # Issues #3159 + #3173: lease / heartbeat / reaper regression tests
 # ---------------------------------------------------------------------------
 

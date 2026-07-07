@@ -49,11 +49,14 @@ if rl_val then
     rl_at = tonumber(rl_val)
 end
 
--- Recompute domain's tier using MIN-score across (ft, monitor, scrape).
--- See issue #3016 — picking strict tier priority when the higher-priority
--- bucket's head is far in the future causes the lower-priority bucket's
--- due-now backlog to starve. Tier semantics preserved: first-time tasks
--- always win (tier 0); monitor wins ties vs scrape (strict-less-than).
+-- Recompute domain's tier.
+--
+-- First-time tasks are strict inter-domain priority: if any ft_* queue has
+-- work, the domain must stay in tier 0 even when a recurring task has an
+-- older due timestamp (#3019). Only after ft is empty do recurring monitors
+-- and scrapes compete by next-due score, preserving the #3016 fix that keeps
+-- due-now scrapes from parking behind far-future recurring monitors.
+-- Monitor wins exact recurring ties.
 local ft_mon_count = redis.call("ZCARD", "ft_monitors_" .. wtype .. ":" .. domain)
 local ft_scr_count = redis.call("ZCARD", "ft_scrapes_" .. wtype .. ":" .. domain)
 
@@ -87,21 +90,18 @@ end
 local next_score = nil
 local next_tier = nil
 if ft_score ~= nil then
-    next_score = ft_score
+    next_score = math.max(rl_at, ft_score)
     next_tier = 0
-end
-if mon_score ~= nil and (next_score == nil or mon_score < next_score) then
-    next_score = mon_score
+elseif mon_score ~= nil and (scr_score == nil or mon_score <= scr_score) then
+    next_score = math.max(rl_at, mon_score)
     next_tier = 1
-end
-if scr_score ~= nil and (next_score == nil or scr_score < next_score) then
-    next_score = scr_score
+elseif scr_score ~= nil then
+    next_score = math.max(rl_at, scr_score)
     next_tier = 2
 end
 
 if next_score ~= nil then
-    redis.call("ZADD", "ready:" .. wtype .. ":" .. next_tier,
-               math.max(rl_at, next_score), domain)
+    redis.call("ZADD", "ready:" .. wtype .. ":" .. next_tier, next_score, domain)
 end
 
 return 1
