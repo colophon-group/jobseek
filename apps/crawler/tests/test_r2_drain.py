@@ -26,6 +26,7 @@ These tests pin both pieces.
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.workers.r2_drain import (
@@ -94,12 +95,14 @@ class TestReapOrphanedClaims:
 
     async def test_periodic_reap_uses_age_filter(self):
         """When given a stale-age, the reaper must include the
-        ``updated_at < now() - $1::interval`` clause and pass the
-        interval string as a bind parameter. Without this, the
+        ``updated_at < now() - $1::interval`` clause and pass an
+        asyncpg-compatible ``timedelta`` bind parameter. Without this, the
         periodic sweep would race with an in-flight consumer claim
         and revert it back to ``false`` while the consumer is still
         running, producing a duplicate buffer entry the next time a
-        producer fires."""
+        producer fires. Passing a string here regresses #3629 because
+        asyncpg encodes interval parameters before PostgreSQL sees the
+        ``::interval`` cast."""
         captured: dict = {}
 
         async def fake_fetchval(query, *args):
@@ -117,7 +120,7 @@ class TestReapOrphanedClaims:
         assert "r2_uploaded IS NULL" in sql_compact
         assert "updated_at <" in sql_compact
         assert "interval" in sql_compact
-        assert captured["args"] == ("600 seconds",)
+        assert captured["args"] == (timedelta(seconds=600),)
 
     async def test_returns_reaped_count(self):
         pool, _ = _pool_with_conn(fetchval_return=42)
@@ -216,7 +219,7 @@ class TestReaperLoop:
 
         assert captured_args, "reaper loop never ran"
         for args in captured_args:
-            assert args == (f"{_REAP_STALE_AFTER_SECONDS} seconds",), (
+            assert args == (timedelta(seconds=_REAP_STALE_AFTER_SECONDS),), (
                 f"periodic sweep must use the stale-age filter; got args={args!r}"
             )
 
