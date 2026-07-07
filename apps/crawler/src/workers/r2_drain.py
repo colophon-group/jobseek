@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
+from datetime import timedelta
 
 import asyncpg
 import structlog
@@ -82,7 +83,7 @@ async def _reap_orphaned_claims(
     params: tuple = ()
     if stale_after_seconds is not None:
         where_clause += " AND updated_at < now() - $1::interval"
-        params = (f"{stale_after_seconds} seconds",)
+        params = (timedelta(seconds=stale_after_seconds),)
 
     try:
         async with local_pool.acquire() as conn:
