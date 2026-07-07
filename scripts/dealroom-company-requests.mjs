@@ -247,6 +247,10 @@ export function buildIssueTitle(company) {
   return `Add company: ${company.name}`;
 }
 
+export function issueTitleKey(title) {
+  return String(title ?? "").trim().toLowerCase();
+}
+
 export function buildIssueBody(company, { parentIssue = DEFAULT_PARENT_ISSUE } = {}) {
   const listLines = company.lists
     .slice()
@@ -426,21 +430,68 @@ function fetchExistingCompanyRequestIssues() {
   const issues = new Map();
   for (const line of stdout.split("\n").filter(Boolean)) {
     const issue = JSON.parse(line);
-    issues.set(issue.title.toLowerCase(), issue.number);
+    const titleKey = issueTitleKey(issue.title);
+    if (titleKey && !issues.has(titleKey)) {
+      issues.set(titleKey, issue.number);
+    }
   }
   return issues;
+}
+
+export function parseCreatedIssueResponse(stdout, expectedTitle) {
+  let issue;
+  try {
+    issue = JSON.parse(stdout);
+  } catch (error) {
+    throw new Error(
+      `Could not parse GitHub issue create response for ${expectedTitle}: ${error.message}`,
+    );
+  }
+
+  if (!issue || typeof issue !== "object") {
+    throw new Error(`GitHub issue create response for ${expectedTitle} was not an object`);
+  }
+  if (!Number.isInteger(issue.number)) {
+    throw new Error(`GitHub issue create response for ${expectedTitle} did not include a number`);
+  }
+  if (typeof issue.html_url !== "string" || issue.html_url.trim() === "") {
+    throw new Error(`GitHub issue create response for ${expectedTitle} did not include html_url`);
+  }
+  if (issue.title && issueTitleKey(issue.title) !== issueTitleKey(expectedTitle)) {
+    throw new Error(
+      `GitHub issue create response title mismatch: expected ${expectedTitle}, got ${issue.title}`,
+    );
+  }
+
+  return {
+    number: issue.number,
+    title: issue.title || expectedTitle,
+    url: issue.html_url,
+  };
 }
 
 function createIssue(title, body) {
   const result = spawnSync(
     "gh",
-    ["issue", "create", "--title", title, "--body", body, "--label", "company-request"],
-    { encoding: "utf8" },
+    [
+      "api",
+      "--method",
+      "POST",
+      "repos/colophon-group/jobseek/issues",
+      "--header",
+      "Content-Type: application/json",
+      "--input",
+      "-",
+    ],
+    {
+      input: JSON.stringify({ title, body, labels: ["company-request"] }),
+      encoding: "utf8",
+    },
   );
   if (result.status !== 0) {
     throw new Error(result.stderr || result.stdout || `gh issue create failed for ${title}`);
   }
-  return result.stdout.trim();
+  return parseCreatedIssueResponse(result.stdout, title);
 }
 
 async function main() {
@@ -474,16 +525,25 @@ async function main() {
   if (!args.createIssues) return;
 
   const existing = fetchExistingCompanyRequestIssues();
+  const plannedTitles = new Set();
   for (const company of limitedMissing) {
     const title = buildIssueTitle(company);
-    const existingNumber = existing.get(title.toLowerCase());
+    const titleKey = issueTitleKey(title);
+    if (plannedTitles.has(titleKey)) {
+      console.log(`SKIP duplicate title in Dealroom audit: ${title}`);
+      continue;
+    }
+    plannedTitles.add(titleKey);
+
+    const existingNumber = existing.get(titleKey);
     if (existingNumber) {
       console.log(`SKIP existing #${existingNumber}: ${title}`);
       continue;
     }
 
-    const url = createIssue(title, buildIssueBody(company, { parentIssue: args.parentIssue }));
-    console.log(`CREATED ${title}: ${url}`);
+    const issue = createIssue(title, buildIssueBody(company, { parentIssue: args.parentIssue }));
+    existing.set(issueTitleKey(issue.title), issue.number);
+    console.log(`CREATED #${issue.number} ${title}: ${issue.url}`);
     if (args.delayMs > 0) {
       await sleep(args.delayMs);
     }
