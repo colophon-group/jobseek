@@ -15,6 +15,7 @@ import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-
 import { useSession } from "@/components/providers/SessionProvider";
 import { useSavedJobs } from "@/components/providers/SavedJobsProvider";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
+import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { usePaginatedLoadMore } from "@/lib/use-paginated-load-more";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
@@ -301,14 +302,7 @@ export function WatchlistJobList({
           >
             <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
           </div>
-          <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
-            <div
-              className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
-            </div>
-          </div>
+          <MobileJobDetailDialog postingId={showPostingId} onClose={handleClosePosting} />
         </>
       )}
     </div>
