@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import polars as pl
@@ -1740,6 +1741,28 @@ class TestRefreshTypesenseCounts:
             assert "length(trim(titles[1])) > 0" in sql, (
                 f"missing titles non-blank predicate in:\n{sql}"
             )
+
+    def test_seniority_count_has_matching_partial_index_migration(self):
+        """Issue #4947: the seniority aggregate needs a matching partial
+        index so refresh-typesense does not scan every active posting and sit
+        on the 30s local statement-timeout cliff.
+        """
+        migration = (
+            Path(__file__).parents[1]
+            / "src/migrations/versions/0008_index_active_content_postings_by_seniority.py"
+        ).read_text()
+
+        assert "CREATE INDEX CONCURRENTLY IF NOT EXISTS" in migration
+        assert "idx_jp_seniority_active_content ON job_posting (seniority_id)" in migration
+        assert "DROP INDEX CONCURRENTLY IF EXISTS idx_jp_seniority_active_content" in migration
+        for predicate in (
+            "is_active",
+            "seniority_id IS NOT NULL",
+            "description_r2_hash IS NOT NULL",
+            "cardinality(titles) > 0",
+            "length(trim(titles[1])) > 0",
+        ):
+            assert predicate in migration
 
     async def test_company_counts_apply_has_content_filter(self):
         """Issue #3009: the precomputed `company.active_posting_count` /
