@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useRef, useMemo } from "react";
+import { memo, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { CompanyIcon } from "@/components/CompanyIcon";
@@ -8,6 +8,7 @@ import { useParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { getMorePostings } from "@/lib/actions/search";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { usePaginatedLoadMore } from "@/lib/use-paginated-load-more";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
@@ -57,54 +58,74 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
     workMode,
   );
 
-  const [extraPostings, setExtraPostings] = useState<SearchResultPosting[]>([]);
-  const [exhausted, setExhausted] = useState(false);
-  const [isTruncated, setIsTruncated] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const initialPostingsKey = useMemo(
+    () => result.postings.map((posting) => posting.id).join("\u0000"),
+    [result.postings],
+  );
+
+  const {
+    items: postings,
+    hasMore,
+    truncated: isTruncated,
+    loadMore,
+    setItems,
+    setTotal,
+    setExhausted,
+    setTruncated,
+  } = usePaginatedLoadMore<SearchResultPosting>({
+    initialItems: result.postings,
+    initialTotal: activeMatches,
+    batchSize: POSTINGS_BATCH,
+    itemKey: (posting) => posting.id,
+    fetcher: async ({ offset, limit }) => {
+      const result = await getMorePostings({
+        companyId: company.id,
+        keywords,
+        locationIds,
+        occupationIds: occupations?.map((o) => o.id),
+        seniorityIds: seniorities?.map((s) => s.id),
+        technologyIds: technologies?.map((t) => t.id),
+        employmentTypes,
+        workMode,
+        salaryMinEur,
+        salaryMaxEur,
+        experienceMin,
+        experienceMax,
+        languages: languages ?? [locale],
+        locale,
+        offset,
+        limit,
+      });
+
+      return {
+        postings: result.postings,
+        total: activeMatches,
+        truncated: result.truncated,
+      };
+    },
+  });
+
+  useEffect(() => {
+    setItems(result.postings);
+    setTotal(activeMatches);
+    setExhausted(result.postings.length >= activeMatches);
+    setTruncated(false);
+  }, [
+    activeMatches,
+    initialPostingsKey,
+    result.postings,
+    setExhausted,
+    setItems,
+    setTotal,
+    setTruncated,
+  ]);
 
   const allPostings = useMemo(() => {
-    const seen = new Set<string>();
-    const deduped = [...result.postings, ...extraPostings].filter((p) => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-    return sortPostingsByFreshness(deduped);
-  }, [result.postings, extraPostings]);
+    return sortPostingsByFreshness(postings);
+  }, [postings]);
 
-  const hasMore = !exhausted && !isTruncated && allPostings.length < activeMatches;
-  const offsetRef = useRef(result.postings.length);
-
-  async function handleLoadMore() {
-    const result = await getMorePostings({
-      companyId: company.id,
-      keywords,
-      locationIds,
-      occupationIds: occupations?.map((o) => o.id),
-      seniorityIds: seniorities?.map((s) => s.id),
-      technologyIds: technologies?.map((t) => t.id),
-      employmentTypes,
-      workMode,
-      salaryMinEur,
-      salaryMaxEur,
-      experienceMin,
-      experienceMax,
-      languages: languages ?? [locale],
-      locale,
-      offset: offsetRef.current,
-      limit: POSTINGS_BATCH,
-    });
-    if (result.truncated) setIsTruncated(true);
-    offsetRef.current += result.postings.length;
-    if (result.postings.length > 0) {
-      setExtraPostings((prev) => [...prev, ...result.postings]);
-    }
-    if (result.postings.length < POSTINGS_BATCH) {
-      setExhausted(true);
-    }
-  }
-
-  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: handleLoadMore, root: scrollRef, rootMargin: "50px" });
+  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: loadMore, root: scrollRef, rootMargin: "50px" });
 
   return (
     <div className="rounded-md border border-divider bg-surface p-4">
