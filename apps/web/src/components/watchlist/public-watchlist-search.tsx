@@ -7,6 +7,7 @@ import { Search, Loader2, Copy } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { usePaginatedLoadMore } from "@/lib/use-paginated-load-more";
 import { scrollToTopOnNav } from "@/lib/scroll-on-nav";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import {
@@ -23,61 +24,53 @@ export function PublicWatchlistSearch() {
   const { t } = useLingui();
   const lp = useLocalePath();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PublicWatchlistEntry[]>([]);
+  const [debouncedQuery, setDebouncedQuery] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [exhausted, setExhausted] = useState(false);
-  const [mode, setMode] = useState<"popular" | "search">("popular");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const queryRef = useRef(query);
-  queryRef.current = query;
 
-  const fetchPage = useCallback(async (q: string, offset: number, append: boolean) => {
+  const fetchPage = useCallback(async (q: string, offset: number, limit: number) => {
     const fetcher = q.length >= 2
-      ? () => searchPublicWatchlists({ query: q, offset, limit: PAGE_SIZE, locale })
-      : () => getPopularWatchlists({ offset, limit: PAGE_SIZE, locale });
-
-    const newMode = q.length >= 2 ? "search" : "popular";
+      ? () => searchPublicWatchlists({ query: q, offset, limit, locale })
+      : () => getPopularWatchlists({ offset, limit, locale });
 
     try {
       const { watchlists, total: t } = await fetcher();
-      if (append) {
-        setResults((prev) => {
-          const seen = new Set(prev.map((w) => w.id));
-          return [...prev, ...watchlists.filter((w) => !seen.has(w.id))];
-        });
-      } else {
-        setResults(watchlists);
-      }
-      setTotal(t);
-      setMode(newMode);
-      if (watchlists.length < PAGE_SIZE) setExhausted(true);
+      return { postings: watchlists, total: t };
     } finally {
       setLoading(false);
     }
   }, [locale]);
+
+  const activeQuery = debouncedQuery ?? "";
+  const {
+    items: results,
+    hasMore,
+    loadMore,
+  } = usePaginatedLoadMore<PublicWatchlistEntry>({
+    initialItems: [],
+    initialTotal: 0,
+    batchSize: PAGE_SIZE,
+    itemKey: (watchlist) => watchlist.id,
+    resetKey: `${locale}:${debouncedQuery ?? "__pending__"}`,
+    fetcher: ({ offset, limit }) => fetchPage(activeQuery, offset, limit),
+  });
 
   // Initial load + search on query change
   useEffect(() => {
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setLoading(true);
-      setExhausted(false);
-      fetchPage(query, 0, false);
+      setDebouncedQuery(query);
     }, query.length > 0 ? 300 : 0);
     return () => clearTimeout(timerRef.current);
-  }, [query, fetchPage]);
-
-  const hasMore = !exhausted && results.length < total;
-
-  async function handleLoadMore() {
-    await fetchPage(queryRef.current, results.length, true);
-  }
+  }, [query]);
 
   const { sentinelRef, isLoading: loadingMore } = useInfiniteScroll({
     hasMore,
-    load: handleLoadMore,
+    load: loadMore,
   });
+
+  const mode: "popular" | "search" = activeQuery.length >= 2 ? "search" : "popular";
 
   return (
     <div>

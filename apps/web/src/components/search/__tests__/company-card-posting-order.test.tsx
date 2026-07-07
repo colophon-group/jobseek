@@ -1,4 +1,4 @@
-import { act, render } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@/test-utils/lingui-mock";
 import type { SearchResultCompany, SearchResultPosting } from "@/lib/search";
@@ -6,6 +6,7 @@ import type { SearchResultCompany, SearchResultPosting } from "@/lib/search";
 const mocks = vi.hoisted(() => ({
   getMorePostings: vi.fn(),
   load: undefined as undefined | (() => Promise<void>),
+  hasMore: undefined as boolean | undefined,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -53,8 +54,9 @@ vi.mock("@/components/ui/scroll-fade", () => ({
 }));
 
 vi.mock("@/lib/use-infinite-scroll", () => ({
-  useInfiniteScroll: ({ load }: { load: () => Promise<void> }) => {
+  useInfiniteScroll: ({ hasMore, load }: { hasMore: boolean; load: () => Promise<void> }) => {
     mocks.load = load;
+    mocks.hasMore = hasMore;
     return { sentinelRef: { current: null }, isLoading: false };
   },
 }));
@@ -125,6 +127,7 @@ function visiblePostingIds(container: HTMLElement): string[] {
 describe("CompanyCard posting order", () => {
   beforeEach(() => {
     mocks.load = undefined;
+    mocks.hasMore = undefined;
     mocks.getMorePostings.mockReset();
   });
 
@@ -160,6 +163,36 @@ describe("CompanyCard posting order", () => {
       "visible-older",
       "visible-oldest",
     ]);
+  });
+
+  it("stops infinite scroll when a full loaded page contains only duplicate posting ids", async () => {
+    const initialPostings = Array.from({ length: 20 }, (_, index) =>
+      posting(
+        `visible-${index}`,
+        `Visible role ${index}`,
+        `2026-06-22T11:${String(59 - index).padStart(2, "0")}:00.000Z`,
+      ),
+    );
+    const { container } = renderCard(initialPostings);
+
+    mocks.getMorePostings.mockResolvedValueOnce({
+      postings: initialPostings,
+      truncated: false,
+    });
+
+    expect(mocks.hasMore).toBe(true);
+
+    await act(async () => {
+      await mocks.load?.();
+    });
+
+    expect(mocks.getMorePostings).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 20, limit: 20 }),
+    );
+    expect(visiblePostingIds(container)).toEqual(initialPostings.map((p) => p.id));
+    await waitFor(() => {
+      expect(mocks.hasMore).toBe(false);
+    });
   });
 
   it("uses posting id as deterministic tie-breaker", () => {
