@@ -81,6 +81,24 @@ def _token_from_config(monitor_config: str, *keys: str) -> str | None:
     return None
 
 
+def _lever_region_from_config(monitor_config: str) -> str | None:
+    if not monitor_config:
+        return None
+    try:
+        cfg = json.loads(monitor_config)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(cfg, dict):
+        return None
+    region = cfg.get("region")
+    return region if region == "eu" else None
+
+
+def _lever_region_from_url(board_url: str) -> str | None:
+    host = urlparse(board_url).hostname or ""
+    return "eu" if host.endswith(".eu.lever.co") else None
+
+
 def _ok(status: int) -> bool:
     return 200 <= status < 300
 
@@ -119,7 +137,11 @@ async def _probe_lever(row: dict, client: httpx.AsyncClient) -> ProbeResult:
             "warn",
             "no token in monitor_config or URL",
         )
-    url = f"https://api.lever.co/v0/postings/{token}?limit=1&mode=json"
+    region = _lever_region_from_config(row["monitor_config"]) or _lever_region_from_url(
+        row["board_url"]
+    )
+    host = "api.eu.lever.co" if region == "eu" else "api.lever.co"
+    url = f"https://{host}/v0/postings/{token}?limit=1&mode=json"
     resp = await _retry(lambda: _get(client, url))
     return _classify(row, "lever", url, resp)
 

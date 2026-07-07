@@ -106,6 +106,42 @@ class TestProbeRow:
         result = await self._run(row, handler)
         assert result.status == "fail"
 
+    async def test_lever_eu_url_uses_eu_api(self):
+        row = _row(
+            board_slug="acme-lever",
+            board_url="https://jobs.eu.lever.co/acme",
+            monitor_type="lever",
+            monitor_config="",
+        )
+
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(200, json=[])
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == "https://api.eu.lever.co/v0/postings/acme?limit=1&mode=json"
+
+    async def test_lever_region_config_uses_eu_api(self):
+        row = _row(
+            board_slug="acme-lever",
+            board_url="https://jobs.lever.co/acme",
+            monitor_type="lever",
+            monitor_config=json.dumps({"token": "acme", "region": "eu"}),
+        )
+
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(200, json=[])
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == "https://api.eu.lever.co/v0/postings/acme?limit=1&mode=json"
+
     async def test_ashby_uses_config_token(self):
         row = _row(
             board_slug="acme-ashby",
