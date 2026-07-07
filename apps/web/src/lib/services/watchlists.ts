@@ -1938,8 +1938,7 @@ export async function addCompanyToWatchlist(
     after(async () => {
       try {
         await _invalidateWatchlistCaches(userId, [wl.slug]);
-        const count = await _countWatchlistCompanies(watchlistId);
-        tsUpdateWatchlistField(watchlistId, { company_count: count });
+        await _syncWatchlistCompanyCountToTypesense(watchlistId);
       } catch (err) {
         console.error("[addCompanyToWatchlist] post-mutation hook failed", err);
       }
@@ -1971,7 +1970,7 @@ export async function clearWatchlistCompanies(
     after(async () => {
       try {
         await _invalidateWatchlistCaches(userId, [wl.slug]);
-        tsUpdateWatchlistField(watchlistId, { company_count: 0 });
+        await _syncWatchlistCompanyCountToTypesense(watchlistId);
       } catch (err) {
         console.error("[clearWatchlistCompanies] post-mutation hook failed", err);
       }
@@ -2009,8 +2008,7 @@ export async function removeCompanyFromWatchlist(
     after(async () => {
       try {
         await _invalidateWatchlistCaches(userId, [wl.slug]);
-        const count = await _countWatchlistCompanies(watchlistId);
-        tsUpdateWatchlistField(watchlistId, { company_count: count });
+        await _syncWatchlistCompanyCountToTypesense(watchlistId);
       } catch (err) {
         console.error("[removeCompanyFromWatchlist] post-mutation hook failed", err);
       }
@@ -2578,6 +2576,12 @@ async function _countWatchlistCompanies(watchlistId: string): Promise<number> {
     { label: `countWatchlistCompanies[${watchlistId}]` },
   );
   return (row as unknown as { cnt: number })?.cnt ?? 0;
+}
+
+/** Patch Typesense with the current Postgres company count. */
+async function _syncWatchlistCompanyCountToTypesense(watchlistId: string): Promise<void> {
+  const count = await _countWatchlistCompanies(watchlistId);
+  tsUpdateWatchlistField(watchlistId, { company_count: count });
 }
 
 /** Get the mirror count for a watchlist (number of copies). */

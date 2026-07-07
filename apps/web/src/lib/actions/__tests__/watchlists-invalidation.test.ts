@@ -483,6 +483,26 @@ describe("watchlist mutator cache invalidation", () => {
     );
   });
 
+  it("clearWatchlistCompanies patches Typesense with a fresh company count", async () => {
+    mocks.selectLimitResult.mockResolvedValue([
+      { userId: USER_ID, slug: SLUG, isPublic: true },
+    ]);
+    // Simulate another writer adding companies before the after-hook
+    // syncs Typesense. The hook must read Postgres, not assume zero.
+    mocks.dbExecute
+      .mockResolvedValueOnce([
+        { name: "Alice", username: USER_NAME, display_username: DISPLAY_USER_NAME },
+      ])
+      .mockResolvedValueOnce([{ cnt: 2 }]);
+
+    await clearWatchlistCompanies(WATCHLIST_ID);
+    await flushAfterQueue();
+
+    expect(mocks.tsUpdateWatchlistField).toHaveBeenCalledWith(WATCHLIST_ID, {
+      company_count: 2,
+    });
+  });
+
   it("removeCompanyFromWatchlist invalidates both slug variants for public watchlists", async () => {
     queueOwnerInfo();
     mocks.selectLimitResult.mockResolvedValue([
