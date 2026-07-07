@@ -17,11 +17,10 @@ import structlog
 from src.core.enum_normalize import normalize_job_location_type
 from src.core.monitors import (
     DiscoveredJob,
-    fetch_page_text,
     register,
     slug_guess_allowed,
-    slugs_from_url,
 )
+from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -29,6 +28,7 @@ log = structlog.get_logger()
 MAX_JOBS = 50_000
 
 _URL_PATTERN = re.compile(r"jobs\.gem\.com/([\w-]+)")
+_PAGE_PATTERNS = [_URL_PATTERN]
 
 _IGNORE_SLUGS = frozenset({"api", "www", "app", "docs", "help", "support"})
 
@@ -163,67 +163,71 @@ async def _probe_api(slug: str, client: httpx.AsyncClient) -> tuple[bool, int | 
         return False, None
 
 
+async def _fetch_job_count(
+    slug: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeCount | None:
+    _ = context
+    found, count = await _probe_api(slug, client)
+    if found:
+        return count
+    return None
+
+
+async def _probe_template_slug(
+    slug: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeResult:
+    _ = context
+    return await _probe_api(slug, client)
+
+
+def _tracking_context_candidates(url: str, html: str, context: None) -> tuple[str, ...]:
+    _ = context
+    if "__GEM_TRACKING_CONTEXT__" not in html:
+        return ()
+
+    parsed = urlparse(url)
+    path_parts = (parsed.path or "").strip("/").split("/")
+    if not path_parts or not path_parts[0]:
+        return ()
+
+    candidate = path_parts[0]
+    if candidate in _IGNORE_SLUGS:
+        return ()
+    return (candidate,)
+
+
+def _token_result(slug: str, count: ProbeCount | None, context: None) -> dict:
+    _ = context
+    result: dict = {"token": slug}
+    if count is not None:
+        result["jobs"] = count
+    return result
+
+
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Gem: URL pattern -> page HTML scan -> slug-based API probe."""
-    # 1. Direct jobs.gem.com URL
-    slug = _slug_from_url(url)
-    if slug:
-        if client is not None:
-            found, count = await _probe_api(slug, client)
-            if found:
-                result: dict = {"token": slug}
-                if count is not None:
-                    result["jobs"] = count
-                return result
-        return {"token": slug}
-
-    if client is None:
-        return None
-
-    # 2. HTML scan for Gem markers (embedded boards)
-    html = await fetch_page_text(url, client)
-    if html:
-        # Look for jobs.gem.com/{slug} references
-        match = _URL_PATTERN.search(html)
-        if match:
-            found_slug = match.group(1)
-            if found_slug not in _IGNORE_SLUGS:
-                log.info("gem.detected_in_page", url=url, slug=found_slug)
-                found, count = await _probe_api(found_slug, client)
-                if found:
-                    result = {"token": found_slug}
-                    if count is not None:
-                        result["jobs"] = count
-                    return result
-
-        # Check for __GEM_TRACKING_CONTEXT__ marker
-        if "__GEM_TRACKING_CONTEXT__" in html:
-            # Try to extract slug from the page URL's domain
-            parsed = urlparse(url)
-            path_parts = (parsed.path or "").strip("/").split("/")
-            if path_parts and path_parts[0]:
-                candidate = path_parts[0]
-                if candidate not in _IGNORE_SLUGS:
-                    found, count = await _probe_api(candidate, client)
-                    if found:
-                        log.info("gem.detected_tracking_context", url=url, slug=candidate)
-                        result = {"token": candidate}
-                        if count is not None:
-                            result["jobs"] = count
-                        return result
-
-    # 3. Slug-based probe as fallback (explicit blind-probe mode only)
-    if slug_guess_allowed():
-        for candidate in slugs_from_url(url):
-            found, count = await _probe_api(candidate, client)
-            if found:
-                log.info("gem.detected_by_probe", url=url, slug=candidate)
-                result = {"token": candidate}
-                if count is not None:
-                    result["jobs"] = count
-                return result
-
-    return None
+    _ = pw
+    return await ats_can_handle(
+        url,
+        client,
+        monitor_name="gem",
+        token_from_url=_slug_from_url,
+        page_patterns=_PAGE_PATTERNS,
+        ignore_tokens=_IGNORE_SLUGS,
+        fetch_job_count=_fetch_job_count,
+        api_probe=_probe_template_slug,
+        initial_context=None,
+        result_builder=_token_result,
+        page_token_probe=_probe_template_slug,
+        extra_probe_tokens=_tracking_context_candidates,
+        extra_probe_log_event="gem.detected_tracking_context",
+        allow_slug_guess=slug_guess_allowed(),
+        log_token_field="slug",
+    )
 
 
 register("gem", discover, cost=10, can_handle=can_handle, rich=True)
