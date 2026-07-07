@@ -712,25 +712,12 @@ async def _upsert_to_supabase(
     if not rows:
         return set()
 
-    col_names = _POSTING_COLUMNS.split(", ")
+    col_names = PostingSchema.column_names()
 
     # Fast path: batch INSERT inside a single transaction.
     try:
         async with supa_pool.acquire() as conn, conn.transaction():
-            await conn.execute(
-                "CREATE TEMP TABLE _export_postings ("
-                "  id UUID, company_id UUID, board_id UUID, source_url TEXT,"
-                "  is_active BOOLEAN, titles TEXT[], locales TEXT[],"
-                "  location_ids INT[], location_types TEXT[],"
-                "  employment_type TEXT,"
-                "  salary_min INT, salary_max INT, salary_currency TEXT,"
-                "  salary_period TEXT, salary_eur INT,"
-                "  experience_min NUMERIC(3,1), experience_max NUMERIC(3,1),"
-                "  occupation_id INT, seniority_id INT,"
-                "  technology_ids INT[], description_r2_hash BIGINT,"
-                "  first_seen_at TIMESTAMPTZ"
-                ") ON COMMIT DROP"
-            )
+            await conn.execute(PostingSchema.temp_table_ddl())
 
             await conn.copy_records_to_table(
                 "_export_postings",
@@ -738,11 +725,7 @@ async def _upsert_to_supabase(
                 columns=col_names,
             )
 
-            await conn.execute(
-                f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
-                "SELECT * FROM _export_postings "
-                f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
-            )
+            await conn.execute(PostingSchema.insert_from_temp_sql())
         return set()
     except Exception as batch_exc:
         # Single bad row poisoned the whole transaction. Fall back to
@@ -770,12 +753,8 @@ async def _upsert_to_supabase_per_row(
     Extracted from ``_upsert_to_supabase`` so it can be unit-tested in
     isolation and so the fast-path COPY stays the steady-state hot path.
     """
-    col_names = _POSTING_COLUMNS.split(", ")
-    insert_sql = (
-        f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
-        f"VALUES ({', '.join(f'${i + 1}' for i in range(len(col_names)))}) "
-        f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
-    )
+    col_names = PostingSchema.column_names()
+    insert_sql = PostingSchema.insert_values_sql()
 
     failed_ids: set[uuid.UUID] = set()
     async with supa_pool.acquire() as conn:
@@ -815,9 +794,7 @@ async def _export_postings_dual(
     fetch_ts, fetch_id = fetch_cursor
 
     rows = await local_pool.fetch(
-        f"SELECT {_POSTING_COLUMNS}, last_seen_at, updated_at "
-        "FROM job_posting WHERE (updated_at, id) > ($1, $2) "
-        "ORDER BY updated_at, id LIMIT $3",
+        PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
         fetch_ts,
         fetch_id,
         settings.export_batch_limit,
@@ -911,35 +888,136 @@ async def _export_postings_dual(
 # Export: changed job postings
 # ---------------------------------------------------------------------------
 
-# Columns selected from local Postgres and inserted into Supabase.
-_POSTING_COLUMNS = (
-    "id, company_id, board_id, source_url, is_active, "
-    "titles, locales, location_ids, location_types, employment_type, "
-    "salary_min, salary_max, salary_currency, salary_period, salary_eur, "
-    "experience_min, experience_max, occupation_id, seniority_id, "
-    "technology_ids, description_r2_hash, "
-    "first_seen_at"
-)
 
-_POSTING_UPSERT_SET = (
-    "is_active = EXCLUDED.is_active, "
-    "titles = EXCLUDED.titles, "
-    "locales = EXCLUDED.locales, "
-    "location_ids = EXCLUDED.location_ids, "
-    "location_types = EXCLUDED.location_types, "
-    "employment_type = EXCLUDED.employment_type, "
-    "salary_min = EXCLUDED.salary_min, "
-    "salary_max = EXCLUDED.salary_max, "
-    "salary_currency = EXCLUDED.salary_currency, "
-    "salary_period = EXCLUDED.salary_period, "
-    "salary_eur = EXCLUDED.salary_eur, "
-    "experience_min = EXCLUDED.experience_min, "
-    "experience_max = EXCLUDED.experience_max, "
-    "occupation_id = EXCLUDED.occupation_id, "
-    "seniority_id = EXCLUDED.seniority_id, "
-    "technology_ids = EXCLUDED.technology_ids, "
-    "description_r2_hash = EXCLUDED.description_r2_hash"
-)
+@dataclass(frozen=True, slots=True)
+class PostingColumn:
+    name: str
+    temp_type: str
+
+
+class PostingSchema:
+    """Single source of truth for job_posting export SQL.
+
+    The exporter reads from local Postgres, COPYs a fixed column subset
+    into a Supabase temp table, and upserts from there. Keeping the names,
+    temp-table types, and upsert set together avoids silent drift when the
+    exported posting shape changes.
+    """
+
+    table = "job_posting"
+    temp_table = "_export_postings"
+    columns: tuple[PostingColumn, ...] = (
+        PostingColumn("id", "UUID"),
+        PostingColumn("company_id", "UUID"),
+        PostingColumn("board_id", "UUID"),
+        PostingColumn("source_url", "TEXT"),
+        PostingColumn("is_active", "BOOLEAN"),
+        PostingColumn("titles", "TEXT[]"),
+        PostingColumn("locales", "TEXT[]"),
+        PostingColumn("location_ids", "INT[]"),
+        PostingColumn("location_types", "TEXT[]"),
+        PostingColumn("employment_type", "TEXT"),
+        PostingColumn("salary_min", "INT"),
+        PostingColumn("salary_max", "INT"),
+        PostingColumn("salary_currency", "TEXT"),
+        PostingColumn("salary_period", "TEXT"),
+        PostingColumn("salary_eur", "INT"),
+        PostingColumn("experience_min", "NUMERIC(3,1)"),
+        PostingColumn("experience_max", "NUMERIC(3,1)"),
+        PostingColumn("occupation_id", "INT"),
+        PostingColumn("seniority_id", "INT"),
+        PostingColumn("technology_ids", "INT[]"),
+        PostingColumn("description_r2_hash", "BIGINT"),
+        PostingColumn("first_seen_at", "TIMESTAMPTZ"),
+    )
+    upsert_columns: tuple[str, ...] = (
+        "is_active",
+        "titles",
+        "locales",
+        "location_ids",
+        "location_types",
+        "employment_type",
+        "salary_min",
+        "salary_max",
+        "salary_currency",
+        "salary_period",
+        "salary_eur",
+        "experience_min",
+        "experience_max",
+        "occupation_id",
+        "seniority_id",
+        "technology_ids",
+        "description_r2_hash",
+    )
+
+    @classmethod
+    def column_names(cls) -> tuple[str, ...]:
+        return tuple(column.name for column in cls.columns)
+
+    @classmethod
+    def column_list(cls) -> str:
+        return ", ".join(cls.column_names())
+
+    @classmethod
+    def select_list(cls, *extras: str) -> str:
+        return ", ".join((*cls.column_names(), *extras))
+
+    @classmethod
+    def placeholders(cls) -> str:
+        return ", ".join("$" + str(idx) for idx in range(1, len(cls.columns) + 1))
+
+    @classmethod
+    def upsert_set(cls) -> str:
+        return ", ".join(column + " = EXCLUDED." + column for column in cls.upsert_columns)
+
+    @classmethod
+    def temp_table_ddl(cls) -> str:
+        columns = ", ".join(column.name + " " + column.temp_type for column in cls.columns)
+        return "CREATE TEMP TABLE " + cls.temp_table + " (" + columns + ") ON COMMIT DROP"
+
+    @classmethod
+    def insert_from_temp_sql(cls) -> str:
+        column_list = cls.column_list()
+        return (
+            "INSERT INTO "
+            + cls.table
+            + " ("
+            + column_list
+            + ") SELECT "
+            + column_list
+            + " FROM "
+            + cls.temp_table
+            + " ON CONFLICT (id) DO UPDATE SET "
+            + cls.upsert_set()
+        )
+
+    @classmethod
+    def insert_values_sql(cls) -> str:
+        return (
+            "INSERT INTO "
+            + cls.table
+            + " ("
+            + cls.column_list()
+            + ") VALUES ("
+            + cls.placeholders()
+            + ") ON CONFLICT (id) DO UPDATE SET "
+            + cls.upsert_set()
+        )
+
+    @classmethod
+    def select_changed_sql(cls, *extras: str) -> str:
+        return (
+            "SELECT "
+            + cls.select_list(*extras)
+            + " FROM "
+            + cls.table
+            + " WHERE (updated_at, id) > ($1, $2) ORDER BY updated_at, id LIMIT $3"
+        )
+
+
+# Backward-compatible string aliases for existing tests and diagnostics.
+_POSTING_COLUMNS = PostingSchema.column_list()
+_POSTING_UPSERT_SET = PostingSchema.upsert_set()
 
 
 async def _export_changed_postings(
@@ -959,9 +1037,7 @@ async def _export_changed_postings(
     """
     last_ts, last_id = cursor
     rows = await local_pool.fetch(
-        f"SELECT {_POSTING_COLUMNS}, updated_at "
-        "FROM job_posting WHERE (updated_at, id) > ($1, $2) "
-        "ORDER BY updated_at, id LIMIT $3",
+        PostingSchema.select_changed_sql("updated_at"),
         last_ts,
         last_id,
         settings.export_batch_limit,
@@ -1212,9 +1288,7 @@ async def backfill_typesense(
     while True:
         last_ts, last_id = cursor
         rows = await local_pool.fetch(
-            f"SELECT {_POSTING_COLUMNS}, last_seen_at, updated_at "
-            "FROM job_posting WHERE (updated_at, id) > ($1, $2) "
-            "ORDER BY updated_at, id LIMIT $3",
+            PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
             last_ts,
             last_id,
             batch_size,

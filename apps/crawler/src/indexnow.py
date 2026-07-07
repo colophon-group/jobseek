@@ -82,10 +82,11 @@ _COMPANY_STABLE_FIELDS: tuple[str, ...] = (
     "employee_count_range",
     "founded_year",
 )
-# Select list for the driving query, rendered once — fields are a
-# trusted constant, never user input. Kept out of f-string SQL to
-# remove any appearance of injection risk.
-_COMPANY_SELECT_FIELDS = ", ".join(f"c.{f}" for f in _COMPANY_STABLE_FIELDS)
+# Select list for the driving query, rendered once. Fields are trusted
+# constants, never user input.
+_COMPANY_SELECT_COLUMNS = tuple("c." + field for field in _COMPANY_STABLE_FIELDS)
+_COMPANY_SELECT_LIST = ", ".join(_COMPANY_SELECT_COLUMNS)
+_COMPANY_SELECT_SQL = "SELECT c.id::text AS id, c.slug, " + _COMPANY_SELECT_LIST + " FROM company c"
 
 
 def compute_company_locale_hash(
@@ -248,9 +249,7 @@ async def notify_indexnow(
     # read and the write, recording a hash that no longer matches the
     # DB state. Holding the conn trades one pool slot for consistency.
     async with local_pool.acquire() as conn:
-        company_rows = await conn.fetch(
-            f"SELECT c.id::text AS id, c.slug, {_COMPANY_SELECT_FIELDS} FROM company c"
-        )
+        company_rows = await conn.fetch(_COMPANY_SELECT_SQL)
         descriptions_by_company = await _load_descriptions(conn)
         prior = await _load_submission_hashes(conn)
 

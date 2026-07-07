@@ -12,7 +12,9 @@ import structlog
 from src.exporter import (
     _EPOCH,
     _POSTING_COLUMNS,
+    _POSTING_UPSERT_SET,
     _ZERO_UUID,
+    PostingSchema,
     TaxonomyMaps,
     _build_typesense_docs,
     _export_changed_boards,
@@ -284,6 +286,45 @@ def _supa_pool_with_capture():
     return pool, conn
 
 
+class TestPostingSchema:
+    def test_column_aliases_stay_in_lockstep_with_schema(self):
+        assert PostingSchema.column_list() == _POSTING_COLUMNS
+        assert PostingSchema.upsert_set() == _POSTING_UPSERT_SET
+        assert _POSTING_COLUMNS.split(", ") == list(PostingSchema.column_names())
+
+    def test_temp_table_ddl_uses_explicit_column_types(self):
+        ddl = PostingSchema.temp_table_ddl()
+
+        assert ddl.startswith("CREATE TEMP TABLE _export_postings (")
+        assert ddl.endswith(") ON COMMIT DROP")
+        for column in PostingSchema.columns:
+            assert column.name + " " + column.temp_type in ddl
+
+    def test_insert_from_temp_uses_explicit_columns(self):
+        sql = PostingSchema.insert_from_temp_sql()
+
+        assert "SELECT * FROM _export_postings" not in sql
+        assert "INSERT INTO job_posting (" + PostingSchema.column_list() + ")" in sql
+        assert "SELECT " + PostingSchema.column_list() + " FROM _export_postings" in sql
+        assert "ON CONFLICT (id) DO UPDATE SET " + PostingSchema.upsert_set() in sql
+
+    def test_per_row_template_matches_schema_placeholders(self):
+        sql = PostingSchema.insert_values_sql()
+
+        assert "VALUES (" + PostingSchema.placeholders() + ")" in sql
+        assert PostingSchema.placeholders().split(", ")[0] == "$1"
+        assert PostingSchema.placeholders().split(", ")[-1] == "$" + str(len(PostingSchema.columns))
+
+    def test_upsert_set_excludes_immutable_identity_columns(self):
+        upsert_columns = set(PostingSchema.upsert_columns)
+
+        assert {"id", "company_id", "board_id", "source_url", "first_seen_at"}.isdisjoint(
+            upsert_columns
+        )
+        for column in upsert_columns:
+            assert column in PostingSchema.column_names()
+
+
 class TestUpsertToSupabase:
     """Mirror TestExportChangedPostings against the dual-path upsert helper.
 
@@ -315,7 +356,7 @@ class TestUpsertToSupabase:
         # in the temp-table DDL.
         conn.copy_records_to_table.assert_awaited_once()
         kwargs = conn.copy_records_to_table.await_args.kwargs
-        assert kwargs["columns"] == _POSTING_COLUMNS.split(", ")
+        assert list(kwargs["columns"]) == _POSTING_COLUMNS.split(", ")
 
     async def test_records_tuples_use_column_order(self):
         ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
@@ -500,7 +541,7 @@ def _make_supa_pool_batch_fails_per_row_passes(failing_row_id):
         nonlocal batch_count
         if "CREATE TEMP TABLE" in sql:
             return
-        if "SELECT * FROM _export_postings" in sql:
+        if "FROM _export_postings" in sql:
             # Batch INSERT — fail on the first attempt to trigger the
             # fallback path.
             batch_count += 1
