@@ -162,6 +162,13 @@ async def _probe_token(token: str, client: httpx.AsyncClient) -> tuple[bool, int
             return True, len(jobs)
         return False, None
     except Exception:
+        log.debug(
+            "ashby.probe_failed",
+            probe="token",
+            token=token,
+            url=_api_url(token),
+            exc_info=True,
+        )
         return False, None
 
 
@@ -175,6 +182,13 @@ async def _fetch_job_count(token: str, client: httpx.AsyncClient) -> int | None:
         jobs = data.get("jobs")
         return len(jobs) if isinstance(jobs, list) else None
     except Exception:
+        log.debug(
+            "ashby.probe_failed",
+            probe="job_count",
+            token=token,
+            url=_api_url(token),
+            exc_info=True,
+        )
         return None
 
 

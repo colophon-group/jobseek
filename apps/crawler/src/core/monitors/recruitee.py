@@ -182,6 +182,13 @@ async def _probe_api(api_base: str, client: httpx.AsyncClient) -> tuple[bool, in
             return True, len(offers)
         return False, None
     except Exception:
+        log.debug(
+            "recruitee.probe_failed",
+            probe="api",
+            api_base=api_base,
+            url=_api_url(api_base),
+            exc_info=True,
+        )
         return False, None
 
 

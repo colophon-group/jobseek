@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
+import structlog
+
 if TYPE_CHECKING:
     import httpx
 
@@ -26,6 +28,8 @@ if TYPE_CHECKING:
 else:
     MonitorResult = Any
     SaveRawClient = Any
+
+log = structlog.get_logger()
 
 
 @dataclass(slots=True)
@@ -328,6 +332,7 @@ async def fetch_page_text(
     except TDMReservedError:
         raise
     except Exception:
+        log.debug("monitors.fetch_page_text_failed", url=url, exc_info=True)
         return None
 
 
