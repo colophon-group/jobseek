@@ -17,6 +17,7 @@ import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-
 import { useSession } from "@/components/providers/SessionProvider";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
+import { useLatest, useLatestState } from "@/lib/use-latest";
 import type { SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
 import {
   useSearchStateStore,
@@ -82,8 +83,7 @@ export function SearchPage({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isLoggedIn } = useSession();
-  const isLoggedInRef = useRef(isLoggedIn);
-  isLoggedInRef.current = isLoggedIn;
+  const isLoggedInRef = useLatest(isLoggedIn);
   const { get: getSearchState, set: setSearchState, setPageActions } = useSearchStateStore();
 
   const cachedSnapshot = getSearchState();
@@ -116,41 +116,41 @@ export function SearchPage({
     : null;
   const shouldRestore = cached !== null;
 
-  const [keywords, setKeywords] = useState<string[]>(
+  const [keywords, setKeywords, keywordsRef] = useLatestState<string[]>(
     shouldRestore ? cached.keywords : initialKeywords,
   );
-  const [locations, setLocations] = useState<SelectedLocation[]>(
+  const [locations, setLocations, locationsRef] = useLatestState<SelectedLocation[]>(
     shouldRestore ? cached.locations : initialLocations,
   );
-  const [occupations, setOccupations] = useState<TaxonomyItem[]>(
+  const [occupations, setOccupations, occupationsRef] = useLatestState<TaxonomyItem[]>(
     shouldRestore ? cached.occupations : initialOccupations,
   );
-  const [seniorities, setSeniorities] = useState<TaxonomyItem[]>(
+  const [seniorities, setSeniorities, senioritiesRef] = useLatestState<TaxonomyItem[]>(
     shouldRestore ? cached.seniorities : initialSeniorities,
   );
-  const [technologies, setTechnologies] = useState<TaxonomyItem[]>(
+  const [technologies, setTechnologies, technologiesRef] = useLatestState<TaxonomyItem[]>(
     shouldRestore ? cached.technologies : initialTechnologies,
   );
-  const [salaryCurrency, setSalaryCurrency] = useState(
+  const [salaryCurrency, setSalaryCurrency, salaryCurrencyRef] = useLatestState(
     shouldRestore ? cached.salaryCurrency : (initialSalaryCurrency ?? displayCurrency),
   );
-  const [salaryMin, setSalaryMin] = useState<number | undefined>(
+  const [salaryMin, setSalaryMin, salaryMinRef] = useLatestState<number | undefined>(
     shouldRestore ? cached.salaryMinEur : initialSalaryMin,
   );
-  const [salaryMax, setSalaryMax] = useState<number | undefined>(
+  const [salaryMax, setSalaryMax, salaryMaxRef] = useLatestState<number | undefined>(
     shouldRestore ? cached.salaryMaxEur : initialSalaryMax,
   );
-  const [experienceMin, setExperienceMin] = useState<number | undefined>(
+  const [experienceMin, setExperienceMin, experienceMinRef] = useLatestState<number | undefined>(
     shouldRestore ? cached.experienceMin : initialExperienceMin,
   );
-  const [experienceMax, setExperienceMax] = useState<number | undefined>(
+  const [experienceMax, setExperienceMax, experienceMaxRef] = useLatestState<number | undefined>(
     shouldRestore ? cached.experienceMax : initialExperienceMax,
   );
 
-  const [employmentTypes, setEmploymentTypes] = useState<string[]>(
+  const [employmentTypes, setEmploymentTypes, employmentTypesRef] = useLatestState<string[]>(
     shouldRestore ? cached.employmentTypes ?? [] : initialEmploymentTypes,
   );
-  const [workMode, setWorkMode] = useState<WorkMode[]>(
+  const [workMode, setWorkMode, workModeRef] = useLatestState<WorkMode[]>(
     shouldRestore ? cached.workMode : initialWorkMode,
   );
 
@@ -163,19 +163,19 @@ export function SearchPage({
 
   useClearTypesenseOnAuthChange(isLoggedIn);
 
-  const [showPostingId, setShowPostingId] = useState<string | null>(
+  const [showPostingId, setShowPostingId, showPostingIdRef] = useLatestState<string | null>(
     searchParams.get("show") ?? (shouldRestore ? cached.showPostingId : null),
   );
-  const [companies, setCompanies] = useState<SearchResultCompany[]>(
+  const [companies, setCompanies, companiesRef] = useLatestState<SearchResultCompany[]>(
     shouldRestore ? cached.companies : initialCompanies,
   );
-  const [totalCompanies, setTotalCompanies] = useState(
+  const [totalCompanies, setTotalCompanies, totalCompaniesRef] = useLatestState(
     shouldRestore ? cached.totalCompanies : initialTotalCompanies,
   );
   const [isSearching, setIsSearching] = useState(false);
   const searchCounterRef = useRef(0);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
-  const [isDegraded, setIsDegraded] = useState(
+  const [isDegraded, setIsDegraded, isDegradedRef] = useLatestState(
     shouldRestore ? (cached.degraded ?? false) : (initialDegraded ?? false),
   );
   // Track server-side offset separately from deduped client list length.
@@ -183,39 +183,8 @@ export function SearchPage({
   // causing the deduped list to grow slower than the server offset.
   const serverOffsetRef = useRef(initialCompanies.length);
 
-  // Refs for all filter state — single source of truth for updateUrl/runSearch
-  const keywordsRef = useRef(keywords);
-  const locationsRef = useRef(locations);
-  const occupationsRef = useRef(occupations);
-  const senioritiesRef = useRef(seniorities);
-  const technologiesRef = useRef(technologies);
-  const employmentTypesRef = useRef(employmentTypes);
-  const workModeRef = useRef(workMode);
-  const salaryCurrencyRef = useRef(salaryCurrency);
-  const salaryMinRef = useRef(salaryMin);
-  const salaryMaxRef = useRef(salaryMax);
-  const experienceMinRef = useRef(experienceMin);
-  const experienceMaxRef = useRef(experienceMax);
-  const companiesRef = useRef(companies);
-  const totalCompaniesRef = useRef(totalCompanies);
-  const showPostingIdRef = useRef(showPostingId);
-  const isDegradedRef = useRef(isDegraded);
-  keywordsRef.current = keywords;
-  locationsRef.current = locations;
-  occupationsRef.current = occupations;
-  senioritiesRef.current = seniorities;
-  technologiesRef.current = technologies;
-  employmentTypesRef.current = employmentTypes;
-  workModeRef.current = workMode;
-  salaryCurrencyRef.current = salaryCurrency;
-  salaryMinRef.current = salaryMin;
-  salaryMaxRef.current = salaryMax;
-  experienceMinRef.current = experienceMin;
-  experienceMaxRef.current = experienceMax;
-  companiesRef.current = companies;
-  totalCompaniesRef.current = totalCompanies;
-  showPostingIdRef.current = showPostingId;
-  isDegradedRef.current = isDegraded;
+  // Latest-state refs are the single source of truth for stable
+  // updateUrl/runSearch/pageActions callbacks.
 
   // Flag to distinguish our own URL changes (replaceState) from external
   // navigation (router.push from header search bar, back/forward, etc.)
@@ -274,25 +243,25 @@ export function SearchPage({
     const parseExpParts = exp ? exp.split("-") : [];
     const newExpMin = parseExpParts[0] ? parseInt(parseExpParts[0], 10) : undefined;
     const newExpMax = parseExpParts[1] ? parseInt(parseExpParts[1], 10) : undefined;
-    if (salcur) { setSalaryCurrency(salcur); salaryCurrencyRef.current = salcur; }
+    if (salcur) { setSalaryCurrency(salcur); }
     if (newSalMin !== undefined || newSalMax !== undefined) {
-      setSalaryMin(newSalMin); salaryMinRef.current = newSalMin;
-      setSalaryMax(newSalMax); salaryMaxRef.current = newSalMax;
+      setSalaryMin(newSalMin);
+      setSalaryMax(newSalMax);
     }
     if (newExpMin !== undefined || newExpMax !== undefined) {
-      setExperienceMin(newExpMin); experienceMinRef.current = newExpMin;
-      setExperienceMax(newExpMax); experienceMaxRef.current = newExpMax;
+      setExperienceMin(newExpMin);
+      setExperienceMax(newExpMax);
     }
 
     setIsSearching(true);
     parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }).then((parsed) => {
-      setKeywords(parsed.keywords); keywordsRef.current = parsed.keywords;
-      setLocations(parsed.locations); locationsRef.current = parsed.locations;
-      setOccupations(parsed.occupations); occupationsRef.current = parsed.occupations;
-      setSeniorities(parsed.seniorities); senioritiesRef.current = parsed.seniorities;
-      setTechnologies(parsed.technologies); technologiesRef.current = parsed.technologies;
-      setEmploymentTypes(parsed.employmentTypes); employmentTypesRef.current = parsed.employmentTypes;
-      setWorkMode(parsed.workMode); workModeRef.current = parsed.workMode;
+      setKeywords(parsed.keywords);
+      setLocations(parsed.locations);
+      setOccupations(parsed.occupations);
+      setSeniorities(parsed.seniorities);
+      setTechnologies(parsed.technologies);
+      setEmploymentTypes(parsed.employmentTypes);
+      setWorkMode(parsed.workMode);
       runSearch();
     });
   }, [searchParams, locale, userLat, userLng]);
@@ -356,38 +325,38 @@ export function SearchPage({
       addLocation: (loc) => {
         const updated = [...locationsRef.current, loc];
         setLocations(updated);
-        locationsRef.current = updated;
+
         updateUrl();
         runSearch();
       },
       addOccupation: (occ) => {
         const updated = [...occupationsRef.current, occ];
         setOccupations(updated);
-        occupationsRef.current = updated;
+
         updateUrl();
         runSearch();
       },
       addSeniority: (sen) => {
         const updated = [...senioritiesRef.current, sen];
         setSeniorities(updated);
-        senioritiesRef.current = updated;
+
         updateUrl();
         runSearch();
       },
       addTechnology: (tech) => {
         const updated = [...technologiesRef.current, tech];
         setTechnologies(updated);
-        technologiesRef.current = updated;
+
         updateUrl();
         runSearch();
       },
       submitSearch: (nextKeywords, nextLocations, nextOccupations, nextSeniorities, nextTechnologies) => {
-        setKeywords(nextKeywords); keywordsRef.current = nextKeywords;
-        setLocations(nextLocations); locationsRef.current = nextLocations;
-        if (nextOccupations) { setOccupations(nextOccupations); occupationsRef.current = nextOccupations; }
-        if (nextSeniorities) { setSeniorities(nextSeniorities); senioritiesRef.current = nextSeniorities; }
-        if (nextTechnologies) { setTechnologies(nextTechnologies); technologiesRef.current = nextTechnologies; }
-        setShowPostingId(null); showPostingIdRef.current = null;
+        setKeywords(nextKeywords);
+        setLocations(nextLocations);
+        if (nextOccupations) { setOccupations(nextOccupations); }
+        if (nextSeniorities) { setSeniorities(nextSeniorities); }
+        if (nextTechnologies) { setTechnologies(nextTechnologies); }
+        setShowPostingId(null);
         updateUrl();
         runSearch();
       },
@@ -400,7 +369,7 @@ export function SearchPage({
         if (employmentTypesRef.current.includes(type)) return;
         const updated = [...employmentTypesRef.current, type];
         setEmploymentTypes(updated);
-        employmentTypesRef.current = updated;
+
         updateUrl();
         runSearch();
       },
@@ -408,20 +377,20 @@ export function SearchPage({
         if (workModeRef.current.includes(mode)) return;
         const updated = [...workModeRef.current, mode];
         setWorkMode(updated);
-        workModeRef.current = updated;
+
         updateUrl();
         runSearch();
       },
       setSalaryFilter: (currency: string, min: number | undefined, max: number | undefined) => {
-        setSalaryCurrency(currency); salaryCurrencyRef.current = currency;
-        setSalaryMin(min); salaryMinRef.current = min;
-        setSalaryMax(max); salaryMaxRef.current = max;
+        setSalaryCurrency(currency);
+        setSalaryMin(min);
+        setSalaryMax(max);
         updateUrl();
         runSearch();
       },
       setExperienceFilter: (min: number | undefined, max: number | undefined) => {
-        setExperienceMin(min); experienceMinRef.current = min;
-        setExperienceMax(max); experienceMaxRef.current = max;
+        setExperienceMin(min);
+        setExperienceMax(max);
         updateUrl();
         runSearch();
       },
@@ -606,7 +575,7 @@ export function SearchPage({
     (keyword: string) => {
       const updated = keywordsRef.current.filter((k) => k !== keyword);
       setKeywords(updated);
-      keywordsRef.current = updated;
+
       updateUrl();
       runSearch();
     },
@@ -617,7 +586,7 @@ export function SearchPage({
     (location: SelectedLocation) => {
       const updated = [...locationsRef.current, location];
       setLocations(updated);
-      locationsRef.current = updated;
+
       updateUrl();
       runSearch();
     },
@@ -628,7 +597,7 @@ export function SearchPage({
     (occ: TaxonomyItem) => {
       const updated = [...occupationsRef.current, occ];
       setOccupations(updated);
-      occupationsRef.current = updated;
+
       updateUrl();
       runSearch();
     },
@@ -639,7 +608,7 @@ export function SearchPage({
     (sen: TaxonomyItem) => {
       const updated = [...senioritiesRef.current, sen];
       setSeniorities(updated);
-      senioritiesRef.current = updated;
+
       updateUrl();
       runSearch();
     },
@@ -648,12 +617,12 @@ export function SearchPage({
 
   const handleSubmitSearch = useCallback(
     (nextKeywords: string[], nextLocations: SelectedLocation[], nextOccs?: TaxonomyItem[], nextSens?: TaxonomyItem[], nextTechs?: TaxonomyItem[]) => {
-      setKeywords(nextKeywords); keywordsRef.current = nextKeywords;
-      setLocations(nextLocations); locationsRef.current = nextLocations;
-      if (nextOccs) { setOccupations(nextOccs); occupationsRef.current = nextOccs; }
-      if (nextSens) { setSeniorities(nextSens); senioritiesRef.current = nextSens; }
-      if (nextTechs) { setTechnologies(nextTechs); technologiesRef.current = nextTechs; }
-      setShowPostingId(null); showPostingIdRef.current = null;
+      setKeywords(nextKeywords);
+      setLocations(nextLocations);
+      if (nextOccs) { setOccupations(nextOccs); }
+      if (nextSens) { setSeniorities(nextSens); }
+      if (nextTechs) { setTechnologies(nextTechs); }
+      setShowPostingId(null);
       updateUrl();
       runSearch();
     },
@@ -664,7 +633,7 @@ export function SearchPage({
     (locationId: number) => {
       const updated = locationsRef.current.filter((l) => l.id !== locationId);
       setLocations(updated);
-      locationsRef.current = updated;
+
       updateUrl();
       runSearch();
     },
@@ -675,7 +644,7 @@ export function SearchPage({
     (occId: number) => {
       const updated = occupationsRef.current.filter((o) => o.id !== occId);
       setOccupations(updated);
-      occupationsRef.current = updated;
+
       updateUrl();
       runSearch();
     },
@@ -686,7 +655,7 @@ export function SearchPage({
     (senId: number) => {
       const updated = senioritiesRef.current.filter((s) => s.id !== senId);
       setSeniorities(updated);
-      senioritiesRef.current = updated;
+
       updateUrl();
       runSearch();
     },
@@ -697,7 +666,7 @@ export function SearchPage({
     (tech: TaxonomyItem) => {
       const updated = [...technologiesRef.current, tech];
       setTechnologies(updated);
-      technologiesRef.current = updated;
+
       updateUrl();
       runSearch();
     },
@@ -708,7 +677,7 @@ export function SearchPage({
     (techId: number) => {
       const updated = technologiesRef.current.filter((t) => t.id !== techId);
       setTechnologies(updated);
-      technologiesRef.current = updated;
+
       updateUrl();
       runSearch();
     },
@@ -720,9 +689,7 @@ export function SearchPage({
       setSalaryCurrency(currency);
       setSalaryMin(min);
       setSalaryMax(max);
-      salaryCurrencyRef.current = currency;
-      salaryMinRef.current = min;
-      salaryMaxRef.current = max;
+
       updateUrl();
       runSearch();
     },
@@ -733,8 +700,7 @@ export function SearchPage({
     (min: number | undefined, max: number | undefined) => {
       setExperienceMin(min);
       setExperienceMax(max);
-      experienceMinRef.current = min;
-      experienceMaxRef.current = max;
+
       updateUrl();
       runSearch();
     },
@@ -742,19 +708,19 @@ export function SearchPage({
   );
 
   const handleClearAll = useCallback(() => {
-    setKeywords([]); keywordsRef.current = [];
-    setLocations([]); locationsRef.current = [];
-    setOccupations([]); occupationsRef.current = [];
-    setSeniorities([]); senioritiesRef.current = [];
-    setTechnologies([]); technologiesRef.current = [];
-    setEmploymentTypes([]); employmentTypesRef.current = [];
-    setWorkMode([]); workModeRef.current = [];
-    setSalaryCurrency(displayCurrency); salaryCurrencyRef.current = displayCurrency;
-    setSalaryMin(undefined); salaryMinRef.current = undefined;
-    setSalaryMax(undefined); salaryMaxRef.current = undefined;
-    setExperienceMin(undefined); experienceMinRef.current = undefined;
-    setExperienceMax(undefined); experienceMaxRef.current = undefined;
-    setShowPostingId(null); showPostingIdRef.current = null;
+    setKeywords([]);
+    setLocations([]);
+    setOccupations([]);
+    setSeniorities([]);
+    setTechnologies([]);
+    setEmploymentTypes([]);
+    setWorkMode([]);
+    setSalaryCurrency(displayCurrency);
+    setSalaryMin(undefined);
+    setSalaryMax(undefined);
+    setExperienceMin(undefined);
+    setExperienceMax(undefined);
+    setShowPostingId(null);
     updateUrl();
     runSearch();
   }, [displayCurrency]);
@@ -852,7 +818,7 @@ export function SearchPage({
           const exists = employmentTypesRef.current.includes(type);
           const updated = exists ? employmentTypesRef.current.filter((t) => t !== type) : [...employmentTypesRef.current, type];
           setEmploymentTypes(updated);
-          employmentTypesRef.current = updated;
+
           updateUrl();
           runSearch();
         }}
@@ -861,7 +827,7 @@ export function SearchPage({
           const exists = workModeRef.current.includes(mode);
           const updated = exists ? workModeRef.current.filter((m) => m !== mode) : [...workModeRef.current, mode];
           setWorkMode(updated);
-          workModeRef.current = updated;
+
           updateUrl();
           runSearch();
         }}
