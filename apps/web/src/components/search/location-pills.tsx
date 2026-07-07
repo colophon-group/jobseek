@@ -7,7 +7,7 @@ import type { LocationSuggestion } from "@/lib/actions/locations";
 import { runSuggestLocations as suggestLocations } from "@/lib/search/typeahead-runner";
 import type { SelectedLocation } from "@/lib/search/types";
 import { ScrollFade } from "@/components/ui/scroll-fade";
-import { getBrowserCoordinatesOnce } from "@/lib/search/browser-geolocation";
+import { useBrowserCoordinates } from "@/lib/search/browser-geolocation";
 
 interface LocationPillsProps {
   locations: SelectedLocation[];
@@ -42,32 +42,17 @@ export function LocationPills({
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [browserGeo, setBrowserGeo] = useState<{ lat: number; lng: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const isKeyboardNav = useRef(false);
 
-  // Resolve effective coordinates: server (Vercel IP) → browser geolocation
+  const browserGeo = useBrowserCoordinates(serverLat);
+
+  // Resolve effective coordinates: server (Vercel IP) -> browser geolocation
   const userLat = serverLat ?? browserGeo?.lat;
   const userLng = serverLng ?? browserGeo?.lng;
-
-  // Request browser geolocation once per page load if server didn't provide coords.
-  useEffect(() => {
-    if (serverLat != null) return;
-    let cancelled = false;
-
-    void getBrowserCoordinatesOnce().then((geo) => {
-      if (!cancelled && geo) {
-        setBrowserGeo(geo);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [serverLat]);
 
   const fetchSuggestions = useCallback(
     (query: string) => {
