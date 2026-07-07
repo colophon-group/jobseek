@@ -7,6 +7,9 @@ import { setTestEnv, withTestEnv } from "@/test-utils/env";
 const mocks = vi.hoisted(() => ({
   cacheLife: vi.fn(),
   cacheTag: vi.fn(),
+  cached: vi.fn(
+    (_key: string, fetcher: () => Promise<unknown>, _options: unknown) => fetcher(),
+  ),
   search: vi.fn(),
   dbExecute: vi.fn(),
   buildFilterString: vi.fn(() => ""),
@@ -26,6 +29,9 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({
   cacheLife: mocks.cacheLife,
   cacheTag: mocks.cacheTag,
+}));
+vi.mock("@/lib/cache", () => ({
+  cached: mocks.cached,
 }));
 
 vi.mock("@/lib/search/typesense-client", () => ({
@@ -98,8 +104,7 @@ import { getCompanyBySlug, searchCompaniesForWatchlist } from "../company";
 
 const searchMock = mocks.search;
 const dbExecuteMock = mocks.dbExecute;
-const cacheLifeMock = mocks.cacheLife;
-const cacheTagMock = mocks.cacheTag;
+const cachedMock = mocks.cached;
 const buildFilterStringMock = mocks.buildFilterString;
 const TEST_ENV = {
   DATABASE_URL:
@@ -135,6 +140,9 @@ withTestEnv(TEST_ENV);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  cachedMock.mockImplementation(
+    (_key: string, fetcher: () => Promise<unknown>, _options: unknown) => fetcher(),
+  );
   searchMock.mockReset();
   dbExecuteMock.mockReset();
   buildFilterStringMock.mockReset();
@@ -509,47 +517,48 @@ describe("getCompanyBySlug — Postgres fallback", () => {
 });
 
 describe("getCompanyBySlug — caching contract", () => {
-  it("calls cacheLife('hours') + cacheTag(company:slug) + cacheTag(company-csv-data) on a hit", async () => {
-    /** #2884 bucket 4 footgun migration: under `'use cache'` a
-     * `null` return would pin a brand-new slug for the cacheLife
-     * window. The wrapper throws `CompanyNotFoundError` past the
-     * cache boundary on null and the outer catches → returns null,
-     * keeping the slot empty. The contract this test asserts is the
-     * tagging surface (so the page-level `revalidateTag` and the
-     * `/api/internal/invalidate-typeahead` CSV-driven sweep both
-     * still drop the slot when needed). The null-handling itself is
-     * covered by the Postgres-fallback `returns null` test above. */
+  it("uses the shared company-slug cache with skip-null semantics on a hit", async () => {
+    /** #3603 regression: company slug misses must not throw sentinel
+     * errors from a `'use cache'` boundary, because Next serializes the
+     * caught throw into the RSC payload. Redis `cached()` keeps the old
+     * skip-null contract without leaking an error digest. */
     searchMock.mockResolvedValue(_typesenseResponse(_hit()));
 
     const out = await getCompanyBySlug("acme", "en");
 
     expect(out?.id).toBe("co-1");
-    expect(cacheLifeMock).toHaveBeenCalledWith("hours");
-    const tags = cacheTagMock.mock.calls.map((c) => c[0]);
-    expect(tags).toContain("company:acme");
-    expect(tags).toContain("company-csv-data");
+    expect(cachedMock).toHaveBeenCalledTimes(1);
+    const [key, _fetcher, options] = cachedMock.mock.calls[0] as [
+      string,
+      () => Promise<unknown>,
+      { ttl: number; skipIf: (data: unknown) => boolean },
+    ];
+    expect(key).toBe("company-slug:acme:en");
+    expect(options.ttl).toBe(600);
+    expect(options.skipIf(null)).toBe(true);
+    expect(options.skipIf(out)).toBe(false);
   });
 
-  it("returns null without re-throwing CompanyNotFoundError on miss", async () => {
-    /** Regression for the throw-and-catch wrapper: the inner
-     * `_fetchCompanyBySlugCached` throws `CompanyNotFoundError` so
-     * the `'use cache'` slot stays empty for the next attempt. The
-     * outer `getCompanyBySlug` MUST swallow that one error class
-     * and return null — leaking the throw would 500 the route. */
+  it("returns null on miss without throwing a cache-boundary sentinel", async () => {
+    /** The returned null is not cached by Redis because the skipIf
+     * predicate above treats null as a miss. That preserves retry-on-
+     * next-request behavior for brand-new slugs without throwing. */
     searchMock.mockResolvedValue(_typesenseResponse(null));
     dbExecuteMock.mockResolvedValue([]);
 
     const out = await getCompanyBySlug("ghost-slug", "en");
     expect(out).toBeNull();
+    const options = cachedMock.mock.calls[0][2] as {
+      skipIf: (data: unknown) => boolean;
+    };
+    expect(options.skipIf(out)).toBe(true);
   });
 
   it("re-throws unexpected errors past the wrapper", async () => {
-    /** Empirical guard for #2884 bucket 4: the catch-and-null path is
-     * scoped to `CompanyNotFoundError` only. A genuine downstream
-     * failure (DB pool exhausted, Drizzle parse error, …) MUST
-     * propagate so Suspense / error boundaries trigger; silently
-     * nulling here would surface as a 404 instead of a 5xx and hide
-     * the outage. */
+    /** A genuine downstream failure (DB pool exhausted, Drizzle parse
+     * error, etc.) MUST propagate so Suspense / error boundaries
+     * trigger; silently nulling here would surface as a 404 instead of
+     * a 5xx and hide the outage. */
     searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
     const boom = new Error("postgres pool exhausted");
     dbExecuteMock.mockRejectedValue(boom);

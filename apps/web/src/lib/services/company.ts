@@ -3,13 +3,13 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import { CACHE_TTL_MEDIUM, CACHE_TTL_LONG } from "@/lib/cache-ttl";
+import { CACHE_TTL_MEDIUM, CACHE_TTL_LONG, CACHE_TTL_DETAIL } from "@/lib/cache-ttl";
+import { cached } from "@/lib/cache";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResultPosting, WorkMode } from "@/lib/search";
 import {
   companyByIdCacheTag,
-  companyCacheTag,
   companyCsvDataCacheTag,
   typeaheadCompaniesCacheTag,
 } from "@/lib/cache-tags";
@@ -637,19 +637,6 @@ export interface CompanyDetail {
   activeJobCount: number;
 }
 
-// Sentinel to signal "no company found" out of `_fetchCompanyBySlugCached`
-// without letting `null` reach the `'use cache'` boundary. Returning null
-// would pin the slot for the cacheLife window and lock a brand-new slug
-// out of being seen for up to that long. Throwing past the cache boundary
-// (caught by `getCompanyBySlug`) keeps the slot empty and lets the next
-// request retry. See #2884 footgun.
-class CompanyNotFoundError extends Error {
-  constructor() {
-    super("company-not-found");
-    this.name = "CompanyNotFoundError";
-  }
-}
-
 export async function getCompanyBySlug(
   slug: string,
   locale: string,
@@ -658,42 +645,14 @@ export async function getCompanyBySlug(
     console.warn("[company] lookup skipped because Typesense and DATABASE_URL are not configured");
     return null;
   }
-  // Throw-and-catch around the `'use cache'` inner. The previous
-  // `skipIf: d === null` semantics aren't available under `'use cache'` —
-  // the inner fetcher throws `CompanyNotFoundError` on null so the cache
-  // slot stays empty for not-yet-seen slugs (avoids 600s of poisoned
-  // null), and the wrapper returns null to the caller. Migrated from
-  // Redis-backed `cached()` in #2884 (bucket 4 footgun).
-  try {
-    return await _fetchCompanyBySlugCached(slug, locale);
-  } catch (err) {
-    if (err instanceof CompanyNotFoundError) return null;
-    // Any other error is unexpected — re-throw so the caller / Suspense
-    // boundary handles it (matches the original `cached()` behaviour
-    // where unexpected errors propagated past the cache layer).
-    throw err;
-  }
-}
-
-async function _fetchCompanyBySlugCached(
-  slug: string,
-  locale: string,
-): Promise<CompanyDetail> {
-  "use cache";
-  cacheLife("hours");
-  // Tag the slot so the page route's `revalidateTag(companyCacheTag(slug))`
-  // (already used in `app/[lang]/(app)/company/[slug]/page.tsx` and
-  // `generateMetadata`) drops THIS slot too — keeping the data layer's
-  // cached entry in sync with the page-level cache. See #2884.
-  cacheTag(companyCacheTag(slug));
-  // Also drop on a CSV-driven sweep — covers rename / industry change.
-  // Mirrors the legacy `company-slug:` Redis-prefix sweep at the
-  // `/api/internal/invalidate-typeahead` route. See #2715 + #2884.
-  cacheTag(companyCsvDataCacheTag());
-
-  const data = await _fetchCompanyBySlug(slug, locale);
-  if (data === null) throw new CompanyNotFoundError();
-  return data;
+  const key = `company-slug:${slug}:${locale}`;
+  // Empty-result skipping is load-bearing here: a not-yet-indexed company
+  // should be retried on the next request, but throwing a sentinel from a
+  // `'use cache'` boundary leaks that error into the RSC payload (#3603).
+  return cached(key, () => _fetchCompanyBySlug(slug, locale), {
+    ttl: CACHE_TTL_DETAIL,
+    skipIf: (data) => data === null,
+  });
 }
 
 async function _fetchCompanyBySlug(slug: string, locale: string): Promise<CompanyDetail | null> {
