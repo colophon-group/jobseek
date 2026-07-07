@@ -53,6 +53,8 @@ ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 IMAGE_TAG="${CRAWLER_IMAGE_TAG:-latest}"
 DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$DEPLOY_DIR")}"
+export COMPOSE_PROJECT_NAME
 
 rollback_deploy() {
   local exit_code=$?
@@ -138,6 +140,43 @@ ensure_deploy_disk_headroom() {
 
   echo "Deploy disk headroom OK: ${free_kb} KiB available" >&2
 }
+
+running_compose_oneoff_containers() {
+  docker ps \
+    --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}" \
+    --filter "label=com.docker.compose.oneoff=True" \
+    --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Label "com.docker.compose.service"}}\t{{.Command}}'
+}
+
+ensure_no_running_compose_oneoffs() {
+  local rows
+
+  rows="$(running_compose_oneoff_containers)"
+  if [[ -z "$rows" ]]; then
+    echo "No running Docker Compose one-off containers detected for project ${COMPOSE_PROJECT_NAME}" >&2
+    return 0
+  fi
+
+  cat >&2 <<EOF
+ERROR: running Docker Compose one-off containers detected for project ${COMPOSE_PROJECT_NAME}.
+Deploy is refusing to overlap a production one-off job because it may keep
+running older crawler code while this deploy restarts services and reseeds
+Redis-backed schedules.
+
+Container ID\tName\tImage\tStatus\tCompose service\tCommand
+${rows}
+
+Wait for the one-off job to finish, or intentionally stop it after confirming
+with the operator who started it, then rerun the deploy.
+EOF
+  return 1
+}
+
+# Fail before touching services if an operator one-off is still running.
+# Example: `docker compose run --rm worker-1 uv run --no-sync crawler ...`
+# receives the Compose label `com.docker.compose.oneoff=True` and otherwise
+# survives the named-service stop/recreate sequence below.
+ensure_no_running_compose_oneoffs
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
