@@ -1415,6 +1415,32 @@ async def _populate_currency_rates_if_empty(
     log.info("sync.currency_rates.populated_from_supabase", count=len(rows))
 
 
+_LOOKUP_IDENTITY_TABLES = {
+    "occupation_domain": _MIRROR_OCCUPATION_DOMAINS,
+    "occupation": _MIRROR_OCCUPATIONS,
+    "seniority": _MIRROR_SENIORITY,
+}
+
+
+def _id_slug_identity(rows) -> set[tuple[int, str]]:
+    return {(int(row["id"]), str(row["slug"])) for row in rows}
+
+
+async def _lookup_identities_match(
+    local_conn: asyncpg.Connection,
+    expected_by_table: dict[str, list[asyncpg.Record]],
+) -> bool:
+    for table, expected_rows in expected_by_table.items():
+        if not expected_rows:
+            continue
+        if table not in _LOOKUP_IDENTITY_TABLES:
+            raise ValueError(f"unsupported lookup table: {table}")
+        local_rows = await local_conn.fetch(f"SELECT id, slug FROM {table}")
+        if _id_slug_identity(local_rows) != _id_slug_identity(expected_rows):
+            return False
+    return True
+
+
 async def sync_lookup_tables_local(
     supa_conn: asyncpg.Connection,
     local_conn: asyncpg.Connection,
@@ -1447,46 +1473,67 @@ async def sync_lookup_tables_local(
         await supa_conn.fetch("SELECT id, slug FROM seniority") if len(seniority_df) > 0 else []
     )
 
-    # --- Drop FK constraints, delete, re-insert, re-add FKs ---
-    # job_posting references occupation(id) and seniority(id), so we must
-    # temporarily drop those constraints to replace the lookup rows.
-    await local_conn.execute(
-        "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_occupation_id_fkey"
-    )
-    await local_conn.execute(
-        "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_seniority_id_fkey"
-    )
-    if occ_rows:
-        await local_conn.execute("DELETE FROM occupation")
-    if domain_rows:
-        await local_conn.execute("DELETE FROM occupation_domain")
-    if sen_rows:
-        await local_conn.execute("DELETE FROM seniority")
+    expected_identities = {
+        "occupation_domain": domain_rows,
+        "occupation": occ_rows,
+        "seniority": sen_rows,
+    }
+    identities_match = await _lookup_identities_match(local_conn, expected_identities)
+    if identities_match:
+        log.info(
+            "sync.lookup_tables_local.identity_up_to_date",
+            occupation_domains=len(domain_rows),
+            occupations=len(occ_rows),
+            seniority=len(sen_rows),
+        )
+    else:
+        # --- Drop FK constraints, delete, re-insert, re-add FKs ---
+        # job_posting references occupation(id) and seniority(id), so we must
+        # temporarily drop those constraints to replace the lookup rows.
+        await local_conn.execute(
+            "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_occupation_id_fkey"
+        )
+        await local_conn.execute(
+            "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_seniority_id_fkey"
+        )
+        if occ_rows:
+            await local_conn.execute("DELETE FROM occupation")
+        if domain_rows:
+            await local_conn.execute("DELETE FROM occupation_domain")
+        if sen_rows:
+            await local_conn.execute("DELETE FROM seniority")
 
-    # --- Re-insert with explicit Supabase IDs ---
-    if domain_rows:
-        await _mirror_table(
-            local_conn,
-            "occupation_domain",
-            _MIRROR_OCCUPATION_DOMAINS,
-            [r["id"] for r in domain_rows],
-            [r["slug"] for r in domain_rows],
-        )
-    if occ_rows:
-        await _mirror_table(
-            local_conn,
-            "occupation",
-            _MIRROR_OCCUPATIONS,
-            [r["id"] for r in occ_rows],
-            [r["slug"] for r in occ_rows],
-        )
-    if sen_rows:
-        await _mirror_table(
-            local_conn,
-            "seniority",
-            _MIRROR_SENIORITY,
-            [r["id"] for r in sen_rows],
-            [r["slug"] for r in sen_rows],
+        # --- Re-insert with explicit Supabase IDs ---
+        if domain_rows:
+            await _mirror_table(
+                local_conn,
+                "occupation_domain",
+                _MIRROR_OCCUPATION_DOMAINS,
+                [r["id"] for r in domain_rows],
+                [r["slug"] for r in domain_rows],
+            )
+        if occ_rows:
+            await _mirror_table(
+                local_conn,
+                "occupation",
+                _MIRROR_OCCUPATIONS,
+                [r["id"] for r in occ_rows],
+                [r["slug"] for r in occ_rows],
+            )
+        if sen_rows:
+            await _mirror_table(
+                local_conn,
+                "seniority",
+                _MIRROR_SENIORITY,
+                [r["id"] for r in sen_rows],
+                [r["slug"] for r in sen_rows],
+            )
+
+        log.info(
+            "sync.lookup_tables_local.mirrored",
+            occupation_domains=len(domain_rows),
+            occupations=len(occ_rows),
+            seniority=len(sen_rows),
         )
 
     # --- Sync names, parents, domains (references the now-correct IDs) ---
@@ -1515,15 +1562,16 @@ async def sync_lookup_tables_local(
     await _populate_locations_if_empty(supa_conn, local_conn)
     await _populate_currency_rates_if_empty(supa_conn, local_conn)
 
-    # --- Re-add FK constraints (dropped above) ---
-    await local_conn.execute(
-        "ALTER TABLE job_posting ADD CONSTRAINT "
-        "job_posting_occupation_id_fkey FOREIGN KEY (occupation_id) REFERENCES occupation(id)"
-    )
-    await local_conn.execute(
-        "ALTER TABLE job_posting ADD CONSTRAINT "
-        "job_posting_seniority_id_fkey FOREIGN KEY (seniority_id) REFERENCES seniority(id)"
-    )
+    if not identities_match:
+        # --- Re-add FK constraints (dropped above) ---
+        await local_conn.execute(
+            "ALTER TABLE job_posting ADD CONSTRAINT "
+            "job_posting_occupation_id_fkey FOREIGN KEY (occupation_id) REFERENCES occupation(id)"
+        )
+        await local_conn.execute(
+            "ALTER TABLE job_posting ADD CONSTRAINT "
+            "job_posting_seniority_id_fkey FOREIGN KEY (seniority_id) REFERENCES seniority(id)"
+        )
 
     log.info("sync.lookup_tables_local.complete")
 
