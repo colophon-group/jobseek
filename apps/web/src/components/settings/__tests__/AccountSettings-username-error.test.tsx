@@ -100,8 +100,8 @@ async function submitUsername(value: string) {
 }
 
 describe("AccountSettings username errors", () => {
-  it("renders the renameUsername error and does not refresh stale session data", async () => {
-    mocks.renameUsername.mockResolvedValueOnce({ error: "Username already taken" });
+  it("translates renameUsername error codes and does not refresh stale session data", async () => {
+    mocks.renameUsername.mockResolvedValueOnce({ error: "username_reserved" });
 
     render(<AccountSettings initialData={{ ...initialData }} />);
     await submitUsername("newname");
@@ -111,7 +111,7 @@ describe("AccountSettings username errors", () => {
     });
 
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe("Username already taken");
+    expect(alert.textContent).toBe("This username is reserved.");
     expect(document.activeElement).toBe(alert);
 
     const username = screen.getByLabelText("Username");

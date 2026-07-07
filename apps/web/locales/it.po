@@ -4936,3 +4936,81 @@ msgstr "I tuoi diritti"
 #: src/components/settings/AccountSettings.tsx:307
 msgid "settings.account.username.description"
 msgstr "Il tuo identificativo unico utilizzato nell'URL del tuo profilo pubblico."
+
+#. Generic server-action error shown when a user is not logged in
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.notAuthenticated"
+msgstr "Accedi e riprova."
+
+#. Generic server-action error shown when an item cannot be found
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.notFound"
+msgstr "Non trovato."
+
+#. Billing error when checkout is not configured yet
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.paymentsUnavailable"
+msgstr "I pagamenti non sono ancora disponibili."
+
+#. Billing error when the user has no billing account
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.billingAccountNotFound"
+msgstr "Nessun account di fatturazione trovato."
+
+#. Billing error when the portal is not configured yet
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.billingPortalUnavailable"
+msgstr "Il portale di fatturazione non è ancora disponibile."
+
+#. Generic error when setting an account password fails
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.passwordSetFailed"
+msgstr "Impossibile impostare la password."
+
+#. Username validation error for length
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.usernameLength"
+msgstr "Il nome utente deve avere 3-30 caratteri."
+
+#. Username validation error for unsupported characters
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.usernameInvalidCharacters"
+msgstr "Il nome utente può usare solo lettere minuscole, numeri e trattini e non può iniziare o finire con un trattino."
+
+#. Username validation error when a reserved username is requested
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.usernameReserved"
+msgstr "Questo nome utente è riservato."
+
+#. Generic error when updating an account username fails
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.usernameUpdateFailed"
+msgstr "Impossibile aggiornare il nome utente."
+
+#. Generic account error when the current user row is missing
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.userNotFound"
+msgstr "Utente non trovato."
+
+#. My Jobs error when an application status transition is not allowed
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.invalidStatusTransition"
+msgstr "Questa modifica dello stato non è consentita."
+
+#. My Jobs error when assigning an interview round fails
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.interviewRoundFailed"
+msgstr "Impossibile assegnare il colloquio."

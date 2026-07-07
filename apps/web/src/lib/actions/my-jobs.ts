@@ -21,6 +21,12 @@ export type {
   InterviewEntry,
 } from "./my-jobs-types";
 
+export type MyJobsActionErrorCode =
+  | "not_authenticated"
+  | "not_found"
+  | "invalid_status_transition"
+  | "interview_round_failed";
+
 const LEGAL_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
   saved: ["applied", "interviewing", "offered", "rejected"],
   applied: ["saved", "interviewing", "offered", "rejected"],
@@ -290,9 +296,9 @@ export async function getMyJobDetail(
 export async function updateJobStatus(
   savedJobId: string,
   newStatus: ApplicationStatus,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: MyJobsActionErrorCode }> {
   const userId = await getSessionUserId();
-  if (!userId) return { ok: false, error: "Not authenticated" };
+  if (!userId) return { ok: false, error: "not_authenticated" };
 
   const [row] = await db
     .select({ id: savedJob.id, status: savedJob.status })
@@ -300,14 +306,14 @@ export async function updateJobStatus(
     .where(and(eq(savedJob.id, savedJobId), eq(savedJob.userId, userId)))
     .limit(1);
 
-  if (!row) return { ok: false, error: "Not found" };
+  if (!row) return { ok: false, error: "not_found" };
 
   const currentStatus = row.status as ApplicationStatus;
   const allowed = LEGAL_TRANSITIONS[currentStatus];
   if (!allowed.includes(newStatus)) {
     return {
       ok: false,
-      error: `Cannot transition from ${currentStatus} to ${newStatus}`,
+      error: "invalid_status_transition",
     };
   }
 
@@ -356,9 +362,9 @@ export async function updateJobStatus(
 export async function addInterview(
   savedJobId: string,
   type: InterviewType,
-): Promise<{ ok: boolean; interview?: InterviewEntry; error?: string }> {
+): Promise<{ ok: boolean; interview?: InterviewEntry; error?: MyJobsActionErrorCode }> {
   const userId = await getSessionUserId();
-  if (!userId) return { ok: false, error: "Not authenticated" };
+  if (!userId) return { ok: false, error: "not_authenticated" };
 
   // Verify ownership
   const [row] = await db
@@ -367,7 +373,7 @@ export async function addInterview(
     .where(and(eq(savedJob.id, savedJobId), eq(savedJob.userId, userId)))
     .limit(1);
 
-  if (!row) return { ok: false, error: "Not found" };
+  if (!row) return { ok: false, error: "not_found" };
 
   // Atomic round-number assignment (#3160 / #3114).
   //
@@ -464,7 +470,7 @@ export async function addInterview(
       "[addInterview] failed to assign unique round after retries",
       { savedJobId, type, lastErr },
     );
-    return { ok: false, error: "Could not assign interview round" };
+    return { ok: false, error: "interview_round_failed" };
   }
 
   // Auto-transition to interviewing if currently applied
@@ -492,9 +498,9 @@ export async function addInterview(
 export async function updateInterview(
   interviewId: string,
   updates: { type?: InterviewType; scheduledAt?: string | null },
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: MyJobsActionErrorCode }> {
   const userId = await getSessionUserId();
-  if (!userId) return { ok: false, error: "Not authenticated" };
+  if (!userId) return { ok: false, error: "not_authenticated" };
 
   // Verify ownership through saved_job
   const [row] = await db
@@ -504,7 +510,7 @@ export async function updateInterview(
     .where(eq(applicationInterview.id, interviewId))
     .limit(1);
 
-  if (!row || row.userId !== userId) return { ok: false, error: "Not found" };
+  if (!row || row.userId !== userId) return { ok: false, error: "not_found" };
 
   const setObj: Record<string, unknown> = {};
   if (updates.type !== undefined) setObj.type = updates.type;
@@ -528,9 +534,9 @@ export async function updateInterview(
 
 export async function deleteInterview(
   interviewId: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: MyJobsActionErrorCode }> {
   const userId = await getSessionUserId();
-  if (!userId) return { ok: false, error: "Not authenticated" };
+  if (!userId) return { ok: false, error: "not_authenticated" };
 
   // Get interview + saved_job info
   const [row] = await db
@@ -545,7 +551,7 @@ export async function deleteInterview(
     .where(eq(applicationInterview.id, interviewId))
     .limit(1);
 
-  if (!row || row.sjUserId !== userId) return { ok: false, error: "Not found" };
+  if (!row || row.sjUserId !== userId) return { ok: false, error: "not_found" };
 
   // Delete the interview
   await db
@@ -587,9 +593,9 @@ export async function updateSalaryOverride(
     currency?: string | null;
     period?: string | null;
   },
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: MyJobsActionErrorCode }> {
   const userId = await getSessionUserId();
-  if (!userId) return { ok: false, error: "Not authenticated" };
+  if (!userId) return { ok: false, error: "not_authenticated" };
 
   const [row] = await db
     .select({ id: savedJob.id })
@@ -597,7 +603,7 @@ export async function updateSalaryOverride(
     .where(and(eq(savedJob.id, savedJobId), eq(savedJob.userId, userId)))
     .limit(1);
 
-  if (!row) return { ok: false, error: "Not found" };
+  if (!row) return { ok: false, error: "not_found" };
 
   await db
     .update(savedJob)

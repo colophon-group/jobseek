@@ -424,7 +424,7 @@ describe("#3165 — recordPasswordResetRequest TOCTOU", () => {
     );
 
     const r = await recordPasswordResetRequest();
-    expect(r.error).toBe("Not authenticated");
+    expect(r.error).toBe("not_authenticated");
     expect(mocks.userPreferencesTable).toHaveLength(0);
     expect(mocks.getUpsertWrites()).toBe(0);
   });
