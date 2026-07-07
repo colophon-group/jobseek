@@ -171,6 +171,8 @@ uv run crawler retry-stalled-scrapes   # Reset next_scrape_at for transient-3-st
 uv run crawler retry-stalled-scrapes --dry-run  # Report the count without writing
 uv run crawler reprocess-experience --dry-run   # Report active postings whose stored descriptions would update experience_min/max (#3289)
 uv run crawler reprocess-experience             # Apply the #3289 experience_min/max correction locally; exporter propagates changes
+uv run crawler reprocess-occupations --dry-run  # Report occupation_id changes after taxonomy splits (#3360)
+uv run crawler reprocess-occupations --live     # Apply the #3360 occupation_id correction locally; exporter propagates changes
 uv run crawler board <slug>            # Process single board (debug)
 uv run crawler board <slug> --dry-run  # Test without DB writes
 uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields
