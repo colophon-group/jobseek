@@ -538,49 +538,69 @@ export async function deleteInterview(
   const userId = await getSessionUserId();
   if (!userId) return { ok: false, error: "not_authenticated" };
 
-  // Get interview + saved_job info
-  const [row] = await db
-    .select({
-      savedJobId: applicationInterview.savedJobId,
-      round: applicationInterview.round,
-      sjUserId: savedJob.userId,
-      sjStatus: savedJob.status,
-    })
-    .from(applicationInterview)
-    .innerJoin(savedJob, eq(applicationInterview.savedJobId, savedJob.id))
-    .where(eq(applicationInterview.id, interviewId))
-    .limit(1);
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({
+        savedJobId: applicationInterview.savedJobId,
+        sjUserId: savedJob.userId,
+        sjStatus: savedJob.status,
+      })
+      .from(applicationInterview)
+      .innerJoin(savedJob, eq(applicationInterview.savedJobId, savedJob.id))
+      .where(eq(applicationInterview.id, interviewId))
+      .limit(1);
 
-  if (!row || row.sjUserId !== userId) return { ok: false, error: "not_found" };
+    if (!row || row.sjUserId !== userId) {
+      return { ok: false, error: "not_found" };
+    }
 
-  // Delete the interview
-  await db
-    .delete(applicationInterview)
-    .where(eq(applicationInterview.id, interviewId));
+    await tx
+      .delete(applicationInterview)
+      .where(eq(applicationInterview.id, interviewId));
 
-  // Renumber remaining rounds
-  const remaining = await db
-    .select({ id: applicationInterview.id })
-    .from(applicationInterview)
-    .where(eq(applicationInterview.savedJobId, row.savedJobId))
-    .orderBy(asc(applicationInterview.round));
+    // Avoid per-row UPDATEs and avoid transient collisions with the
+    // UNIQUE (saved_job_id, round) index while compacting rounds.
+    await tx.execute(sql`
+      UPDATE application_interview
+      SET round = -round
+      WHERE saved_job_id = ${row.savedJobId}::uuid
+    `);
 
-  for (let i = 0; i < remaining.length; i++) {
-    await db
-      .update(applicationInterview)
-      .set({ round: i + 1 })
-      .where(eq(applicationInterview.id, remaining[i].id));
-  }
+    const remainingRows = await tx.execute<{ remaining_count: number }>(sql`
+      WITH ordered AS (
+        SELECT
+          id,
+          (row_number() OVER (
+            ORDER BY abs(round) ASC, created_at ASC, id ASC
+          ))::smallint AS new_round
+        FROM application_interview
+        WHERE saved_job_id = ${row.savedJobId}::uuid
+      ),
+      renumbered AS (
+        UPDATE application_interview AS ai
+        SET round = ordered.new_round
+        FROM ordered
+        WHERE ai.id = ordered.id
+          AND ai.round IS DISTINCT FROM ordered.new_round
+        RETURNING ai.id
+      )
+      SELECT count(*)::int AS remaining_count
+      FROM ordered
+    `);
 
-  // If no interviews remain and status is interviewing, transition back
-  if (remaining.length === 0 && row.sjStatus === "interviewing") {
-    await db
-      .update(savedJob)
-      .set({ status: "applied", statusChangedAt: new Date() })
-      .where(eq(savedJob.id, row.savedJobId));
-  }
+    const remainingCount =
+      (remainingRows as unknown as ArrayLike<{ remaining_count: number }>)[0]
+        ?.remaining_count ?? 0;
 
-  return { ok: true };
+    if (remainingCount === 0 && row.sjStatus === "interviewing") {
+      await tx
+        .update(savedJob)
+        .set({ status: "applied", statusChangedAt: new Date() })
+        .where(eq(savedJob.id, row.savedJobId));
+    }
+
+    return { ok: true };
+  });
 }
 
 // ── updateSalaryOverride ─────────────────────────────────────────────
