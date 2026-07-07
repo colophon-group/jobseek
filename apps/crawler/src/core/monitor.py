@@ -6,7 +6,6 @@ No database awareness, no side effects beyond HTTP requests.
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from src.core.monitors import DiscoveredJob, get_discoverer, get_stream_fn
+from src.core.monitors import DiscoveredJob, get_discoverer, get_save_raw, get_stream_fn
 
 if TYPE_CHECKING:
     import httpx
@@ -164,122 +163,19 @@ async def _save_raw(
     Called after the main discover pass.  The extra fetch is cheap (single
     HTTP request) and only happens during interactive workspace runs.
     """
+    save_raw = get_save_raw(monitor_type)
+    if save_raw is None:
+        return
+
     try:
-        if monitor_type == "sitemap":
-            sitemap_url = monitor_config.get("sitemap_url")
-            if sitemap_url:
-                resp = await http.get(sitemap_url)
-                if resp.status_code == 200:
-                    (artifact_dir / "sitemap.xml").write_text(resp.text)
-        elif monitor_type == "nextdata":
-            from src.shared.nextdata import extract_next_data
-
-            resp = await http.get(board_url, follow_redirects=True)
-            if resp.status_code == 200:
-                data = extract_next_data(resp.text)
-                if data:
-                    (artifact_dir / "nextdata.json").write_text(
-                        json.dumps(data, indent=2, default=str)
-                    )
-        elif monitor_type == "recruitee":
-            api_base = monitor_config.get("api_base", "")
-            slug = monitor_config.get("slug", "")
-            if api_base:
-                api_url = f"{api_base}/api/offers"
-            elif slug:
-                api_url = f"https://{slug}.recruitee.com/api/offers"
-            else:
-                api_url = None
-            if api_url:
-                resp = await http.get(api_url, follow_redirects=True)
-                if resp.status_code == 200:
-                    (artifact_dir / "response.json").write_text(
-                        json.dumps(resp.json(), indent=2, default=str)
-                    )
-        elif monitor_type == "breezy":
-            portal_url = monitor_config.get("portal_url")
-            if not portal_url:
-                slug = monitor_config.get("slug", "")
-                if slug:
-                    portal_url = f"https://{slug}.breezy.hr"
-            if portal_url:
-                api_url = f"{portal_url.rstrip('/')}/json"
-                resp = await http.get(api_url, follow_redirects=True)
-                if resp.status_code == 200:
-                    (artifact_dir / "response.json").write_text(
-                        json.dumps(resp.json(), indent=2, default=str)
-                    )
-        elif monitor_type == "hireology":
-            slug = monitor_config.get("slug", "")
-            if slug:
-                api_url = f"https://api.hireology.com/v2/public/careers/{slug}?page_size=500"
-                resp = await http.get(api_url)
-                if resp.status_code == 200:
-                    (artifact_dir / "response.json").write_text(
-                        json.dumps(resp.json(), indent=2, default=str)
-                    )
-        elif monitor_type == "rippling":
-            slug = monitor_config.get("slug", "")
-            if slug:
-                api_url = f"https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs"
-                resp = await http.get(api_url)
-                if resp.status_code == 200:
-                    (artifact_dir / "response.json").write_text(
-                        json.dumps(resp.json(), indent=2, default=str)
-                    )
-        elif monitor_type in ("ashby", "greenhouse", "lever"):
-            token = monitor_config.get("token", "")
-            # Lever content-negotiates: serves an HTML widget on a browser Accept.
-            # Force JSON for the Lever path. See monitors/lever.py::_API_HEADERS.
-            req_headers: dict[str, str] = {}
-            if monitor_type == "ashby":
-                api_url = f"https://api.ashbyhq.com/posting-api/job-board/{token}?includeCompensation=true"
-            elif monitor_type == "greenhouse":
-                api_url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
-            else:
-                api_url = f"https://api.lever.co/v0/postings/{token}?limit=100"
-                req_headers["Accept"] = "application/json"
-            resp = await http.get(api_url, headers=req_headers)
-            if resp.status_code == 200:
-                (artifact_dir / "response.json").write_text(
-                    json.dumps(resp.json(), indent=2, default=str)
-                )
-        elif monitor_type == "personio":
-            slug = monitor_config.get("slug", "")
-            if slug:
-                api_url = f"https://{slug}.jobs.personio.de/xml?language=en"
-                resp = await http.get(api_url, follow_redirects=True)
-                if resp.status_code == 200:
-                    (artifact_dir / "response.xml").write_text(resp.text)
-        elif monitor_type == "rss":
-            feed = monitor_config.get("feed_url")
-            if not feed:
-                preset = monitor_config.get("preset", "generic")
-                from src.core.monitors.rss import _PRESETS, _build_feed_url
-
-                p = _PRESETS.get(preset)
-                if p:
-                    feed = _build_feed_url(board_url, p.feed_paths[0])
-            if feed:
-                resp = await http.get(feed, follow_redirects=True)
-                if resp.status_code == 200:
-                    (artifact_dir / "response.xml").write_text(resp.text)
-        elif monitor_type in ("dom", "talentbrew"):
-            resp = await http.get(board_url, follow_redirects=True)
-            if resp.status_code == 200:
-                (artifact_dir / "page.html").write_text(resp.text)
-        elif monitor_type == "api_sniffer":
-            # Raw data captured during Playwright session in discover();
-            # re-fetch API response if api_url is in config.
-            api_url = monitor_config.get("api_url")
-            if api_url:
-                resp = await http.get(api_url, follow_redirects=True)
-                if resp.status_code == 200:
-                    (artifact_dir / "response.json").write_text(
-                        json.dumps(resp.json(), indent=2, default=str)
-                    )
+        await save_raw(artifact_dir, board_url, monitor_config, http)
     except Exception:
-        pass  # Best-effort — don't fail the monitor run
+        structlog.get_logger().warning(
+            "monitor.save_raw_failed",
+            monitor_type=monitor_type,
+            board_url=board_url,
+            exc_info=True,
+        )
 
 
 async def monitor_one(

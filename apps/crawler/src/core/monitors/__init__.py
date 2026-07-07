@@ -13,6 +13,7 @@ import contextlib
 import contextvars
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
@@ -20,8 +21,11 @@ if TYPE_CHECKING:
     import httpx
 
     from src.core.monitor import MonitorResult
+
+    SaveRawClient = httpx.AsyncClient
 else:
     MonitorResult = Any
+    SaveRawClient = Any
 
 
 @dataclass(slots=True)
@@ -65,6 +69,7 @@ class DiscoveredJob:
 # MonitorResult for hybrid/truncated monitors that need to preserve flags.
 type DiscoverResult = set[str] | list[DiscoveredJob] | tuple[set[str], str | None] | MonitorResult
 DiscoverFunc = Callable[..., Awaitable[DiscoverResult]]
+SaveRawFunc = Callable[[Path, str, dict[str, Any], SaveRawClient], Awaitable[None]]
 
 # can_handle: async (url, client) -> dict | None.
 # Returns metadata dict (truthy) when the monitor can handle the URL,
@@ -80,6 +85,7 @@ class MonitorType:
     can_handle: CanHandleFunc | None = None
     rich: bool = False  # True for API monitors that return full job data
     stream: Callable | None = None  # async generator yielding batches
+    save_raw: SaveRawFunc | None = None
 
 
 _REGISTRY: list[MonitorType] = []
@@ -144,6 +150,7 @@ def register(
     *,
     rich: bool = False,
     stream: Callable | None = None,
+    save_raw: SaveRawFunc | None = None,
 ) -> None:
     """Register a monitor type. Registry stays sorted by cost (cheapest first).
 
@@ -161,6 +168,7 @@ def register(
             can_handle=can_handle,
             rich=rich,
             stream=stream,
+            save_raw=save_raw,
         )
     )
     _REGISTRY.sort(key=lambda m: m.cost)
@@ -239,6 +247,14 @@ def get_stream_fn(name: str) -> Callable | None:
     for monitor in _REGISTRY:
         if monitor.name == name:
             return monitor.stream
+    return None
+
+
+def get_save_raw(name: str) -> SaveRawFunc | None:
+    """Look up the raw artifact saver for a monitor type, if one exists."""
+    for monitor in _REGISTRY:
+        if monitor.name == name:
+            return monitor.save_raw
     return None
 
 

@@ -15,12 +15,14 @@ This monitor supports:
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import httpx
 import structlog
 
 from src.core.monitors import register
+from src.core.monitors.raw import save_json_response
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
@@ -269,4 +271,29 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("breezy", discover, cost=10, can_handle=can_handle, rich=False)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    portal_url = None
+    if isinstance(metadata.get("portal_url"), str):
+        portal_url = _origin(metadata["portal_url"])
+    if portal_url is None:
+        portal_url = _breezy_portal_from_url(board_url)
+    if portal_url is None and isinstance(metadata.get("slug"), str):
+        slug = metadata["slug"].strip()
+        if slug:
+            portal_url = f"https://{slug}.breezy.hr"
+    if not portal_url:
+        return
+    await save_json_response(
+        artifact_dir,
+        client,
+        _api_url(portal_url),
+        follow_redirects=True,
+    )
+
+
+register("breezy", discover, cost=10, can_handle=can_handle, rich=False, save_raw=save_raw)

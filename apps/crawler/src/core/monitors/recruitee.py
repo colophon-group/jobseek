@@ -8,6 +8,7 @@ Also works on custom domains: GET https://{custom-domain}/api/offers
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
@@ -23,6 +24,7 @@ from src.core.monitors import (
     slug_guess_allowed,
     slugs_from_url,
 )
+from src.core.monitors.raw import save_json_response
 from src.shared.truncation import truncated_rich_result
 
 if TYPE_CHECKING:
@@ -300,4 +302,24 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("recruitee", discover, cost=10, can_handle=can_handle, rich=True)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    api_base = metadata.get("api_base")
+    if not api_base:
+        slug = metadata.get("slug") or _slug_from_url(board_url)
+        api_base = f"https://{slug}.recruitee.com" if slug else _api_base_from_url(board_url)
+    if not api_base:
+        return
+    await save_json_response(
+        artifact_dir,
+        client,
+        _api_url(api_base),
+        follow_redirects=True,
+    )
+
+
+register("recruitee", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)

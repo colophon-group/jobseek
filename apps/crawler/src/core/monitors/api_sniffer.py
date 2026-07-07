@@ -21,6 +21,7 @@ import json
 import random
 import re
 from math import ceil
+from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
@@ -28,6 +29,7 @@ import httpx
 import structlog
 
 from src.core.monitors import DiscoveredJob, register
+from src.core.monitors.raw import save_json_response
 
 try:
     from src.metrics import api_sniffer_fallback_failed_total
@@ -1564,4 +1566,21 @@ def _extract_urls_from_template(
     return urls
 
 
-register("api_sniffer", discover, cost=80, can_handle=can_handle)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    api_url = metadata.get("api_url")
+    if not api_url:
+        return
+    await save_json_response(
+        artifact_dir,
+        client,
+        api_url,
+        follow_redirects=True,
+    )
+
+
+register("api_sniffer", discover, cost=80, can_handle=can_handle, save_raw=save_raw)

@@ -14,12 +14,14 @@ from __future__ import annotations
 import asyncio
 import random
 import re
+from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
 import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.core.monitors.raw import save_json_response
 from src.shared.http_retry import PaginationFetchError, is_retryable_status
 from src.shared.truncation import truncated_rich_result
 
@@ -372,4 +374,21 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("hireology", discover, cost=10, can_handle=can_handle, rich=True)
+async def save_raw(
+    artifact_dir: Path,
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> None:
+    slug = metadata.get("slug") or _slug_from_url(board_url)
+    if not slug:
+        return
+    await save_json_response(
+        artifact_dir,
+        client,
+        _api_url(slug),
+        params={"page_size": PAGE_SIZE},
+    )
+
+
+register("hireology", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)
