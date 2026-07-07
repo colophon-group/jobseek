@@ -17,7 +17,8 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors import fetch_page_text, register
+from src.core.monitors import register
+from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
@@ -28,13 +29,8 @@ _IGNORE_SLUGS = frozenset({"www", "api", "app", "static", "cdn"})
 
 _JOB_IDS_RE = re.compile(r"var\s+complete_job_id_list\s*=\s*(?:jobs_selected\s*=\s*)?\[([^\]]*)\]")
 
-_PAGE_MARKERS = [
-    re.compile(r"softgarden\.io/assets/"),
-    re.compile(r"tracker\.softgarden\.de"),
-    re.compile(r"matomo\.softgarden\.io"),
-    re.compile(r"certificate\.softgarden\.io"),
-    re.compile(r"powered by softgarden", re.IGNORECASE),
-    re.compile(r"mediaassets\.softgarden\.de"),
+_PAGE_PATTERNS = [
+    re.compile(r"\b(?!(?:www|api|app|static|cdn)\.)([\w-]+)\.softgarden\.io"),
 ]
 
 # ── URL helpers ──────────────────────────────────────────────────────────
@@ -139,45 +135,53 @@ async def _probe_listing(slug: str, client: httpx.AsyncClient) -> tuple[bool, in
         return False, None
 
 
+async def _fetch_job_count(
+    slug: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeCount | None:
+    _ = context
+    found, count = await _probe_listing(slug, client)
+    if found:
+        return count
+    return None
+
+
+async def _probe_template_slug(
+    slug: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeResult:
+    _ = context
+    return await _probe_listing(slug, client)
+
+
+def _slug_result(slug: str, count: ProbeCount | None, context: None) -> dict:
+    _ = context
+    result: dict = {"slug": slug}
+    if count is not None:
+        result["jobs"] = count
+    return result
+
+
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Softgarden: URL domain match -> page HTML markers scan."""
-    # 1. Direct *.softgarden.io URL
-    slug = _slug_from_url(url)
-    if slug:
-        if client is not None:
-            found, count = await _probe_listing(slug, client)
-            if found:
-                result: dict = {"slug": slug}
-                if count is not None:
-                    result["jobs"] = count
-                return result
-            # URL matched but no jobs found — still a Softgarden portal
-            return {"slug": slug}
-        return {"slug": slug}
-
-    if client is None:
-        return None
-
-    # 2. HTML scan for Softgarden markers
-    html = await fetch_page_text(url, client)
-    if html:
-        for marker in _PAGE_MARKERS:
-            if marker.search(html):
-                # Try to extract a softgarden.io slug from the HTML
-                for slug_match in re.finditer(r"([\w-]+)\.softgarden\.io", html):
-                    found_slug = slug_match.group(1)
-                    if found_slug in _IGNORE_SLUGS:
-                        continue
-                    log.info("softgarden.detected_in_page", url=url, slug=found_slug)
-                    found, count = await _probe_listing(found_slug, client)
-                    if found:
-                        result = {"slug": found_slug}
-                        if count is not None:
-                            result["jobs"] = count
-                        return result
-                break  # Marker found but no usable slug
-
-    return None
+    _ = pw
+    return await ats_can_handle(
+        url,
+        client,
+        monitor_name="softgarden",
+        token_from_url=_slug_from_url,
+        page_patterns=_PAGE_PATTERNS,
+        ignore_tokens=_IGNORE_SLUGS,
+        fetch_job_count=_fetch_job_count,
+        api_probe=_probe_template_slug,
+        initial_context=None,
+        result_builder=_slug_result,
+        page_token_probe=_probe_template_slug,
+        allow_slug_guess=False,
+        log_token_field="slug",
+    )
 
 
 register("softgarden", discover, cost=10, can_handle=can_handle, rich=False)

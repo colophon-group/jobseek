@@ -16,19 +16,17 @@ import httpx
 import structlog
 
 from src.core.enum_normalize import normalize_salary_unit
-from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.core.monitors import DiscoveredJob, register
+from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
 MAX_JOBS = 50_000
 
-# Page HTML patterns for detecting d.vinci career portals
+# Page HTML pattern for extracting d.vinci career portal slugs.
 _PAGE_PATTERNS = [
-    re.compile(r'ng-app="dvinci\.apps\.Dvinci"'),
-    re.compile(r'name="dvinciVersion"'),
-    re.compile(r"var\s+DvinciData\s*="),
-    re.compile(r"([\w-]+)\.dvinci-hr\.com"),
+    re.compile(r"\b(?!(?:www|static|api|cdn)\.)([\w-]+)\.dvinci-hr\.com"),
 ]
 
 _IGNORE_SLUGS = frozenset({"www", "static", "api", "cdn"})
@@ -144,6 +142,35 @@ async def _probe_api(slug: str, client: httpx.AsyncClient) -> tuple[bool, int | 
         return False, None
 
 
+async def _fetch_job_count(
+    slug: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeCount | None:
+    _ = context
+    found, count = await _probe_api(slug, client)
+    if found:
+        return count
+    return None
+
+
+async def _probe_template_slug(
+    slug: str,
+    client: httpx.AsyncClient,
+    context: None,
+) -> ProbeResult:
+    _ = context
+    return await _probe_api(slug, client)
+
+
+def _slug_result(slug: str, count: ProbeCount | None, context: None) -> dict:
+    _ = context
+    result: dict = {"slug": slug}
+    if count is not None:
+        result["jobs"] = count
+    return result
+
+
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
     """Fetch job listings with full content from the d.vinci public API."""
     metadata = board.get("metadata") or {}
@@ -187,44 +214,22 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     No slug-based blind probe — d.vinci subdomains are custom names,
     not derivable from company domain.
     """
-    # 1. Direct *.dvinci-hr.com URL
-    slug = _slug_from_url(url)
-    if slug:
-        if client is not None:
-            found, count = await _probe_api(slug, client)
-            if found:
-                result: dict = {"slug": slug}
-                if count is not None:
-                    result["jobs"] = count
-                return result
-            # DNS resolved but API failed — still a d.vinci portal
-            return {"slug": slug}
-        return {"slug": slug}
-
-    if client is None:
-        return None
-
-    # 2. HTML scan for d.vinci markers
-    html = await fetch_page_text(url, client)
-    if html:
-        # Look for d.vinci Angular app or version meta tag
-        for pattern in _PAGE_PATTERNS[:3]:
-            if pattern.search(html):
-                # Found marker — try to extract the dvinci-hr.com slug from HTML
-                slug_match = re.search(r"([\w-]+)\.dvinci-hr\.com", html)
-                if slug_match:
-                    found_slug = slug_match.group(1)
-                    if found_slug not in _IGNORE_SLUGS:
-                        log.info("dvinci.detected_in_page", url=url, slug=found_slug)
-                        found, count = await _probe_api(found_slug, client)
-                        if found:
-                            result = {"slug": found_slug}
-                            if count is not None:
-                                result["jobs"] = count
-                            return result
-                break  # Marker found but no slug — can't probe
-
-    return None
+    _ = pw
+    return await ats_can_handle(
+        url,
+        client,
+        monitor_name="dvinci",
+        token_from_url=_slug_from_url,
+        page_patterns=_PAGE_PATTERNS,
+        ignore_tokens=_IGNORE_SLUGS,
+        fetch_job_count=_fetch_job_count,
+        api_probe=_probe_template_slug,
+        initial_context=None,
+        result_builder=_slug_result,
+        page_token_probe=_probe_template_slug,
+        allow_slug_guess=False,
+        log_token_field="slug",
+    )
 
 
 register("dvinci", discover, cost=10, can_handle=can_handle, rich=True)
