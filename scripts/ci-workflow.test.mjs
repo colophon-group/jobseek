@@ -16,6 +16,7 @@ const maybeAutoMergeScript = readFileSync(
   ".github/scripts/maybe-auto-merge-pr.sh",
   "utf8",
 );
+const labelPrScript = readFileSync(".github/scripts/label-pr.sh", "utf8");
 const publishMcpServerWorkflow = readFileSync(
   ".github/workflows/publish-mcp-server.yml",
   "utf8",
@@ -106,6 +107,17 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /git rebase origin\/main/);
   assert.match(maybeAutoMergeScript, /gh pr merge "\$PR" --repo "\$REPO" --rebase/);
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
+});
+
+test("company PR label script applies decision labels idempotently", () => {
+  assert.match(labelPrScript, /gh pr view "\$PR" --repo "\$REPO" --json labels/);
+  assert.match(labelPrScript, /declare -A desired_labels=\(\)/);
+  assert.match(labelPrScript, /Removing stale label:/);
+  assert.match(labelPrScript, /Adding label:/);
+  assert.doesNotMatch(
+    labelPrScript,
+    /for L in \$ALL_DECISION_LABELS; do\s+gh pr edit "\$PR" --repo "\$REPO" --remove-label "\$L"/,
+  );
 });
 
 test("CodeQL skips full analysis for non-code pull requests", () => {
