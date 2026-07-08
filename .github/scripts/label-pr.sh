@@ -314,29 +314,31 @@ fi
 
 ALL_DECISION_LABELS="auto-merge review-code review-size review-load incomplete"
 CURRENT_LABELS=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name')
+DESIRED_LABELS=",$LABELS,"
 
 has_current_label() {
   local label="$1"
   grep -Fxq "$label" <<< "$CURRENT_LABELS"
 }
 
-declare -A desired_labels=()
+has_desired_label() {
+  local label="$1"
+  [[ "$DESIRED_LABELS" == *",$label,"* ]]
+}
 
-IFS=',' read -ra LABEL_ARR <<< "$LABELS"
-for L in "${LABEL_ARR[@]}"; do
+for L in ${LABELS//,/ }; do
   [ -z "$L" ] && continue
-  desired_labels["$L"]=1
   gh label create "$L" --repo "$REPO" 2>/dev/null || true
 done
 
 for L in $ALL_DECISION_LABELS; do
-  if [[ -z "${desired_labels[$L]+x}" ]] && has_current_label "$L"; then
+  if ! has_desired_label "$L" && has_current_label "$L"; then
     echo "Removing stale label: $L"
     gh pr edit "$PR" --repo "$REPO" --remove-label "$L"
   fi
 done
 
-for L in "${LABEL_ARR[@]}"; do
+for L in ${LABELS//,/ }; do
   [ -z "$L" ] && continue
   if ! has_current_label "$L"; then
     echo "Adding label: $L"

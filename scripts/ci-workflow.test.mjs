@@ -113,7 +113,9 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
 
 test("company PR label script applies decision labels idempotently", () => {
   assert.match(labelPrScript, /gh pr view "\$PR" --repo "\$REPO" --json labels/);
-  assert.match(labelPrScript, /declare -A desired_labels=\(\)/);
+  assert.match(labelPrScript, /DESIRED_LABELS=",\$LABELS,"/);
+  assert.match(labelPrScript, /has_desired_label\(\)/);
+  assert.doesNotMatch(labelPrScript, /declare -A/);
   assert.match(labelPrScript, /Removing stale label:/);
   assert.match(labelPrScript, /Adding label:/);
   assert.doesNotMatch(
