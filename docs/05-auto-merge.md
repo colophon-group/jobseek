@@ -37,22 +37,30 @@ The agent gets estimates from the test crawl via `ws run monitor`, which reports
 
 ## Auto-Merge Workflow
 
-The `auto-merge-config.yml` workflow:
+The `maybe-auto-merge.yml` workflow:
 
-1. Triggers on PRs labeled `auto-merge`
-2. Checks that the PR only modifies files in `data/`
-3. Waits for CI to pass
-4. Enables auto-merge via GitHub API
+1. Wakes on company PR changes, CI/CodeQL completion, a 15 minute schedule,
+   and manual dispatch
+2. Labels internal non-draft `add-company/*` PRs from trusted scripts
+3. Skips PRs with pending image files so `upload-company-images.yml` can handle
+   the R2 upload path
+4. Rebases CSV conflicts when possible and merges via GitHub API
+5. Exits cleanly when checks are still pending; the next workflow wake retries
+   without operator action
 
 ```yaml
 on:
-  pull_request:
-    types: [labeled]
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_run:
+    workflows: ["CI", "CodeQL"]
+    types: [completed]
+  schedule:
+    - cron: "*/15 * * * *"
 
 jobs:
   auto-merge:
-    if: github.event.label.name == 'auto-merge'
-    # ... verify only data/ files changed, then enable auto-merge
+    # ... select eligible company PRs, label, rebase, and merge
 ```
 
 ## Code Change PRs
@@ -75,7 +83,11 @@ PRs from external contributors (forks) currently require human review regardless
 
 ## Safety Rails
 
-- Auto-merge only applies to CSV file changes in `data/`
+- Auto-merge only applies to CSV file changes in `apps/crawler/data/`
 - CI must pass (CSV validation, no broken references)
+- CodeQL is enforced by required `Analyze (...)` status checks, not by a
+  non-path-aware GitHub code-scanning ruleset. This lets data-only company
+  requests satisfy CodeQL through the workflow skip path while code changes
+  still run real CodeQL analysis.
 - The `auto-merge` label can only be applied by the agent or maintainers
 - Any PR touching source code always requires human review

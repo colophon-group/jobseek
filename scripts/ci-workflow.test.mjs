@@ -12,9 +12,16 @@ const maybeAutoMergeWorkflow = readFileSync(
   ".github/workflows/maybe-auto-merge.yml",
   "utf8",
 );
+const maybeAutoMergeScript = readFileSync(
+  ".github/scripts/maybe-auto-merge-pr.sh",
+  "utf8",
+);
 const publishMcpServerWorkflow = readFileSync(
   ".github/workflows/publish-mcp-server.yml",
   "utf8",
+);
+const mainStrictGateRuleset = JSON.parse(
+  readFileSync(".github/rulesets/main-strict-gate.json", "utf8"),
 );
 
 function setupUvBlocks(workflowSource) {
@@ -82,22 +89,23 @@ test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
 });
 
-test("maybe-auto-merge hands image PRs to the image upload workflow without rebasing", () => {
+test("maybe-auto-merge wakes without manual retries", () => {
   const job = workflowJobBlock(maybeAutoMergeWorkflow, "label-and-merge");
-  const rebaseStep = job.match(
-    /- name: Rebase and resolve CSV conflicts[\s\S]*?(?=\n      - name: Merge)/,
-  );
-  const labelStep = job.match(
-    /- name: Label PR[\s\S]*?(?=\n      - name: Rebase and resolve CSV conflicts)/,
-  );
+  assert.match(maybeAutoMergeWorkflow, /workflow_run:\n    workflows: \["CI", "CodeQL"\]/);
+  assert.match(maybeAutoMergeWorkflow, /schedule:\n    - cron: "\*\/15 \* \* \* \*"/);
+  assert.match(maybeAutoMergeWorkflow, /workflow_dispatch:/);
+  assert.match(job, /name: Select PRs/);
+  assert.match(job, /name: Label, rebase, and merge/);
+  assert.match(job, /maybe-auto-merge-pr\.sh/);
+});
 
-  assert.ok(rebaseStep, "missing rebase step");
-  assert.ok(labelStep, "missing label step");
-  assert.match(job, /name: Check for pending images/);
-  assert.match(labelStep[0], /if: steps\.images\.outputs\.pending == 'false'/);
-  assert.match(rebaseStep[0], /steps\.images\.outputs\.pending == 'false'/);
-  assert.match(rebaseStep[0], /contains\(steps\.label\.outputs\.labels, 'auto-merge'\)/);
-  assert.doesNotMatch(rebaseStep[0], /steps\.images\.outputs\.pending == 'true'/);
+test("maybe-auto-merge script skips image PRs and retries pending merges", () => {
+  assert.match(maybeAutoMergeScript, /apps\/crawler\/data\/images\//);
+  assert.match(maybeAutoMergeScript, /upload-company-images will handle it/);
+  assert.match(maybeAutoMergeScript, /label-pr\.sh/);
+  assert.match(maybeAutoMergeScript, /git rebase origin\/main/);
+  assert.match(maybeAutoMergeScript, /gh pr merge "\$PR" --repo "\$REPO" --rebase/);
+  assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
 });
 
 test("CodeQL skips full analysis for non-code pull requests", () => {
@@ -129,6 +137,31 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
   assert.match(analyzeJob, /if: needs\.changes\.outputs\.codeql != 'true'/);
   assert.match(analyzeJob, /Initialize CodeQL[\s\S]*if: needs\.changes\.outputs\.codeql == 'true'/);
   assert.match(analyzeJob, /Perform CodeQL Analysis[\s\S]*if: needs\.changes\.outputs\.codeql == 'true'/);
+});
+
+test("main branch ruleset does not require non-path-aware code scanning", () => {
+  assert.equal(mainStrictGateRuleset.name, "main-strict-gate");
+  assert.equal(
+    mainStrictGateRuleset.rules.some((rule) => rule.type === "code_scanning"),
+    false,
+  );
+
+  const statusRule = mainStrictGateRuleset.rules.find(
+    (rule) => rule.type === "required_status_checks",
+  );
+  assert.ok(statusRule, "main-strict-gate should require status checks");
+  const contexts = statusRule.parameters.required_status_checks.map(
+    (check) => check.context,
+  );
+
+  for (const context of [
+    "Required CI",
+    "Analyze (actions)",
+    "Analyze (javascript-typescript)",
+    "Analyze (python)",
+  ]) {
+    assert.ok(contexts.includes(context), `missing required check ${context}`);
+  }
 });
 
 test("CI runs Typesense E2E suites against a service container", () => {
