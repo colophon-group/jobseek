@@ -4780,6 +4780,7 @@ viking-global-investors,viking-global-investors-greenhouse,https://job-boards.gr
 viktor,viktor-ashby,https://jobs.ashbyhq.com/viktor,ashby,"{""token"": ""viktor""}",skip,
 vir-biotechnology,vir-biotechnology-greenhouse,https://job-boards.greenhouse.io/virbiotechnologyinc,greenhouse,"{""token"": ""virbiotechnologyinc""}",skip,
 viral-nation-inc,viral-nation-inc-greenhouse,https://job-boards.greenhouse.io/viralnation,greenhouse,"{""token"": ""viralnation""}",skip,
+virgin-atlantic,virgin-atlantic-careers,https://careers.virginatlantic.com/search-and-apply,sitemap,"{""sitemap_url"": ""https://careers.virginatlantic.com/sitemap.xml"", ""url_filter"": ""/search-and-apply/""}",json-ld,
 virtahealth,virtahealth-ashby,https://jobs.ashbyhq.com/virtahealth,ashby,"{""token"": ""virtahealth""}",skip,
 virtru,virtru-greenhouse,https://job-boards.greenhouse.io/virtru,greenhouse,"{""token"": ""virtru""}",skip,
 virtu-financial,virtu-financial-greenhouse,https://job-boards.greenhouse.io/virtu,greenhouse,"{""token"": ""virtu""}",skip,
