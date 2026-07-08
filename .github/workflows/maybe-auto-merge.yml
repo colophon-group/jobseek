@@ -4,12 +4,20 @@ on:
   pull_request_target:
     branches: [main]
     types: [opened, reopened, synchronize, ready_for_review]
+  workflow_run:
+    workflows: ["CI", "CodeQL"]
+    types: [completed]
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Optional PR number to retry"
+        required: false
+        type: string
 
 jobs:
   label-and-merge:
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository
-      && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -27,122 +35,61 @@ jobs:
           mkdir -p "$RUNNER_TEMP/trusted-scripts"
           cp .github/scripts/label-pr.sh "$RUNNER_TEMP/trusted-scripts/label-pr.sh"
           cp .github/scripts/close-linked-company-request-issues.sh "$RUNNER_TEMP/trusted-scripts/close-linked-company-request-issues.sh"
+          cp .github/scripts/maybe-auto-merge-pr.sh "$RUNNER_TEMP/trusted-scripts/maybe-auto-merge-pr.sh"
           chmod +x "$RUNNER_TEMP/trusted-scripts/"*.sh
 
-      - name: Check for pending images
-        id: images
-        run: |
-          # Use paginated files API — gh pr diff fails on large diffs (>20k lines)
-          FILES=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
-          if echo "$FILES" | grep -q '^apps/crawler/data/images/'; then
-            echo "pending=true" >> "$GITHUB_OUTPUT"
-            echo "Images pending — upload-company-images workflow will handle labeling"
-          else
-            echo "pending=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Select PRs
+        id: prs
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
-
-      - name: Label PR
-        id: label
-        if: steps.images.outputs.pending == 'false'
-        run: "$RUNNER_TEMP/trusted-scripts/label-pr.sh"
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-
-      - name: Rebase and resolve CSV conflicts
-        id: rebase
-        if: >-
-          steps.images.outputs.pending == 'false'
-          && contains(steps.label.outputs.labels, 'auto-merge')
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PR: ${{ github.event.inputs.pr || '' }}
         run: |
           set -euo pipefail
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          prs_file="$RUNNER_TEMP/company-prs.txt"
+          : > "$prs_file"
+          owner="${REPO%%/*}"
 
-          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
-          git checkout "$BRANCH"
-
-          # Already up to date — nothing to do
-          if git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
-            echo "Already up to date"
-            echo "rebased=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Try clean rebase first
-          if git rebase origin/main 2>/dev/null; then
-            echo "Clean rebase"
-            git push --force-with-lease origin "$BRANCH"
-            echo "rebased=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Conflicts — resolve CSV files (the only kind possible for auto-merge PRs)
-          # Loop handles multi-commit rebases where successive commits conflict
-          while true; do
-            conflicted=$(git diff --name-only --diff-filter=U)
-            [ -z "$conflicted" ] && break
-
-            for file in $conflicted; do
-              if [[ "$file" == "apps/crawler/VERSION" ]]; then
-                # Take main's version and bump patch +1 so CI version check passes
-                git checkout --ours "$file"
-                current=$(cat "$file" | tr -d '[:space:]')
-                IFS='.' read -r major minor patch <<< "$current"
-                echo "${major}.${minor}.$((patch + 1))" > "$file"
-              elif [[ "$file" == *.csv ]]; then
-                # Union merge: take main's version, then apply PR's changes
-                git checkout --ours "$file"
-                git show REBASE_HEAD:"$file" | while IFS= read -r line; do
-                  if ! grep -qxF "$line" "$file"; then
-                    echo "$line" >> "$file"
-                  fi
-                done
-              else
-                git checkout --ours "$file"
+          if [[ "$EVENT_NAME" == "pull_request_target" ]]; then
+            jq -r '.pull_request.number' "$GITHUB_EVENT_PATH" >> "$prs_file"
+          elif [[ "$EVENT_NAME" == "workflow_run" ]]; then
+            jq -r '.workflow_run.pull_requests[]?.number' "$GITHUB_EVENT_PATH" >> "$prs_file"
+            if [[ ! -s "$prs_file" ]]; then
+              branch=$(jq -r '.workflow_run.head_branch // ""' "$GITHUB_EVENT_PATH")
+              head_repo=$(jq -r '.workflow_run.head_repository.full_name // ""' "$GITHUB_EVENT_PATH")
+              if [[ "$head_repo" == "$REPO" && "$branch" == add-company/* ]]; then
+                gh pr list --repo "$REPO" --state open --head "$branch" \
+                  --json number --jq '.[].number' >> "$prs_file"
               fi
-              git add "$file"
-            done
-
-            if GIT_EDITOR=true git rebase --continue 2>/dev/null; then
-              break
             fi
-          done
+          elif [[ -n "$INPUT_PR" ]]; then
+            echo "$INPUT_PR" >> "$prs_file"
+          else
+            gh pr list --repo "$REPO" --state open --limit 100 \
+              --json number,isDraft,headRefName,headRepositoryOwner \
+              --jq ".[] | select(.isDraft == false and .headRepositoryOwner.login == \"$owner\" and (.headRefName | startswith(\"add-company/\"))) | .number" \
+              >> "$prs_file"
+          fi
 
-          git push --force-with-lease origin "$BRANCH"
-          echo "rebased=true" >> "$GITHUB_OUTPUT"
+          sort -nu "$prs_file" > "$RUNNER_TEMP/company-prs.sorted.txt"
+          count=$(wc -l < "$RUNNER_TEMP/company-prs.sorted.txt" | tr -d ' ')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "file=$RUNNER_TEMP/company-prs.sorted.txt" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/company-prs.sorted.txt"
 
-      - name: Merge
-        if: steps.rebase.outputs.rebased == 'true' && steps.images.outputs.pending == 'false'
+      - name: Label, rebase, and merge
+        if: steps.prs.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TRUSTED_SCRIPTS_DIR: ${{ runner.temp }}/trusted-scripts
         run: |
-          # Retry merge — GitHub needs time to update mergeability after force-push
-          for i in 1 2 3; do
-            if gh pr merge "$PR" --repo "$REPO" --rebase 2>/dev/null; then
-              exit 0
-            fi
-            echo "Merge attempt $i failed, waiting..."
-            sleep 5
-          done
-          gh pr merge "$PR" --repo "$REPO" --rebase
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-
-      - name: Close linked company-request issues
-        if: steps.rebase.outputs.rebased == 'true' && steps.images.outputs.pending == 'false'
-        run: "$RUNNER_TEMP/trusted-scripts/close-linked-company-request-issues.sh"
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
+          set -euo pipefail
+          while IFS= read -r pr; do
+            [[ -z "$pr" ]] && continue
+            echo "::group::Process PR #$pr"
+            PR="$pr" "$TRUSTED_SCRIPTS_DIR/maybe-auto-merge-pr.sh"
+            echo "::endgroup::"
+          done < "${{ steps.prs.outputs.file }}"
