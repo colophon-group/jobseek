@@ -137,6 +137,8 @@ test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(dispatchPrChecksScript, /gh workflow run ci\.yml --repo "\$REPO" --ref "\$branch" -f "pr=\$PR"/);
   assert.doesNotMatch(dispatchPrChecksScript, /codeql\.yml/);
   assert.match(dispatchPrChecksScript, /"\$branch" != add-company\/\*/);
+  assert.match(dispatchPrChecksScript, /Unexpected inputs provided: \\\["pr"\\\]/);
+  assert.match(dispatchPrChecksScript, /later rebase retry will dispatch CI/);
 
   assert.match(maybeAutoMergeWorkflow, /actions: write/);
   assert.match(maybeAutoMergeWorkflow, /dispatch-pr-checks\.sh/);
