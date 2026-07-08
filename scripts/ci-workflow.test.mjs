@@ -119,6 +119,7 @@ test("maybe-auto-merge wakes without manual retries", () => {
   assert.match(job, /name: Select PRs/);
   assert.match(job, /select_open_company_prs\(\)/);
   assert.match(job, /\$branch" == "\$default_branch"/);
+  assert.match(job, /\$branch" == "\$default_branch"[\s\S]*select_open_company_prs >> "\$prs_file"/);
   assert.match(job, /name: Label, rebase, and merge/);
   assert.match(job, /maybe-auto-merge-pr\.sh/);
 });
@@ -129,6 +130,9 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /label-pr\.sh/);
   assert.match(maybeAutoMergeScript, /git rebase origin\/main/);
   assert.match(maybeAutoMergeScript, /dispatch-pr-checks\.sh/);
+  assert.match(maybeAutoMergeScript, /required_ci_state\(\)/);
+  assert.match(maybeAutoMergeScript, /wait_for_required_ci\(\)/);
+  assert.match(maybeAutoMergeScript, /Required CI is successful/);
   assert.match(maybeAutoMergeScript, /gh pr merge "\$PR" --repo "\$REPO" --rebase/);
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
 });
@@ -148,6 +152,9 @@ test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(uploadCompanyImagesWorkflow, /steps\.image-sync\.outputs\.pushed == 'true'/);
   assert.match(uploadCompanyImagesWorkflow, /Dispatch checks for image commit/);
   assert.match(uploadCompanyImagesWorkflow, /Auto merge is not allowed for this repository/);
+  assert.match(uploadCompanyImagesWorkflow, /maybe-auto-merge-pr\.sh/);
+  assert.match(uploadCompanyImagesWorkflow, /Retry trusted auto-merge/);
+  assert.match(uploadCompanyImagesWorkflow, /TRUSTED_SCRIPTS_DIR: \$\{\{ runner\.temp \}\}\/trusted-scripts/);
 });
 
 test("company PR label script applies decision labels idempotently", () => {

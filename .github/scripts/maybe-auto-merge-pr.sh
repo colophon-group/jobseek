@@ -54,6 +54,48 @@ if [[ ",$labels," != *",auto-merge,"* ]]; then
   exit 0
 fi
 
+required_ci_state() {
+  gh pr view "$PR" --repo "$REPO" --json statusCheckRollup --jq '
+    [
+      .statusCheckRollup[]
+      | select(
+          (.__typename == "StatusContext" and .context == "Required CI")
+          or (.__typename == "CheckRun" and .name == "Required CI")
+        )
+      | if .__typename == "StatusContext" then .state else .conclusion end
+    ]
+    | last // ""
+  '
+}
+
+wait_for_required_ci() {
+  for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24; do
+    state=$(required_ci_state)
+
+    case "$state" in
+      SUCCESS|success)
+        echo "PR #$PR Required CI is successful"
+        return 0
+        ;;
+      FAILURE|ERROR|CANCELLED|TIMED_OUT|ACTION_REQUIRED|failure|cancelled|timed_out|action_required)
+        echo "PR #$PR Required CI is $state; not auto-merging"
+        return 1
+        ;;
+      "")
+        echo "PR #$PR is waiting for Required CI to be reported (attempt $attempt/24)"
+        ;;
+      *)
+        echo "PR #$PR Required CI is $state; waiting (attempt $attempt/24)"
+        ;;
+    esac
+
+    sleep 10
+  done
+
+  echo "PR #$PR Required CI did not become successful in time"
+  return 1
+}
+
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -110,6 +152,11 @@ else
   git push --force-with-lease origin "$branch"
   "$SCRIPTS_DIR/dispatch-pr-checks.sh"
   echo "PR #$PR branch updated; dispatched checks before merge"
+fi
+
+if ! wait_for_required_ci; then
+  echo "PR #$PR is not mergeable yet; scheduled/workflow_run retries will revisit it"
+  exit 0
 fi
 
 for attempt in 1 2 3; do
