@@ -108,7 +108,8 @@ else
   fi
 
   git push --force-with-lease origin "$branch"
-  echo "PR #$PR branch updated; checks will run before merge"
+  "$SCRIPTS_DIR/dispatch-pr-checks.sh"
+  echo "PR #$PR branch updated; dispatched checks before merge"
 fi
 
 for attempt in 1 2 3; do

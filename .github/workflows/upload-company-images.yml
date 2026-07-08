@@ -14,6 +14,7 @@ on:
         type: string
 
 permissions:
+  actions: write
   contents: write
   issues: write
   pull-requests: write
@@ -52,6 +53,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/trusted-scripts"
           cp .github/scripts/label-pr.sh "$RUNNER_TEMP/trusted-scripts/label-pr.sh"
           cp .github/scripts/close-linked-company-request-issues.sh "$RUNNER_TEMP/trusted-scripts/close-linked-company-request-issues.sh"
+          cp .github/scripts/dispatch-pr-checks.sh "$RUNNER_TEMP/trusted-scripts/dispatch-pr-checks.sh"
           chmod +x "$RUNNER_TEMP/trusted-scripts/"*.sh
 
       - uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
@@ -67,6 +69,7 @@ jobs:
         working-directory: apps/crawler
 
       - name: Upload images to R2 and push cleanup
+        id: image-sync
         env:
           BRANCH: ${{ github.event.pull_request.head.ref || inputs.branch || github.ref_name }}
           R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
@@ -77,6 +80,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          echo "pushed=false" >> "$GITHUB_OUTPUT"
           git check-ref-format --branch "$BRANCH" >/dev/null
           trusted_ref="$(git rev-parse HEAD)"
 
@@ -107,6 +111,7 @@ jobs:
             git commit -m "Upload images to R2"
 
             if git push --force-with-lease origin "HEAD:$BRANCH"; then
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
@@ -117,6 +122,16 @@ jobs:
 
           echo "Unable to commit image upload after 3 attempts" >&2
           exit 1
+
+      - name: Dispatch checks for image commit
+        if: github.event_name != 'workflow_dispatch' && steps.image-sync.outputs.pushed == 'true'
+        run: |
+          "$RUNNER_TEMP/trusted-scripts/dispatch-pr-checks.sh"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
 
       - name: Post image preview comment
         if: github.event_name != 'workflow_dispatch'
@@ -225,6 +240,12 @@ jobs:
             gh pr checks "$PR" --repo "$REPO" --watch --fail-fast || true
             gh pr merge "$PR" --repo "$REPO" --rebase
             echo "merged=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if echo "$output" | grep -q "Auto merge is not allowed for this repository"; then
+            echo "Repository auto-merge is disabled; maybe-auto-merge will retry after checks pass."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
