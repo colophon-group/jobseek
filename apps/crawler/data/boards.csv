@@ -4948,6 +4948,7 @@ xdof,xdof-ashby,https://jobs.ashbyhq.com/xdof,ashby,"{""token"": ""xdof""}",skip
 xealth,xealth-greenhouse,https://job-boards.greenhouse.io/xealth,greenhouse,"{""token"": ""xealth""}",skip,
 xendit,xendit-greenhouse,https://job-boards.greenhouse.io/xendit,greenhouse,"{""token"": ""xendit""}",skip,
 xenon,xenon-ashby,https://jobs.ashbyhq.com/xenon,ashby,"{""token"": ""xenon""}",skip,
+xensam,xensam-careers,https://careers.xensam.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.xensam.com/jobs.rss""}",skip,
 xero,xero-ashby,https://jobs.ashbyhq.com/xero,ashby,"{""token"": ""xero""}",skip,
 xiaomi,xiaomi-careers-cn,https://hr.xiaomi.com/job/list,dom,"{""url_filter"": ""job/view"", ""pagination"": {""url_template"": ""https://hr.xiaomi.com/job/list/0-0-2-0-{page}""}}",dom,"{""steps"": [{""text"": ""职位名称"", ""offset"": 1, ""field"": ""title""}, {""text"": ""工作地点"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""工作职责"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop"": ""申请职位""}]}"
 xion,xion-greenhouse,https://job-boards.greenhouse.io/burnt,greenhouse,"{""token"": ""burnt""}",skip,
