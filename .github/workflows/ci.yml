@@ -750,12 +750,17 @@ jobs:
       - version-check
       - probe-new-boards
     runs-on: ubuntu-latest
+    permissions:
+      statuses: write
     steps:
       - name: Check required job results
         env:
           NEEDS_JSON: ${{ toJson(needs) }}
           EVENT_NAME: ${{ github.event_name }}
+          INPUT_PR: ${{ github.event.inputs.pr || '' }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set +e
           node <<'NODE'
           const needs = JSON.parse(process.env.NEEDS_JSON);
           const eventName = process.env.EVENT_NAME;
@@ -813,3 +818,23 @@ jobs:
           }
           console.log("Required CI passed");
           NODE
+          status=$?
+          set -e
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && -n "$INPUT_PR" ]]; then
+            if [[ "$status" -eq 0 ]]; then
+              state=success
+              description="Required CI passed"
+            else
+              state=failure
+              description="Required CI failed"
+            fi
+
+            gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+              -f state="$state" \
+              -f context="Required CI" \
+              -f description="$description" \
+              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
+
+          exit "$status"

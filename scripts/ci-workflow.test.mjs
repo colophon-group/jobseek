@@ -206,11 +206,26 @@ test("main branch ruleset does not require non-path-aware code scanning", () => 
     (rule) => rule.type === "required_status_checks",
   );
   assert.ok(statusRule, "main-strict-gate should require status checks");
+  assert.equal(statusRule.parameters.strict_required_status_checks_policy, false);
   const contexts = statusRule.parameters.required_status_checks.map(
     (check) => check.context,
   );
 
   assert.deepEqual(contexts, ["Required CI"]);
+  assert.equal(
+    Object.hasOwn(statusRule.parameters.required_status_checks[0], "integration_id"),
+    false,
+  );
+});
+
+test("workflow-dispatched CI publishes the Required CI status context", () => {
+  const requiredCiJob = jobBlock("required-ci");
+  assert.match(requiredCiJob, /permissions:\n      statuses: write/);
+  assert.match(requiredCiJob, /INPUT_PR: \$\{\{ github\.event\.inputs\.pr \|\| '' \}\}/);
+  assert.match(requiredCiJob, /if \[\[ "\$EVENT_NAME" == "workflow_dispatch" && -n "\$INPUT_PR" \]\]/);
+  assert.match(requiredCiJob, /repos\/\$GITHUB_REPOSITORY\/statuses\/\$GITHUB_SHA/);
+  assert.match(requiredCiJob, /-f context="Required CI"/);
+  assert.match(requiredCiJob, /exit "\$status"/);
 });
 
 test("CI runs Typesense E2E suites against a service container", () => {
