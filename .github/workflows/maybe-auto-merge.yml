@@ -65,15 +65,16 @@ jobs:
           if [[ "$EVENT_NAME" == "pull_request_target" ]]; then
             jq -r '.pull_request.number' "$GITHUB_EVENT_PATH" >> "$prs_file"
           elif [[ "$EVENT_NAME" == "workflow_run" ]]; then
-            jq -r '.workflow_run.pull_requests[]?.number' "$GITHUB_EVENT_PATH" >> "$prs_file"
-            if [[ ! -s "$prs_file" ]]; then
-              branch=$(jq -r '.workflow_run.head_branch // ""' "$GITHUB_EVENT_PATH")
-              head_repo=$(jq -r '.workflow_run.head_repository.full_name // ""' "$GITHUB_EVENT_PATH")
-              if [[ "$head_repo" == "$REPO" && "$branch" == add-company/* ]]; then
+            branch=$(jq -r '.workflow_run.head_branch // ""' "$GITHUB_EVENT_PATH")
+            head_repo=$(jq -r '.workflow_run.head_repository.full_name // ""' "$GITHUB_EVENT_PATH")
+
+            if [[ "$head_repo" == "$REPO" && "$branch" == "$default_branch" ]]; then
+              select_open_company_prs >> "$prs_file"
+            else
+              jq -r '.workflow_run.pull_requests[]?.number' "$GITHUB_EVENT_PATH" >> "$prs_file"
+              if [[ ! -s "$prs_file" && "$head_repo" == "$REPO" && "$branch" == add-company/* ]]; then
                 gh pr list --repo "$REPO" --state open --head "$branch" \
                   --json number --jq '.[].number' >> "$prs_file"
-              elif [[ "$head_repo" == "$REPO" && "$branch" == "$default_branch" ]]; then
-                select_open_company_prs >> "$prs_file"
               fi
             fi
           elif [[ -n "$INPUT_PR" ]]; then
