@@ -310,17 +310,38 @@ if [ "$STATS_FOUND" = "true" ]; then
   fi
 fi
 
-# --- Apply labels (remove stale ones first) ---
+# --- Apply labels (delta only, so repeated runs do not churn timeline events) ---
 
 ALL_DECISION_LABELS="auto-merge review-code review-size review-load incomplete"
-for L in $ALL_DECISION_LABELS; do
-  gh pr edit "$PR" --repo "$REPO" --remove-label "$L" 2>/dev/null || true
-done
+CURRENT_LABELS=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name')
+
+has_current_label() {
+  local label="$1"
+  grep -Fxq "$label" <<< "$CURRENT_LABELS"
+}
+
+declare -A desired_labels=()
 
 IFS=',' read -ra LABEL_ARR <<< "$LABELS"
 for L in "${LABEL_ARR[@]}"; do
+  [ -z "$L" ] && continue
+  desired_labels["$L"]=1
   gh label create "$L" --repo "$REPO" 2>/dev/null || true
-  gh pr edit "$PR" --repo "$REPO" --add-label "$L"
+done
+
+for L in $ALL_DECISION_LABELS; do
+  if [[ -z "${desired_labels[$L]+x}" ]] && has_current_label "$L"; then
+    echo "Removing stale label: $L"
+    gh pr edit "$PR" --repo "$REPO" --remove-label "$L"
+  fi
+done
+
+for L in "${LABEL_ARR[@]}"; do
+  [ -z "$L" ] && continue
+  if ! has_current_label "$L"; then
+    echo "Adding label: $L"
+    gh pr edit "$PR" --repo "$REPO" --add-label "$L"
+  fi
 done
 
 echo "Applied labels: $LABELS"
