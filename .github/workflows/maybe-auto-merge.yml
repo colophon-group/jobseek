@@ -45,12 +45,20 @@ jobs:
           REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
           INPUT_PR: ${{ github.event.inputs.pr || '' }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
 
           prs_file="$RUNNER_TEMP/company-prs.txt"
           : > "$prs_file"
           owner="${REPO%%/*}"
+          default_branch="${DEFAULT_BRANCH:-main}"
+
+          select_open_company_prs() {
+            gh pr list --repo "$REPO" --state open --limit 100 \
+              --json number,isDraft,headRefName,headRepositoryOwner \
+              --jq ".[] | select(.isDraft == false and .headRepositoryOwner.login == \"$owner\" and (.headRefName | startswith(\"add-company/\"))) | .number"
+          }
 
           if [[ "$EVENT_NAME" == "pull_request_target" ]]; then
             jq -r '.pull_request.number' "$GITHUB_EVENT_PATH" >> "$prs_file"
@@ -62,15 +70,14 @@ jobs:
               if [[ "$head_repo" == "$REPO" && "$branch" == add-company/* ]]; then
                 gh pr list --repo "$REPO" --state open --head "$branch" \
                   --json number --jq '.[].number' >> "$prs_file"
+              elif [[ "$head_repo" == "$REPO" && "$branch" == "$default_branch" ]]; then
+                select_open_company_prs >> "$prs_file"
               fi
             fi
           elif [[ -n "$INPUT_PR" ]]; then
             echo "$INPUT_PR" >> "$prs_file"
           else
-            gh pr list --repo "$REPO" --state open --limit 100 \
-              --json number,isDraft,headRefName,headRepositoryOwner \
-              --jq ".[] | select(.isDraft == false and .headRepositoryOwner.login == \"$owner\" and (.headRefName | startswith(\"add-company/\"))) | .number" \
-              >> "$prs_file"
+            select_open_company_prs >> "$prs_file"
           fi
 
           sort -nu "$prs_file" > "$RUNNER_TEMP/company-prs.sorted.txt"

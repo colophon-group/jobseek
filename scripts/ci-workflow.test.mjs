@@ -96,6 +96,8 @@ test("maybe-auto-merge wakes without manual retries", () => {
   assert.match(maybeAutoMergeWorkflow, /schedule:\n    - cron: "\*\/15 \* \* \* \*"/);
   assert.match(maybeAutoMergeWorkflow, /workflow_dispatch:/);
   assert.match(job, /name: Select PRs/);
+  assert.match(job, /select_open_company_prs\(\)/);
+  assert.match(job, /\$branch" == "\$default_branch"/);
   assert.match(job, /name: Label, rebase, and merge/);
   assert.match(job, /maybe-auto-merge-pr\.sh/);
 });
