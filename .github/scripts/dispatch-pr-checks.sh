@@ -38,4 +38,16 @@ if [[ "$branch" != add-company/* ]]; then
 fi
 
 echo "Dispatching path-aware CI for PR #$PR on $branch"
-gh workflow run ci.yml --repo "$REPO" --ref "$branch" -f "pr=$PR"
+output=$(gh workflow run ci.yml --repo "$REPO" --ref "$branch" -f "pr=$PR" 2>&1) && {
+  echo "$output"
+  exit 0
+}
+status=$?
+echo "$output"
+
+if grep -q 'Unexpected inputs provided: \["pr"\]' <<< "$output"; then
+  echo "::warning::Branch $branch does not yet include path-aware workflow_dispatch input; a later rebase retry will dispatch CI."
+  exit 0
+fi
+
+exit "$status"
