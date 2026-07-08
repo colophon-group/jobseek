@@ -57,8 +57,8 @@ jobs:
       - name: Rebase and resolve CSV conflicts
         id: rebase
         if: >-
-          steps.images.outputs.pending == 'true'
-          || contains(steps.label.outputs.labels, 'auto-merge')
+          steps.images.outputs.pending == 'false'
+          && contains(steps.label.outputs.labels, 'auto-merge')
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
