@@ -16,8 +16,10 @@ PRs that add company configs can be auto-merged or require human review, based o
 1. The agent estimates job count and crawl time during the test crawl step
 2. The agent includes these estimates in the PR body
 3. The agent applies the appropriate label based on the thresholds
-4. The `auto-merge-config.yml` workflow watches for the `auto-merge` label
-5. If CI passes and the PR only touches `data/*.csv`, it merges automatically
+4. The `maybe-auto-merge.yml` workflow wakes on PR updates and CI/CodeQL
+   completion
+5. If CI passes and the PR only touches allowed company-request files, it
+   merges automatically
 
 ## Examples
 
@@ -40,7 +42,9 @@ The agent gets estimates from the test crawl via `ws run monitor`, which reports
 The `maybe-auto-merge.yml` workflow:
 
 1. Wakes on company PR changes, CI/CodeQL completion, a 15 minute schedule,
-   and manual dispatch
+   and manual dispatch. CI/CodeQL completion on `main` sweeps all eligible
+   open same-repo `add-company/*` PRs, so branches made stale by other merges
+   do not wait for operator action.
 2. Labels internal non-draft `add-company/*` PRs from trusted scripts
 3. Skips PRs with pending image files so `upload-company-images.yml` can handle
    the R2 upload path
