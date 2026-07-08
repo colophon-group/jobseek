@@ -4800,6 +4800,7 @@ volkswagen-group,volkswagen-group-uk,https://www.jobs.volkswagengroup.co.uk/vaca
 volkswagen-group,volkswagen-group-uk-financial-services,https://careers.vwfs.co.uk/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""actions"": [{""action"": ""evaluate"", ""script"": ""window.location.href = \""https://careers.vwfs.co.uk/vacancies/vacancy-search-results.aspx\""""}, {""action"": ""wait"", ""ms"": 5000}], ""url_filter"": ""/vacancies/\\d+""}",json-ld,
 volkswagen-group,volkswagen-group-uk-retail,https://vwg-retailcareers.co.uk/vacancies/,sitemap,"{""url_filter"": ""/job/""}",json-ld,
 volkswagen-group,volkswagen-group-vwgds-portugal,https://jobs.eu.lever.co/vwgds,lever,"{""token"": ""vwgds""}",skip,
+volta-medical,volta-medical-careers,https://jobs.eu.lever.co/volta-medical,lever,"{""token"": ""volta-medical"", ""region"": ""eu""}",json-ld,
 vonage,vonage-greenhouse,https://job-boards.greenhouse.io/vonage,greenhouse,"{""token"": ""vonage""}",skip,
 vontobel,vontobel-careers,https://vontobel.wd3.myworkdayjobs.com/Vontobel_External_Career,workday,,workday,
 vorto,vorto-ashby,https://jobs.ashbyhq.com/vorto,ashby,"{""token"": ""vorto""}",skip,
