@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main, murmur-demo]
   workflow_dispatch:
+    inputs:
+      pr:
+        description: "Optional PR number for path-aware bot retry"
+        required: false
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -70,23 +75,32 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      code: ${{ steps.manual.outputs.code || steps.filter.outputs.code }}
-      crawler_code: ${{ steps.manual.outputs.crawler_code || steps.filter.outputs.crawler_code }}
-      boards_csv: ${{ steps.manual.outputs.boards_csv || steps.filter.outputs.boards_csv }}
+      code: ${{ steps.manual-default.outputs.code || steps.manual-pr.outputs.code || steps.filter.outputs.code }}
+      crawler_code: ${{ steps.manual-default.outputs.crawler_code || steps.manual-pr.outputs.crawler_code || steps.filter.outputs.crawler_code }}
+      boards_csv: ${{ steps.manual-default.outputs.boards_csv || steps.manual-pr.outputs.boards_csv || steps.filter.outputs.boards_csv }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           fetch-depth: 0
 
       - name: Manual dispatch defaults
-        id: manual
-        if: github.event_name == 'workflow_dispatch'
+        id: manual-default
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr == ''
         run: |
           {
             echo "code=true"
             echo "crawler_code=false"
             echo "boards_csv=false"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Classify manually dispatched PR paths
+        id: manual-pr
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr != ''
+        run: .github/scripts/classify-pr-paths.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.inputs.pr }}
 
       - name: Detect changed paths
         id: filter

@@ -16,6 +16,14 @@ const maybeAutoMergeScript = readFileSync(
   ".github/scripts/maybe-auto-merge-pr.sh",
   "utf8",
 );
+const classifyPrPathsScript = readFileSync(
+  ".github/scripts/classify-pr-paths.sh",
+  "utf8",
+);
+const dispatchPrChecksScript = readFileSync(
+  ".github/scripts/dispatch-pr-checks.sh",
+  "utf8",
+);
 const labelPrScript = readFileSync(".github/scripts/label-pr.sh", "utf8");
 const publishMcpServerWorkflow = readFileSync(
   ".github/workflows/publish-mcp-server.yml",
@@ -83,6 +91,19 @@ test("CI no longer shells out to custom diff classification", () => {
   assert.equal(workflow.includes("git diff-tree"), false);
 });
 
+test("manual CI dispatch can classify a PR without full code checks", () => {
+  const changesJob = jobBlock("changes");
+  assert.match(workflow, /workflow_dispatch:\n    inputs:\n      pr:/);
+  assert.match(changesJob, /id: manual-default/);
+  assert.match(changesJob, /id: manual-pr/);
+  assert.match(changesJob, /\.github\/scripts\/classify-pr-paths\.sh/);
+  assert.match(classifyPrPathsScript, /gh api --paginate "repos\/\$REPO\/pulls\/\$PR\/files"/);
+  assert.match(classifyPrPathsScript, /emit "code" "\$code"/);
+  assert.match(classifyPrPathsScript, /emit "crawler_code" "\$crawler_code"/);
+  assert.match(classifyPrPathsScript, /emit "boards_csv" "\$boards_csv"/);
+  assert.match(classifyPrPathsScript, /emit "codeql" "\$code"/);
+});
+
 test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /node --test/);
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
@@ -107,8 +128,24 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /upload-company-images will handle it/);
   assert.match(maybeAutoMergeScript, /label-pr\.sh/);
   assert.match(maybeAutoMergeScript, /git rebase origin\/main/);
+  assert.match(maybeAutoMergeScript, /dispatch-pr-checks\.sh/);
   assert.match(maybeAutoMergeScript, /gh pr merge "\$PR" --repo "\$REPO" --rebase/);
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
+});
+
+test("bot-authored company branch updates dispatch path-aware CI", () => {
+  assert.match(dispatchPrChecksScript, /gh workflow run ci\.yml --repo "\$REPO" --ref "\$branch" -f "pr=\$PR"/);
+  assert.doesNotMatch(dispatchPrChecksScript, /codeql\.yml/);
+  assert.match(dispatchPrChecksScript, /"\$branch" != add-company\/\*/);
+
+  assert.match(maybeAutoMergeWorkflow, /actions: write/);
+  assert.match(maybeAutoMergeWorkflow, /dispatch-pr-checks\.sh/);
+
+  assert.match(uploadCompanyImagesWorkflow, /actions: write/);
+  assert.match(uploadCompanyImagesWorkflow, /id: image-sync/);
+  assert.match(uploadCompanyImagesWorkflow, /steps\.image-sync\.outputs\.pushed == 'true'/);
+  assert.match(uploadCompanyImagesWorkflow, /Dispatch checks for image commit/);
+  assert.match(uploadCompanyImagesWorkflow, /Auto merge is not allowed for this repository/);
 });
 
 test("company PR label script applies decision labels idempotently", () => {
@@ -126,7 +163,10 @@ test("company PR label script applies decision labels idempotently", () => {
 
 test("CodeQL skips full analysis for non-code pull requests", () => {
   const changesJob = workflowJobBlock(codeqlWorkflow, "changes");
+  assert.match(codeqlWorkflow, /pull_request:\n    branches: \[main\]\n    paths-ignore:/);
   assert.match(changesJob, /name: Detect CodeQL changes/);
+  assert.match(changesJob, /id: manual-pr/);
+  assert.match(changesJob, /\.github\/scripts\/classify-pr-paths\.sh/);
   assert.match(changesJob, /uses: dorny\/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3/);
   assert.match(changesJob, /predicate-quantifier: every/);
   assert.match(changesJob, /codeql:\n(?:              - .+\n)+/);
@@ -170,14 +210,7 @@ test("main branch ruleset does not require non-path-aware code scanning", () => 
     (check) => check.context,
   );
 
-  for (const context of [
-    "Required CI",
-    "Analyze (actions)",
-    "Analyze (javascript-typescript)",
-    "Analyze (python)",
-  ]) {
-    assert.ok(contexts.includes(context), `missing required check ${context}`);
-  }
+  assert.deepEqual(contexts, ["Required CI"]);
 });
 
 test("CI runs Typesense E2E suites against a service container", () => {

@@ -19,18 +19,6 @@
           {
             "context": "Required CI",
             "integration_id": 15368
-          },
-          {
-            "context": "Analyze (actions)",
-            "integration_id": 15368
-          },
-          {
-            "context": "Analyze (javascript-typescript)",
-            "integration_id": 15368
-          },
-          {
-            "context": "Analyze (python)",
-            "integration_id": 15368
           }
         ]
       }
