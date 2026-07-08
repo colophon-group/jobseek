@@ -4782,6 +4782,7 @@ vitable-health,vitable-health-greenhouse,https://job-boards.greenhouse.io/vitabl
 vitalize,vitalize-ashby,https://jobs.ashbyhq.com/vitalize,ashby,"{""token"": ""vitalize""}",skip,
 vitol,vitol-careers,https://careers.smartrecruiters.com/Vitol,smartrecruiters,"{""token"": ""Vitol""}",smartrecruiters,
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",skip,
+vivo-defence-services,vivo-defence-services-careers,https://apply-now.serco.com/VIVO,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://apply-now.serco.com/googlefeed.xml"", ""url_filter"": ""/VIVO/job/""}",skip,
 vodafone,vodafone-cz-almacareer,https://vodafone.jobs.cz/,almacareer,{},skip,
 vodafone,vodafone-jobs,https://jobs.vodafone.com/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 voi,voi-careers,https://careers.voi.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.voi.com/jobs.rss""}",skip,
