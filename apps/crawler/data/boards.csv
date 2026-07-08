@@ -4802,6 +4802,7 @@ volkswagen-group,volkswagen-group-uk-financial-services,https://careers.vwfs.co.
 volkswagen-group,volkswagen-group-uk-retail,https://vwg-retailcareers.co.uk/vacancies/,sitemap,"{""url_filter"": ""/job/""}",json-ld,
 volkswagen-group,volkswagen-group-vwgds-portugal,https://jobs.eu.lever.co/vwgds,lever,"{""token"": ""vwgds""}",skip,
 volta-medical,volta-medical-careers,https://jobs.eu.lever.co/volta-medical,lever,"{""token"": ""volta-medical"", ""region"": ""eu""}",json-ld,
+volumental,volumental-jobs,https://jobs.volumental.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://jobs.volumental.com/jobs.rss""}",skip,
 vonage,vonage-greenhouse,https://job-boards.greenhouse.io/vonage,greenhouse,"{""token"": ""vonage""}",skip,
 vontobel,vontobel-careers,https://vontobel.wd3.myworkdayjobs.com/Vontobel_External_Career,workday,,workday,
 vorto,vorto-ashby,https://jobs.ashbyhq.com/vorto,ashby,"{""token"": ""vorto""}",skip,
