@@ -8,6 +8,10 @@ const uploadCompanyImagesWorkflow = readFileSync(
   ".github/workflows/upload-company-images.yml",
   "utf8",
 );
+const maybeAutoMergeWorkflow = readFileSync(
+  ".github/workflows/maybe-auto-merge.yml",
+  "utf8",
+);
 const publishMcpServerWorkflow = readFileSync(
   ".github/workflows/publish-mcp-server.yml",
   "utf8",
@@ -76,6 +80,24 @@ test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
   assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
+});
+
+test("maybe-auto-merge hands image PRs to the image upload workflow without rebasing", () => {
+  const job = workflowJobBlock(maybeAutoMergeWorkflow, "label-and-merge");
+  const rebaseStep = job.match(
+    /- name: Rebase and resolve CSV conflicts[\s\S]*?(?=\n      - name: Merge)/,
+  );
+  const labelStep = job.match(
+    /- name: Label PR[\s\S]*?(?=\n      - name: Rebase and resolve CSV conflicts)/,
+  );
+
+  assert.ok(rebaseStep, "missing rebase step");
+  assert.ok(labelStep, "missing label step");
+  assert.match(job, /name: Check for pending images/);
+  assert.match(labelStep[0], /if: steps\.images\.outputs\.pending == 'false'/);
+  assert.match(rebaseStep[0], /steps\.images\.outputs\.pending == 'false'/);
+  assert.match(rebaseStep[0], /contains\(steps\.label\.outputs\.labels, 'auto-merge'\)/);
+  assert.doesNotMatch(rebaseStep[0], /steps\.images\.outputs\.pending == 'true'/);
 });
 
 test("CodeQL skips full analysis for non-code pull requests", () => {
