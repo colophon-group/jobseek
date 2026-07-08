@@ -4825,6 +4825,7 @@ walmart,walmart-canada,https://careers.walmart.ca/search-jobs,talentbrew,{},json
 walmart,walmart-careers,https://careers.walmart.com/us/en/results,sitemap,"{""sitemap_url"": ""https://careers.walmart.com/sitemap.xml"", ""url_filter"": ""/us/en/jobs/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Primary Location"", ""offset"": 1, ""field"": ""location"", ""optional"": true, ""from"": 0}, {""text"": ""What you"", ""field"": ""description"", ""stop"": ""Minimum Qualifications"", ""html"": true, ""from"": 0}, {""text"": ""Full time"", ""field"": ""employment_type"", ""optional"": true, ""from"": 0}], ""render"": false}"
 walrusfi,walrusfi-ashby,https://jobs.ashbyhq.com/walrusfi,ashby,"{""token"": ""walrusfi""}",skip,
 waltz-health,waltz-health-greenhouse,https://job-boards.greenhouse.io/waltzhealth,greenhouse,"{""token"": ""waltzhealth""}",skip,
+wandercraft,wandercraft-careers,https://wandercraft.welcomekit.co/,dom,"{""url_filter"": ""^https?://wandercraft\\.welcomekit\\.co/jobs/(?!spontaneous-applications(?:[/?#]|$))[^/?#]+""}",json-ld,"{""render"": true, ""timeout"": 30000}"
 warburg-pincus-llc,warburg-pincus-llc-greenhouse,https://job-boards.greenhouse.io/warburgpincusllc,greenhouse,"{""token"": ""warburgpincusllc""}",skip,
 wargaming,wargaming-greenhouse,https://job-boards.greenhouse.io/wargamingen,greenhouse,"{""token"": ""wargamingen""}",skip,
 warner-music,warner-music-careers,https://www.wmg.com/careers,lever,"{""token"": ""wmg""}",skip,
