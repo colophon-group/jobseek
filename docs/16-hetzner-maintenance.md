@@ -145,6 +145,42 @@ sudo -u codex-runner python3 /srv/jobseek-codex/repo/scripts/codex-usage-probe.p
   --timeout 10
 ```
 
+Inspect usage-limit depletion history from the governor ledger:
+
+```bash
+sudo -iu codex-runner bash -lc 'python3 - <<'"'"'PY'"'"'
+import sqlite3
+from datetime import datetime, timezone
+
+conn = sqlite3.connect("/srv/jobseek-codex/state/ledger.sqlite")
+conn.row_factory = sqlite3.Row
+rows = conn.execute("""
+    SELECT observed_at, window_name, remaining_percent, used_percent,
+           reset_in_seconds, decision_reason, recent_limit, recent_runs,
+           pacing_interval_s, retry_after_s, usage_error
+    FROM usage_snapshots
+    WHERE window_name IN ('weekly', 'five_hour') OR window_name IS NULL
+    ORDER BY observed_at DESC, id DESC
+    LIMIT 40
+""").fetchall()
+for row in rows:
+    ts = datetime.fromtimestamp(row["observed_at"], tz=timezone.utc).isoformat()
+    print(
+        ts,
+        row["window_name"],
+        "remaining=", row["remaining_percent"],
+        "used=", row["used_percent"],
+        "reset_s=", row["reset_in_seconds"],
+        "decision=", row["decision_reason"],
+        "cap=", row["recent_limit"],
+        "recent=", row["recent_runs"],
+        "pace_s=", row["pacing_interval_s"],
+        "retry_s=", row["retry_after_s"],
+        "error=", row["usage_error"],
+    )
+PY'
+```
+
 Do not add a GitHub Actions schedule for this resolver. The Hetzner timer is
 the recurring path; GitHub Actions remains a manual emergency fallback only.
 

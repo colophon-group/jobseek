@@ -284,16 +284,18 @@ def test_dry_run_claims_then_releases_without_codex(tmp_path: Path) -> None:
 def test_unknown_usage_uses_conservative_five_hour_budget(tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=True)
     ledger = RunnerLedger(config.ledger_path)
-    assert ledger.acquire(run_id="old", issue=1, active_slot=config.active_slot)
-    ledger.finish("old", "completed")
+    for i in range(5):
+        run_id = f"old-{i}"
+        assert ledger.acquire(run_id=run_id, issue=i + 1, active_slot=config.active_slot)
+        ledger.finish(run_id, "completed")
     governor = CompanyResolverGovernor(config, ledger=ledger, github=FakeGitHub(issue=101))
 
     decision = governor.should_start()
 
     assert not decision.should_run
     assert decision.reason == "five-hour run budget exhausted"
-    assert decision.recent_limit == 1
-    assert decision.recent_runs == 1
+    assert decision.recent_limit == 5
+    assert decision.recent_runs == 5
 
 
 def test_weekly_usage_over_fast_threshold_expands_budget(monkeypatch, tmp_path: Path) -> None:
@@ -311,7 +313,7 @@ def test_weekly_usage_over_fast_threshold_expands_budget(monkeypatch, tmp_path: 
     decision = governor.should_start()
 
     assert decision.should_run
-    assert decision.recent_limit == 5
+    assert decision.recent_limit == 50
 
 
 def test_weekly_usage_under_fast_threshold_uses_conservative_budget(
@@ -319,8 +321,10 @@ def test_weekly_usage_under_fast_threshold_uses_conservative_budget(
 ) -> None:
     config = _config(tmp_path, dry_run=True)
     ledger = RunnerLedger(config.ledger_path)
-    assert ledger.acquire(run_id="old", issue=1, active_slot=config.active_slot)
-    ledger.finish("old", "completed")
+    for i in range(5):
+        run_id = f"old-{i}"
+        assert ledger.acquire(run_id=run_id, issue=i + 1, active_slot=config.active_slot)
+        ledger.finish(run_id, "completed")
     governor = CompanyResolverGovernor(config, ledger=ledger, github=FakeGitHub(issue=101))
     usage = UsageProbeResult(
         ok=True,
@@ -335,8 +339,73 @@ def test_weekly_usage_under_fast_threshold_uses_conservative_budget(
 
     assert not decision.should_run
     assert decision.reason == "five-hour run budget exhausted"
-    assert decision.recent_limit == 1
-    assert decision.recent_runs == 1
+    assert decision.recent_limit == 5
+    assert decision.recent_runs == 5
+
+
+def test_scheduler_records_usage_snapshots(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path, dry_run=True)
+    ledger = RunnerLedger(config.ledger_path)
+    governor = CompanyResolverGovernor(config, ledger=ledger, github=FakeGitHub(issue=101))
+    usage = UsageProbeResult(
+        ok=True,
+        windows=(
+            UsageWindow(
+                name="five_hour",
+                remaining_percent=90,
+                used_percent=10,
+                reset_in_seconds=3600,
+            ),
+            UsageWindow(
+                name="weekly",
+                remaining_percent=55,
+                used_percent=45,
+                reset_in_seconds=ONE_DAY,
+            ),
+        ),
+    )
+    monkeypatch.setattr(governor, "_probe_usage", lambda: usage)
+
+    decision = governor.should_start()
+    snapshots = ledger.recent_usage_snapshots(active_slot=config.active_slot, limit=10)
+
+    assert decision.should_run
+    assert len(snapshots) == 2
+    by_window = {snapshot["window_name"]: snapshot for snapshot in snapshots}
+    assert by_window["weekly"]["remaining_percent"] == 55
+    assert by_window["weekly"]["used_percent"] == 45
+    assert by_window["weekly"]["recent_limit"] == 50
+    assert by_window["weekly"]["decision_reason"] == "admitted"
+    assert by_window["weekly"]["pacing_interval_s"] == 360
+    assert by_window["five_hour"]["reset_in_seconds"] == 3600
+
+
+def test_fast_mode_paces_starts_between_timer_wakes(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path, dry_run=True)
+    ledger = RunnerLedger(config.ledger_path)
+    monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 1000)
+    assert ledger.acquire(run_id="old", issue=1, active_slot=config.active_slot)
+    ledger.update("old", state="completed", started_at=1000, completed_at=1001)
+    governor = CompanyResolverGovernor(config, ledger=ledger, github=FakeGitHub(issue=101))
+    usage = UsageProbeResult(
+        ok=True,
+        windows=(
+            UsageWindow(name="five_hour", remaining_percent=90, reset_in_seconds=3600),
+            UsageWindow(name="weekly", remaining_percent=80, reset_in_seconds=ONE_DAY),
+        ),
+    )
+    monkeypatch.setattr(governor, "_probe_usage", lambda: usage)
+    monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 1060)
+
+    decision = governor.should_start()
+    snapshots = ledger.recent_usage_snapshots(active_slot=config.active_slot, limit=10)
+
+    assert not decision.should_run
+    assert decision.reason == "start pacing interval active"
+    assert decision.retry_after_s == 300
+    assert decision.pacing_interval_s == 360
+    assert decision.last_started_at == 1000
+    assert {snapshot["retry_after_s"] for snapshot in snapshots} == {300}
 
 
 def test_low_usage_window_pauses_until_reset(monkeypatch, tmp_path: Path) -> None:

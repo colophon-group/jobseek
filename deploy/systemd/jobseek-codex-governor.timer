@@ -4,10 +4,10 @@ Description=Schedule the Jobseek Codex company-request governor
 Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment.md
 
 [Timer]
-OnBootSec=15min
-OnUnitInactiveSec=20min
-RandomizedDelaySec=10min
-AccuracySec=1min
+OnBootSec=2min
+OnUnitInactiveSec=1min
+RandomizedDelaySec=30s
+AccuracySec=15s
 Persistent=false
 Unit=jobseek-codex-governor.service
 

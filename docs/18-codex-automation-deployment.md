@@ -196,8 +196,8 @@ Committed deployment templates:
   and writable paths limited to `/srv/jobseek-codex` and
   `/home/codex-runner`.
 - [`../deploy/systemd/jobseek-codex-governor.timer`](../deploy/systemd/jobseek-codex-governor.timer)
-  - starts 15 minutes after boot, then 20 minutes after the previous service
-  finishes with up to 10 minutes of jitter.
+  - starts 2 minutes after boot, then 1 minute after the previous service
+  finishes with up to 30 seconds of jitter.
 - [`../deploy/systemd/jobseek-codex-governor.env.example`](../deploy/systemd/jobseek-codex-governor.env.example)
   - non-secret governor defaults, including conservative budgets and usage
   thresholds.
@@ -276,8 +276,10 @@ replace the local Hetzner timer with a GitHub Actions schedule.
 
 ### Phase 3 - governor decision loop
 
-The governor runs every 15-30 minutes with randomized delay and exits quickly
-when it should not start work.
+The systemd timer polls about every 1-1.5 minutes after the previous service
+run exits. The governor still starts at most one resolver per service run and
+uses ledger-backed pacing plus rolling five-hour caps to decide whether a wake
+should actually start work.
 
 Preflight gates:
 
@@ -299,19 +301,28 @@ Usage inputs:
 Scheduling policy:
 
 - Default concurrency is `1`.
-- Always keep a hard safety cap of at most five resolver issues per five-hour
-  rolling window unless deliberately raised in the deployment config.
+- Always keep a hard safety cap of at most
+  `JOBSEEK_CODEX_MAX_RUNS_PER_5H` resolver issues per five-hour rolling window.
+  The default `50` allows roughly 10 runs per hour when weekly usage remains
+  above the fast threshold.
 - If five-hour remaining usage is low, pause until the window reset plus
   jitter.
 - If weekly remaining usage is low, pause until the weekly reset, or for the
   fallback retry interval when the reset time is unknown.
 - When weekly remaining usage is at least
   `JOBSEEK_CODEX_FAST_WEEKLY_REMAINING_PERCENT` (default `50`), use the fast
-  five-hour budget, `JOBSEEK_CODEX_MAX_RUNS_PER_5H`.
+  five-hour budget, `JOBSEEK_CODEX_MAX_RUNS_PER_5H`, and the fast minimum
+  start interval, `JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S` (default `360`,
+  roughly 10 runs per hour).
 - When weekly remaining usage is below that threshold, use the slower
-  conservative five-hour budget, `JOBSEEK_CODEX_CONSERVATIVE_RUNS_PER_5H`.
+  conservative five-hour budget, `JOBSEEK_CODEX_CONSERVATIVE_RUNS_PER_5H`, and
+  the conservative minimum start interval,
+  `JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S` (default `3600`).
 - When usage telemetry is unavailable, run at the conservative floor instead
   of failing the scheduler permanently.
+- Record every scheduler decision and usage window in the local SQLite
+  `usage_snapshots` table so weekly and five-hour depletion speed can be
+  reviewed before changing thresholds.
 
 ### Phase 4 - one-run execution
 
@@ -381,8 +392,8 @@ For each accepted issue:
 ### Company resolver
 
 - Process at most one issue per recurring run.
-- Respect the five-issues-per-five-hours safety budget unless the Hetzner
-  deployment config deliberately raises it.
+- Respect the configured five-hour safety budget. Defaults are 50 runs per five
+  hours in fast mode and 5 runs per five hours in conservative mode.
 - Use `<!-- ws-claim -->` comments to claim work and skip active claims.
 - The governor owns issue selection for recurring runs so it can pair GitHub
   claims with local SQLite leases and delete only its own claim on races.

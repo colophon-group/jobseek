@@ -77,6 +77,8 @@ class SchedulerDecision:
     recent_runs: int
     usage: UsageProbeResult | None = None
     retry_after_s: int | None = None
+    pacing_interval_s: int | None = None
+    last_started_at: int | None = None
 
 
 @dataclass(frozen=True)
@@ -107,9 +109,11 @@ class RunnerConfig:
     cleanup_success_worktree: bool = True
     label: str = "company-request"
     active_slot: str = "company-resolver"
-    max_runs_per_5h: int = 5
-    conservative_runs_per_5h: int = 1
+    max_runs_per_5h: int = 50
+    conservative_runs_per_5h: int = 5
     fast_weekly_remaining_percent: float = 50.0
+    fast_min_start_interval_s: int = 6 * 60
+    conservative_min_start_interval_s: int = 60 * 60
     min_five_hour_remaining_percent: float = 5.0
     min_weekly_remaining_percent: float = 3.0
     min_disk_free_gib: float = 5.0
@@ -139,6 +143,8 @@ class RunnerConfig:
             max_runs_per_5h=self.max_runs_per_5h,
             conservative_runs_per_5h=self.conservative_runs_per_5h,
             fast_weekly_remaining_percent=self.fast_weekly_remaining_percent,
+            fast_min_start_interval_s=self.fast_min_start_interval_s,
+            conservative_min_start_interval_s=self.conservative_min_start_interval_s,
             min_five_hour_remaining_percent=self.min_five_hour_remaining_percent,
             min_weekly_remaining_percent=self.min_weekly_remaining_percent,
             min_disk_free_gib=self.min_disk_free_gib,
@@ -167,10 +173,16 @@ class RunnerConfig:
             ),
             max_runtime_s=int(env.get("JOBSEEK_CODEX_MAX_RUNTIME_S", DEFAULT_RUNTIME_S)),
             kill_grace_s=int(env.get("JOBSEEK_CODEX_KILL_GRACE_S", DEFAULT_KILL_GRACE_S)),
-            max_runs_per_5h=int(env.get("JOBSEEK_CODEX_MAX_RUNS_PER_5H", "5")),
-            conservative_runs_per_5h=int(env.get("JOBSEEK_CODEX_CONSERVATIVE_RUNS_PER_5H", "1")),
+            max_runs_per_5h=int(env.get("JOBSEEK_CODEX_MAX_RUNS_PER_5H", "50")),
+            conservative_runs_per_5h=int(env.get("JOBSEEK_CODEX_CONSERVATIVE_RUNS_PER_5H", "5")),
             fast_weekly_remaining_percent=float(
                 env.get("JOBSEEK_CODEX_FAST_WEEKLY_REMAINING_PERCENT", "50")
+            ),
+            fast_min_start_interval_s=int(
+                env.get("JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S", "360")
+            ),
+            conservative_min_start_interval_s=int(
+                env.get("JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S", "3600")
             ),
             min_five_hour_remaining_percent=float(
                 env.get("JOBSEEK_CODEX_MIN_5H_REMAINING_PERCENT", "5")
@@ -243,6 +255,28 @@ class RunnerLedger:
                     events_with_usage INTEGER NOT NULL,
                     ingested_at INTEGER NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS usage_snapshots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    observed_at INTEGER NOT NULL,
+                    active_slot TEXT NOT NULL,
+                    decision_reason TEXT NOT NULL,
+                    should_run INTEGER NOT NULL,
+                    recent_limit INTEGER NOT NULL,
+                    recent_runs INTEGER NOT NULL,
+                    usage_ok INTEGER,
+                    usage_error TEXT,
+                    usage_status INTEGER,
+                    window_name TEXT,
+                    remaining_percent REAL,
+                    used_percent REAL,
+                    reset_in_seconds INTEGER,
+                    reset_at INTEGER,
+                    pacing_interval_s INTEGER,
+                    last_started_at INTEGER,
+                    retry_after_s INTEGER
+                );
+                CREATE INDEX IF NOT EXISTS usage_snapshots_slot_time
+                    ON usage_snapshots(active_slot, observed_at);
                 """
             )
             self._ensure_columns(conn)
@@ -255,6 +289,16 @@ class RunnerLedger:
             "lease_expires_at": "ALTER TABLE runs ADD COLUMN lease_expires_at INTEGER",
         }.items():
             if name not in existing:
+                conn.execute(ddl)
+        snapshot_existing = {
+            row["name"] for row in conn.execute("PRAGMA table_info(usage_snapshots)").fetchall()
+        }
+        for name, ddl in {
+            "pacing_interval_s": "ALTER TABLE usage_snapshots ADD COLUMN pacing_interval_s INTEGER",
+            "last_started_at": "ALTER TABLE usage_snapshots ADD COLUMN last_started_at INTEGER",
+            "retry_after_s": "ALTER TABLE usage_snapshots ADD COLUMN retry_after_s INTEGER",
+        }.items():
+            if name not in snapshot_existing:
                 conn.execute(ddl)
 
     def acquire(
@@ -315,6 +359,21 @@ class RunnerLedger:
             ).fetchone()
         return int(row["count"]) if row else 0
 
+    def last_run_started_at(self, *, active_slot: str) -> int | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT MAX(started_at) AS started_at
+                FROM runs
+                WHERE active_slot = ?
+                  AND started_at IS NOT NULL
+                  AND state IN ('running', 'completed', 'failed', 'timeout')
+                """,
+                (active_slot,),
+            ).fetchone()
+        value = row["started_at"] if row else None
+        return int(value) if isinstance(value, int) else None
+
     def expired_active_runs(self, *, active_slot: str, now: int) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
@@ -354,6 +413,70 @@ class RunnerLedger:
             return True
         except sqlite3.IntegrityError:
             return False
+
+    def record_usage_snapshot(
+        self,
+        *,
+        active_slot: str,
+        decision: SchedulerDecision,
+        observed_at: int | None = None,
+    ) -> None:
+        now = observed_at or int(time.time())
+        usage = decision.usage
+        windows = usage.windows if usage and usage.windows else (None,)
+        usage_ok = None if usage is None else int(usage.ok)
+        usage_error = usage.error if usage else None
+        usage_status = usage.status if usage else None
+        rows = []
+        for window in windows:
+            rows.append(
+                (
+                    now,
+                    active_slot,
+                    decision.reason,
+                    int(decision.should_run),
+                    decision.recent_limit,
+                    decision.recent_runs,
+                    usage_ok,
+                    usage_error,
+                    usage_status,
+                    window.name if window else None,
+                    window.remaining_percent if window else None,
+                    window.used_percent if window else None,
+                    window.reset_in_seconds if window else None,
+                    window.reset_at if window else None,
+                    decision.pacing_interval_s,
+                    decision.last_started_at,
+                    decision.retry_after_s,
+                )
+            )
+        with self._connect() as conn:
+            conn.executemany(
+                """
+                INSERT INTO usage_snapshots (
+                    observed_at, active_slot, decision_reason, should_run,
+                    recent_limit, recent_runs, usage_ok, usage_error,
+                    usage_status, window_name, remaining_percent, used_percent,
+                    reset_in_seconds, reset_at, pacing_interval_s,
+                    last_started_at, retry_after_s
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                rows,
+            )
+
+    def recent_usage_snapshots(self, *, active_slot: str, limit: int = 20) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM usage_snapshots
+                WHERE active_slot = ?
+                ORDER BY observed_at DESC, id DESC
+                LIMIT ?
+                """,
+                (active_slot, limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
 
 class GitHubCoordinator:
@@ -902,46 +1025,86 @@ class CompanyResolverGovernor:
         self.reconcile_stale_runs()
         health = check_host_health(self.config)
         if not health.ok:
-            return SchedulerDecision(
-                should_run=False,
-                reason=health.reason or "host health gate failed",
-                recent_limit=0,
-                recent_runs=0,
+            return self._record_scheduler_decision(
+                SchedulerDecision(
+                    should_run=False,
+                    reason=health.reason or "host health gate failed",
+                    recent_limit=0,
+                    recent_runs=0,
+                )
             )
 
         usage = self._probe_usage()
         recent_limit = self._recent_run_limit(usage)
+        pacing_interval = self._pacing_interval(usage)
+        last_started_at = self.ledger.last_run_started_at(active_slot=self.config.active_slot)
+        now = int(time.time())
         recent_runs = self.ledger.count_recent_runs(
             active_slot=self.config.active_slot,
-            since=int(time.time()) - FIVE_HOURS_S,
+            since=now - FIVE_HOURS_S,
         )
         if recent_runs >= recent_limit:
-            return SchedulerDecision(
-                should_run=False,
-                reason="five-hour run budget exhausted",
-                recent_limit=recent_limit,
-                recent_runs=recent_runs,
-                usage=usage,
+            return self._record_scheduler_decision(
+                SchedulerDecision(
+                    should_run=False,
+                    reason="five-hour run budget exhausted",
+                    recent_limit=recent_limit,
+                    recent_runs=recent_runs,
+                    usage=usage,
+                    pacing_interval_s=pacing_interval,
+                    last_started_at=last_started_at,
+                )
             )
 
         retry_after = self._usage_retry_after(usage)
         if retry_after is not None:
-            return SchedulerDecision(
-                should_run=False,
-                reason="Codex usage window below threshold",
+            return self._record_scheduler_decision(
+                SchedulerDecision(
+                    should_run=False,
+                    reason="Codex usage window below threshold",
+                    recent_limit=recent_limit,
+                    recent_runs=recent_runs,
+                    usage=usage,
+                    retry_after_s=retry_after,
+                    pacing_interval_s=pacing_interval,
+                    last_started_at=last_started_at,
+                )
+            )
+
+        if last_started_at is not None and pacing_interval > 0:
+            elapsed = now - last_started_at
+            if elapsed < pacing_interval:
+                return self._record_scheduler_decision(
+                    SchedulerDecision(
+                        should_run=False,
+                        reason="start pacing interval active",
+                        recent_limit=recent_limit,
+                        recent_runs=recent_runs,
+                        usage=usage,
+                        retry_after_s=pacing_interval - elapsed,
+                        pacing_interval_s=pacing_interval,
+                        last_started_at=last_started_at,
+                    )
+                )
+
+        return self._record_scheduler_decision(
+            SchedulerDecision(
+                should_run=True,
+                reason="admitted",
                 recent_limit=recent_limit,
                 recent_runs=recent_runs,
                 usage=usage,
-                retry_after_s=retry_after,
+                pacing_interval_s=pacing_interval,
+                last_started_at=last_started_at,
             )
-
-        return SchedulerDecision(
-            should_run=True,
-            reason="admitted",
-            recent_limit=recent_limit,
-            recent_runs=recent_runs,
-            usage=usage,
         )
+
+    def _record_scheduler_decision(self, decision: SchedulerDecision) -> SchedulerDecision:
+        self.ledger.record_usage_snapshot(
+            active_slot=self.config.active_slot,
+            decision=decision,
+        )
+        return decision
 
     def _probe_usage(self) -> UsageProbeResult | None:
         probe = self.config.usage_probe_path
@@ -952,16 +1115,24 @@ class CompanyResolverGovernor:
     def _recent_run_limit(self, usage: UsageProbeResult | None) -> int:
         cfg = self.config
         conservative = max(1, min(cfg.conservative_runs_per_5h, cfg.max_runs_per_5h))
-        if not usage or not usage.ok:
-            return conservative
-
-        weekly = _window(usage, "weekly")
-        if weekly is None or weekly.remaining_percent is None:
-            return conservative
-
-        if weekly.remaining_percent >= cfg.fast_weekly_remaining_percent:
+        if self._fast_mode_enabled(usage):
             return cfg.max_runs_per_5h
         return conservative
+
+    def _pacing_interval(self, usage: UsageProbeResult | None) -> int:
+        if self._fast_mode_enabled(usage):
+            return max(0, self.config.fast_min_start_interval_s)
+        return max(0, self.config.conservative_min_start_interval_s)
+
+    def _fast_mode_enabled(self, usage: UsageProbeResult | None) -> bool:
+        if not usage or not usage.ok:
+            return False
+        weekly = _window(usage, "weekly")
+        return (
+            weekly is not None
+            and weekly.remaining_percent is not None
+            and weekly.remaining_percent >= self.config.fast_weekly_remaining_percent
+        )
 
     def _usage_retry_after(self, usage: UsageProbeResult | None) -> int | None:
         if not usage:
