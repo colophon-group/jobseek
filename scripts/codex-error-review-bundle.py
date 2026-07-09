@@ -14,8 +14,10 @@ import os
 import re
 import shutil
 import subprocess
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+UTC = timezone.utc  # noqa: UP017 - systemd runs this script with Python 3.10.
 
 LONG_RUNNING_CONTAINERS = (
     "deploy-worker-1-1",

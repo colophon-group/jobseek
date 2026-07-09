@@ -16,7 +16,7 @@ import subprocess
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from src.workspace.codex_runner import (
@@ -28,6 +28,8 @@ from src.workspace.codex_runner import (
     _terminate_process_group,
     parse_codex_usage_jsonl,
 )
+
+UTC = timezone.utc  # noqa: UP017 - systemd runs this module with Python 3.10.
 
 
 @dataclass(frozen=True)
