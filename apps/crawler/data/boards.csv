@@ -2864,6 +2864,7 @@ metrikflow,metrikflow-join,https://join.com/companies/metrikflow,join,"{""slug""
 metronome,metronome-greenhouse,https://job-boards.greenhouse.io/metronome,greenhouse,"{""token"": ""metronome""}",skip,
 metropolis,metropolis-greenhouse,https://job-boards.greenhouse.io/metropolis,greenhouse,"{""token"": ""metropolis""}",skip,
 metropolitan-commercial-bank,metropolitan-commercial-bank-greenhouse,https://job-boards.greenhouse.io/metropolitancommercialbank,greenhouse,"{""token"": ""metropolitancommercialbank""}",skip,
+mews,mews-global,https://boards-api.greenhouse.io/v1/boards/mewssystems/jobs,greenhouse,"{""token"": ""mewssystems""}",skip,
 mgt-insurance,mgt-insurance-greenhouse,https://job-boards.greenhouse.io/mgtinsurance,greenhouse,"{""token"": ""mgtinsurance""}",skip,
 mhi,mhi-careers,https://mhicareers.com/viewalljobs/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://mhicareers.com/googlefeed.xml""}",skip,
 mhi,mhi-careers-eu,https://mhiecpd.recruitee.com/,recruitee,"{""company"": ""mhiecpd""}",skip,
