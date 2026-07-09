@@ -194,9 +194,11 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
   (`--date 2026-04-25 --count 10`).
 - Manual Claude-compatible path: `/jobseek-label-daily`; pass an explicit
   count when using it so it matches the Codex production target.
-- Scheduled Codex path: create a Codex app automation for the repo skill and
-  run it on a background worktree. Deployment settings, target count, model
-  policy, and maintenance checks live in
+- Scheduled Codex path: run the Hetzner local Codex runner through
+  `jobseek-codex-daily-annotations.timer`. It creates a fresh worktree,
+  uses the runner user's existing Codex and HuggingFace login state, and loads
+  only the read-only local Postgres DSN from `/etc/jobseek-codex/labeller.env`.
+  Deployment settings, target count, model policy, and maintenance checks live in
   [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
 - Scheduled Claude-compatible path: point the schedule at the prompt
   `/jobseek-label-daily`. The slash command file remains a compatible source
@@ -214,9 +216,10 @@ Added to `apps/crawler/pyproject.toml`:
 ### Authentication
 
 - HF push: reuses `HF_TOKEN` from `apps/crawler/.env.local` when running the
-  labeller CLI locally; `labeller/cli.py` loads `.env.local` via
-  `python-dotenv`.
-- DB read for sampling: reuses `LOCAL_DATABASE_URL` from `.env.local`.
+  labeller CLI locally, or the runner user's HuggingFace token cache on
+  Hetzner.
+- DB read for sampling: reuses `LOCAL_DATABASE_URL` from `.env.local` locally,
+  or `JOBSEEK_LABELLER_ENV_FILE=/etc/jobseek-codex/labeller.env` on Hetzner.
 - Nothing else needed.
 
 ## Why block-IDs beat anchoring

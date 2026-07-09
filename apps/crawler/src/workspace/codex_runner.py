@@ -305,7 +305,7 @@ class RunnerLedger:
         self,
         *,
         run_id: str,
-        issue: int,
+        issue: int | None,
         active_slot: str,
         lease_expires_at: int | None = None,
     ) -> bool:
@@ -477,6 +477,21 @@ class RunnerLedger:
                 (active_slot, limit),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def completed_run_with_prefix(self, *, active_slot: str, run_id_prefix: str) -> bool:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT 1
+                FROM runs
+                WHERE active_slot = ?
+                  AND state = 'completed'
+                  AND run_id LIKE ?
+                LIMIT 1
+                """,
+                (active_slot, f"{run_id_prefix}%"),
+            ).fetchone()
+        return row is not None
 
 
 class GitHubCoordinator:

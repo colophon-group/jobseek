@@ -10,12 +10,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 import dotenv
 
+if os.environ.get("JOBSEEK_LABELLER_ENV_FILE"):
+    dotenv.load_dotenv(os.environ["JOBSEEK_LABELLER_ENV_FILE"])
 dotenv.load_dotenv(".env.local")
 dotenv.load_dotenv(".env")
 

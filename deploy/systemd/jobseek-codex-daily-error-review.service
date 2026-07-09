@@ -1,0 +1,53 @@
+# Install as /etc/systemd/system/jobseek-codex-daily-error-review.service.
+[Unit]
+Description=Jobseek Codex daily crawler error review
+Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment.md
+Wants=network-online.target
+After=network-online.target
+ConditionPathIsDirectory=/srv/jobseek-codex/repo
+ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py
+ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-error-review-bundle.py
+
+[Service]
+Type=oneshot
+User=codex-runner
+Group=codex-runner
+EnvironmentFile=/etc/jobseek-codex/governor.env
+WorkingDirectory=/srv/jobseek-codex/repo
+Environment=JOBSEEK_CODEX_MAX_RUNTIME_S=7200
+Environment=JOBSEEK_ERROR_REVIEW_BUNDLE=/srv/jobseek-codex/inputs/error-review/latest
+
+# The runner account must stay outside the Docker group. Root-only
+# ExecStartPre collects a read-only bundle so Codex does not need Docker.
+ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n" | /usr/bin/grep -qx docker'
+
+ExecStartPre=+/usr/bin/install -d -m 0750 -o root -g codex-runner /srv/jobseek-codex/inputs /srv/jobseek-codex/inputs/error-review
+ExecStartPre=+/usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-error-review-bundle.py --out-root /srv/jobseek-codex/inputs/error-review --group codex-runner
+ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine error-review
+
+TimeoutStartSec=8h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+CPUQuota=200%
+MemoryHigh=3G
+MemoryMax=4G
+TasksMax=1024
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+ReadWritePaths=/srv/jobseek-codex /home/codex-runner
+InaccessiblePaths=-/home/deploy -/run/docker.sock -/var/run/docker.sock -/run/containerd/containerd.sock

@@ -10,8 +10,8 @@ app state.
 
 | automation | cadence | execution | source of truth | model policy |
 |---|---:|---|---|---|
-| `jobseek-daily-classifications` | daily, 08:00 operator-local time | Codex app automation or local Codex CLI from this repo | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | strongest orchestrator; task-sized labeller subagents |
-| `jobseek-daily-error-review` | daily, 09:00 operator-local time | Codex app automation or local Codex CLI from this repo | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | strongest model, high reasoning; no default subagents |
+| `jobseek-daily-classifications` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | strongest orchestrator; task-sized labeller subagents |
+| `jobseek-daily-error-review` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | strongest model, high reasoning; no default subagents |
 | `jobseek-company-request-resolver` | self-regulated, checked every 15-30 min | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | strongest orchestrator; task-sized `ws` subagents |
 | `manual-codex-company-resolver` | manual emergency only | [`.github/workflows/manual-codex-company-resolver.yml`](../.github/workflows/manual-codex-company-resolver.yml) | same `ws` contract as the recurring resolver | API-billed Codex fallback for missed runs or bounded backlog recovery |
 
@@ -35,7 +35,7 @@ GitHub Action fallback.
   scheduled API-billed Codex GitHub Actions for these routines.
 - Do not add a GitHub Actions trigger for the recurring company resolver.
   GitHub Actions may remain as a manual emergency fallback only.
-- Run the Hetzner company resolver under a dedicated local user with no sudo,
+- Run Hetzner Codex routines under a dedicated local user with no sudo,
   no Docker group, no production crawler environment, and no read access to
   crawler `.env` files.
 - Treat `~/.codex/auth.json`, GitHub auth, and HuggingFace auth as password
@@ -86,11 +86,11 @@ Do not hand-edit local Codex automation TOML unless recovering from a broken
 app state. If hand recovery is necessary, copy the final settings back into
 this document or the relevant routine source in the same PR.
 
-## Hetzner Company Resolver Implementation Plan
+## Hetzner Codex Runner Implementation Plan
 
-The company resolver runs as a self-regulating local Codex job on the crawler
+The company resolver and daily routines run as local Codex jobs on the crawler
 machine. The current crawler host has enough headroom for one low-priority
-resolver at a time, but the runner must be isolated so it cannot consume
+Codex routine at a time, but the runner must be isolated so it cannot consume
 production crawler secrets or Docker capacity.
 
 ### Phase 0 - committed test artifacts
@@ -128,6 +128,8 @@ Expected filesystem layout:
   traces/               # CODEX_EXEC_JSONL output, not committed
   state/ledger.sqlite   # governor decisions, usage, claims, run outcomes
   logs/                 # optional sanitized summaries; journald is primary
+  inputs/               # root-collected redacted evidence bundles
+  data/                 # labeller data root for daily annotation outputs
 ```
 
 Install runtime tools in user-owned paths where possible: `git`, `gh`, Codex
@@ -185,8 +187,10 @@ exit
 
 ### Phase 2 - network and process limits
 
-Run the governor through `jobseek-codex-governor.service` and
-`jobseek-codex-governor.timer`.
+Run the company resolver through `jobseek-codex-governor.service` and
+`jobseek-codex-governor.timer`. Run the daily routines through
+`jobseek-codex-daily-annotations.{service,timer}` and
+`jobseek-codex-daily-error-review.{service,timer}`.
 
 Committed deployment templates:
 
@@ -198,9 +202,23 @@ Committed deployment templates:
 - [`../deploy/systemd/jobseek-codex-governor.timer`](../deploy/systemd/jobseek-codex-governor.timer)
   - starts 2 minutes after boot, then 1 minute after the previous service
   finishes with up to 30 seconds of jitter.
+- [`../deploy/systemd/jobseek-codex-daily-annotations.service`](../deploy/systemd/jobseek-codex-daily-annotations.service)
+  - runs one daily labelled-postings routine from an isolated worktree, with
+    DB access limited to `/etc/jobseek-codex/labeller.env`.
+- [`../deploy/systemd/jobseek-codex-daily-annotations.timer`](../deploy/systemd/jobseek-codex-daily-annotations.timer)
+  - starts once per day at 08:00 UTC with jitter and no missed-run catch-up.
+- [`../deploy/systemd/jobseek-codex-daily-error-review.service`](../deploy/systemd/jobseek-codex-daily-error-review.service)
+  - root `ExecStartPre` collects a redacted read-only Docker/host evidence
+    bundle, then Codex analyzes that bundle without Docker or deploy-shell
+    access.
+- [`../deploy/systemd/jobseek-codex-daily-error-review.timer`](../deploy/systemd/jobseek-codex-daily-error-review.timer)
+  - starts once per day at 09:00 UTC with jitter and no missed-run catch-up.
 - [`../deploy/systemd/jobseek-codex-governor.env.example`](../deploy/systemd/jobseek-codex-governor.env.example)
   - non-secret governor defaults, including conservative budgets and usage
   thresholds.
+- [`../deploy/systemd/jobseek-codex-labeller.env.example`](../deploy/systemd/jobseek-codex-labeller.env.example)
+  - shape of the secret read-only local Postgres DSN used by annotation
+  sampling and preparation.
 - [`examples/company-resolver-codex-prompt.md`](examples/company-resolver-codex-prompt.md)
   - self-contained prompt template used by the governor for a single issue.
 
@@ -218,20 +236,34 @@ install -d -o codex-runner -g codex-runner -m 0700 \
   /srv/jobseek-codex/worktrees \
   /srv/jobseek-codex/traces \
   /srv/jobseek-codex/state \
-  /srv/jobseek-codex/logs
+  /srv/jobseek-codex/logs \
+  /srv/jobseek-codex/data/postings-labelled
+install -d -o root -g codex-runner -m 0750 /srv/jobseek-codex/inputs
 install -d -o root -g codex-runner -m 0750 /etc/jobseek-codex
 
 install -o root -g root -m 0644 deploy/systemd/jobseek-codex-governor.service \
   /etc/systemd/system/jobseek-codex-governor.service
 install -o root -g root -m 0644 deploy/systemd/jobseek-codex-governor.timer \
   /etc/systemd/system/jobseek-codex-governor.timer
+install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-annotations.service \
+  /etc/systemd/system/jobseek-codex-daily-annotations.service
+install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-annotations.timer \
+  /etc/systemd/system/jobseek-codex-daily-annotations.timer
+install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-error-review.service \
+  /etc/systemd/system/jobseek-codex-daily-error-review.service
+install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-error-review.timer \
+  /etc/systemd/system/jobseek-codex-daily-error-review.timer
 install -o root -g codex-runner -m 0640 \
   deploy/systemd/jobseek-codex-governor.env.example \
   /etc/jobseek-codex/governor.env
 systemctl daemon-reload
 systemd-analyze verify \
   /etc/systemd/system/jobseek-codex-governor.service \
-  /etc/systemd/system/jobseek-codex-governor.timer
+  /etc/systemd/system/jobseek-codex-governor.timer \
+  /etc/systemd/system/jobseek-codex-daily-annotations.service \
+  /etc/systemd/system/jobseek-codex-daily-annotations.timer \
+  /etc/systemd/system/jobseek-codex-daily-error-review.service \
+  /etc/systemd/system/jobseek-codex-daily-error-review.timer
 ```
 
 Before enabling the timer, edit `/etc/jobseek-codex/governor.env` for the
@@ -239,13 +271,24 @@ host and keep `JOBSEEK_CODEX_DRY_RUN=true` until issue selection, host checks,
 usage telemetry, ledger writes, and worktree creation have been verified. The
 systemd service runs
 `python3 /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py`
-under `flock -n /srv/jobseek-codex/state/governor.lock`, so an overlapping
-timer firing exits without starting a second resolver.
+under `flock -n /srv/jobseek-codex/state/codex-runner.lock`; daily services
+use the same lock with a bounded wait. This keeps all local Codex routines at
+one active process without firing missed daily jobs immediately after a
+deployment.
+
+For annotations, provision `/etc/jobseek-codex/labeller.env` with mode `0640`
+and group `codex-runner`. Prefer a read-only local Postgres role that can
+`SELECT` only the tables needed by the labeller (`job_posting`,
+`descriptions`, `company`, and `job_board`). Do not put HuggingFace or Codex
+tokens in this file; HuggingFace upload uses the runner user's local
+HuggingFace cache.
 
 After the dry-run and one manual live pass are clean, enable the timer:
 
 ```bash
 systemctl enable --now jobseek-codex-governor.timer
+systemctl enable --now jobseek-codex-daily-annotations.timer
+systemctl enable --now jobseek-codex-daily-error-review.timer
 ```
 
 Initial service limits:
@@ -301,6 +344,10 @@ Usage inputs:
 Scheduling policy:
 
 - Default concurrency is `1`.
+- The systemd lock is global across company resolver, daily annotations, and
+  daily error review. A recurring resolver wake exits immediately if a daily
+  routine is active; daily routines wait for an in-flight resolver up to six
+  hours.
 - Always keep a hard safety cap of at most
   `JOBSEEK_CODEX_MAX_RUNS_PER_5H` resolver issues per five-hour rolling window.
   The default `50` allows roughly 10 runs per hour when weekly usage remains
@@ -374,6 +421,8 @@ For each accepted issue:
   manual invocation explicitly says otherwise.
 - Check the remote HuggingFace dataset before doing work; a date with 10 rows
   is already complete.
+- The Hetzner daily runner marks the run complete only after the remote
+  `data/<YYYY-MM-DD>.jsonl` file has exactly 10 rows.
 - Upload only accepted records after schema validation, QA validation, and
   targeted quality review.
 - Preserve remote HuggingFace history and README counts when uploading.
@@ -384,11 +433,16 @@ For each accepted issue:
 ### Daily error review
 
 - Use an explicit 24-hour UTC log window.
+- Use the root-collected redacted evidence bundle under
+  `/srv/jobseek-codex/inputs/error-review/latest`; the Codex process must not
+  access Docker, `/home/deploy`, or production env files directly.
 - Collect host signals before log classification.
 - Classify errors as `known`, `novel`, `regression`, `spike`, or `incident`.
 - Append reruns to the same daily report instead of overwriting it.
 - Deduplicate GitHub issues by service plus error class.
 - Redact secrets from reports, traces, and GitHub content.
+- The Hetzner daily runner marks the run complete only after the dated report
+  exists, was updated during the run, and contains the required header/window.
 
 ### Company resolver
 

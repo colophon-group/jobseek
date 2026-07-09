@@ -154,6 +154,20 @@ def test_scoped_run_does_not_require_confirm(data_root: Path, stub_hf: dict) -> 
     assert stub_hf["upload_folder"][0]["allow_patterns"][0] == "data/2026-04-25.jsonl"
 
 
+def test_upload_uses_huggingface_cache_token_when_env_token_absent(
+    data_root: Path, stub_hf: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import huggingface_hub.utils
+
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.setattr(huggingface_hub.utils, "get_token", lambda: "cached-token")
+    _write_posting(data_root, "2026-04-25", "p1", verdict="accepted")
+
+    push_to_hub(run_date="2026-04-25", dry_run=False)
+
+    assert stub_hf["init_token"] == "cached-token"
+
+
 # --- staging tempdir isolates the upload from leftover state -------------
 
 

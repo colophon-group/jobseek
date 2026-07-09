@@ -80,11 +80,11 @@ Current policy:
 The crawler-specific rule matters because repeated versioned deploys can
 consume tens of GiB before a normal age-based prune would trigger.
 
-## Codex Runner Timer
+## Codex Runner Timers
 
-The recurring company-request resolver runs on the crawler host as
-`codex-runner`, outside Docker and outside the production crawler environment.
-Deployment templates live in
+The recurring company-request resolver and daily Codex routines run on the
+crawler host as `codex-runner`, outside Docker and outside the production
+crawler environment. Deployment templates live in
 [`18-codex-automation-deployment.md`](18-codex-automation-deployment.md) and
 [`../deploy/systemd/`](../deploy/systemd/).
 
@@ -102,8 +102,14 @@ Check the timer and latest run:
 ```bash
 systemctl is-enabled jobseek-codex-governor.timer
 systemctl is-active jobseek-codex-governor.timer
-systemctl list-timers --all jobseek-codex-governor.timer --no-pager
+systemctl is-enabled jobseek-codex-daily-annotations.timer
+systemctl is-active jobseek-codex-daily-annotations.timer
+systemctl is-enabled jobseek-codex-daily-error-review.timer
+systemctl is-active jobseek-codex-daily-error-review.timer
+systemctl list-timers --all 'jobseek-codex*' --no-pager
 journalctl -u jobseek-codex-governor.service -n 120 --no-pager
+journalctl -u jobseek-codex-daily-annotations.service -n 120 --no-pager
+journalctl -u jobseek-codex-daily-error-review.service -n 120 --no-pager
 ```
 
 Check trace-upload auth without printing the token:
@@ -134,6 +140,20 @@ sed -i 's/^JOBSEEK_CODEX_DRY_RUN=.*/JOBSEEK_CODEX_DRY_RUN=true/' \
   /etc/jobseek-codex/governor.env
 systemctl start jobseek-codex-governor.service
 journalctl -u jobseek-codex-governor.service -n 120 --no-pager
+```
+
+Check daily routine prerequisites without printing secrets:
+
+```bash
+sudo -iu codex-runner test -s /home/codex-runner/.codex/auth.json
+sudo -iu codex-runner gh auth status >/dev/null
+sudo -iu codex-runner bash -lc 'cd /srv/jobseek-codex/repo/apps/crawler && .venv/bin/python - <<'"'"'PY'"'"'
+from huggingface_hub.utils import get_token
+raise SystemExit(0 if get_token() else 1)
+PY'
+test -s /etc/jobseek-codex/labeller.env
+sudo -u codex-runner test -r /etc/jobseek-codex/labeller.env
+sudo -u codex-runner test ! -w /var/run/docker.sock
 ```
 
 The ChatGPT usage probe is advisory only. A failed probe should be visible in

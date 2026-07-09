@@ -19,7 +19,7 @@ ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n"
 
 # Create runner-owned state paths before taking the lock.
 ExecStartPre=+/usr/bin/install -d -m 0700 -o codex-runner -g codex-runner /srv/jobseek-codex/worktrees /srv/jobseek-codex/traces /srv/jobseek-codex/state /srv/jobseek-codex/logs
-ExecStart=/usr/bin/flock -n /srv/jobseek-codex/state/governor.lock /usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py
+ExecStart=/usr/bin/flock -n /srv/jobseek-codex/state/codex-runner.lock /usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py
 
 TimeoutStartSec=4h
 Nice=10
