@@ -305,10 +305,11 @@ Scheduling policy:
   `JOBSEEK_CODEX_MAX_RUNS_PER_5H` resolver issues per five-hour rolling window.
   The default `50` allows roughly 10 runs per hour when weekly usage remains
   above the fast threshold.
-- If five-hour remaining usage is low, pause until the window reset plus
-  jitter.
-- If weekly remaining usage is low, pause until the weekly reset, or for the
-  fallback retry interval when the reset time is unknown.
+- Hard-block all new runs when either five-hour or weekly remaining usage is
+  below `20%` by default (`JOBSEEK_CODEX_MIN_5H_REMAINING_PERCENT` and
+  `JOBSEEK_CODEX_MIN_WEEKLY_REMAINING_PERCENT`).
+- If a usage window is below the hard-block threshold, pause until that window
+  reset, or for the fallback retry interval when the reset time is unknown.
 - When weekly remaining usage is at least
   `JOBSEEK_CODEX_FAST_WEEKLY_REMAINING_PERCENT` (default `50`), use the fast
   five-hour budget, `JOBSEEK_CODEX_MAX_RUNS_PER_5H`, and the fast minimum

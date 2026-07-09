@@ -427,6 +427,25 @@ def test_low_usage_window_pauses_until_reset(monkeypatch, tmp_path: Path) -> Non
     assert decision.retry_after_s == 123
 
 
+def test_weekly_usage_below_twenty_percent_hard_blocks(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path, dry_run=True)
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))
+    usage = UsageProbeResult(
+        ok=True,
+        windows=(
+            UsageWindow(name="five_hour", remaining_percent=90, reset_in_seconds=3600),
+            UsageWindow(name="weekly", remaining_percent=19, reset_in_seconds=ONE_DAY),
+        ),
+    )
+    monkeypatch.setattr(governor, "_probe_usage", lambda: usage)
+
+    decision = governor.should_start()
+
+    assert not decision.should_run
+    assert decision.reason == "Codex usage window below threshold"
+    assert decision.retry_after_s == ONE_DAY
+
+
 def test_low_usage_without_reset_uses_fallback_retry(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=True)
     governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))

@@ -114,8 +114,8 @@ class RunnerConfig:
     fast_weekly_remaining_percent: float = 50.0
     fast_min_start_interval_s: int = 6 * 60
     conservative_min_start_interval_s: int = 60 * 60
-    min_five_hour_remaining_percent: float = 5.0
-    min_weekly_remaining_percent: float = 3.0
+    min_five_hour_remaining_percent: float = 20.0
+    min_weekly_remaining_percent: float = 20.0
     min_disk_free_gib: float = 5.0
     min_mem_available_gib: float = 2.0
     max_load_per_cpu: float = 2.0
@@ -185,10 +185,10 @@ class RunnerConfig:
                 env.get("JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S", "3600")
             ),
             min_five_hour_remaining_percent=float(
-                env.get("JOBSEEK_CODEX_MIN_5H_REMAINING_PERCENT", "5")
+                env.get("JOBSEEK_CODEX_MIN_5H_REMAINING_PERCENT", "20")
             ),
             min_weekly_remaining_percent=float(
-                env.get("JOBSEEK_CODEX_MIN_WEEKLY_REMAINING_PERCENT", "3")
+                env.get("JOBSEEK_CODEX_MIN_WEEKLY_REMAINING_PERCENT", "20")
             ),
             min_disk_free_gib=float(env.get("JOBSEEK_CODEX_MIN_DISK_FREE_GIB", "5")),
             min_mem_available_gib=float(env.get("JOBSEEK_CODEX_MIN_MEM_AVAILABLE_GIB", "2")),
