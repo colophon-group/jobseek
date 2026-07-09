@@ -2270,6 +2270,7 @@ iowa-cannabis-company,iowa-cannabis-company-greenhouse,https://job-boards.greenh
 ipsy,ipsy-greenhouse,https://job-boards.greenhouse.io/personalizedbeautydiscoveryincdbaipsy,greenhouse,"{""token"": ""personalizedbeautydiscoveryincdbaipsy""}",skip,
 ipx-power-usa-llc,ipx-power-usa-llc-greenhouse,https://job-boards.greenhouse.io/ipxpower,greenhouse,"{""token"": ""ipxpower""}",skip,
 iq,iq-join,https://join.com/companies/iq,join,"{""slug"": ""iq""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+iqm,iqm-careers,https://iqm.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://iqm.teamtailor.com/jobs.rss""}",skip,
 isaac,isaac-greenhouse,https://job-boards.greenhouse.io/isaac,greenhouse,"{""token"": ""isaac""}",skip,
 isomorphic-labs,isomorphic-labs-careers,https://job-boards.greenhouse.io/isomorphiclabs,greenhouse,"{""token"": ""isomorphiclabs""}",skip,
 ispot,ispot-greenhouse,https://job-boards.greenhouse.io/ispottv,greenhouse,"{""token"": ""ispottv""}",skip,
