@@ -305,9 +305,11 @@ Scheduling policy:
   jitter.
 - If weekly remaining usage is low, pause until the weekly reset, or for the
   fallback retry interval when the reset time is unknown.
-- When the weekly window is near its end and a lot of usage remains, allow
-  more runs so unused subscription capacity is converted into resolved
-  backlog.
+- When weekly remaining usage is at least
+  `JOBSEEK_CODEX_FAST_WEEKLY_REMAINING_PERCENT` (default `50`), use the fast
+  five-hour budget, `JOBSEEK_CODEX_MAX_RUNS_PER_5H`.
+- When weekly remaining usage is below that threshold, use the slower
+  conservative five-hour budget, `JOBSEEK_CODEX_CONSERVATIVE_RUNS_PER_5H`.
 - When usage telemetry is unavailable, run at the conservative floor instead
   of failing the scheduler permanently.
 

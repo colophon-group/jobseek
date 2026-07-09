@@ -109,6 +109,7 @@ class RunnerConfig:
     active_slot: str = "company-resolver"
     max_runs_per_5h: int = 5
     conservative_runs_per_5h: int = 1
+    fast_weekly_remaining_percent: float = 50.0
     min_five_hour_remaining_percent: float = 5.0
     min_weekly_remaining_percent: float = 3.0
     min_disk_free_gib: float = 5.0
@@ -137,6 +138,7 @@ class RunnerConfig:
             active_slot=self.active_slot,
             max_runs_per_5h=self.max_runs_per_5h,
             conservative_runs_per_5h=self.conservative_runs_per_5h,
+            fast_weekly_remaining_percent=self.fast_weekly_remaining_percent,
             min_five_hour_remaining_percent=self.min_five_hour_remaining_percent,
             min_weekly_remaining_percent=self.min_weekly_remaining_percent,
             min_disk_free_gib=self.min_disk_free_gib,
@@ -167,6 +169,9 @@ class RunnerConfig:
             kill_grace_s=int(env.get("JOBSEEK_CODEX_KILL_GRACE_S", DEFAULT_KILL_GRACE_S)),
             max_runs_per_5h=int(env.get("JOBSEEK_CODEX_MAX_RUNS_PER_5H", "5")),
             conservative_runs_per_5h=int(env.get("JOBSEEK_CODEX_CONSERVATIVE_RUNS_PER_5H", "1")),
+            fast_weekly_remaining_percent=float(
+                env.get("JOBSEEK_CODEX_FAST_WEEKLY_REMAINING_PERCENT", "50")
+            ),
             min_five_hour_remaining_percent=float(
                 env.get("JOBSEEK_CODEX_MIN_5H_REMAINING_PERCENT", "5")
             ),
@@ -951,17 +956,11 @@ class CompanyResolverGovernor:
             return conservative
 
         weekly = _window(usage, "weekly")
-        if weekly is None or weekly.remaining_percent is None or weekly.reset_in_seconds is None:
+        if weekly is None or weekly.remaining_percent is None:
             return conservative
 
-        remaining = weekly.remaining_percent
-        seconds_left = weekly.reset_in_seconds
-        if remaining >= 50 and seconds_left <= 2 * 24 * 60 * 60:
+        if weekly.remaining_percent >= cfg.fast_weekly_remaining_percent:
             return cfg.max_runs_per_5h
-        if remaining >= 25 and seconds_left <= 24 * 60 * 60:
-            return cfg.max_runs_per_5h
-        if remaining >= 25:
-            return max(conservative, min(3, cfg.max_runs_per_5h))
         return conservative
 
     def _usage_retry_after(self, usage: UsageProbeResult | None) -> int | None:

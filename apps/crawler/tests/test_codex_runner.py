@@ -296,14 +296,14 @@ def test_unknown_usage_uses_conservative_five_hour_budget(tmp_path: Path) -> Non
     assert decision.recent_runs == 1
 
 
-def test_high_remaining_weekly_usage_near_reset_expands_budget(monkeypatch, tmp_path: Path) -> None:
+def test_weekly_usage_over_fast_threshold_expands_budget(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=True)
     governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))
     usage = UsageProbeResult(
         ok=True,
         windows=(
             UsageWindow(name="five_hour", remaining_percent=90, reset_in_seconds=3600),
-            UsageWindow(name="weekly", remaining_percent=55, reset_in_seconds=24 * 60 * 60),
+            UsageWindow(name="weekly", remaining_percent=55, reset_in_seconds=None),
         ),
     )
     monkeypatch.setattr(governor, "_probe_usage", lambda: usage)
@@ -312,6 +312,31 @@ def test_high_remaining_weekly_usage_near_reset_expands_budget(monkeypatch, tmp_
 
     assert decision.should_run
     assert decision.recent_limit == 5
+
+
+def test_weekly_usage_under_fast_threshold_uses_conservative_budget(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config = _config(tmp_path, dry_run=True)
+    ledger = RunnerLedger(config.ledger_path)
+    assert ledger.acquire(run_id="old", issue=1, active_slot=config.active_slot)
+    ledger.finish("old", "completed")
+    governor = CompanyResolverGovernor(config, ledger=ledger, github=FakeGitHub(issue=101))
+    usage = UsageProbeResult(
+        ok=True,
+        windows=(
+            UsageWindow(name="five_hour", remaining_percent=90, reset_in_seconds=3600),
+            UsageWindow(name="weekly", remaining_percent=49, reset_in_seconds=3600),
+        ),
+    )
+    monkeypatch.setattr(governor, "_probe_usage", lambda: usage)
+
+    decision = governor.should_start()
+
+    assert not decision.should_run
+    assert decision.reason == "five-hour run budget exhausted"
+    assert decision.recent_limit == 1
+    assert decision.recent_runs == 1
 
 
 def test_low_usage_window_pauses_until_reset(monkeypatch, tmp_path: Path) -> None:
