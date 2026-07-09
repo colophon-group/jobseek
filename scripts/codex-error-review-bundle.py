@@ -24,7 +24,6 @@ LONG_RUNNING_CONTAINERS = (
     "deploy-browser-1-1",
     "deploy-exporter-1",
     "deploy-drain-1",
-    "deploy-indexnow-1",
     "deploy-redis-1",
     "deploy-alloy-1",
 )
@@ -133,6 +132,28 @@ def _safe_name(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-") or "unknown"
 
 
+def _parse_docker_timestamp(value: str) -> datetime | None:
+    if not value or value.startswith("0001-01-01"):
+        return None
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    if "." in normalized:
+        prefix, suffix = normalized.split(".", 1)
+        offset_index = max(suffix.rfind("+"), suffix.rfind("-"))
+        if offset_index >= 0:
+            fraction = suffix[:offset_index][:6]
+            offset = suffix[offset_index:]
+            normalized = f"{prefix}.{fraction}{offset}"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
 def _collect_command(
     run_dir: Path,
     manifest: dict[str, object],
@@ -189,39 +210,116 @@ def _collect_container_logs(
         )
 
 
-def _collect_exited_containers(run_dir: Path, manifest: dict[str, object]) -> None:
+def _collect_exited_containers(
+    run_dir: Path,
+    manifest: dict[str, object],
+    *,
+    since: datetime,
+    until: datetime,
+) -> None:
     code, output = _run(
         [
             "docker",
             "ps",
             "-a",
+            "-q",
             "--filter",
             "status=exited",
-            "--format",
-            "{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.CreatedAt}}\t{{.Status}}",
         ],
         timeout=120,
     )
-    list_info = _write(run_dir / "host" / "docker-exited-containers.txt", output)
+    candidates: list[dict[str, str]] = []
+    inspect_errors: list[dict[str, object]] = []
+
+    if code == 0:
+        for container_id in [line.strip() for line in output.splitlines() if line.strip()]:
+            inspect_code, inspect_output = _run(["docker", "inspect", container_id], timeout=60)
+            if inspect_code != 0:
+                inspect_errors.append(
+                    {"id": container_id, "returncode": inspect_code, "output": inspect_output[:500]}
+                )
+                continue
+            try:
+                inspect_data = json.loads(inspect_output)[0]
+            except (IndexError, json.JSONDecodeError) as exc:
+                inspect_errors.append(
+                    {
+                        "id": container_id,
+                        "returncode": inspect_code,
+                        "output": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+                continue
+
+            image = str(inspect_data.get("Config", {}).get("Image", ""))
+            if not (image.startswith("ghcr.io/") and "/jobseek-crawler" in image):
+                continue
+
+            state = inspect_data.get("State", {})
+            finished_at = _parse_docker_timestamp(str(state.get("FinishedAt", "")))
+            if finished_at is None or not (since <= finished_at <= until):
+                continue
+
+            candidates.append(
+                {
+                    "id": container_id,
+                    "name": str(inspect_data.get("Name", "")).lstrip("/") or container_id,
+                    "image": image,
+                    "finished_at": finished_at.isoformat(),
+                    "status": str(state.get("Status", "")),
+                }
+            )
+
+    listing = "\n".join(
+        "\t".join(
+            (
+                candidate["id"],
+                candidate["name"],
+                candidate["image"],
+                candidate["finished_at"],
+                candidate["status"],
+            )
+        )
+        for candidate in candidates
+    )
+    if listing:
+        listing += "\n"
+    list_info = _write(
+        run_dir / "host" / "docker-exited-containers.txt",
+        output if code != 0 else listing,
+    )
     manifest.setdefault("commands", []).append(
         {
             "name": "docker-exited-containers",
-            "cmd": "docker ps -a --filter status=exited",
+            "cmd": "docker ps -aq --filter status=exited + docker inspect",
             "returncode": code,
+            "window_filtered": code == 0,
             **list_info,
         }
     )
+    if inspect_errors:
+        manifest["exited_container_inspect_errors"] = inspect_errors[:30]
     if code != 0:
         return
-    collected = 0
-    for line in output.splitlines():
-        parts = line.split("\t")
-        if len(parts) < 3:
-            continue
-        container_id, name, image = parts[:3]
-        if not image.startswith("ghcr.io/"):
-            continue
-        code, logs = _run(["docker", "logs", "--tail", "1000", container_id], timeout=180)
+    since_iso = since.isoformat().replace("+00:00", "Z")
+    until_iso = until.isoformat().replace("+00:00", "Z")
+    for candidate in candidates[:30]:
+        container_id = candidate["id"]
+        name = candidate["name"]
+        code, logs = _run(
+            [
+                "docker",
+                "logs",
+                "--since",
+                since_iso,
+                "--until",
+                until_iso,
+                "--tail",
+                "1000",
+                container_id,
+            ],
+            timeout=180,
+        )
         info = _write(
             run_dir / "exited" / f"{_safe_name(name)}-{container_id}.log",
             logs,
@@ -230,14 +328,12 @@ def _collect_exited_containers(run_dir: Path, manifest: dict[str, object]) -> No
             {
                 "id": container_id,
                 "name": name,
-                "image": image,
+                "image": candidate["image"],
+                "finished_at": candidate["finished_at"],
                 "returncode": code,
                 **info,
             }
         )
-        collected += 1
-        if collected >= 30:
-            break
 
 
 def _chgrp_readable(path: Path, *, group: str) -> None:
@@ -274,30 +370,50 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
     _collect_command(run_dir, manifest, "df-docker", ["df", "-h", "/var/lib/docker"])
     _collect_command(run_dir, manifest, "free", ["free", "-h"])
     _collect_command(run_dir, manifest, "uptime", ["uptime"])
-    _collect_command(run_dir, manifest, "docker-ps", ["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Image}}"])
+    _collect_command(
+        run_dir,
+        manifest,
+        "docker-ps",
+        ["docker", "ps", "--format", "table {{.Names}}\t{{.Status}}\t{{.Image}}"],
+    )
     _collect_command(
         run_dir,
         manifest,
         "docker-stats",
-        ["docker", "stats", "--no-stream", "--format", "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}"],
+        [
+            "docker",
+            "stats",
+            "--no-stream",
+            "--format",
+            "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}",
+        ],
         timeout=120,
+    )
+    inspect_state_command = (
+        "ids=$(docker ps -aq); test -z \"$ids\" || docker inspect --format "
+        "'{{.Name}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} "
+        "RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' $ids"
     )
     _collect_shell(
         run_dir,
         manifest,
         "docker-inspect-state",
-        "ids=$(docker ps -aq); test -z \"$ids\" || docker inspect --format '{{.Name}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' $ids",
+        inspect_state_command,
         timeout=180,
+    )
+    kernel_log_command = (
+        f"journalctl -k --since '{since.isoformat()}' --until '{until.isoformat()}' "
+        "--no-pager 2>/dev/null | tail -500"
     )
     _collect_shell(
         run_dir,
         manifest,
         "kernel-log",
-        f"journalctl -k --since '{since.isoformat()}' --until '{until.isoformat()}' --no-pager 2>/dev/null | tail -500",
+        kernel_log_command,
         timeout=180,
     )
     _collect_container_logs(run_dir, manifest, since=since, until=until)
-    _collect_exited_containers(run_dir, manifest)
+    _collect_exited_containers(run_dir, manifest, since=since, until=until)
 
     _write(run_dir / "manifest.json", json.dumps(manifest, indent=2, sort_keys=True))
     _chgrp_readable(run_dir, group=group)
@@ -320,7 +436,11 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Collect daily error-review evidence bundle.")
-    parser.add_argument("--out-root", type=Path, default=Path("/srv/jobseek-codex/inputs/error-review"))
+    parser.add_argument(
+        "--out-root",
+        type=Path,
+        default=Path("/srv/jobseek-codex/inputs/error-review"),
+    )
     parser.add_argument("--window-hours", type=int, default=24)
     parser.add_argument("--group", default="codex-runner")
     return parser

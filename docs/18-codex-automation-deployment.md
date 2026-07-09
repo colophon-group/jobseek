@@ -118,7 +118,7 @@ Expected filesystem layout:
 
 ```text
 /srv/jobseek-codex/
-  repo/                 # bare or normal clone tracking origin/main
+  repo/                 # normal checked-out clone tracking origin/main
   worktrees/            # one throwaway worktree per issue/run
   traces/               # CODEX_EXEC_JSONL output, not committed
   state/ledger.sqlite   # governor decisions, usage, claims, run outcomes
