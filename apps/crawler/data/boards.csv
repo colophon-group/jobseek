@@ -3400,6 +3400,7 @@ parloa,parloa-greenhouse,https://job-boards.greenhouse.io/parloa,greenhouse,"{""
 parsley-health,parsley-health-greenhouse,https://job-boards.greenhouse.io/parsleyhealth,greenhouse,"{""token"": ""parsleyhealth""}",skip,
 particle41,particle41-greenhouse,https://job-boards.greenhouse.io/particle41llc,greenhouse,"{""token"": ""particle41llc""}",skip,
 partiful,partiful-ashby,https://jobs.ashbyhq.com/partiful,ashby,"{""token"": ""partiful""}",skip,
+pasqal,pasqal-careers,https://careers.pasqal.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.pasqal.com/jobs.rss""}",skip,
 passage,passage-ashby,https://jobs.ashbyhq.com/passage,ashby,"{""token"": ""passage""}",skip,
 patch-io,patch-io-ashby,https://jobs.ashbyhq.com/patch.io,ashby,"{""token"": ""patch.io""}",skip,
 patek-philippe,patek-philippe-careers,https://careers.patek.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.patek.com/googlefeed.xml""}",skip,
