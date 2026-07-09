@@ -21,9 +21,9 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
   use the `jobseek-error-review` skill.
 - **Manual traceable pilot:** run `codex exec --json` with the skill/runbook as
   the prompt and save the JSONL trace for agent trace collection checks.
-- **Avoid:** scheduled API-billed Codex GitHub Actions for this routine. Keep
-  execution subscription-backed through Codex app automation or local Codex
-  CLI where possible.
+- **Avoid:** GitHub Actions for this routine. Keep execution
+  subscription-backed through the Hetzner runner or local Codex CLI where
+  possible.
 - **Claude fallback:** `/jobseek-error-review` remains available through the
   legacy Claude Code slash command for compatibility.
 

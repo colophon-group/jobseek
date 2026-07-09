@@ -12,8 +12,8 @@ How coding agents resolve company-request issues.
 
 A coding agent picks up the issue and resolves it by creating a PR. The agent can be:
 
-- **Codex** via the Hetzner local runner, app automation, `codex exec --json`,
-  or the API-key-backed Codex GitHub Action
+- **Codex** via the Hetzner local runner, `codex exec --json`, or another
+  local subscription-backed Codex session
 - **Claude Code** through the legacy compatible route while migration is in
   progress
 - **Any AGENTS.md-compatible agent** (Copilot, Cursor, etc.)
@@ -134,16 +134,11 @@ host capacity, selects at most one open `company-request` issue per accepted
 run, claims it with the shared `ws` claim protocol, and runs
 `ws task --issue <N>` from `apps/crawler` in an isolated worktree.
 
-The legacy `resolve-company-requests.yml` workflow may still exist for
-manual emergency rollback, but it must not have a scheduled trigger:
-
-```yaml
-on:
-  workflow_dispatch:
-```
-
-Safety budget: max 5 issues per 5-hour rolling window unless the Hetzner
-deployment config deliberately raises it.
+The retired GitHub Actions resolvers must not be reintroduced for this
+automation. Manual recovery uses the same local Codex CLI path from a
+throwaway worktree, with the Hetzner ledger and `ws` claims checked first.
+Safety budget: max 5 issues per 5-hour rolling window in conservative mode
+unless the Hetzner deployment config deliberately raises it.
 
 The recurring resolver:
 1. Selects the oldest open `company-request` issue that has no active PR (or whose PR is stale)
@@ -153,15 +148,11 @@ The recurring resolver:
 5. The agent follows the AGENTS.md instructions to create a PR
 
 The recurring resolver is not triggered by GitHub Actions. Use
-`codex exec --json` for traceable local runs. The Codex GitHub Action in
-`.github/workflows/manual-codex-company-resolver.yml` is API-billed and
-manual-only; use it only for emergency missed runs or bounded backlog
-recovery, not as a scheduled replacement.
+`codex exec --json` for traceable local runs and keep manual recovery on the
+same local Codex path so billing, auth, trace capture, and the governor ledger
+remain consistent.
 
-Once the Codex resolver has enough clean production cycles, remove the legacy
-manual workflow or keep it manual-only for bounded emergency fallback.
-
-Conflict resolution: if an open PR already claims an issue, the workflow checks
+Conflict resolution: if an open PR already claims an issue, the resolver checks
 staleness based on the last commit date — 24h threshold for config-only PRs, 72h
 for code change PRs (those with the `review-code` label). Stale PRs receive a
 one-time warning comment. The issue is only assigned to an agent when no active

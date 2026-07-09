@@ -14,7 +14,7 @@ worktree and a root-collected redacted evidence bundle, which keeps routine
 output isolated from active development work while avoiding direct Docker or
 deploy-env access from the Codex process. This routine should use
 subscription-backed Codex execution where possible. Do not implement it as a
-scheduled API-billed Codex GitHub Action.
+GitHub Actions workflow.
 
 The legacy Claude slash command at
 `.claude/commands/jobseek-error-review.md` remains a compatibility fallback.

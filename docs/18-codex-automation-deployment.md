@@ -2,9 +2,8 @@
 
 This document is the repo-owned deployment and maintenance spec for recurring
 Codex runs. Codex app automation records, local app TOML files, Hetzner
-systemd units, governor state, and workflow dispatch settings are deployment
-artifacts; do not treat them as source of truth and do not commit local Codex
-app state.
+systemd units, and governor state are deployment artifacts; do not treat them
+as source of truth and do not commit local Codex app state.
 
 ## Automation Registry
 
@@ -13,28 +12,24 @@ app state.
 | `jobseek-daily-classifications` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | strongest orchestrator; task-sized labeller subagents |
 | `jobseek-daily-error-review` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | strongest model, high reasoning; no default subagents |
 | `jobseek-company-request-resolver` | self-regulated, checked every 15-30 min | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | strongest orchestrator; task-sized `ws` subagents |
-| `manual-codex-company-resolver` | manual emergency only | [`.github/workflows/manual-codex-company-resolver.yml`](../.github/workflows/manual-codex-company-resolver.yml) | same `ws` contract as the recurring resolver | API-billed Codex fallback for missed runs or bounded backlog recovery |
 
-The recurring company resolver must not be triggered by GitHub Actions. It
-runs on the Hetzner crawler host through local Codex CLI auth so it can use the
-subscription-backed Codex surface where possible. The manual GitHub Action
-fallback intentionally has no schedule; use it only when a human explicitly
-dispatches one issue or a bounded backlog and accepts API-key billing.
+The recurring company resolver and daily routines must not be triggered by
+GitHub Actions. They run on the Hetzner crawler host through local Codex CLI
+auth so they can use the subscription-backed Codex surface where possible.
 
 ## Harness Invariants
 
 These rules must hold whether the run is launched by the Codex desktop app,
-Codex CLI, the Hetzner governor, a future Codex scheduler, or the manual
-GitHub Action fallback.
+Codex CLI, the Hetzner governor, or a future Codex scheduler.
 
 - The automation prompt must be self-contained. It cannot rely on the
   conversation that created or updated the automation.
 - The repo docs and skills above are the behavioral source of truth. Update
-  them first, then update the deployed automation prompt or workflow prompt.
+  them first, then update the deployed automation prompt or runner prompt.
 - Do not install or invoke Claude Code from Codex automations. Do not add
-  scheduled API-billed Codex GitHub Actions for these routines.
-- Do not add a GitHub Actions trigger for the recurring company resolver.
-  GitHub Actions may remain as a manual emergency fallback only.
+  Codex GitHub Actions for these Hetzner-owned routines.
+- Do not add a GitHub Actions trigger for the recurring company resolver or
+  daily Codex routines.
 - Run Hetzner Codex routines under a dedicated local user with no sudo,
   no Docker group, no production crawler environment, and no read access to
   crawler `.env` files.
@@ -62,8 +57,8 @@ GitHub Action fallback.
 
 ## Deployment Procedure
 
-Use this process when creating or changing a Codex app automation, Hetzner
-runner prompt, or manual fallback prompt:
+Use this process when creating or changing a Codex app automation or Hetzner
+runner prompt:
 
 1. Update the routine source doc or skill in this repo.
 2. Build a self-contained automation prompt that tells Codex to read the
@@ -456,10 +451,8 @@ For each accepted issue:
 - Create PRs only; never push directly to `main`.
 - Leave config-only additions on `add-company/<slug>` branches and code
   changes on `fix-crawler/<description>` branches.
-- Keep the manual Codex GitHub Action as an emergency-only fallback for missed
-  runs or bounded backlog recovery.
-- Keep the legacy resolver workflow manual-only, or remove it once the Codex
-  resolver is stable.
+- Manual recovery uses the same local Codex CLI path from a throwaway worktree
+  and must still respect `ws` claims, the governor ledger, and trace capture.
 
 ## Maintenance Checks
 

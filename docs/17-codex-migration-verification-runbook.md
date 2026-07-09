@@ -25,12 +25,10 @@ It should set `CODEX_EXEC_JSONL` for every accepted run and store the resulting
 trace outside the repo. Do not trigger recurring company resolver work from
 GitHub Actions.
 
-For emergency GitHub Actions fallback, use the Codex GitHub Action with an
-OpenAI API key secret. Do not describe the action as ChatGPT subscription
-billed; it is the API-key-backed CI/CD and manual fallback path. The manual
-GitHub Action fallback uploads trace data from a separate fresh-checkout job
-with a narrow `HF_TOKEN` environment; unless a real Codex JSONL file is
-available, that upload intentionally uses the `ws` action-log fallback.
+For emergency resolver recovery, use the same local Codex CLI path from a
+throwaway worktree and set `CODEX_EXEC_JSONL` explicitly. The retired GitHub
+Actions fallback used OpenAI API-key billing and must not be described as
+subscription-backed or reintroduced for the Hetzner-owned routines.
 
 ## Common Preflight
 
@@ -136,15 +134,13 @@ cannot resume from workspace state.
 ## Stale Wording Scan
 
 Run the stale-wording scan from the migration checklist before and after docs
-changes. It should look for Claude-only orchestration wording, legacy workflow
-environment names, direct-provider API phrasing, and claims that scheduled
-GitHub Actions runs are paid through a ChatGPT subscription.
+changes. It should look for Claude-only orchestration wording, retired resolver
+workflow names, direct-provider API phrasing, and claims that GitHub Actions
+Codex runs are paid through a ChatGPT subscription.
 
-Expected during this transition: `.github/workflows/resolve-company-requests.yml`
-may still contain the legacy Claude workflow until cleanup is complete, but the
-recurring company resolver should run through the Hetzner local Codex runner.
-Docs and AGENTS files should not describe GitHub Actions Codex runs as ChatGPT
-subscription billed.
+The recurring company resolver and daily routines run through the Hetzner
+local Codex runner. Docs, AGENTS files, and workflows should not reference
+GitHub Actions fallback paths for those surfaces.
 
 ## Prompt-Duplication Checks
 

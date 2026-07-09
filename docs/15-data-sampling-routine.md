@@ -129,8 +129,8 @@ locally for inspection and analysis but never uploaded.
 
 ```
 data/postings-labelled/
-  _runs/{{date}}/<id>/          # intermediates (input, per-task in/out, merged)
-  postings/{{date}}/<id>.json   # final gold; status is `labelling_meta.qa_verdict`
+  _runs/<date>/<id>/             # intermediates (input, per-task in/out, merged)
+  postings/<date>/<id>.json      # final gold; status is `labelling_meta.qa_verdict`
   schemas/                       # staged copies uploaded to HF
   README.md
 ```
@@ -200,9 +200,9 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
   only the read-only local Postgres DSN from `/etc/jobseek-codex/labeller.env`.
   Deployment settings, target count, model policy, and maintenance checks live in
   [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
-- Scheduled Claude-compatible path: point the schedule at the prompt
-  `/jobseek-label-daily`. The slash command file remains a compatible source
-  of truth until the Codex skill is checked in and validated.
+- Do not add a GitHub Actions or Claude-compatible schedule for this routine.
+  The scheduled production path is the Hetzner Codex runner; the slash command
+  remains a manual compatibility route only.
 
 ### Dependencies
 
