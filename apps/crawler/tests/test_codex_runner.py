@@ -82,7 +82,13 @@ class FakeGitHub:
 
 def _config(tmp_path: Path, *, dry_run: bool = True) -> RunnerConfig:
     root = tmp_path / "runner"
-    return RunnerConfig(root=root, dry_run=dry_run).resolved()
+    return RunnerConfig(
+        root=root,
+        dry_run=dry_run,
+        min_disk_free_gib=0,
+        min_mem_available_gib=0,
+        max_load_per_cpu=999,
+    ).resolved()
 
 
 def test_prompt_is_single_issue_and_does_not_pick() -> None:
