@@ -85,6 +85,7 @@ def _config(tmp_path: Path, *, dry_run: bool = True) -> RunnerConfig:
     return RunnerConfig(
         root=root,
         dry_run=dry_run,
+        codex_args=("python3", "-c", "print('{}')"),
         min_disk_free_gib=0,
         min_mem_available_gib=0,
         max_load_per_cpu=999,
