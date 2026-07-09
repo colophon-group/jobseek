@@ -3077,6 +3077,7 @@ new-leaf-energy-inc,new-leaf-energy-inc-greenhouse,https://job-boards.greenhouse
 new-relic,new-relic-greenhouse,https://job-boards.greenhouse.io/newrelic,greenhouse,"{""token"": ""newrelic""}",skip,
 new-york-city-economic-development-corporation,new-york-city-economic-development-corporation-greenhouse,https://job-boards.greenhouse.io/nycedc,greenhouse,"{""token"": ""nycedc""}",skip,
 new-york-iso,new-york-iso-greenhouse,https://job-boards.greenhouse.io/nyiso,greenhouse,"{""token"": ""nyiso""}",skip,
+newcleo,newcleo-global,https://careers.newcleo.com/search/?createNewAlert=false&q=&locationsearch=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.newcleo.com/googlefeed.xml""}",skip,
 newco-communications,newco-communications-join,https://join.com/companies/ncc,join,"{""slug"": ""ncc""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 newfront,newfront-ashby,https://jobs.ashbyhq.com/newfront,ashby,"{""token"": ""newfront""}",skip,
 newlab-careers,newlab-careers-greenhouse,https://job-boards.greenhouse.io/newlabcareers,greenhouse,"{""token"": ""newlabcareers""}",skip,
