@@ -2211,6 +2211,7 @@ inkind,inkind-greenhouse,https://job-boards.greenhouse.io/inkind,greenhouse,"{""
 inmobi,inmobi-greenhouse,https://job-boards.greenhouse.io/inmobi,greenhouse,"{""token"": ""inmobi""}",skip,
 inngest,inngest-ashby,https://jobs.ashbyhq.com/inngest,ashby,"{""token"": ""inngest""}",skip,
 innotec-gmbh,innotec-gmbh-join,https://join.com/companies/innotecde,join,"{""slug"": ""innotecde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+innovafeed,innovafeed-innovafeed,https://innovafeed.taleez.com/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""taleez\\.com/apply/(?!sp/)""}",json-ld,"{""render"": true, ""timeout"": 30000}"
 insitro,insitro-ashby,https://jobs.ashbyhq.com/insitro,ashby,"{""token"": ""insitro""}",skip,
 insomniac-games,insomniac-games-greenhouse,https://job-boards.greenhouse.io/insomniac,greenhouse,"{""token"": ""insomniac""}",skip,
 inspira-education,inspira-education-greenhouse,https://job-boards.greenhouse.io/inspiraeducation,greenhouse,"{""token"": ""inspiraeducation""}",skip,
