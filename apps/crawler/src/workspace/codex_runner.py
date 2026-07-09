@@ -19,7 +19,7 @@ import subprocess
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -1191,7 +1191,8 @@ def _parse_github_timestamp(value: str | None) -> int | None:
     if not value:
         return None
     try:
-        dt = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+        # Ubuntu 22.04 ships Python 3.10, before datetime.UTC exists.
+        dt = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)  # noqa: UP017
     except ValueError:
         return None
     return int(dt.timestamp())
