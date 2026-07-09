@@ -19,14 +19,16 @@ codex exec --json "<pilot prompt>" | tee "$CODEX_EXEC_JSONL"
 If no Codex JSONL file is available, trace export falls back to the internal
 `ws` action log so completion remains best-effort.
 
-For GitHub Actions, use the Codex GitHub Action with an OpenAI API key secret.
-Do not describe the action as ChatGPT subscription billed; it is the
-API-key-backed CI/CD and manual fallback path. Codex app automations are the
-preferred scheduled desktop path and should run on background worktrees for Git
-repos. The manual GitHub Action fallback uploads trace data from a separate
-fresh-checkout job with a narrow `HF_TOKEN` environment; unless a real Codex
-JSONL file is available, that upload intentionally uses the `ws` action-log
-fallback.
+For the recurring company resolver, use the Hetzner-hosted local Codex runner
+documented in [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
+It should set `CODEX_EXEC_JSONL` for every accepted run and store the resulting
+trace outside the repo. Do not trigger recurring company resolver work from
+GitHub Actions.
+
+For emergency resolver recovery, use the same local Codex CLI path from a
+throwaway worktree and set `CODEX_EXEC_JSONL` explicitly. The retired GitHub
+Actions fallback used OpenAI API-key billing and must not be described as
+subscription-backed or reintroduced for the Hetzner-owned routines.
 
 ## Common Preflight
 
@@ -123,18 +125,22 @@ cannot resume from workspace state.
   provider-specific code that bypasses the shared estimator.
 - Never put API keys in Codex prompts, JSONL traces, GitHub comments, or PR
   bodies.
+- For subscription-backed local Codex runs, record usage from `codex exec
+  --json` events in the Hetzner governor ledger.
+- The unofficial ChatGPT usage endpoint probe may be used as best-effort
+  scheduling telemetry, but rollout must remain safe when it fails or changes
+  shape. Fall back to local usage accounting and conservative run budgets.
 
 ## Stale Wording Scan
 
 Run the stale-wording scan from the migration checklist before and after docs
-changes. It should look for Claude-only orchestration wording, legacy workflow
-environment names, direct-provider API phrasing, and claims that scheduled
-GitHub Actions runs are paid through a ChatGPT subscription.
+changes. It should look for Claude-only orchestration wording, retired resolver
+workflow names, direct-provider API phrasing, and claims that GitHub Actions
+Codex runs are paid through a ChatGPT subscription.
 
-Expected during this transition: `.github/workflows/resolve-company-requests.yml`
-may still contain the legacy Claude workflow until the CI implementation is
-migrated. Docs and AGENTS files should not describe new Codex paths as
-ChatGPT subscription billed.
+The recurring company resolver and daily routines run through the Hetzner
+local Codex runner. Docs, AGENTS files, and workflows should not reference
+GitHub Actions fallback paths for those surfaces.
 
 ## Prompt-Duplication Checks
 

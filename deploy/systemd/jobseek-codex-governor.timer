@@ -1,0 +1,15 @@
+# Install as /etc/systemd/system/jobseek-codex-governor.timer.
+[Unit]
+Description=Schedule the Jobseek Codex company-request governor
+Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment.md
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=1min
+RandomizedDelaySec=30s
+AccuracySec=15s
+Persistent=false
+Unit=jobseek-codex-governor.service
+
+[Install]
+WantedBy=timers.target

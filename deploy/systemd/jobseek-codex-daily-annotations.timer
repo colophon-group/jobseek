@@ -1,0 +1,14 @@
+# Install as /etc/systemd/system/jobseek-codex-daily-annotations.timer.
+[Unit]
+Description=Schedule the Jobseek Codex daily labelled-postings annotations
+Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment.md
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 UTC
+RandomizedDelaySec=10min
+AccuracySec=1min
+Persistent=false
+Unit=jobseek-codex-daily-annotations.service
+
+[Install]
+WantedBy=timers.target

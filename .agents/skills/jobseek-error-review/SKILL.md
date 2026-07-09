@@ -8,12 +8,13 @@ description: Daily read-only review of Jobseek crawler errors on Hetzner; dedupe
 Use this skill for the daily crawler error review. Operate from the repo
 state and these instructions; do not rely on prior conversation context.
 
-Prefer running this through Codex app automation or a local Codex CLI session
-from the repository root. Codex app automations for Git repositories run in
-dedicated background worktrees, which keeps routine output isolated from
-active development work. This routine should use subscription-backed Codex
-execution where possible. Do not implement it as a scheduled API-billed Codex
-GitHub Action.
+Prefer running this through the Hetzner local Codex runner or a local Codex
+CLI session from the repository root. The Hetzner runner uses an isolated
+worktree and a root-collected redacted evidence bundle, which keeps routine
+output isolated from active development work while avoiding direct Docker or
+deploy-env access from the Codex process. This routine should use
+subscription-backed Codex execution where possible. Do not implement it as a
+GitHub Actions workflow.
 
 The legacy Claude slash command at
 `.claude/commands/jobseek-error-review.md` remains a compatibility fallback.
@@ -51,7 +52,6 @@ Long-running services. Collect logs with explicit `--since` and `--until`:
 - `deploy-browser-1-1` - Playwright/Lightpanda worker
 - `deploy-exporter-1` - Postgres to Supabase and Typesense CDC
 - `deploy-drain-1` - R2 description uploader
-- `deploy-indexnow-1` - IndexNow notifier
 - `deploy-redis-1` - local queue; only OOM and `level=error` lines
 - `deploy-alloy-1` - log/metric shipper; only Alloy's own `level=error`
 
@@ -155,8 +155,7 @@ Group errors by `(service, exception class, stable message stem)`.
   Require at least 3 prior days with non-zero signal.
 - `incident`: host-signal trigger, unexpected zero logs from a long-running
   service for more than 1 hour, data loss or corruption signal, repeated OOM
-  kills, or exporter/drain/indexnow stall with queue depth climbing and no
-  progress.
+  kills, or exporter/drain stall with queue depth climbing and no progress.
 
 ## Report
 

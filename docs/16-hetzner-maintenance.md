@@ -80,6 +80,200 @@ Current policy:
 The crawler-specific rule matters because repeated versioned deploys can
 consume tens of GiB before a normal age-based prune would trigger.
 
+## Codex Runner Timers
+
+The recurring company-request resolver and daily Codex routines run on the
+crawler host as `codex-runner`, outside Docker and outside the production
+crawler environment. Deployment templates live in
+[`18-codex-automation-deployment.md`](18-codex-automation-deployment.md) and
+[`../deploy/systemd/`](../deploy/systemd/).
+
+The local Codex desktop automation records for these three routines should be
+`PAUSED` after Hetzner cutover. They are retained only as local app state, not
+as the production scheduler:
+
+- `jobseek-company-request-resolver`
+- `jobseek-daily-classifications`
+- `jobseek-daily-error-review`
+
+Do not add or restore GitHub Actions for these routines. Manual recovery uses
+the same local Codex CLI path from a throwaway worktree, with `CODEX_EXEC_JSONL`
+set for trace capture.
+
+Check the runner isolation:
+
+```bash
+id codex-runner
+id -nG codex-runner | tr ' ' '\n' | grep -qx docker && echo 'unexpected docker group'
+sudo -u codex-runner test ! -r /home/deploy/.env
+sudo -u codex-runner test ! -w /var/run/docker.sock
+```
+
+Check the timer and latest run:
+
+```bash
+systemctl is-enabled jobseek-codex-governor.timer
+systemctl is-active jobseek-codex-governor.timer
+systemctl is-enabled jobseek-codex-daily-annotations.timer
+systemctl is-active jobseek-codex-daily-annotations.timer
+systemctl is-enabled jobseek-codex-daily-error-review.timer
+systemctl is-active jobseek-codex-daily-error-review.timer
+systemctl list-timers --all 'jobseek-codex*' --no-pager
+journalctl -u jobseek-codex-governor.service -n 120 --no-pager
+journalctl -u jobseek-codex-daily-annotations.service -n 120 --no-pager
+journalctl -u jobseek-codex-daily-error-review.service -n 120 --no-pager
+```
+
+Check that no routine is currently running before maintenance:
+
+```bash
+systemctl is-active jobseek-codex-governor.service || true
+systemctl is-active jobseek-codex-daily-annotations.service || true
+systemctl is-active jobseek-codex-daily-error-review.service || true
+sudo -iu codex-runner fuser /srv/jobseek-codex/state/codex-runner.lock || true
+```
+
+Check trace-upload auth without printing the token:
+
+```bash
+sudo -iu codex-runner bash -lc 'cd /srv/jobseek-codex/repo/apps/crawler && .venv/bin/python - <<'"'"'PY'"'"'
+from huggingface_hub.utils import get_token
+t = get_token()
+print("hf token present", bool(t), "length", len(t or ""))
+raise SystemExit(0 if t else 1)
+PY'
+```
+
+Run one dry-run pass after changing config:
+
+```bash
+sudo -iu codex-runner
+git config --global user.name "Jobseek Codex Runner"
+git config --global user.email "codex-runner@colophon-group.org"
+codex login --device-auth
+gh auth login
+exit
+
+install -o root -g codex-runner -m 0640 \
+  deploy/systemd/jobseek-codex-governor.env.example \
+  /etc/jobseek-codex/governor.env
+sed -i 's/^JOBSEEK_CODEX_DRY_RUN=.*/JOBSEEK_CODEX_DRY_RUN=true/' \
+  /etc/jobseek-codex/governor.env
+systemctl start jobseek-codex-governor.service
+journalctl -u jobseek-codex-governor.service -n 120 --no-pager
+```
+
+Check daily routine prerequisites without printing secrets:
+
+```bash
+sudo -iu codex-runner test -s /home/codex-runner/.codex/auth.json
+sudo -iu codex-runner gh auth status >/dev/null
+sudo -iu codex-runner bash -lc 'cd /srv/jobseek-codex/repo/apps/crawler && .venv/bin/python - <<'"'"'PY'"'"'
+from huggingface_hub.utils import get_token
+raise SystemExit(0 if get_token() else 1)
+PY'
+test -s /etc/jobseek-codex/labeller.env
+sudo -u codex-runner test -r /etc/jobseek-codex/labeller.env
+sudo -u codex-runner test ! -w /var/run/docker.sock
+```
+
+Smoke-test the read-only annotation database role without printing the DSN:
+
+```bash
+sudo -iu codex-runner bash -lc 'set -a; . /etc/jobseek-codex/labeller.env; set +a; cd /srv/jobseek-codex/repo/apps/crawler && .venv/bin/python - <<'"'"'PY'"'"'
+import asyncio
+import os
+import asyncpg
+
+async def main():
+    conn = await asyncpg.connect(os.environ["DATABASE_URL"])
+    try:
+        value = await conn.fetchval("SELECT count(*) FROM job_posting")
+        print("job_posting count readable", value is not None)
+    finally:
+        await conn.close()
+
+asyncio.run(main())
+PY'
+```
+
+Check the root-collected error-review evidence bundle:
+
+```bash
+test -s /srv/jobseek-codex/inputs/error-review/latest/manifest.json
+sudo -u codex-runner test -r /srv/jobseek-codex/inputs/error-review/latest/manifest.json
+find /srv/jobseek-codex/inputs/error-review/latest -maxdepth 1 -type f -printf '%f\n' | sort
+```
+
+The ChatGPT usage probe is advisory only. A failed probe should be visible in
+the governor ledger or journal, but it should not permanently fail the timer:
+
+```bash
+sudo -u codex-runner python3 /srv/jobseek-codex/repo/scripts/codex-usage-probe.py \
+  --auth-file /home/codex-runner/.codex/auth.json \
+  --timeout 10
+```
+
+Inspect usage-limit depletion history from the governor ledger:
+
+```bash
+sudo -iu codex-runner bash -lc 'python3 - <<'"'"'PY'"'"'
+import sqlite3
+from datetime import datetime, timezone
+
+conn = sqlite3.connect("/srv/jobseek-codex/state/ledger.sqlite")
+conn.row_factory = sqlite3.Row
+rows = conn.execute("""
+    SELECT observed_at, window_name, remaining_percent, used_percent,
+           reset_in_seconds, decision_reason, recent_limit, recent_runs,
+           pacing_interval_s, retry_after_s, usage_error
+    FROM usage_snapshots
+    WHERE window_name IN ('weekly', 'five_hour') OR window_name IS NULL
+    ORDER BY observed_at DESC, id DESC
+    LIMIT 40
+""").fetchall()
+for row in rows:
+    ts = datetime.fromtimestamp(row["observed_at"], tz=timezone.utc).isoformat()
+    print(
+        ts,
+        row["window_name"],
+        "remaining=", row["remaining_percent"],
+        "used=", row["used_percent"],
+        "reset_s=", row["reset_in_seconds"],
+        "decision=", row["decision_reason"],
+        "cap=", row["recent_limit"],
+        "recent=", row["recent_runs"],
+        "pace_s=", row["pacing_interval_s"],
+        "retry_s=", row["retry_after_s"],
+        "error=", row["usage_error"],
+    )
+PY'
+```
+
+Inspect active and recent routine slots in the same ledger:
+
+```bash
+sudo -iu codex-runner bash -lc 'python3 - <<'"'"'PY'"'"'
+import sqlite3
+from datetime import datetime, timezone
+
+conn = sqlite3.connect("/srv/jobseek-codex/state/ledger.sqlite")
+conn.row_factory = sqlite3.Row
+for table in ("active_slot", "runs"):
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        (table,),
+    ).fetchone()
+    if not exists:
+        print(table, "missing")
+        continue
+    rows = conn.execute(f"SELECT * FROM {table} ORDER BY 1 DESC LIMIT 20").fetchall()
+    print("==", table, "==")
+    for row in rows:
+        print(dict(row))
+PY'
+```
+
 ## Safe Manual Image Cleanup
 
 Prefer the GC service above. If the crawler host is already near full and the

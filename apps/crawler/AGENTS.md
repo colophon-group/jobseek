@@ -355,11 +355,12 @@ For agents running the guided setup workflow (`ws task --issue ...`), behavior i
 To change crawler setup agent behavior, edit those files. AGENTS/docs updates alone do not affect the runtime instruction stream.
 
 Codex is the preferred new automation surface. Use repo skills from
-`.agents/skills` when present, Codex app automations for scheduled background
-worktrees, and `codex exec --json` for traceable noninteractive fallback.
+`.agents/skills` when present, the Hetzner local Codex runner for recurring
+scheduled routines, and `codex exec --json` for traceable noninteractive
+fallback.
 Claude-compatible prompts may remain as alternate paths, but do not describe
-GitHub Actions automation as ChatGPT subscription billed; the Codex Action path
-is OpenAI API-key backed.
+GitHub Actions automation as ChatGPT subscription billed and do not re-add
+GitHub Actions for automations now owned by the Hetzner runner.
 
 ## Decision Mindset
 

@@ -59,8 +59,9 @@ Status tags:
   `[runbook]` - pilot checks and rollback criteria for Codex migration
   surfaces.
 - [18 - Codex Automation Deployment](18-codex-automation-deployment.md)
-  `[runbook]` - recurring Codex automation registry, deployment procedure,
-  maintenance checks, and harness-invariant contracts.
+  `[runbook]` - recurring Codex automation registry, Hetzner runner
+  implementation plan, deployment procedure, maintenance checks, and
+  harness-invariant contracts.
 
 ## Operations And Routines
 

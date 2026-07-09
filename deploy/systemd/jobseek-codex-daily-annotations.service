@@ -1,0 +1,54 @@
+# Install as /etc/systemd/system/jobseek-codex-daily-annotations.service.
+[Unit]
+Description=Jobseek Codex daily labelled-postings annotations
+Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment.md
+Wants=network-online.target
+After=network-online.target
+ConditionPathIsDirectory=/srv/jobseek-codex/repo
+ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py
+ConditionPathExists=/etc/jobseek-codex/labeller.env
+
+[Service]
+Type=oneshot
+User=codex-runner
+Group=codex-runner
+EnvironmentFile=/etc/jobseek-codex/governor.env
+WorkingDirectory=/srv/jobseek-codex/repo
+Environment=JOBSEEK_CODEX_MAX_RUNTIME_S=21600
+Environment=JOBSEEK_CODEX_DAILY_COUNT=10
+Environment=JOBSEEK_LABELLER_ENV_FILE=/etc/jobseek-codex/labeller.env
+Environment=LABELLER_DATA_ROOT=/srv/jobseek-codex/data/postings-labelled
+
+# The annotation job needs local DB read credentials through labeller.env, but
+# should still stay out of Docker and production deploy state.
+ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n" | /usr/bin/grep -qx docker'
+
+ExecStartPre=+/usr/bin/install -d -m 0700 -o codex-runner -g codex-runner /srv/jobseek-codex/data/postings-labelled /srv/jobseek-codex/worktrees /srv/jobseek-codex/traces /srv/jobseek-codex/state /srv/jobseek-codex/logs
+ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine annotations
+
+TimeoutStartSec=8h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+CPUQuota=200%
+MemoryHigh=3G
+MemoryMax=4G
+TasksMax=1024
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+ReadWritePaths=/srv/jobseek-codex /home/codex-runner
+InaccessiblePaths=-/home/deploy -/run/docker.sock -/var/run/docker.sock -/run/containerd/containerd.sock

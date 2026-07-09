@@ -10,18 +10,20 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
 
 ## Invocation
 
-- **Preferred scheduled route:** Codex app automation in this repository.
-  Codex automations for Git repos run on dedicated background worktrees, so
-  the routine can use the repo skill without touching an active worktree.
-  Deployment settings and maintenance checks live in
+- **Preferred scheduled route:** Hetzner local Codex runner through
+  `jobseek-codex-daily-error-review.timer`. A root `ExecStartPre` collector
+  writes a redacted read-only evidence bundle for the unprivileged
+  `codex-runner` account, so the Codex process does not need Docker,
+  `/home/deploy`, or production env access. Deployment settings and
+  maintenance checks live in
   [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
 - **Preferred manual route:** local Codex CLI from the repo root, asking it to
   use the `jobseek-error-review` skill.
 - **Manual traceable pilot:** run `codex exec --json` with the skill/runbook as
   the prompt and save the JSONL trace for agent trace collection checks.
-- **Avoid:** scheduled API-billed Codex GitHub Actions for this routine. Keep
-  execution subscription-backed through Codex app automation or local Codex
-  CLI where possible.
+- **Avoid:** GitHub Actions for this routine. Keep execution
+  subscription-backed through the Hetzner runner or local Codex CLI where
+  possible.
 - **Claude fallback:** `/jobseek-error-review` remains available through the
   legacy Claude Code slash command for compatibility.
 

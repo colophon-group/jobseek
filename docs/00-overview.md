@@ -64,9 +64,9 @@ User request
 │           ├── config.py        # Settings
 │           └── metrics.py       # Prometheus metrics
 └── .github/workflows/
-    ├── resolve-company-requests.yml  # Legacy scheduled company resolver fallback
-    ├── manual-codex-company-resolver.yml # Manual API-billed Codex resolver fallback
-    ├── auto-merge-config.yml         # Auto-merge low-risk config PRs
+    ├── ci.yml                        # Tests, lint, and repository checks
+    ├── maybe-auto-merge.yml          # Auto-merge low-risk config PRs
+    ├── close-linked-issues.yml       # Close company-request issues after merge
     └── deploy-crawler-browser.yml    # Build + deploy to Hetzner
 ```
 
@@ -75,12 +75,12 @@ User request
 ### 1. Company Onboarding (agent-driven)
 
 A user submits a company name or URL. The web app creates a GitHub issue
-labeled `company-request`. A coding agent (Codex automation preferred,
-Claude-compatible paths still supported during migration, or a crowd-sourced
-user agent) picks the issue, researches the company, determines the best
-monitor and scraper types, test-crawls, and creates a PR adding rows to the
-CSV config files. The PR merges automatically for low-risk additions or gets
-human review for large/complex boards.
+labeled `company-request`. The Hetzner-hosted Codex runner is the recurring
+automation path for picking issues, researching companies, determining the
+best monitor and scraper types, test-crawling, and creating PRs with CSV
+config changes. Humans and AGENTS.md-compatible tools can follow the same
+`ws` workflow manually. The PR merges automatically for low-risk additions or
+gets human review for large/complex boards.
 
 ### 2. Job Monitoring (crawler-driven)
 

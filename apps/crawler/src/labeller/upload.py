@@ -8,7 +8,8 @@ Layout on HF:
                              `datasets.load_dataset("viktoroo/jobseek-postings-labelled")`
 
 HF repo: ``viktoroo/jobseek-postings-labelled`` (public dataset). Auth via
-``HF_TOKEN`` (auto-loaded from ``apps/crawler/.env.local``).
+``HF_TOKEN`` (auto-loaded from ``apps/crawler/.env.local``) or the local
+HuggingFace token cache.
 
 Rejected postings stay local in ``postings/<date>/<id>.json`` for inspection
 and are never uploaded.
@@ -33,6 +34,17 @@ class UploadGuardError(RuntimeError):
 
     Caller (the CLI) is expected to print the message and exit non-zero.
     """
+
+
+def _huggingface_token() -> str | None:
+    token = os.environ.get("HF_TOKEN")
+    if token:
+        return token
+    try:
+        from huggingface_hub.utils import get_token
+    except Exception:
+        return None
+    return get_token()
 
 
 # Plain string, NOT an f-string — literal ``{`` / ``}`` in the dataset
@@ -428,11 +440,12 @@ def push_to_hub(
             "  - Use --dry-run to inspect what would be uploaded."
         )
 
-    token = os.environ.get("HF_TOKEN")
+    token = _huggingface_token()
     if not token:
         raise RuntimeError(
-            "HF_TOKEN env var not set — cannot upload to HuggingFace."
-            " Set it in apps/crawler/.env.local."
+            "HF_TOKEN env var not set and no HuggingFace cache token found — "
+            "cannot upload to HuggingFace. Run `huggingface-cli login` or set "
+            "HF_TOKEN in apps/crawler/.env.local."
         )
 
     # Stage the upload tree in a tempdir so a previously failed run can't
