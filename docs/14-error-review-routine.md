@@ -37,6 +37,12 @@ read-only host inspection, prior-report memory, GitHub issue dedupe, evidence
 collection, redaction, and filing only for `novel`, `regression`, `spike`, or
 `incident` classes.
 
+Incomplete evidence should reduce confidence, not silence actionable errors.
+When a bundle has only a partial log window, the agent must caveat trends and
+avoid unsupported 24-hour claims, but it may still file or update a GitHub
+issue for a concrete, redacted, deduped error class visible in the observed
+window.
+
 Compatibility fallback:
 [`.claude/commands/jobseek-error-review.md`](../.claude/commands/jobseek-error-review.md).
 Keep it behaviorally aligned with the Codex skill when it is edited, but do

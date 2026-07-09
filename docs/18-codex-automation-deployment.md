@@ -455,6 +455,9 @@ For each accepted issue:
   access Docker, `/home/deploy`, or production env files directly.
 - Collect host signals before log classification.
 - Classify errors as `known`, `novel`, `regression`, `spike`, or `incident`.
+- Partial evidence windows must be reported as gaps, but they do not
+  categorically block filing for concrete, redacted, deduped error classes
+  visible in the collected evidence.
 - Append reruns to the same daily report instead of overwriting it.
 - Deduplicate GitHub issues by service plus error class.
 - Redact secrets from reports, traces, and GitHub content.

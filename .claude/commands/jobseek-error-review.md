@@ -128,6 +128,14 @@ each distinct class:
               OR: repeated OOM kills, OR: exporter/drain/indexnow
               stalled (queue depth climbing with no progress).
 
+Incomplete evidence narrows confidence but does not block filing. If the
+bundle covers less than the full 24-hour window, classify full-window
+trends as `unclassified — partial window`, but still file or update an
+issue when the observed evidence shows a concrete, redacted, deduped
+error class that independently meets a filing criterion inside the
+observed window. State the observed window and evidence gap in the
+report and issue body; do not make unsupported 24-hour trend claims.
+
 ================================================================
 REPORT (always write, even on a fully healthy day)
 ================================================================
@@ -170,7 +178,10 @@ Schema:
 ================================================================
 GITHUB ISSUES
 ================================================================
-File only for NOVEL, REGRESSION, SPIKE, or INCIDENT.
+File for NOVEL, REGRESSION, SPIKE, or INCIDENT. Partial-window evidence is
+allowed when the observed error class is concrete and issue-worthy on its
+own; caveat the reduced window in the Signal section instead of suppressing
+the issue categorically.
 
 Dedup first:
   gh issue list --label daily-error-review --state all \

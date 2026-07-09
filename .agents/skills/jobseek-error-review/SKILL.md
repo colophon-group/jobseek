@@ -157,6 +157,15 @@ Group errors by `(service, exception class, stable message stem)`.
   service for more than 1 hour, data loss or corruption signal, repeated OOM
   kills, or exporter/drain stall with queue depth climbing and no progress.
 
+Incomplete evidence narrows confidence but does not make GitHub filing
+impossible. If a bundle covers less than the full 24-hour window, classify
+full-window trends as `unclassified — partial window`, but still file or
+update an issue when the available evidence shows a concrete, redacted,
+deduped error class that would independently meet a filing criterion inside
+the observed window. In that case, state the observed window and evidence gap
+in the report and issue body, avoid unsupported 24-hour trend claims, and use
+severity based only on the verified blast radius.
+
 ## Report
 
 Always write a report, even on a healthy day.
@@ -208,8 +217,10 @@ write `none`.
 
 ## GitHub Issues
 
-File or update issues only for `novel`, `regression`, `spike`, or `incident`
-classes.
+File or update issues for `novel`, `regression`, `spike`, or `incident`
+classes. Partial-window evidence is allowed when the observed error class is
+concrete and issue-worthy on its own; caveat the reduced window in the signal
+section rather than suppressing the issue categorically.
 
 Deduplicate first:
 

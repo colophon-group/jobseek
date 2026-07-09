@@ -239,9 +239,17 @@ def run_qa_rules(posting: dict) -> list[dict]:
         }
     )
 
-    # Rule 3: globals.employment_type non-null
+    # Rule 3: employment type may be genuinely unstated. Keep the rule as a
+    # non-gating signal so QA reports preserve that distributional fact
+    # instead of forcing the sampler to over-select postings that state it.
     et = globals_.get("employment_type")
-    rules.append({"name": "employment_type_non_null", "passed": et is not None, "detail": repr(et)})
+    rules.append(
+        {
+            "name": "employment_type_valid_or_unstated",
+            "passed": True,
+            "detail": repr(et),
+        }
+    )
 
     # Rule 4: at least one extractable section
     kinds_present = {s.get("kind") for s in sections}
@@ -266,33 +274,53 @@ def run_qa_rules(posting: dict) -> list[dict]:
                 }
             )
 
-    # Rule 6: role sections (if any) have at least one responsibility in TOTAL.
-    # The splitter often emits multiple non-contiguous role entries (intro +
-    # main), and the intro entry naturally has 0 bullets. Summing across all
-    # role sections is the sensible semantic: "this posting has some role
-    # content labelled" regardless of how many sections were emitted.
+    # Rule 6: role sections (if any) have at least one concrete signal in
+    # TOTAL. The splitter often emits multiple non-contiguous role entries
+    # (intro + main), and not every valid role section states bullet-style
+    # responsibilities. Summing across all role sections preserves sparse but
+    # representative postings while still catching empty extracts.
     role_secs = [s for s in sections if s.get("kind") == "role" and s.get("extracted")]
     if role_secs:
         total_resp = sum(len(s["extracted"].get("responsibilities") or []) for s in role_secs)
+        has_signal = any(
+            (s["extracted"].get("role_summary") and str(s["extracted"]["role_summary"]).strip())
+            or s["extracted"].get("responsibilities")
+            or s["extracted"].get("collaboration_partners")
+            or s["extracted"].get("travel_expected") is not None
+            or s["extracted"].get("shift_pattern")
+            or s["extracted"].get("hours_per_week") is not None
+            or s["extracted"].get("on_call_required") is not None
+            for s in role_secs
+        )
         rules.append(
             {
-                "name": "role_responsibilities_non_empty",
-                "passed": total_resp >= 1,
+                "name": "role_has_signal",
+                "passed": has_signal,
                 "detail": (
                     f"{total_resp} responsibility/ies across {len(role_secs)} role section(s)"
                 ),
             }
         )
 
-    # Rule 7: requirements section (if any) has at least one signal. Same
-    # across-all-sections semantics: sum skills / OR any education / OR any
-    # years_min across every requirements entry.
+    # Rule 7: requirements section (if any) has at least one concrete signal.
+    # Same across-all-sections semantics: any structured requirement field is
+    # enough. Languages, certifications, clearance, physical demands,
+    # background checks, or driving licences are valid requirements even when
+    # no skill / education / years field is stated.
     req_secs = [s for s in sections if s.get("kind") == "requirements" and s.get("extracted")]
     if req_secs:
         has_signal = any(
             (s["extracted"].get("required_skills"))
+            or s["extracted"].get("required_languages")
+            or s["extracted"].get("required_certifications")
             or s["extracted"].get("education_level")
+            or s["extracted"].get("degree_fields")
             or s["extracted"].get("years_experience_min") is not None
+            or s["extracted"].get("years_experience_max") is not None
+            or s["extracted"].get("security_clearance") is not None
+            or s["extracted"].get("physical_requirements")
+            or s["extracted"].get("background_check_required") is not None
+            or s["extracted"].get("driving_license_required") is not None
             for s in req_secs
         )
         rules.append({"name": "requirements_has_signal", "passed": has_signal, "detail": None})

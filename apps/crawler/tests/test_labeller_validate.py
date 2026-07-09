@@ -364,15 +364,111 @@ def test_qa_accepts_no_locations():
     assert qa_report(posting)["verdict"] == "accepted"
 
 
+def test_qa_accepts_unstated_employment_type():
+    """Unstated employment type is representative data, not a broken label."""
+    posting = _minimal_merged_posting()
+    posting["labels"]["globals"]["employment_type"] = None
+    report = qa_report(posting)
+    assert report["verdict"] == "accepted"
+    rules = {r["name"]: r for r in report["rules"]}
+    assert rules["employment_type_valid_or_unstated"]["passed"] is True
+    assert rules["employment_type_valid_or_unstated"]["detail"] == "None"
+
+
 def test_qa_rejects_null_extraction():
     posting = _minimal_merged_posting()
     posting["labels"]["sections"][0]["extracted"] = None
     assert qa_report(posting)["verdict"] == "rejected"
 
 
-def test_qa_rejects_empty_responsibilities_when_role_present():
+def test_qa_accepts_role_summary_without_responsibilities():
     posting = _minimal_merged_posting()
     posting["labels"]["sections"][0]["extracted"]["responsibilities"] = []
+    posting["labels"]["sections"][0]["extracted"]["role_summary"] = (
+        "Own backend service delivery for the platform."
+    )
+    assert qa_report(posting)["verdict"] == "accepted"
+
+
+def test_qa_rejects_empty_role_signal_when_role_present():
+    posting = _minimal_merged_posting()
+    posting["labels"]["sections"][0]["extracted"].update(
+        {
+            "role_summary": None,
+            "responsibilities": [],
+            "collaboration_partners": [],
+            "travel_expected": None,
+            "shift_pattern": None,
+            "hours_per_week": None,
+            "on_call_required": None,
+        }
+    )
+    assert qa_report(posting)["verdict"] == "rejected"
+
+
+def test_qa_accepts_language_only_requirements_signal():
+    posting = _minimal_merged_posting()
+    req = posting["labels"]["sections"][1]["extracted"]
+    req.update(
+        {
+            "years_experience_min": None,
+            "years_experience_max": None,
+            "education_level": None,
+            "education_strict": None,
+            "degree_fields": [],
+            "required_skills": [],
+            "required_languages": ["de"],
+            "required_certifications": [],
+            "security_clearance": None,
+            "physical_requirements": [],
+            "background_check_required": None,
+            "driving_license_required": None,
+        }
+    )
+    assert qa_report(posting)["verdict"] == "accepted"
+
+
+def test_qa_accepts_background_check_only_requirements_signal():
+    posting = _minimal_merged_posting()
+    req = posting["labels"]["sections"][1]["extracted"]
+    req.update(
+        {
+            "years_experience_min": None,
+            "years_experience_max": None,
+            "education_level": None,
+            "education_strict": None,
+            "degree_fields": [],
+            "required_skills": [],
+            "required_languages": [],
+            "required_certifications": [],
+            "security_clearance": None,
+            "physical_requirements": [],
+            "background_check_required": True,
+            "driving_license_required": None,
+        }
+    )
+    assert qa_report(posting)["verdict"] == "accepted"
+
+
+def test_qa_rejects_empty_requirements_signal_when_requirements_present():
+    posting = _minimal_merged_posting()
+    req = posting["labels"]["sections"][1]["extracted"]
+    req.update(
+        {
+            "years_experience_min": None,
+            "years_experience_max": None,
+            "education_level": None,
+            "education_strict": None,
+            "degree_fields": [],
+            "required_skills": [],
+            "required_languages": [],
+            "required_certifications": [],
+            "security_clearance": None,
+            "physical_requirements": [],
+            "background_check_required": None,
+            "driving_license_required": None,
+        }
+    )
     assert qa_report(posting)["verdict"] == "rejected"
 
 

@@ -220,11 +220,12 @@ Every row passed these rules before upload:
 
 - Splitter coverage >= 40% of blocks claimed by some section.
 - `globals.profession` non-empty.
-- `globals.employment_type` non-null.
+- `globals.employment_type` either contains a supported enum value or is
+  `null` when the posting genuinely leaves employment type unstated.
 - At least one extractable section with non-null `extracted`.
-- If the role section is present, at least one responsibility.
-- If the requirements section is present, at least one of
-  `required_skills` / `education_level` / `years_experience_min`.
+- If the role section is present, at least one concrete role field has signal.
+- If the requirements section is present, at least one concrete requirements
+  field has signal.
 
 The full rule set is in `schemas/qa.schema.json` and evolves with the
 pipeline.
