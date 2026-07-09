@@ -372,6 +372,7 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
     _collect_command(run_dir, manifest, "df-docker", ["df", "-h", "/var/lib/docker"])
     _collect_command(run_dir, manifest, "free", ["free", "-h"])
     _collect_command(run_dir, manifest, "uptime", ["uptime"])
+    _collect_command(run_dir, manifest, "cpu-count", ["nproc"])
     _collect_command(
         run_dir,
         manifest,

@@ -114,14 +114,24 @@ quality, not a judge:
 
 - `split_coverage_min_40pct` — the splitter's sections cover ≥40% of blocks.
 - `profession_non_empty` — `globals.profession` is non-null and non-empty.
-- `employment_type_non_null` — `globals.employment_type` is set.
+- `employment_type_valid_or_unstated` — non-gating audit signal for
+  `globals.employment_type`; `null` is valid when the posting genuinely does
+  not state employment type.
 - `has_extractable_section` — at least one of team/role/requirements/preferred/benefits present.
 - `section_<kind>_has_extraction` — every extractable section has non-null `extracted`.
-- `role_responsibilities_non_empty` — when the role section is present, it has ≥1 responsibility.
-- `requirements_has_signal` — when requirements are present, at least one of `required_skills` / `education_level` / `years_experience_min`.
+- `role_has_signal` — when the role section is present, at least one role
+  field such as summary, responsibilities, collaboration, travel, shift,
+  hours, or on-call has evidence.
+- `requirements_has_signal` — when requirements are present, at least one
+  requirement field has evidence, including skills, education, years,
+  languages, certifications, clearance, physical demands, background checks,
+  or driving-license requirements.
 
-A posting is accepted iff every rule passes. Rejected postings are kept
-locally for inspection and analysis but never uploaded.
+A posting is accepted iff every gating rule passes. Rejected postings are kept
+locally for inspection and analysis but never uploaded. Do not reject a posting
+solely because employment type is unstated; preserving that ambiguity keeps the
+dataset representative of real postings and avoids teaching models to infer
+fields that are not supported by evidence.
 
 ## Storage layout
 
