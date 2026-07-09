@@ -677,6 +677,11 @@ def check_host_health(config: RunnerConfig) -> HostHealth:
     max_load = cpus * config.max_load_per_cpu
     if load1 > max_load:
         return HostHealth(False, f"load {load1:.2f} above threshold {max_load:.2f}")
+
+    if not config.dry_run and _uses_codex_cli(config.codex_args):
+        missing_identity = _missing_git_identity()
+        if missing_identity:
+            return HostHealth(False, f"git identity missing: {', '.join(missing_identity)}")
     return HostHealth(True)
 
 
@@ -690,6 +695,29 @@ def _mem_available_gib() -> float | None:
             if len(parts) >= 2:
                 return int(parts[1]) / (1024**2)
     return None
+
+
+def _uses_codex_cli(codex_args: tuple[str, ...]) -> bool:
+    if not codex_args:
+        return False
+    return Path(codex_args[0]).name == "codex"
+
+
+def _missing_git_identity() -> list[str]:
+    missing = []
+    for key in ("user.name", "user.email"):
+        try:
+            result = subprocess.run(
+                ["git", "config", "--global", "--get", key],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError:
+            return ["git"]
+        if result.returncode != 0 or not result.stdout.strip():
+            missing.append(key)
+    return missing
 
 
 def parse_codex_usage_jsonl(path: Path) -> UsageSummary:

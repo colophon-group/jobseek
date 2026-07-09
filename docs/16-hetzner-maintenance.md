@@ -110,6 +110,8 @@ Run one dry-run pass after changing config:
 
 ```bash
 sudo -iu codex-runner
+git config --global user.name "Jobseek Codex Runner"
+git config --global user.email "codex-runner@colophon-group.org"
 codex login --device-auth
 gh auth login
 exit

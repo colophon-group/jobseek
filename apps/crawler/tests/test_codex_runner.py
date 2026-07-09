@@ -17,6 +17,7 @@ from src.workspace.codex_runner import (
     UsageWindow,
     _safe_env,
     build_codex_prompt,
+    check_host_health,
     parse_codex_usage_jsonl,
     run_usage_probe,
 )
@@ -345,6 +346,48 @@ def test_low_usage_without_reset_uses_fallback_retry(monkeypatch, tmp_path: Path
 
     assert not decision.should_run
     assert decision.retry_after_s == 30 * 60
+
+
+def test_live_codex_host_health_requires_git_identity(monkeypatch, tmp_path: Path) -> None:
+    config = RunnerConfig(
+        root=tmp_path,
+        dry_run=False,
+        codex_args=("codex", "exec"),
+        min_disk_free_gib=0,
+        min_mem_available_gib=0,
+        max_load_per_cpu=999,
+    ).resolved()
+
+    monkeypatch.setattr("src.workspace.codex_runner._mem_available_gib", lambda: 99)
+    monkeypatch.setattr("src.workspace.codex_runner.os.getloadavg", lambda: (0, 0, 0))
+    monkeypatch.setattr("src.workspace.codex_runner._missing_git_identity", lambda: ["user.name"])
+
+    health = check_host_health(config)
+
+    assert not health.ok
+    assert health.reason == "git identity missing: user.name"
+
+
+def test_dry_run_host_health_does_not_require_git_identity(monkeypatch, tmp_path: Path) -> None:
+    config = RunnerConfig(
+        root=tmp_path,
+        dry_run=True,
+        codex_args=("codex", "exec"),
+        min_disk_free_gib=0,
+        min_mem_available_gib=0,
+        max_load_per_cpu=999,
+    ).resolved()
+
+    monkeypatch.setattr("src.workspace.codex_runner._mem_available_gib", lambda: 99)
+    monkeypatch.setattr("src.workspace.codex_runner.os.getloadavg", lambda: (0, 0, 0))
+    monkeypatch.setattr(
+        "src.workspace.codex_runner._missing_git_identity",
+        lambda: (_ for _ in ()).throw(AssertionError("should not check git identity")),
+    )
+
+    health = check_host_health(config)
+
+    assert health.ok
 
 
 def test_safe_env_excludes_unneeded_secrets() -> None:
