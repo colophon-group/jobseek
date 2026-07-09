@@ -209,3 +209,82 @@ def test_export_trace_writes_action_log_fallback(monkeypatch, tmp_path):
     assert lines[0]["_trace_header"] is True
     assert lines[0]["source"] == "ws_action_log"
     assert lines[1]["command"] == "complete"
+
+
+def test_trace_credential_detector_catches_token_shapes() -> None:
+    findings = trace.detect_credentials(
+        "\n".join(
+            [
+                "Authorization: bearer abcdefghijklmnopqrstuvwxyz0123456789",
+                "GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyzABCDEFGH123456",
+                "HF_TOKEN=hf_abcdefghijklmnopqrstuvwxyzABCDEFGH123456",
+            ]
+        )
+    )
+
+    assert {finding["pattern"] for finding in findings} >= {
+        "bearer_token",
+        "github_token",
+        "huggingface_token",
+        "sensitive_assignment",
+    }
+
+
+def test_trace_credential_detector_ignores_public_ats_tokens() -> None:
+    payload = json.dumps(
+        {
+            "monitor_config": {"token": "smartrecruiters-company-slug"},
+            "message": "HF_TOKEN environment variable not set — cannot upload trace",
+            "status": "DATABASE_URL: configured",
+        }
+    )
+
+    assert trace.detect_credentials(payload) == []
+
+
+def test_trace_credential_detector_catches_json_escaped_assignments() -> None:
+    payload = trace._trace_payload(
+        {"_trace_header": True, "date": "2026-07-09", "record_count": 1},
+        [
+            {
+                "type": "item.completed",
+                "item": {
+                    "aggregated_output": 'SECRET_KEY="supersecretvalue"',
+                    "env": {"DATABASE_URL": "postgres://user:pass@example.com/db"},
+                },
+            }
+        ],
+    )
+
+    patterns = {finding["pattern"] for finding in trace.detect_credentials(payload)}
+
+    assert "sensitive_assignment" in patterns
+    assert "url_password" in patterns
+
+
+def test_upload_trace_refuses_payload_with_credentials(monkeypatch) -> None:
+    header = {"_trace_header": True, "date": "2026-07-09", "record_count": 1}
+    records = [
+        {
+            "type": "item.completed",
+            "item": {
+                "type": "command_execution",
+                "aggregated_output": (
+                    "debug accidentally printed ghp_abcdefghijklmnopqrstuvwxyzABCDEFGH123456"
+                ),
+            },
+        }
+    ]
+
+    monkeypatch.setattr(trace, "_hf_token", lambda: "hf_safe_token_not_in_payload")
+    monkeypatch.setattr(trace, "_build_trace", lambda _slug: (header, records))
+
+    try:
+        trace.upload_trace_to_hf("acme")
+    except trace.TraceCredentialError as exc:
+        message = str(exc)
+    else:
+        raise AssertionError("upload should have been blocked")
+
+    assert "github_token@line" in message
+    assert "ghp_" not in message

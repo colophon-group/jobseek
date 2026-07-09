@@ -37,6 +37,126 @@ _WS_CMD_RE = re.compile(
 )
 _WS_TASK_ISSUE_RE = re.compile(r"\bws\s+task\b[^\n;|&]*--issue(?:=|\s+)(\d+)\b")
 _WS_NEW_RE = re.compile(r"\bws\s+new\s+(\S+)")
+_TOKEN_PLACEHOLDERS = {
+    "",
+    "available",
+    "none",
+    "null",
+    "not-set",
+    "not_set",
+    "configured",
+    "disabled",
+    "enabled",
+    "hidden",
+    "missing",
+    "present",
+    "redacted",
+    "<redacted>",
+    "set",
+    "changeme",
+    "change-me",
+    "example",
+    "unset",
+}
+_SENSITIVE_ASSIGNMENT_NAMES = (
+    r"HF_TOKEN|HUGGINGFACE_HUB_TOKEN|OPENAI_API_KEY|CODEX_ACCESS_TOKEN|"
+    r"GH_TOKEN|GITHUB_TOKEN|GITHUB_PAT|DATABASE_URL|CRAWLER_DATABASE_URL|"
+    r"POSTGRES(?:QL)?_[A-Z0-9_]*PASSWORD|REDIS_URL|UPSTASH_REDIS_REST_TOKEN|"
+    r"TYPESENSE_[A-Z0-9_]*KEY|SUPABASE_[A-Z0-9_]*KEY|"
+    r"AWS_SECRET_ACCESS_KEY|R2_SECRET_ACCESS_KEY|SECRET_KEY|PRIVATE_KEY"
+)
+_SENSITIVE_KEY_RE = re.compile(rf"(?i)^(?:{_SENSITIVE_ASSIGNMENT_NAMES})$")
+_CREDENTIAL_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("github_token", re.compile(r"\b(?:gho|ghp|ghu|ghs|ghr)_[A-Za-z0-9_]{30,}\b")),
+    ("github_pat", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{40,}\b")),
+    ("openai_api_key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b")),
+    ("huggingface_token", re.compile(r"\bhf_[A-Za-z0-9]{30,}\b")),
+    ("aws_access_key", re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")),
+    ("google_api_key", re.compile(r"\bAIza[A-Za-z0-9_-]{30,}\b")),
+    ("slack_token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b")),
+    ("bearer_token", re.compile(r"\bBearer\s+[A-Za-z0-9._-]{30,}\b", re.I)),
+    (
+        "jwt",
+        re.compile(r"\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b"),
+    ),
+    ("private_key", re.compile(r"BEGIN [A-Z ]*PRIVATE KEY")),
+    ("url_password", re.compile(r"[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s:@]+@", re.I)),
+    (
+        "sensitive_assignment",
+        re.compile(
+            r"(?i)\b(?:"
+            + _SENSITIVE_ASSIGNMENT_NAMES
+            + r")\b(?:\\?[\"']?)\s*(?:=|:)\s*(?:\\?[\"']?)([^\\\"'\s,}]+)"
+        ),
+    ),
+)
+
+
+class TraceCredentialError(RuntimeError):
+    """Raised when a trace payload appears to contain credentials."""
+
+
+def _sensitive_assignment_value(value: str) -> str:
+    return value.strip().strip("\\\"'").strip()
+
+
+def _decoded_json_scan_texts(value: Any) -> list[str]:
+    texts: list[str] = []
+
+    def walk(item: Any) -> None:
+        if isinstance(item, str):
+            texts.append(item)
+            return
+        if isinstance(item, list):
+            for child in item:
+                walk(child)
+            return
+        if isinstance(item, dict):
+            for key, child in item.items():
+                if (
+                    isinstance(key, str)
+                    and _SENSITIVE_KEY_RE.fullmatch(key)
+                    and isinstance(child, str | int | float | bool)
+                ):
+                    texts.append(f"{key}={child}")
+                walk(child)
+
+    walk(value)
+    return texts
+
+
+def detect_credentials(text: str) -> list[dict[str, int | str]]:
+    """Return non-secret findings for credential-shaped values in *text*.
+
+    Findings intentionally report only the pattern name and line number, never
+    the matched value, so the detector can be used in error messages safely.
+    """
+    findings: list[dict[str, int | str]] = []
+    seen: set[tuple[str, int]] = set()
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        scan_texts = [line]
+        try:
+            decoded = json.loads(line)
+        except json.JSONDecodeError:
+            decoded = None
+        if decoded is not None:
+            scan_texts.extend(_decoded_json_scan_texts(decoded))
+
+        for scan_text in scan_texts:
+            for pattern_name, pattern in _CREDENTIAL_PATTERNS:
+                for match in pattern.finditer(scan_text):
+                    if pattern_name == "sensitive_assignment":
+                        value = _sensitive_assignment_value(match.group(1))
+                        if value.lower() in _TOKEN_PLACEHOLDERS:
+                            continue
+                        if len(value) < 8:
+                            continue
+                    key = (pattern_name, line_number)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    findings.append({"pattern": pattern_name, "line": line_number})
+    return findings
 
 
 def _slug_pattern(slug: str) -> str:
@@ -676,6 +796,33 @@ def export_trace(slug: str, output_dir: Path) -> Path | None:
 _HF_REPO = "viktoroo/jobseek-agent-traces"
 
 
+def _trace_payload(header: dict, scoped: list[dict]) -> str:
+    lines = [json.dumps(header, default=str)]
+    lines.extend(json.dumps(rec, default=str) for rec in scoped)
+    return "\n".join(lines) + "\n"
+
+
+def _assert_trace_payload_safe(payload: str) -> None:
+    findings = detect_credentials(payload)
+    if not findings:
+        return
+    summary = ", ".join(f"{finding['pattern']}@line {finding['line']}" for finding in findings[:10])
+    if len(findings) > 10:
+        summary += f", +{len(findings) - 10} more"
+    raise TraceCredentialError(f"trace contains possible credentials; refusing upload: {summary}")
+
+
+def _hf_token() -> str | None:
+    token = os.environ.get("HF_TOKEN")
+    if token:
+        return token
+    try:
+        from huggingface_hub.utils import get_token
+    except ImportError:
+        return None
+    return get_token()
+
+
 def upload_trace_to_hf(slug: str) -> str | None:
     """Discover and upload trace to Hugging Face dataset.
 
@@ -683,13 +830,12 @@ def upload_trace_to_hf(slug: str) -> str | None:
     per company (e.g. reconfigurations).  If the same slug+date already
     exists, appends a numeric suffix (``-2``, ``-3``, …).
 
-    Requires ``HF_TOKEN`` environment variable.
+    Requires ``HF_TOKEN`` or a local Hugging Face token for the runner user.
     Returns the HF URL, or None if no trace records are available.
     """
-    import os
-
-    if not os.environ.get("HF_TOKEN"):
-        raise RuntimeError("HF_TOKEN environment variable not set — cannot upload trace")
+    token = _hf_token()
+    if not token:
+        raise RuntimeError("HF_TOKEN or Hugging Face local token not set — cannot upload trace")
 
     result = _build_trace(slug)
     if not result:
@@ -699,15 +845,16 @@ def upload_trace_to_hf(slug: str) -> str | None:
 
     import io
 
+    payload = _trace_payload(header, scoped)
+    _assert_trace_payload_safe(payload)
+
     buf = io.BytesIO()
-    buf.write((json.dumps(header, default=str) + "\n").encode())
-    for rec in scoped:
-        buf.write((json.dumps(rec, default=str) + "\n").encode())
+    buf.write(payload.encode())
     buf.seek(0)
 
     from huggingface_hub import HfApi
 
-    api = HfApi()
+    api = HfApi(token=token)
     date = header["date"]
 
     # Check for existing file and add suffix if needed

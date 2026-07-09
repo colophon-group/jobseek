@@ -148,6 +148,24 @@ gh auth login
 exit
 ```
 
+If trace upload is enabled, provision the narrow HuggingFace token in the
+runner user's local HuggingFace cache, not in the systemd environment. The
+Codex subprocess environment intentionally strips `HF_TOKEN`, so `ws task
+complete` reads the token through `huggingface_hub` local auth while traces
+remain free of deployment secrets.
+
+```bash
+sudo -iu codex-runner
+mkdir -p ~/.cache/huggingface
+umask 077
+read -rsp 'HuggingFace token: ' HF_TOKEN_INPUT
+printf '\n'
+printf '%s' "$HF_TOKEN_INPUT" > ~/.cache/huggingface/token
+unset HF_TOKEN_INPUT
+test -s ~/.cache/huggingface/token
+exit
+```
+
 Install rendering and browser support:
 
 ```bash
@@ -155,6 +173,8 @@ apt-get install -y libcairo2 librsvg2-bin
 sudo -iu codex-runner
 cd /srv/jobseek-codex/repo/apps/crawler
 uv sync
+.venv/bin/python -c \
+  'from huggingface_hub.utils import get_token; raise SystemExit(0 if get_token() else 1)'
 exit
 /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python -m playwright install-deps chromium
 sudo -iu codex-runner
@@ -309,9 +329,14 @@ For each accepted issue:
 6. Capture `codex exec --json` stdout to the JSONL trace path and stderr to a
    per-run log file.
 7. Let `ws submit` create the PR; never push to `main`.
-8. Record PR URL, branch, usage summary, trace path, and final status in the
+8. On `ws task complete`, upload the scoped trace only after the credential
+   detector accepts the payload. A detected GitHub, OpenAI, HuggingFace, AWS,
+   Google, Slack, bearer, JWT, private-key, URL-password, or sensitive
+   assignment shape must fail the upload closed and leave the local trace for
+   manual review.
+9. Record PR URL, branch, usage summary, trace path, and final status in the
    ledger.
-9. Remove the throwaway worktree after trace export and a successful PR, or
+10. Remove the throwaway worktree after trace export and a successful PR, or
    retain it for bounded debugging on failure.
 
 ### Phase 5 - rollout

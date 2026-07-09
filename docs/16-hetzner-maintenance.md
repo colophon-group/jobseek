@@ -106,6 +106,17 @@ systemctl list-timers --all jobseek-codex-governor.timer --no-pager
 journalctl -u jobseek-codex-governor.service -n 120 --no-pager
 ```
 
+Check trace-upload auth without printing the token:
+
+```bash
+sudo -iu codex-runner bash -lc 'cd /srv/jobseek-codex/repo/apps/crawler && .venv/bin/python - <<'"'"'PY'"'"'
+from huggingface_hub.utils import get_token
+t = get_token()
+print("hf token present", bool(t), "length", len(t or ""))
+raise SystemExit(0 if t else 1)
+PY'
+```
+
 Run one dry-run pass after changing config:
 
 ```bash
