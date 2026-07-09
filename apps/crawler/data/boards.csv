@@ -4215,6 +4215,7 @@ starbridge,starbridge-ashby,https://jobs.ashbyhq.com/starbridge,ashby,"{""token"
 starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""pcsx_watermark"": {""auto_full_crawl"": false}, ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 starburst,starburst-greenhouse,https://job-boards.greenhouse.io/starburst,greenhouse,"{""token"": ""starburst""}",skip,
 starcloud,starcloud-greenhouse,https://job-boards.greenhouse.io/starcloud,greenhouse,"{""token"": ""starcloud""}",skip,
+stark,stark-careers,https://stark.jobs.personio.com/,personio,"{""slug"": ""stark"", ""language"": ""en""}",skip,
 starling-bank,starling-bank-careers,https://apply.workable.com/starling-bank/,workable,"{""token"": ""starling-bank""}",workable,
 starrez,starrez-greenhouse,https://job-boards.greenhouse.io/starrez,greenhouse,"{""token"": ""starrez""}",skip,
 start-campus,start-campus-greenhouse,https://job-boards.greenhouse.io/startcampus,greenhouse,"{""token"": ""startcampus""}",skip,
