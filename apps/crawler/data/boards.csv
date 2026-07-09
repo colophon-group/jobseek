@@ -1222,6 +1222,7 @@ deel,deel-careers,https://jobs.ashbyhq.com/deel,ashby,"{""token"": ""deel""}",sk
 deepgram,deepgram-ashby,https://jobs.ashbyhq.com/deepgram,ashby,"{""token"": ""deepgram""}",skip,
 deepintent,deepintent-greenhouse,https://job-boards.greenhouse.io/deepintent,greenhouse,"{""token"": ""deepintent""}",skip,
 deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token"": ""deepjudge""}",skip,
+deepl,deepl-ashby,https://jobs.ashbyhq.com/DeepL,ashby,"{""token"": ""DeepL""}",skip,
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",skip,
 deepnote,deepnote-ashby,https://jobs.ashbyhq.com/deepnote,ashby,"{""token"": ""deepnote""}",skip,
 deepseek,deepseek-campus,https://app.mokahr.com/campus_apply/high-flyer/4605,mokahr,"{""org_id"": ""high-flyer"", ""site_id"": 4605}",skip,
