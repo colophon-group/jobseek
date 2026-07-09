@@ -359,8 +359,9 @@ Codex is the preferred new automation surface. Use repo skills from
 scheduled routines, and `codex exec --json` for traceable noninteractive
 fallback.
 Claude-compatible prompts may remain as alternate paths, but do not describe
-GitHub Actions automation as ChatGPT subscription billed and do not re-add
-GitHub Actions for automations now owned by the Hetzner runner.
+GitHub Actions automation execution as ChatGPT subscription billed and do not
+re-add GitHub Actions that run automations now owned by the Hetzner runner.
+GitHub Actions may still deploy the Hetzner runner host surface.
 
 ## Decision Mindset
 
