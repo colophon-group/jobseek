@@ -4580,6 +4580,7 @@ traversal,traversal-ashby,https://jobs.ashbyhq.com/traversal,ashby,"{""token"": 
 trella-health,trella-health-greenhouse,https://job-boards.greenhouse.io/trellahealth,greenhouse,"{""token"": ""trellahealth""}",skip,
 trexon,trexon-greenhouse,https://job-boards.greenhouse.io/tpcengineeringholdingsllc,greenhouse,"{""token"": ""tpcengineeringholdingsllc""}",skip,
 trigon-gruppe-gmbh,trigon-gruppe-gmbh-join,https://join.com/companies/trigon-gruppede,join,"{""slug"": ""trigon-gruppede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+trine,trine-careers,https://careers.trine.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.trine.com/jobs.rss""}",skip,
 tripadvisor,tripadvisor-greenhouse,https://job-boards.greenhouse.io/tripadvisor,greenhouse,"{""token"": ""tripadvisor""}",skip,
 triple-whale,triple-whale-greenhouse,https://job-boards.greenhouse.io/triplewhale,greenhouse,"{""token"": ""triplewhale""}",skip,
 triumvirate-environmental,triumvirate-environmental-greenhouse,https://job-boards.greenhouse.io/triumvirateenvironmental,greenhouse,"{""token"": ""triumvirateenvironmental""}",skip,
