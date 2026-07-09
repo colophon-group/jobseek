@@ -1,0 +1,51 @@
+# Install as /etc/systemd/system/jobseek-codex-governor.service.
+[Unit]
+Description=Jobseek Codex company-request governor
+Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment.md
+Wants=network-online.target
+After=network-online.target
+ConditionPathIsDirectory=/srv/jobseek-codex/repo
+ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py
+
+[Service]
+Type=oneshot
+User=codex-runner
+Group=codex-runner
+EnvironmentFile=/etc/jobseek-codex/governor.env
+WorkingDirectory=/srv/jobseek-codex/repo
+
+# The resolver account must stay outside the Docker group.
+ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n" | /usr/bin/grep -qx docker'
+
+# Create runner-owned state paths before taking the lock.
+ExecStartPre=+/usr/bin/install -d -m 0700 -o codex-runner -g codex-runner /srv/jobseek-codex/worktrees /srv/jobseek-codex/traces /srv/jobseek-codex/state /srv/jobseek-codex/logs
+ExecStart=/usr/bin/flock -n /srv/jobseek-codex/state/governor.lock /usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py
+
+TimeoutStartSec=4h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+CPUQuota=200%
+MemoryHigh=3G
+MemoryMax=4G
+TasksMax=1024
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+# Only the runner workspace and runner home should be writable. Keep production
+# crawler secrets and local container control sockets outside this service.
+ReadWritePaths=/srv/jobseek-codex /home/codex-runner
+InaccessiblePaths=-/home/deploy -/run/docker.sock -/var/run/docker.sock -/run/containerd/containerd.sock

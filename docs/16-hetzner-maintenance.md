@@ -80,6 +80,56 @@ Current policy:
 The crawler-specific rule matters because repeated versioned deploys can
 consume tens of GiB before a normal age-based prune would trigger.
 
+## Codex Runner Timer
+
+The recurring company-request resolver runs on the crawler host as
+`codex-runner`, outside Docker and outside the production crawler environment.
+Deployment templates live in
+[`18-codex-automation-deployment.md`](18-codex-automation-deployment.md) and
+[`../deploy/systemd/`](../deploy/systemd/).
+
+Check the runner isolation:
+
+```bash
+id codex-runner
+id -nG codex-runner | tr ' ' '\n' | grep -qx docker && echo 'unexpected docker group'
+sudo -u codex-runner test ! -r /home/deploy/.env
+sudo -u codex-runner test ! -w /var/run/docker.sock
+```
+
+Check the timer and latest run:
+
+```bash
+systemctl is-enabled jobseek-codex-governor.timer
+systemctl is-active jobseek-codex-governor.timer
+systemctl list-timers --all jobseek-codex-governor.timer --no-pager
+journalctl -u jobseek-codex-governor.service -n 120 --no-pager
+```
+
+Run one dry-run pass after changing config:
+
+```bash
+install -o root -g codex-runner -m 0640 \
+  deploy/systemd/jobseek-codex-governor.env.example \
+  /etc/jobseek-codex/governor.env
+sed -i 's/^JOBSEEK_CODEX_DRY_RUN=.*/JOBSEEK_CODEX_DRY_RUN=true/' \
+  /etc/jobseek-codex/governor.env
+systemctl start jobseek-codex-governor.service
+journalctl -u jobseek-codex-governor.service -n 120 --no-pager
+```
+
+The ChatGPT usage probe is advisory only. A failed probe should be visible in
+the governor ledger or journal, but it should not permanently fail the timer:
+
+```bash
+sudo -u codex-runner python3 /srv/jobseek-codex/repo/scripts/codex-usage-probe.py \
+  --auth-file /home/codex-runner/.codex/auth.json \
+  --timeout 10
+```
+
+Do not add a GitHub Actions schedule for this resolver. The Hetzner timer is
+the recurring path; GitHub Actions remains a manual emergency fallback only.
+
 ## Safe Manual Image Cleanup
 
 Prefer the GC service above. If the crawler host is already near full and the

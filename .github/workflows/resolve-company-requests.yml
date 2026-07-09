@@ -1,8 +1,6 @@
 name: Resolve company requests
 
 on:
-  schedule:
-    - cron: "0 */1 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -19,7 +17,7 @@ permissions:
 jobs:
   resolve:
     runs-on: ubuntu-latest
-    if: ${{ vars.ENABLE_COMPANY_RESOLVER != 'false' }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     permissions:
       contents: write       # push add-company/* branches
       pull-requests: write  # create/update draft PRs, post comments
