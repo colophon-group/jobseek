@@ -1405,6 +1405,7 @@ efg-international,efg-international-careers,https://fa-eqai-saasfaprod1.fa.ocs.o
 egc-energie-und-geb-udetechnik-gmbh,egc-energie-und-geb-udetechnik-gmbh-join,https://join.com/companies/egc-fmde,join,"{""slug"": ""egc-fmde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 eigen-labs,eigen-labs-careers,https://jobs.ashbyhq.com/eigen-labs,ashby,"{""token"": ""eigen-labs""}",skip,
 eikon-therapeutics,eikon-therapeutics-greenhouse,https://job-boards.greenhouse.io/eikontherapeutics,greenhouse,"{""token"": ""eikontherapeutics""}",skip,
+einride,einride-global,https://careers.einride.tech/,jobylon,"{""company_id"": ""3143""}",json-ld,"{""enrich"": [""description""]}"
 ekimetrics,ekimetrics-pinpoint,https://ekimetrics.pinpointhq.com,pinpoint,"{""slug"": ""ekimetrics""}",skip,
 ekkiden,ekkiden-careers,https://recruiterflow.com/ekkiden/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000}",json-ld,
 ekn-engineering,ekn-engineering-greenhouse,https://job-boards.greenhouse.io/eknengineering,greenhouse,"{""token"": ""eknengineering""}",skip,
