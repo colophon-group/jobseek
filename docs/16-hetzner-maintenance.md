@@ -87,6 +87,10 @@ crawler host as `codex-runner`, outside Docker and outside the production
 crawler environment. Deployment templates live in
 [`18-codex-automation-deployment.md`](18-codex-automation-deployment.md) and
 [`../deploy/systemd/`](../deploy/systemd/).
+Host-surface deployment is CI/CD-owned by
+[`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml).
+That workflow updates the checked-out repo and systemd units; it does not run
+`codex exec`, select issues, upload labels, or perform error reviews.
 
 The local Codex desktop automation records for these three routines should be
 `PAUSED` after Hetzner cutover. They are retained only as local app state, not
@@ -96,9 +100,25 @@ as the production scheduler:
 - `jobseek-daily-classifications`
 - `jobseek-daily-error-review`
 
-Do not add or restore GitHub Actions for these routines. Manual recovery uses
-the same local Codex CLI path from a throwaway worktree, with `CODEX_EXEC_JSONL`
-set for trace capture.
+Do not add or restore GitHub Actions that execute these routines. Manual
+recovery uses the same local Codex CLI path from a throwaway worktree, with
+`CODEX_EXEC_JSONL` set for trace capture.
+
+Check the last CI/CD host deploy:
+
+```bash
+gh run list --workflow deploy-codex-runner.yml --branch main --limit 5
+```
+
+Manual host deploy, when CI/CD is unavailable, runs as root with the same
+script and should not start a timer:
+
+```bash
+git -C /srv/jobseek-codex/repo fetch origin main
+JOBSEEK_CODEX_EXPECTED_SHA="$(git -C /srv/jobseek-codex/repo rev-parse origin/main)" \
+JOBSEEK_CODEX_START_TIMERS=0 \
+bash /srv/jobseek-codex/repo/scripts/deploy-codex-runner-host.sh
+```
 
 Check the runner isolation:
 

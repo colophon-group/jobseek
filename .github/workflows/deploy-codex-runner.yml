@@ -1,0 +1,64 @@
+name: Deploy Codex Runner (Hetzner)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.agents/**'
+      - 'AGENTS.md'
+      - 'apps/crawler/AGENTS.md'
+      - 'apps/crawler/src/labeller/**'
+      - 'apps/crawler/src/workspace/**'
+      - 'deploy/systemd/jobseek-codex-*'
+      - 'docs/14-error-review-routine.md'
+      - 'docs/15-data-sampling-routine.md'
+      - 'docs/16-hetzner-maintenance.md'
+      - 'docs/17-codex-migration-verification-runbook.md'
+      - 'docs/18-codex-automation-deployment.md'
+      - 'scripts/codex-*.py'
+      - '.github/workflows/deploy-codex-runner.yml'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: codex-runner-production-sync
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+
+      - name: Validate deploy script
+        run: bash -n scripts/deploy-codex-runner-host.sh
+
+      - name: Copy Codex runner deploy script
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: scripts/deploy-codex-runner-host.sh
+          target: /tmp/jobseek-codex-runner-deploy/${{ github.sha }}
+          strip_components: 1
+
+      - name: Deploy Codex runner host surface
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: GITHUB_SHA
+          script: |
+            set -euo pipefail
+            export JOBSEEK_CODEX_BRANCH=main
+            export JOBSEEK_CODEX_EXPECTED_SHA="${GITHUB_SHA}"
+            export JOBSEEK_CODEX_START_TIMERS=0
+            bash "/tmp/jobseek-codex-runner-deploy/${GITHUB_SHA}/deploy-codex-runner-host.sh"

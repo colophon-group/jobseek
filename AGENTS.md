@@ -85,8 +85,9 @@ uv run labeller upload --date <date>
 
 Scheduled ops routines are documented as repo runbooks and skills. Prefer
 the Hetzner local Codex runner or local Codex CLI so routine execution stays
-subscription-backed; do not add GitHub Actions for these Hetzner-owned
-automations. `codex exec --json` is the traceable noninteractive surface for
+subscription-backed; do not add GitHub Actions that execute these
+Hetzner-owned automations. CI/CD may still deploy the Hetzner runner host
+surface. `codex exec --json` is the traceable noninteractive surface for
 manual fallback and agent trace collection. Legacy
 Claude Code slash commands remain compatibility fallbacks where present.
 Deployment and maintenance rules live in

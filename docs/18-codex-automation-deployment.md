@@ -16,6 +16,10 @@ as source of truth and do not commit local Codex app state.
 The recurring company resolver and daily routines must not be triggered by
 GitHub Actions. They run on the Hetzner crawler host through local Codex CLI
 auth so they can use the subscription-backed Codex surface where possible.
+GitHub Actions may still deploy the Hetzner runner host surface. The
+[`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml)
+workflow updates `/srv/jobseek-codex/repo`, installs/verifies systemd units,
+and leaves actual Codex execution to the Hetzner timers.
 
 ## Harness Invariants
 
@@ -27,9 +31,9 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
 - The repo docs and skills above are the behavioral source of truth. Update
   them first, then update the deployed automation prompt or runner prompt.
 - Do not install or invoke Claude Code from Codex automations. Do not add
-  Codex GitHub Actions for these Hetzner-owned routines.
-- Do not add a GitHub Actions trigger for the recurring company resolver or
-  daily Codex routines.
+  GitHub Actions that execute these Hetzner-owned routines.
+- GitHub Actions may deploy runner code and units, but must not select issues,
+  run `ws`, call `codex exec`, upload labels, or perform error reviews.
 - Run Hetzner Codex routines under a dedicated local user with no sudo,
   no Docker group, no production crawler environment, and no read access to
   crawler `.env` files.
@@ -76,6 +80,11 @@ runner prompt:
    routine has two clean production runs.
 7. Confirm the durable output: HuggingFace date rows, daily error report and
    issue updates, or company resolver PR.
+8. For Hetzner runner changes, let CI deploy the host surface through
+   [`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml).
+   That workflow runs
+   [`deploy-codex-runner-host.sh`](../scripts/deploy-codex-runner-host.sh)
+   with `JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a Codex run.
 
 Do not hand-edit local Codex automation TOML unless recovering from a broken
 app state. If hand recovery is necessary, copy the final settings back into
@@ -286,6 +295,18 @@ systemctl enable --now jobseek-codex-daily-annotations.timer
 systemctl enable --now jobseek-codex-daily-error-review.timer
 ```
 
+After bootstrap, production updates are CI/CD-owned. Pushes to `main` that
+touch runner code, prompts, skills, docs, or systemd units trigger
+[`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml).
+The workflow copies
+[`deploy-codex-runner-host.sh`](../scripts/deploy-codex-runner-host.sh) to
+Hetzner, runs it as root, acquires
+`/srv/jobseek-codex/state/codex-runner.lock`, updates the normal checked-out
+clone at `/srv/jobseek-codex/repo`, installs and verifies units, and enables
+timers for boot persistence. It intentionally sets
+`JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a company resolver,
+annotation run, or error review from GitHub Actions.
+
 Initial service limits:
 
 ```ini
@@ -310,7 +331,8 @@ block private and local service ranges by default, especially
 Redis/Postgres/Typesense private addresses and the Docker socket. Allow public
 internet access needed for GitHub, OpenAI/ChatGPT, npm/pypi package
 installation during setup, and HuggingFace trace upload if enabled. Do not
-replace the local Hetzner timer with a GitHub Actions schedule.
+replace the local Hetzner timer with a GitHub Actions schedule or workflow
+that executes a Codex routine.
 
 ### Phase 3 - governor decision loop
 
