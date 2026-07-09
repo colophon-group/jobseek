@@ -4609,6 +4609,7 @@ trigon-gruppe-gmbh,trigon-gruppe-gmbh-join,https://join.com/companies/trigon-gru
 trine,trine-careers,https://careers.trine.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.trine.com/jobs.rss""}",skip,
 tripadvisor,tripadvisor-greenhouse,https://job-boards.greenhouse.io/tripadvisor,greenhouse,"{""token"": ""tripadvisor""}",skip,
 triple-whale,triple-whale-greenhouse,https://job-boards.greenhouse.io/triplewhale,greenhouse,"{""token"": ""triplewhale""}",skip,
+triton-systems,triton-systems-careers,https://tritonsystems.applicantpro.com/jobs/,sitemap,"{""sitemap_url"": ""https://tritonsystems.applicantpro.com/sitemap.xml"", ""url_filter"": ""https://tritonsystems\\.applicantpro\\.com/jobs/[0-9]+(?:-[0-9]+)?(?:\\.html)?/?$""}",json-ld,
 triumvirate-environmental,triumvirate-environmental-greenhouse,https://job-boards.greenhouse.io/triumvirateenvironmental,greenhouse,"{""token"": ""triumvirateenvironmental""}",skip,
 trucksmarter,trucksmarter-careers,https://jobs.ashbyhq.com/trucksmarter,ashby,"{""token"": ""trucksmarter""}",skip,
 true-anomaly,true-anomaly-greenhouse,https://job-boards.greenhouse.io/trueanomalyinc,greenhouse,"{""token"": ""trueanomalyinc""}",skip,
