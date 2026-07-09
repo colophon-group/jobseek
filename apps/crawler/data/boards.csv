@@ -2401,6 +2401,7 @@ keystone,keystone-ashby,https://jobs.ashbyhq.com/keystone,ashby,"{""token"": ""k
 keystone,keystone-greenhouse,https://job-boards.greenhouse.io/keystone,greenhouse,"{""token"": ""keystone""}",skip,
 kfc,kfc-cz-almacareer,https://kfc.jobs.cz/,almacareer,{},skip,
 khan-academy,khan-academy-greenhouse,https://job-boards.greenhouse.io/khanacademy,greenhouse,"{""token"": ""khanacademy""}",skip,
+ki-insurance,ki-insurance-careers,https://apply.workable.com/ki-insurance/,workable,"{""token"": ""ki-insurance""}",workable,
 kiavi,kiavi-greenhouse,https://job-boards.greenhouse.io/kiavi,greenhouse,"{""token"": ""kiavi""}",skip,
 kickstarter-pbc,kickstarter-pbc-greenhouse,https://job-boards.greenhouse.io/kickstarter,greenhouse,"{""token"": ""kickstarter""}",skip,
 kiddom,kiddom-lever,https://jobs.lever.co/kiddom,lever,"{""token"": ""kiddom""}",skip,
