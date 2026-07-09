@@ -134,6 +134,15 @@ Install runtime tools in user-owned paths where possible: `git`, `gh`, Codex
 CLI, Python, `uv`, Node/pnpm only if the `ws` flow or tests require them. Do
 not grant write access to production crawler deployment directories.
 
+Provision interactive auth as the runner user:
+
+```bash
+sudo -iu codex-runner
+codex login --device-auth
+gh auth login
+exit
+```
+
 ### Phase 2 - network and process limits
 
 Run the governor through `jobseek-codex-governor.service` and

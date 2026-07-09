@@ -109,6 +109,11 @@ journalctl -u jobseek-codex-governor.service -n 120 --no-pager
 Run one dry-run pass after changing config:
 
 ```bash
+sudo -iu codex-runner
+codex login --device-auth
+gh auth login
+exit
+
 install -o root -g codex-runner -m 0640 \
   deploy/systemd/jobseek-codex-governor.env.example \
   /etc/jobseek-codex/governor.env
