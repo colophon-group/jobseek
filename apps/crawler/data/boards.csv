@@ -207,6 +207,7 @@ alibaba,alibaba-careers-lazada,https://www.lazada.com/en/careers/job-search/,api
 alibaba,alibaba-careers-trendyol,https://jobs.lever.co/trendyol,lever,,skip,
 alika-personal-gmbh,alika-personal-gmbh-join,https://join.com/companies/alika-personalcom,join,"{""slug"": ""alika-personalcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 alixpartners,alixpartners-greenhouse,https://job-boards.greenhouse.io/alixpartners,greenhouse,"{""token"": ""alixpartners""}",skip,
+all-space,all-space-careers,https://apply.workable.com/allspace/,workable,"{""token"": ""allspace""}",workable,
 allarahealth,allarahealth-ashby,https://jobs.ashbyhq.com/allarahealth,ashby,"{""token"": ""allarahealth""}",skip,
 allbirds,allbirds-retail,https://boards-api.greenhouse.io/v1/boards/allbirdsretail/jobs,greenhouse,"{""token"": ""allbirdsretail""}",skip,
 allegro,allegro-careers,https://careers.allegro.eu/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.allegro.eu/googlefeed.xml""}",skip,
