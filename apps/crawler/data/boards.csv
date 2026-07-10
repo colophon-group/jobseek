@@ -445,6 +445,7 @@ astrazeneca,astrazeneca-workday-alexion,https://astrazeneca.wd3.myworkdayjobs.co
 astro-mechanica,astro-mechanica-careers,https://jobs.ashbyhq.com/Astro-Mechanica,ashby,"{""token"": ""Astro-Mechanica""}",skip,
 astronomer,astronomer-ashby,https://jobs.ashbyhq.com/astronomer,ashby,"{""token"": ""astronomer""}",skip,
 at-bay,at-bay-greenhouse,https://job-boards.greenhouse.io/atbayjobs,greenhouse,"{""token"": ""atbayjobs""}",skip,
+ataibeckley,ataibeckley-careers,https://ats.rippling.com/ataibeckley/jobs,rippling,"{""slug"": ""ataibeckley""}",rippling,
 ataraxis-ai,ataraxis-ai-ashby,https://jobs.ashbyhq.com/ataraxis-ai,ashby,"{""token"": ""ataraxis-ai""}",skip,
 atdp-company,atdp-company-join,https://join.com/companies/lesateliersdupreaufr,join,"{""slug"": ""lesateliersdupreaufr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 athletics-baseball-operations,athletics-baseball-operations-greenhouse,https://job-boards.greenhouse.io/athleticsbaseballops,greenhouse,"{""token"": ""athleticsbaseballops""}",skip,
