@@ -217,6 +217,7 @@ allen-control-systems,allen-control-systems-greenhouse,https://job-boards.greenh
 alliance,alliance-pinpoint,https://alliance.pinpointhq.com,pinpoint,"{""slug"": ""alliance""}",skip,
 alliance-defending-freedom,alliance-defending-freedom-greenhouse,https://job-boards.greenhouse.io/alliancedefendingfreedom,greenhouse,"{""token"": ""alliancedefendingfreedom""}",skip,
 allianz-suisse,allianz-suisse-careers,https://careers.allianz.com/ch/de/search-results,sitemap,"{""url_filter"": ""/ch/de/job/""}",json-ld,
+allica-bank,allica-bank-ashby,https://jobs.ashbyhq.com/allica-bank,ashby,"{""token"": ""allica-bank""}",skip,
 allium,allium-ashby,https://jobs.ashbyhq.com/allium,ashby,"{""token"": ""allium""}",skip,
 alloy,alloy-greenhouse,https://job-boards.greenhouse.io/alloy,greenhouse,"{""token"": ""alloy""}",skip,
 alloy-ai,alloy-ai-lever,https://jobs.lever.co/alloy,lever,"{""token"": ""alloy""}",skip,
