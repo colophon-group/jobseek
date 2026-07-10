@@ -1223,6 +1223,7 @@ datahub,datahub-greenhouse,https://job-boards.greenhouse.io/acryldata,greenhouse
 dataiku,dataiku-greenhouse,https://job-boards.greenhouse.io/dataiku,greenhouse,"{""token"": ""dataiku""}",skip,
 datarails,datarails-greenhouse,https://job-boards.greenhouse.io/datarails,greenhouse,"{""token"": ""datarails""}",skip,
 datasmart-point-gmbh,datasmart-point-gmbh-join,https://join.com/companies/datasmartpoint,join,"{""slug"": ""datasmartpoint""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+datasnipper,datasnipper-ashby,https://jobs.ashbyhq.com/datasnipper,ashby,"{""token"": ""datasnipper""}",skip,
 datologyai,datologyai-ashby,https://jobs.ashbyhq.com/datologyai,ashby,"{""token"": ""datologyai""}",skip,
 dave,dave-ashby,https://jobs.ashbyhq.com/dave,ashby,"{""token"": ""dave""}",skip,
 david-zwirner,david-zwirner-greenhouse,https://job-boards.greenhouse.io/davidzwirnergallery,greenhouse,"{""token"": ""davidzwirnergallery""}",skip,
