@@ -1089,6 +1089,7 @@ conocophillips,conocophillips-workday-equest,https://conocophillips.wd1.myworkda
 consensys,consensys-greenhouse,https://job-boards.greenhouse.io/consensys,greenhouse,"{""token"": ""consensys""}",skip,
 console,console-ashby,https://jobs.ashbyhq.com/console,ashby,"{""token"": ""console""}",skip,
 constant-contact,constant-contact-greenhouse,https://job-boards.greenhouse.io/constantcontact,greenhouse,"{""token"": ""constantcontact""}",skip,
+constellr,constellr-careers,https://constellr.recruitee.com/,recruitee,"{""slug"": ""constellr""}",skip,
 construction-resources,construction-resources-greenhouse,https://job-boards.greenhouse.io/constructionresources,greenhouse,"{""token"": ""constructionresources""}",skip,
 constructor-tech,constructor-tech-careers-gh,https://job-boards.greenhouse.io/constructortech,greenhouse,,skip,
 consumer-edge,consumer-edge-greenhouse,https://job-boards.greenhouse.io/consumeredge,greenhouse,"{""token"": ""consumeredge""}",skip,
