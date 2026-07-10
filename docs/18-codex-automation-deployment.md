@@ -9,9 +9,9 @@ as source of truth and do not commit local Codex app state.
 
 | automation | cadence | execution | source of truth | model policy |
 |---|---:|---|---|---|
-| `jobseek-daily-classifications` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | strongest orchestrator; task-sized labeller subagents |
-| `jobseek-daily-error-review` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | strongest model, high reasoning; no default subagents |
-| `jobseek-company-request-resolver` | self-regulated, checked every 15-30 min | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | strongest orchestrator; task-sized `ws` subagents |
+| `jobseek-daily-classifications` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Sol/high orchestrator; Luna and Terra labeller subagents |
+| `jobseek-daily-error-review` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol/high orchestrator; no default subagents |
+| `jobseek-company-request-resolver` | self-regulated, checked every 15-30 min | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
 
 The recurring company resolver and daily routines must not be triggered by
 GitHub Actions. They run on the Hetzner crawler host through local Codex CLI
@@ -20,6 +20,32 @@ GitHub Actions may still deploy the Hetzner runner host surface. The
 [`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml)
 workflow updates `/srv/jobseek-codex/repo`, installs/verifies systemd units,
 and leaves actual Codex execution to the Hetzner timers.
+
+## GPT-5.6 Model Policy
+
+The current policy follows the [official Codex model
+guide](https://developers.openai.com/codex/models): Sol handles complex,
+open-ended orchestration, Terra handles efficient parallel research and
+semantic work, and Luna handles clear, repeatable classification or
+transformation. Use the lowest reasoning effort that reliably fits the role.
+
+| role | project agent/config | model | reasoning |
+|---|---|---|---|
+| Every production main agent | runner `JOBSEEK_CODEX_MODEL` / `JOBSEEK_CODEX_REASONING_EFFORT` | `gpt-5.6-sol` | `high` |
+| Company metadata | `jobseek-company-enricher` | `gpt-5.6-terra` | `medium` |
+| Logo selection | `jobseek-logo-selector` | `gpt-5.6-luna` | `medium` |
+| Board discovery | `jobseek-board-researcher` | `gpt-5.6-terra` | `high` |
+| Monitor/scraper config testing | `jobseek-config-tester` | `gpt-5.6-terra` | `high` |
+| Labeller HTML normalization | `jobseek-labeller-normalizer` | `gpt-5.6-luna` | `low` |
+| Labeller section splitting | `jobseek-labeller-splitter` | `gpt-5.6-luna` | `medium` |
+| Labeller combined extraction | `jobseek-labeller-extractor` | `gpt-5.6-terra` | `high` |
+| Optional error-evidence analysis | `jobseek-error-review-researcher` | `gpt-5.6-terra` | `high` |
+
+Do not use Max or Ultra for these scheduled runs. The workflows already own
+their delegation strategy, and high reasoning gives the main agent enough
+depth without enabling redundant automatic delegation. Escalate an isolated
+subagent to Sol/high only after repeated validation failure or genuinely
+ambiguous evidence.
 
 ## Harness Invariants
 
@@ -41,11 +67,10 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
   material. Do not print, upload, commit, or include them in traces.
 - Keep Claude-compatible files only as migration fallbacks. When a fallback is
   edited, keep behavior aligned with the Codex-first source.
-- Keep the main orchestration run on the strongest available Codex model with
-  high reasoning for production routines.
-- Use smaller Codex models only for bounded subagent tasks. Escalate an
-  individual subagent attempt when validation fails repeatedly or evidence is
-  ambiguous.
+- Pin production orchestration to GPT-5.6 Sol with high reasoning.
+- Use the role-specific Terra and Luna project agents in the model-policy
+  table for bounded subagent tasks. Escalate an individual subagent attempt to
+  Sol/high only when validation fails repeatedly or evidence is ambiguous.
 - Subagent contracts are harness-invariant: task name, rendered input path,
   output path, schema, and validator define the boundary. Harness-specific
   agent files may vary, but they must not fork prompts or schemas.
@@ -70,12 +95,10 @@ runner prompt:
 3. Set the working directory to the Jobseek repo root. For Git-repo
    background worktrees, verify required untracked files and local secrets are
    visible to that execution environment before enabling the schedule.
-4. Set the orchestrator to the strongest available Codex model and high
-   reasoning.
-5. For the classification routine, configure subagents by task size:
-   normalizer and splitter can use smaller models when straightforward;
-   extraction should use a stronger model by default and escalate on repeated
-   validation failures.
+4. Confirm the runner command pins `gpt-5.6-sol` with high reasoning.
+5. Confirm every spawned role uses the project custom agent and exact setting
+   in the GPT-5.6 model-policy table. Escalate only the failing or ambiguous
+   role, not the whole routine.
 6. Run a manual smoke pass. Prefer dry-run or small-count modes until the
    routine has two clean production runs.
 7. Confirm the durable output: HuggingFace date rows, daily error report and

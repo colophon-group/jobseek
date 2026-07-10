@@ -32,6 +32,14 @@ DEFAULT_CLAIM_MARKER = "<!-- ws-claim -->"
 FIVE_HOURS_S = 5 * 60 * 60
 ONE_WEEK_S = 7 * 24 * 60 * 60
 UNKNOWN_USAGE_RETRY_S = 30 * 60
+DEFAULT_CODEX_ARGS = (
+    "codex",
+    "exec",
+    "--json",
+    "--dangerously-bypass-approvals-and-sandbox",
+)
+DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
+DEFAULT_CODEX_REASONING_EFFORT = "high"
 
 
 class GitHubStateError(RuntimeError):
@@ -97,12 +105,9 @@ class RunnerConfig:
     logs_dir: Path | None = None
     state_dir: Path | None = None
     ledger_path: Path | None = None
-    codex_args: tuple[str, ...] = (
-        "codex",
-        "exec",
-        "--json",
-        "--dangerously-bypass-approvals-and-sandbox",
-    )
+    codex_args: tuple[str, ...] = DEFAULT_CODEX_ARGS
+    codex_model: str | None = DEFAULT_CODEX_MODEL
+    codex_reasoning_effort: str | None = DEFAULT_CODEX_REASONING_EFFORT
     max_runtime_s: int = DEFAULT_RUNTIME_S
     kill_grace_s: int = DEFAULT_KILL_GRACE_S
     dry_run: bool = False
@@ -134,6 +139,8 @@ class RunnerConfig:
             state_dir=self.state_dir or root / "state",
             ledger_path=self.ledger_path or root / "state" / "ledger.sqlite",
             codex_args=self.codex_args,
+            codex_model=self.codex_model,
+            codex_reasoning_effort=self.codex_reasoning_effort,
             max_runtime_s=self.max_runtime_s,
             kill_grace_s=self.kill_grace_s,
             dry_run=self.dry_run,
@@ -162,7 +169,7 @@ class RunnerConfig:
             part
             for part in env.get(
                 "JOBSEEK_CODEX_ARGS",
-                "codex exec --json --dangerously-bypass-approvals-and-sandbox",
+                " ".join(DEFAULT_CODEX_ARGS),
             ).split()
             if part
         )
@@ -170,6 +177,14 @@ class RunnerConfig:
             root=root,
             repo_dir=(
                 Path(env["JOBSEEK_CODEX_REPO_DIR"]) if env.get("JOBSEEK_CODEX_REPO_DIR") else None
+            ),
+            codex_model=env.get("JOBSEEK_CODEX_MODEL", DEFAULT_CODEX_MODEL) or None,
+            codex_reasoning_effort=(
+                env.get(
+                    "JOBSEEK_CODEX_REASONING_EFFORT",
+                    DEFAULT_CODEX_REASONING_EFFORT,
+                )
+                or None
             ),
             max_runtime_s=int(env.get("JOBSEEK_CODEX_MAX_RUNTIME_S", DEFAULT_RUNTIME_S)),
             kill_grace_s=int(env.get("JOBSEEK_CODEX_KILL_GRACE_S", DEFAULT_KILL_GRACE_S)),
@@ -724,6 +739,22 @@ Hard limits:
 """
 
 
+def build_codex_command(config: RunnerConfig, prompt: str) -> list[str]:
+    """Build one Codex invocation with the production model policy layered on top."""
+    command = list(config.codex_args)
+    if config.codex_model:
+        command.extend(("--model", config.codex_model))
+    if config.codex_reasoning_effort:
+        command.extend(
+            (
+                "--config",
+                f"model_reasoning_effort={config.codex_reasoning_effort}",
+            )
+        )
+    command.append(prompt)
+    return command
+
+
 def _safe_env(base: dict[str, str] | None = None) -> dict[str, str]:
     env = base if base is not None else os.environ
     allowed = {
@@ -1211,7 +1242,7 @@ class CompanyResolverGovernor:
         env["JOBSEEK_CODEX_ISSUE"] = str(admission.issue)
         env["WS_ACTIVE_SCOPE"] = admission.run_id
 
-        cmd = [*cfg.codex_args, build_codex_prompt(admission.issue)]
+        cmd = build_codex_command(cfg, build_codex_prompt(admission.issue))
         with trace_path.open("w") as stdout, stderr_path.open("w") as stderr:
             proc = subprocess.Popen(
                 cmd,

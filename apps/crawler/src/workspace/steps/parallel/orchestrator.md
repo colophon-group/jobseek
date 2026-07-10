@@ -16,6 +16,14 @@ Launch these as **background subagents** simultaneously. Pass each
 rendered prompt below as the subagent's task description — no file
 reads or variable substitution needed.
 
+Use the project custom agent assigned to each track so the bounded work runs
+on the intended model and reasoning level:
+
+- Track A: `jobseek-company-enricher`
+- Track B: `jobseek-logo-selector`
+- Track C: `jobseek-board-researcher`
+- Parallel config tests: `jobseek-config-tester`
+
 Tracks A and B are fire-and-forget — check results before submit.
 Track C yields boards progressively — start processing each board
 as it's added.
@@ -81,7 +89,8 @@ For each new board:
    **Parallel path (2-3 subagents):** If the probe returns multiple plausible
    options with similar scores, OR the top result is a generic type (sitemap,
    dom, api_sniffer, nextdata), spawn parallel subagents to test each.
-   Use the config-tester template below — fill in the board-specific variables.
+   Use the `jobseek-config-tester` custom agent with the config-tester template
+   below — fill in the board-specific variables.
    Use `--config <name>` flag on `ws run` to avoid active_config races.
 
 4. If parallel: collect results, compare using the criteria below.
@@ -99,7 +108,7 @@ all boards are processed.
 
 ### Config tester template
 
-Fill in the `{variables}` and pass to a subagent.
+Fill in the `{variables}` and pass to a `jobseek-config-tester` subagent.
 **Remind every subagent: do NOT read source code files (src/core/, src/shared/, any .py).
 Use only `ws` commands and `ws help`.**
 
