@@ -3184,6 +3184,7 @@ novo,novo-ashby,https://jobs.ashbyhq.com/novo,ashby,"{""token"": ""novo""}",skip
 novo-nordisk,novo-nordisk-careers,https://careers.novonordisk.com/search/?locale=en_GB,rss,"{""url"": ""https://careers.novonordisk.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
 novu,novu-join,https://join.com/companies/novu,join,"{""slug"": ""novu""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 noxon,noxon-join,https://join.com/companies/noxonio,join,"{""slug"": ""noxonio""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+noxtua,noxtua-noxtua,https://xayn.jobs.personio.com/,personio,"{""slug"": ""xayn""}",json-ld,
 nozomi-networks,nozomi-networks-greenhouse,https://job-boards.greenhouse.io/nozominetworks,greenhouse,"{""token"": ""nozominetworks""}",skip,
 npr,npr-greenhouse,https://job-boards.greenhouse.io/nationalpublicradioinc,greenhouse,"{""token"": ""nationalpublicradioinc""}",skip,
 nscale,nscale-careers,https://job-boards.eu.greenhouse.io/nscaleoperationsukltd,greenhouse,"{""token"": ""nscaleoperationsukltd""}",skip,
