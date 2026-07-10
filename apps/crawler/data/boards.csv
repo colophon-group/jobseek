@@ -3205,6 +3205,7 @@ nviso,nviso-join,https://join.com/companies/nviso,join,"{""slug"": ""nviso""}",n
 nxp,nxp-careers,https://nxp.wd3.myworkdayjobs.com/careers,workday,"{""tenant"": ""nxp"", ""board_id"": ""careers""}",workday,
 o2-cz,o2-cz-almacareer,https://o2.jobs.cz/,almacareer,{},skip,
 oak,oak-recruitee,https://oak.recruitee.com,recruitee,"{""token"": ""oak""}",skip,
+oaknorth,oaknorth-global,https://jobs.lever.co/oaknorth.ai,lever,"{""token"": ""oaknorth.ai""}",skip,
 oboe,oboe-ashby,https://jobs.ashbyhq.com/oboe,ashby,"{""token"": ""oboe""}",skip,
 obsidian,obsidian-pinpoint,https://obsidian.pinpointhq.com,pinpoint,"{""slug"": ""obsidian""}",skip,
 obsidian-security,obsidian-security-greenhouse,https://job-boards.greenhouse.io/obsidiansecurity,greenhouse,"{""token"": ""obsidiansecurity""}",skip,
