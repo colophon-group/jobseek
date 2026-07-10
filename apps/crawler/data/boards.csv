@@ -325,6 +325,7 @@ anthropic,anthropic-careers,https://job-boards.greenhouse.io/anthropic,greenhous
 antithesis,antithesis-ashby,https://jobs.ashbyhq.com/antithesis,ashby,"{""token"": ""antithesis""}",skip,
 antora-energy,antora-energy-greenhouse,https://job-boards.greenhouse.io/antora,greenhouse,"{""token"": ""antora""}",skip,
 anybotics,anybotics-careers,https://jobs.lever.co/anybotics,lever,"{""token"": ""anybotics""}",skip,
+anyfin,anyfin-main,https://career.anyfin.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.anyfin.com/jobs.rss""}",skip,
 anyscale,anyscale-ashby,https://jobs.ashbyhq.com/anyscale,ashby,"{""token"": ""anyscale""}",skip,
 anyscale,anyscale-lever,https://jobs.lever.co/anyscale,lever,"{""token"": ""anyscale""}",skip,
 anywherenow,anywherenow-careers,https://careers.anywhere.now/,recruitee,"{""api_base"": ""https://careers.anywhere.now""}",skip,
