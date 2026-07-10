@@ -3168,6 +3168,7 @@ nortal,nortal-greenhouse,https://job-boards.greenhouse.io/nearsure,greenhouse,"{
 north-america,north-america-greenhouse,https://job-boards.greenhouse.io/xebiausa,greenhouse,"{""token"": ""xebiausa""}",skip,
 northbeam,northbeam-greenhouse,https://job-boards.greenhouse.io/northbeam,greenhouse,"{""token"": ""northbeam""}",skip,
 northmarq,northmarq-greenhouse,https://job-boards.greenhouse.io/northmarq,greenhouse,"{""token"": ""northmarq""}",skip,
+northmill,northmill-careers,https://careers.northmill.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.northmill.com/jobs.rss""}",skip,
 northrop-grumman,northrop-grumman-directemployers,https://northropgrumman.jobs/jobs/,sitemap,"{""sitemap_url"": ""https://northropgrumman.jobs/sitemap.xml""}",json-ld,"{""render"": true}"
 northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 northrop-grumman,northrop-grumman-veterans,https://northropgrumman-veterans.jobs/,sitemap,"{""sitemap_url"": ""https://northropgrumman-veterans.jobs/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
