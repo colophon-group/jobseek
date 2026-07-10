@@ -3355,6 +3355,7 @@ orion-confectionery,orion-confectionery-careers,https://orion.recruiter.co.kr/ca
 orion-group,orion-group-greenhouse,https://job-boards.greenhouse.io/oriongroup,greenhouse,"{""token"": ""oriongroup""}",skip,
 orion-innovation-naukri,orion-innovation-naukri-greenhouse,https://job-boards.greenhouse.io/orioninnovationnaukri,greenhouse,"{""token"": ""orioninnovationnaukri""}",skip,
 orkes,orkes-greenhouse,https://job-boards.greenhouse.io/orkes,greenhouse,"{""token"": ""orkes""}",skip,
+ororatech,ororatech-personio,https://ororatech.jobs.personio.de/?language=en,personio,"{""slug"": ""ororatech"", ""language"": ""en""}",skip,
 oros-energy-europe,oros-energy-europe-join,https://join.com/companies/rct-procom,join,"{""slug"": ""rct-procom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 ortho-neo,ortho-neo-join,https://join.com/companies/orthoneode,join,"{""slug"": ""orthoneode""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 osano,osano-greenhouse,https://job-boards.greenhouse.io/osano,greenhouse,"{""token"": ""osano""}",skip,
