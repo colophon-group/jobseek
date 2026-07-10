@@ -1013,6 +1013,7 @@ clover-health,clover-health-greenhouse,https://job-boards.greenhouse.io/cloverhe
 club-monaco,club-monaco-greenhouse,https://job-boards.greenhouse.io/clubmonaco,greenhouse,"{""token"": ""clubmonaco""}",skip,
 clubhouse,clubhouse-ashby,https://jobs.ashbyhq.com/clubhouse,ashby,"{""token"": ""clubhouse""}",skip,
 clutch-technologies-inc,clutch-technologies-inc-greenhouse,https://job-boards.greenhouse.io/clutch,greenhouse,"{""token"": ""clutch""}",skip,
+cm,cm-careers,https://jobs.cm.com/all-jobs,recruitee,"{""slug"": ""cmcom""}",skip,
 cmblu-energy-ag,cmblu-energy-ag-greenhouse,https://job-boards.greenhouse.io/cmbluenergyag,greenhouse,"{""token"": ""cmbluenergyag""}",skip,
 co-star,co-star-greenhouse,https://job-boards.greenhouse.io/costar,greenhouse,"{""token"": ""costar""}",skip,
 coalesce,coalesce-ashby,https://jobs.ashbyhq.com/coalesce,ashby,"{""token"": ""coalesce""}",skip,
