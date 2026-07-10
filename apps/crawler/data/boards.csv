@@ -1015,6 +1015,7 @@ clubhouse,clubhouse-ashby,https://jobs.ashbyhq.com/clubhouse,ashby,"{""token"": 
 clutch-technologies-inc,clutch-technologies-inc-greenhouse,https://job-boards.greenhouse.io/clutch,greenhouse,"{""token"": ""clutch""}",skip,
 cm,cm-careers,https://jobs.cm.com/all-jobs,recruitee,"{""slug"": ""cmcom""}",skip,
 cmblu-energy-ag,cmblu-energy-ag-greenhouse,https://job-boards.greenhouse.io/cmbluenergyag,greenhouse,"{""token"": ""cmbluenergyag""}",skip,
+cmr-surgical,cmr-surgical-careers,https://cmrsurgical.com/job-search,dom,"{""render"": false, ""url_filter"": ""[?]jobname=""}",dom,"{""steps"": [{""tag"": ""div"", ""attr"": ""class=post__tags"", ""field"": ""locations"", ""regex"": ""^(.*?)(?:Technology|Operations|Medical Affairs|Information Services|India Finance|Finance|ELT Assistants|Commercial)""}, {""tag"": ""h1"", ""attr"": ""class=post__title-txt"", ""field"": ""title""}, {""tag"": ""p"", ""text"": ""About CMR Surgical"", ""field"": ""description"", ""html"": true, ""stop"": ""Strictly no agencies""}], ""render"": false}"
 co-star,co-star-greenhouse,https://job-boards.greenhouse.io/costar,greenhouse,"{""token"": ""costar""}",skip,
 coalesce,coalesce-ashby,https://jobs.ashbyhq.com/coalesce,ashby,"{""token"": ""coalesce""}",skip,
 coalition,coalition-careers,https://boards.greenhouse.io/coalition,greenhouse,"{""token"": ""coalition""}",skip,
