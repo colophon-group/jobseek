@@ -452,6 +452,7 @@ athletics-baseball-operations,athletics-baseball-operations-greenhouse,https://j
 athletics-business-operations,athletics-business-operations-greenhouse,https://job-boards.greenhouse.io/athleticsbusinessops,greenhouse,"{""token"": ""athleticsbusinessops""}",skip,
 atlan,atlan-ashby,https://jobs.ashbyhq.com/atlan,ashby,"{""token"": ""atlan""}",skip,
 atlas,atlas-ashby,https://jobs.ashbyhq.com/atlas,ashby,"{""token"": ""atlas""}",skip,
+atlas-agro,atlas-agro-careers,https://www.atlasagro.ag/career/,inline,"{""render"": false, ""steps"": [{""tag"": ""div"", ""attr"": ""class=nectar-list-item"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=nectar-list-item"", ""field"": ""location""}, {""tag"": ""div"", ""attr"": ""class=nectar-list-item"", ""field"": ""description"", ""html"": true}]}",skip,
 atlas-hxm,atlas-hxm-greenhouse,https://job-boards.greenhouse.io/atlasxhm,greenhouse,"{""token"": ""atlasxhm""}",skip,
 atlassian,atlassian-careers,https://www.atlassian.com/company/careers/all-jobs,api_sniffer,"{""api_url"": ""https://www.atlassian.com/endpoint/careers/listings"", ""method"": ""GET"", ""json_path"": """", ""url_field"": ""portalJobPost.portalUrl"", ""fields"": {""title"": ""title"", ""locations"": ""locations"", ""description"": [""overview"", ""responsibilities"", ""qualifications""], ""metadata.team"": ""category""}}",skip,
 atlys,atlys-careers,https://careers.atlys.com/,recruitee,"{""api_base"": ""https://careers.atlys.com""}",skip,
