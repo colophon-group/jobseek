@@ -2653,6 +2653,7 @@ litify,litify-greenhouse,https://job-boards.greenhouse.io/litify,greenhouse,"{""
 litmus-automation,litmus-automation-ashby,https://jobs.ashbyhq.com/litmus,ashby,"{""token"": ""litmus""}",skip,
 little-people-s-landing,little-people-s-landing-greenhouse,https://job-boards.greenhouse.io/lpl,greenhouse,"{""token"": ""lpl""}",skip,
 littlepay,littlepay-greenhouse,https://job-boards.greenhouse.io/littlepay,greenhouse,"{""token"": ""littlepay""}",skip,
+liveeo,liveeo-personio,https://liveeo-gmbh.jobs.personio.com/,personio,"{""slug"": ""liveeo-gmbh""}",skip,
 livekit,livekit-ashby,https://jobs.ashbyhq.com/livekit,ashby,"{""token"": ""livekit""}",skip,
 livescore-group,livescore-group-greenhouse,https://job-boards.greenhouse.io/livescore9,greenhouse,"{""token"": ""livescore9""}",skip,
 living-infinitely,living-infinitely-join,https://join.com/companies/livinginfinitelycom,join,"{""slug"": ""livinginfinitelycom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
