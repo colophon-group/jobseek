@@ -4139,6 +4139,7 @@ skyflow,skyflow-ashby,https://jobs.ashbyhq.com/skyflow,ashby,"{""token"": ""skyf
 skyguide,skyguide-careers,https://jobs.skyguide.ch/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.skyguide.ch/googlefeed.xml""}",skip,
 skylight,skylight-greenhouse,https://job-boards.greenhouse.io/skylighthq,greenhouse,"{""token"": ""skylighthq""}",skip,
 skylo-technologies,skylo-technologies-greenhouse,https://job-boards.greenhouse.io/skylotechnologies,greenhouse,"{""token"": ""skylotechnologies""}",skip,
+skyral,skyral-careers,https://jobs.lever.co/skyralio,lever,"{""token"": ""skyralio""}",skip,
 skyscanner,skyscanner-greenhouse,https://job-boards.greenhouse.io/skyscanner,greenhouse,"{""token"": ""skyscanner""}",skip,
 slash-financial,slash-financial-ashby,https://jobs.ashbyhq.com/slash-financial,ashby,"{""token"": ""slash-financial""}",skip,
 slate,slate-ashby,https://jobs.ashbyhq.com/slate,ashby,"{""token"": ""slate""}",skip,
