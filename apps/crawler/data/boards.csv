@@ -2677,6 +2677,7 @@ loka-inc,loka-inc-greenhouse,https://job-boards.greenhouse.io/lokainc,greenhouse
 lombard-odier,lombard-odier-careers,https://lombardodier.wd3.myworkdayjobs.com/Lombard_Odier_Careers,workday,,workday,
 lonza,lonza-careers,https://lonza.wd3.myworkdayjobs.com/Lonza_Careers,workday,,workday,
 lonza,lonza-careers-sr,https://careers.smartrecruiters.com/lonza,smartrecruiters,"{""token"": ""lonza""}",smartrecruiters,
+look-up,look-up-careers,https://www.lookupspace.com/careers,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""welcometothejungle\\.com/(?:[a-z]{2}/)?companies(?:-v1)?/look-up-space/jobs/[^/?#]+""}",json-ld,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000}"
 lookout-inc,lookout-inc-greenhouse,https://job-boards.greenhouse.io/lookoutinc,greenhouse,"{""token"": ""lookoutinc""}",skip,
 loop,loop-greenhouse,https://job-boards.greenhouse.io/loop,greenhouse,"{""token"": ""loop""}",skip,
 loreal,loreal-aesop,https://aesop.wd3.myworkdayjobs.com/aesopcareers,workday,"{""tenant"": ""aesop"", ""board"": ""aesopcareers""}",workday,
