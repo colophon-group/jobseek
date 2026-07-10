@@ -126,6 +126,7 @@ adyen,adyen-careers,https://job-boards.greenhouse.io/adyen,greenhouse,"{""token"
 ae-studio,ae-studio-greenhouse,https://job-boards.greenhouse.io/aestudio,greenhouse,"{""token"": ""aestudio""}",skip,
 aechelon-technology,aechelon-technology-greenhouse,https://job-boards.greenhouse.io/aechelontechnology,greenhouse,"{""token"": ""aechelontechnology""}",skip,
 aerones,aerones-workable,https://apply.workable.com/aerones/,workable,"{""token"": ""aerones""}",workable,
+aerospacelab,aerospacelab-main,https://www.aerospacelab.com/jobs,dom,"{""render"": false, ""url_filter"": ""/jobs/detail/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h5"", ""text"": ""Office"", ""offset"": 1, ""field"": ""locations"", ""from"": 0}, {""tag"": ""h5"", ""text"": ""Contract type"", ""offset"": 1, ""field"": ""employment_type"", ""from"": 0}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Department"", ""html"": true, ""from"": 0}]}"
 aerospike,aerospike-greenhouse,https://job-boards.greenhouse.io/aerospike,greenhouse,"{""token"": ""aerospike""}",skip,
 aerovect,aerovect-ashby,https://jobs.ashbyhq.com/aerovect,ashby,"{""token"": ""aerovect""}",skip,
 aeva-inc,aeva-inc-lever,https://jobs.lever.co/aeva,lever,"{""token"": ""aeva""}",skip,
