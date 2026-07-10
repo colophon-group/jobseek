@@ -3916,6 +3916,7 @@ root-access,root-access-ashby,https://jobs.ashbyhq.com/root-access,ashby,"{""tok
 ropes,ropes-ashby,https://jobs.ashbyhq.com/ropes,ashby,"{""token"": ""ropes""}",skip,
 routine-labs,routine-labs-join,https://join.com/companies/routinelabs,join,"{""slug"": ""routinelabs""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 rover,rover-lever,https://jobs.lever.co/rover,lever,"{""token"": ""rover""}",skip,
+rowden-technologies,rowden-technologies-careers,https://rowdentech.pinpointhq.com/,pinpoint,"{""slug"": ""rowdentech""}",skip,
 rtx,rtx-careers,https://careers.rtx.com/global/en,sitemap,"{""url"": ""https://careers.rtx.com/global/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 rtx,rtx-careers-workday,https://globalhr.wd5.myworkdayjobs.com/REC_RTX_Ext_Gateway,workday,"{""tenant"": ""globalhr"", ""board_id"": ""REC_RTX_Ext_Gateway""}",workday,"{""proxy"": true}"
 rubrik-job-board,rubrik-job-board-greenhouse,https://job-boards.greenhouse.io/rubrik,greenhouse,"{""token"": ""rubrik""}",skip,
