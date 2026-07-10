@@ -306,6 +306,7 @@ antora-energy,antora-energy-greenhouse,https://job-boards.greenhouse.io/antora,g
 anybotics,anybotics-careers,https://jobs.lever.co/anybotics,lever,"{""token"": ""anybotics""}",skip,
 anyscale,anyscale-ashby,https://jobs.ashbyhq.com/anyscale,ashby,"{""token"": ""anyscale""}",skip,
 anyscale,anyscale-lever,https://jobs.lever.co/anyscale,lever,"{""token"": ""anyscale""}",skip,
+anywherenow,anywherenow-careers,https://careers.anywhere.now/,recruitee,"{""api_base"": ""https://careers.anywhere.now""}",skip,
 ao-shearman,ao-shearman-careers,https://careers.aoshearman.com/en/search-jobs,sitemap,"{""url"": ""https://careers.aoshearman.com/en/sitemap.xml"", ""url_filter"": ""/en/job/""}",json-ld,
 ao-shearman,ao-shearman-earlycareers-uk,https://earlycareersuk.aoshearman.com/apply,dom,"{""render"": true, ""url_filter"": ""(opportunities|vacation-scheme|solicitor-apprenticeship|training-contract|lawtech-programme|work-experience|global-virtual)""}",dom,"{""render"": true, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.+?) ::""}, {""tag"": ""p"", ""field"": ""description"", ""stop_count"": 15, ""html"": true}], ""defaults"": {""locations"": [""London, UK""]}}"
 apaleo,apaleo-greenhouse,https://job-boards.greenhouse.io/apaleo,greenhouse,"{""token"": ""apaleo""}",skip,
