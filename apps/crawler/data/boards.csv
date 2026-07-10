@@ -3835,6 +3835,7 @@ remora,remora-greenhouse,https://job-boards.greenhouse.io/remoracarbon,greenhous
 remotasks,remotasks-greenhouse,https://job-boards.greenhouse.io/remotasks,greenhouse,"{""token"": ""remotasks""}",skip,
 remote,remote-greenhouse,https://job-boards.greenhouse.io/remotecom,greenhouse,"{""token"": ""remotecom""}",skip,
 remote-people,remote-people-greenhouse,https://job-boards.greenhouse.io/remotepeople,greenhouse,"{""token"": ""remotepeople""}",skip,
+renaissance-fusion,renaissance-fusion-careers,https://jobs.renfusion.eu/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://jobs.renfusion.eu/jobs.rss""}",skip,
 renaissance-learning-north-america,renaissance-learning-north-america-greenhouse,https://job-boards.greenhouse.io/renaissancelearning-nam,greenhouse,"{""token"": ""renaissancelearning-nam""}",skip,
 renault-group,renault-group-alpine-racing-workday,https://alliancewd.wd3.myworkdayjobs.com/alpine-racing-careers,workday,"{""company"": ""alliancewd"", ""wd_instance"": ""wd3"", ""site"": ""alpine-racing-careers""}",workday,
 renault-group,renault-group-careers-workday,https://alliancewd.wd3.myworkdayjobs.com/renault-group-careers,workday,"{""company"": ""alliancewd"", ""wd_instance"": ""wd3"", ""site"": ""renault-group-careers""}",workday,
