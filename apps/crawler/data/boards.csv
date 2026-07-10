@@ -3731,6 +3731,7 @@ q-ctrl,q-ctrl-lever,https://jobs.lever.co/q-ctrl,lever,"{""token"": ""q-ctrl""}"
 qai-ventures-ag,qai-ventures-ag-join,https://join.com/companies/qai-venturescom,join,"{""slug"": ""qai-venturescom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 qdrant,qdrant-join,https://join.com/companies/qdrant,join,"{""slug"": ""qdrant""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 qonto,qonto-lever,https://jobs.lever.co/qonto,lever,"{""token"": ""qonto""}",skip,
+qred,qred-global,https://jobs.qred.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://jobs.qred.com/jobs.rss""}",skip,
 qts,qts-recruitee,https://qts.recruitee.com,recruitee,"{""token"": ""qts""}",skip,
 qualcomm,qualcomm-eightfold,https://careers.qualcomm.com/careers/search?query=*&domain=qualcomm.com,eightfold,"{""sitemap_url"": ""https://careers.qualcomm.com/careers/sitemap.xml"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 qualia,qualia-greenhouse,https://job-boards.greenhouse.io/qualia,greenhouse,"{""token"": ""qualia""}",skip,
