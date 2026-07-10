@@ -378,6 +378,7 @@ arm,arm-pinpoint,https://arm.pinpointhq.com,pinpoint,"{""slug"": ""arm""}",skip,
 armada,armada-greenhouse,https://job-boards.greenhouse.io/armada,greenhouse,"{""token"": ""armada""}",skip,
 armis-security,armis-security-greenhouse,https://job-boards.greenhouse.io/armissecurity,greenhouse,"{""token"": ""armissecurity""}",skip,
 arnold-kl-mpen-gmbh-co-kg,arnold-kl-mpen-gmbh-co-kg-join,https://join.com/companies/kluempen-leatherde,join,"{""slug"": ""kluempen-leatherde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+arondite,arondite-workable,https://apply.workable.com/arondite/,workable,"{""token"": ""arondite""}",workable,
 array-education,array-education-greenhouse,https://job-boards.greenhouse.io/arrayeducation,greenhouse,"{""token"": ""arrayeducation""}",skip,
 artefact,artefact-greenhouse,https://job-boards.greenhouse.io/artefact,greenhouse,"{""token"": ""artefact""}",skip,
 artera,artera-lever,https://jobs.lever.co/artera,lever,"{""token"": ""artera""}",skip,
