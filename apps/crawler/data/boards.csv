@@ -176,6 +176,7 @@ airbus,airbus-careers-us-spacedefense,https://airbusspaceanddefense.applicantpro
 airbus,airbus-careers-workday,https://ag.wd3.myworkdayjobs.com/en-US/Airbus,workday,"{""company"": ""ag"", ""wd_instance"": ""wd3"", ""site"": ""Airbus""}",workday,"{""proxy"": true}"
 airbyte,airbyte-ashby,https://jobs.ashbyhq.com/airbyte,ashby,"{""token"": ""airbyte""}",skip,
 aircall,aircall-careers,https://jobs.lever.co/aircall,lever,"{""token"": ""aircall""}",skip,
+airforestry,airforestry-teamtailor,https://careers.airforestry.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.airforestry.com/jobs.rss""}",skip,
 airgarage,airgarage-ashby,https://jobs.ashbyhq.com/airgarage,ashby,"{""token"": ""airgarage""}",skip,
 airia,airia-greenhouse,https://job-boards.greenhouse.io/airia,greenhouse,"{""token"": ""airia""}",skip,
 airmo-gmbh,airmo-gmbh-join,https://join.com/companies/airmoio,join,"{""slug"": ""airmoio""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
