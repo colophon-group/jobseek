@@ -3748,6 +3748,7 @@ quantinuum,quantinuum-lever-global,https://jobs.eu.lever.co/quantinuum,lever,"{"
 quantum,quantum-ashby,https://jobs.ashbyhq.com/quantum,ashby,"{""token"": ""quantum""}",skip,
 quantum-coffee,quantum-coffee-greenhouse,https://job-boards.greenhouse.io/quantumcoffee,greenhouse,"{""token"": ""quantumcoffee""}",skip,
 quantum-si,quantum-si-greenhouse,https://job-boards.greenhouse.io/quantumsi25,greenhouse,"{""token"": ""quantumsi25""}",skip,
+quartr,quartr-quartr,https://careers.quartr.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.quartr.com/jobs.rss""}",skip,
 quartz-bio,quartz-bio-greenhouse,https://job-boards.greenhouse.io/quartzbio,greenhouse,"{""token"": ""quartzbio""}",skip,
 qube-rt,qube-rt-careers,https://job-boards.greenhouse.io/quberesearchandtechnologies,greenhouse,"{""token"": ""quberesearchandtechnologies""}",skip,
 quera-computing-inc,quera-computing-inc-greenhouse,https://job-boards.greenhouse.io/queracomputinginc,greenhouse,"{""token"": ""queracomputinginc""}",skip,
