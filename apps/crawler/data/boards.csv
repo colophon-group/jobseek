@@ -616,6 +616,8 @@ biocatch,biocatch-main,https://jobs.lever.co/biocatch,lever,"{""token"": ""bioca
 biogen,biogen-careers,https://biibhr.wd3.myworkdayjobs.com/external,workday,,workday,
 biograph,biograph-greenhouse,https://job-boards.greenhouse.io/biograph,greenhouse,"{""token"": ""biograph""}",skip,
 biohub,biohub-greenhouse,https://job-boards.greenhouse.io/biohub,greenhouse,"{""token"": ""biohub""}",skip,
+biontech,biontech-global,https://jobs.biontech.com/go/All-Jobs/8781301/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.biontech.com/googlefeed.xml""}",skip,
+biontech,biontech-instadeep,https://instadeep.com/about-us/careers/,dom,"{""url_filter"": ""/job-offer/[0-9]+""}",json-ld,
 bird,bird-greenhouse,https://job-boards.greenhouse.io/bird,greenhouse,"{""token"": ""bird""}",skip,
 birzer-neumann-wirtschafts-und-steuerberatungsgesellschaft-partnerschaftsgesellschaft,birzer-neumann-wirtschafts-und-steuerberatungsgesellschaft-partnerschaftsgesellschaft-join,https://join.com/companies/taxit-kundede314,join,"{""slug"": ""taxit-kundede314""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 bishop-fox,bishop-fox-greenhouse,https://job-boards.greenhouse.io/bishopfox,greenhouse,"{""token"": ""bishopfox""}",skip,
