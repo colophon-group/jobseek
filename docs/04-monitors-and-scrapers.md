@@ -50,6 +50,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `jobylon` | Rich | skip | Jobylon iframe embeds |
 | `lever` | Rich | skip | Lever ATS |
 | `mokahr` | Rich | skip | Mokahr ATS |
+| `paylocity` | Rich | paylocity | Paylocity embedded summaries plus detail enrichment |
 | `personio` | Conditional* | — | Personio XML feed; HTML fallback needs scraper |
 | `pinpoint` | Rich | skip | Pinpoint ATS |
 | `recruitee` | Rich | skip | Recruitee ATS |
@@ -212,6 +213,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `nextdata` | Static or Playwright | Extracts from Next.js `__NEXT_DATA__` props |
 | `notion` | Static | Loads Notion blocks through Notion's internal API |
 | `oracle_hcm` | Static | Fetches Oracle HCM detail REST responses |
+| `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
 | `rippling` | Static | Fetches Rippling detail API records |
 | `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |

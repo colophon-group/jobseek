@@ -525,6 +525,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Personio XML \u2014 slug: {slug}, {jobs} jobs"
         return f"Personio XML \u2014 slug: {slug}"
+    if name == "paylocity":
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Paylocity embedded data \u2014 {jobs} jobs"
+        return "Paylocity embedded data"
     if name == "phenom":
         sitemap_url = metadata.get("sitemap_url", "?")
         jobs = metadata.get("jobs")
@@ -649,6 +654,7 @@ from src.core.monitors import (  # noqa: E402
     nextdata,  # noqa: F401
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
+    paylocity,  # noqa: F401
     personio,  # noqa: F401
     phenom,  # noqa: F401
     pinpoint,  # noqa: F401

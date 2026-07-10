@@ -28,6 +28,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "lever",
         "mokahr",
         "oracle_hcm",
+        "paylocity",
         "pinpoint",
         "recruitee",
         "recruiter_co_kr",
@@ -42,11 +43,12 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
-# ``oracle_hcm``, which auto-resolves to an oracle_hcm scraper with enrich.
+# ``oracle_hcm`` and ``paylocity``, which auto-resolve to dedicated scrapers
+# with enrich fields.
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
 # rich boards (``scraper_type`` unset in metadata) are treated the same as
 # explicit ``scraper_type = "skip"`` boards. See issue 01-rich-monitor-scheduling.
-_AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {"oracle_hcm"}
+_AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {"oracle_hcm", "paylocity"}
 
 
 def auto_skip_crawler_types() -> frozenset[str]:
@@ -99,6 +101,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "nextdata",
         "notion",
         "oracle_hcm",
+        "paylocity",
         "pdf",
         "rippling",
         "skip",
@@ -166,6 +169,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "softgarden"
     if host.endswith(".traffit.com"):
         return "traffit"
+    if host.endswith("recruiting.paylocity.com") and "/recruiting/jobs/" in parsed.path.lower():
+        return "paylocity"
 
     # AlmaCareer (Capybara) — *.jobs.cz (CZ) and *.topjobs.sk (SK)
     if host.endswith(".jobs.cz") or host.endswith(".topjobs.sk"):
@@ -247,6 +252,11 @@ def auto_scraper_type(
     # scraping entirely (is_rich_no_scrape = is_rich and not enrich_fields).
     if monitor_type == "oracle_hcm":
         return ("oracle_hcm", {"enrich": ["description"]})
+    if monitor_type == "paylocity":
+        return (
+            "paylocity",
+            {"enrich": ["description", "employment_type", "job_location_type"]},
+        )
     if monitor_type in _RICH_MONITORS:
         return ("skip", None)
     if monitor_type == "join":
