@@ -194,6 +194,7 @@ ajax,ajax-ashby,https://jobs.ashbyhq.com/ajax,ashby,"{""token"": ""ajax""}",skip
 ajax-systems,ajax-systems-lever,https://jobs.lever.co/ajax,lever,"{""token"": ""ajax""}",skip,
 akasa,akasa-careers,https://jobs.ashbyhq.com/akasa,ashby,"{""token"": ""akasa""}",skip,
 aker-systems,aker-systems-greenhouse,https://job-boards.greenhouse.io/akersystems,greenhouse,"{""token"": ""akersystems""}",skip,
+akeyless,akeyless-comeet,https://www.comeet.com/jobs/akeyless/27.006,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/jobs/""}",embedded,"{""variable"": ""POSITION_DATA"", ""fields"": {""title"": ""name"", ""description"": [""custom_fields.details[0].value"", ""=<h3>Requirements</h3>"", ""custom_fields.details[1].value""], ""locations"": ""location.name"", ""employment_type"": ""employment_type"", ""job_location_type"": ""workplace_type"", ""qualifications"": ""custom_fields.details[1].value"", ""metadata.department"": ""department"", ""metadata.updated_at"": ""time_updated""}}"
 akido,akido-greenhouse,https://job-boards.greenhouse.io/akidolabs,greenhouse,"{""token"": ""akidolabs""}",skip,
 akko,akko-greenhouse,https://job-boards.greenhouse.io/akko,greenhouse,"{""token"": ""akko""}",skip,
 aktos,aktos-greenhouse,https://job-boards.greenhouse.io/applytoaktos,greenhouse,"{""token"": ""applytoaktos""}",skip,
