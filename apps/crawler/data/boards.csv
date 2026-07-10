@@ -3093,6 +3093,7 @@ neptune-ai,neptune-ai-greenhouse,https://job-boards.greenhouse.io/neptuneai,gree
 nerdwallet,nerdwallet-ashby,https://jobs.ashbyhq.com/nerdwallet,ashby,"{""token"": ""nerdwallet""}",skip,
 nerdy,nerdy-greenhouse,https://job-boards.greenhouse.io/nerdy,greenhouse,"{""token"": ""nerdy""}",skip,
 neros-technologies,neros-technologies-greenhouse,https://job-boards.greenhouse.io/nerostechnologies,greenhouse,"{""token"": ""nerostechnologies""}",skip,
+nestai,nestai-teamtailor,https://careers.nestai.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.nestai.com/jobs.rss""}",skip,
 nestle,nestle-careers,https://jobdetails.nestle.com/viewalljobs/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobdetails.nestle.com/googlefeed.xml""}",skip,
 netapp,netapp-careers,https://careers.netapp.com/search-jobs,sitemap,"{""url_filter"": ""/job""}",json-ld,
 netdocuments,netdocuments-greenhouse,https://job-boards.greenhouse.io/netdocuments,greenhouse,"{""token"": ""netdocuments""}",skip,
