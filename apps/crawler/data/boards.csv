@@ -1583,6 +1583,7 @@ exante,exante-greenhouse,https://job-boards.greenhouse.io/xntltd,greenhouse,"{""
 excel-sports-management,excel-sports-management-greenhouse,https://job-boards.greenhouse.io/excelsportsmanagement,greenhouse,"{""token"": ""excelsportsmanagement""}",skip,
 excellent-go4,excellent-go4-join,https://join.com/companies/excellent1,join,"{""slug"": ""excellent1""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 exodus-movement-inc,exodus-movement-inc-greenhouse,https://job-boards.greenhouse.io/exodus54,greenhouse,"{""token"": ""exodus54""}",skip,
+exotec,exotec-careers,https://careers.exotec.com/,workable,"{""token"": ""exotec""}",workable,
 exowatt,exowatt-careers,https://jobs.lever.co/exowatt,lever,"{""token"": ""exowatt""}",skip,
 exp,exp-pinpoint,https://exp.pinpointhq.com,pinpoint,"{""slug"": ""exp""}",skip,
 expedia-group,expedia-group-careers,https://expedia.wd108.myworkdayjobs.com/search,workday,"{""company"": ""expedia"", ""wd_instance"": ""wd108"", ""site"": ""search""}",workday,
