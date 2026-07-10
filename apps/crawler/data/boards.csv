@@ -385,6 +385,7 @@ arcana-analytics,arcana-analytics-greenhouse,https://job-boards.greenhouse.io/ar
 arcee-ai,arcee-ai-greenhouse,https://boards.greenhouse.io/arceeai,greenhouse,"{""token"": ""arceeai""}",skip,
 arcesium-llc,arcesium-llc-greenhouse,https://job-boards.greenhouse.io/arcesiumllc,greenhouse,"{""token"": ""arcesiumllc""}",skip,
 arch-co,arch-co-ashby,https://jobs.ashbyhq.com/arch.co,ashby,"{""token"": ""arch.co""}",skip,
+archangel-autonomy,archangel-autonomy-breezy,https://archangelautonomy.breezy.hr/,sitemap,"{""sitemap_url"": ""https://archangelautonomy.breezy.hr/sitemap.xml"", ""url_filter"": ""^https://archangelautonomy\\.breezy\\.hr/p/""}",json-ld,
 archer,archer-greenhouse,https://job-boards.greenhouse.io/archer56,greenhouse,"{""token"": ""archer56""}",skip,
 archera,archera-greenhouse,https://job-boards.greenhouse.io/archera,greenhouse,"{""token"": ""archera""}",skip,
 architect,architect-ashby,https://jobs.ashbyhq.com/architect,ashby,"{""token"": ""architect""}",skip,
