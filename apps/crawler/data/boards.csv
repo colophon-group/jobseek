@@ -181,6 +181,7 @@ airgarage,airgarage-ashby,https://jobs.ashbyhq.com/airgarage,ashby,"{""token"": 
 airia,airia-greenhouse,https://job-boards.greenhouse.io/airia,greenhouse,"{""token"": ""airia""}",skip,
 airmo-gmbh,airmo-gmbh-join,https://join.com/companies/airmoio,join,"{""slug"": ""airmoio""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 airnxt,airnxt-ashby,https://jobs.ashbyhq.com/airnxt,ashby,"{""token"": ""airnxt""}",skip,
+airobotics,airobotics-main,https://www.airoboticsdrones.com/careers/,dom,"{""render"": false, ""url_filter"": ""/careers/co/[^/]+/[A-F0-9]{2}\\.[A-F0-9]{3}/""}",json-ld,
 airship,airship-greenhouse,https://job-boards.greenhouse.io/airship,greenhouse,"{""token"": ""airship""}",skip,
 airslate,airslate-careers,https://jobs.lever.co/airslate,lever,"{""token"": ""airslate""}",skip,
 airspace,airspace-greenhouse,https://job-boards.greenhouse.io/airspace,greenhouse,"{""token"": ""airspace""}",skip,
