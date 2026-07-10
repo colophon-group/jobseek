@@ -3577,6 +3577,7 @@ pipe17,pipe17-greenhouse,https://job-boards.greenhouse.io/pipe17,greenhouse,"{""
 pipedrive,pipedrive-lever,https://jobs.lever.co/pipedrive,lever,"{""token"": ""pipedrive""}",skip,
 pitchbook-data,pitchbook-data-greenhouse,https://job-boards.greenhouse.io/pitchbookdata,greenhouse,"{""token"": ""pitchbookdata""}",skip,
 pivot,pivot-ashby,https://jobs.ashbyhq.com/pivot,ashby,"{""token"": ""pivot""}",skip,
+pivot-a2e,pivot-a2e-careers,https://www.a2etech.com/careers/,inline,"{""steps"": [{""tag"": ""h3"", ""text"": ""Senior Electronics Engineer"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h3""}], ""defaults"": {""locations"": [""Livingston, Scotland""]}}",skip,
 pivotal,pivotal-lever,https://jobs.lever.co/pivotal,lever,"{""token"": ""pivotal""}",skip,
 pjt-partners,pjt-partners-careers-workday,https://pjtpartners.wd1.myworkdayjobs.com/Careers,workday,"{""company"": ""pjtpartners"", ""wd_instance"": ""wd1"", ""site"": ""Careers""}",workday,
 placements-io,placements-io-greenhouse,https://job-boards.greenhouse.io/placementsio,greenhouse,"{""token"": ""placementsio""}",skip,
