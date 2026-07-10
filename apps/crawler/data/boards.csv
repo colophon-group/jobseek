@@ -471,6 +471,7 @@ atticus,atticus-ashby,https://jobs.ashbyhq.com/atticus,ashby,"{""token"": ""atti
 attio,attio-ashby,https://jobs.ashbyhq.com/attio,ashby,"{""token"": ""attio""}",skip,
 attivo-partners,attivo-partners-greenhouse,https://job-boards.greenhouse.io/attivopartners,greenhouse,"{""token"": ""attivopartners""}",skip,
 atwell-llc,atwell-llc-greenhouse,https://job-boards.greenhouse.io/atwellgroup,greenhouse,"{""token"": ""atwellgroup""}",skip,
+au10tix,au10tix-comeet,https://www.comeet.com/jobs/au10tix/3A.00C,api_sniffer,"{""api_url"": ""https://www.comeet.co/careers-api/2.0/company/3A.00C/positions?token=A3C47A428F003D6847A40147847A41478&details=true"", ""method"": ""GET"", ""json_path"": ""@"", ""url_field"": ""url_active_page"", ""fields"": {""title"": ""name"", ""description"": [""details[0].value"", ""=<h3>Requirements</h3>"", ""details[1].value""], ""locations"": ""location.name"", ""employment_type"": ""employment_type"", ""job_location_type"": ""workplace_type"", ""metadata.department"": ""department"", ""metadata.experience_level"": ""experience_level"", ""metadata.uid"": ""uid""}}",skip,
 auctane,auctane-greenhouse,https://job-boards.greenhouse.io/auctane,greenhouse,"{""token"": ""auctane""}",skip,
 audax-group,audax-group-greenhouse,https://job-boards.greenhouse.io/audaxgroup,greenhouse,"{""token"": ""audaxgroup""}",skip,
 audibene-hear-com,audibene-hear-com-greenhouse,https://job-boards.greenhouse.io/audibenehearcom,greenhouse,"{""token"": ""audibenehearcom""}",skip,
