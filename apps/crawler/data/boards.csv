@@ -998,6 +998,7 @@ clickup,clickup-ashby,https://jobs.ashbyhq.com/clickup,ashby,"{""token"": ""clic
 clifford-chance,clifford-chance-careers,https://jobs.cliffordchance.com/jobs,sitemap,"{""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 climate-finance-solutions,climate-finance-solutions-greenhouse,https://job-boards.greenhouse.io/climatefinancesolutions,greenhouse,"{""token"": ""climatefinancesolutions""}",skip,
 climate-x,climate-x-greenhouse,https://job-boards.greenhouse.io/climatex,greenhouse,"{""token"": ""climatex""}",skip,
+climeworks,climeworks-main,https://climeworks.recruitee.com/,recruitee,"{""slug"": ""climeworks"", ""api_base"": ""https://climeworks.recruitee.com""}",skip,
 clinchoice,clinchoice-greenhouse,https://job-boards.greenhouse.io/clinchoice,greenhouse,"{""token"": ""clinchoice""}",skip,
 close,close-ashby,https://jobs.ashbyhq.com/close,ashby,"{""token"": ""close""}",skip,
 close-consulting,close-consulting-join,https://join.com/companies/terminjaegerde,join,"{""slug"": ""terminjaegerde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
