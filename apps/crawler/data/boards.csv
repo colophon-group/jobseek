@@ -268,6 +268,7 @@ altris,altris-careers,https://career.altris.se/jobs,rss,"{""preset"": ""teamtail
 altscore,altscore-greenhouse,https://job-boards.greenhouse.io/altscore,greenhouse,"{""token"": ""altscore""}",skip,
 alu,alu-greenhouse,https://job-boards.greenhouse.io/alu,greenhouse,"{""token"": ""alu""}",skip,
 alumni-ventures,alumni-ventures-greenhouse,https://job-boards.greenhouse.io/alumniventures,greenhouse,"{""token"": ""alumniventures""}",skip,
+alvotech,alvotech-workday,https://alvotech.wd103.myworkdayjobs.com/Alvotech_Careers,workday,"{""company"": ""alvotech"", ""wd_instance"": ""wd103"", ""site"": ""Alvotech_Careers""}",json-ld,
 alvys,alvys-greenhouse,https://job-boards.greenhouse.io/alvys,greenhouse,"{""token"": ""alvys""}",skip,
 alx-africa,alx-africa-greenhouse,https://job-boards.greenhouse.io/alxafrica,greenhouse,"{""token"": ""alxafrica""}",skip,
 amae-health,amae-health-greenhouse,https://job-boards.greenhouse.io/amaehealth,greenhouse,"{""token"": ""amaehealth""}",skip,
