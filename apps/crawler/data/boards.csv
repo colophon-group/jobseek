@@ -412,6 +412,8 @@ artifact,artifact-careers,https://artifactsa.recruitee.com/,recruitee,"{""slug""
 artisan,artisan-ashby,https://jobs.ashbyhq.com/artisan,ashby,"{""token"": ""artisan""}",skip,
 artisan-partners,artisan-partners-greenhouse,https://job-boards.greenhouse.io/artisanpartners,greenhouse,"{""token"": ""artisanpartners""}",skip,
 artsy,artsy-ashby,https://jobs.ashbyhq.com/artsy,ashby,"{""token"": ""artsy""}",skip,
+arx-robotics,arx-robotics-careers-gh,https://job-boards.eu.greenhouse.io/arxroboticsgmbh,greenhouse,"{""token"": ""arxroboticsgmbh""}",skip,
+arx-robotics,arx-robotics-careers-personio,https://arx.jobs.personio.de/?language=en,personio,"{""slug"": ""arx"", ""language"": ""en""}",skip,
 asana,asana-greenhouse,https://job-boards.greenhouse.io/asana,greenhouse,"{""token"": ""asana""}",skip,
 ascend-analytics,ascend-analytics-greenhouse,https://job-boards.greenhouse.io/ascendanalytics,greenhouse,"{""token"": ""ascendanalytics""}",skip,
 ascent,ascent-careers,https://ascenthealthservices.career.softgarden.de/,softgarden,"{""slug"": ""ascenthealthservices""}",json-ld,
