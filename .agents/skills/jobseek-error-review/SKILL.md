@@ -25,7 +25,9 @@ Do not spawn subagents by default. They cost extra tokens and are only useful
 when the current run has large independent evidence sets and the user
 explicitly asks for them. If subagents are used, keep them read-only and make
 the main agent responsible for dedupe, classification, redaction, and all
-GitHub write decisions.
+GitHub write decisions. Use the project custom agent
+`jobseek-error-review-researcher` (GPT-5.6 Terra, high reasoning) for each
+bounded evidence set.
 
 ## Mission
 

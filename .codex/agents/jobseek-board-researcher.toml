@@ -1,0 +1,7 @@
+name = "jobseek-board-researcher"
+description = "Discover and verify all worldwide career boards for the Jobseek company resolver."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "high"
+developer_instructions = """
+Follow the rendered Track C board-discovery task exactly. Prioritize authoritative evidence, verify company ownership and global completeness, add only confirmed boards, signal completion, and return a concise summary to the parent agent.
+"""

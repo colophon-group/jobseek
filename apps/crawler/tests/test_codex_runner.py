@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -16,6 +17,7 @@ from src.workspace.codex_runner import (
     UsageSummary,
     UsageWindow,
     _safe_env,
+    build_codex_command,
     build_codex_prompt,
     check_host_health,
     parse_codex_usage_jsonl,
@@ -99,6 +101,50 @@ def test_prompt_is_single_issue_and_does_not_pick() -> None:
     assert "Process only issue #123" in prompt
     assert "Do not run `ws task --pick`" in prompt
     assert "select another issue" in prompt
+
+
+def test_default_codex_args_pin_main_agent_model_policy() -> None:
+    config = RunnerConfig.from_env({})
+
+    assert config.codex_args == (
+        "codex",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+    )
+    assert config.codex_model == "gpt-5.6-sol"
+    assert config.codex_reasoning_effort == "high"
+    assert build_codex_command(config, "do the task") == [
+        "codex",
+        "exec",
+        "--json",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--model",
+        "gpt-5.6-sol",
+        "--config",
+        "model_reasoning_effort=high",
+        "do the task",
+    ]
+
+
+def test_project_agents_pin_role_specific_model_policy() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    expected = {
+        "jobseek-company-enricher.toml": ("gpt-5.6-terra", "medium"),
+        "jobseek-logo-selector.toml": ("gpt-5.6-luna", "medium"),
+        "jobseek-board-researcher.toml": ("gpt-5.6-terra", "high"),
+        "jobseek-config-tester.toml": ("gpt-5.6-terra", "high"),
+        "jobseek-error-review-researcher.toml": ("gpt-5.6-terra", "high"),
+        "jobseek-labeller-normalizer.toml": ("gpt-5.6-luna", "low"),
+        "jobseek-labeller-splitter.toml": ("gpt-5.6-luna", "medium"),
+        "jobseek-labeller-extractor.toml": ("gpt-5.6-terra", "high"),
+    }
+
+    for filename, (model, effort) in expected.items():
+        with (repo_root / ".codex" / "agents" / filename).open("rb") as handle:
+            config = tomllib.load(handle)
+        assert config["model"] == model
+        assert config["model_reasoning_effort"] == effort
 
 
 def test_ledger_allows_only_one_active_issue_and_slot(tmp_path: Path) -> None:

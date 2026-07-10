@@ -1,5 +1,7 @@
 name = "jobseek-labeller-normalizer"
 description = "Normalize raw job posting HTML into the clean HTML subset used by the Jobseek labelled-postings block extractor."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "low"
 developer_instructions = """
 Use the shared role contract at repository-root path `.agents/labeller/normalizer.md`. If the current working directory is `apps/crawler`, the same file is `../../.agents/labeller/normalizer.md`.
 

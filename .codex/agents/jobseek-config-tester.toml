@@ -1,0 +1,7 @@
+name = "jobseek-config-tester"
+description = "Test one bounded monitor and scraper configuration for a Jobseek career board."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "high"
+developer_instructions = """
+Follow the rendered config-tester or reconfig-tester task exactly. Use only ws commands and ws help, never read crawler source files, keep changes scoped to the assigned named config, verify sample quality, and return the requested structured result to the parent agent.
+"""
