@@ -1553,6 +1553,7 @@ euclid-power,euclid-power-greenhouse,https://job-boards.greenhouse.io/euclidpowe
 eudia,eudia-greenhouse,https://job-boards.greenhouse.io/eudia,greenhouse,"{""token"": ""eudia""}",skip,
 euronext,euronext-careers-workday,https://hrhub.wd3.myworkdayjobs.com/Euronext_Career_Page,workday,"{""company"": ""hrhub"", ""wd_instance"": ""wd3"", ""site"": ""Euronext_Career_Page""}",workday,
 euronext,euronext-careers-wttj,https://www.welcometothejungle.com/en/companies/euronext/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000, ""url_filter"": ""/jobs/"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 100}}",json-ld,
+eutelsat,eutelsat-eutelsat,https://careers.eutelsat.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.eutelsat.com/googlefeed.xml""}",skip,
 eve-legal,eve-legal-careers,https://job-boards.greenhouse.io/eve,greenhouse,"{""token"": ""eve""}",skip,
 ever,ever-greenhouse,https://job-boards.greenhouse.io/ever,greenhouse,"{""token"": ""ever""}",skip,
 everbridge,everbridge-pinpoint,https://everbridge.pinpointhq.com,pinpoint,"{""slug"": ""everbridge""}",skip,
