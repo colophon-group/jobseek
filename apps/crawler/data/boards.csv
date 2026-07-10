@@ -2440,6 +2440,7 @@ kilocode,kilocode-ashby,https://jobs.ashbyhq.com/kilocode,ashby,"{""token"": ""k
 kin,kin-ashby,https://jobs.ashbyhq.com/kin,ashby,"{""token"": ""kin""}",skip,
 kinder-s,kinder-s-greenhouse,https://job-boards.greenhouse.io/kinders,greenhouse,"{""token"": ""kinders""}",skip,
 kindred,kindred-ashby,https://jobs.ashbyhq.com/kindred,ashby,"{""token"": ""kindred""}",skip,
+kinexon,kinexon-greenhouse,https://boards.eu.greenhouse.io/kinexon,greenhouse,"{""token"": ""kinexon""}",skip,
 kinexus-group,kinexus-group-greenhouse,https://job-boards.greenhouse.io/kinexus,greenhouse,"{""token"": ""kinexus""}",skip,
 king,king-careers,https://careers.king.com/us/en/search-jobs,sitemap,"{""sitemap_url"": ""https://careers.king.com/us/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 kira,kira-ashby,https://jobs.ashbyhq.com/kira,ashby,"{""token"": ""kira""}",skip,
