@@ -4875,6 +4875,7 @@ visual-concepts,visual-concepts-greenhouse,https://job-boards.greenhouse.io/visu
 visus-one-holding-gmbh,visus-one-holding-gmbh-join,https://join.com/companies/visusone,join,"{""slug"": ""visusone""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 vitable-health,vitable-health-greenhouse,https://job-boards.greenhouse.io/vitablehealth,greenhouse,"{""token"": ""vitablehealth""}",skip,
 vitalize,vitalize-ashby,https://jobs.ashbyhq.com/vitalize,ashby,"{""token"": ""vitalize""}",skip,
+vitestro,vitestro-recruitee,https://vitestro.recruitee.com/,recruitee,"{""slug"": ""vitestro"", ""api_base"": ""https://vitestro.recruitee.com""}",skip,
 vitol,vitol-careers,https://careers.smartrecruiters.com/Vitol,smartrecruiters,"{""token"": ""Vitol""}",smartrecruiters,
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",skip,
 vivo-defence-services,vivo-defence-services-careers,https://apply-now.serco.com/VIVO,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://apply-now.serco.com/googlefeed.xml"", ""url_filter"": ""/VIVO/job/""}",skip,
