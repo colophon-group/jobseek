@@ -3393,6 +3393,7 @@ ovhcloud,ovhcloud-careers-sales,https://careers.ovhcloud.com/go/Sales/911402/,do
 oviva,oviva-pinpoint,https://oviva.pinpointhq.com,pinpoint,"{""slug"": ""oviva""}",skip,
 oxford-instruments,oxford-instruments-careers,https://jobs.oxinst.com/googlefeed.xml,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.oxinst.com/googlefeed.xml""}",skip,
 oxford-nanopore-technologies,oxford-nanopore-technologies-oracle,https://ejnh.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs,oracle_hcm,,oracle_hcm,
+oxford-quantum-circuits,oxford-quantum-circuits-workable,https://apply.workable.com/oxford-quantum-circuits-8/,workable,"{""token"": ""oxford-quantum-circuits-8""}",workable,
 oxio,oxio-ashby,https://jobs.ashbyhq.com/oxio,ashby,"{""token"": ""oxio""}",skip,
 oxyle,oxyle-careers,https://oxyle.com/careers,workable,"{""token"": ""oxyle-ag-1""}",workable,
 oyster,oyster-ashby,https://jobs.ashbyhq.com/oyster,ashby,"{""token"": ""oyster""}",skip,
