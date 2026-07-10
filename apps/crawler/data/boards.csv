@@ -259,6 +259,7 @@ alpian,alpian-ats,https://alpian.intranet.digital/external/en/jobs,api_sniffer,"
 alpine-investors,alpine-investors-careers,https://job-boards.greenhouse.io/alpineinvestors,greenhouse,"{""token"": ""alpineinvestors""}",skip,
 alpine-investors,alpine-investors-internships,https://job-boards.greenhouse.io/alpineinternships,greenhouse,"{""token"": ""alpineinternships""}",skip,
 alt,alt-greenhouse,https://job-boards.greenhouse.io/alt,greenhouse,"{""token"": ""alt""}",skip,
+alta-ares,alta-ares-ashby,https://jobs.ashbyhq.com/alta-ares,ashby,"{""token"": ""alta-ares""}",skip,
 altana,altana-greenhouse,https://job-boards.greenhouse.io/altanaai,greenhouse,"{""token"": ""altanaai""}",skip,
 alten-technology-usa,alten-technology-usa-greenhouse,https://job-boards.greenhouse.io/altentechnologyusa,greenhouse,"{""token"": ""altentechnologyusa""}",skip,
 altium,altium-greenhouse,https://job-boards.greenhouse.io/altium,greenhouse,"{""token"": ""altium""}",skip,
