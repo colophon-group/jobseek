@@ -114,6 +114,7 @@ addionics,addionics-jobmaster,https://www.jobmaster.co.il/jobs/checkhevra.asp?cs
 adf-international,adf-international-greenhouse,https://job-boards.greenhouse.io/adfinternational,greenhouse,"{""token"": ""adfinternational""}",skip,
 adfinis-ag,adfinis-ag-join,https://join.com/companies/adfinis,join,"{""slug"": ""adfinis""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 adjust,adjust-greenhouse,https://job-boards.greenhouse.io/adjustjobs,greenhouse,"{""token"": ""adjustjobs""}",skip,
+admatis,admatis-careers,https://admatis.com/career/,inline,"{""steps"": [{""tag"": ""h4"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h4""}], ""defaults"": {""locations"": [""Miskolc, Hungary""]}}",skip,
 adobe,adobe-careers,https://adobe.wd5.myworkdayjobs.com/external_experienced,workday,,workday,
 adonis,adonis-ashby,https://jobs.ashbyhq.com/adonis,ashby,"{""token"": ""adonis""}",skip,
 adswerve-inc,adswerve-inc-greenhouse,https://job-boards.greenhouse.io/adswerveinc,greenhouse,"{""token"": ""adswerveinc""}",skip,
