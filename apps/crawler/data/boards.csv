@@ -50,6 +50,7 @@ accel-club,accel-club-careers,https://careers.accelclub.com/jobs/,api_sniffer,"{
 accel-schools,accel-schools-greenhouse,https://job-boards.greenhouse.io/accelschools,greenhouse,"{""token"": ""accelschools""}",skip,
 accela,accela-greenhouse,https://job-boards.greenhouse.io/accela,greenhouse,"{""token"": ""accela""}",skip,
 acceleration-partners,acceleration-partners-greenhouse,https://job-boards.greenhouse.io/accelerationpartners,greenhouse,"{""token"": ""accelerationpartners""}",skip,
+accelercomm,accelercomm-pinpoint,https://accelercomm.pinpointhq.com/en,pinpoint,"{""slug"": ""accelercomm""}",skip,
 accenture,accenture-careers-au,https://www.accenture.com/au-en/careers/jobsearch,accenture,"{""country"": ""Australia"", ""language"": ""en"", ""site"": ""au-en""}",skip,
 accenture,accenture-careers-br,https://www.accenture.com/br-pt/careers/jobsearch,accenture,"{""country"": ""Brasil"", ""language"": ""pt"", ""site"": ""br-pt"", ""endpoint"": ""jobsearch/result""}",skip,
 accenture,accenture-careers-ca,https://www.accenture.com/ca-en/careers/jobsearch,accenture,"{""country"": ""Canada"", ""language"": ""en"", ""site"": ""ca-en""}",skip,
