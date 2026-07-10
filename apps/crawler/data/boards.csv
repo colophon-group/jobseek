@@ -175,6 +175,7 @@ airspace,airspace-greenhouse,https://job-boards.greenhouse.io/airspace,greenhous
 airtable,airtable-greenhouse,https://job-boards.greenhouse.io/airtable,greenhouse,"{""token"": ""airtable""}",skip,
 airtrunk,airtrunk-greenhouse,https://job-boards.greenhouse.io/airtrunk,greenhouse,"{""token"": ""airtrunk""}",skip,
 aisle,aisle-ashby,https://jobs.ashbyhq.com/aisle,ashby,"{""token"": ""aisle""}",skip,
+aiven,aiven-careers,https://aiven.io/careers/job,sitemap,"{""url_filter"": ""/careers/job/""}",json-ld,
 aizer-health,aizer-health-greenhouse,https://job-boards.greenhouse.io/aizerhealth,greenhouse,"{""token"": ""aizerhealth""}",skip,
 ajax,ajax-ashby,https://jobs.ashbyhq.com/ajax,ashby,"{""token"": ""ajax""}",skip,
 ajax-systems,ajax-systems-lever,https://jobs.lever.co/ajax,lever,"{""token"": ""ajax""}",skip,
