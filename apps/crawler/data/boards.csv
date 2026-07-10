@@ -264,6 +264,7 @@ altana,altana-greenhouse,https://job-boards.greenhouse.io/altanaai,greenhouse,"{
 alten-technology-usa,alten-technology-usa-greenhouse,https://job-boards.greenhouse.io/altentechnologyusa,greenhouse,"{""token"": ""altentechnologyusa""}",skip,
 altium,altium-greenhouse,https://job-boards.greenhouse.io/altium,greenhouse,"{""token"": ""altium""}",skip,
 altos-labs,altos-labs-greenhouse,https://job-boards.greenhouse.io/altoslabs,greenhouse,"{""token"": ""altoslabs""}",skip,
+altris,altris-careers,https://career.altris.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.altris.se/jobs.rss""}",skip,
 altscore,altscore-greenhouse,https://job-boards.greenhouse.io/altscore,greenhouse,"{""token"": ""altscore""}",skip,
 alu,alu-greenhouse,https://job-boards.greenhouse.io/alu,greenhouse,"{""token"": ""alu""}",skip,
 alumni-ventures,alumni-ventures-greenhouse,https://job-boards.greenhouse.io/alumniventures,greenhouse,"{""token"": ""alumniventures""}",skip,
