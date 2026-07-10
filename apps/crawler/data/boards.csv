@@ -477,6 +477,7 @@ away,away-ashby,https://jobs.ashbyhq.com/away,ashby,"{""token"": ""away""}",skip
 awin,awin-greenhouse,https://job-boards.greenhouse.io/awin,greenhouse,"{""token"": ""awin""}",skip,
 awl,awl-greenhouse,https://job-boards.greenhouse.io/allwebleads,greenhouse,"{""token"": ""allwebleads""}",skip,
 axa-switzerland,axa-switzerland-careers,https://jobs.axa.ch/?lang=en&limit=200,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 45000, ""url_filter"": ""/job-vacancies/[^/]+/[a-f0-9-]+""}",json-ld,
+axelera-ai,axelera-ai-ashby,https://jobs.ashbyhq.com/axelera,ashby,"{""token"": ""axelera""}",skip,
 axi,axi-greenhouse,https://job-boards.greenhouse.io/axicorpfinancialservicesptyltd,greenhouse,"{""token"": ""axicorpfinancialservicesptyltd""}",skip,
 axicom,axicom-greenhouse,https://job-boards.greenhouse.io/axicom,greenhouse,"{""token"": ""axicom""}",skip,
 axiom,axiom-ashby,https://jobs.ashbyhq.com/axiom,ashby,"{""token"": ""axiom""}",skip,
