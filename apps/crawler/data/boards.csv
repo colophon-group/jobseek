@@ -136,6 +136,8 @@ agent,agent-ashby,https://jobs.ashbyhq.com/agent,ashby,"{""token"": ""agent""}",
 agentur-k-hnen,agentur-k-hnen-join,https://join.com/companies/agentur-kuehnende,join,"{""slug"": ""agentur-kuehnende""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 agicap,agicap-lever,https://jobs.lever.co/agicap,lever,"{""token"": ""agicap""}",skip,
 agicap,agicap-recruitee,https://agicap.recruitee.com,recruitee,"{""token"": ""agicap""}",skip,
+agile-robots,agile-robots-europe-apac,https://agile-robots-se.jobs.personio.de/,personio,"{""slug"": ""agile-robots-se"", ""language"": ""en"", ""backfill_languages"": [""de""]}",skip,
+agile-robots,agile-robots-us,https://apply.workable.com/agile-robots/,workable,"{""token"": ""agile-robots""}",workable,
 agilisys,agilisys-greenhouse,https://job-boards.greenhouse.io/agilisys,greenhouse,"{""token"": ""agilisys""}",skip,
 agility-robotics,agility-robotics-greenhouse,https://job-boards.greenhouse.io/agilityrobotics,greenhouse,"{""token"": ""agilityrobotics""}",skip,
 agiloft,agiloft-lever,https://jobs.lever.co/agiloft,lever,"{""token"": ""agiloft""}",skip,
