@@ -1252,6 +1252,7 @@ crusoe,crusoe-careers,https://jobs.ashbyhq.com/Crusoe,ashby,"{""token"": ""Cruso
 crux-climate,crux-climate-careers,https://jobs.ashbyhq.com/cruxclimate,ashby,"{""token"": ""cruxclimate""}",skip,
 cryptio,cryptio-ashby,https://jobs.ashbyhq.com/cryptio,ashby,"{""token"": ""cryptio""}",skip,
 crypto-com,crypto-com-lever,https://jobs.lever.co/crypto,lever,"{""token"": ""crypto""}",skip,
+cryptonext-security,cryptonext-security-workable,https://apply.workable.com/cryptonext-security/,workable,"{""token"": ""cryptonext-security""}",workable,
 csem,csem-main,https://www.csem.ch/en/jobs/,dom,"{""render"": true, ""url_filter"": ""/en/jobs/[0-9]+""}",json-ld,
 csob,csob-cz-almacareer,https://csob.jobs.cz/,almacareer,{},skip,
 ctc-lateral-website-linkedin,ctc-lateral-website-linkedin-greenhouse,https://job-boards.greenhouse.io/chicagotrading,greenhouse,"{""token"": ""chicagotrading""}",skip,
