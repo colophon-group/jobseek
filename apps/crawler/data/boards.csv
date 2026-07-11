@@ -886,6 +886,7 @@ calendly,calendly-recruitee,https://calendly.recruitee.com,recruitee,"{""token""
 california-academy-of-sciences,california-academy-of-sciences-greenhouse,https://job-boards.greenhouse.io/californiaacademyofsciences,greenhouse,"{""token"": ""californiaacademyofsciences""}",skip,
 california-autism-center,california-autism-center-greenhouse,https://job-boards.greenhouse.io/californiaautismcenter,greenhouse,"{""token"": ""californiaautismcenter""}",skip,
 callista,callista-recruitee,https://callista.recruitee.com,recruitee,"{""company"": ""callista""}",skip,
+callsign,callsign-workable-global,https://apply.workable.com/callsign/,workable,"{""token"": ""callsign""}",workable,
 calm-com,calm-com-greenhouse,https://job-boards.greenhouse.io/calm,greenhouse,"{""token"": ""calm""}",skip,
 calyxo,calyxo-greenhouse,https://job-boards.greenhouse.io/calyxo,greenhouse,"{""token"": ""calyxo""}",skip,
 camber,camber-careers,https://jobs.ashbyhq.com/camber,ashby,"{""board_token"": ""camber""}",skip,
