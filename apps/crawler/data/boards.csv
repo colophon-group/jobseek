@@ -1628,6 +1628,7 @@ enigma,enigma-greenhouse,https://job-boards.greenhouse.io/enigmaio,greenhouse,"{
 ennoble-care,ennoble-care-greenhouse,https://job-boards.greenhouse.io/ennoblecare,greenhouse,"{""token"": ""ennoblecare""}",skip,
 enova-international,enova-international-greenhouse,https://job-boards.greenhouse.io/enova,greenhouse,"{""token"": ""enova""}",skip,
 enpal,enpal-ashby,https://jobs.ashbyhq.com/enpal,ashby,,skip,
+enpulsion,enpulsion-careers,https://enpulsion.jobs.personio.com/,personio,"{""slug"": ""enpulsion"", ""language"": ""en""}",skip,
 ens-dynamics,ens-dynamics-careers,https://www.ensdynamics.ch/careers,dom,"{""render"": true, ""url_filter"": ""ensdynamics\\.ch/(computervision|flightdynamics|launcher)""}",dom,"{""render"": true, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.+?)\\s*\\|""}, {""text"": ""LOCATION"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""EMPLOYMENT TYPE"", ""offset"": 1, ""field"": ""employment_type"", ""regex"": ""(?i)(internship|full.time|part.time|contract)"", ""optional"": true}, {""text"": ""We are seeking"", ""from"": 0, ""field"": ""description"", ""stop"": ""Apply"", ""html"": true}]}"
 ensco-inc,ensco-inc-greenhouse,https://job-boards.greenhouse.io/ensco,greenhouse,"{""token"": ""ensco""}",skip,
 ensemble,ensemble-greenhouse,https://job-boards.greenhouse.io/ensemble,greenhouse,"{""token"": ""ensemble""}",skip,
