@@ -1290,6 +1290,7 @@ cylib,cylib-personio,https://cylib-gmbh.jobs.personio.com/,personio,"{""slug"": 
 cylus,cylus-greenhouse,https://job-boards.greenhouse.io/cyluscybersecurity,greenhouse,"{""token"": ""cyluscybersecurity""}",skip,
 cymulate,cymulate-careers,https://job-boards.eu.greenhouse.io/cymulate,greenhouse,"{""token"": ""cymulate""}",skip,
 cyngn,cyngn-careers,https://jobs.lever.co/cyngn,lever,"{""token"": ""cyngn""}",skip,
+cyolo,cyolo-careers,https://cyolo.io/careers,api_sniffer,"{""api_url"": ""https://cyolo.io/api/v1/comeet/positions"", ""method"": ""GET"", ""json_path"": ""[].positions[]"", ""url_template"": ""https://cyolo.io/open-positions/{uid}"", ""fields"": {""title"": ""name"", ""locations"": ""location.name"", ""job_location_type"": {""path"": ""location.is_remote"", ""map"": {""False"": ""onsite"", ""True"": ""remote""}}, ""employment_type"": ""employment_type"", ""metadata.team"": ""department""}}",dom,"{""render"": true, ""wait"": ""networkidle"", ""enrich"": [""description""], ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Apply"", ""html"": true}]}"
 cyware,cyware-greenhouse,https://job-boards.greenhouse.io/cyware,greenhouse,"{""token"": ""cyware""}",skip,
 d-matrix,d-matrix-ashby,https://jobs.ashbyhq.com/d-matrix,ashby,"{""token"": ""d-matrix""}",skip,
 d2-technical-services,d2-technical-services-greenhouse,https://job-boards.greenhouse.io/d2consulting,greenhouse,"{""token"": ""d2consulting""}",skip,
