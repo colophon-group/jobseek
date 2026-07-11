@@ -1717,6 +1717,7 @@ exeger,exeger-careers,https://www.exeger.com/join-us/job-openings/,dom,"{""rende
 exein,exein-greenhouse,https://job-boards.eu.greenhouse.io/exeinspa,greenhouse,"{""token"": ""exeinspa""}",skip,
 exodus-movement-inc,exodus-movement-inc-greenhouse,https://job-boards.greenhouse.io/exodus54,greenhouse,"{""token"": ""exodus54""}",skip,
 exotec,exotec-careers,https://careers.exotec.com/,workable,"{""token"": ""exotec""}",workable,
+exotrail,exotrail-careers,https://careers.exotrail.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.exotrail.com/jobs.rss""}",skip,
 exowatt,exowatt-careers,https://jobs.lever.co/exowatt,lever,"{""token"": ""exowatt""}",skip,
 exp,exp-pinpoint,https://exp.pinpointhq.com,pinpoint,"{""slug"": ""exp""}",skip,
 expedia-group,expedia-group-careers,https://expedia.wd108.myworkdayjobs.com/search,workday,"{""company"": ""expedia"", ""wd_instance"": ""wd108"", ""site"": ""search""}",workday,
