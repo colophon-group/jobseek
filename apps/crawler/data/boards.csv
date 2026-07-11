@@ -1379,6 +1379,7 @@ dentsu,dentsu-careers-hrmos-jp-intl,https://hrmos.co/pages/daj-group/jobs,dom,,j
 dentsu,dentsu-careers-sr-merkle,https://careers.smartrecruiters.com/MerkleInc,smartrecruiters,"{""token"": ""MerkleInc""}",smartrecruiters,
 dentsu,dentsu-careers-sr-my,https://careers.smartrecruiters.com/DentsuAegisNetwork3,smartrecruiters,"{""token"": ""DentsuAegisNetwork3""}",smartrecruiters,
 dentsu,dentsu-careers-workday,https://dentsuaegis.wd3.myworkdayjobs.com/DAN_GLOBAL,workday,"{""company"": ""dentsuaegis"", ""wd_instance"": ""wd3"", ""site"": ""DAN_GLOBAL""}",workday,"{""proxy"": true}"
+depict,depict-careers,https://careers.depict.ai/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.depict.ai/jobs.rss""}",skip,
 depoly,depoly-careers,https://depoly.jobs.personio.com,personio,"{""slug"": ""depoly"", ""language"": ""en""}",skip,
 dept,dept-greenhouse,https://job-boards.greenhouse.io/dept,greenhouse,"{""token"": ""dept""}",skip,
 descript,descript-greenhouse,https://job-boards.greenhouse.io/descript,greenhouse,"{""token"": ""descript""}",skip,
