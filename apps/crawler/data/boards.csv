@@ -1434,6 +1434,7 @@ dmg-events,dmg-events-greenhouse,https://job-boards.greenhouse.io/dmgevents,gree
 dna-script,dna-script-greenhouse,https://job-boards.eu.greenhouse.io/dnascript,greenhouse,"{""token"": ""dnascript""}",skip,
 doc,doc-greenhouse,https://job-boards.greenhouse.io/danieloconnellssons,greenhouse,"{""token"": ""danieloconnellssons""}",skip,
 docker,docker-ashby,https://jobs.ashbyhq.com/docker,ashby,"{""token"": ""docker""}",skip,
+doconomy,doconomy-careers,https://doconomy.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://doconomy.teamtailor.com/jobs.rss""}",skip,
 docplanner,docplanner-careers,https://jobs.ashbyhq.com/docplanner,ashby,"{""token"": ""docplanner""}",skip,
 docplanner,docplanner-careers-doctoralia-brasil,https://jobs.ashbyhq.com/doctoralia-brasil,ashby,"{""token"": ""doctoralia-brasil""}",skip,
 docplanner,docplanner-careers-doctoralia-colombia,https://jobs.ashbyhq.com/doctoralia-colombia,ashby,"{""token"": ""doctoralia-colombia""}",skip,
