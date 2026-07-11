@@ -641,6 +641,7 @@ beyondtrust,beyondtrust-greenhouse,https://job-boards.greenhouse.io/beyondtrust,
 bge-inc,bge-inc-greenhouse,https://job-boards.greenhouse.io/bgeinc,greenhouse,"{""token"": ""bgeinc""}",skip,
 bhhc,bhhc-pinpoint,https://bhhc.pinpointhq.com,pinpoint,"{""slug"": ""bhhc""}",skip,
 bhp,bhp-careers,https://careers.bhp.com/search/,rss,"{""preset"": ""successfactors"", ""url"": ""https://careers.bhp.com/googlefeed.xml""}",skip,
+bicycle-therapeutics,bicycle-therapeutics-smartrecruiters,https://careers.smartrecruiters.com/BicycleTherapeutics/careers-page,smartrecruiters,"{""token"": ""BicycleTherapeutics""}",smartrecruiters,
 big-d1-gmbh,big-d1-gmbh-join,https://join.com/companies/goldinside-aestheticsde,join,"{""slug"": ""goldinside-aestheticsde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 bighat-biosciences,bighat-biosciences-careers,https://bighatbiosciences.pinpointhq.com/,pinpoint,"{""slug"": ""bighatbiosciences""}",skip,
 bigid,bigid-greenhouse,https://job-boards.greenhouse.io/bigid,greenhouse,"{""token"": ""bigid""}",skip,
