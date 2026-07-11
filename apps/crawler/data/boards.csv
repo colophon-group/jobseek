@@ -879,6 +879,7 @@ caddell-construction,caddell-construction-greenhouse,https://job-boards.greenhou
 cadence-solutions,cadence-solutions-greenhouse,https://job-boards.greenhouse.io/cadencesolutions,greenhouse,"{""token"": ""cadencesolutions""}",skip,
 cadwell,cadwell-greenhouse,https://job-boards.greenhouse.io/cadwell,greenhouse,"{""token"": ""cadwell""}",skip,
 caffeine-ai,caffeine-ai-careers,https://jobs.gem.com/caffeine-ai,gem,"{""token"": ""caffeine-ai""}",skip,
+cailabs,cailabs-careers,https://rejoignez.cailabs.com/en/cailabs/offres/,sitemap,"{""sitemap_url"": ""https://rejoignez.cailabs.com/sitemap.xml""}",json-ld,
 cais,cais-greenhouse,https://job-boards.greenhouse.io/cais,greenhouse,"{""token"": ""cais""}",skip,
 calendly,calendly-greenhouse,https://job-boards.greenhouse.io/calendly,greenhouse,"{""token"": ""calendly""}",skip,
 calendly,calendly-recruitee,https://calendly.recruitee.com,recruitee,"{""token"": ""calendly""}",skip,
