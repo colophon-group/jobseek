@@ -1733,6 +1733,7 @@ ey,ey-careers,https://careers.ey.com/ey/search/,rss,"{""preset"": ""successfacto
 ey,ey-careers-students,https://eyglobal.yello.co/job_boards/c1riT--B2O-KySgYWsZO1Q?locale=en,dom,"{""url_filter"": ""/jobs/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h3"", ""field"": ""description"", ""html"": true, ""stop"": ""Service Line""}, {""text"": ""Country/Region"", ""field"": ""locations"", ""from"": 0, ""regex"": ""Country/Region\\s+(.+)""}]}"
 ey,ey-cz-almacareer,https://ey.jobs.cz/,almacareer,{},skip,
 ey,ey-recruitee,https://ey.recruitee.com,recruitee,"{""token"": ""ey""}",skip,
+eye-security,eye-security-ashby,https://jobs.ashbyhq.com/eye-security,ashby,"{""token"": ""eye-security""}",skip,
 ezcater-inc,ezcater-inc-greenhouse,https://job-boards.greenhouse.io/ezcaterinc,greenhouse,"{""token"": ""ezcaterinc""}",skip,
 f-e-gmbh,f-e-gmbh-join,https://join.com/companies/fh-kiel-gmbhde,join,"{""slug"": ""fh-kiel-gmbhde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 f-schumacher-co,f-schumacher-co-greenhouse,https://job-boards.greenhouse.io/fschumacherco,greenhouse,"{""token"": ""fschumacherco""}",skip,
