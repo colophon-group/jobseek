@@ -720,6 +720,7 @@ blueprint-test-prep-tutors-instructors,blueprint-test-prep-tutors-instructors-gr
 bluesky-telepsych,bluesky-telepsych-greenhouse,https://job-boards.greenhouse.io/blueskytelepsych,greenhouse,"{""token"": ""blueskytelepsych""}",skip,
 bluevine-india,bluevine-india-greenhouse,https://job-boards.greenhouse.io/bluevineindia,greenhouse,"{""token"": ""bluevineindia""}",skip,
 bluevine-us,bluevine-us-greenhouse,https://job-boards.greenhouse.io/bluevineus,greenhouse,"{""token"": ""bluevineus""}",skip,
+bluevoyant,bluevoyant-jazzhr,https://bluevoyant.applytojob.com/apply,dom,"{""url_filter"": ""/apply/[^/]+/[^/]+/?$""}",json-ld,
 blushark-digital,blushark-digital-greenhouse,https://job-boards.greenhouse.io/blusharkdigital,greenhouse,"{""token"": ""blusharkdigital""}",skip,
 blytheco,blytheco-greenhouse,https://job-boards.greenhouse.io/blytheco,greenhouse,"{""token"": ""blytheco""}",skip,
 bmw,bmw-careers-sf,https://jobs.bmwgroup.com/search,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.bmwgroup.com/googlefeed.xml""}",skip,
