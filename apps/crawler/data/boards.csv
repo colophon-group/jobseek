@@ -1615,6 +1615,7 @@ endurosat,endurosat-careers,https://endurosat.applytojob.com/apply,dom,"{""url_f
 energy-dome,energy-dome-careers,https://energydome.com/careers/,inline,"{""steps"": [{""tag"": ""h3"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h3""}], ""defaults"": {""employment_type"": ""full_time""}}",skip,
 energy-exemplar,energy-exemplar-greenhouse,https://job-boards.greenhouse.io/energyexemplarllc,greenhouse,"{""token"": ""energyexemplarllc""}",skip,
 energy-solutions-usa,energy-solutions-usa-greenhouse,https://job-boards.greenhouse.io/energysolutions,greenhouse,"{""token"": ""energysolutions""}",skip,
+energy-vault,energy-vault-careers,https://jobs.lever.co/EnergyVault,lever,"{""token"": ""EnergyVault""}",skip,
 energyhub,energyhub-greenhouse,https://job-boards.greenhouse.io/energyhub,greenhouse,"{""token"": ""energyhub""}",skip,
 energytec-ai,energytec-ai-greenhouse,https://job-boards.greenhouse.io/etec,greenhouse,"{""token"": ""etec""}",skip,
 engelhart,engelhart-greenhouse,https://job-boards.greenhouse.io/engelhart,greenhouse,"{""token"": ""engelhart""}",skip,
