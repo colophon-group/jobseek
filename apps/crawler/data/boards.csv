@@ -1721,6 +1721,7 @@ exotrail,exotrail-careers,https://careers.exotrail.com/jobs,rss,"{""preset"": ""
 exowatt,exowatt-careers,https://jobs.lever.co/exowatt,lever,"{""token"": ""exowatt""}",skip,
 exp,exp-pinpoint,https://exp.pinpointhq.com,pinpoint,"{""slug"": ""exp""}",skip,
 expedia-group,expedia-group-careers,https://expedia.wd108.myworkdayjobs.com/search,workday,"{""company"": ""expedia"", ""wd_instance"": ""wd108"", ""site"": ""search""}",workday,
+explorium,explorium-careers,https://www.explorium.ai/careers/,sitemap,"{""sitemap_url"": ""https://www.explorium.ai/sitemap.xml"", ""url_filter"": ""/blog/position/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h1"", ""from"": 0, ""field"": ""description"", ""stop"": ""SHARE"", ""html"": true}]}"
 expressvpn,expressvpn-greenhouse,https://job-boards.greenhouse.io/expressvpn,greenhouse,"{""token"": ""expressvpn""}",skip,
 extend,extend-ashby,https://jobs.ashbyhq.com/extend,ashby,"{""token"": ""extend""}",skip,
 extend,extend-greenhouse,https://job-boards.greenhouse.io/extend,greenhouse,"{""token"": ""extend""}",skip,
