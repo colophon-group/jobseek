@@ -1077,6 +1077,7 @@ cloudbeds,cloudbeds-greenhouse,https://job-boards.greenhouse.io/cloudbeds,greenh
 cloudflare,cloudflare-careers,https://boards.greenhouse.io/cloudflare,greenhouse,"{""token"": ""cloudflare""}",skip,
 cloudkitchens,cloudkitchens-greenhouse,https://job-boards.greenhouse.io/css,greenhouse,"{""token"": ""css""}",skip,
 cloudsek,cloudsek-greenhouse,https://job-boards.greenhouse.io/cloudsek,greenhouse,"{""token"": ""cloudsek""}",skip,
+cloudsmith,cloudsmith-careers,https://careers.cloudsmith.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.cloudsmith.com/jobs.rss""}",skip,
 cloudtrucks,cloudtrucks-ashby,https://jobs.ashbyhq.com/cloudtrucks,ashby,"{""token"": ""cloudtrucks""}",skip,
 clove,clove-ashby,https://jobs.ashbyhq.com/clove,ashby,"{""token"": ""clove""}",skip,
 clover-health,clover-health-greenhouse,https://job-boards.greenhouse.io/cloverhealth,greenhouse,"{""token"": ""cloverhealth""}",skip,
