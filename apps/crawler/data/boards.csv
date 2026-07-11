@@ -1354,6 +1354,7 @@ deepset,deepset-careers,https://deepset.jobs.personio.de/,personio,"{""slug"": "
 defense-unicorns,defense-unicorns-greenhouse,https://job-boards.greenhouse.io/defenseunicorns,greenhouse,"{""token"": ""defenseunicorns""}",skip,
 definitive-healthcare-us,definitive-healthcare-us-greenhouse,https://job-boards.greenhouse.io/definitivehc,greenhouse,"{""token"": ""definitivehc""}",skip,
 degreed,degreed-greenhouse,https://job-boards.greenhouse.io/degreed,greenhouse,"{""token"": ""degreed""}",skip,
+delair,delair-careers,https://delair.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://delair.teamtailor.com/jobs.rss""}",skip,
 delinea,delinea-ashby,https://jobs.ashbyhq.com/delinea,ashby,"{""token"": ""delinea""}",skip,
 deliveroo,deliveroo-careers,https://jobs.ashbyhq.com/deliveroo,ashby,"{""token"": ""deliveroo""}",skip,
 delivery-associates,delivery-associates-greenhouse,https://job-boards.greenhouse.io/deliveryassociates,greenhouse,"{""token"": ""deliveryassociates""}",skip,
