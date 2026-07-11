@@ -722,6 +722,7 @@ bluevine-india,bluevine-india-greenhouse,https://job-boards.greenhouse.io/bluevi
 bluevine-us,bluevine-us-greenhouse,https://job-boards.greenhouse.io/bluevineus,greenhouse,"{""token"": ""bluevineus""}",skip,
 bluevoyant,bluevoyant-jazzhr,https://bluevoyant.applytojob.com/apply,dom,"{""url_filter"": ""/apply/[^/]+/[^/]+/?$""}",json-ld,
 blushark-digital,blushark-digital-greenhouse,https://job-boards.greenhouse.io/blusharkdigital,greenhouse,"{""token"": ""blusharkdigital""}",skip,
+blykalla,blykalla-main,https://careers.blykalla.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.blykalla.com/jobs.rss""}",skip,
 blytheco,blytheco-greenhouse,https://job-boards.greenhouse.io/blytheco,greenhouse,"{""token"": ""blytheco""}",skip,
 bmw,bmw-careers-sf,https://jobs.bmwgroup.com/search,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.bmwgroup.com/googlefeed.xml""}",skip,
 bmw,bmw-cz-almacareer,https://bmw.jobs.cz/,almacareer,{},skip,
