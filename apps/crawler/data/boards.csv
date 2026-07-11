@@ -1066,6 +1066,7 @@ clickup,clickup-ashby,https://jobs.ashbyhq.com/clickup,ashby,"{""token"": ""clic
 clifford-chance,clifford-chance-careers,https://jobs.cliffordchance.com/jobs,sitemap,"{""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 climate-finance-solutions,climate-finance-solutions-greenhouse,https://job-boards.greenhouse.io/climatefinancesolutions,greenhouse,"{""token"": ""climatefinancesolutions""}",skip,
 climate-x,climate-x-greenhouse,https://job-boards.greenhouse.io/climatex,greenhouse,"{""token"": ""climatex""}",skip,
+climateview,climateview-careers,https://www.climateview.global/en/career,dom,"{""render"": false, ""url_filter"": ""/en/career/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Stockholm"", ""field"": ""locations"", ""from"": 0, ""regex"": ""(Stockholm(?:, Sweden)?)""}, {""tag"": ""h1"", ""field"": ""description"", ""from"": 0, ""stop"": ""Apply"", ""html"": true}]}"
 climeworks,climeworks-main,https://climeworks.recruitee.com/,recruitee,"{""slug"": ""climeworks"", ""api_base"": ""https://climeworks.recruitee.com""}",skip,
 clinchoice,clinchoice-greenhouse,https://job-boards.greenhouse.io/clinchoice,greenhouse,"{""token"": ""clinchoice""}",skip,
 close,close-ashby,https://jobs.ashbyhq.com/close,ashby,"{""token"": ""close""}",skip,
