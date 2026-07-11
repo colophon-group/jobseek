@@ -1423,6 +1423,7 @@ disco,disco-greenhouse,https://job-boards.greenhouse.io/disco,greenhouse,"{""tok
 discord,discord-greenhouse,https://job-boards.greenhouse.io/discord,greenhouse,"{""token"": ""discord""}",skip,
 disney,disney-careers,https://disney.wd5.myworkdayjobs.com/disneycareer,workday,"{""company"": ""disney"", ""wd_instance"": ""wd5"", ""site"": ""disneycareer""}",json-ld,
 dispatch,dispatch-ashby,https://jobs.ashbyhq.com/dispatch,ashby,"{""token"": ""dispatch""}",skip,
+disruptive-industries,disruptive-industries-teamtailor,https://disruptiveindustries.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://disruptiveindustries.teamtailor.com/jobs.rss""}",skip,
 distantjob,distantjob-greenhouse,https://job-boards.greenhouse.io/distantjob,greenhouse,"{""token"": ""distantjob""}",skip,
 divergent,divergent-greenhouse,https://job-boards.greenhouse.io/divergent,greenhouse,"{""token"": ""divergent""}",skip,
 dkatalis,dkatalis-greenhouse,https://job-boards.greenhouse.io/dkatalislabs,greenhouse,"{""token"": ""dkatalislabs""}",skip,
