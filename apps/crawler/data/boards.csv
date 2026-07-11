@@ -1305,6 +1305,7 @@ daedalean,daedalean-careers,https://jobs.lever.co/daedalean,lever,"{""token"": "
 dagster-labs,dagster-labs-greenhouse,https://job-boards.greenhouse.io/dagsterlabs,greenhouse,"{""token"": ""dagsterlabs""}",skip,
 dailymotion,dailymotion-careers,https://careers.smartrecruiters.com/Dailymotion,smartrecruiters,"{""token"": ""Dailymotion""}",smartrecruiters,
 dandelion,dandelion-ashby,https://jobs.ashbyhq.com/dandelion,ashby,"{""token"": ""dandelion""}",skip,
+dares,dares-careers,https://dares.tech/work-with-us/,inline,"{""steps"": [{""text"": ""OPEN POSITIONS"", ""offset"": 4, ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Please, send your CV""}], ""defaults"": {""locations"": [""Castelldefels, Barcelona, Spain""], ""employment_type"": ""full_time"", ""job_location_type"": ""hybrid""}}",skip,
 dark-wolf-solutions,dark-wolf-solutions-greenhouse,https://job-boards.greenhouse.io/darkwolfsolutions,greenhouse,"{""token"": ""darkwolfsolutions""}",skip,
 darktrace,darktrace-careers,https://darktrace.wd3.myworkdayjobs.com/DarktaceExternal,workday,"{""company"": ""darktrace"", ""wd_instance"": ""wd3"", ""site"": ""DarktaceExternal""}",workday,
 dash0,dash0-careers,https://jobs.ashbyhq.com/dash0,ashby,"{""token"": ""dash0""}",skip,
