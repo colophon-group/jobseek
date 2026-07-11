@@ -998,6 +998,7 @@ checkout-com,checkout-com-careers,https://checkout.wd3.myworkdayjobs.com/Checkou
 checkr,checkr-greenhouse,https://job-boards.greenhouse.io/checkr,greenhouse,"{""token"": ""checkr""}",skip,
 checkr-chile,checkr-chile-greenhouse,https://job-boards.greenhouse.io/chile,greenhouse,"{""token"": ""chile""}",skip,
 chenmoore,chenmoore-greenhouse,https://job-boards.greenhouse.io/chenmoore,greenhouse,"{""token"": ""chenmoore""}",skip,
+cheplapharm,cheplapharm-careers,https://karriere.cheplapharm.com/,dom,"{""render"": true, ""url_filter"": ""-j[0-9]+\\.html$""}",json-ld,
 cherry-ventures,cherry-ventures-greenhouse,https://job-boards.greenhouse.io/cherryventures,greenhouse,"{""token"": ""cherryventures""}",skip,
 chess-com,chess-com-careers,https://ats.rippling.com/chess/jobs,rippling,"{""slug"": ""chess""}",rippling,
 chestnut,chestnut-ashby,https://jobs.ashbyhq.com/chestnut,ashby,"{""token"": ""chestnut""}",skip,
