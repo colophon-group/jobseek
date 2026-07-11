@@ -1228,6 +1228,7 @@ craftdocs,craftdocs-ashby,https://jobs.ashbyhq.com/craftdocs,ashby,"{""token"": 
 cranial-technologies,cranial-technologies-greenhouse,https://job-boards.greenhouse.io/cranialtechnologies,greenhouse,"{""token"": ""cranialtechnologies""}",skip,
 cravath,cravath-careers,https://careers-cravath.icims.com/jobs/search,dom,,dom,"{""steps"": [{""tag"": ""title"", ""field"": ""locations"", ""regex"": "" in (.+?) \\|""}, {""tag"": ""h1"", ""attr"": ""class=iCIMS_Header"", ""field"": ""title""}, {""tag"": ""h2"", ""text"": ""OVERVIEW"", ""field"": ""description"", ""stop"": ""Apply for this job"", ""html"": true}]}"
 createch-engineering-gmbh,createch-engineering-gmbh-join,https://join.com/companies/createchgmbh,join,"{""slug"": ""createchgmbh""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+creative-fabrica,creative-fabrica-greenhouse,https://job-boards.eu.greenhouse.io/creativefabrica,greenhouse,"{""token"": ""creativefabrica""}",skip,
 creativex,creativex-greenhouse,https://job-boards.greenhouse.io/creativex,greenhouse,"{""token"": ""creativex""}",skip,
 cred,cred-lever,https://jobs.lever.co/cred,lever,"{""token"": ""cred""}",skip,
 credible,credible-greenhouse,https://job-boards.greenhouse.io/credible,greenhouse,"{""token"": ""credible""}",skip,
