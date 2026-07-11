@@ -1431,6 +1431,7 @@ dkatalis,dkatalis-greenhouse,https://job-boards.greenhouse.io/dkatalislabs,green
 dlh,dlh-greenhouse,https://job-boards.greenhouse.io/dlhcorporation,greenhouse,"{""token"": ""dlhcorporation""}",skip,
 dlr-group,dlr-group-greenhouse,https://job-boards.greenhouse.io/dlrgroup,greenhouse,"{""token"": ""dlrgroup""}",skip,
 dmg-events,dmg-events-greenhouse,https://job-boards.greenhouse.io/dmgevents,greenhouse,"{""token"": ""dmgevents""}",skip,
+dna-script,dna-script-greenhouse,https://job-boards.eu.greenhouse.io/dnascript,greenhouse,"{""token"": ""dnascript""}",skip,
 doc,doc-greenhouse,https://job-boards.greenhouse.io/danieloconnellssons,greenhouse,"{""token"": ""danieloconnellssons""}",skip,
 docker,docker-ashby,https://jobs.ashbyhq.com/docker,ashby,"{""token"": ""docker""}",skip,
 docplanner,docplanner-careers,https://jobs.ashbyhq.com/docplanner,ashby,"{""token"": ""docplanner""}",skip,
