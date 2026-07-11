@@ -1331,6 +1331,7 @@ davis-polk,davis-polk-careers-workday,https://davispolk.wd5.myworkdayjobs.com/bu
 daylight,daylight-greenhouse,https://job-boards.greenhouse.io/daylight,greenhouse,"{""token"": ""daylight""}",skip,
 daymark-health,daymark-health-greenhouse,https://job-boards.greenhouse.io/daymarkhealth,greenhouse,"{""token"": ""daymarkhealth""}",skip,
 db-e-c-o-north-america,db-e-c-o-north-america-greenhouse,https://job-boards.greenhouse.io/dbeconorthamerica,greenhouse,"{""token"": ""dbeconorthamerica""}",skip,
+dbt-capital,dbt-capital-teamtailor,https://careers.dbt.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.dbt.se/jobs.rss""}",skip,
 dbt-labs,dbt-labs-greenhouse,https://job-boards.greenhouse.io/dbtlabsinc,greenhouse,"{""token"": ""dbtlabsinc""}",skip,
 debtbook,debtbook-greenhouse,https://job-boards.greenhouse.io/debtbook,greenhouse,"{""token"": ""debtbook""}",skip,
 debut-biotech,debut-biotech-greenhouse,https://job-boards.greenhouse.io/debutbiotech25,greenhouse,"{""token"": ""debutbiotech25""}",skip,
