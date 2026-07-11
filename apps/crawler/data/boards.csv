@@ -1201,6 +1201,7 @@ coreflow,coreflow-ashby,https://jobs.ashbyhq.com/coreflow,ashby,"{""token"": ""c
 coreweave,coreweave-greenhouse,https://job-boards.greenhouse.io/coreweave,greenhouse,"{""token"": ""coreweave""}",skip,
 corintis,corintis-careers,https://careers.corintis.com/jobs,rss,"{""preset"": ""teamtailor""}",skip,
 corporate-synergies,corporate-synergies-greenhouse,https://job-boards.greenhouse.io/corpsyn,greenhouse,"{""token"": ""corpsyn""}",skip,
+corpower-ocean,corpower-ocean-careers,https://careers.corpoweroceanjobs.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.corpoweroceanjobs.com/jobs.rss""}",skip,
 correlation-one-expert-network,correlation-one-expert-network-greenhouse,https://job-boards.greenhouse.io/expertnetwork,greenhouse,"{""token"": ""expertnetwork""}",skip,
 cortex,cortex-greenhouse,https://job-boards.greenhouse.io/cortex,greenhouse,"{""token"": ""cortex""}",skip,
 cortica,cortica-greenhouse,https://job-boards.greenhouse.io/cortica,greenhouse,"{""token"": ""cortica""}",skip,
