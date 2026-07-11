@@ -970,6 +970,7 @@ centessa-pharmaceuticals-llc,centessa-pharmaceuticals-llc-greenhouse,https://job
 centralreach,centralreach-greenhouse,https://job-boards.greenhouse.io/centralreach,greenhouse,"{""token"": ""centralreach""}",skip,
 centric-software,centric-software-careers-workday,https://centricsoftware.wd501.myworkdayjobs.com/Centric,workday,"{""company"": ""centricsoftware"", ""wd_instance"": ""wd501"", ""site"": ""Centric""}",workday,
 centrum-health,centrum-health-greenhouse,https://job-boards.greenhouse.io/centrumhealth,greenhouse,"{""token"": ""centrumhealth""}",skip,
+cequr,cequr-careers,https://myceqursimplicity.com/career-opportunities/,dom,"{""render"": true, ""url_filter"": ""\\.pdf(?:$|\\?)""}",pdf,"{""title_source"": ""url""}"
 cerebras-systems,cerebras-systems-greenhouse,https://job-boards.greenhouse.io/cerebrassystems,greenhouse,"{""token"": ""cerebrassystems""}",skip,
 ceribell-inc,ceribell-inc-greenhouse,https://job-boards.greenhouse.io/ceribell,greenhouse,"{""token"": ""ceribell""}",skip,
 cern,cern-careers,https://jobs.smartrecruiters.com/CERN,smartrecruiters,"{""token"": ""CERN""}",smartrecruiters,
