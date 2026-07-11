@@ -1288,6 +1288,7 @@ cye,cye-careers,https://jobs.lever.co/CYE,lever,"{""token"": ""CYE""}",skip,
 cyera,cyera-careers,https://www.comeet.com/jobs/cyera/17.008,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""url_filter"": ""^https://www\\.comeet\\.com/jobs/cyera/17\\.008/.+""}",dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.*?) at Cyera$"", ""from"": 0}, {""tag"": ""li"", ""field"": ""metadata.department"", ""from"": 0}, {""tag"": ""li"", ""field"": ""locations""}, {""text"": ""Full-time"", ""field"": ""employment_type"", ""optional"": true, ""from"": 0}, {""tag"": ""h3"", ""text"": ""Description"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop"": ""Apply for this job"", ""from"": 0}]}"
 cylib,cylib-personio,https://cylib-gmbh.jobs.personio.com/,personio,"{""slug"": ""cylib-gmbh""}",skip,
 cylus,cylus-greenhouse,https://job-boards.greenhouse.io/cyluscybersecurity,greenhouse,"{""token"": ""cyluscybersecurity""}",skip,
+cymulate,cymulate-careers,https://job-boards.eu.greenhouse.io/cymulate,greenhouse,"{""token"": ""cymulate""}",skip,
 cyngn,cyngn-careers,https://jobs.lever.co/cyngn,lever,"{""token"": ""cyngn""}",skip,
 cyware,cyware-greenhouse,https://job-boards.greenhouse.io/cyware,greenhouse,"{""token"": ""cyware""}",skip,
 d-matrix,d-matrix-ashby,https://jobs.ashbyhq.com/d-matrix,ashby,"{""token"": ""d-matrix""}",skip,
