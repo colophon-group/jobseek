@@ -673,6 +673,7 @@ bitfinex,bitfinex-recruitee,https://bitfinex.recruitee.com,recruitee,"{""token""
 bitgo,bitgo-greenhouse,https://job-boards.greenhouse.io/bitgo,greenhouse,"{""token"": ""bitgo""}",skip,
 bitmex,bitmex-greenhouse,https://job-boards.greenhouse.io/bitmex,greenhouse,"{""token"": ""bitmex""}",skip,
 bitpanda,bitpanda-greenhouse,https://job-boards.greenhouse.io/bitpanda,greenhouse,"{""token"": ""bitpanda""}",skip,
+bits-technology,bits-technology-careers,https://careers.bits.bi/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.bits.bi/jobs.rss""}",skip,
 bitso,bitso-greenhouse,https://job-boards.greenhouse.io/bitso,greenhouse,"{""token"": ""bitso""}",skip,
 bl-mlein-ai-automation-gmbh,bl-mlein-ai-automation-gmbh-join,https://join.com/companies/danielbluemleinde,join,"{""slug"": ""danielbluemleinde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 blablacar,blablacar-lever,https://jobs.lever.co/blablacar,lever,"{""token"": ""blablacar""}",skip,
