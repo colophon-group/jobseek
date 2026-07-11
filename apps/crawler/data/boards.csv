@@ -1447,6 +1447,7 @@ docplanner,docplanner-careers-mydr,https://jobs.ashbyhq.com/mydr,ashby,"{""token
 docplanner,docplanner-careers-tuotempo,https://jobs.ashbyhq.com/tuotempo,ashby,"{""token"": ""tuotempo""}",skip,
 docplanner,docplanner-careers-znany-lekarz,https://jobs.ashbyhq.com/znanyLekarz,ashby,"{""token"": ""znanyLekarz""}",skip,
 doctolib,doctolib-greenhouse,https://job-boards.greenhouse.io/doctolib,greenhouse,"{""token"": ""doctolib""}",skip,
+doctrin,doctrin-main,https://career.doctrin.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.doctrin.se/jobs.rss""}",skip,
 doit,doit-greenhouse,https://job-boards.greenhouse.io/doitintl,greenhouse,"{""token"": ""doitintl""}",skip,
 dome-construction-corporation,dome-construction-corporation-greenhouse,https://job-boards.greenhouse.io/domeconstruction,greenhouse,"{""token"": ""domeconstruction""}",skip,
 domestika,domestika-careers,https://jobs.ashbyhq.com/domestika.org,ashby,"{""token"": ""domestika.org""}",skip,
