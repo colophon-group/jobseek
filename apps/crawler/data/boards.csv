@@ -1702,6 +1702,7 @@ everway,everway-greenhouse,https://job-boards.greenhouse.io/everway,greenhouse,"
 every-io,every-io-ashby,https://jobs.ashbyhq.com/every-io,ashby,"{""token"": ""every-io""}",skip,
 everything-to-gain,everything-to-gain-join,https://join.com/companies/sherlockto,join,"{""slug"": ""sherlockto""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 evismart,evismart-greenhouse,https://job-boards.greenhouse.io/evismart,greenhouse,"{""token"": ""evismart""}",skip,
+evolution,evolution-careers,https://careers.evolution.com/all-vacancies/,sitemap,"{""sitemap_url"": ""https://careers.evolution.com/sitemap_index.xml"", ""url_filter"": ""^https://careers\\.evolution\\.com/job/[0-9]+/?$""}",json-ld,"{""timeout"": 30}"
 evolutionary-scale,evolutionary-scale-greenhouse,https://job-boards.greenhouse.io/evolutionaryscale,greenhouse,"{""token"": ""evolutionaryscale""}",skip,
 evolutioniq,evolutioniq-greenhouse,https://job-boards.greenhouse.io/evolutioniq,greenhouse,"{""token"": ""evolutioniq""}",skip,
 evolve,evolve-ashby,https://jobs.ashbyhq.com/evolve,ashby,"{""token"": ""evolve""}",skip,
