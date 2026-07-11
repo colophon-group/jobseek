@@ -1653,6 +1653,7 @@ episode-six-us,episode-six-us-greenhouse,https://job-boards.greenhouse.io/episod
 eqt-corporation,eqt-corporation-greenhouse,https://job-boards.greenhouse.io/eqtcorporation,greenhouse,"{""token"": ""eqtcorporation""}",skip,
 eqt-group,eqt-group-greenhouse,https://job-boards.greenhouse.io/eqtpartners,greenhouse,"{""token"": ""eqtpartners""}",skip,
 equal-experts,equal-experts-greenhouse,https://job-boards.greenhouse.io/equalexperts,greenhouse,"{""token"": ""equalexperts""}",skip,
+equal1,equal1-ashby,https://jobs.ashbyhq.com/equal1,ashby,"{""token"": ""equal1""}",skip,
 eqvilent,eqvilent-greenhouse,https://job-boards.greenhouse.io/eqvilentjobs,greenhouse,"{""token"": ""eqvilentjobs""}",skip,
 ergon,ergon-careers,https://www.ergon.ch/en/careers/jobs,dom,,dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""field"": ""employment_type""}, {""tag"": ""li""}, {""tag"": ""li"", ""field"": ""locations""}, {""text"": ""Jetzt bewerben""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Noch Fragen"", ""html"": true}]}"
 ergon,ergon-careers-de,https://www.ergon.ch/de/karriere/jobs,dom,,dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""field"": ""employment_type""}, {""tag"": ""li""}, {""tag"": ""li"", ""field"": ""locations""}, {""text"": ""Jetzt bewerben""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Noch Fragen"", ""html"": true}]}"
