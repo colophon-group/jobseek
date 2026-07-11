@@ -1550,6 +1550,7 @@ effectual,effectual-greenhouse,https://job-boards.greenhouse.io/effectual,greenh
 efficient-computer,efficient-computer-greenhouse,https://job-boards.greenhouse.io/efficientcomputer,greenhouse,"{""token"": ""efficientcomputer""}",skip,
 efg-international,efg-international-careers,https://fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs,oracle_hcm,"{""host"": ""fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_1001""}",oracle_hcm,"{""host"": ""fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_1001"", ""enrich"": [""description""]}"
 egc-energie-und-geb-udetechnik-gmbh,egc-energie-und-geb-udetechnik-gmbh-join,https://join.com/companies/egc-fmde,join,"{""slug"": ""egc-fmde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+egym,egym-personio,https://egym.jobs.personio.com/,personio,"{""slug"": ""egym""}",skip,
 eigen-labs,eigen-labs-careers,https://jobs.ashbyhq.com/eigen-labs,ashby,"{""token"": ""eigen-labs""}",skip,
 eikon-therapeutics,eikon-therapeutics-greenhouse,https://job-boards.greenhouse.io/eikontherapeutics,greenhouse,"{""token"": ""eikontherapeutics""}",skip,
 einride,einride-global,https://careers.einride.tech/,jobylon,"{""company_id"": ""3143""}",json-ld,"{""enrich"": [""description""]}"
