@@ -1745,6 +1745,7 @@ factor,factor-lever,https://jobs.lever.co/factor,lever,"{""token"": ""factor""}"
 factored,factored-greenhouse,https://job-boards.greenhouse.io/factored,greenhouse,"{""token"": ""factored""}",skip,
 factorial,factorial-careers,https://careers.factorialhr.com,sitemap,"{""url_filter"": ""job_posting""}",json-ld,
 factorial-energy,factorial-energy-greenhouse,https://job-boards.greenhouse.io/factorialenergy,greenhouse,"{""token"": ""factorialenergy""}",skip,
+factris,factris-careers,https://www.factris.com/en/career/,inline,"{""render"": false, ""steps"": [{""text"": ""Operations Specialist"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h2""}, {""text"": ""Schiedam"", ""field"": ""location"", ""regex"": ""(Schiedam)"", ""optional"": true, ""from"": 0}], ""defaults"": {""employment_type"": ""full_time""}}",skip,
 fae-beauty,fae-beauty-join,https://join.com/companies/faebeautyin,join,"{""slug"": ""faebeautyin""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 faircom-new-york,faircom-new-york-greenhouse,https://job-boards.greenhouse.io/faircomny,greenhouse,"{""token"": ""faircomny""}",skip,
 faire,faire-greenhouse,https://job-boards.greenhouse.io/faire,greenhouse,"{""token"": ""faire""}",skip,
