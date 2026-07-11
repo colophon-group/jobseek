@@ -1051,6 +1051,7 @@ classpass,classpass-greenhouse,https://job-boards.greenhouse.io/classpass,greenh
 clay,clay-recruitee,https://clay.recruitee.com,recruitee,"{""token"": ""clay""}",skip,
 clear-corporate,clear-corporate-greenhouse,https://job-boards.greenhouse.io/clear,greenhouse,"{""token"": ""clear""}",skip,
 clear-street,clear-street-greenhouse,https://job-boards.greenhouse.io/clearstreet,greenhouse,"{""token"": ""clearstreet""}",skip,
+clearbank,clearbank-careers,https://jobs.ashbyhq.com/clearbank,ashby,"{""token"": ""clearbank""}",skip,
 clearscore-technology-limited,clearscore-technology-limited-greenhouse,https://job-boards.greenhouse.io/clearscoretechnologylimited,greenhouse,"{""token"": ""clearscoretechnologylimited""}",skip,
 clearview-healthcare-partners,clearview-healthcare-partners-greenhouse,https://job-boards.greenhouse.io/clearviewhealthcarepartners,greenhouse,"{""token"": ""clearviewhealthcarepartners""}",skip,
 clearway-energy,clearway-energy-greenhouse,https://job-boards.greenhouse.io/clearwayjobs,greenhouse,"{""token"": ""clearwayjobs""}",skip,
