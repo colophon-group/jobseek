@@ -1398,6 +1398,7 @@ devrev,devrev-greenhouse,https://job-boards.greenhouse.io/devrev,greenhouse,"{""
 deweylearn,deweylearn-join,https://join.com/companies/deweylearnai,join,"{""slug"": ""deweylearnai""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 dexcom,dexcom-eightfold,https://dexcom.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
 dexis,dexis-greenhouse,https://job-boards.greenhouse.io/dexisconsultinggroup,greenhouse,"{""token"": ""dexisconsultinggroup""}",skip,
+dexory,dexory-greenhouse,https://job-boards.greenhouse.io/Dexory,greenhouse,"{""token"": ""dexory""}",skip,
 dexterity,dexterity-lever,https://jobs.lever.co/dexterity,lever,"{""token"": ""dexterity""}",skip,
 dhg-deutsche-h-rakustik-gmbh,dhg-deutsche-h-rakustik-gmbh-join,https://join.com/companies/deutsche-hoerakustik,join,"{""slug"": ""deutsche-hoerakustik""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 dhi-group-inc,dhi-group-inc-greenhouse,https://job-boards.greenhouse.io/dhigroupinc,greenhouse,"{""token"": ""dhigroupinc""}",skip,
