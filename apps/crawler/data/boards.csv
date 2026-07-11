@@ -773,6 +773,7 @@ brainstation,brainstation-greenhouse,https://job-boards.greenhouse.io/brainstati
 braintrust,braintrust-ashby,https://jobs.ashbyhq.com/braintrust,ashby,"{""token"": ""braintrust""}",skip,
 branch,branch-greenhouse,https://job-boards.greenhouse.io/branch,greenhouse,"{""token"": ""branch""}",skip,
 branchinsurance,branchinsurance-ashby,https://jobs.ashbyhq.com/branchinsurance,ashby,"{""token"": ""branchinsurance""}",skip,
+brand-new-day,brand-new-day-careers,https://werkenbij.brandnewday.nl/vacatures,sitemap,"{""sitemap_url"": ""https://werkenbij.brandnewday.nl/sitemap.xml"", ""url_filter"": ""/vacature/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""field"": ""locations""}, {""tag"": ""h1"", ""field"": ""description"", ""stop"": ""Wat gaat er gebeuren?"", ""html"": true}], ""render"": false}"
 brandtech,brandtech-greenhouse,https://job-boards.greenhouse.io/brandtechplus,greenhouse,"{""token"": ""brandtechplus""}",skip,
 brave,brave-greenhouse,https://job-boards.greenhouse.io/brave,greenhouse,"{""token"": ""brave""}",skip,
 bravehealth,bravehealth-ashby,https://jobs.ashbyhq.com/bravehealth,ashby,"{""token"": ""bravehealth""}",skip,
