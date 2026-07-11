@@ -581,6 +581,7 @@ baselayer,baselayer-greenhouse,https://job-boards.greenhouse.io/baselayer,greenh
 baseload-capital,baseload-capital-teamtailor,https://baseloadcap.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://baseloadcap.teamtailor.com/jobs.rss""}",skip,
 baseten,baseten-ashby,https://jobs.ashbyhq.com/baseten,ashby,"{""token"": ""baseten""}",skip,
 basf,basf-careers,https://basf.jobs,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://basf.jobs/googlefeed.xml""}",skip,
+basquevolt,basquevolt-careers-site,https://basquevolt.com/en/careers,dom,"{""render"": false, ""url_filter"": ""^https?://(?:www\\.)?basquevolt\\.com/en/careers/[^/?#]+""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""text"": ""Description"", ""field"": ""description"", ""stop"": ""Requirements"", ""html"": true}, {""tag"": ""h2"", ""text"": ""Requirements"", ""field"": ""qualifications"", ""stop"": ""Apply"", ""html"": true}], ""defaults"": {""locations"": [""Vitoria-Gasteiz, Spain""]}}"
 bastion,bastion-ashby,https://jobs.ashbyhq.com/bastion,ashby,"{""token"": ""bastion""}",skip,
 basware,basware-jobylon,https://cdn.jobylon.com/jobs/companies/1689/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""1689""}",json-ld,
 bauer-hockey-cascade-maverik-lacrosse,bauer-hockey-cascade-maverik-lacrosse-greenhouse,https://job-boards.greenhouse.io/bauerhockeycascademaveriklacrosse,greenhouse,"{""token"": ""bauerhockeycascademaveriklacrosse""}",skip,
