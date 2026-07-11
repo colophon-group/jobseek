@@ -1356,6 +1356,7 @@ definitive-healthcare-us,definitive-healthcare-us-greenhouse,https://job-boards.
 degreed,degreed-greenhouse,https://job-boards.greenhouse.io/degreed,greenhouse,"{""token"": ""degreed""}",skip,
 delair,delair-careers,https://delair.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://delair.teamtailor.com/jobs.rss""}",skip,
 delft-circuits,delft-circuits-careers,https://delft-circuits.com/careers/,dom,"{""url_filter"": ""/vacature/""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""class=elementor-icon-list-item"", ""field"": ""locations"", ""split"": "",""}, {""tag"": ""li"", ""attr"": ""class=elementor-icon-list-item"", ""field"": ""employment_type""}, {""text"": ""// VACANCY""}, {""tag"": ""h2""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Apply now"", ""html"": true}]}"
+delian-alliance-industries,delian-alliance-industries-careers,https://jobs.ashbyhq.com/delian,ashby,"{""token"": ""delian""}",skip,
 delinea,delinea-ashby,https://jobs.ashbyhq.com/delinea,ashby,"{""token"": ""delinea""}",skip,
 deliveroo,deliveroo-careers,https://jobs.ashbyhq.com/deliveroo,ashby,"{""token"": ""deliveroo""}",skip,
 delivery-associates,delivery-associates-greenhouse,https://job-boards.greenhouse.io/deliveryassociates,greenhouse,"{""token"": ""deliveryassociates""}",skip,
