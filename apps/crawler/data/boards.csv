@@ -2513,6 +2513,7 @@ ipsy,ipsy-greenhouse,https://job-boards.greenhouse.io/personalizedbeautydiscover
 ipx-power-usa-llc,ipx-power-usa-llc-greenhouse,https://job-boards.greenhouse.io/ipxpower,greenhouse,"{""token"": ""ipxpower""}",skip,
 iq,iq-join,https://join.com/companies/iq,join,"{""slug"": ""iq""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 iqm,iqm-careers,https://iqm.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://iqm.teamtailor.com/jobs.rss""}",skip,
+irisity,irisity-careers,https://career.irisity.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.irisity.com/jobs.rss""}",skip,
 isaac,isaac-greenhouse,https://job-boards.greenhouse.io/isaac,greenhouse,"{""token"": ""isaac""}",skip,
 isar-aerospace,isar-aerospace-careers,https://www.isaraerospace.com/careers,greenhouse,"{""token"": ""isaraerospace""}",skip,
 isomorphic-labs,isomorphic-labs-careers,https://job-boards.greenhouse.io/isomorphiclabs,greenhouse,"{""token"": ""isomorphiclabs""}",skip,
