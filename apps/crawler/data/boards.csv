@@ -1842,6 +1842,7 @@ flock-homes,flock-homes-greenhouse,https://job-boards.greenhouse.io/flockhomes,g
 flock-safety,flock-safety-careers,https://jobs.ashbyhq.com/Flock%20Safety,ashby,"{""token"": ""Flock Safety""}",skip,
 flora,flora-ashby,https://jobs.ashbyhq.com/flora,ashby,"{""token"": ""flora""}",skip,
 florence,florence-recruitee,https://florence.recruitee.com,recruitee,"{""token"": ""florence""}",skip,
+floryn,floryn-careers,https://jobs.floryn.com/,recruitee,"{""api_base"": ""https://jobs.floryn.com""}",json-ld,"{""render"": false}"
 flow-traders,flow-traders-greenhouse,https://job-boards.greenhouse.io/flowtraders,greenhouse,"{""token"": ""flowtraders""}",skip,
 flowfuse,flowfuse-greenhouse,https://job-boards.greenhouse.io/flowfuse,greenhouse,"{""token"": ""flowfuse""}",skip,
 flutterflow,flutterflow-ashby,https://jobs.ashbyhq.com/flutterflow,ashby,"{""token"": ""flutterflow""}",skip,
