@@ -2440,6 +2440,7 @@ inizio-medical,inizio-medical-greenhouse,https://job-boards.greenhouse.io/inizio
 inkhouse,inkhouse-greenhouse,https://job-boards.greenhouse.io/inkhousehq,greenhouse,"{""token"": ""inkhousehq""}",skip,
 inkind,inkind-greenhouse,https://job-boards.greenhouse.io/inkind,greenhouse,"{""token"": ""inkind""}",skip,
 inmobi,inmobi-greenhouse,https://job-boards.greenhouse.io/inmobi,greenhouse,"{""token"": ""inmobi""}",skip,
+innatera,innatera-ashby,https://jobs.ashbyhq.com/innatera,ashby,"{""token"": ""innatera""}",skip,
 inngest,inngest-ashby,https://jobs.ashbyhq.com/inngest,ashby,"{""token"": ""inngest""}",skip,
 innotec-gmbh,innotec-gmbh-join,https://join.com/companies/innotecde,join,"{""slug"": ""innotecde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 innovafeed,innovafeed-innovafeed,https://innovafeed.taleez.com/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""taleez\\.com/apply/(?!sp/)""}",json-ld,"{""render"": true, ""timeout"": 30000}"
