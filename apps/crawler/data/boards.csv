@@ -2463,6 +2463,7 @@ instories,instories-careers,https://wantapply.com/company/instories,dom,"{""rend
 instride,instride-greenhouse,https://job-boards.greenhouse.io/instride,greenhouse,"{""token"": ""instride""}",skip,
 instructure,instructure-ashby,https://jobs.ashbyhq.com/instructure,ashby,"{""token"": ""instructure""}",skip,
 instrumental,instrumental-careers,https://jobs.gem.com/instrumental-inc-,gem,"{""slug"": ""instrumental-inc-""}",skip,
+insurello,insurello-insurello,https://careers.insurello.se/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.insurello.se/jobs.rss""}",skip,
 insurify,insurify-greenhouse,https://job-boards.greenhouse.io/insurify,greenhouse,"{""token"": ""insurify""}",skip,
 insurtech-insights,insurtech-insights-greenhouse,https://job-boards.greenhouse.io/insurtechinsights,greenhouse,"{""token"": ""insurtechinsights""}",skip,
 integrafec,integrafec-greenhouse,https://job-boards.greenhouse.io/integra,greenhouse,"{""token"": ""integra""}",skip,
