@@ -1875,6 +1875,7 @@ formation-bio,formation-bio-greenhouse,https://job-boards.greenhouse.io/formatio
 formenergy,formenergy-ashby,https://jobs.ashbyhq.com/formenergy,ashby,"{""token"": ""formenergy""}",skip,
 formlabs,formlabs-greenhouse,https://job-boards.greenhouse.io/formlabs,greenhouse,"{""token"": ""formlabs""}",skip,
 forsight-robotics,forsight-robotics-careers,https://forsightrobotics.com/careers,dom,"{""render"": false, ""url_filter"": ""/positions/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Description""}, {""tag"": ""p"", ""field"": ""description"", ""stop_count"": 100, ""html"": true}, {""text"": ""Israel"", ""field"": ""locations"", ""from"": 0}]}"
+forte,forte-greenhouse,https://job-boards.greenhouse.io/forte,greenhouse,"{""token"": ""forte""}",skip,
 forter,forter-greenhouse,https://job-boards.greenhouse.io/forter,greenhouse,"{""token"": ""forter""}",skip,
 forto,forto-ashby,https://jobs.ashbyhq.com/forto,ashby,"{""token"": ""forto""}",skip,
 forum-ventures,forum-ventures-ashby,https://jobs.ashbyhq.com/forum-ventures,ashby,"{""token"": ""forum-ventures""}",skip,
