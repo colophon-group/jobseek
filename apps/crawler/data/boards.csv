@@ -2043,6 +2043,7 @@ glossgenius,glossgenius-greenhouse,https://job-boards.greenhouse.io/glossgenius,
 glossier,glossier-greenhouse,https://job-boards.greenhouse.io/glossier,greenhouse,"{""token"": ""glossier""}",skip,
 glovo,glovo-careers,https://careers.glovoapp.com/jobs-at-glovo/,sitemap,"{""sitemap_url"": ""https://careers.glovoapp.com/sitemap_index.xml"", ""url_filter"": ""/job/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""attr"": ""class=address"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=jobtype"", ""field"": ""employment_type"", ""optional"": true}, {""text"": ""Job Description"", ""field"": ""description"", ""offset"": 1, ""stop"": ""Apply shortlist"", ""html"": true}]}"
 glydways,glydways-greenhouse,https://job-boards.greenhouse.io/glydways,greenhouse,"{""token"": ""glydways""}",skip,
+goals,goals-teamtailor,https://tt.playgoals.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://tt.playgoals.com/jobs.rss""}",skip,
 goat-group,goat-group-greenhouse,https://job-boards.greenhouse.io/goatgroup,greenhouse,"{""token"": ""goatgroup""}",skip,
 gocardless,gocardless-greenhouse,https://job-boards.greenhouse.io/gocardless,greenhouse,"{""token"": ""gocardless""}",skip,
 gofundme,gofundme-greenhouse,https://job-boards.greenhouse.io/gofundme,greenhouse,"{""token"": ""gofundme""}",skip,
