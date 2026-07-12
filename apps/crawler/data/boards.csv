@@ -2661,6 +2661,7 @@ kineis,kineis-careers,https://kineis.softy.pro/offers,dom,"{""render"": false, "
 kinexon,kinexon-greenhouse,https://boards.eu.greenhouse.io/kinexon,greenhouse,"{""token"": ""kinexon""}",skip,
 kinexus-group,kinexus-group-greenhouse,https://job-boards.greenhouse.io/kinexus,greenhouse,"{""token"": ""kinexus""}",skip,
 king,king-careers,https://careers.king.com/us/en/search-jobs,sitemap,"{""sitemap_url"": ""https://careers.king.com/us/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
+kipu-quantum,kipu-quantum-careers,https://kipu-quantum.jobs.personio.com/,personio,"{""slug"": ""kipu-quantum"", ""language"": ""en""}",skip,
 kira,kira-ashby,https://jobs.ashbyhq.com/kira,ashby,"{""token"": ""kira""}",skip,
 kit,kit-ashby,https://jobs.ashbyhq.com/kit,ashby,"{""token"": ""kit""}",skip,
 kitchenpark,kitchenpark-greenhouse,https://job-boards.greenhouse.io/kitchenpark,greenhouse,"{""token"": ""kitchenpark""}",skip,
