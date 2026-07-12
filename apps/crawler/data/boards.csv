@@ -2022,6 +2022,7 @@ givecampus,givecampus-greenhouse,https://job-boards.greenhouse.io/givecampus,gre
 givedirectly,givedirectly-greenhouse,https://job-boards.greenhouse.io/givedirectly,greenhouse,"{""token"": ""givedirectly""}",skip,
 givewell,givewell-greenhouse,https://job-boards.greenhouse.io/givewell,greenhouse,"{""token"": ""givewell""}",skip,
 glance,glance-greenhouse,https://job-boards.greenhouse.io/glance,greenhouse,"{""token"": ""glance""}",skip,
+glasswall,glasswall-careers,https://careers.glasswall.com/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""-[0-9]+/?$""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""Apply Now""}, {""text"": ""Download File""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply Now""}]}"
 glean,glean-greenhouse,https://job-boards.greenhouse.io/gleanwork,greenhouse,"{""token"": ""gleanwork""}",skip,
 glencore,glencore-careers-astron-workday,https://glencore.wd3.myworkdayjobs.com/astronenergy,workday,"{""company"": ""glencore"", ""wd_instance"": ""wd3"", ""site"": ""astronenergy""}",workday,
 glencore,glencore-careers-coal-workday,https://gcaa.wd3.myworkdayjobs.com/GCAA_Careers,workday,"{""company"": ""gcaa"", ""wd_instance"": ""wd3"", ""site"": ""GCAA_Careers""}",workday,
