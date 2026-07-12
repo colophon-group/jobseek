@@ -5043,6 +5043,7 @@ verda,verda-careers,https://datacrunch.jobs.personio.com/,personio,"{""slug"": "
 verein-f-r-erziehungshilfen,verein-f-r-erziehungshilfen-join,https://join.com/companies/vfe-mengede,join,"{""slug"": ""vfe-mengede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 veriff,veriff-greenhouse,https://job-boards.greenhouse.io/veriff,greenhouse,"{""token"": ""veriff""}",skip,
 verifone,verifone-greenhouse,https://job-boards.greenhouse.io/verifone,greenhouse,"{""token"": ""verifone""}",skip,
+verimatrix,verimatrix-jazzhr,https://verimatrix.applytojob.com/,dom,"{""render"": false, ""url_filter"": ""/apply/[^/]+/""}",json-ld,
 verisign,verisign-greenhouse,https://job-boards.greenhouse.io/verisign,greenhouse,"{""token"": ""verisign""}",skip,
 verista-inc,verista-inc-greenhouse,https://job-boards.greenhouse.io/veristainc,greenhouse,"{""token"": ""veristainc""}",skip,
 veritas,veritas-recruitee,https://veritas.recruitee.com,recruitee,"{""token"": ""veritas""}",skip,
