@@ -2081,6 +2081,7 @@ gr-ns,gr-ns-greenhouse,https://job-boards.greenhouse.io/gruns,greenhouse,"{""tok
 gr8-tech,gr8-tech-careers,https://job-boards.eu.greenhouse.io/gr8tech,greenhouse,"{""token"": ""gr8tech""}",skip,
 gradial,gradial-greenhouse,https://job-boards.greenhouse.io/gradial,greenhouse,"{""token"": ""gradial""}",skip,
 gradient-ai,gradient-ai-greenhouse,https://job-boards.greenhouse.io/gradientai,greenhouse,"{""token"": ""gradientai""}",skip,
+gradium,gradium-careers,https://gradium.homerun.co/,sitemap,"{""sitemap_url"": ""https://gradium.homerun.co/sitemap.xml"", ""url_filter"": {""include"": ""^https://gradium\\.homerun\\.co/"", ""exclude"": ""/en/apply$|^https://gradium\\.homerun\\.co/?$""}}",json-ld,
 grafana-labs,grafana-labs-greenhouse,https://job-boards.greenhouse.io/grafanalabs,greenhouse,"{""token"": ""grafanalabs""}",skip,
 graham-capital-management-l-p,graham-capital-management-l-p-greenhouse,https://job-boards.greenhouse.io/grahamcapitalmanagement,greenhouse,"{""token"": ""grahamcapitalmanagement""}",skip,
 grail,grail-lever,https://jobs.lever.co/grailbio,lever,"{""token"": ""grailbio""}",skip,
