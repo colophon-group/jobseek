@@ -2897,6 +2897,7 @@ lockheed-martin,lockheed-martin-intl-emea,https://krb-sjobs.brassring.com/TGnewU
 lockheed-martin,lockheed-martin-main,https://www.lockheedmartinjobs.com/search-jobs,sitemap,"{""sitemap_url"": ""https://www.lockheedmartinjobs.com/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 locus-robotics,locus-robotics-greenhouse,https://job-boards.greenhouse.io/locusrobotics,greenhouse,"{""token"": ""locusrobotics""}",skip,
 lodestar,lodestar-greenhouse,https://job-boards.greenhouse.io/lodestarspace,greenhouse,"{""token"": ""lodestarspace""}",skip,
+lodestar-space,lodestar-space-greenhouse,https://job-boards.eu.greenhouse.io/lodestarspace,greenhouse,"{""token"": ""lodestarspace""}",skip,
 logicgate,logicgate-greenhouse,https://job-boards.greenhouse.io/logicgate,greenhouse,"{""token"": ""logicgate""}",skip,
 logicmanager,logicmanager-pinpoint,https://logicmanager.pinpointhq.com,pinpoint,"{""slug"": ""logicmanager""}",skip,
 logitech,logitech-careers,https://logitech.wd5.myworkdayjobs.com/Logitech,workday,,workday,
