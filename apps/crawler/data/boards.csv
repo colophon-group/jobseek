@@ -2823,6 +2823,7 @@ levio,levio-greenhouse,https://job-boards.greenhouse.io/levio,greenhouse,"{""tok
 levitate,levitate-greenhouse,https://job-boards.greenhouse.io/levitate,greenhouse,"{""token"": ""levitate""}",skip,
 lexly,lexly-main,https://lexly1.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://lexly1.teamtailor.com/jobs.rss""}",skip,
 leyden-labs,leyden-labs-recruitee,https://leydenlabs.recruitee.com/,recruitee,"{""slug"": ""leydenlabs""}",skip,
+leydenjar-technologies,leydenjar-technologies-careers,https://leydenjar.recruitee.com/,recruitee,"{""slug"": ""leydenjar""}",skip,
 lg,lg-careers-global,https://globalcareers.lge.com/jobs,api_sniffer,"{""api_url"": ""https://globalcareers.lge.com/api/job/v1/jobs/"", ""method"": ""GET"", ""json_path"": ""data.list"", ""params"": {""page"": ""1"", ""size"": ""100""}, ""url_template"": ""https://globalcareers.lge.com/jobs/{id}"", ""pagination"": {""param_name"": ""page"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""query""}, ""fields"": {""title"": ""title"", ""description"": ""content"", ""locations"": ""location"", ""employment_type"": ""empType"", ""job_location_type"": ""workType"", ""date_posted"": ""postCreateDtm""}}",skip,
 lg,lg-careers-greenhouse,https://job-boards.greenhouse.io/lgelectronics,greenhouse,"{""token"": ""lgelectronics""}",skip,
 lg-energy-solution-arizona,lg-energy-solution-arizona-greenhouse,https://job-boards.greenhouse.io/lgenergyaz,greenhouse,"{""token"": ""lgenergyaz""}",skip,
