@@ -2335,6 +2335,7 @@ huntress,huntress-greenhouse,https://job-boards.greenhouse.io/huntress,greenhous
 hut-8,hut-8-greenhouse,https://job-boards.greenhouse.io/hut8,greenhouse,"{""token"": ""hut8""}",skip,
 hw-gr-nderkapital-gmbh,hw-gr-nderkapital-gmbh-join,https://join.com/companies/hw-gruenderkapital,join,"{""slug"": ""hw-gruenderkapital""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 hydrogenious-lohc-technologies,hydrogenious-lohc-technologies-personio,https://hydrogenious-lohc-technologies-gmbh.jobs.personio.de/,personio,"{""slug"": ""hydrogenious-lohc-technologies-gmbh""}",json-ld,
+hydrosat,hydrosat-careers,https://careers.hydrosat.com/,recruitee,"{""slug"": ""careers-analytics"", ""api_base"": ""https://careers.hydrosat.com""}",skip,
 hyperbolic,hyperbolic-ashby,https://jobs.ashbyhq.com/hyperbolic,ashby,"{""token"": ""hyperbolic""}",skip,
 hyperexponential,hyperexponential-careers,https://jobs.ashbyhq.com/hyperexponential,ashby,"{""token"": ""hyperexponential""}",skip,
 hyperiondev,hyperiondev-greenhouse,https://job-boards.greenhouse.io/hyperiondev,greenhouse,"{""token"": ""hyperiondev""}",skip,
