@@ -2010,6 +2010,7 @@ ghost,ghost-greenhouse,https://job-boards.greenhouse.io/ghost,greenhouse,"{""tok
 ghx,ghx-greenhouse,https://job-boards.greenhouse.io/globalhealthcareexchangeinc,greenhouse,"{""token"": ""globalhealthcareexchangeinc""}",skip,
 gierth-partner-steuerkanzlei,gierth-partner-steuerkanzlei-join,https://join.com/companies/taxit-kundede138,join,"{""slug"": ""taxit-kundede138""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 giga-energy,giga-energy-greenhouse,https://job-boards.greenhouse.io/gigaenergy,greenhouse,"{""token"": ""gigaenergy""}",skip,
+gilion,gilion-teamtailor,https://careers.gilion.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.gilion.com/jobs.rss""}",skip,
 gillig,gillig-greenhouse,https://job-boards.greenhouse.io/gillig,greenhouse,"{""token"": ""gillig""}",skip,
 ginkgo-bioworks-inc,ginkgo-bioworks-inc-greenhouse,https://job-boards.greenhouse.io/ginkgobioworks,greenhouse,"{""token"": ""ginkgobioworks""}",skip,
 gitbook,gitbook-ashby,https://jobs.ashbyhq.com/gitbook,ashby,"{""token"": ""gitbook""}",skip,
