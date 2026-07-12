@@ -1821,6 +1821,7 @@ fjallraven,fjallraven-jobylon,https://cdn.jobylon.com/jobs/companies/2300/embed/
 flaglerhealth,flaglerhealth-ashby,https://jobs.ashbyhq.com/flaglerhealth,ashby,"{""token"": ""flaglerhealth""}",skip,
 flagship-pioneering-inc,flagship-pioneering-inc-greenhouse,https://job-boards.greenhouse.io/flagshippioneeringinc,greenhouse,"{""token"": ""flagshippioneeringinc""}",skip,
 flagstone-group-ltd,flagstone-group-ltd-greenhouse,https://job-boards.greenhouse.io/flagstone,greenhouse,"{""token"": ""flagstone""}",skip,
+flare-bright,flare-bright-careers,https://www.flarebright.com/careers/,sitemap,"{""url_filter"": ""/job-[^/]+/?$""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""title"", ""regex"": ""^(?:Job: )?(.+?)(?: - Flarebright)?$""}, {""text"": ""Full Time"", ""field"": ""employment_type""}, {""text"": ""Westcott Venture Park, near Bicester, UK"", ""field"": ""locations"", ""regex"": ""(Westcott Venture Park, near Bicester, UK)""}, {""text"": ""About Flare Bright"", ""field"": ""description"", ""stop"": ""Solutions"", ""html"": true}]}"
 flatiron-health,flatiron-health-greenhouse,https://job-boards.greenhouse.io/flatironhealth,greenhouse,"{""token"": ""flatironhealth""}",skip,
 fleek,fleek-ashby,https://jobs.ashbyhq.com/fleek,ashby,"{""token"": ""fleek""}",skip,
 fleetio,fleetio-greenhouse,https://job-boards.greenhouse.io/fleetio,greenhouse,"{""token"": ""fleetio""}",skip,
