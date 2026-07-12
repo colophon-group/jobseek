@@ -2346,6 +2346,7 @@ hyperskill,hyperskill-careers,https://hyperskill.bamboohr.com/careers,api_sniffe
 hypersonica,hypersonica-lever,https://jobs.lever.co/hypersonica-prod,lever,"{""token"": ""hypersonica-prod""}",skip,
 hyphen-connect-limited,hyphen-connect-limited-greenhouse,https://job-boards.greenhouse.io/hyphenconnect,greenhouse,"{""token"": ""hyphenconnect""}",skip,
 hypori,hypori-greenhouse,https://job-boards.greenhouse.io/hypori,greenhouse,"{""token"": ""hypori""}",skip,
+hystar,hystar-careers,https://careers.hystar.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.hystar.com/jobs.rss""}",skip,
 hyundai-motor,hyundai-motor-careers-amea,https://careers-amea.hyundai-corp.net,rss,"{""preset"": ""successfactors""}",skip,
 hyundai-motor,hyundai-motor-careers-americas,https://careers-americas.hyundai.com,rss,"{""preset"": ""successfactors""}",skip,
 hyundai-motor,hyundai-motor-careers-europe,https://jobs.hyundai-europe.com,rss,"{""preset"": ""successfactors""}",skip,
