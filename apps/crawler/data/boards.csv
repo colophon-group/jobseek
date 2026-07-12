@@ -2212,6 +2212,7 @@ helium-10,helium-10-greenhouse,https://job-boards.greenhouse.io/helium10,greenho
 hello-heart,hello-heart-greenhouse,https://job-boards.greenhouse.io/helloheart,greenhouse,"{""token"": ""helloheart""}",skip,
 hellofresh,hellofresh-greenhouse,https://job-boards.greenhouse.io/hellofresh,greenhouse,"{""token"": ""hellofresh""}",skip,
 helsing,helsing-greenhouse,https://job-boards.greenhouse.io/helsing,greenhouse,"{""token"": ""helsing""}",skip,
+hemab-therapeutics,hemab-therapeutics-hitalento,https://career.hitalento.com/hemab/,dom,"{""render"": false}",json-ld,"{""render"": false}"
 hemnet,hemnet-careers,https://career.hemnet.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.hemnet.se/jobs.rss""}",skip,
 herald,herald-greenhouse,https://job-boards.greenhouse.io/heraldapi,greenhouse,"{""token"": ""heraldapi""}",skip,
 here,here-greenhouse,https://job-boards.greenhouse.io/hereio,greenhouse,"{""token"": ""hereio""}",skip,
