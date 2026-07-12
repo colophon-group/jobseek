@@ -2182,6 +2182,7 @@ havas,havas-careers-workday,https://wd3.myworkdaysite.com/recruiting/havas/Group
 havas,havas-careers-workday-health,https://wd3.myworkdaysite.com/recruiting/havas/HealthYouExternalCareerSite,workday,"{""company"": ""havas"", ""wd_instance"": ""wd3"", ""site"": ""HealthYouExternalCareerSite""}",workday,
 haven-interactive-studios,haven-interactive-studios-greenhouse,https://job-boards.greenhouse.io/haven,greenhouse,"{""token"": ""haven""}",skip,
 havenhub,havenhub-greenhouse,https://job-boards.greenhouse.io/havenhub,greenhouse,"{""token"": ""havenhub""}",skip,
+havocai,havocai-ashby,https://jobs.ashbyhq.com/havocai,ashby,"{""token"": ""havocai""}",skip,
 hawk,hawk-ashby,https://jobs.ashbyhq.com/hawk,ashby,"{""token"": ""hawk""}",skip,
 hawkeye360,hawkeye360-recruitee,https://hawkeye360.recruitee.com,recruitee,"{""token"": ""hawkeye360""}",skip,
 hawthorne-machinery-co,hawthorne-machinery-co-greenhouse,https://job-boards.greenhouse.io/hawthornemachineryco,greenhouse,"{""token"": ""hawthornemachineryco""}",skip,
