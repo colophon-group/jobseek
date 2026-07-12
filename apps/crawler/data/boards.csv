@@ -2532,6 +2532,7 @@ iqm,iqm-careers,https://iqm.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor""
 irisity,irisity-careers,https://career.irisity.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.irisity.com/jobs.rss""}",skip,
 isaac,isaac-greenhouse,https://job-boards.greenhouse.io/isaac,greenhouse,"{""token"": ""isaac""}",skip,
 isar-aerospace,isar-aerospace-careers,https://www.isaraerospace.com/careers,greenhouse,"{""token"": ""isaraerospace""}",skip,
+isardsat,isardsat-careers,https://www.isardsat.cat/work-with-us,dom,"{""render"": false, ""url_filter"": ""^https://www\\.isardsat\\.cat/(?!ca/)job/""}",nextdata,"{""path"": ""props.pageProps.dataPackage"", ""fields"": {""title"": ""title"", ""description"": ""contents"", ""locations"": ""location""}}"
 isomorphic-labs,isomorphic-labs-careers,https://job-boards.greenhouse.io/isomorphiclabs,greenhouse,"{""token"": ""isomorphiclabs""}",skip,
 ispot,ispot-greenhouse,https://job-boards.greenhouse.io/ispottv,greenhouse,"{""token"": ""ispottv""}",skip,
 iss-stoxx,iss-stoxx-iss-careers,https://issgovernance.wd1.myworkdayjobs.com/ISScareers,workday,"{""company"": ""issgovernance"", ""wd_instance"": ""wd1"", ""site"": ""ISScareers""}",workday,

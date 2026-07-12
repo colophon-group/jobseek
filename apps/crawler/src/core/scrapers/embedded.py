@@ -45,18 +45,31 @@ log = structlog.get_logger()
 
 # ── Auto-detection helpers ────────────────────────────────────────────
 
-_TITLE_KEYS = {"title", "name", "jobTitle", "job_title", "position"}
-_DESC_KEYS = {"description", "content", "descriptionHtml", "body", "jobDescription"}
+_TITLE_FIELD_CANDIDATES = ("title", "name", "jobTitle", "job_title", "position")
+_DESCRIPTION_FIELD_CANDIDATES = (
+    "description",
+    "content",
+    "contents",
+    "descriptionHtml",
+    "body",
+    "jobDescription",
+)
 
 # Mapping from known raw keys to JobContent field names
 _FIELD_PATTERNS: dict[str, list[str]] = {
-    "title": ["title", "name", "jobTitle", "job_title", "position"],
-    "description": ["description", "content", "descriptionHtml", "body", "jobDescription"],
+    "title": list(_TITLE_FIELD_CANDIDATES),
+    "description": list(_DESCRIPTION_FIELD_CANDIDATES),
     "locations": ["location", "locations", "office", "offices"],
     "employment_type": ["employmentType", "employment_type", "type", "jobType"],
     "job_location_type": ["locationType", "workplaceType", "remoteType"],
     "date_posted": ["datePosted", "createdAt", "publishedAt", "postedDate"],
 }
+
+# Object detection and field mapping must use the same aliases. Keeping these
+# sets derived from the ordered mapping candidates prevents a newly supported
+# field from being recognized by only one half of auto-detection.
+_TITLE_KEYS = frozenset(_TITLE_FIELD_CANDIDATES)
+_DESC_KEYS = frozenset(_DESCRIPTION_FIELD_CANDIDATES)
 
 
 def _find_job_object(data: dict, prefix: str) -> tuple[str | None, dict | None]:
