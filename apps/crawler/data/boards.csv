@@ -1878,6 +1878,8 @@ forsight-robotics,forsight-robotics-careers,https://forsightrobotics.com/careers
 forte,forte-greenhouse,https://job-boards.greenhouse.io/forte,greenhouse,"{""token"": ""forte""}",skip,
 fortem-technologies,fortem-technologies-paylocity,https://recruiting.paylocity.com/recruiting/jobs/All/fa9b835a-8112-420d-9c09-631d7b67b31c/FORTEM-TECHNOLOGIES,dom,"{""render"": true}",dom,"{""steps"": [{""attr"": ""class=job-preview-header"", ""field"": ""title""}, {""attr"": ""class=preview-location"", ""field"": ""locations"", ""regex"": ""^((?:Lindon Utah|Lindon, UT|UT))(?:, UT)?(?:\\s*\u2022.*)?$""}, {""text"": ""Job Type"", ""offset"": 1, ""field"": ""employment_type"", ""optional"": true, ""from"": 0}, {""text"": ""Description"", ""field"": ""description"", ""stop"": ""Apply"", ""html"": true, ""from"": 0}]}"
 forter,forter-greenhouse,https://job-boards.greenhouse.io/forter,greenhouse,"{""token"": ""forter""}",skip,
+forterra,forterra-gotenna-rippling,https://ats.rippling.com/gotenna-inc/jobs,rippling,,rippling,
+forterra,forterra-rippling,https://ats.rippling.com/forterra/jobs,rippling,"{""slug"": ""forterra""}",rippling,
 forto,forto-ashby,https://jobs.ashbyhq.com/forto,ashby,"{""token"": ""forto""}",skip,
 forum-ventures,forum-ventures-ashby,https://jobs.ashbyhq.com/forum-ventures,ashby,"{""token"": ""forum-ventures""}",skip,
 forward-networks,forward-networks-greenhouse,https://job-boards.greenhouse.io/forwardnetworks,greenhouse,"{""token"": ""forwardnetworks""}",skip,
