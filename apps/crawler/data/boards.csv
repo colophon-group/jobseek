@@ -2301,6 +2301,7 @@ hp-hood,hp-hood-greenhouse,https://job-boards.greenhouse.io/hoodhp,greenhouse,"{
 hp-iq,hp-iq-greenhouse,https://job-boards.greenhouse.io/hpiq,greenhouse,"{""token"": ""hpiq""}",skip,
 hpe,hpe-careers,https://hpe.wd5.myworkdayjobs.com/Jobsathpe,workday,"{""company"": ""hpe"", ""wd_instance"": ""wd5"", ""site"": ""Jobsathpe""}",workday,"{""proxy"": true}"
 hpr,hpr-greenhouse,https://job-boards.greenhouse.io/hyannisportresearch,greenhouse,"{""token"": ""hyannisportresearch""}",skip,
+hqs-quantum-simulations,hqs-quantum-simulations-careers,https://jobs.quantumsimulations.de/en,sitemap,"{""sitemap_url"": ""https://jobs.quantumsimulations.de/en/sitemap.xml"", ""url_filter"": {""exclude"": ""^https://jobs\\.quantumsimulations\\.de/?$""}}",json-ld,
 hr-werkstatt-gmbh,hr-werkstatt-gmbh-join,https://join.com/companies/hr-werkstattde,join,"{""slug"": ""hr-werkstattde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 hsbc,hsbc-eightfold,https://hsbc.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 httpie,httpie-ashby,https://jobs.ashbyhq.com/httpie,ashby,"{""token"": ""httpie""}",skip,
