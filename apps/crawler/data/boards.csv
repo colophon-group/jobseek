@@ -2631,6 +2631,7 @@ keeper-security,keeper-security-greenhouse,https://job-boards.greenhouse.io/keep
 keepit,keepit-careers,https://careers.keepit.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.keepit.com/jobs.rss""}",skip,
 kela-technologies,kela-technologies-careers,https://www.comeet.com/jobs/kelasys/2A.007,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""2A\\.007/[^/]+/[A-Z0-9]{2}\\.[A-Z0-9]{3}$""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""steps"": [{""tag"": ""h2"", ""attr"": ""data-qa=positionNameLegacy"", ""field"": ""title""}, {""attr"": ""data-qa=positionDetailLocation"", ""field"": ""location""}, {""attr"": ""data-qa=positionDetailEmploymentType"", ""field"": ""employment_type"", ""optional"": true}, {""tag"": ""h3"", ""text"": ""Description"", ""field"": ""description"", ""stop"": ""Apply for this job"", ""html"": true}]}"
 keller-postman,keller-postman-greenhouse,https://job-boards.greenhouse.io/kellerpostman,greenhouse,"{""token"": ""kellerpostman""}",skip,
+kelluu,kelluu-careers,https://jobs.ashbyhq.com/kelluu,ashby,"{""token"": ""kelluu""}",skip,
 kemaro,kemaro-careers,https://jobs.dualoo.com/portal/1e9qvgvs,dom,"{""render"": true}",json-ld,"{""render"": true}"
 kentik,kentik-greenhouse,https://job-boards.greenhouse.io/kentik,greenhouse,"{""token"": ""kentik""}",skip,
 kepler-communications,kepler-communications-lever,https://jobs.lever.co/kepler,lever,"{""token"": ""kepler""}",skip,
