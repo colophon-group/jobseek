@@ -2227,6 +2227,7 @@ hexaware,hexaware-bps-careers,https://fa-etqo-saasfaprod1.fa.ocs.oraclecloud.com
 hexaware,hexaware-careers,https://fa-etqo-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions,oracle_hcm,"{""host"": ""fa-etqo-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_1""}",oracle_hcm,"{""enrich"": [""description""]}"
 heygen,heygen-greenhouse,https://job-boards.greenhouse.io/heygen,greenhouse,"{""token"": ""heygen""}",skip,
 heylogin-gmbh,heylogin-gmbh-join,https://join.com/companies/heylogincom,join,"{""slug"": ""heylogincom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+hiber,hiber-join,https://join.com/companies/hiber,join,"{""slug"": ""hiber""}",nextdata,
 hibu,hibu-greenhouse,https://job-boards.greenhouse.io/hibu,greenhouse,"{""token"": ""hibu""}",skip,
 hidden-events,hidden-events-greenhouse,https://job-boards.greenhouse.io/jshiddenevents,greenhouse,"{""token"": ""jshiddenevents""}",skip,
 higgsfield-ai,higgsfield-ai-careers,https://jobs.ashbyhq.com/higgsfieldai,ashby,"{""token"": ""higgsfieldai""}",skip,
