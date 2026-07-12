@@ -2473,6 +2473,7 @@ integrated-specialty-coverages-llc,integrated-specialty-coverages-llc-greenhouse
 integrity-rehab-group,integrity-rehab-group-greenhouse,https://job-boards.greenhouse.io/integrityrehabgroup,greenhouse,"{""token"": ""integrityrehabgroup""}",skip,
 intel,intel-careers,https://intel.wd1.myworkdayjobs.com/External,workday,,workday,
 intel,intel-careers-altera,https://altera.wd1.myworkdayjobs.com/Altera,workday,,workday,
+intelligent-energy,intelligent-energy-careers,https://www.intelligent-energy.com/careers/current-vacancies/,dom,"{""url_filter"": ""/careers/current-vacancies/[^/]+/?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""The role"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply"", ""from"": 0}, {""text"": ""Loughborough"", ""field"": ""location"", ""regex"": ""(Loughborough)"", ""from"": 0}, {""text"": ""based on site"", ""field"": ""job_location_type"", ""regex"": ""(on site)"", ""from"": 0, ""optional"": true}, {""text"": ""Permanent"", ""field"": ""employment_type"", ""regex"": ""(Permanent)"", ""from"": 0, ""optional"": true}]}"
 intellum-inc,intellum-inc-greenhouse,https://job-boards.greenhouse.io/intelluminc,greenhouse,"{""token"": ""intelluminc""}",skip,
 interactive-brokers,interactive-brokers-greenhouse,https://job-boards.greenhouse.io/ibkr,greenhouse,"{""token"": ""ibkr""}",skip,
 interactive-brokers-external,interactive-brokers-external-greenhouse,https://job-boards.greenhouse.io/ibkrexternal,greenhouse,"{""token"": ""ibkrexternal""}",skip,
