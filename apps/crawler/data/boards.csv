@@ -2984,6 +2984,7 @@ majority,majority-global,https://majority.com/en/company/career,dom,"{""render""
 make-a-wish-america,make-a-wish-america-greenhouse,https://job-boards.greenhouse.io/makeawishamerica,greenhouse,"{""token"": ""makeawishamerica""}",skip,
 make-god-known,make-god-known-join,https://join.com/companies/mirowittwerch,join,"{""slug"": ""mirowittwerch""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 makersite,makersite-recruitee,https://makersitegmbh.recruitee.com/,recruitee,"{""slug"": ""makersitegmbh""}",skip,
+maki-people,maki-people-main,https://jobs.ashbyhq.com/maki,ashby,"{""token"": ""maki""}",skip,
 mako,mako-greenhouse,https://job-boards.greenhouse.io/mako,greenhouse,"{""token"": ""mako""}",skip,
 mamata-betreuungs-und-pflegedienst,mamata-betreuungs-und-pflegedienst-join,https://join.com/companies/mamata-carede,join,"{""slug"": ""mamata-carede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 mambu,mambu-pinpoint,https://mambu.pinpointhq.com,pinpoint,"{""slug"": ""mambu""}",skip,
