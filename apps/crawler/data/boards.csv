@@ -3340,6 +3340,8 @@ navan,navan-greenhouse,https://job-boards.greenhouse.io/tripactions,greenhouse,"
 naver-vietnam,naver-vietnam-greenhouse,https://job-boards.greenhouse.io/navervietnam,greenhouse,"{""token"": ""navervietnam""}",skip,
 navier,navier-greenhouse,https://job-boards.greenhouse.io/navierboat,greenhouse,"{""token"": ""navierboat""}",skip,
 navvis,navvis-greenhouse,https://job-boards.greenhouse.io/navvis,greenhouse,"{""token"": ""navvis""}",skip,
+nawah,nawah-careers-fr,https://nawah.fr/fr/carrieres/,api_sniffer,"{""api_url"": ""https://nawah.fr/wp-json/wp/v2/jobs?per_page=100&lang=fr"", ""method"": ""GET"", ""url_field"": ""link"", ""fields"": {""title"": ""title.rendered"", ""description"": ""content.rendered"", ""locations"": {""path"": ""type"", ""map"": {""jobs"": [""Rousset, France""]}}, ""date_posted"": ""date""}}",skip,
+nawah,nawah-main,https://nawah.fr/jobs/,api_sniffer,"{""api_url"": ""https://nawah.fr/wp-json/wp/v2/jobs?per_page=100"", ""method"": ""GET"", ""url_field"": ""link"", ""fields"": {""title"": ""title.rendered"", ""description"": ""content.rendered"", ""locations"": {""path"": ""slug"", ""map"": {""quality-technician"": [""Englewood, Ohio, USA""], ""logistics-supply-chain-coordinator"": [""Englewood, Ohio, USA""], ""maintenance-technician-2"": [""Rousset, France""]}}, ""date_posted"": ""date""}}",skip,
 nayya,nayya-greenhouse,https://job-boards.greenhouse.io/nayya,greenhouse,"{""token"": ""nayya""}",skip,
 nccgroup,nccgroup-pinpoint,https://nccgroup.pinpointhq.com,pinpoint,"{""slug"": ""nccgroup""}",skip,
 near-space-labs,near-space-labs-greenhouse,https://job-boards.greenhouse.io/nearspacelabs,greenhouse,"{""token"": ""nearspacelabs""}",skip,
