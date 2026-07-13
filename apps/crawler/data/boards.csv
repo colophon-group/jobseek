@@ -3461,6 +3461,7 @@ nourish,nourish-greenhouse,https://job-boards.greenhouse.io/usenourish,greenhous
 nova-credit,nova-credit-greenhouse,https://job-boards.greenhouse.io/novacredit,greenhouse,"{""token"": ""novacredit""}",skip,
 nova-founders-capital,nova-founders-capital-greenhouse,https://job-boards.greenhouse.io/novafounders,greenhouse,"{""token"": ""novafounders""}",skip,
 novartis,novartis-careers,https://novartis.wd3.myworkdayjobs.com/Novartis_Careers,workday,"{""company"": ""novartis"", ""wd_instance"": ""wd3"", ""site"": ""Novartis_Careers""}",workday,"{""proxy"": true}"
+novatron-fusion-group,novatron-fusion-group-careers,https://career.novatronfusion.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.novatronfusion.com/jobs.rss""}",skip,
 novel,novel-ashby,https://jobs.ashbyhq.com/novel,ashby,"{""token"": ""novel""}",skip,
 novo,novo-ashby,https://jobs.ashbyhq.com/novo,ashby,"{""token"": ""novo""}",skip,
 novo-nordisk,novo-nordisk-careers,https://careers.novonordisk.com/search/?locale=en_GB,rss,"{""url"": ""https://careers.novonordisk.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
