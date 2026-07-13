@@ -2986,6 +2986,7 @@ make-god-known,make-god-known-join,https://join.com/companies/mirowittwerch,join
 makersite,makersite-recruitee,https://makersitegmbh.recruitee.com/,recruitee,"{""slug"": ""makersitegmbh""}",skip,
 maki-people,maki-people-main,https://jobs.ashbyhq.com/maki,ashby,"{""token"": ""maki""}",skip,
 mako,mako-greenhouse,https://job-boards.greenhouse.io/mako,greenhouse,"{""token"": ""mako""}",skip,
+maltego-technologies,maltego-technologies-careers,https://maltego.jobs.personio.com/,personio,"{""slug"": ""maltego""}",skip,
 mamata-betreuungs-und-pflegedienst,mamata-betreuungs-und-pflegedienst-join,https://join.com/companies/mamata-carede,join,"{""slug"": ""mamata-carede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 mambu,mambu-pinpoint,https://mambu.pinpointhq.com,pinpoint,"{""slug"": ""mambu""}",skip,
 mammoth,mammoth-pinpoint,https://mammoth.pinpointhq.com,pinpoint,"{""slug"": ""mammoth""}",skip,
