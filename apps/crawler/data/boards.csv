@@ -3621,6 +3621,7 @@ oplabs,oplabs-ashby,https://jobs.ashbyhq.com/oplabs,ashby,"{""token"": ""oplabs"
 oportun,oportun-greenhouse,https://job-boards.greenhouse.io/oportun,greenhouse,"{""token"": ""oportun""}",skip,
 oppfi,oppfi-greenhouse,https://job-boards.greenhouse.io/opploans,greenhouse,"{""token"": ""opploans""}",skip,
 optibus,optibus-careers,https://optibus.com/company/careers/jobs/,dom,"{""render"": false, ""url_filter"": ""/company/careers/jobs/co/[^/]+/[^/]*\\.[^/]+/""}",json-ld,
+optics11,optics11-recruitee,https://optics11.recruitee.com/,recruitee,"{""slug"": ""optics11"", ""api_base"": ""https://optics11.recruitee.com""}",skip,
 optimal-care,optimal-care-greenhouse,https://job-boards.greenhouse.io/optimalcare,greenhouse,"{""token"": ""optimalcare""}",skip,
 optimal-dynamics,optimal-dynamics-greenhouse,https://job-boards.greenhouse.io/optimaldynamics,greenhouse,"{""token"": ""optimaldynamics""}",skip,
 optiver-private-jobs,optiver-private-jobs-greenhouse,https://job-boards.greenhouse.io/optiverprivate,greenhouse,"{""token"": ""optiverprivate""}",skip,
