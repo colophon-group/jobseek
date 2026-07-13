@@ -3595,6 +3595,7 @@ oneimaging,oneimaging-greenhouse,https://job-boards.greenhouse.io/oneimaging,gre
 oneleet,oneleet-ashby,https://jobs.ashbyhq.com/oneleet,ashby,"{""token"": ""oneleet""}",skip,
 onit-inc,onit-inc-lever,https://jobs.lever.co/onit,lever,"{""token"": ""onit""}",skip,
 onoshealth,onoshealth-ashby,https://jobs.ashbyhq.com/onoshealth,ashby,"{""token"": ""onoshealth""}",skip,
+onrobot,onrobot-careers,https://onrobot.com/en/careers,dom,"{""render"": false, ""url_filter"": ""/en/careers/.+""}",dom,"{""render"": false, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.*?)\\s*\\|\\s*OnRobot$""}, {""tag"": ""h2"", ""field"": ""description"", ""stop_tag"": ""h3"", ""html"": true, ""from"": 0}], ""defaults"": {""locations"": [""Odense, Denmark""]}}"
 ontic,ontic-ashby,https://jobs.ashbyhq.com/ontic,ashby,"{""token"": ""ontic""}",skip,
 ontra,ontra-ashby,https://jobs.ashbyhq.com/ontra,ashby,"{""token"": ""ontra""}",skip,
 onx,onx-greenhouse,https://job-boards.greenhouse.io/onxmaps,greenhouse,"{""token"": ""onxmaps""}",skip,
