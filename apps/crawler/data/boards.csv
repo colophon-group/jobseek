@@ -3213,6 +3213,7 @@ mission-lane,mission-lane-greenhouse,https://job-boards.greenhouse.io/missionlan
 mistral-ai,mistral-ai-careers,https://jobs.lever.co/mistral,lever,"{""token"": ""mistral""}",skip,
 mithril,mithril-greenhouse,https://job-boards.greenhouse.io/mithril,greenhouse,"{""token"": ""mithril""}",skip,
 mithrl,mithrl-ashby,https://jobs.ashbyhq.com/mithrl,ashby,"{""token"": ""mithrl""}",skip,
+mitigram,mitigram-careers,https://careers.mitigram.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.mitigram.com/jobs.rss""}",skip,
 mitratech,mitratech-greenhouse,https://job-boards.greenhouse.io/mitratech,greenhouse,"{""token"": ""mitratech""}",skip,
 mitsogo-inc,mitsogo-inc-greenhouse,https://job-boards.greenhouse.io/mitsogoinc,greenhouse,"{""token"": ""mitsogoinc""}",skip,
 mitsubishi-corp,mitsubishi-corp-careers,https://jobs.dayforcehcm.com/mca/MICMCACombinedCareerSite,dom,"{""render"": true, ""timeout"": 60000, ""wait"": ""load"", ""actions"": [{""action"": ""wait"", ""ms"": 5000, ""timeout"": 10}, {""action"": ""evaluate"", ""script"": ""window.scrollTo(0, document.body.scrollHeight)""}, {""action"": ""wait"", ""ms"": 5000, ""timeout"": 10}, {""action"": ""evaluate"", ""script"": ""window.scrollTo(0, 0)""}, {""action"": ""wait"", ""ms"": 5000, ""timeout"": 10}], ""url_filter"": ""/jobs/""}",nextdata,"{""path"": ""props.pageProps.jobData"", ""fields"": {""title"": ""jobTitle"", ""description"": ""jobPostingContent.jobDescription"", ""date_posted"": ""postingStartTimestampUTC""}}"
