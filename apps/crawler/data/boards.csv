@@ -3439,6 +3439,7 @@ nordstrom,nordstrom-careers,https://careers.nordstrom.com,phenom,"{""proxy"":tru
 norm-ai,norm-ai-ashby,https://jobs.ashbyhq.com/norm-ai,ashby,"{""token"": ""norm-ai""}",skip,
 normative,normative-careers,https://careers.normative.io/jobs,sitemap,"{""url_filter"": ""/jobs/[0-9]+-""}",json-ld,
 norsepower,norsepower-global,https://careers.norsepower.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.norsepower.com/jobs.rss""}",skip,
+norsk-titanium,norsk-titanium-us,https://norsktitanium.prevueaps.com/jobs/,sitemap,"{""sitemap_url"": ""https://norsktitanium.prevueaps.com/sitemap.xml"", ""url_filter"": ""/jobs/[0-9]+""}",json-ld,
 nortal,nortal-greenhouse,https://job-boards.greenhouse.io/nearsure,greenhouse,"{""token"": ""nearsure""}",skip,
 north-america,north-america-greenhouse,https://job-boards.greenhouse.io/xebiausa,greenhouse,"{""token"": ""xebiausa""}",skip,
 northbeam,northbeam-greenhouse,https://job-boards.greenhouse.io/northbeam,greenhouse,"{""token"": ""northbeam""}",skip,
