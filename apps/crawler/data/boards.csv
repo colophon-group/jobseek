@@ -3456,6 +3456,7 @@ notable,notable-ashby,https://jobs.ashbyhq.com/notable,ashby,"{""token"": ""nota
 nothing,nothing-careers,https://job-boards.eu.greenhouse.io/nothing,greenhouse,"{""token"": ""nothing""}",skip,
 notion,notion-careers,https://jobs.ashbyhq.com/notion,ashby,"{""token"": ""notion""}",skip,
 noto,noto-ashby,https://jobs.ashbyhq.com/noto,ashby,"{""token"": ""noto""}",skip,
+notraffic,notraffic-main,https://www.notraffic.com/careers/,dom,"{""render"": false, ""url_filter"": ""/careers/co/""}",json-ld,
 nourish,nourish-greenhouse,https://job-boards.greenhouse.io/usenourish,greenhouse,"{""token"": ""usenourish""}",skip,
 nova-credit,nova-credit-greenhouse,https://job-boards.greenhouse.io/novacredit,greenhouse,"{""token"": ""novacredit""}",skip,
 nova-founders-capital,nova-founders-capital-greenhouse,https://job-boards.greenhouse.io/novafounders,greenhouse,"{""token"": ""novafounders""}",skip,
