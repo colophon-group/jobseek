@@ -3183,6 +3183,7 @@ millennium-management,millennium-management-campus,https://campusjobs.mlp.com/ca
 millennium-management,millennium-management-experienced,https://career.mlp.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 million-dollar-baby-co,million-dollar-baby-co-greenhouse,https://job-boards.greenhouse.io/milliondollarbabyco,greenhouse,"{""token"": ""milliondollarbabyco""}",skip,
 milomed-gmbh,milomed-gmbh-join,https://join.com/companies/milomedeu,join,"{""slug"": ""milomedeu""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+mimecast,mimecast-careers,https://careers.mimecast.com/en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.mimecast.com/sitemap.xml"", ""url_filter"": ""/en/jobs/.+""}",json-ld,
 mimic,mimic-careers,https://jobs.gem.com/mimicrobotics-com,gem,"{""token"": ""mimicrobotics-com""}",skip,
 mind-robotics,mind-robotics-careers,https://jobs.ashbyhq.com/mindrobotics,ashby,"{""token"": ""mindrobotics""}",skip,
 mindbody,mindbody-greenhouse,https://job-boards.greenhouse.io/mindbody,greenhouse,"{""token"": ""mindbody""}",skip,
