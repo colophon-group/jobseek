@@ -2950,6 +2950,7 @@ lush,lush-pinpoint,https://lush.pinpointhq.com,pinpoint,"{""slug"": ""lush""}",s
 lush-handmade-cosmetics,lush-handmade-cosmetics-greenhouse,https://job-boards.greenhouse.io/lush,greenhouse,"{""token"": ""lush""}",skip,
 luxoft,luxoft-careers,https://career.luxoft.com/jobs,dom,"{""url_filter"": ""^https?://career\\.luxoft\\.com/jobs/[^/?#]+-[0-9]+$"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 121}}",json-ld,
 luxor,luxor-ashby,https://jobs.ashbyhq.com/luxor,ashby,"{""token"": ""luxor""}",skip,
+luzia,luzia-teamtailor,https://luzia.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://luzia.teamtailor.com/jobs.rss""}",skip,
 lvmh,lvmh-careers,https://www.lvmh.com/en/join-us/our-job-offers,pinpoint,"{""slug"": ""lvmh""}",skip,
 lvmh,lvmh-careers-sr,https://careers.smartrecruiters.com/LVMH2,smartrecruiters,"{""token"": ""LVMH2""}",smartrecruiters,
 lvmh,lvmh-careers-sr-pc,https://careers.smartrecruiters.com/LVMHPerfumesCosmetics,smartrecruiters,"{""token"": ""LVMHPerfumesCosmetics""}",smartrecruiters,
