@@ -3882,6 +3882,7 @@ pink-moon-studios,pink-moon-studios-careers,https://www.kryptomon.co/vacancies,s
 pinterest,pinterest-careers,https://job-boards.greenhouse.io/pinterestjobadvertisements,greenhouse,"{""token"": ""pinterest""}",skip,
 pipe17,pipe17-greenhouse,https://job-boards.greenhouse.io/pipe17,greenhouse,"{""token"": ""pipe17""}",skip,
 pipedrive,pipedrive-lever,https://jobs.lever.co/pipedrive,lever,"{""token"": ""pipedrive""}",skip,
+pit,pit-teamtailor,https://careers.pit.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.pit.com/jobs.rss""}",skip,
 pitchbook-data,pitchbook-data-greenhouse,https://job-boards.greenhouse.io/pitchbookdata,greenhouse,"{""token"": ""pitchbookdata""}",skip,
 pivot,pivot-ashby,https://jobs.ashbyhq.com/pivot,ashby,"{""token"": ""pivot""}",skip,
 pivot-a2e,pivot-a2e-careers,https://www.a2etech.com/careers/,inline,"{""steps"": [{""tag"": ""h3"", ""text"": ""Senior Electronics Engineer"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h3""}], ""defaults"": {""locations"": [""Livingston, Scotland""]}}",skip,
