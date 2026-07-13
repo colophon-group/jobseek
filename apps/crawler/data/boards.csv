@@ -3778,6 +3778,7 @@ peak-design,peak-design-greenhouse,https://job-boards.greenhouse.io/peakdesign,g
 pearl,pearl-ashby,https://jobs.ashbyhq.com/pearl,ashby,"{""token"": ""pearl""}",skip,
 pearl,pearl-greenhouse,https://job-boards.greenhouse.io/justanswer,greenhouse,"{""token"": ""justanswer""}",skip,
 pearlhealth,pearlhealth-ashby,https://jobs.ashbyhq.com/pearlhealth,ashby,"{""token"": ""pearlhealth""}",skip,
+pecan,pecan-careers,https://www.pecan.ai/careers/,dom,"{""render"": false, ""url_filter"": ""/careers/career-job/""}",dom,"{""steps"": [{""tag"": ""p"", ""field"": ""metadata.test"", ""from"": 0}]}"
 peec-ai,peec-ai-careers,https://jobs.ashbyhq.com/peec,ashby,,skip,
 peloton,peloton-greenhouse,https://job-boards.greenhouse.io/peloton,greenhouse,"{""token"": ""peloton""}",skip,
 pendo,pendo-greenhouse,https://job-boards.greenhouse.io/pendo,greenhouse,"{""token"": ""pendo""}",skip,
