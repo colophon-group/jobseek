@@ -3836,6 +3836,7 @@ phoenix-contact,phoenix-contact-greenhouse,https://job-boards.greenhouse.io/phoe
 phonepe,phonepe-greenhouse,https://job-boards.greenhouse.io/phonepe,greenhouse,"{""token"": ""phonepe""}",skip,
 phota-labs,phota-labs-careers,https://jobs.gem.com/photalabs-com,gem,"{""slug"": ""photalabs-com""}",skip,
 phylo,phylo-careers,https://jobs.ashbyhq.com/phylo,ashby,"{""token"": ""phylo""}",skip,
+phyron,phyron-teamtailor,https://careers.phyron.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.phyron.com/jobs.rss""}",skip,
 physical-intelligence,physical-intelligence-careers,https://jobs.ashbyhq.com/physicalintelligence,ashby,"{""token"": ""physicalintelligence""}",skip,
 physicsx,physicsx-greenhouse,https://job-boards.greenhouse.io/physicsx,greenhouse,"{""token"": ""physicsx""}",skip,
 picnic,picnic-greenhouse,https://job-boards.greenhouse.io/teampicnic,greenhouse,"{""token"": ""teampicnic""}",skip,
