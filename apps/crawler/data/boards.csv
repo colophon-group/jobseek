@@ -3613,6 +3613,7 @@ opensea,opensea-ashby,https://jobs.ashbyhq.com/opensea,ashby,"{""token"": ""open
 opensesame,opensesame-greenhouse,https://job-boards.greenhouse.io/opensesame,greenhouse,"{""token"": ""opensesame""}",skip,
 opentable,opentable-greenhouse,https://job-boards.greenhouse.io/opentable,greenhouse,"{""token"": ""opentable""}",skip,
 openwork,openwork-greenhouse,https://job-boards.greenhouse.io/openwork,greenhouse,"{""token"": ""openwork""}",skip,
+openworks,openworks-workable,https://apply.workable.com/openworks-engineering/,workable,"{""token"": ""openworks-engineering""}",workable,
 openx,openx-pinpoint,https://openx.pinpointhq.com,pinpoint,"{""slug"": ""openx""}",skip,
 ophelia,ophelia-greenhouse,https://job-boards.greenhouse.io/ophelia,greenhouse,"{""token"": ""ophelia""}",skip,
 ophelos,ophelos-greenhouse,https://job-boards.greenhouse.io/ophelos,greenhouse,"{""token"": ""ophelos""}",skip,
