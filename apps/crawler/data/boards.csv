@@ -3031,6 +3031,7 @@ matternet,matternet-workable,https://apply.workable.com/matternet/,workable,"{""
 maven,maven-greenhouse,https://job-boards.greenhouse.io/mavensecuritiesholdingltd,greenhouse,"{""token"": ""mavensecuritiesholdingltd""}",skip,
 maven-clinic,maven-clinic-greenhouse,https://job-boards.greenhouse.io/mavenclinic,greenhouse,"{""token"": ""mavenclinic""}",skip,
 maven-emerging-talent,maven-emerging-talent-greenhouse,https://job-boards.greenhouse.io/emergingtalent,greenhouse,"{""token"": ""emergingtalent""}",skip,
+mavenoid,mavenoid-careers,https://jobs.eu.lever.co/mavenoid,lever,"{""token"": ""mavenoid"", ""region"": ""eu""}",skip,
 may-mobility,may-mobility-greenhouse,https://job-boards.greenhouse.io/maymobility,greenhouse,"{""token"": ""maymobility""}",skip,
 mayflower,mayflower-careers,https://mayflower.recruitee.com,recruitee,"{""slug"": ""mayflower"", ""api_base"": ""https://mayflower.recruitee.com""}",skip,
 maze-therapeutics,maze-therapeutics-careers,https://boards.greenhouse.io/mazetherapeutics,greenhouse,"{""token"": ""mazetherapeutics""}",skip,
