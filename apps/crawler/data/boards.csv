@@ -3690,6 +3690,7 @@ oviva,oviva-pinpoint,https://oviva.pinpointhq.com,pinpoint,"{""slug"": ""oviva""
 owkin,owkin-careers,https://jobs.ashbyhq.com/owkin,ashby,"{""token"": ""owkin""}",skip,
 ox-security,ox-security-careers-site,https://www.ox.security/careers/,dom,"{""render"": false, ""url_filter"": ""^https?://(?:www\\.)?ox\\.security/careers-position/""}",json-ld,
 oxford-instruments,oxford-instruments-careers,https://jobs.oxinst.com/googlefeed.xml,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.oxinst.com/googlefeed.xml""}",skip,
+oxford-ionics,oxford-ionics-workable,https://apply.workable.com/oxford-ionics/,workable,"{""token"": ""oxford-ionics""}",workable,
 oxford-nanopore-technologies,oxford-nanopore-technologies-oracle,https://ejnh.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs,oracle_hcm,,oracle_hcm,
 oxford-quantum-circuits,oxford-quantum-circuits-workable,https://apply.workable.com/oxford-quantum-circuits-8/,workable,"{""token"": ""oxford-quantum-circuits-8""}",workable,
 oxio,oxio-ashby,https://jobs.ashbyhq.com/oxio,ashby,"{""token"": ""oxio""}",skip,
