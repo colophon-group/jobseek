@@ -3883,6 +3883,8 @@ pinterest,pinterest-careers,https://job-boards.greenhouse.io/pinterestjobadverti
 pipe17,pipe17-greenhouse,https://job-boards.greenhouse.io/pipe17,greenhouse,"{""token"": ""pipe17""}",skip,
 pipedrive,pipedrive-lever,https://jobs.lever.co/pipedrive,lever,"{""token"": ""pipedrive""}",skip,
 pit,pit-teamtailor,https://careers.pit.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.pit.com/jobs.rss""}",skip,
+pitch,pitch-personio,https://pitch.jobs.personio.com/?language=en,personio,"{""slug"": ""pitch"", ""language"": ""en""}",skip,
+pitch,pitch-workable,https://apply.workable.com/pitch-software/,workable,"{""token"": ""pitch-software""}",workable,
 pitchbook-data,pitchbook-data-greenhouse,https://job-boards.greenhouse.io/pitchbookdata,greenhouse,"{""token"": ""pitchbookdata""}",skip,
 pivot,pivot-ashby,https://jobs.ashbyhq.com/pivot,ashby,"{""token"": ""pivot""}",skip,
 pivot-a2e,pivot-a2e-careers,https://www.a2etech.com/careers/,inline,"{""steps"": [{""tag"": ""h3"", ""text"": ""Senior Electronics Engineer"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h3""}], ""defaults"": {""locations"": [""Livingston, Scotland""]}}",skip,
