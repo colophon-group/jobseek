@@ -3794,6 +3794,7 @@ people-can-fly,people-can-fly-careers,https://jobs.smartrecruiters.com/PeopleCan
 pep,pep-greenhouse,https://job-boards.greenhouse.io/pep,greenhouse,"{""token"": ""pep""}",skip,
 per-scholas,per-scholas-greenhouse,https://job-boards.greenhouse.io/perscholashires,greenhouse,"{""token"": ""perscholashires""}",skip,
 percepta,percepta-ashby,https://jobs.ashbyhq.com/percepta,ashby,"{""token"": ""percepta""}",skip,
+percepto,percepto-careers,https://percepto.co/careers/,dom,"{""render"": false, ""url_filter"": ""^https://percepto\\.co/careers/(?!#|$).+""}",dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""text"": ""\u00b7"", ""field"": ""locations"", ""regex"": ""^(.+?)\\s*\u00b7""}, {""text"": ""\u00b7 Full-time"", ""field"": ""employment_type"", ""regex"": ""\u00b7\\s*(Full-time)"", ""optional"": true, ""from"": 0}, {""text"": ""About The Position"", ""field"": ""description"", ""stop"": ""Apply for this position"", ""html"": true}]}"
 peregrine-technologies,peregrine-technologies-greenhouse,https://job-boards.greenhouse.io/peregrinetechnologies,greenhouse,"{""token"": ""peregrinetechnologies""}",skip,
 perella-weinberg,perella-weinberg-careers-workday,https://wd1.myworkdaysite.com/recruiting/pwp/PWP_Experienced_Opportunities,workday,"{""company"": ""pwp"", ""wd_instance"": ""wd1"", ""site"": ""PWP_Experienced_Opportunities""}",workday,
 perfectserve,perfectserve-greenhouse,https://job-boards.greenhouse.io/perfectserve,greenhouse,"{""token"": ""perfectserve""}",skip,
