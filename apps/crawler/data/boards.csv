@@ -2967,6 +2967,7 @@ m1,m1-recruitee,https://m1.recruitee.com,recruitee,"{""token"": ""m1""}",skip,
 m3,m3-greenhouse,https://job-boards.greenhouse.io/m3,greenhouse,"{""token"": ""m3""}",skip,
 m9-solutions,m9-solutions-greenhouse,https://job-boards.greenhouse.io/m9solutions,greenhouse,"{""token"": ""m9solutions""}",skip,
 mabl,mabl-greenhouse,https://job-boards.greenhouse.io/mabl,greenhouse,"{""token"": ""mabl""}",skip,
+mach-industries,mach-industries-main,https://jobs.ashbyhq.com/mach,ashby,"{""token"": ""mach""}",skip,
 macis-gmbh,macis-gmbh-join,https://join.com/companies/macis-leipzig,join,"{""slug"": ""macis-leipzig""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 madano,madano-greenhouse,https://job-boards.greenhouse.io/madano,greenhouse,"{""token"": ""madano""}",skip,
 madison-energy-infrastructure,madison-energy-infrastructure-greenhouse,https://job-boards.greenhouse.io/madisonenergyinfrastructure,greenhouse,"{""token"": ""madisonenergyinfrastructure""}",skip,
