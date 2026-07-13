@@ -3307,6 +3307,7 @@ myers-holum,myers-holum-greenhouse,https://job-boards.greenhouse.io/mhi,greenhou
 myfitnesspal,myfitnesspal-greenhouse,https://job-boards.greenhouse.io/myfitnesspal,greenhouse,"{""token"": ""myfitnesspal""}",skip,
 myfunded-futures,myfunded-futures-greenhouse,https://job-boards.greenhouse.io/myfundedfutures,greenhouse,"{""token"": ""myfundedfutures""}",skip,
 myriad360,myriad360-greenhouse,https://job-boards.greenhouse.io/myriad360,greenhouse,"{""token"": ""myriad360""}",skip,
+myrspoven,myrspoven-career,https://myrspoven.com/career,inline,"{""render"": false, ""steps"": [{""tag"": ""div"", ""attr"": ""class=flex flex-1 flex-wrap items-center"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=flex flex-wrap gap-3 text-sm"", ""field"": ""location"", ""regex"": ""\ud83d\udccd\\s*([^/]+?)(?:\\s*/|\\s*\ud83d\udd50)""}, {""text"": ""About the role""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply for this position""}], ""defaults"": {""employment_type"": ""full_time"", ""job_location_type"": ""hybrid""}}",skip,
 myshell,myshell-greenhouse,https://job-boards.greenhouse.io/myshell,greenhouse,"{""token"": ""myshell""}",skip,
 mystenlabs,mystenlabs-ashby,https://jobs.ashbyhq.com/mystenlabs,ashby,"{""token"": ""mystenlabs""}",skip,
 myvillage,myvillage-ashby,https://jobs.ashbyhq.com/myvillage,ashby,"{""token"": ""myvillage""}",skip,
