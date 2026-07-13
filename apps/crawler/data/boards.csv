@@ -3345,6 +3345,7 @@ nawah,nawah-main,https://nawah.fr/jobs/,api_sniffer,"{""api_url"": ""https://naw
 nayya,nayya-greenhouse,https://job-boards.greenhouse.io/nayya,greenhouse,"{""token"": ""nayya""}",skip,
 nccgroup,nccgroup-pinpoint,https://nccgroup.pinpointhq.com,pinpoint,"{""slug"": ""nccgroup""}",skip,
 near-space-labs,near-space-labs-greenhouse,https://job-boards.greenhouse.io/nearspacelabs,greenhouse,"{""token"": ""nearspacelabs""}",skip,
+nearfield-instruments,nearfield-instruments-careers,https://careers.nearfieldinstruments.com/jobs,recruitee,"{""api_base"": ""https://careers.nearfieldinstruments.com""}",skip,
 nearform,nearform-greenhouse,https://job-boards.greenhouse.io/nearform,greenhouse,"{""token"": ""nearform""}",skip,
 nebius,nebius-careers,https://job-boards.greenhouse.io/nebius,greenhouse,"{""token"": ""nebius""}",skip,
 nec-laboratories,nec-laboratories-careers,https://jobs.neclab.eu/jobs/,dom,"{""url_filter"": ""/jobs/get/""}",pdf,"{""title_source"": ""text"", ""title_pattern"": ""is looking for\\s*\\n\\s*(.+?)\\s*\\n""}"
