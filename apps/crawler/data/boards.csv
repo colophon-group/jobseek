@@ -3935,6 +3935,7 @@ point72,point72-greenhouse,https://job-boards.greenhouse.io/point72,greenhouse,"
 poka-en,poka-en-greenhouse,https://job-boards.greenhouse.io/poka,greenhouse,"{""token"": ""poka""}",skip,
 poke-and-wiggle,poke-and-wiggle-careers,https://join.com/companies/pokeandwigglecom,join,"{""slug"": ""pokeandwigglecom""}",json-ld,"{""render"": true}"
 polar,polar-ashby,https://jobs.ashbyhq.com/polar,ashby,"{""token"": ""polar""}",skip,
+polestar,polestar-global,https://polestar.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://polestar.teamtailor.com/jobs.rss""}",skip,
 polyai,polyai-greenhouse,https://job-boards.greenhouse.io/polyai,greenhouse,"{""token"": ""polyai""}",skip,
 polychain-capital,polychain-capital-greenhouse,https://job-boards.greenhouse.io/polychaincapital,greenhouse,"{""token"": ""polychaincapital""}",skip,
 polygon-labs,polygon-labs-ashby,https://jobs.ashbyhq.com/polygon-labs,ashby,"{""token"": ""polygon-labs""}",skip,
