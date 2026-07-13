@@ -3394,6 +3394,8 @@ newstel-gmbh,newstel-gmbh-join,https://join.com/companies/newstelcom,join,"{""sl
 newsweek,newsweek-greenhouse,https://job-boards.greenhouse.io/newsweek,greenhouse,"{""token"": ""newsweek""}",skip,
 nex,nex-greenhouse,https://job-boards.greenhouse.io/nex,greenhouse,"{""token"": ""nex""}",skip,
 nexgen-cloud,nexgen-cloud-greenhouse,https://job-boards.greenhouse.io/nexgencloud,greenhouse,"{""token"": ""nexgencloud""}",skip,
+nexos,nexos-ashby,https://jobs.ashbyhq.com/nexos-ai,ashby,"{""token"": ""nexos-ai""}",skip,
+nexos,nexos-lever,https://jobs.lever.co/Nexos,lever,"{""token"": ""Nexos""}",skip,
 next,next-careers,https://careers.next.co.uk/jobs,sitemap,"{""sitemap_url"": ""https://careers.next.co.uk/jobs/sitemap.xml""}",json-ld,
 next-insurance,next-insurance-greenhouse,https://job-boards.greenhouse.io/nextinsurance66,greenhouse,"{""token"": ""nextinsurance66""}",skip,
 nexthink,nexthink-careers,https://nexthink.com/company/careers/jobs,smartrecruiters,"{""token"": ""nexthink""}",,
