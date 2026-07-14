@@ -4193,6 +4193,7 @@ renault-group,renault-group-alpine-racing-workday,https://alliancewd.wd3.myworkd
 renault-group,renault-group-careers-workday,https://alliancewd.wd3.myworkdayjobs.com/renault-group-careers,workday,"{""company"": ""alliancewd"", ""wd_instance"": ""wd3"", ""site"": ""renault-group-careers""}",workday,
 render,render-ashby,https://jobs.ashbyhq.com/render,ashby,"{""token"": ""render""}",skip,
 rent-the-runway,rent-the-runway-greenhouse,https://job-boards.greenhouse.io/renttherunway,greenhouse,"{""token"": ""renttherunway""}",skip,
+reorbit,reorbit-teamtailor,https://careers.reorbit.space/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.reorbit.space/jobs.rss""}",skip,
 replit,replit-ashby,https://jobs.ashbyhq.com/replit,ashby,"{""token"": ""replit""}",skip,
 replo,replo-ashby,https://jobs.ashbyhq.com/replo,ashby,"{""token"": ""replo""}",skip,
 reply,reply-pinpoint,https://reply.pinpointhq.com,pinpoint,"{""slug"": ""reply""}",skip,
