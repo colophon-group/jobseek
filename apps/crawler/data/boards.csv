@@ -4889,6 +4889,7 @@ teachable,teachable-greenhouse,https://job-boards.greenhouse.io/teachablecareers
 teague,teague-greenhouse,https://job-boards.greenhouse.io/teague,greenhouse,"{""token"": ""teague""}",skip,
 tealium,tealium-pinpoint,https://tealium.pinpointhq.com,pinpoint,"{""slug"": ""tealium""}",skip,
 team-skalieren,team-skalieren-join,https://join.com/companies/team-skalierende,join,"{""slug"": ""team-skalierende""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+tebi,tebi-ashby,https://jobs.ashbyhq.com/tebi,ashby,"{""token"": ""tebi""}",skip,
 tebra,tebra-greenhouse,https://job-boards.greenhouse.io/tebra,greenhouse,"{""token"": ""tebra""}",skip,
 tech-holding,tech-holding-greenhouse,https://job-boards.greenhouse.io/techholding,greenhouse,"{""token"": ""techholding""}",skip,
 tech-mahindra,tech-mahindra-careers-smartrecruiters,https://careers.smartrecruiters.com/TechMahindraLtd1,smartrecruiters,"{""company_identifier"": ""TechMahindraLtd1""}",smartrecruiters,
