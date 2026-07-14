@@ -4084,6 +4084,7 @@ quantum,quantum-ashby,https://jobs.ashbyhq.com/quantum,ashby,"{""token"": ""quan
 quantum-coffee,quantum-coffee-greenhouse,https://job-boards.greenhouse.io/quantumcoffee,greenhouse,"{""token"": ""quantumcoffee""}",skip,
 quantum-motion,quantum-motion-personio,https://quantummotion.jobs.personio.com/,personio,"{""slug"": ""quantummotion""}",skip,
 quantum-si,quantum-si-greenhouse,https://job-boards.greenhouse.io/quantumsi25,greenhouse,"{""token"": ""quantumsi25""}",skip,
+quantumdiamonds,quantumdiamonds-personio,https://quantum-diamond.jobs.personio.de/,personio,"{""slug"": ""quantum-diamond""}",skip,
 quartr,quartr-quartr,https://careers.quartr.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.quartr.com/jobs.rss""}",skip,
 quartz-bio,quartz-bio-greenhouse,https://job-boards.greenhouse.io/quartzbio,greenhouse,"{""token"": ""quartzbio""}",skip,
 qube-rt,qube-rt-careers,https://job-boards.greenhouse.io/quberesearchandtechnologies,greenhouse,"{""token"": ""quberesearchandtechnologies""}",skip,
