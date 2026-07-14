@@ -4079,6 +4079,7 @@ quantcast,quantcast-pinpoint,https://quantcast.pinpointhq.com,pinpoint,"{""slug"
 quantexa,quantexa-careers,https://apply.workable.com/quantexa,workable,"{""token"": ""quantexa""}",workable,
 quanthealth,quanthealth-greenhouse,https://job-boards.greenhouse.io/quanthealth,greenhouse,"{""token"": ""quanthealth""}",skip,
 quantinuum,quantinuum-lever-global,https://jobs.eu.lever.co/quantinuum,lever,"{""token"": ""quantinuum""}",skip,
+quantrolox,quantrolox-careers,https://quantrolox.com/careers/,inline,"{""render"": false, ""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""h4"", ""field"": ""location"", ""regex"": ""Location:\\s*(.*?)(?:\\s+Department:|$)""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h2""}]}",skip,
 quantum,quantum-ashby,https://jobs.ashbyhq.com/quantum,ashby,"{""token"": ""quantum""}",skip,
 quantum-coffee,quantum-coffee-greenhouse,https://job-boards.greenhouse.io/quantumcoffee,greenhouse,"{""token"": ""quantumcoffee""}",skip,
 quantum-si,quantum-si-greenhouse,https://job-boards.greenhouse.io/quantumsi25,greenhouse,"{""token"": ""quantumsi25""}",skip,
