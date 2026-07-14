@@ -4358,6 +4358,7 @@ saxotherm,saxotherm-join,https://join.com/companies/saxothermcom,join,"{""slug""
 sayari,sayari-greenhouse,https://job-boards.greenhouse.io/sayari,greenhouse,"{""token"": ""sayari""}",skip,
 sbb,sbb-careers,https://careers.sbb.ch,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.sbb.ch/googlefeed.xml""}",skip,
 scalable-capital,scalable-capital-smartrecruiters,https://careers.smartrecruiters.com/ScalableGmbH,smartrecruiters,"{""token"": ""ScalableGmbH""}",smartrecruiters,
+scalapay,scalapay-greenhouse,https://job-boards.eu.greenhouse.io/scalapaysrl,greenhouse,"{""token"": ""scalapaysrl""}",skip,
 scale-ai,scale-ai-greenhouse,https://job-boards.greenhouse.io/scaleai,greenhouse,"{""token"": ""scaleai""}",skip,
 scaled-cognition,scaled-cognition-ashby,https://jobs.ashbyhq.com/scaled-cognition,ashby,"{""token"": ""scaled-cognition""}",skip,
 scalemath,scalemath-ashby,https://jobs.ashbyhq.com/scalemath,ashby,"{""token"": ""scalemath""}",skip,
