@@ -4127,6 +4127,7 @@ rappi,rappi-careers-workday,https://rappi.wd12.myworkdayjobs.com/Rappi_jobs,work
 rapyd,rapyd-careers,https://www.rapyd.net/company/careers-search/,dom,"{""url_filter"": ""/company/careers/positions/""}",dom,"{""steps"": [{""tag"": ""h4"", ""field"": ""locations""}, {""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h3"", ""text"": ""Description"", ""field"": ""description"", ""stop_tag"": ""h3"", ""html"": true}]}"
 rapyuta-robotics,rapyuta-robotics-careers,https://apply.workable.com/rapyuta-robotics/,workable,"{""token"": ""rapyuta-robotics""}",workable,
 rasa,rasa-ashby,https://jobs.ashbyhq.com/rasa,ashby,"{""token"": ""rasa""}",skip,
+raycast,raycast-ashby,https://jobs.ashbyhq.com/raycast,ashby,"{""token"": ""raycast""}",skip,
 razorpay,razorpay-pinpoint,https://razorpay.pinpointhq.com,pinpoint,"{""slug"": ""razorpay""}",skip,
 razorpay-software-private-limited,razorpay-software-private-limited-greenhouse,https://job-boards.greenhouse.io/razorpaysoftwareprivatelimited,greenhouse,"{""token"": ""razorpaysoftwareprivatelimited""}",skip,
 re-build-manufacturing,re-build-manufacturing-greenhouse,https://job-boards.greenhouse.io/rebuildmanufacturing,greenhouse,"{""token"": ""rebuildmanufacturing""}",skip,
