@@ -4074,6 +4074,7 @@ qualio,qualio-greenhouse,https://job-boards.greenhouse.io/qualio,greenhouse,"{""
 qualtrics,qualtrics-greenhouse,https://job-boards.greenhouse.io/qualtrics,greenhouse,"{""token"": ""qualtrics""}",skip,
 quanata,quanata-greenhouse,https://job-boards.greenhouse.io/quanata,greenhouse,"{""token"": ""quanata""}",skip,
 quandela,quandela-workable,https://apply.workable.com/quandela/,workable,"{""token"": ""quandela""}",workable,
+quanta-dialysis-technologies,quanta-dialysis-technologies-global,https://careers.quantadt.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.quantadt.com/jobs.rss""}",skip,
 quantcast,quantcast-pinpoint,https://quantcast.pinpointhq.com,pinpoint,"{""slug"": ""quantcast""}",skip,
 quantexa,quantexa-careers,https://apply.workable.com/quantexa,workable,"{""token"": ""quantexa""}",workable,
 quanthealth,quanthealth-greenhouse,https://job-boards.greenhouse.io/quanthealth,greenhouse,"{""token"": ""quanthealth""}",skip,
