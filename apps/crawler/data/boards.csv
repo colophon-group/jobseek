@@ -4401,6 +4401,7 @@ securitas-ag,securitas-ag-careers-tech,https://jobs.securitas.ch,dom,"{""render"
 securitize,securitize-greenhouse,https://job-boards.greenhouse.io/securitize,greenhouse,"{""token"": ""securitize""}",skip,
 securityscorecard,securityscorecard-greenhouse,https://job-boards.greenhouse.io/securityscorecard,greenhouse,"{""token"": ""securityscorecard""}",skip,
 seed,seed-greenhouse,https://job-boards.greenhouse.io/seed,greenhouse,"{""token"": ""seed""}",skip,
+seeing-systems,seeing-systems-yc,https://www.ycombinator.com/companies/seeing-systems/jobs,dom,"{""render"": false, ""url_filter"": ""/companies/seeing-systems/jobs/[^/?]+""}",json-ld,
 seesaw,seesaw-greenhouse,https://job-boards.greenhouse.io/seesaw,greenhouse,"{""token"": ""seesaw""}",skip,
 sei-labs,sei-labs-ashby,https://jobs.ashbyhq.com/sei-labs,ashby,"{""token"": ""sei-labs""}",skip,
 select-management-group,select-management-group-greenhouse,https://job-boards.greenhouse.io/selectmanagementgroup,greenhouse,"{""token"": ""selectmanagementgroup""}",skip,
