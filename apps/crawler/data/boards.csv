@@ -4608,6 +4608,7 @@ sony-music-global-job-board,sony-music-global-job-board-greenhouse,https://job-b
 sony-pictures-animation,sony-pictures-animation-greenhouse,https://job-boards.greenhouse.io/sonypicturesanimation,greenhouse,"{""token"": ""sonypicturesanimation""}",skip,
 sony-pictures-imageworks,sony-pictures-imageworks-greenhouse,https://job-boards.greenhouse.io/sonypicturesimageworks,greenhouse,"{""token"": ""sonypicturesimageworks""}",skip,
 sopg-consulting,sopg-consulting-join,https://join.com/companies/sopg-consultingde,join,"{""slug"": ""sopg-consultingde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+sophos,sophos-lever,https://jobs.lever.co/sophos,lever,"{""token"": ""sophos""}",skip,
 soros-fund-management,soros-fund-management-greenhouse,https://job-boards.greenhouse.io/familyoffice,greenhouse,"{""token"": ""familyoffice""}",skip,
 sosafe,sosafe-ashby,https://jobs.ashbyhq.com/sosafe,ashby,"{""token"": ""sosafe""}",skip,
 sotheby-s,sotheby-s-greenhouse,https://job-boards.greenhouse.io/sothebys,greenhouse,"{""token"": ""sothebys""}",skip,
