@@ -4005,6 +4005,7 @@ propel,propel-ashby,https://jobs.ashbyhq.com/propel,ashby,"{""token"": ""propel"
 propel,propel-greenhouse,https://job-boards.greenhouse.io/propel,greenhouse,"{""token"": ""propel""}",skip,
 propel,propel-recruitee,https://propel.recruitee.com,recruitee,"{""token"": ""propel""}",skip,
 prophecy,prophecy-greenhouse,https://job-boards.greenhouse.io/prophecysimpledatalabs,greenhouse,"{""token"": ""prophecysimpledatalabs""}",skip,
+prophesee,prophesee-careers,https://careers.prophesee.ai/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.prophesee.ai/jobs.rss""}",skip,
 propublica,propublica-greenhouse,https://job-boards.greenhouse.io/propublica,greenhouse,"{""token"": ""propublica""}",skip,
 proqura-gmbh,proqura-gmbh-join,https://join.com/companies/proqurade,join,"{""slug"": ""proqurade""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 prosek-partners,prosek-partners-greenhouse,https://job-boards.greenhouse.io/prosek,greenhouse,"{""token"": ""prosek""}",skip,
