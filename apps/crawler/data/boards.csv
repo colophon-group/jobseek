@@ -4404,6 +4404,7 @@ seed,seed-greenhouse,https://job-boards.greenhouse.io/seed,greenhouse,"{""token"
 seeing-systems,seeing-systems-yc,https://www.ycombinator.com/companies/seeing-systems/jobs,dom,"{""render"": false, ""url_filter"": ""/companies/seeing-systems/jobs/[^/?]+""}",json-ld,
 seesaw,seesaw-greenhouse,https://job-boards.greenhouse.io/seesaw,greenhouse,"{""token"": ""seesaw""}",skip,
 sei-labs,sei-labs-ashby,https://jobs.ashbyhq.com/sei-labs,ashby,"{""token"": ""sei-labs""}",skip,
+sekoia-io,sekoia-io-careers,https://careers.sekoia.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.sekoia.com/jobs.rss""}",skip,
 select-management-group,select-management-group-greenhouse,https://job-boards.greenhouse.io/selectmanagementgroup,greenhouse,"{""token"": ""selectmanagementgroup""}",skip,
 self-financial,self-financial-greenhouse,https://job-boards.greenhouse.io/selffinancial,greenhouse,"{""token"": ""selffinancial""}",skip,
 selini-capital,selini-capital-greenhouse,https://job-boards.greenhouse.io/selinicapital,greenhouse,"{""token"": ""selinicapital""}",skip,
