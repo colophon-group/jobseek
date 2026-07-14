@@ -3978,6 +3978,7 @@ presidents-institute-sweden,presidents-institute-sweden-greenhouse,https://job-b
 prevail,prevail-greenhouse,https://job-boards.greenhouse.io/prevail,greenhouse,"{""token"": ""prevail""}",skip,
 prezzee,prezzee-greenhouse,https://job-boards.greenhouse.io/prezzee,greenhouse,"{""token"": ""prezzee""}",skip,
 pricefox,pricefox-greenhouse,https://job-boards.greenhouse.io/pricefox,greenhouse,"{""token"": ""pricefox""}",skip,
+pricefx,pricefx-jobscore,https://careers.pricefx.eu/,dom,"{""render"": false, ""url_filter"": ""^https://careers\\.pricefx\\.eu/careers/pricefx/jobs/""}",json-ld,"{""render"": false}"
 primary,primary-ashby,https://jobs.ashbyhq.com/primary,ashby,"{""token"": ""primary""}",skip,
 prime,prime-ashby,https://jobs.ashbyhq.com/prime,ashby,"{""token"": ""prime""}",skip,
 primeintellect,primeintellect-ashby,https://jobs.ashbyhq.com/primeintellect,ashby,"{""token"": ""primeintellect""}",skip,
