@@ -4705,6 +4705,7 @@ state-bank-of-india,state-bank-of-india-careers,https://sbi.co.in/web/careers/cu
 statsig,statsig-ashby,https://jobs.ashbyhq.com/statsig,ashby,"{""token"": ""statsig""}",skip,
 staubli,staubli-careers,https://careers.smartrecruiters.com/StaubliGroup,smartrecruiters,"{""token"": ""StaubliGroup""}",smartrecruiters,
 stayai,stayai-ashby,https://jobs.ashbyhq.com/stayai,ashby,"{""token"": ""stayai""}",skip,
+steady-energy,steady-energy-careers,https://steadyenergy.careers.haileyhr.app/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000}",dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""from"": 0, ""stop_count"": 1}]}"
 stealth-start-up-mobility-berlin,stealth-start-up-mobility-berlin-join,https://join.com/companies/liriaio,join,"{""slug"": ""liriaio""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 stedi,stedi-ashby,https://jobs.ashbyhq.com/stedi,ashby,"{""token"": ""stedi""}",skip,
 steer,steer-greenhouse,https://job-boards.greenhouse.io/steercrm,greenhouse,"{""token"": ""steercrm""}",skip,
