@@ -4088,6 +4088,7 @@ quantumdiamonds,quantumdiamonds-personio,https://quantum-diamond.jobs.personio.d
 quantware,quantware-ashby,https://jobs.ashbyhq.com/QuantWare,ashby,"{""token"": ""QuantWare""}",skip,
 quartr,quartr-quartr,https://careers.quartr.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.quartr.com/jobs.rss""}",skip,
 quartz-bio,quartz-bio-greenhouse,https://job-boards.greenhouse.io/quartzbio,greenhouse,"{""token"": ""quartzbio""}",skip,
+quatt,quatt-careers,https://careers.quatt.io/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.quatt.io/jobs.rss""}",skip,
 qube-rt,qube-rt-careers,https://job-boards.greenhouse.io/quberesearchandtechnologies,greenhouse,"{""token"": ""quberesearchandtechnologies""}",skip,
 quera-computing-inc,quera-computing-inc-greenhouse,https://job-boards.greenhouse.io/queracomputinginc,greenhouse,"{""token"": ""queracomputinginc""}",skip,
 quick,quick-join,https://join.com/companies/quickfr,join,"{""slug"": ""quickfr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
