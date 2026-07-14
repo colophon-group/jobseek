@@ -4139,6 +4139,7 @@ real,real-ashby,https://jobs.ashbyhq.com/real,ashby,"{""token"": ""real""}",skip
 real-chemistry,real-chemistry-greenhouse,https://job-boards.greenhouse.io/realchemistry,greenhouse,"{""token"": ""realchemistry""}",skip,
 real-time-innovations,real-time-innovations-greenhouse,https://job-boards.greenhouse.io/rti,greenhouse,"{""token"": ""rti""}",skip,
 rebag,rebag-greenhouse,https://job-boards.greenhouse.io/rebag,greenhouse,"{""token"": ""rebag""}",skip,
+rebtel,rebtel-teamtailor,https://rebtel.teamtailor.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://rebtel.teamtailor.com/jobs.rss""}",skip,
 recharge,recharge-greenhouse,https://job-boards.greenhouse.io/recharge,greenhouse,"{""token"": ""recharge""}",skip,
 recidiviz,recidiviz-greenhouse,https://job-boards.greenhouse.io/recidiviz,greenhouse,"{""token"": ""recidiviz""}",skip,
 recora-inc,recora-inc-greenhouse,https://job-boards.greenhouse.io/aviary,greenhouse,"{""token"": ""aviary""}",skip,
