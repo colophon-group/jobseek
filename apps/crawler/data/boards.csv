@@ -4362,6 +4362,7 @@ scalapay,scalapay-greenhouse,https://job-boards.eu.greenhouse.io/scalapaysrl,gre
 scale-ai,scale-ai-greenhouse,https://job-boards.greenhouse.io/scaleai,greenhouse,"{""token"": ""scaleai""}",skip,
 scaled-cognition,scaled-cognition-ashby,https://jobs.ashbyhq.com/scaled-cognition,ashby,"{""token"": ""scaled-cognition""}",skip,
 scalemath,scalemath-ashby,https://jobs.ashbyhq.com/scalemath,ashby,"{""token"": ""scalemath""}",skip,
+scaleops,scaleops-careers,https://scaleops.com/careers/,dom,"{""url_filter"": ""/careers/co/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h1"", ""offset"": 1, ""field"": ""locations"", ""from"": 0, ""regex"": ""^(.+?)(?:\\s*\u00b7|$)""}, {""text"": ""Full-time"", ""field"": ""employment_type"", ""regex"": ""^[^\u00b7]+\u00b7\\s*([^\u00b7]+)"", ""from"": 0, ""optional"": true}, {""text"": ""About The Position"", ""field"": ""description"", ""stop"": ""Apply for this position"", ""html"": true}]}"
 scandic-hotels,scandic-hotels-dk,https://cdn.jobylon.com/jobs/companies/1331/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""1331""}",json-ld,
 scandic-hotels,scandic-hotels-se,https://cdn.jobylon.com/jobs/companies/1334/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""1334""}",json-ld,
 scandit,scandit-careers,https://boards.greenhouse.io/scandit,greenhouse,"{""token"": ""scandit""}",skip,
