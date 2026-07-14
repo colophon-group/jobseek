@@ -4922,6 +4922,8 @@ tencent,tencent-careers-workday-lightspeed,https://tencent.wd1.myworkdayjobs.com
 tencent,tencent-careers-workday-overseas,https://tencent.wd1.myworkdayjobs.com/OA_Huoshui_Platform,workday,,workday,
 tencent,tencent-careers-workday-timi,https://tencent.wd1.myworkdayjobs.com/timi_careers,workday,,workday,
 tencent,tencent-careers-workday-timi-montreal,https://tencent.wd1.myworkdayjobs.com/timi_montreal_careers,workday,,workday,
+teneo-ai,teneo-ai-careers,https://www.teneo.ai/about-us/careers,dom,"{""url_filter"": ""/about-us/careers/[a-z0-9-]+/?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""from"": 0, ""field"": ""description"", ""html"": true, ""stop"": ""Apply Now""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""location"", ""from"": 0}, {""text"": ""Department"", ""offset"": 1, ""field"": ""metadata.department"", ""optional"": true, ""from"": 0}]}"
+teneo-ai,teneo-ai-lucca,https://jobs.world.luccasoftware.com/teneo-ai,dom,"{""render"": true}",json-ld,
 teneo-external-feed-for-linkedin,teneo-external-feed-for-linkedin-greenhouse,https://job-boards.greenhouse.io/teneolinkedin,greenhouse,"{""token"": ""teneolinkedin""}",skip,
 tenex-ai,tenex-ai-careers,https://jobs.ashbyhq.com/tenex,ashby,"{""token"": ""tenex""}",skip,
 tenjin,tenjin-ashby,https://jobs.ashbyhq.com/tenjin,ashby,"{""token"": ""tenjin""}",skip,
