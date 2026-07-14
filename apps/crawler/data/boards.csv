@@ -4835,6 +4835,7 @@ syndica,syndica-ashby,https://jobs.ashbyhq.com/syndica,ashby,"{""token"": ""synd
 syndigo,syndigo-greenhouse,https://job-boards.greenhouse.io/syndigo,greenhouse,"{""token"": ""syndigo""}",skip,
 syner-g,syner-g-greenhouse,https://job-boards.greenhouse.io/synerg,greenhouse,"{""token"": ""synerg""}",skip,
 synopsys,synopsys-pinpoint,https://synopsys.pinpointhq.com,pinpoint,"{""slug"": ""synopsys""}",skip,
+synthace,synthace-careers,https://www.synthace.com/about/careers,pinpoint,"{""slug"": ""synthace""}",skip,
 synthesia,synthesia-ashby,https://jobs.ashbyhq.com/synthesia,ashby,"{""token"": ""synthesia""}",skip,
 synthesis-health,synthesis-health-greenhouse,https://job-boards.greenhouse.io/synthesishealth,greenhouse,"{""token"": ""synthesishealth""}",skip,
 synthflow,synthflow-ashby,https://jobs.ashbyhq.com/synthflow,ashby,"{""token"": ""synthflow""}",skip,
