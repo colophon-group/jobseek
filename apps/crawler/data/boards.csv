@@ -4220,6 +4220,7 @@ rho,rho-ashby,https://jobs.ashbyhq.com/rho,ashby,"{""token"": ""rho""}",skip,
 rhombus-power-inc,rhombus-power-inc-greenhouse,https://job-boards.greenhouse.io/rhombuspower,greenhouse,"{""token"": ""rhombuspower""}",skip,
 rhythm-software-inc,rhythm-software-inc-greenhouse,https://job-boards.greenhouse.io/rhythmsoftwareinc,greenhouse,"{""token"": ""rhythmsoftwareinc""}",skip,
 richemont,richemont-careers,https://careers.richemont.com/en/jobs/,dom,,json-ld,
+ridgway-machines,ridgway-machines-workable,https://apply.workable.com/ridgway-machines-ltd-1/?lng=en,workable,"{""token"": ""ridgway-machines-ltd-1""}",workable,
 rigetti-computing,rigetti-computing-lever,https://jobs.lever.co/rigetti,lever,"{""token"": ""rigetti""}",skip,
 right-search,right-search-join,https://join.com/companies/right-search,join,"{""slug"": ""right-search""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 rigup,rigup-greenhouse,https://job-boards.greenhouse.io/rigup,greenhouse,"{""token"": ""rigup""}",skip,
