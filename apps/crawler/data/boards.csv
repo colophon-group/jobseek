@@ -4846,6 +4846,7 @@ tabapay,tabapay-greenhouse,https://job-boards.greenhouse.io/tabapay,greenhouse,"
 tabby,tabby-careers,https://tabby.pinpointhq.com,pinpoint,"{""slug"": ""tabby""}",skip,
 tacto,tacto-ashby,https://jobs.ashbyhq.com/tacto,ashby,"{""token"": ""tacto""}",skip,
 tacton-systems,tacton-systems-careers,https://careers.tacton.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.tacton.com/jobs.rss""}",skip,
+tadaweb,tadaweb-careers,https://www.tadaweb.com/careers,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""^https://www\\.tadaweb\\.com/careers/[a-z]""}",json-ld,
 tailorcare,tailorcare-greenhouse,https://job-boards.greenhouse.io/tailorcare2023,greenhouse,"{""token"": ""tailorcare2023""}",skip,
 tailored-brands,tailored-brands-eightfold,https://tailoredbrands.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 tailscale,tailscale-greenhouse,https://job-boards.greenhouse.io/tailscale,greenhouse,"{""token"": ""tailscale""}",skip,
