@@ -4274,6 +4274,7 @@ roofr,roofr-greenhouse,https://job-boards.greenhouse.io/roofr,greenhouse,"{""tok
 roofstock,roofstock-greenhouse,https://job-boards.greenhouse.io/roofstock,greenhouse,"{""token"": ""roofstock""}",skip,
 root-access,root-access-ashby,https://jobs.ashbyhq.com/root-access,ashby,"{""token"": ""root-access""}",skip,
 ropes,ropes-ashby,https://jobs.ashbyhq.com/ropes,ashby,"{""token"": ""ropes""}",skip,
+rothesay,rothesay-experienced,https://job-boards.greenhouse.io/rothesaylife,greenhouse,"{""token"": ""rothesaylife""}",skip,
 routine-labs,routine-labs-join,https://join.com/companies/routinelabs,join,"{""slug"": ""routinelabs""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 rover,rover-lever,https://jobs.lever.co/rover,lever,"{""token"": ""rover""}",skip,
 rowden-technologies,rowden-technologies-careers,https://rowdentech.pinpointhq.com/,pinpoint,"{""slug"": ""rowdentech""}",skip,
