@@ -4632,6 +4632,7 @@ spark-advisors,spark-advisors-greenhouse,https://job-boards.greenhouse.io/sparka
 sparkland,sparkland-greenhouse,https://job-boards.greenhouse.io/sparkland,greenhouse,"{""token"": ""sparkland""}",skip,
 sparksoft-corporation,sparksoft-corporation-greenhouse,https://job-boards.greenhouse.io/sparksoftcorporation,greenhouse,"{""token"": ""sparksoftcorporation""}",skip,
 sparrow,sparrow-greenhouse,https://job-boards.greenhouse.io/sparrow,greenhouse,"{""token"": ""sparrow""}",skip,
+sparrow-quantum,sparrow-quantum-teamtailor,https://sparrowquantum-1750238140.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://sparrowquantum-1750238140.teamtailor.com/jobs.rss""}",skip,
 spaulding-ridge,spaulding-ridge-greenhouse,https://job-boards.greenhouse.io/spauldingridge,greenhouse,"{""token"": ""spauldingridge""}",skip,
 spc-group,spc-group-careers,https://spc.recruiter.co.kr/career/home,recruiter_co_kr,"{""slug"": ""spc""}",skip,
 speakeasy,speakeasy-ashby,https://jobs.ashbyhq.com/speakeasy,ashby,"{""token"": ""speakeasy""}",skip,
