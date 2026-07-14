@@ -4512,6 +4512,7 @@ sirona-medical,sirona-medical-greenhouse,https://job-boards.greenhouse.io/sirona
 sisense,sisense-greenhouse,https://job-boards.greenhouse.io/sisense,greenhouse,"{""token"": ""sisense""}",skip,
 siteline,siteline-greenhouse,https://job-boards.greenhouse.io/siteline,greenhouse,"{""token"": ""siteline""}",skip,
 siteminder,siteminder-ashby,https://jobs.ashbyhq.com/siteminder,ashby,"{""token"": ""siteminder""}",skip,
+sitoo,sitoo-careers,https://careers.sitoo.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.sitoo.com/jobs.rss""}",skip,
 sixfold,sixfold-greenhouse,https://job-boards.greenhouse.io/sixfold,greenhouse,"{""token"": ""sixfold""}",skip,
 sk-hynix-america,sk-hynix-america-greenhouse,https://job-boards.greenhouse.io/skhynixamerica,greenhouse,"{""token"": ""skhynixamerica""}",skip,
 sk-hynix-memory-solutions-america-inc,sk-hynix-memory-solutions-america-inc-greenhouse,https://job-boards.greenhouse.io/skhynixmemorysolutionsamericainc,greenhouse,"{""token"": ""skhynixmemorysolutionsamericainc""}",skip,
