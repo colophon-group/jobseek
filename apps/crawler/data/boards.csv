@@ -4353,6 +4353,7 @@ saviynt,saviynt-lever,https://jobs.lever.co/saviynt,lever,"{""token"": ""saviynt
 savr,savr-teamtailor,https://career.savr.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.savr.com/jobs.rss""}",skip,
 savvy,savvy-ashby,https://jobs.ashbyhq.com/savvy,ashby,"{""token"": ""savvy""}",skip,
 sax-advisory-group,sax-advisory-group-greenhouse,https://job-boards.greenhouse.io/saxllp,greenhouse,"{""token"": ""saxllp""}",skip,
+saxo-bank,saxo-bank-global,https://saxobank.wd3.myworkdayjobs.com/CareeratSaxoBank,sitemap,"{""sitemap_url"": ""https://saxobank.wd3.myworkdayjobs.com/CareeratSaxoBank/siteMap.xml""}",json-ld,
 saxotherm,saxotherm-join,https://join.com/companies/saxothermcom,join,"{""slug"": ""saxothermcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 sayari,sayari-greenhouse,https://job-boards.greenhouse.io/sayari,greenhouse,"{""token"": ""sayari""}",skip,
 sbb,sbb-careers,https://careers.sbb.ch,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.sbb.ch/googlefeed.xml""}",skip,
