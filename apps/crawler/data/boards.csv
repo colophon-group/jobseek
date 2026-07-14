@@ -4582,6 +4582,7 @@ sojern,sojern-greenhouse,https://job-boards.greenhouse.io/sojern,greenhouse,"{""
 sol-de-janeiro,sol-de-janeiro-greenhouse,https://job-boards.greenhouse.io/soldejaneiro,greenhouse,"{""token"": ""soldejaneiro""}",skip,
 sola,sola-ashby,https://jobs.ashbyhq.com/sola,ashby,"{""token"": ""sola""}",skip,
 solana-foundation,solana-foundation-careers,https://jobs.ashbyhq.com/Solana%20Foundation,ashby,"{""token"": ""Solana Foundation""}",skip,
+solar-foods,solar-foods-careers,https://solarfoods.com/careers/,dom,"{""render"": true, ""url_filter"": ""recright\\.com/careers/en/solar-foods/(?!open-application-)""}",api_sniffer,"{""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""location""}}"
 solera-health,solera-health-greenhouse,https://job-boards.greenhouse.io/solera,greenhouse,"{""token"": ""solera""}",skip,
 solid-power,solid-power-greenhouse,https://job-boards.greenhouse.io/solidpower,greenhouse,"{""token"": ""solidpower""}",skip,
 solink,solink-ashby,https://jobs.ashbyhq.com/solink,ashby,"{""token"": ""solink""}",skip,
