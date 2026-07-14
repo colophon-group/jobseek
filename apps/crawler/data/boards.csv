@@ -4391,6 +4391,7 @@ seamless,seamless-greenhouse,https://job-boards.greenhouse.io/seamlessai,greenho
 seatgeek,seatgeek-careers,https://job-boards.greenhouse.io/seatgeek,greenhouse,"{""token"": ""seatgeek""}",skip,
 seattle-sounders-fc-seattle-reign-fc,seattle-sounders-fc-seattle-reign-fc-greenhouse,https://job-boards.greenhouse.io/seattlesoundersfc,greenhouse,"{""token"": ""seattlesoundersfc""}",skip,
 secfix,secfix-careers,https://jobs.ashbyhq.com/secfix,ashby,"{""token"": ""secfix""}",skip,
+second-front,second-front-careers,https://jobs.ashbyhq.com/Second-Front-Systems,ashby,"{""token"": ""Second-Front-Systems""}",skip,
 secretariat,secretariat-greenhouse,https://job-boards.greenhouse.io/secretariatadvisorsllc,greenhouse,"{""token"": ""secretariatadvisorsllc""}",skip,
 sectra,sectra-jobylon,https://cdn.jobylon.com/jobs/companies/2380/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""2380""}",json-ld,
 secureframe,secureframe-lever,https://jobs.lever.co/secureframe,lever,"{""token"": ""secureframe""}",skip,
