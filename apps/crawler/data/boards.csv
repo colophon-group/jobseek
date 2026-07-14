@@ -4450,6 +4450,7 @@ shakepay,shakepay-greenhouse,https://job-boards.greenhouse.io/shakepay,greenhous
 shardeum-foundation,shardeum-foundation-greenhouse,https://job-boards.greenhouse.io/shardeumfoundation,greenhouse,"{""token"": ""shardeumfoundation""}",skip,
 sharebite,sharebite-greenhouse,https://job-boards.greenhouse.io/sharebite,greenhouse,"{""token"": ""sharebite""}",skip,
 sharegate-en,sharegate-en-greenhouse,https://job-boards.greenhouse.io/sharegateen,greenhouse,"{""token"": ""sharegateen""}",skip,
+shark-robotics,shark-robotics-flatchr,https://careers.flatchr.io/fr/company/sharkrobotics/,dom,"{""render"": false, ""url_filter"": ""/fr/company/sharkrobotics/""}",json-ld,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000}"
 sharkninja,sharkninja-greenhouse,https://job-boards.greenhouse.io/sharkninjaoperatingllc,greenhouse,"{""token"": ""sharkninjaoperatingllc""}",skip,
 sharp-performance,sharp-performance-careers,https://ats.rippling.com/sharp-performance/jobs,rippling,"{""slug"": ""sharp-performance""}",rippling,
 shef,shef-careers,https://jobs.gem.com/shef-com,gem,"{""token"": ""shef-com""}",skip,
