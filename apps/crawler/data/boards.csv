@@ -4827,6 +4827,7 @@ sylogist,sylogist-greenhouse,https://job-boards.greenhouse.io/sylogist,greenhous
 sylvera,sylvera-ashby,https://jobs.ashbyhq.com/sylvera,ashby,"{""token"": ""sylvera""}",skip,
 symbolica-ai,symbolica-ai-greenhouse,https://job-boards.greenhouse.io/symbolica,greenhouse,"{""token"": ""symbolica""}",skip,
 symetra,symetra-eightfold,https://symetra.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
+symphogen,symphogen-careers,https://serviersymphogen.com/careers/open-positions/,dom,"{""url_filter"": ""/careers/open-positions/[^/#?]+/?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Open positions"", ""html"": true}, {""tag"": ""p"", ""text"": ""Ballerup"", ""field"": ""locations"", ""regex"": ""(Ballerup)"", ""from"": 0}, {""text"": ""May 18, 2026"", ""field"": ""date_posted"", ""regex"": ""(May 18, 2026)"", ""from"": 0, ""optional"": true}]}"
 synack,synack-greenhouse,https://job-boards.greenhouse.io/synack,greenhouse,"{""token"": ""synack""}",skip,
 syndica,syndica-ashby,https://jobs.ashbyhq.com/syndica,ashby,"{""token"": ""syndica""}",skip,
 syndigo,syndigo-greenhouse,https://job-boards.greenhouse.io/syndigo,greenhouse,"{""token"": ""syndigo""}",skip,
