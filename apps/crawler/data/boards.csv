@@ -4350,6 +4350,7 @@ satvu,satvu-satvu,https://apply.workable.com/satellitevu/,workable,"{""token"": 
 sauce-labs-inc,sauce-labs-inc-greenhouse,https://job-boards.greenhouse.io/saucelabs,greenhouse,"{""token"": ""saucelabs""}",skip,
 saudi-aramco,saudi-aramco-careers-eu,https://careers.aramco.eu/search/?createNewAlert=false&q=&locationsearch=&locale=en_US,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.aramco.eu/googlefeed.xml""}",skip,
 saviynt,saviynt-lever,https://jobs.lever.co/saviynt,lever,"{""token"": ""saviynt""}",skip,
+savr,savr-teamtailor,https://career.savr.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.savr.com/jobs.rss""}",skip,
 savvy,savvy-ashby,https://jobs.ashbyhq.com/savvy,ashby,"{""token"": ""savvy""}",skip,
 sax-advisory-group,sax-advisory-group-greenhouse,https://job-boards.greenhouse.io/saxllp,greenhouse,"{""token"": ""saxllp""}",skip,
 saxotherm,saxotherm-join,https://join.com/companies/saxothermcom,join,"{""slug"": ""saxothermcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
