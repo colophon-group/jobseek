@@ -4933,6 +4933,7 @@ tensorwave,tensorwave-ashby,https://jobs.ashbyhq.com/tensorwave,ashby,"{""token"
 tenstorrent,tenstorrent-greenhouse,https://job-boards.greenhouse.io/tenstorrent,greenhouse,"{""token"": ""tenstorrent""}",skip,
 tenstorrent-university-jobs,tenstorrent-university-jobs-greenhouse,https://job-boards.greenhouse.io/tenstorrentuniversity,greenhouse,"{""token"": ""tenstorrentuniversity""}",skip,
 tenstorrent-unlisted-referral-jobs,tenstorrent-unlisted-referral-jobs-greenhouse,https://job-boards.greenhouse.io/tenstorrentunlisted,greenhouse,"{""token"": ""tenstorrentunlisted""}",skip,
+tenzai,tenzai-main,https://www.tenzai.com/careers,dom,"{""url_filter"": ""/positions/""}",json-ld,
 teravision-technologies,teravision-technologies-greenhouse,https://job-boards.greenhouse.io/teravision,greenhouse,"{""token"": ""teravision""}",skip,
 terraai,terraai-ashby,https://jobs.ashbyhq.com/terraai,ashby,"{""token"": ""terraai""}",skip,
 terrabis,terrabis-greenhouse,https://job-boards.greenhouse.io/terrabis,greenhouse,"{""token"": ""terrabis""}",skip,
