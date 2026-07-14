@@ -4830,6 +4830,7 @@ symetra,symetra-eightfold,https://symetra.eightfold.ai/careers,eightfold,"{""url
 symphogen,symphogen-careers,https://serviersymphogen.com/careers/open-positions/,dom,"{""url_filter"": ""/careers/open-positions/[^/#?]+/?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Open positions"", ""html"": true}, {""tag"": ""p"", ""text"": ""Ballerup"", ""field"": ""locations"", ""regex"": ""(Ballerup)"", ""from"": 0}, {""text"": ""May 18, 2026"", ""field"": ""date_posted"", ""regex"": ""(May 18, 2026)"", ""from"": 0, ""optional"": true}]}"
 synack,synack-greenhouse,https://job-boards.greenhouse.io/synack,greenhouse,"{""token"": ""synack""}",skip,
 synapse-medicine,synapse-medicine-careers,https://careers.synapse-medicine.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.synapse-medicine.com/jobs.rss""}",skip,
+syncron,syncron-teamtailor,https://careers.syncron.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.syncron.com/jobs.rss""}",skip,
 syndica,syndica-ashby,https://jobs.ashbyhq.com/syndica,ashby,"{""token"": ""syndica""}",skip,
 syndigo,syndigo-greenhouse,https://job-boards.greenhouse.io/syndigo,greenhouse,"{""token"": ""syndigo""}",skip,
 syner-g,syner-g-greenhouse,https://job-boards.greenhouse.io/synerg,greenhouse,"{""token"": ""synerg""}",skip,
