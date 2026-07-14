@@ -3960,6 +3960,7 @@ postman,postman-greenhouse,https://job-boards.greenhouse.io/postman,greenhouse,"
 postscript,postscript-greenhouse,https://job-boards.greenhouse.io/postscript,greenhouse,"{""token"": ""postscript""}",skip,
 power-digital,power-digital-greenhouse,https://job-boards.greenhouse.io/powerdigitalmarketing,greenhouse,"{""token"": ""powerdigitalmarketing""}",skip,
 powercell-sweden,powercell-sweden-main,https://careers.powercellgroup.com/,sitemap,"{""sitemap_url"": ""https://careers.powercellgroup.com/sitemap.xml"", ""url_filter"": ""^https://careers\\.powercellgroup\\.com/jobs/[0-9]+(?:-|$)""}",json-ld,"{""render"": true}"
+ppro,ppro-careers,https://jobs.lever.co/ppro,lever,"{""token"": ""ppro""}",skip,
 practice-better,practice-better-greenhouse,https://job-boards.greenhouse.io/practicebetter,greenhouse,"{""token"": ""practicebetter""}",skip,
 praxent,praxent-greenhouse,https://job-boards.greenhouse.io/praxent,greenhouse,"{""token"": ""praxent""}",skip,
 praxis-precision-medicines-inc,praxis-precision-medicines-inc-greenhouse,https://job-boards.greenhouse.io/praxisprecisionmedicines,greenhouse,"{""token"": ""praxisprecisionmedicines""}",skip,
