@@ -4898,6 +4898,7 @@ technology,technology-recruitee,https://technology.recruitee.com,recruitee,"{""t
 techtorch,techtorch-ashby,https://jobs.ashbyhq.com/techtorch,ashby,"{""token"": ""techtorch""}",skip,
 tecovas,tecovas-greenhouse,https://job-boards.greenhouse.io/tecovas,greenhouse,"{""token"": ""tecovas""}",skip,
 tegna-inc,tegna-inc-greenhouse,https://job-boards.greenhouse.io/tegnainc,greenhouse,"{""token"": ""tegnainc""}",skip,
+tekever,tekever-careers,https://careers.tekever.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.tekever.com/jobs.rss""}",skip,
 tekion,tekion-ashby,https://jobs.ashbyhq.com/tekion,ashby,"{""token"": ""tekion""}",skip,
 tekion,tekion-greenhouse,https://job-boards.greenhouse.io/tekion,greenhouse,"{""token"": ""tekion""}",skip,
 tekmetric,tekmetric-greenhouse,https://job-boards.greenhouse.io/tekmetric,greenhouse,"{""token"": ""tekmetric""}",skip,
