@@ -4321,6 +4321,7 @@ salt-security,salt-security-greenhouse,https://job-boards.greenhouse.io/saltsecu
 sama,sama-greenhouse,https://job-boards.greenhouse.io/samainc,greenhouse,"{""token"": ""samainc""}",skip,
 sambanova,sambanova-careers,https://boards.greenhouse.io/sambanovasystems,greenhouse,"{""token"": ""sambanovasystems""}",skip,
 samlino-group,samlino-group-greenhouse,https://job-boards.greenhouse.io/ceg,greenhouse,"{""token"": ""ceg""}",skip,
+samotics,samotics-careers,https://careers.samotics.com/jobs,recruitee,"{""api_base"": ""https://careers.samotics.com""}",skip,
 samsara,samsara-greenhouse,https://job-boards.greenhouse.io/samsara,greenhouse,"{""token"": ""samsara""}",skip,
 samsung,samsung-careers,https://sec.wd3.myworkdayjobs.com/Samsung_Careers,workday,"{""company"": ""sec"", ""wd_instance"": ""wd3"", ""site"": ""Samsung_Careers""}",workday,
 samsung-research-america-internship,samsung-research-america-internship-greenhouse,https://job-boards.greenhouse.io/samsungresearchamericainternship,greenhouse,"{""token"": ""samsungresearchamericainternship""}",skip,
