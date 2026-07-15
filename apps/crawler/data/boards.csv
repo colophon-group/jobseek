@@ -5198,6 +5198,7 @@ unlikelyai,unlikelyai-ashby,https://jobs.ashbyhq.com/unlikelyai,ashby,"{""token"
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,skip,
 unlock-health,unlock-health-greenhouse,https://job-boards.greenhouse.io/unlockhealth,greenhouse,"{""token"": ""unlockhealth""}",skip,
 unreal-snacks,unreal-snacks-greenhouse,https://job-boards.greenhouse.io/unrealsnacks,greenhouse,"{""token"": ""unrealsnacks""}",skip,
+unseenlabs,unseenlabs-careers,https://careers.werecruit.io/en/unseenlabs,sitemap,"{""url_filter"": ""^https://careers\\.werecruit\\.io/fr/unseenlabs/offres/[^/?#]+$""}",json-ld,
 unsloth-ai,unsloth-ai-careers,https://www.ycombinator.com/companies/unsloth-ai/jobs,ycombinator,"{""slug"": ""unsloth-ai""}",json-ld,
 unto-labs,unto-labs-ashby,https://jobs.ashbyhq.com/unto-labs,ashby,"{""token"": ""unto-labs""}",skip,
 unwrap,unwrap-ashby,https://jobs.ashbyhq.com/unwrap,ashby,"{""token"": ""unwrap""}",skip,
