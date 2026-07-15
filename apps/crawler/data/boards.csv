@@ -5192,6 +5192,7 @@ unitree-robotics,unitree-robotics-careers,https://www.unitree.com/careers/,api_s
 unity,unity-greenhouse,https://boards-api.greenhouse.io/v1/boards/unity3d/jobs,greenhouse,"{""token"": ""unity3d""}",skip,
 universal,universal-greenhouse,https://job-boards.greenhouse.io/universal,greenhouse,"{""token"": ""universal""}",skip,
 universal-music,universal-music-careers,https://umusic.wd5.myworkdayjobs.com/UMGUS,workday,"{""company"": ""umusic"", ""wd_instance"": ""wd5"", ""site"": ""UMGUS""}",json-ld,
+universal-quantum,universal-quantum-workable,https://apply.workable.com/universalquantum/,workable,"{""token"": ""universalquantum""}",workable,
 unlikelyai,unlikelyai-ashby,https://jobs.ashbyhq.com/unlikelyai,ashby,"{""token"": ""unlikelyai""}",skip,
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,skip,
 unlock-health,unlock-health-greenhouse,https://job-boards.greenhouse.io/unlockhealth,greenhouse,"{""token"": ""unlockhealth""}",skip,
