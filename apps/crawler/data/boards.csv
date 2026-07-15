@@ -5288,6 +5288,7 @@ verimatrix,verimatrix-jazzhr,https://verimatrix.applytojob.com/,dom,"{""render""
 verisign,verisign-greenhouse,https://job-boards.greenhouse.io/verisign,greenhouse,"{""token"": ""verisign""}",skip,
 verista-inc,verista-inc-greenhouse,https://job-boards.greenhouse.io/veristainc,greenhouse,"{""token"": ""veristainc""}",skip,
 veritas,veritas-recruitee,https://veritas.recruitee.com,recruitee,"{""token"": ""veritas""}",skip,
+verity,verity-breezy,https://verity-ag.breezy.hr/,sitemap,"{""sitemap_url"": ""https://verity-ag.breezy.hr/sitemap.xml"", ""url_filter"": ""/p/""}",json-ld,
 verkada,verkada-greenhouse,https://job-boards.greenhouse.io/verkada,greenhouse,"{""token"": ""verkada""}",skip,
 verkor,verkor-careers,https://jobs.lever.co/verkor,lever,"{""token"": ""verkor""}",skip,
 verra-mobility,verra-mobility-greenhouse,https://job-boards.greenhouse.io/verramobility,greenhouse,"{""token"": ""verramobility""}",skip,
