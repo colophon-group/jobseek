@@ -5236,6 +5236,7 @@ vaco-llc,vaco-llc-greenhouse,https://job-boards.greenhouse.io/vaco,greenhouse,"{
 vail-health-hospital,vail-health-hospital-greenhouse,https://job-boards.greenhouse.io/vailclinicincdbavailhealthhospital,greenhouse,"{""token"": ""vailclinicincdbavailhealthhospital""}",skip,
 vale,vale-eightfold,https://vale.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 valera-health,valera-health-greenhouse,https://job-boards.greenhouse.io/valerahealth,greenhouse,"{""token"": ""valerahealth""}",skip,
+validio,validio-main,https://jobs.validio.io/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://jobs.validio.io/jobs.rss""}",skip,
 valo-health,valo-health-greenhouse,https://job-boards.greenhouse.io/valohealth,greenhouse,"{""token"": ""valohealth""}",skip,
 valon,valon-ashby,https://jobs.ashbyhq.com/valon,ashby,"{""token"": ""valon""}",skip,
 valon-labs,valon-labs-careers,https://jobs.ashbyhq.com/Valon,ashby,"{""token"": ""Valon""}",skip,
