@@ -5010,6 +5010,7 @@ thrive,thrive-greenhouse,https://job-boards.greenhouse.io/thrive,greenhouse,"{""
 thrivecart,thrivecart-greenhouse,https://job-boards.greenhouse.io/thrivecart,greenhouse,"{""token"": ""thrivecart""}",skip,
 thumbtack,thumbtack-ashby,https://jobs.ashbyhq.com/thumbtack,ashby,"{""token"": ""thumbtack""}",skip,
 thumbtack,thumbtack-greenhouse,https://job-boards.greenhouse.io/thumbtack,greenhouse,"{""token"": ""thumbtack""}",skip,
+thunderchild-fusion,thunderchild-fusion-jobs,https://www.thunderchildfusion.com/jobs,inline,"{""render"": false, ""steps"": [{""tag"": ""h2"", ""text"": ""Senior Scientist"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h2""}], ""defaults"": {""locations"": [""Surrey, United Kingdom""]}}",skip,
 thyme-care,thyme-care-greenhouse,https://job-boards.greenhouse.io/thymecare,greenhouse,"{""token"": ""thymecare""}",skip,
 tia,tia-greenhouse,https://job-boards.greenhouse.io/tia,greenhouse,"{""token"": ""tia""}",skip,
 tidio,tidio-pinpoint,https://tidio.pinpointhq.com,pinpoint,"{""slug"": ""tidio""}",skip,
