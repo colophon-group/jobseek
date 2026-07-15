@@ -4967,6 +4967,7 @@ the-daily-beast,the-daily-beast-greenhouse,https://job-boards.greenhouse.io/thed
 the-doctor-catalunya-s-l,the-doctor-catalunya-s-l-join,https://join.com/companies/thedoctorspaincom,join,"{""slug"": ""thedoctorspaincom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 the-durst-organization,the-durst-organization-greenhouse,https://job-boards.greenhouse.io/thedurstorganization,greenhouse,"{""token"": ""thedurstorganization""}",skip,
 the-economist-group,the-economist-group-greenhouse,https://job-boards.greenhouse.io/theeconomistgroup,greenhouse,"{""token"": ""theeconomistgroup""}",skip,
+the-exploration-company,the-exploration-company-global,https://jobs.ashbyhq.com/the-exploration-company,ashby,"{""token"": ""the-exploration-company""}",skip,
 the-farmer-s-dog,the-farmer-s-dog-greenhouse,https://job-boards.greenhouse.io/thefarmersdog,greenhouse,"{""token"": ""thefarmersdog""}",skip,
 the-flex,the-flex-ashby,https://jobs.ashbyhq.com/the-flex,ashby,"{""token"": ""the-flex""}",skip,
 the-florida-panthers,the-florida-panthers-greenhouse,https://job-boards.greenhouse.io/thefloridapanthers,greenhouse,"{""token"": ""thefloridapanthers""}",skip,
