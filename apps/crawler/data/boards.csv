@@ -5116,6 +5116,7 @@ trunk,trunk-careers,https://api.lever.co/v0/postings/trunkio?mode=json,lever,"{"
 trust-bank,trust-bank-greenhouse,https://job-boards.greenhouse.io/trustbank,greenhouse,"{""token"": ""trustbank""}",skip,
 trust-wallet,trust-wallet-ashby,https://jobs.ashbyhq.com/trust-wallet,ashby,"{""token"": ""trust-wallet""}",skip,
 trust-will,trust-will-greenhouse,https://job-boards.greenhouse.io/trustwill,greenhouse,"{""token"": ""trustwill""}",skip,
+trustly,trustly-global,https://jobs.lever.co/trustly,lever,"{""token"": ""trustly""}",skip,
 trustpilot,trustpilot-careers,https://boards.greenhouse.io/trustpilot,greenhouse,"{""token"": ""trustpilot""}",skip,
 truveta,truveta-greenhouse,https://job-boards.greenhouse.io/truveta,greenhouse,"{""token"": ""truveta""}",skip,
 tsmc,tsmc-main,https://careers.tsmc.com/en_US/careers,sitemap,"{""sitemap_url"": ""https://careers.tsmc.com/en_US/careers/sitemap.xml"", ""url_filter"": ""/JobDetail/"", ""proxy"": true}",json-ld,"{""proxy"": true}"
