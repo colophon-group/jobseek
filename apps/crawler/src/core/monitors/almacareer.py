@@ -30,7 +30,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
 import re
+from collections.abc import Awaitable, Callable
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -51,6 +54,13 @@ GRAPHQL_URL = "https://api.capybara.lmc.cz/api/graphql/widget"
 # Concurrency cap for per-job detail fetches.  Higher values risk 429s;
 # 8 is a safe empirical middle ground.
 _DETAIL_CONCURRENCY = 8
+
+# A tenant bundle is served through a CDN during deploys. A single 200 response
+# can therefore contain a partial or mismatched asset even while the next edge
+# read is healthy. Refetch content-level parse misses just as we retry transient
+# HTTP failures, while keeping the total well inside the monitor lease.
+_CONFIG_RETRY_ATTEMPTS = 3
+_CONFIG_RETRY_BASE_DELAY_S = 0.5
 
 # Supported country TLDs and the domain suffix Alma Career uses there.
 _COUNTRY_BY_SUFFIX = {
@@ -302,6 +312,25 @@ def _extract_widget_config(script_text: str) -> dict | None:
     }
 
 
+def _widget_config_fingerprint(script_text: str) -> dict[str, int | bool]:
+    """Return a redacted parser-outcome fingerprint for operator logs."""
+    anchor = _WIDGET_ANCHOR_RE.search(script_text)
+    if anchor is None:
+        return {
+            "body_bytes": len(script_text.encode("utf-8")),
+            "anchor_found": False,
+            "id_found": False,
+            "api_key_found": False,
+        }
+    window = script_text[anchor.end() : anchor.end() + _WIDGET_WINDOW_BYTES]
+    return {
+        "body_bytes": len(script_text.encode("utf-8")),
+        "anchor_found": True,
+        "id_found": _WIDGET_ID_RE.search(window) is not None,
+        "api_key_found": _API_KEY_RE.search(window) is not None,
+    }
+
+
 class _WidgetConfigGone(Exception):
     """Sentinel — the tenant's ``script.min.js`` returned 404.
 
@@ -311,26 +340,79 @@ class _WidgetConfigGone(Exception):
     """
 
 
-async def _fetch_widget_config(host: str, client: httpx.AsyncClient) -> dict | None:
+async def _fetch_widget_config(
+    host: str,
+    client: httpx.AsyncClient,
+    *,
+    retries: int = _CONFIG_RETRY_ATTEMPTS,
+    base_delay: float = _CONFIG_RETRY_BASE_DELAY_S,
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> dict | None:
+    """Fetch and parse a tenant bundle with bounded content-level retries."""
+    from src.metrics import http_retry_attempts_total, http_retry_host
+    from src.shared.http_retry import is_retryable_status
+
+    if retries < 1:
+        raise ValueError("retries must be at least 1")
+
     url = f"https://{host}/assets/js/script.min.js"
-    try:
-        resp = await client.get(url, follow_redirects=True)
-    except httpx.HTTPError as exc:
-        # Transport errors propagate (retriable) — don't mask as None
-        # which would look indistinguishable from "widget config
-        # missing" and cause silent empty-crawls.
-        log.warning("almacareer.widget_config_transport_error", host=host, error=str(exc))
-        raise
-    if resp.status_code == 404:
-        raise _WidgetConfigGone(host)
-    if resp.status_code != 200:
-        log.warning(
-            "almacareer.widget_config_fetch_failed",
-            host=host,
-            status=resp.status_code,
-        )
-        return None
-    return _extract_widget_config(resp.text)
+    metric_host = http_retry_host(url)
+    retried = False
+
+    for attempt in range(retries):
+        try:
+            resp = await client.get(url, follow_redirects=True)
+        except httpx.HTTPError as exc:
+            log.warning(
+                "almacareer.widget_config_transport_error",
+                host=host,
+                attempt=attempt + 1,
+                error=type(exc).__name__,
+            )
+            if attempt == retries - 1:
+                http_retry_attempts_total.labels(host=metric_host, outcome="exhausted").inc()
+                raise
+        else:
+            if resp.status_code == 404:
+                raise _WidgetConfigGone(host)
+            if resp.status_code == 200:
+                config = _extract_widget_config(resp.text)
+                if config is not None:
+                    if retried:
+                        http_retry_attempts_total.labels(
+                            host=metric_host, outcome="recovered"
+                        ).inc()
+                    return config
+                log.warning(
+                    "almacareer.widget_config_parse_miss",
+                    host=host,
+                    attempt=attempt + 1,
+                    **_widget_config_fingerprint(resp.text),
+                )
+            elif is_retryable_status(resp.status_code):
+                log.warning(
+                    "almacareer.widget_config_fetch_failed",
+                    host=host,
+                    attempt=attempt + 1,
+                    status=resp.status_code,
+                )
+            else:
+                log.warning(
+                    "almacareer.widget_config_fetch_failed",
+                    host=host,
+                    attempt=attempt + 1,
+                    status=resp.status_code,
+                )
+                return None
+
+        http_retry_attempts_total.labels(host=metric_host, outcome="retry").inc()
+        retried = True
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            await sleep(delay)
+
+    http_retry_attempts_total.labels(host=metric_host, outcome="exhausted").inc()
+    return None
 
 
 # ---------------------------------------------------------------------------
