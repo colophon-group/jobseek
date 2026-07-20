@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import contextvars
+import re
 import ssl
 import time
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -63,6 +65,27 @@ DEFAULT_USER_AGENT = (
 # per-request entry winning on conflict).
 DEFAULT_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 
+# Avature's branded tenants all use a ``<something>Careers/JobDetail``
+# route even when the public hostname does not mention Avature. During the
+# incident in #5710 those routes returned short-lived 406 bursts across five
+# unrelated tenants, while the exact same URLs subsequently returned their
+# normal job pages. Keep this predicate URL-specific: a generic 406 can still
+# be a permanent content-negotiation/configuration error.
+_AVATURE_JOB_DETAIL_PATH_RE = re.compile(r"/[^/]*careers[^/]*/jobdetail/", re.IGNORECASE)
+
+
+def is_avature_job_detail_url(url: str) -> bool:
+    """Return whether *url* is an Avature JobDetail page."""
+
+    parsed = urlparse(url)
+    path = parsed.path
+    host = (parsed.hostname or "").lower()
+    return bool(
+        _AVATURE_JOB_DETAIL_PATH_RE.search(path)
+        or (host.endswith(".avature.net") and "/jobdetail/" in path.lower())
+    )
+
+
 _CLIENT_DEFAULTS = {
     "timeout": httpx.Timeout(30.0),
     "follow_redirects": True,
@@ -84,6 +107,7 @@ class RequestHostTracker:
 
     hosts: set[str] = field(default_factory=set)
     last_host: str | None = None
+    last_url: str | None = None
     last_status_code: int | None = None
     last_transport_error: str | None = None
 
@@ -94,10 +118,11 @@ class RequestHostTracker:
         self.hosts.add(normalized)
         self.last_host = normalized
 
-    def note_request(self, host: str) -> None:
+    def note_request(self, host: str, url: str | None = None) -> None:
         """Start a new network outcome, superseding the previous request."""
 
         self.note(host)
+        self.last_url = url
         self.last_status_code = None
         self.last_transport_error = None
 
@@ -124,6 +149,12 @@ class RequestHostTracker:
             return self.last_host
         status = self.last_status_code
         if status in (408, 425, 429) or (status is not None and 500 <= status <= 599):
+            return self.last_host
+        # Avature uses 406 as a temporary overload/throttle response on live
+        # JobDetail pages (#5710). Restrict this to the provider route so a
+        # genuine generic content-negotiation failure cannot open a host-wide
+        # circuit.
+        if status == 406 and self.last_url and is_avature_job_detail_url(self.last_url):
             return self.last_host
         return None
 
@@ -155,7 +186,7 @@ class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
         tracker = _request_host_tracker.get()
         host = request.url.host or ""
         if tracker is not None and host:
-            tracker.note_request(host)
+            tracker.note_request(host, str(request.url))
         try:
             response = await self._inner.handle_async_request(request)
         except httpx.TransportError as exc:

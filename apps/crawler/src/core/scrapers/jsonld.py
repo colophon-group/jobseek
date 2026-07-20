@@ -6,9 +6,7 @@ No configuration needed — handles all standard schema.org fields automatically
 
 from __future__ import annotations
 
-import asyncio
 import json
-import random
 import re
 from html.parser import HTMLParser
 
@@ -17,6 +15,8 @@ import structlog
 
 from src.core.enum_normalize import normalize_salary_unit
 from src.core.scrapers import JobContent, register
+from src.shared.http import is_avature_job_detail_url
+from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
 
@@ -24,9 +24,9 @@ log = structlog.get_logger()
 # from a cold session gets rate-limited, but the same client (now holding a
 # challenge cookie) passes on the next attempt. Verified on careers.rtx.com:
 # 50% cold-connection failure → 10/10 after a single retry on the same client.
-# Small jittered sleep avoids hammering the WAF.
-_RETRY_403_MAX = 1
-_RETRY_403_BACKOFF_S = 0.5
+# Small jittered sleep avoids hammering the WAF. Avature additionally uses
+# transient 406 responses as an overload/throttle signal on live JobDetail
+# pages (#5710), so those receive two bounded retries.
 
 _CTRL_REPLACEMENTS = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
 
@@ -333,20 +333,25 @@ def can_handle(htmls: list[str]) -> dict | None:
 
 
 async def _fetch_html(url: str, http: httpx.AsyncClient) -> str:
-    """GET the page, retrying once on a 403 with jittered backoff.
+    """GET the page with bounded provider/status-aware retries.
 
     Some hosts (e.g. ``careers.rtx.com``) front their job pages with a soft
     WAF that rejects cold connections with 403 but accepts the retry on the
     same client — the first response sets challenge cookies that the retry
     carries. See the jsonld-retry-403 PR for the verification data.
-    Any other non-2xx status still raises via ``raise_for_status``.
+    Avature JobDetail 406s receive two retries because production evidence
+    shows the exact URLs recover without a config/header change. Any other
+    non-2xx status still raises via ``raise_for_status``.
     """
-    response = await http.get(url, follow_redirects=True)
-    if response.status_code == 403 and _RETRY_403_MAX > 0:
-        delay = _RETRY_403_BACKOFF_S + random.random() * _RETRY_403_BACKOFF_S
-        log.info("jsonld.fetch.retry_403", url=url, delay_s=round(delay, 2))
-        await asyncio.sleep(delay)
-        response = await http.get(url, follow_redirects=True)
+    retry_limits = {403: 1}
+    if is_avature_job_detail_url(url):
+        retry_limits[406] = 2
+    response = await fetch_response_with_status_retries(
+        http,
+        url,
+        retry_limits=retry_limits,
+        log_event="jsonld.fetch.retry_status",
+    )
     response.raise_for_status()
     return response.text
 

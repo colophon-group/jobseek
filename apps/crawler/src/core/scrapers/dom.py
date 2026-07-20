@@ -36,6 +36,8 @@ import structlog
 from src.core.scrapers import JobContent, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
+from src.shared.http import is_avature_job_detail_url
+from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
 
@@ -313,7 +315,13 @@ async def scrape(
             async with async_playwright() as p:
                 html = await _render_page(p)
     else:
-        resp = await http.get(url, follow_redirects=True)
+        retry_limits = {406: 2} if is_avature_job_detail_url(url) else {}
+        resp = await fetch_response_with_status_retries(
+            http,
+            url,
+            retry_limits=retry_limits,
+            log_event="dom.fetch.retry_status",
+        )
         # Detect redirect-to-gone BEFORE raise_for_status so the error page's
         # 200 doesn't shadow the actual archived signal. The redirect chain
         # may end on a 200 (rendered "this posting was removed" page), so
