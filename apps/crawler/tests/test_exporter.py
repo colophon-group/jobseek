@@ -7,6 +7,8 @@ from collections import Counter
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import asyncpg
+import pytest
 import structlog
 
 from src.exporter import (
@@ -457,25 +459,22 @@ class TestExportPostingsDual:
         assert new_supa == (ts, pid)  # advanced
         assert new_ts == ts_cur  # stayed put — re-try next poll
 
-    async def test_supabase_failure_advances_supa_cursor_via_per_row_fallback(self):
-        """Per-row poison-pill fallback (#3180): the whole-batch INSERT
-        fails (e.g. one row tripped a constraint), the per-row fallback
-        runs, every row fails too in this synthetic test, but the cursor
-        STILL advances past the batch so CDC doesn't stall forever. The
-        dropped rows are logged + counted in ``export_errors_total``.
+    async def test_supabase_timeout_keeps_cursor_pinned_for_replay(self):
+        """A downstream timeout is not evidence of a poison row (#5231).
 
-        Pre-#3180 the cursor stayed put and the exporter looped on the
-        same poisoned batch every ``export_interval`` seconds.
+        The exception must escape the upsert task so the dual exporter keeps
+        the Supabase cursor pinned. Typesense remains independent and may
+        advance normally.
         """
         ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
         supa_cur = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
         ts_cur = supa_cur
 
         local = _make_pool()
-        # Make every conn.execute() raise — covers both the batch INSERT
-        # and the per-row fallback INSERT.
+        # The batch attempt times out. It must not fan out into a per-row
+        # fallback that converts the same outage into a dropped row.
         supa, conn = _supa_pool_with_capture()
-        conn.execute = AsyncMock(side_effect=RuntimeError("supa down"))
+        conn.execute = AsyncMock(side_effect=TimeoutError("supa timed out"))
 
         pid = uuid.uuid4()
         local.fetch = AsyncMock(return_value=[_posting_row(posting_id=pid, ts=ts)])
@@ -486,10 +485,11 @@ class TestExportPostingsDual:
             )
 
         assert count == 1
-        # Cursor advances past the row even though it was dropped — the
-        # whole point of the fix.
-        assert new_supa == (ts, pid)
+        assert new_supa == supa_cur
         assert new_ts == (ts, pid)  # advanced
+        # Only the initial batch attempt ran; there was no destructive
+        # per-row fallback during a target-wide outage.
+        assert conn.execute.await_count == 1
 
     async def test_no_rows_returns_zero_and_unchanged_cursors(self):
         local = _make_pool()
@@ -545,10 +545,10 @@ def _make_supa_pool_batch_fails_per_row_passes(failing_row_id):
             # Batch INSERT — fail on the first attempt to trigger the
             # fallback path.
             batch_count += 1
-            raise RuntimeError("simulated batch FK violation")
+            raise asyncpg.ForeignKeyViolationError("simulated batch FK violation")
         # Per-row INSERT branch. The first positional arg is the row id.
         if args and str(args[0]) == failing_uuid_str:
-            raise RuntimeError("simulated per-row constraint violation")
+            raise asyncpg.ForeignKeyViolationError("simulated per-row constraint violation")
         return
 
     conn = AsyncMock()
@@ -623,7 +623,7 @@ class TestSupabasePerRowFallback:
         async def execute(sql, *args):
             if "CREATE TEMP TABLE" in sql:
                 return
-            raise RuntimeError("simulated NOT NULL violation")
+            raise asyncpg.NotNullViolationError("simulated NOT NULL violation")
 
         pool, conn = _supa_pool_with_capture()
         conn.execute = AsyncMock(side_effect=execute)
@@ -655,6 +655,65 @@ class TestSupabasePerRowFallback:
         # Only the batch path executed: CREATE TEMP + INSERT, no per-row
         # INSERT calls.
         assert conn.execute.await_count == 2
+
+    async def test_timeout_mid_fallback_replays_the_whole_batch(self):
+        """Committed prefix rows remain safe when a later row times out.
+
+        The row-local batch error legitimately enters fallback. Row one
+        commits, row two times out, and the timeout escapes. The caller keeps
+        its cursor pinned, so both rows are replayed idempotently next tick.
+        """
+        ts1 = datetime(2026, 7, 10, 16, 55, 0, tzinfo=UTC)
+        ts2 = datetime(2026, 7, 10, 16, 56, 0, tzinfo=UTC)
+        cursor = (datetime(2026, 7, 10, 16, 50, 0, tzinfo=UTC), _ZERO_UUID)
+        pid1 = uuid.uuid4()
+        pid2 = uuid.uuid4()
+        rows = [
+            _posting_row(posting_id=pid1, ts=ts1),
+            _posting_row(posting_id=pid2, ts=ts2),
+        ]
+
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=rows)
+        pool, conn = _supa_pool_with_capture()
+        per_row_attempt = 0
+
+        async def execute(sql, *args):
+            nonlocal per_row_attempt
+            if "CREATE TEMP TABLE" in sql:
+                return
+            if "FROM _export_postings" in sql:
+                raise asyncpg.ForeignKeyViolationError("batch poison")
+            per_row_attempt += 1
+            if per_row_attempt == 2:
+                raise TimeoutError("transient Supabase timeout")
+            return
+
+        conn.execute = AsyncMock(side_effect=execute)
+        before = _counter_total(export_errors_total, table="job_posting", phase="supabase")
+
+        with patch("src.exporter._upsert_to_typesense", new=AsyncMock()):
+            count, new_supa, new_ts = await _export_postings_dual(
+                local, pool, cursor, cursor, TaxonomyMaps()
+            )
+
+        after = _counter_total(export_errors_total, table="job_posting", phase="supabase")
+        assert count == 2
+        assert new_supa == cursor
+        assert new_ts == (ts2, pid2)
+        assert per_row_attempt == 2
+        assert after == before
+
+    async def test_unknown_failure_is_not_misclassified_as_row_poison(self):
+        """Fail closed when an exception has no PostgreSQL SQLSTATE."""
+        ts = datetime(2026, 7, 10, 16, 56, 0, tzinfo=UTC)
+        pool, conn = _supa_pool_with_capture()
+        conn.execute = AsyncMock(side_effect=RuntimeError("unexpected driver failure"))
+
+        with pytest.raises(RuntimeError, match="unexpected driver failure"):
+            await _upsert_to_supabase(pool, [_posting_row(posting_id=uuid.uuid4(), ts=ts)])
+
+        assert conn.execute.await_count == 1
 
     async def test_export_postings_dual_advances_cursor_past_dropped_row(self):
         """End-to-end: the dual-path caller advances the Supabase cursor
