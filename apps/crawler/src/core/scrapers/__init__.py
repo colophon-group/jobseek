@@ -371,6 +371,7 @@ from src.core.scrapers import (  # noqa: E402
     nextdata,  # noqa: F401
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
+    paylocity,  # noqa: F401
     pdf,  # noqa: F401
     rippling,  # noqa: F401
     skip,  # noqa: F401

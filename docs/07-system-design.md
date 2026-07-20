@@ -184,6 +184,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
 | 10   | `mokahr`          | Rich     | skip        | Mokahr encrypted listing API            |
+| 10   | `paylocity`       | Rich     | paylocity   | Paylocity embedded summaries + detail enrich |
 | 10   | `personio`        | Conditional* | --     | Personio XML feed; HTML fallback needs scraper |
 | 10   | `pinpoint`        | Rich     | skip        | Pinpoint API                            |
 | 10   | `recruitee`       | Rich     | skip        | Recruitee Careers API                   |
@@ -238,6 +239,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |
 | `notion`       | Convert Notion API blocks to structured content    | `property_map` optional |
 | `oracle_hcm`   | Fetch Oracle HCM detail REST responses             | `{host, site}`         |
+| `paylocity`    | Parse Paylocity server-rendered detail pages       | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
 | `rippling`     | Fetch Rippling detail API records                  | None                   |
 | `skip`         | No-scrape marker for rich monitor output           | None                   |

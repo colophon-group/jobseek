@@ -93,6 +93,7 @@ acronis,acronis-careers-jobs,https://www.acronis.com/en/careers/jobs/,workday,"{
 activecampaign,activecampaign-lever,https://jobs.lever.co/activecampaign,lever,"{""token"": ""activecampaign""}",skip,
 acumen,acumen-greenhouse,https://job-boards.greenhouse.io/acumen,greenhouse,"{""token"": ""acumen""}",skip,
 acurus-solutions-private-limited,acurus-solutions-private-limited-greenhouse,https://job-boards.greenhouse.io/acurussolutions,greenhouse,"{""token"": ""acurussolutions""}",skip,
+adc-therapeutics,adc-therapeutics-paylocity,https://recruiting.paylocity.com/recruiting/jobs/All/8759d8d9-b6f5-49b5-b817-f3c4f69a25ed/ADC-Therapeutics-America-Inc,paylocity,,paylocity,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 ada,ada-greenhouse,https://job-boards.greenhouse.io/ada18,greenhouse,"{""token"": ""ada18""}",skip,
 ada-health-gmbh,ada-health-gmbh-greenhouse,https://job-boards.greenhouse.io/adahealth,greenhouse,"{""token"": ""adahealth""}",skip,
 adani-group,adani-group-careers,https://eibd.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"

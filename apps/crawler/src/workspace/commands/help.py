@@ -85,6 +85,7 @@ Monitor Types (cheapest first):
   greenhouse        10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
+  paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
   recruitee         10      Full job data     No (skipped)
   rippling          10      Job URLs          Auto-configured
@@ -1296,6 +1297,22 @@ workday — Workday Job Board API
   Detection:  ws probe shows "Workday API — {company}/{site}, N jobs"
   Zero jobs?  Verify URL — try the list API URL directly in a browser"""
 
+MONITOR_PAYLOCITY = """\
+paylocity — Paylocity embedded job data
+
+  Listing:  GET https://{tenant}recruiting.paylocity.com/Recruiting/Jobs/All/{id}/...
+  Returns:  Rich summaries (URL, title, location, date, department)
+  Scraper:  Auto-configured (paylocity) — enriches description and work types
+  Note:     Jobs are decoded from window.pageData in server-rendered HTML.
+            No browser or Job Feed API key is required. Empty boards are valid
+            and remain detectable with a 0-job count.
+
+  Config:   None needed — the board URL is used directly.
+
+  Detection:  ws probe shows "Paylocity embedded data — N jobs"
+  Zero jobs?  Confirm window.pageData.Jobs is empty; search-engine counts may
+              lag after postings close."""
+
 MONITOR_API_SNIFFER = """\
 api_sniffer — XHR/Fetch API Capture (Playwright)
 
@@ -2084,6 +2101,7 @@ MONITOR_CARDS: dict[str, str] = {
     "umantis": MONITOR_UMANTIS,
     "workable": MONITOR_WORKABLE,
     "workday": MONITOR_WORKDAY,
+    "paylocity": MONITOR_PAYLOCITY,
     "pinpoint": MONITOR_PINPOINT,
     "personio": MONITOR_PERSONIO,
     "rss": MONITOR_RSS,
@@ -2134,6 +2152,18 @@ workable — Workable Detail API scraper
   Config:   None needed — parses the job URL to derive API parameters
   Note:     Auto-configured when selecting the workable monitor.
             Runs on the daily scrape schedule (not every monitor cycle).
+"""
+
+SCRAPER_PAYLOCITY = """\
+paylocity — Paylocity server-rendered detail scraper
+
+  Page:     GET https://{tenant}recruiting.paylocity.com/Recruiting/Jobs/Details/{id}
+  Returns:  title, HTML description, locations, employment_type,
+            job_location_type
+  Config:   None needed
+  Note:     Auto-configured when selecting the paylocity monitor. The detail
+            content is server-rendered despite Paylocity's surrounding
+            unsupported-browser warning, so Playwright is not required.
 """
 
 SCRAPER_WORKDAY = """\
@@ -2267,6 +2297,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
   Best used with enrich: ["description"] — monitor provides title/location/date,
   scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
+    "paylocity": SCRAPER_PAYLOCITY,
     "bite": SCRAPER_BITE,
     "mokahr": SCRAPER_MOKAHR,
     "rippling": SCRAPER_RIPPLING,
