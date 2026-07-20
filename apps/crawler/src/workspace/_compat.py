@@ -68,6 +68,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "umantis",
     "workable",
     "workday",
+    "wp_job_openings",
     "ycombinator",
     "sitemap",
     "talentbrew",
@@ -273,6 +274,8 @@ def auto_scraper_type(
         return ("workable", None)
     if monitor_type == "workday":
         return ("workday", None)
+    if monitor_type == "wp_job_openings":
+        return ("json-ld", None)
     if monitor_type == "eightfold":
         return ("eightfold", None)
     if monitor_type == "phenom":

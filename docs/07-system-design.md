@@ -195,6 +195,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `traffit`         | Rich     | skip        | Traffit ATS API                         |
 | 10   | `workable`        | URL-only | workable    | Workable API                            |
 | 10   | `workday`         | URL-only | workday     | Workday Job Board API                   |
+| 10   | `wp_job_openings` | URL-only | json-ld     | WordPress custom-post REST collection   |
 | 10   | `ycombinator`     | URL-only | json-ld     | YCombinator Jobs fallback pages         |
 | 15   | `notion`          | URL-only | --          | Notion internal API enumeration         |
 | 15   | `oracle_hcm`      | Rich     | oracle_hcm  | Oracle HCM REST API + description enrich |

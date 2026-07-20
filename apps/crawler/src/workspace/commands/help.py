@@ -95,6 +95,7 @@ Monitor Types (cheapest first):
   traffit           10      Full job data     No (skipped)
   workable          10      Job URLs          Auto-configured
   workday           10      Job URLs          Auto-configured
+  wp_job_openings   10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
   notion            15      Job URLs          Auto-configured
   recruiter_co_kr   15      Full job data     No (skipped)
@@ -331,6 +332,25 @@ breezy — Breezy HR Public Listing Endpoint
   Zero jobs?  Valid board with no open postings still returns 0 jobs.
   False positives:  Redirects to marketing.breezy.hr are rejected unless
                     /json validates as a real listing endpoint."""
+
+MONITOR_WP_JOB_OPENINGS = """\
+wp_job_openings — WordPress WP Job Openings REST API
+
+  API:      GET https://{host}/wp-json/wp/v2/awsm_job_openings
+  Returns:  Job detail URLs from the plugin's public custom-post collection
+  Scraper:  json-ld (auto-configured; detail pages emit JobPosting schema)
+  Cap:      50,000 jobs
+
+  Config:
+    {"rest_url": "https://example.com/wp-json/wp/v2/awsm_job_openings"}
+
+  rest_url    Optional explicit REST collection. By default it is derived
+              from the board URL's origin.
+
+  Detection:  Confirms first-party wp-job-openings/awsm markers, the
+              awsm_job_openings post type, and its public REST collection.
+  Zero jobs:  A valid empty REST collection is accepted and reported as 0.
+  Pagination: WordPress REST pages are fetched 100 at a time automatically."""
 
 MONITOR_COMEET = """\
 comeet — Comeet hosted data and Careers API monitor
@@ -2082,6 +2102,7 @@ MONITOR_CARDS: dict[str, str] = {
     "amazon": MONITOR_AMAZON,
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
+    "wp_job_openings": MONITOR_WP_JOB_OPENINGS,
     "comeet": MONITOR_COMEET,
     "deel": MONITOR_DEEL,
     "dvinci": MONITOR_DVINCI,
