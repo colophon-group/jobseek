@@ -21,6 +21,7 @@ import asyncio
 import json
 import time
 from collections import defaultdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
@@ -48,21 +49,14 @@ log = structlog.get_logger()
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-# Postgres-side mirror of the Typesense `has_content` flag computed in
-# `exporter._build_typesense_docs` as
-#   bool(title and title.strip()) and (description_r2_hash is not None)
-# where `title = titles[0] if titles else ""`.
-#
 # The web app filters every list/search/facet surface by
 # `is_active:true && has_content:!=false` (POSTING_BASE_FILTER, see
-# apps/web/src/lib/search/typesense-filters.ts), so any precomputed
-# "active_posting_count" stored on `company`, `location`, `occupation`,
-# `seniority`, or `technology` docs MUST use the same gate; otherwise
-# the user clicks a facet labelled "N postings" and sees fewer
-# postings than the label promised (issue #3009 / #3238).
-_HAS_CONTENT_SQL = (
-    "description_r2_hash IS NOT NULL AND cardinality(titles) > 0 AND length(trim(titles[1])) > 0"
-)
+# apps/web/src/lib/search/typesense-filters.ts). Precomputed taxonomy and
+# company counts must use the same filter against the indexed source; otherwise
+# the user clicks a facet labelled "N postings" and sees fewer postings than
+# the label promised (issue #3009 / #3238).
+_POSTING_BASE_FILTER = "is_active:true && has_content:!=false"
+_POSTING_FLOW_FILTER = "has_content:!=false"
 
 _UPSERT_OCCUPATION_DOMAINS = """
 INSERT INTO occupation_domain (slug)
@@ -1779,9 +1773,7 @@ async def sync_locations_typesense(
     counts: dict[int, int] = {}
     loop = asyncio.get_event_loop()
     try:
-        facet_counts = await loop.run_in_executor(
-            None, _fetch_active_facet_counts, client, "location_ids"
-        )
+        facet_counts = await loop.run_in_executor(None, _fetch_facet_counts, client, "location_ids")
         counts = {int(k): v for k, v in facet_counts.items()}
     except Exception as exc:
         # First-time bootstrap: job_posting collection / index may not
@@ -1888,7 +1880,7 @@ async def sync_occupations_typesense(
     loop = asyncio.get_event_loop()
     try:
         facet_counts = await loop.run_in_executor(
-            None, _fetch_active_facet_counts, client, "occupation_ids"
+            None, _fetch_facet_counts, client, "occupation_ids"
         )
         counts = {int(k): v for k, v in facet_counts.items()}
     except Exception as exc:
@@ -2111,7 +2103,6 @@ async def sync_technologies_typesense(
 
 async def sync_companies_typesense(
     supa_conn: asyncpg.Connection,
-    local_conn: asyncpg.Connection | None,
     client: typesense.Client,
 ) -> None:
     """Sync companies to the Typesense ``company`` collection.
@@ -2148,34 +2139,13 @@ async def sync_companies_typesense(
     for r in ind_name_rows:
         ind_names_by_locale.setdefault(r["locale"], {})[r["industry_id"]] = r["name"]
 
-    active_counts: dict[str, int] = {}
-    year_counts: dict[str, int] = {}
-    if local_conn is not None:
-        # Both queries gate on `has_content` so the precomputed counts
-        # match what the web's POSTING_BASE_FILTER /
-        # POSTING_FLOW_FILTER produce when filtering the
-        # `job_posting` collection. See `_HAS_CONTENT_SQL` for the
-        # formula and issue #3238 for the contract.
-        active_rows = await local_conn.fetch(
-            f"""
-            SELECT company_id::text, COUNT(*) AS cnt
-            FROM job_posting
-            WHERE is_active AND {_HAS_CONTENT_SQL}
-            GROUP BY 1
-            """
-        )
-        active_counts = {r["company_id"]: r["cnt"] for r in active_rows}
-
-        year_rows = await local_conn.fetch(
-            f"""
-            SELECT company_id::text, COUNT(*) AS cnt
-            FROM job_posting
-            WHERE first_seen_at > now() - interval '1 year'
-              AND {_HAS_CONTENT_SQL}
-            GROUP BY 1
-            """
-        )
-        year_counts = {r["company_id"]: r["cnt"] for r in year_rows}
+    # Posting-derived company counts come from the same indexed source and
+    # filters as the web. The previous local Postgres GROUP BY scans were the
+    # last statement-timeout source in sync/refresh-typesense (issue #5752).
+    loop = asyncio.get_event_loop()
+    active_counts, year_counts = await loop.run_in_executor(
+        None, _fetch_company_posting_counts, client
+    )
 
     docs: list[dict] = []
     for r in rows:
@@ -2219,7 +2189,6 @@ async def sync_companies_typesense(
 
         docs.append(doc)
 
-    loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", docs)
     log.info("typesense.companies.synced", count=len(docs))
 
@@ -2597,15 +2566,15 @@ async def sync_watchlists_typesense(
 _TS_FACET_REFRESH_MAX = 100000
 
 
-def _fetch_active_facet_counts(
+def _fetch_facet_counts(
     client: typesense.Client,
     field: str,
+    filter_by: str = _POSTING_BASE_FILTER,
 ) -> dict[str, int]:
-    """Read active-posting facet counts from the Typesense ``job_posting``
-    collection.
+    """Read filtered facet counts from the Typesense ``job_posting`` collection.
 
     Returns ``{facet_value: count}`` for every distinct value of ``field``
-    among active postings. ``field`` is the Typesense facet field name.
+    matching ``filter_by``. ``field`` is the Typesense facet field name.
     ``location_ids`` and ``occupation_ids`` are *post* ancestor expansion
     in the indexer (``exporter._build_typesense_docs``), so the resulting
     counts include city -> country -> macro fan-in. This is the count the
@@ -2622,13 +2591,13 @@ def _fetch_active_facet_counts(
     (issue #3238).
 
     Synchronous — designed to be called from
-    ``loop.run_in_executor(None, _fetch_active_facet_counts, ...)``.
+    ``loop.run_in_executor(None, _fetch_facet_counts, ...)``.
     """
     resp = client.collections["job_posting"].documents.search(
         {
             "q": "*",
             "query_by": "title",
-            "filter_by": "is_active:true && has_content:!=false",
+            "filter_by": filter_by,
             "facet_by": field,
             "max_facet_values": _TS_FACET_REFRESH_MAX,
             "facet_strategy": "exhaustive",
@@ -2642,8 +2611,33 @@ def _fetch_active_facet_counts(
     return {fc["value"]: fc["count"] for fc in counts}
 
 
+def _one_year_ago_epoch(now: datetime | None = None) -> int:
+    """Return the calendar-year cutoff used by the web's posting-flow count."""
+    current = now or datetime.now(UTC)
+    try:
+        cutoff = current.replace(year=current.year - 1)
+    except ValueError:
+        # PostgreSQL's ``interval '1 year'`` maps leap day to February 28.
+        cutoff = current.replace(year=current.year - 1, day=28)
+    return int(cutoff.timestamp())
+
+
+def _fetch_company_posting_counts(
+    client: typesense.Client,
+    now: datetime | None = None,
+) -> tuple[dict[str, int], dict[str, int]]:
+    """Return active and one-year company counts from indexed facets."""
+    active = _fetch_facet_counts(client, "company_id", _POSTING_BASE_FILTER)
+    year = _fetch_facet_counts(
+        client,
+        "company_id",
+        f"{_POSTING_FLOW_FILTER} && first_seen_at:>{_one_year_ago_epoch(now)}",
+    )
+    return active, year
+
+
 async def refresh_typesense_counts(
-    local_conn: asyncpg.Connection,
+    _local_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:
     """Refresh active_posting_count on all taxonomy and company collections.
@@ -2651,12 +2645,11 @@ async def refresh_typesense_counts(
     Idempotent — can be called after each sync run or on a timer.
     Counts are approximate.
 
-    Location, occupation, seniority, and technology counts are read from the Typesense
-    ``job_posting`` facets so the count an operator sees on a taxonomy card
-    matches the count they get when they filter by it. Reading from local
-    Postgres ``unnest(...)`` either silently diverges from filter results
-    (issue #2978) or can exceed the crawler's statement timeout on the
-    active posting set (issue #4961).
+    Location, occupation, seniority, technology, and company counts are read
+    from the Typesense ``job_posting`` facets so displayed counts match the
+    indexed filters they represent. Reading from local Postgres either silently
+    diverges from filter results (issue #2978) or can exceed the crawler's
+    statement timeout on the posting set (issues #4947, #4961, and #5752).
     """
     loop = asyncio.get_event_loop()
 
@@ -2666,7 +2659,7 @@ async def refresh_typesense_counts(
     # non-optional fields like `name`. See issue #2622.
 
     # --- Locations (read from Typesense facet — see #2978) ---
-    loc_facet = await loop.run_in_executor(None, _fetch_active_facet_counts, client, "location_ids")
+    loc_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "location_ids")
     if loc_facet:
         loc_docs = [
             {
@@ -2681,9 +2674,7 @@ async def refresh_typesense_counts(
     # --- Occupations (read from Typesense facet on `occupation_ids` —
     # which carries the leaf occupation + its ancestors in
     # exporter._build_typesense_docs) ---
-    occ_facet = await loop.run_in_executor(
-        None, _fetch_active_facet_counts, client, "occupation_ids"
-    )
+    occ_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "occupation_ids")
     if occ_facet:
         # Update all locale variants
         occ_docs: list[dict] = []
@@ -2701,7 +2692,7 @@ async def refresh_typesense_counts(
     # --- Seniorities (read from Typesense facet to avoid the production
     # Postgres aggregate exceeding the statement timeout even with its
     # dedicated partial index; #4947) ---
-    sen_facet = await loop.run_in_executor(None, _fetch_active_facet_counts, client, "seniority_id")
+    sen_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "seniority_id")
     if sen_facet:
         sen_docs: list[dict] = []
         for seniority_id, cnt in sen_facet.items():
@@ -2717,9 +2708,7 @@ async def refresh_typesense_counts(
 
     # --- Technologies (read from Typesense facet to avoid the production
     # Postgres unnest aggregate timing out on the active posting set; #4961) ---
-    tech_facet = await loop.run_in_executor(
-        None, _fetch_active_facet_counts, client, "technology_ids"
-    )
+    tech_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "technology_ids")
     if tech_facet:
         tech_docs = [
             {
@@ -2731,34 +2720,9 @@ async def refresh_typesense_counts(
         ]
         await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs, "update")
 
-    # --- Companies ---
-    # The web reads `company.active_posting_count` directly (unfiltered
-    # `listTopCompanies` path) but the live filtered path facets
-    # `job_posting` with `is_active:true && has_content:!=false`
-    # (POSTING_BASE_FILTER, see apps/web/src/lib/search/typesense-filters.ts).
-    # If we count without `has_content` here, the precomputed and live
-    # numbers structurally diverge — issue #3009 (McDonald's: 55,591 vs
-    # 44,161 on 2026-05-10). See `_HAS_CONTENT_SQL` for the formula.
-    active_rows = await local_conn.fetch(
-        f"""
-        SELECT company_id::text, COUNT(*) AS cnt
-        FROM job_posting
-        WHERE is_active AND {_HAS_CONTENT_SQL}
-        GROUP BY 1
-        """
-    )
-    year_rows = await local_conn.fetch(
-        f"""
-        SELECT company_id::text, COUNT(*) AS cnt
-        FROM job_posting
-        WHERE first_seen_at > now() - interval '1 year'
-          AND {_HAS_CONTENT_SQL}
-        GROUP BY 1
-        """
-    )
-    if active_rows or year_rows:
-        active_map = {r["company_id"]: r["cnt"] for r in active_rows}
-        year_map = {r["company_id"]: r["cnt"] for r in year_rows}
+    # --- Companies (indexed facets; issue #5752) ---
+    active_map, year_map = await loop.run_in_executor(None, _fetch_company_posting_counts, client)
+    if active_map or year_map:
         all_ids = set(active_map) | set(year_map)
         company_docs = [
             {
@@ -2931,7 +2895,7 @@ async def sync_typesense(
         log.exception("typesense.sync.technologies.failed")
 
     try:
-        await sync_companies_typesense(supa_conn, local_conn, client)
+        await sync_companies_typesense(supa_conn, client)
     except Exception:
         log.exception("typesense.sync.companies.failed")
 
