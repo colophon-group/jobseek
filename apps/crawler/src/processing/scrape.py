@@ -50,6 +50,7 @@ from src.queries.scrape import (
     _UPDATE_ENRICH_CONTENT,
 )
 from src.shared.html_normalize import normalize_description_html
+from src.shared.http import is_avature_job_detail_url
 from src.shared.langdetect import detect_all_languages, detect_language
 
 log = structlog.get_logger()
@@ -167,12 +168,14 @@ class _BoardScraperInfo:
 #   * ``permanent_gone`` (HTTP 404 / 410): RFC-defined "this resource is
 #     gone". Tombstone IMMEDIATELY, on the first failure, no budget
 #     consumed. Caller passes ``permanent_gone=True`` to the SQL.
-#   * ``budget_eligible`` (4xx other than 401, 403, 429): the upstream
+#   * ``budget_eligible`` (4xx other than 401, 403, 429 and provider-specific
+#     transient statuses): the upstream
 #     said "no" with a status that's typically meaningful — most
 #     archived-posting flows return one of these. Counts toward the
 #     3-failure tombstone budget. Caller passes ``permanent_gone=False``;
 #     the budget condition in the SQL fires after 3 such failures.
 #   * ``transient`` (5xx, timeouts, connect errors, 401/403/429,
+#     provider-specific overload responses such as Avature JobDetail 406,
 #     successful HTTP fetch with empty extraction): the upstream is
 #     either temporarily unhealthy or our extraction config is broken.
 #     Either way, tombstoning is wrong. Caller takes the
@@ -219,9 +222,10 @@ def _is_budget_eligible_failure(exc: BaseException) -> bool:
     """Return True for failures that should COUNT toward the 3-failure
     tombstone budget in ``_RECORD_SCRAPE_FAILURE``.
 
-    Eligible: HTTP 4xx other than 401 / 403 / 404 / 410 / 429.
+    Eligible: HTTP 4xx other than 401 / 403 / 404 / 410 / 429 and Avature
+    JobDetail 406 responses.
     Ineligible: everything else (5xx, network errors, 401 / 403 / 429,
-    non-HTTP exceptions, AND 404 / 410 — those go through the
+    Avature JobDetail 406, non-HTTP exceptions, AND 404 / 410 — those go through the
     immediate-tombstone short-circuit via ``_is_permanent_gone``, NOT
     the budget). 404 / 410 are excluded here so the two predicates
     stay disjoint at the call site: callers test ``permanent_gone``
@@ -232,6 +236,11 @@ def _is_budget_eligible_failure(exc: BaseException) -> bool:
     s = exc.response.status_code
     if s in (404, 410):
         # Disjoint from _is_permanent_gone. See docstring.
+        return False
+    if s == 406 and is_avature_job_detail_url(str(exc.request.url)):
+        # #5710: five Avature tenants emitted bursty 406s for live pages that
+        # later returned 200 unchanged. Counting these toward the three-strike
+        # tombstone budget can hide valid jobs during a provider throttle.
         return False
     return 400 <= s < 500 and s not in (401, 403, 429)
 

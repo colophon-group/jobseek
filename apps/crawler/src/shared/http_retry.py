@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from collections.abc import Awaitable, Callable, Collection
+from collections.abc import Awaitable, Callable, Collection, Mapping
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 import structlog
@@ -32,10 +32,74 @@ __all__ = [
     "PaginationFetchError",
     "_RETRYABLE_STATUSES",
     "fetch_json_page_with_retry",
+    "fetch_response_with_status_retries",
     "fetch_text_page_with_retry",
     "fetch_with_retry",
     "is_retryable_status",
 ]
+
+
+async def fetch_response_with_status_retries(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    retry_limits: Mapping[int, int],
+    base_delay: float = 0.5,
+    timeout: float | None = None,
+    headers: dict[str, str] | None = None,
+    follow_redirects: bool = True,
+    log_event: str = "http_retry.response_status_backoff",
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> httpx.Response:
+    """GET *url* and retry only explicitly listed response statuses.
+
+    ``retry_limits`` maps a status to the number of retries after its first
+    response. Unlike the pagination helpers below, this returns the final
+    response so scraper callers retain normal ``raise_for_status`` and final
+    redirect handling. Transport errors and unlisted statuses still surface
+    immediately; the worker-level retry/circuit policy remains authoritative
+    for those classes.
+    """
+
+    from src.metrics import http_retry_attempts_total, http_retry_host
+
+    if any(limit < 0 for limit in retry_limits.values()):
+        raise ValueError("status retry limits must be non-negative")
+
+    host = http_retry_host(url)
+    used: dict[int, int] = {}
+    total_retries = 0
+
+    while True:
+        request_kwargs: dict[str, Any] = {"follow_redirects": follow_redirects}
+        if timeout is not None:
+            request_kwargs["timeout"] = timeout
+        if headers is not None:
+            request_kwargs["headers"] = headers
+        response = await client.get(url, **request_kwargs)
+        status = response.status_code
+        limit = retry_limits.get(status, 0)
+        status_retries = used.get(status, 0)
+        if status_retries >= limit:
+            if total_retries and 200 <= status < 400:
+                http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+            elif limit and status_retries:
+                http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
+            return response
+
+        used[status] = status_retries + 1
+        total_retries += 1
+        http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+        delay = base_delay * (2 ** (total_retries - 1)) * (0.5 + random.random())
+        log.info(
+            log_event,
+            url=url,
+            status=status,
+            retry=used[status],
+            retry_limit=limit,
+            delay_s=round(delay, 2),
+        )
+        await sleep(delay)
 
 
 class PaginationFetchError(Exception):

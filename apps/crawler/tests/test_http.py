@@ -15,6 +15,7 @@ from src.shared.http import (
     create_http_client,
     create_logging_http_client,
     create_nossl_http_client,
+    is_avature_job_detail_url,
     track_request_hosts,
 )
 
@@ -130,6 +131,46 @@ class TestRequestHostTracking:
 
         assert tracker.transient_failure_host == "timeout.example"
         assert tracker.last_transport_error == "ConnectTimeout"
+
+    async def test_tracker_classifies_avature_job_detail_406_as_transient(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(406, request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                await client.get("https://jobs.totalenergies.com/en_US/careers/JobDetail/Role/123")
+
+        assert tracker.transient_failure_host == "jobs.totalenergies.com"
+        assert tracker.last_url and "/JobDetail/" in tracker.last_url
+
+    async def test_tracker_keeps_generic_406_non_transient(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(406, request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                await client.get("https://api.example.com/v1/search")
+
+        assert tracker.transient_failure_host is None
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://jobs.totalenergies.com/en_US/careers/JobDetail/Role/123",
+        "https://apply.deloitte.co.uk/UKCareers/JobDetail/Role/123",
+        "https://careers.tesco.com/en_GB/careersmarketplace/JobDetail/Role/123",
+        "https://bloomberg.avature.net/jobs/JobDetail/Role/123",
+    ],
+)
+def test_recognizes_avature_job_detail_routes(url: str) -> None:
+    assert is_avature_job_detail_url(url) is True
+
+
+def test_does_not_treat_generic_job_detail_route_as_avature() -> None:
+    assert is_avature_job_detail_url("https://example.com/jobs/JobDetail/Role/123") is False
 
 
 class TestProxyOptIn:
