@@ -3444,6 +3444,7 @@ noise-labs,noise-labs-ashby,https://jobs.ashbyhq.com/noise-labs,ashby,"{""token"
 nokia,nokia-careers,https://jobs.nokia.com/en/sites/CX_1/jobs,sitemap,"{""sitemap_url"": ""https://jobs.nokia.com/sitemaps/sitemapIndex"", ""url_filter"": ""^https://jobs\\.nokia\\.com/[a-z]{2}(?:-[A-Z]{2})?/job/\\d+(?:[/?#]|$)""}",oracle_hcm,"{""host"": ""fa-evmr-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_1""}"
 nomad,nomad-ashby,https://jobs.ashbyhq.com/nomad,ashby,"{""token"": ""nomad""}",skip,
 nomagic,nomagic-careers,https://jobs.lever.co/Nomagic,lever,"{""token"": ""Nomagic""}",skip,
+noma-security,noma-security-global,https://www.comeet.com/jobs/noma_security/3A.005,comeet,{},skip,
 nomiso,nomiso-greenhouse,https://job-boards.greenhouse.io/nomiso,greenhouse,"{""token"": ""nomiso""}",skip,
 nonprofit-finance-fund,nonprofit-finance-fund-greenhouse,https://job-boards.greenhouse.io/nonprofitfinancefund,greenhouse,"{""token"": ""nonprofitfinancefund""}",skip,
 nord-ostsee-automobile-se-co-kg,nord-ostsee-automobile-se-co-kg-join,https://join.com/companies/nord-ostsee-automobilede,join,"{""slug"": ""nord-ostsee-automobilede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
