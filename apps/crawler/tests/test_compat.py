@@ -56,3 +56,7 @@ def test_detect_ats_greenhouse_regional_host():
 
 def test_detect_ats_breezy_host():
     assert detect_ats_from_url("https://acme.breezy.hr") == "breezy"
+
+
+def test_detect_ats_comeet_board():
+    assert detect_ats_from_url("https://www.comeet.com/jobs/acme/12.345") == "comeet"

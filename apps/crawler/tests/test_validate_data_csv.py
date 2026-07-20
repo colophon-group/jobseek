@@ -6,6 +6,9 @@ from types import ModuleType
 
 import pytest
 
+from src.core.monitors import all_monitor_types
+from src.core.scrapers import all_scraper_types
+
 
 def _load_validator() -> ModuleType:
     path = Path(__file__).resolve().parents[1] / "scripts" / "validate_data_csv.py"
@@ -18,6 +21,11 @@ def _load_validator() -> ModuleType:
 
 
 validator = _load_validator()
+
+
+def test_csv_validator_types_match_runtime_registries():
+    assert all_monitor_types() == validator.ALLOWED_MONITOR_TYPES
+    assert {"", *all_scraper_types()} == validator.ALLOWED_SCRAPER_TYPES
 
 
 def test_occupation_header_accepts_extra_locale_columns():

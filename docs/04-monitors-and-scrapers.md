@@ -41,6 +41,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `ashby` | Rich | skip | Ashby ATS |
 | `bite` | URL-only | bite | b-ite.com ATS |
 | `breezy` | URL-only | json-ld (+dom fallback) | Breezy HR |
+| `comeet` | Rich | skip | Comeet hosted board embedded data |
 | `deel` | Rich | skip | Deel ATS |
 | `dvinci` | Rich | skip | d.vinci ATS |
 | `gem` | Rich | skip | Gem ATS |

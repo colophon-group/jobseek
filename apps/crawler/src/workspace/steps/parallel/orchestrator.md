@@ -79,7 +79,7 @@ For each new board:
 3. **Decide testing strategy based on probe results:**
 
    **Fast path (single test, no subagents):** If the probe's top result is a
-   **known stable ATS** — greenhouse, ashby, lever, gem, recruitee, personio,
+   **known stable ATS** — greenhouse, ashby, comeet, lever, gem, recruitee, personio,
    workday, hireology, pinpoint, dvinci, traffit, rss — AND it matched with
    high confidence (detected via `can_handle`), test it directly yourself.
    No need to spawn subagents for an obvious choice. For companies with

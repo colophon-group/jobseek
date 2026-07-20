@@ -1062,6 +1062,7 @@ class TestTaskComplete:
                     return_value=True,
                 )
             )
+            stack.enter_context(patch("src.workspace.git.fetch"))
             push = stack.enter_context(patch("src.workspace.git.push"))
 
             runner = CliRunner()

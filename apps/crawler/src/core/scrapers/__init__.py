@@ -185,6 +185,11 @@ def get_scraper_type(name: str) -> ScraperType | None:
     return _REGISTRY.get(name)
 
 
+def all_scraper_types() -> frozenset[str]:
+    """Return the set of all registered scraper type names."""
+    return frozenset(_REGISTRY)
+
+
 def scraper_needs_browser(name: str, config: dict | None = None) -> bool:
     """Return True if the scraper requires a Playwright browser.
 

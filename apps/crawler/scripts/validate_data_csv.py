@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import csv
 import json
 import re
@@ -45,70 +46,38 @@ REQUIRED_COLUMNS = {
     "technologies.csv": ["slug", "name", "category", "patterns", "flags"],
 }
 
-ALLOWED_MONITOR_TYPES = {
-    "accenture",
-    "almacareer",
-    "amazon",
-    "api_sniffer",
-    "ashby",
-    "bite",
-    "breezy",
-    "deel",
-    "dom",
-    "dvinci",
-    "eightfold",
-    "gem",
-    "greenhouse",
-    "hireology",
-    "inline",
-    "jobylon",
-    "join",
-    "lever",
-    "mokahr",
-    "nextdata",
-    "notion",
-    "oracle_hcm",
-    "personio",
-    "phenom",
-    "pinpoint",
-    "recruitee",
-    "recruiter_co_kr",
-    "rippling",
-    "rss",
-    "sitemap",
-    "smartrecruiters",
-    "softgarden",
-    "talentbrew",
-    "traffit",
-    "umantis",
-    "workable",
-    "workday",
-    "ycombinator",
-}
-
-ALLOWED_SCRAPER_TYPES = {
-    "",
-    "api_sniffer",
-    "bite",
-    "dom",
-    "eightfold",
-    "embedded",
-    "json-ld",
-    "mokahr",
-    "nextdata",
-    "notion",
-    "oracle_hcm",
-    "pdf",
-    "rippling",
-    "skip",
-    "smartrecruiters",
-    "workable",
-    "workday",
-}
-
 
 class ValidationError(Exception):
     pass
+
+
+def registered_type_names(directory: Path) -> frozenset[str]:
+    """Read literal ``register(<name>, ...)`` calls without importing runtime deps."""
+    names: set[str] = set()
+    for path in sorted(directory.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if not isinstance(node.func, ast.Name) or node.func.id != "register":
+                continue
+            if not node.args or not isinstance(node.args[0], ast.Constant):
+                raise ValidationError(
+                    f"{path}: register() must use a literal type name as its first argument"
+                )
+            name = node.args[0].value
+            if not isinstance(name, str) or not name:
+                raise ValidationError(f"{path}: register() type name must be a non-empty string")
+            if name in names:
+                raise ValidationError(f"duplicate registered type name {name!r} in {directory}")
+            names.add(name)
+    if not names:
+        raise ValidationError(f"no registered types found in {directory}")
+    return frozenset(names)
+
+
+ALLOWED_MONITOR_TYPES = registered_type_names(ROOT / "src" / "core" / "monitors")
+ALLOWED_SCRAPER_TYPES = frozenset({"", *registered_type_names(ROOT / "src" / "core" / "scrapers")})
 
 
 def validate_header(name: str, fieldnames: Sequence[str] | None) -> None:
