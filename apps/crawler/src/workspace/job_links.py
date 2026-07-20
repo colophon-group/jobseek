@@ -31,6 +31,12 @@ _JOB_QUERY_KEYS = {
     "vacancyid",
 }
 
+# Navigation/legal surfaces can look like repeated role slugs to the structural
+# heuristic (for example LinkedIn's cookie wall links to several ``/legal/*``
+# pages). They are never job-detail families and must not seed an inferred
+# job-link pattern for a bot-blocked board.
+_NON_JOB_PATH_PREFIXES = frozenset({"legal"})
+
 _LOCALE_SEGMENT_RE = re.compile(r"^[a-z]{2}(?:[-_][a-z]{2})?$")
 _UUID_RE = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
@@ -222,6 +228,8 @@ def _looks_like_job_link(
     if parsed.scheme not in ("http", "https"):
         return False
     segs = _canonical_segments(parsed.path)
+    if segs and segs[0].lower() in _NON_JOB_PATH_PREFIXES:
+        return False
     host = _host_with_root(parsed.netloc)
     query_id = _query_has_identifier(parsed.query)
     tail = segs[-1] if segs else ""

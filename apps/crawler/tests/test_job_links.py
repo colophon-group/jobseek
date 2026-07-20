@@ -165,6 +165,21 @@ def test_tracking_links_with_small_numbers_not_classified_as_jobs():
     assert analysis.pattern is None
 
 
+def test_legal_navigation_links_not_classified_as_jobs():
+    """A bot/cookie wall must not infer ``/legal`` as the job family."""
+    html = """
+    <html><body>
+      <a href="/legal/user-agreement">User Agreement</a>
+      <a href="/legal/privacy-policy">Privacy Policy</a>
+      <a href="/legal/cookie-policy">Cookie Policy</a>
+    </body></html>
+    """
+    analysis = analyze_job_links("https://www.linkedin.com/jobs/company-jobs", html)
+
+    assert analysis.job_links_total == 0
+    assert analysis.pattern is None
+
+
 @pytest.mark.asyncio
 async def test_fetch_falls_back_to_render_for_sparse_js_workday_page(monkeypatch):
     html = """
