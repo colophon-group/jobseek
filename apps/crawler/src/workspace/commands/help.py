@@ -1293,6 +1293,7 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
       "json_path": "results.jobs",
       "url_field": "url",
       "url_template": "https://example.com/jobs/{id}",
+      "url_template_fields": {"public_id": "customFields[0].value"},
       "pagination": {
         "param_name": "offset",
         "style": "offset",
@@ -1314,6 +1315,12 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
     json_path        Dot-notation path to jobs array in response
     url_field        Field name containing job URL (if found)
     url_template     URL pattern with {field} placeholders (from DOM cross-ref)
+    url_template_fields
+                     Optional placeholder aliases for nested item values.
+                     Values use the same field-path syntax as fields. Example:
+                       {"public_id": "customFields[0].value"}
+                     makes {public_id} available inside url_template alongside
+                     top-level scalar fields.
     params           Query parameters merged into api_url at request time.
                      Auto-filled from the captured URL (empty and pagination
                      params stripped). Edit result_limit / per_page here to
@@ -1567,10 +1574,11 @@ api_sniffer — XHR/Fetch API Capture (single page)
 
     api_url   API endpoint URL. Supports {id} and other named placeholders.
               By default, {id} is the job page URL's last path segment.
-    url_pattern  Optional regex matched against the job page URL. Named capture
+    url_pattern
+              Optional regex matched against the job page URL. Named capture
               groups become placeholders in api_url and post_body. Use this
               when an ID is stored in a query parameter, for example:
-              "[?&]jobId=(?P<id>[^&]+)".
+              "[?&]itemId=(?P<item_id>[^&#]+)" makes {item_id} available.
     method    HTTP method: "GET" (default) or "POST".
     post_body POST request body (JSON string). Supports {id} placeholder.
     json_path jmespath expression to navigate to the job object in the response.
