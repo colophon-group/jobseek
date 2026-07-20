@@ -241,6 +241,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `oracle_hcm`   | Fetch Oracle HCM detail REST responses             | `{host, site}`         |
 | `paylocity`    | Parse Paylocity server-rendered detail pages       | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
+| `reader`       | Extract configured visible text through Jina Reader | `{title_suffix, description_start, ...}` |
 | `rippling`     | Fetch Rippling detail API records                  | None                   |
 | `skip`         | No-scrape marker for rich monitor output           | None                   |
 | `smartrecruiters` | Fetch SmartRecruiters detail API records        | None                   |

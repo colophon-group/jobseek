@@ -215,6 +215,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `oracle_hcm` | Static | Fetches Oracle HCM detail REST responses |
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
+| `reader` | Reader API | Extracts configured visible-text sections through Jina Reader |
 | `rippling` | Static | Fetches Rippling detail API records |
 | `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |
 | `smartrecruiters` | Static | Fetches SmartRecruiters detail API records |
@@ -237,6 +238,29 @@ No config needed — the extractor handles all standard [schema.org/JobPosting](
 Key mappings: `title`/`name` → title, `description` → description (HTML), `jobLocation` → locations, `baseSalary` → `{currency, min, max, unit}` dict, `employmentType` → employment type, `jobLocationType` → remote/hybrid/onsite, `skills`/`responsibilities`/`qualifications` → lists, `datePosted`/`validThrough` → dates.
 
 **When to use**: Try this first for any sitemap-discovered board. Many sites (Meta, LinkedIn, Indeed, Workable-powered) embed JSON-LD. Use `ws probe` to auto-detect, or `ws select scraper json-ld` and `ws run scraper` to test.
+
+### reader
+
+Uses the Jina Reader API's rendered visible-text mode for job pages protected
+by interactive anti-bot challenges. The scraper is opt-in and validates the
+original URL with the crawler SSRF guard before sending it to Reader.
+
+**Config**:
+```json
+{
+  "title_suffix": " - Example Company",
+  "location_after_title": true,
+  "require_location": true,
+  "description_start": "Job Description",
+  "description_stop": "About Example Company"
+}
+```
+
+The title suffix is removed from Reader's page title. When enabled, the first
+visible-text line after the normalized title is used as the location. The
+description is bounded by exact start and stop lines and emitted as HTML
+paragraphs. Use `require_location` to fail and retry transient Reader responses
+that omit a location.
 
 ### nextdata
 

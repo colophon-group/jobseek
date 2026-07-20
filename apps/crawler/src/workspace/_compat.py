@@ -103,6 +103,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "oracle_hcm",
         "paylocity",
         "pdf",
+        "reader",
         "rippling",
         "skip",
         "smartrecruiters",
