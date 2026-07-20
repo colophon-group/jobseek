@@ -2651,7 +2651,7 @@ async def refresh_typesense_counts(
     Idempotent — can be called after each sync run or on a timer.
     Counts are approximate.
 
-    Location, occupation, and technology counts are read from the Typesense
+    Location, occupation, seniority, and technology counts are read from the Typesense
     ``job_posting`` facets so the count an operator sees on a taxonomy card
     matches the count they get when they filter by it. Reading from local
     Postgres ``unnest(...)`` either silently diverges from filter results
@@ -2698,23 +2698,18 @@ async def refresh_typesense_counts(
                 )
         await loop.run_in_executor(None, _ts_bulk_upsert, client, "occupation", occ_docs, "update")
 
-    # --- Seniorities ---
-    sen_rows = await local_conn.fetch(
-        f"""
-        SELECT seniority_id, COUNT(*) AS cnt
-        FROM job_posting
-        WHERE is_active AND seniority_id IS NOT NULL AND {_HAS_CONTENT_SQL}
-        GROUP BY 1
-        """
-    )
-    if sen_rows:
+    # --- Seniorities (read from Typesense facet to avoid the production
+    # Postgres aggregate exceeding the statement timeout even with its
+    # dedicated partial index; #4947) ---
+    sen_facet = await loop.run_in_executor(None, _fetch_active_facet_counts, client, "seniority_id")
+    if sen_facet:
         sen_docs: list[dict] = []
-        for r in sen_rows:
+        for seniority_id, cnt in sen_facet.items():
             for locale in ("en", "de", "fr", "it"):
                 sen_docs.append(
                     {
-                        "id": f"{r['seniority_id']}-{locale}",
-                        "active_posting_count": r["cnt"],
+                        "id": f"{seniority_id}-{locale}",
+                        "active_posting_count": cnt,
                         "has_active_postings": True,
                     }
                 )

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import polars as pl
@@ -1680,6 +1679,18 @@ class TestRefreshTypesenseCounts:
                         }
                     ]
                 }
+            if field == "seniority_id":
+                return {
+                    "facet_counts": [
+                        {
+                            "field_name": "seniority_id",
+                            "counts": [
+                                {"value": "2", "count": 1200},
+                                {"value": "7", "count": 340},
+                            ],
+                        }
+                    ]
+                }
             if field == "technology_ids":
                 return {
                     "facet_counts": [
@@ -1720,6 +1731,14 @@ class TestRefreshTypesenseCounts:
         en_parent = next(d for d in occ_docs if d["id"] == "200-en")
         assert en_parent["active_posting_count"] == 90
 
+        # Seniorities use the same facet strategy. The previous Postgres
+        # aggregate still exceeded the 30s timeout with its partial index.
+        sen_docs = next((docs for c, docs in captured if c == "seniority"), [])
+        assert len(sen_docs) == 8
+        sen_by_id = {d["id"]: d for d in sen_docs}
+        assert sen_by_id["2-en"]["active_posting_count"] == 1200
+        assert sen_by_id["7-it"]["active_posting_count"] == 340
+
         # Technologies use the same facet strategy. This avoids the
         # production Postgres unnest aggregate that timed out in #4961.
         tech_docs = next((docs for c, docs in captured if c == "technology"), [])
@@ -1727,10 +1746,10 @@ class TestRefreshTypesenseCounts:
         assert tech_by_id["7"]["active_posting_count"] == 440
         assert tech_by_id["13"]["active_posting_count"] == 95
 
-    async def test_seniority_count_sql_and_technology_facet_apply_has_content_filter(self):
-        """Issue #3288/#4961: precomputed counts must match the web's
-        ``POSTING_BASE_FILTER`` without reintroducing the slow technology
-        unnest aggregate in the scheduled refresh path.
+    async def test_seniority_and_technology_facets_apply_has_content_filter(self):
+        """Issue #3288/#4947/#4961: precomputed counts must match the web's
+        ``POSTING_BASE_FILTER`` without reintroducing slow Postgres
+        aggregates in the scheduled refresh path.
         """
         captured_sql: list[str] = []
 
@@ -1747,47 +1766,16 @@ class TestRefreshTypesenseCounts:
         with patch("src.sync._ts_bulk_upsert"):
             await refresh_typesense_counts(local_conn, client)
 
-        sen_sql = next(s for s in captured_sql if "SELECT seniority_id" in s)
-        assert "is_active" in sen_sql
-        assert "description_r2_hash IS NOT NULL" in sen_sql, (
-            f"missing description_r2_hash predicate in:\n{sen_sql}"
-        )
-        assert "cardinality(titles) > 0" in sen_sql, (
-            f"missing titles cardinality predicate in:\n{sen_sql}"
-        )
-        assert "length(trim(titles[1])) > 0" in sen_sql, (
-            f"missing titles non-blank predicate in:\n{sen_sql}"
-        )
-
+        assert not any("SELECT seniority_id" in sql for sql in captured_sql)
         assert not any("unnest(technology_ids)" in sql for sql in captured_sql)
         search_params = [
             call.args[0]
             for call in client.collections["job_posting"].documents.search.call_args_list
         ]
+        sen_params = next(p for p in search_params if p.get("facet_by") == "seniority_id")
         tech_params = next(p for p in search_params if p.get("facet_by") == "technology_ids")
+        assert sen_params["filter_by"] == "is_active:true && has_content:!=false"
         assert tech_params["filter_by"] == "is_active:true && has_content:!=false"
-
-    def test_seniority_count_has_matching_partial_index_migration(self):
-        """Issue #4947: the seniority aggregate needs a matching partial
-        index so refresh-typesense does not scan every active posting and sit
-        on the 30s local statement-timeout cliff.
-        """
-        migration = (
-            Path(__file__).parents[1]
-            / "src/migrations/versions/0008_index_active_content_postings_by_seniority.py"
-        ).read_text()
-
-        assert "CREATE INDEX CONCURRENTLY IF NOT EXISTS" in migration
-        assert "idx_jp_seniority_active_content ON job_posting (seniority_id)" in migration
-        assert "DROP INDEX CONCURRENTLY IF EXISTS idx_jp_seniority_active_content" in migration
-        for predicate in (
-            "is_active",
-            "seniority_id IS NOT NULL",
-            "description_r2_hash IS NOT NULL",
-            "cardinality(titles) > 0",
-            "length(trim(titles[1])) > 0",
-        ):
-            assert predicate in migration
 
     async def test_company_counts_apply_has_content_filter(self):
         """Issue #3009: the precomputed `company.active_posting_count` /
