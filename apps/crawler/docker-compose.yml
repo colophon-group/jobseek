@@ -178,6 +178,9 @@ services:
       DISCOVERY_CONCURRENCY: "7"
       MONITOR_CONCURRENCY: "4"
       CRAWLER_DB_POOL_MAX: "10"
+      # Bound the lifetime of each long-lived Playwright Node driver. Recycle
+      # only between claims; in-flight browser tasks are never interrupted.
+      BROWSER_PLAYWRIGHT_RECYCLE_SECONDS: "21600"
     depends_on:
       redis:
         condition: service_healthy

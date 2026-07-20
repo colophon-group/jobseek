@@ -43,6 +43,12 @@ avoid unsupported 24-hour claims, but it may still file or update a GitHub
 issue for a concrete, redacted, deduped error class visible in the observed
 window.
 
+Host-memory classification is container-generation aware. The root collector
+writes `host/docker-cgroup-memory.json` with Docker identity/timestamps and
+cgroup-v2 memory counters. Reviews compare OOM and restart counters only for
+the same container ID; a sticky Docker `OOMKilled=true` flag or a deployment
+that replaced the container is not, by itself, a new daily incident.
+
 Compatibility fallback:
 [`.claude/commands/jobseek-error-review.md`](../.claude/commands/jobseek-error-review.md).
 Keep it behaviorally aligned with the Codex skill when it is edited, but do

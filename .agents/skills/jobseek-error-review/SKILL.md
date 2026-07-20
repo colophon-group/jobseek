@@ -74,6 +74,11 @@ such as `tesla-debug`, `stupefied_hofstadter`, and `goofy_haibt`.
 1. Use a window of the last 24 hours ending at UTC now, rounded down to the
    minute. Use explicit `--since` and `--until` values so log collection
    exactly matches the report header.
+   When the Hetzner runner provides a redacted evidence bundle, read
+   `manifest.json`, `host/docker-inspect-state.txt`, and
+   `host/docker-cgroup-memory.json` before classifying host incidents. The
+   JSON file records the container ID, creation/start timestamps, and
+   cgroup-v2 `memory.events` counters needed for generation-safe deltas.
 2. Read every `.md` report under
    `~/dev/claude/review-jobseek-errors/` before classifying. The directory
    name is legacy; keep using it for cross-run continuity unless a migration
@@ -102,7 +107,7 @@ df -h /var/lib/docker
 free -h
 uptime
 docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'
-docker inspect --format '{{.Name}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' $(docker ps -aq)
+docker inspect --format '{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' $(docker ps -aq)
 dmesg -T 2>/dev/null | tail -n 500
 journalctl -k --since "24 hours ago" --no-pager 2>/dev/null | tail -500
 ```
@@ -111,12 +116,30 @@ Use `journalctl -k` as a fallback if `dmesg` is restricted. If both kernel
 log commands are restricted, note the gap under `## Host` and do not treat
 that gap alone as an incident.
 
+Docker's `OOMKilled` state is historical and can remain true while a
+container keeps running. `RestartCount` is also scoped to one container
+object. Never subtract either value across different container IDs. Treat an
+OOM or restart as new inside the report window only when one of these proves
+it:
+
+- The same `container_id` exists in both evidence snapshots and its cgroup-v2
+  `memory.events.oom_kill` or Docker `RestartCount` increased.
+- A container created inside the window already has a positive counter.
+- An exited container finished inside the window with `OOMKilled=true`, or
+  kernel logs timestamp the OOM inside the window.
+
+A changed container ID normally means a deployment or replacement, not a
+restart-count delta. A sticky `OOMKilled=true` without a same-generation
+counter delta is historical context, not a fresh daily incident.
+
 Flag an incident if any of these are true:
 
 - `/` usage is at least 85%.
 - `/var/lib/docker` usage is at least 85% when it is a separate mount.
-- Any container was OOMKilled inside the window.
-- Any container `RestartCount` incremented since yesterday's report.
+- A generation-safe cgroup or exited-container signal proves an OOM inside
+  the window.
+- A same-container `RestartCount` increment proves a restart inside the
+  window.
 - 15-minute load average is greater than CPU count x 2.
 - Swap usage is greater than 50% of swap total.
 - Kernel logs show `Out of memory: Killed process`, `I/O error`,

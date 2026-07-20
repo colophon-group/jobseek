@@ -63,6 +63,7 @@ DEFAULT_WAIT = "networkidle"
 DEFAULT_WAIT_FALLBACK = "domcontentloaded"
 DEFAULT_TIMEOUT = 30_000
 CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 minutes
+BROWSER_CLOSE_TIMEOUT_SECONDS = 15.0
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
 OVERLAY_SELECTORS = (
     '[class*="cookie-banner"]',
@@ -114,6 +115,31 @@ DEFAULT_LOCALE = "en-US"
 # without silently activating previously-dropped launch-time keys (``stealth``,
 # ``user_agent``, ``cookies``, etc.) on boards that set them.
 NAVIGATE_KEYS = frozenset({"wait", "wait_fallback", "timeout", "actions"})
+
+
+async def _close_browser_resource(resource, resource_name: str) -> None:
+    """Close a Playwright resource without allowing teardown to hang forever."""
+    try:
+        await asyncio.wait_for(resource.close(), timeout=BROWSER_CLOSE_TIMEOUT_SECONDS)
+    except TimeoutError:
+        metrics.browser_cleanup_failures_total.labels(
+            resource=resource_name,
+            outcome="timeout",
+        ).inc()
+        log.warning(
+            "browser.cleanup.timeout",
+            resource=resource_name,
+            timeout_seconds=BROWSER_CLOSE_TIMEOUT_SECONDS,
+        )
+        raise
+    except Exception:
+        metrics.browser_cleanup_failures_total.labels(
+            resource=resource_name,
+            outcome="error",
+        ).inc()
+        log.warning("browser.cleanup.error", resource=resource_name, exc_info=True)
+        raise
+
 
 # ---------------------------------------------------------------------------
 # Config placeholders
@@ -365,9 +391,16 @@ async def open_page(
             await page.goto(warmup_url, wait_until="domcontentloaded", timeout=DEFAULT_TIMEOUT)
         yield page
     finally:
-        if context:
-            await context.close()
-        await browser.close()
+        # A context close can fail when Chromium was killed or its transport
+        # disappeared. The nested finally is deliberate: the old straight-line
+        # cleanup skipped browser.close() in exactly that case, leaving the
+        # outer Playwright driver to retain a surviving child until container
+        # restart (#5488).
+        try:
+            if context:
+                await _close_browser_resource(context, "context")
+        finally:
+            await _close_browser_resource(browser, "browser")
 
 
 @asynccontextmanager
@@ -428,7 +461,7 @@ async def _open_persistent_page(
         yield page
     finally:
         with contextlib.suppress(Exception):
-            await context.close()
+            await _close_browser_resource(context, "persistent_context")
         shutil.rmtree(user_data_dir, ignore_errors=True)
 
 

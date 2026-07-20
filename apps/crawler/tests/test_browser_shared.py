@@ -459,6 +459,37 @@ class TestOpenPage:
         context.close.assert_awaited_once()
         browser.close.assert_awaited_once()
 
+    async def test_closes_browser_even_when_context_close_fails(self):
+        """A killed Chromium transport must not skip the outer browser close."""
+        pw = _make_pw()
+        browser = pw.chromium.launch.return_value
+        context = browser.new_context.return_value
+        context.close.side_effect = RuntimeError("transport closed")
+
+        with pytest.raises(RuntimeError, match="transport closed"):
+            async with open_page(pw):
+                pass
+
+        context.close.assert_awaited_once()
+        browser.close.assert_awaited_once()
+
+    async def test_closes_browser_after_context_close_timeout(self, monkeypatch):
+        pw = _make_pw()
+        browser = pw.chromium.launch.return_value
+        context = browser.new_context.return_value
+
+        async def never_closes():
+            await asyncio.sleep(60)
+
+        context.close.side_effect = never_closes
+        monkeypatch.setattr("src.shared.browser.BROWSER_CLOSE_TIMEOUT_SECONDS", 0.01)
+
+        with pytest.raises(TimeoutError):
+            async with open_page(pw):
+                pass
+
+        browser.close.assert_awaited_once()
+
     async def test_closes_context_on_exception(self):
         pw = _make_pw()
 

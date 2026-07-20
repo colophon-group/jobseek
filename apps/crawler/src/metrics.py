@@ -438,6 +438,18 @@ browser_headless_coerced_total = Counter(
     ["reason"],
 )
 
+browser_playwright_recycles_total = Counter(
+    "crawler_browser_playwright_recycles_total",
+    "Long-lived Playwright driver recycle attempts between browser jobs",
+    ["outcome"],
+)
+
+browser_cleanup_failures_total = Counter(
+    "crawler_browser_cleanup_failures_total",
+    "Browser/context cleanup failures that required outer lifecycle recovery",
+    ["resource", "outcome"],
+)
+
 
 # Build info — emitted once at startup so Grafana can confirm which
 # ``apps/crawler/VERSION`` each container is running without SSH-ing in.

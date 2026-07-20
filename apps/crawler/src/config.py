@@ -91,6 +91,15 @@ class Settings(BaseSettings):
     # us mid-drain. We use 30s here against a 60s docker stop budget.
     shutdown_grace_seconds: int = 30
 
+    # Browser workers keep one Playwright driver process per discovery
+    # coroutine. Those Node driver processes are intentionally reused between
+    # jobs, but production memory snapshots showed their aggregate cgroup
+    # footprint growing over a multi-day container lifetime until a Chromium
+    # child was OOM-killed (#5488). Recycle each driver between jobs after a
+    # bounded lifetime so driver/browser allocator fragmentation cannot grow
+    # for the lifetime of the container. Set to 0 only for diagnostics.
+    browser_playwright_recycle_seconds: int = 6 * 60 * 60
+
     # Upstash (web app only, kept for backward compat)
     upstash_redis_rest_url: str = ""
     upstash_redis_rest_token: str = ""
