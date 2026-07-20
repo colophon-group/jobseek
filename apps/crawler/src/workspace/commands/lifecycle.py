@@ -21,6 +21,7 @@ from src.workspace.state import (
     delete_workspace,
     get_active_slug,
     list_boards,
+    list_workspaces,
     load_workspace,
     resolve_board_alias,
     resolve_slug,
@@ -200,8 +201,14 @@ def new(
                 branch = pr_branch
             out.info("github", f"Attaching to existing PR #{pr_number} (branch {branch})")
         elif issue:
-            existing = git.check_existing_prs(issue)
+            existing = git.check_existing_prs_strict(issue)
             if existing:
+                classification = git.classify_issue_prs(existing)
+                if classification != "resumable":
+                    out.die(
+                        f"Issue #{issue} has {classification} linked PR state; "
+                        "refusing to attach automatically"
+                    )
                 pr_number = existing[0]["number"]
                 pr_branch = git.get_pr_branch(pr_number)
                 if pr_branch:
@@ -413,30 +420,9 @@ def use(slug: str | None, board: str | None, company_opt: str | None, board_opt:
 )
 @click.option("--message", required=True, help="Human-readable explanation")
 def reject(slug: str | None, issue: int | None, reason: str, message: str):
-    """Comment + close an issue as rejected."""
+    """Atomically clean resolver artifacts, comment, and reject an issue."""
     local = is_local_mode()
-
-    ws: Workspace | None = None
-
-    # Explicit slug: validate it and use its linked issue when --issue omitted.
-    if slug is not None:
-        if not workspace_exists(slug):
-            out.die(f"Workspace {slug!r} not found")
-        ws = load_workspace(slug)
-        if issue is None:
-            issue = ws.issue
-        elif ws.issue and ws.issue != issue:
-            out.die(f"--issue {issue} does not match workspace {slug!r} (linked issue #{ws.issue})")
-
-    # No explicit slug and no explicit issue: derive from active workspace.
-    elif issue is None:
-        active = get_active_slug()
-        if active and workspace_exists(active):
-            slug = active
-            ws = load_workspace(active)
-            issue = ws.issue
-
-    # If --issue is provided without slug, keep it authoritative.
+    slug, ws, issue = _resolve_outcome_workspace(slug=slug, issue=issue)
     if not issue:
         out.die("Provide --issue or a workspace slug with a linked issue")
 
@@ -455,23 +441,124 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
     else:
         from src.workspace import git
 
-        git.comment_on_issue(issue, body)
+        _cleanup_resolver_artifacts(issue=issue, slug=slug, ws=ws, local=False)
+        git.comment_on_issue_once(issue, f"<!-- validation-failed: {reason} -->", body)
         if reason in ("duplicate", "subsidiary"):
             git.add_label_to_issue(issue, reason)
-        git.unclaim_issue(issue)
-        git.close_issue(issue)
+        git.unclaim_issue_strict(issue)
+        git.close_issue_if_open(issue)
         out.info("github", f"Commented on issue #{issue} (validation-failed: {reason})")
         out.info("github", f"Closed issue #{issue}")
 
     out.info("task", "Done. Do not pick another issue — stop here.")
 
+    if local:
+        _cleanup_resolver_artifacts(issue=issue, slug=slug, ws=ws, local=True)
+
+
+def _resolve_outcome_workspace(
+    *,
+    slug: str | None,
+    issue: int | None,
+) -> tuple[str | None, Workspace | None, int | None]:
+    """Resolve a unique workspace without letting active state override --issue."""
+    if slug is not None:
+        if not workspace_exists(slug):
+            out.die(f"Workspace {slug!r} not found")
+        ws = load_workspace(slug)
+        if issue is None:
+            issue = ws.issue
+        elif ws.issue and ws.issue != issue:
+            out.die(f"--issue {issue} does not match workspace {slug!r} (linked issue #{ws.issue})")
+        return slug, ws, issue
+
+    if issue is not None:
+        matches = [workspace for workspace in list_workspaces() if workspace.issue == issue]
+        if len(matches) > 1:
+            choices = ", ".join(sorted(workspace.slug for workspace in matches))
+            out.die(f"Multiple workspaces match issue #{issue}: {choices}")
+        if matches:
+            return matches[0].slug, matches[0], issue
+        return None, None, issue
+
+    active = get_active_slug()
+    if active and workspace_exists(active):
+        ws = load_workspace(active)
+        return active, ws, ws.issue
+    return None, None, None
+
+
+def _cleanup_resolver_artifacts(
+    *,
+    issue: int,
+    slug: str | None,
+    ws: Workspace | None,
+    local: bool,
+) -> None:
+    """Remove one resolver attempt before its issue is terminally closed.
+
+    GitHub and branch failures intentionally propagate.  The issue remains
+    open, so rerunning the terminal command safely resumes cleanup.
+    """
+    from src.csvtool import company_del
+
+    branches = {ws.branch} if ws and ws.branch else set()
+    pr_numbers = {ws.pr} if ws and ws.pr else set()
+
+    if not local:
+        from src.workspace import git
+
+        linked_prs = git.check_existing_prs_strict(issue)
+        classification = git.classify_issue_prs(linked_prs)
+        if classification in {"submitted", "conflicting"}:
+            raise WorkspaceError(
+                f"Issue #{issue} has {classification} linked PR state; refusing automatic cleanup"
+            )
+        for pr in linked_prs:
+            number = pr.get("number")
+            branch = pr.get("headRefName")
+            if isinstance(number, int):
+                pr_numbers.add(number)
+            if isinstance(branch, str):
+                branches.add(branch)
+                if slug is None and branch.startswith("add-company/"):
+                    slug = branch.removeprefix("add-company/")
+        for pr_number in sorted(number for number in pr_numbers if number is not None):
+            git.close_pr_if_open(pr_number)
+
     if ws is not None:
         action_log.append(
-            ws_log_path(slug),
-            "reject",
+            ws_log_path(ws.slug),
+            "cleanup",
             True,
-            f"Rejected issue #{issue}: {reason}",
+            f"Cleaning terminal resolver artifacts for issue #{issue}",
         )
+
+    if slug and any(branch.startswith("add-company/") for branch in branches):
+        try:
+            company_del(slug)
+            out.info("csv", f"Removed {slug!r} from companies.csv (+ boards)")
+        except (CsvToolError, FileNotFoundError):
+            pass
+
+    if not local:
+        from pathlib import Path
+
+        from src.workspace import git
+
+        worktree = Path(ws.worktree) if ws and ws.worktree else None
+        if worktree is None and slug:
+            worktree = git.worktrees_dir() / slug
+        if worktree is not None:
+            git.remove_worktree_strict(worktree)
+        for branch in sorted(branch for branch in branches if branch):
+            git.delete_branch_strict(branch)
+
+    if slug and workspace_exists(slug):
+        delete_workspace(slug)
+        if get_active_slug() == slug:
+            clear_active_slug()
+        out.info("workspace", f"Removed workspace {slug!r}")
 
 
 @click.command(name="del")

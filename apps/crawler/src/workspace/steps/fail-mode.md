@@ -39,6 +39,13 @@ Before writing code, confirm configuration exploration is exhausted:
    - What was tried during the guided workflow
    - Why it failed
    - What the code change does
+   - A `Closes #<company-request>` link so the runner can record the terminal
+     submitted outcome
+
+Opening that linked `fix-crawler/` PR is the terminal submitted outcome for
+this resolver run. If no safe code fix can be submitted, use
+`ws task escalate --issue <N> --reason "..." --follow-up "..."` so cleanup
+and the required follow-up are recorded explicitly.
 
 ## Guidelines
 

@@ -7,7 +7,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from src.workspace.errors import GitCommandError, GitHubApiError
+from src.workspace.errors import GitCommandError, GitHubApiError, WorkspaceError
 
 _GIT_RETRIES = 2
 _GH_RETRIES = 2
@@ -284,6 +284,18 @@ def remove_worktree(path: Path) -> None:
     )
 
 
+def remove_worktree_strict(path: Path) -> None:
+    """Idempotently remove a worktree, raising if cleanup is incomplete."""
+    if not path.exists():
+        return
+    _run(
+        ["git", "worktree", "remove", str(path), "--force"],
+        cwd=_MANAGED_REPO,
+    )
+    if path.exists():
+        raise WorkspaceError(f"Worktree still exists after removal: {path}")
+
+
 def _is_retryable(e: GitCommandError | GitHubApiError) -> bool:
     """Return True if the error looks like a transient network issue."""
     stderr = e.stderr.lower()
@@ -439,6 +451,32 @@ def delete_remote_branch(name: str) -> None:
     _run(["git", "push", "origin", "--delete", name], check=False)
 
 
+def delete_branch_strict(name: str) -> None:
+    """Idempotently delete a local and remote branch with verification."""
+    _run(["git", "branch", "-D", name], cwd=_MANAGED_REPO, check=False)
+    local = _run(["git", "branch", "--list", name], cwd=_MANAGED_REPO)
+    if local.stdout.strip():
+        raise WorkspaceError(f"Local branch still exists after deletion: {name}")
+    remote = _run(
+        ["git", "ls-remote", "--heads", "origin", name],
+        cwd=_MANAGED_REPO,
+        retries=_GIT_RETRIES,
+    )
+    if remote.stdout.strip():
+        _run(
+            ["git", "push", "origin", "--delete", name],
+            cwd=_MANAGED_REPO,
+            retries=_GIT_RETRIES,
+        )
+        verify = _run(
+            ["git", "ls-remote", "--heads", "origin", name],
+            cwd=_MANAGED_REPO,
+            retries=_GIT_RETRIES,
+        )
+        if verify.stdout.strip():
+            raise WorkspaceError(f"Remote branch still exists after deletion: {name}")
+
+
 # ── GitHub CLI operations ───────────────────────────────────────────────
 
 
@@ -448,34 +486,71 @@ def check_gh_auth() -> bool:
     return result.returncode == 0
 
 
-def check_existing_prs(issue_number: int) -> list[dict[str, str]]:
+def check_existing_prs_strict(issue_number: int) -> list[dict]:
     """Check for open PRs that close a given issue.
 
-    Returns list of dicts with 'number', 'title', 'url' keys.
+    Returns enough metadata to distinguish a resumable resolver draft from a
+    ready resolver submission or an unrelated/manual PR.
     """
     import json
 
-    result = _run(
-        [
-            "gh",
-            "pr",
-            "list",
-            *_gh_repo_flag(),
-            "--state",
-            "open",
-            "--search",
-            f"Closes #{issue_number}",
-            "--json",
-            "number,title,url",
-        ],
-        check=False,
-    )
-    if result.returncode != 0 or not result.stdout.strip():
-        return []
+    args = [
+        "gh",
+        "pr",
+        "list",
+        *_gh_repo_flag(),
+        "--state",
+        "open",
+        "--search",
+        f"Closes #{issue_number}",
+        "--json",
+        "number,title,url,headRefName,isDraft",
+    ]
+    result = _run(args, retries=_GH_RETRIES)
     try:
-        return json.loads(result.stdout)
-    except (json.JSONDecodeError, TypeError):
+        prs = json.loads(result.stdout or "[]")
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise GitHubApiError(args, 1, "Could not parse linked-PR lookup response") from exc
+    if not isinstance(prs, list) or not all(isinstance(pr, dict) for pr in prs):
+        raise GitHubApiError(args, 1, "Unexpected linked-PR lookup response")
+    return prs
+
+
+def check_existing_prs(issue_number: int) -> list[dict]:
+    """Best-effort compatibility wrapper for non-coordination call sites."""
+    try:
+        return check_existing_prs_strict(issue_number)
+    except (GitHubApiError, GitCommandError):
         return []
+
+
+def classify_issue_prs(prs: list[dict]) -> str:
+    """Classify PRs linked to one company-request issue.
+
+    A single draft on an ``add-company/`` branch is owned by the resolver and
+    can be resumed.  Once that PR is ready it represents a submitted outcome.
+    A ``fix-crawler/`` PR is also submitted: it is the expected result after
+    ``ws task fail`` enters coding mode, but must never be resumed as a company
+    workspace.  Any other shape is treated as a manual conflict.
+    """
+    if not prs:
+        return "none"
+    if len(prs) != 1:
+        return "conflicting"
+    pr = prs[0]
+    branch = pr.get("headRefName")
+    is_draft = pr.get("isDraft")
+    if not isinstance(branch, str):
+        return "conflicting"
+    if branch.startswith("fix-crawler/"):
+        return "submitted"
+    if not branch.startswith("add-company/"):
+        return "conflicting"
+    if is_draft is True:
+        return "resumable"
+    if is_draft is False:
+        return "submitted"
+    return "conflicting"
 
 
 def get_pr_branch(pr_number: int) -> str | None:
@@ -583,6 +658,34 @@ def comment_on_issue(issue_number: int, body: str) -> None:
     )
 
 
+def comment_on_issue_once(issue_number: int, marker: str, body: str) -> None:
+    """Post a marker-owned issue comment only when it is not already present."""
+    import json
+
+    result = _run(
+        [
+            "gh",
+            "issue",
+            "view",
+            str(issue_number),
+            *_gh_repo_flag(),
+            "--json",
+            "comments",
+        ],
+        retries=_GH_RETRIES,
+    )
+    data = json.loads(result.stdout or "{}")
+    comments = data.get("comments", []) if isinstance(data, dict) else []
+    if any(
+        isinstance(comment, dict)
+        and isinstance(comment.get("body"), str)
+        and comment["body"].startswith(marker)
+        for comment in comments
+    ):
+        return
+    comment_on_issue(issue_number, body)
+
+
 _CLAIM_MARKER = "<!-- ws-claim -->"
 _CLAIM_BODY = f"{_CLAIM_MARKER}\nWorking on it"
 
@@ -608,6 +711,32 @@ def _get_claim_comment_ids(issue_number: int) -> list[int]:
     return [c["id"] for c in comments if c.get("body", "").startswith(_CLAIM_MARKER)]
 
 
+def _get_claim_comment_ids_strict(issue_number: int) -> list[int]:
+    """Return claim IDs, raising when GitHub state cannot be established."""
+    import json
+
+    args = [
+        "gh",
+        "api",
+        f"repos/{_resolve_repo()}/issues/{issue_number}/comments",
+    ]
+    result = _run(args, retries=_GH_RETRIES)
+    try:
+        comments = json.loads(result.stdout or "[]")
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise GitHubApiError(args, 1, "Could not parse issue comments response") from exc
+    if not isinstance(comments, list):
+        raise GitHubApiError(args, 1, "Unexpected issue comments response")
+    return [
+        comment["id"]
+        for comment in comments
+        if isinstance(comment, dict)
+        and isinstance(comment.get("id"), int)
+        and isinstance(comment.get("body"), str)
+        and comment["body"].startswith(_CLAIM_MARKER)
+    ]
+
+
 def is_issue_claimed(issue_number: int) -> bool:
     """Check if an issue has an active claim comment."""
     return len(_get_claim_comment_ids(issue_number)) > 0
@@ -631,6 +760,23 @@ def unclaim_issue(issue_number: int) -> None:
             ],
             check=False,
         )
+
+
+def unclaim_issue_strict(issue_number: int) -> None:
+    """Remove all claim comments and verify none remain."""
+    for comment_id in _get_claim_comment_ids_strict(issue_number):
+        _run(
+            [
+                "gh",
+                "api",
+                "--method",
+                "DELETE",
+                f"repos/{_resolve_repo()}/issues/comments/{comment_id}",
+            ],
+            retries=_GH_RETRIES,
+        )
+    if _get_claim_comment_ids_strict(issue_number):
+        raise WorkspaceError(f"Issue #{issue_number} still has resolver claim comments")
 
 
 def _resolve_repo() -> str:
@@ -677,7 +823,11 @@ def _fetch_issues_with_open_prs() -> set[int]:
     return linked
 
 
-def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
+def fetch_oldest_open_issue(
+    label: str = "company-request",
+    *,
+    skip_open_prs: bool = True,
+) -> int | None:
     """Return the issue number of the oldest open issue with the given label.
 
     Skips issues that already have an open ``add-company/`` or
@@ -711,11 +861,11 @@ def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
     if not numbers:
         return None
 
-    # Batch-fetch all issues with open PRs (1 API call instead of N)
-    issues_with_prs = _fetch_issues_with_open_prs()
-
-    # Filter out issues that already have PRs
-    candidates = [n for n in numbers if n not in issues_with_prs]
+    candidates = numbers
+    if skip_open_prs:
+        # Batch-fetch all issues with open PRs (1 API call instead of N).
+        issues_with_prs = _fetch_issues_with_open_prs()
+        candidates = [n for n in numbers if n not in issues_with_prs]
     if not candidates:
         return None
 
@@ -765,6 +915,42 @@ def close_issue(issue_number: int) -> None:
     _run(["gh", "issue", "close", str(issue_number), *_gh_repo_flag()], retries=_GH_RETRIES)
 
 
+def close_issue_if_open(issue_number: int) -> None:
+    """Idempotently close an issue and verify its terminal state."""
+    state = _run(
+        [
+            "gh",
+            "issue",
+            "view",
+            str(issue_number),
+            *_gh_repo_flag(),
+            "--json",
+            "state",
+            "--jq",
+            ".state",
+        ],
+        retries=_GH_RETRIES,
+    ).stdout.strip()
+    if state.upper() == "OPEN":
+        close_issue(issue_number)
+        state = _run(
+            [
+                "gh",
+                "issue",
+                "view",
+                str(issue_number),
+                *_gh_repo_flag(),
+                "--json",
+                "state",
+                "--jq",
+                ".state",
+            ],
+            retries=_GH_RETRIES,
+        ).stdout.strip()
+    if state.upper() != "CLOSED":
+        raise WorkspaceError(f"Issue #{issue_number} is not closed after terminal outcome")
+
+
 def edit_pr_body(pr_number: int, body: str) -> None:
     """Update a PR's body text."""
     _run(
@@ -776,6 +962,32 @@ def edit_pr_body(pr_number: int, body: str) -> None:
 def close_pr(pr_number: int) -> None:
     """Close a GitHub PR."""
     _run(["gh", "pr", "close", str(pr_number)], retries=_GH_RETRIES)
+
+
+def close_pr_if_open(pr_number: int) -> None:
+    """Idempotently close a PR and verify that it is no longer open."""
+    state = _run(
+        ["gh", "pr", "view", str(pr_number), *_gh_repo_flag(), "--json", "state", "--jq", ".state"],
+        retries=_GH_RETRIES,
+    ).stdout.strip()
+    if state.upper() == "OPEN":
+        close_pr(pr_number)
+        state = _run(
+            [
+                "gh",
+                "pr",
+                "view",
+                str(pr_number),
+                *_gh_repo_flag(),
+                "--json",
+                "state",
+                "--jq",
+                ".state",
+            ],
+            retries=_GH_RETRIES,
+        ).stdout.strip()
+    if state.upper() not in {"CLOSED", "MERGED"}:
+        raise WorkspaceError(f"PR #{pr_number} is not closed after cleanup (state={state!r})")
 
 
 def repo_name_with_owner() -> str:

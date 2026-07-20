@@ -147,7 +147,9 @@ Safety budget: max 5 issues per 5-hour rolling window in conservative mode
 unless the Hetzner deployment config deliberately raises it.
 
 The recurring resolver:
-1. Selects the oldest open `company-request` issue that has no active PR (or whose PR is stale)
+1. Selects the oldest eligible open `company-request` issue. A single draft
+   `add-company/` PR is resumable; a ready company PR or `fix-crawler/` PR is
+   submitted; any other linked PR shape is a manual conflict.
 2. Checks host headroom, active claims, active PRs, and Codex usage telemetry
 3. Runs the local Codex CLI path to resolve the selected issue
 4. Captures `codex exec --json` trace data and local usage into the governor ledger
@@ -158,11 +160,13 @@ The recurring resolver is not triggered by GitHub Actions. Use
 same local Codex path so billing, auth, trace capture, and the governor ledger
 remain consistent.
 
-Conflict resolution: if an open PR already claims an issue, the resolver checks
-staleness based on the last commit date — 24h threshold for config-only PRs, 72h
-for code change PRs (those with the `review-code` label). Stale PRs receive a
-one-time warning comment. The issue is only assigned to an agent when no active
-claim exists.
+Resolver outcomes are explicit: `submitted`, `rejected`, `escalated`,
+`retryable`, or `interrupted`. A closed issue is not success evidence on its
+own; it must have a validation/escalation marker or a linked PR closure.
+Retryable and interrupted attempts receive bounded exponential backoff, and a
+backed-off issue does not block later independent issues. Rejection and
+escalation close the issue only after linked draft PR, branch, worktree, and
+workspace cleanup succeeds.
 
 ## Branch Naming
 
