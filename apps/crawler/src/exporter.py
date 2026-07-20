@@ -699,6 +699,32 @@ def _exc_fields(exc: BaseException) -> dict[str, object]:
     return fields
 
 
+_ROW_POISON_SQLSTATE_CLASSES = frozenset({"21", "22", "23"})
+
+
+def _is_supabase_row_poison(exc: BaseException) -> bool:
+    """Return whether *exc* is safe to isolate and skip as one bad row.
+
+    Only PostgreSQL cardinality, data, and integrity violations are known to
+    be caused by the row being written.  Timeouts, connection failures,
+    resource exhaustion, operator intervention, schema errors, and unknown
+    exceptions are target-wide failures: treating any of those as row poison
+    would advance the CDC cursor past data that Supabase never acknowledged
+    (#5231).
+
+    SQLSTATE class references:
+    - 21: cardinality violation (a batch may need per-row isolation)
+    - 22: data exception (invalid/out-of-range row value)
+    - 23: integrity constraint violation (FK/unique/NOT NULL, etc.)
+    """
+    sqlstate = getattr(exc, "sqlstate", None)
+    return (
+        isinstance(exc, asyncpg.PostgresError)
+        and isinstance(sqlstate, str)
+        and sqlstate[:2] in _ROW_POISON_SQLSTATE_CLASSES
+    )
+
+
 async def _upsert_to_supabase(
     supa_pool: asyncpg.Pool,
     rows: list,
@@ -712,11 +738,16 @@ async def _upsert_to_supabase(
     transaction rolls back — this is the poison-pill failure mode that
     used to halt CDC forever (#3180).
 
-    Fallback: on batch failure, re-attempt each row in its own
-    transaction. Successful rows commit; failed rows are logged + counted
-    in ``export_errors_total{phase="supabase"}`` and returned in the
-    set of failed IDs so the caller advances the cursor past them (data
-    is dropped; quarantine table is a follow-up).
+    Fallback: when PostgreSQL identifies the batch failure as a row-local
+    cardinality, data, or integrity violation, re-attempt each row in its
+    own transaction. Successful rows commit; deterministic poison rows are
+    logged + counted in ``export_errors_total{phase="supabase"}`` and
+    returned in the set of failed IDs so the caller advances past them.
+
+    Target-wide and unknown failures escape instead. The caller then keeps
+    the cursor pinned and replays the batch on the next tick. This is safe
+    even if some fallback rows committed before a transient interruption,
+    because every write is an idempotent ``INSERT ... ON CONFLICT UPDATE``.
 
     The caller is expected to advance the cursor to the last row's
     ``(updated_at, id)`` regardless of which rows failed — the
@@ -742,9 +773,20 @@ async def _upsert_to_supabase(
             await conn.execute(PostingSchema.insert_from_temp_sql())
         return set()
     except Exception as batch_exc:
-        # Single bad row poisoned the whole transaction. Fall back to
-        # per-row upserts so the surviving N-1 rows still land in
-        # Supabase and the cursor can advance.
+        if not _is_supabase_row_poison(batch_exc):
+            # A timeout, broken connection, overloaded/shutting-down server,
+            # schema error, or unknown exception says nothing about the row.
+            # Propagate it so the caller retains the cursor (#5231).
+            log.warning(
+                "exporter.supabase_batch_retryable",
+                batch_size=len(rows),
+                **_exc_fields(batch_exc),
+            )
+            raise
+
+        # A deterministic row-local failure poisoned the whole transaction.
+        # Fall back to per-row upserts so the surviving N-1 rows still land
+        # in Supabase and the cursor can advance (#3180).
         log.warning(
             "exporter.supabase_batch_failed_falling_back",
             batch_size=len(rows),
@@ -760,9 +802,13 @@ async def _upsert_to_supabase_per_row(
 ) -> set[uuid.UUID]:
     """Per-row Supabase upsert fallback used after a batch failure (#3180).
 
-    Each row gets its own transaction. Successful rows commit; failed
-    rows are logged, counted in ``export_errors_total``, and returned
-    in the failed-ID set so the caller can advance the cursor past them.
+    Each row gets its own transaction. Successful rows commit; deterministic
+    row-local failures are logged, counted in ``export_errors_total``, and
+    returned in the failed-ID set so the caller can advance past them.
+
+    A target-wide or unknown failure interrupts the fallback and escapes.
+    The cursor remains pinned, and the next tick safely replays any earlier
+    rows that committed before the interruption.
 
     Extracted from ``_upsert_to_supabase`` so it can be unit-tested in
     isolation and so the fast-path COPY stays the steady-state hot path.
@@ -779,6 +825,13 @@ async def _upsert_to_supabase_per_row(
                 async with conn.transaction():
                     await conn.execute(insert_sql, *values)
             except Exception as exc:
+                if not _is_supabase_row_poison(exc):
+                    log.warning(
+                        "exporter.supabase_fallback_retryable",
+                        posting_id=str(row_id),
+                        **_exc_fields(exc),
+                    )
+                    raise
                 failed_ids.add(row_id)
                 export_errors_total.labels(table="job_posting", phase="supabase").inc()
                 # ``[exporter] row dropped`` is the grep anchor for the
