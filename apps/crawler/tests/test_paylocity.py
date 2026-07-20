@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from src.core.monitors import BoardGoneError
 from src.core.monitors.paylocity import (
     _extract_page_data,
     _is_paylocity_url,
@@ -116,6 +117,22 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=transport) as client:
             with pytest.raises(ValueError, match="pageData.Jobs is not a list"):
                 await discover({"board_url": BOARD_URL}, client)
+
+    async def test_invalid_page_is_not_detected(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text="<html></html>", request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert await can_handle(BOARD_URL, client) is None
+
+    async def test_missing_board_is_gone_and_not_detected(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(404, text="missing", request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(BoardGoneError):
+                await discover({"board_url": BOARD_URL}, client)
+            assert await can_handle(BOARD_URL, client) is None
 
     async def test_direct_url_detects_without_client(self):
         assert await can_handle(BOARD_URL) == {}

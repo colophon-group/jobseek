@@ -20,7 +20,10 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, register
+from src.core.monitors import BoardGoneError, DiscoveredJob, register
+from src.core.monitors.raw import save_text_response
+from src.shared.http_retry import fetch_text_page_with_retry
+from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
 
@@ -91,10 +94,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     """Fetch the board HTML and return the embedded Paylocity job summaries."""
     _ = pw
     board_url = board["board_url"]
-    response = await client.get(board_url, follow_redirects=True)
-    response.raise_for_status()
+    page = await fetch_text_page_with_retry(client, board_url)
+    if page is None:
+        raise BoardGoneError("Paylocity board no longer exists", url=board_url)
 
-    page_data = _extract_page_data(response.text)
+    page_data = _extract_page_data(page)
     if page_data is None:
         raise ValueError(f"Paylocity pageData not found at {board_url!r}")
 
@@ -106,9 +110,10 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     for raw in raw_jobs:
         if not isinstance(raw, dict):
             continue
-        job = _parse_job(raw, str(response.url))
+        job = _parse_job(raw, board_url)
         if job is not None:
             jobs.append(job)
+    log.info("paylocity.discovered", board_url=board_url, jobs=len(jobs))
     return jobs
 
 
@@ -122,20 +127,21 @@ async def can_handle(
     if not _is_paylocity_url(url):
         return None
 
-    result: dict = {}
     if client is None:
-        return result
+        return {}
 
     try:
-        response = await client.get(url, follow_redirects=True)
-        if response.status_code != 200:
-            return result
-        page_data = _extract_page_data(response.text)
+        page = await fetch_text_page_with_retry(client, url)
+        if page is None:
+            return None
+        page_data = _extract_page_data(page)
         if page_data is not None and isinstance(page_data.get("Jobs"), list):
-            result["jobs"] = len(page_data["Jobs"])
+            return {"jobs": len(page_data["Jobs"])}
+    except TDMReservedError:
+        raise
     except Exception:
         log.debug("paylocity.probe_failed", url=url, exc_info=True)
-    return result
+    return None
 
 
 async def save_raw(
@@ -146,9 +152,13 @@ async def save_raw(
 ) -> None:
     """Save the server-rendered listing HTML for debugging."""
     _ = metadata
-    response = await client.get(board_url, follow_redirects=True)
-    response.raise_for_status()
-    (artifact_dir / "page.html").write_text(response.text)
+    await save_text_response(
+        artifact_dir,
+        client,
+        board_url,
+        filename="page.html",
+        follow_redirects=True,
+    )
 
 
 register(
