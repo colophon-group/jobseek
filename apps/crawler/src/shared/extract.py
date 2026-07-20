@@ -30,12 +30,13 @@ SKIP_TAGS = frozenset(
     }
 )
 
-# Tags that are structural noise (nav, footer, etc.)
+# Tags whose entire subtrees are structural noise.  ``header`` is deliberately
+# not included: many sites use a semantic page header for the job title while
+# nesting the actual navigation in a separate ``nav`` element.
 NOISE_TAGS = frozenset(
     {
         "nav",
         "footer",
-        "header",
     }
 )
 
@@ -121,7 +122,12 @@ class FlattenParser(HTMLParser):
 
     def _flush_text(self):
         """Flush accumulated text as an element."""
-        text = " ".join(self._current_text).strip()
+        # Preserve the document's actual separation between inline nodes.
+        # Joining every text node with a synthetic space corrupts animated
+        # headings such as ``<span>S</span><span>a</span><span>l</span>``
+        # into ``S a l``.  Raw text nodes already contain the whitespace that
+        # separates words, so concatenate first and normalize afterwards.
+        text = "".join(self._current_text).strip()
         # Collapse whitespace
         text = " ".join(text.split())
         if text and len(text) > 0:
@@ -160,6 +166,10 @@ class FlattenParser(HTMLParser):
                 self._stack.append((tag, attr_dict, True))
                 self._skip_depth = 1
             return
+
+        # A line break separates visible text even though it has no text node.
+        if tag == "br":
+            self._current_text.append(" ")
 
         if tag not in VOID_TAGS:
             self._stack.append((tag, attr_dict, False))
@@ -211,20 +221,16 @@ class FlattenParser(HTMLParser):
     def handle_data(self, data: str):
         # Capture <title> text even inside skipped subtrees
         if self._in_title:
-            stripped = data.strip()
-            if stripped:
-                self._title_text.append(stripped)
+            self._title_text.append(data)
         if self._skip_depth > 0:
             return
-        stripped = data.strip()
-        if stripped:
-            self._current_text.append(stripped)
+        self._current_text.append(data)
 
     def finish(self):
         self._flush_text()
         # Prepend <title> element if captured (even from inside <head>)
         if self._title_text:
-            title_text = " ".join(self._title_text).strip()
+            title_text = "".join(self._title_text).strip()
             title_text = " ".join(title_text.split())  # collapse whitespace
             if title_text:
                 self.elements.insert(

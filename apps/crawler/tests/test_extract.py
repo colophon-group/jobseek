@@ -30,6 +30,14 @@ class TestFlatten:
         assert els[0]["tag"] == "p"
         assert els[0]["text"] == "Hello bold and link text"
 
+    def test_adjacent_character_spans_do_not_gain_spaces(self):
+        html = (
+            "<h1><span><span>S</span><span>a</span><span>l</span>"
+            "<span>e</span><span>s</span></span> <span>Manager</span></h1>"
+        )
+        els = flatten(html)
+        assert els[0]["text"] == "Sales Manager"
+
     def test_skip_tags_excluded(self):
         html = (
             "<div>Visible</div><script>var x=1;</script><style>.x{}</style><div>Also visible</div>"
@@ -44,6 +52,17 @@ class TestFlatten:
         els = flatten(html)
         assert len(els) == 1
         assert els[0]["text"] == "Content"
+
+    def test_semantic_page_header_is_preserved_but_nested_nav_is_not(self):
+        html = (
+            "<header><nav>Menu</nav><h1><span>Senior</span> "
+            "<span>Engineer</span></h1></header><p>Job description</p>"
+        )
+        els = flatten(html)
+        assert [(el["tag"], el["text"]) for el in els] == [
+            ("h1", "Senior Engineer"),
+            ("p", "Job description"),
+        ]
 
     def test_aria_hidden_excluded(self):
         html = (
