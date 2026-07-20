@@ -1544,6 +1544,11 @@ dom — Step-based Extraction Engine
         {"text": "Location", "offset": 1, "field": "location"},
         {"text": "About", "field": "description", "stop": "Requirements", "html": true}
       ],
+      "image_ocr": {
+        "selector": "img.job-flyer",
+        "location_pattern": "(?i)location:\\s*(.+)",
+        "psm": 6
+      },
       "render": true,
       "wait": "networkidle"
     }
@@ -1560,6 +1565,18 @@ dom — Step-based Extraction Engine
     user_agent     Custom User-Agent
     headless       Run headless (default: true)
     actions        Browser action pipeline (see: ws help actions)
+    image_ocr      Optional OCR for job details embedded in images. selector is
+                   required and should match only job-content images. Optional:
+                   language (Tesseract code, default "eng"), psm (0-13,
+                   default 6), scale (1-4, default 1), max_images (default 5),
+                   timeout seconds, max_bytes per image, description_mode
+                   ("replace" or "append"), description_pattern (optional
+                   regex selecting useful OCR text), description_min_line_length
+                   (drops short OCR-noise lines), description_join_lines
+                   (collapses output into one paragraph), and location_pattern
+                   (regex with one capture). location_selector can run a
+                   separate OCR pass for small location text; customize it
+                   with location_psm, location_scale, and location_max_images.
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,

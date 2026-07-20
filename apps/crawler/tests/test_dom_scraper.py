@@ -108,6 +108,102 @@ class TestDomScraper:
             result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
         assert result.title == "Software Engineer"
 
+    def test_image_urls_are_selected_deduplicated_and_resolved(self):
+        from src.core.scrapers.dom import _image_urls
+
+        html = """
+        <img class="job-flyer" src="/one.jpg">
+        <img class="job-flyer" src="/one.jpg">
+        <img class="job-flyer" data-src="two.jpg">
+        <img class="logo" src="/logo.jpg">
+        """
+        assert _image_urls(
+            html,
+            "https://example.com/jobs/role",
+            {"selector": "img.job-flyer"},
+        ) == [
+            "https://example.com/one.jpg",
+            "https://example.com/jobs/two.jpg",
+        ]
+
+    async def test_selected_images_fill_description_and_location(self):
+        from src.core.scrapers.dom import scrape
+
+        page = """
+        <html><body>
+          <h1>Head of Service Sales</h1>
+          <img class="job-flyer" src="/flyer-1.jpg">
+          <img class="job-flyer" src="/flyer-2.jpg">
+          <img class="location-flyer" src="/flyer-location.jpg">
+          <img class="site-logo" src="/logo.jpg">
+        </body></html>
+        """
+
+        def handler(request):
+            if request.url.path == "/job":
+                return httpx.Response(200, text=page)
+            return httpx.Response(200, content=b"image", headers={"content-type": "image/jpeg"})
+
+        config = {
+            "steps": [{"tag": "h1", "field": "title"}],
+            "image_ocr": {
+                "selector": "img.job-flyer",
+                "description_pattern": r"(?s)(ABOUT THE ROLE.*)",
+                "description_min_line_length": 3,
+                "description_join_lines": True,
+                "location_selector": "img.location-flyer",
+                "location_psm": 11,
+                "location_pattern": r"LOCATION:\s*(.+)",
+            },
+        }
+        ocr = AsyncMock(
+            side_effect=[
+                "x\nABOUT THE ROLE\nBuild <safe> aircraft services.",
+                "REQUIREMENTS\nTen years of experience.",
+                "LOCATION: LaGrange, Georgia",
+            ]
+        )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.scrapers.dom._ocr_image", ocr):
+                result = await scrape("https://example.com/job", config, client)
+
+        assert result.title == "Head of Service Sales"
+        assert result.description is not None
+        assert result.description.startswith("<p>ABOUT THE ROLE")
+        assert "ABOUT THE ROLE" in result.description
+        assert "Build &lt;safe&gt; aircraft services." in result.description
+        assert "x ABOUT" not in result.description
+        assert result.locations == ["LaGrange, Georgia"]
+        assert ocr.await_count == 3
+        assert ocr.await_args_list[-1].kwargs["psm"] == 11
+
+    async def test_no_matching_images_keeps_dom_content(self):
+        from src.core.scrapers.dom import scrape
+
+        page = "<html><body><h1>Engineer</h1><p>Existing description</p></body></html>"
+
+        def handler(request):
+            return httpx.Response(200, text=page)
+
+        config = {
+            "steps": [
+                {"tag": "h1", "field": "title"},
+                {
+                    "tag": "p",
+                    "field": "description",
+                    "html": True,
+                },
+            ],
+            "image_ocr": {"selector": "img.job-flyer"},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/job", config, client)
+
+        assert result.title == "Engineer"
+        assert result.description is not None
+        assert "Existing description" in result.description
+
     async def test_description_html(self):
         """html: true step produces an HTML fragment."""
         from src.core.scrapers.dom import scrape

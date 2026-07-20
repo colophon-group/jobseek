@@ -5,6 +5,13 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
+# Optional DOM image OCR is implemented with the mature system Tesseract
+# binary. Install it in the shared base so static-HTTP scrape workers can use
+# it without routing otherwise cheap boards through the browser fleet.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies (cached layer)
 COPY pyproject.toml uv.lock VERSION ./
 RUN uv sync --frozen --no-dev --no-install-project

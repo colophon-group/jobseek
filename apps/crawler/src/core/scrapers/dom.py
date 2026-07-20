@@ -24,14 +24,19 @@ Requires playwright when ``render`` is true:
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
+import html as html_lib
+import io
 import json
 import re
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import structlog
+from bs4 import BeautifulSoup
+from PIL import Image
 
 from src.core.scrapers import JobContent, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
@@ -253,6 +258,291 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
     return JobContent(**kwargs)
 
 
+def _image_urls(html: str, page_url: str, config: dict) -> list[str]:
+    """Return unique image URLs selected for OCR.
+
+    OCR is deliberately opt-in and selector-driven.  Generic pages contain
+    logos, tracking pixels, and decorative photography; scanning all images
+    would waste CPU and pollute descriptions with unrelated text.
+    """
+    selector = config.get("selector")
+    if not isinstance(selector, str) or not selector.strip():
+        return []
+
+    try:
+        nodes = BeautifulSoup(html, "html.parser").select(selector)
+    except Exception as exc:
+        log.warning("dom.image_ocr.invalid_selector", selector=selector, error=str(exc))
+        return []
+
+    max_images = config.get("max_images", 5)
+    if not isinstance(max_images, int) or isinstance(max_images, bool):
+        max_images = 5
+    max_images = max(1, min(max_images, 20))
+
+    urls: list[str] = []
+    seen: set[str] = set()
+    for node in nodes:
+        src = node.get("src") or node.get("data-src")
+        if not isinstance(src, str) or not src.strip():
+            continue
+        absolute = urljoin(page_url, src.strip())
+        if absolute in seen:
+            continue
+        seen.add(absolute)
+        urls.append(absolute)
+        if len(urls) >= max_images:
+            break
+    return urls
+
+
+async def _ocr_image(data: bytes, *, language: str, psm: int, timeout: float) -> str:
+    """Extract text from one image with the system Tesseract binary."""
+    try:
+        process = await asyncio.create_subprocess_exec(
+            "tesseract",
+            "stdin",
+            "stdout",
+            "-l",
+            language,
+            "--psm",
+            str(psm),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "image_ocr requires the tesseract binary; install the tesseract-ocr package"
+        ) from exc
+
+    try:
+        stdout, stderr = await asyncio.wait_for(process.communicate(data), timeout=timeout)
+    except TimeoutError:
+        process.kill()
+        await process.wait()
+        raise
+
+    if process.returncode != 0:
+        detail = stderr.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"tesseract failed with exit code {process.returncode}: {detail}")
+    return stdout.decode("utf-8", errors="replace").strip()
+
+
+def _scale_ocr_image(data: bytes, scale: int) -> bytes:
+    """Upscale small flyer text before OCR while preserving aspect ratio."""
+    if scale == 1:
+        return data
+    with Image.open(io.BytesIO(data)) as image:
+        resized = image.resize(
+            (image.width * scale, image.height * scale),
+            Image.Resampling.LANCZOS,
+        )
+        output = io.BytesIO()
+        resized.save(output, format="PNG")
+        return output.getvalue()
+
+
+def _ocr_text_to_html(text: str, *, join_lines: bool = False) -> str:
+    """Convert OCR output to safe, readable HTML paragraphs."""
+    if join_lines:
+        collapsed = " ".join(text.split())
+        return f"<p>{html_lib.escape(collapsed)}</p>" if collapsed else ""
+
+    paragraphs: list[str] = []
+    current: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped:
+            current.append(stripped)
+        elif current:
+            paragraphs.append(" ".join(current))
+            current = []
+    if current:
+        paragraphs.append(" ".join(current))
+    return "\n".join(f"<p>{html_lib.escape(paragraph)}</p>" for paragraph in paragraphs)
+
+
+async def _ocr_selected_images(
+    html: str,
+    page_url: str,
+    config: dict,
+    http: httpx.AsyncClient,
+    artifact_dir: Path | None,
+    *,
+    artifact_prefix: str,
+) -> str:
+    """Fetch and OCR one selector-defined group of images."""
+    urls = _image_urls(html, page_url, config)
+    if not urls:
+        log.warning("dom.image_ocr.no_images", url=page_url, selector=config.get("selector"))
+        return ""
+
+    language = config.get("language", "eng")
+    if not isinstance(language, str) or not language.strip():
+        language = "eng"
+    psm = config.get("psm", 6)
+    if not isinstance(psm, int) or isinstance(psm, bool) or not 0 <= psm <= 13:
+        psm = 6
+    scale = config.get("scale", 1)
+    if not isinstance(scale, int) or isinstance(scale, bool) or not 1 <= scale <= 4:
+        scale = 1
+    timeout = config.get("timeout", 30)
+    if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or timeout <= 0:
+        timeout = 30
+    max_bytes = config.get("max_bytes", 15_000_000)
+    if not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or max_bytes <= 0:
+        max_bytes = 15_000_000
+
+    texts: list[str] = []
+    for index, image_url in enumerate(urls, start=1):
+        try:
+            response = await http.get(image_url, follow_redirects=True)
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            log.warning(
+                "dom.image_ocr.fetch_failed",
+                url=page_url,
+                image_url=image_url,
+                error=str(exc),
+            )
+            continue
+        content_type = response.headers.get("content-type", "").lower()
+        if content_type and "image" not in content_type:
+            log.warning(
+                "dom.image_ocr.not_image",
+                url=page_url,
+                image_url=image_url,
+                content_type=content_type,
+            )
+            continue
+        if len(response.content) > max_bytes:
+            log.warning(
+                "dom.image_ocr.too_large",
+                url=page_url,
+                image_url=image_url,
+                bytes=len(response.content),
+                max_bytes=max_bytes,
+            )
+            continue
+        if artifact_dir is not None:
+            with contextlib.suppress(Exception):
+                (artifact_dir / f"{artifact_prefix}-image-{index}.bin").write_bytes(
+                    response.content
+                )
+        try:
+            ocr_data = await asyncio.to_thread(_scale_ocr_image, response.content, scale)
+            text = await _ocr_image(
+                ocr_data,
+                language=language,
+                psm=psm,
+                timeout=float(timeout),
+            )
+        except (OSError, RuntimeError, TimeoutError) as exc:
+            log.warning(
+                "dom.image_ocr.failed",
+                url=page_url,
+                image_url=image_url,
+                error=str(exc),
+            )
+            continue
+        if text:
+            texts.append(text)
+
+    full_text = "\n\n".join(texts).strip()
+    if artifact_dir is not None and full_text:
+        with contextlib.suppress(Exception):
+            (artifact_dir / f"{artifact_prefix}.txt").write_text(full_text, encoding="utf-8")
+    return full_text
+
+
+async def _extract_image_ocr(
+    html: str,
+    page_url: str,
+    config: dict,
+    http: httpx.AsyncClient,
+    artifact_dir: Path | None,
+) -> tuple[str, list[str] | None]:
+    """OCR configured images and return description HTML plus locations."""
+    full_text = await _ocr_selected_images(
+        html,
+        page_url,
+        config,
+        http,
+        artifact_dir,
+        artifact_prefix="ocr",
+    )
+
+    locations = None
+    location_pattern = config.get("location_pattern")
+    location_text = full_text
+    location_selector = config.get("location_selector")
+    if isinstance(location_selector, str) and location_selector:
+        location_config = {
+            **config,
+            "selector": location_selector,
+            "psm": config.get("location_psm", config.get("psm", 6)),
+            "scale": config.get("location_scale", config.get("scale", 1)),
+            "max_images": config.get("location_max_images", 1),
+        }
+        location_text = await _ocr_selected_images(
+            html,
+            page_url,
+            location_config,
+            http,
+            artifact_dir,
+            artifact_prefix="ocr-location",
+        )
+
+    if location_text and isinstance(location_pattern, str) and location_pattern:
+        try:
+            matches = re.findall(location_pattern, location_text)
+        except re.error as exc:
+            log.warning(
+                "dom.image_ocr.invalid_location_pattern",
+                url=page_url,
+                pattern=location_pattern,
+                error=str(exc),
+            )
+        else:
+            extracted = [match if isinstance(match, str) else match[0] for match in matches]
+            locations = list(dict.fromkeys(value.strip() for value in extracted if value.strip()))
+            if not locations:
+                locations = None
+
+    description_text = full_text
+    min_line_length = config.get("description_min_line_length", 1)
+    if (
+        isinstance(min_line_length, int)
+        and not isinstance(min_line_length, bool)
+        and min_line_length > 1
+    ):
+        description_text = "\n".join(
+            line
+            for line in description_text.splitlines()
+            if len(re.sub(r"\W", "", line, flags=re.UNICODE)) >= min_line_length
+        )
+    description_pattern = config.get("description_pattern")
+    if description_text and isinstance(description_pattern, str) and description_pattern:
+        try:
+            match = re.search(description_pattern, description_text)
+        except re.error as exc:
+            log.warning(
+                "dom.image_ocr.invalid_description_pattern",
+                url=page_url,
+                pattern=description_pattern,
+                error=str(exc),
+            )
+        else:
+            if match:
+                description_text = match.group(1) if match.lastindex else match.group(0)
+
+    return _ocr_text_to_html(
+        description_text,
+        join_lines=config.get("description_join_lines") is True,
+    ), locations
+
+
 async def scrape(
     url: str,
     config: dict,
@@ -333,6 +623,24 @@ async def scrape(
     start = _fragment_start(url, elements)
     raw, _ = walk_steps(elements, steps, start=start)
     content = _map_to_job_content(raw)
+
+    image_ocr = config.get("image_ocr")
+    if isinstance(image_ocr, dict):
+        ocr_description, ocr_locations = await _extract_image_ocr(
+            html,
+            url,
+            image_ocr,
+            http,
+            artifact_dir,
+        )
+        if ocr_description:
+            mode = image_ocr.get("description_mode", "replace")
+            if mode == "append" and content.description:
+                content.description = f"{content.description}\n{ocr_description}"
+            else:
+                content.description = ocr_description
+        if ocr_locations:
+            content.locations = ocr_locations
 
     log.debug("dom.extracted", url=url, fields=[k for k, v in raw.items() if v is not None])
     return content
