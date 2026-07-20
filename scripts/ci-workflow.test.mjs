@@ -157,6 +157,26 @@ test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(uploadCompanyImagesWorkflow, /TRUSTED_SCRIPTS_DIR: \$\{\{ runner\.temp \}\}\/trusted-scripts/);
 });
 
+test("company image cleanup commits cannot absorb trusted source changes", () => {
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /git restore --source="\$trusted_ref" --worktree -- \\\n+              apps\/crawler\/src/,
+  );
+  assert.doesNotMatch(
+    uploadCompanyImagesWorkflow,
+    /git restore --source="\$trusted_ref" --staged/,
+  );
+  assert.match(uploadCompanyImagesWorkflow, /git add apps\/crawler\/data\//);
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /git diff --cached --name-only[\s\S]*grep -v '\^apps\/crawler\/data\/'/,
+  );
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /Refusing to commit paths outside apps\/crawler\/data/,
+  );
+});
+
 test("company PR label script applies decision labels idempotently", () => {
   assert.match(labelPrScript, /gh pr view "\$PR" --repo "\$REPO" --json labels/);
   assert.match(labelPrScript, /DESIRED_LABELS=",\$LABELS,"/);
