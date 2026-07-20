@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import test from "node:test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const codeqlWorkflow = readFileSync(".github/workflows/codeql.yml", "utf8");
@@ -32,6 +41,58 @@ const publishMcpServerWorkflow = readFileSync(
 const mainStrictGateRuleset = JSON.parse(
   readFileSync(".github/rulesets/main-strict-gate.json", "utf8"),
 );
+
+function runDispatchPrChecks({
+  state = "OPEN",
+  isDraft = false,
+  branch = "add-company/example",
+  owner = "colophon-group",
+  requestedBranch = branch,
+} = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "dispatch-pr-checks-"));
+  const log = join(dir, "gh.log");
+  const gh = join(dir, "gh");
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1 $2" == "pr view" ]]; then
+  printf '%s' "$MOCK_PR_JSON"
+  exit 0
+fi
+printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
+`,
+  );
+  chmodSync(gh, 0o755);
+  const env = {
+    ...process.env,
+    PATH: `${dir}:${process.env.PATH}`,
+    GH_TOKEN: "test-token",
+    REPO: "colophon-group/jobseek",
+    PR: "123",
+    MOCK_GH_LOG: log,
+    MOCK_PR_JSON: JSON.stringify({
+      state,
+      isDraft,
+      headRefName: branch,
+      headRepositoryOwner: { login: owner },
+    }),
+  };
+  if (requestedBranch !== null) env.BRANCH = requestedBranch;
+  const result = spawnSync("bash", [".github/scripts/dispatch-pr-checks.sh"], {
+    cwd: process.cwd(),
+    env,
+    encoding: "utf8",
+  });
+  let calls = "";
+  try {
+    calls = readFileSync(log, "utf8");
+  } catch {
+    // A correctly skipped PR does not call `gh workflow run`.
+  }
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, calls };
+}
 
 function setupUvBlocks(workflowSource) {
   return [
@@ -140,7 +201,8 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
 test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(dispatchPrChecksScript, /gh workflow run ci\.yml --repo "\$REPO" --ref "\$branch" -f "pr=\$PR"/);
   assert.doesNotMatch(dispatchPrChecksScript, /codeql\.yml/);
-  assert.match(dispatchPrChecksScript, /"\$branch" != add-company\/\*/);
+  assert.doesNotMatch(dispatchPrChecksScript, /add-company\/\*/);
+  assert.match(dispatchPrChecksScript, /"\$BRANCH" != "\$pr_branch"/);
   assert.match(dispatchPrChecksScript, /Unexpected inputs provided: \\\["pr"\\\]/);
   assert.match(dispatchPrChecksScript, /later rebase retry will dispatch CI/);
 
@@ -155,6 +217,38 @@ test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(uploadCompanyImagesWorkflow, /maybe-auto-merge-pr\.sh/);
   assert.match(uploadCompanyImagesWorkflow, /Retry trusted auto-merge/);
   assert.match(uploadCompanyImagesWorkflow, /TRUSTED_SCRIPTS_DIR: \$\{\{ runner\.temp \}\}\/trusted-scripts/);
+});
+
+test("trusted image cleanup dispatches add-company and coding-mode PRs", () => {
+  for (const branch of ["add-company/example", "fix-crawler/example-repair"]) {
+    const result = runDispatchPrChecks({ branch });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.calls, /workflow run ci\.yml/);
+    assert.match(result.calls, new RegExp(`--ref ${branch.replace("/", "\\/")}`));
+    assert.match(result.calls, /-f pr=123/);
+  }
+});
+
+test("trusted image cleanup does not dispatch forks, drafts, or closed PRs", () => {
+  for (const fixture of [
+    { owner: "external-contributor" },
+    { isDraft: true },
+    { state: "CLOSED" },
+  ]) {
+    const result = runDispatchPrChecks(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.calls, "");
+  }
+});
+
+test("trusted image cleanup rejects an event branch that disagrees with the PR", () => {
+  const result = runDispatchPrChecks({
+    branch: "fix-crawler/current-head",
+    requestedBranch: "fix-crawler/stale-event",
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /not requested branch/);
+  assert.equal(result.calls, "");
 });
 
 test("company image cleanup commits cannot absorb trusted source changes", () => {
