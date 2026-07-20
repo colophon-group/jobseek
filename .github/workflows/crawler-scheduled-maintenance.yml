@@ -86,10 +86,23 @@ jobs:
             NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
             tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
             tag="${tag:-latest}"
+            maintenance_status=0
             docker run --rm \
               --name "$NAME" \
               --env-file /home/deploy/.env \
               --network host \
               "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
-              uv run --no-sync crawler "$TASK"
-            python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler-host-hygiene.py"
+              uv run --no-sync crawler "$TASK" || maintenance_status=$?
+
+            hygiene_status=0
+            python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler-host-hygiene.py" || hygiene_status=$?
+
+            if (( maintenance_status != 0 )); then
+              echo "Maintenance task failed with status ${maintenance_status}" >&2
+            fi
+            if (( hygiene_status != 0 )); then
+              echo "Host hygiene check failed with status ${hygiene_status}" >&2
+            fi
+            if (( maintenance_status != 0 || hygiene_status != 0 )); then
+              exit 1
+            fi

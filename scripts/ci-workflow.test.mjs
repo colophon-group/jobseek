@@ -46,6 +46,14 @@ const deployCodexRunnerHostScript = readFileSync(
   "scripts/deploy-codex-runner-host.sh",
   "utf8",
 );
+const crawlerScheduledMaintenanceWorkflow = readFileSync(
+  ".github/workflows/crawler-scheduled-maintenance.yml",
+  "utf8",
+);
+const crawlerHostHygieneScript = readFileSync(
+  "scripts/crawler-host-hygiene.py",
+  "utf8",
+);
 const mainStrictGateRuleset = JSON.parse(
   readFileSync(".github/rulesets/main-strict-gate.json", "utf8"),
 );
@@ -212,6 +220,20 @@ test("Codex deploy transport outlives the runner lock wait", () => {
     "SSH command timeout must include the lock wait plus 15 minutes for deployment",
   );
   assert.match(deployCodexRunnerWorkflow, /cancel-in-progress: false/);
+});
+
+test("scheduled maintenance always reports host hygiene independently", () => {
+  assert.match(crawlerHostHygieneScript, /from datetime import datetime, timezone/);
+  assert.match(crawlerHostHygieneScript, /UTC = timezone\.utc/);
+  assert.doesNotMatch(crawlerHostHygieneScript, /from datetime import UTC/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /docker run --rm[\s\S]*\|\| maintenance_status=\$\?[\s\S]*crawler-host-hygiene\.py" \|\| hygiene_status=\$\?/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /maintenance_status != 0 \|\| hygiene_status != 0/,
+  );
 });
 
 test("maybe-auto-merge wakes without manual retries", () => {
