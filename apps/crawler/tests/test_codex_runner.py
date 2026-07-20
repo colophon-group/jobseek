@@ -11,6 +11,7 @@ from src.workspace.codex_runner import (
     CompanyResolverGovernor,
     GitHubCoordinator,
     GitHubStateError,
+    IssueResolution,
     RunnerConfig,
     RunnerLedger,
     UsageProbeResult,
@@ -30,21 +31,26 @@ class FakeGitHub:
         self,
         *,
         issue: int | None = 101,
+        issues: list[int] | None = None,
         claims_after_post: list[ClaimComment] | None = None,
         existing_prs: list[dict[str, str]] | None = None,
         issue_closed: bool = False,
+        issue_outcome: str | None = None,
         fail_pr_lookup: bool = False,
         fail_claim_lookup: bool = False,
     ):
         self.issue = issue
+        self.issues = issues if issues is not None else ([issue] if issue is not None else [])
         self.claims_after_post = claims_after_post
         self.existing_prs = existing_prs or []
         self.issue_closed = issue_closed
+        self.issue_outcome = issue_outcome
         self.fail_pr_lookup = fail_pr_lookup
         self.fail_claim_lookup = fail_claim_lookup
         self.deleted: list[int] = []
         self.claimed: list[tuple[int, str, int]] = []
         self.pruned: list[tuple[str, int]] = []
+        self.outcomes: list[tuple[int, str, str, str, int | None]] = []
         self._next_claim_id = 10
 
     def check_auth(self) -> bool:
@@ -53,6 +59,10 @@ class FakeGitHub:
     def fetch_oldest_open_issue(self, label: str) -> int | None:
         assert label == "company-request"
         return self.issue
+
+    def list_open_issues(self, label: str) -> list[int]:
+        assert label == "company-request"
+        return self.issues
 
     def claim_issue(self, issue: int, run_id: str) -> int:
         claim_id = self._next_claim_id
@@ -65,14 +75,31 @@ class FakeGitHub:
             raise GitHubStateError("PR lookup failed")
         return self.existing_prs
 
-    def issue_is_closed(self, issue: int) -> bool:
-        return self.issue_closed
+    def issue_resolution(self, issue: int) -> IssueResolution:
+        return IssueResolution(
+            state="CLOSED" if self.issue_closed else "OPEN",
+            outcome=self.issue_outcome,
+            reason=f"{self.issue_outcome} reason" if self.issue_outcome else None,
+        )
+
+    def record_run_outcome(
+        self,
+        issue: int,
+        *,
+        run_id: str,
+        outcome: str,
+        reason: str,
+        retry_after_at: int | None = None,
+    ) -> None:
+        self.outcomes.append((issue, run_id, outcome, reason, retry_after_at))
 
     def list_claims(self, issue: int) -> list[ClaimComment]:
         if self.fail_claim_lookup:
             raise GitHubStateError("claim lookup failed")
-        if self.claims_after_post is not None:
+        if self.claims_after_post is not None and self.claimed:
             return self.claims_after_post
+        if not self.claimed:
+            return []
         return [ClaimComment(id=self.claimed[-1][2], body="<!-- ws-claim -->\nours")]
 
     def delete_claim(self, comment_id: int) -> None:
@@ -101,6 +128,8 @@ def test_prompt_is_single_issue_and_does_not_pick() -> None:
     assert "Process only issue #123" in prompt
     assert "Do not run `ws task --pick`" in prompt
     assert "select another issue" in prompt
+    assert "`ws task fail` enters coding mode" in prompt
+    assert "unrecoverable `ws task fail`" not in prompt
 
 
 def test_default_codex_args_pin_main_agent_model_policy() -> None:
@@ -216,8 +245,25 @@ def test_lost_cross_host_claim_race_deletes_only_own_claim(tmp_path: Path) -> No
 
 def test_pr_appearing_after_claim_releases_own_claim(tmp_path: Path) -> None:
     config = _config(tmp_path)
-    github = FakeGitHub(issue=101, existing_prs=[{"number": "7", "url": "https://example/pr/7"}])
+    github = FakeGitHub(issue=101)
     governor = CompanyResolverGovernor(config, github=github)
+    calls = 0
+
+    def check_existing_prs(issue: int) -> list[dict[str, object]]:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return []
+        return [
+            {
+                "number": 7,
+                "url": "https://example/pr/7",
+                "headRefName": "add-company/acme",
+                "isDraft": False,
+            }
+        ]
+
+    github.check_existing_prs = check_existing_prs  # type: ignore[method-assign]
 
     assert governor.admit_one() is None
     assert github.deleted == [10]
@@ -225,21 +271,127 @@ def test_pr_appearing_after_claim_releases_own_claim(tmp_path: Path) -> None:
     run = governor.ledger.get_run(github.claimed[0][1])
     assert run is not None
     assert run["state"] == "skipped"
-    assert run["error"] == "open PR appeared before launch"
+    assert run["error"] == "linked PR became submitted before launch"
 
 
-def test_unknown_github_state_after_claim_fails_closed_and_releases_claim(tmp_path: Path) -> None:
+def test_resumable_draft_is_admitted(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    github = FakeGitHub(
+        issue=101,
+        existing_prs=[
+            {
+                "number": "7",
+                "url": "https://example/pr/7",
+                "headRefName": "add-company/acme",
+                "isDraft": True,
+            }
+        ],
+    )
+    governor = CompanyResolverGovernor(config, github=github)
+
+    admission = governor.admit_one()
+
+    assert admission is not None
+    assert admission.issue == 101
+
+
+def test_submitted_pr_does_not_block_later_candidate(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    github = FakeGitHub(issue=None, issues=[101, 102])
+
+    def check_existing_prs(issue: int) -> list[dict[str, object]]:
+        if issue == 101:
+            return [
+                {
+                    "number": 7,
+                    "headRefName": "add-company/acme",
+                    "isDraft": False,
+                }
+            ]
+        return []
+
+    github.check_existing_prs = check_existing_prs  # type: ignore[method-assign]
+    governor = CompanyResolverGovernor(config, github=github)
+
+    admission = governor.admit_one()
+
+    assert admission is not None
+    assert admission.issue == 102
+
+
+def test_claimed_issue_does_not_block_later_candidate(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    github = FakeGitHub(issue=None, issues=[101, 102])
+    github.list_claims = (  # type: ignore[method-assign]
+        lambda issue: [ClaimComment(id=5, body="<!-- ws-claim -->\nother")] if issue == 101 else []
+    )
+    governor = CompanyResolverGovernor(config, github=github)
+
+    admission = governor.admit_one()
+
+    assert admission is not None
+    assert admission.issue == 102
+
+
+def test_backed_off_issue_does_not_block_later_candidate(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    ledger = RunnerLedger(config.ledger_path)
+    monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 1_000)
+    assert ledger.acquire(
+        run_id="first",
+        issue=101,
+        active_slot=config.active_slot,
+        attempt=1,
+    )
+    ledger.finish(
+        "first",
+        "retryable",
+        outcome_reason="capacity",
+        retry_after_at=2_000,
+    )
+    governor = CompanyResolverGovernor(
+        config,
+        ledger=ledger,
+        github=FakeGitHub(issue=None, issues=[101, 102]),
+    )
+
+    admission = governor.admit_one()
+
+    assert admission is not None
+    assert admission.issue == 102
+
+
+def test_retry_backoff_is_bounded_exponential(tmp_path: Path) -> None:
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        retry_backoff_s=10,
+        max_retry_backoff_s=25,
+    ).resolved()
+    ledger = RunnerLedger(config.ledger_path)
+    governor = CompanyResolverGovernor(config, ledger=ledger, github=FakeGitHub(issue=None))
+    expected = [10, 20, 25, 25]
+
+    for attempt, delay in enumerate(expected, start=1):
+        run_id = f"attempt-{attempt}"
+        assert ledger.acquire(
+            run_id=run_id,
+            issue=101,
+            active_slot=config.active_slot,
+            attempt=attempt,
+        )
+        assert governor._retry_delay(run_id) == delay
+        ledger.finish(run_id, "retryable")
+
+
+def test_unknown_claim_state_fails_closed_before_posting_claim(tmp_path: Path) -> None:
     config = _config(tmp_path)
     github = FakeGitHub(issue=101, fail_claim_lookup=True)
     governor = CompanyResolverGovernor(config, github=github)
 
     assert governor.admit_one() is None
 
-    assert github.deleted == [10]
-    run = governor.ledger.get_run(github.claimed[0][1])
-    assert run is not None
-    assert run["state"] == "skipped"
-    assert "claim lookup failed" in run["error"]
+    assert github.claimed == []
+    assert github.deleted == []
 
 
 def test_github_claim_listing_flattens_paginated_comments(monkeypatch) -> None:
@@ -320,6 +472,41 @@ def test_github_prunes_only_old_runner_owned_claims(monkeypatch) -> None:
     GitHubCoordinator().prune_stale_runner_claims("company-request", older_than_s=3600)
 
     assert deleted == [2]
+
+
+def test_issue_closure_requires_terminal_evidence(monkeypatch) -> None:
+    from src.workspace import git
+
+    payloads = iter(
+        [
+            {"state": "CLOSED", "comments": [], "closedByPullRequestsReferences": []},
+            {
+                "state": "CLOSED",
+                "comments": [
+                    {
+                        "body": "<!-- validation-failed: no-job-board -->\n"
+                        "No supported board was found"
+                    }
+                ],
+                "closedByPullRequestsReferences": [],
+            },
+            {
+                "state": "CLOSED",
+                "comments": [],
+                "closedByPullRequestsReferences": [{"number": 7}],
+            },
+        ]
+    )
+
+    def fake_run(cmd, **kwargs):
+        return SimpleNamespace(returncode=0, stderr="", stdout=json.dumps(next(payloads)))
+
+    monkeypatch.setattr(git, "_run", fake_run)
+    coordinator = GitHubCoordinator()
+
+    assert coordinator.issue_resolution(101).outcome is None
+    assert coordinator.issue_resolution(101).outcome == "rejected"
+    assert coordinator.issue_resolution(101).outcome == "submitted"
 
 
 def test_dry_run_claims_then_releases_without_codex(tmp_path: Path) -> None:
@@ -666,7 +853,7 @@ def test_parse_codex_usage_jsonl_and_deduplicate_ingestion(tmp_path: Path) -> No
     assert not ledger.ingest_trace_once("run-1", trace, summary)
 
 
-def test_timeout_marks_run_and_retains_trace(monkeypatch, tmp_path: Path) -> None:
+def test_timeout_is_interrupted_with_backoff_and_retains_trace(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=False)
     repo = tmp_path / "repo"
     crawler = repo / "apps" / "crawler"
@@ -690,15 +877,17 @@ def test_timeout_marks_run_and_retains_trace(monkeypatch, tmp_path: Path) -> Non
 
     result = governor.run_once()
 
-    assert result.state == "timeout"
+    assert result.state == "interrupted"
     assert result.trace_path is not None
     assert result.trace_path.exists()
     run = governor.ledger.get_run(result.run_id)
     assert run is not None
-    assert run["state"] == "timeout"
+    assert run["state"] == "interrupted"
+    assert run["retry_after_at"] is not None
+    assert run["outcome_reason"] == "codex runtime exceeded"
 
 
-def test_failed_run_without_pr_releases_own_claim(monkeypatch, tmp_path: Path) -> None:
+def test_failed_run_is_retryable_and_releases_own_claim(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=False)
     repo = tmp_path / "repo"
     (repo / "apps" / "crawler").mkdir(parents=True)
@@ -715,14 +904,12 @@ def test_failed_run_without_pr_releases_own_claim(monkeypatch, tmp_path: Path) -
 
     result = governor.run_once()
 
-    assert result.state == "failed"
+    assert result.state == "retryable"
     assert result.exit_code == 2
     assert github.deleted == [10]
 
 
-def test_zero_exit_without_ws_completion_or_closed_issue_is_failed(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_zero_exit_without_terminal_outcome_is_retryable(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=False)
     repo = tmp_path / "repo"
     (repo / "apps" / "crawler").mkdir(parents=True)
@@ -739,17 +926,16 @@ def test_zero_exit_without_ws_completion_or_closed_issue_is_failed(
 
     result = governor.run_once()
 
-    assert result.state == "failed"
+    assert result.state == "retryable"
     assert result.exit_code == 0
     assert github.deleted == [10]
     run = governor.ledger.get_run(result.run_id)
     assert run is not None
-    assert run["error"] == (
-        "codex exited 0 but no ws completion, PR completion, or closed issue was confirmed"
-    )
+    assert run["error"] == "codex exited 0 without a terminal ws outcome"
+    assert run["retry_after_at"] is not None
 
 
-def test_zero_exit_with_pr_but_no_ws_completion_is_failed(monkeypatch, tmp_path: Path) -> None:
+def test_zero_exit_with_pr_but_no_ws_completion_is_retryable(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=False)
     repo = tmp_path / "repo"
     (repo / "apps" / "crawler").mkdir(parents=True)
@@ -770,15 +956,22 @@ def test_zero_exit_with_pr_but_no_ws_completion_is_failed(monkeypatch, tmp_path:
     def check_existing_prs(issue: int) -> list[dict[str, object]]:
         nonlocal calls
         calls += 1
-        if calls < 2:
+        if calls < 3:
             return []
-        return [{"number": 7, "url": "https://example/pr/7", "headRefName": "add-company/x"}]
+        return [
+            {
+                "number": 7,
+                "url": "https://example/pr/7",
+                "headRefName": "add-company/x",
+                "isDraft": True,
+            }
+        ]
 
     monkeypatch.setattr(github, "check_existing_prs", check_existing_prs)
 
     result = governor.run_once()
 
-    assert result.state == "failed"
+    assert result.state == "retryable"
     assert result.exit_code == 0
     assert github.deleted == [10]
     run = governor.ledger.get_run(result.run_id)
@@ -786,7 +979,9 @@ def test_zero_exit_with_pr_but_no_ws_completion_is_failed(monkeypatch, tmp_path:
     assert run["pr_number"] == 7
 
 
-def test_zero_exit_with_pr_and_ws_completion_is_completed(monkeypatch, tmp_path: Path) -> None:
+def test_zero_exit_with_ready_pr_and_ws_completion_is_submitted(
+    monkeypatch, tmp_path: Path
+) -> None:
     config = _config(tmp_path, dry_run=False)
     repo = tmp_path / "repo"
     workspace = repo / "apps" / "crawler" / ".workspace" / "acme"
@@ -810,15 +1005,22 @@ def test_zero_exit_with_pr_and_ws_completion_is_completed(monkeypatch, tmp_path:
     def check_existing_prs(issue: int) -> list[dict[str, object]]:
         nonlocal calls
         calls += 1
-        if calls < 2:
+        if calls < 3:
             return []
-        return [{"number": 7, "url": "https://example/pr/7", "headRefName": "add-company/x"}]
+        return [
+            {
+                "number": 7,
+                "url": "https://example/pr/7",
+                "headRefName": "add-company/x",
+                "isDraft": False,
+            }
+        ]
 
     monkeypatch.setattr(github, "check_existing_prs", check_existing_prs)
 
     result = governor.run_once()
 
-    assert result.state == "completed"
+    assert result.state == "submitted"
     assert result.exit_code == 0
     assert github.deleted == []
     run = governor.ledger.get_run(result.run_id)
@@ -826,7 +1028,45 @@ def test_zero_exit_with_pr_and_ws_completion_is_completed(monkeypatch, tmp_path:
     assert run["pr_number"] == 7
 
 
-def test_zero_exit_with_closed_issue_is_completed(monkeypatch, tmp_path: Path) -> None:
+def test_coding_mode_fix_pr_is_submitted_without_ws_completion(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path, dry_run=False)
+    repo = tmp_path / "repo"
+    (repo / "apps" / "crawler").mkdir(parents=True)
+    config = RunnerConfig(
+        root=config.root,
+        repo_dir=repo,
+        max_runtime_s=5,
+        dry_run=False,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    github = FakeGitHub(issue=101)
+    governor = CompanyResolverGovernor(config, github=github)
+    monkeypatch.setattr(governor, "_prepare_worktree", lambda admission: repo)
+    calls = 0
+
+    def check_existing_prs(issue: int) -> list[dict[str, object]]:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            return []
+        return [
+            {
+                "number": 8,
+                "url": "https://example/pr/8",
+                "headRefName": "fix-crawler/authenticated-board",
+                "isDraft": True,
+            }
+        ]
+
+    github.check_existing_prs = check_existing_prs  # type: ignore[method-assign]
+
+    result = governor.run_once()
+
+    assert result.state == "submitted"
+    assert github.deleted == []
+
+
+def test_closed_issue_without_terminal_marker_is_retryable(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=False)
     repo = tmp_path / "repo"
     (repo / "apps" / "crawler").mkdir(parents=True)
@@ -843,11 +1083,34 @@ def test_zero_exit_with_closed_issue_is_completed(monkeypatch, tmp_path: Path) -
 
     result = governor.run_once()
 
-    assert result.state == "completed"
+    assert result.state == "retryable"
+    assert github.deleted == [10]
+
+
+def test_closed_issue_with_rejection_marker_is_rejected(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path, dry_run=False)
+    repo = tmp_path / "repo"
+    (repo / "apps" / "crawler").mkdir(parents=True)
+    config = RunnerConfig(
+        root=config.root,
+        repo_dir=repo,
+        max_runtime_s=5,
+        dry_run=False,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    github = FakeGitHub(issue=101, issue_closed=True, issue_outcome="rejected")
+    governor = CompanyResolverGovernor(config, github=github)
+    monkeypatch.setattr(governor, "_prepare_worktree", lambda admission: repo)
+
+    result = governor.run_once()
+
+    assert result.state == "rejected"
     assert github.deleted == []
 
 
-def test_stale_lease_with_reused_pid_is_failed_and_released(monkeypatch, tmp_path: Path) -> None:
+def test_stale_lease_with_reused_pid_is_interrupted_and_released(
+    monkeypatch, tmp_path: Path
+) -> None:
     config = _config(tmp_path, dry_run=True)
     ledger = RunnerLedger(config.ledger_path)
     assert ledger.acquire(
@@ -865,11 +1128,11 @@ def test_stale_lease_with_reused_pid_is_failed_and_released(monkeypatch, tmp_pat
 
     run = ledger.get_run("stale")
     assert run is not None
-    assert run["state"] == "failed"
+    assert run["state"] == "interrupted"
     assert github.deleted == [10]
 
 
-def test_exception_after_claim_marks_failed_and_releases_when_unresolved(
+def test_exception_after_claim_is_interrupted_and_releases_when_unresolved(
     monkeypatch, tmp_path: Path
 ) -> None:
     config = _config(tmp_path, dry_run=False)
@@ -883,12 +1146,12 @@ def test_exception_after_claim_marks_failed_and_releases_when_unresolved(
 
     result = governor.run_once()
 
-    assert result.state == "failed"
+    assert result.state == "interrupted"
     assert result.error == "worktree failed"
     assert github.deleted == [10]
     run = governor.ledger.get_run(result.run_id)
     assert run is not None
-    assert run["state"] == "failed"
+    assert run["state"] == "interrupted"
 
 
 ONE_DAY = 24 * 60 * 60

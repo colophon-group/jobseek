@@ -661,8 +661,10 @@ class TestReject:
         runner = CliRunner()
 
         with (
-            patch("src.workspace.git.comment_on_issue") as mock_comment,
-            patch("src.workspace.git.close_issue") as mock_close,
+            patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.git.comment_on_issue_once") as mock_comment,
+            patch("src.workspace.git.unclaim_issue_strict"),
+            patch("src.workspace.git.close_issue_if_open") as mock_close,
         ):
             result = runner.invoke(
                 ws,
@@ -686,8 +688,10 @@ class TestReject:
         runner = CliRunner()
 
         with (
-            patch("src.workspace.git.comment_on_issue"),
-            patch("src.workspace.git.close_issue") as mock_close,
+            patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.git.comment_on_issue_once"),
+            patch("src.workspace.git.unclaim_issue_strict"),
+            patch("src.workspace.git.close_issue_if_open") as mock_close,
         ):
             result = runner.invoke(
                 ws,
@@ -710,8 +714,10 @@ class TestReject:
         runner = CliRunner()
 
         with (
-            patch("src.workspace.git.comment_on_issue"),
-            patch("src.workspace.git.close_issue") as mock_close,
+            patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.git.comment_on_issue_once"),
+            patch("src.workspace.git.unclaim_issue_strict"),
+            patch("src.workspace.git.close_issue_if_open") as mock_close,
         ):
             result = runner.invoke(
                 ws,
@@ -733,8 +739,10 @@ class TestReject:
         runner = CliRunner()
 
         with (
-            patch("src.workspace.git.comment_on_issue"),
-            patch("src.workspace.git.close_issue") as mock_close,
+            patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.git.comment_on_issue_once"),
+            patch("src.workspace.git.unclaim_issue_strict"),
+            patch("src.workspace.git.close_issue_if_open") as mock_close,
         ):
             result = runner.invoke(
                 ws,
@@ -757,8 +765,10 @@ class TestReject:
         runner = CliRunner()
 
         with (
-            patch("src.workspace.git.comment_on_issue") as mock_comment,
-            patch("src.workspace.git.close_issue") as mock_close,
+            patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.git.comment_on_issue_once") as mock_comment,
+            patch("src.workspace.git.unclaim_issue_strict"),
+            patch("src.workspace.git.close_issue_if_open") as mock_close,
         ):
             result = runner.invoke(
                 ws,
@@ -777,6 +787,120 @@ class TestReject:
             assert "does not match workspace" in result.output
             mock_comment.assert_not_called()
             mock_close.assert_not_called()
+
+    def test_reject_by_issue_cleans_resumable_artifacts_before_closing(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path, companies="acme,,,,,\n")
+        worktree = tmp_path / "worktrees" / "acme"
+        save_workspace(
+            Workspace(
+                slug="acme",
+                issue=42,
+                pr=7,
+                branch="add-company/acme",
+                worktree=str(worktree),
+            )
+        )
+        events: list[str] = []
+
+        with (
+            patch(
+                "src.workspace.git.check_existing_prs_strict",
+                return_value=[
+                    {
+                        "number": 7,
+                        "headRefName": "add-company/acme",
+                        "isDraft": True,
+                    }
+                ],
+            ),
+            patch(
+                "src.workspace.git.close_pr_if_open",
+                side_effect=lambda number: events.append("close-pr"),
+            ),
+            patch(
+                "src.workspace.git.remove_worktree_strict",
+                side_effect=lambda path: events.append("remove-worktree"),
+            ),
+            patch(
+                "src.workspace.git.delete_branch_strict",
+                side_effect=lambda branch: events.append("delete-branch"),
+            ),
+            patch(
+                "src.workspace.git.comment_on_issue_once",
+                side_effect=lambda *args: events.append("comment"),
+            ),
+            patch(
+                "src.workspace.git.unclaim_issue_strict",
+                side_effect=lambda issue: events.append("unclaim"),
+            ),
+            patch(
+                "src.workspace.git.close_issue_if_open",
+                side_effect=lambda issue: events.append("close-issue"),
+            ),
+        ):
+            result = CliRunner().invoke(
+                ws,
+                [
+                    "reject",
+                    "--issue",
+                    "42",
+                    "--reason",
+                    "no-job-board",
+                    "--message",
+                    "No supported board",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert events == [
+            "close-pr",
+            "remove-worktree",
+            "delete-branch",
+            "comment",
+            "unclaim",
+            "close-issue",
+        ]
+        assert not workspace_exists("acme")
+
+    def test_reject_cleanup_failure_leaves_issue_open_and_workspace_retryable(
+        self, tmp_path, monkeypatch
+    ):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="acme", issue=42, pr=7, branch="add-company/acme"))
+
+        with (
+            patch(
+                "src.workspace.git.check_existing_prs_strict",
+                return_value=[
+                    {
+                        "number": 7,
+                        "headRefName": "add-company/acme",
+                        "isDraft": True,
+                    }
+                ],
+            ),
+            patch("src.workspace.git.close_pr_if_open", side_effect=RuntimeError("offline")),
+            patch("src.workspace.git.comment_on_issue_once") as comment,
+            patch("src.workspace.git.close_issue_if_open") as close_issue,
+        ):
+            result = CliRunner().invoke(
+                ws,
+                [
+                    "reject",
+                    "--issue",
+                    "42",
+                    "--reason",
+                    "no-job-board",
+                    "--message",
+                    "No supported board",
+                ],
+            )
+
+        assert result.exit_code != 0
+        assert workspace_exists("acme")
+        comment.assert_not_called()
+        close_issue.assert_not_called()
 
 
 class TestTaskIssueBinding:
@@ -839,6 +963,64 @@ class TestTaskNext:
         assert result.exit_code == 0
         assert "Skipped step: Select and test scraper" in result.output
         assert "Step 5/7: Verify quality and record feedback" in result.output
+
+
+class TestTaskOutcomes:
+    def test_task_fail_enters_coding_mode_instead_of_terminal_exit(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="acme", issue=42, branch="add-company/acme"))
+        set_active_slug("acme")
+        from src.workspace.workflow import WorkflowState, _load_wf_from_disk, _save_wf_to_disk
+
+        _save_wf_to_disk("acme", WorkflowState(current_step="add_boards"))
+        monkeypatch.setattr("src.workspace.trace.export_trace", lambda *args: None)
+
+        result = CliRunner().invoke(
+            ws,
+            ["task", "fail", "--reason", "Unsupported board protocol"],
+        )
+
+        assert result.exit_code == 0
+        assert "# Coding Mode" in result.output
+        assert "Identify the root cause" in result.output
+        assert "ws task escalate" in result.output
+        workflow = _load_wf_from_disk("acme")
+        assert workflow.failed is True
+        assert workflow.fail_reason == "Unsupported board protocol"
+
+    def test_task_escalate_cleans_and_records_terminal_follow_up(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="acme", issue=42))
+        comment = MagicMock()
+        close_issue = MagicMock()
+
+        with (
+            patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.git.comment_on_issue_once", comment),
+            patch("src.workspace.git.unclaim_issue_strict"),
+            patch("src.workspace.git.close_issue_if_open", close_issue),
+        ):
+            result = CliRunner().invoke(
+                ws,
+                [
+                    "task",
+                    "escalate",
+                    "--issue",
+                    "42",
+                    "--reason",
+                    "Needs authenticated browser support",
+                    "--follow-up",
+                    "Add a credentialed monitor before retrying",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert not workspace_exists("acme")
+        marker, body = comment.call_args.args[1:]
+        assert marker == "<!-- resolver-outcome: escalated -->"
+        assert "Needs authenticated browser support" in body
+        assert "Add a credentialed monitor before retrying" in body
+        close_issue.assert_called_once_with(42)
 
 
 class TestTaskComplete:
@@ -3874,7 +4056,7 @@ class TestNewIdempotent:
         stack.enter_context(patch("src.shared.constants.set_repo_root"))
         stack.enter_context(patch("src.shared.constants.get_repo_root", return_value=tmp_path))
         stack.enter_context(
-            patch("src.workspace.git.check_existing_prs", return_value=existing_prs or [])
+            patch("src.workspace.git.check_existing_prs_strict", return_value=existing_prs or [])
         )
         if pr_branch:
             stack.enter_context(patch("src.workspace.git.get_pr_branch", return_value=pr_branch))
@@ -3955,7 +4137,13 @@ class TestNewIdempotent:
                 stack,
                 tmp_path,
                 pr_branch="add-company/recovered",
-                existing_prs=[{"number": 77}],
+                existing_prs=[
+                    {
+                        "number": 77,
+                        "headRefName": "add-company/recovered",
+                        "isDraft": True,
+                    }
+                ],
             )
             runner = CliRunner()
             result = runner.invoke(ws, ["new", "acme", "--issue", "1"])

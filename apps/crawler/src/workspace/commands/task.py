@@ -10,6 +10,7 @@ Crawler setup agents interact with the workflow exclusively through these comman
 - ``ws task status``              — show workflow progress
 - ``ws task complete``            — mark workflow as done (final step only)
 - ``ws task fail --reason ...``   — mark step as failed, unlock exploration mode
+- ``ws task escalate``            — terminally clean up and record a human follow-up
 - ``ws task troubleshoot``        — search the knowledge base
 - ``ws task troubleshoot --view`` — view a full KB entry
 - ``ws task learn``               — add a KB entry from experience
@@ -524,6 +525,43 @@ def task_fail(reason: str):
         out.warn("trace", f"Could not export trace: {exc}")
 
     _print_failed(wf)
+
+
+@task.command(name="escalate")
+@click.option("--issue", type=int, default=None, help="GitHub issue number")
+@click.option("--reason", required=True, help="Why automation cannot safely finish")
+@click.option("--follow-up", required=True, help="Concrete human or engineering follow-up")
+def task_escalate(issue: int | None, reason: str, follow_up: str):
+    """Record a terminal escalation after strictly cleaning resolver artifacts."""
+    from src.workspace.commands.lifecycle import (
+        _cleanup_resolver_artifacts,
+        _resolve_outcome_workspace,
+        is_local_mode,
+    )
+
+    slug, ws, issue = _resolve_outcome_workspace(slug=None, issue=issue)
+    if not issue:
+        out.die("Provide --issue or run from a workspace with a linked issue")
+
+    marker = "<!-- resolver-outcome: escalated -->"
+    body = (
+        f"{marker}\n"
+        "**Resolver escalated this request for human follow-up.**\n\n"
+        f"Reason: {reason}\n"
+        f"Follow-up: {follow_up}"
+    )
+    local = is_local_mode()
+    _cleanup_resolver_artifacts(issue=issue, slug=slug, ws=ws, local=local)
+    if local:
+        out.warn("github", "Local mode — skipping escalation comment and issue close")
+    else:
+        from src.workspace import git
+
+        git.comment_on_issue_once(issue, marker, body)
+        git.unclaim_issue_strict(issue)
+        git.close_issue_if_open(issue)
+        out.info("github", f"Escalated and closed issue #{issue}")
+    out.info("task", "Done. Do not pick another issue — stop here.")
 
 
 @task.command(name="troubleshoot")

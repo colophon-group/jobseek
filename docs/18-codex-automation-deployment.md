@@ -435,10 +435,16 @@ For each accepted issue:
    Google, Slack, bearer, JWT, private-key, URL-password, or sensitive
    assignment shape must fail the upload closed and leave the local trace for
    manual review.
-9. Record PR URL, branch, usage summary, trace path, and final status in the
-   ledger.
-10. Remove the throwaway worktree after trace export and a successful PR, or
-   retain it for bounded debugging on failure.
+9. Record PR URL, branch, usage summary, trace path, explicit outcome, reason,
+   attempt, and any retry deadline in the ledger and linked issue.
+10. Treat only `submitted`, `rejected`, and `escalated` as resolved. A plain
+    closed issue is insufficient; rejection/escalation cleanup must finish
+    before closure. Record capacity errors, timeouts, deployment interruption,
+    and unresolved exits as `retryable` or `interrupted` with exponential
+    backoff (`JOBSEEK_CODEX_RETRY_BACKOFF_S`, default 900 seconds, capped by
+    `JOBSEEK_CODEX_MAX_RETRY_BACKOFF_S`, default 21600 seconds).
+11. Remove the throwaway worktree after trace export and a resolved outcome,
+    or retain it for bounded debugging on retryable/interrupted runs.
 
 ### Phase 5 - rollout
 
