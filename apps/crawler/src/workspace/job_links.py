@@ -31,6 +31,16 @@ _JOB_QUERY_KEYS = {
     "vacancyid",
 }
 
+# Root-level policy namespaces can look like repeated role slugs to the
+# structural heuristic (for example a cookie wall linking to several
+# ``/legal/*`` pages). They are never job-detail families and must not seed an
+# inferred pattern when the actual board is bot-blocked. This is intentionally
+# limited to unambiguous policy roots; a role such as ``/jobs/legal-counsel``
+# remains eligible.
+_NON_JOB_PATH_PREFIXES = frozenset(
+    {"cookie", "cookie-policy", "cookies", "legal", "privacy", "terms"}
+)
+
 _LOCALE_SEGMENT_RE = re.compile(r"^[a-z]{2}(?:[-_][a-z]{2})?$")
 _UUID_RE = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
@@ -222,6 +232,8 @@ def _looks_like_job_link(
     if parsed.scheme not in ("http", "https"):
         return False
     segs = _canonical_segments(parsed.path)
+    if segs and segs[0].lower() in _NON_JOB_PATH_PREFIXES:
+        return False
     host = _host_with_root(parsed.netloc)
     query_id = _query_has_identifier(parsed.query)
     tail = segs[-1] if segs else ""
