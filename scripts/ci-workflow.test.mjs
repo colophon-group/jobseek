@@ -110,6 +110,46 @@ printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
   return { ...result, calls };
 }
 
+function runClassifyPrPaths({ files = [], baseRef = "main" } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "classify-pr-paths-"));
+  const output = join(dir, "github-output");
+  const gh = join(dir, "gh");
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$*" == *"/files"* ]]; then
+  printf '%s\\n' "$MOCK_FILES"
+else
+  printf '%s\\n' "$MOCK_BASE_REF"
+fi
+`,
+  );
+  chmodSync(gh, 0o755);
+  const result = spawnSync("bash", [".github/scripts/classify-pr-paths.sh"], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      PATH: `${dir}:${process.env.PATH}`,
+      GH_TOKEN: "test-token",
+      REPO: "colophon-group/jobseek",
+      PR: "123",
+      GITHUB_OUTPUT: output,
+      MOCK_FILES: files.join("\n"),
+      MOCK_BASE_REF: baseRef,
+    },
+    encoding: "utf8",
+  });
+  let outputs = "";
+  try {
+    outputs = readFileSync(output, "utf8");
+  } catch {
+    // Failed classifications may stop before writing outputs.
+  }
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, outputs };
+}
+
 function setupUvBlocks(workflowSource) {
   return [
     ...workflowSource.matchAll(
@@ -186,6 +226,39 @@ test("manual CI dispatch can classify a PR without full code checks", () => {
   assert.match(classifyPrPathsScript, /emit "crawler_code" "\$crawler_code"/);
   assert.match(classifyPrPathsScript, /emit "boards_csv" "\$boards_csv"/);
   assert.match(classifyPrPathsScript, /emit "codeql" "\$code"/);
+});
+
+test("manual PR classification exports the validated PR base context", () => {
+  const result = runClassifyPrPaths({
+    files: ["apps/crawler/src/core/monitor.py", "apps/crawler/data/boards.csv"],
+    baseRef: "main",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /^code=true$/m);
+  assert.match(result.outputs, /^crawler_code=true$/m);
+  assert.match(result.outputs, /^boards_csv=true$/m);
+  assert.match(result.outputs, /^is_pr=true$/m);
+  assert.match(result.outputs, /^base_ref=main$/m);
+});
+
+test("PR-only CI gates cover pull requests and dispatched PRs", () => {
+  const changesJob = jobBlock("changes");
+  const versionJob = jobBlock("version-check");
+  const probeJob = jobBlock("probe-new-boards");
+  const requiredCiJob = jobBlock("required-ci");
+
+  assert.match(changesJob, /echo "is_pr=false"/);
+  assert.match(changesJob, /id: manual-pr[\s\S]*classify-pr-paths\.sh/);
+  assert.match(changesJob, /id: pull-request[\s\S]*echo "is_pr=true"/);
+  assert.match(changesJob, /echo "base_ref=\$BASE_REF"/);
+  assert.match(versionJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
+  assert.match(probeJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
+  assert.match(probeJob, /BASE_REF: \$\{\{ needs\.changes\.outputs\.base_ref \}\}/);
+  assert.match(requiredCiJob, /const isPr = needs\.changes\?\.outputs\?\.is_pr === "true"/);
+  assert.match(requiredCiJob, /requireSuccess\("version-check", isPr && crawlerCode\)/);
+  assert.match(requiredCiJob, /requireSuccess\("probe-new-boards", isPr && boardsCsv\)/);
+  assert.doesNotMatch(versionJob, /github\.event_name == 'pull_request'/);
+  assert.doesNotMatch(probeJob, /github\.event_name == 'pull_request'/);
 });
 
 test("workflow-security runs repository script tests", () => {

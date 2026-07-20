@@ -79,6 +79,8 @@ jobs:
       code: ${{ steps.manual-default.outputs.code || steps.manual-pr.outputs.code || steps.filter.outputs.code }}
       crawler_code: ${{ steps.manual-default.outputs.crawler_code || steps.manual-pr.outputs.crawler_code || steps.filter.outputs.crawler_code }}
       boards_csv: ${{ steps.manual-default.outputs.boards_csv || steps.manual-pr.outputs.boards_csv || steps.filter.outputs.boards_csv }}
+      is_pr: ${{ steps.manual-default.outputs.is_pr || steps.manual-pr.outputs.is_pr || steps.pull-request.outputs.is_pr }}
+      base_ref: ${{ steps.manual-default.outputs.base_ref || steps.manual-pr.outputs.base_ref || steps.pull-request.outputs.base_ref }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
@@ -92,6 +94,8 @@ jobs:
             echo "code=true"
             echo "crawler_code=false"
             echo "boards_csv=false"
+            echo "is_pr=false"
+            echo "base_ref="
           } >> "$GITHUB_OUTPUT"
 
       - name: Classify manually dispatched PR paths
@@ -102,6 +106,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.inputs.pr }}
+
+      - name: Record pull request context
+        id: pull-request
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          {
+            echo "is_pr=true"
+            echo "base_ref=$BASE_REF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Detect changed paths
         id: filter
@@ -665,7 +680,7 @@ jobs:
   version-check:
     name: Version bump check
     needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.crawler_code == 'true'
+    if: needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.crawler_code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
@@ -693,7 +708,7 @@ jobs:
   probe-new-boards:
     name: Probe new/changed boards
     needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.boards_csv == 'true'
+    if: needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.boards_csv == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
@@ -714,13 +729,13 @@ jobs:
 
       - name: Fetch base ref
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE_REF: ${{ needs.changes.outputs.base_ref }}
         run: git fetch --depth=1 origin "$BASE_REF"
 
       - name: Probe added/changed boards
         working-directory: apps/crawler
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE_REF: ${{ needs.changes.outputs.base_ref }}
         run: uv run python ../../scripts/probe-new-boards.py --base-ref "origin/$BASE_REF"
 
   required-ci:
@@ -768,6 +783,7 @@ jobs:
           const code = needs.changes?.outputs?.code === "true";
           const crawlerCode = needs.changes?.outputs?.crawler_code === "true";
           const boardsCsv = needs.changes?.outputs?.boards_csv === "true";
+          const isPr = needs.changes?.outputs?.is_pr === "true";
 
           const failures = [];
 
@@ -809,8 +825,8 @@ jobs:
           }
 
           requireSuccess("ws-package-smoke", crawlerCode);
-          requireSuccess("version-check", eventName === "pull_request" && crawlerCode);
-          requireSuccess("probe-new-boards", eventName === "pull_request" && boardsCsv);
+          requireSuccess("version-check", isPr && crawlerCode);
+          requireSuccess("probe-new-boards", isPr && boardsCsv);
 
           if (failures.length > 0) {
             console.error("Required CI failed:");
