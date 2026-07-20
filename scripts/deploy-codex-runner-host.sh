@@ -142,16 +142,27 @@ verify_entrypoints() {
     "${REPO_DIR}/scripts/codex-daily-routine-runner.py" \
     "${REPO_DIR}/scripts/codex-error-review-bundle.py" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" \
+    "${REPO_DIR}/scripts/codex-worktree-reconcile.py" \
     "${REPO_DIR}/scripts/codex-usage-probe.py" \
     "${REPO_DIR}/apps/crawler/src/workspace/codex_runner.py" \
     "${REPO_DIR}/apps/crawler/src/workspace/codex_routine_runner.py" \
-    "${REPO_DIR}/apps/crawler/src/workspace/trace_backfill.py"
+    "${REPO_DIR}/apps/crawler/src/workspace/trace_backfill.py" \
+    "${REPO_DIR}/apps/crawler/src/workspace/worktree_reconcile.py"
   as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
     "${REPO_DIR}/apps/crawler/.venv/bin/python" -c \
     'import src.workspace.codex_runner; import src.workspace.codex_routine_runner; import src.workspace.trace_backfill'
   as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" --help >/dev/null
   python3 "${REPO_DIR}/scripts/codex-error-review-bundle.py" --help >/dev/null
+  as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
+    "${REPO_DIR}/scripts/codex-worktree-reconcile.py" --help >/dev/null
+}
+
+reconcile_codex_worktrees() {
+  log "Codex worktree reconciliation"
+  as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
+    "${REPO_DIR}/apps/crawler/.venv/bin/python" \
+    "${REPO_DIR}/scripts/codex-worktree-reconcile.py" --apply --summary-only
 }
 
 report_trace_retention() {
@@ -182,6 +193,7 @@ main() {
   sync_crawler_runtime
   install_units
   verify_entrypoints
+  reconcile_codex_worktrees
   report_trace_retention
   maybe_start_timers
   systemctl list-timers --all 'jobseek-codex*' --no-pager

@@ -154,6 +154,8 @@ class RunnerConfig:
     disk_alert_margin_gib: float = 2.0
     max_quarantine_runs: int = 50
     max_quarantine_gib: float = 2.0
+    max_terminal_worktrees: int = 3
+    max_terminal_worktree_gib: float = 2.0
     min_mem_available_gib: float = 2.0
     max_load_per_cpu: float = 2.0
     usage_probe_path: Path | None = None
@@ -198,6 +200,8 @@ class RunnerConfig:
             disk_alert_margin_gib=self.disk_alert_margin_gib,
             max_quarantine_runs=self.max_quarantine_runs,
             max_quarantine_gib=self.max_quarantine_gib,
+            max_terminal_worktrees=self.max_terminal_worktrees,
+            max_terminal_worktree_gib=self.max_terminal_worktree_gib,
             min_mem_available_gib=self.min_mem_available_gib,
             max_load_per_cpu=self.max_load_per_cpu,
             usage_probe_path=self.usage_probe_path or repo_dir / "scripts" / "codex-usage-probe.py",
@@ -260,6 +264,10 @@ class RunnerConfig:
             disk_alert_margin_gib=float(env.get("JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB", "2")),
             max_quarantine_runs=int(env.get("JOBSEEK_CODEX_MAX_QUARANTINE_RUNS", "50")),
             max_quarantine_gib=float(env.get("JOBSEEK_CODEX_MAX_QUARANTINE_GIB", "2")),
+            max_terminal_worktrees=int(env.get("JOBSEEK_CODEX_MAX_TERMINAL_WORKTREES", "3")),
+            max_terminal_worktree_gib=float(
+                env.get("JOBSEEK_CODEX_MAX_TERMINAL_WORKTREE_GIB", "2")
+            ),
             min_mem_available_gib=float(env.get("JOBSEEK_CODEX_MIN_MEM_AVAILABLE_GIB", "2")),
             max_load_per_cpu=float(env.get("JOBSEEK_CODEX_MAX_LOAD_PER_CPU", "2")),
             lease_timeout_s=int(env.get("JOBSEEK_CODEX_LEASE_TIMEOUT_S", str(4 * 60 * 60))),
@@ -376,6 +384,26 @@ class RunnerLedger:
                     retained_bytes INTEGER NOT NULL DEFAULT 0,
                     last_attempt_at INTEGER NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS worktree_reconciliation_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    observed_at INTEGER NOT NULL,
+                    worktree_path TEXT NOT NULL,
+                    run_id TEXT,
+                    issue INTEGER,
+                    state TEXT NOT NULL,
+                    classification TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    bytes_before INTEGER NOT NULL,
+                    dirty_entries INTEGER NOT NULL,
+                    remote_proof_json TEXT,
+                    archive_path TEXT,
+                    archive_sha256 TEXT,
+                    reclaimed_bytes INTEGER NOT NULL DEFAULT 0,
+                    error TEXT
+                );
+                CREATE INDEX IF NOT EXISTS worktree_reconciliation_path_time
+                    ON worktree_reconciliation_events(worktree_path, observed_at);
                 """
             )
             self._ensure_columns(conn)
@@ -471,6 +499,54 @@ class RunnerLedger:
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
         return dict(row) if row else None
+
+    def worktree_runs(self) -> list[dict[str, Any]]:
+        """Return every ledger run with a worktree and its trace disposition."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT r.*, a.status AS export_status
+                FROM runs AS r
+                LEFT JOIN trace_bundle_export_attempts AS a ON a.run_id = r.run_id
+                WHERE r.worktree_path IS NOT NULL
+                ORDER BY r.updated_at, r.run_id
+                """
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def record_worktree_reconciliation(self, **fields: Any) -> None:
+        columns = (
+            "observed_at",
+            "worktree_path",
+            "run_id",
+            "issue",
+            "state",
+            "classification",
+            "reason",
+            "action",
+            "bytes_before",
+            "dirty_entries",
+            "remote_proof_json",
+            "archive_path",
+            "archive_sha256",
+            "reclaimed_bytes",
+            "error",
+        )
+        values = [fields.get(column) for column in columns]
+        placeholders = ", ".join("?" for _ in columns)
+        with self._connect() as conn:
+            conn.execute(
+                f"INSERT INTO worktree_reconciliation_events "
+                f"({', '.join(columns)}) VALUES ({placeholders})",
+                values,
+            )
+
+    def worktree_reconciliation_events(self) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM worktree_reconciliation_events ORDER BY id"
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def count_recent_runs(self, *, active_slot: str, since: int) -> int:
         with self._connect() as conn:
@@ -1639,6 +1715,20 @@ class CompanyResolverGovernor:
 
     def should_start(self) -> SchedulerDecision:
         self.reconcile_stale_runs()
+        worktrees = self.reconcile_worktrees(apply=not self.config.dry_run)
+        if not worktrees.within_bounds:
+            return self._record_scheduler_decision(
+                SchedulerDecision(
+                    should_run=False,
+                    reason=(
+                        "terminal worktree retention limit reached: "
+                        f"{worktrees.remaining_terminal_directories} directories, "
+                        f"{worktrees.remaining_terminal_bytes} bytes"
+                    ),
+                    recent_limit=0,
+                    recent_runs=0,
+                )
+            )
         health = check_host_health(self.config)
         if health.warning:
             print(
@@ -1851,6 +1941,59 @@ class CompanyResolverGovernor:
             )
             self._finish_outcome(admission, "interrupted", "stale lease expired")
 
+    def reconcile_worktrees(
+        self,
+        *,
+        apply: bool,
+        only_paths: set[Path] | None = None,
+    ):
+        """Classify and optionally retire terminal runner worktrees."""
+        from src.workspace.worktree_reconcile import (
+            GitHubRemoteVerifier,
+            reconcile_worktrees,
+        )
+
+        cfg = self.config
+
+        def _pre_remove(item) -> None:
+            if item.issue is None:
+                return
+            worktree = Path(item.path)
+            workspace_root = worktree / "apps" / "crawler" / ".workspace"
+            self._assert_managed_worktrees_clean(item.issue, workspace_root)
+            self._cleanup_ws_artifacts_for_issue(
+                item.issue,
+                workspace_root=workspace_root,
+            )
+
+        report = reconcile_worktrees(
+            root=cfg.root,
+            repo_dir=cfg.repo_dir,  # type: ignore[arg-type]
+            worktrees_dir=cfg.worktrees_dir,  # type: ignore[arg-type]
+            archive_dir=cfg.state_dir / "worktree-quarantine",  # type: ignore[operator]
+            ledger=self.ledger,
+            remote_verifier=GitHubRemoteVerifier(
+                repo_dir=cfg.repo_dir,  # type: ignore[arg-type]
+                github=self.github,
+            ),
+            pid_checker=_pid_matches_run,
+            max_terminal_directories=cfg.max_terminal_worktrees,
+            max_terminal_bytes=int(cfg.max_terminal_worktree_gib * 1024**3),
+            apply=apply,
+            only_paths=only_paths,
+            pre_remove=_pre_remove,
+        )
+        print(
+            json.dumps(
+                {
+                    "event": "codex_worktree_reconciliation",
+                    **report.to_dict(include_items=False),
+                },
+                sort_keys=True,
+            )
+        )
+        return report
+
     def _execute_admission(self, admission: Admission) -> RunResult:
         cfg = self.config
         cfg.traces_dir.mkdir(parents=True, exist_ok=True)  # type: ignore[union-attr]
@@ -1899,6 +2042,8 @@ class CompanyResolverGovernor:
                 self._release_claim_if_unresolved(admission, worktree=worktree)
                 reason = "codex runtime exceeded"
                 self._finish_outcome(admission, "interrupted", reason)
+                if cfg.cleanup_success_worktree:
+                    self.reconcile_worktrees(apply=True, only_paths={worktree})
                 return RunResult(
                     run_id=admission.run_id,
                     issue=admission.issue,
@@ -1926,12 +2071,8 @@ class CompanyResolverGovernor:
         if state in RETRY_OUTCOMES:
             self._release_claim_if_unresolved(admission, worktree=worktree)
         self._finish_outcome(admission, state, reason, error=error)
-        if state in RESOLVED_OUTCOMES and cfg.cleanup_success_worktree:
-            self._cleanup_ws_artifacts_for_issue(
-                admission.issue,
-                workspace_root=worktree / "apps" / "crawler" / ".workspace",
-            )
-            self._cleanup_worktree(worktree)
+        if cfg.cleanup_success_worktree:
+            self.reconcile_worktrees(apply=True, only_paths={worktree})
         return RunResult(
             run_id=admission.run_id,
             issue=admission.issue,
@@ -1954,13 +2095,6 @@ class CompanyResolverGovernor:
             check=True,
         )
         return worktree
-
-    def _cleanup_worktree(self, worktree: Path) -> None:
-        subprocess.run(
-            ["git", "worktree", "remove", "--force", str(worktree)],
-            cwd=self.config.repo_dir,
-            check=False,
-        )
 
     def _new_run_id(self, issue: int) -> str:
         return f"issue-{issue}-{int(time.time())}-{uuid.uuid4().hex[:8]}"
@@ -2083,6 +2217,26 @@ class CompanyResolverGovernor:
             seen.add(root)
             for workspace_dir in _workspace_dirs_for_issue(root, issue):
                 self._cleanup_workspace_dir(workspace_dir, root)
+
+    def _assert_managed_worktrees_clean(self, issue: int, workspace_root: Path) -> None:
+        """Fail closed before legacy ws cleanup uses force-removal."""
+        if not workspace_root.exists():
+            return
+        for workspace_dir in _workspace_dirs_for_issue(workspace_root, issue):
+            data = _read_yaml_mapping(workspace_dir / "workspace.yaml")
+            worktree = _workspace_worktree(data) if data else None
+            if worktree is None or not worktree.exists():
+                continue
+            status = subprocess.run(
+                ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+                cwd=worktree,
+                capture_output=True,
+                check=False,
+            )
+            if status.returncode != 0:
+                raise RuntimeError(f"could not inspect managed ws worktree {worktree}")
+            if status.stdout:
+                raise RuntimeError(f"managed ws worktree {worktree} has unarchived changes")
 
     def _cleanup_workspace_dir(self, workspace_dir: Path, workspace_root: Path) -> None:
         data = _read_yaml_mapping(workspace_dir / "workspace.yaml")

@@ -475,14 +475,21 @@ For each accepted issue:
     and unresolved exits as `retryable` or `interrupted` with exponential
     backoff (`JOBSEEK_CODEX_RETRY_BACKOFF_S`, default 900 seconds, capped by
     `JOBSEEK_CODEX_MAX_RETRY_BACKOFF_S`, default 21600 seconds).
-14. Remove the throwaway worktree after a resolved outcome, independently of
-    trace export; retain it for bounded debugging on retryable/interrupted runs.
+14. Reconcile every throwaway worktree against the run ledger after a terminal
+    outcome and on every governor/deploy startup. Never touch an active, live,
+    locked, unregistered, or missing-ledger directory. Verify linked PR and
+    explicit issue outcome state, archive dirty diffs/untracked files/workspace
+    metadata, record the decision in SQLite, then remove the registered
+    worktree. Retryable/interrupted state is archived before cleanup.
 15. Emit a structured disk warning at
     `JOBSEEK_CODEX_MIN_DISK_FREE_GIB + JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB`.
     Stop new admissions at the disk floor or when quarantined trace material
     reaches either `JOBSEEK_CODEX_MAX_QUARANTINE_RUNS` or
     `JOBSEEK_CODEX_MAX_QUARANTINE_GIB`. Export retries still run before these
     gates so a transient failure can reclaim space without admitting new work.
+    Also stop admission when terminal worktrees that fail closed exceed
+    `JOBSEEK_CODEX_MAX_TERMINAL_WORKTREES` or
+    `JOBSEEK_CODEX_MAX_TERMINAL_WORKTREE_GIB`.
 
 Historical retained sessions can be exported in bounded commits while holding
 the normal runner lock:
@@ -529,6 +536,27 @@ entries are never cleanup candidates.
 Every runner deployment emits the compact report to its GitHub Actions log so
 disk and quarantine state remain operator-visible without granting the deploy
 account access to the runner user's private trace store.
+
+Worktree reconciliation has its own exact JSON plan. Hold the normal runner
+lock so the directory set cannot change during classification:
+
+```bash
+# Read-only plan: state, bytes, dirtiness count, lock/process status, remote
+# proof, and proposed action for every directory.
+sudo -u codex-runner flock -w 30 /srv/jobseek-codex/state/codex-runner.lock \
+  /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
+  /srv/jobseek-codex/repo/scripts/codex-worktree-reconcile.py
+
+# Apply the same plan. Dirty/debug material is archived with a manifest and
+# SHA-256 under state/worktree-quarantine before removal.
+sudo -u codex-runner flock -w 30 /srv/jobseek-codex/state/codex-runner.lock \
+  /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
+  /srv/jobseek-codex/repo/scripts/codex-worktree-reconcile.py --apply
+```
+
+Every apply attempt writes append-only `worktree_reconciliation_events` rows.
+Verification, archive, lock, registration, status, and removal failures retain
+the directory and count toward the admission ceiling.
 
 ### Phase 5 - rollout
 
