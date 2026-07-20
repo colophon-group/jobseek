@@ -13,6 +13,7 @@ from src.sync import (
     _REALIGN_BOARD_POSTING_COMPANIES_LOCAL,
     _REALIGN_BOARD_POSTING_COMPANIES_SUPA,
     _REALIGN_RENAMED_BOARD_URLS_SUPA,
+    _UPSERT_BOARD_LOCAL,
     _UPSERT_BOARDS_SUPA,
     _UPSERT_COMPANIES,
     _UPSERT_OCCUPATION_DOMAIN_NAMES,
@@ -51,6 +52,34 @@ _BOARD_COLS = [
     "scraper_config",
 ]
 _BOARD_SCHEMA = {c: pl.Utf8 for c in _BOARD_COLS}
+
+
+class TestBoardSourceChangeReset:
+    def test_material_source_change_resets_runtime_failure_state(self):
+        """A replacement source must not inherit a retired source's disable."""
+        sql = " ".join(_UPSERT_BOARD_LOCAL.split())
+        changed = (
+            "WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url "
+            "OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type"
+        )
+
+        assert f"metadata = CASE {changed} THEN COALESCE(EXCLUDED.metadata" in sql
+        assert f"is_enabled = CASE {changed} THEN true" in sql
+        assert f"board_status = CASE {changed} THEN 'active'" in sql
+        assert f"consecutive_failures = CASE {changed} THEN 0" in sql
+        assert f"last_error = CASE {changed} THEN NULL" in sql
+        assert f"last_success_at = CASE {changed} THEN NULL" in sql
+        assert f"next_check_at = CASE {changed} THEN now()" in sql
+        assert f"empty_check_count = CASE {changed} THEN 0" in sql
+        assert f"last_non_empty_at = CASE {changed} THEN NULL" in sql
+        assert f"gone_at = CASE {changed} THEN NULL" in sql
+
+    def test_unchanged_disabled_source_stays_disabled(self):
+        sql = " ".join(_UPSERT_BOARD_LOCAL.split())
+
+        assert "WHEN job_board.board_status IN ('disabled', 'gone') THEN false" in sql
+        assert "ELSE job_board.consecutive_failures" in sql
+        assert "ELSE job_board.last_error" in sql
 
 
 class TestLoadCompanies:

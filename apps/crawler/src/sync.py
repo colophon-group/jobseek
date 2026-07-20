@@ -297,42 +297,54 @@ ON CONFLICT (id) DO UPDATE SET
     -- the existing runtime value (typically unset) is kept.
     -- ``recent_discovered_counts`` and ``suspect_streak`` are runtime state
     -- preserved verbatim from the existing row.
-    metadata = EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
-        'sitemap_url', job_board.metadata -> 'sitemap_url',
-        'recent_discovered_counts', job_board.metadata -> 'recent_discovered_counts',
-        'suspect_streak', job_board.metadata -> 'suspect_streak',
-        'delist_threshold', COALESCE(
-            EXCLUDED.metadata -> 'delist_threshold',
-            job_board.metadata -> 'delist_threshold'
-        ),
-        'drop_threshold', COALESCE(
-            EXCLUDED.metadata -> 'drop_threshold',
-            job_board.metadata -> 'drop_threshold'
-        ),
-        'blast_radius_floor', COALESCE(
-            EXCLUDED.metadata -> 'blast_radius_floor',
-            job_board.metadata -> 'blast_radius_floor'
-        ),
-        'pcsx_watermark', CASE
-            WHEN job_board.metadata -> 'pcsx_watermark' IS NULL THEN NULL
-            ELSE COALESCE(EXCLUDED.metadata -> 'pcsx_watermark', '{}'::jsonb)
-                 || jsonb_strip_nulls(jsonb_build_object(
-                     'max_ts', job_board.metadata -> 'pcsx_watermark' -> 'max_ts',
-                     'last_full_at',
-                         job_board.metadata -> 'pcsx_watermark' -> 'last_full_at',
-                     'last_incremental_at',
-                         job_board.metadata -> 'pcsx_watermark' -> 'last_incremental_at',
-                     'enabled', job_board.metadata -> 'pcsx_watermark' -> 'enabled',
-                     'extra', job_board.metadata -> 'pcsx_watermark' -> 'extra'
-                 ))
-        END
-    )),
+    -- A URL or monitor-type change is a new source. Runtime discovery
+    -- history, watermarks, and gone-detection streaks belong to the old
+    -- source and would poison the replacement (issue #5716).
+    metadata = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN COALESCE(EXCLUDED.metadata, '{}'::jsonb)
+        ELSE EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
+            'sitemap_url', job_board.metadata -> 'sitemap_url',
+            'recent_discovered_counts', job_board.metadata -> 'recent_discovered_counts',
+            'suspect_streak', job_board.metadata -> 'suspect_streak',
+            'delist_threshold', COALESCE(
+                EXCLUDED.metadata -> 'delist_threshold',
+                job_board.metadata -> 'delist_threshold'
+            ),
+            'drop_threshold', COALESCE(
+                EXCLUDED.metadata -> 'drop_threshold',
+                job_board.metadata -> 'drop_threshold'
+            ),
+            'blast_radius_floor', COALESCE(
+                EXCLUDED.metadata -> 'blast_radius_floor',
+                job_board.metadata -> 'blast_radius_floor'
+            ),
+            'pcsx_watermark', CASE
+                WHEN job_board.metadata -> 'pcsx_watermark' IS NULL THEN NULL
+                ELSE COALESCE(EXCLUDED.metadata -> 'pcsx_watermark', '{}'::jsonb)
+                     || jsonb_strip_nulls(jsonb_build_object(
+                         'max_ts', job_board.metadata -> 'pcsx_watermark' -> 'max_ts',
+                         'last_full_at',
+                             job_board.metadata -> 'pcsx_watermark' -> 'last_full_at',
+                         'last_incremental_at',
+                             job_board.metadata -> 'pcsx_watermark' -> 'last_incremental_at',
+                         'enabled', job_board.metadata -> 'pcsx_watermark' -> 'enabled',
+                         'extra', job_board.metadata -> 'pcsx_watermark' -> 'extra'
+                     ))
+            END
+        ))
+    END,
     check_interval_minutes = EXCLUDED.check_interval_minutes,
     scrape_interval_hours = EXCLUDED.scrape_interval_hours,
     throttle_key = EXCLUDED.throttle_key,
     monitor_needs_browser = EXCLUDED.monitor_needs_browser,
     scraper_needs_browser = EXCLUDED.scraper_needs_browser,
-    -- Preserve runtime-driven disables. ``_RECORD_FAILURE`` and
+    -- Preserve runtime-driven disables when the source itself is unchanged.
+    -- A material source change is an operator repair and must clear state
+    -- inherited from the retired source; otherwise the new config is removed
+    -- from Redis immediately and can never prove itself healthy (#5716).
+    -- ``_RECORD_FAILURE`` and
     -- ``_RECORD_BOARD_GONE`` set ``is_enabled = false`` plus a
     -- ``board_status`` of ``'disabled'`` or ``'gone'`` when the
     -- board has been failing or its upstream slug returned 404.
@@ -343,8 +355,65 @@ ON CONFLICT (id) DO UPDATE SET
     -- ``board_status`` row via SQL or via deleting+re-adding
     -- the CSV entry. See issue #2215.
     is_enabled = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN true
         WHEN job_board.board_status IN ('disabled', 'gone') THEN false
         ELSE EXCLUDED.is_enabled
+    END,
+    board_status = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN 'active'
+        ELSE job_board.board_status
+    END,
+    consecutive_failures = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN 0
+        ELSE job_board.consecutive_failures
+    END,
+    last_error = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.last_error
+    END,
+    last_checked_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.last_checked_at
+    END,
+    last_success_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.last_success_at
+    END,
+    next_check_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN now()
+        ELSE job_board.next_check_at
+    END,
+    empty_check_count = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN 0
+        ELSE job_board.empty_check_count
+    END,
+    last_non_empty_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.last_non_empty_at
+    END,
+    gone_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.gone_at
     END,
     updated_at = now()
 RETURNING metadata
