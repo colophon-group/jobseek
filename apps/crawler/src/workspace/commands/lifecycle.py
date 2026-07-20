@@ -225,7 +225,11 @@ def new(
         worktree_path = git.worktrees_dir() / slug
 
         if pr_number:
-            # Attach to existing PR branch — don't delete remote, start from it
+            # Attach to the existing PR branch, then integrate current main.
+            # The outer resolver worktree starts at origin/main, but this
+            # managed company worktree is where all subsequent work happens;
+            # leaving it at the historical draft tip reintroduces stale code
+            # and unrelated diffs.
             git.create_worktree(branch, worktree_path, start_point=f"origin/{branch}")
         else:
             main = git.get_main_branch()
@@ -233,6 +237,16 @@ def new(
             git.delete_remote_branch(branch)
             git.create_worktree(branch, worktree_path, start_point=f"origin/{main}")
         set_repo_root(worktree_path)
+        if pr_number:
+            try:
+                git.sync_branch_with_main(branch)
+            except Exception:
+                # Do not leave a half-merged worktree registered as active.
+                # Restore the managed-clone root before propagating the error
+                # so the runner can safely retry or escalate.
+                git.remove_worktree(worktree_path)
+                set_repo_root(repo_root)
+                raise
         out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
 
     if not reconfig:

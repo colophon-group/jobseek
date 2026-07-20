@@ -186,13 +186,13 @@ def ensure_clone(*, reset: bool = False) -> Path:
 
 
 def sync_branch_with_main(branch: str) -> None:
-    """Rebase *branch* onto latest main, auto-resolving CSV conflicts.
+    """Merge latest main into *branch*, auto-resolving CSV conflicts.
 
     Called after ``ensure_clone()`` when the workspace already has a
-    feature branch.  Fetches, rebases, and if CSV conflicts appear they
+    feature branch.  Fetches, merges, and if CSV conflicts appear they
     are resolved the same way the submit workflow does it (union-merge +
-    sort).  Non-CSV conflicts abort with a message pointing to
-    ``--reset``.
+    sort).  A merge keeps the resumed remote branch pushable without a
+    history rewrite; non-CSV conflicts abort without changing the branch.
     """
     from src.workspace.errors import WorkspaceError
 
@@ -206,31 +206,25 @@ def sync_branch_with_main(branch: str) -> None:
     _run(["git", "checkout", branch], cwd=cwd)
 
     result = _run(
-        ["git", "rebase", f"origin/{main}"],
+        ["git", "merge", "--no-edit", f"origin/{main}"],
         cwd=cwd,
         check=False,
     )
     if result.returncode == 0:
-        return  # Clean rebase
+        return
 
-    # Rebase paused on conflicts — try to resolve
+    # Merge paused on conflicts — only the append-only registry CSVs can be
+    # resolved automatically.  Code conflicts require operator judgment.
     if _resolve_csv_conflicts(cwd):
-        cont = _run(["git", "rebase", "--continue"], cwd=cwd, check=False)
-        if cont.returncode == 0:
+        commit = _run(["git", "commit", "--no-edit"], cwd=cwd, check=False)
+        if commit.returncode == 0:
             return
-        # May be more conflict commits; loop
-        for _ in range(20):  # safety bound
-            if not _resolve_csv_conflicts(cwd):
-                break
-            cont = _run(["git", "rebase", "--continue"], cwd=cwd, check=False)
-            if cont.returncode == 0:
-                return
 
     # Could not resolve — abort and error out
-    _run(["git", "rebase", "--abort"], cwd=cwd, check=False)
+    _run(["git", "merge", "--abort"], cwd=cwd, check=False)
     raise WorkspaceError(
-        "Non-CSV merge conflicts detected in the managed clone. "
-        "Run with --reset to purge and re-clone."
+        "Could not synchronize the resumed branch with latest main; "
+        "non-CSV conflicts require manual resolution."
     )
 
 
