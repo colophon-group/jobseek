@@ -503,6 +503,43 @@ def get_pr_branch(pr_number: int) -> str | None:
         return None
 
 
+def find_open_pr_for_branch(branch: str) -> int | None:
+    """Return the open PR number for *branch*, if one exists."""
+    import json
+
+    args = [
+        "gh",
+        "pr",
+        "list",
+        *_gh_repo_flag(),
+        "--state",
+        "open",
+        "--head",
+        branch,
+        "--limit",
+        "1",
+        "--json",
+        "number",
+    ]
+    # This lookup is a duplicate-publication gate. Fail closed on GitHub
+    # errors instead of interpreting them as "no PR exists".
+    result = _run(args, retries=_GH_RETRIES)
+    if not result.stdout.strip():
+        return None
+    try:
+        prs = json.loads(result.stdout)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise GitHubApiError(
+            cmd=args,
+            returncode=1,
+            stderr="Could not parse open-PR lookup response",
+        ) from exc
+    if not prs:
+        return None
+    number = prs[0].get("number")
+    return int(number) if number is not None else None
+
+
 def create_draft_pr(title: str, body: str) -> int:
     """Create a draft PR and return its number.
 

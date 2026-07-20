@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
-from src.workspace.errors import WorkspaceError
+from src.workspace.errors import GitHubApiError, WorkspaceError
 from src.workspace.git import (
     _run,
     check_existing_prs,
     check_gh_auth,
     create_draft_pr,
     current_branch,
+    find_open_pr_for_branch,
     sync_branch_with_main,
 )
 
@@ -60,6 +61,30 @@ class TestGitWrappers:
             mock.return_value.stdout = "https://github.com/owner/repo/pull/42\n"
             pr_number = create_draft_pr("Add stripe", "Closes #10")
             assert pr_number == 42
+
+    def test_find_open_pr_for_branch(self):
+        with patch("src.workspace.git._run") as mock:
+            mock.return_value.returncode = 0
+            mock.return_value.stdout = json.dumps([{"number": 42}])
+            assert find_open_pr_for_branch("add-company/stripe") == 42
+            assert "--head" in mock.call_args.args[0]
+            assert "add-company/stripe" in mock.call_args.args[0]
+
+    def test_find_open_pr_for_branch_returns_none(self):
+        with patch("src.workspace.git._run") as mock:
+            mock.return_value.returncode = 0
+            mock.return_value.stdout = "[]"
+            assert find_open_pr_for_branch("add-company/stripe") is None
+
+    def test_find_open_pr_for_branch_fails_closed_on_invalid_response(self):
+        with patch("src.workspace.git._run") as mock:
+            mock.return_value.stdout = "not json"
+            try:
+                find_open_pr_for_branch("add-company/stripe")
+            except GitHubApiError as exc:
+                assert "Could not parse" in exc.stderr
+            else:
+                raise AssertionError("invalid PR lookup output must fail closed")
 
     def test_run_rejects_negative_retries(self):
         with patch("src.workspace.git.subprocess.run") as mock:

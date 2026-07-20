@@ -13,7 +13,7 @@ from src.shared.constants import SLUG_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace import log as action_log
 from src.workspace import output as out
-from src.workspace.errors import CsvToolError, GitError, GitHubApiError
+from src.workspace.errors import CsvToolError, GitError, GitHubApiError, WorkspaceError
 from src.workspace.state import (
     Board,
     Workspace,
@@ -112,13 +112,14 @@ def new(
     reset: bool,
     start_at: str | None,
 ):
-    """Create workspace + stub CSV row + branch + draft PR.
+    """Create a local workspace, stub CSV row, and branch.
 
     With --reconfig, creates a workspace for an existing company to
     re-probe and update its monitor/scraper configuration.
 
     With --pr N, attaches to an existing pull request instead of
-    creating a new one.
+    creating a new one. Otherwise the draft PR is created by ws submit
+    after the complete configuration is committed and pushed.
 
     Idempotent: if a previous run partially succeeded, leftover state
     (workspace dir, worktree, local/remote branch) is cleaned up
@@ -178,7 +179,6 @@ def new(
 
     branch = f"fix-crawler/{slug}" if reconfig else f"add-company/{slug}"
     pr_number: int | None = None
-    pr_title = f"Reconfigure {slug}" if reconfig else f"Add {slug}"
 
     if local:
         out.warn("workspace", "Local mode — skipping git/GitHub operations")
@@ -203,7 +203,13 @@ def new(
             existing = git.check_existing_prs(issue)
             if existing:
                 pr_number = existing[0]["number"]
-                out.info("github", f"Reusing existing PR #{pr_number} for issue #{issue}")
+                pr_branch = git.get_pr_branch(pr_number)
+                if pr_branch:
+                    branch = pr_branch
+                out.info(
+                    "github",
+                    f"Reusing existing PR #{pr_number} for issue #{issue} (branch {branch})",
+                )
 
         # Create a worktree for this workspace so multiple agents
         # can work on different companies concurrently.
@@ -211,7 +217,7 @@ def new(
         git.fetch()
         worktree_path = git.worktrees_dir() / slug
 
-        if pr_opt:
+        if pr_number:
             # Attach to existing PR branch — don't delete remote, start from it
             git.create_worktree(branch, worktree_path, start_point=f"origin/{branch}")
         else:
@@ -222,7 +228,6 @@ def new(
         set_repo_root(worktree_path)
         out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
 
-    csv_changed = False
     if not reconfig:
         # Add stub CSV row for new companies
         from src.csvtool import company_add
@@ -230,7 +235,6 @@ def new(
 
         try:
             company_add(slug)
-            csv_changed = True
             out.plain("csv", "Added stub row to companies.csv")
         except NothingToUpdateError:
             # Slug already present in worktree CSV from a previous attempt
@@ -242,30 +246,6 @@ def new(
 
                 _git.remove_worktree(worktree_path)
             raise
-
-    if not local:
-        from src.workspace import git
-
-        if not reconfig:
-            if csv_changed:
-                # Commit and push stub row
-                git.add_files(["apps/crawler/data/companies.csv"])
-                git.commit(f"Add {slug}")
-                out.plain("git", f'Committed: "Add {slug}"')
-
-            # Push branch (needed before creating PR)
-            git.push(branch, set_upstream=True)
-            out.plain("git", f"Pushed to origin/{branch}")
-
-        # Create draft PR (unless reusing one or deferring for reconfig)
-        if not pr_number and not reconfig:
-            pr_body = f"Closes #{issue}" if issue else ""
-            pr_number = git.create_draft_pr(
-                title=pr_title,
-                body=pr_body,
-            )
-            issue_ref = f" (closes #{issue})" if issue else ""
-            out.info("github", f'Created draft PR #{pr_number} — "{pr_title}"{issue_ref}')
 
     # Create workspace
     worktree_str = "" if local else str(git.worktrees_dir() / slug)
@@ -356,10 +336,12 @@ def new(
     # Log
     if local:
         log_msg = "Created workspace (local mode)"
+    elif pr_number:
+        log_msg = f"Created workspace, branch {branch}, attached PR #{pr_number}"
     elif reconfig:
-        log_msg = f"Created reconfig workspace, branch {branch}, draft PR #{pr_number}"
+        log_msg = f"Created reconfig workspace, branch {branch}; PR deferred until submit"
     else:
-        log_msg = f"Created workspace, branch {branch}, draft PR #{pr_number}"
+        log_msg = f"Created workspace, branch {branch}; PR deferred until submit"
     action_log.append(ws_log_path(slug), "new", True, log_msg)
 
     out.plain("workspace", f"State: created (active: {slug})")
@@ -1046,8 +1028,35 @@ def _execute_submit_step(
 
         git.push(ws.branch, set_upstream=True)
 
-        # Create PR if it doesn't exist yet (e.g. reconfig deferred PR creation)
+        # Create the PR only after the complete configuration is committed and
+        # pushed. Recover by branch first so a process interruption after
+        # GitHub creates the PR cannot produce a duplicate on retry.
         if not ws.pr:
+            existing_pr = git.find_open_pr_for_branch(ws.branch)
+            if existing_pr:
+                ws.pr = existing_pr
+                save_workspace(ws)
+                out.info("github", f"Recovered existing draft PR #{ws.pr}")
+                return
+
+            # A concurrent/manual PR for the same issue must stop publication,
+            # not create another PR or silently attach this branch to it.
+            if ws.issue:
+                issue_prs = git.check_existing_prs(ws.issue)
+                if issue_prs:
+                    issue_pr = int(issue_prs[0]["number"])
+                    issue_branch = git.get_pr_branch(issue_pr)
+                    if issue_branch != ws.branch:
+                        branch_detail = issue_branch or "an unknown branch"
+                        raise WorkspaceError(
+                            f"Issue #{ws.issue} already has open PR #{issue_pr} "
+                            f"on {branch_detail}; refusing to create a duplicate"
+                        )
+                    ws.pr = issue_pr
+                    save_workspace(ws)
+                    out.info("github", f"Recovered existing draft PR #{ws.pr}")
+                    return
+
             pr_title = (
                 f"Reconfigure {ws.name or ws.slug}"
                 if ws.branch.startswith("fix-crawler/")
@@ -1180,7 +1189,7 @@ def submit(slug: str | None, summary: str | None, force: bool):
             ws.submit_state[step_key] = True
             save_workspace(ws)
             out.info("submit", f"OK {step_desc}")
-        except (GitError, CsvToolError) as e:
+        except WorkspaceError as e:
             if critical:
                 ws.last_error = {
                     "command": "submit",

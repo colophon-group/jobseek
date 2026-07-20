@@ -14,6 +14,10 @@ Before submitting, verify:
 ws submit --summary "<difficulties, roadblocks, or unexpected behaviors>"
 ```
 
+This is the publication point: after validation and commit, `ws submit`
+pushes the complete branch and creates (or recovers) its draft PR. `ws new`
+does not publish a stub branch or PR.
+
 The `--summary` should focus on **difficulties encountered**, not just restate the result:
 
 - Straightforward: `"Straightforward greenhouse config, 138 jobs"`
