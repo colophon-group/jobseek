@@ -5,14 +5,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 COMPOSE_PROJECT_LABEL = "com.docker.compose.project"
+UTC = timezone.utc
 
 
 class HygieneError(RuntimeError):
@@ -37,8 +39,12 @@ def _run(command: list[str]) -> str:
 
 
 def _parse_started_at(value: str) -> datetime:
+    normalized = value.replace("Z", "+00:00")
+    # Docker emits nanoseconds, while the host's Python 3.10 ISO parser accepts
+    # at most six fractional digits.
+    normalized = re.sub(r"(\.\d{6})\d+([+-]\d{2}:\d{2})$", r"\1\2", normalized)
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(normalized)
     except ValueError as exc:
         raise HygieneError(f"invalid Docker StartedAt timestamp: {value!r}") from exc
     if parsed.tzinfo is None:

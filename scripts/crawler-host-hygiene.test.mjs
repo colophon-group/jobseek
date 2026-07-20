@@ -94,7 +94,7 @@ test("host hygiene reports only stale unmanaged resources", () => {
       container({
         id: "stale-container-id",
         name: "tesla-debug",
-        startedAt: "2026-07-18T10:00:00Z",
+        startedAt: "2026-07-18T10:00:00.123456789Z",
       }),
       container({
         id: "compose-container-id",
