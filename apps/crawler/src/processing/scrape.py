@@ -712,6 +712,7 @@ async def _process_one_scrape(
     from src.redis_queue import enqueue_scrape
 
     t0 = monotonic()
+    operation = "scrape_fetch"
     try:
         board_cfg = scraper_config or {}
 
@@ -768,10 +769,12 @@ async def _process_one_scrape(
                 # workday) doesn't tombstone thousands of live postings
                 # — the monitor authority will delist real archives
                 # eventually.
+                operation = "record_empty_result"
                 async with pool.acquire() as conn:
                     await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
             return False, monotonic() - t0
 
+        operation = "content_processing"
         content.description = normalize_description_html(content.description)
 
         # Detect language if not already set
@@ -788,6 +791,7 @@ async def _process_one_scrape(
         norm_emp_type = normalize_employment_type(raw_emp_type)
 
         # Resolve locations
+        operation = "location_lookup"
         loc_resolver = await _batch._get_location_resolver(pool)
         loc_ids, loc_types = await _batch._resolve_locations(
             loc_resolver,
@@ -797,6 +801,7 @@ async def _process_one_scrape(
         )
 
         # Resolve technologies from description
+        operation = "taxonomy_lookup"
         tech_id_map = await _batch._get_technology_ids(pool)
         tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
 
@@ -844,6 +849,7 @@ async def _process_one_scrape(
             if (lang_text or detected_langs)
             else None
         )
+        operation = "database_save"
         async with pool.acquire() as conn:
             update_result = await conn.execute(
                 _UPDATE_ENRICH_CONTENT,
@@ -878,11 +884,13 @@ async def _process_one_scrape(
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 
+        operation = "location_miss_flush"
         await _batch._flush_location_misses(loc_resolver, pool)
 
         # Enqueue next fallback step if one exists
         next_fb = _get_next_fallback(scraper_type, scraper_config, scrape_step)
         if next_fb:
+            operation = "fallback_enqueue"
             fb_type, fb_cfg, _fb_fields = next_fb
             needs_browser = scraper_needs_browser(fb_type, fb_cfg)
             domain = urlparse(item.url).hostname or ""
@@ -930,6 +938,7 @@ async def _process_one_scrape(
                 "batch.scrape.gone",
                 url=item.url,
                 error=error_msg,
+                operation=operation,
                 step=scrape_step,
                 duration_s=round(elapsed, 2),
             )
@@ -938,6 +947,7 @@ async def _process_one_scrape(
                 "batch.scrape.error",
                 url=item.url,
                 error=error_msg,
+                operation=operation,
                 step=scrape_step,
                 duration_s=round(elapsed, 2),
             )
