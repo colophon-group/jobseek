@@ -332,6 +332,7 @@ antenna,antenna-greenhouse,https://job-boards.greenhouse.io/antenna,greenhouse,"
 anteriad,anteriad-greenhouse,https://job-boards.greenhouse.io/anteriad,greenhouse,"{""token"": ""anteriad""}",skip,
 anthropic,anthropic-careers,https://job-boards.greenhouse.io/anthropic,greenhouse,"{""token"": ""anthropic""}",skip,
 antithesis,antithesis-ashby,https://jobs.ashbyhq.com/antithesis,ashby,"{""token"": ""antithesis""}",skip,
+antonie,antonie-careers,https://www.antonie.ai/#18,sitemap,"{""url_filter"": ""^https://www\\.antonie\\.ai/(?:jobs-[^/?#]+|phd)/?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location:"", ""field"": ""locations"", ""regex"": ""Location:\\s*(.+)"", ""from"": 0}, {""tag"": ""h1"", ""field"": ""description"", ""html"": true, ""stop"": ""Learn More"", ""regex"": ""(?s)(.*?)(?:FAQ|Copyright)"", ""from"": 0}], ""render"": true, ""wait"": ""domcontentloaded""}"
 antora-energy,antora-energy-greenhouse,https://job-boards.greenhouse.io/antora,greenhouse,"{""token"": ""antora""}",skip,
 anybotics,anybotics-careers,https://jobs.lever.co/anybotics,lever,"{""token"": ""anybotics""}",skip,
 anyfin,anyfin-main,https://career.anyfin.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.anyfin.com/jobs.rss""}",skip,
