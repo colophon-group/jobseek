@@ -58,6 +58,7 @@ from src.redis_queue import (
     record_host_failure,
     record_host_success,
     remember_board_egress_host,
+    remember_board_scrape_egress_host,
     reschedule_task,
     update_board_metadata_cache,
 )
@@ -210,6 +211,113 @@ async def _fetch_scrape_schedule_state(
             "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid",
             posting_id,
         )
+
+
+async def _defer_scrape_for_host_circuit(
+    domain: str,
+    posting_id: str,
+    egress_host: str,
+    *,
+    browser: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> bool:
+    """Defer a scrape before network I/O when its shared host is unhealthy."""
+
+    if not egress_host:
+        return False
+    try:
+        open_until = await get_host_circuit_open_until(egress_host)
+    except Exception:
+        worker_log.warning(
+            "pipeline.scrape.host_circuit_check_failed",
+            egress_host=egress_host,
+            exc_info=True,
+        )
+        return False
+
+    if open_until is None:
+        return False
+
+    now = time.time()
+    if open_until > now:
+        next_due = open_until
+        status = "host_circuit_open"
+        event = "pipeline.scrape.host_circuit_deferred"
+    else:
+        try:
+            probe_acquired = await acquire_host_circuit_probe(egress_host)
+        except Exception:
+            worker_log.warning(
+                "pipeline.scrape.host_circuit_probe_failed",
+                egress_host=egress_host,
+                exc_info=True,
+            )
+            return False
+        host_circuit_state.labels(egress_host=egress_host).set(0.5)
+        if probe_acquired:
+            worker_log.warning(
+                "pipeline.scrape.host_circuit_probe_started",
+                egress_host=egress_host,
+            )
+            return False
+        next_due = now + settings.host_circuit_probe_seconds
+        status = "host_circuit_half_open"
+        event = "pipeline.scrape.host_circuit_probe_deferred"
+
+    await reschedule_task(domain, posting_id, "scrape", next_due, browser=browser)
+    host_circuit_state.labels(egress_host=egress_host).set(1 if open_until > now else 0.5)
+    host_circuit_skipped_total.labels(egress_host=egress_host).inc()
+    tasks_total.labels(kind="scrape", status=status).inc()
+    worker_log.warning(event, egress_host=egress_host, next_due=next_due)
+    return True
+
+
+async def _record_scrape_host_outcome(
+    board_id: str,
+    fallback_host: str,
+    learned_host: str,
+    tracker: RequestHostTracker,
+    success: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> float | None:
+    """Update the shared circuit once for a completed scrape run.
+
+    Only final transport failures and transient HTTP statuses advance the
+    failure streak. A parser/config error following a reachable response is
+    deliberately excluded so one broken scraper cannot block a whole host.
+    """
+
+    failure_host = tracker.transient_failure_host if not success else None
+    try:
+        if failure_host:
+            await remember_board_scrape_egress_host(board_id, failure_host)
+            state = await record_host_failure(failure_host)
+            host_circuit_state.labels(egress_host=failure_host).set(1 if state.is_open else 0)
+            if state.opened_now:
+                host_circuit_opened_total.labels(egress_host=failure_host).inc()
+                worker_log.warning(
+                    "pipeline.scrape.host_circuit_opened",
+                    egress_host=failure_host,
+                    failures=state.failures,
+                    open_until=state.open_until,
+                )
+            return state.open_until
+
+        # A successful scrape proves reachability. A failed extraction after
+        # a non-transient response does too, and must reset an outage streak.
+        success_hosts = tracker.hosts or ({fallback_host} if success and fallback_host else set())
+        for host in success_hosts:
+            still_open = await record_host_success(host)
+            if host == learned_host:
+                host_circuit_state.labels(egress_host=host).set(1 if still_open is not None else 0)
+        return None
+    except Exception:
+        worker_log.warning(
+            "pipeline.scrape.host_circuit_update_failed",
+            egress_host=failure_host or tracker.last_host or fallback_host,
+            exc_info=True,
+        )
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -1240,15 +1348,37 @@ async def _process_scrape_work(
             )
             return
 
-        success, duration = await _process_one_scrape(
-            item,
-            local_pool,
-            http,
-            scraper_type,
-            scraper_config,
-            pw=pw,
-            scrape_step=scrape_step,
-            scrape_interval=scrape_work.scrape_interval_hours,
+        fallback_host = normalize_egress_host(urlparse(scrape_work.source_url).hostname or domain)
+        learned_host = normalize_egress_host(board_config.get("scrape_egress_host", ""))
+        circuit_host = learned_host or fallback_host
+        if await _defer_scrape_for_host_circuit(
+            domain,
+            posting_id,
+            circuit_host,
+            browser=browser,
+            worker_log=worker_log,
+        ):
+            return
+
+        with track_request_hosts() as host_tracker:
+            success, duration = await _process_one_scrape(
+                item,
+                local_pool,
+                http,
+                scraper_type,
+                scraper_config,
+                pw=pw,
+                scrape_step=scrape_step,
+                scrape_interval=scrape_work.scrape_interval_hours,
+            )
+
+        circuit_open_until = await _record_scrape_host_outcome(
+            scrape_work.board_id,
+            fallback_host,
+            learned_host,
+            host_tracker,
+            success,
+            worker_log,
         )
 
         profile = "browser" if browser else "simple"
@@ -1266,6 +1396,8 @@ async def _process_scrape_work(
             fallback_due = time.time() + (
                 scrape_work.scrape_interval_hours * 3600 if success else _ERROR_BACKOFF_S
             )
+            if circuit_open_until is not None:
+                fallback_due = max(fallback_due, circuit_open_until)
             await reschedule_task(domain, posting_id, "scrape", fallback_due, browser=browser)
         else:
             if (
@@ -1281,11 +1413,14 @@ async def _process_scrape_work(
                     ),
                 )
             else:
+                next_due = _timestamp(posting_state["next_scrape_at"])
+                if circuit_open_until is not None:
+                    next_due = max(next_due, circuit_open_until)
                 await reschedule_task(
                     domain,
                     posting_id,
                     "scrape",
-                    _timestamp(posting_state["next_scrape_at"]),
+                    next_due,
                     browser=browser,
                 )
 

@@ -1061,6 +1061,123 @@ async def test_failed_sibling_boards_open_one_host_circuit_and_skip_fourth(mock_
 
 
 @pytest.mark.asyncio
+async def test_failed_sibling_scrapes_open_one_host_circuit_and_skip_fourth(
+    mock_redis, monkeypatch
+):
+    """Reproduce the scrape-side gap behind #5353/#5706/#5707/#5717.
+
+    The shared host circuit originally protected monitor runs only, so every
+    posting in a same-origin 5xx/timeout burst still reached the network. Once
+    three scrape runs receive a transient upstream response, the fourth must
+    be deferred before its scraper (and therefore HTTP) is invoked.
+    """
+    from datetime import UTC, datetime
+
+    import httpx
+
+    from src.config import settings
+    from src.shared.http import RequestHostTrackingTransport
+    from src.workers.pipeline import _process_scrape_work
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    domain = "outage.example.com"
+    board_id = "board-outage"
+    await mock_redis.hset(
+        f"board:{board_id}",
+        mapping={
+            "crawler_type": "dom",
+            "metadata": json.dumps({"scraper_type": "dom"}),
+        },
+    )
+
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow = AsyncMock(return_value={"is_active": True, "next_scrape_at": datetime.now(UTC)})
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+
+    requests = 0
+
+    def upstream_503(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(503, request=request)
+
+    async def scrape_once(item, pool, http, *args, **kwargs):
+        response = await http.get(item.url)
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            return False, 0.1
+        return True, 0.1
+
+    transport = RequestHostTrackingTransport(httpx.MockTransport(upstream_503))
+    reschedule = AsyncMock(return_value=None)
+    async with httpx.AsyncClient(transport=transport) as http:
+        with (
+            patch("src.processing.scrape._process_one_scrape", new=scrape_once),
+            patch("src.workers.pipeline.reschedule_task", new=reschedule),
+        ):
+            for number in range(1, 5):
+                posting_id = f"12345678-0000-4000-8000-{number:012d}"
+                await _process_scrape_work(
+                    structlog.get_logger(),
+                    rq.ScrapeWork(
+                        posting_id=posting_id,
+                        source_url=f"https://{domain}/jobs/{number}",
+                        board_id=board_id,
+                        description_r2_hash=None,
+                        scraper_needs_browser=False,
+                        scrape_interval_hours=24,
+                        domain=domain,
+                    ),
+                    local_pool,
+                    http,
+                    browser=False,
+                )
+
+    assert requests == 3
+    open_until = await rq.get_host_circuit_open_until(domain)
+    assert open_until is not None
+    assert await mock_redis.hget(f"board:{board_id}", "scrape_egress_host") == domain
+    assert reschedule.await_args_list[-1].args[:3] == (
+        domain,
+        "12345678-0000-4000-8000-000000000004",
+        "scrape",
+    )
+    assert reschedule.await_args_list[-1].args[3] == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
+async def test_scrape_parser_failures_do_not_open_host_circuit(mock_redis):
+    """A reachable 200 followed by bad extraction is not a host outage."""
+    from src.shared.http import RequestHostTracker
+    from src.workers.pipeline import _record_scrape_host_outcome
+
+    domain = "reachable.example.com"
+    for _ in range(4):
+        tracker = RequestHostTracker()
+        tracker.note_response(domain, 200)
+        open_until = await _record_scrape_host_outcome(
+            "board-parser-failure",
+            domain,
+            "",
+            tracker,
+            False,
+            structlog.get_logger(),
+        )
+        assert open_until is None
+
+    assert await rq.get_host_circuit_open_until(domain) is None
+    assert await mock_redis.get(f"host_fail:{domain}") is None
+
+
+@pytest.mark.asyncio
 async def test_half_open_circuit_defers_siblings_while_single_probe_is_leased(
     mock_redis, monkeypatch
 ):

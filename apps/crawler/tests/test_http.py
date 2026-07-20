@@ -3,6 +3,7 @@ from __future__ import annotations
 import ssl
 
 import httpx
+import pytest
 
 from src.shared.http import (
     DEFAULT_ACCEPT,
@@ -99,6 +100,36 @@ class TestRequestHostTracking:
         assert response.status_code == 200
         assert tracker.hosts == {"8.8.8.8", "1.1.1.1"}
         assert tracker.last_host == "1.1.1.1"
+
+    async def test_tracker_classifies_only_transient_upstream_statuses(self):
+        statuses = iter((503, 200))
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(next(statuses), request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                response = await client.get("https://outage.example/first")
+                assert response.status_code == 503
+                assert tracker.transient_failure_host == "outage.example"
+
+                response = await client.get("https://outage.example/recovered")
+                assert response.status_code == 200
+                assert tracker.transient_failure_host is None
+
+    async def test_tracker_classifies_transport_errors(self):
+        def timeout(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectTimeout("upstream timed out", request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(timeout))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                with pytest.raises(httpx.ConnectTimeout):
+                    await client.get("https://timeout.example/jobs")
+
+        assert tracker.transient_failure_host == "timeout.example"
+        assert tracker.last_transport_error == "ConnectTimeout"
 
 
 class TestProxyOptIn:

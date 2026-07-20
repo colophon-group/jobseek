@@ -33,8 +33,8 @@ Rate limiting (shared across worker types):
     ratelimit:{domain}  — STRING with TTL
     delay:{domain}      — per-domain delay (0.5 for ATS, 2.0 default)
 
-Upstream-host circuit breaker (shared across boards and worker types):
-    host_fail:{egress_host}  — consecutive failed monitor runs within a window
+Upstream-host circuit breaker (shared across boards, postings, and worker types):
+    host_fail:{egress_host}  — consecutive failed crawler runs within a window
     host_open:{egress_host}  — unix unblock timestamp with an expiry
     host_probe:{egress_host} — single half-open recovery probe lease
 """
@@ -403,6 +403,25 @@ async def remember_board_egress_host(board_id: str, host: str) -> bool:
     if not await cast(Awaitable[int], r.exists(key)):
         return False
     await cast(Awaitable[object], r.hset(key, "egress_host", normalized))
+    return True
+
+
+async def remember_board_scrape_egress_host(board_id: str, host: str) -> bool:
+    """Persist the runtime-observed scraper host separately from monitoring.
+
+    A board can discover jobs from one API and scrape detail pages from a
+    different origin. Separate learned fields prevent either path from
+    preflighting the other's host while both still share the host circuit.
+    """
+
+    normalized = normalize_egress_host(host)
+    if not normalized:
+        return False
+    r = get_redis()
+    key = f"board:{board_id}"
+    if not await cast(Awaitable[int], r.exists(key)):
+        return False
+    await cast(Awaitable[object], r.hset(key, "scrape_egress_host", normalized))
     return True
 
 

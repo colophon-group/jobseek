@@ -120,13 +120,13 @@ host_circuit_state = Gauge(
 
 host_circuit_opened_total = Counter(
     "crawler_host_circuit_opened_total",
-    "Times consecutive monitor failures opened an upstream-host circuit",
+    "Times consecutive crawler failures opened an upstream-host circuit",
     ["egress_host"],
 )
 
 host_circuit_skipped_total = Counter(
     "crawler_host_circuit_skipped_total",
-    "Monitor runs deferred before network I/O because their upstream-host circuit was open",
+    "Crawler tasks deferred before network I/O because their upstream-host circuit was open",
     ["egress_host"],
 )
 
