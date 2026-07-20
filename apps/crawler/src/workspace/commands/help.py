@@ -1565,8 +1565,12 @@ api_sniffer — XHR/Fetch API Capture (single page)
      "method": "GET", "json_path": "data.job",
      "fields": {"title": "name", "description": "content"}}
 
-    api_url   API endpoint URL. Supports {id} placeholder (replaced with
-              job ID extracted from the job page URL's last path segment).
+    api_url   API endpoint URL. Supports {id} and other named placeholders.
+              By default, {id} is the job page URL's last path segment.
+    url_pattern  Optional regex matched against the job page URL. Named capture
+              groups become placeholders in api_url and post_body. Use this
+              when an ID is stored in a query parameter, for example:
+              "[?&]jobId=(?P<id>[^&]+)".
     method    HTTP method: "GET" (default) or "POST".
     post_body POST request body (JSON string). Supports {id} placeholder.
     json_path jmespath expression to navigate to the job object in the response.

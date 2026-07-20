@@ -176,6 +176,45 @@ class TestExtractFromObject:
         assert content.metadata == {"team": "Eng"}
 
 
+class TestScrapeHttpPlaceholders:
+    @pytest.mark.asyncio
+    async def test_url_pattern_extracts_id_from_query_parameter(self):
+        api_calls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            api_calls.append(str(request.url))
+            return httpx.Response(
+                200,
+                json={
+                    "requisitionTitle": "WMS Clerk",
+                    "requisitionDescription": "<p>Manage warehouse inventory.</p>",
+                    "requisitionLocations": [{"nameCode": {"shortName": "Wilmer, TX, US"}}],
+                },
+            )
+
+        config = {
+            "api_url": "https://api.example.com/job-requisitions/{id}",
+            "url_pattern": r"[?&]jobId=(?P<id>[^&]+)",
+            "fields": {
+                "title": "requisitionTitle",
+                "description": "requisitionDescription",
+                "locations": "requisitionLocations[].nameCode.shortName",
+            },
+        }
+        job_url = (
+            "https://jobs.example.com/recruitment.html?cid=company"
+            "&jobId=554734&jwId=9201178824629_1"
+        )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            content = await _scrape_http(job_url, config, http)
+
+        assert api_calls == ["https://api.example.com/job-requisitions/554734"]
+        assert content.title == "WMS Clerk"
+        assert content.description == "<p>Manage warehouse inventory.</p>"
+        assert content.locations == ["Wilmer, TX, US"]
+
+
 class TestProbePw:
     async def test_detects_job_data(self):
         """probe_pw detects single-job XHR responses and returns metadata."""
