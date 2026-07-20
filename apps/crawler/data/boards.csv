@@ -4276,6 +4276,7 @@ roku,roku-greenhouse,https://job-boards.greenhouse.io/roku,greenhouse,"{""token"
 roland-berger,roland-berger-careers,https://careers.smartrecruiters.com/RolandBerger,smartrecruiters,"{""token"": ""RolandBerger""}",smartrecruiters,
 rolex,rolex-careers,https://www.carrieres-rolex.com/Rolex/go/Toutes-nos-offres-Rolex/2901501?q=&department=&facility=&shifttype=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://www.carrieres-rolex.com/googlefeed.xml""}",skip,
 roller,roller-greenhouse,https://job-boards.greenhouse.io/roller,greenhouse,"{""token"": ""roller""}",skip,
+rolls-royce,rolls-royce-careers,https://careers.rolls-royce.com/en/jobs,api_sniffer,"{""api_url"": ""https://rollsroyceats-prod-api.connectid.cloud/api/jobs"", ""method"": ""POST"", ""json_path"": ""jobs"", ""browser"": true, ""params"": {""perPage"": ""100""}, ""url_field"": ""applyUrl"", ""post_data"": ""{}"", ""pagination"": {""param_name"": ""page"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""query""}, ""fields"": {""title"": ""jobTitle"", ""description"": ""jobDescription"", ""locations"": ""primaryCity"", ""employment_type"": ""employmentType"", ""metadata.team"": ""department""}}",skip,
 rondo-energy,rondo-energy-greenhouse,https://job-boards.greenhouse.io/rondoenergy,greenhouse,"{""token"": ""rondoenergy""}",skip,
 roo,roo-greenhouse,https://job-boards.greenhouse.io/roo,greenhouse,"{""token"": ""roo""}",skip,
 roofr,roofr-greenhouse,https://job-boards.greenhouse.io/roofr,greenhouse,"{""token"": ""roofr""}",skip,
