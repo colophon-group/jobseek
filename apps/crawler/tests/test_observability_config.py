@@ -51,6 +51,15 @@ def test_alert_fires_when_deadletter_queue_stays_nonempty() -> None:
     assert "ZREM deadletter:{{ $labels.wtype }}" in rule["annotations"]["runbook"]
 
 
+def test_upstream_host_circuit_alert_groups_by_real_origin() -> None:
+    rule = _alert_rule("UpstreamHostCircuitOpen")
+
+    assert rule["expr"] == "max by (egress_host) (crawler_host_circuit_state) > 0"
+    assert rule["for"] == "5m"
+    assert rule["labels"] == {"severity": "email", "service": "crawler"}
+    assert "host_open:{{ $labels.egress_host }}" in rule["annotations"]["runbook"]
+
+
 def test_deadletter_operator_playbook_is_documented() -> None:
     text = (ROOT / "docs/03-crawler-architecture.md").read_text()
 

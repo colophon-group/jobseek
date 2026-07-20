@@ -104,6 +104,27 @@ monitor_failed_per_board_total = Counter(
     ["board_id"],
 )
 
+# Redis-backed per-upstream-host circuit breaker (#3195). Only hosts that
+# fail or are checked by the breaker create a series, keeping cardinality
+# bounded to crawler origins rather than individual boards/postings.
+host_circuit_state = Gauge(
+    "crawler_host_circuit_state",
+    "Upstream-host circuit state (1=open, 0.5=half-open probe, 0=closed)",
+    ["egress_host"],
+)
+
+host_circuit_opened_total = Counter(
+    "crawler_host_circuit_opened_total",
+    "Times consecutive monitor failures opened an upstream-host circuit",
+    ["egress_host"],
+)
+
+host_circuit_skipped_total = Counter(
+    "crawler_host_circuit_skipped_total",
+    "Monitor runs deferred before network I/O because their upstream-host circuit was open",
+    ["egress_host"],
+)
+
 # TDM-Reservation respect (#2842). Emitted when a fetch helper observes
 # the W3C Text-and-Data-Mining opt-out signal (``tdm-reservation: 1``
 # response header, or ``<meta name="tdm-reservation" content="1">`` in

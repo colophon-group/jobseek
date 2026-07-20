@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     redis_max_connections: int = 60
     throttle_delay_default: float = 2.0
     throttle_delay_ats: float = 0.5
+    # Shared upstream-host circuit breaker.  A board-level failure still
+    # follows the durable Postgres retry ramp, while these Redis-backed
+    # settings stop sibling boards from independently hammering the same
+    # failing origin.
+    host_circuit_failure_threshold: int = 3
+    host_circuit_failure_window_seconds: int = 600
+    host_circuit_open_seconds: int = 1800
+    host_circuit_probe_seconds: int = 600
 
     # Inflight lease + reaper (#3159 / #3173). When ``claim_work``
     # atomically pops a task off the per-domain ZSET it also records

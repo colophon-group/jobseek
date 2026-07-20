@@ -997,6 +997,104 @@ async def test_process_monitor_work_emits_tasks_total_failed_on_success_false():
 
 
 @pytest.mark.asyncio
+async def test_failed_sibling_boards_open_one_host_circuit_and_skip_fourth(mock_redis, monkeypatch):
+    """Reproduce #3195: sibling boards used to traverse failures independently.
+
+    Once three monitor runs fail against the same configured origin, the
+    fourth board must be deferred before its monitor (and therefore HTTP) is
+    invoked.
+    """
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    monitor = AsyncMock(return_value=(False, 30.0))
+    reschedule = AsyncMock(return_value=None)
+    local_pool = _make_monitor_local_pool()
+    now = time.time()
+
+    def work(number: int) -> rq.BoardWork:
+        return rq.BoardWork(
+            board_id=f"board-host-{number}",
+            domain="shared-ats",
+            config={
+                "crawler_type": "sitemap",
+                "company_id": f"company-{number}",
+                "board_url": "https://apply.example.com/jobs",
+                "check_interval_minutes": "60",
+                "metadata": "{}",
+            },
+        )
+
+    with (
+        patch("src.processing.board._process_one_board_streaming", new=monitor),
+        patch("src.workers.pipeline.reschedule_task", new=reschedule),
+        patch(
+            "src.workers.pipeline._failure_next_due",
+            new=AsyncMock(return_value=now + 300),
+        ),
+        patch(
+            "src.workers.pipeline._refresh_board_metadata_cache",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        for number in range(1, 5):
+            await _process_monitor_work(
+                structlog.get_logger(),
+                work(number),
+                local_pool,
+                AsyncMock(),
+                browser=False,
+            )
+
+    assert monitor.await_count == 3
+    open_until = await rq.get_host_circuit_open_until("apply.example.com")
+    assert open_until is not None
+    assert reschedule.await_args_list[-1].args[:3] == (
+        "shared-ats",
+        "board-host-4",
+        "monitor",
+    )
+    assert reschedule.await_args_list[-1].args[3] == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
+async def test_half_open_circuit_defers_siblings_while_single_probe_is_leased(
+    mock_redis, monkeypatch
+):
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "host_circuit_probe_seconds", 600)
+    now = time.time()
+    await mock_redis.set("host_open:example.com", str(now - 1), ex=1200)
+    await mock_redis.set("host_probe:example.com", "1", ex=600)
+
+    monitor = AsyncMock(return_value=(True, 0.1))
+    reschedule = AsyncMock(return_value=None)
+    with (
+        patch("src.processing.board._process_one_board_streaming", new=monitor),
+        patch("src.workers.pipeline.reschedule_task", new=reschedule),
+    ):
+        await _process_monitor_work(
+            structlog.get_logger(),
+            _make_board_work(),
+            _make_monitor_local_pool(),
+            AsyncMock(),
+            browser=False,
+        )
+
+    monitor.assert_not_awaited()
+    assert reschedule.await_args.args[:3] == (
+        "example.com",
+        "board-3200",
+        "monitor",
+    )
+    assert reschedule.await_args.args[3] >= now + 599
+
+
+@pytest.mark.asyncio
 async def test_process_monitor_work_emits_tasks_total_failed_on_exception():
     """When ``_process_one_board_streaming`` raises, both the
     per-board attribution counter (``monitor_failed_per_board_total``)

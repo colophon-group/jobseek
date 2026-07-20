@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import contextvars
 import ssl
 import time
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -70,6 +72,60 @@ _CLIENT_DEFAULTS = {
 }
 
 
+@dataclass
+class RequestHostTracker:
+    """Task-local record of the real hosts touched by one crawler run.
+
+    The object itself is mutable so child tasks created by a concurrent
+    monitor inherit and update the same tracker through ``contextvars``.
+    Keeping a set plus the latest host bounds memory even for monitors that
+    make thousands of paginated requests.
+    """
+
+    hosts: set[str] = field(default_factory=set)
+    last_host: str | None = None
+
+    def note(self, host: str) -> None:
+        normalized = host.rstrip(".").lower()
+        if not normalized:
+            return
+        self.hosts.add(normalized)
+        self.last_host = normalized
+
+
+_request_host_tracker: contextvars.ContextVar[RequestHostTracker | None] = contextvars.ContextVar(
+    "request_host_tracker", default=None
+)
+
+
+@contextmanager
+def track_request_hosts() -> Iterator[RequestHostTracker]:
+    """Track actual outbound hosts for the current monitor/scrape task."""
+
+    tracker = RequestHostTracker()
+    token = _request_host_tracker.set(tracker)
+    try:
+        yield tracker
+    finally:
+        _request_host_tracker.reset(token)
+
+
+class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
+    """Record every post-SSRF-validation request host, including redirects."""
+
+    def __init__(self, inner: httpx.AsyncBaseTransport) -> None:
+        self._inner = inner
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        tracker = _request_host_tracker.get()
+        if tracker is not None and request.url.host:
+            tracker.note(request.url.host)
+        return await self._inner.handle_async_request(request)
+
+    async def aclose(self) -> None:
+        await self._inner.aclose()
+
+
 def _client_kwargs(*, verify: bool, use_proxy: bool) -> dict[str, Any]:
     kwargs: dict[str, Any] = {**_CLIENT_DEFAULTS}
     if not verify:
@@ -120,7 +176,11 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
         # verify/proxy kwargs so AsyncClient doesn't complain about
         # them being ignored when a transport is provided.
         kw.pop("verify", None)
-    kw["transport"] = SSRFGuardedTransport(inner)
+    # The SSRF guard stays outermost so refused private hosts never enter
+    # failure accounting. The tracking layer sees each permitted redirect
+    # hop and records the actual egress host instead of guessing from a
+    # crawler type or board URL.
+    kw["transport"] = SSRFGuardedTransport(RequestHostTrackingTransport(inner))
     return httpx.AsyncClient(**kw)
 
 

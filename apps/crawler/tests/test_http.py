@@ -7,12 +7,14 @@ import httpx
 from src.shared.http import (
     DEFAULT_ACCEPT,
     DEFAULT_USER_AGENT,
+    RequestHostTrackingTransport,
     _client_kwargs,
     _make_ssl_context,
     client_for,
     create_http_client,
     create_logging_http_client,
     create_nossl_http_client,
+    track_request_hosts,
 )
 
 
@@ -80,6 +82,23 @@ class TestCreateHttpClient:
         await client.aclose()
 
         assert captured["accept"] == "application/json"
+
+
+class TestRequestHostTracking:
+    async def test_transport_records_actual_redirect_hosts_without_network(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == "8.8.8.8":
+                return httpx.Response(302, headers={"location": "http://1.1.1.1/final"})
+            return httpx.Response(200, text="ok")
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport, follow_redirects=True) as client:
+            with track_request_hosts() as tracker:
+                response = await client.get("http://8.8.8.8/start")
+
+        assert response.status_code == 200
+        assert tracker.hosts == {"8.8.8.8", "1.1.1.1"}
+        assert tracker.last_host == "1.1.1.1"
 
 
 class TestProxyOptIn:
