@@ -149,6 +149,8 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
     assert config.disk_alert_margin_gib == 2
     assert config.max_quarantine_runs == 50
     assert config.max_quarantine_gib == 2
+    assert config.max_terminal_worktrees == 3
+    assert config.max_terminal_worktree_gib == 2
     assert build_codex_command(config, "do the task") == [
         "codex",
         "exec",
@@ -923,6 +925,27 @@ def test_quarantine_limit_blocks_new_admission(tmp_path: Path) -> None:
 
     assert not decision.should_run
     assert decision.reason == "trace quarantine retention limit reached: 1 runs, 123 bytes"
+
+
+def test_terminal_worktree_limit_blocks_new_admission(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path, dry_run=True)
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))
+    monkeypatch.setattr(
+        governor,
+        "reconcile_worktrees",
+        lambda *, apply: SimpleNamespace(
+            within_bounds=False,
+            remaining_terminal_directories=4,
+            remaining_terminal_bytes=3 * 1024**3,
+        ),
+    )
+
+    decision = governor.should_start()
+
+    assert not decision.should_run
+    assert decision.reason == (
+        "terminal worktree retention limit reached: 4 directories, 3221225472 bytes"
+    )
 
 
 def test_safe_env_excludes_unneeded_secrets() -> None:
