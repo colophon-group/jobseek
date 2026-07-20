@@ -78,6 +78,7 @@ class FeedbackResult:
     important: dict[str, str] = field(default_factory=dict)
     optional: dict[str, str] = field(default_factory=dict)
     verdict_notes: str = ""
+    verified_empty_board: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -88,6 +89,7 @@ class FeedbackResult:
             "important": dict(self.important),
             "optional": dict(self.optional),
             "verdict_notes": self.verdict_notes,
+            "verified_empty_board": self.verified_empty_board,
         }
 
 
@@ -102,6 +104,7 @@ async def feedback(
     verdict_notes: str = "",
     monitor_run: dict[str, Any] | None = None,
     scraper_run: dict[str, Any] | None = None,
+    verified_empty_board: bool = False,
 ) -> FeedbackResult:
     """Record feedback against the active named config in ``claim_kv``.
 
@@ -126,6 +129,11 @@ async def feedback(
             fractions for monitor-side fields. Shape mirrors the legacy
             YAML: ``{"jobs": int, "quality": {field: count, ...}}``.
         scraper_run: Same shape, for scraper-side fields.
+        verified_empty_board: Explicitly accept a tested zero-job monitor when
+            the official board says there are no current openings and the
+            configured source has been independently verified.  This path is
+            limited to an ``acceptable`` verdict and does not invent field
+            quality ratings for nonexistent postings.
 
     Returns:
         :class:`FeedbackResult` with per-field, tier, and verdict data.
@@ -177,6 +185,19 @@ async def feedback(
             )
         explicit[k] = {kk: str(vv) for kk, vv in v.items()}
 
+    if verified_empty_board:
+        if verdict != "acceptable":
+            raise WsConfigInvalid("feedback: verified empty boards require verdict='acceptable'")
+        if "jobs" not in monitor_run or monitor_total != 0:
+            raise WsConfigInvalid(
+                "feedback: verified empty boards require a tested monitor run with 0 jobs"
+            )
+        if explicit:
+            raise WsConfigInvalid(
+                "feedback: do not rate fields for a verified empty board; "
+                "record sample evidence in --verdict-notes"
+            )
+
     fields_fb: dict[str, dict[str, str]] = {}
     for fname in FEEDBACK_FIELDS:
         count = int(coverage_data.get(fname, 0) or 0)
@@ -205,12 +226,13 @@ async def feedback(
     # Validate completeness — fields with coverage > 0 (or required) must have
     # an explicit rating.
     missing: list[str] = []
-    for fname in FEEDBACK_FIELDS:
-        if fname in fields_fb:
-            continue
-        count = int(coverage_data.get(fname, 0) or 0)
-        if count > 0 or fname in REQUIRED_FIELDS:
-            missing.append(fname)
+    if not verified_empty_board:
+        for fname in FEEDBACK_FIELDS:
+            if fname in fields_fb:
+                continue
+            count = int(coverage_data.get(fname, 0) or 0)
+            if count > 0 or fname in REQUIRED_FIELDS:
+                missing.append(fname)
     if missing:
         raise WsFeedbackIncomplete(
             "feedback: explicit per-field quality required for: " + ", ".join(missing)
@@ -237,13 +259,15 @@ async def feedback(
         f for f in FEEDBACK_FIELDS if f not in REQUIRED_FIELDS and f not in IMPORTANT_FIELDS
     )
 
+    unverified_tier = {"coverage": "0/0", "quality": "unverified"}
     feedback_data = {
         "fields": fields_fb,
-        "required": _tier_summary(REQUIRED_FIELDS),
-        "important": _tier_summary(IMPORTANT_FIELDS),
-        "optional": _tier_summary(optional_tier),
+        "required": unverified_tier if verified_empty_board else _tier_summary(REQUIRED_FIELDS),
+        "important": unverified_tier if verified_empty_board else _tier_summary(IMPORTANT_FIELDS),
+        "optional": unverified_tier if verified_empty_board else _tier_summary(optional_tier),
         "verdict": verdict,
         "verdict_notes": verdict_notes,
+        "verified_empty_board": verified_empty_board,
     }
 
     slot["feedback"] = feedback_data
@@ -259,6 +283,7 @@ async def feedback(
         important=feedback_data["important"],
         optional=feedback_data["optional"],
         verdict_notes=verdict_notes,
+        verified_empty_board=verified_empty_board,
     )
 
 
