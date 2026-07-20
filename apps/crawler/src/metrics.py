@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import socketserver
+import sys
+import threading
+from typing import Any
 from urllib.parse import urlparse
+from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
-from prometheus_client import Counter, Gauge, Histogram, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, make_wsgi_app
 
 # ── Worker metrics (per profile) ────────────────────────────────────
 
@@ -494,9 +499,50 @@ def _read_version() -> str:
         return "unknown"
 
 
+class _SilentMetricsHandler(WSGIRequestHandler):
+    """Serve metrics without writing one access-log line per scrape."""
+
+    def log_message(self, format: str, *args: object) -> None:
+        pass
+
+
+class _QuietThreadingWSGIServer(socketserver.ThreadingMixIn, WSGIServer):
+    """Threaded metrics server that ignores expected client disconnects."""
+
+    daemon_threads = True
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        # Prometheus/Alloy probes can disappear between connect and the first
+        # request byte, or while a response is being written. The standard
+        # socketserver handler prints these routine disconnects as full
+        # tracebacks, which Alloy then ingests as crawler errors (#5354).
+        # Preserve the default traceback for every unexpected exception.
+        error = sys.exception()
+        if isinstance(error, (BrokenPipeError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
+
+
+def _start_metrics_http_server(
+    port: int,
+    addr: str = "0.0.0.0",
+) -> tuple[WSGIServer, threading.Thread]:
+    """Start the shared metrics listener and return it for lifecycle tests."""
+    server = make_server(
+        addr,
+        port,
+        make_wsgi_app(),
+        _QuietThreadingWSGIServer,
+        handler_class=_SilentMetricsHandler,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread
+
+
 def start_metrics_server(port: int) -> None:
     build_info.labels(version=_read_version()).set(1)
-    start_http_server(port)
+    _start_metrics_http_server(port)
 
 
 # ── HTTP retry helpers (#3210) ─────────────────────────────────────────

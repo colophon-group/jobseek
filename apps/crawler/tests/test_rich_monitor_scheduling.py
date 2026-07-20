@@ -731,12 +731,12 @@ class TestBuildInfoMetric:
 
         This is the critical assertion: a regression where the labelling
         call is removed from ``start_metrics_server`` would silently drop
-        the Grafana deploy-verification signal. We patch ``start_http_server``
-        so the test doesn't actually bind a port.
+        the Grafana deploy-verification signal. We patch the listener helper so
+        the test doesn't actually bind a port.
         """
         from unittest.mock import patch
 
-        with patch("src.metrics.start_http_server") as mock_start:
+        with patch("src.metrics._start_metrics_http_server") as mock_start:
             start_metrics_server(0)
             mock_start.assert_called_once_with(0)
 
