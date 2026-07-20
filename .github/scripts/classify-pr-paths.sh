@@ -70,7 +70,15 @@ emit() {
   fi
 }
 
+base_ref=$(gh api "repos/$REPO/pulls/$PR" --jq '.base.ref')
+if [[ -z "$base_ref" || "$base_ref" == "null" ]]; then
+  echo "PR #$PR has no base branch" >&2
+  exit 1
+fi
+
 emit "code" "$code"
 emit "crawler_code" "$crawler_code"
 emit "boards_csv" "$boards_csv"
 emit "codeql" "$code"
+emit "is_pr" "true"
+emit "base_ref" "$base_ref"
