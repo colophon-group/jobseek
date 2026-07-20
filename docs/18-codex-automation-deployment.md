@@ -179,9 +179,9 @@ exit
 
 If trace upload is enabled, provision the narrow HuggingFace token in the
 runner user's local HuggingFace cache, not in the systemd environment. The
-Codex subprocess environment intentionally strips `HF_TOKEN`, so `ws task
-complete` reads the token through `huggingface_hub` local auth while traces
-remain free of deployment secrets.
+Codex subprocess environment intentionally strips `HF_TOKEN`; the governor's
+terminal-run hook reads local `huggingface_hub` auth only after Codex exits, so
+the credential cannot enter the captured session.
 
 ```bash
 sudo -iu codex-runner
@@ -297,7 +297,7 @@ Before enabling the timer, edit `/etc/jobseek-codex/governor.env` for the
 host and keep `JOBSEEK_CODEX_DRY_RUN=true` until issue selection, host checks,
 usage telemetry, ledger writes, and worktree creation have been verified. The
 systemd service runs
-`python3 /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py`
+`/srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py`
 under `flock -n /srv/jobseek-codex/state/codex-runner.lock`; daily services
 use the same lock with a bounded wait. This keeps all local Codex routines at
 one active process without firing missed daily jobs immediately after a
@@ -430,21 +430,67 @@ For each accepted issue:
 6. Capture `codex exec --json` stdout to the JSONL trace path and stderr to a
    per-run log file.
 7. Let `ws submit` create the PR; never push to `main`.
-8. On `ws task complete`, upload the scoped trace only after the credential
-   detector accepts the payload. A detected GitHub, OpenAI, HuggingFace, AWS,
-   Google, Slack, bearer, JWT, private-key, URL-password, or sensitive
-   assignment shape must fail the upload closed and leave the local trace for
-   manual review.
-9. Record PR URL, branch, usage summary, trace path, explicit outcome, reason,
-   attempt, and any retry deadline in the ledger and linked issue.
-10. Treat only `submitted`, `rejected`, and `escalated` as resolved. A plain
+8. After every terminal Codex outcome (`submitted`, `rejected`, `escalated`,
+   `retryable`, or `interrupted`),
+   export the root thread, all child-agent sessions, `codex exec` events, and
+   runner stderr as one provenance-linked bundle. `ws task complete` does not
+   own this hook, so rejection and early-exit paths are included.
+9. Drop hidden reasoning/encrypted content and duplicated runtime context,
+   reconstruct standard child task contracts from the plaintext `ws` renderer,
+   and run the credential detector over every projected file. A detected
+   credential shape fails closed and leaves all sources local for review.
+10. Store gold, silver (incomplete encrypted collaboration), and diagnostic
+    (no assistant trajectory) bundles under separate HuggingFace prefixes. The
+    v2 schema includes both per-thread JSONL and one chronological,
+    parent-linked `trajectory.jsonl`. Training consumers take all gold bundles
+    by default. To teach subagent spawning and execution, they may also take
+    silver child-thread files whose `thread_header.task_contract` is present,
+    while excluding records marked with an unresolved encrypted-message
+    placeholder. Diagnostic bundles are for failure analysis, not model
+    training. The manifest exposes every condition needed for these gates.
+11. Download every uploaded object into an ephemeral directory and verify its
+    SHA-256. Record the verified manifest in SQLite, then delete only the exact
+    source files whose hashes still match. Upload or verification failure keeps
+    local sources for retry. Before considering a new issue, each governor wake
+    retries up to `JOBSEEK_CODEX_TRACE_RETRY_LIMIT` failed exports even when the
+    new-run disk health gate is closed.
+12. Record PR URL, branch, usage summary, export status, explicit outcome,
+    reason, attempt, and any retry deadline in the ledger and linked issue.
+13. Treat only `submitted`, `rejected`, and `escalated` as resolved. A plain
     closed issue is insufficient; rejection/escalation cleanup must finish
     before closure. Record capacity errors, timeouts, deployment interruption,
     and unresolved exits as `retryable` or `interrupted` with exponential
     backoff (`JOBSEEK_CODEX_RETRY_BACKOFF_S`, default 900 seconds, capped by
     `JOBSEEK_CODEX_MAX_RETRY_BACKOFF_S`, default 21600 seconds).
-11. Remove the throwaway worktree after trace export and a resolved outcome,
-    or retain it for bounded debugging on retryable/interrupted runs.
+14. Remove the throwaway worktree after a resolved outcome, independently of
+    trace export; retain it for bounded debugging on retryable/interrupted runs.
+
+Historical retained sessions can be exported in bounded commits while holding
+the normal runner lock:
+
+```bash
+sudo -u codex-runner flock -w 30 /srv/jobseek-codex/state/codex-runner.lock \
+  /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
+  /srv/jobseek-codex/repo/scripts/codex-trace-backfill.py \
+  --all --upload --cleanup --allow-silver --allow-diagnostic
+```
+
+This command indexes the Codex session store once, verifies every remote object
+before recording a run as exported, and cleans only source files covered by the
+verified manifest. It also repairs the known legacy Codex encoding where a raw
+newline split one JSON string across physical JSONL lines, recording the number
+of recovered records in the manifest. Anything that still does not parse, has
+an invalid session tree, or matches the credential detector is quarantined and
+stays local.
+
+Reconcile terminal, exported, retained, quarantined/failed, and unaccounted
+runs plus byte totals and current disk headroom with:
+
+```bash
+sudo -u codex-runner \
+  /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
+  /srv/jobseek-codex/repo/scripts/codex-trace-backfill.py --report
+```
 
 ### Phase 5 - rollout
 

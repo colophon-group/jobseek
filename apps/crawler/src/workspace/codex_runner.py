@@ -16,6 +16,8 @@ import shutil
 import signal
 import sqlite3
 import subprocess
+import sys
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass
@@ -152,6 +154,12 @@ class RunnerConfig:
     lease_timeout_s: int = 4 * 60 * 60
     retry_backoff_s: int = DEFAULT_RETRY_BACKOFF_S
     max_retry_backoff_s: int = DEFAULT_MAX_RETRY_BACKOFF_S
+    trace_export_enabled: bool = False
+    trace_cleanup_enabled: bool = True
+    trace_hf_repo: str = "viktoroo/jobseek-agent-traces"
+    trace_hf_prefix: str = "training-bundles/v2"
+    trace_retry_limit: int = 3
+    codex_home: Path | None = None
 
     def resolved(self) -> RunnerConfig:
         root = self.root
@@ -187,6 +195,12 @@ class RunnerConfig:
             lease_timeout_s=self.lease_timeout_s,
             retry_backoff_s=self.retry_backoff_s,
             max_retry_backoff_s=self.max_retry_backoff_s,
+            trace_export_enabled=self.trace_export_enabled,
+            trace_cleanup_enabled=self.trace_cleanup_enabled,
+            trace_hf_repo=self.trace_hf_repo,
+            trace_hf_prefix=self.trace_hf_prefix,
+            trace_retry_limit=self.trace_retry_limit,
+            codex_home=self.codex_home or Path.home() / ".codex",
         )
 
     @classmethod
@@ -249,6 +263,14 @@ class RunnerConfig:
             dry_run=env.get("JOBSEEK_CODEX_DRY_RUN", "").lower() in {"1", "true", "yes"},
             cleanup_success_worktree=env.get("JOBSEEK_CODEX_KEEP_SUCCESS_WORKTREE", "").lower()
             not in {"1", "true", "yes"},
+            trace_export_enabled=env.get("JOBSEEK_CODEX_TRACE_EXPORT_ENABLED", "true").lower()
+            in {"1", "true", "yes"},
+            trace_cleanup_enabled=env.get("JOBSEEK_CODEX_TRACE_CLEANUP_ENABLED", "true").lower()
+            in {"1", "true", "yes"},
+            trace_hf_repo=env.get("JOBSEEK_CODEX_TRACE_HF_REPO", "viktoroo/jobseek-agent-traces"),
+            trace_hf_prefix=env.get("JOBSEEK_CODEX_TRACE_HF_PREFIX", "training-bundles/v2"),
+            trace_retry_limit=int(env.get("JOBSEEK_CODEX_TRACE_RETRY_LIMIT", "3")),
+            codex_home=Path(env["CODEX_HOME"]) if env.get("CODEX_HOME") else None,
             codex_args=codex_args,
         ).resolved()
 
@@ -332,6 +354,15 @@ class RunnerLedger:
                 );
                 CREATE INDEX IF NOT EXISTS usage_snapshots_slot_time
                     ON usage_snapshots(active_slot, observed_at);
+                CREATE TABLE IF NOT EXISTS trace_bundle_export_attempts (
+                    run_id TEXT PRIMARY KEY,
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL,
+                    quality_tier TEXT,
+                    remote_dir TEXT,
+                    error TEXT,
+                    last_attempt_at INTEGER NOT NULL
+                );
                 """
             )
             self._ensure_columns(conn)
@@ -519,6 +550,57 @@ class RunnerLedger:
             return True
         except sqlite3.IntegrityError:
             return False
+
+    def record_trace_bundle_attempt(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        quality_tier: str | None = None,
+        remote_dir: str | None = None,
+        error: str | None = None,
+    ) -> None:
+        now = int(time.time())
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO trace_bundle_export_attempts (
+                    run_id, attempts, status, quality_tier,
+                    remote_dir, error, last_attempt_at
+                ) VALUES (?, 1, ?, ?, ?, ?, ?)
+                ON CONFLICT(run_id) DO UPDATE SET
+                    attempts = trace_bundle_export_attempts.attempts + 1,
+                    status = excluded.status,
+                    quality_tier = excluded.quality_tier,
+                    remote_dir = excluded.remote_dir,
+                    error = excluded.error,
+                    last_attempt_at = excluded.last_attempt_at
+                """,
+                (run_id, status, quality_tier, remote_dir, error, now),
+            )
+
+    def failed_trace_bundle_exports(self, *, limit: int) -> list[dict[str, Any]]:
+        if limit <= 0:
+            return []
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT r.run_id, r.issue, r.state, r.trace_path,
+                       r.stderr_path, r.worktree_path, r.error
+                FROM trace_bundle_export_attempts AS a
+                JOIN runs AS r ON r.run_id = a.run_id
+                WHERE a.status = 'failed'
+                  AND r.state IN (
+                      'completed', 'failed', 'timeout',
+                      'submitted', 'rejected', 'escalated',
+                      'retryable', 'interrupted'
+                  )
+                ORDER BY a.last_attempt_at, r.created_at
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def record_usage_snapshot(
         self,
@@ -915,6 +997,10 @@ class RunResult:
     stderr_path: Path | None = None
     worktree_path: Path | None = None
     error: str | None = None
+    trace_export_status: str | None = None
+    trace_export_tier: str | None = None
+    trace_export_remote_dir: str | None = None
+    trace_export_error: str | None = None
 
 
 def build_codex_prompt(issue: int) -> str:
@@ -1282,6 +1368,7 @@ class CompanyResolverGovernor:
         return None
 
     def run_once(self) -> RunResult:
+        self._retry_failed_trace_exports()
         decision = self.should_start()
         if not decision.should_run:
             return RunResult(run_id="", issue=None, state="skipped", error=decision.reason)
@@ -1294,17 +1381,145 @@ class CompanyResolverGovernor:
             self.ledger.finish(admission.run_id, "skipped", error="dry run")
             return RunResult(run_id=admission.run_id, issue=admission.issue, state="skipped")
         try:
-            return self._execute_admission(admission)
+            result = self._execute_admission(admission)
         except Exception as exc:  # noqa: BLE001 - final guard for claimed issues
             self._release_claim_if_unresolved(admission)
             reason = f"runner interrupted: {exc}"
             self._finish_outcome(admission, "interrupted", reason)
-            return RunResult(
+            result = RunResult(
                 run_id=admission.run_id,
                 issue=admission.issue,
                 state="interrupted",
                 error=str(exc),
             )
+        return self._export_terminal_trace(result)
+
+    def _retry_failed_trace_exports(self) -> None:
+        if not self.config.trace_export_enabled:
+            return
+        for run in self.ledger.failed_trace_bundle_exports(limit=self.config.trace_retry_limit):
+            self._export_terminal_trace(
+                RunResult(
+                    run_id=str(run["run_id"]),
+                    issue=run.get("issue") if isinstance(run.get("issue"), int) else None,
+                    state=str(run["state"]),
+                    trace_path=Path(run["trace_path"])
+                    if isinstance(run.get("trace_path"), str)
+                    else None,
+                    stderr_path=Path(run["stderr_path"])
+                    if isinstance(run.get("stderr_path"), str)
+                    else None,
+                    worktree_path=Path(run["worktree_path"])
+                    if isinstance(run.get("worktree_path"), str)
+                    else None,
+                    error=run.get("error") if isinstance(run.get("error"), str) else None,
+                )
+            )
+
+    def _export_terminal_trace(self, result: RunResult) -> RunResult:
+        cfg = self.config
+        if not cfg.trace_export_enabled or not result.run_id:
+            return result
+        run = self.ledger.get_run(result.run_id)
+        trace_value = run.get("trace_path") if run else None
+        trace_path = Path(trace_value) if isinstance(trace_value, str) else None
+        if trace_path is None or not trace_path.is_file():
+            error = "terminal trace file unavailable"
+            self.ledger.record_trace_bundle_attempt(
+                result.run_id,
+                status="unavailable",
+                error=error,
+            )
+            result.trace_export_status = "unavailable"
+            result.trace_export_error = error
+            return result
+
+        from src.workspace.trace_backfill import (
+            build_bundle,
+            cleanup_verified_sources,
+            quality_gate_reason,
+            record_verified_export,
+            upload_and_verify,
+        )
+
+        tier: str | None = None
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix=f"trace-export-{result.run_id}-",
+                dir=cfg.state_dir,
+            ) as temp_dir:
+                bundle_dir = Path(temp_dir) / result.run_id
+                manifest = build_bundle(
+                    run_id=result.run_id,
+                    runner_root=cfg.root,
+                    codex_home=cfg.codex_home or Path.home() / ".codex",
+                    output_dir=bundle_dir,
+                )
+                tier = str(manifest["quality"]["tier"])
+                result.trace_export_tier = tier
+                if tier == "quarantined":
+                    result.trace_export_status = "quarantined"
+                    self.ledger.record_trace_bundle_attempt(
+                        result.run_id,
+                        status="quarantined",
+                        quality_tier=tier,
+                        error=quality_gate_reason(manifest),
+                    )
+                    return result
+
+                remote_dir, verified = upload_and_verify(
+                    bundle_dir=bundle_dir,
+                    run_id=result.run_id,
+                    repo_id=cfg.trace_hf_repo,
+                    prefix=cfg.trace_hf_prefix,
+                    quality_tier=tier,
+                )
+                record_verified_export(
+                    ledger_path=cfg.ledger_path or cfg.root / "state" / "ledger.sqlite",
+                    run_id=result.run_id,
+                    remote_dir=remote_dir,
+                    manifest=manifest,
+                    verified=verified,
+                )
+                status = "verified"
+                if cfg.trace_cleanup_enabled:
+                    cleanup_verified_sources(
+                        ledger_path=cfg.ledger_path or cfg.root / "state" / "ledger.sqlite",
+                        run_id=result.run_id,
+                        manifest=manifest,
+                    )
+                    status = "cleaned"
+                self.ledger.record_trace_bundle_attempt(
+                    result.run_id,
+                    status=status,
+                    quality_tier=tier,
+                    remote_dir=remote_dir,
+                )
+                result.trace_export_status = status
+                result.trace_export_remote_dir = remote_dir
+        except Exception as exc:  # noqa: BLE001 - trace export must not alter run outcome
+            error = _safe_trace_export_error(exc)
+            self.ledger.record_trace_bundle_attempt(
+                result.run_id,
+                status="failed",
+                quality_tier=tier,
+                error=error,
+            )
+            result.trace_export_status = "failed"
+            result.trace_export_error = error
+            print(
+                json.dumps(
+                    {
+                        "event": "trace_bundle_export_failed",
+                        "run_id": result.run_id,
+                        "quality_tier": tier,
+                        "error": error,
+                    },
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+            )
+        return result
 
     def should_start(self) -> SchedulerDecision:
         self.reconcile_stale_runs()
@@ -1837,6 +2052,18 @@ def _pid_alive(pid: int) -> bool:
     return True
 
 
+def _safe_trace_export_error(exc: Exception) -> str:
+    message = f"{type(exc).__name__}: {str(exc)[:1000]}"
+    try:
+        from src.workspace.trace import detect_credentials
+
+        if detect_credentials(message):
+            return f"{type(exc).__name__}: details redacted by credential scanner"
+    except Exception:  # noqa: BLE001 - error reporting must stay fail-safe
+        return type(exc).__name__
+    return message
+
+
 def _pid_matches_run(pid: int, run_id: str) -> bool:
     proc_root = Path("/proc")
     environ_path = proc_root / str(pid) / "environ"
@@ -1881,6 +2108,10 @@ def main() -> int:
                 "state": result.state,
                 "exit_code": result.exit_code,
                 "trace_path": str(result.trace_path) if result.trace_path else None,
+                "trace_export_status": result.trace_export_status,
+                "trace_export_tier": result.trace_export_tier,
+                "trace_export_remote_dir": result.trace_export_remote_dir,
+                "trace_export_error": result.trace_export_error,
                 "error": result.error,
             },
             sort_keys=True,
