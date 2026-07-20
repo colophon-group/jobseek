@@ -27,6 +27,8 @@ instruction stream unless explicitly copied into the sources above.
 
 from __future__ import annotations
 
+import os
+
 import click
 
 from src.workspace import log as action_log
@@ -423,7 +425,7 @@ def task_status():
 
 
 def _finalize_workflow(slug: str) -> None:
-    """Run completion side-effects: KB push, unclaim issue, trace upload, mark PR ready.
+    """Run completion side-effects: KB push, unclaim issue, and mark PR ready.
 
     Called from both ``task complete`` and ``task next`` (when advancing past reflect).
     """
@@ -457,20 +459,22 @@ def _finalize_workflow(slug: str) -> None:
         print()
         out.plain("summary", f"{len(non_none)} reflection(s) recorded during this run.")
 
-    # Upload trace to Hugging Face dataset (best-effort, don't block completion)
-    try:
-        from src.workspace.trace import upload_trace_to_hf
+    # The Hetzner runner exports the complete root + subagent session tree from
+    # its terminal path, after any completion/rejection/failure outcome. Keep
+    # the legacy inline exporter only for ws sessions outside that runner.
+    if not os.environ.get("JOBSEEK_CODEX_RUN_ID"):
+        try:
+            from src.workspace.trace import upload_trace_to_hf
 
-        hf_url = upload_trace_to_hf(slug)
-        if hf_url:
-            out.info("trace", f"Uploaded: {hf_url}")
-        else:
-            out.plain("trace", "No matching transcript found — export manually if needed")
-    except Exception as exc:
-        out.warn("trace", f"Could not upload trace: {exc}")
+            hf_url = upload_trace_to_hf(slug)
+            if hf_url:
+                out.info("trace", f"Uploaded: {hf_url}")
+            else:
+                out.plain("trace", "No matching transcript found — export manually if needed")
+        except Exception as exc:
+            out.warn("trace", f"Could not upload trace: {exc}")
 
-    # Mark PR ready for review AFTER trace is pushed so CI auto-merge
-    # includes the trace commit in the squash.
+    # Mark the company PR ready after workflow state and reflections are final.
     if ws.pr and not is_local_mode():
         from src.workspace.git import mark_pr_ready
 

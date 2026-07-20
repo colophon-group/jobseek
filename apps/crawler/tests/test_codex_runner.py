@@ -14,6 +14,7 @@ from src.workspace.codex_runner import (
     IssueResolution,
     RunnerConfig,
     RunnerLedger,
+    RunResult,
     UsageProbeResult,
     UsageSummary,
     UsageWindow,
@@ -143,6 +144,8 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
     )
     assert config.codex_model == "gpt-5.6-sol"
     assert config.codex_reasoning_effort == "high"
+    assert config.trace_export_enabled
+    assert config.trace_cleanup_enabled
     assert build_codex_command(config, "do the task") == [
         "codex",
         "exec",
@@ -154,6 +157,129 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
         "model_reasoning_effort=high",
         "do the task",
     ]
+
+
+def test_terminal_trace_hook_records_verified_cleanup(monkeypatch, tmp_path: Path) -> None:
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        trace_export_enabled=True,
+        trace_cleanup_enabled=True,
+        codex_home=tmp_path / ".codex",
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    trace_path = config.traces_dir / "run-1.jsonl"
+    trace_path.parent.mkdir(parents=True, exist_ok=True)
+    trace_path.write_text('{"type":"turn.failed"}\n')
+    assert governor.ledger.acquire(run_id="run-1", issue=1, active_slot=config.active_slot)
+    governor.ledger.update("run-1", trace_path=str(trace_path))
+    governor.ledger.finish("run-1", "failed", error="exit 1")
+
+    manifest = {
+        "quality": {"tier": "silver"},
+        "bundle_content_sha256": "abc",
+    }
+    monkeypatch.setattr("src.workspace.trace_backfill.build_bundle", lambda **kwargs: manifest)
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.upload_and_verify",
+        lambda **kwargs: ("training-bundles/v2/silver/run-1", {"manifest.json": "abc"}),
+    )
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.record_verified_export", lambda **kwargs: None
+    )
+    cleaned: list[str] = []
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.cleanup_verified_sources",
+        lambda **kwargs: cleaned.append(kwargs["run_id"]),
+    )
+
+    result = governor._export_terminal_trace(
+        RunResult(run_id="run-1", issue=1, state="failed", trace_path=trace_path)
+    )
+
+    assert result.state == "failed"
+    assert result.trace_export_status == "cleaned"
+    assert result.trace_export_tier == "silver"
+    assert result.trace_export_remote_dir == "training-bundles/v2/silver/run-1"
+    assert cleaned == ["run-1"]
+    with governor.ledger._connect() as conn:
+        attempt = conn.execute(
+            "SELECT status, attempts FROM trace_bundle_export_attempts WHERE run_id = ?",
+            ("run-1",),
+        ).fetchone()
+    assert dict(attempt) == {"status": "cleaned", "attempts": 1}
+
+
+def test_failed_terminal_trace_export_is_retried(monkeypatch, tmp_path: Path) -> None:
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        trace_export_enabled=True,
+        trace_cleanup_enabled=False,
+        trace_retry_limit=1,
+        codex_home=tmp_path / ".codex",
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    trace_path = config.traces_dir / "run-retry.jsonl"
+    trace_path.parent.mkdir(parents=True, exist_ok=True)
+    trace_path.write_text('{"type":"turn.failed"}\n')
+    assert governor.ledger.acquire(run_id="run-retry", issue=2, active_slot=config.active_slot)
+    governor.ledger.update("run-retry", trace_path=str(trace_path))
+    governor.ledger.finish("run-retry", "failed", error="exit 1")
+
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.build_bundle",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("temporary upload outage")),
+    )
+    first = governor._export_terminal_trace(
+        RunResult(run_id="run-retry", issue=2, state="failed", trace_path=trace_path)
+    )
+    assert first.trace_export_status == "failed"
+    assert trace_path.exists()
+
+    manifest = {
+        "quality": {"tier": "gold"},
+        "bundle_content_sha256": "abc",
+    }
+    monkeypatch.setattr("src.workspace.trace_backfill.build_bundle", lambda **kwargs: manifest)
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.upload_and_verify",
+        lambda **kwargs: ("training-bundles/v2/gold/run-retry", {}),
+    )
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.record_verified_export", lambda **kwargs: None
+    )
+
+    governor._retry_failed_trace_exports()
+
+    with governor.ledger._connect() as conn:
+        attempt = conn.execute(
+            "SELECT status, attempts FROM trace_bundle_export_attempts WHERE run_id = ?",
+            ("run-retry",),
+        ).fetchone()
+    assert dict(attempt) == {"status": "verified", "attempts": 2}
+
+
+def test_terminal_run_without_trace_is_accounted_for(tmp_path: Path) -> None:
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        trace_export_enabled=True,
+        codex_home=tmp_path / ".codex",
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    assert governor.ledger.acquire(run_id="run-missing", issue=3, active_slot=config.active_slot)
+    governor.ledger.finish("run-missing", "interrupted", error="failed before Codex launch")
+
+    result = governor._export_terminal_trace(
+        RunResult(run_id="run-missing", issue=3, state="interrupted")
+    )
+
+    assert result.trace_export_status == "unavailable"
+    assert result.trace_export_error == "terminal trace file unavailable"
+    with governor.ledger._connect() as conn:
+        attempt = conn.execute(
+            "SELECT status, attempts FROM trace_bundle_export_attempts WHERE run_id = ?",
+            ("run-missing",),
+        ).fetchone()
+    assert dict(attempt) == {"status": "unavailable", "attempts": 1}
 
 
 def test_project_agents_pin_role_specific_model_policy() -> None:

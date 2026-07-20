@@ -117,6 +117,12 @@ update_repo() {
   fi
 }
 
+sync_crawler_runtime() {
+  as_runner env \
+    PATH="/home/codex-runner/.local/bin:/usr/local/bin:/usr/bin:/bin" \
+    bash -c "cd '${REPO_DIR}/apps/crawler' && uv sync --frozen --no-dev"
+}
+
 install_units() {
   local unit
   for unit in "${UNITS[@]}"; do
@@ -135,11 +141,16 @@ verify_entrypoints() {
     "${REPO_DIR}/scripts/codex-company-resolver-governor.py" \
     "${REPO_DIR}/scripts/codex-daily-routine-runner.py" \
     "${REPO_DIR}/scripts/codex-error-review-bundle.py" \
+    "${REPO_DIR}/scripts/codex-trace-backfill.py" \
     "${REPO_DIR}/scripts/codex-usage-probe.py" \
     "${REPO_DIR}/apps/crawler/src/workspace/codex_runner.py" \
-    "${REPO_DIR}/apps/crawler/src/workspace/codex_routine_runner.py"
-  as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" python3 -c \
-    'import src.workspace.codex_runner; import src.workspace.codex_routine_runner'
+    "${REPO_DIR}/apps/crawler/src/workspace/codex_routine_runner.py" \
+    "${REPO_DIR}/apps/crawler/src/workspace/trace_backfill.py"
+  as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
+    "${REPO_DIR}/apps/crawler/.venv/bin/python" -c \
+    'import src.workspace.codex_runner; import src.workspace.codex_routine_runner; import src.workspace.trace_backfill'
+  as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
+    "${REPO_DIR}/scripts/codex-trace-backfill.py" --help >/dev/null
   python3 "${REPO_DIR}/scripts/codex-error-review-bundle.py" --help >/dev/null
 }
 
@@ -161,6 +172,7 @@ main() {
   fi
 
   update_repo
+  sync_crawler_runtime
   install_units
   verify_entrypoints
   maybe_start_timers
