@@ -24,6 +24,7 @@ import structlog
 
 from src.config import settings
 from src.metrics import (
+    browser_playwright_recycles_total,
     inflight_deadletter_depth,
     inflight_depth,
     inflight_heartbeat_total,
@@ -58,6 +59,11 @@ _ERROR_BACKOFF_S = 300  # 5 minutes
 
 # Idle backoff when no work is available (seconds).
 _IDLE_BACKOFF_S = 2.0
+
+# Driver shutdown normally takes milliseconds. A broken Playwright transport
+# must not pin a discovery coroutine forever during scheduled recycling or
+# container shutdown.
+_PLAYWRIGHT_STOP_TIMEOUT_S = 15.0
 
 
 def _timestamp(value) -> float:
@@ -391,12 +397,86 @@ async def _ensure_playwright(worker_log):
     return pw, pw_ctx
 
 
-async def _stop_playwright(pw, worker_log):
-    """Stop a Playwright server process, suppressing errors."""
+async def _stop_playwright(pw, worker_log) -> bool:
+    """Stop a Playwright server process and report whether it succeeded."""
     try:
-        await pw.stop()
+        await asyncio.wait_for(pw.stop(), timeout=_PLAYWRIGHT_STOP_TIMEOUT_S)
+    except TimeoutError:
+        worker_log.warning(
+            "pipeline.worker.playwright_stop_timeout",
+            timeout_seconds=_PLAYWRIGHT_STOP_TIMEOUT_S,
+        )
+        return False
     except Exception:
         worker_log.warning("pipeline.worker.playwright_stop_error", exc_info=True)
+        return False
+    return True
+
+
+async def _recycle_playwright_if_due(
+    pw,
+    started_at: float | None,
+    worker_log,
+    *,
+    now: float | None = None,
+):
+    """Bound one browser worker's long-lived Playwright driver lifetime.
+
+    Recycling happens at the top of the worker loop, before a new claim, so an
+    in-flight browser is never interrupted. Closing the Playwright connection
+    also terminates any Chromium child that survived page-level cleanup. This
+    is the outer safety boundary for multi-day driver/renderer growth (#5488).
+    """
+    recycle_after = max(0.0, float(settings.browser_playwright_recycle_seconds))
+    checked_at = time.monotonic() if now is None else now
+
+    if pw is None:
+        try:
+            replacement, pw_ctx = await _ensure_playwright(worker_log)
+        except Exception:
+            browser_playwright_recycles_total.labels(outcome="recovery_error").inc()
+            worker_log.warning("pipeline.worker.playwright_recovery_error", exc_info=True)
+            return None, None, None
+        browser_playwright_recycles_total.labels(outcome="recovered").inc()
+        worker_log.info("pipeline.worker.playwright_recovered")
+        return replacement, pw_ctx, checked_at
+
+    if recycle_after <= 0 or started_at is None or checked_at - started_at < recycle_after:
+        return pw, None, started_at
+
+    age_seconds = round(checked_at - started_at, 1)
+    worker_log.info(
+        "pipeline.worker.playwright_recycle_started",
+        age_seconds=age_seconds,
+        limit_seconds=recycle_after,
+    )
+    stopped = await _stop_playwright(pw, worker_log)
+    if not stopped:
+        browser_playwright_recycles_total.labels(outcome="stop_error").inc()
+        # Starting a replacement while the old driver may still be alive
+        # would turn a cleanup fault into an unbounded process leak. Escaping
+        # the worker instead makes the pipeline stop and lets Docker replace
+        # the whole cgroup with a known-clean process tree.
+        raise RuntimeError("Playwright driver did not stop during scheduled recycle")
+
+    try:
+        replacement, pw_ctx = await _ensure_playwright(worker_log)
+    except Exception:
+        browser_playwright_recycles_total.labels(outcome="start_error").inc()
+        worker_log.warning(
+            "pipeline.worker.playwright_recycle_error",
+            age_seconds=age_seconds,
+            exc_info=True,
+        )
+        return None, None, None
+
+    browser_playwright_recycles_total.labels(outcome="success").inc()
+    worker_log.info(
+        "pipeline.worker.playwright_recycled",
+        age_seconds=age_seconds,
+        limit_seconds=recycle_after,
+    )
+    return replacement, pw_ctx, checked_at
 
 
 async def _discovery_worker(
@@ -425,14 +505,25 @@ async def _discovery_worker(
 
     # Browser workers share one Playwright server per worker coroutine.
     pw = None
+    pw_ctx = None
+    pw_started_at = None
     if browser:
         try:
-            pw, _pw_ctx = await _ensure_playwright(worker_log)
+            pw, pw_ctx = await _ensure_playwright(worker_log)
+            pw_started_at = time.monotonic()
         except Exception:
             worker_log.warning("pipeline.worker.playwright_unavailable", exc_info=True)
 
     try:
         while not shutdown_event.is_set():
+            if browser:
+                pw, replacement_ctx, pw_started_at = await _recycle_playwright_if_due(
+                    pw,
+                    pw_started_at,
+                    worker_log,
+                )
+                if replacement_ctx is not None:
+                    pw_ctx = replacement_ctx
             worker_heartbeat_ts.labels(worker_id=str(worker_id)).set_to_current_time()
             try:
                 work = await claim_work(browser=browser)
@@ -516,6 +607,11 @@ async def _discovery_worker(
     finally:
         if pw:
             await _stop_playwright(pw, worker_log)
+        # Keep the context-manager object alive for the same lifetime as the
+        # AsyncPlaywright instance. ``pw.stop()`` performs the actual close;
+        # the reference prevents accidental early collection and documents
+        # ownership of the paired object returned by ``async_playwright()``.
+        _ = pw_ctx
 
     worker_log.info("pipeline.worker.stopped")
 

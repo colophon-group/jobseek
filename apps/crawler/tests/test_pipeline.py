@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import fakeredis.aioredis
 import pytest
@@ -15,6 +16,7 @@ from src.workers.pipeline import (
     _BoardRecord,
     _lease_heartbeat,
     _process_monitor_work,
+    _recycle_playwright_if_due,
     _resolve_scraper,
     _scrape_item_from_redis,
 )
@@ -52,6 +54,107 @@ class TestBoardRecord:
     def test_get_with_default(self):
         rec = _BoardRecord("board-4", {})
         assert rec.get("nonexistent", "fallback") == "fallback"
+
+
+# ---------------------------------------------------------------------------
+# Playwright driver lifecycle
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_playwright_driver_is_not_recycled_before_limit(monkeypatch):
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "browser_playwright_recycle_seconds", 60)
+    current = MagicMock()
+    worker_log = MagicMock()
+
+    with (
+        patch("src.workers.pipeline._stop_playwright", new=AsyncMock()) as stop,
+        patch("src.workers.pipeline._ensure_playwright", new=AsyncMock()) as start,
+    ):
+        result = await _recycle_playwright_if_due(
+            current,
+            100.0,
+            worker_log,
+            now=159.9,
+        )
+
+    assert result == (current, None, 100.0)
+    stop.assert_not_awaited()
+    start.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_playwright_driver_recycles_between_claims_after_limit(monkeypatch):
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "browser_playwright_recycle_seconds", 60)
+    current = MagicMock()
+    replacement = MagicMock()
+    replacement_ctx = MagicMock()
+    worker_log = MagicMock()
+
+    with (
+        patch(
+            "src.workers.pipeline._stop_playwright",
+            new=AsyncMock(return_value=True),
+        ) as stop,
+        patch(
+            "src.workers.pipeline._ensure_playwright",
+            new=AsyncMock(return_value=(replacement, replacement_ctx)),
+        ) as start,
+    ):
+        result = await _recycle_playwright_if_due(
+            current,
+            100.0,
+            worker_log,
+            now=160.0,
+        )
+
+    assert result == (replacement, replacement_ctx, 160.0)
+    stop.assert_awaited_once_with(current, worker_log)
+    start.assert_awaited_once_with(worker_log)
+
+
+@pytest.mark.asyncio
+async def test_playwright_recycle_does_not_start_replacement_if_stop_fails(monkeypatch):
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "browser_playwright_recycle_seconds", 60)
+    current = MagicMock()
+    worker_log = MagicMock()
+
+    with (
+        patch(
+            "src.workers.pipeline._stop_playwright",
+            new=AsyncMock(return_value=False),
+        ),
+        patch("src.workers.pipeline._ensure_playwright", new=AsyncMock()) as start,
+        pytest.raises(RuntimeError, match="did not stop"),
+    ):
+        await _recycle_playwright_if_due(current, 100.0, worker_log, now=160.0)
+
+    start.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_playwright_missing_driver_is_recovered_before_claim(monkeypatch):
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "browser_playwright_recycle_seconds", 60)
+    replacement = MagicMock()
+    replacement_ctx = MagicMock()
+    worker_log = MagicMock()
+
+    with patch(
+        "src.workers.pipeline._ensure_playwright",
+        new=AsyncMock(return_value=(replacement, replacement_ctx)),
+    ) as start:
+        result = await _recycle_playwright_if_due(None, None, worker_log, now=500.0)
+
+    assert result == (replacement, replacement_ctx, 500.0)
+    start.assert_awaited_once_with(worker_log)
 
 
 # ---------------------------------------------------------------------------

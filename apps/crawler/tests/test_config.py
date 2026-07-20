@@ -10,6 +10,7 @@ class TestSettings:
         assert s.log_level == "INFO"
         assert s.crawler_max_concurrent == 20
         assert s.metrics_port == 9091
+        assert s.browser_playwright_recycle_seconds == 6 * 60 * 60
 
     def test_custom_values(self, monkeypatch):
         monkeypatch.setenv("DATABASE_URL", "postgresql://custom@localhost/custom")

@@ -49,6 +49,9 @@ INPUTS
 1. Window: last 24h ending at UTC now, rounded down to the minute. Use an
    explicit --since/--until pair so the window matches the report header
    exactly.
+   If a runner evidence bundle is available, read manifest.json,
+   host/docker-inspect-state.txt, and host/docker-cgroup-memory.json first.
+   The latter contains container IDs plus cgroup-v2 memory.events counters.
 2. Prior review reports: read every `.md` under
    ~/dev/claude/review-jobseek-errors/ before classifying. That directory
    is the agent's cross-run memory.
@@ -70,7 +73,7 @@ All runnable without sudo by the `deploy` user:
   docker stats --no-stream --format \
     'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'
   docker inspect --format \
-    '{{.Name}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' \
+    '{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' \
     $(docker ps -aq)
   dmesg -T 2>/dev/null | tail -n 500
   journalctl -k --since "24 hours ago" --no-pager 2>/dev/null | tail -500
@@ -79,8 +82,10 @@ All runnable without sudo by the `deploy` user:
 Flag as INCIDENT if ANY of:
   - /   usage ≥ 85%
   - /var/lib/docker usage ≥ 85% (if separate mount)
-  - Any container OOMKilled=true within the window
-  - Any container RestartCount incremented since yesterday's report
+  - Same-container cgroup memory.events.oom_kill increased, a container
+    created in-window has a positive counter, or an exited container/kernel
+    log proves an OOM inside the window
+  - Same-container RestartCount incremented since yesterday's report
   - Load average (15m) > CPU count × 2
   - Swap usage > 50% of swap total
   - dmesg/journalctl shows "Out of memory: Killed process", "I/O error",
@@ -90,6 +95,12 @@ Flag as INCIDENT if ANY of:
 If both dmesg and journalctl -k are restricted, note the gap in the
 report under ## Host (e.g. "host kernel log: unavailable") — do not
 treat the gap alone as an incident.
+
+OOMKilled is a sticky historical Docker state and RestartCount is scoped to
+one container object. Compare counters only when container IDs match. A
+changed ID normally means deployment/replacement; do not subtract its values
+from the prior container. OOMKilled=true without a same-generation counter
+delta or timestamped exited/kernel evidence is not a fresh daily incident.
 
 ================================================================
 LOG COLLECTION
@@ -152,7 +163,8 @@ Schema:
   disk /, disk docker, free mem, swap used, load 1/5/15,
   oom-killer (yes/no/unavailable),
   host kernel log (read/restricted),
-  any container RestartCount delta since yesterday.
+  any same-container RestartCount delta since yesterday,
+  any same-container cgroup memory.events.oom_kill delta.
 
   ## Totals
   | service | info | warning | error |
