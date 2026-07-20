@@ -183,6 +183,7 @@ test("manual CI dispatch can classify a PR without full code checks", () => {
 test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /node --test/);
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
+  assert.match(workflow, /scripts\/crawler-host-hygiene\.test\.mjs/);
   assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
 });

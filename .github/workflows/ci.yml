@@ -49,6 +49,7 @@ jobs:
         run: >
           node --test
           scripts/ci-workflow.test.mjs
+          scripts/crawler-host-hygiene.test.mjs
           scripts/docs-index.test.mjs
           scripts/dealroom-company-requests.test.mjs
 
