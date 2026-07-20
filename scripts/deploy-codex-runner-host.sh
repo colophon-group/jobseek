@@ -154,6 +154,13 @@ verify_entrypoints() {
   python3 "${REPO_DIR}/scripts/codex-error-review-bundle.py" --help >/dev/null
 }
 
+report_trace_retention() {
+  log "Codex trace retention report"
+  as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
+    "${REPO_DIR}/apps/crawler/.venv/bin/python" \
+    "${REPO_DIR}/scripts/codex-trace-backfill.py" --report
+}
+
 maybe_start_timers() {
   if [[ "${START_TIMERS}" == "1" ]]; then
     systemctl start "${TIMERS[@]}"
@@ -175,6 +182,7 @@ main() {
   sync_crawler_runtime
   install_units
   verify_entrypoints
+  report_trace_retention
   maybe_start_timers
   systemctl list-timers --all 'jobseek-codex*' --no-pager
 }

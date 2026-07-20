@@ -146,6 +146,9 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
     assert config.codex_reasoning_effort == "high"
     assert config.trace_export_enabled
     assert config.trace_cleanup_enabled
+    assert config.disk_alert_margin_gib == 2
+    assert config.max_quarantine_runs == 50
+    assert config.max_quarantine_gib == 2
     assert build_codex_command(config, "do the task") == [
         "codex",
         "exec",
@@ -189,7 +192,13 @@ def test_terminal_trace_hook_records_verified_cleanup(monkeypatch, tmp_path: Pat
     cleaned: list[str] = []
     monkeypatch.setattr(
         "src.workspace.trace_backfill.cleanup_verified_sources",
-        lambda **kwargs: cleaned.append(kwargs["run_id"]),
+        lambda **kwargs: (
+            cleaned.append(kwargs["run_id"]) or {"reclaimed_bytes": trace_path.stat().st_size}
+        ),
+    )
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.prune_hf_dataset_cache",
+        lambda **kwargs: {"repo_id": kwargs["repo_id"], "revisions": 0, "reclaimed_bytes": 0},
     )
 
     result = governor._export_terminal_trace(
@@ -867,6 +876,53 @@ def test_dry_run_host_health_does_not_require_git_identity(monkeypatch, tmp_path
     health = check_host_health(config)
 
     assert health.ok
+
+
+def test_host_health_warns_before_disk_admission_floor(monkeypatch, tmp_path: Path) -> None:
+    gib = 1024**3
+    config = RunnerConfig(
+        root=tmp_path,
+        dry_run=True,
+        min_disk_free_gib=5,
+        disk_alert_margin_gib=2,
+        min_mem_available_gib=0,
+        max_load_per_cpu=999,
+    ).resolved()
+    monkeypatch.setattr(
+        "src.workspace.codex_runner.shutil.disk_usage",
+        lambda path: SimpleNamespace(total=20 * gib, used=14 * gib, free=6 * gib),
+    )
+    monkeypatch.setattr("src.workspace.codex_runner._mem_available_gib", lambda: 99)
+    monkeypatch.setattr("src.workspace.codex_runner.os.getloadavg", lambda: (0, 0, 0))
+
+    health = check_host_health(config)
+
+    assert health.ok
+    assert health.warning == "disk free 6.0GiB is within 2.0GiB of the admission floor"
+    assert health.disk_free_bytes == 6 * gib
+
+
+def test_quarantine_limit_blocks_new_admission(tmp_path: Path) -> None:
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+        min_disk_free_gib=0,
+        min_mem_available_gib=0,
+        max_load_per_cpu=999,
+        max_quarantine_runs=1,
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))
+    governor.ledger.record_trace_bundle_attempt(
+        "issue-1-1-aaaaaaaa",
+        status="quarantined",
+        retained_bytes=123,
+    )
+
+    decision = governor.should_start()
+
+    assert not decision.should_run
+    assert decision.reason == "trace quarantine retention limit reached: 1 runs, 123 bytes"
 
 
 def test_safe_env_excludes_unneeded_secrets() -> None:
