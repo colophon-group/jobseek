@@ -38,6 +38,14 @@ const publishMcpServerWorkflow = readFileSync(
   ".github/workflows/publish-mcp-server.yml",
   "utf8",
 );
+const deployCodexRunnerWorkflow = readFileSync(
+  ".github/workflows/deploy-codex-runner.yml",
+  "utf8",
+);
+const deployCodexRunnerHostScript = readFileSync(
+  "scripts/deploy-codex-runner-host.sh",
+  "utf8",
+);
 const mainStrictGateRuleset = JSON.parse(
   readFileSync(".github/rulesets/main-strict-gate.json", "utf8"),
 );
@@ -118,6 +126,13 @@ function workflowJobBlock(workflowSource, jobId) {
   return match[0];
 }
 
+function durationSeconds(value) {
+  const match = value.match(/^(\d+)([smh])$/);
+  assert.ok(match, `unsupported duration ${value}`);
+  const unitSeconds = { s: 1, m: 60, h: 3600 };
+  return Number(match[1]) * unitSeconds[match[2]];
+}
+
 test("CI change detection uses the pinned paths-filter action", () => {
   assert.match(
     workflow,
@@ -170,6 +185,32 @@ test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
   assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
+});
+
+test("Codex deploy transport outlives the runner lock wait", () => {
+  const workflowLockTimeout = deployCodexRunnerWorkflow.match(
+    /^  JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S: "(\d+)"$/m,
+  );
+  const hostLockTimeout = deployCodexRunnerHostScript.match(
+    /LOCK_TIMEOUT_S="\$\{JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S:-(\d+)\}"/,
+  );
+  const commandTimeout = deployCodexRunnerWorkflow.match(
+    /^          command_timeout: (\d+[smh])$/m,
+  );
+
+  assert.ok(workflowLockTimeout, "missing workflow runner-lock timeout");
+  assert.ok(hostLockTimeout, "missing host runner-lock timeout default");
+  assert.ok(commandTimeout, "missing SSH command timeout");
+  assert.equal(workflowLockTimeout[1], hostLockTimeout[1]);
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /envs: GITHUB_SHA,JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S/,
+  );
+  assert.ok(
+    durationSeconds(commandTimeout[1]) >= Number(workflowLockTimeout[1]) + 900,
+    "SSH command timeout must include the lock wait plus 15 minutes for deployment",
+  );
+  assert.match(deployCodexRunnerWorkflow, /cancel-in-progress: false/);
 });
 
 test("maybe-auto-merge wakes without manual retries", () => {
