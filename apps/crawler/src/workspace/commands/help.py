@@ -332,19 +332,24 @@ breezy — Breezy HR Public Listing Endpoint
                     /json validates as a real listing endpoint."""
 
 MONITOR_COMEET = """\
-comeet — Comeet hosted careers monitor
+comeet — Comeet hosted data and Careers API monitor
 
-  Source:   COMPANY_POSITIONS_DATA embedded in the public board HTML
+  Sources:  COMPANY_POSITIONS_DATA embedded in hosted/custom board HTML, or
+            GET https://www.comeet.co/careers-api/2.0/company/{company_id}/positions
   Returns:  Full job data (title, HTML description, locations, employment_type,
-            job_location_type, responsibilities, qualifications)
+            job_location_type, date_posted, responsibilities, qualifications)
             metadata: uid, department, experience_level, company_name, time_updated
-  Scraper:  Not needed (one board request returns all full job records)
+  Scraper:  Not needed (one board/API request returns all full job records)
+  Cap:      50,000 jobs
 
-  Config:   None required. Company and board identifiers are derived from:
+  Config:   None required for hosted boards. Identifiers are derived from:
             https://www.comeet.com/jobs/{company}/{board_id}
+            Custom career sites use public credentials embedded in their HTML:
+            {"company_id": "67.007", "token": "PUBLIC_EMBED_TOKEN"}
 
-  Detection:  ws probe shows "Comeet embedded data — company/board, N jobs"
-  Zero jobs?  Verify the board page still contains COMPANY_POSITIONS_DATA."""
+  Detection:  ws probe shows "Comeet — embedded data: company/board, N jobs"
+              or "Comeet — API company: X, N jobs"
+  Zero jobs?  An empty embedded list or API array is a valid active board."""
 
 MONITOR_EIGHTFOLD = """\
 eightfold — Eightfold AI Careers Portal (hybrid sitemap + PCSX)
@@ -463,29 +468,6 @@ gem — Gem ATS Job Board API
 
   Detection:  ws probe shows "Gem API — slug: {token}, N jobs"
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
-
-MONITOR_COMEET = """\
-comeet — Comeet Careers API
-
-  API:      GET https://www.comeet.co/careers-api/2.0/company/{company_id}/positions
-  Returns:  Full job data (title, HTML description, locations, employment_type,
-            job_location_type, date_posted, qualifications, responsibilities)
-            metadata: department, experience_level, uid, company_name
-  Scraper:  Not needed (details=true returns full HTML sections)
-  Cap:      50,000 jobs
-  Note:     Single API call — no pagination or browser needed
-
-  Config:
-    {"company_id": "67.007", "token": "PUBLIC_EMBED_TOKEN"}
-
-    company_id  Comeet company identifier.
-    token       Public token embedded beside the API endpoint in the careers page.
-                Both values are auto-filled when ws probe finds the endpoint in
-                page HTML, including valid feeds that currently contain zero jobs.
-
-  Detection:  ws probe shows "Comeet API — company: X, N jobs"
-  Zero jobs?  An empty JSON array is a valid active board; verify the embedded
-              company_id and token against the careers page source."""
 
 MONITOR_GREENHOUSE = """\
 greenhouse — Greenhouse Public API

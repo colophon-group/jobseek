@@ -157,8 +157,13 @@ def _details(raw: dict) -> list[dict]:
     if not isinstance(details, list):
         return []
     valid = [item for item in details if isinstance(item, dict)]
-    valid.sort(key=lambda item: item.get("order") if isinstance(item.get("order"), int) else 0)
+    valid.sort(key=_detail_order)
     return valid
+
+
+def _detail_order(item: dict) -> int:
+    order = item.get("order")
+    return order if isinstance(order, int) else 0
 
 
 def _content(raw: dict) -> tuple[str | None, dict | None]:
