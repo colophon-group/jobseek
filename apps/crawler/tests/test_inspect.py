@@ -18,6 +18,56 @@ def test_real_csvs_validate():
     assert errors == [], "\n".join(str(e) for e in errors)
 
 
+class TestNavigationTimeoutBoardMigrations:
+    """Boards from #5708 that serve complete HTML must stay off Playwright."""
+
+    def test_server_rendered_boards_use_static_http(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {row["board_slug"]: row for row in rows}
+        slugs = (
+            "airbus-careers-bank",
+            "china-railway-group-careers",
+            "coop-careers-transgourmet-fr",
+            "msf-careers-talentsoft-ch",
+        )
+
+        for slug in slugs:
+            row = by_slug[slug]
+            monitor_config = json.loads(row.get("monitor_config") or "{}")
+            scraper_config = json.loads(row.get("scraper_config") or "{}")
+            assert monitor_config.get("render") is not True
+            assert scraper_config.get("render") is not True
+
+        crec = by_slug["china-railway-group-careers"]
+        crec_monitor = json.loads(crec["monitor_config"])
+        assert crec_monitor["pagination"] == {
+            "url_template": ("https://www.crec.cn/web/rlzy65/rczp11/469ad9a7-{page}.html"),
+            "max_pages": 4,
+        }
+
+        transgourmet = by_slug["coop-careers-transgourmet-fr"]
+        assert "liste-toutes-offres.aspx" in transgourmet["board_url"]
+        transgourmet_monitor = json.loads(transgourmet["monitor_config"])
+        assert transgourmet_monitor["pagination"] == {
+            "param_name": "page",
+            "max_pages": 15,
+        }
+
+        msf = by_slug["msf-careers-talentsoft-ch"]
+        msf_scraper = json.loads(msf["scraper_config"])
+        assert [step.get("field") for step in msf_scraper["steps"]] == [
+            "title",
+            "description",
+            "responsibilities",
+            "qualifications",
+        ]
+
+
 class TestValidationError:
     def test_str_with_row(self):
         err = ValidationError("file.csv", 5, "bad value")

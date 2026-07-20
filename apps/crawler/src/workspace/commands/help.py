@@ -723,9 +723,9 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     render         If true, use Playwright to render page (default: false)
     actions        Browser action pipeline (auto-enables render)
     wait           Navigation wait strategy (Playwright only)
-    wait_fallback  Fallback wait strategy retried once on Page.goto timeout
-                   (Playwright only). Default: "domcontentloaded". Set to
-                   null to opt out.
+    wait_fallback  Fallback load state checked on the current document after
+                   Page.goto timeout (Playwright only). Default:
+                   "domcontentloaded". Set to null to opt out.
     timeout        Navigation timeout in ms (Playwright only)
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
@@ -880,11 +880,11 @@ dom — Link Extraction (fallback)
 
     render         false (default) = static HTTP, true = Playwright
     wait           Wait strategy: "load" | "domcontentloaded" | "networkidle" (default) | "commit"
-    wait_fallback  Fallback wait strategy retried once on Page.goto timeout.
-                   Default: "domcontentloaded" (applied automatically). Set
-                   to null to opt out. The retry reuses the same timeout, so
-                   worst-case wall-clock is 2*timeout. Use for SPA sites
-                   where "networkidle" never settles (persistent analytics/
+    wait_fallback  Fallback load state checked on the current document after
+                   Page.goto timeout. Default: "domcontentloaded" (applied
+                   automatically). Set to null to opt out. The check is capped
+                   at 5s and does not reload the page. Use for SPA sites where
+                   "networkidle" never settles (persistent analytics/
                    telemetry requests).
     timeout        Navigation timeout in ms (default: 30000)
     user_agent     Custom User-Agent string
@@ -1372,8 +1372,9 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
     wait             Navigation wait strategy: "load", "domcontentloaded", or
                      "networkidle". Default: "load". Use "networkidle" for sites
                      where XHRs fire late; avoid it on heavy sites (analytics/ads).
-    wait_fallback    Fallback wait strategy retried once on Page.goto timeout.
-                     Default: "domcontentloaded". Set to null to opt out.
+    wait_fallback    Fallback load state checked on the current document after
+                     Page.goto timeout. Default: "domcontentloaded". Set to
+                     null to opt out.
                      Note: sniffer monitors depend on network activity to
                      capture XHRs — an early fallback may miss late-loading
                      responses. If API discovery regresses, set to null.
@@ -1435,9 +1436,9 @@ json-ld — Schema.org JobPosting Extractor
     render         Use Playwright (default: false)
     actions        Browser action pipeline (auto-enables render)
     wait           Navigation wait strategy (Playwright only)
-    wait_fallback  Fallback wait strategy retried once on Page.goto timeout
-                   (Playwright only). Default: "domcontentloaded". Set to
-                   null to opt out.
+    wait_fallback  Fallback load state checked on the current document after
+                   Page.goto timeout (Playwright only). Default:
+                   "domcontentloaded". Set to null to opt out.
     timeout        Navigation timeout in ms (Playwright only)
 
   Fields extracted (from schema.org properties):
@@ -1489,9 +1490,9 @@ nextdata — Next.js __NEXT_DATA__ Page Extractor
     render        Use Playwright (default: false)
     actions       Browser action pipeline (auto-enables render)
     wait          Navigation wait strategy (Playwright only)
-    wait_fallback Fallback wait strategy retried once on Page.goto timeout
-                  (Playwright only). Default: "domcontentloaded". Set to
-                  null to opt out.
+    wait_fallback Fallback load state checked on the current document after
+                  Page.goto timeout (Playwright only). Default:
+                  "domcontentloaded". Set to null to opt out.
     timeout       Navigation timeout in ms (Playwright only)
 
   When to use:  When job pages are Next.js and embed data in __NEXT_DATA__.
@@ -1538,9 +1539,9 @@ embedded — Generalized Embedded Data Extractor
     render        Use Playwright (default: false)
     actions       Browser action pipeline (auto-enables render)
     wait          Navigation wait strategy (Playwright only)
-    wait_fallback Fallback wait strategy retried once on Page.goto timeout
-                  (Playwright only). Default: "domcontentloaded". Set to
-                  null to opt out.
+    wait_fallback Fallback load state checked on the current document after
+                  Page.goto timeout (Playwright only). Default:
+                  "domcontentloaded". Set to null to opt out.
     timeout       Navigation timeout in ms (Playwright only)
 
   When to use:  Sites with structured job data embedded in JavaScript
@@ -1574,10 +1575,10 @@ dom — Step-based Extraction Engine
     render         false (default) = static HTTP, true = Playwright
     wait           Wait strategy (Playwright only): load | domcontentloaded
                    | networkidle (default) | commit
-    wait_fallback  Fallback wait strategy retried once on Page.goto timeout.
-                   Default: "domcontentloaded" (applied automatically). Set
-                   to null to opt out. Use for SPA sites where "networkidle"
-                   never settles.
+    wait_fallback  Fallback load state checked on the current document after
+                   Page.goto timeout. Default: "domcontentloaded" (applied
+                   automatically). Set to null to opt out. Use for SPA sites
+                   where "networkidle" never settles.
     timeout        Navigation timeout in ms (default: 30000)
     user_agent     Custom User-Agent
     headless       Run headless (default: true)
@@ -1641,13 +1642,10 @@ api_sniffer — XHR/Fetch API Capture (single page)
               responsibilities, skills. Prefix with "metadata." for extras.
     wait          (Browser mode only) Navigation wait strategy: "load",
                   "domcontentloaded", or "networkidle". Default: "load".
-    wait_fallback (Browser mode only) Fallback wait strategy retried once on
-                  Page.goto timeout. Default: "domcontentloaded". Set to null
-                  to opt out. Note: the sniffer captures XHRs during both the
-                  primary and fallback navigations, so the retry adds rather
-                  than replaces responses — but if API discovery regresses
-                  on a specific board, set to null to revert to single-attempt
-                  behavior.
+    wait_fallback (Browser mode only) Fallback load state checked on the current
+                  document after Page.goto timeout. Default: "domcontentloaded".
+                  Set to null to opt out. The check does not start a second
+                  navigation, so already captured XHRs and DOM state are kept.
     timeout       (Browser mode only) Navigation timeout in ms. Default: 20000.
     settle        (Browser mode only) Seconds to wait for late XHRs. Default: 3.
 
