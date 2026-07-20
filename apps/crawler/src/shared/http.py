@@ -84,6 +84,8 @@ class RequestHostTracker:
 
     hosts: set[str] = field(default_factory=set)
     last_host: str | None = None
+    last_status_code: int | None = None
+    last_transport_error: str | None = None
 
     def note(self, host: str) -> None:
         normalized = host.rstrip(".").lower()
@@ -91,6 +93,39 @@ class RequestHostTracker:
             return
         self.hosts.add(normalized)
         self.last_host = normalized
+
+    def note_request(self, host: str) -> None:
+        """Start a new network outcome, superseding the previous request."""
+
+        self.note(host)
+        self.last_status_code = None
+        self.last_transport_error = None
+
+    def note_response(self, host: str, status_code: int) -> None:
+        self.note(host)
+        self.last_status_code = status_code
+        self.last_transport_error = None
+
+    def note_transport_error(self, host: str, exc: httpx.TransportError) -> None:
+        self.note(host)
+        self.last_status_code = None
+        self.last_transport_error = type(exc).__name__
+
+    @property
+    def transient_failure_host(self) -> str | None:
+        """Return the final host only for an upstream-transient outcome.
+
+        Parser/configuration failures after a successful response must not
+        open a host-wide circuit. Network transport errors and overload/
+        availability responses are safe to coalesce across postings.
+        """
+
+        if self.last_transport_error is not None:
+            return self.last_host
+        status = self.last_status_code
+        if status in (408, 425, 429) or (status is not None and 500 <= status <= 599):
+            return self.last_host
+        return None
 
 
 _request_host_tracker: contextvars.ContextVar[RequestHostTracker | None] = contextvars.ContextVar(
@@ -118,9 +153,18 @@ class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         tracker = _request_host_tracker.get()
-        if tracker is not None and request.url.host:
-            tracker.note(request.url.host)
-        return await self._inner.handle_async_request(request)
+        host = request.url.host or ""
+        if tracker is not None and host:
+            tracker.note_request(host)
+        try:
+            response = await self._inner.handle_async_request(request)
+        except httpx.TransportError as exc:
+            if tracker is not None and host:
+                tracker.note_transport_error(host, exc)
+            raise
+        if tracker is not None and host:
+            tracker.note_response(host, response.status_code)
+        return response
 
     async def aclose(self) -> None:
         await self._inner.aclose()

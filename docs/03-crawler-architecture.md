@@ -61,18 +61,22 @@ ready:browser:2   -- Tier 2: browser scrapes
 
 **Per-domain rate limiting** via `ratelimit:{domain}` keys prevents hammering shared ATS APIs (e.g. all Greenhouse boards share `boards-api.greenhouse.io`).
 
-**Per-upstream-host circuit breaking** shares failure state across boards
-without conflating it with the scheduler throttle key. The HTTP transport
-records the actual hostname used after redirects; a failed monitor run advances
-`host_fail:<egress_host>` once, regardless of internal request retries or page
-count. Three failed runs inside ten minutes open `host_open:<egress_host>` for
-thirty minutes. Sibling monitors are then rescheduled to the stored unblock
-timestamp before making a network or proxy request. When that time arrives,
+**Per-upstream-host circuit breaking** shares failure state across monitor and
+scrape work without conflating it with the scheduler throttle key. The HTTP
+transport records the actual hostname used after redirects. A failed monitor
+run advances `host_fail:<egress_host>` once regardless of internal request
+retries or page count. A failed scrape advances it only when its final network
+outcome is a transport error, HTTP 408/425/429, or 5xx; extraction/configuration
+failures after a reachable response cannot block a whole host. Three failed
+runs inside ten minutes open `host_open:<egress_host>` for thirty minutes.
+Sibling boards and postings are rescheduled to the stored unblock timestamp
+before making a network or proxy request. When that time arrives,
 `host_probe:<egress_host>` admits one half-open recovery run and defers the
 others, avoiding a thundering herd. A successful probe closes the circuit;
 another failure reopens it for a fresh interval. Ordinary successful runs reset
 the failure streak, while a late in-flight success cannot close an open circuit
-prematurely. The
+prematurely. Monitor and scraper egress hosts are learned separately because a
+board can discover and scrape through different origins. The
 `crawler_host_circuit_state{egress_host}` gauge and
 `UpstreamHostCircuitOpen` alert provide one signal per failing origin.
 
