@@ -19,10 +19,12 @@ from src.sync import (
     _UPSERT_OCCUPATION_DOMAINS,
     _UPSERT_OCCUPATION_NAMES,
     _UPSERT_OCCUPATIONS,
-    _fetch_active_facet_counts,
+    _fetch_company_posting_counts,
+    _fetch_facet_counts,
     _is_trivial_watchlist,
     _load_boards,
     _load_companies,
+    _one_year_ago_epoch,
     _populate_locations_if_empty,
     refresh_typesense_counts,
     run_sync,
@@ -1584,7 +1586,7 @@ class TestSyncLocationsTypesense:
         assert "aliases" not in captured_docs[0]
 
 
-class TestFetchActiveFacetCounts:
+class TestFetchFacetCounts:
     """Tests for the Typesense facet-count helper used by both
     ``sync_locations_typesense`` and ``refresh_typesense_counts`` to read
     post-ancestor-expansion counts (issue #2978).
@@ -1604,7 +1606,7 @@ class TestFetchActiveFacetCounts:
                 }
             ]
         }
-        out = _fetch_active_facet_counts(client, "location_ids")
+        out = _fetch_facet_counts(client, "location_ids")
         assert out == {"30": 2416, "10": 1086, "4": 14523}
         # Sanity-check the request shape — must include facet_by + a
         # large max_facet_values + the web's POSTING_BASE_FILTER
@@ -1619,12 +1621,42 @@ class TestFetchActiveFacetCounts:
     def test_empty_response_returns_empty_dict(self):
         client = MagicMock()
         client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
-        assert _fetch_active_facet_counts(client, "location_ids") == {}
+        assert _fetch_facet_counts(client, "location_ids") == {}
 
     def test_missing_facet_counts_returns_empty_dict(self):
         client = MagicMock()
         client.collections["job_posting"].documents.search.return_value = {}
-        assert _fetch_active_facet_counts(client, "location_ids") == {}
+        assert _fetch_facet_counts(client, "location_ids") == {}
+
+    def test_company_counts_use_active_and_flow_filters(self):
+        client = MagicMock()
+
+        def _search(params):
+            if params["filter_by"] == "is_active:true && has_content:!=false":
+                counts = [{"value": "co-active", "count": 12}]
+            else:
+                counts = [{"value": "co-year", "count": 34}]
+            return {"facet_counts": [{"field_name": "company_id", "counts": counts}]}
+
+        client.collections["job_posting"].documents.search.side_effect = _search
+        now = datetime(2024, 2, 29, 12, tzinfo=UTC)
+
+        active, year = _fetch_company_posting_counts(client, now)
+
+        assert active == {"co-active": 12}
+        assert year == {"co-year": 34}
+        params = [
+            call.args[0]
+            for call in client.collections["job_posting"].documents.search.call_args_list
+        ]
+        assert params[0]["facet_by"] == "company_id"
+        assert params[0]["filter_by"] == "is_active:true && has_content:!=false"
+        assert params[1]["facet_by"] == "company_id"
+        assert params[1]["filter_by"] == (
+            "has_content:!=false && first_seen_at:>"
+            f"{int(datetime(2023, 2, 28, 12, tzinfo=UTC).timestamp())}"
+        )
+        assert _one_year_ago_epoch(now) == int(datetime(2023, 2, 28, 12, tzinfo=UTC).timestamp())
 
 
 class TestRefreshTypesenseCounts:
@@ -1778,46 +1810,27 @@ class TestRefreshTypesenseCounts:
         assert tech_params["filter_by"] == "is_active:true && has_content:!=false"
 
     async def test_company_counts_apply_has_content_filter(self):
-        """Issue #3009: the precomputed `company.active_posting_count` /
-        `year_posting_count` numbers must use the same `has_content`
-        filter as the web's `POSTING_BASE_FILTER` so the unfiltered
-        `listTopCompanies` path can't structurally diverge from the
-        filtered facet path. Without `has_content`, McDonald's reads
-        55,591 from `company` collection vs ~44,161 from the live facet
-        (12k delta = postings whose exporter set `has_content=false`).
-
-        This test asserts:
-        1. Both company SQL queries (active + year) include the
-           has_content predicate equivalent to the exporter formula.
-        2. The resulting Typesense upsert docs propagate per-company
-           counts unchanged from whatever the SQL returns.
-        """
-        captured_sql: list[str] = []
-
-        async def _fetch(sql, *args, **kwargs):
-            captured_sql.append(sql)
-            # Dispatch by the column shape of the query so seniority/
-            # technology queries (also `WHERE is_active`) don't get
-            # confused with the company queries.
-            if "company_id::text" in sql and "first_seen_at" not in sql:
-                return [
-                    {"company_id": "co-mcdonalds", "cnt": 44161},
-                    {"company_id": "co-accenture", "cnt": 52273},
-                ]
-            if "company_id::text" in sql and "first_seen_at" in sql:
-                return [
-                    {"company_id": "co-mcdonalds", "cnt": 55026},
-                    {"company_id": "co-accenture", "cnt": 81971},
-                ]
-            # Seniority + technology queries also touch local_conn —
-            # return empty for them.
-            return []
-
+        """Issue #5752: scheduled company counts use indexed facets only."""
         local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=_fetch)
 
         client = MagicMock()
-        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
+
+        def _search(params):
+            if params.get("facet_by") != "company_id":
+                return {"facet_counts": []}
+            if params["filter_by"] == "is_active:true && has_content:!=false":
+                counts = [
+                    {"value": "co-mcdonalds", "count": 44161},
+                    {"value": "co-accenture", "count": 52273},
+                ]
+            else:
+                counts = [
+                    {"value": "co-mcdonalds", "count": 55026},
+                    {"value": "co-accenture", "count": 81971},
+                ]
+            return {"facet_counts": [{"field_name": "company_id", "counts": counts}]}
+
+        client.collections["job_posting"].documents.search.side_effect = _search
 
         captured_upserts: list[tuple[str, list[dict]]] = []
 
@@ -1827,33 +1840,17 @@ class TestRefreshTypesenseCounts:
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
             await refresh_typesense_counts(local_conn, client)
 
-        # 1. Both company SQL queries must include the has_content predicate.
-        company_sqls = [s for s in captured_sql if "company_id::text" in s]
-        assert len(company_sqls) == 2, (
-            f"expected active + year company queries, got {len(company_sqls)}"
-        )
-        for sql in company_sqls:
-            assert "description_r2_hash IS NOT NULL" in sql, (
-                f"missing description_r2_hash predicate in:\n{sql}"
-            )
-            assert "cardinality(titles) > 0" in sql, (
-                f"missing titles cardinality predicate in:\n{sql}"
-            )
-            assert "length(trim(titles[1])) > 0" in sql, (
-                f"missing titles non-blank predicate in:\n{sql}"
-            )
+        local_conn.fetch.assert_not_awaited()
+        company_params = [
+            call.args[0]
+            for call in client.collections["job_posting"].documents.search.call_args_list
+            if call.args[0].get("facet_by") == "company_id"
+        ]
+        assert len(company_params) == 2
+        assert company_params[0]["filter_by"] == "is_active:true && has_content:!=false"
+        assert company_params[1]["filter_by"].startswith("has_content:!=false && first_seen_at:>")
+        assert "is_active" not in company_params[1]["filter_by"]
 
-        # 2. The active query keeps `is_active`; the year query keeps
-        #    `first_seen_at` and drops `is_active` (flow filter parity
-        #    with `POSTING_FLOW_FILTER` on the web side, issue #2965).
-        active_sql = next(s for s in company_sqls if "is_active" in s and "first_seen_at" not in s)
-        year_sql = next(s for s in company_sqls if "first_seen_at" in s)
-        assert "is_active" in active_sql
-        assert "is_active" not in year_sql, (
-            "year_posting_count is a flow query — should not gate on is_active"
-        )
-
-        # 3. Resulting upsert docs reflect the SQL counts.
         company_docs = next((docs for c, docs in captured_upserts if c == "company"), [])
         by_id = {d["id"]: d for d in company_docs}
         assert by_id["co-mcdonalds"]["active_posting_count"] == 44161
@@ -1863,40 +1860,9 @@ class TestRefreshTypesenseCounts:
 
 
 class TestSyncCompaniesTypesense:
-    """Issue #3238: ``sync_companies_typesense`` computes the initial
-    ``active_posting_count`` / ``year_posting_count`` on company docs.
-    Both queries must gate on the same ``has_content`` predicate as the
-    web's ``POSTING_BASE_FILTER`` so a company card's badge cannot
-    structurally exceed the filtered facet count the user sees on
-    `/explore?company=<slug>`.
-    """
+    """Initial company documents use the same indexed count source."""
 
     async def test_company_counts_apply_has_content_filter(self):
-        """Both the active-count and year-count SQL must include the
-        ``has_content`` predicate mirror of the exporter formula:
-        ``description_r2_hash IS NOT NULL AND cardinality(titles) > 0
-        AND length(trim(titles[1])) > 0``. The resulting company doc
-        propagates only the gated count.
-        """
-        captured_sql: list[str] = []
-
-        async def _local_fetch(sql, *args, **kwargs):
-            captured_sql.append(sql)
-            if "company_id::text" in sql and "first_seen_at" not in sql:
-                # is_active branch — only gated rows show up.
-                return [
-                    {"company_id": "co-microsoft", "cnt": 1428},
-                ]
-            if "company_id::text" in sql and "first_seen_at" in sql:
-                # year branch — same gating.
-                return [
-                    {"company_id": "co-microsoft", "cnt": 9000},
-                ]
-            return []
-
-        local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
-
         supa_conn = AsyncMock()
 
         async def _supa_fetch(sql, *args, **kwargs):
@@ -1914,51 +1880,49 @@ class TestSyncCompaniesTypesense:
                         employee_count_range=None,
                         founded_year=None,
                         industry_name=None,
-                    )
+                    ),
+                    _StubRecord(
+                        id="co-empty",
+                        name="Empty Co",
+                        slug="empty-co",
+                        icon=None,
+                        logo=None,
+                        website=None,
+                        description=None,
+                        industry=None,
+                        employee_count_range=None,
+                        founded_year=None,
+                        industry_name=None,
+                    ),
                 ]
             return []
 
         supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
 
         client = MagicMock()
+
+        def _search(params):
+            if params["filter_by"] == "is_active:true && has_content:!=false":
+                counts = [{"value": "co-microsoft", "count": 1428}]
+            else:
+                counts = [{"value": "co-microsoft", "count": 9000}]
+            return {"facet_counts": [{"field_name": "company_id", "counts": counts}]}
+
+        client.collections["job_posting"].documents.search.side_effect = _search
         captured_upserts: list[tuple[str, list[dict]]] = []
 
         def _capture_upsert(_client, collection, docs, *_a, **_kw):
             captured_upserts.append((collection, list(docs)))
 
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
-            await sync_companies_typesense(supa_conn, local_conn, client)
+            await sync_companies_typesense(supa_conn, client)
 
-        # 1. Both company count SQLs must include the has_content predicate.
-        company_count_sqls = [s for s in captured_sql if "company_id::text" in s]
-        assert len(company_count_sqls) == 2, (
-            f"expected active + year company queries, got {len(company_count_sqls)}"
-        )
-        for sql in company_count_sqls:
-            assert "description_r2_hash IS NOT NULL" in sql, (
-                f"missing description_r2_hash predicate in:\n{sql}"
-            )
-            assert "cardinality(titles) > 0" in sql, (
-                f"missing titles cardinality predicate in:\n{sql}"
-            )
-            assert "length(trim(titles[1])) > 0" in sql, (
-                f"missing titles non-blank predicate in:\n{sql}"
-            )
-
-        # 2. The active SQL keeps `is_active`; the year SQL keeps
-        #    `first_seen_at` (and intentionally drops `is_active` to
-        #    measure activity over time — parity with the web's
-        #    POSTING_FLOW_FILTER).
-        active_sql = next(s for s in company_count_sqls if "is_active" in s)
-        year_sql = next(s for s in company_count_sqls if "first_seen_at" in s)
-        assert "is_active" in active_sql
-        assert "first_seen_at" in year_sql
-
-        # 3. The doc propagates the gated counts unchanged.
         company_docs = next((docs for c, docs in captured_upserts if c == "company"), [])
         by_id = {d["id"]: d for d in company_docs}
         assert by_id["co-microsoft"]["active_posting_count"] == 1428
         assert by_id["co-microsoft"]["year_posting_count"] == 9000
+        assert by_id["co-empty"]["active_posting_count"] == 0
+        assert by_id["co-empty"]["year_posting_count"] == 0
 
 
 class TestPopulateLocationsIfEmpty:
