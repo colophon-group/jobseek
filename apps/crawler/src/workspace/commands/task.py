@@ -10,6 +10,7 @@ Crawler setup agents interact with the workflow exclusively through these comman
 - ``ws task status``              — show workflow progress
 - ``ws task complete``            — mark workflow as done (final step only)
 - ``ws task fail --reason ...``   — mark step as failed, unlock exploration mode
+- ``ws task escalate``            — terminally clean up and record a human follow-up
 - ``ws task troubleshoot``        — search the knowledge base
 - ``ws task troubleshoot --view`` — view a full KB entry
 - ``ws task learn``               — add a KB entry from experience
@@ -25,6 +26,8 @@ instruction stream unless explicitly copied into the sources above.
 """
 
 from __future__ import annotations
+
+import os
 
 import click
 
@@ -422,7 +425,7 @@ def task_status():
 
 
 def _finalize_workflow(slug: str) -> None:
-    """Run completion side-effects: KB push, unclaim issue, trace upload, mark PR ready.
+    """Run completion side-effects: KB push, unclaim issue, and mark PR ready.
 
     Called from both ``task complete`` and ``task next`` (when advancing past reflect).
     """
@@ -456,20 +459,22 @@ def _finalize_workflow(slug: str) -> None:
         print()
         out.plain("summary", f"{len(non_none)} reflection(s) recorded during this run.")
 
-    # Upload trace to Hugging Face dataset (best-effort, don't block completion)
-    try:
-        from src.workspace.trace import upload_trace_to_hf
+    # The Hetzner runner exports the complete root + subagent session tree from
+    # its terminal path, after any completion/rejection/failure outcome. Keep
+    # the legacy inline exporter only for ws sessions outside that runner.
+    if not os.environ.get("JOBSEEK_CODEX_RUN_ID"):
+        try:
+            from src.workspace.trace import upload_trace_to_hf
 
-        hf_url = upload_trace_to_hf(slug)
-        if hf_url:
-            out.info("trace", f"Uploaded: {hf_url}")
-        else:
-            out.plain("trace", "No matching transcript found — export manually if needed")
-    except Exception as exc:
-        out.warn("trace", f"Could not upload trace: {exc}")
+            hf_url = upload_trace_to_hf(slug)
+            if hf_url:
+                out.info("trace", f"Uploaded: {hf_url}")
+            else:
+                out.plain("trace", "No matching transcript found — export manually if needed")
+        except Exception as exc:
+            out.warn("trace", f"Could not upload trace: {exc}")
 
-    # Mark PR ready for review AFTER trace is pushed so CI auto-merge
-    # includes the trace commit in the squash.
+    # Mark the company PR ready after workflow state and reflections are final.
     if ws.pr and not is_local_mode():
         from src.workspace.git import mark_pr_ready
 
@@ -524,6 +529,43 @@ def task_fail(reason: str):
         out.warn("trace", f"Could not export trace: {exc}")
 
     _print_failed(wf)
+
+
+@task.command(name="escalate")
+@click.option("--issue", type=int, default=None, help="GitHub issue number")
+@click.option("--reason", required=True, help="Why automation cannot safely finish")
+@click.option("--follow-up", required=True, help="Concrete human or engineering follow-up")
+def task_escalate(issue: int | None, reason: str, follow_up: str):
+    """Record a terminal escalation after strictly cleaning resolver artifacts."""
+    from src.workspace.commands.lifecycle import (
+        _cleanup_resolver_artifacts,
+        _resolve_outcome_workspace,
+        is_local_mode,
+    )
+
+    slug, ws, issue = _resolve_outcome_workspace(slug=None, issue=issue)
+    if not issue:
+        out.die("Provide --issue or run from a workspace with a linked issue")
+
+    marker = "<!-- resolver-outcome: escalated -->"
+    body = (
+        f"{marker}\n"
+        "**Resolver escalated this request for human follow-up.**\n\n"
+        f"Reason: {reason}\n"
+        f"Follow-up: {follow_up}"
+    )
+    local = is_local_mode()
+    _cleanup_resolver_artifacts(issue=issue, slug=slug, ws=ws, local=local)
+    if local:
+        out.warn("github", "Local mode — skipping escalation comment and issue close")
+    else:
+        from src.workspace import git
+
+        git.comment_on_issue_once(issue, marker, body)
+        git.unclaim_issue_strict(issue)
+        git.close_issue_if_open(issue)
+        out.info("github", f"Escalated and closed issue #{issue}")
+    out.info("task", "Done. Do not pick another issue — stop here.")
 
 
 @task.command(name="troubleshoot")

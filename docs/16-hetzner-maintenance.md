@@ -80,6 +80,31 @@ Current policy:
 The crawler-specific rule matters because repeated versioned deploys can
 consume tens of GiB before a normal age-based prune would trigger.
 
+## Unmanaged Resource Hygiene
+
+The scheduled crawler maintenance workflow runs the read-only
+[`crawler-host-hygiene.py`](../scripts/crawler-host-hygiene.py) check after
+its normal maintenance command. It fails visibly when either of these has
+survived for more than 24 hours:
+
+- a running Docker container without a Compose project label
+- a transient systemd service that remains `active (exited)`
+
+This catches forgotten debug containers, one-off test commands, and completed
+transient units without deleting anything automatically. Run the same check
+manually with:
+
+```bash
+python3 /tmp/jobseek-crawler-maintenance/<deployed-sha>/crawler-host-hygiene.py
+```
+
+Before applying a printed cleanup command, inspect the resource and confirm
+that it is not active production work. Removing a stale container uses
+`docker rm -f -- <name>`. Stopping an `active (exited)` transient unit with
+`systemctl stop <unit>` also lets watcher loops waiting on `is-active` exit;
+verify the watcher is gone and run `systemctl reset-failed <unit>` only if a
+failed unit state remains.
+
 ## Codex Runner Timers
 
 The recurring company-request resolver and daily Codex routines run on the

@@ -14,6 +14,8 @@ User=codex-runner
 Group=codex-runner
 EnvironmentFile=/etc/jobseek-codex/governor.env
 WorkingDirectory=/srv/jobseek-codex/repo
+Environment=JOBSEEK_CODEX_MODEL=gpt-5.6-sol
+Environment=JOBSEEK_CODEX_REASONING_EFFORT=high
 Environment=JOBSEEK_CODEX_MAX_RUNTIME_S=7200
 Environment=JOBSEEK_ERROR_REVIEW_BUNDLE=/srv/jobseek-codex/inputs/error-review/latest
 

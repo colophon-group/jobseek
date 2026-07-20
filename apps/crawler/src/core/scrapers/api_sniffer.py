@@ -402,9 +402,10 @@ async def _scrape_http(
     """Scrape via direct HTTP call to a detail API endpoint.
 
     Used when ``api_url`` is configured — no Playwright needed.
-    Constructs the request body from ``post_body`` (with ``{id}``
-    placeholder filled from the job URL) and navigates the response
-    via ``json_path`` before extracting fields.
+    Constructs the request body from ``post_body`` (with placeholders
+    filled from the job URL) and navigates the response via ``json_path``
+    before extracting fields. ``url_pattern`` may provide named capture
+    groups for IDs stored outside the final URL path segment.
     """
     from src.core.monitors.api_sniffer import clean_headers, http_fetch
 

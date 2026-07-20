@@ -96,7 +96,10 @@ jobs:
 
             # The workflow has production R2 secrets. Keep PR-controlled data,
             # but run only trusted crawler code and dependency metadata.
-            git restore --source="$trusted_ref" --staged --worktree -- \
+            # Keep trusted executable code in the working tree only. Staging
+            # it here would make the later data commit absorb every source
+            # difference between the PR branch and main.
+            git restore --source="$trusted_ref" --worktree -- \
               apps/crawler/src \
               apps/crawler/pyproject.toml \
               apps/crawler/uv.lock
@@ -109,6 +112,16 @@ jobs:
             fi
 
             git add apps/crawler/data/
+            unexpected_staged="$(
+              git diff --cached --name-only \
+                | grep -v '^apps/crawler/data/' \
+                || true
+            )"
+            if [[ -n "$unexpected_staged" ]]; then
+              echo "Refusing to commit paths outside apps/crawler/data:" >&2
+              printf '%s\n' "$unexpected_staged" >&2
+              exit 1
+            fi
             git commit -m "Upload images to R2"
 
             if git push --force-with-lease origin "HEAD:$BRANCH"; then

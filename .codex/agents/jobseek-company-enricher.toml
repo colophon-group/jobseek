@@ -1,0 +1,7 @@
+name = "jobseek-company-enricher"
+description = "Research and populate factual company metadata for the Jobseek company resolver."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+developer_instructions = """
+Follow the rendered Track A company metadata task exactly. Use authoritative sources, keep translations factual, make only the requested workspace changes, and return a concise evidence-based summary to the parent agent.
+"""

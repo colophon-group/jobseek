@@ -16,6 +16,8 @@ import shutil
 import signal
 import sqlite3
 import subprocess
+import sys
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass
@@ -24,14 +26,39 @@ from pathlib import Path
 from typing import Any
 
 ACTIVE_STATES = ("claimed", "running")
-TERMINAL_STATES = ("completed", "failed", "skipped", "timeout")
+# The legacy states remain valid because the same ledger is also consumed by
+# the daily routine runner.  Company resolver runs use the explicit outcome
+# states below so a closed issue cannot be mistaken for a successful run.
+TERMINAL_STATES = (
+    "completed",
+    "failed",
+    "timeout",
+    "submitted",
+    "rejected",
+    "escalated",
+    "retryable",
+    "interrupted",
+    "skipped",
+)
+RESOLVED_OUTCOMES = ("submitted", "rejected", "escalated")
+RETRY_OUTCOMES = ("retryable", "interrupted")
 DEFAULT_ROOT = Path("/srv/jobseek-codex")
 DEFAULT_RUNTIME_S = 90 * 60
 DEFAULT_KILL_GRACE_S = 20
+DEFAULT_RETRY_BACKOFF_S = 15 * 60
+DEFAULT_MAX_RETRY_BACKOFF_S = 6 * 60 * 60
 DEFAULT_CLAIM_MARKER = "<!-- ws-claim -->"
 FIVE_HOURS_S = 5 * 60 * 60
 ONE_WEEK_S = 7 * 24 * 60 * 60
 UNKNOWN_USAGE_RETRY_S = 30 * 60
+DEFAULT_CODEX_ARGS = (
+    "codex",
+    "exec",
+    "--json",
+    "--dangerously-bypass-approvals-and-sandbox",
+)
+DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
+DEFAULT_CODEX_REASONING_EFFORT = "high"
 
 
 class GitHubStateError(RuntimeError):
@@ -67,6 +94,9 @@ class UsageSummary:
 class HostHealth:
     ok: bool
     reason: str | None = None
+    warning: str | None = None
+    disk_free_bytes: int | None = None
+    disk_total_bytes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -89,6 +119,13 @@ class ClaimComment:
 
 
 @dataclass(frozen=True)
+class IssueResolution:
+    state: str
+    outcome: str | None = None
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
 class RunnerConfig:
     root: Path = DEFAULT_ROOT
     repo_dir: Path | None = None
@@ -97,12 +134,9 @@ class RunnerConfig:
     logs_dir: Path | None = None
     state_dir: Path | None = None
     ledger_path: Path | None = None
-    codex_args: tuple[str, ...] = (
-        "codex",
-        "exec",
-        "--json",
-        "--dangerously-bypass-approvals-and-sandbox",
-    )
+    codex_args: tuple[str, ...] = DEFAULT_CODEX_ARGS
+    codex_model: str | None = DEFAULT_CODEX_MODEL
+    codex_reasoning_effort: str | None = DEFAULT_CODEX_REASONING_EFFORT
     max_runtime_s: int = DEFAULT_RUNTIME_S
     kill_grace_s: int = DEFAULT_KILL_GRACE_S
     dry_run: bool = False
@@ -117,10 +151,21 @@ class RunnerConfig:
     min_five_hour_remaining_percent: float = 20.0
     min_weekly_remaining_percent: float = 20.0
     min_disk_free_gib: float = 5.0
+    disk_alert_margin_gib: float = 2.0
+    max_quarantine_runs: int = 50
+    max_quarantine_gib: float = 2.0
     min_mem_available_gib: float = 2.0
     max_load_per_cpu: float = 2.0
     usage_probe_path: Path | None = None
     lease_timeout_s: int = 4 * 60 * 60
+    retry_backoff_s: int = DEFAULT_RETRY_BACKOFF_S
+    max_retry_backoff_s: int = DEFAULT_MAX_RETRY_BACKOFF_S
+    trace_export_enabled: bool = False
+    trace_cleanup_enabled: bool = True
+    trace_hf_repo: str = "viktoroo/jobseek-agent-traces"
+    trace_hf_prefix: str = "training-bundles/v2"
+    trace_retry_limit: int = 3
+    codex_home: Path | None = None
 
     def resolved(self) -> RunnerConfig:
         root = self.root
@@ -134,6 +179,8 @@ class RunnerConfig:
             state_dir=self.state_dir or root / "state",
             ledger_path=self.ledger_path or root / "state" / "ledger.sqlite",
             codex_args=self.codex_args,
+            codex_model=self.codex_model,
+            codex_reasoning_effort=self.codex_reasoning_effort,
             max_runtime_s=self.max_runtime_s,
             kill_grace_s=self.kill_grace_s,
             dry_run=self.dry_run,
@@ -148,10 +195,21 @@ class RunnerConfig:
             min_five_hour_remaining_percent=self.min_five_hour_remaining_percent,
             min_weekly_remaining_percent=self.min_weekly_remaining_percent,
             min_disk_free_gib=self.min_disk_free_gib,
+            disk_alert_margin_gib=self.disk_alert_margin_gib,
+            max_quarantine_runs=self.max_quarantine_runs,
+            max_quarantine_gib=self.max_quarantine_gib,
             min_mem_available_gib=self.min_mem_available_gib,
             max_load_per_cpu=self.max_load_per_cpu,
             usage_probe_path=self.usage_probe_path or repo_dir / "scripts" / "codex-usage-probe.py",
             lease_timeout_s=self.lease_timeout_s,
+            retry_backoff_s=self.retry_backoff_s,
+            max_retry_backoff_s=self.max_retry_backoff_s,
+            trace_export_enabled=self.trace_export_enabled,
+            trace_cleanup_enabled=self.trace_cleanup_enabled,
+            trace_hf_repo=self.trace_hf_repo,
+            trace_hf_prefix=self.trace_hf_prefix,
+            trace_retry_limit=self.trace_retry_limit,
+            codex_home=self.codex_home or Path.home() / ".codex",
         )
 
     @classmethod
@@ -162,7 +220,7 @@ class RunnerConfig:
             part
             for part in env.get(
                 "JOBSEEK_CODEX_ARGS",
-                "codex exec --json --dangerously-bypass-approvals-and-sandbox",
+                " ".join(DEFAULT_CODEX_ARGS),
             ).split()
             if part
         )
@@ -170,6 +228,14 @@ class RunnerConfig:
             root=root,
             repo_dir=(
                 Path(env["JOBSEEK_CODEX_REPO_DIR"]) if env.get("JOBSEEK_CODEX_REPO_DIR") else None
+            ),
+            codex_model=env.get("JOBSEEK_CODEX_MODEL", DEFAULT_CODEX_MODEL) or None,
+            codex_reasoning_effort=(
+                env.get(
+                    "JOBSEEK_CODEX_REASONING_EFFORT",
+                    DEFAULT_CODEX_REASONING_EFFORT,
+                )
+                or None
             ),
             max_runtime_s=int(env.get("JOBSEEK_CODEX_MAX_RUNTIME_S", DEFAULT_RUNTIME_S)),
             kill_grace_s=int(env.get("JOBSEEK_CODEX_KILL_GRACE_S", DEFAULT_KILL_GRACE_S)),
@@ -191,12 +257,32 @@ class RunnerConfig:
                 env.get("JOBSEEK_CODEX_MIN_WEEKLY_REMAINING_PERCENT", "20")
             ),
             min_disk_free_gib=float(env.get("JOBSEEK_CODEX_MIN_DISK_FREE_GIB", "5")),
+            disk_alert_margin_gib=float(env.get("JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB", "2")),
+            max_quarantine_runs=int(env.get("JOBSEEK_CODEX_MAX_QUARANTINE_RUNS", "50")),
+            max_quarantine_gib=float(env.get("JOBSEEK_CODEX_MAX_QUARANTINE_GIB", "2")),
             min_mem_available_gib=float(env.get("JOBSEEK_CODEX_MIN_MEM_AVAILABLE_GIB", "2")),
             max_load_per_cpu=float(env.get("JOBSEEK_CODEX_MAX_LOAD_PER_CPU", "2")),
             lease_timeout_s=int(env.get("JOBSEEK_CODEX_LEASE_TIMEOUT_S", str(4 * 60 * 60))),
+            retry_backoff_s=int(
+                env.get("JOBSEEK_CODEX_RETRY_BACKOFF_S", str(DEFAULT_RETRY_BACKOFF_S))
+            ),
+            max_retry_backoff_s=int(
+                env.get(
+                    "JOBSEEK_CODEX_MAX_RETRY_BACKOFF_S",
+                    str(DEFAULT_MAX_RETRY_BACKOFF_S),
+                )
+            ),
             dry_run=env.get("JOBSEEK_CODEX_DRY_RUN", "").lower() in {"1", "true", "yes"},
             cleanup_success_worktree=env.get("JOBSEEK_CODEX_KEEP_SUCCESS_WORKTREE", "").lower()
             not in {"1", "true", "yes"},
+            trace_export_enabled=env.get("JOBSEEK_CODEX_TRACE_EXPORT_ENABLED", "true").lower()
+            in {"1", "true", "yes"},
+            trace_cleanup_enabled=env.get("JOBSEEK_CODEX_TRACE_CLEANUP_ENABLED", "true").lower()
+            in {"1", "true", "yes"},
+            trace_hf_repo=env.get("JOBSEEK_CODEX_TRACE_HF_REPO", "viktoroo/jobseek-agent-traces"),
+            trace_hf_prefix=env.get("JOBSEEK_CODEX_TRACE_HF_PREFIX", "training-bundles/v2"),
+            trace_retry_limit=int(env.get("JOBSEEK_CODEX_TRACE_RETRY_LIMIT", "3")),
+            codex_home=Path(env["CODEX_HOME"]) if env.get("CODEX_HOME") else None,
             codex_args=codex_args,
         ).resolved()
 
@@ -238,7 +324,10 @@ class RunnerLedger:
                     started_at INTEGER,
                     heartbeat_at INTEGER,
                     lease_expires_at INTEGER,
-                    completed_at INTEGER
+                    completed_at INTEGER,
+                    outcome_reason TEXT,
+                    retry_after_at INTEGER,
+                    attempt INTEGER NOT NULL DEFAULT 1
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS runs_one_active_slot
                     ON runs(active_slot)
@@ -277,6 +366,16 @@ class RunnerLedger:
                 );
                 CREATE INDEX IF NOT EXISTS usage_snapshots_slot_time
                     ON usage_snapshots(active_slot, observed_at);
+                CREATE TABLE IF NOT EXISTS trace_bundle_export_attempts (
+                    run_id TEXT PRIMARY KEY,
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL,
+                    quality_tier TEXT,
+                    remote_dir TEXT,
+                    error TEXT,
+                    retained_bytes INTEGER NOT NULL DEFAULT 0,
+                    last_attempt_at INTEGER NOT NULL
+                );
                 """
             )
             self._ensure_columns(conn)
@@ -287,6 +386,9 @@ class RunnerLedger:
             "pr_number": "ALTER TABLE runs ADD COLUMN pr_number INTEGER",
             "heartbeat_at": "ALTER TABLE runs ADD COLUMN heartbeat_at INTEGER",
             "lease_expires_at": "ALTER TABLE runs ADD COLUMN lease_expires_at INTEGER",
+            "outcome_reason": "ALTER TABLE runs ADD COLUMN outcome_reason TEXT",
+            "retry_after_at": "ALTER TABLE runs ADD COLUMN retry_after_at INTEGER",
+            "attempt": "ALTER TABLE runs ADD COLUMN attempt INTEGER NOT NULL DEFAULT 1",
         }.items():
             if name not in existing:
                 conn.execute(ddl)
@@ -300,6 +402,15 @@ class RunnerLedger:
         }.items():
             if name not in snapshot_existing:
                 conn.execute(ddl)
+        attempt_existing = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(trace_bundle_export_attempts)").fetchall()
+        }
+        if "retained_bytes" not in attempt_existing:
+            conn.execute(
+                "ALTER TABLE trace_bundle_export_attempts "
+                "ADD COLUMN retained_bytes INTEGER NOT NULL DEFAULT 0"
+            )
 
     def acquire(
         self,
@@ -308,6 +419,7 @@ class RunnerLedger:
         issue: int | None,
         active_slot: str,
         lease_expires_at: int | None = None,
+        attempt: int = 1,
     ) -> bool:
         now = int(time.time())
         try:
@@ -317,10 +429,10 @@ class RunnerLedger:
                     """
                     INSERT INTO runs (
                         run_id, issue, active_slot, state, created_at,
-                        updated_at, heartbeat_at, lease_expires_at
-                    ) VALUES (?, ?, ?, 'claimed', ?, ?, ?, ?)
+                        updated_at, heartbeat_at, lease_expires_at, attempt
+                    ) VALUES (?, ?, ?, 'claimed', ?, ?, ?, ?, ?)
                     """,
-                    (run_id, issue, active_slot, now, now, now, lease_expires_at),
+                    (run_id, issue, active_slot, now, now, now, lease_expires_at, attempt),
                 )
             return True
         except sqlite3.IntegrityError:
@@ -335,10 +447,25 @@ class RunnerLedger:
         with self._connect() as conn:
             conn.execute(f"UPDATE runs SET {assignments} WHERE run_id = ?", values)
 
-    def finish(self, run_id: str, state: str, *, error: str | None = None) -> None:
+    def finish(
+        self,
+        run_id: str,
+        state: str,
+        *,
+        error: str | None = None,
+        outcome_reason: str | None = None,
+        retry_after_at: int | None = None,
+    ) -> None:
         if state not in TERMINAL_STATES:
             raise ValueError(f"invalid terminal state: {state}")
-        self.update(run_id, state=state, completed_at=int(time.time()), error=error)
+        self.update(
+            run_id,
+            state=state,
+            completed_at=int(time.time()),
+            error=error,
+            outcome_reason=outcome_reason,
+            retry_after_at=retry_after_at,
+        )
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
         with self._connect() as conn:
@@ -353,7 +480,7 @@ class RunnerLedger:
                 FROM runs
                 WHERE active_slot = ?
                   AND created_at >= ?
-                  AND state IN ('claimed', 'running', 'completed', 'failed', 'timeout')
+                  AND state NOT IN ('skipped')
                 """,
                 (active_slot, since),
             ).fetchone()
@@ -367,7 +494,7 @@ class RunnerLedger:
                 FROM runs
                 WHERE active_slot = ?
                   AND started_at IS NOT NULL
-                  AND state IN ('running', 'completed', 'failed', 'timeout')
+                  AND state NOT IN ('claimed', 'skipped')
                 """,
                 (active_slot,),
             ).fetchone()
@@ -388,6 +515,38 @@ class RunnerLedger:
                 (active_slot, now),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def next_attempt(self, issue: int) -> int:
+        """Return the next resolver attempt number for an issue."""
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT MAX(attempt) AS attempt
+                FROM runs
+                WHERE issue = ? AND state IN ('retryable', 'interrupted')
+                """,
+                (issue,),
+            ).fetchone()
+        previous = row["attempt"] if row else None
+        return int(previous or 0) + 1
+
+    def retry_after_for_issue(self, issue: int) -> int | None:
+        """Return a current backoff deadline, ignoring superseded outcomes."""
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT state, retry_after_at
+                FROM runs
+                WHERE issue = ? AND state NOT IN ('claimed', 'running', 'skipped')
+                ORDER BY created_at DESC, rowid DESC
+                LIMIT 1
+                """,
+                (issue,),
+            ).fetchone()
+        if not row or row["state"] not in RETRY_OUTCOMES:
+            return None
+        value = row["retry_after_at"]
+        return int(value) if isinstance(value, int) else None
 
     def ingest_trace_once(self, run_id: str, trace_path: Path, summary: UsageSummary) -> bool:
         now = int(time.time())
@@ -413,6 +572,67 @@ class RunnerLedger:
             return True
         except sqlite3.IntegrityError:
             return False
+
+    def record_trace_bundle_attempt(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        quality_tier: str | None = None,
+        remote_dir: str | None = None,
+        error: str | None = None,
+        retained_bytes: int = 0,
+    ) -> None:
+        now = int(time.time())
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO trace_bundle_export_attempts (
+                    run_id, attempts, status, quality_tier,
+                    remote_dir, error, retained_bytes, last_attempt_at
+                ) VALUES (?, 1, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(run_id) DO UPDATE SET
+                    attempts = trace_bundle_export_attempts.attempts + 1,
+                    status = excluded.status,
+                    quality_tier = excluded.quality_tier,
+                    remote_dir = excluded.remote_dir,
+                    error = excluded.error,
+                    retained_bytes = excluded.retained_bytes,
+                    last_attempt_at = excluded.last_attempt_at
+                """,
+                (run_id, status, quality_tier, remote_dir, error, retained_bytes, now),
+            )
+
+    def trace_quarantine_totals(self) -> tuple[int, int]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS runs, COALESCE(SUM(retained_bytes), 0) AS bytes "
+                "FROM trace_bundle_export_attempts WHERE status = 'quarantined'"
+            ).fetchone()
+        return (int(row["runs"]), int(row["bytes"])) if row else (0, 0)
+
+    def failed_trace_bundle_exports(self, *, limit: int) -> list[dict[str, Any]]:
+        if limit <= 0:
+            return []
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT r.run_id, r.issue, r.state, r.trace_path,
+                       r.stderr_path, r.worktree_path, r.error
+                FROM trace_bundle_export_attempts AS a
+                JOIN runs AS r ON r.run_id = a.run_id
+                WHERE a.status = 'failed'
+                  AND r.state IN (
+                      'completed', 'failed', 'timeout',
+                      'submitted', 'rejected', 'escalated',
+                      'retryable', 'interrupted'
+                  )
+                ORDER BY a.last_attempt_at, r.created_at
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def record_usage_snapshot(
         self,
@@ -505,7 +725,47 @@ class GitHubCoordinator:
     def fetch_oldest_open_issue(self, label: str) -> int | None:
         from src.workspace.git import fetch_oldest_open_issue
 
-        return fetch_oldest_open_issue(label=label)
+        # The governor must see linked drafts so it can distinguish resumable
+        # resolver work from completed or conflicting PRs.
+        return fetch_oldest_open_issue(label=label, skip_open_prs=False)
+
+    def list_open_issues(self, label: str) -> list[int]:
+        import json
+
+        from src.workspace import git
+
+        result = git._run(  # noqa: SLF001
+            [
+                "gh",
+                "issue",
+                "list",
+                *git._gh_repo_flag(),  # noqa: SLF001
+                "--label",
+                label,
+                "--state",
+                "open",
+                "--search",
+                "sort:created-asc",
+                "--limit",
+                "100",
+                "--json",
+                "number",
+            ],
+            check=False,
+        )
+        if result.returncode != 0:
+            raise GitHubStateError(f"could not list open {label!r} issues: {result.stderr}")
+        try:
+            issues = json.loads(result.stdout or "[]")
+        except json.JSONDecodeError as exc:
+            raise GitHubStateError(f"could not parse open {label!r} issues: {exc}") from exc
+        if not isinstance(issues, list):
+            raise GitHubStateError(f"unexpected issue list shape for {label!r}")
+        return [
+            number
+            for item in issues
+            if isinstance(item, dict) and isinstance((number := item.get("number")), int)
+        ]
 
     def check_existing_prs(self, issue: int) -> list[dict[str, str]]:
         import json
@@ -525,7 +785,7 @@ class GitHubCoordinator:
                 "--limit",
                 "100",
                 "--json",
-                "number,title,url,headRefName",
+                "number,title,url,headRefName,isDraft",
             ],
             check=False,
         )
@@ -539,7 +799,7 @@ class GitHubCoordinator:
             raise GitHubStateError(f"unexpected PR list shape for issue #{issue}")
         return [pr for pr in prs if isinstance(pr, dict)]
 
-    def issue_is_closed(self, issue: int) -> bool:
+    def issue_resolution(self, issue: int) -> IssueResolution:
         import json
 
         from src.workspace import git
@@ -552,7 +812,7 @@ class GitHubCoordinator:
                 str(issue),
                 *git._gh_repo_flag(),  # noqa: SLF001
                 "--json",
-                "state",
+                "state,comments,closedByPullRequestsReferences",
             ],
             check=False,
         )
@@ -565,7 +825,74 @@ class GitHubCoordinator:
         state = data.get("state") if isinstance(data, dict) else None
         if not isinstance(state, str):
             raise GitHubStateError(f"unexpected issue state shape for issue #{issue}")
-        return state.upper() == "CLOSED"
+        normalized_state = state.upper()
+        if normalized_state != "CLOSED":
+            return IssueResolution(state=normalized_state)
+
+        closed_by = data.get("closedByPullRequestsReferences", [])
+        if isinstance(closed_by, list) and closed_by:
+            return IssueResolution(
+                state=normalized_state,
+                outcome="submitted",
+                reason="issue was closed by a linked pull request",
+            )
+
+        comments = data.get("comments", [])
+        bodies = [
+            comment.get("body", "")
+            for comment in comments
+            if isinstance(comment, dict) and isinstance(comment.get("body"), str)
+        ]
+        for body in reversed(bodies):
+            if body.startswith("<!-- validation-failed:"):
+                marker = body.split("-->", 1)[0].removeprefix("<!-- ").strip()
+                return IssueResolution(
+                    state=normalized_state,
+                    outcome="rejected",
+                    reason=marker,
+                )
+            if body.startswith("<!-- resolver-outcome: escalated -->"):
+                reason = _comment_field(body, "Reason") or "terminal escalation"
+                return IssueResolution(
+                    state=normalized_state,
+                    outcome="escalated",
+                    reason=reason,
+                )
+        # Closure by itself is deliberately not a resolver outcome.  This is
+        # the guard that prevents an abandoned placeholder from looking done.
+        return IssueResolution(state=normalized_state)
+
+    def record_run_outcome(
+        self,
+        issue: int,
+        *,
+        run_id: str,
+        outcome: str,
+        reason: str,
+        retry_after_at: int | None = None,
+    ) -> None:
+        from src.workspace import git
+
+        retry = ""
+        if retry_after_at is not None:
+            retry_iso = datetime.fromtimestamp(
+                retry_after_at,
+                tz=timezone.utc,  # noqa: UP017 - Python 3.10 deployment.
+            ).strftime("%Y-%m-%dT%H:%M:%SZ")
+            retry = f"\nRetry after: {retry_iso}"
+        body = (
+            f"<!-- resolver-run-outcome: {run_id} -->\n"
+            f"Resolver outcome: **{outcome}**\n"
+            f"Reason: {reason}{retry}"
+        )
+        try:
+            git.comment_on_issue_once(
+                issue,
+                f"<!-- resolver-run-outcome: {run_id} -->",
+                body,
+            )
+        except Exception as exc:
+            raise GitHubStateError(f"could not record outcome for issue #{issue}: {exc}") from exc
 
     def list_claims(self, issue: int) -> list[ClaimComment]:
         import json
@@ -702,6 +1029,10 @@ class RunResult:
     stderr_path: Path | None = None
     worktree_path: Path | None = None
     error: str | None = None
+    trace_export_status: str | None = None
+    trace_export_tier: str | None = None
+    trace_export_remote_dir: str | None = None
+    trace_export_error: str | None = None
 
 
 def build_codex_prompt(issue: int) -> str:
@@ -720,8 +1051,26 @@ Hard limits:
 - Do not run `ws task --pick` or select another issue.
 - Do not process a second issue after completion or rejection.
 - Do not push directly to main.
-- Stop after `ws task complete`, `ws reject`, or an unrecoverable `ws task fail`.
+- `ws task fail` enters coding mode; keep following the instructions it prints.
+- Stop only after `ws task complete`, `ws reject`, `ws task escalate`, or a
+  linked `fix-crawler/` PR records a terminal submitted outcome.
 """
+
+
+def build_codex_command(config: RunnerConfig, prompt: str) -> list[str]:
+    """Build one Codex invocation with the production model policy layered on top."""
+    command = list(config.codex_args)
+    if config.codex_model:
+        command.extend(("--model", config.codex_model))
+    if config.codex_reasoning_effort:
+        command.extend(
+            (
+                "--config",
+                f"model_reasoning_effort={config.codex_reasoning_effort}",
+            )
+        )
+    command.append(prompt)
+    return command
 
 
 def _safe_env(base: dict[str, str] | None = None) -> dict[str, str]:
@@ -806,26 +1155,66 @@ def check_host_health(config: RunnerConfig) -> HostHealth:
     disk = shutil.disk_usage(config.root)
     free_gib = disk.free / (1024**3)
     if free_gib < config.min_disk_free_gib:
-        return HostHealth(False, f"disk free {free_gib:.1f}GiB below threshold")
+        return HostHealth(
+            False,
+            f"disk free {free_gib:.1f}GiB below threshold",
+            disk_free_bytes=disk.free,
+            disk_total_bytes=disk.total,
+        )
+    warning = None
+    alert_threshold = config.min_disk_free_gib + config.disk_alert_margin_gib
+    if free_gib < alert_threshold:
+        warning = (
+            f"disk free {free_gib:.1f}GiB is within "
+            f"{config.disk_alert_margin_gib:.1f}GiB of the admission floor"
+        )
 
     mem_available = _mem_available_gib()
     if mem_available is not None and mem_available < config.min_mem_available_gib:
-        return HostHealth(False, f"memory available {mem_available:.1f}GiB below threshold")
+        return HostHealth(
+            False,
+            f"memory available {mem_available:.1f}GiB below threshold",
+            warning=warning,
+            disk_free_bytes=disk.free,
+            disk_total_bytes=disk.total,
+        )
 
     try:
         load1, _, _ = os.getloadavg()
     except OSError:
-        return HostHealth(True)
+        return HostHealth(
+            True,
+            warning=warning,
+            disk_free_bytes=disk.free,
+            disk_total_bytes=disk.total,
+        )
     cpus = max(1, os.cpu_count() or 1)
     max_load = cpus * config.max_load_per_cpu
     if load1 > max_load:
-        return HostHealth(False, f"load {load1:.2f} above threshold {max_load:.2f}")
+        return HostHealth(
+            False,
+            f"load {load1:.2f} above threshold {max_load:.2f}",
+            warning=warning,
+            disk_free_bytes=disk.free,
+            disk_total_bytes=disk.total,
+        )
 
     if not config.dry_run and _uses_codex_cli(config.codex_args):
         missing_identity = _missing_git_identity()
         if missing_identity:
-            return HostHealth(False, f"git identity missing: {', '.join(missing_identity)}")
-    return HostHealth(True)
+            return HostHealth(
+                False,
+                f"git identity missing: {', '.join(missing_identity)}",
+                warning=warning,
+                disk_free_bytes=disk.free,
+                disk_total_bytes=disk.total,
+            )
+    return HostHealth(
+        True,
+        warning=warning,
+        disk_free_bytes=disk.free,
+        disk_total_bytes=disk.total,
+    )
 
 
 def _mem_available_gib() -> float | None:
@@ -973,7 +1362,15 @@ class CompanyResolverGovernor:
             )
         except GitHubStateError:
             return None
-        issue = self.github.fetch_oldest_open_issue(self.config.label)
+        try:
+            issues = self.github.list_open_issues(self.config.label)
+        except (AttributeError, GitHubStateError):
+            # Compatibility for small test/dry-run coordinators and older
+            # integrators.  Production uses the full candidate list so one
+            # backed-off issue never blocks the queue behind it.
+            issue = self.github.fetch_oldest_open_issue(self.config.label)
+            issues = [issue] if issue is not None else []
+        issue = self._select_candidate(issues)
         if issue is None:
             return None
 
@@ -984,6 +1381,7 @@ class CompanyResolverGovernor:
             issue=issue,
             active_slot=self.config.active_slot,
             lease_expires_at=lease_expires_at,
+            attempt=self.ledger.next_attempt(issue),
         ):
             return None
 
@@ -994,9 +1392,17 @@ class CompanyResolverGovernor:
         self.ledger.update(run_id, claim_comment_id=claim_id)
 
         try:
-            if self.github.check_existing_prs(issue):
+            from src.workspace.git import classify_issue_prs
+
+            pr_class = classify_issue_prs(self.github.check_existing_prs(issue))
+            if pr_class not in {"none", "resumable"}:
                 self.github.delete_claim(claim_id)
-                self.ledger.finish(run_id, "skipped", error="open PR appeared before launch")
+                self.ledger.finish(
+                    run_id,
+                    "skipped",
+                    error=f"linked PR became {pr_class} before launch",
+                    outcome_reason=f"linked PR classification: {pr_class}",
+                )
                 return None
 
             claims = self.github.list_claims(issue)
@@ -1012,7 +1418,29 @@ class CompanyResolverGovernor:
 
         return Admission(run_id=run_id, issue=issue, claim_comment_id=claim_id)
 
+    def _select_candidate(self, issues: list[int]) -> int | None:
+        from src.workspace.git import classify_issue_prs
+
+        now = int(time.time())
+        for issue in issues:
+            retry_after = self.ledger.retry_after_for_issue(issue)
+            if retry_after is not None and retry_after > now:
+                continue
+            try:
+                pr_class = classify_issue_prs(self.github.check_existing_prs(issue))
+                if pr_class not in {"none", "resumable"}:
+                    continue
+                if self.github.list_claims(issue):
+                    continue
+            except GitHubStateError:
+                # Unknown GitHub state is unsafe for this candidate, but does
+                # not prevent us from considering a later independent issue.
+                continue
+            return issue
+        return None
+
     def run_once(self) -> RunResult:
+        self._retry_failed_trace_exports()
         decision = self.should_start()
         if not decision.should_run:
             return RunResult(run_id="", issue=None, state="skipped", error=decision.reason)
@@ -1025,20 +1453,207 @@ class CompanyResolverGovernor:
             self.ledger.finish(admission.run_id, "skipped", error="dry run")
             return RunResult(run_id=admission.run_id, issue=admission.issue, state="skipped")
         try:
-            return self._execute_admission(admission)
+            result = self._execute_admission(admission)
         except Exception as exc:  # noqa: BLE001 - final guard for claimed issues
             self._release_claim_if_unresolved(admission)
-            self.ledger.finish(admission.run_id, "failed", error=str(exc))
-            return RunResult(
+            reason = f"runner interrupted: {exc}"
+            self._finish_outcome(admission, "interrupted", reason)
+            result = RunResult(
                 run_id=admission.run_id,
                 issue=admission.issue,
-                state="failed",
+                state="interrupted",
                 error=str(exc),
             )
+        return self._export_terminal_trace(result)
+
+    def _retry_failed_trace_exports(self) -> None:
+        if not self.config.trace_export_enabled:
+            return
+        for run in self.ledger.failed_trace_bundle_exports(limit=self.config.trace_retry_limit):
+            self._export_terminal_trace(
+                RunResult(
+                    run_id=str(run["run_id"]),
+                    issue=run.get("issue") if isinstance(run.get("issue"), int) else None,
+                    state=str(run["state"]),
+                    trace_path=Path(run["trace_path"])
+                    if isinstance(run.get("trace_path"), str)
+                    else None,
+                    stderr_path=Path(run["stderr_path"])
+                    if isinstance(run.get("stderr_path"), str)
+                    else None,
+                    worktree_path=Path(run["worktree_path"])
+                    if isinstance(run.get("worktree_path"), str)
+                    else None,
+                    error=run.get("error") if isinstance(run.get("error"), str) else None,
+                )
+            )
+
+    def _export_terminal_trace(self, result: RunResult) -> RunResult:
+        cfg = self.config
+        if not cfg.trace_export_enabled or not result.run_id:
+            return result
+        run = self.ledger.get_run(result.run_id)
+        trace_value = run.get("trace_path") if run else None
+        trace_path = Path(trace_value) if isinstance(trace_value, str) else None
+        if trace_path is None or not trace_path.is_file():
+            error = "terminal trace file unavailable"
+            self.ledger.record_trace_bundle_attempt(
+                result.run_id,
+                status="unavailable",
+                error=error,
+            )
+            result.trace_export_status = "unavailable"
+            result.trace_export_error = error
+            return result
+
+        from src.workspace.trace_backfill import (
+            build_bundle,
+            cleanup_verified_sources,
+            prune_hf_dataset_cache,
+            quality_gate_reason,
+            record_verified_export,
+            upload_and_verify,
+        )
+
+        tier: str | None = None
+        retained_bytes = 0
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix=f"trace-export-{result.run_id}-",
+                dir=cfg.state_dir,
+            ) as temp_dir:
+                bundle_dir = Path(temp_dir) / result.run_id
+                manifest = build_bundle(
+                    run_id=result.run_id,
+                    runner_root=cfg.root,
+                    codex_home=cfg.codex_home or Path.home() / ".codex",
+                    output_dir=bundle_dir,
+                )
+                tier = str(manifest["quality"]["tier"])
+                retained_bytes = sum(
+                    int(entry.get("source_bytes", 0))
+                    for entry in manifest.get("files", [])
+                    if isinstance(entry, dict)
+                )
+                result.trace_export_tier = tier
+                if tier == "quarantined":
+                    result.trace_export_status = "quarantined"
+                    self.ledger.record_trace_bundle_attempt(
+                        result.run_id,
+                        status="quarantined",
+                        quality_tier=tier,
+                        error=quality_gate_reason(manifest),
+                        retained_bytes=retained_bytes,
+                    )
+                    return result
+
+                remote_dir, verified = upload_and_verify(
+                    bundle_dir=bundle_dir,
+                    run_id=result.run_id,
+                    repo_id=cfg.trace_hf_repo,
+                    prefix=cfg.trace_hf_prefix,
+                    quality_tier=tier,
+                )
+                record_verified_export(
+                    ledger_path=cfg.ledger_path or cfg.root / "state" / "ledger.sqlite",
+                    run_id=result.run_id,
+                    remote_dir=remote_dir,
+                    manifest=manifest,
+                    verified=verified,
+                )
+                status = "verified"
+                if cfg.trace_cleanup_enabled:
+                    cleanup_result = cleanup_verified_sources(
+                        ledger_path=cfg.ledger_path or cfg.root / "state" / "ledger.sqlite",
+                        run_id=result.run_id,
+                        manifest=manifest,
+                    )
+                    status = "cleaned"
+                    retained_bytes = 0
+                    disk = shutil.disk_usage(cfg.root)
+                    print(
+                        json.dumps(
+                            {
+                                "event": "trace_retention_cleanup",
+                                "run_id": result.run_id,
+                                "reclaimed_bytes": int(cleanup_result["reclaimed_bytes"]),
+                                "disk_free_bytes": disk.free,
+                                "disk_total_bytes": disk.total,
+                            },
+                            sort_keys=True,
+                        )
+                    )
+                    try:
+                        cache_result = prune_hf_dataset_cache(repo_id=cfg.trace_hf_repo)
+                        if cache_result["revisions"]:
+                            print(
+                                json.dumps(
+                                    {"event": "trace_hf_cache_cleanup", **cache_result},
+                                    sort_keys=True,
+                                )
+                            )
+                    except Exception as exc:  # noqa: BLE001 - cache is non-canonical
+                        print(
+                            json.dumps(
+                                {
+                                    "event": "trace_hf_cache_cleanup_failed",
+                                    "error": _safe_trace_export_error(exc),
+                                },
+                                sort_keys=True,
+                            ),
+                            file=sys.stderr,
+                        )
+                self.ledger.record_trace_bundle_attempt(
+                    result.run_id,
+                    status=status,
+                    quality_tier=tier,
+                    remote_dir=remote_dir,
+                    retained_bytes=retained_bytes,
+                )
+                result.trace_export_status = status
+                result.trace_export_remote_dir = remote_dir
+        except Exception as exc:  # noqa: BLE001 - trace export must not alter run outcome
+            error = _safe_trace_export_error(exc)
+            self.ledger.record_trace_bundle_attempt(
+                result.run_id,
+                status="failed",
+                quality_tier=tier,
+                error=error,
+                retained_bytes=retained_bytes,
+            )
+            result.trace_export_status = "failed"
+            result.trace_export_error = error
+            print(
+                json.dumps(
+                    {
+                        "event": "trace_bundle_export_failed",
+                        "run_id": result.run_id,
+                        "quality_tier": tier,
+                        "error": error,
+                    },
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+            )
+        return result
 
     def should_start(self) -> SchedulerDecision:
         self.reconcile_stale_runs()
         health = check_host_health(self.config)
+        if health.warning:
+            print(
+                json.dumps(
+                    {
+                        "event": "codex_retention_warning",
+                        "kind": "disk_headroom",
+                        "message": health.warning,
+                        "disk_free_bytes": health.disk_free_bytes,
+                        "disk_total_bytes": health.disk_total_bytes,
+                    },
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+            )
         if not health.ok:
             return self._record_scheduler_decision(
                 SchedulerDecision(
@@ -1047,6 +1662,42 @@ class CompanyResolverGovernor:
                     recent_limit=0,
                     recent_runs=0,
                 )
+            )
+
+        quarantine_runs, quarantine_bytes = self.ledger.trace_quarantine_totals()
+        max_quarantine_bytes = int(self.config.max_quarantine_gib * 1024**3)
+        quarantine_over_limit = (
+            quarantine_runs >= self.config.max_quarantine_runs
+            or quarantine_bytes >= max_quarantine_bytes
+        )
+        if quarantine_over_limit:
+            return self._record_scheduler_decision(
+                SchedulerDecision(
+                    should_run=False,
+                    reason=(
+                        "trace quarantine retention limit reached: "
+                        f"{quarantine_runs} runs, {quarantine_bytes} bytes"
+                    ),
+                    recent_limit=0,
+                    recent_runs=0,
+                )
+            )
+        if quarantine_runs >= max(
+            1, int(self.config.max_quarantine_runs * 0.8)
+        ) or quarantine_bytes >= int(max_quarantine_bytes * 0.8):
+            print(
+                json.dumps(
+                    {
+                        "event": "codex_retention_warning",
+                        "kind": "quarantine_growth",
+                        "quarantine_runs": quarantine_runs,
+                        "quarantine_bytes": quarantine_bytes,
+                        "max_quarantine_runs": self.config.max_quarantine_runs,
+                        "max_quarantine_bytes": max_quarantine_bytes,
+                    },
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
             )
 
         usage = self._probe_usage()
@@ -1193,7 +1844,12 @@ class CompanyResolverGovernor:
                     claim_comment_id=claim_id,
                 )
                 self._release_claim_if_unresolved(admission)
-            self.ledger.finish(run_id, "failed", error="stale lease expired")
+            admission = Admission(
+                run_id=run_id,
+                issue=issue if isinstance(issue, int) else 0,
+                claim_comment_id=claim_id if isinstance(claim_id, int) else 0,
+            )
+            self._finish_outcome(admission, "interrupted", "stale lease expired")
 
     def _execute_admission(self, admission: Admission) -> RunResult:
         cfg = self.config
@@ -1211,7 +1867,7 @@ class CompanyResolverGovernor:
         env["JOBSEEK_CODEX_ISSUE"] = str(admission.issue)
         env["WS_ACTIVE_SCOPE"] = admission.run_id
 
-        cmd = [*cfg.codex_args, build_codex_prompt(admission.issue)]
+        cmd = build_codex_command(cfg, build_codex_prompt(admission.issue))
         with trace_path.open("w") as stdout, stderr_path.open("w") as stderr:
             proc = subprocess.Popen(
                 cmd,
@@ -1241,11 +1897,12 @@ class CompanyResolverGovernor:
                 self.ledger.ingest_trace_once(admission.run_id, trace_path, summary)
                 self._record_pr_if_present(admission)
                 self._release_claim_if_unresolved(admission, worktree=worktree)
-                self.ledger.finish(admission.run_id, "timeout", error="codex runtime exceeded")
+                reason = "codex runtime exceeded"
+                self._finish_outcome(admission, "interrupted", reason)
                 return RunResult(
                     run_id=admission.run_id,
                     issue=admission.issue,
-                    state="timeout",
+                    state="interrupted",
                     trace_path=trace_path,
                     stderr_path=stderr_path,
                     worktree_path=worktree,
@@ -1254,18 +1911,22 @@ class CompanyResolverGovernor:
 
         summary = parse_codex_usage_jsonl(trace_path)
         self.ledger.ingest_trace_once(admission.run_id, trace_path, summary)
-        resolution_confirmed = self._record_resolution(admission, worktree=worktree)
-        state = "completed" if exit_code == 0 and resolution_confirmed else "failed"
-        if exit_code == 0 and not resolution_confirmed:
-            error = (
-                "codex exited 0 but no ws completion, PR completion, or closed issue was confirmed"
-            )
+        resolution = self._record_resolution(admission, worktree=worktree)
+        if resolution is not None:
+            state, reason = resolution
+            error = None
+        elif exit_code == 0:
+            state = "retryable"
+            reason = "codex exited 0 without a terminal ws outcome"
+            error = reason
         else:
-            error = None if exit_code == 0 else f"exit {exit_code}"
-        if state != "completed":
+            state = "retryable"
+            reason = f"codex exited with status {exit_code} without a terminal ws outcome"
+            error = f"exit {exit_code}"
+        if state in RETRY_OUTCOMES:
             self._release_claim_if_unresolved(admission, worktree=worktree)
-        self.ledger.finish(admission.run_id, state, error=error)
-        if state == "completed" and cfg.cleanup_success_worktree:
+        self._finish_outcome(admission, state, reason, error=error)
+        if state in RESOLVED_OUTCOMES and cfg.cleanup_success_worktree:
             self._cleanup_ws_artifacts_for_issue(
                 admission.issue,
                 workspace_root=worktree / "apps" / "crawler" / ".workspace",
@@ -1312,16 +1973,33 @@ class CompanyResolverGovernor:
         if prs:
             self._record_pr(admission, prs[0])
 
-    def _record_resolution(self, admission: Admission, *, worktree: Path | None) -> bool:
+    def _record_resolution(
+        self,
+        admission: Admission,
+        *,
+        worktree: Path | None,
+    ) -> tuple[str, str] | None:
+        from src.workspace.git import classify_issue_prs
+
         prs = self.github.check_existing_prs(admission.issue)
         if prs:
             self._record_pr(admission, prs[0])
-        if self.github.issue_is_closed(admission.issue):
-            return True
-        return bool(prs and worktree and _ws_issue_completed(worktree, admission.issue))
+        issue = self.github.issue_resolution(admission.issue)
+        if issue.outcome == "submitted" and not prs:
+            return "submitted", issue.reason or "issue closed by linked PR"
+        if issue.outcome in {"rejected", "escalated"} and not prs:
+            return issue.outcome, issue.reason or f"issue was {issue.outcome}"
+        if prs and classify_issue_prs(prs) == "submitted":
+            number = prs[0].get("number")
+            branch = prs[0].get("headRefName")
+            if isinstance(branch, str) and branch.startswith("fix-crawler/"):
+                return "submitted", f"coding-mode fix submitted as PR #{number}"
+            if worktree and _ws_issue_completed(worktree, admission.issue):
+                return "submitted", f"ws completed and PR #{number} is ready for review"
+        return None
 
     def _record_pr(self, admission: Admission, pr: dict[str, Any]) -> None:
-        number = _int_or_none(pr.get("number"))
+        number = _int_from_value(pr.get("number"))
         self.ledger.update(
             admission.run_id,
             pr_number=number,
@@ -1342,6 +2020,47 @@ class CompanyResolverGovernor:
         if resolved:
             return
         self.github.delete_claim(admission.claim_comment_id)
+
+    def _finish_outcome(
+        self,
+        admission: Admission,
+        state: str,
+        reason: str,
+        *,
+        error: str | None = None,
+    ) -> None:
+        retry_after_at = None
+        if state in RETRY_OUTCOMES:
+            retry_after_at = int(time.time()) + self._retry_delay(admission.run_id)
+        issue_comment_error = None
+        if admission.issue > 0:
+            try:
+                self.github.record_run_outcome(
+                    admission.issue,
+                    run_id=admission.run_id,
+                    outcome=state,
+                    reason=reason,
+                    retry_after_at=retry_after_at,
+                )
+            except (AttributeError, GitHubStateError) as exc:
+                issue_comment_error = str(exc)
+        ledger_error = error
+        if issue_comment_error:
+            ledger_error = "; ".join(part for part in (error, issue_comment_error) if part)
+        self.ledger.finish(
+            admission.run_id,
+            state,
+            error=ledger_error,
+            outcome_reason=reason,
+            retry_after_at=retry_after_at,
+        )
+
+    def _retry_delay(self, run_id: str) -> int:
+        run = self.ledger.get_run(run_id) or {}
+        attempt = max(1, int(run.get("attempt") or 1))
+        base = max(1, self.config.retry_backoff_s)
+        maximum = max(base, self.config.max_retry_backoff_s)
+        return min(maximum, base * (2 ** min(attempt - 1, 10)))
 
     def _cleanup_ws_artifacts_for_issue(
         self,
@@ -1409,6 +2128,15 @@ def _parse_github_timestamp(value: str | None) -> int | None:
     except ValueError:
         return None
     return int(dt.timestamp())
+
+
+def _comment_field(body: str, name: str) -> str | None:
+    prefix = f"{name}:"
+    for line in body.splitlines():
+        if line.startswith(prefix):
+            value = line.removeprefix(prefix).strip()
+            return value or None
+    return None
 
 
 def _ws_issue_completed(worktree: Path, issue: int) -> bool:
@@ -1490,6 +2218,18 @@ def _pid_alive(pid: int) -> bool:
     return True
 
 
+def _safe_trace_export_error(exc: Exception) -> str:
+    message = f"{type(exc).__name__}: {str(exc)[:1000]}"
+    try:
+        from src.workspace.trace import detect_credentials
+
+        if detect_credentials(message):
+            return f"{type(exc).__name__}: details redacted by credential scanner"
+    except Exception:  # noqa: BLE001 - error reporting must stay fail-safe
+        return type(exc).__name__
+    return message
+
+
 def _pid_matches_run(pid: int, run_id: str) -> bool:
     proc_root = Path("/proc")
     environ_path = proc_root / str(pid) / "environ"
@@ -1534,12 +2274,16 @@ def main() -> int:
                 "state": result.state,
                 "exit_code": result.exit_code,
                 "trace_path": str(result.trace_path) if result.trace_path else None,
+                "trace_export_status": result.trace_export_status,
+                "trace_export_tier": result.trace_export_tier,
+                "trace_export_remote_dir": result.trace_export_remote_dir,
+                "trace_export_error": result.trace_export_error,
                 "error": result.error,
             },
             sort_keys=True,
         )
     )
-    return 0 if result.state in {"completed", "skipped"} else 1
+    return 0 if result.state in {*RESOLVED_OUTCOMES, "completed", "skipped"} else 1
 
 
 if __name__ == "__main__":

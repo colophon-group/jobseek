@@ -721,6 +721,7 @@ async def _discover_http(
     json_path = config.get("json_path")
     url_field = config.get("url_field")
     url_template = config.get("url_template")
+    url_template_fields = config.get("url_template_fields") or {}
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
     post_data = config.get("post_data") or config.get("post_body")
@@ -951,10 +952,23 @@ async def _discover_http(
                 log.info("api_sniffer.auto_fields", fields=list(fields_map.keys()))
 
         if fields_map:
-            jobs = _extract_rich(items, fields_map, url_field, url_template, board_url, root=data)
+            jobs = _extract_rich(
+                items,
+                fields_map,
+                url_field,
+                url_template,
+                board_url,
+                root=data,
+                url_template_fields=url_template_fields,
+            )
             return truncated_rich_result(jobs) if truncated else jobs
         if url_template:
-            urls_from_tpl = _extract_urls_from_template(items, url_template, board_url)
+            urls_from_tpl = _extract_urls_from_template(
+                items,
+                url_template,
+                board_url,
+                url_template_fields=url_template_fields,
+            )
             return truncated_url_result(urls_from_tpl) if truncated else urls_from_tpl
         # Support nested url_field paths (e.g. "data.apply_url")
         if url_field and ("." in url_field or "[" in url_field):
@@ -1085,6 +1099,7 @@ async def _discover_replay(
     json_path = config.get("json_path", "$")
     url_field = config.get("url_field")
     url_template = config.get("url_template")
+    url_template_fields = config.get("url_template_fields") or {}
     post_data = config.get("post_data")
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
@@ -1305,12 +1320,18 @@ async def _discover_replay(
                 board_url,
                 url_map=url_map,
                 root=data,
+                url_template_fields=url_template_fields,
             )
             return truncated_rich_result(jobs) if truncated else jobs
 
         # URL-only mode
         if url_template:
-            urls_from_tpl = _extract_urls_from_template(items, url_template, board_url)
+            urls_from_tpl = _extract_urls_from_template(
+                items,
+                url_template,
+                board_url,
+                url_template_fields=url_template_fields,
+            )
             return truncated_url_result(urls_from_tpl) if truncated else urls_from_tpl
         urls = extract_urls(items, url_field, board_url)
         if not urls and url_map:
@@ -1441,6 +1462,7 @@ def _extract_rich(
     url_map: dict[str, str] | None = None,
     *,
     root: dict | None = None,
+    url_template_fields: dict[str, str] | None = None,
 ) -> list[DiscoveredJob]:
     """Extract DiscoveredJob objects from items using field mapping.
 
@@ -1474,13 +1496,8 @@ def _extract_rich(
         # Build URL
         url = None
         if url_template:
-            try:
-                # Use a safe dict that returns empty string for missing keys
-                safe = {k: v for k, v in item.items() if isinstance(v, (str, int, float))}
-                url = url_template.format_map(safe)
-            except (KeyError, IndexError, ValueError):
-                # A bad template only disables this URL path; fallbacks below may recover it.
-                pass
+            with contextlib.suppress(KeyError, IndexError, ValueError):
+                url = _format_url_template(item, url_template, url_template_fields)
         if not url and url_map and id_field:
             item_id = str(item.get(id_field, ""))
             url = url_map.get(item_id)
@@ -1550,6 +1567,8 @@ def _extract_urls_from_template(
     items: list[dict],
     url_template: str,
     board_url: str,
+    *,
+    url_template_fields: dict[str, str] | None = None,
 ) -> set[str]:
     """Build URL-only set from items using a URL template."""
     from urllib.parse import urljoin
@@ -1559,11 +1578,34 @@ def _extract_urls_from_template(
         if not isinstance(item, dict):
             continue
         try:
-            url = url_template.format_map(item)
+            url = _format_url_template(item, url_template, url_template_fields)
             urls.add(urljoin(board_url, url))
         except (KeyError, IndexError, ValueError):
             continue
     return urls
+
+
+def _format_url_template(
+    item: dict,
+    url_template: str,
+    url_template_fields: dict[str, str] | None,
+) -> str:
+    """Render a job URL from top-level fields plus explicit nested aliases.
+
+    ``str.format_map`` handles top-level scalar item fields, which covers most
+    APIs. Some ATS payloads keep the public posting ID in a nested custom-field
+    array while exposing a separate top-level ID for detail API calls. The
+    alias map lets a config name those nested values without mutating the API
+    response or embedding Python-format indexing syntax in the URL.
+    """
+    values = {k: v for k, v in item.items() if isinstance(v, (str, int, float))}
+    for alias, path in (url_template_fields or {}).items():
+        if not isinstance(alias, str) or not isinstance(path, str):
+            continue
+        value = extract_field(item, path)
+        if isinstance(value, (str, int, float)):
+            values[alias] = value
+    return url_template.format_map(values)
 
 
 async def save_raw(

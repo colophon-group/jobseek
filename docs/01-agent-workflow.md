@@ -37,15 +37,17 @@ The agent runs `ws task --issue N` which guides it through the entire flow:
 
 1. **Pre-verify:** `ws search` to check duplicates, web research to confirm
    the company exists with a public careers page
-2. **Create workspace:** `ws new <slug> --issue N`
+2. **Create workspace:** `ws new <slug> --issue N` creates the local
+   worktree/branch and staged stub, but does not push or open a PR
 3. **Parallel setup:** `ws task` renders the parallel orchestrator which tells
    the agent to spawn background subagents for enrichment, logos, and board
    discovery. `ws set --website` triggers background auto-discovery.
 4. **Progressive board processing:** `ws await-board` blocks until Track C
    adds a board, then the main agent probes and configures it immediately.
    Config testing spawns parallel subagents per monitor+scraper combo.
-5. **Submit:** `ws submit` validates, commits, pushes. `ws task complete`
-   exports the trace and marks the PR ready.
+5. **Submit:** `ws submit` validates, commits, pushes, and creates the draft
+   PR exactly once. `ws task complete` exports the trace and marks the PR
+   ready.
 
 See [10 — Parallel Agent Pipeline](./10-parallel-agent-pipeline.md) for the
 full design, config selection policy, quality enforcement, and subagent
@@ -117,8 +119,12 @@ When config alone can't handle a site, the agent can propose source code changes
 2. Document what was tried and why it failed
 3. Keep the code change minimal and focused
 
-**PR transition workflow**: Since the agent already created a workspace and draft PR, it must clean up before creating the code change PR:
-1. Run `ws del` — this closes the draft PR, removes CSV rows, and deletes the branch
+**PR transition workflow**: A company draft is published only by `ws submit`.
+If code work becomes necessary before submit, clean up the local company
+workspace before creating the code change PR. If submit already published a
+draft, the same cleanup also closes it:
+1. Run `ws del` — this removes CSV rows and deletes the branch, and closes
+   the draft PR when one exists
 2. Create a new branch (`fix-crawler/<description>`) and a new PR
 3. In the new PR body, reference the closed draft (e.g. "Supersedes #12") so reviewers can see what was tried
 4. Ensure the new PR body includes `Closes #<issue-number>` to close the original issue
@@ -141,7 +147,9 @@ Safety budget: max 5 issues per 5-hour rolling window in conservative mode
 unless the Hetzner deployment config deliberately raises it.
 
 The recurring resolver:
-1. Selects the oldest open `company-request` issue that has no active PR (or whose PR is stale)
+1. Selects the oldest eligible open `company-request` issue. A single draft
+   `add-company/` PR is resumable; a ready company PR or `fix-crawler/` PR is
+   submitted; any other linked PR shape is a manual conflict.
 2. Checks host headroom, active claims, active PRs, and Codex usage telemetry
 3. Runs the local Codex CLI path to resolve the selected issue
 4. Captures `codex exec --json` trace data and local usage into the governor ledger
@@ -152,11 +160,13 @@ The recurring resolver is not triggered by GitHub Actions. Use
 same local Codex path so billing, auth, trace capture, and the governor ledger
 remain consistent.
 
-Conflict resolution: if an open PR already claims an issue, the resolver checks
-staleness based on the last commit date — 24h threshold for config-only PRs, 72h
-for code change PRs (those with the `review-code` label). Stale PRs receive a
-one-time warning comment. The issue is only assigned to an agent when no active
-claim exists.
+Resolver outcomes are explicit: `submitted`, `rejected`, `escalated`,
+`retryable`, or `interrupted`. A closed issue is not success evidence on its
+own; it must have a validation/escalation marker or a linked PR closure.
+Retryable and interrupted attempts receive bounded exponential backoff, and a
+backed-off issue does not block later independent issues. Rejection and
+escalation close the issue only after linked draft PR, branch, worktree, and
+workspace cleanup succeeds.
 
 ## Branch Naming
 

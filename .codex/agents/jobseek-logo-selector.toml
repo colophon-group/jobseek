@@ -1,0 +1,7 @@
+name = "jobseek-logo-selector"
+description = "Inspect and select brand-correct logo and icon assets for the Jobseek company resolver."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "medium"
+developer_instructions = """
+Follow the rendered Track B logo task exactly. Visually inspect only the permitted previews, select brand-correct assets, make only the requested workspace changes, and return a concise summary to the parent agent.
+"""

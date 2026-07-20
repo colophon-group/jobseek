@@ -9,9 +9,9 @@ as source of truth and do not commit local Codex app state.
 
 | automation | cadence | execution | source of truth | model policy |
 |---|---:|---|---|---|
-| `jobseek-daily-classifications` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | strongest orchestrator; task-sized labeller subagents |
-| `jobseek-daily-error-review` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | strongest model, high reasoning; no default subagents |
-| `jobseek-company-request-resolver` | self-regulated, checked every 15-30 min | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | strongest orchestrator; task-sized `ws` subagents |
+| `jobseek-daily-classifications` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Sol/high orchestrator; Luna and Terra labeller subagents |
+| `jobseek-daily-error-review` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol/high orchestrator; no default subagents |
+| `jobseek-company-request-resolver` | self-regulated, checked every 15-30 min | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
 
 The recurring company resolver and daily routines must not be triggered by
 GitHub Actions. They run on the Hetzner crawler host through local Codex CLI
@@ -20,6 +20,32 @@ GitHub Actions may still deploy the Hetzner runner host surface. The
 [`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml)
 workflow updates `/srv/jobseek-codex/repo`, installs/verifies systemd units,
 and leaves actual Codex execution to the Hetzner timers.
+
+## GPT-5.6 Model Policy
+
+The current policy follows the [official Codex model
+guide](https://developers.openai.com/codex/models): Sol handles complex,
+open-ended orchestration, Terra handles efficient parallel research and
+semantic work, and Luna handles clear, repeatable classification or
+transformation. Use the lowest reasoning effort that reliably fits the role.
+
+| role | project agent/config | model | reasoning |
+|---|---|---|---|
+| Every production main agent | runner `JOBSEEK_CODEX_MODEL` / `JOBSEEK_CODEX_REASONING_EFFORT` | `gpt-5.6-sol` | `high` |
+| Company metadata | `jobseek-company-enricher` | `gpt-5.6-terra` | `medium` |
+| Logo selection | `jobseek-logo-selector` | `gpt-5.6-luna` | `medium` |
+| Board discovery | `jobseek-board-researcher` | `gpt-5.6-terra` | `high` |
+| Monitor/scraper config testing | `jobseek-config-tester` | `gpt-5.6-terra` | `high` |
+| Labeller HTML normalization | `jobseek-labeller-normalizer` | `gpt-5.6-luna` | `low` |
+| Labeller section splitting | `jobseek-labeller-splitter` | `gpt-5.6-luna` | `medium` |
+| Labeller combined extraction | `jobseek-labeller-extractor` | `gpt-5.6-terra` | `high` |
+| Optional error-evidence analysis | `jobseek-error-review-researcher` | `gpt-5.6-terra` | `high` |
+
+Do not use Max or Ultra for these scheduled runs. The workflows already own
+their delegation strategy, and high reasoning gives the main agent enough
+depth without enabling redundant automatic delegation. Escalate an isolated
+subagent to Sol/high only after repeated validation failure or genuinely
+ambiguous evidence.
 
 ## Harness Invariants
 
@@ -41,11 +67,10 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
   material. Do not print, upload, commit, or include them in traces.
 - Keep Claude-compatible files only as migration fallbacks. When a fallback is
   edited, keep behavior aligned with the Codex-first source.
-- Keep the main orchestration run on the strongest available Codex model with
-  high reasoning for production routines.
-- Use smaller Codex models only for bounded subagent tasks. Escalate an
-  individual subagent attempt when validation fails repeatedly or evidence is
-  ambiguous.
+- Pin production orchestration to GPT-5.6 Sol with high reasoning.
+- Use the role-specific Terra and Luna project agents in the model-policy
+  table for bounded subagent tasks. Escalate an individual subagent attempt to
+  Sol/high only when validation fails repeatedly or evidence is ambiguous.
 - Subagent contracts are harness-invariant: task name, rendered input path,
   output path, schema, and validator define the boundary. Harness-specific
   agent files may vary, but they must not fork prompts or schemas.
@@ -70,12 +95,10 @@ runner prompt:
 3. Set the working directory to the Jobseek repo root. For Git-repo
    background worktrees, verify required untracked files and local secrets are
    visible to that execution environment before enabling the schedule.
-4. Set the orchestrator to the strongest available Codex model and high
-   reasoning.
-5. For the classification routine, configure subagents by task size:
-   normalizer and splitter can use smaller models when straightforward;
-   extraction should use a stronger model by default and escalate on repeated
-   validation failures.
+4. Confirm the runner command pins `gpt-5.6-sol` with high reasoning.
+5. Confirm every spawned role uses the project custom agent and exact setting
+   in the GPT-5.6 model-policy table. Escalate only the failing or ambiguous
+   role, not the whole routine.
 6. Run a manual smoke pass. Prefer dry-run or small-count modes until the
    routine has two clean production runs.
 7. Confirm the durable output: HuggingFace date rows, daily error report and
@@ -156,9 +179,9 @@ exit
 
 If trace upload is enabled, provision the narrow HuggingFace token in the
 runner user's local HuggingFace cache, not in the systemd environment. The
-Codex subprocess environment intentionally strips `HF_TOKEN`, so `ws task
-complete` reads the token through `huggingface_hub` local auth while traces
-remain free of deployment secrets.
+Codex subprocess environment intentionally strips `HF_TOKEN`; the governor's
+terminal-run hook reads local `huggingface_hub` auth only after Codex exits, so
+the credential cannot enter the captured session.
 
 ```bash
 sudo -iu codex-runner
@@ -274,7 +297,7 @@ Before enabling the timer, edit `/etc/jobseek-codex/governor.env` for the
 host and keep `JOBSEEK_CODEX_DRY_RUN=true` until issue selection, host checks,
 usage telemetry, ledger writes, and worktree creation have been verified. The
 systemd service runs
-`python3 /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py`
+`/srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py`
 under `flock -n /srv/jobseek-codex/state/codex-runner.lock`; daily services
 use the same lock with a bounded wait. This keeps all local Codex routines at
 one active process without firing missed daily jobs immediately after a
@@ -306,6 +329,16 @@ clone at `/srv/jobseek-codex/repo`, installs and verifies units, and enables
 timers for boot persistence. It intentionally sets
 `JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a company resolver,
 annotation run, or error review from GitHub Actions.
+
+The deploy never interrupts a live Codex routine. It waits up to 15 minutes
+for the shared runner lock, and the SSH command has a 30-minute envelope so
+that a successful lock wait still leaves 15 minutes for checkout, runtime
+sync, verification, and the retention report. If the lock remains occupied
+for the full wait, the deploy fails before changing the checkout or units;
+the live routine continues normally, and the deployment can be retried with
+`workflow_dispatch` after the routine releases the lock. Workflow concurrency
+also uses `cancel-in-progress: false`, so queued deployments are not canceled
+by a newer push.
 
 Initial service limits:
 
@@ -407,15 +440,95 @@ For each accepted issue:
 6. Capture `codex exec --json` stdout to the JSONL trace path and stderr to a
    per-run log file.
 7. Let `ws submit` create the PR; never push to `main`.
-8. On `ws task complete`, upload the scoped trace only after the credential
-   detector accepts the payload. A detected GitHub, OpenAI, HuggingFace, AWS,
-   Google, Slack, bearer, JWT, private-key, URL-password, or sensitive
-   assignment shape must fail the upload closed and leave the local trace for
-   manual review.
-9. Record PR URL, branch, usage summary, trace path, and final status in the
-   ledger.
-10. Remove the throwaway worktree after trace export and a successful PR, or
-   retain it for bounded debugging on failure.
+8. After every terminal Codex outcome (`submitted`, `rejected`, `escalated`,
+   `retryable`, or `interrupted`),
+   export the root thread, all child-agent sessions, `codex exec` events, and
+   runner stderr as one provenance-linked bundle. `ws task complete` does not
+   own this hook, so rejection and early-exit paths are included.
+9. Drop hidden reasoning/encrypted content and duplicated runtime context,
+   reconstruct standard child task contracts from the plaintext `ws` renderer,
+   and run the credential detector over every projected file. A detected
+   credential shape fails closed and leaves all sources local for review.
+10. Store gold, silver (incomplete encrypted collaboration), and diagnostic
+    (no assistant trajectory) bundles under separate HuggingFace prefixes. The
+    v2 schema includes both per-thread JSONL and one chronological,
+    parent-linked `trajectory.jsonl`. Training consumers take all gold bundles
+    by default. To teach subagent spawning and execution, they may also take
+    silver child-thread files whose `thread_header.task_contract` is present,
+    while excluding records marked with an unresolved encrypted-message
+    placeholder. Diagnostic bundles are for failure analysis, not model
+    training. The manifest exposes every condition needed for these gates.
+11. Download every uploaded object into an ephemeral directory and verify its
+    SHA-256 and JSON/schema representation. Record the verified remote and exact
+    local source path/hash inventory in SQLite, then delete only those source
+    files when their hashes still match. Upload or verification failure keeps
+    local sources for retry. A successful cleanup prunes only cached revisions
+    of the trace dataset and reports reclaimed bytes plus current disk headroom.
+    Before considering a new issue, each governor wake retries up to
+    `JOBSEEK_CODEX_TRACE_RETRY_LIMIT` failed exports even when the new-run disk
+    health gate is closed.
+12. Record PR URL, branch, usage summary, export status, explicit outcome,
+    reason, attempt, and any retry deadline in the ledger and linked issue.
+13. Treat only `submitted`, `rejected`, and `escalated` as resolved. A plain
+    closed issue is insufficient; rejection/escalation cleanup must finish
+    before closure. Record capacity errors, timeouts, deployment interruption,
+    and unresolved exits as `retryable` or `interrupted` with exponential
+    backoff (`JOBSEEK_CODEX_RETRY_BACKOFF_S`, default 900 seconds, capped by
+    `JOBSEEK_CODEX_MAX_RETRY_BACKOFF_S`, default 21600 seconds).
+14. Remove the throwaway worktree after a resolved outcome, independently of
+    trace export; retain it for bounded debugging on retryable/interrupted runs.
+15. Emit a structured disk warning at
+    `JOBSEEK_CODEX_MIN_DISK_FREE_GIB + JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB`.
+    Stop new admissions at the disk floor or when quarantined trace material
+    reaches either `JOBSEEK_CODEX_MAX_QUARANTINE_RUNS` or
+    `JOBSEEK_CODEX_MAX_QUARANTINE_GIB`. Export retries still run before these
+    gates so a transient failure can reclaim space without admitting new work.
+
+Historical retained sessions can be exported in bounded commits while holding
+the normal runner lock:
+
+```bash
+sudo -u codex-runner flock -w 30 /srv/jobseek-codex/state/codex-runner.lock \
+  /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
+  /srv/jobseek-codex/repo/scripts/codex-trace-backfill.py \
+  --all --upload --cleanup --allow-silver --allow-diagnostic
+```
+
+This command indexes the Codex session store once, verifies every remote object
+before recording a run as exported, and cleans only source files covered by the
+verified manifest. It also repairs the known legacy Codex encoding where a raw
+newline split one JSON string across physical JSONL lines, recording the number
+of recovered records in the manifest. Anything that still does not parse, has
+an invalid session tree, or matches the credential detector is quarantined and
+stays local.
+
+Reconcile terminal, exported, retained, quarantined/failed, and unaccounted
+runs plus byte totals for Codex sessions, canonical traces, stderr logs,
+Hugging Face cache, worktrees, durable exports, deleted sources, and current
+disk headroom with:
+
+```bash
+sudo -u codex-runner \
+  /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
+  /srv/jobseek-codex/repo/scripts/codex-trace-backfill.py --report
+```
+
+For a read-only, exact file plan, including why each retained source cannot be
+deleted and which verified sources are candidates for checksum-gated cleanup:
+
+```bash
+sudo -u codex-runner \
+  /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
+  /srv/jobseek-codex/repo/scripts/codex-trace-backfill.py --dry-run-cleanup
+```
+
+Both commands are non-destructive. A `quarantine_limit`, `disk_headroom`, or
+`unaccounted_runs` alert must be resolved before increasing admission limits.
+Quarantined, failed, unavailable, unaccounted, and terminal-debug worktree
+entries are never cleanup candidates.
+Every runner deployment emits the compact report to its GitHub Actions log so
+disk and quarantine state remain operator-visible without granting the deploy
+account access to the runner user's private trace store.
 
 ### Phase 5 - rollout
 

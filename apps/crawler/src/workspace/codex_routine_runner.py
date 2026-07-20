@@ -26,6 +26,7 @@ from src.workspace.codex_runner import (
     SchedulerDecision,
     _safe_env,
     _terminate_process_group,
+    build_codex_command,
     parse_codex_usage_jsonl,
 )
 
@@ -184,6 +185,8 @@ class DailyRoutineRunner:
             state_dir=config.state_dir,
             ledger_path=config.ledger_path,
             codex_args=config.codex_args,
+            codex_model=config.codex_model,
+            codex_reasoning_effort=config.codex_reasoning_effort,
             max_runtime_s=config.max_runtime_s,
             kill_grace_s=config.kill_grace_s,
             dry_run=config.dry_run,
@@ -299,7 +302,7 @@ class DailyRoutineRunner:
             count=self.count,
             error_bundle=self.error_bundle,
         )
-        cmd = [*cfg.codex_args, prompt]
+        cmd = build_codex_command(cfg, prompt)
         started_at = time.time()
         with trace_path.open("w") as stdout, stderr_path.open("w") as stderr:
             proc = subprocess.Popen(

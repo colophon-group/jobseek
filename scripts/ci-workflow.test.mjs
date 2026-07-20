@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import test from "node:test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const codeqlWorkflow = readFileSync(".github/workflows/codeql.yml", "utf8");
@@ -29,9 +38,77 @@ const publishMcpServerWorkflow = readFileSync(
   ".github/workflows/publish-mcp-server.yml",
   "utf8",
 );
+const deployCodexRunnerWorkflow = readFileSync(
+  ".github/workflows/deploy-codex-runner.yml",
+  "utf8",
+);
+const deployCodexRunnerHostScript = readFileSync(
+  "scripts/deploy-codex-runner-host.sh",
+  "utf8",
+);
+const crawlerScheduledMaintenanceWorkflow = readFileSync(
+  ".github/workflows/crawler-scheduled-maintenance.yml",
+  "utf8",
+);
+const crawlerHostHygieneScript = readFileSync(
+  "scripts/crawler-host-hygiene.py",
+  "utf8",
+);
 const mainStrictGateRuleset = JSON.parse(
   readFileSync(".github/rulesets/main-strict-gate.json", "utf8"),
 );
+
+function runDispatchPrChecks({
+  state = "OPEN",
+  isDraft = false,
+  branch = "add-company/example",
+  owner = "colophon-group",
+  requestedBranch = branch,
+} = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "dispatch-pr-checks-"));
+  const log = join(dir, "gh.log");
+  const gh = join(dir, "gh");
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1 $2" == "pr view" ]]; then
+  printf '%s' "$MOCK_PR_JSON"
+  exit 0
+fi
+printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
+`,
+  );
+  chmodSync(gh, 0o755);
+  const env = {
+    ...process.env,
+    PATH: `${dir}:${process.env.PATH}`,
+    GH_TOKEN: "test-token",
+    REPO: "colophon-group/jobseek",
+    PR: "123",
+    MOCK_GH_LOG: log,
+    MOCK_PR_JSON: JSON.stringify({
+      state,
+      isDraft,
+      headRefName: branch,
+      headRepositoryOwner: { login: owner },
+    }),
+  };
+  if (requestedBranch !== null) env.BRANCH = requestedBranch;
+  const result = spawnSync("bash", [".github/scripts/dispatch-pr-checks.sh"], {
+    cwd: process.cwd(),
+    env,
+    encoding: "utf8",
+  });
+  let calls = "";
+  try {
+    calls = readFileSync(log, "utf8");
+  } catch {
+    // A correctly skipped PR does not call `gh workflow run`.
+  }
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, calls };
+}
 
 function setupUvBlocks(workflowSource) {
   return [
@@ -55,6 +132,13 @@ function workflowJobBlock(workflowSource, jobId) {
   );
   assert.ok(match, `missing workflow job ${jobId}`);
   return match[0];
+}
+
+function durationSeconds(value) {
+  const match = value.match(/^(\d+)([smh])$/);
+  assert.ok(match, `unsupported duration ${value}`);
+  const unitSeconds = { s: 1, m: 60, h: 3600 };
+  return Number(match[1]) * unitSeconds[match[2]];
 }
 
 test("CI change detection uses the pinned paths-filter action", () => {
@@ -107,8 +191,49 @@ test("manual CI dispatch can classify a PR without full code checks", () => {
 test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /node --test/);
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
+  assert.match(workflow, /scripts\/crawler-host-hygiene\.test\.mjs/);
   assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
+});
+
+test("Codex deploy transport outlives the runner lock wait", () => {
+  const workflowLockTimeout = deployCodexRunnerWorkflow.match(
+    /^  JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S: "(\d+)"$/m,
+  );
+  const hostLockTimeout = deployCodexRunnerHostScript.match(
+    /LOCK_TIMEOUT_S="\$\{JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S:-(\d+)\}"/,
+  );
+  const commandTimeout = deployCodexRunnerWorkflow.match(
+    /^          command_timeout: (\d+[smh])$/m,
+  );
+
+  assert.ok(workflowLockTimeout, "missing workflow runner-lock timeout");
+  assert.ok(hostLockTimeout, "missing host runner-lock timeout default");
+  assert.ok(commandTimeout, "missing SSH command timeout");
+  assert.equal(workflowLockTimeout[1], hostLockTimeout[1]);
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /envs: GITHUB_SHA,JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S/,
+  );
+  assert.ok(
+    durationSeconds(commandTimeout[1]) >= Number(workflowLockTimeout[1]) + 900,
+    "SSH command timeout must include the lock wait plus 15 minutes for deployment",
+  );
+  assert.match(deployCodexRunnerWorkflow, /cancel-in-progress: false/);
+});
+
+test("scheduled maintenance always reports host hygiene independently", () => {
+  assert.match(crawlerHostHygieneScript, /from datetime import datetime, timezone/);
+  assert.match(crawlerHostHygieneScript, /UTC = timezone\.utc/);
+  assert.doesNotMatch(crawlerHostHygieneScript, /from datetime import UTC/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /docker run --rm[\s\S]*\|\| maintenance_status=\$\?[\s\S]*crawler-host-hygiene\.py" \|\| hygiene_status=\$\?/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /maintenance_status != 0 \|\| hygiene_status != 0/,
+  );
 });
 
 test("maybe-auto-merge wakes without manual retries", () => {
@@ -140,7 +265,8 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
 test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(dispatchPrChecksScript, /gh workflow run ci\.yml --repo "\$REPO" --ref "\$branch" -f "pr=\$PR"/);
   assert.doesNotMatch(dispatchPrChecksScript, /codeql\.yml/);
-  assert.match(dispatchPrChecksScript, /"\$branch" != add-company\/\*/);
+  assert.doesNotMatch(dispatchPrChecksScript, /add-company\/\*/);
+  assert.match(dispatchPrChecksScript, /"\$BRANCH" != "\$pr_branch"/);
   assert.match(dispatchPrChecksScript, /Unexpected inputs provided: \\\["pr"\\\]/);
   assert.match(dispatchPrChecksScript, /later rebase retry will dispatch CI/);
 
@@ -155,6 +281,58 @@ test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(uploadCompanyImagesWorkflow, /maybe-auto-merge-pr\.sh/);
   assert.match(uploadCompanyImagesWorkflow, /Retry trusted auto-merge/);
   assert.match(uploadCompanyImagesWorkflow, /TRUSTED_SCRIPTS_DIR: \$\{\{ runner\.temp \}\}\/trusted-scripts/);
+});
+
+test("trusted image cleanup dispatches add-company and coding-mode PRs", () => {
+  for (const branch of ["add-company/example", "fix-crawler/example-repair"]) {
+    const result = runDispatchPrChecks({ branch });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.calls, /workflow run ci\.yml/);
+    assert.match(result.calls, new RegExp(`--ref ${branch.replace("/", "\\/")}`));
+    assert.match(result.calls, /-f pr=123/);
+  }
+});
+
+test("trusted image cleanup does not dispatch forks, drafts, or closed PRs", () => {
+  for (const fixture of [
+    { owner: "external-contributor" },
+    { isDraft: true },
+    { state: "CLOSED" },
+  ]) {
+    const result = runDispatchPrChecks(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.calls, "");
+  }
+});
+
+test("trusted image cleanup rejects an event branch that disagrees with the PR", () => {
+  const result = runDispatchPrChecks({
+    branch: "fix-crawler/current-head",
+    requestedBranch: "fix-crawler/stale-event",
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /not requested branch/);
+  assert.equal(result.calls, "");
+});
+
+test("company image cleanup commits cannot absorb trusted source changes", () => {
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /git restore --source="\$trusted_ref" --worktree -- \\\n+              apps\/crawler\/src/,
+  );
+  assert.doesNotMatch(
+    uploadCompanyImagesWorkflow,
+    /git restore --source="\$trusted_ref" --staged/,
+  );
+  assert.match(uploadCompanyImagesWorkflow, /git add apps\/crawler\/data\//);
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /git diff --cached --name-only[\s\S]*grep -v '\^apps\/crawler\/data\/'/,
+  );
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /Refusing to commit paths outside apps\/crawler\/data/,
+  );
 });
 
 test("company PR label script applies decision labels idempotently", () => {

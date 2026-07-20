@@ -14,8 +14,14 @@ pr_json=$(gh pr view "$PR" --repo "$REPO" \
 
 state=$(jq -r '.state' <<< "$pr_json")
 draft=$(jq -r '.isDraft' <<< "$pr_json")
-branch="${BRANCH:-$(jq -r '.headRefName' <<< "$pr_json")}"
+pr_branch=$(jq -r '.headRefName' <<< "$pr_json")
 head_owner=$(jq -r '.headRepositoryOwner.login' <<< "$pr_json")
+
+if [[ -n "${BRANCH:-}" && "$BRANCH" != "$pr_branch" ]]; then
+  echo "PR #$PR head is $pr_branch, not requested branch $BRANCH" >&2
+  exit 1
+fi
+branch="$pr_branch"
 
 if [[ "$state" != "OPEN" ]]; then
   echo "PR #$PR is $state; not dispatching checks"
@@ -32,8 +38,8 @@ if [[ "$head_owner" != "$OWNER" ]]; then
   exit 0
 fi
 
-if [[ "$branch" != add-company/* ]]; then
-  echo "PR #$PR branch is $branch, not add-company/*; not dispatching checks"
+if [[ -z "$branch" || "$branch" == "null" ]]; then
+  echo "PR #$PR has no head branch; not dispatching checks"
   exit 0
 fi
 

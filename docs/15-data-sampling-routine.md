@@ -42,6 +42,13 @@ surface and retry coordination. The `company` and `application` section kinds
 are identified by the splitter for span classification and are preserved in
 the combined output with `extracted: null`.
 
+The production orchestrator runs on GPT-5.6 Sol with high reasoning. Its
+project custom agents deliberately use smaller family members: Luna/low for
+HTML normalization, Luna/medium for section classification, and Terra/high
+for combined semantic extraction. The pinned values live in
+`.codex/agents/jobseek-labeller-*.toml`; validation and retry gates provide
+the escalation signal instead of spending Sol tokens on every posting.
+
 ### The "orchestrator never reads the subagent prompt" invariant
 
 Subagent system prompts live in the agent-runtime layer. Codex repo skills

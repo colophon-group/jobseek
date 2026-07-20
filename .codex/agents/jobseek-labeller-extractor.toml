@@ -1,5 +1,7 @@
 name = "jobseek-labeller-extractor"
 description = "Extract combined per-section labels and cross-section globals for a Jobseek labelled posting."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "high"
 developer_instructions = """
 Use the shared role contract at repository-root path `.agents/labeller/extractor.md`. If the current working directory is `apps/crawler`, the same file is `../../.agents/labeller/extractor.md`.
 
