@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 import structlog
@@ -130,6 +130,7 @@ async def fetch_json_page_with_retry(
     headers: dict[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = False,
+    retryable_statuses: Collection[int] = (),
     retries: int = 3,
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
@@ -150,6 +151,7 @@ async def fetch_json_page_with_retry(
     headers: dict[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = False,
+    retryable_statuses: Collection[int] = (),
     retries: int = 3,
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
@@ -169,6 +171,7 @@ async def fetch_json_page_with_retry(
     headers: dict[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = False,
+    retryable_statuses: Collection[int] = (),
     retries: int = 3,
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
@@ -180,8 +183,9 @@ async def fetch_json_page_with_retry(
     previously copied locally. It differs from :func:`fetch_with_retry`
     in two load-bearing ways:
 
-    - non-retryable 4xx statuses fail fast with :class:`PaginationFetchError`
-      instead of returning ``None``;
+    - non-retryable statuses fail fast with :class:`PaginationFetchError`
+      instead of returning ``None``; callers may add provider-specific
+      transient statuses through ``retryable_statuses``;
     - successful JSON responses must decode to *expect_shape* or the page is
       treated as transient and retried before surfacing.
     """
@@ -228,7 +232,7 @@ async def fetch_json_page_with_retry(
                 if retried:
                     http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
                 return data
-            if is_retryable_status(resp.status_code):
+            if is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
                 last_exc = None
                 http_retry_attempts_total.labels(host=host, outcome="retry").inc()
                 retried = True

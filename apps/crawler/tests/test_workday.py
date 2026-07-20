@@ -777,6 +777,32 @@ class TestPostPageWithRetry:
             assert data["jobPostings"] == [{"externalPath": "/x"}]
             assert calls["n"] == 3
 
+    async def test_retries_transient_303_without_changing_post_to_get(self, monkeypatch):
+        """Reproduce #5715's Workday incident.
+
+        The provider returned 303 without a usable canonical redirect across
+        many tenants. Following it would change this list API's POST into GET;
+        retry the original request after backoff instead.
+        """
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+        methods: list[str] = []
+
+        def handler(request):
+            methods.append(request.method)
+            if len(methods) == 1:
+                return httpx.Response(303, headers={"Location": ""})
+            return httpx.Response(200, json={"total": 0, "jobPostings": [], "facets": []})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            data = await _post_page_with_retry(
+                client, _LIST_URL, {"limit": 20, "offset": 0}, base_delay=0.001
+            )
+
+        assert data == {"total": 0, "jobPostings": [], "facets": []}
+        assert methods == ["POST", "POST"]
+
     async def test_retries_on_cloudflare_5xx(self, monkeypatch):
         """Cloudflare origin codes 520-526/530 are retried (parity with
         dom + accenture + PCSX). Pinned for one representative code; the
