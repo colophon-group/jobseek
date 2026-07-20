@@ -358,13 +358,17 @@ def _build_comment(name: str, metadata: dict) -> str:
             return f"Breezy \u2014 {portal_url}, {jobs} jobs"
         return f"Breezy \u2014 {portal_url}"
     if name == "comeet":
-        company = metadata.get("company", "?")
-        board_id = metadata.get("board_id", "?")
         jobs = metadata.get("jobs")
-        label = f"{company}/{board_id}"
+        company_id = metadata.get("company_id")
+        if company_id:
+            label = f"API company: {company_id}"
+        else:
+            company = metadata.get("company", "?")
+            board_id = metadata.get("board_id", "?")
+            label = f"embedded data: {company}/{board_id}"
         if jobs is not None:
-            return f"Comeet embedded data \u2014 {label}, {jobs} jobs"
-        return f"Comeet embedded data \u2014 {label}"
+            return f"Comeet \u2014 {label}, {jobs} jobs"
+        return f"Comeet \u2014 {label}"
     if name == "eightfold":
         sitemap_url = metadata.get("sitemap_url", "?")
         urls = metadata.get("urls")

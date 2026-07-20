@@ -132,10 +132,10 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ashby"
     if host == "jobs.gem.com":
         return "gem"
+    if host in ("comeet.com", "www.comeet.com", "comeet.co", "www.comeet.co"):
+        return "comeet"
     if host == "jobs.deel.com":
         return "deel"
-    if host in ("comeet.com", "www.comeet.com") and parsed.path.startswith("/jobs/"):
-        return "comeet"
     if host == "apply.workable.com":
         return "workable"
     if host == "careers.smartrecruiters.com":
