@@ -258,6 +258,14 @@ _NEXTDATA_HTML_NESTED = """\
 "offices":[{"name":"London"},{"name":"Berlin"}]}}}}
 </script></body></html>"""
 
+_NEXTDATA_HTML_CONTENTS = """\
+<html><head></head><body>
+<script id="__NEXT_DATA__" type="application/json">
+{"props":{"pageProps":{"dataPackage":{"title":"R&D Engineer",
+"contents":"<p>Develop Earth observation algorithms.</p>",
+"location":"Barcelona"}}}}
+</script></body></html>"""
+
 _NEXTDATA_NO_JOB = """\
 <html><head></head><body>
 <script id="__NEXT_DATA__" type="application/json">
@@ -326,6 +334,16 @@ class TestScraperCanHandle:
         assert result is not None
         assert "job" in result["path"]
         assert result["fields"]["title"] == "title"
+
+    def test_nextdata_detects_plural_contents_description(self):
+        result = nextdata_can_handle([_NEXTDATA_HTML_CONTENTS])
+        assert result is not None
+        assert result["path"] == "props.pageProps.dataPackage"
+        assert result["fields"] == {
+            "title": "title",
+            "description": "contents",
+            "locations": "location",
+        }
 
     def test_nextdata_no_job(self):
         result = nextdata_can_handle([_NEXTDATA_NO_JOB])
