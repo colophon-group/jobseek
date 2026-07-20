@@ -544,7 +544,6 @@ def _cleanup_resolver_artifacts(
     if not local:
         from pathlib import Path
 
-        from src.shared.constants import set_repo_root
         from src.workspace import git
 
         worktree = Path(ws.worktree) if ws and ws.worktree else None
@@ -552,7 +551,6 @@ def _cleanup_resolver_artifacts(
             worktree = git.worktrees_dir() / slug
         if worktree is not None:
             git.remove_worktree_strict(worktree)
-        set_repo_root(git.managed_repo())
         for branch in sorted(branch for branch in branches if branch):
             git.delete_branch_strict(branch)
 
