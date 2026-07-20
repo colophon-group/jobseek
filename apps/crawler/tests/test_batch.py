@@ -450,6 +450,89 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
+    async def test_rich_processing_and_enqueue_release_db_transaction(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        mock_pool,
+        mock_http,
+        monkeypatch,
+    ):
+        """CPU, cache backfill, and Redis publication must not hold Postgres.
+
+        A monitor transaction previously covered all three operations. Under
+        normal monitor concurrency that occupied every pool slot while scrape
+        workers waited 60 seconds and raised the bare TimeoutError from #5489.
+        """
+        from src.processing import board as board_module
+
+        pool, conn = mock_pool
+        tx_state = {"active": False}
+        tx_cm = conn.transaction.return_value
+
+        async def _enter_transaction():
+            assert tx_state["active"] is False
+            tx_state["active"] = True
+
+        async def _exit_transaction(*_args):
+            tx_state["active"] = False
+            return False
+
+        tx_cm.__aenter__.side_effect = _enter_transaction
+        tx_cm.__aexit__.side_effect = _exit_transaction
+
+        original_normalize = board_module.normalize_description_html
+        observed: list[str] = []
+
+        def _checked_normalize(value):
+            assert tx_state["active"] is False
+            observed.append("cpu")
+            return original_normalize(value)
+
+        resolver = MagicMock()
+        resolver.resolve.return_value = []
+
+        async def _checked_backfill():
+            assert tx_state["active"] is False
+            observed.append("backfill")
+            return False
+
+        resolver.backfill_misses = AsyncMock(side_effect=_checked_backfill)
+
+        async def _get_resolver(_pool):
+            return resolver
+
+        async def _checked_enqueue(*_args, **_kwargs):
+            assert tx_state["active"] is False
+            observed.append("enqueue")
+
+        monkeypatch.setattr(board_module, "normalize_description_html", _checked_normalize)
+        monkeypatch.setattr("src.batch._get_location_resolver", _get_resolver)
+        monkeypatch.setattr(
+            board_module, "_enqueue_scrapes_for_new", AsyncMock(side_effect=_checked_enqueue)
+        )
+
+        url = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={url}, jobs_by_url={url: _discovered_job(url=url)})
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url)],
+            [],  # MARK_GONE_BY_TIMESTAMP
+        ]
+        conn.fetchrow.return_value = _inserted_row("jp-1", url)
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+
+        await _process_one_board(board, pool, mock_http)
+
+        assert observed == ["cpu", "backfill", "enqueue"]
+        assert tx_state["active"] is False
+        # One short classification transaction, one DB-write transaction,
+        # and the later gone-detection transaction.
+        assert conn.transaction.call_count == 3
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
     async def test_url_only_inserts_stubs_for_scrape(
         self,
         mock_monitor,
@@ -728,6 +811,41 @@ class TestProcessOneBoard:
         assert patch_dict["sitemap_url"] == "https://example.com/sitemap.xml"
         assert patch_dict["pcsx_watermark"]["max_ts"] == 12345
         assert patch_dict["pcsx_watermark"]["enabled"] is True
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_failed_insert_does_not_advance_watermark_or_enqueue(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """An incremental cursor cannot commit ahead of its posting inserts."""
+        from src.processing.board import _enqueue_scrapes_for_new
+
+        pool, conn = mock_pool
+        url = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url},
+                jobs_by_url=None,
+                metadata_updates={"incremental_watermark": "cursor-2"},
+            )
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url)],
+            RuntimeError("insert failed"),
+        ]
+        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        enqueue_spy = _enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+        board = _mock_board(crawler_type="dom")
+
+        ok, _duration = await _process_one_board(board, pool, mock_http)
+
+        assert ok is False
+        metadata_calls = [
+            call for call in conn.execute.await_args_list if call.args[0] == _UPDATE_METADATA
+        ]
+        assert metadata_calls == []
+        enqueue_spy.assert_not_awaited()
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -2181,6 +2299,30 @@ class TestProcessOneScrape:
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
         assert failure_calls[0].args[1] == "jp-1"
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_pool_timeout_log_identifies_database_save(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """A blank asyncpg acquire timeout retains the failed pipeline stage."""
+        import structlog
+
+        pool, _conn = mock_pool
+        mock_scrape.return_value = _job_content()
+        pool.acquire.side_effect = TimeoutError
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        with structlog.testing.capture_logs() as logs:
+            ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        assert ok is False
+        error = next(entry for entry in logs if entry["event"] == "batch.scrape.error")
+        assert error["error"] == "TimeoutError"
+        assert error["operation"] == "database_save"
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_content_fields_passed_correctly(self, mock_scrape, mock_pool, mock_http):
