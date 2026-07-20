@@ -2578,6 +2578,91 @@ class TestSubmitIdempotency:
         # Should detect stale config and restart
         assert "config changed" in result.output
 
+    def test_unpublished_workspace_creates_one_pr_after_push(self, tmp_path, monkeypatch):
+        ws_obj, _ = _setup_submittable_workspace(tmp_path, monkeypatch)
+        ws_obj.pr = None
+        save_workspace(ws_obj)
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch("src.workspace.git.has_uncommitted_changes", return_value=False)
+            )
+            push = stack.enter_context(patch("src.workspace.git.push"))
+            stack.enter_context(
+                patch("src.workspace.git.find_open_pr_for_branch", return_value=None)
+            )
+            stack.enter_context(patch("src.workspace.git.check_existing_prs", return_value=[]))
+            create_pr = stack.enter_context(
+                patch("src.workspace.git.create_draft_pr", return_value=99)
+            )
+            stack.enter_context(patch("src.workspace.git._run"))
+
+            runner = CliRunner()
+            first = runner.invoke(ws, ["submit", "test"])
+            second = runner.invoke(ws, ["submit", "test"])
+
+        assert first.exit_code == 0, first.output
+        assert second.exit_code == 0, second.output
+        push.assert_called_once_with("add-company/test", set_upstream=True)
+        create_pr.assert_called_once()
+        assert load_workspace("test").pr == 99
+
+    def test_interrupted_submit_recovers_pr_by_branch(self, tmp_path, monkeypatch):
+        ws_obj, _ = _setup_submittable_workspace(tmp_path, monkeypatch)
+        ws_obj.pr = None
+        save_workspace(ws_obj)
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch("src.workspace.git.has_uncommitted_changes", return_value=False)
+            )
+            stack.enter_context(patch("src.workspace.git.push"))
+            stack.enter_context(patch("src.workspace.git.find_open_pr_for_branch", return_value=99))
+            issue_prs = stack.enter_context(patch("src.workspace.git.check_existing_prs"))
+            create_pr = stack.enter_context(patch("src.workspace.git.create_draft_pr"))
+            stack.enter_context(patch("src.workspace.git._run"))
+
+            runner = CliRunner()
+            result = runner.invoke(ws, ["submit", "test"])
+
+        assert result.exit_code == 0, result.output
+        assert "Recovered existing draft PR #99" in result.output
+        issue_prs.assert_not_called()
+        create_pr.assert_not_called()
+        assert load_workspace("test").pr == 99
+
+    def test_submit_refuses_concurrent_pr_on_another_branch(self, tmp_path, monkeypatch):
+        ws_obj, _ = _setup_submittable_workspace(tmp_path, monkeypatch)
+        ws_obj.pr = None
+        save_workspace(ws_obj)
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch("src.workspace.git.has_uncommitted_changes", return_value=False)
+            )
+            stack.enter_context(patch("src.workspace.git.push"))
+            stack.enter_context(
+                patch("src.workspace.git.find_open_pr_for_branch", return_value=None)
+            )
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.check_existing_prs",
+                    return_value=[{"number": 88}],
+                )
+            )
+            stack.enter_context(
+                patch("src.workspace.git.get_pr_branch", return_value="add-company/other")
+            )
+            create_pr = stack.enter_context(patch("src.workspace.git.create_draft_pr"))
+            stack.enter_context(patch("src.workspace.git._run"))
+
+            runner = CliRunner()
+            result = runner.invoke(ws, ["submit", "test"])
+
+        assert result.exit_code != 0
+        assert "refusing to create a duplicate" in result.output
+        create_pr.assert_not_called()
+
 
 class TestSubmitForce:
     """Test --force flag with poor quality."""
@@ -3770,8 +3855,8 @@ class TestProbeAllBoards:
 class TestNewIdempotent:
     """ws new should not fail when slug already exists in CSV from a prior attempt."""
 
-    def _git_mocks(self, stack, tmp_path, *, pr_opt=False):
-        """Set up common git mocks for new() tests. Returns (add_files, commit, push)."""
+    def _git_mocks(self, stack, tmp_path, *, pr_branch=None, existing_prs=None):
+        """Set up common git mocks for new() tests."""
         stack.enter_context(
             patch(
                 "src.workspace.commands.lifecycle.is_local_mode",
@@ -3784,26 +3869,26 @@ class TestNewIdempotent:
             patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees")
         )
         stack.enter_context(patch("src.workspace.git.get_main_branch", return_value="main"))
-        stack.enter_context(patch("src.workspace.git.delete_remote_branch"))
-        stack.enter_context(patch("src.workspace.git.create_worktree"))
+        delete_remote = stack.enter_context(patch("src.workspace.git.delete_remote_branch"))
+        create_worktree = stack.enter_context(patch("src.workspace.git.create_worktree"))
         stack.enter_context(patch("src.shared.constants.set_repo_root"))
         stack.enter_context(patch("src.shared.constants.get_repo_root", return_value=tmp_path))
-        stack.enter_context(patch("src.workspace.git.check_existing_prs", return_value=[]))
-        if pr_opt:
-            stack.enter_context(
-                patch("src.workspace.git.get_pr_branch", return_value="add-company/acme")
-            )
+        stack.enter_context(
+            patch("src.workspace.git.check_existing_prs", return_value=existing_prs or [])
+        )
+        if pr_branch:
+            stack.enter_context(patch("src.workspace.git.get_pr_branch", return_value=pr_branch))
 
         add_files = stack.enter_context(patch("src.workspace.git.add_files"))
         commit = stack.enter_context(patch("src.workspace.git.commit"))
         push = stack.enter_context(patch("src.workspace.git.push"))
-        stack.enter_context(patch("src.workspace.git.create_draft_pr", return_value=99))
-        return add_files, commit, push
+        create_pr = stack.enter_context(patch("src.workspace.git.create_draft_pr", return_value=99))
+        return add_files, commit, push, create_pr, create_worktree, delete_remote
 
     def test_new_skips_commit_when_slug_already_in_csv(self, tmp_path, monkeypatch):
         """When company_add raises NothingToUpdateError (e.g. --pr reattach to
-        a branch that already has the slug), git.commit must be skipped but
-        git.push should still be called."""
+        a branch that already has the slug), bootstrap remains local and
+        preserves the attached PR."""
         _patch_all(monkeypatch, tmp_path)
         # Empty CSV in the "original" repo — slug only exists in the worktree
         # CSV (simulated by mocking company_add to raise NothingToUpdateError).
@@ -3812,7 +3897,9 @@ class TestNewIdempotent:
         from src.workspace.errors import NothingToUpdateError
 
         with ExitStack() as stack:
-            add_files, commit, push = self._git_mocks(stack, tmp_path, pr_opt=True)
+            add_files, commit, push, create_pr, create_worktree, delete_remote = self._git_mocks(
+                stack, tmp_path, pr_branch="add-company/acme"
+            )
             # Simulate the worktree CSV already containing the slug
             stack.enter_context(
                 patch(
@@ -3828,24 +3915,80 @@ class TestNewIdempotent:
         # company_add raised NothingToUpdateError, so commit must NOT be called
         add_files.assert_not_called()
         commit.assert_not_called()
-        # push must still be called (branch needs to exist on remote for PR)
-        push.assert_called_once()
+        push.assert_not_called()
+        create_pr.assert_not_called()
+        delete_remote.assert_not_called()
+        create_worktree.assert_called_once_with(
+            "add-company/acme",
+            tmp_path / "worktrees" / "acme",
+            start_point="origin/add-company/acme",
+        )
         # Workspace should be registered
         assert workspace_exists("acme")
+        assert load_workspace("acme").pr == 42
 
-    def test_new_commits_when_csv_actually_changed(self, tmp_path, monkeypatch):
-        """Normal case: slug not in CSV, so commit + push both happen."""
+    def test_new_keeps_fresh_stub_local_until_submit(self, tmp_path, monkeypatch):
+        """Normal bootstrap writes the stub but publishes no commit or PR."""
         _patch_all(monkeypatch, tmp_path)
         _setup_csvs(tmp_path)  # empty CSV — slug not present
 
         with ExitStack() as stack:
-            add_files, commit, push = self._git_mocks(stack, tmp_path)
+            add_files, commit, push, create_pr, _, _ = self._git_mocks(stack, tmp_path)
 
             runner = CliRunner()
             result = runner.invoke(ws, ["new", "acme", "--issue", "1"])
 
         assert result.exit_code == 0, result.output
-        # CSV was changed, so commit + push both called
-        add_files.assert_called_once()
-        commit.assert_called_once()
-        push.assert_called_once()
+        add_files.assert_not_called()
+        commit.assert_not_called()
+        push.assert_not_called()
+        create_pr.assert_not_called()
+        assert "acme" in (tmp_path / "companies.csv").read_text()
+        assert load_workspace("acme").pr is None
+
+    def test_new_reuses_pr_discovered_from_issue(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+
+        with ExitStack() as stack:
+            add_files, commit, push, create_pr, create_worktree, delete_remote = self._git_mocks(
+                stack,
+                tmp_path,
+                pr_branch="add-company/recovered",
+                existing_prs=[{"number": 77}],
+            )
+            runner = CliRunner()
+            result = runner.invoke(ws, ["new", "acme", "--issue", "1"])
+
+        assert result.exit_code == 0, result.output
+        add_files.assert_not_called()
+        commit.assert_not_called()
+        push.assert_not_called()
+        create_pr.assert_not_called()
+        delete_remote.assert_not_called()
+        create_worktree.assert_called_once_with(
+            "add-company/recovered",
+            tmp_path / "worktrees" / "acme",
+            start_point="origin/add-company/recovered",
+        )
+        recovered = load_workspace("acme")
+        assert recovered.pr == 77
+        assert recovered.branch == "add-company/recovered"
+
+    def test_reconfig_defers_pr_until_submit(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path, companies="acme,Acme,https://acme.com,,,\n")
+
+        with ExitStack() as stack:
+            add_files, commit, push, create_pr, _, _ = self._git_mocks(stack, tmp_path)
+            runner = CliRunner()
+            result = runner.invoke(ws, ["new", "acme", "--reconfig"])
+
+        assert result.exit_code == 0, result.output
+        add_files.assert_not_called()
+        commit.assert_not_called()
+        push.assert_not_called()
+        create_pr.assert_not_called()
+        reconfig = load_workspace("acme")
+        assert reconfig.pr is None
+        assert reconfig.branch == "fix-crawler/acme"

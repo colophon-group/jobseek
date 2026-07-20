@@ -71,7 +71,8 @@ jobs:
 
 When an agent proposes source code changes (labeled `review-code`):
 
-- The original draft PR (`add-company/<slug>`) must be closed first
+- If `ws submit` already published an `add-company/<slug>` draft, it must
+  be closed first; code changes discovered before submit have no draft to close
 - The new PR must reference the closed draft (e.g. "Supersedes #12") and close the original issue (`Closes #<issue-number>`)
 - PR must explain what config options were tried first
 - PR must include the failing verification output (test crawl results, extraction samples)

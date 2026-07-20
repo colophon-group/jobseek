@@ -115,7 +115,7 @@ uv sync
 alias ws='uv run ws'
 
 # Workspace lifecycle — ws new sets the active workspace; slug is omitted after that
-ws new <slug> --issue <N>              # Create workspace + branch + draft PR (sets active)
+ws new <slug> --issue <N>              # Create local workspace + branch (sets active; no PR yet)
 ws use <slug>                          # Switch active workspace (multi-workspace only)
 ws set --name "..." --website "..."
 ws set --board <alias> --job-link-pattern "<regex>"  # Optional manual job-link filter
@@ -132,7 +132,7 @@ ws feedback [<config>] --verdict good  # Record extraction quality (mandatory)
 ws select config <name>                # Re-activate a previously tested config
 ws reject-config <name> --reason "..." # Mark a config as rejected
 ws compare-boards                      # Detect mirror/subset/overlapping boards
-ws submit [--summary "..."] [--force]  # Validate, commit, push, post stats
+ws submit [--summary "..."] [--force]  # Validate, commit, push, create/update draft PR
 
 # Search + discovery
 ws search "<query>"                    # Search existing companies by name/slug/website
