@@ -85,6 +85,29 @@ class TestExtractRich:
         assert len(jobs) == 1
         assert jobs[0].url == "https://example.com/jobs/123"
 
+    def test_url_template_with_nested_field_alias(self):
+        items = [
+            {
+                "itemID": "9201870385175_1",
+                "customFieldGroup": {
+                    "stringFields": [{"stringValue": "616994"}],
+                },
+                "title": "Underwriter",
+            },
+        ]
+        jobs = _extract_rich(
+            items,
+            {"title": "title"},
+            None,
+            "https://example.com/jobs?jobId={external_id}&itemId={itemID}",
+            "https://example.com",
+            url_template_fields={
+                "external_id": "customFieldGroup.stringFields[0].stringValue",
+            },
+        )
+        assert len(jobs) == 1
+        assert jobs[0].url == ("https://example.com/jobs?jobId=616994&itemId=9201870385175_1")
+
     def test_metadata_fields(self):
         items = [{"title": "Dev", "url": "/jobs/1", "department": "Eng"}]
         fields = {"title": "title", "metadata.team": "department"}
@@ -181,6 +204,27 @@ class TestExtractUrlsFromTemplate:
         )
         assert len(urls) == 0  # KeyError → skipped
 
+    def test_nested_field_alias(self):
+        items = [
+            {
+                "itemID": "9201870385175_1",
+                "customFieldGroup": {
+                    "stringFields": [{"stringValue": "616994"}],
+                },
+            },
+        ]
+        urls = _extract_urls_from_template(
+            items,
+            "https://example.com/jobs?jobId={external_id}&itemId={itemID}",
+            "https://example.com",
+            url_template_fields={
+                "external_id": "customFieldGroup.stringFields[0].stringValue",
+            },
+        )
+        assert urls == {
+            "https://example.com/jobs?jobId=616994&itemId=9201870385175_1",
+        }
+
 
 def _make_mock_pw(mock_page):
     """Create a mock Playwright instance that yields the given page."""
@@ -232,6 +276,48 @@ class TestDiscoverReplay:
         assert isinstance(result, list)
         assert len(result) == 3
         assert result[0].title == "Dev"
+
+    @pytest.mark.asyncio
+    async def test_http_rich_mode_uses_nested_url_template_fields(self):
+        """HTTP replay wires nested aliases into canonical job URLs."""
+        api_response = {
+            "jobRequisitions": [
+                {
+                    "itemID": "9201870385175_1",
+                    "customFieldGroup": {
+                        "stringFields": [{"stringValue": "616994"}],
+                    },
+                    "requisitionTitle": "Underwriter",
+                },
+            ],
+        }
+        config = {
+            "api_url": "https://api.example.com/job-requisitions",
+            "method": "GET",
+            "json_path": "jobRequisitions",
+            "url_template": (
+                "https://jobs.example.com/careers?jobId={external_job_id}&itemId={itemID}"
+            ),
+            "url_template_fields": {
+                "external_job_id": "customFieldGroup.stringFields[0].stringValue",
+            },
+            "fields": {"title": "requisitionTitle"},
+        }
+        board = {"board_url": "https://jobs.example.com/careers", "metadata": config}
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = api_response
+        mock_resp.raise_for_status.return_value = None
+        http = AsyncMock()
+        http.request = AsyncMock(return_value=mock_resp)
+
+        result = await discover(board, http, pw=None)
+
+        assert len(result) == 1
+        assert result[0].url == (
+            "https://jobs.example.com/careers?jobId=616994&itemId=9201870385175_1"
+        )
+        assert result[0].title == "Underwriter"
 
     @pytest.mark.asyncio
     async def test_replay_url_only_mode(self):
