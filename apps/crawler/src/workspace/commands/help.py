@@ -464,6 +464,29 @@ gem — Gem ATS Job Board API
   Detection:  ws probe shows "Gem API — slug: {token}, N jobs"
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
+MONITOR_COMEET = """\
+comeet — Comeet Careers API
+
+  API:      GET https://www.comeet.co/careers-api/2.0/company/{company_id}/positions
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted, qualifications, responsibilities)
+            metadata: department, experience_level, uid, company_name
+  Scraper:  Not needed (details=true returns full HTML sections)
+  Cap:      50,000 jobs
+  Note:     Single API call — no pagination or browser needed
+
+  Config:
+    {"company_id": "67.007", "token": "PUBLIC_EMBED_TOKEN"}
+
+    company_id  Comeet company identifier.
+    token       Public token embedded beside the API endpoint in the careers page.
+                Both values are auto-filled when ws probe finds the endpoint in
+                page HTML, including valid feeds that currently contain zero jobs.
+
+  Detection:  ws probe shows "Comeet API — company: X, N jobs"
+  Zero jobs?  An empty JSON array is a valid active board; verify the embedded
+              company_id and token against the careers page source."""
+
 MONITOR_GREENHOUSE = """\
 greenhouse — Greenhouse Public API
 

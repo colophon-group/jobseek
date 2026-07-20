@@ -2343,6 +2343,7 @@ human-rights-watch,human-rights-watch-greenhouse,https://job-boards.greenhouse.i
 humansignal,humansignal-greenhouse,https://job-boards.greenhouse.io/humansignal,greenhouse,"{""token"": ""humansignal""}",skip,
 hume-ai,hume-ai-greenhouse,https://job-boards.greenhouse.io/humeai,greenhouse,"{""token"": ""humeai""}",skip,
 hungryroot,hungryroot-greenhouse,https://job-boards.greenhouse.io/hungryroot,greenhouse,"{""token"": ""hungryroot""}",skip,
+hunters,hunters-careers,https://www.hunters.security/careers,comeet,"{""company_id"": ""67.007"", ""token"": ""7672C6A163533D11D9C429F33D10250333D1""}",skip,
 huntress,huntress-greenhouse,https://job-boards.greenhouse.io/huntress,greenhouse,"{""token"": ""huntress""}",skip,
 hut-8,hut-8-greenhouse,https://job-boards.greenhouse.io/hut8,greenhouse,"{""token"": ""hut8""}",skip,
 hw-gr-nderkapital-gmbh,hw-gr-nderkapital-gmbh-join,https://join.com/companies/hw-gruenderkapital,join,"{""slug"": ""hw-gruenderkapital""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"

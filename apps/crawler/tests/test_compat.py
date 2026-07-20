@@ -58,5 +58,9 @@ def test_detect_ats_breezy_host():
     assert detect_ats_from_url("https://acme.breezy.hr") == "breezy"
 
 
-def test_detect_ats_comeet_board():
+def test_detect_ats_comeet_hosts():
     assert detect_ats_from_url("https://www.comeet.com/jobs/acme/12.345") == "comeet"
+    assert (
+        detect_ats_from_url("https://www.comeet.co/careers-api/2.0/company/12.345/positions")
+        == "comeet"
+    )

@@ -383,6 +383,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Gem API \u2014 slug: {token}, {jobs} jobs"
         return f"Gem API \u2014 slug: {token}"
+    if name == "comeet":
+        company_id = metadata.get("company_id", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Comeet API \u2014 company: {company_id}, {jobs} jobs"
+        return f"Comeet API \u2014 company: {company_id}"
     if name == "greenhouse":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
