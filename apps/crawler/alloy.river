@@ -45,17 +45,22 @@ prometheus.scrape "redis" {
 // ── Remote write ──────────────────────────────────────────
 prometheus.remote_write "grafana_cloud" {
   endpoint {
-    url = env("PROM_URL")
+    url = sys.env("PROM_URL")
     basic_auth {
-      username = env("PROM_USERNAME")
-      password = env("PROM_PASSWORD")
+      username = sys.env("PROM_USERNAME")
+      password = sys.env("PROM_PASSWORD")
     }
   }
 }
 
 // ── Logs (Docker stdout → Loki) ───────────────────────────
 discovery.docker "containers" {
-  host = "unix:///var/run/docker.sock"
+  host             = "unix:///var/run/docker.sock"
+  // Keep target removal aligned with the Docker log tailer's five-second
+  // retry loop. The one-minute discovery default left deleted --rm
+  // containers in the target set long enough to emit the same "No such
+  // container" error twelve times after each deploy (#5106).
+  refresh_interval = "5s"
 }
 
 // Promote the docker container name into a Loki label so log queries
@@ -77,10 +82,11 @@ discovery.relabel "containers" {
 }
 
 loki.source.docker "containers" {
-  host          = "unix:///var/run/docker.sock"
-  targets       = discovery.relabel.containers.output
-  labels        = { job = "crawler" }
-  forward_to    = [loki.process.parse.receiver]
+  host             = "unix:///var/run/docker.sock"
+  targets          = discovery.relabel.containers.output
+  labels           = { job = "crawler" }
+  refresh_interval = "5s"
+  forward_to       = [loki.process.parse.receiver]
 }
 
 loki.process "parse" {
@@ -98,10 +104,10 @@ loki.process "parse" {
 
 loki.write "grafana_cloud" {
   endpoint {
-    url = env("LOKI_URL")
+    url = sys.env("LOKI_URL")
     basic_auth {
-      username = env("LOKI_USERNAME")
-      password = env("LOKI_PASSWORD")
+      username = sys.env("LOKI_USERNAME")
+      password = sys.env("LOKI_PASSWORD")
     }
   }
 }
