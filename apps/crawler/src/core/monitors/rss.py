@@ -22,6 +22,7 @@ import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.core.monitors.raw import save_text_response
+from src.shared.http_retry import fetch_text_page_with_retry
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -59,6 +60,7 @@ class _Preset:
     feed_ns: dict[str, str]
     paginated: bool = False
     page_size: int = 100
+    retryable_statuses: frozenset[int] = frozenset()
 
 
 _PRESETS: dict[str, _Preset] = {
@@ -79,6 +81,10 @@ _PRESETS: dict[str, _Preset] = {
         feed_ns={"tt": "https://teamtailor.com/locations"},
         paginated=True,
         page_size=100,
+        # Teamtailor occasionally emits a transient 400 from an otherwise
+        # healthy feed. Keep this provider-specific: a generic HTTP 400 is a
+        # permanent request error and must still fail fast.
+        retryable_statuses=frozenset({400}),
     ),
 }
 
@@ -305,9 +311,15 @@ async def _fetch_all_items(
 ) -> list[ET.Element]:
     """Fetch all RSS items, handling pagination for presets that need it."""
     if not preset.paginated:
-        resp = await client.get(feed_url, follow_redirects=True)
-        resp.raise_for_status()
-        root = _parse_feed(resp.text, feed_url)
+        text = await fetch_text_page_with_retry(
+            client,
+            feed_url,
+            retryable_statuses=preset.retryable_statuses,
+            end_of_pagination_statuses=(),
+            log_event="rss.feed_backoff",
+        )
+        assert text is not None  # 404/410 are strict for feed endpoints
+        root = _parse_feed(text, feed_url)
         channel = root.find("channel")
         return channel.findall("item") if channel is not None else []
 
@@ -318,10 +330,15 @@ async def _fetch_all_items(
 
     while True:
         page_url = _add_pagination(feed_url, offset, page_size)
-        resp = await client.get(page_url, follow_redirects=True)
-        resp.raise_for_status()
-
-        root = _parse_feed(resp.text, page_url)
+        text = await fetch_text_page_with_retry(
+            client,
+            page_url,
+            retryable_statuses=preset.retryable_statuses,
+            end_of_pagination_statuses=(),
+            log_event="rss.feed_backoff",
+        )
+        assert text is not None  # 404/410 are strict for feed endpoints
+        root = _parse_feed(text, page_url)
         channel = root.find("channel")
         if channel is None:
             break

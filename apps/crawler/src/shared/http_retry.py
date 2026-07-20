@@ -280,15 +280,27 @@ async def fetch_text_page_with_retry(
     timeout: float | None = None,
     headers: dict[str, str] | None = None,
     follow_redirects: bool = True,
+    retryable_statuses: Collection[int] = (),
+    end_of_pagination_statuses: Collection[int] = END_OF_PAGINATION_STATUSES,
     log_event: str = "http_retry.text_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
 ) -> str | None:
-    """Fetch a text pagination page with strict non-retryable-4xx handling."""
+    """Fetch a text page with explicit retry and terminal-status semantics.
+
+    Pagination callers retain the default 404/410 end-of-pagination behavior.
+    Non-pagination callers can pass an empty ``end_of_pagination_statuses``
+    collection so retired endpoints fail explicitly instead of looking like a
+    successful empty page. Provider-specific transient statuses can be added
+    through ``retryable_statuses`` without weakening the global 4xx policy.
+    """
+    from src.metrics import http_retry_attempts_total, http_retry_host
     from src.shared.tdm import TDMReservedError
     from src.shared.tdm import check_response as _tdm_check
 
+    host = http_retry_host(url)
     last_exc: BaseException | None = None
     last_status: int | None = None
+    retried = False
 
     for attempt in range(retries):
         try:
@@ -301,11 +313,15 @@ async def fetch_text_page_with_retry(
             last_status = resp.status_code
             if resp.status_code == 200:
                 _tdm_check(resp, body_excerpt=resp.text)
+                if retried:
+                    http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
                 return resp.text
-            if resp.status_code in END_OF_PAGINATION_STATUSES:
+            if resp.status_code in end_of_pagination_statuses:
                 return None
-            if is_retryable_status(resp.status_code):
+            if is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
                 last_exc = None
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
             else:
                 raise PaginationFetchError(
                     url,
@@ -317,6 +333,8 @@ async def fetch_text_page_with_retry(
         except Exception as exc:  # noqa: BLE001 - timeout, network, etc.
             last_exc = exc
             last_status = None
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
 
         if attempt < retries - 1:
             delay = base_delay * (2**attempt) * (0.5 + random.random())
@@ -330,6 +348,7 @@ async def fetch_text_page_with_retry(
             )
             await sleep(delay)
 
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
     raise PaginationFetchError(
         url,
         attempts=retries,

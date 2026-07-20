@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 import httpx
 import pytest
 
+import src.core.monitors.rss as rss_monitor
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.rss import (
     RssFeedNotXml,
@@ -21,6 +22,7 @@ from src.core.monitors.rss import (
     can_handle,
     discover,
 )
+from src.shared.http_retry import PaginationFetchError
 
 _G_NS = "http://base.google.com/ns/1.0"
 _TT_NS = "https://teamtailor.com/locations"
@@ -424,6 +426,91 @@ class TestDiscover:
             }
             jobs = await discover(board, client)
             assert len(jobs) == 1
+
+    async def test_teamtailor_transient_400_retries_same_page(self, monkeypatch):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Recovered job</title>
+                <link>https://example.com/jobs/1</link>
+            </item>
+        """)
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                return httpx.Response(400, text="temporary provider error")
+            return httpx.Response(200, text=feed_xml)
+
+        original_fetch = rss_monitor.fetch_text_page_with_retry
+
+        async def fast_fetch(client, url, **kwargs):
+            return await original_fetch(client, url, base_delay=0.001, **kwargs)
+
+        monkeypatch.setattr(rss_monitor, "fetch_text_page_with_retry", fast_fetch)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.teamtailor.com/jobs",
+                "metadata": {"preset": "teamtailor"},
+            }
+            jobs = await discover(board, client)
+
+        assert [job.title for job in jobs] == ["Recovered job"]
+        assert attempts == 2
+
+    async def test_generic_transient_408_retries_same_feed(self, monkeypatch):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Recovered job</title>
+                <link>https://example.com/jobs/1</link>
+            </item>
+        """)
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                return httpx.Response(408, text="request timeout")
+            return httpx.Response(200, text=feed_xml)
+
+        original_fetch = rss_monitor.fetch_text_page_with_retry
+
+        async def fast_fetch(client, url, **kwargs):
+            return await original_fetch(client, url, base_delay=0.001, **kwargs)
+
+        monkeypatch.setattr(rss_monitor, "fetch_text_page_with_retry", fast_fetch)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"preset": "generic", "feed_url": "https://example.com/feed.xml"},
+            }
+            jobs = await discover(board, client)
+
+        assert [job.title for job in jobs] == ["Recovered job"]
+        assert attempts == 2
+
+    async def test_retired_feed_404_is_failure_not_empty_success(self):
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(404, text="retired")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"preset": "generic", "feed_url": "https://example.com/feed.xml"},
+            }
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(board, client)
+
+        assert exc_info.value.last_status == 404
+        assert attempts == 1
 
     async def test_generic_preset(self):
         feed_xml = _rss_xml("""

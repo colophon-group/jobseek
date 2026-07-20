@@ -461,6 +461,45 @@ class TestFetchTextPageWithRetry:
         assert client.get.await_count == 1
         sleep.assert_not_awaited()
 
+    async def test_custom_transient_status_retries_then_recovers(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[_resp(400, "temporary provider error"), _resp(200, "<rss/>")]
+        )
+
+        text = await fetch_text_page_with_retry(
+            client,
+            "https://example.com/feed",
+            retryable_statuses={400},
+            end_of_pagination_statuses=(),
+            retries=3,
+            base_delay=0.001,
+            sleep=sleep,
+        )
+
+        assert text == "<rss/>"
+        assert client.get.await_count == 2
+        sleep.assert_awaited_once()
+
+    async def test_end_status_can_be_strict_for_non_pagination_callers(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(404, "retired"))
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await fetch_text_page_with_retry(
+                client,
+                "https://example.com/feed",
+                end_of_pagination_statuses=(),
+                retries=3,
+                sleep=sleep,
+            )
+
+        assert exc_info.value.last_status == 404
+        assert client.get.await_count == 1
+        sleep.assert_not_awaited()
+
 
 # ─── Retry observability (#3210) ────────────────────────────────────────
 
