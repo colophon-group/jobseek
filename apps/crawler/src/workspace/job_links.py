@@ -31,11 +31,15 @@ _JOB_QUERY_KEYS = {
     "vacancyid",
 }
 
-# Navigation/legal surfaces can look like repeated role slugs to the structural
-# heuristic (for example LinkedIn's cookie wall links to several ``/legal/*``
-# pages). They are never job-detail families and must not seed an inferred
-# job-link pattern for a bot-blocked board.
-_NON_JOB_PATH_PREFIXES = frozenset({"legal"})
+# Root-level policy namespaces can look like repeated role slugs to the
+# structural heuristic (for example a cookie wall linking to several
+# ``/legal/*`` pages). They are never job-detail families and must not seed an
+# inferred pattern when the actual board is bot-blocked. This is intentionally
+# limited to unambiguous policy roots; a role such as ``/jobs/legal-counsel``
+# remains eligible.
+_NON_JOB_PATH_PREFIXES = frozenset(
+    {"cookie", "cookie-policy", "cookies", "legal", "privacy", "terms"}
+)
 
 _LOCALE_SEGMENT_RE = re.compile(r"^[a-z]{2}(?:[-_][a-z]{2})?$")
 _UUID_RE = re.compile(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -204,6 +205,35 @@ class TestPaginateUrls:
                 MagicMock(),
             )
         assert result == {"https://example.com/jobs/1"}
+
+    async def test_stops_when_tracking_variants_transform_to_the_same_job(self):
+        """Transformation-aware identity prevents duplicate pages and 429s."""
+        initial = {
+            "https://www.linkedin.com/jobs/view/example-role-4436727677?position=1&pageNum=0"
+        }
+        fetched_urls = []
+
+        async def tracking_fetch(client, url, **kwargs):
+            fetched_urls.append(url)
+            return _html_with_links(
+                "https://www.linkedin.com/jobs/view/example-role-4436727677?position=1&pageNum=1"
+            )
+
+        with patch(_FETCH_PATCH, new=tracking_fetch):
+            result = await _paginate_urls(
+                "https://www.linkedin.com/jobs-guest/jobs/api/search?start=0",
+                {"param_name": "start", "start": 0, "increment": 25, "max_pages": 20},
+                initial,
+                MagicMock(),
+                url_matcher=re.compile(r"linkedin\.com/jobs/view/"),
+                url_transform={
+                    "find": r".*-(\d+)(?:\?.*)?$",
+                    "replace": r"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/\1",
+                },
+            )
+
+        assert len(fetched_urls) == 1
+        assert result == initial
 
     async def test_stops_on_legitimate_end(self):
         """``fetch_with_retry`` returning ``None`` (404/410, empty body)

@@ -165,19 +165,34 @@ def test_tracking_links_with_small_numbers_not_classified_as_jobs():
     assert analysis.pattern is None
 
 
-def test_legal_navigation_links_not_classified_as_jobs():
-    """A bot/cookie wall must not infer ``/legal`` as the job family."""
+def test_policy_navigation_links_not_classified_as_jobs():
+    """A bot/cookie wall must not infer policy namespaces as job families."""
     html = """
     <html><body>
       <a href="/legal/user-agreement">User Agreement</a>
-      <a href="/legal/privacy-policy">Privacy Policy</a>
-      <a href="/legal/cookie-policy">Cookie Policy</a>
+      <a href="/en-us/legal/privacy-policy">Privacy Policy</a>
+      <a href="/privacy/data-policy">Data Policy</a>
+      <a href="/cookies/cookie-policy">Cookie Policy</a>
     </body></html>
     """
     analysis = analyze_job_links("https://www.linkedin.com/jobs/company-jobs", html)
 
     assert analysis.job_links_total == 0
     assert analysis.pattern is None
+
+
+def test_policy_words_inside_a_job_family_remain_eligible():
+    html = """
+    <html><body>
+      <a href="/jobs/legal-counsel-123">Legal Counsel 1</a>
+      <a href="/jobs/legal-counsel-456">Legal Counsel 2</a>
+      <a href="/jobs/privacy-engineer-789">Privacy Engineer</a>
+    </body></html>
+    """
+    analysis = analyze_job_links("https://example.com/careers", html)
+
+    assert analysis.job_links_total == 3
+    assert analysis.pattern is not None
 
 
 @pytest.mark.asyncio

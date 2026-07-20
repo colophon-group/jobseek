@@ -72,6 +72,51 @@ def _build_url_matcher(url_filter) -> re.Pattern | None:
     return re.compile(include) if include else None
 
 
+def _build_url_identity_transform(url_transform) -> tuple[re.Pattern, str] | None:
+    """Compile a URL rewrite for transformation-aware pagination dedupe.
+
+    The dispatcher still performs the actual rewrite after discovery. During
+    pagination we only use the eventual URL as a stable identity so tracking
+    parameters cannot make one posting look new on every page.
+    """
+    if not isinstance(url_transform, dict):
+        return None
+    find = url_transform.get("find")
+    if not isinstance(find, str) or not find:
+        return None
+    replace = url_transform.get("replace", "")
+    if not isinstance(replace, str):
+        return None
+    try:
+        return re.compile(find), replace
+    except re.error as exc:
+        log.warning("monitor.url_transform_invalid", error=str(exc))
+        return None
+
+
+def _url_identity(url: str, transform: tuple[re.Pattern, str] | None) -> str:
+    if transform is None:
+        return url
+    pattern, replace = transform
+    return pattern.sub(replace, url)
+
+
+def _dedupe_by_identity(
+    urls: set[str],
+    transform: tuple[re.Pattern, str] | None,
+) -> tuple[set[str], set[str]]:
+    """Keep one raw representative for each eventual transformed URL."""
+    representatives: set[str] = set()
+    identities: set[str] = set()
+    for url in sorted(urls):
+        identity = _url_identity(url, transform)
+        if identity in identities:
+            continue
+        representatives.add(url)
+        identities.add(identity)
+    return representatives, identities
+
+
 # ---------------------------------------------------------------------------
 # Static link extraction (no browser)
 # ---------------------------------------------------------------------------
@@ -283,6 +328,7 @@ async def _paginate_urls(
     client: httpx.AsyncClient,
     page=None,
     url_matcher: re.Pattern | None = None,
+    url_transform: dict | None = None,
 ) -> set[str]:
     """Fetch paginated pages and merge discovered links with *initial_urls*.
 
@@ -333,14 +379,18 @@ async def _paginate_urls(
     increment = pagination.get("increment", 1)
     max_pages = min(pagination.get("max_pages", _MAX_PAGINATION_PAGES), _MAX_PAGINATION_PAGES)
     use_browser = pagination.get("browser", False) and page is not None
+    if not url_template and not isinstance(param_name, str):
+        raise ValueError("DOM pagination requires param_name or url_template")
 
-    all_urls = set(initial_urls)
+    identity_transform = _build_url_identity_transform(url_transform)
+    all_urls, seen_identities = _dedupe_by_identity(initial_urls, identity_transform)
     value = start + increment
 
     for page_num in range(2, max_pages + 1):
         if url_template:
             page_url = url_template.format(page=value)
         else:
+            assert isinstance(param_name, str)
             page_url = set_url_param(board_url, param_name, value)
 
         if use_browser:
@@ -356,7 +406,13 @@ async def _paginate_urls(
             break
 
         new_urls = _extract_links_static(html, page_url, url_matcher)
-        added = new_urls - all_urls
+        added: set[str] = set()
+        for url in sorted(new_urls):
+            identity = _url_identity(url, identity_transform)
+            if identity in seen_identities:
+                continue
+            added.add(url)
+            seen_identities.add(identity)
         if not added:
             log.info("dom.pagination.no_new_urls", page=page_num)
             break
@@ -395,8 +451,14 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
 # ---------------------------------------------------------------------------
 
 
-async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -> set[str]:
+async def dom_discover(
+    board: dict,
+    client: httpx.AsyncClient | None = None,
+    pw=None,
+) -> set[str]:
     """Discover job URLs from a career page."""
+    if client is None:
+        raise ValueError("DOM monitor requires an HTTP client")
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
 
@@ -404,6 +466,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
     actions = metadata.get("actions")
     pagination = metadata.get("pagination")
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
+    url_transform = metadata.get("url_transform")
 
     if not render and actions:
         log.warning(
@@ -428,6 +491,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                         client,
                         browser_page,
                         url_matcher,
+                        url_transform,
                     )
         else:
             try:
@@ -452,6 +516,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                         client,
                         browser_page,
                         url_matcher,
+                        url_transform,
                     )
     else:
         from src.shared.http_retry import fetch_with_retry
@@ -468,6 +533,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                 urls,
                 client,
                 url_matcher=url_matcher,
+                url_transform=url_transform,
             )
 
     # Exclude the board URL itself — it's the listing page, not a job
