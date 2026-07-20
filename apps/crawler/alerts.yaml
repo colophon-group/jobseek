@@ -286,6 +286,31 @@ groups:
             recently-merged scraper that broke a major ATS. See the
             Task Throughput panels and the daily error-review report.
 
+      # Shared-origin protection (#3195). The breaker opens after three
+      # failed monitor runs against the same real outbound hostname within
+      # ten minutes and defers sibling boards for thirty minutes. Alert once
+      # per host incident instead of once per affected board.
+      - alert: UpstreamHostCircuitOpen
+        expr: max by (egress_host) (crawler_host_circuit_state) > 0
+        for: 5m
+        labels:
+          severity: email
+          service: crawler
+        annotations:
+          summary: "Crawler upstream-host circuit is open"
+          description: |
+            Monitor work for {{ $labels.egress_host }} is being deferred
+            before network I/O because several sibling boards failed against
+            the same origin. One half-open probe runs after the stored unblock
+            time; sibling boards stay deferred until that probe completes.
+          runbook: |
+            Inspect Loki for
+            `pipeline.monitor.host_circuit_opened` and the triggering board
+            errors. Check Redis with `GET host_open:{{ $labels.egress_host }}`
+            and `GET host_fail:{{ $labels.egress_host }}`. Do not delete the
+            open key until the origin/proxy failure is understood; the
+            bounded TTL provides automatic recovery.
+
       # Catches the failure mode from the 2026-04-26 NHS spike (#2722):
       # a paginating monitor silently truncates and tombstones live
       # postings via _MARK_GONE_BY_TIMESTAMP. Two conditions must both
