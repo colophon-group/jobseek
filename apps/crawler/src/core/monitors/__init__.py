@@ -357,6 +357,14 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Breezy \u2014 {portal_url}, {jobs} jobs"
         return f"Breezy \u2014 {portal_url}"
+    if name == "comeet":
+        company = metadata.get("company", "?")
+        board_id = metadata.get("board_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"{company}/{board_id}"
+        if jobs is not None:
+            return f"Comeet embedded data \u2014 {label}, {jobs} jobs"
+        return f"Comeet embedded data \u2014 {label}"
     if name == "eightfold":
         sitemap_url = metadata.get("sitemap_url", "?")
         urls = metadata.get("urls")
@@ -621,6 +629,7 @@ from src.core.monitors import (  # noqa: E402
     ashby,  # noqa: F401
     bite,  # noqa: F401
     breezy,  # noqa: F401
+    comeet,  # noqa: F401
     deel,  # noqa: F401
     dom,  # noqa: F401
     dvinci,  # noqa: F401

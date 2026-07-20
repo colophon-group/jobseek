@@ -911,6 +911,7 @@ _MONITOR_CONFIG_HINTS = {
     "ashby": "Requires: token (auto-filled from probe)",
     "bite": "Requires: key (auto-filled from probe)",
     "breezy": "Optional: portal_url or slug (auto-filled from probe)",
+    "comeet": "No config required (company and board ID are derived from the URL)",
     "dvinci": "Requires: slug (auto-filled from probe)",
     "greenhouse": "Requires: token (auto-filled from probe)",
     "hireology": "Requires: slug (auto-filled from probe)",

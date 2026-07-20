@@ -43,6 +43,7 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "almacareer",
     "amazon",
     "ashby",
+    "comeet",
     "deel",
     "dvinci",
     "gem",

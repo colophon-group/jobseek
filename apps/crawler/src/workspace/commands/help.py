@@ -78,6 +78,7 @@ Monitor Types (cheapest first):
   ashby             10      Full job data     No (skipped)
   bite              10      Job URLs          Auto-configured
   breezy            10      Job URLs          Auto-configured
+  comeet            10      Full job data     No (skipped)
   deel              10      Full job data     No (skipped)
   dvinci            10      Full job data     No (skipped)
   gem               10      Full job data     No (skipped)
@@ -329,6 +330,21 @@ breezy — Breezy HR Public Listing Endpoint
   Zero jobs?  Valid board with no open postings still returns 0 jobs.
   False positives:  Redirects to marketing.breezy.hr are rejected unless
                     /json validates as a real listing endpoint."""
+
+MONITOR_COMEET = """\
+comeet — Comeet hosted careers monitor
+
+  Source:   COMPANY_POSITIONS_DATA embedded in the public board HTML
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, responsibilities, qualifications)
+            metadata: uid, department, experience_level, company_name, time_updated
+  Scraper:  Not needed (one board request returns all full job records)
+
+  Config:   None required. Company and board identifiers are derived from:
+            https://www.comeet.com/jobs/{company}/{board_id}
+
+  Detection:  ws probe shows "Comeet embedded data — company/board, N jobs"
+  Zero jobs?  Verify the board page still contains COMPANY_POSITIONS_DATA."""
 
 MONITOR_EIGHTFOLD = """\
 eightfold — Eightfold AI Careers Portal (hybrid sitemap + PCSX)
@@ -2044,6 +2060,7 @@ MONITOR_CARDS: dict[str, str] = {
     "amazon": MONITOR_AMAZON,
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
+    "comeet": MONITOR_COMEET,
     "deel": MONITOR_DEEL,
     "dvinci": MONITOR_DVINCI,
     "eightfold": MONITOR_EIGHTFOLD,
