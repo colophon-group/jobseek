@@ -41,13 +41,29 @@ concurrency:
   group: crawler-scheduled-maintenance
   cancel-in-progress: false
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   run:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+
+      - name: Validate host hygiene check
+        run: python3 -m py_compile scripts/crawler-host-hygiene.py
+
+      - name: Copy host hygiene check
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: scripts/crawler-host-hygiene.py
+          target: /tmp/jobseek-crawler-maintenance/${{ github.sha }}
+          strip_components: 1
+
       - name: Resolve task
         id: task
         run: |
@@ -63,6 +79,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: GITHUB_SHA
           script: |
             set -euo pipefail
             TASK="${{ steps.task.outputs.task }}"
@@ -75,3 +92,4 @@ jobs:
               --network host \
               "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
               uv run --no-sync crawler "$TASK"
+            python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler-host-hygiene.py"
