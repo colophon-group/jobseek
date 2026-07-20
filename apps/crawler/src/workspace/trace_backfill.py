@@ -816,6 +816,35 @@ def _hf_token() -> str | None:
     return get_token()
 
 
+def prune_hf_dataset_cache(
+    *,
+    repo_id: str,
+    cache_dir: Path | None = None,
+    execute: bool = True,
+) -> dict[str, Any]:
+    """Remove only cached revisions for the already-durable trace dataset."""
+    from huggingface_hub import scan_cache_dir
+
+    cache = scan_cache_dir(cache_dir=cache_dir)
+    revisions = sorted(
+        revision.commit_hash
+        for repo in cache.repos
+        if repo.repo_type == "dataset" and repo.repo_id == repo_id
+        for revision in repo.revisions
+    )
+    if not revisions:
+        return {"repo_id": repo_id, "revisions": 0, "reclaimed_bytes": 0}
+    strategy = cache.delete_revisions(*revisions)
+    reclaimed_bytes = int(strategy.expected_freed_size)
+    if execute:
+        strategy.execute()
+    return {
+        "repo_id": repo_id,
+        "revisions": len(revisions),
+        "reclaimed_bytes": reclaimed_bytes,
+    }
+
+
 def _validate_downloaded_bundle_file(path: Path, relative_path: str) -> None:
     """Validate the downloaded representation, not only its checksum."""
     if relative_path.endswith(".jsonl"):
@@ -965,6 +994,7 @@ def _record_trace_export_attempt(
     quality_tier: str | None = None,
     remote_dir: str | None = None,
     error: str | None = None,
+    retained_bytes: int = 0,
 ) -> None:
     now = int(datetime.now(UTC).timestamp())
     with sqlite3.connect(ledger_path) as conn:
@@ -977,25 +1007,35 @@ def _record_trace_export_attempt(
                 quality_tier TEXT,
                 remote_dir TEXT,
                 error TEXT,
+                retained_bytes INTEGER NOT NULL DEFAULT 0,
                 last_attempt_at INTEGER NOT NULL
             )
             """
         )
+        columns = {
+            str(row[1]) for row in conn.execute("PRAGMA table_info(trace_bundle_export_attempts)")
+        }
+        if "retained_bytes" not in columns:
+            conn.execute(
+                "ALTER TABLE trace_bundle_export_attempts "
+                "ADD COLUMN retained_bytes INTEGER NOT NULL DEFAULT 0"
+            )
         conn.execute(
             """
             INSERT INTO trace_bundle_export_attempts (
                 run_id, attempts, status, quality_tier,
-                remote_dir, error, last_attempt_at
-            ) VALUES (?, 1, ?, ?, ?, ?, ?)
+                remote_dir, error, retained_bytes, last_attempt_at
+            ) VALUES (?, 1, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id) DO UPDATE SET
                 attempts = trace_bundle_export_attempts.attempts + 1,
                 status = excluded.status,
                 quality_tier = excluded.quality_tier,
                 remote_dir = excluded.remote_dir,
                 error = excluded.error,
+                retained_bytes = excluded.retained_bytes,
                 last_attempt_at = excluded.last_attempt_at
             """,
-            (run_id, status, quality_tier, remote_dir, error, now),
+            (run_id, status, quality_tier, remote_dir, error, retained_bytes, now),
         )
 
 
@@ -1035,18 +1075,44 @@ def _backfill_run_ids(ledger_path: Path, *, limit: int | None) -> list[str]:
     return run_ids[:limit] if limit is not None else run_ids
 
 
-def trace_export_report(*, runner_root: Path, codex_home: Path) -> dict[str, Any]:
-    """Reconcile terminal runs, retained source bytes, and durable exports."""
+def _files_under(root: Path) -> list[Path]:
+    if not root.is_dir():
+        return []
+    return [path for path in sorted(root.rglob("*")) if path.is_file() and not path.is_symlink()]
+
+
+def _directory_bytes(root: Path) -> int:
+    return sum(path.stat().st_size for path in _files_under(root))
+
+
+def _storage_totals(paths: list[Path]) -> dict[str, int]:
+    return {"files": len(paths), "bytes": sum(path.stat().st_size for path in paths)}
+
+
+def _default_hf_cache_dir(codex_home: Path) -> Path:
+    configured = os.environ.get("HF_HUB_CACHE")
+    if configured:
+        return Path(configured)
+    hf_home = os.environ.get("HF_HOME")
+    if hf_home:
+        return Path(hf_home) / "hub"
+    return codex_home.parent / ".cache" / "huggingface" / "hub"
+
+
+def trace_export_report(
+    *,
+    runner_root: Path,
+    codex_home: Path,
+    include_files: bool = False,
+    min_disk_free_gib: float = 5.0,
+    disk_alert_margin_gib: float = 2.0,
+    max_quarantine_runs: int = 50,
+    max_quarantine_gib: float = 2.0,
+) -> dict[str, Any]:
+    """Reconcile durable exports with every local retention category."""
     ledger_path = runner_root / "state" / "ledger.sqlite"
     sessions = index_company_resolver_sessions(codex_home)
     pending_ids = set(_backfill_run_ids(ledger_path, limit=None))
-    session_paths = {
-        source.path
-        for run_id in pending_ids
-        for source in sessions.get(run_id, [])
-        if source.path.is_file()
-    }
-    local_session_bytes = sum(path.stat().st_size for path in session_paths)
 
     terminal_states = (
         "completed",
@@ -1061,18 +1127,25 @@ def trace_export_report(*, runner_root: Path, codex_home: Path) -> dict[str, Any
     placeholders = ",".join("?" for _ in terminal_states)
     with sqlite3.connect(ledger_path) as conn:
         conn.row_factory = sqlite3.Row
+        run_columns = {
+            str(row["name"]) for row in conn.execute("PRAGMA table_info(runs)").fetchall()
+        }
+        optional_run_columns = ["trace_path", "stderr_path", "worktree_path"]
+        run_select = ", ".join(
+            name if name in run_columns else f"NULL AS {name}" for name in optional_run_columns
+        )
         terminal_rows = conn.execute(
-            f"SELECT run_id, trace_path, stderr_path FROM runs "
+            f"SELECT run_id, state, {run_select} FROM runs "
             f"WHERE state IN ({placeholders}) AND run_id LIKE 'issue-%'",
             terminal_states,
         ).fetchall()
-        local_runner_paths = {
-            Path(value)
-            for row in terminal_rows
-            if str(row["run_id"]) in pending_ids
-            for value in (row["trace_path"], row["stderr_path"])
-            if isinstance(value, str) and Path(value).is_file()
-        }
+        all_worktree_rows = (
+            conn.execute(
+                "SELECT run_id, state, worktree_path FROM runs WHERE worktree_path IS NOT NULL"
+            ).fetchall()
+            if "worktree_path" in run_columns
+            else []
+        )
         export_table = conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'trace_bundle_exports'"
         ).fetchone()
@@ -1081,6 +1154,7 @@ def trace_export_report(*, runner_root: Path, codex_home: Path) -> dict[str, Any
             "AND name = 'trace_bundle_export_attempts'"
         ).fetchone()
         exports = []
+        export_rows: list[sqlite3.Row] = []
         if export_table:
             export_columns = {
                 str(row["name"]) for row in conn.execute("PRAGMA table_info(trace_bundle_exports)")
@@ -1107,6 +1181,31 @@ def trace_export_report(*, runner_root: Path, codex_home: Path) -> dict[str, Any
                     "GROUP BY schema_version, quality_tier"
                 )
             ]
+            export_rows = conn.execute(
+                "SELECT run_id, quality_tier, remote_dir, source_bytes, "
+                "projected_bytes, cleaned_at, "
+                + (
+                    "source_files_json "
+                    if "source_files_json" in export_columns
+                    else "'{}' AS source_files_json "
+                )
+                + "FROM trace_bundle_exports "
+                "WHERE run_id LIKE 'issue-%'"
+            ).fetchall()
+        attempt_rows: list[sqlite3.Row] = []
+        if attempt_table:
+            attempt_columns = {
+                str(row["name"])
+                for row in conn.execute("PRAGMA table_info(trace_bundle_export_attempts)")
+            }
+            retained_select = (
+                "retained_bytes" if "retained_bytes" in attempt_columns else "0 AS retained_bytes"
+            )
+            attempt_rows = conn.execute(
+                "SELECT run_id, status, quality_tier, error, "
+                f"{retained_select} FROM trace_bundle_export_attempts "
+                "WHERE run_id LIKE 'issue-%'"
+            ).fetchall()
         attempts = (
             {
                 str(row["status"]): int(row["runs"])
@@ -1142,20 +1241,235 @@ def trace_export_report(*, runner_root: Path, codex_home: Path) -> dict[str, Any
         )
 
     terminal_ids = {str(row["run_id"]) for row in terminal_rows}
+    exports_by_run = {str(row["run_id"]): dict(row) for row in export_rows}
+    attempts_by_run = {str(row["run_id"]): dict(row) for row in attempt_rows}
+
+    def retention_reason(run_id: str, path: Path) -> tuple[str, bool]:
+        export = exports_by_run.get(run_id)
+        if export and export.get("cleaned_at") is None:
+            source_files = json.loads(str(export.get("source_files_json") or "{}"))
+            if isinstance(source_files, dict) and str(path) in source_files:
+                return "verified_pending_checksum_gated_cleanup", True
+            return "verified_but_source_inventory_missing", False
+        if export:
+            return "verified_cleanup_residue", False
+        attempt = attempts_by_run.get(run_id)
+        if attempt:
+            return f"{attempt['status']}_retained", False
+        return "unaccounted_retained", False
+
+    inventory_by_path: dict[Path, dict[str, Any]] = {}
+
+    def add_source(path: Path, *, category: str, run_id: str) -> None:
+        if not path.is_file() or path.is_symlink():
+            return
+        reason, cleanup_candidate = retention_reason(run_id, path)
+        inventory_by_path[path] = {
+            "path": str(path),
+            "category": category,
+            "run_id": run_id,
+            "bytes": path.stat().st_size,
+            "reason": reason,
+            "cleanup_candidate": cleanup_candidate,
+        }
+
+    for run_id in terminal_ids:
+        for source in sessions.get(run_id, []):
+            add_source(source.path, category="codex_session", run_id=run_id)
+    for row in terminal_rows:
+        run_id = str(row["run_id"])
+        for category, raw in (
+            ("canonical_trace", row["trace_path"]),
+            ("stderr_log", row["stderr_path"]),
+        ):
+            if isinstance(raw, str):
+                add_source(Path(raw), category=category, run_id=run_id)
+
+    all_session_paths = _files_under(codex_home / "sessions")
+    all_trace_paths = _files_under(runner_root / "traces")
+    all_log_paths = _files_under(runner_root / "logs")
+    for category, paths in (
+        ("codex_session", all_session_paths),
+        ("canonical_trace", all_trace_paths),
+        ("stderr_log", all_log_paths),
+    ):
+        for path in paths:
+            if path in inventory_by_path:
+                continue
+            inventory_by_path[path] = {
+                "path": str(path),
+                "category": category,
+                "run_id": None,
+                "bytes": path.stat().st_size,
+                "reason": "unlinked_or_non_resolver_retained",
+                "cleanup_candidate": False,
+            }
+    source_inventory = sorted(inventory_by_path.values(), key=lambda item: item["path"])
+    reasons: dict[str, dict[str, int]] = {}
+    for item in source_inventory:
+        reason = str(item["reason"])
+        summary = reasons.setdefault(reason, {"files": 0, "bytes": 0})
+        summary["files"] += 1
+        summary["bytes"] += int(item["bytes"])
+
+    hf_cache_dir = _default_hf_cache_dir(codex_home)
+    hf_cache_paths = _files_under(hf_cache_dir)
+    worktree_root = runner_root / "worktrees"
+    worktree_paths = (
+        [path for path in sorted(worktree_root.iterdir()) if path.is_dir()]
+        if worktree_root.is_dir()
+        else []
+    )
+    run_by_worktree = {
+        str(row["worktree_path"]): (str(row["run_id"]), str(row["state"]))
+        for row in all_worktree_rows
+        if isinstance(row["worktree_path"], str)
+    }
+    worktrees = []
+    for path in worktree_paths:
+        run = run_by_worktree.get(str(path))
+        worktrees.append(
+            {
+                "path": str(path),
+                "bytes": _directory_bytes(path),
+                "run_id": run[0] if run else None,
+                "reason": (
+                    "active_worktree"
+                    if run and run[1] in {"claimed", "running"}
+                    else "terminal_debug_worktree"
+                    if run
+                    else "orphan_worktree"
+                ),
+                "cleanup_candidate": False,
+            }
+        )
+
+    quarantine_run_ids = {
+        run_id
+        for run_id, attempt in attempts_by_run.items()
+        if attempt.get("status") == "quarantined"
+    }
+    quarantine_local_bytes = sum(
+        int(item["bytes"]) for item in source_inventory if item.get("run_id") in quarantine_run_ids
+    )
+    quarantine_recorded_bytes = sum(
+        int(attempts_by_run[run_id].get("retained_bytes") or 0) for run_id in quarantine_run_ids
+    )
     disk = shutil.disk_usage(runner_root)
-    return {
+    min_disk_free_bytes = int(min_disk_free_gib * 1024**3)
+    alert_margin_bytes = int(disk_alert_margin_gib * 1024**3)
+    max_quarantine_bytes = int(max_quarantine_gib * 1024**3)
+    alerts: list[dict[str, Any]] = []
+    if disk.free < min_disk_free_bytes + alert_margin_bytes:
+        alerts.append(
+            {
+                "kind": "disk_headroom",
+                "severity": "critical" if disk.free < min_disk_free_bytes else "warning",
+                "disk_free_bytes": disk.free,
+                "admission_floor_bytes": min_disk_free_bytes,
+            }
+        )
+    if (
+        len(quarantine_run_ids) >= max_quarantine_runs
+        or max(quarantine_local_bytes, quarantine_recorded_bytes) >= max_quarantine_bytes
+    ):
+        alerts.append(
+            {
+                "kind": "quarantine_limit",
+                "severity": "critical",
+                "runs": len(quarantine_run_ids),
+                "bytes": max(quarantine_local_bytes, quarantine_recorded_bytes),
+            }
+        )
+    unaccounted_runs = len(terminal_ids - exported_ids - attempted_ids)
+    if unaccounted_runs:
+        alerts.append(
+            {"kind": "unaccounted_runs", "severity": "critical", "runs": unaccounted_runs}
+        )
+
+    cleaned_source_bytes = sum(
+        int(row["source_bytes"] or 0) for row in export_rows if row["cleaned_at"] is not None
+    )
+    deleted_files = []
+    cleaned_exports_missing_source_inventory = 0
+    for row in export_rows:
+        if row["cleaned_at"] is None:
+            continue
+        source_files = json.loads(str(row["source_files_json"] or "{}"))
+        if not isinstance(source_files, dict) or not source_files:
+            cleaned_exports_missing_source_inventory += 1
+            continue
+        for path, details in source_files.items():
+            if not isinstance(details, dict):
+                continue
+            deleted_files.append(
+                {
+                    "path": str(path),
+                    "run_id": str(row["run_id"]),
+                    "bytes": int(details.get("bytes") or 0),
+                    "sha256": str(details.get("sha256") or ""),
+                    "bundle_path": str(details.get("bundle_path") or ""),
+                    "remote_dir": str(row["remote_dir"]),
+                }
+            )
+    if cleaned_exports_missing_source_inventory:
+        alerts.append(
+            {
+                "kind": "legacy_cleaned_inventory_missing",
+                "severity": "warning",
+                "runs": cleaned_exports_missing_source_inventory,
+            }
+        )
+    report: dict[str, Any] = {
         "terminal_runs": len(terminal_ids),
         "pending_runs": len(pending_ids),
-        "unaccounted_runs": len(terminal_ids - exported_ids - attempted_ids),
-        "retained_session_files": len(session_paths),
-        "retained_session_bytes": local_session_bytes,
-        "retained_runner_files": len(local_runner_paths),
-        "retained_runner_bytes": sum(path.stat().st_size for path in local_runner_paths),
+        "unaccounted_runs": unaccounted_runs,
+        "retained_session_files": len(all_session_paths),
+        "retained_session_bytes": sum(path.stat().st_size for path in all_session_paths),
+        "retained_runner_files": len(all_trace_paths) + len(all_log_paths),
+        "retained_runner_bytes": sum(
+            path.stat().st_size for path in [*all_trace_paths, *all_log_paths]
+        ),
+        "storage": {
+            "codex_sessions": _storage_totals(all_session_paths),
+            "canonical_traces": _storage_totals(all_trace_paths),
+            "stderr_logs": _storage_totals(all_log_paths),
+            "huggingface_cache": {
+                "path": str(hf_cache_dir),
+                **_storage_totals(hf_cache_paths),
+            },
+            "worktrees": {
+                "directories": len(worktrees),
+                "bytes": sum(int(item["bytes"]) for item in worktrees),
+            },
+        },
+        "retention_reasons": reasons,
+        "quarantine": {
+            "runs": len(quarantine_run_ids),
+            "local_bytes": quarantine_local_bytes,
+            "recorded_bytes": quarantine_recorded_bytes,
+            "max_runs": max_quarantine_runs,
+            "max_bytes": max_quarantine_bytes,
+        },
+        "cleaned_source_bytes": cleaned_source_bytes,
+        "deleted_source_files": len(deleted_files),
+        "cleaned_exports_missing_source_inventory": (cleaned_exports_missing_source_inventory),
         "exports_by_tier": exports,
         "attempts_by_status": attempts,
         "disk_free_bytes": disk.free,
         "disk_total_bytes": disk.total,
+        "disk_admission_floor_bytes": min_disk_free_bytes,
+        "disk_headroom_above_floor_bytes": disk.free - min_disk_free_bytes,
+        "alerts": alerts,
     }
+    if include_files:
+        report["files"] = source_inventory
+        report["worktrees"] = worktrees
+        report["cleanup_candidates"] = [
+            item for item in source_inventory if item["cleanup_candidate"]
+        ]
+        report["deleted_files"] = sorted(deleted_files, key=lambda item: item["path"])
+    return report
 
 
 def backfill_all(
@@ -1208,6 +1522,7 @@ def backfill_all(
             manifests: dict[str, dict[str, Any]] = {}
             for run_id in batch_ids:
                 building = batch_root / "building" / run_id
+                manifest: dict[str, Any] | None = None
                 try:
                     manifest = build_bundle(
                         run_id=run_id,
@@ -1225,6 +1540,7 @@ def backfill_all(
                             status="quarantined",
                             quality_tier=tier,
                             error=quality_gate_reason(manifest),
+                            retained_bytes=_manifest_source_bytes(manifest),
                         )
                         continue
                     if tier == "silver" and not allow_silver:
@@ -1242,6 +1558,9 @@ def backfill_all(
                         run_id=run_id,
                         status="failed",
                         error=_safe_error(exc),
+                        retained_bytes=(
+                            _manifest_source_bytes(manifest) if manifest is not None else 0
+                        ),
                     )
             if not manifests:
                 continue
@@ -1261,6 +1580,7 @@ def backfill_all(
                         status="failed",
                         quality_tier=str(manifest["quality"]["tier"]),
                         error=error,
+                        retained_bytes=_manifest_source_bytes(manifest),
                     )
                 print(
                     json.dumps(
@@ -1320,6 +1640,7 @@ def backfill_all(
                         status=status,
                         quality_tier=tier,
                         remote_dir=remote_dir,
+                        retained_bytes=(0 if cleanup else _manifest_source_bytes(manifest)),
                     )
                     summary["uploaded"] += 1
                     summary["tiers"][tier] += 1
@@ -1345,7 +1666,16 @@ def backfill_all(
                         quality_tier=tier,
                         remote_dir=remote_dir,
                         error=_safe_error(exc),
+                        retained_bytes=_manifest_source_bytes(manifest),
                     )
+    if cleanup:
+        try:
+            summary["huggingface_cache_cleanup"] = prune_hf_dataset_cache(repo_id=repo_id)
+        except Exception as exc:  # noqa: BLE001 - cache is non-canonical
+            summary["huggingface_cache_cleanup"] = {"error": _safe_error(exc)}
+    disk = shutil.disk_usage(runner_root)
+    summary["disk_free_bytes"] = disk.free
+    summary["disk_total_bytes"] = disk.total
     return summary
 
 
@@ -1368,6 +1698,7 @@ def record_verified_export(
                 remote_dir TEXT NOT NULL,
                 bundle_content_sha256 TEXT NOT NULL,
                 verified_files_json TEXT NOT NULL,
+                source_files_json TEXT NOT NULL DEFAULT '{}',
                 source_bytes INTEGER NOT NULL DEFAULT 0,
                 projected_bytes INTEGER NOT NULL DEFAULT 0,
                 thread_count INTEGER NOT NULL DEFAULT 0,
@@ -1379,6 +1710,10 @@ def record_verified_export(
         )
         existing = {str(row[1]) for row in conn.execute("PRAGMA table_info(trace_bundle_exports)")}
         for name, ddl in {
+            "source_files_json": (
+                "ALTER TABLE trace_bundle_exports "
+                "ADD COLUMN source_files_json TEXT NOT NULL DEFAULT '{}'"
+            ),
             "source_bytes": (
                 "ALTER TABLE trace_bundle_exports "
                 "ADD COLUMN source_bytes INTEGER NOT NULL DEFAULT 0"
@@ -1400,20 +1735,30 @@ def record_verified_export(
                 conn.execute(ddl)
         source_bytes = sum(int(entry.get("source_bytes", 0)) for entry in manifest["files"])
         projected_bytes = sum(int(entry["bytes"]) for entry in manifest["files"])
+        source_files = {
+            str(entry["source_path"]): {
+                "sha256": str(entry["source_sha256"]),
+                "bytes": int(entry.get("source_bytes", 0)),
+                "bundle_path": str(entry["path"]),
+            }
+            for entry in manifest["files"]
+            if entry.get("source_path") and entry.get("source_sha256")
+        }
         conn.execute(
             """
             INSERT INTO trace_bundle_exports (
                 run_id, schema_version, quality_tier, remote_dir,
-                bundle_content_sha256, verified_files_json,
+                bundle_content_sha256, verified_files_json, source_files_json,
                 source_bytes, projected_bytes, thread_count, subagent_count,
                 verified_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id) DO UPDATE SET
                 schema_version = excluded.schema_version,
                 quality_tier = excluded.quality_tier,
                 remote_dir = excluded.remote_dir,
                 bundle_content_sha256 = excluded.bundle_content_sha256,
                 verified_files_json = excluded.verified_files_json,
+                source_files_json = excluded.source_files_json,
                 source_bytes = excluded.source_bytes,
                 projected_bytes = excluded.projected_bytes,
                 thread_count = excluded.thread_count,
@@ -1427,6 +1772,7 @@ def record_verified_export(
                 remote_dir,
                 manifest["bundle_content_sha256"],
                 json.dumps(verified, sort_keys=True),
+                json.dumps(source_files, sort_keys=True),
                 source_bytes,
                 projected_bytes,
                 manifest["thread_count"],
@@ -1456,6 +1802,20 @@ def cleanup_verified_sources(
     verified_files = json.loads(row["verified_files_json"])
     if not isinstance(verified_files, dict):
         raise RuntimeError("verified export object inventory is invalid")
+    recorded_sources = json.loads(row["source_files_json"])
+    if not isinstance(recorded_sources, dict):
+        raise RuntimeError("verified source inventory is invalid")
+    manifest_sources = {
+        str(entry["source_path"]): {
+            "sha256": str(entry["source_sha256"]),
+            "bytes": int(entry.get("source_bytes", 0)),
+            "bundle_path": str(entry["path"]),
+        }
+        for entry in manifest["files"]
+        if entry.get("source_path") and entry.get("source_sha256")
+    }
+    if recorded_sources != manifest_sources:
+        raise RuntimeError("verified source inventory does not match current manifest")
     for entry in manifest["files"]:
         remote_path = f"{row['remote_dir'].rstrip('/')}/{entry['path']}"
         if verified_files.get(remote_path) != entry["sha256"]:
@@ -1502,6 +1862,14 @@ def _result_summary(manifest: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _manifest_source_bytes(manifest: dict[str, Any]) -> int:
+    return sum(
+        int(entry.get("source_bytes", 0))
+        for entry in manifest.get("files", [])
+        if isinstance(entry, dict)
+    )
+
+
 def quality_gate_reason(manifest: dict[str, Any]) -> str:
     """Return a non-secret quarantine summary suitable for the export ledger."""
     quality = manifest.get("quality")
@@ -1532,6 +1900,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("run_id", nargs="?")
     parser.add_argument("--all", action="store_true", help="backfill every retained run")
     parser.add_argument("--report", action="store_true", help="print local/export reconciliation")
+    parser.add_argument(
+        "--dry-run-cleanup",
+        action="store_true",
+        help="list exact retained sources, cleanup candidates, worktrees, and reasons",
+    )
     parser.add_argument("--batch-size", type=int, default=25)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--runner-root", type=Path, default=Path("/srv/jobseek-codex"))
@@ -1543,19 +1916,29 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cleanup", action="store_true")
     parser.add_argument("--allow-silver", action="store_true")
     parser.add_argument("--allow-diagnostic", action="store_true")
+    parser.add_argument("--min-disk-free-gib", type=float, default=5.0)
+    parser.add_argument("--disk-alert-margin-gib", type=float, default=2.0)
+    parser.add_argument("--max-quarantine-runs", type=int, default=50)
+    parser.add_argument("--max-quarantine-gib", type=float, default=2.0)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.report:
+    if args.report or args.dry_run_cleanup:
         if args.all or args.run_id:
-            raise SystemExit("--report does not accept a run_id or --all")
+            raise SystemExit("report/dry-run cleanup does not accept a run_id or --all")
         report = trace_export_report(
             runner_root=args.runner_root,
             codex_home=args.codex_home,
+            include_files=args.dry_run_cleanup,
+            min_disk_free_gib=args.min_disk_free_gib,
+            disk_alert_margin_gib=args.disk_alert_margin_gib,
+            max_quarantine_runs=args.max_quarantine_runs,
+            max_quarantine_gib=args.max_quarantine_gib,
         )
-        print(json.dumps({"phase": "report", **report}, sort_keys=True))
+        phase = "cleanup_plan" if args.dry_run_cleanup else "report"
+        print(json.dumps({"phase": phase, **report}, sort_keys=True))
         return 0
     if args.all and args.run_id:
         raise SystemExit("provide a run_id or --all, not both")
@@ -1606,6 +1989,7 @@ def main(argv: list[str] | None = None) -> int:
                 status="quarantined",
                 quality_tier=tier,
                 error=quality_gate_reason(manifest),
+                retained_bytes=_manifest_source_bytes(manifest),
             )
             raise SystemExit("bundle quarantined; refusing upload")
         if tier == "silver" and not args.allow_silver:
@@ -1636,6 +2020,7 @@ def main(argv: list[str] | None = None) -> int:
                 status="failed",
                 quality_tier=tier,
                 error=_safe_error(exc),
+                retained_bytes=_manifest_source_bytes(manifest),
             )
             raise
         print(
@@ -1650,6 +2035,7 @@ def main(argv: list[str] | None = None) -> int:
             status="verified",
             quality_tier=tier,
             remote_dir=remote_dir,
+            retained_bytes=_manifest_source_bytes(manifest),
         )
         if args.cleanup:
             cleanup = cleanup_verified_sources(
@@ -1662,6 +2048,7 @@ def main(argv: list[str] | None = None) -> int:
                 status="cleaned",
                 quality_tier=tier,
                 remote_dir=remote_dir,
+                retained_bytes=0,
             )
         return 0
     finally:

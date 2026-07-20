@@ -449,11 +449,14 @@ For each accepted issue:
     placeholder. Diagnostic bundles are for failure analysis, not model
     training. The manifest exposes every condition needed for these gates.
 11. Download every uploaded object into an ephemeral directory and verify its
-    SHA-256. Record the verified manifest in SQLite, then delete only the exact
-    source files whose hashes still match. Upload or verification failure keeps
-    local sources for retry. Before considering a new issue, each governor wake
-    retries up to `JOBSEEK_CODEX_TRACE_RETRY_LIMIT` failed exports even when the
-    new-run disk health gate is closed.
+    SHA-256 and JSON/schema representation. Record the verified remote and exact
+    local source path/hash inventory in SQLite, then delete only those source
+    files when their hashes still match. Upload or verification failure keeps
+    local sources for retry. A successful cleanup prunes only cached revisions
+    of the trace dataset and reports reclaimed bytes plus current disk headroom.
+    Before considering a new issue, each governor wake retries up to
+    `JOBSEEK_CODEX_TRACE_RETRY_LIMIT` failed exports even when the new-run disk
+    health gate is closed.
 12. Record PR URL, branch, usage summary, export status, explicit outcome,
     reason, attempt, and any retry deadline in the ledger and linked issue.
 13. Treat only `submitted`, `rejected`, and `escalated` as resolved. A plain
@@ -464,6 +467,12 @@ For each accepted issue:
     `JOBSEEK_CODEX_MAX_RETRY_BACKOFF_S`, default 21600 seconds).
 14. Remove the throwaway worktree after a resolved outcome, independently of
     trace export; retain it for bounded debugging on retryable/interrupted runs.
+15. Emit a structured disk warning at
+    `JOBSEEK_CODEX_MIN_DISK_FREE_GIB + JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB`.
+    Stop new admissions at the disk floor or when quarantined trace material
+    reaches either `JOBSEEK_CODEX_MAX_QUARANTINE_RUNS` or
+    `JOBSEEK_CODEX_MAX_QUARANTINE_GIB`. Export retries still run before these
+    gates so a transient failure can reclaim space without admitting new work.
 
 Historical retained sessions can be exported in bounded commits while holding
 the normal runner lock:
@@ -484,13 +493,32 @@ an invalid session tree, or matches the credential detector is quarantined and
 stays local.
 
 Reconcile terminal, exported, retained, quarantined/failed, and unaccounted
-runs plus byte totals and current disk headroom with:
+runs plus byte totals for Codex sessions, canonical traces, stderr logs,
+Hugging Face cache, worktrees, durable exports, deleted sources, and current
+disk headroom with:
 
 ```bash
 sudo -u codex-runner \
   /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
   /srv/jobseek-codex/repo/scripts/codex-trace-backfill.py --report
 ```
+
+For a read-only, exact file plan, including why each retained source cannot be
+deleted and which verified sources are candidates for checksum-gated cleanup:
+
+```bash
+sudo -u codex-runner \
+  /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
+  /srv/jobseek-codex/repo/scripts/codex-trace-backfill.py --dry-run-cleanup
+```
+
+Both commands are non-destructive. A `quarantine_limit`, `disk_headroom`, or
+`unaccounted_runs` alert must be resolved before increasing admission limits.
+Quarantined, failed, unavailable, unaccounted, and terminal-debug worktree
+entries are never cleanup candidates.
+Every runner deployment emits the compact report to its GitHub Actions log so
+disk and quarantine state remain operator-visible without granting the deploy
+account access to the runner user's private trace store.
 
 ### Phase 5 - rollout
 

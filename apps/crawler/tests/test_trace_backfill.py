@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from src.workspace.codex_runner import RunnerLedger
 from src.workspace.trace_backfill import (
     SessionSource,
     _backfill_run_ids,
@@ -22,6 +23,7 @@ from src.workspace.trace_backfill import (
     build_bundle,
     cleanup_verified_sources,
     project_thread,
+    prune_hf_dataset_cache,
     quality_gate_reason,
     record_verified_export,
     trace_export_report,
@@ -224,6 +226,43 @@ def test_batch_delete_patterns_are_scoped_to_current_runs(tmp_path: Path) -> Non
         "silver/run-2/*",
         "silver/run-2/**/*",
     ]
+
+
+def test_prune_hf_dataset_cache_is_repo_scoped(monkeypatch, tmp_path: Path) -> None:
+    executed: list[bool] = []
+    selected: list[tuple[str, ...]] = []
+
+    class Strategy:
+        expected_freed_size = 321
+
+        def execute(self) -> None:
+            executed.append(True)
+
+    class Cache:
+        repos = [
+            SimpleNamespace(
+                repo_type="dataset",
+                repo_id="example/traces",
+                revisions=[SimpleNamespace(commit_hash="a"), SimpleNamespace(commit_hash="b")],
+            ),
+            SimpleNamespace(
+                repo_type="dataset",
+                repo_id="example/other",
+                revisions=[SimpleNamespace(commit_hash="c")],
+            ),
+        ]
+
+        def delete_revisions(self, *revisions: str):
+            selected.append(revisions)
+            return Strategy()
+
+    monkeypatch.setattr("huggingface_hub.scan_cache_dir", lambda cache_dir=None: Cache())
+
+    result = prune_hf_dataset_cache(repo_id="example/traces", cache_dir=tmp_path / "cache")
+
+    assert selected == [("a", "b")]
+    assert executed == [True]
+    assert result == {"repo_id": "example/traces", "revisions": 2, "reclaimed_bytes": 321}
 
 
 def test_single_upload_replaces_run_directory_and_validates_commit(
@@ -460,13 +499,35 @@ def test_build_and_cleanup_verified_bundle(tmp_path: Path) -> None:
     )
     with sqlite3.connect(ledger) as conn:
         source_row = conn.execute(
-            "SELECT source_bytes FROM trace_bundle_exports WHERE run_id = ?", (run_id,)
+            "SELECT source_bytes, source_files_json FROM trace_bundle_exports WHERE run_id = ?",
+            (run_id,),
         ).fetchone()
     assert source_row is not None
     source_bytes = source_row[0]
+    recorded_sources = json.loads(source_row[1])
     assert source_bytes == sum(
         path.stat().st_size for path in (root_path, child_path, trace_path, stderr_path)
     )
+    assert set(recorded_sources) == {
+        str(root_path),
+        str(child_path),
+        str(trace_path),
+        str(stderr_path),
+    }
+    assert all(value["sha256"] for value in recorded_sources.values())
+    with sqlite3.connect(ledger) as conn:
+        conn.execute(
+            "UPDATE trace_bundle_exports SET source_files_json = '{}' WHERE run_id = ?",
+            (run_id,),
+        )
+    with pytest.raises(RuntimeError, match="source inventory does not match"):
+        cleanup_verified_sources(ledger_path=ledger, run_id=run_id, manifest=manifest)
+    assert root_path.exists()
+    with sqlite3.connect(ledger) as conn:
+        conn.execute(
+            "UPDATE trace_bundle_exports SET source_files_json = ? WHERE run_id = ?",
+            (json.dumps(recorded_sources, sort_keys=True), run_id),
+        )
     child_original = child_path.read_text()
     child_path.write_text(child_original + "tampered\n")
     with pytest.raises(RuntimeError, match="source changed after export"):
@@ -550,6 +611,115 @@ def test_backfill_all_batches_tiers_and_cleans(monkeypatch, tmp_path: Path) -> N
     assert report["pending_runs"] == 0
     assert report["unaccounted_runs"] == 0
     assert report["retained_session_bytes"] == 0
+
+
+def test_retention_report_accounts_categories_reasons_and_cleanup_candidates(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("HF_HUB_CACHE", raising=False)
+    runner_root = tmp_path / "runner"
+    codex_home = tmp_path / "home" / ".codex"
+    ledger = RunnerLedger(runner_root / "state" / "ledger.sqlite")
+    quarantined_run = "issue-20-100-aaaa1111"
+    verified_run = "issue-21-101-bbbb2222"
+
+    quarantined_trace = runner_root / "traces" / f"{quarantined_run}.jsonl"
+    verified_trace = runner_root / "traces" / f"{verified_run}.jsonl"
+    stderr_path = runner_root / "logs" / f"{quarantined_run}.stderr.log"
+    for path, content in (
+        (quarantined_trace, '{"type":"turn.failed"}\n'),
+        (verified_trace, '{"type":"turn.completed"}\n'),
+        (stderr_path, "diagnostic\n"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+
+    worktree = runner_root / "worktrees" / f"company-request-20-{quarantined_run}"
+    (worktree / "apps" / "crawler").mkdir(parents=True)
+    (worktree / "debug.txt").write_text("retained debug state")
+    session_path = codex_home / "sessions" / "2026" / "07" / "20" / "root.jsonl"
+    _write_jsonl(
+        session_path,
+        [
+            _session_meta(
+                thread_id="root",
+                cwd=f"{worktree}/apps/crawler",
+                source="exec",
+            ),
+            _message("user", "Resolve the company request"),
+        ],
+    )
+    hf_cache_file = codex_home.parent / ".cache" / "huggingface" / "hub" / "blob"
+    hf_cache_file.parent.mkdir(parents=True)
+    hf_cache_file.write_bytes(b"cache")
+
+    for run_id, trace in (
+        (quarantined_run, quarantined_trace),
+        (verified_run, verified_trace),
+    ):
+        assert ledger.acquire(run_id=run_id, issue=20, active_slot=run_id)
+        ledger.update(
+            run_id,
+            trace_path=str(trace),
+            stderr_path=str(stderr_path) if run_id == quarantined_run else None,
+            worktree_path=str(worktree) if run_id == quarantined_run else None,
+        )
+        ledger.finish(run_id, "failed")
+    ledger.record_trace_bundle_attempt(
+        quarantined_run,
+        status="quarantined",
+        quality_tier="quarantined",
+        retained_bytes=quarantined_trace.stat().st_size + session_path.stat().st_size,
+    )
+    record_verified_export(
+        ledger_path=ledger.path,
+        run_id=verified_run,
+        remote_dir=f"training-bundles/v2/gold/{verified_run}",
+        manifest={
+            "schema_version": "jobseek-codex-training-bundle/v2",
+            "quality": {"tier": "gold"},
+            "bundle_content_sha256": "bundle",
+            "thread_count": 1,
+            "subagent_count": 0,
+            "files": [
+                {
+                    "path": "codex-exec.jsonl",
+                    "sha256": "remote",
+                    "bytes": verified_trace.stat().st_size,
+                    "source_path": str(verified_trace),
+                    "source_sha256": hashlib.sha256(verified_trace.read_bytes()).hexdigest(),
+                    "source_bytes": verified_trace.stat().st_size,
+                }
+            ],
+        },
+        verified={f"training-bundles/v2/gold/{verified_run}/codex-exec.jsonl": "remote"},
+    )
+
+    report = trace_export_report(
+        runner_root=runner_root,
+        codex_home=codex_home,
+        include_files=True,
+        max_quarantine_runs=1,
+    )
+
+    assert report["storage"]["codex_sessions"]["files"] == 1
+    assert report["storage"]["canonical_traces"]["files"] == 2
+    assert report["storage"]["stderr_logs"]["files"] == 1
+    assert report["storage"]["huggingface_cache"]["bytes"] == 5
+    assert report["storage"]["worktrees"]["directories"] == 1
+    assert report["quarantine"]["runs"] == 1
+    assert any(alert["kind"] == "quarantine_limit" for alert in report["alerts"])
+    assert any(
+        item["path"] == str(verified_trace)
+        and item["reason"] == "verified_pending_checksum_gated_cleanup"
+        for item in report["cleanup_candidates"]
+    )
+    assert any(
+        item["path"] == str(quarantined_trace)
+        and item["reason"] == "quarantined_retained"
+        and not item["cleanup_candidate"]
+        for item in report["files"]
+    )
 
 
 def test_credential_findings_quarantine_bundle(tmp_path: Path) -> None:

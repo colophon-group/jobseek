@@ -94,6 +94,9 @@ class UsageSummary:
 class HostHealth:
     ok: bool
     reason: str | None = None
+    warning: str | None = None
+    disk_free_bytes: int | None = None
+    disk_total_bytes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -148,6 +151,9 @@ class RunnerConfig:
     min_five_hour_remaining_percent: float = 20.0
     min_weekly_remaining_percent: float = 20.0
     min_disk_free_gib: float = 5.0
+    disk_alert_margin_gib: float = 2.0
+    max_quarantine_runs: int = 50
+    max_quarantine_gib: float = 2.0
     min_mem_available_gib: float = 2.0
     max_load_per_cpu: float = 2.0
     usage_probe_path: Path | None = None
@@ -189,6 +195,9 @@ class RunnerConfig:
             min_five_hour_remaining_percent=self.min_five_hour_remaining_percent,
             min_weekly_remaining_percent=self.min_weekly_remaining_percent,
             min_disk_free_gib=self.min_disk_free_gib,
+            disk_alert_margin_gib=self.disk_alert_margin_gib,
+            max_quarantine_runs=self.max_quarantine_runs,
+            max_quarantine_gib=self.max_quarantine_gib,
             min_mem_available_gib=self.min_mem_available_gib,
             max_load_per_cpu=self.max_load_per_cpu,
             usage_probe_path=self.usage_probe_path or repo_dir / "scripts" / "codex-usage-probe.py",
@@ -248,6 +257,9 @@ class RunnerConfig:
                 env.get("JOBSEEK_CODEX_MIN_WEEKLY_REMAINING_PERCENT", "20")
             ),
             min_disk_free_gib=float(env.get("JOBSEEK_CODEX_MIN_DISK_FREE_GIB", "5")),
+            disk_alert_margin_gib=float(env.get("JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB", "2")),
+            max_quarantine_runs=int(env.get("JOBSEEK_CODEX_MAX_QUARANTINE_RUNS", "50")),
+            max_quarantine_gib=float(env.get("JOBSEEK_CODEX_MAX_QUARANTINE_GIB", "2")),
             min_mem_available_gib=float(env.get("JOBSEEK_CODEX_MIN_MEM_AVAILABLE_GIB", "2")),
             max_load_per_cpu=float(env.get("JOBSEEK_CODEX_MAX_LOAD_PER_CPU", "2")),
             lease_timeout_s=int(env.get("JOBSEEK_CODEX_LEASE_TIMEOUT_S", str(4 * 60 * 60))),
@@ -361,6 +373,7 @@ class RunnerLedger:
                     quality_tier TEXT,
                     remote_dir TEXT,
                     error TEXT,
+                    retained_bytes INTEGER NOT NULL DEFAULT 0,
                     last_attempt_at INTEGER NOT NULL
                 );
                 """
@@ -389,6 +402,15 @@ class RunnerLedger:
         }.items():
             if name not in snapshot_existing:
                 conn.execute(ddl)
+        attempt_existing = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(trace_bundle_export_attempts)").fetchall()
+        }
+        if "retained_bytes" not in attempt_existing:
+            conn.execute(
+                "ALTER TABLE trace_bundle_export_attempts "
+                "ADD COLUMN retained_bytes INTEGER NOT NULL DEFAULT 0"
+            )
 
     def acquire(
         self,
@@ -559,6 +581,7 @@ class RunnerLedger:
         quality_tier: str | None = None,
         remote_dir: str | None = None,
         error: str | None = None,
+        retained_bytes: int = 0,
     ) -> None:
         now = int(time.time())
         with self._connect() as conn:
@@ -566,18 +589,27 @@ class RunnerLedger:
                 """
                 INSERT INTO trace_bundle_export_attempts (
                     run_id, attempts, status, quality_tier,
-                    remote_dir, error, last_attempt_at
-                ) VALUES (?, 1, ?, ?, ?, ?, ?)
+                    remote_dir, error, retained_bytes, last_attempt_at
+                ) VALUES (?, 1, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(run_id) DO UPDATE SET
                     attempts = trace_bundle_export_attempts.attempts + 1,
                     status = excluded.status,
                     quality_tier = excluded.quality_tier,
                     remote_dir = excluded.remote_dir,
                     error = excluded.error,
+                    retained_bytes = excluded.retained_bytes,
                     last_attempt_at = excluded.last_attempt_at
                 """,
-                (run_id, status, quality_tier, remote_dir, error, now),
+                (run_id, status, quality_tier, remote_dir, error, retained_bytes, now),
             )
+
+    def trace_quarantine_totals(self) -> tuple[int, int]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS runs, COALESCE(SUM(retained_bytes), 0) AS bytes "
+                "FROM trace_bundle_export_attempts WHERE status = 'quarantined'"
+            ).fetchone()
+        return (int(row["runs"]), int(row["bytes"])) if row else (0, 0)
 
     def failed_trace_bundle_exports(self, *, limit: int) -> list[dict[str, Any]]:
         if limit <= 0:
@@ -1123,26 +1155,66 @@ def check_host_health(config: RunnerConfig) -> HostHealth:
     disk = shutil.disk_usage(config.root)
     free_gib = disk.free / (1024**3)
     if free_gib < config.min_disk_free_gib:
-        return HostHealth(False, f"disk free {free_gib:.1f}GiB below threshold")
+        return HostHealth(
+            False,
+            f"disk free {free_gib:.1f}GiB below threshold",
+            disk_free_bytes=disk.free,
+            disk_total_bytes=disk.total,
+        )
+    warning = None
+    alert_threshold = config.min_disk_free_gib + config.disk_alert_margin_gib
+    if free_gib < alert_threshold:
+        warning = (
+            f"disk free {free_gib:.1f}GiB is within "
+            f"{config.disk_alert_margin_gib:.1f}GiB of the admission floor"
+        )
 
     mem_available = _mem_available_gib()
     if mem_available is not None and mem_available < config.min_mem_available_gib:
-        return HostHealth(False, f"memory available {mem_available:.1f}GiB below threshold")
+        return HostHealth(
+            False,
+            f"memory available {mem_available:.1f}GiB below threshold",
+            warning=warning,
+            disk_free_bytes=disk.free,
+            disk_total_bytes=disk.total,
+        )
 
     try:
         load1, _, _ = os.getloadavg()
     except OSError:
-        return HostHealth(True)
+        return HostHealth(
+            True,
+            warning=warning,
+            disk_free_bytes=disk.free,
+            disk_total_bytes=disk.total,
+        )
     cpus = max(1, os.cpu_count() or 1)
     max_load = cpus * config.max_load_per_cpu
     if load1 > max_load:
-        return HostHealth(False, f"load {load1:.2f} above threshold {max_load:.2f}")
+        return HostHealth(
+            False,
+            f"load {load1:.2f} above threshold {max_load:.2f}",
+            warning=warning,
+            disk_free_bytes=disk.free,
+            disk_total_bytes=disk.total,
+        )
 
     if not config.dry_run and _uses_codex_cli(config.codex_args):
         missing_identity = _missing_git_identity()
         if missing_identity:
-            return HostHealth(False, f"git identity missing: {', '.join(missing_identity)}")
-    return HostHealth(True)
+            return HostHealth(
+                False,
+                f"git identity missing: {', '.join(missing_identity)}",
+                warning=warning,
+                disk_free_bytes=disk.free,
+                disk_total_bytes=disk.total,
+            )
+    return HostHealth(
+        True,
+        warning=warning,
+        disk_free_bytes=disk.free,
+        disk_total_bytes=disk.total,
+    )
 
 
 def _mem_available_gib() -> float | None:
@@ -1437,12 +1509,14 @@ class CompanyResolverGovernor:
         from src.workspace.trace_backfill import (
             build_bundle,
             cleanup_verified_sources,
+            prune_hf_dataset_cache,
             quality_gate_reason,
             record_verified_export,
             upload_and_verify,
         )
 
         tier: str | None = None
+        retained_bytes = 0
         try:
             with tempfile.TemporaryDirectory(
                 prefix=f"trace-export-{result.run_id}-",
@@ -1456,6 +1530,11 @@ class CompanyResolverGovernor:
                     output_dir=bundle_dir,
                 )
                 tier = str(manifest["quality"]["tier"])
+                retained_bytes = sum(
+                    int(entry.get("source_bytes", 0))
+                    for entry in manifest.get("files", [])
+                    if isinstance(entry, dict)
+                )
                 result.trace_export_tier = tier
                 if tier == "quarantined":
                     result.trace_export_status = "quarantined"
@@ -1464,6 +1543,7 @@ class CompanyResolverGovernor:
                         status="quarantined",
                         quality_tier=tier,
                         error=quality_gate_reason(manifest),
+                        retained_bytes=retained_bytes,
                     )
                     return result
 
@@ -1483,17 +1563,52 @@ class CompanyResolverGovernor:
                 )
                 status = "verified"
                 if cfg.trace_cleanup_enabled:
-                    cleanup_verified_sources(
+                    cleanup_result = cleanup_verified_sources(
                         ledger_path=cfg.ledger_path or cfg.root / "state" / "ledger.sqlite",
                         run_id=result.run_id,
                         manifest=manifest,
                     )
                     status = "cleaned"
+                    retained_bytes = 0
+                    disk = shutil.disk_usage(cfg.root)
+                    print(
+                        json.dumps(
+                            {
+                                "event": "trace_retention_cleanup",
+                                "run_id": result.run_id,
+                                "reclaimed_bytes": int(cleanup_result["reclaimed_bytes"]),
+                                "disk_free_bytes": disk.free,
+                                "disk_total_bytes": disk.total,
+                            },
+                            sort_keys=True,
+                        )
+                    )
+                    try:
+                        cache_result = prune_hf_dataset_cache(repo_id=cfg.trace_hf_repo)
+                        if cache_result["revisions"]:
+                            print(
+                                json.dumps(
+                                    {"event": "trace_hf_cache_cleanup", **cache_result},
+                                    sort_keys=True,
+                                )
+                            )
+                    except Exception as exc:  # noqa: BLE001 - cache is non-canonical
+                        print(
+                            json.dumps(
+                                {
+                                    "event": "trace_hf_cache_cleanup_failed",
+                                    "error": _safe_trace_export_error(exc),
+                                },
+                                sort_keys=True,
+                            ),
+                            file=sys.stderr,
+                        )
                 self.ledger.record_trace_bundle_attempt(
                     result.run_id,
                     status=status,
                     quality_tier=tier,
                     remote_dir=remote_dir,
+                    retained_bytes=retained_bytes,
                 )
                 result.trace_export_status = status
                 result.trace_export_remote_dir = remote_dir
@@ -1504,6 +1619,7 @@ class CompanyResolverGovernor:
                 status="failed",
                 quality_tier=tier,
                 error=error,
+                retained_bytes=retained_bytes,
             )
             result.trace_export_status = "failed"
             result.trace_export_error = error
@@ -1524,6 +1640,20 @@ class CompanyResolverGovernor:
     def should_start(self) -> SchedulerDecision:
         self.reconcile_stale_runs()
         health = check_host_health(self.config)
+        if health.warning:
+            print(
+                json.dumps(
+                    {
+                        "event": "codex_retention_warning",
+                        "kind": "disk_headroom",
+                        "message": health.warning,
+                        "disk_free_bytes": health.disk_free_bytes,
+                        "disk_total_bytes": health.disk_total_bytes,
+                    },
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+            )
         if not health.ok:
             return self._record_scheduler_decision(
                 SchedulerDecision(
@@ -1532,6 +1662,42 @@ class CompanyResolverGovernor:
                     recent_limit=0,
                     recent_runs=0,
                 )
+            )
+
+        quarantine_runs, quarantine_bytes = self.ledger.trace_quarantine_totals()
+        max_quarantine_bytes = int(self.config.max_quarantine_gib * 1024**3)
+        quarantine_over_limit = (
+            quarantine_runs >= self.config.max_quarantine_runs
+            or quarantine_bytes >= max_quarantine_bytes
+        )
+        if quarantine_over_limit:
+            return self._record_scheduler_decision(
+                SchedulerDecision(
+                    should_run=False,
+                    reason=(
+                        "trace quarantine retention limit reached: "
+                        f"{quarantine_runs} runs, {quarantine_bytes} bytes"
+                    ),
+                    recent_limit=0,
+                    recent_runs=0,
+                )
+            )
+        if quarantine_runs >= max(
+            1, int(self.config.max_quarantine_runs * 0.8)
+        ) or quarantine_bytes >= int(max_quarantine_bytes * 0.8):
+            print(
+                json.dumps(
+                    {
+                        "event": "codex_retention_warning",
+                        "kind": "quarantine_growth",
+                        "quarantine_runs": quarantine_runs,
+                        "quarantine_bytes": quarantine_bytes,
+                        "max_quarantine_runs": self.config.max_quarantine_runs,
+                        "max_quarantine_bytes": max_quarantine_bytes,
+                    },
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
             )
 
         usage = self._probe_usage()
