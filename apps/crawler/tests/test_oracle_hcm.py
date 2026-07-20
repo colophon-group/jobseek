@@ -35,6 +35,22 @@ class TestGetWithRetry:
         assert resp.status_code == 200
         assert client.get.await_count == 3
 
+    async def test_retries_transient_302_then_succeeds(self):
+        """Reproduce #5715's Oracle response with an empty Location header."""
+        client = AsyncMock(spec=httpx.AsyncClient)
+        redirect = httpx.Response(
+            302,
+            headers={"Location": ""},
+            request=httpx.Request("GET", "https://example.com/"),
+        )
+        client.get = AsyncMock(side_effect=[redirect, _response(200)])
+
+        with patch("src.core.monitors.oracle_hcm.asyncio.sleep", new_callable=AsyncMock):
+            resp = await _get_with_retry(client, "https://example.com/")
+
+        assert resp.status_code == 200
+        assert client.get.await_count == 2
+
     async def test_returns_final_transient_response_after_exhaustion(self):
         """After _RETRY_ATTEMPTS transient responses, return the last one (not
         raise) so the caller's raise_for_status() still triggers the board-level

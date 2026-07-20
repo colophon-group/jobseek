@@ -32,7 +32,8 @@ log = structlog.get_logger()
 # dozens of Oracle HCM tenants share the same backend. A single Oracle-side
 # hiccup returns 503 for every tenant we hit during that window (issue #2217:
 # 15 distinct boards all 503'd inside a 2m15s window on 2026-04-17 14:31:59Z
-# — one Oracle infra burp, not 15 separate board failures).
+# — one Oracle infra burp, not 15 separate board failures). Oracle also emitted
+# transient 302 responses with no usable redirect for two tenants in #5715.
 #
 # Retry in-place with jittered exponential backoff before giving up to the
 # board-level backoff (``_RECORD_FAILURE``, which doubles the next-check
@@ -41,7 +42,7 @@ log = structlog.get_logger()
 #
 # Attempts chosen conservatively — 3 × ~6-18s covers Oracle's typical burp
 # window without stretching a single monitor beyond the 10-min lease budget.
-_TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
+_TRANSIENT_STATUS = frozenset({302, 429, 500, 502, 503, 504})
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY_S = 3.0
 
@@ -49,7 +50,7 @@ _RETRY_BASE_DELAY_S = 3.0
 async def _get_with_retry(
     client: httpx.AsyncClient, url: str, *, timeout: float = 30.0
 ) -> httpx.Response:
-    """GET with exponential-jitter backoff on 429/5xx.
+    """GET with exponential-jitter backoff on transient 302/429/5xx.
 
     On a non-transient status or after exhausting retries, returns the final
     response — the caller should still call ``raise_for_status()`` on it so
