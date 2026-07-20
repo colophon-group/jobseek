@@ -330,15 +330,22 @@ timers for boot persistence. It intentionally sets
 `JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a company resolver,
 annotation run, or error review from GitHub Actions.
 
-The deploy never interrupts a live Codex routine. It waits up to 15 minutes
-for the shared runner lock, and the SSH command has a 30-minute envelope so
-that a successful lock wait still leaves 15 minutes for checkout, runtime
-sync, verification, and the retention report. If the lock remains occupied
-for the full wait, the deploy fails before changing the checkout or units;
-the live routine continues normally, and the deployment can be retried with
-`workflow_dispatch` after the routine releases the lock. Workflow concurrency
-also uses `cancel-in-progress: false`, so queued deployments are not canceled
-by a newer push.
+The deploy never interrupts a live Codex routine. Before waiting for the shared
+runner lock, it records which Codex timers are active and stops those timer
+units only. A service that already holds the lock continues normally, while no
+new resolver or daily routine can jump ahead of the pending deploy. An exit
+trap restores the previously active timers on both success and failure; the
+workflow's `JOBSEEK_CODEX_START_TIMERS=0` therefore means "restore existing
+timer state", not "leave production paused".
+
+The lock wait is bounded at 15,000 seconds: the governor's four-hour service
+limit plus lock-release headroom. The SSH command has a five-hour envelope so
+that a full wait still leaves 50 minutes for checkout, runtime sync,
+verification, and reporting. A longer daily routine can still make the deploy
+fail before changing the checkout or units, but continuous resolver work can
+no longer starve it by reacquiring the lock between retries. Workflow
+concurrency also uses `cancel-in-progress: false`, so queued deployments are
+not canceled by a newer push.
 
 Initial service limits:
 

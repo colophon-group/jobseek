@@ -295,6 +295,75 @@ test("Codex deploy transport outlives the runner lock wait", () => {
   assert.match(deployCodexRunnerWorkflow, /cancel-in-progress: false/);
 });
 
+test("Codex deploy reserves the next runner-lock handoff", () => {
+  const pauseCall = deployCodexRunnerHostScript.indexOf(
+    "  pause_timer_activations\n",
+  );
+  const lockWait = deployCodexRunnerHostScript.indexOf(
+    '  if ! flock -w "${LOCK_TIMEOUT_S}" 9; then',
+  );
+
+  assert.ok(pauseCall >= 0, "deployment must pause timer activations");
+  assert.ok(lockWait > pauseCall, "timers must pause before waiting for the lock");
+  assert.match(
+    deployCodexRunnerHostScript,
+    /systemctl is-active --quiet "\$\{timer\}"[\s\S]*systemctl stop "\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /trap restore_timers_on_exit EXIT/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /systemctl start "\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"/,
+  );
+  assert.doesNotMatch(
+    deployCodexRunnerHostScript,
+    /systemctl stop "\$\{UNITS\[@\]\}"/,
+    "deployment must not interrupt an active service",
+  );
+});
+
+test("Codex deploy restores prior timer state after failure", () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-deploy-timers-"));
+  const log = join(dir, "systemctl.log");
+  const result = spawnSync(
+    "bash",
+    [
+      "-c",
+      `set -euo pipefail
+source scripts/deploy-codex-runner-host.sh
+TIMERS=(alpha.timer beta.timer)
+START_TIMERS=0
+systemctl() {
+  printf '%s\\n' "$*" >> "$MOCK_SYSTEMCTL_LOG"
+  if [[ "$1" == "is-active" ]]; then
+    [[ "$3" == "alpha.timer" ]]
+    return
+  fi
+  return 0
+}
+pause_timer_activations
+exit 23
+`,
+    ],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, MOCK_SYSTEMCTL_LOG: log },
+      encoding: "utf8",
+    },
+  );
+  const calls = readFileSync(log, "utf8");
+  rmSync(dir, { recursive: true, force: true });
+
+  assert.equal(result.status, 23, result.stderr);
+  assert.match(calls, /^is-active --quiet alpha\.timer$/m);
+  assert.match(calls, /^is-active --quiet beta\.timer$/m);
+  assert.match(calls, /^stop alpha\.timer$/m);
+  assert.match(calls, /^start alpha\.timer$/m);
+  assert.doesNotMatch(calls, /^start beta\.timer$/m);
+});
+
 test("scheduled maintenance always reports host hygiene independently", () => {
   assert.match(crawlerHostHygieneScript, /from datetime import datetime, timezone/);
   assert.match(crawlerHostHygieneScript, /UTC = timezone\.utc/);

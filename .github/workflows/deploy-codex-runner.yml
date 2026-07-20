@@ -21,7 +21,8 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S: "900"
+  # Covers the governor service's four-hour maximum plus lock-release headroom.
+  JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S: "15000"
 
 concurrency:
   group: codex-runner-production-sync
@@ -57,9 +58,9 @@ jobs:
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
           envs: GITHUB_SHA,JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S
-          # Allow the 15-minute runner-lock wait to finish, then leave another
-          # 15 minutes for checkout, runtime sync, verification, and reporting.
-          command_timeout: 30m
+          # Allow the full resolver window to finish, then leave 50 minutes for
+          # checkout, runtime sync, verification, and reporting.
+          command_timeout: 5h
           script: |
             set -euo pipefail
             export JOBSEEK_CODEX_BRANCH=main

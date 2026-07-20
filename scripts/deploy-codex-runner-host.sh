@@ -11,7 +11,7 @@ REPO_DIR="${JOBSEEK_CODEX_REPO_DIR:-${ROOT_DIR}/repo}"
 REPO_URL="${JOBSEEK_CODEX_REPO_URL:-https://github.com/colophon-group/jobseek.git}"
 BRANCH="${JOBSEEK_CODEX_BRANCH:-main}"
 EXPECTED_SHA="${JOBSEEK_CODEX_EXPECTED_SHA:-}"
-LOCK_TIMEOUT_S="${JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S:-900}"
+LOCK_TIMEOUT_S="${JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S:-15000}"
 START_TIMERS="${JOBSEEK_CODEX_START_TIMERS:-0}"
 
 LOCK_FILE="${ROOT_DIR}/state/codex-runner.lock"
@@ -30,6 +30,9 @@ TIMERS=(
   jobseek-codex-daily-annotations.timer
   jobseek-codex-daily-error-review.timer
 )
+
+ACTIVE_TIMERS_BEFORE_DEPLOY=()
+TIMER_RESTORE_ARMED=0
 
 log() {
   printf '==> %s\n' "$*"
@@ -172,16 +175,51 @@ report_trace_retention() {
     "${REPO_DIR}/scripts/codex-trace-backfill.py" --report
 }
 
-maybe_start_timers() {
-  if [[ "${START_TIMERS}" == "1" ]]; then
-    systemctl start "${TIMERS[@]}"
+pause_timer_activations() {
+  local timer
+  for timer in "${TIMERS[@]}"; do
+    if systemctl is-active --quiet "${timer}"; then
+      ACTIVE_TIMERS_BEFORE_DEPLOY+=("${timer}")
+    fi
+  done
+
+  TIMER_RESTORE_ARMED=1
+  trap restore_timers_on_exit EXIT
+
+  if ((${#ACTIVE_TIMERS_BEFORE_DEPLOY[@]} > 0)); then
+    log "pausing new Codex timer activations while deployment waits"
+    systemctl stop "${ACTIVE_TIMERS_BEFORE_DEPLOY[@]}"
   fi
+}
+
+restore_timers_on_exit() {
+  local deploy_status=$?
+  local restore_status=0
+  trap - EXIT
+  set +e
+
+  if [[ "${TIMER_RESTORE_ARMED}" == "1" ]]; then
+    if [[ "${START_TIMERS}" == "1" ]]; then
+      systemctl start "${TIMERS[@]}"
+      restore_status=$?
+    elif ((${#ACTIVE_TIMERS_BEFORE_DEPLOY[@]} > 0)); then
+      systemctl start "${ACTIVE_TIMERS_BEFORE_DEPLOY[@]}"
+      restore_status=$?
+    fi
+  fi
+
+  systemctl list-timers --all 'jobseek-codex*' --no-pager
+  if [[ "${deploy_status}" -eq 0 && "${restore_status}" -ne 0 ]]; then
+    deploy_status="${restore_status}"
+  fi
+  exit "${deploy_status}"
 }
 
 main() {
   require_root
   ensure_layout
   require_runtime_config
+  pause_timer_activations
 
   log "waiting for Codex runner lock: ${LOCK_FILE}"
   exec 9>"${LOCK_FILE}"
@@ -195,8 +233,8 @@ main() {
   verify_entrypoints
   reconcile_codex_worktrees
   report_trace_retention
-  maybe_start_timers
-  systemctl list-timers --all 'jobseek-codex*' --no-pager
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
