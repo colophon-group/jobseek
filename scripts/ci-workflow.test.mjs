@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   chmodSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -34,6 +35,7 @@ const dispatchPrChecksScript = readFileSync(
   "utf8",
 );
 const labelPrScript = readFileSync(".github/scripts/label-pr.sh", "utf8");
+const labelPrCsvDiffHelper = ".github/scripts/label_pr_csv_diff.py";
 const publishMcpServerWorkflow = readFileSync(
   ".github/workflows/publish-mcp-server.yml",
   "utf8",
@@ -148,6 +150,68 @@ fi
   }
   rmSync(dir, { recursive: true, force: true });
   return { ...result, outputs };
+}
+
+function runCompanyPrLabeler(diff) {
+  const dir = mkdtempSync(join(tmpdir(), "label-company-pr-"));
+  const output = join(dir, "github-output");
+  const log = join(dir, "gh.log");
+  const gh = join(dir, "gh");
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1 $2" == "pr view" && "$*" == *"headRefName"* ]]; then
+  printf '%s\n' 'add-company/example'
+elif [[ "$1 $2" == "pr view" && "$*" == *"labels"* ]]; then
+  printf '%s\n' 'review-code'
+elif [[ "$1 $2" == "pr diff" && "$*" == *"--name-only"* ]]; then
+  printf '%s\n' 'apps/crawler/data/boards.csv' 'apps/crawler/data/companies.csv' 'apps/crawler/data/company_descriptions.csv'
+elif [[ "$1 $2" == "pr diff" ]]; then
+  printf '%s' "$MOCK_DIFF"
+elif [[ "$1" == "api" && "$*" == *"/comments"* ]]; then
+  printf '%s\n' '<!-- crawl-stats {"jobs": 10, "monitor_time": 1.0} -->'
+elif [[ "$1" == "api" && "$*" == *"/contents/"* ]]; then
+  exit 0
+elif [[ "$1 $2" == "label create" ]]; then
+  exit 0
+elif [[ "$1 $2" == "pr edit" ]]; then
+  printf '%s\n' "$*" >> "$MOCK_GH_LOG"
+else
+  printf 'unexpected gh call: %s\n' "$*" >&2
+  exit 2
+fi
+`,
+  );
+  chmodSync(gh, 0o755);
+  const result = spawnSync("bash", [".github/scripts/label-pr.sh"], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      PATH: `${dir}:${process.env.PATH}`,
+      GH_TOKEN: "test-token",
+      REPO: "colophon-group/jobseek",
+      PR: "123",
+      GITHUB_OUTPUT: output,
+      MOCK_DIFF: diff,
+      MOCK_GH_LOG: log,
+    },
+    encoding: "utf8",
+  });
+  let outputs = "";
+  let calls = "";
+  try {
+    outputs = readFileSync(output, "utf8");
+  } catch {
+    // A failed classifier may stop before publishing outputs.
+  }
+  try {
+    calls = readFileSync(log, "utf8");
+  } catch {
+    // No label mutations means the mock call log is absent.
+  }
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, outputs, calls };
 }
 
 function setupUvBlocks(workflowSource) {
@@ -488,6 +552,127 @@ test("company PR label script applies decision labels idempotently", () => {
     labelPrScript,
     /for L in \$ALL_DECISION_LABELS; do\s+gh pr edit "\$PR" --repo "\$REPO" --remove-label "\$L"/,
   );
+});
+
+function shellAllowlist(name) {
+  const match = labelPrScript.match(new RegExp(`^${name}='([^']*)'$`, "m"));
+  assert.ok(match, `missing shell allowlist: ${name}`);
+  return new Set(match[1].split("|"));
+}
+
+function registeredTypes(directory) {
+  const types = new Set();
+  for (const filename of readdirSync(directory)) {
+    if (!filename.endsWith(".py")) continue;
+    const source = readFileSync(join(directory, filename), "utf8");
+    for (const match of source.matchAll(/\bregister\(\s*["']([^"']+)/g)) {
+      types.add(match[1]);
+    }
+  }
+  return types;
+}
+
+function netAddedCsvRows(diff) {
+  const result = spawnSync("python3", [labelPrCsvDiffHelper], {
+    cwd: process.cwd(),
+    input: diff,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim() ? result.stdout.trim().split("\n") : [];
+}
+
+test("company PR static type allowlists match runtime registrations", () => {
+  assert.deepEqual(
+    shellAllowlist("VALID_MONITOR_TYPES"),
+    registeredTypes("apps/crawler/src/core/monitors"),
+  );
+  assert.deepEqual(
+    shellAllowlist("VALID_SCRAPER_TYPES"),
+    registeredTypes("apps/crawler/src/core/scrapers"),
+  );
+});
+
+test("company PR workflows capture the semantic diff helper as trusted code", () => {
+  for (const source of [maybeAutoMergeWorkflow, uploadCompanyImagesWorkflow]) {
+    assert.match(
+      source,
+      /cp \.github\/scripts\/label_pr_csv_diff\.py "\$RUNNER_TEMP\/trusted-scripts\/label_pr_csv_diff\.py"/,
+    );
+  }
+});
+
+test("company PR classifier cancels CSV row moves", () => {
+  const moved = "old,same,row";
+  const added = "company,board,https://example.com,sitemap,,skip,";
+  const diff = `diff --git a/apps/crawler/data/boards.csv b/apps/crawler/data/boards.csv
+--- a/apps/crawler/data/boards.csv
++++ b/apps/crawler/data/boards.csv
+@@ -1,2 +1,2 @@
+-${moved}
++${added}
+ ${moved}
+@@ -10,1 +10,1 @@
+-${added}
++${moved}
+`;
+
+  assert.deepEqual(netAddedCsvRows(diff), []);
+});
+
+test("company PR classifier retains only net-new CSV rows in order", () => {
+  const moved = "existing,Existing,https://existing.example,,,,,,";
+  const company = "new-company,New Company,https://new.example,,,,,,,";
+  const board = "new-company,careers,https://new.example/jobs,comeet,{},skip,";
+  const diff = `diff --git a/apps/crawler/data/companies.csv b/apps/crawler/data/companies.csv
+--- a/apps/crawler/data/companies.csv
++++ b/apps/crawler/data/companies.csv
+@@ -1 +1,2 @@
+-${moved}
++${company}
++${moved}
+diff --git a/apps/crawler/data/boards.csv b/apps/crawler/data/boards.csv
+--- a/apps/crawler/data/boards.csv
++++ b/apps/crawler/data/boards.csv
+@@ -1 +1 @@
++${board}
+`;
+
+  assert.deepEqual(netAddedCsvRows(diff), [company, board]);
+});
+
+test("company PR labeler auto-merges valid config despite moved historical rows", () => {
+  const moved =
+    "old-company,careers,https://old.example/jobs,paylocity,,paylocity,";
+  const board =
+    "new-company,careers,https://new.example/jobs,comeet,{},skip,";
+  const company = "new-company,New Company,https://new.example,,,,,,,";
+  const description = "new-company,English,German,French,Italian";
+  const diff = `diff --git a/apps/crawler/data/boards.csv b/apps/crawler/data/boards.csv
+--- a/apps/crawler/data/boards.csv
++++ b/apps/crawler/data/boards.csv
+@@ -1 +1,2 @@
+-${moved}
++${board}
++${moved}
+diff --git a/apps/crawler/data/companies.csv b/apps/crawler/data/companies.csv
+--- a/apps/crawler/data/companies.csv
++++ b/apps/crawler/data/companies.csv
+@@ -1 +1 @@
++${company}
+diff --git a/apps/crawler/data/company_descriptions.csv b/apps/crawler/data/company_descriptions.csv
+--- a/apps/crawler/data/company_descriptions.csv
++++ b/apps/crawler/data/company_descriptions.csv
+@@ -1 +1 @@
++${description}
+`;
+  const result = runCompanyPrLabeler(diff);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Applied labels: auto-merge/);
+  assert.match(result.outputs, /^labels=auto-merge$/m);
+  assert.match(result.calls, /--remove-label review-code/);
+  assert.match(result.calls, /--add-label auto-merge/);
 });
 
 test("CodeQL skips full analysis for non-code pull requests", () => {
