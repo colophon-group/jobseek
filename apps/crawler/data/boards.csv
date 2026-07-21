@@ -2219,6 +2219,7 @@ headspace,headspace-greenhouse,https://job-boards.greenhouse.io/hs,greenhouse,"{
 headway,headway-greenhouse,https://job-boards.greenhouse.io/headway,greenhouse,"{""token"": ""headway""}",skip,
 healtheconnections,healtheconnections-careers,https://boards.greenhouse.io/healtheconnections,greenhouse,,skip,
 healthverity,healthverity-greenhouse,https://job-boards.greenhouse.io/healthverity,greenhouse,"{""token"": ""healthverity""}",skip,
+healthy-io,healthy-io-careers,https://healthy.io/careers/,dom,"{""render"": false, ""url_filter"": ""/careers/.+/""}",nextdata,"{""fields"": {""title"": ""name"", ""description"": ""description"", ""locations"": {""path"": ""location.country"", ""map"": {""IL"": ""Tel Aviv-Yafo, IL"", ""N/A"": ""Tel Aviv-Yafo, IL""}}, ""employment_type"": {""path"": ""employment_type"", ""map"": {""Full-time"": ""full_time""}}}, ""path"": ""props.pageProps.position""}"
 hear-com-in,hear-com-in-greenhouse,https://job-boards.greenhouse.io/hearcomin,greenhouse,"{""token"": ""hearcomin""}",skip,
 hear-com-us,hear-com-us-greenhouse,https://job-boards.greenhouse.io/hearcom,greenhouse,"{""token"": ""hearcom""}",skip,
 heart-aerospace,heart-aerospace-greenhouse,https://job-boards.greenhouse.io/heartaerospace,greenhouse,"{""token"": ""heartaerospace""}",skip,
