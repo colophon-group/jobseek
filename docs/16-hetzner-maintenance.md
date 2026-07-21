@@ -157,6 +157,8 @@ sudo -u codex-runner test ! -w /var/run/docker.sock
 Check the timer and latest run:
 
 ```bash
+systemctl is-enabled jobseek-codex-docker-lifecycle.service
+systemctl is-active jobseek-codex-docker-lifecycle.service
 systemctl is-enabled jobseek-codex-governor.timer
 systemctl is-active jobseek-codex-governor.timer
 systemctl is-enabled jobseek-codex-daily-annotations.timer
@@ -167,6 +169,7 @@ systemctl list-timers --all 'jobseek-codex*' --no-pager
 journalctl -u jobseek-codex-governor.service -n 120 --no-pager
 journalctl -u jobseek-codex-daily-annotations.service -n 120 --no-pager
 journalctl -u jobseek-codex-daily-error-review.service -n 120 --no-pager
+journalctl -u jobseek-codex-docker-lifecycle.service -n 20 --no-pager
 ```
 
 Check that no routine is currently running before maintenance:

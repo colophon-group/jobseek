@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+
 DEPLOY_SH = Path(__file__).resolve().parent.parent / "deploy.sh"
 DOCKERFILE = Path(__file__).resolve().parent.parent / "Dockerfile"
+COMPOSE_FILE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
 
 
 def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
@@ -20,12 +23,13 @@ def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
     script = DEPLOY_SH.read_text()
 
     oneoff_guard = script.index("\nensure_no_running_compose_oneoffs\n")
+    typesense_guard = script.index("\nensure_no_running_typesense_maintenance\n")
     legacy_stop = script.index('docker stop --time=60 "${legacy_containers[@]}"')
     env_write = script.index('cat > "$ENV_FILE"')
     pull = script.index("docker compose pull")
     quiesce = script.index("docker compose stop --timeout 60")
 
-    assert oneoff_guard < legacy_stop < env_write < pull < quiesce
+    assert oneoff_guard < typesense_guard < legacy_stop < env_write < pull < quiesce
 
 
 def test_deploy_oneoff_guard_uses_compose_labels_and_reports_context() -> None:
@@ -37,6 +41,14 @@ def test_deploy_oneoff_guard_uses_compose_labels_and_reports_context() -> None:
     assert "label=com.docker.compose.oneoff=True" in script
     assert "Container ID\\tName\\tImage\\tStatus\\tCompose service\\tCommand" in script
     assert "Wait for the one-off job to finish" in script
+
+
+def test_deploy_blocks_named_typesense_maintenance_containers() -> None:
+    script = DEPLOY_SH.read_text()
+
+    assert "name=^/crawler-(backfill|refresh)-typesense-" in script
+    assert "inline crawler sync also refreshes Typesense" in script
+    assert "Wait for the maintenance job to finish" in script
 
 
 def test_deploy_disk_preflight_only_prunes_builder_cache() -> None:
@@ -54,3 +66,27 @@ def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
 
     assert "FROM python:3.13-slim AS base" in dockerfile
     assert "python:3.14" not in dockerfile
+
+
+def test_alloy_uses_explicit_persistent_storage_path() -> None:
+    compose = yaml.safe_load(COMPOSE_FILE.read_text())
+    alloy = compose["services"]["alloy"]
+
+    assert "alloy-data:/data-alloy" in alloy["volumes"]
+    assert "--storage.path=/data-alloy" in alloy["command"]
+    assert compose["volumes"]["alloy-data"]["external"] is True
+    assert compose["volumes"]["alloy-data"]["name"] == "${COMPOSE_PROJECT_NAME}_alloy-data"
+
+
+def test_alloy_state_migrates_before_compose_can_recreate_it() -> None:
+    script = DEPLOY_SH.read_text()
+
+    migration = script.index("\nprepare_alloy_state_volume\n")
+    first_activation = script.index("docker compose up -d --force-recreate alloy", migration)
+    stack_start = script.index("docker compose up -d --remove-orphans", first_activation)
+    forced_recreate = script.index("docker compose up -d --force-recreate alloy", stack_start)
+
+    assert migration < first_activation < stack_start < forced_recreate
+    assert 'docker stop --time=30 "$alloy_container"' in script
+    assert 'docker cp "${alloy_container}:/data-alloy/." "$staging/"' in script
+    assert ".jobseek-persistent-state" in script

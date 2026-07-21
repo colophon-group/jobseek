@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchExplorePageData, type ExploreData } from "@/lib/actions/explore-page-data";
 import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
+import { hasSearchFilterParams } from "@/lib/search/query-params";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { SearchPage } from "./search-page";
 
@@ -46,20 +47,6 @@ type ExploreContentProps = {
   initialData?: ExploreData;
 };
 
-/**
- * URL searchParams that ``fetchExplorePageData`` consumes. If any of these
- * are present, the prerendered ``initialData`` doesn't reflect the
- * filters and we must re-fetch the personalized variant.
- */
-const FILTER_PARAMS = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp"];
-
-function hasAnyFilterParam(searchParams: URLSearchParams): boolean {
-  for (const key of FILTER_PARAMS) {
-    if (searchParams.has(key)) return true;
-  }
-  return false;
-}
-
 export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   const searchParams = useSearchParams();
   const [data, setData] = useState<ExploreData | null>(initialData ?? null);
@@ -78,7 +65,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     const needsPersonalizedFetch =
       hasLoggedInHint() ||
       hasAnonJobLanguagesHint() ||
-      hasAnyFilterParam(searchParams) ||
+      hasSearchFilterParams(searchParams) ||
       initialData === undefined;
     if (!needsPersonalizedFetch) return;
 

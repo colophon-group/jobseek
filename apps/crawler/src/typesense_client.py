@@ -4,18 +4,24 @@ import typesense
 
 from src.config import settings
 
-_client: typesense.Client | None = None
+_clients: dict[int, typesense.Client] = {}
 
 
-def get_typesense_client() -> typesense.Client | None:
+def get_typesense_client(*, num_retries: int = 3) -> typesense.Client | None:
     """Return a shared Typesense client, or None if not configured.
 
-    The client is created lazily on first call and reused thereafter.
+    The client is created lazily per retry policy and reused thereafter.
+    Exporter requests use ``num_retries=0`` because its cross-tick outage
+    circuit owns retry timing; maintenance and sync callers retain the client
+    default for their finite, operator-facing commands.
     Returns None when ``typesense_admin_key`` is empty (feature disabled).
     """
-    global _client
-    if _client is None and settings.typesense_admin_key:
-        _client = typesense.Client(
+    if not settings.typesense_admin_key:
+        return None
+    if num_retries < 0:
+        raise ValueError("num_retries must be non-negative")
+    if num_retries not in _clients:
+        _clients[num_retries] = typesense.Client(
             {
                 "nodes": [
                     {
@@ -26,6 +32,7 @@ def get_typesense_client() -> typesense.Client | None:
                 ],
                 "api_key": settings.typesense_admin_key,
                 "connection_timeout_seconds": 5,
+                "num_retries": num_retries,
             }
         )
-    return _client
+    return _clients[num_retries]

@@ -55,6 +55,7 @@ DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$DEPLOY_DIR")}"
 export COMPOSE_PROJECT_NAME
+ALLOY_STATE_ACTIVATION_REQUIRED=0
 
 rollback_deploy() {
   local exit_code=$?
@@ -115,6 +116,73 @@ wait_for_core_services() {
   return 1
 }
 
+prepare_alloy_state_volume() {
+  local volume_name="${COMPOSE_PROJECT_NAME}_alloy-data"
+  local marker="/data-alloy/.jobseek-persistent-state"
+  local alloy_container state state_volume staging
+
+  docker volume create "$volume_name" >/dev/null
+  alloy_container="$(docker compose ps -aq alloy 2>/dev/null || true)"
+  state=""
+  state_volume=""
+  if [[ -n "$alloy_container" ]]; then
+    state="$(docker inspect -f '{{.State.Status}}' "$alloy_container" 2>/dev/null || true)"
+    state_volume="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data-alloy"}}{{.Name}}{{end}}{{end}}' "$alloy_container" 2>/dev/null || true)"
+  fi
+
+  # Fast path for every deploy after the migration. The marker lives in the
+  # named volume, so force-recreating Alloy below cannot erase it or the
+  # Docker-source positions stored beside it.
+  if docker run --rm --network none \
+    -v "${volume_name}:/data-alloy" \
+    --entrypoint sh grafana/alloy:latest \
+    -c "test -f '${marker}'"; then
+    echo "Alloy state volume already initialized: ${volume_name}" >&2
+    if [[ "$state" != "running" || "$state_volume" != "$volume_name" ]]; then
+      # A prior deploy may have prepared the volume and failed before the
+      # changed service spec became active. Recreate immediately on retry.
+      ALLOY_STATE_ACTIVATION_REQUIRED=1
+    fi
+    return 0
+  fi
+
+  if [[ -n "$alloy_container" ]]; then
+    # Stop cleanly so positions.yml and the remote-write WAL are consistent,
+    # then stage the disposable container-layer state on the host before
+    # writing anything into the new named volume. This ordering prevents the
+    # first persistent-state rollout from causing one final historical replay.
+    if [[ "$state" == "running" ]]; then
+      docker stop --time=30 "$alloy_container" >/dev/null
+    fi
+
+    staging="$(mktemp -d "${DEPLOY_DIR}/.alloy-state.XXXXXX")"
+    if ! docker cp "${alloy_container}:/data-alloy/." "$staging/"; then
+      rm -rf "$staging"
+      echo "ERROR: failed to stage current Alloy state" >&2
+      return 1
+    fi
+    if ! docker run --rm --network none \
+      -v "${staging}:/source:ro" \
+      -v "${volume_name}:/data-alloy" \
+      --entrypoint sh grafana/alloy:latest \
+      -c 'tar -C /source -cf - . | tar -C /data-alloy -xpf -'; then
+      rm -rf "$staging"
+      echo "ERROR: failed to seed persistent Alloy state" >&2
+      return 1
+    fi
+    rm -rf "$staging"
+    echo "Migrated Alloy state from ${alloy_container} into ${volume_name}" >&2
+    ALLOY_STATE_ACTIVATION_REQUIRED=1
+  else
+    echo "No existing Alloy container; initializing an empty state volume" >&2
+  fi
+
+  docker run --rm --network none \
+    -v "${volume_name}:/data-alloy" \
+    --entrypoint sh grafana/alloy:latest \
+    -c "touch '${marker}'"
+}
+
 deploy_disk_free_kb() {
   df -Pk "$DEPLOY_DIR" | awk 'NR == 2 {print $4}'
 }
@@ -172,11 +240,40 @@ EOF
   return 1
 }
 
+running_typesense_maintenance_containers() {
+  docker ps \
+    --filter 'name=^/crawler-(backfill|refresh)-typesense-' \
+    --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Command}}'
+}
+
+ensure_no_running_typesense_maintenance() {
+  local rows
+
+  rows="$(running_typesense_maintenance_containers)"
+  if [[ -z "$rows" ]]; then
+    echo "No running Typesense maintenance containers detected" >&2
+    return 0
+  fi
+
+  cat >&2 <<EOF
+ERROR: running Typesense maintenance containers detected.
+Deploy is refusing to overlap a full backfill or count refresh because its
+inline crawler sync also refreshes Typesense and could publish partial counts.
+
+Container ID\tName\tImage\tStatus\tCommand
+${rows}
+
+Wait for the maintenance job to finish, then rerun the deploy.
+EOF
+  return 1
+}
+
 # Fail before touching services if an operator one-off is still running.
 # Example: `docker compose run --rm worker-1 uv run --no-sync crawler ...`
 # receives the Compose label `com.docker.compose.oneoff=True` and otherwise
 # survives the named-service stop/recreate sequence below.
 ensure_no_running_compose_oneoffs
+ensure_no_running_typesense_maintenance
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
@@ -228,6 +325,15 @@ chmod 600 "$ENV_FILE"
 # ── Pull images and preflight while the old stack is still serving ────
 cd "$DEPLOY_DIR"
 trap rollback_deploy ERR
+
+# Activate persistent Alloy state before any later deploy step can fail and
+# run the rollback against the new Compose service spec. On the first rollout
+# this migrates the live cursor and immediately recreates Alloy on the volume;
+# later deploys take the no-restart fast path here.
+prepare_alloy_state_volume
+if (( ALLOY_STATE_ACTIVATION_REQUIRED )); then
+  docker compose up -d --force-recreate alloy
+fi
 
 ensure_deploy_disk_headroom
 

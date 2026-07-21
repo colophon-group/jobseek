@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import httpx
+import pytest
 
 from src.core.scrapers import JobContent
 from src.core.scrapers.jsonld import (
@@ -711,6 +712,37 @@ class TestFetchRetry403:
         assert calls[0] == ""
         assert "challenge=solved" in calls[1]
         assert result.title == "T"
+
+    async def test_avature_406_retries_and_recovers(self):
+        page_html = """<html><head>
+        <script type="application/ld+json">{"@type": "JobPosting", "title": "T"}</script>
+        </head></html>"""
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            status = 406 if calls["n"] == 1 else 200
+            return httpx.Response(status, text=page_html if status == 200 else "busy")
+
+        url = "https://jobs.ea.com/en_US/careers/JobDetail/Role/123"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(url, {}, client)
+
+        assert calls["n"] == 2
+        assert result.title == "T"
+
+    async def test_generic_406_fails_without_retry(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(406, text="not acceptable")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await scrape("https://example.com/jobs/123", {}, client)
+
+        assert calls["n"] == 1
 
 
 class TestMetaCareersFixture:

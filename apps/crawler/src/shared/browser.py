@@ -62,6 +62,7 @@ DEFAULT_WAIT = "networkidle"
 # status quo, and sites that do settle under ``networkidle`` are untouched.
 DEFAULT_WAIT_FALLBACK = "domcontentloaded"
 DEFAULT_TIMEOUT = 30_000
+FALLBACK_WAIT_TIMEOUT = 5_000
 CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 minutes
 BROWSER_CLOSE_TIMEOUT_SECONDS = 15.0
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
@@ -475,15 +476,16 @@ async def navigate(
     Config keys:
         ``wait``           Primary wait strategy (default ``"networkidle"``).
         ``timeout``        Navigation timeout in ms (default ``30000``).
-        ``wait_fallback``  Fallback wait strategy retried once when the primary
-                           ``page.goto`` raises Playwright's ``TimeoutError``
-                           (non-timeout errors propagate unchanged). Defaults
-                           to ``DEFAULT_WAIT_FALLBACK`` ("domcontentloaded")
-                           so SPA sites that never reach ``networkidle`` still
-                           produce usable HTML. Set to ``None`` in config to
-                           opt out; set to the same value as ``wait`` for an
-                           effective no-op. The fallback reuses the original
-                           timeout, so worst-case wall-clock is ``2 * timeout``.
+        ``wait_fallback``  Fallback load state checked on the current document
+                           when the primary ``page.goto`` raises Playwright's
+                           ``TimeoutError`` (non-timeout errors propagate
+                           unchanged). Defaults to ``DEFAULT_WAIT_FALLBACK``
+                           ("domcontentloaded") so SPA sites that never reach
+                           ``networkidle`` still produce usable HTML. Set to
+                           ``None`` in config to opt out; set to the same value
+                           as ``wait`` for an effective no-op. The fallback is
+                           capped at ``FALLBACK_WAIT_TIMEOUT`` and never starts
+                           a duplicate navigation.
     """
     config = config or {}
     wait_strategy = config.get("wait", DEFAULT_WAIT)
@@ -524,15 +526,21 @@ async def navigate(
             ).inc()
             raise
 
+    fallback_timeout = min(timeout, FALLBACK_WAIT_TIMEOUT)
     log.info(
-        "browser.navigate.fallback",
+        "browser.navigate.fallback_wait",
         url=url,
         primary=wait_strategy,
         fallback=fallback_strategy,
-        timeout_ms=timeout,
+        timeout_ms=fallback_timeout,
     )
     try:
-        await page.goto(url, wait_until=fallback_strategy, timeout=timeout)
+        # A wait-strategy timeout does not imply that navigation failed. In
+        # the common networkidle case the document is already committed and
+        # DOMContentLoaded has fired; reissuing goto discards that usable page,
+        # doubles origin traffic, and can turn a recoverable wait into another
+        # timeout. Check the current document's state instead (#5708).
+        await page.wait_for_load_state(fallback_strategy, timeout=fallback_timeout)
     except Exception:
         metrics.browser_navigate_fallback_total.labels(
             primary=wait_strategy, fallback=fallback_strategy, outcome="failed"

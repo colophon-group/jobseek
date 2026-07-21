@@ -308,7 +308,10 @@ def _collect_container_cgroup_memory(
             "image": str(inspect_data.get("Config", {}).get("Image", "")),
             "created_at": str(inspect_data.get("Created", "")),
             "started_at": str(state.get("StartedAt", "")),
+            "finished_at": str(state.get("FinishedAt", "")),
             "status": str(state.get("Status", "")),
+            "exit_code": state.get("ExitCode"),
+            "state_error": str(state.get("Error", "")),
             "restart_count": inspect_data.get("RestartCount", 0),
             "oom_killed": bool(state.get("OOMKilled", False)),
             "pid": pid,
@@ -388,6 +391,8 @@ def _collect_exited_containers(
                     "image": image,
                     "finished_at": finished_at.isoformat(),
                     "status": str(state.get("Status", "")),
+                    "exit_code": str(state.get("ExitCode", "")),
+                    "state_error": str(state.get("Error", "")),
                     "restart_count": str(inspect_data.get("RestartCount", 0)),
                     "oom_killed": str(bool(state.get("OOMKilled", False))).lower(),
                 }
@@ -401,6 +406,8 @@ def _collect_exited_containers(
                 candidate["image"],
                 candidate["finished_at"],
                 candidate["status"],
+                candidate["exit_code"],
+                candidate["state_error"],
                 candidate["restart_count"],
                 candidate["oom_killed"],
             )
@@ -455,12 +462,43 @@ def _collect_exited_containers(
                 "name": name,
                 "image": candidate["image"],
                 "finished_at": candidate["finished_at"],
+                "exit_code": candidate["exit_code"],
+                "state_error": candidate["state_error"],
                 "restart_count": candidate["restart_count"],
                 "oom_killed": candidate["oom_killed"],
                 "returncode": code,
                 **info,
             }
         )
+
+
+def _collect_docker_lifecycle_journal(
+    run_dir: Path,
+    manifest: dict[str, object],
+    *,
+    since: datetime,
+    until: datetime,
+) -> None:
+    """Collect the allowlisted event stream persisted by the root watcher."""
+    code, output = _run(
+        [
+            "journalctl",
+            "--unit",
+            "jobseek-codex-docker-lifecycle.service",
+            "--identifier",
+            "jobseek-docker-lifecycle",
+            "--since",
+            f"@{since.timestamp():.0f}",
+            "--until",
+            f"@{until.timestamp():.0f}",
+            "--output=cat",
+            "--quiet",
+            "--no-pager",
+        ],
+        timeout=180,
+    )
+    file_info = _write(run_dir / "host" / "docker-lifecycle.jsonl", output)
+    manifest["docker_lifecycle"] = {"returncode": code, **file_info}
 
 
 def _chgrp_readable(path: Path, *, group: str) -> None:
@@ -522,7 +560,8 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
         "'{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} "
         "StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} "
         "Status={{.State.Status}} RestartCount={{.RestartCount}} "
-        "FinishedAt={{.State.FinishedAt}}' $ids"
+        "FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} "
+        "Error={{json .State.Error}}' $ids"
     )
     _collect_shell(
         run_dir,
@@ -532,6 +571,7 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
         timeout=180,
     )
     _collect_container_cgroup_memory(run_dir, manifest)
+    _collect_docker_lifecycle_journal(run_dir, manifest, since=since, until=until)
     kernel_log_command = (
         f"journalctl -k --since '{since.isoformat()}' --until '{until.isoformat()}' "
         "--no-pager 2>/dev/null | tail -500"

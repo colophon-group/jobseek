@@ -17,6 +17,7 @@ from src.shared.browser import (
     DEFAULT_USER_AGENT,
     DEFAULT_WAIT,
     DEFAULT_WAIT_FALLBACK,
+    FALLBACK_WAIT_TIMEOUT,
     NAVIGATE_KEYS,
     OVERLAY_SELECTORS,
     VALID_WAIT_STRATEGIES,
@@ -40,6 +41,7 @@ def _make_page() -> MagicMock:
     """Return a mock Playwright Page with common methods stubbed."""
     page = MagicMock()
     page.goto = AsyncMock()
+    page.wait_for_load_state = AsyncMock()
     page.evaluate = AsyncMock()
     page.content = AsyncMock(return_value="<html></html>")
 
@@ -160,41 +162,47 @@ class TestNavigate:
 
 
 class TestNavigateFallback:
-    """Tests for the wait_fallback retry behaviour added to navigate().
+    """Tests for the same-document wait_fallback behaviour in navigate().
 
     Background: SPA career sites with persistent analytics/telemetry chatter
     never reach ``networkidle``, so the 30s primary attempt times out. The
-    fallback retries once with ``domcontentloaded`` (default) and recovers.
+    fallback checks ``domcontentloaded`` (default) on the current document and
+    recovers without issuing a duplicate request.
     """
 
     async def test_fallback_triggers_on_timeout(self):
-        """Primary times out → fallback strategy is tried with same timeout."""
+        """Primary timeout checks the fallback state without another goto."""
         page = _make_page()
         page.goto = AsyncMock(
-            side_effect=[
-                PlaywrightTimeoutError("Page.goto: Timeout 30000ms exceeded."),
-                None,
-            ]
+            side_effect=PlaywrightTimeoutError("Page.goto: Timeout 30000ms exceeded.")
         )
         await navigate(
             page,
             "https://example.com",
             {"wait": "networkidle", "wait_fallback": "domcontentloaded", "timeout": 30000},
         )
-        assert page.goto.await_count == 2
-        first_call = page.goto.await_args_list[0]
-        second_call = page.goto.await_args_list[1]
-        assert first_call.kwargs["wait_until"] == "networkidle"
-        assert second_call.kwargs["wait_until"] == "domcontentloaded"
-        assert second_call.kwargs["timeout"] == 30000
+        page.goto.assert_awaited_once_with(
+            "https://example.com", wait_until="networkidle", timeout=30000
+        )
+        page.wait_for_load_state.assert_awaited_once_with(
+            "domcontentloaded", timeout=FALLBACK_WAIT_TIMEOUT
+        )
 
     async def test_default_fallback_applied_when_key_absent(self):
         """When wait_fallback is not set in config, DEFAULT_WAIT_FALLBACK is used."""
         page = _make_page()
-        page.goto = AsyncMock(side_effect=[PlaywrightTimeoutError("Timeout"), None])
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
         await navigate(page, "https://example.com", {"wait": "networkidle"})
-        assert page.goto.await_count == 2
-        assert page.goto.await_args_list[1].kwargs["wait_until"] == DEFAULT_WAIT_FALLBACK
+        assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_awaited_once_with(
+            DEFAULT_WAIT_FALLBACK, timeout=FALLBACK_WAIT_TIMEOUT
+        )
+
+    async def test_fallback_timeout_never_exceeds_board_timeout(self):
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        await navigate(page, "https://example.com", {"timeout": 2500})
+        page.wait_for_load_state.assert_awaited_once_with(DEFAULT_WAIT_FALLBACK, timeout=2500)
 
     async def test_explicit_none_disables_fallback(self):
         """wait_fallback: None opts the board out of the default retry."""
@@ -207,6 +215,7 @@ class TestNavigateFallback:
                 {"wait": "networkidle", "wait_fallback": None},
             )
         assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
 
     async def test_fallback_no_op_when_primary_succeeds(self):
         """When primary succeeds, fallback is never attempted."""
@@ -222,16 +231,18 @@ class TestNavigateFallback:
         )
 
     async def test_fallback_both_fail_raises(self):
-        """When both primary and fallback time out, TimeoutError propagates."""
+        """When both primary and fallback waits time out, TimeoutError propagates."""
         page = _make_page()
         page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        page.wait_for_load_state = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
         with pytest.raises(PlaywrightTimeoutError):
             await navigate(
                 page,
                 "https://example.com",
                 {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
             )
-        assert page.goto.await_count == 2
+        assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_awaited_once()
 
     async def test_fallback_primary_domcontentloaded_no_retry(self):
         """Primary already equals DEFAULT_WAIT_FALLBACK — no pointless retry."""
@@ -241,6 +252,7 @@ class TestNavigateFallback:
             await navigate(page, "https://example.com", {"wait": "domcontentloaded"})
         # Default fallback is "domcontentloaded", same as primary → skip retry
         assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
 
     async def test_fallback_same_as_primary_does_not_retry(self):
         """An explicit fallback equal to the primary strategy is a no-op."""
@@ -253,6 +265,7 @@ class TestNavigateFallback:
                 {"wait": "networkidle", "wait_fallback": "networkidle"},
             )
         assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
 
     async def test_fallback_non_timeout_error_not_retried(self):
         """Non-timeout errors propagate without fallback retry."""
@@ -265,6 +278,7 @@ class TestNavigateFallback:
                 {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
             )
         assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
 
     async def test_invalid_fallback_raises(self):
         page = _make_page()
