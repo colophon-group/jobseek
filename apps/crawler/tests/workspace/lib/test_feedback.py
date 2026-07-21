@@ -165,6 +165,19 @@ async def test_feedback_accepts_verified_empty_board_without_field_ratings():
 
 
 @pytest.mark.asyncio
+async def test_feedback_rejects_verified_empty_board_without_evidence():
+    kv = await _seed_active_config()
+    with pytest.raises(WsConfigInvalid, match="require evidence"):
+        await feedback(
+            kv,
+            verdict="acceptable",
+            verdict_notes="   ",
+            monitor_run={"jobs": 0},
+            verified_empty_board=True,
+        )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("verdict", "monitor_run", "per_field"),
     [
@@ -181,6 +194,7 @@ async def test_feedback_rejects_invalid_verified_empty_board_use(verdict, monito
             kv,
             verdict=verdict,
             per_field=per_field,
+            verdict_notes="Official board and configured feed were independently verified",
             monitor_run=monitor_run,
             verified_empty_board=True,
         )

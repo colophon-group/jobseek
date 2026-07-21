@@ -188,6 +188,10 @@ async def feedback(
     if verified_empty_board:
         if verdict != "acceptable":
             raise WsConfigInvalid("feedback: verified empty boards require verdict='acceptable'")
+        if not verdict_notes.strip():
+            raise WsConfigInvalid(
+                "feedback: verified empty boards require evidence in verdict_notes"
+            )
         if "jobs" not in monitor_run or monitor_total != 0:
             raise WsConfigInvalid(
                 "feedback: verified empty boards require a tested monitor run with 0 jobs"
