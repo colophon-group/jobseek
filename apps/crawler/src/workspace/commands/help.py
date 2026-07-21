@@ -889,6 +889,14 @@ dom — Link Extraction (fallback)
     timeout        Navigation timeout in ms (default: 30000)
     user_agent     Custom User-Agent string
     headless       Run headless (default: true)
+    proxy          Route traffic through the configured proxy provider. Use for
+                   origins that block the crawler's datacenter IP.
+    persistent_context
+                   Use a real browser profile shape for anti-bot challenges.
+                   Usually pair with channel: "chrome" and headless: false.
+    channel        Browser channel, typically "chrome" with persistent_context.
+    stealth        Use Chromium's less-detectable new headless mode.
+    warmup_url     Visit this URL in the same browser context before the board.
     actions        Browser action pipeline (see: ws help actions)
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
                    Keep patterns broad enough to include URL variants
@@ -1582,6 +1590,14 @@ dom — Step-based Extraction Engine
     timeout        Navigation timeout in ms (default: 30000)
     user_agent     Custom User-Agent
     headless       Run headless (default: true)
+    proxy          Route traffic through the configured proxy provider. Use for
+                   origins that block the crawler's datacenter IP.
+    persistent_context
+                   Use a real browser profile shape for anti-bot challenges.
+                   Usually pair with channel: "chrome" and headless: false.
+    channel        Browser channel, typically "chrome" with persistent_context.
+    stealth        Use Chromium's less-detectable new headless mode.
+    warmup_url     Visit this URL in the same browser context before the job.
     actions        Browser action pipeline (see: ws help actions)
 
   Target fields: title, description, locations, employment_type,
@@ -1960,6 +1976,10 @@ Troubleshooting:
     → Record what was tried and why it failed before changing type
 
   Monitor returns 0 jobs:
+    verified empty    If the official board explicitly says there are no openings
+                      and a stable ATS/feed returns a valid empty source, record
+                      `ws feedback --verified-empty-board --verdict acceptable`.
+                      Do not use this for an unexplained empty DOM page.
     greenhouse/lever  Verify token — open the API URL directly in browser
     sitemap           Sitemap may only have blog/page URLs, not jobs → try dom
     nextdata          Path may be wrong — check __NEXT_DATA__ in browser devtools
@@ -2041,12 +2061,21 @@ Feedback Command Reference:
     Field quality is auto-populated from ws run monitor / ws run scraper
     coverage data.  Pass explicit --<field> options only to override.
 
+  Verified empty boards:
+    --verified-empty-board accepts a tested 0-job config only when the
+    official board explicitly has no current openings and a stable ATS/feed
+    source was independently verified.  It requires verdict=acceptable and
+    forbids per-field ratings; put the evidence in --verdict-notes.
+
   Examples:
     ws feedback --verdict good --verdict-notes "All fields extracted cleanly"
     ws feedback my-cfg --verdict acceptable --verdict-notes "Locations noisy" \\
         --locations noisy --locations-notes "Missing city for some postings"
     ws feedback --verdict poor --verdict-notes "Description truncated" \\
-        --description unusable"""
+        --description unusable
+    ws feedback --verified-empty-board --verdict acceptable \\
+        --verdict-notes "Official board empty; valid Teamtailor RSS verified"
+"""
 
 # ── Lookup tables ────────────────────────────────────────────────────────
 
