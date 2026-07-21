@@ -13,6 +13,7 @@ from src.core.monitors import (
 from src.core.scrapers import _PROBE_ORDER, probe_scrapers
 from src.core.scrapers.dom import _heuristic_steps
 from src.core.scrapers.dom import can_handle as dom_can_handle
+from src.core.scrapers.dom import parse_html as dom_parse_html
 from src.core.scrapers.jsonld import can_handle as jsonld_can_handle
 from src.core.scrapers.nextdata import (
     _auto_map_fields,
@@ -294,6 +295,34 @@ _DOM_HTML_2 = """\
 
 _NO_H1_HTML = "<html><body><p>Just some text</p></body></html>"
 
+_LINKEDIN_GUEST_HTML = """\
+<html><body>
+<h2 class="top-card-layout__title topcard__title">Software Engineer - AI</h2>
+<div class="topcard__flavor-row">
+  <span class="topcard__flavor">Lightbringer</span>
+  <span class="topcard__flavor topcard__flavor--bullet">Malmo, Sweden</span>
+</div>
+<div class="show-more-less-html__markup"><p>Build AI patent workflows.</p></div>
+<ul class="description__job-criteria-list">
+  <li class="description__job-criteria-item">
+    <h3 class="description__job-criteria-subheader">Seniority level</h3>
+    <span class="description__job-criteria-text">Mid-Senior level</span>
+  </li>
+  <li class="description__job-criteria-item">
+    <h3 class="description__job-criteria-subheader">Employment type</h3>
+    <span class="description__job-criteria-text">Full-time</span>
+  </li>
+  <li class="description__job-criteria-item">
+    <h3 class="description__job-criteria-subheader">Job function</h3>
+    <span class="description__job-criteria-text">Engineering</span>
+  </li>
+  <li class="description__job-criteria-item">
+    <h3 class="description__job-criteria-subheader">Industries</h3>
+    <span class="description__job-criteria-text">Information Services</span>
+  </li>
+</ul>
+</body></html>"""
+
 
 class TestScraperCanHandle:
     def test_jsonld_detected(self):
@@ -370,6 +399,21 @@ class TestScraperCanHandle:
     def test_dom_no_h1(self):
         result = dom_can_handle([_NO_H1_HTML])
         assert result is None
+
+    def test_dom_detects_linkedin_guest_markup(self):
+        result = dom_can_handle([_LINKEDIN_GUEST_HTML])
+
+        assert result == {"linkedin_guest": True}
+        content = dom_parse_html(_LINKEDIN_GUEST_HTML, result)
+        assert content.title == "Software Engineer - AI"
+        assert content.locations == ["Malmo, Sweden"]
+        assert content.description == "<p>Build AI patent workflows.</p>"
+        assert content.employment_type == "Full-time"
+        assert content.metadata == {
+            "seniority_level": "Mid-Senior level",
+            "job_function": "Engineering",
+            "industries": "Information Services",
+        }
 
 
 class TestNextdataAutoMap:

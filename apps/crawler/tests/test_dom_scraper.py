@@ -242,6 +242,33 @@ class TestDomScraper:
             )
         assert result.title == "Static Title"
 
+    async def test_linkedin_guest_static_fetch_without_steps(self):
+        """LinkedIn guest mode parses the public endpoint without generic steps."""
+        from src.core.scrapers.dom import scrape
+
+        page_html = """
+        <h2 class="topcard__title">Software Engineer</h2>
+        <div class="topcard__flavor-row">
+          <span>Lightbringer</span>
+          <span class="topcard__flavor--bullet">Malmo, Sweden</span>
+        </div>
+        <div class="show-more-less-html__markup"><p>Build patent software.</p></div>
+        """
+
+        def handler(request):
+            return httpx.Response(200, text=page_html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123",
+                {"linkedin_guest": True},
+                client,
+            )
+
+        assert result.title == "Software Engineer"
+        assert result.locations == ["Malmo, Sweden"]
+        assert result.description == "<p>Build patent software.</p>"
+
     async def test_static_avature_406_retries_and_recovers(self):
         """Avature uses bursty 406s as a throttle on otherwise-live pages."""
         from src.core.scrapers.dom import scrape

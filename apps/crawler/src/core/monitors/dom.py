@@ -17,7 +17,7 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import structlog
 
@@ -60,6 +60,21 @@ _BROWSER_FETCH_JS = (
 )
 
 _JOB_KEYWORDS = frozenset({"job", "career", "position", "posting", "opening", "role", "vacancy"})
+
+_LINKEDIN_JOB_FILTER = r"linkedin\.com/jobs/view/"
+_LINKEDIN_JOB_TRANSFORM = {
+    "find": r".*(?:-|/)(\d+)(?:/?(?:\?.*)?)$",
+    "replace": r"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/\1",
+}
+
+
+def _is_linkedin_job_url(url: str) -> bool:
+    """Return whether *url* is a public LinkedIn job-detail link."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").casefold()
+    return (host == "linkedin.com" or host.endswith(".linkedin.com")) and parsed.path.startswith(
+        "/jobs/view/"
+    )
 
 
 def _build_url_matcher(url_filter) -> re.Pattern | None:
@@ -441,6 +456,17 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
         return None
 
     urls = _extract_links_static(html, url)
+    linkedin_urls = {candidate for candidate in urls if _is_linkedin_job_url(candidate)}
+    if linkedin_urls and len(linkedin_urls) * 2 >= len(urls):
+        # Normal LinkedIn detail pages commonly return HTTP 999 or an authwall
+        # to crawler traffic.  Their public guest endpoint serves the same job
+        # content without authentication, so make that stable rewrite part of
+        # the probe-generated DOM config.
+        return {
+            "urls": len(linkedin_urls),
+            "url_filter": _LINKEDIN_JOB_FILTER,
+            "url_transform": dict(_LINKEDIN_JOB_TRANSFORM),
+        }
     if urls:
         return {"urls": len(urls)}
     return None

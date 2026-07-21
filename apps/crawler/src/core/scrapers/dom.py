@@ -32,6 +32,7 @@ from urllib.parse import urlparse
 
 import httpx
 import structlog
+from selectolax.lexbor import LexborHTMLParser
 
 from src.core.scrapers import JobContent, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
@@ -96,6 +97,57 @@ _STOP_MARKERS = [
     "Share",
     "Related",
 ]
+
+_LINKEDIN_GUEST_MARKERS = ("topcard__title", "show-more-less-html__markup")
+
+
+def _is_linkedin_guest_html(htmls: list[str]) -> bool:
+    """Return whether most pages use LinkedIn's public guest markup."""
+    if not htmls:
+        return False
+    matches = sum(all(marker in html for marker in _LINKEDIN_GUEST_MARKERS) for html in htmls)
+    return matches >= len(htmls) / 2
+
+
+def _parse_linkedin_guest_html(html: str) -> JobContent:
+    """Parse LinkedIn's stable unauthenticated guest job-detail fragment."""
+    tree = LexborHTMLParser(html)
+
+    title_node = tree.css_first(".topcard__title")
+    title = title_node.text(strip=True) if title_node is not None else None
+
+    location_node = tree.css_first(".topcard__flavor-row .topcard__flavor--bullet")
+    location = location_node.text(strip=True) if location_node is not None else None
+
+    description_node = tree.css_first(".show-more-less-html__markup")
+    description_html = description_node.inner_html if description_node is not None else None
+    description = description_html.strip() if description_html else None
+
+    criteria: dict[str, str] = {}
+    for item in tree.css(".description__job-criteria-item"):
+        header = item.css_first(".description__job-criteria-subheader")
+        value = item.css_first(".description__job-criteria-text")
+        if header is None or value is None:
+            continue
+        key = header.text(strip=True).casefold()
+        text = value.text(strip=True)
+        if key and text:
+            criteria[key] = text
+
+    employment_type = criteria.pop("employment type", None)
+    metadata = {
+        key.replace(" ", "_"): value
+        for key, value in criteria.items()
+        if key in {"seniority level", "job function", "industries"}
+    }
+
+    return JobContent(
+        title=title or None,
+        description=description,
+        locations=[location] if location else None,
+        employment_type=employment_type,
+        metadata=metadata or None,
+    )
 
 
 def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
@@ -166,6 +218,9 @@ def can_handle(htmls: list[str]) -> dict | None:
     Uses the first page's structure to generate steps, then validates
     that the title step (h1) matches on other pages too.
     """
+    if _is_linkedin_guest_html(htmls):
+        return {"linkedin_guest": True}
+
     # Try each page until we get usable steps
     best_steps = None
 
@@ -197,6 +252,8 @@ def can_handle(htmls: list[str]) -> dict | None:
 
 def parse_html(html: str, config: dict) -> JobContent:
     """Extract job data from pre-fetched HTML using step-based extraction."""
+    if config.get("linkedin_guest"):
+        return _parse_linkedin_guest_html(html)
     steps = config.get("steps")
     if not steps:
         return JobContent()
@@ -268,7 +325,8 @@ async def scrape(
     When ``render`` is true, renders the page with Playwright.
     """
     steps = config.get("steps")
-    if not steps:
+    linkedin_guest = bool(config.get("linkedin_guest"))
+    if not steps and not linkedin_guest:
         log.warning("dom.no_steps", url=url)
         return JobContent()
 
@@ -329,6 +387,17 @@ async def scrape(
         _check_gone_redirect(str(resp.url), gone_pattern, url)
         resp.raise_for_status()
         html = resp.text
+
+    if linkedin_guest:
+        content = _parse_linkedin_guest_html(html)
+        log.debug(
+            "dom.linkedin_guest.extracted",
+            url=url,
+            title=bool(content.title),
+            description=bool(content.description),
+            locations=bool(content.locations),
+        )
+        return content
 
     elements = flatten(html)
 

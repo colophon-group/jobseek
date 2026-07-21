@@ -949,6 +949,8 @@ dom — Link Extraction (fallback)
 
   Detection:   ws probe checks static HTML for job links.
                If detected: shows "✓ N URLs". If not: shows "✗ Not detected".
+               LinkedIn job-detail links are automatically filtered and
+               rewritten to LinkedIn's unauthenticated public guest endpoint.
 
   Pair with:   json-ld (try first) or dom scraper"""
 
@@ -1580,6 +1582,8 @@ dom — Step-based Extraction Engine
     }
 
     steps          Extraction step list (see: ws help steps)
+    linkedin_guest Parse LinkedIn's public guest job-detail endpoint when true.
+                   Auto-detected by ws probe scraper; no steps are required.
     render         false (default) = static HTTP, true = Playwright
     wait           Wait strategy (Playwright only): load | domcontentloaded
                    | networkidle (default) | commit
@@ -1606,6 +1610,8 @@ dom — Step-based Extraction Engine
 
   When to use:  Sites without JSON-LD or __NEXT_DATA__, where you need
                 step-based field extraction from page HTML.
+                LinkedIn guest endpoints use the auto-detected
+                {"linkedin_guest": true} mode instead of manual steps.
   Prefer render: false when page content loads without JavaScript.
 
   See: ws help steps     Full step format reference

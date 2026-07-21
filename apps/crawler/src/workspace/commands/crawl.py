@@ -937,7 +937,10 @@ _MONITOR_CONFIG_HINTS = {
 
 _SCRAPER_CONFIG_HINTS = {
     "json-ld": "Optional: render, actions, wait, timeout",
-    "dom": "Requires: steps[]. Optional: render, actions, wait, timeout",
+    "dom": (
+        "Requires: steps[] (except auto-detected linkedin_guest). "
+        "Optional: render, actions, wait, timeout"
+    ),
     "nextdata": "Requires: fields. Optional: path, render, actions",
     "embedded": "Requires: fields + one of: script_id/pattern/variable. Optional: path, render",
     "api_sniffer": "Optional: fields (auto-maps if omitted). Requires Playwright.",
