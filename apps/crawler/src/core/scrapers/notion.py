@@ -25,6 +25,7 @@ import httpx
 import structlog
 
 from src.core.scrapers import JobContent, register
+from src.shared.http_retry import fetch_json_page_with_retry
 
 log = structlog.get_logger()
 
@@ -62,25 +63,23 @@ async def _load_page_chunk(
     client: httpx.AsyncClient,
     subdomain: str,
     page_id: str,
-) -> dict | None:
+) -> dict:
     url = f"https://{subdomain}.notion.site/api/v3/loadPageChunk"
-    try:
-        resp = await client.post(
-            url,
-            json={
-                "page": {"id": page_id},
-                "limit": 200,
-                "cursor": {"stack": []},
-                "chunkNumber": 0,
-                "verticalColumns": False,
-            },
-            timeout=_API_TIMEOUT,
-        )
-        if resp.status_code != 200:
-            return None
-        return resp.json()
-    except Exception:
-        return None
+    return await fetch_json_page_with_retry(
+        client,
+        url,
+        expect_shape=dict,
+        method="POST",
+        json_body={
+            "page": {"id": page_id},
+            "limit": 200,
+            "cursor": {"stack": []},
+            "chunkNumber": 0,
+            "verticalColumns": False,
+        },
+        timeout=_API_TIMEOUT,
+        log_event="notion_scraper.api_backoff",
+    )
 
 
 # ---------------------------------------------------------------------------

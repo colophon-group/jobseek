@@ -3038,6 +3038,7 @@ manychat,manychat-greenhouse,https://job-boards.greenhouse.io/manychat,greenhous
 manypets,manypets-global,https://many-group.com/careers/opportunities/,greenhouse,"{""token"": ""manygroup""}",skip,
 maple,maple-ashby,https://jobs.ashbyhq.com/maple,ashby,"{""token"": ""maple""}",skip,
 maplight-therapeutics,maplight-therapeutics-greenhouse,https://job-boards.greenhouse.io/maplighttherapeutics,greenhouse,"{""token"": ""maplighttherapeutics""}",skip,
+marble-aerospace,marble-aerospace-careers,https://marbleaero.notion.site/Marble-careers-f2645662ea2f4c06a0ec1a28110437ca,notion,"{""title_exclude"": ""Open application""}",notion,"{""defaults"": {""locations"": [""Chippenham, UK""], ""employment_type"": ""full_time"", ""job_location_type"": ""onsite""}}"
 maria-kersjes,maria-kersjes-join,https://join.com/companies/mariakersjesde,join,"{""slug"": ""mariakersjesde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 mariana-minerals,mariana-minerals-careers,https://jobs.ashbyhq.com/marianaminerals,ashby,"{""token"": ""marianaminerals""}",skip,
 mark-spain-real-estate,mark-spain-real-estate-greenhouse,https://job-boards.greenhouse.io/markspainrealestate,greenhouse,"{""token"": ""markspainrealestate""}",skip,

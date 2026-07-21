@@ -546,6 +546,33 @@ class TestCanHandle:
 
 class TestDiscover:
     @pytest.mark.asyncio
+    async def test_retries_transient_api_status(self):
+        chunk = _make_chunk_response(_URL_PAGE_ID, JOB_PAGES)
+        load_calls = 0
+
+        def handler(request):
+            nonlocal load_calls
+            url = str(request.url)
+            if "getPublicPageData" in url:
+                return httpx.Response(200, json=_make_public_page_data())
+            if "loadPageChunk" in url:
+                load_calls += 1
+                if load_calls == 1:
+                    return httpx.Response(429)
+                return httpx.Response(200, json=chunk)
+            return httpx.Response(404)
+
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert len(urls) == 3
+        assert load_calls == 2
+
+    @pytest.mark.asyncio
     async def test_returns_job_urls_from_url_page(self):
         """Jobs found directly under the URL's page."""
         handler = _make_handler(
@@ -638,6 +665,21 @@ class TestDiscover:
             urls = await discover(board, client)
 
         assert len(urls) == 4
+
+    @pytest.mark.asyncio
+    async def test_title_exclude_filters_subpages(self):
+        handler = _make_handler(
+            public_data=_make_public_page_data(),
+            default_chunk=_make_chunk_response(_URL_PAGE_ID, JOB_PAGES),
+        )
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {"title_exclude": "Product Manager|Data Analyst"},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert urls == {_page_url(SUBDOMAIN, JOB_PAGES[0]["id"])}
 
     @pytest.mark.asyncio
     async def test_raises_for_non_notion_url(self):
