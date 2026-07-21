@@ -10,11 +10,15 @@ Config: ``{"preset": "<name>", "feed_url": "..."}``
 
 from __future__ import annotations
 
+import asyncio
 import html
+import random
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import httpx
@@ -24,9 +28,20 @@ from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.core.monitors.raw import save_text_response
 from src.shared.truncation import truncated_rich_result
 
+if TYPE_CHECKING:
+    from src.core.monitor import MonitorResult
+
 log = structlog.get_logger()
 
 MAX_JOBS = 50_000
+_STREAM_BATCH = 200
+_HTTP_CHUNK_BYTES = 64 * 1024
+_SNIFF_BYTES = 512
+
+
+async def _sleep(delay: float) -> None:
+    """Patchable retry sleep used by RSS stream tests."""
+    await asyncio.sleep(delay)
 
 
 class RssFeedNotXml(ValueError):
@@ -59,6 +74,7 @@ class _Preset:
     feed_ns: dict[str, str]
     paginated: bool = False
     page_size: int = 100
+    retryable_statuses: frozenset[int] = frozenset()
 
 
 _PRESETS: dict[str, _Preset] = {
@@ -79,6 +95,10 @@ _PRESETS: dict[str, _Preset] = {
         feed_ns={"tt": "https://teamtailor.com/locations"},
         paginated=True,
         page_size=100,
+        # Teamtailor occasionally emits a transient 400 from an otherwise
+        # healthy feed. Keep this provider-specific: a generic HTTP 400 is a
+        # permanent request error and must still fail fast.
+        retryable_statuses=frozenset({400}),
     ),
 }
 
@@ -269,7 +289,7 @@ def _parse_generic_item(item: ET.Element) -> DiscoveredJob | None:
     )
 
 
-_PARSERS: dict[str, type[None] | object] = {
+_PARSERS: dict[str, Callable[[ET.Element], DiscoveredJob | None]] = {
     "successfactors": _parse_sf_item,
     "teamtailor": _parse_tt_item,
     "generic": _parse_generic_item,
@@ -298,46 +318,140 @@ def _add_pagination(url: str, offset: int, per_page: int) -> str:
 # ── Feed fetching ───────────────────────────────────────────────────────
 
 
-async def _fetch_all_items(
+def _feed_head_is_xml(head: bytes, encoding: str | None) -> bool:
+    """Return whether the bounded response prefix looks like XML/RSS."""
+    text = head.decode(encoding or "utf-8", errors="ignore").lstrip().lower()
+    return text.startswith(("<?xml", "<rss", "<feed"))
+
+
+def _feed_parser_items(parser: ET.XMLPullParser, chunk: bytes) -> Iterator[ET.Element]:
+    """Feed one bounded byte chunk and yield completed RSS items."""
+    parser.feed(chunk)
+    events = cast(Iterator[tuple[str, ET.Element]], parser.read_events())
+    for _event, element in events:
+        if element.tag == "item" or element.tag.endswith("}item"):
+            yield element
+
+
+async def _stream_feed_items(
     feed_url: str,
     preset: _Preset,
     client: httpx.AsyncClient,
-) -> list[ET.Element]:
-    """Fetch all RSS items, handling pagination for presets that need it."""
-    if not preset.paginated:
-        resp = await client.get(feed_url, follow_redirects=True)
-        resp.raise_for_status()
-        root = _parse_feed(resp.text, feed_url)
-        channel = root.find("channel")
-        return channel.findall("item") if channel is not None else []
+    *,
+    retries: int = 3,
+    base_delay: float = 0.5,
+) -> AsyncIterator[ET.Element]:
+    """Yield feed items without buffering the HTTP body or XML tree.
 
-    # Paginated fetch (Teamtailor-style offset pagination)
-    all_items: list[ET.Element] = []
-    offset = 0
-    page_size = preset.page_size
+    ``httpx.get`` buffers the complete decoded response, and ``ET.fromstring``
+    then builds a second full-size representation. SuccessFactors feeds can
+    exceed hundreds of MiB, so that pair can exhaust a 1 GiB worker before the
+    generic monitor wrapper gets a chance to split the result into batches.
 
-    while True:
-        page_url = _add_pagination(feed_url, offset, page_size)
-        resp = await client.get(page_url, follow_redirects=True)
-        resp.raise_for_status()
+    Status and transport failures retain the crawler's bounded retry policy.
+    Once an item has been yielded, a later transport failure is propagated
+    immediately: the board run remains failed (and therefore cannot tombstone
+    an unseen tail) rather than replaying already-processed batches.
+    """
+    from src.metrics import http_retry_attempts_total, http_retry_host
+    from src.shared.http_retry import PaginationFetchError, is_retryable_status
+    from src.shared.tdm import TDMReservedError
+    from src.shared.tdm import check_response as _tdm_check
 
-        root = _parse_feed(resp.text, page_url)
-        channel = root.find("channel")
-        if channel is None:
-            break
+    host = http_retry_host(feed_url)
+    last_error: BaseException | None = None
+    last_status: int | None = None
+    retried = False
 
-        items = channel.findall("item")
-        all_items.extend(items)
+    for attempt in range(retries):
+        emitted = 0
+        try:
+            async with client.stream("GET", feed_url, follow_redirects=True) as response:
+                last_status = response.status_code
+                if response.status_code != 200:
+                    if (
+                        is_retryable_status(response.status_code)
+                        or response.status_code in preset.retryable_statuses
+                    ):
+                        last_error = None
+                    else:
+                        raise PaginationFetchError(
+                            feed_url,
+                            attempts=attempt + 1,
+                            last_status=response.status_code,
+                        )
+                else:
+                    # RSS/XML cannot carry an HTML meta policy declaration at
+                    # document level; the canonical HTTP header still applies.
+                    _tdm_check(response)
+                    parser = ET.XMLPullParser(events=("end",))
+                    prefix = bytearray()
+                    sniffed = False
 
-        if len(items) < page_size:
-            break  # Last page
+                    async for chunk in response.aiter_bytes(chunk_size=_HTTP_CHUNK_BYTES):
+                        if not sniffed:
+                            prefix.extend(chunk)
+                            if len(prefix) < _SNIFF_BYTES:
+                                continue
+                            head = bytes(prefix[:_SNIFF_BYTES])
+                            if not _feed_head_is_xml(head, response.encoding):
+                                raise RssFeedNotXml(f"feed returned non-XML content: {feed_url}")
+                            chunk = bytes(prefix)
+                            prefix.clear()
+                            sniffed = True
 
-        offset += page_size
+                        for item in _feed_parser_items(parser, chunk):
+                            emitted += 1
+                            yield item
+                            # The pull parser's root retains the element shell;
+                            # clear its potentially huge description children.
+                            item.clear()
 
-        if len(all_items) >= MAX_JOBS:
-            break
+                    if not sniffed:
+                        if not _feed_head_is_xml(bytes(prefix), response.encoding):
+                            raise RssFeedNotXml(f"feed returned non-XML content: {feed_url}")
+                        for item in _feed_parser_items(parser, bytes(prefix)):
+                            emitted += 1
+                            yield item
+                            item.clear()
 
-    return all_items
+                    parser.close()  # validate that the streamed XML completed
+                    if retried:
+                        http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+                    return
+        except (PaginationFetchError, RssFeedNotXml, ET.ParseError, TDMReservedError):
+            raise
+        except httpx.HTTPError as exc:
+            last_error = exc
+            last_status = None
+            if emitted:
+                raise PaginationFetchError(
+                    feed_url,
+                    attempts=attempt + 1,
+                    last_error=type(exc).__name__,
+                ) from exc
+
+        retried = True
+        http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "rss.feed_backoff",
+                url=feed_url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_error).__name__ if last_error else None,
+            )
+            await _sleep(delay)
+
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
+    raise PaginationFetchError(
+        feed_url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_error).__name__ if last_error else None,
+    )
 
 
 async def _probe_feed(
@@ -351,21 +465,11 @@ async def _probe_feed(
     approximate (capped at page_size).
     """
     try:
-        resp = await client.get(feed_url, follow_redirects=True)
-        if resp.status_code != 200:
-            return False, None
-
-        text = resp.text[:2000]
-        if "<rss" not in text:
-            return False, None
-
-        root = ET.fromstring(resp.text)
-        channel = root.find("channel")
-        if channel is None:
-            return False, None
-
-        items = channel.findall("item")
-        return True, len(items)
+        preset = _PRESETS.get(preset_name or "") or _Preset([], [], {})
+        count = 0
+        async for _item in _stream_feed_items(feed_url, preset, client):
+            count += 1
+        return True, count
     except Exception:
         return False, None
 
@@ -373,11 +477,10 @@ async def _probe_feed(
 # ── Discover ────────────────────────────────────────────────────────────
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
-    """Fetch job listings from an RSS feed."""
+def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
+    """Resolve a board into ``(preset_name, feed_url, preset)``."""
     board_url = board["board_url"]
     metadata = board.get("metadata") or {}
-
     preset_name = metadata.get("preset", "generic")
     preset = _PRESETS.get(preset_name)
 
@@ -387,7 +490,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         feed_url = _build_feed_url(board_url, preset.feed_paths[0])
     if not feed_url:
         log.error("rss.no_feed_url", board_url=board_url, preset=preset_name)
-        return []
+        return None
 
     if preset is None:
         # Generic fallback — non-paginated, standard parser
@@ -396,20 +499,68 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             page_patterns=[],
             feed_ns={},
         )
+    return preset_name, feed_url, preset
 
-    items = await _fetch_all_items(feed_url, preset, client)
 
+async def discover_stream(
+    board: dict, client: httpx.AsyncClient, pw=None
+) -> AsyncIterator[list[DiscoveredJob] | MonitorResult]:
+    """Yield bounded parsed-job batches across streamed RSS pages."""
+    config = _feed_config(board)
+    if config is None:
+        return
+    preset_name, feed_url, preset = config
     parser = _PARSERS.get(preset_name, _parse_generic_item)
     jobs: list[DiscoveredJob] = []
-    for item in items:
-        parsed = parser(item)
-        if parsed:
+    total_jobs = 0
+    offset = 0
+
+    while True:
+        page_url = (
+            _add_pagination(feed_url, offset, preset.page_size) if preset.paginated else feed_url
+        )
+        page_items = 0
+        async for item in _stream_feed_items(page_url, preset, client):
+            page_items += 1
+            parsed = parser(item)
+            if parsed is None:
+                continue
             jobs.append(parsed)
+            total_jobs += 1
 
-    if len(jobs) > MAX_JOBS:
-        log.warning("rss.truncated", feed=feed_url, total=len(jobs), cap=MAX_JOBS)
+            if total_jobs >= MAX_JOBS:
+                log.warning("rss.truncated", feed=feed_url, total=total_jobs, cap=MAX_JOBS)
+                yield truncated_rich_result(jobs)
+                return
+            if len(jobs) >= _STREAM_BATCH:
+                yield jobs
+                jobs = []
+
+        if not preset.paginated or page_items < preset.page_size:
+            break
+        offset += preset.page_size
+
+    if jobs:
+        yield jobs
+
+
+async def discover(
+    board: dict, client: httpx.AsyncClient, pw=None
+) -> list[DiscoveredJob] | MonitorResult:
+    """Fetch job listings while retaining the non-streaming public API."""
+    from src.core.monitor import MonitorResult
+
+    jobs: list[DiscoveredJob] = []
+    was_truncated = False
+    async for batch in discover_stream(board, client, pw=pw):
+        if isinstance(batch, MonitorResult):
+            jobs.extend((batch.jobs_by_url or {}).values())
+            was_truncated = was_truncated or bool(batch.truncated)
+        else:
+            jobs.extend(batch)
+
+    if was_truncated:
         return truncated_rich_result(jobs)
-
     return jobs
 
 
@@ -488,4 +639,12 @@ async def save_raw(
     )
 
 
-register("rss", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)
+register(
+    "rss",
+    discover,
+    cost=10,
+    can_handle=can_handle,
+    rich=True,
+    stream=discover_stream,
+    save_raw=save_raw,
+)

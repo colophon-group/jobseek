@@ -191,6 +191,15 @@ def test_401_403_429_are_NOT_budget_eligible(status: int) -> None:
     assert _is_budget_eligible_failure(_http_error(status, "https://x/y")) is False
 
 
+def test_avature_job_detail_406_is_transient_not_budget_eligible() -> None:
+    url = "https://apply.deloitte.co.uk/UKCareers/JobDetail/Role/123"
+    assert _is_budget_eligible_failure(_http_error(406, url)) is False
+
+
+def test_generic_406_remains_budget_eligible() -> None:
+    assert _is_budget_eligible_failure(_http_error(406, "https://api.example.com/v1")) is True
+
+
 @pytest.mark.parametrize("status", [404, 410])
 def test_permanent_gone_codes_are_NOT_budget_eligible(status: int) -> None:
     """Disjoint classification: 404/410 take the immediate-tombstone

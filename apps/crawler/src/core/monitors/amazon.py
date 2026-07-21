@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import AsyncIterator
 from datetime import datetime
 
 import httpx
@@ -278,11 +279,18 @@ async def _fetch_page(
         return jobs, hits
 
 
-async def _paginate_query(
+async def _paginate_raw_query_stream(
     client: httpx.AsyncClient,
     base_params: dict | None = None,
-) -> tuple[list[DiscoveredJob], int]:
-    """Paginate through a single query. Returns (jobs, total_hits)."""
+) -> AsyncIterator[tuple[list[dict], int]]:
+    """Yield one raw API page at a time with a bounded prefetch window.
+
+    Amazon pages contain full descriptions and expand substantially when
+    decoded into Python objects. Keeping every page task in one ``gather``
+    retained both the complete raw payload and the parsed job list, which let
+    one 10,000-result query consume hundreds of MiB. At most
+    ``_CONCURRENCY`` decoded pages are now live inside this generator.
+    """
     params = dict(base_params or {})
     params["result_limit"] = PAGE_SIZE
     params["sort"] = "recent"
@@ -291,36 +299,85 @@ async def _paginate_query(
     params["offset"] = 0
     seq = asyncio.Semaphore(1)
     first_jobs, total = await _fetch_page(client, params, seq)
-
-    jobs: list[DiscoveredJob] = []
-    for raw in first_jobs:
-        parsed = _parse_job(raw)
-        if parsed:
-            jobs.append(parsed)
+    yield first_jobs, total
 
     if total <= PAGE_SIZE:
-        return jobs, total
+        return
 
     # Paginate remaining — cap at API_RESULT_CAP
     page_cap = min(total, _API_RESULT_CAP)
     semaphore = asyncio.Semaphore(_CONCURRENCY)
-    tasks = []
-    for offset in range(PAGE_SIZE, page_cap, PAGE_SIZE):
-        page_params = {**params, "offset": offset}
-        tasks.append(_fetch_page(client, page_params, semaphore))
+    offsets = range(PAGE_SIZE, page_cap, PAGE_SIZE)
+    for window_start in range(0, len(offsets), _CONCURRENCY):
+        window = offsets[window_start : window_start + _CONCURRENCY]
+        tasks = [_fetch_page(client, {**params, "offset": offset}, semaphore) for offset in window]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for result in results:
+            if isinstance(result, BaseException):
+                if not isinstance(result, Exception):
+                    raise result
+                log.warning("amazon.page_error", error=str(result))
+                continue
+            page_jobs, _ = result
+            yield page_jobs, total
 
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    for result in results:
-        if isinstance(result, Exception):
-            log.warning("amazon.page_error", error=str(result))
+
+async def _paginate_query_stream(
+    client: httpx.AsyncClient,
+    base_params: dict | None = None,
+) -> AsyncIterator[tuple[list[DiscoveredJob], int]]:
+    """Yield parsed jobs in API-page-sized batches."""
+
+    async for raw_jobs, total in _paginate_raw_query_stream(client, base_params):
+        parsed_jobs = _parse_jobs(raw_jobs)
+        del raw_jobs
+        yield parsed_jobs, total
+
+
+def _parse_jobs(raw_jobs: list[dict]) -> list[DiscoveredJob]:
+    jobs: list[DiscoveredJob] = []
+    for raw in raw_jobs:
+        parsed = _parse_job(raw)
+        if parsed:
+            jobs.append(parsed)
+    return jobs
+
+
+def _deduplicate_jobs(
+    jobs: list[DiscoveredJob],
+    seen_urls: set[str],
+    *,
+    limit: int,
+) -> list[DiscoveredJob]:
+    """Return unseen jobs without allowing the retained URL set past ``limit``."""
+
+    new_jobs: list[DiscoveredJob] = []
+    for job in jobs:
+        if job.url in seen_urls:
             continue
-        page_jobs, _ = result
-        for raw in page_jobs:
-            parsed = _parse_job(raw)
-            if parsed:
-                jobs.append(parsed)
+        if len(seen_urls) >= limit:
+            break
+        seen_urls.add(job.url)
+        new_jobs.append(job)
+    return new_jobs
 
-    return jobs, total
+
+async def _paginate_query(
+    client: httpx.AsyncClient,
+    base_params: dict | None = None,
+) -> tuple[list[DiscoveredJob], int]:
+    """Collect a query for non-streaming callers.
+
+    Worker execution uses :func:`discover_stream`; this compatibility helper
+    remains for probes and tests that explicitly request a complete list.
+    """
+
+    jobs: list[DiscoveredJob] = []
+    _total = 0
+    async for page_jobs, _total in _paginate_query_stream(client, base_params):
+        jobs.extend(page_jobs)
+
+    return jobs, _total
 
 
 async def _partition_by_category(
@@ -379,64 +436,6 @@ async def _partition_by_category(
         jobs=len(all_jobs),
     )
     return all_jobs
-
-
-async def _partition_by_category_stream(
-    client: httpx.AsyncClient,
-    base_params: dict,
-    initial_jobs: list[DiscoveredJob],
-    initial_total: int,
-    category_slugs: list[str],
-):
-    """Streaming variant of _partition_by_category — yields per-category batches.
-
-    Same logic but yields after each category so the caller can pulse heartbeats.
-    """
-    country = base_params.get("country", "?")
-    log.info(
-        "amazon.partitioning_by_category",
-        country=country,
-        initial_total=initial_total,
-    )
-
-    seen_urls: set[str] = set()
-
-    # Seed with what we already have from the capped query
-    seed_batch: list[DiscoveredJob] = []
-    for job in initial_jobs:
-        seen_urls.add(job.url)
-        seed_batch.append(job)
-    if seed_batch:
-        yield seed_batch
-
-    for slug in category_slugs:
-        params = {**base_params, "category[]": slug}
-        cat_jobs, cat_total = await _paginate_query(client, params)
-
-        if cat_total == 0:
-            continue
-
-        new_jobs: list[DiscoveredJob] = []
-        for job in cat_jobs:
-            if job.url not in seen_urls:
-                seen_urls.add(job.url)
-                new_jobs.append(job)
-
-        if new_jobs:
-            log.info(
-                "amazon.category",
-                country=country,
-                category=slug,
-                total=cat_total,
-                new=len(new_jobs),
-            )
-            yield new_jobs
-
-    log.info(
-        "amazon.category_partition_done",
-        country=country,
-        jobs=len(seen_urls),
-    )
 
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
@@ -539,11 +538,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
 
 async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
-    """Yield batches of DiscoveredJob after each country/category partition.
-
-    Same logic as discover() but yields intermediate batches so the caller
-    can refresh timeouts and start R2 uploads while discovery continues.
-    """
+    """Discover Amazon jobs while retaining only a bounded page window."""
     metadata = board.get("metadata") or {}
 
     # Build base params from config
@@ -555,113 +550,165 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     if biz_cat := metadata.get("business_category"):
         base_params["business_category[]"] = biz_cat
 
-    # Try unpartitioned first
-    jobs, total = await _paginate_query(client, base_params)
+    # Local import to avoid a top-level cycle with src.core.monitor.
+    from src.core.monitor import MonitorResult as _MR
+
+    seen_urls: set[str] = set()
+
+    def bounded_page(jobs: list[DiscoveredJob]) -> list[DiscoveredJob]:
+        return _deduplicate_jobs(jobs, seen_urls, limit=MAX_JOBS)
+
+    def truncated() -> bool:
+        return len(seen_urls) >= MAX_JOBS
+
+    def trailing_truncation():
+        log.warning("amazon.truncated", total=len(seen_urls), cap=MAX_JOBS)
+        # The pipeline marks the cycle partial and skips gone-detection for
+        # the unseen tail beyond MAX_JOBS (#3216).
+        return _MR(urls=set(), jobs_by_url={}, truncated=True)
+
+    # Start with the unpartitioned query. If it fits under Amazon's API cap,
+    # its pages can flow directly downstream. Otherwise, scan only raw page
+    # dictionaries for country codes; do not construct or retain 10,000 rich
+    # jobs that will immediately be fetched again by country.
+    raw_pages = _paginate_raw_query_stream(client, base_params)
+    first_raw, total = await anext(raw_pages)
 
     if total < _API_RESULT_CAP:
-        log.info("amazon.discovered", total=total, jobs=len(jobs))
-        yield jobs
+        first_batch = bounded_page(_parse_jobs(first_raw))
+        del first_raw
+        if first_batch:
+            yield first_batch
+        if truncated():
+            yield trailing_truncation()
+            return
+        async for raw_jobs, _ in raw_pages:
+            batch = bounded_page(_parse_jobs(raw_jobs))
+            if batch:
+                yield batch
+            if truncated():
+                yield trailing_truncation()
+                return
+        log.info("amazon.discovered", total=total, jobs=len(seen_urls))
         return
 
-    # Already filtered by country — split further by category
     if "country" in base_params:
+        # A configured country query is itself useful output. Stream its
+        # capped pages, then split by category if that dimension is available.
+        batch = bounded_page(_parse_jobs(first_raw))
+        del first_raw
+        if batch:
+            yield batch
+        if truncated():
+            yield trailing_truncation()
+            return
+        async for raw_jobs, _ in raw_pages:
+            batch = bounded_page(_parse_jobs(raw_jobs))
+            if batch:
+                yield batch
+            if truncated():
+                yield trailing_truncation()
+                return
+
         if "category[]" in base_params:
             log.warning(
                 "amazon.cap_country_category",
                 country=base_params["country"],
                 category=base_params["category[]"],
-                jobs=len(jobs),
+                jobs=len(seen_urls),
             )
-            yield jobs
             return
+
         category_slugs = await _fetch_category_slugs(client)
-        async for batch in _partition_by_category_stream(
-            client, base_params, jobs, total, category_slugs
-        ):
-            yield batch
+        for slug in category_slugs:
+            _category_total = 0
+            new_count = 0
+            params = {**base_params, "category[]": slug}
+            async for jobs, _category_total in _paginate_query_stream(client, params):
+                batch = bounded_page(jobs)
+                new_count += len(batch)
+                if batch:
+                    yield batch
+                if truncated():
+                    yield trailing_truncation()
+                    return
+            if new_count:
+                log.info(
+                    "amazon.category",
+                    country=base_params["country"],
+                    category=slug,
+                    total=_category_total,
+                    new=new_count,
+                )
+        log.info("amazon.discovered", total=len(seen_urls), countries=1)
         return
 
-    # Extract country codes from the initial results
-    country_codes = sorted(
-        {j.metadata["country_code"] for j in jobs if j.metadata and j.metadata.get("country_code")}
-    )
+    country_codes: set[str] = {
+        str(raw["country_code"]) for raw in first_raw if raw.get("country_code")
+    }
+    del first_raw
+    async for raw_jobs, _ in raw_pages:
+        country_codes.update(
+            str(raw["country_code"]) for raw in raw_jobs if raw.get("country_code")
+        )
+
     if not country_codes:
-        country_codes = _FALLBACK_COUNTRY_CODES
+        ordered_country_codes = _FALLBACK_COUNTRY_CODES
         log.warning("amazon.countries_fallback")
     else:
-        log.info("amazon.countries_from_api", count=len(country_codes))
+        ordered_country_codes = sorted(country_codes)
+        log.info("amazon.countries_from_api", count=len(ordered_country_codes))
 
     log.info("amazon.partitioning_by_country", initial_total=total)
-
-    # Lazily fetched when a country exceeds the cap
     category_slugs: list[str] | None = None
 
-    seen_urls: set[str] = set()
-    total_jobs = 0
-
-    # Local import to avoid a top-level cycle with src.core.monitor.
-    from src.core.monitor import MonitorResult as _MR
-
-    for country_code in country_codes:
+    for country_code in ordered_country_codes:
         params = {**base_params, "country": country_code}
-        country_jobs, country_total = await _paginate_query(client, params)
+        _country_total = 0
+        country_new = 0
+        async for jobs, _country_total in _paginate_query_stream(client, params):
+            batch = bounded_page(jobs)
+            country_new += len(batch)
+            if batch:
+                yield batch
+            if truncated():
+                yield trailing_truncation()
+                return
 
-        if country_total == 0:
-            continue
-
-        # Country itself hit the cap — stream per-category batches
-        if country_total >= _API_RESULT_CAP:
+        if _country_total >= _API_RESULT_CAP:
             if category_slugs is None:
                 category_slugs = await _fetch_category_slugs(client)
-            async for batch in _partition_by_category_stream(
-                client, params, country_jobs, country_total, category_slugs
-            ):
-                new_jobs: list[DiscoveredJob] = []
-                for job in batch:
-                    if job.url not in seen_urls:
-                        seen_urls.add(job.url)
-                        new_jobs.append(job)
-                if new_jobs:
-                    total_jobs += len(new_jobs)
-                    yield new_jobs
-                if total_jobs >= MAX_JOBS:
-                    break
+            for slug in category_slugs:
+                _category_total = 0
+                category_new = 0
+                category_params = {**params, "category[]": slug}
+                async for jobs, _category_total in _paginate_query_stream(client, category_params):
+                    batch = bounded_page(jobs)
+                    category_new += len(batch)
+                    country_new += len(batch)
+                    if batch:
+                        yield batch
+                    if truncated():
+                        yield trailing_truncation()
+                        return
+                if category_new:
+                    log.info(
+                        "amazon.category",
+                        country=country_code,
+                        category=slug,
+                        total=_category_total,
+                        new=category_new,
+                    )
 
+        if _country_total:
             log.info(
                 "amazon.country",
                 country=country_code,
-                total=country_total,
-                new="(streamed)",
-            )
-        else:
-            # Dedup and yield batch for this country
-            new_jobs: list[DiscoveredJob] = []
-            for job in country_jobs:
-                if job.url not in seen_urls:
-                    seen_urls.add(job.url)
-                    new_jobs.append(job)
-
-            log.info(
-                "amazon.country",
-                country=country_code,
-                total=country_total,
-                new=len(new_jobs),
+                total=_country_total,
+                new=country_new,
             )
 
-            if new_jobs:
-                total_jobs += len(new_jobs)
-                yield new_jobs
-
-        if total_jobs >= MAX_JOBS:
-            log.warning("amazon.truncated", total=total_jobs, cap=MAX_JOBS)
-            # Flag the run as partial (#3216). The pipeline reads
-            # ``truncated`` on this empty trailing batch, marks the
-            # cycle partial, and skips gone-detection for the unseen
-            # tail beyond MAX_JOBS.
-            yield _MR(urls=set(), jobs_by_url={}, truncated=True)
-            break
-
-    log.info("amazon.discovered", total=total_jobs, countries=len(country_codes))
+    log.info("amazon.discovered", total=len(seen_urls), countries=len(ordered_country_codes))
 
 
 register("amazon", discover, cost=10, rich=True, stream=discover_stream)

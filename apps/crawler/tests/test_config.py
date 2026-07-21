@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from src.config import Settings
 
 
@@ -25,3 +27,15 @@ class TestSettings:
         monkeypatch.delenv("DATABASE_URL", raising=False)
         s = Settings(_env_file=None)
         assert s.database_url == ""
+
+    @pytest.mark.parametrize(
+        ("base", "maximum"),
+        [(0, 900), (-1, 900), (10, 5)],
+    )
+    def test_invalid_drain_retry_window_is_rejected(self, base, maximum):
+        with pytest.raises(ValueError, match="DRAIN_RETRY_BASE_SECONDS"):
+            Settings(
+                _env_file=None,
+                drain_retry_base_seconds=base,
+                drain_retry_max_seconds=maximum,
+            )

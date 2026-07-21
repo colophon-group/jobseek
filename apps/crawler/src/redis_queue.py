@@ -32,13 +32,18 @@ Inflight (lease) tracking — see issues #3159 / #3173:
 Rate limiting (shared across worker types):
     ratelimit:{domain}  — STRING with TTL
     delay:{domain}      — per-domain delay (0.5 for ATS, 2.0 default)
+
+Upstream-host circuit breaker (shared across boards, postings, and worker types):
+    host_fail:{egress_host}  — consecutive failed crawler runs within a window
+    host_open:{egress_host}  — unix unblock timestamp with an expiry
+    host_probe:{egress_host} — single half-open recovery probe lease
 """
 
 from __future__ import annotations
 
 import json
 import time
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -120,6 +125,18 @@ class BoardWork:
     domain: str = ""
 
 
+@dataclass(frozen=True, slots=True)
+class MonitorSchedule:
+    """One monitor/config write for the deploy-time Redis schedule sync."""
+
+    domain: str
+    board_id: str
+    next_check_at: float
+    config: dict
+    browser: bool = False
+    first_time: bool = False
+
+
 @dataclass
 class ScrapeWork:
     posting_id: str
@@ -160,6 +177,19 @@ class WorkItem:
         if self.scrape_work is not None:
             return self.scrape_work.posting_id
         return ""
+
+
+@dataclass(frozen=True)
+class HostCircuitState:
+    """Result of atomically recording one upstream-host failure."""
+
+    failures: int
+    open_until: float | None
+    opened_now: bool
+
+    @property
+    def is_open(self) -> bool:
+        return self.open_until is not None
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +262,181 @@ def delay_for_domain(domain: str) -> float:
     return settings.throttle_delay_default
 
 
+# One failure is recorded per failed monitor run, not per HTTP retry/request.
+# The Lua script makes the threshold transition atomic across worker
+# containers. A circuit that is already open is not extended by late in-flight
+# failures, otherwise a burst could postpone recovery indefinitely.
+_RECORD_HOST_FAILURE_LUA = """
+local count = redis.call("INCR", KEYS[1])
+if count == 1 then
+    redis.call("EXPIRE", KEYS[1], tonumber(ARGV[2]))
+end
+
+local open_until = redis.call("GET", KEYS[2])
+local opened_now = 0
+local expired_open = open_until and tonumber(open_until) <= tonumber(ARGV[3])
+if expired_open or (not open_until and count >= tonumber(ARGV[1])) then
+    open_until = tonumber(ARGV[3]) + tonumber(ARGV[4])
+    -- Retain the timestamp through two half-open probe leases. The value,
+    -- rather than key expiry, defines when ordinary traffic may resume.
+    redis.call(
+        "SET",
+        KEYS[2],
+        tostring(open_until),
+        "EX",
+        tonumber(ARGV[4]) + (2 * tonumber(ARGV[5]))
+    )
+    redis.call("DEL", KEYS[3])
+    opened_now = 1
+end
+
+-- RESP2 serializes Lua numbers as integers. Return the timestamp as text so
+-- Python receives the same sub-second value stored in Redis.
+return {count, tostring(open_until or 0), opened_now}
+"""
+
+
+def normalize_egress_host(host: str) -> str:
+    """Return the stable Redis/metric label form for an outbound hostname."""
+
+    return host.strip().rstrip(".").lower()
+
+
+async def get_host_circuit_open_until(host: str) -> float | None:
+    """Return the circuit unblock timestamp for *host*, if currently open."""
+
+    normalized = normalize_egress_host(host)
+    if not normalized:
+        return None
+    value = await get_redis().get(f"host_open:{normalized}")
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        # Corrupt/manual state must fail open rather than wedging a host.
+        await get_redis().delete(f"host_open:{normalized}")
+        return None
+
+
+async def record_host_failure(host: str, *, now: float | None = None) -> HostCircuitState:
+    """Atomically advance *host* and open its shared circuit at threshold."""
+
+    normalized = normalize_egress_host(host)
+    if not normalized:
+        return HostCircuitState(failures=0, open_until=None, opened_now=False)
+
+    current = time.time() if now is None else now
+    result = await get_redis().eval(
+        _RECORD_HOST_FAILURE_LUA,
+        3,
+        f"host_fail:{normalized}",
+        f"host_open:{normalized}",
+        f"host_probe:{normalized}",
+        str(max(1, settings.host_circuit_failure_threshold)),
+        str(max(1, settings.host_circuit_failure_window_seconds)),
+        str(current),
+        str(max(1, settings.host_circuit_open_seconds)),
+        str(max(1, settings.host_circuit_probe_seconds)),
+    )
+    open_until = float(result[1]) if result and float(result[1]) > 0 else None
+    return HostCircuitState(
+        failures=int(result[0]),
+        open_until=open_until,
+        opened_now=bool(int(result[2])),
+    )
+
+
+async def acquire_host_circuit_probe(host: str) -> bool:
+    """Acquire the single half-open recovery probe lease for *host*."""
+
+    normalized = normalize_egress_host(host)
+    if not normalized:
+        return False
+    acquired = await get_redis().set(
+        f"host_probe:{normalized}",
+        "1",
+        nx=True,
+        ex=max(1, settings.host_circuit_probe_seconds),
+    )
+    return bool(acquired)
+
+
+_RECORD_HOST_SUCCESS_LUA = """
+local open_until = redis.call("GET", KEYS[2])
+redis.call("DEL", KEYS[1])
+
+if open_until and tonumber(open_until) <= tonumber(ARGV[1]) then
+    redis.call("DEL", KEYS[2], KEYS[3])
+    return "0"
+end
+
+if open_until then
+    return tostring(open_until)
+end
+
+redis.call("DEL", KEYS[3])
+return "0"
+"""
+
+
+async def record_host_success(host: str, *, now: float | None = None) -> float | None:
+    """Reset failures and close only an expired circuit after its probe succeeds.
+
+    A success from work already in flight while the circuit opens cannot close
+    it early. Once the stored unblock time passes, the single half-open probe
+    is authoritative and a success removes both the open marker and probe lock.
+    """
+
+    normalized = normalize_egress_host(host)
+    if not normalized:
+        return None
+    current = time.time() if now is None else now
+    result = await get_redis().eval(
+        _RECORD_HOST_SUCCESS_LUA,
+        3,
+        f"host_fail:{normalized}",
+        f"host_open:{normalized}",
+        f"host_probe:{normalized}",
+        str(current),
+    )
+    value = float(result or 0)
+    return value if value > 0 else None
+
+
+async def remember_board_egress_host(board_id: str, host: str) -> bool:
+    """Persist the runtime-observed host in an existing Redis board hash."""
+
+    normalized = normalize_egress_host(host)
+    if not normalized:
+        return False
+    r = get_redis()
+    key = f"board:{board_id}"
+    if not await cast(Awaitable[int], r.exists(key)):
+        return False
+    await cast(Awaitable[object], r.hset(key, "egress_host", normalized))
+    return True
+
+
+async def remember_board_scrape_egress_host(board_id: str, host: str) -> bool:
+    """Persist the runtime-observed scraper host separately from monitoring.
+
+    A board can discover jobs from one API and scrape detail pages from a
+    different origin. Separate learned fields prevent either path from
+    preflighting the other's host while both still share the host circuit.
+    """
+
+    normalized = normalize_egress_host(host)
+    if not normalized:
+        return False
+    r = get_redis()
+    key = f"board:{board_id}"
+    if not await cast(Awaitable[int], r.exists(key)):
+        return False
+    await cast(Awaitable[object], r.hset(key, "scrape_egress_host", normalized))
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Enqueue operations
 # ---------------------------------------------------------------------------
@@ -272,6 +477,59 @@ async def enqueue_monitor(
     return bool(added)
 
 
+async def enqueue_monitors(schedules: Sequence[MonitorSchedule]) -> list[bool]:
+    """Pipeline a complete monitor schedule without per-board round trips.
+
+    The enqueue Lua script remains the authority for queue/ready-set atomicity;
+    pipelining only transports the same ordered commands in bounded batches.
+    This is used by ``crawler sync``, where thousands of sequential EVALSHA,
+    HSET, and SET awaits otherwise dominate every deployment.
+    """
+    if not schedules:
+        return []
+
+    await _load_scripts()
+    assert _ENQUEUE_SHA is not None
+    r = get_redis()
+    added: list[bool] = []
+    batch_size = 1000
+
+    for start in range(0, len(schedules), batch_size):
+        batch = schedules[start : start + batch_size]
+        pipe = r.pipeline(transaction=False)
+        enqueue_result_indexes: list[int] = []
+        command_count = 0
+        now = str(time.time())
+
+        for schedule in batch:
+            wtype = "browser" if schedule.browser else "simple"
+            enqueue_result_indexes.append(command_count)
+            pipe.evalsha(
+                _ENQUEUE_SHA,
+                0,
+                wtype,
+                schedule.domain,
+                schedule.board_id,
+                str(schedule.next_check_at),
+                "monitor",
+                "1" if schedule.first_time else "0",
+                now,
+            )
+            command_count += 1
+
+            if schedule.config:
+                config = {**schedule.config, "domain": schedule.domain}
+                pipe.hset(f"board:{schedule.board_id}", mapping=config)
+                command_count += 1
+            pipe.set(f"delay:{schedule.domain}", str(delay_for_domain(schedule.domain)))
+            command_count += 1
+
+        results = await pipe.execute()
+        added.extend(bool(results[index]) for index in enqueue_result_indexes)
+
+    return added
+
+
 async def remove_monitor(domain: str, board_id: str) -> None:
     """Remove a board monitor task from Redis and delete its config hash.
 
@@ -292,6 +550,20 @@ async def remove_monitor(domain: str, board_id: str) -> None:
         pipe.zrem(f"monitors_{wtype}:{domain}", board_id)
     pipe.delete(f"board:{board_id}")
     await pipe.execute()
+
+
+async def remove_monitors(monitors: Sequence[tuple[str, str]]) -> None:
+    """Pipeline deploy-time removal of disabled monitor schedules."""
+    batch_size = 1000
+    r = get_redis()
+    for start in range(0, len(monitors), batch_size):
+        pipe = r.pipeline(transaction=False)
+        for domain, board_id in monitors[start : start + batch_size]:
+            for wtype in ("simple", "browser"):
+                pipe.zrem(f"ft_monitors_{wtype}:{domain}", board_id)
+                pipe.zrem(f"monitors_{wtype}:{domain}", board_id)
+            pipe.delete(f"board:{board_id}")
+        await pipe.execute()
 
 
 async def enqueue_scrape(

@@ -241,7 +241,8 @@ WHERE jp.id = $1
 #       transient, see below).
 #
 #   _RECORD_SCRAPE_TRANSIENT (separate UPDATE):
-#     * Fired for 5xx, network errors, timeouts, 401, 403, 429, and
+#     * Fired for 5xx, network errors, timeouts, 401, 403, 429,
+#       provider-specific overload responses (Avature JobDetail 406), and
 #       successful HTTP fetches with empty extraction.
 #     * Backs off WITHOUT bumping the tombstone counter. A 2-hour
 #       upstream 5xx incident (or a regex break in an extraction
@@ -282,7 +283,8 @@ WHERE id = $1
 
 # Transient-failure path (#2708 follow-up critic findings). Used for
 # 5xx, timeouts, connect errors, 401 / 403 / 429, and empty-extraction
-# results. Bumps scrape_failures so the existing doubling-backoff math
+# results and provider-specific overload responses such as Avature JobDetail
+# 406. Bumps scrape_failures so the existing doubling-backoff math
 # still applies, but DOES NOT use scrape_failures as a tombstone
 # trigger — the upper-bound clamp at 3 caps both the backoff and stops
 # perpetual retries (next_scrape_at becomes NULL after 3 such failures

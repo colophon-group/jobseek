@@ -960,6 +960,36 @@ async def test_process_monitor_work_emits_tasks_total_succeeded():
 
 
 @pytest.mark.asyncio
+async def test_process_monitor_work_reclaims_memory_after_monitor():
+    """Allocator cleanup runs after discovery while monitor concurrency is held."""
+
+    from unittest.mock import AsyncMock, Mock, patch
+
+    from src.workers.monitor_memory import MemoryReclaim
+    from src.workers.pipeline import _process_monitor_work
+
+    reclaim = Mock(return_value=MemoryReclaim(3, True, 500, 300, 700, 450))
+    with (
+        patch(
+            "src.processing.board._process_one_board_streaming",
+            new=AsyncMock(return_value=(True, 0.1)),
+        ),
+        patch("src.workers.pipeline.reclaim_process_memory", reclaim),
+        patch("src.workers.pipeline.process_rss_bytes", return_value=500),
+        patch("src.workers.pipeline.cgroup_memory_bytes", return_value=700),
+        patch("src.workers.pipeline.reschedule_task", new=AsyncMock(return_value=None)),
+    ):
+        await _process_monitor_work(
+            structlog.get_logger(),
+            _make_board_work(),
+            _make_monitor_local_pool(),
+            AsyncMock(),
+        )
+
+    reclaim.assert_called_once_with()
+
+
+@pytest.mark.asyncio
 async def test_process_monitor_work_emits_tasks_total_failed_on_success_false():
     """``_process_one_board_streaming`` may return ``success=False`` for
     a recoverable failure (e.g. partial fetch). That outcome must roll
@@ -994,6 +1024,253 @@ async def test_process_monitor_work_emits_tasks_total_failed_on_success_false():
     assert after - before == pytest.approx(1.0)
     # Success counter must not have moved.
     assert _tasks_total_value("monitor", "succeeded") == succeeded_before
+
+
+@pytest.mark.asyncio
+async def test_failed_sibling_boards_open_one_host_circuit_and_skip_fourth(mock_redis, monkeypatch):
+    """Reproduce #3195: sibling boards used to traverse failures independently.
+
+    Once three monitor runs fail against the same configured origin, the
+    fourth board must be deferred before its monitor (and therefore HTTP) is
+    invoked.
+    """
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    monitor = AsyncMock(return_value=(False, 30.0))
+    reschedule = AsyncMock(return_value=None)
+    local_pool = _make_monitor_local_pool()
+    now = time.time()
+
+    def work(number: int) -> rq.BoardWork:
+        return rq.BoardWork(
+            board_id=f"board-host-{number}",
+            domain="shared-ats",
+            config={
+                "crawler_type": "sitemap",
+                "company_id": f"company-{number}",
+                "board_url": "https://apply.example.com/jobs",
+                "check_interval_minutes": "60",
+                "metadata": "{}",
+            },
+        )
+
+    with (
+        patch("src.processing.board._process_one_board_streaming", new=monitor),
+        patch("src.workers.pipeline.reschedule_task", new=reschedule),
+        patch(
+            "src.workers.pipeline._failure_next_due",
+            new=AsyncMock(return_value=now + 300),
+        ),
+        patch(
+            "src.workers.pipeline._refresh_board_metadata_cache",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        for number in range(1, 5):
+            await _process_monitor_work(
+                structlog.get_logger(),
+                work(number),
+                local_pool,
+                AsyncMock(),
+                browser=False,
+            )
+
+    assert monitor.await_count == 3
+    open_until = await rq.get_host_circuit_open_until("apply.example.com")
+    assert open_until is not None
+    assert reschedule.await_args_list[-1].args[:3] == (
+        "shared-ats",
+        "board-host-4",
+        "monitor",
+    )
+    assert reschedule.await_args_list[-1].args[3] == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
+async def test_failed_sibling_scrapes_open_one_host_circuit_and_skip_fourth(
+    mock_redis, monkeypatch
+):
+    """Reproduce the scrape-side gap behind #5353/#5706/#5707/#5717.
+
+    The shared host circuit originally protected monitor runs only, so every
+    posting in a same-origin 5xx/timeout burst still reached the network. Once
+    three scrape runs receive a transient upstream response, the fourth must
+    be deferred before its scraper (and therefore HTTP) is invoked.
+    """
+    from datetime import UTC, datetime
+
+    import httpx
+
+    from src.config import settings
+    from src.shared.http import RequestHostTrackingTransport
+    from src.workers.pipeline import _process_scrape_work
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    domain = "outage.example.com"
+    board_id = "board-outage"
+    await mock_redis.hset(
+        f"board:{board_id}",
+        mapping={
+            "crawler_type": "dom",
+            "metadata": json.dumps({"scraper_type": "dom"}),
+        },
+    )
+
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow = AsyncMock(return_value={"is_active": True, "next_scrape_at": datetime.now(UTC)})
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+
+    requests = 0
+
+    def upstream_503(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(503, request=request)
+
+    async def scrape_once(item, pool, http, *args, **kwargs):
+        response = await http.get(item.url)
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            return False, 0.1
+        return True, 0.1
+
+    transport = RequestHostTrackingTransport(httpx.MockTransport(upstream_503))
+    reschedule = AsyncMock(return_value=None)
+    async with httpx.AsyncClient(transport=transport) as http:
+        with (
+            patch("src.processing.scrape._process_one_scrape", new=scrape_once),
+            patch("src.workers.pipeline.reschedule_task", new=reschedule),
+        ):
+            for number in range(1, 5):
+                posting_id = f"12345678-0000-4000-8000-{number:012d}"
+                await _process_scrape_work(
+                    structlog.get_logger(),
+                    rq.ScrapeWork(
+                        posting_id=posting_id,
+                        source_url=f"https://{domain}/jobs/{number}",
+                        board_id=board_id,
+                        description_r2_hash=None,
+                        scraper_needs_browser=False,
+                        scrape_interval_hours=24,
+                        domain=domain,
+                    ),
+                    local_pool,
+                    http,
+                    browser=False,
+                )
+
+    assert requests == 3
+    open_until = await rq.get_host_circuit_open_until(domain)
+    assert open_until is not None
+    assert await mock_redis.hget(f"board:{board_id}", "scrape_egress_host") == domain
+    assert reschedule.await_args_list[-1].args[:3] == (
+        domain,
+        "12345678-0000-4000-8000-000000000004",
+        "scrape",
+    )
+    assert reschedule.await_args_list[-1].args[3] == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
+async def test_scrape_parser_failures_do_not_open_host_circuit(mock_redis):
+    """A reachable 200 followed by bad extraction is not a host outage."""
+    from src.shared.http import RequestHostTracker
+    from src.workers.pipeline import _record_scrape_host_outcome
+
+    domain = "reachable.example.com"
+    for _ in range(4):
+        tracker = RequestHostTracker()
+        tracker.note_response(domain, 200)
+        open_until = await _record_scrape_host_outcome(
+            "board-parser-failure",
+            domain,
+            "",
+            tracker,
+            False,
+            structlog.get_logger(),
+        )
+        assert open_until is None
+
+    assert await rq.get_host_circuit_open_until(domain) is None
+    assert await mock_redis.get(f"host_fail:{domain}") is None
+
+
+@pytest.mark.asyncio
+async def test_avature_406_scrape_failures_open_host_circuit(mock_redis, monkeypatch):
+    """Three exhausted live-page 406 runs defer the remaining host burst."""
+    from src.config import settings
+    from src.shared.http import RequestHostTracker
+    from src.workers.pipeline import _record_scrape_host_outcome
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    domain = "jobs.totalenergies.com"
+    url = f"https://{domain}/en_US/careers/JobDetail/Role/123"
+    for attempt in range(3):
+        tracker = RequestHostTracker()
+        tracker.note_request(domain, url)
+        tracker.note_response(domain, 406)
+        open_until = await _record_scrape_host_outcome(
+            "board-avature-406",
+            domain,
+            "",
+            tracker,
+            False,
+            structlog.get_logger(),
+        )
+        if attempt < 2:
+            assert open_until is None
+
+    assert open_until is not None
+    assert await rq.get_host_circuit_open_until(domain) == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
+async def test_half_open_circuit_defers_siblings_while_single_probe_is_leased(
+    mock_redis, monkeypatch
+):
+    from src.config import settings
+
+    monkeypatch.setattr(settings, "host_circuit_probe_seconds", 600)
+    now = time.time()
+    await mock_redis.set("host_open:example.com", str(now - 1), ex=1200)
+    await mock_redis.set("host_probe:example.com", "1", ex=600)
+
+    monitor = AsyncMock(return_value=(True, 0.1))
+    reschedule = AsyncMock(return_value=None)
+    with (
+        patch("src.processing.board._process_one_board_streaming", new=monitor),
+        patch("src.workers.pipeline.reschedule_task", new=reschedule),
+    ):
+        await _process_monitor_work(
+            structlog.get_logger(),
+            _make_board_work(),
+            _make_monitor_local_pool(),
+            AsyncMock(),
+            browser=False,
+        )
+
+    monitor.assert_not_awaited()
+    assert reschedule.await_args.args[:3] == (
+        "example.com",
+        "board-3200",
+        "monitor",
+    )
+    assert reschedule.await_args.args[3] >= now + 599
 
 
 @pytest.mark.asyncio

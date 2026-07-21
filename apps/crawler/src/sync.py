@@ -39,7 +39,13 @@ from src.core.monitors import api_monitor_types, monitor_needs_browser
 from src.core.occupation_resolve import match_occupation, occupation_locale_columns
 from src.core.scrapers import scraper_needs_browser
 from src.db import close_all_pools, create_local_pool, create_pool
-from src.redis_queue import close_redis, encode_metadata_for_redis, enqueue_monitor, remove_monitor
+from src.redis_queue import (
+    MonitorSchedule,
+    close_redis,
+    encode_metadata_for_redis,
+    enqueue_monitors,
+    remove_monitors,
+)
 from src.shared.logging import setup_logging
 from src.typesense_client import get_typesense_client
 
@@ -258,7 +264,12 @@ INSERT INTO job_board (id, company_id, board_slug, board_url,
                        check_interval_minutes, scrape_interval_hours,
                        throttle_key, monitor_needs_browser, scraper_needs_browser,
                        is_enabled)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+SELECT *
+FROM unnest(
+    $1::uuid[], $2::uuid[], $3::text[], $4::text[],
+    $5::text[], $6::jsonb[], $7::int[], $8::int[],
+    $9::text[], $10::boolean[], $11::boolean[], $12::boolean[]
+)
 ON CONFLICT (id) DO UPDATE SET
     company_id = EXCLUDED.company_id,
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
@@ -297,42 +308,54 @@ ON CONFLICT (id) DO UPDATE SET
     -- the existing runtime value (typically unset) is kept.
     -- ``recent_discovered_counts`` and ``suspect_streak`` are runtime state
     -- preserved verbatim from the existing row.
-    metadata = EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
-        'sitemap_url', job_board.metadata -> 'sitemap_url',
-        'recent_discovered_counts', job_board.metadata -> 'recent_discovered_counts',
-        'suspect_streak', job_board.metadata -> 'suspect_streak',
-        'delist_threshold', COALESCE(
-            EXCLUDED.metadata -> 'delist_threshold',
-            job_board.metadata -> 'delist_threshold'
-        ),
-        'drop_threshold', COALESCE(
-            EXCLUDED.metadata -> 'drop_threshold',
-            job_board.metadata -> 'drop_threshold'
-        ),
-        'blast_radius_floor', COALESCE(
-            EXCLUDED.metadata -> 'blast_radius_floor',
-            job_board.metadata -> 'blast_radius_floor'
-        ),
-        'pcsx_watermark', CASE
-            WHEN job_board.metadata -> 'pcsx_watermark' IS NULL THEN NULL
-            ELSE COALESCE(EXCLUDED.metadata -> 'pcsx_watermark', '{}'::jsonb)
-                 || jsonb_strip_nulls(jsonb_build_object(
-                     'max_ts', job_board.metadata -> 'pcsx_watermark' -> 'max_ts',
-                     'last_full_at',
-                         job_board.metadata -> 'pcsx_watermark' -> 'last_full_at',
-                     'last_incremental_at',
-                         job_board.metadata -> 'pcsx_watermark' -> 'last_incremental_at',
-                     'enabled', job_board.metadata -> 'pcsx_watermark' -> 'enabled',
-                     'extra', job_board.metadata -> 'pcsx_watermark' -> 'extra'
-                 ))
-        END
-    )),
+    -- A URL or monitor-type change is a new source. Runtime discovery
+    -- history, watermarks, and gone-detection streaks belong to the old
+    -- source and would poison the replacement (issue #5716).
+    metadata = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN COALESCE(EXCLUDED.metadata, '{}'::jsonb)
+        ELSE EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
+            'sitemap_url', job_board.metadata -> 'sitemap_url',
+            'recent_discovered_counts', job_board.metadata -> 'recent_discovered_counts',
+            'suspect_streak', job_board.metadata -> 'suspect_streak',
+            'delist_threshold', COALESCE(
+                EXCLUDED.metadata -> 'delist_threshold',
+                job_board.metadata -> 'delist_threshold'
+            ),
+            'drop_threshold', COALESCE(
+                EXCLUDED.metadata -> 'drop_threshold',
+                job_board.metadata -> 'drop_threshold'
+            ),
+            'blast_radius_floor', COALESCE(
+                EXCLUDED.metadata -> 'blast_radius_floor',
+                job_board.metadata -> 'blast_radius_floor'
+            ),
+            'pcsx_watermark', CASE
+                WHEN job_board.metadata -> 'pcsx_watermark' IS NULL THEN NULL
+                ELSE COALESCE(EXCLUDED.metadata -> 'pcsx_watermark', '{}'::jsonb)
+                     || jsonb_strip_nulls(jsonb_build_object(
+                         'max_ts', job_board.metadata -> 'pcsx_watermark' -> 'max_ts',
+                         'last_full_at',
+                             job_board.metadata -> 'pcsx_watermark' -> 'last_full_at',
+                         'last_incremental_at',
+                             job_board.metadata -> 'pcsx_watermark' -> 'last_incremental_at',
+                         'enabled', job_board.metadata -> 'pcsx_watermark' -> 'enabled',
+                         'extra', job_board.metadata -> 'pcsx_watermark' -> 'extra'
+                     ))
+            END
+        ))
+    END,
     check_interval_minutes = EXCLUDED.check_interval_minutes,
     scrape_interval_hours = EXCLUDED.scrape_interval_hours,
     throttle_key = EXCLUDED.throttle_key,
     monitor_needs_browser = EXCLUDED.monitor_needs_browser,
     scraper_needs_browser = EXCLUDED.scraper_needs_browser,
-    -- Preserve runtime-driven disables. ``_RECORD_FAILURE`` and
+    -- Preserve runtime-driven disables when the source itself is unchanged.
+    -- A material source change is an operator repair and must clear state
+    -- inherited from the retired source; otherwise the new config is removed
+    -- from Redis immediately and can never prove itself healthy (#5716).
+    -- ``_RECORD_FAILURE`` and
     -- ``_RECORD_BOARD_GONE`` set ``is_enabled = false`` plus a
     -- ``board_status`` of ``'disabled'`` or ``'gone'`` when the
     -- board has been failing or its upstream slug returned 404.
@@ -343,11 +366,68 @@ ON CONFLICT (id) DO UPDATE SET
     -- ``board_status`` row via SQL or via deleting+re-adding
     -- the CSV entry. See issue #2215.
     is_enabled = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN true
         WHEN job_board.board_status IN ('disabled', 'gone') THEN false
         ELSE EXCLUDED.is_enabled
     END,
+    board_status = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN 'active'
+        ELSE job_board.board_status
+    END,
+    consecutive_failures = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN 0
+        ELSE job_board.consecutive_failures
+    END,
+    last_error = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.last_error
+    END,
+    last_checked_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.last_checked_at
+    END,
+    last_success_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.last_success_at
+    END,
+    next_check_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN now()
+        ELSE job_board.next_check_at
+    END,
+    empty_check_count = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN 0
+        ELSE job_board.empty_check_count
+    END,
+    last_non_empty_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.last_non_empty_at
+    END,
+    gone_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+        THEN NULL
+        ELSE job_board.gone_at
+    END,
     updated_at = now()
-RETURNING metadata
+RETURNING id::text AS board_id, metadata
 """
 
 _DISABLE_REMOVED_BOARDS = """
@@ -1215,63 +1295,67 @@ async def sync_boards(
                 stale_supa_ids,
             )
 
-    redis_enqueued = 0
-    local_upserted = 0
-
+    resolved_indexes: list[int] = []
     for i, board_url in enumerate(board_urls):
         ids = url_to_ids.get(board_url)
         if not ids:
             log.warning("sync.board.missing_id", board_url=board_url)
             continue
+        resolved_indexes.append(i)
 
-        board_id, company_id = ids
-        mon_type = crawler_types[i]
-        mon_browser = monitor_browser_flags[i]
-        scr_browser = scraper_browser_flags[i]
-        metadata_str = metadatas[i]
-        throttle_key = throttle_keys[i]
-        check_interval = 60  # default
-        scrape_interval = 24  # default
+    # Target 2: local Postgres (full board config with scheduling). Keep the
+    # state-preserving ON CONFLICT rules above, but send every board in one
+    # array-based statement instead of paying one network round trip per row.
+    local_rows = await local_conn.fetch(
+        _UPSERT_BOARD_LOCAL,
+        [url_to_ids[board_urls[i]][0] for i in resolved_indexes],
+        [url_to_ids[board_urls[i]][1] for i in resolved_indexes],
+        [board_slugs[i] for i in resolved_indexes],
+        [board_urls[i] for i in resolved_indexes],
+        [crawler_types[i] for i in resolved_indexes],
+        [metadatas[i] for i in resolved_indexes],
+        [60 for _ in resolved_indexes],
+        [24 for _ in resolved_indexes],
+        [throttle_keys[i] for i in resolved_indexes],
+        [monitor_browser_flags[i] for i in resolved_indexes],
+        [scraper_browser_flags[i] for i in resolved_indexes],
+        [True for _ in resolved_indexes],
+    )
+    metadata_by_board_id = {str(row["board_id"]): row["metadata"] for row in local_rows}
 
-        # Target 2: local Postgres (full board config with scheduling)
-        merged_metadata = await local_conn.fetchval(
-            _UPSERT_BOARD_LOCAL,
-            board_id,
-            company_id,
-            board_slugs[i],
-            board_url,
-            mon_type,
-            metadata_str,
-            check_interval,
-            scrape_interval,
-            throttle_key,
-            mon_browser,
-            scr_browser,
-            True,  # is_enabled
-        )
-        local_upserted += 1
-
-        # Target 3: Redis (board config hash + initial schedule)
+    # Target 3: Redis (board config hash + initial schedule). The Lua script
+    # still atomically maintains each board's queue/ready-set relationship;
+    # bounded pipelines remove the three network awaits per board.
+    schedules: list[MonitorSchedule] = []
+    schedule_time = time.time()
+    for i in resolved_indexes:
+        board_id, company_id = url_to_ids[board_urls[i]]
+        board_id_str = str(board_id)
+        if board_id_str not in metadata_by_board_id:
+            log.warning("sync.board.local_upsert_missing", board_url=board_urls[i])
+            continue
         config = {
-            "board_url": board_url,
-            "crawler_type": mon_type,
+            "board_url": board_urls[i],
+            "crawler_type": crawler_types[i],
             "company_id": str(company_id),
-            "metadata": encode_metadata_for_redis(merged_metadata),
-            "check_interval_minutes": str(check_interval),
-            "scrape_interval_hours": str(scrape_interval),
-            "throttle_key": throttle_key,
-            "monitor_needs_browser": "1" if mon_browser else "0",
-            "scraper_needs_browser": "1" if scr_browser else "0",
+            "metadata": encode_metadata_for_redis(metadata_by_board_id[board_id_str]),
+            "check_interval_minutes": "60",
+            "scrape_interval_hours": "24",
+            "throttle_key": throttle_keys[i],
+            "monitor_needs_browser": "1" if monitor_browser_flags[i] else "0",
+            "scraper_needs_browser": "1" if scraper_browser_flags[i] else "0",
         }
-        await enqueue_monitor(
-            throttle_key,
-            str(board_id),
-            time.time(),
-            config,
-            browser=mon_browser,
-            first_time=True,
+        schedules.append(
+            MonitorSchedule(
+                domain=throttle_keys[i],
+                board_id=board_id_str,
+                next_check_at=schedule_time,
+                config=config,
+                browser=monitor_browser_flags[i],
+                first_time=True,
+            )
         )
-        redis_enqueued += 1
+    await enqueue_monitors(schedules)
 
     await local_conn.execute(_REALIGN_BOARD_POSTING_COMPANIES_LOCAL, board_urls)
 
@@ -1284,17 +1368,20 @@ async def sync_boards(
     # worker keeps claiming it every cycle, producing ``batch.monitor.error``
     # 404s that no CSV update can silence.
     orphan_rows = await local_conn.fetch(_FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP)
+    orphan_monitors: list[tuple[str, str]] = []
     for row in orphan_rows:
         domain = row["throttle_key"] or ""
         if not domain:
             continue
-        await remove_monitor(domain, row["board_id"])
+        orphan_monitors.append((domain, row["board_id"]))
+    if orphan_monitors:
+        await remove_monitors(orphan_monitors)
 
     log.info(
         "sync.boards.local_redis",
-        local_upserted=local_upserted,
-        redis_enqueued=redis_enqueued,
-        redis_orphans_removed=len(orphan_rows),
+        local_upserted=len(local_rows),
+        redis_enqueued=len(schedules),
+        redis_orphans_removed=len(orphan_monitors),
     )
 
 

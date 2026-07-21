@@ -18,6 +18,56 @@ def test_real_csvs_validate():
     assert errors == [], "\n".join(str(e) for e in errors)
 
 
+class TestNavigationTimeoutBoardMigrations:
+    """Boards from #5708 that serve complete HTML must stay off Playwright."""
+
+    def test_server_rendered_boards_use_static_http(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {row["board_slug"]: row for row in rows}
+        slugs = (
+            "airbus-careers-bank",
+            "china-railway-group-careers",
+            "coop-careers-transgourmet-fr",
+            "msf-careers-talentsoft-ch",
+        )
+
+        for slug in slugs:
+            row = by_slug[slug]
+            monitor_config = json.loads(row.get("monitor_config") or "{}")
+            scraper_config = json.loads(row.get("scraper_config") or "{}")
+            assert monitor_config.get("render") is not True
+            assert scraper_config.get("render") is not True
+
+        crec = by_slug["china-railway-group-careers"]
+        crec_monitor = json.loads(crec["monitor_config"])
+        assert crec_monitor["pagination"] == {
+            "url_template": ("https://www.crec.cn/web/rlzy65/rczp11/469ad9a7-{page}.html"),
+            "max_pages": 4,
+        }
+
+        transgourmet = by_slug["coop-careers-transgourmet-fr"]
+        assert "liste-toutes-offres.aspx" in transgourmet["board_url"]
+        transgourmet_monitor = json.loads(transgourmet["monitor_config"])
+        assert transgourmet_monitor["pagination"] == {
+            "param_name": "page",
+            "max_pages": 15,
+        }
+
+        msf = by_slug["msf-careers-talentsoft-ch"]
+        msf_scraper = json.loads(msf["scraper_config"])
+        assert [step.get("field") for step in msf_scraper["steps"]] == [
+            "title",
+            "description",
+            "responsibilities",
+            "qualifications",
+        ]
+
+
 class TestValidationError:
     def test_str_with_row(self):
         err = ValidationError("file.csv", 5, "bad value")
@@ -1141,6 +1191,31 @@ class TestCaterpillarRateLimitConfig:
         assert sc.get("render") is True
         assert sc.get("wait") == "load"
         assert scraper_needs_browser("json-ld", sc) is True
+
+
+class TestOverwolfComeetDescriptionCoverage:
+    """Overwolf must use Comeet's rich source directly (#5807).
+
+    The legacy api_sniffer row omitted ``details=true`` and then sent every
+    posting through a rendered detail scrape. The shared Comeet monitor
+    returns the first-party details payload in the listing cycle, so keeping
+    this configuration pinned prevents another 0%-description cohort.
+    """
+
+    def test_overwolf_uses_rich_comeet_monitor_without_detail_scraping(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "overwolf-careers"), None)
+        assert row is not None, "overwolf-careers row missing from boards.csv"
+
+        assert row["monitor_type"] == "comeet"
+        assert json.loads(row.get("monitor_config") or "{}") == {}
+        assert row["scraper_type"] == "skip"
+        assert json.loads(row.get("scraper_config") or "{}") == {}
 
 
 class TestZteMokahrHasMokahrScraperAndEnrich:
