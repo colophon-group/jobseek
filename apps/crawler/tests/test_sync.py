@@ -55,6 +55,15 @@ _BOARD_SCHEMA = {c: pl.Utf8 for c in _BOARD_COLS}
 
 
 class TestBoardSourceChangeReset:
+    def test_local_upsert_batches_all_boards_in_one_statement(self):
+        sql = " ".join(_UPSERT_BOARD_LOCAL.split())
+
+        assert "SELECT * FROM unnest(" in sql
+        assert "$1::uuid[]" in sql
+        assert "$6::jsonb[]" in sql
+        assert "RETURNING id::text AS board_id, metadata" in sql
+        assert "VALUES ($1" not in sql
+
     def test_material_source_change_resets_runtime_failure_state(self):
         """A replacement source must not inherit a retired source's disable."""
         sql = " ".join(_UPSERT_BOARD_LOCAL.split())
@@ -506,8 +515,62 @@ class TestSyncBoards:
         # Realign stale URLs + Supabase upsert + posting rehome + disable queries
         assert mock_conn.execute.call_count == 4
 
-    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
-    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
+    async def test_local_path_batches_postgres_and_redis(
+        self,
+        mock_enqueue,
+        mock_remove,
+        mock_conn,
+    ):
+        import uuid
+
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme", "globex"],
+                "board_slug": ["acme-careers", "globex-careers"],
+                "board_url": ["https://acme.test/jobs", "https://globex.test/jobs"],
+                "monitor_type": ["greenhouse", "dom"],
+                "monitor_config": ["{}", "{}"],
+                "scraper_type": ["", ""],
+                "scraper_config": ["", ""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+        board_ids = [uuid.uuid4(), uuid.uuid4()]
+        company_ids = [uuid.uuid4(), uuid.uuid4()]
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": board_ids[i],
+                    "company_id": company_ids[i],
+                    "board_url": boards["board_url"][i],
+                }
+                for i in range(2)
+            ]
+        )
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [{"board_id": str(board_ids[i]), "metadata": {}} for i in range(2)],
+                [],
+            ]
+        )
+
+        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+
+        assert mock_local_conn.fetch.await_count == 2
+        batch_call = mock_local_conn.fetch.await_args_list[0]
+        assert batch_call.args[0] == _UPSERT_BOARD_LOCAL
+        assert batch_call.args[1] == board_ids
+        assert batch_call.args[2] == company_ids
+        mock_enqueue.assert_awaited_once()
+        assert len(mock_enqueue.await_args.args[0]) == 2
+        mock_remove.assert_not_awaited()
+
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
     async def test_local_path_purges_redis_for_disabled_boards(
         self,
         mock_enqueue,
@@ -515,7 +578,7 @@ class TestSyncBoards:
         mock_conn,
     ):
         """When local_conn is provided, sync fetches every disabled/gone board
-        and calls remove_monitor so the Redis queue doesn't keep probing dead
+        and removes their schedules so the Redis queue doesn't keep probing dead
         URLs after a CSV removal.
         """
         import uuid
@@ -549,7 +612,6 @@ class TestSyncBoards:
 
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
-        mock_local_conn.fetchval = AsyncMock(return_value={})
         # Two orphan rows: one from a just-disabled board, one that was already
         # disabled in a previous sync (covers the historical-orphan case).
         stale_rows = [
@@ -558,18 +620,25 @@ class TestSyncBoards:
             # Missing throttle_key must be skipped — no queue to remove from.
             {"board_id": "orphan-no-domain", "throttle_key": None},
         ]
-        mock_local_conn.fetch = AsyncMock(return_value=stale_rows)
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [{"board_id": str(board_id), "metadata": {}}],
+                stale_rows,
+            ]
+        )
 
         await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
 
         # Only the two orphans with a throttle_key should be purged from Redis.
-        assert mock_remove.await_count == 2
-        purged_args = {call.args for call in mock_remove.await_args_list}
-        assert ("lever", "orphan-lever") in purged_args
-        assert ("greenhouse", "orphan-greenhouse") in purged_args
+        mock_remove.assert_awaited_once_with(
+            [
+                ("lever", "orphan-lever"),
+                ("greenhouse", "orphan-greenhouse"),
+            ]
+        )
 
-    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
-    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
     async def test_local_path_drops_stale_slug_rows_before_upsert(
         self,
         mock_enqueue,
@@ -611,8 +680,12 @@ class TestSyncBoards:
 
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
-        mock_local_conn.fetchval = AsyncMock(return_value={})
-        mock_local_conn.fetch = AsyncMock(return_value=[])
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [{"board_id": str(supa_board_id), "metadata": {}}],
+                [],
+            ]
+        )
 
         await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
 
@@ -626,8 +699,8 @@ class TestSyncBoards:
         assert first_call.args[1] == ["acme-careers"]
         assert first_call.args[2] == [str(supa_board_id)]
 
-    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
-    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
     async def test_local_path_rehomes_postings_and_touches_export_cursor(
         self,
         mock_enqueue,
@@ -666,8 +739,12 @@ class TestSyncBoards:
 
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
-        mock_local_conn.fetchval = AsyncMock(return_value={})
-        mock_local_conn.fetch = AsyncMock(return_value=[])
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [{"board_id": str(board_id), "metadata": {}}],
+                [],
+            ]
+        )
 
         await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
 
@@ -680,8 +757,8 @@ class TestSyncBoards:
         assert rehome_calls[0].args[1] == ["https://acme.com/careers"]
         assert "updated_at = now()" in rehome_calls[0].args[0]
 
-    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
-    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
     async def test_local_path_enqueues_merged_metadata_to_redis(
         self,
         mock_enqueue,
@@ -729,13 +806,19 @@ class TestSyncBoards:
         }
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
-        mock_local_conn.fetchval = AsyncMock(return_value=merged_metadata)
-        mock_local_conn.fetch = AsyncMock(return_value=[])
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [{"board_id": str(board_id), "metadata": merged_metadata}],
+                [],
+            ]
+        )
 
         await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
 
         mock_enqueue.assert_awaited_once()
-        config = mock_enqueue.await_args.args[3]
+        schedules = mock_enqueue.await_args.args[0]
+        assert len(schedules) == 1
+        config = schedules[0].config
         assert json.loads(config["metadata"]) == merged_metadata
         assert config["crawler_type"] == "eightfold"
         mock_remove.assert_not_awaited()
