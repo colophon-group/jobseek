@@ -72,16 +72,6 @@ def _build_url_matcher(url_filter) -> re.Pattern | None:
     return re.compile(include) if include else None
 
 
-def _build_url_extractor(url_regex) -> re.Pattern | None:
-    """Compile an optional regex for URLs embedded outside anchor tags."""
-    if not url_regex:
-        return None
-    pattern = re.compile(url_regex)
-    if pattern.groups < 1:
-        raise ValueError("DOM url_regex requires at least one capture group")
-    return pattern
-
-
 def _build_url_identity_transform(url_transform) -> tuple[re.Pattern, str] | None:
     """Compile a URL rewrite for transformation-aware pagination dedupe.
 
@@ -150,7 +140,6 @@ def _extract_links_static(
     html: str,
     base_url: str,
     url_matcher: re.Pattern | None = None,
-    url_extractor: re.Pattern | None = None,
 ) -> set[str]:
     """Parse ``<a href>`` links from raw HTML and filter for job URLs.
 
@@ -160,12 +149,8 @@ def _extract_links_static(
     parser = _LinkExtractor()
     parser.feed(html)
 
-    hrefs = list(parser.hrefs)
-    if url_extractor is not None:
-        hrefs.extend(match.group(1).replace(r"\/", "/") for match in url_extractor.finditer(html))
-
     urls: set[str] = set()
-    for href in hrefs:
+    for href in parser.hrefs:
         absolute = urljoin(base_url, href)
         if not absolute.startswith("http"):
             continue
@@ -186,7 +171,6 @@ async def _extract_links_rendered(
     page,
     metadata: dict,
     url_matcher: re.Pattern | None = None,
-    url_extractor: re.Pattern | None = None,
 ) -> set[str]:
     """Navigate, run actions, and extract job links from a Playwright page."""
     board_url = metadata["_board_url"]
@@ -206,9 +190,6 @@ async def _extract_links_rendered(
                 urls.add(link)
         elif any(kw in link.lower() for kw in _JOB_KEYWORDS):
             urls.add(link)
-    if url_extractor is not None:
-        html = await page.content()
-        urls |= _extract_links_static(html, board_url, url_matcher, url_extractor)
     return urls
 
 
@@ -347,7 +328,6 @@ async def _paginate_urls(
     client: httpx.AsyncClient,
     page=None,
     url_matcher: re.Pattern | None = None,
-    url_extractor: re.Pattern | None = None,
     url_transform: dict | None = None,
 ) -> set[str]:
     """Fetch paginated pages and merge discovered links with *initial_urls*.
@@ -425,7 +405,7 @@ async def _paginate_urls(
             log.info("dom.pagination.end", page=page_num, url=page_url)
             break
 
-        new_urls = _extract_links_static(html, page_url, url_matcher, url_extractor)
+        new_urls = _extract_links_static(html, page_url, url_matcher)
         added: set[str] = set()
         for url in sorted(new_urls):
             identity = _url_identity(url, identity_transform)
@@ -486,7 +466,6 @@ async def dom_discover(
     actions = metadata.get("actions")
     pagination = metadata.get("pagination")
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
-    url_extractor = _build_url_extractor(metadata.get("url_regex"))
     url_transform = metadata.get("url_transform")
 
     if not render and actions:
@@ -502,7 +481,7 @@ async def dom_discover(
 
         if pw is not None:
             async with open_page(pw, combined, use_proxy=bool(metadata.get("proxy"))) as page:
-                urls = await _extract_links_rendered(page, combined, url_matcher, url_extractor)
+                urls = await _extract_links_rendered(page, combined, url_matcher)
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
                     urls = await _paginate_urls(
@@ -512,7 +491,6 @@ async def dom_discover(
                         client,
                         browser_page,
                         url_matcher,
-                        url_extractor,
                         url_transform,
                     )
         else:
@@ -528,7 +506,7 @@ async def dom_discover(
                 async_playwright() as p,
                 open_page(p, combined, use_proxy=bool(metadata.get("proxy"))) as page,
             ):
-                urls = await _extract_links_rendered(page, combined, url_matcher, url_extractor)
+                urls = await _extract_links_rendered(page, combined, url_matcher)
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
                     urls = await _paginate_urls(
@@ -538,7 +516,6 @@ async def dom_discover(
                         client,
                         browser_page,
                         url_matcher,
-                        url_extractor,
                         url_transform,
                     )
     else:
@@ -548,7 +525,7 @@ async def dom_discover(
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
             return set()
-        urls = _extract_links_static(html, board_url, url_matcher, url_extractor)
+        urls = _extract_links_static(html, board_url, url_matcher)
         if pagination:
             urls = await _paginate_urls(
                 board_url,
@@ -556,7 +533,6 @@ async def dom_discover(
                 urls,
                 client,
                 url_matcher=url_matcher,
-                url_extractor=url_extractor,
                 url_transform=url_transform,
             )
 
