@@ -36,8 +36,9 @@ on:
           - backfill-typesense
 
 concurrency:
-  # Serialize scheduled runs. A concurrent deploy is fine — it has its own
-  # concurrency group and its inline refresh is idempotent with ours.
+  # Serialize scheduled runs. Deploys have a separate concurrency group, but
+  # deploy.sh refuses to overlap these named maintenance containers because
+  # its inline sync also refreshes Typesense counts.
   group: crawler-scheduled-maintenance
   cancel-in-progress: false
 
