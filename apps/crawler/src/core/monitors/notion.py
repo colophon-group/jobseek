@@ -26,6 +26,7 @@ Config (``board.metadata``):
 
 from __future__ import annotations
 
+import asyncio
 import re
 from urllib.parse import urlparse
 
@@ -33,6 +34,7 @@ import httpx
 import structlog
 
 from src.core.monitors import register
+from src.shared.http_retry import PaginationFetchError, fetch_json_page_with_retry
 
 log = structlog.get_logger()
 
@@ -116,15 +118,18 @@ async def _api_post(
     subdomain: str,
     endpoint: str,
     payload: dict,
-) -> dict | None:
+) -> dict:
     url = f"https://{subdomain}.notion.site/api/v3/{endpoint}"
-    try:
-        resp = await client.post(url, json=payload, timeout=_API_TIMEOUT)
-        if resp.status_code != 200:
-            return None
-        return resp.json()
-    except Exception:
-        return None
+    return await fetch_json_page_with_retry(
+        client,
+        url,
+        expect_shape=dict,
+        method="POST",
+        json_body=payload,
+        timeout=_API_TIMEOUT,
+        log_event="notion.api_backoff",
+        sleep=asyncio.sleep,
+    )
 
 
 async def _get_public_page_data(
@@ -481,6 +486,10 @@ async def _find_job_pages(
         # Strategy 1: direct child pages
         pages = _extract_child_pages(chunk, cand_id, include_nested=include_nested)
         if pages:
+            # Direct subpages have titles but no collection properties.
+            # Property filters are collection-only by contract and applying
+            # an include rule here would incorrectly remove every subpage.
+            pages = _apply_row_filters(pages, title_exclude=title_exclude)
             log.info(
                 "notion.strategy",
                 strategy="subpages",
@@ -567,7 +576,11 @@ async def can_handle(
     if not subdomain or not client:
         return None
 
-    pages = await _find_job_pages(client, subdomain, path_hint)
+    try:
+        pages = await _find_job_pages(client, subdomain, path_hint)
+    except PaginationFetchError:
+        log.debug("notion.probe_failed", url=url, exc_info=True)
+        return None
     if not pages:
         return None
 

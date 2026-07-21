@@ -18,6 +18,7 @@ from src.core.monitors import (
     BoardGoneError,
     DiscoveredJob,
     register,
+    slug_guess_allowed,
 )
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.raw import save_json_response
@@ -266,6 +267,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         fetch_job_count=_fetch_template_count,
         api_probe=_probe_template_token,
         initial_context=None,
+        allow_slug_guess=slug_guess_allowed(),
     )
 
 

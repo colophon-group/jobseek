@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 
+from src.core.monitors import notion as notion_monitor
 from src.core.monitors.notion import (
     _extract_child_pages,
     _extract_title,
@@ -17,6 +19,8 @@ from src.core.monitors.notion import (
     can_handle,
     discover,
 )
+from src.core.scrapers import notion as notion_scraper
+from src.shared.http_retry import PaginationFetchError
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -530,13 +534,19 @@ class TestCanHandle:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_returns_none_when_api_fails(self):
+    async def test_returns_none_when_api_fails(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(notion_monitor.asyncio, "sleep", AsyncMock())
+        calls = 0
+
         def handler(r):
+            nonlocal calls
+            calls += 1
             return httpx.Response(500)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle(f"https://{SUBDOMAIN}.notion.site/abc", client)
         assert result is None
+        assert calls == 3
 
 
 # ---------------------------------------------------------------------------
@@ -545,6 +555,56 @@ class TestCanHandle:
 
 
 class TestDiscover:
+    @pytest.mark.asyncio
+    async def test_retries_transient_api_status(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(notion_monitor.asyncio, "sleep", AsyncMock())
+        chunk = _make_chunk_response(_URL_PAGE_ID, JOB_PAGES)
+        load_calls = 0
+
+        def handler(request):
+            nonlocal load_calls
+            url = str(request.url)
+            if "getPublicPageData" in url:
+                return httpx.Response(200, json=_make_public_page_data())
+            if "loadPageChunk" in url:
+                load_calls += 1
+                if load_calls == 1:
+                    return httpx.Response(429)
+                return httpx.Response(200, json=chunk)
+            return httpx.Response(404)
+
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert len(urls) == 3
+        assert load_calls == 2
+
+    @pytest.mark.asyncio
+    async def test_propagates_exhausted_transient_api_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(notion_monitor.asyncio, "sleep", AsyncMock())
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            return httpx.Response(503)
+
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError, match="status=503"):
+                await discover(board, client)
+
+        assert calls == 3
+
     @pytest.mark.asyncio
     async def test_returns_job_urls_from_url_page(self):
         """Jobs found directly under the URL's page."""
@@ -640,6 +700,36 @@ class TestDiscover:
         assert len(urls) == 4
 
     @pytest.mark.asyncio
+    async def test_title_exclude_filters_subpages(self):
+        handler = _make_handler(
+            public_data=_make_public_page_data(),
+            default_chunk=_make_chunk_response(_URL_PAGE_ID, JOB_PAGES),
+        )
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {"title_exclude": "Product Manager|Data Analyst"},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert urls == {_page_url(SUBDOMAIN, JOB_PAGES[0]["id"])}
+
+    @pytest.mark.asyncio
+    async def test_collection_property_filter_does_not_remove_subpages(self):
+        handler = _make_handler(
+            public_data=_make_public_page_data(),
+            default_chunk=_make_chunk_response(_URL_PAGE_ID, JOB_PAGES),
+        )
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {"property_filter": {"include": {"Status": "Open"}}},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert len(urls) == len(JOB_PAGES)
+
+    @pytest.mark.asyncio
     async def test_raises_for_non_notion_url(self):
         board = {"board_url": "https://example.com/careers", "metadata": {}}
 
@@ -665,3 +755,71 @@ class TestDiscover:
             urls = await discover(board, client)
 
         assert len(urls) == 3
+
+
+class TestNotionScraperRetries:
+    @staticmethod
+    def _chunk(page_id: str) -> dict:
+        paragraph_id = "ddd44444-4444-4444-4444-444444444444"
+        return {
+            "recordMap": {
+                "block": {
+                    page_id: {
+                        "value": {
+                            "value": {
+                                "type": "page",
+                                "properties": {"title": [["Platform Engineer"]]},
+                                "content": [paragraph_id],
+                            }
+                        }
+                    },
+                    paragraph_id: {
+                        "value": {
+                            "value": {
+                                "type": "text",
+                                "properties": {"title": [["Build resilient systems."]]},
+                            }
+                        }
+                    },
+                }
+            }
+        }
+
+    @pytest.mark.asyncio
+    async def test_retries_transient_api_status(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(notion_scraper.asyncio, "sleep", AsyncMock())
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return httpx.Response(429)
+            return httpx.Response(200, json=self._chunk(_URL_PAGE_ID))
+
+        url = _page_url(SUBDOMAIN, _URL_PAGE_ID)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await notion_scraper.scrape(url, {}, client)
+
+        assert calls == 2
+        assert result.title == "Platform Engineer"
+        assert result.description == "<p>Build resilient systems.</p>"
+
+    @pytest.mark.asyncio
+    async def test_propagates_exhausted_transient_api_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(notion_scraper.asyncio, "sleep", AsyncMock())
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            return httpx.Response(503)
+
+        url = _page_url(SUBDOMAIN, _URL_PAGE_ID)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError, match="status=503"):
+                await notion_scraper.scrape(url, {}, client)
+
+        assert calls == 3
