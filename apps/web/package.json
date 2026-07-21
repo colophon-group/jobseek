@@ -96,7 +96,7 @@
     "svgo": "^4.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "typescript-eslint": "^8.56.1",
+    "typescript-eslint": "^8.65.0",
     "vitest": "^4.1.10"
   }
 }
