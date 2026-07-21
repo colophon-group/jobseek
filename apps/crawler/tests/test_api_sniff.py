@@ -660,6 +660,59 @@ class TestPaginateAllWithFetchFn:
         assert len(items) == 5
 
     @pytest.mark.asyncio
+    async def test_paginate_projects_each_page_before_retaining_items(self):
+        """Large unused payloads do not accumulate across API pages."""
+        page1_items = [
+            {"title": "Job 1", "url": "/1", "unused_blob": "x" * 50_000},
+            {"title": "Job 2", "url": "/2", "unused_blob": "x" * 50_000},
+            {"title": "Job 3", "url": "/3", "unused_blob": "x" * 50_000},
+        ]
+        page2_items = [
+            {"title": "Job 4", "url": "/4", "unused_blob": "x" * 50_000},
+            {"title": "Job 5", "url": "/5", "unused_blob": "x" * 50_000},
+            {"title": "Job 6", "url": "/6", "unused_blob": "x" * 50_000},
+        ]
+
+        async def mock_fetch(method, url, headers, body):
+            return {"jobs": page2_items, "total": 6}
+
+        ex = _make_exchange(
+            url="https://example.com/api/jobs?page=1",
+            body={"jobs": page1_items, "total": 6},
+        )
+        pag = PaginationInfo(
+            param_name="page",
+            style="page",
+            start_value=1,
+            increment=1,
+            location="query",
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field="url",
+            total_count=6,
+            pagination=pag,
+        )
+
+        items = await paginate_all(
+            mock_fetch,
+            result,
+            max_pages=5,
+            item_projector=lambda item: {k: item[k] for k in ("title", "url")},
+        )
+
+        assert len(items) == 6
+        assert all(set(item) == {"title", "url"} for item in items)
+        assert {item["title"] for item in items} == {
+            "Job 1",
+            "Job 2",
+            "Job 3",
+            "Job 4",
+            "Job 5",
+            "Job 6",
+        }
+
+    @pytest.mark.asyncio
     async def test_paginate_propagates_persistent_fetch_error(self, monkeypatch):
         """A persistent transient on a paginated fetch raises
         ``PaginationFetchError`` rather than silently truncating to the

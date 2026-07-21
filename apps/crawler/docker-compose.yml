@@ -48,6 +48,9 @@ services:
       retries: 3
 
   # -- Workers (3x HTTP, each on its own metrics port) -------------
+  # Each worker has 1 CPU / 1 GiB. Keep discovery at the code default and
+  # cap full-board monitor results at five concurrent tasks so large APIs do
+  # not multiply their retained pagination footprint up to the cgroup limit.
   worker-1:
     image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
     init: true
@@ -60,8 +63,8 @@ services:
     environment:
       <<: *common-env
       METRICS_PORT: "9095"
-      DISCOVERY_CONCURRENCY: "30"
-      MONITOR_CONCURRENCY: "10"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
       CRAWLER_DB_POOL_MAX: "20"
     depends_on:
       redis:
@@ -85,8 +88,8 @@ services:
     environment:
       <<: *common-env
       METRICS_PORT: "9096"
-      DISCOVERY_CONCURRENCY: "30"
-      MONITOR_CONCURRENCY: "10"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
       CRAWLER_DB_POOL_MAX: "20"
     depends_on:
       redis:
@@ -110,8 +113,8 @@ services:
     environment:
       <<: *common-env
       METRICS_PORT: "9097"
-      DISCOVERY_CONCURRENCY: "30"
-      MONITOR_CONCURRENCY: "10"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
       CRAWLER_DB_POOL_MAX: "20"
     depends_on:
       redis:

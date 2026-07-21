@@ -30,6 +30,9 @@ log = structlog.get_logger()
 FetchJsonFn = Callable[[str, str, dict, str | None], Awaitable[object]]
 """(method, url, headers, body) -> parsed JSON. Raises on error."""
 
+ItemProjector = Callable[[dict], dict]
+"""Reduce one API item before it is retained across pagination pages."""
+
 
 def make_browser_fetcher(page) -> FetchJsonFn:
     """Create a FetchJsonFn that executes fetch() inside the browser context.
@@ -1204,11 +1207,19 @@ async def paginate_all(
     fetch_fn: FetchJsonFn,
     result: JobListResult,
     max_pages: int,
+    *,
+    item_projector: ItemProjector | None = None,
 ) -> list[dict]:
-    """Fetch all pages of a paginated API using the given transport function."""
+    """Fetch all pages of a paginated API using the given transport function.
+
+    ``item_projector`` is applied as each page arrives.  This lets callers
+    discard unused fields before thousands of response objects accumulate in
+    memory while preserving pagination decisions based on the original page.
+    """
     pag = result.pagination
     ex = result.candidate.exchange
-    all_items = list(result.candidate.items)
+    project = item_projector or (lambda item: item)
+    all_items = [project(item) for item in result.candidate.items]
 
     if pag is None:
         return all_items
@@ -1244,7 +1255,7 @@ async def paginate_all(
                     new=len(probe_items),
                 )
                 page_size = len(probe_items)
-                all_items = probe_items
+                all_items = [project(item) for item in probe_items]
                 ex = Exchange(
                     method=ex.method,
                     url=probe_url,
@@ -1312,7 +1323,7 @@ async def paginate_all(
                 break
         else:
             empty_count = 0
-            all_items.extend(items)
+            all_items.extend(project(item) for item in items)
             if len(items) < page_size:
                 break
 
