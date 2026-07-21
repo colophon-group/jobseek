@@ -50,6 +50,7 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "greenhouse",
     "hireology",
     "inline",
+    "jarvi",
     "jobylon",
     "lever",
     "mokahr",

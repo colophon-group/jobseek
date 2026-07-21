@@ -544,6 +544,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Jobylon embed \u2014 {label}, {jobs} jobs"
         return f"Jobylon embed \u2014 {label}"
+    if name == "jarvi":
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Jarvi public API \u2014 {jobs} jobs"
+        return "Jarvi public API"
     if name == "rss":
         preset = metadata.get("preset", "generic")
         feed_url = metadata.get("feed_url", "?")
@@ -647,6 +652,7 @@ from src.core.monitors import (  # noqa: E402
     greenhouse,  # noqa: F401
     hireology,  # noqa: F401
     inline,  # noqa: F401
+    jarvi,  # noqa: F401
     jobylon,  # noqa: F401
     join,  # noqa: F401
     lever,  # noqa: F401

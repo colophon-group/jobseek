@@ -47,6 +47,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `gem` | Rich | skip | Gem ATS |
 | `greenhouse` | Rich | skip | Greenhouse ATS |
 | `hireology` | Rich | skip | Hireology ATS |
+| `jarvi` | Rich | skip | Jarvi public careers API embeds |
 | `jobylon` | Rich | skip | Jobylon iframe embeds |
 | `lever` | Rich | skip | Lever ATS |
 | `mokahr` | Rich | skip | Mokahr ATS |

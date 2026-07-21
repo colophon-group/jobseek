@@ -84,6 +84,7 @@ Monitor Types (cheapest first):
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
+  jarvi             10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
@@ -469,6 +470,22 @@ gem — Gem ATS Job Board API
 
   Detection:  ws probe shows "Gem API — slug: {token}, N jobs"
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
+
+MONITOR_JARVI = """\
+jarvi — Jarvi public careers API
+
+  Detects the Jarvi SDK embedded on a company's careers page and reads its
+  public API key from the data-public-api-key attribute.
+
+  Rich monitor — returns title, description, location, employment type,
+  workplace type, publication date, public salary data, qualifications,
+  and responsibilities. No scraper is needed.
+
+  Config (auto-filled by probe):
+    {"public_api_key": "...", "currency": "EUR"}
+
+  The board URL remains the company's careers page. Job URLs use Jarvi's
+  stable ?q=<short-id>/<title-slug> deep-link format."""
 
 MONITOR_GREENHOUSE = """\
 greenhouse — Greenhouse Public API
@@ -2103,6 +2120,7 @@ MONITOR_CARDS: dict[str, str] = {
     "gem": MONITOR_GEM,
     "greenhouse": MONITOR_GREENHOUSE,
     "hireology": MONITOR_HIREOLOGY,
+    "jarvi": MONITOR_JARVI,
     "jobylon": MONITOR_JOBYLON,
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
