@@ -241,8 +241,7 @@ class TestDetectJobList:
 
     def test_prefers_bamboohr_jobs_over_currency_reference_data(self):
         currency_items = [
-            {"id": i, "code": f"C{i}", "name": f"Currency {i}", "symbol": "$"}
-            for i in range(20)
+            {"id": i, "code": f"C{i}", "name": f"Currency {i}", "symbol": "$"} for i in range(20)
         ]
         job_items = [
             {
