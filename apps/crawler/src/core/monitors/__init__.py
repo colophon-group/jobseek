@@ -488,6 +488,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Recruiter.co.kr \u2014 slug: {slug}, {jobs} jobs"
         return f"Recruiter.co.kr \u2014 slug: {slug}"
+    if name == "hirehive":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"HireHive API \u2014 slug: {slug}, {jobs} jobs"
+        return f"HireHive API \u2014 slug: {slug}"
     if name == "hireology":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -645,6 +651,7 @@ from src.core.monitors import (  # noqa: E402
     eightfold,  # noqa: F401
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
+    hirehive,  # noqa: F401
     hireology,  # noqa: F401
     inline,  # noqa: F401
     jobylon,  # noqa: F401

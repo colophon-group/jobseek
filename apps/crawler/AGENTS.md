@@ -27,6 +27,7 @@ src/
 │   │   ├── ashby.py       # Ashby Job Board API
 │   │   ├── gem.py         # Gem ATS Job Board API
 │   │   ├── greenhouse.py  # Greenhouse JSON API
+│   │   ├── hirehive.py    # HireHive public Jobs API
 │   │   ├── hireology.py   # Hireology Careers API
 │   │   ├── lever.py       # Lever Postings API
 │   │   ├── personio.py    # Personio Public XML Feed

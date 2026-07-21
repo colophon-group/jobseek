@@ -101,6 +101,7 @@ _ATS_URL_RE = re.compile(
     r"|(?:www\.)?comeet\.com/jobs/[\w-]+/[\w.]+"
     r"|ats(?:\.[\w]+)?\.rippling\.com/[\w-]+"
     r"|careers\.hireology\.com/[\w-]+"
+    r"|[\w-]+\.hirehive\.com"
     r"|[\w-]*recruiting\.paylocity\.com/recruiting/jobs/[\w/-]+"
     r"|[\w-]+\.wd\d+\.myworkdayjobs\.com(?:/[\w-]+)?"
     # d.vinci
@@ -131,6 +132,7 @@ _BLIND_PROBE_TEMPLATES: dict[str, str] = {
     "workable": "https://apply.workable.com/{slug}",
     "rippling": "https://ats.rippling.com/{slug}/jobs",
     "hireology": "https://careers.hireology.com/{slug}",
+    "hirehive": "https://{slug}.hirehive.com",
 }
 
 # Maximum career links to follow from homepage

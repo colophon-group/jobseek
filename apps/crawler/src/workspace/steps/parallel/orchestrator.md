@@ -80,7 +80,7 @@ For each new board:
 
    **Fast path (single test, no subagents):** If the probe's top result is a
    **known stable ATS** — greenhouse, ashby, comeet, lever, gem, recruitee, personio,
-   workday, hireology, paylocity, pinpoint, dvinci, traffit, rss — AND it matched with
+   workday, hirehive, hireology, paylocity, pinpoint, dvinci, traffit, rss — AND it matched with
    high confidence (detected via `can_handle`), test it directly yourself.
    No need to spawn subagents for an obvious choice. For companies with
    multiple boards on the same ATS, configure subsequent boards directly

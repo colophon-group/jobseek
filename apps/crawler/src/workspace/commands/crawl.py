@@ -914,6 +914,7 @@ _MONITOR_CONFIG_HINTS = {
     "comeet": "No config required (company and board ID are derived from the URL)",
     "dvinci": "Requires: slug (auto-filled from probe)",
     "greenhouse": "Requires: token (auto-filled from probe)",
+    "hirehive": "Requires: slug (auto-filled from probe)",
     "hireology": "Requires: slug (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
     "paylocity": "No config required (uses embedded window.pageData)",
