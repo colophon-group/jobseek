@@ -26,6 +26,7 @@ Config (``board.metadata``):
 
 from __future__ import annotations
 
+import asyncio
 import re
 from urllib.parse import urlparse
 
@@ -127,6 +128,7 @@ async def _api_post(
         json_body=payload,
         timeout=_API_TIMEOUT,
         log_event="notion.api_backoff",
+        sleep=asyncio.sleep,
     )
 
 
@@ -484,11 +486,10 @@ async def _find_job_pages(
         # Strategy 1: direct child pages
         pages = _extract_child_pages(chunk, cand_id, include_nested=include_nested)
         if pages:
-            pages = _apply_row_filters(
-                pages,
-                title_exclude=title_exclude,
-                property_filter=property_filter,
-            )
+            # Direct subpages have titles but no collection properties.
+            # Property filters are collection-only by contract and applying
+            # an include rule here would incorrectly remove every subpage.
+            pages = _apply_row_filters(pages, title_exclude=title_exclude)
             log.info(
                 "notion.strategy",
                 strategy="subpages",
