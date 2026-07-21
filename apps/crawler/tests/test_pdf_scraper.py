@@ -111,7 +111,13 @@ class TestCapturedText:
         assert _normalize_captured_text(value) == "Senior Battery Pack Manufacturing Engineer"
 
     def test_rejoins_split_capitalized_word(self):
-        assert _normalize_captured_text("M\nechanical Engineer") == "Mechanical Engineer"
+        assert (
+            _normalize_captured_text("M\nechanical Engineer", repair_split_initial=True)
+            == "Mechanical Engineer"
+        )
+
+    def test_does_not_rejoin_ambiguous_initial_by_default(self):
+        assert _normalize_captured_text("A\nrole") == "A role"
 
     def test_extracts_and_normalizes_capture_group(self):
         text = "Location\n Sawston,\n Cambridge\nWho we are"
@@ -257,6 +263,7 @@ class TestScrape:
                 {
                     "title_source": "text",
                     "title_pattern": r"(?s)Job Title\s*(.*?)\s*Reports to",
+                    "repair_split_initial": True,
                     "location_pattern": r"(?s)Location\s*(.*?)\s*Who we are",
                 },
                 client,

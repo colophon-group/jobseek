@@ -15,6 +15,9 @@ Config:
     location_pattern
                    Optional regex with a capture group for the location,
                    applied to the raw PDF text.
+    repair_split_initial
+                   Opt in to joining a capital initial split from the rest of
+                   its word by a PDF extraction newline (M\\nechanical).
 """
 
 from __future__ import annotations
@@ -32,26 +35,39 @@ from src.core.scrapers import JobContent, register
 log = structlog.get_logger()
 
 
-def _normalize_captured_text(value: str) -> str | None:
+def _normalize_captured_text(
+    value: str,
+    *,
+    repair_split_initial: bool = False,
+) -> str | None:
     """Collapse PDF layout whitespace in a captured scalar field.
 
     Some PDFs split a word after its first capital letter (for example,
-    ``"M\nechanical"``). Rejoin that extraction artefact before collapsing
-    the remaining whitespace.
+    ``"M\nechanical"``). When explicitly requested, rejoin that ambiguous
+    extraction artefact before collapsing the remaining whitespace.
     """
-    value = re.sub(r"\b([A-Z])\s*\n\s*(?=[a-z])", r"\1", value)
+    if repair_split_initial:
+        value = re.sub(r"\b([A-Z])\s*\n\s*(?=[a-z])", r"\1", value)
     value = re.sub(r"\s+", " ", value).strip()
     return value or None
 
 
-def _extract_pattern(text: str, pattern: str | None) -> str | None:
+def _extract_pattern(
+    text: str,
+    pattern: str | None,
+    *,
+    repair_split_initial: bool = False,
+) -> str | None:
     """Return a normalized first capture group from *pattern*."""
     if not pattern:
         return None
     match = re.search(pattern, text)
     if not match or not match.lastindex:
         return None
-    return _normalize_captured_text(match.group(1))
+    return _normalize_captured_text(
+        match.group(1),
+        repair_split_initial=repair_split_initial,
+    )
 
 
 def _title_from_url(url: str, pattern: str | None = None) -> str | None:
@@ -157,7 +173,11 @@ async def scrape(
     title_pattern = config.get("title_pattern")
 
     if title_source == "text":
-        title = _extract_pattern(full_text, title_pattern)
+        title = _extract_pattern(
+            full_text,
+            title_pattern,
+            repair_split_initial=bool(config.get("repair_split_initial")),
+        )
         if not title:
             title = _title_from_text(full_text) or _title_from_url(url, title_pattern)
     else:
