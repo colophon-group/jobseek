@@ -889,6 +889,14 @@ dom — Link Extraction (fallback)
     timeout        Navigation timeout in ms (default: 30000)
     user_agent     Custom User-Agent string
     headless       Run headless (default: true)
+    proxy          Route traffic through the configured proxy provider. Use for
+                   origins that block the crawler's datacenter IP.
+    persistent_context
+                   Use a real browser profile shape for anti-bot challenges.
+                   Usually pair with channel: "chrome" and headless: false.
+    channel        Browser channel, typically "chrome" with persistent_context.
+    stealth        Use Chromium's less-detectable new headless mode.
+    warmup_url     Visit this URL in the same browser context before the board.
     actions        Browser action pipeline (see: ws help actions)
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
                    Keep patterns broad enough to include URL variants
@@ -1582,6 +1590,14 @@ dom — Step-based Extraction Engine
     timeout        Navigation timeout in ms (default: 30000)
     user_agent     Custom User-Agent
     headless       Run headless (default: true)
+    proxy          Route traffic through the configured proxy provider. Use for
+                   origins that block the crawler's datacenter IP.
+    persistent_context
+                   Use a real browser profile shape for anti-bot challenges.
+                   Usually pair with channel: "chrome" and headless: false.
+    channel        Browser channel, typically "chrome" with persistent_context.
+    stealth        Use Chromium's less-detectable new headless mode.
+    warmup_url     Visit this URL in the same browser context before the job.
     actions        Browser action pipeline (see: ws help actions)
 
   Target fields: title, description, locations, employment_type,

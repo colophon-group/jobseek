@@ -1193,6 +1193,50 @@ class TestCaterpillarRateLimitConfig:
         assert scraper_needs_browser("json-ld", sc) is True
 
 
+class TestGrooveQuantumSiteGroundConfig:
+    """Groove Quantum must bypass SiteGround's crawler-IP challenge (#4224)."""
+
+    def test_monitor_and_scraper_use_proxy_backed_real_browser(self):
+        import json
+
+        from src.core.scrapers.dom import parse_html
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "groove-quantum-careers"), None)
+        assert row is not None, "groove-quantum-careers row missing from boards.csv"
+
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "dom"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        for config in (monitor_config, scraper_config):
+            assert config["render"] is True
+            assert config["proxy"] is True
+            assert config["persistent_context"] is True
+            assert config["channel"] == "chrome"
+            assert config["headless"] is False
+
+        assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["url_filter"] == "/job/"
+
+        sample_html = """
+        <h1>Quantum Measurement Engineer</h1>
+        <div>Location: Delft Type: Full-time Posted on: 14 Jan 2026</div>
+        <h4>Description</h4>
+        <p>Build and operate scalable quantum systems.</p>
+        <h4>Application procedure</h4>
+        """
+        content = parse_html(sample_html, scraper_config)
+        assert content.title == "Quantum Measurement Engineer"
+        assert content.locations == ["Delft"]
+        assert content.employment_type == "Full-time"
+        assert content.date_posted == "14 Jan 2026"
+        assert "Build and operate scalable quantum systems" in content.description
+
+
 class TestOverwolfComeetDescriptionCoverage:
     """Overwolf must use Comeet's rich source directly (#5807).
 
