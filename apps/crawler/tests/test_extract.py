@@ -64,6 +64,14 @@ class TestFlatten:
             ("p", "Job description"),
         ]
 
+    def test_header_noise_stays_excluded(self):
+        html = (
+            "<header><p>Brand</p><nav><h1>Navigation title</h1></nav>"
+            "<a>Contact us</a></header><main><h1>Job title</h1></main>"
+        )
+        els = flatten(html)
+        assert [(el["tag"], el["text"]) for el in els] == [("h1", "Job title")]
+
     def test_aria_hidden_excluded(self):
         html = (
             '<div>Visible</div><div aria-hidden="true"><p>Hidden subtree</p></div><div>After</div>'

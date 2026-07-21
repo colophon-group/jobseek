@@ -30,13 +30,14 @@ SKIP_TAGS = frozenset(
     }
 )
 
-# Tags whose entire subtrees are structural noise.  ``header`` is deliberately
-# not included: many sites use a semantic page header for the job title while
-# nesting the actual navigation in a separate ``nav`` element.
+# Tags whose entire subtrees are structural noise. A semantic ``h1`` directly
+# inside a page header is captured separately; the rest of the header remains
+# excluded so global navigation and calls to action cannot leak into jobs.
 NOISE_TAGS = frozenset(
     {
         "nav",
         "footer",
+        "header",
     }
 )
 
@@ -119,6 +120,22 @@ class FlattenParser(HTMLParser):
         # Special <title> capture — works even inside <head> (SKIP_TAGS)
         self._in_title = False
         self._title_text: list[str] = []
+        # Preserve a semantic page title inside an otherwise noisy <header>.
+        self._in_header_h1 = False
+        self._header_h1_attrs: dict = {}
+        self._header_h1_text: list[str] = []
+
+    @staticmethod
+    def _normalized_text(parts: list[str]) -> str:
+        return " ".join("".join(parts).split())
+
+    def _flush_header_h1(self) -> None:
+        text = self._normalized_text(self._header_h1_text)
+        if text:
+            self.elements.append({"tag": "h1", "attrs": self._header_h1_attrs, "text": text})
+        self._in_header_h1 = False
+        self._header_h1_attrs = {}
+        self._header_h1_text = []
 
     def _flush_text(self):
         """Flush accumulated text as an element."""
@@ -127,9 +144,7 @@ class FlattenParser(HTMLParser):
         # headings such as ``<span>S</span><span>a</span><span>l</span>``
         # into ``S a l``.  Raw text nodes already contain the whitespace that
         # separates words, so concatenate first and normalize afterwards.
-        text = "".join(self._current_text).strip()
-        # Collapse whitespace
-        text = " ".join(text.split())
+        text = self._normalized_text(self._current_text)
         if text and len(text) > 0:
             self.elements.append(
                 {
@@ -149,6 +164,20 @@ class FlattenParser(HTMLParser):
 
         # Track skip depth
         if self._skip_depth > 0:
+            skip_root = next((entry for entry in self._stack if entry[2]), None)
+            if (
+                tag == "h1"
+                and skip_root is not None
+                and skip_root[0] == "header"
+                and not any(entry[0] == "nav" for entry in self._stack)
+                and skip_root[1].get("aria-hidden") != "true"
+                and "hidden" not in skip_root[1]
+            ):
+                self._in_header_h1 = True
+                self._header_h1_attrs = attr_dict
+                self._header_h1_text = []
+            elif tag == "br" and self._in_header_h1:
+                self._header_h1_text.append(" ")
             if tag not in VOID_TAGS:
                 self._stack.append((tag, attr_dict, True))
                 self._skip_depth += 1
@@ -184,6 +213,8 @@ class FlattenParser(HTMLParser):
     def handle_endtag(self, tag: str):
         if tag == "title":
             self._in_title = False
+        if tag == "h1" and self._in_header_h1:
+            self._flush_header_h1()
 
         if tag in VOID_TAGS:
             return
@@ -222,16 +253,19 @@ class FlattenParser(HTMLParser):
         # Capture <title> text even inside skipped subtrees
         if self._in_title:
             self._title_text.append(data)
+        if self._in_header_h1:
+            self._header_h1_text.append(data)
         if self._skip_depth > 0:
             return
         self._current_text.append(data)
 
     def finish(self):
         self._flush_text()
+        if self._in_header_h1:
+            self._flush_header_h1()
         # Prepend <title> element if captured (even from inside <head>)
         if self._title_text:
-            title_text = "".join(self._title_text).strip()
-            title_text = " ".join(title_text.split())  # collapse whitespace
+            title_text = self._normalized_text(self._title_text)
             if title_text:
                 self.elements.insert(
                     0,
