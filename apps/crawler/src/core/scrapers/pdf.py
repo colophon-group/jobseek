@@ -12,6 +12,9 @@ Config:
                    (after URL-decoding and hash stripping).
                    When title_source is "text", applied to the raw PDF text
                    before falling back to the heading-line heuristic.
+    location_pattern
+                   Optional regex with a capture group for the location,
+                   applied to the raw PDF text.
 """
 
 from __future__ import annotations
@@ -29,6 +32,28 @@ from src.core.scrapers import JobContent, register
 log = structlog.get_logger()
 
 
+def _normalize_captured_text(value: str) -> str | None:
+    """Collapse PDF layout whitespace in a captured scalar field.
+
+    Some PDFs split a word after its first capital letter (for example,
+    ``"M\nechanical"``). Rejoin that extraction artefact before collapsing
+    the remaining whitespace.
+    """
+    value = re.sub(r"\b([A-Z])\s*\n\s*(?=[a-z])", r"\1", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value or None
+
+
+def _extract_pattern(text: str, pattern: str | None) -> str | None:
+    """Return a normalized first capture group from *pattern*."""
+    if not pattern:
+        return None
+    match = re.search(pattern, text)
+    if not match or not match.lastindex:
+        return None
+    return _normalize_captured_text(match.group(1))
+
+
 def _title_from_url(url: str, pattern: str | None = None) -> str | None:
     """Extract a plausible job title from the PDF filename."""
     path = unquote(url).rsplit("/", 1)[-1]
@@ -39,9 +64,9 @@ def _title_from_url(url: str, pattern: str | None = None) -> str | None:
         return None
     # Apply pattern before character cleanup so it can match original separators
     if pattern:
-        m = re.search(pattern, name)
-        if m and m.lastindex:
-            return m.group(1).replace("_", " ").strip() or None
+        captured = _extract_pattern(name, pattern)
+        if captured:
+            return captured.replace("_", " ")
     name = name.replace("_", " ").replace("-", " ")
     name = re.sub(r"\s+", " ", name).strip()
     return name if name else None
@@ -132,20 +157,21 @@ async def scrape(
     title_pattern = config.get("title_pattern")
 
     if title_source == "text":
-        title = None
-        if title_pattern:
-            m = re.search(title_pattern, full_text)
-            if m and m.lastindex:
-                title = m.group(1).strip() or None
+        title = _extract_pattern(full_text, title_pattern)
         if not title:
             title = _title_from_text(full_text) or _title_from_url(url, title_pattern)
     else:
         title = _title_from_url(url, title_pattern)
 
+    location = _extract_pattern(full_text, config.get("location_pattern"))
     description = _text_to_html(full_text)
 
     log.debug("pdf.extracted", url=url, title=title, text_length=len(full_text))
-    return JobContent(title=title, description=description)
+    return JobContent(
+        title=title,
+        description=description,
+        locations=[location] if location else None,
+    )
 
 
 def can_handle(htmls: list[str]) -> dict | None:

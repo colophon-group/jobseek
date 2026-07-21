@@ -2228,8 +2228,9 @@ pdf — PDF document scraper
   Used for companies that host job descriptions as PDF files
   (e.g. on Webflow CDN) rather than HTML pages.
 
-  Returns:  title, HTML description
-  Config:   title_source ("url" or "text"), title_pattern (regex)
+  Returns:  title, HTML description, locations (when configured)
+  Config:   title_source ("url" or "text"), title_pattern (regex),
+            location_pattern (regex applied to PDF text)
   Note:     Typically paired with a dom monitor using url_filter to
             discover PDF links on the careers page.
 """
