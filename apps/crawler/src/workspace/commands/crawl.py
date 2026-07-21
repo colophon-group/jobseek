@@ -161,7 +161,7 @@ def _score_probe_results(
     for name, metadata, comment in results:
         if metadata is not None:
             rich = name in api_monitor_types() or (
-                name == "api_sniffer" and bool((metadata or {}).get("fields"))
+                name in ("api_sniffer", "nextdata") and bool((metadata or {}).get("fields"))
             )
             mon_cost = _estimate_monitor_cost(name, n_jobs, metadata)
             init_load = 0.0 if rich else _estimate_initial_load(n_jobs)
@@ -1009,17 +1009,28 @@ def select_monitor(
 
     # Validate pagination config schema if present
     if "pagination" in config:
-        _VALID_PAG_KEYS = {
-            "param_name",
-            "style",
-            "start",
-            "start_value",
-            "increment",
-            "location",
-            "max_pages",
-            "page_size",
-            "browser",
-        }
+        if type_ == "nextdata":
+            _VALID_PAG_KEYS = {
+                "mode",
+                "path",
+                "page_count",
+                "total_records",
+                "page_size",
+                "page_param",
+                "offset_param",
+            }
+        else:
+            _VALID_PAG_KEYS = {
+                "param_name",
+                "style",
+                "start",
+                "start_value",
+                "increment",
+                "location",
+                "max_pages",
+                "page_size",
+                "browser",
+            }
         pag_cfg = config["pagination"]
         if isinstance(pag_cfg, dict):
             unknown = set(pag_cfg.keys()) - _VALID_PAG_KEYS
@@ -1034,7 +1045,7 @@ def select_monitor(
                 if suggestions:
                     msg += f". Did you mean: {', '.join(suggestions)}?"
                 out.die(msg)
-            if "param_name" not in pag_cfg:
+            if type_ != "nextdata" and "param_name" not in pag_cfg:
                 out.die("Pagination config requires 'param_name'. See: ws help monitor api_sniffer")
 
     # Clean up probe/internal data from config

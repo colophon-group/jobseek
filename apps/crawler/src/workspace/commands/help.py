@@ -729,13 +729,19 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     timeout        Navigation timeout in ms (Playwright only)
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
+    source         Embedded source: nextdata (default), reactrouter, rsc,
+                   or phenom_canvas
+    pagination     Page metadata mapping. Example:
+                   {"path":"jobsData.meta","page_count":"totalPages",
+                    "page_param":"page"}
 
   Detection:  ws probe shows "__NEXT_DATA__ — N items at <path>"
               If "(render)" shown, page needs Playwright to load data.
               Auto-searches common paths: props.pageProps.positions,
               props.pageProps.jobs, props.pageProps.openings,
               props.pageProps.allJobs, props.pageProps.data.positions,
-              props.pageProps.data.jobs. Needs >= 5 items (all dicts).
+              props.pageProps.data.jobs, and common RSC equivalents including
+              jobsData.data. Needs >= 5 items (all dicts).
 
   Pair with:  nextdata or json-ld scraper (if URL-only mode)
 
