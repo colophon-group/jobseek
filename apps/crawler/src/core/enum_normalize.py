@@ -50,6 +50,7 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "permanent": "full_time",
     "permanent employment": "full_time",
     "permanent full-time": "full_time",
+    "full-time employee": "full_time",  # onlyfy
     "regular": "full_time",
     "employee / full-time": "full_time",
     "eor / full-time": "full_time",
@@ -73,6 +74,7 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "parttime_permanent": "part_time",
     "parttime_fixed_term": "part_time",
     "permanent_part_time": "part_time",
+    "part-time employee": "part_time",  # onlyfy
     "mini_job": "part_time",
     "minijob": "part_time",
     "seasonal": "part_time",
@@ -89,6 +91,7 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "consultant": "contract",
     "self-employed": "contract",
     "temporary": "temporary",
+    "temporary employee": "temporary",  # onlyfy
     "temporary positions": "temporary",
     "temp": "temporary",
     "internship": "internship",
@@ -101,6 +104,7 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "co-op": "internship",
     "coop": "internship",
     "working student": "internship",
+    "student intern": "internship",  # onlyfy
     "volunteer": "volunteer",
     "voluntary": "volunteer",
     "full time or part time": "full_or_part",

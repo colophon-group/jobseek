@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
@@ -99,6 +100,7 @@ _RSC_PATHS = [
     "allJobs",
     "data.positions",
     "data.jobs",
+    "jobsData.data",
 ]
 
 # Path to jobs array in a Phenom Canvas ``phApp.ddo`` blob.
@@ -111,6 +113,7 @@ def _build_url(
     item: dict,
     url_template: str,
     slug_fields: list[str] | None,
+    url_transform: dict | None = None,
 ) -> str | None:
     """Build a job URL from *item* fields and *url_template*.
 
@@ -133,9 +136,63 @@ def _build_url(
             variables["slug"] = "-".join(parts)
 
     try:
-        return url_template.format_map(variables)
+        url = url_template.format_map(variables)
     except (KeyError, IndexError, ValueError):
         return None
+
+    if not isinstance(url_transform, dict) or not url_transform.get("find"):
+        return url
+    try:
+        return re.sub(
+            str(url_transform["find"]),
+            str(url_transform.get("replace", "")),
+            url,
+        )
+    except re.error as exc:
+        log.warning("nextdata.url_transform_invalid", error=str(exc))
+        return url
+
+
+def _detection_metadata(source: str, data: dict, path: str, count: int) -> dict:
+    """Build probe metadata, including a ready config for known RSC shapes."""
+    metadata: dict = {"path": path, "count": count}
+    if source != "nextdata":
+        metadata["source"] = source
+
+    # onlyfy's Next.js career pages expose each listing and pagination metadata
+    # in the server-rendered RSC payload. Detail pages currently fail client-side,
+    # but the stable print endpoint returns the complete posting as a PDF.
+    if source == "rsc" and path == "jobsData.data":
+        items = resolve_path(data, path)
+        sample = items[0] if isinstance(items, list) and items else {}
+        if isinstance(sample, dict) and {"jobAdUrl", "title", "cityName"} <= sample.keys():
+            metadata.update(
+                {
+                    "url_template": "{jobAdUrl}",
+                    "url_transform": {
+                        "find": "/job/",
+                        "replace": "/candidate/job/print/",
+                    },
+                    "fields": {
+                        "title": "title",
+                        "locations": "cityName",
+                        "employment_type": "positionTypeName",
+                        "date_posted": "publishedAt",
+                    },
+                }
+            )
+            page_count = resolve_path(data, "jobsData.meta.totalPages")
+            if page_count is not None:
+                metadata["pagination"] = {
+                    "path": "jobsData.meta",
+                    "page_count": "totalPages",
+                    "page_param": "page",
+                }
+                total = resolve_path(data, "jobsData.meta.totalItems")
+                if total is not None:
+                    metadata["count"] = int(total)
+
+    return metadata
 
 
 def _add_query_param(url: str, param: str, value: int) -> str:
@@ -274,7 +331,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
             if result:
                 path, count = result
                 log.info("nextdata.detected", url=url, source="rsc", path=path, count=count)
-                return {"source": "rsc", "path": path, "count": count}
+                return _detection_metadata("rsc", data, path, count)
 
         # Try Phenom Canvas (phApp.ddo = {...})
         data = extract_phenom_canvas_data(html)
@@ -316,9 +373,8 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
                         meta = _phenom_canvas_meta(data, path, count)
                         meta["render"] = True
                         return meta
-                    meta = {"path": path, "count": count, "render": True}
-                    if source != "nextdata":
-                        meta["source"] = source
+                    meta = _detection_metadata(source, data, path, count)
+                    meta["render"] = True
                     return meta
     except Exception:
         log.debug("nextdata.render_fallback_failed", url=url, exc_info=True)
@@ -381,6 +437,7 @@ async def discover(
     source: str = metadata.get("source", "nextdata")
     fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
+    url_transform: dict | None = metadata.get("url_transform")
     render = metadata.get("render", False)
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
@@ -441,8 +498,15 @@ async def discover(
         items = items[:MAX_URLS]
 
     if fields_map:
-        return _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
-    return _extract_urls(items, url_template, slug_fields)
+        return _extract_rich(
+            items,
+            url_template,
+            slug_fields,
+            fields_map,
+            base_salary_cfg,
+            url_transform,
+        )
+    return _extract_urls(items, url_template, slug_fields, url_transform)
 
 
 # How many pages to fetch per streaming batch before yielding.
@@ -470,6 +534,7 @@ async def discover_stream(
     source: str = metadata.get("source", "nextdata")
     fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
+    url_transform: dict | None = metadata.get("url_transform")
     render = metadata.get("render", False)
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
@@ -501,25 +566,46 @@ async def discover_stream(
     # No pagination — single yield
     if not pagination_cfg:
         if fields_map:
-            yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
+            yield _extract_rich(
+                items,
+                url_template,
+                slug_fields,
+                fields_map,
+                base_salary_cfg,
+                url_transform,
+            )
         else:
-            yield _extract_urls(items, url_template, slug_fields)
+            yield _extract_urls(items, url_template, slug_fields, url_transform)
         return
 
     # Determine page count
     page_count = _resolve_page_count(data, pagination_cfg)
     if page_count is None or page_count <= 1:
         if fields_map:
-            yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
+            yield _extract_rich(
+                items,
+                url_template,
+                slug_fields,
+                fields_map,
+                base_salary_cfg,
+                url_transform,
+            )
         else:
-            yield _extract_urls(items, url_template, slug_fields)
+            yield _extract_urls(items, url_template, slug_fields, url_transform)
         return
 
     # Yield first page immediately
     if fields_map:
-        yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
+        yield _extract_rich(
+            items,
+            url_template,
+            slug_fields,
+            fields_map,
+            base_salary_cfg,
+            url_transform,
+        )
     else:
-        yield _extract_urls(items, url_template, slug_fields)
+        yield _extract_urls(items, url_template, slug_fields, url_transform)
 
     page_urls = _compute_page_urls(board_url, page_count, pagination_cfg)
     sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
@@ -551,10 +637,15 @@ async def discover_stream(
         if batch_items:
             if fields_map:
                 yield _extract_rich(
-                    batch_items, url_template, slug_fields, fields_map, base_salary_cfg
+                    batch_items,
+                    url_template,
+                    slug_fields,
+                    fields_map,
+                    base_salary_cfg,
+                    url_transform,
                 )
             else:
-                yield _extract_urls(batch_items, url_template, slug_fields)
+                yield _extract_urls(batch_items, url_template, slug_fields, url_transform)
 
 
 def _resolve_page_count(data: dict, pagination_cfg: dict) -> int | None:
@@ -682,13 +773,14 @@ def _extract_rich(
     slug_fields: list[str] | None,
     fields_map: dict[str, str | dict],
     base_salary_cfg: dict | None = None,
+    url_transform: dict | None = None,
 ) -> list[DiscoveredJob]:
     """Extract ``DiscoveredJob`` objects using the field mapping."""
     jobs: list[DiscoveredJob] = []
     for item in items:
         if not isinstance(item, dict):
             continue
-        url = _build_url(item, url_template, slug_fields)
+        url = _build_url(item, url_template, slug_fields, url_transform)
         if not url:
             continue
 
@@ -731,13 +823,14 @@ def _extract_urls(
     items: list[dict],
     url_template: str,
     slug_fields: list[str] | None,
+    url_transform: dict | None = None,
 ) -> set[str]:
     """Build URL-only set from items."""
     urls: set[str] = set()
     for item in items:
         if not isinstance(item, dict):
             continue
-        url = _build_url(item, url_template, slug_fields)
+        url = _build_url(item, url_template, slug_fields, url_transform)
         if url:
             urls.add(url)
     return urls
@@ -752,7 +845,7 @@ async def save_raw(
     resp = await client.get(board_url, follow_redirects=True)
     if resp.status_code != 200:
         return
-    data = extract_next_data(resp.text)
+    data = extract_embedded_json(resp.text, metadata.get("source", "nextdata"))
     if data:
         (artifact_dir / "nextdata.json").write_text(
             json.dumps(data, indent=2, default=str),

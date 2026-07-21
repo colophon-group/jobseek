@@ -2651,6 +2651,38 @@ class TestCostScoring:
         cfg = board.configs[board.active_config]
         assert cfg["cost"]["initial_load"] > 0
 
+    def test_select_rich_nextdata_accepts_page_metadata_pagination(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        save_board("test", board)
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        config = {
+            "source": "rsc",
+            "path": "jobsData.data",
+            "url_template": "{jobAdUrl}",
+            "fields": {"title": "title", "locations": "cityName"},
+            "pagination": {
+                "path": "jobsData.meta",
+                "page_count": "totalPages",
+                "page_param": "page",
+            },
+        }
+        runner = CliRunner()
+        result = runner.invoke(
+            ws,
+            ["select", "monitor", "test", "nextdata", "--config", json.dumps(config)],
+        )
+
+        assert result.exit_code == 0, result.output
+        board = load_board("test", "careers")
+        cfg = board.configs[board.active_config]
+        assert cfg["monitor_config"]["pagination"] == config["pagination"]
+        assert cfg["cost"]["initial_load"] == 0.0
+
 
 # ── Phase 6: Submit robustness ──────────────────────────────────────────
 

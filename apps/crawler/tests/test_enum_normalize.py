@@ -79,6 +79,7 @@ class TestNormalizeEmploymentTypeEnglish:
             "permanent",
             "Permanent Employment",
             "permanent full-time",
+            "Full-time employee",
             "regular",
             "graduate",
         ],
@@ -88,7 +89,7 @@ class TestNormalizeEmploymentTypeEnglish:
 
     @pytest.mark.parametrize(
         "raw",
-        ["Part-time", "Part Time", "PART_TIME", "parttime", "part"],
+        ["Part-time", "Part Time", "PART_TIME", "parttime", "part", "Part-time employee"],
     )
     def test_part_time(self, raw):
         assert normalize_employment_type(raw) == "part_time"
@@ -124,12 +125,13 @@ class TestNormalizeEmploymentTypeEnglish:
             "apprentice",
             "Co-op",
             "Working Student",
+            "Student intern",
         ],
     )
     def test_internship(self, raw):
         assert normalize_employment_type(raw) == "internship"
 
-    @pytest.mark.parametrize("raw", ["Temporary", "TEMPORARY", "temp"])
+    @pytest.mark.parametrize("raw", ["Temporary", "TEMPORARY", "temp", "Temporary employee"])
     def test_temporary(self, raw):
         assert normalize_employment_type(raw) == "temporary"
 
