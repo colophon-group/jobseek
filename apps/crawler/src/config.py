@@ -129,6 +129,8 @@ class Settings(BaseSettings):
     drain_producers: int = 2
     drain_consumers: int = 30
     drain_buffer_size: int = 200
+    drain_retry_base_seconds: float = 5.0
+    drain_retry_max_seconds: float = 900.0
     # Periodic reaper for orphaned r2_uploaded=NULL rows (#3168). The
     # startup reaper always runs once before producers; this sweep
     # catches consumer crashes that happen later in the process
@@ -176,6 +178,18 @@ class Settings(BaseSettings):
     # sweep hammers Vercel image transforms. Unsubmitted URLs stay
     # hash-mismatched and return next tick. Set to 0 to disable the cap.
     indexnow_max_urls_per_tick: int = 500
+
+    @model_validator(mode="after")
+    def _validate_drain_retry_window(self) -> Settings:
+        if (
+            self.drain_retry_base_seconds <= 0
+            or self.drain_retry_max_seconds < self.drain_retry_base_seconds
+        ):
+            raise ValueError(
+                "DRAIN_RETRY_BASE_SECONDS must be positive and no greater than "
+                "DRAIN_RETRY_MAX_SECONDS"
+            )
+        return self
 
     @model_validator(mode="after")
     def _normalize_indexnow(self) -> Settings:

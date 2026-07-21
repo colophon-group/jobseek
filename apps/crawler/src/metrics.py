@@ -240,6 +240,18 @@ r2_upload_duration = Histogram(
     buckets=[0.05, 0.1, 0.25, 0.5, 1, 2, 5],
 )
 
+r2_retry_scheduled_total = Counter(
+    "crawler_r2_retry_scheduled_total",
+    "R2 description retries scheduled after an exhausted upload attempt",
+    ["reason"],
+)
+
+r2_retry_delay = Histogram(
+    "crawler_r2_retry_delay_seconds",
+    "Durable per-description delay scheduled after an R2 drain failure",
+    buckets=[1, 2.5, 5, 10, 30, 60, 300, 900],
+)
+
 r2_upload_bytes = Counter(
     "crawler_r2_upload_bytes_total",
     "Total bytes uploaded to R2",
