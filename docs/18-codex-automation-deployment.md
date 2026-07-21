@@ -462,8 +462,10 @@ For each accepted issue:
    own this hook, so rejection and early-exit paths are included.
 9. Drop hidden reasoning/encrypted content and duplicated runtime context,
    reconstruct standard child task contracts from the plaintext `ws` renderer,
-   and run the credential detector over every projected file. A detected
-   credential shape fails closed and leaves all sources local for review.
+   and redact credential-shaped values from the projected training copy while
+   recording only pattern, file, and line metadata. Re-scan every finished
+   projected file; any residual credential finding fails closed and leaves all
+   sources local for review. Never modify or upload the original source.
 10. Store gold, silver (incomplete encrypted collaboration), and diagnostic
     (no assistant trajectory) bundles under separate HuggingFace prefixes. The
     v2 schema includes both per-thread JSONL and one chronological,
