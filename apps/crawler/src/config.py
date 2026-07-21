@@ -147,6 +147,7 @@ class Settings(BaseSettings):
     typesense_port: int = 8108
     typesense_protocol: str = "http"
     typesense_admin_key: str = ""
+    typesense_health_interval_seconds: float = 30.0
 
     # Enrichment (disabled by default — empty provider means skip)
     enrich_provider: str = ""

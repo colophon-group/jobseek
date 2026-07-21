@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg
+import httpx
 import pytest
 import structlog
 
@@ -460,6 +461,60 @@ class TestExportPostingsDual:
         assert count == 1
         assert new_supa == (ts, pid)  # advanced
         assert new_ts == ts_cur  # stayed put — re-try next poll
+
+    async def test_typesense_timeout_backs_off_without_blocking_supabase(self):
+        """One Typesense timeout opens the cross-tick circuit (#5105).
+
+        The immediate next tick must export new rows to Supabase without a
+        second Typesense request or a replay from Typesense's pinned cursor.
+        """
+        ts1 = datetime(2026, 7, 10, 4, 6, 47, tzinfo=UTC)
+        ts2 = datetime(2026, 7, 10, 4, 6, 48, tzinfo=UTC)
+        cursor = (datetime(2026, 7, 10, 4, 6, 0, tzinfo=UTC), _ZERO_UUID)
+        pid1 = uuid.uuid4()
+        pid2 = uuid.uuid4()
+
+        local = _make_pool()
+        local.fetch = AsyncMock(
+            side_effect=[
+                [_posting_row(posting_id=pid1, ts=ts1)],
+                [_posting_row(posting_id=pid2, ts=ts2)],
+            ]
+        )
+        supa, _ = _supa_pool_with_capture()
+        backoff = _DownstreamBackoff("typesense-test", 5.0, 300.0)
+        upsert_ts = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
+
+        with patch("src.exporter._upsert_to_typesense", new=upsert_ts):
+            count, new_supa, new_ts = await _export_postings_dual(
+                local,
+                supa,
+                cursor,
+                cursor,
+                TaxonomyMaps(),
+                ts_backoff=backoff,
+            )
+            next_count, retry_supa, retry_ts = await _export_postings_dual(
+                local,
+                supa,
+                new_supa,
+                new_ts,
+                TaxonomyMaps(),
+                ts_backoff=backoff,
+            )
+
+        assert count == 1
+        assert new_supa == (ts1, pid1)
+        assert new_ts == cursor
+        assert backoff.consecutive_failures == 1
+
+        assert next_count == 1
+        assert retry_supa == (ts2, pid2)
+        assert retry_ts == cursor
+        assert upsert_ts.await_count == 1
+        # The blocked tick starts from Supabase's advanced cursor rather than
+        # replaying Typesense's pinned batch.
+        assert local.fetch.await_args_list[1].args[1:3] == (ts1, pid1)
 
     async def test_supabase_timeout_keeps_cursor_pinned_for_replay(self):
         """A downstream timeout is not evidence of a poison row (#5231).
@@ -1210,6 +1265,47 @@ class TestRunExporter:
                 set_shutdown(),
             )
 
+    async def test_typesense_health_probe_is_not_run_every_export_tick(self):
+        """The one-second export loop must not poll two observability endpoints
+        on every tick. A 30s cadence also prevents a health timeout from
+        immediately duplicating an import timeout chain (#5105).
+        """
+        local = _make_pool()
+        supa = _make_pool()
+        shutdown = asyncio.Event()
+        cursor = (datetime(2026, 7, 10, 4, 0, tzinfo=UTC), _ZERO_UUID)
+        maps = TaxonomyMaps()
+        maps._last_refresh = 10**20
+        probe_values: list[bool] = []
+
+        async def capture_metrics(*_args, **kwargs):
+            probe_values.append(kwargs["probe_typesense_health"])
+            if len(probe_values) == 2:
+                shutdown.set()
+
+        with (
+            patch("src.exporter.settings") as mock_settings,
+            patch("src.exporter._typesense_enabled", return_value=True),
+            patch("src.exporter._get_cursor", new=AsyncMock(return_value=cursor)),
+            patch(
+                "src.exporter._get_taxonomy_maps",
+                new=AsyncMock(return_value=maps),
+            ),
+            patch(
+                "src.exporter._export_postings_dual",
+                new=AsyncMock(return_value=(0, cursor, cursor)),
+            ),
+            patch("src.exporter._save_cursors_atomic", new=AsyncMock()),
+            patch("src.exporter._update_metrics", side_effect=capture_metrics),
+        ):
+            mock_settings.export_interval = 0.001
+            mock_settings.export_downstream_backoff_base_seconds = 5.0
+            mock_settings.export_downstream_backoff_max_seconds = 300.0
+            mock_settings.typesense_health_interval_seconds = 30.0
+            await run_exporter(local, supa, shutdown)
+
+        assert probe_values == [True, False]
+
 
 # ---------------------------------------------------------------------------
 # _update_metrics
@@ -1294,18 +1390,34 @@ class TestUpdateTypesenseHealth:
         with patch("src.typesense_client.get_typesense_client", return_value=None):
             await _update_typesense_health()  # should not raise
 
-    async def test_health_failure_does_not_block_metrics(self):
-        """An exception from is_healthy() must not prevent metrics.retrieve()
-        from running — we still want the memory gauge when health is down.
+    async def test_health_timeout_opens_backoff_and_skips_metrics_request(self):
+        """A timed-out health probe must not start a second timeout chain.
+
+        Before #5105, the same tick immediately called /metrics.json after
+        /health exhausted the Typesense client's internal retry chain.
         """
         client = MagicMock()
-        client.operations.is_healthy = MagicMock(side_effect=RuntimeError("down"))
+        client.operations.is_healthy = MagicMock(side_effect=httpx.ReadTimeout("timed out"))
         client.metrics.retrieve = MagicMock(return_value={"typesense_memory_active_bytes": 42})
+        backoff = _DownstreamBackoff("typesense-health-test", 5.0, 300.0)
 
         with patch("src.typesense_client.get_typesense_client", return_value=client):
-            await _update_typesense_health()
+            await _update_typesense_health(backoff)
 
-        client.metrics.retrieve.assert_called_once_with()
+        assert backoff.consecutive_failures == 1
+        client.metrics.retrieve.assert_not_called()
+
+    async def test_metrics_failure_does_not_open_export_circuit(self):
+        """The optional memory metric cannot disable the write path."""
+        client = MagicMock()
+        client.operations.is_healthy = MagicMock(return_value=True)
+        client.metrics.retrieve = MagicMock(side_effect=httpx.ReadTimeout("timed out"))
+        backoff = _DownstreamBackoff("typesense-metrics-test", 5.0, 300.0)
+
+        with patch("src.typesense_client.get_typesense_client", return_value=client):
+            await _update_typesense_health(backoff)
+
+        assert backoff.consecutive_failures == 0
 
 
 # ---------------------------------------------------------------------------

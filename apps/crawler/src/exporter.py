@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import asyncpg
+import httpx
 import structlog
 from prometheus_client import Counter, Gauge
 
@@ -634,7 +635,11 @@ async def _upsert_to_typesense(
     """
     from src.typesense_client import get_typesense_client
 
-    client = get_typesense_client()
+    # The exporter owns bounded retry timing across ticks. The Typesense
+    # client's default three retries are immediate, so leaving them enabled
+    # turns one 5s timeout into four back-to-back requests before our cursor
+    # safety/backoff code gets control (#5105).
+    client = get_typesense_client(num_retries=0)
     if client is None or not docs:
         return set()
 
@@ -689,7 +694,9 @@ async def _upsert_to_typesense(
 # ---------------------------------------------------------------------------
 
 
-async def _update_typesense_health() -> None:
+async def _update_typesense_health(
+    backoff: _DownstreamBackoff | None = None,
+) -> None:
     """Probe Typesense /health and /metrics.json, update gauges.
 
     ``client.operations.perform(op)`` in the typesense-python client maps to
@@ -706,7 +713,7 @@ async def _update_typesense_health() -> None:
     """
     from src.typesense_client import get_typesense_client
 
-    client = get_typesense_client()
+    client = get_typesense_client(num_retries=0)
     if client is None:
         return
 
@@ -717,9 +724,30 @@ async def _update_typesense_health() -> None:
             client.operations.is_healthy,
         )
         typesense_healthy.set(1 if is_healthy else 0)
-    except Exception:
+        if not is_healthy:
+            if backoff is not None:
+                retry_in = backoff.record_failure()
+                log.warning(
+                    "exporter.typesense_unhealthy",
+                    retry_in_s=round(retry_in, 2),
+                    consecutive_failures=backoff.consecutive_failures,
+                )
+            return
+        if backoff is not None:
+            _record_downstream_recovery(backoff)
+    except Exception as exc:
         typesense_healthy.set(0)
-        log.warning("exporter.typesense_health_error", exc_info=True)
+        fields = _exc_fields(exc)
+        if backoff is not None and _is_downstream_unavailable(exc):
+            retry_in = backoff.record_failure()
+            fields.update(
+                retry_in_s=round(retry_in, 2),
+                consecutive_failures=backoff.consecutive_failures,
+            )
+        log.warning("exporter.typesense_health_error", exc_info=True, **fields)
+        # Do not immediately follow a timed-out /health request with another
+        # request to /metrics.json. That doubled the timeout chain in #5105.
+        return
 
     try:
         metrics = await loop.run_in_executor(
@@ -828,7 +856,7 @@ def _is_downstream_unavailable(exc: BaseException) -> bool:
     return (
         (isinstance(sqlstate, str) and sqlstate.startswith("08"))
         or sqlstate in _DOWNSTREAM_UNAVAILABLE_SQLSTATES
-        or isinstance(exc, (TimeoutError, ConnectionError, OSError))
+        or isinstance(exc, (TimeoutError, ConnectionError, OSError, httpx.RequestError))
     )
 
 
@@ -972,6 +1000,7 @@ async def _export_postings_dual(
     ts_cursor: Cursor,
     maps: TaxonomyMaps,
     supa_backoff: _DownstreamBackoff | None = None,
+    ts_backoff: _DownstreamBackoff | None = None,
 ) -> tuple[int, Cursor, Cursor]:
     """Fetch changed postings and upsert to both Supabase and Typesense concurrently.
 
@@ -979,13 +1008,24 @@ async def _export_postings_dual(
     post-filter rows for each target. Returns (total_fetched, new_supa_cursor, new_ts_cursor).
     """
     supa_ready = supa_backoff is None or supa_backoff.ready()
+    ts_ready = ts_backoff is None or ts_backoff.ready()
     if not supa_ready and supa_backoff is not None:
         # Supabase's cursor remains pinned, but reading from it on every
         # one-second tick would replay the same local batch throughout the
         # outage. Read from Typesense's cursor until the retry deadline so
         # that independent search indexing can continue without local churn.
         supa_backoff.record_skip()
-    fetch_cursor = _min_cursor(supa_cursor, ts_cursor) if supa_ready else ts_cursor
+    if not ts_ready and ts_backoff is not None:
+        ts_backoff.record_skip()
+
+    if not supa_ready and not ts_ready:
+        return 0, supa_cursor, ts_cursor
+    if supa_ready and ts_ready:
+        fetch_cursor = _min_cursor(supa_cursor, ts_cursor)
+    elif supa_ready:
+        fetch_cursor = supa_cursor
+    else:
+        fetch_cursor = ts_cursor
     fetch_ts, fetch_id = fetch_cursor
 
     rows = await local_pool.fetch(
@@ -1000,7 +1040,9 @@ async def _export_postings_dual(
     supa_rows = (
         [r for r in rows if _cursor_gt(r["updated_at"], r["id"], supa_cursor)] if supa_ready else []
     )
-    ts_rows = [r for r in rows if _cursor_gt(r["updated_at"], r["id"], ts_cursor)]
+    ts_rows = (
+        [r for r in rows if _cursor_gt(r["updated_at"], r["id"], ts_cursor)] if ts_ready else []
+    )
 
     tasks = []
 
@@ -1065,11 +1107,17 @@ async def _export_postings_dual(
             # etc.) — cursor stays put so we retry next tick. Per-doc
             # failures are returned as a set, not raised, so this branch
             # is now strictly for downstream incidents.
-            log.error(
-                "exporter.typesense_upsert_error",
-                **_exc_fields(results[1]),
-            )
+            fields = _exc_fields(results[1])
+            if ts_backoff is not None and _is_downstream_unavailable(results[1]):
+                retry_in = ts_backoff.record_failure()
+                fields.update(
+                    retry_in_s=round(retry_in, 2),
+                    consecutive_failures=ts_backoff.consecutive_failures,
+                )
+            log.error("exporter.typesense_upsert_error", **fields)
         else:
+            if ts_backoff is not None:
+                _record_downstream_recovery(ts_backoff)
             failed_ts_ids: set[str] = results[1] or set()
             last = ts_rows[-1]
             # Advance past the whole batch even if some docs failed —
@@ -1323,6 +1371,9 @@ async def _update_metrics(
     supa_pool: asyncpg.Pool,
     posting_cursor: Cursor,
     ts_cursor: Cursor | None = None,
+    *,
+    probe_typesense_health: bool = True,
+    ts_backoff: _DownstreamBackoff | None = None,
 ) -> None:
     """Update Prometheus gauges with queue depths, export lag, and R2 pending."""
     try:
@@ -1367,9 +1418,10 @@ async def _update_metrics(
         log.warning("exporter.metrics_r2_pending_error", exc_info=True)
 
     # Typesense health check
-    if _typesense_enabled():
+    if _typesense_enabled() and probe_typesense_health:
         try:
-            await _update_typesense_health()
+            if ts_backoff is None or ts_backoff.ready():
+                await _update_typesense_health(ts_backoff)
         except Exception:
             log.warning("exporter.metrics_typesense_health_error", exc_info=True)
 
@@ -1409,12 +1461,18 @@ async def run_exporter(
         base_seconds=settings.export_downstream_backoff_base_seconds,
         max_seconds=settings.export_downstream_backoff_max_seconds,
     )
-
     ts_enabled = _typesense_enabled()
     ts_cursor: Cursor = (_EPOCH, _ZERO_UUID)
     maps: TaxonomyMaps | None = None
+    ts_backoff: _DownstreamBackoff | None = None
+    next_typesense_health_at = 0.0
 
     if ts_enabled:
+        ts_backoff = _DownstreamBackoff(
+            target="typesense",
+            base_seconds=settings.export_downstream_backoff_base_seconds,
+            max_seconds=settings.export_downstream_backoff_max_seconds,
+        )
         ts_cursor = await _get_cursor(local_pool, "typesense:job_posting")
         maps = await _get_taxonomy_maps(local_pool, supa_pool)
         log.info("exporter.typesense_enabled")
@@ -1435,6 +1493,7 @@ async def run_exporter(
                     ts_cursor,
                     maps,
                     supa_backoff,
+                    ts_backoff,
                 )
                 # Save both cursors in a single transaction so a crash
                 # between writes cannot leave one cursor advanced while
@@ -1471,11 +1530,16 @@ async def run_exporter(
                         _record_downstream_recovery(supa_backoff)
                 await _save_cursor(local_pool, "job_posting", posting_cursor)
 
+            probe_typesense_health = ts_enabled and t0 >= next_typesense_health_at
+            if probe_typesense_health:
+                next_typesense_health_at = t0 + settings.typesense_health_interval_seconds
             await _update_metrics(
                 local_pool,
                 supa_pool,
                 posting_cursor,
                 ts_cursor=ts_cursor if ts_enabled else None,
+                probe_typesense_health=probe_typesense_health,
+                ts_backoff=ts_backoff,
             )
 
             duration = time.monotonic() - t0
