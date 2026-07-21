@@ -80,6 +80,10 @@ jobs:
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
           envs: GITHUB_SHA
+          # A full production re-index currently takes about 45 minutes.
+          # Keep the workflow and its concurrency lock alive for the real
+          # remote operation instead of accepting ssh-action's 10m default.
+          command_timeout: 2h
           script: |
             set -euo pipefail
             TASK="${{ steps.task.outputs.task }}"
@@ -87,12 +91,31 @@ jobs:
             tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
             tag="${tag:-latest}"
             maintenance_status=0
-            docker run --rm \
-              --name "$NAME" \
-              --env-file /home/deploy/.env \
-              --network host \
-              "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
-              uv run --no-sync crawler "$TASK" || maintenance_status=$?
+
+            cleanup() {
+              status=$?
+              trap - EXIT HUP INT TERM
+              if docker ps -a --format '{{.Names}}' | grep -Fxq "$NAME"; then
+                docker rm -f "$NAME" >/dev/null 2>&1 || true
+              fi
+              exit "$status"
+            }
+            trap cleanup EXIT HUP INT TERM
+
+            # The GitHub concurrency lock cannot see a container orphaned by
+            # a cancelled or timed-out older SSH session. Refuse to overlap it
+            # with another Typesense maintenance operation.
+            if docker ps --format '{{.Names}}' | grep -Eq '^crawler-(backfill|refresh)-typesense-'; then
+              echo "Another Typesense maintenance container is already running" >&2
+              maintenance_status=1
+            else
+              docker run --rm \
+                --name "$NAME" \
+                --env-file /home/deploy/.env \
+                --network host \
+                "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
+                uv run --no-sync crawler "$TASK" || maintenance_status=$?
+            fi
 
             hygiene_status=0
             python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler-host-hygiene.py" || hygiene_status=$?

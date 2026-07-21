@@ -32,6 +32,8 @@ from src.exporter import (
     _update_metrics,
     _update_typesense_health,
     _upsert_to_supabase,
+    _upsert_typesense_backfill_batch,
+    backfill_typesense,
     run_exporter,
     run_exporter_with_reconciliation,
     run_reconciliation,
@@ -870,6 +872,65 @@ class TestSupabasePerRowFallback:
         # Cursor advances past the dropped row to the batch's last id.
         assert new_supa == (ts2, pid2)
         assert new_ts == (ts2, pid2)
+
+
+class TestTypesenseBackfillSafety:
+    async def test_batch_retries_transport_failure_before_succeeding(self):
+        docs = [{"id": "posting-1"}]
+        upsert = AsyncMock(side_effect=[httpx.ReadTimeout("timed out"), set()])
+
+        with (
+            patch("src.exporter._upsert_to_typesense", new=upsert),
+            patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            await _upsert_typesense_backfill_batch(
+                docs,
+                max_attempts=3,
+                base_delay_s=0.5,
+            )
+
+        assert upsert.await_count == 2
+        sleep.assert_awaited_once_with(0.5)
+
+    async def test_batch_retries_per_document_import_failures(self):
+        docs = [{"id": "posting-1"}]
+        upsert = AsyncMock(side_effect=[{"posting-1"}, set()])
+
+        with (
+            patch("src.exporter._upsert_to_typesense", new=upsert),
+            patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            await _upsert_typesense_backfill_batch(
+                docs,
+                max_attempts=2,
+                base_delay_s=1.0,
+            )
+
+        assert upsert.await_count == 2
+        sleep.assert_awaited_once_with(1.0)
+
+    async def test_exhausted_batch_does_not_save_cursor(self):
+        posting_id = uuid.uuid4()
+        updated_at = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
+        row = {"id": posting_id, "updated_at": updated_at}
+        local = _make_pool()
+        supa = _make_pool()
+        local.fetch = AsyncMock(return_value=[row])
+        maps = MagicMock(stale=False)
+        upsert = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
+
+        with (
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch("src.exporter._build_typesense_docs", return_value=[{"id": str(posting_id)}]),
+            patch("src.exporter._upsert_to_typesense", new=upsert),
+            patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+            pytest.raises(httpx.ReadTimeout, match="timed out"),
+        ):
+            await backfill_typesense(local, supa)
+
+        assert upsert.await_count == 5
+        assert [call.args[0] for call in sleep.await_args_list] == [2.0, 4.0, 8.0, 16.0]
+        local.execute.assert_not_awaited()
 
 
 class TestTypesensePerDocFallback:

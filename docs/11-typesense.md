@@ -161,6 +161,15 @@ uv run crawler refresh-typesense
 uv run crawler backfill-typesense    # Production: reads from local Postgres + Supabase
 ```
 
+Production backfills are dispatched manually through
+`.github/workflows/crawler-scheduled-maintenance.yml`. The workflow holds the
+same concurrency lock for the entire re-index and refuses to start while an
+older Typesense maintenance container is still running. Each idempotent bulk
+upsert is retried with bounded exponential backoff. If Typesense still rejects
+or times out a batch, the command fails without advancing the scan or CDC
+cursor past that batch; operators must fix the downstream failure and rerun the
+backfill before running `refresh-typesense`.
+
 For local development/testing only:
 ```bash
 cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--limit N]
