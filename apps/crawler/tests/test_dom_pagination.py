@@ -13,6 +13,7 @@ from src.core.monitors.dom import (
     _extract_links_static,
     _fetch_via_page,
     _paginate_urls,
+    can_handle,
     dom_discover,
 )
 
@@ -113,6 +114,29 @@ class TestBuildUrlMatcher:
     def test_none_filter(self):
         assert _build_url_matcher(None) is None
         assert _build_url_matcher("") is None
+
+
+class TestCanHandle:
+    async def test_linkedin_jobs_use_public_guest_endpoint(self):
+        html = _html_with_links(
+            "https://www.linkedin.com/jobs/view/software-engineer-4434484597/",
+            "https://se.linkedin.com/jobs/view/4434489306?trackingId=abc",
+            "https://example.com/lightbringer-learn/learn/patents",
+        )
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle("https://example.com/careers", MagicMock())
+
+        assert result == {
+            "urls": 2,
+            "url_filter": r"linkedin\.com/jobs/view/",
+            "url_transform": {
+                "find": r".*(?:-|/)(\d+)(?:/?(?:\?.*)?)$",
+                "replace": r"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/\1",
+            },
+        }
 
 
 class TestDomDiscoverInitialFetch:

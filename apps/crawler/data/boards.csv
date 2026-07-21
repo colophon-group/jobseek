@@ -2867,6 +2867,7 @@ life-trading,life-trading-greenhouse,https://job-boards.greenhouse.io/lifetradin
 life360,life360-greenhouse,https://job-boards.greenhouse.io/life360,greenhouse,"{""token"": ""life360""}",skip,
 liftoff,liftoff-greenhouse,https://job-boards.greenhouse.io/liftoff,greenhouse,"{""token"": ""liftoff""}",skip,
 light,light-ashby,https://jobs.ashbyhq.com/light,ashby,"{""token"": ""light""}",skip,
+lightbringer,lightbringer-career,https://www.lightbringer.com/about/career,dom,"{""url_filter"": ""linkedin\\.com/jobs/view/"", ""url_transform"": {""find"": "".*(?:-|/)(\\d+)(?:/?(?:\\?.*)?)$"", ""replace"": ""https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/\\1""}}",dom,"{""linkedin_guest"": true}"
 lightdash,lightdash-ashby,https://jobs.ashbyhq.com/lightdash,ashby,"{""token"": ""lightdash""}",skip,
 lightfeather-io-llc,lightfeather-io-llc-greenhouse,https://job-boards.greenhouse.io/lightfeatheriollc,greenhouse,"{""token"": ""lightfeatheriollc""}",skip,
 lightforce-orthodontics,lightforce-orthodontics-greenhouse,https://job-boards.greenhouse.io/lightforceorthodontics,greenhouse,"{""token"": ""lightforceorthodontics""}",skip,
