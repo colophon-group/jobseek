@@ -271,7 +271,7 @@ alt,alt-greenhouse,https://job-boards.greenhouse.io/alt,greenhouse,"{""token"": 
 alta-ares,alta-ares-ashby,https://jobs.ashbyhq.com/alta-ares,ashby,"{""token"": ""alta-ares""}",skip,
 altana,altana-greenhouse,https://job-boards.greenhouse.io/altanaai,greenhouse,"{""token"": ""altanaai""}",skip,
 alten-technology-usa,alten-technology-usa-greenhouse,https://job-boards.greenhouse.io/altentechnologyusa,greenhouse,"{""token"": ""altentechnologyusa""}",skip,
-altilium-metals,altilium-metals-careers,https://altilium.tech/careers/,wp_job_openings,"{""rest_url"": ""https://altilium.tech/wp-json/wp/v2/awsm_job_openings""}",json-ld,
+altilium-metals,altilium-metals-careers,https://altilium.tech/careers/,api_sniffer,"{""api_url"": ""https://altilium.tech/wp-json/wp/v2/awsm_job_openings?per_page=100&_fields=link"", ""method"": ""GET"", ""json_path"": """", ""url_field"": ""link"", ""max_items"": 100}",json-ld,
 altium,altium-greenhouse,https://job-boards.greenhouse.io/altium,greenhouse,"{""token"": ""altium""}",skip,
 altos-labs,altos-labs-greenhouse,https://job-boards.greenhouse.io/altoslabs,greenhouse,"{""token"": ""altoslabs""}",skip,
 altris,altris-careers,https://career.altris.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.altris.se/jobs.rss""}",skip,

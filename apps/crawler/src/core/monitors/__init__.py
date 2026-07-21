@@ -513,11 +513,6 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Workday API \u2014 {company}/{site}, {jobs} jobs"
         return f"Workday API \u2014 {company}/{site}"
-    if name == "wp_job_openings":
-        jobs = metadata.get("jobs")
-        if jobs is not None:
-            return f"WP Job Openings REST API \u2014 {jobs} jobs"
-        return "WP Job Openings REST API"
     if name == "pinpoint":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -675,6 +670,5 @@ from src.core.monitors import (  # noqa: E402
     umantis,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
-    wp_job_openings,  # noqa: F401
     ycombinator,  # noqa: F401
 )

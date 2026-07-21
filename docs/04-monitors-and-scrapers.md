@@ -61,7 +61,6 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `traffit` | Rich | skip | Traffit ATS |
 | `workable` | URL-only | workable | Workable ATS |
 | `workday` | URL-only | workday | Workday ATS |
-| `wp_job_openings` | URL-only | json-ld | WordPress WP Job Openings plugin |
 | `ycombinator` | URL-only | json-ld | YC Jobs fallback pages |
 | `notion` | URL-only | — | Public Notion job pages/databases |
 | `oracle_hcm` | Rich | oracle_hcm | Oracle HCM listings plus description enrichment |

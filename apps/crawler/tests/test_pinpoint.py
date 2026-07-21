@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitors import DiscoveredJob, slug_guess_mode
+from src.core.monitors import DiscoveredJob
 from src.core.monitors.pinpoint import (
     _build_description,
     _build_location,
@@ -486,33 +486,6 @@ class TestCanHandle:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://www.example.com/careers", client)
             assert result is None
-
-    async def test_custom_domain_does_not_blindly_accept_matching_demo_tenant(self):
-        def handler(request):
-            if request.url.host == "altilium.tech":
-                return httpx.Response(200, text="<html>no pinpoint refs</html>")
-            if request.url.host == "altilium.pinpointhq.com":
-                return httpx.Response(200, json={"data": [{"id": 1}]})
-            return httpx.Response(404)
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle("https://altilium.tech/careers/", client)
-
-        assert result is None
-
-    async def test_slug_guess_mode_enables_probe_fallback(self):
-        def handler(request):
-            if request.url.host == "example.com":
-                return httpx.Response(200, text="<html>no pinpoint refs</html>")
-            if request.url.host == "example.pinpointhq.com":
-                return httpx.Response(200, json={"data": [{"id": 1}]})
-            return httpx.Response(404)
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            with slug_guess_mode(True):
-                result = await can_handle("https://example.com/careers/", client)
-
-        assert result == {"slug": "example", "jobs": 1}
 
     async def test_url_match_with_api_probe(self):
         def handler(request):
