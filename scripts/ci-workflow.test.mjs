@@ -388,6 +388,29 @@ test("Codex deploy reserves the next runner-lock handoff", () => {
   );
 });
 
+test("Codex deploy persists Docker lifecycle evidence before daily review", () => {
+  assert.match(
+    deployCodexRunnerHostScript,
+    /jobseek-codex-docker-lifecycle\.service/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /scripts\/codex-docker-lifecycle-watch\.py/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /systemctl enable "\$\{ALWAYS_ON_SERVICES\[@\]\}"/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /verify_entrypoints\n  start_always_on_services/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /systemctl restart "\$\{ALWAYS_ON_SERVICES\[@\]\}"[\s\S]*systemctl is-active --quiet "\$\{service\}"/,
+  );
+});
+
 test("Codex deploy restores prior timer state after failure", () => {
   const dir = mkdtempSync(join(tmpdir(), "codex-deploy-timers-"));
   const log = join(dir, "systemctl.log");

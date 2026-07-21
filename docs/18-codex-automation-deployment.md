@@ -221,6 +221,10 @@ Run the company resolver through `jobseek-codex-governor.service` and
 
 Committed deployment templates:
 
+- [`../deploy/systemd/jobseek-codex-docker-lifecycle.service`](../deploy/systemd/jobseek-codex-docker-lifecycle.service)
+  - runs a root, read-only Docker event watcher; only allowlisted lifecycle
+    fields reach persistent journald, and the Codex runner retains no Docker
+    access.
 - [`../deploy/systemd/jobseek-codex-governor.service`](../deploy/systemd/jobseek-codex-governor.service)
   - `Type=oneshot`, low-priority CPU/IO scheduling, `CPUQuota=200%`,
   `MemoryHigh=3G`, `MemoryMax=4G`, `TasksMax=1024`, `ProtectSystem=strict`,
@@ -280,6 +284,8 @@ install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-error-review.
   /etc/systemd/system/jobseek-codex-daily-error-review.service
 install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-error-review.timer \
   /etc/systemd/system/jobseek-codex-daily-error-review.timer
+install -o root -g root -m 0644 deploy/systemd/jobseek-codex-docker-lifecycle.service \
+  /etc/systemd/system/jobseek-codex-docker-lifecycle.service
 install -o root -g codex-runner -m 0640 \
   deploy/systemd/jobseek-codex-governor.env.example \
   /etc/jobseek-codex/governor.env
@@ -290,7 +296,8 @@ systemd-analyze verify \
   /etc/systemd/system/jobseek-codex-daily-annotations.service \
   /etc/systemd/system/jobseek-codex-daily-annotations.timer \
   /etc/systemd/system/jobseek-codex-daily-error-review.service \
-  /etc/systemd/system/jobseek-codex-daily-error-review.timer
+  /etc/systemd/system/jobseek-codex-daily-error-review.timer \
+  /etc/systemd/system/jobseek-codex-docker-lifecycle.service
 ```
 
 Before enabling the timer, edit `/etc/jobseek-codex/governor.env` for the
@@ -316,6 +323,7 @@ After the dry-run and one manual live pass are clean, enable the timer:
 systemctl enable --now jobseek-codex-governor.timer
 systemctl enable --now jobseek-codex-daily-annotations.timer
 systemctl enable --now jobseek-codex-daily-error-review.timer
+systemctl enable --now jobseek-codex-docker-lifecycle.service
 ```
 
 After bootstrap, production updates are CI/CD-owned. Pushes to `main` that
@@ -601,6 +609,9 @@ the directory and count toward the admission ceiling.
 - Use the root-collected redacted evidence bundle under
   `/srv/jobseek-codex/inputs/error-review/latest`; the Codex process must not
   access Docker, `/home/deploy`, or production env files directly.
+- Read `host/docker-lifecycle.jsonl` with the generation-aware cgroup and
+  inspect files; it preserves allowlisted exit codes, signals, OOM events,
+  and replacement/restart timing across container recreation.
 - Collect host signals before log classification.
 - Classify errors as `known`, `novel`, `regression`, `spike`, or `incident`.
 - Partial evidence windows must be reported as gaps, but they do not
