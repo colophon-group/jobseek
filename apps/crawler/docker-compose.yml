@@ -411,6 +411,7 @@ services:
     pid: host
     volumes:
       - ./alloy.river:/etc/alloy/config.river:ro
+      - alloy-data:/data-alloy
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /:/host:ro
     environment:
@@ -420,12 +421,15 @@ services:
       LOKI_URL: ${GRAFANA_LOKI_URL}
       LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
       LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
-    command: run --server.http.listen-addr=0.0.0.0:12346 /etc/alloy/config.river
+    command: run --storage.path=/data-alloy --server.http.listen-addr=0.0.0.0:12346 /etc/alloy/config.river
     mem_limit: 256m
     cpus: 0.25
 
 volumes:
   redis-data:
+  alloy-data:
+    external: true
+    name: "${COMPOSE_PROJECT_NAME}_alloy-data"
   # Hydrated at deploy time by `murmur-shim-runtime-init` from the
   # crawler image; consumed read-only by `murmur-shim` via subpath
   # mounts. See the init service for the layout (venv/ + src/).
