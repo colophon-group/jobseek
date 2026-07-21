@@ -9,6 +9,7 @@ import httpx
 import pytest
 
 from src.core.monitors.dom import (
+    _build_url_extractor,
     _build_url_matcher,
     _extract_links_static,
     _fetch_via_page,
@@ -97,6 +98,32 @@ class TestExtractLinksStatic:
         # /emploi/ doesn't match keywords, /jobs/ does
         assert urls == {"https://example.com/jobs/456"}
 
+    def test_extracts_urls_embedded_in_script_data(self):
+        html = r"""<script>self.__next_f.push([1,"{\"href\":\"https://example.com/jobs/123\"}"])</script>"""
+        extractor = _build_url_extractor(r'\\"href\\":\\"(https://example\.com/[^"\\]+)\\"')
+
+        urls = _extract_links_static(
+            html,
+            "https://example.com/careers",
+            url_extractor=extractor,
+        )
+
+        assert urls == {"https://example.com/jobs/123"}
+
+    def test_embedded_urls_still_respect_url_filter(self):
+        html = r"""<script>{\"href\":\"/jobs/123\",\"other\":\"/about\"}</script>"""
+        extractor = _build_url_extractor(r'\\"(?:href|other)\\":\\"([^"\\]+)\\"')
+        matcher = re.compile(r"/jobs/")
+
+        urls = _extract_links_static(
+            html,
+            "https://example.com/careers",
+            url_matcher=matcher,
+            url_extractor=extractor,
+        )
+
+        assert urls == {"https://example.com/jobs/123"}
+
 
 class TestBuildUrlMatcher:
     def test_string_filter(self):
@@ -113,6 +140,10 @@ class TestBuildUrlMatcher:
     def test_none_filter(self):
         assert _build_url_matcher(None) is None
         assert _build_url_matcher("") is None
+
+    def test_url_extractor_requires_capture_group(self):
+        with pytest.raises(ValueError, match="capture group"):
+            _build_url_extractor(r"https://example\.com/jobs/\d+")
 
 
 class TestDomDiscoverInitialFetch:

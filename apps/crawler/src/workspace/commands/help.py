@@ -890,6 +890,8 @@ dom — Link Extraction (fallback)
     user_agent     Custom User-Agent string
     headless       Run headless (default: true)
     actions        Browser action pipeline (see: ws help actions)
+    url_regex      Regex with a capture group for URLs embedded outside
+                   <a href> tags (for example in JSON inside <script> tags)
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
                    Keep patterns broad enough to include URL variants
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
