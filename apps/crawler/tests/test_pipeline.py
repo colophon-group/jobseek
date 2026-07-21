@@ -960,6 +960,36 @@ async def test_process_monitor_work_emits_tasks_total_succeeded():
 
 
 @pytest.mark.asyncio
+async def test_process_monitor_work_reclaims_memory_after_monitor():
+    """Allocator cleanup runs after discovery while monitor concurrency is held."""
+
+    from unittest.mock import AsyncMock, Mock, patch
+
+    from src.workers.monitor_memory import MemoryReclaim
+    from src.workers.pipeline import _process_monitor_work
+
+    reclaim = Mock(return_value=MemoryReclaim(3, True, 500, 300, 700, 450))
+    with (
+        patch(
+            "src.processing.board._process_one_board_streaming",
+            new=AsyncMock(return_value=(True, 0.1)),
+        ),
+        patch("src.workers.pipeline.reclaim_process_memory", reclaim),
+        patch("src.workers.pipeline.process_rss_bytes", return_value=500),
+        patch("src.workers.pipeline.cgroup_memory_bytes", return_value=700),
+        patch("src.workers.pipeline.reschedule_task", new=AsyncMock(return_value=None)),
+    ):
+        await _process_monitor_work(
+            structlog.get_logger(),
+            _make_board_work(),
+            _make_monitor_local_pool(),
+            AsyncMock(),
+        )
+
+    reclaim.assert_called_once_with()
+
+
+@pytest.mark.asyncio
 async def test_process_monitor_work_emits_tasks_total_failed_on_success_false():
     """``_process_one_board_streaming`` may return ``success=False`` for
     a recoverable failure (e.g. partial fetch). That outcome must roll
