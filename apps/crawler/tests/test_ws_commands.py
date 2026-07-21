@@ -160,6 +160,18 @@ class TestHelp:
         assert legacy_result.exit_code != 0
         assert "Unknown monitor type" in legacy_result.output
 
+    def test_dom_help_documents_antibot_browser_options(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        runner = CliRunner()
+
+        for topic in ("monitor", "scraper"):
+            result = runner.invoke(ws, ["help", topic, "dom"])
+            assert result.exit_code == 0
+            assert "proxy" in result.output
+            assert "persistent_context" in result.output
+            assert 'channel: "chrome"' in result.output
+            assert "warmup_url" in result.output
+
     def test_help_industries_uses_repo_data_and_supports_legacy_schema(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         (tmp_path / "industries.csv").write_text(
