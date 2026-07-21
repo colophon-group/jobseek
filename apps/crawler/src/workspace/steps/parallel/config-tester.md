@@ -57,8 +57,17 @@ Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
   reporting failure.
 - **Significantly higher:** May be fine (superset detection), but verify
   URLs are real job pages, not category/tag pages.
-- **0 jobs:** Try `ws task troubleshoot 'zero jobs'` for tips. Do NOT
-  proceed — report failure if you cannot fix it.
+- **0 jobs when the official board has openings:** Try `ws task troubleshoot
+  'zero jobs'` for tips. Do NOT proceed — report failure if you cannot fix it.
+- **0 jobs when the official board explicitly says there are no openings:**
+  Treat this as a verified empty board only when a stable ATS/feed was positively
+  identified and its source endpoint is valid (for example, valid empty RSS/XML
+  or API data). A DOM page with no links is not enough. Record the evidence with:
+  `ws feedback {{ slug }} {{ config_name }} --board {{ board_alias }}
+  --verified-empty-board --verdict acceptable --verdict-notes "<evidence>"`.
+  Do not provide per-field ratings for nonexistent postings. If available, test
+  a recent inactive posting separately and mention the result in the notes; if
+  the source cannot be positively verified, report failure instead.
 - **Suspiciously low for a large company?** If the company has hundreds
   or thousands of employees but the monitor found fewer than ~10 jobs,
   something is likely wrong — the monitor may be hitting a filtered view,
