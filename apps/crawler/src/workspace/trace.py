@@ -52,6 +52,7 @@ _TOKEN_PLACEHOLDERS = {
     "present",
     "redacted",
     "<redacted>",
+    "<redacted_credential>",
     "set",
     "changeme",
     "change-me",
@@ -90,6 +91,11 @@ _CREDENTIAL_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         ),
     ),
 )
+_PRIVATE_KEY_BLOCK_RE = re.compile(
+    r"(?:-----)?BEGIN [A-Z ]*PRIVATE KEY(?:-----)?[\s\S]*?"
+    r"(?:(?:-----)?END [A-Z ]*PRIVATE KEY(?:-----)?|$)"
+)
+_REDACTED_CREDENTIAL = "<REDACTED_CREDENTIAL>"
 
 
 class TraceCredentialError(RuntimeError):
@@ -157,6 +163,44 @@ def detect_credentials(text: str) -> list[dict[str, int | str]]:
                     seen.add(key)
                     findings.append({"pattern": pattern_name, "line": line_number})
     return findings
+
+
+def redact_credentials(text: str) -> tuple[str, list[dict[str, int | str]]]:
+    """Redact credential-shaped values and return non-secret audit findings.
+
+    This operates only on projected/export payloads. Callers must still scan
+    the result with :func:`detect_credentials` and fail closed if anything
+    remains. Original session sources are intentionally untouched until a
+    sanitized bundle has been uploaded and independently verified.
+    """
+    findings = detect_credentials(text)
+    if not findings:
+        return text, []
+
+    # Remove the complete PEM payload, not merely the detector's header
+    # anchor. The expression also handles an incomplete block by consuming to
+    # the end of the projected string.
+    redacted = _PRIVATE_KEY_BLOCK_RE.sub(_REDACTED_CREDENTIAL, text)
+
+    for pattern_name, pattern in _CREDENTIAL_PATTERNS:
+        if pattern_name == "private_key":
+            continue
+        if pattern_name != "sensitive_assignment":
+            redacted = pattern.sub(_REDACTED_CREDENTIAL, redacted)
+            continue
+
+        def _redact_assignment(match: re.Match[str]) -> str:
+            value = _sensitive_assignment_value(match.group(1))
+            if value.lower() in _TOKEN_PLACEHOLDERS or len(value) < 8:
+                return match.group(0)
+            relative_start = match.start(1) - match.start(0)
+            relative_end = match.end(1) - match.start(0)
+            matched = match.group(0)
+            return matched[:relative_start] + _REDACTED_CREDENTIAL + matched[relative_end:]
+
+        redacted = pattern.sub(_redact_assignment, redacted)
+
+    return redacted, findings
 
 
 def _slug_pattern(slug: str) -> str:

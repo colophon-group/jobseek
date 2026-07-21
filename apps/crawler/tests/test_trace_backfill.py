@@ -603,6 +603,7 @@ def test_backfill_all_batches_tiers_and_cleans(monkeypatch, tmp_path: Path) -> N
     assert summary["uploaded"] == 2
     assert summary["cleaned"] == 2
     assert summary["failed"] == 0
+    assert summary["credential_redactions"] == 0
     assert summary["tiers"] == {"gold": 1, "silver": 0, "diagnostic": 1}
     assert not list((codex_home / "sessions").rglob("*.jsonl"))
     assert not list((runner_root / "traces").glob("*.jsonl"))
@@ -722,7 +723,7 @@ def test_retention_report_accounts_categories_reasons_and_cleanup_candidates(
     )
 
 
-def test_credential_findings_quarantine_bundle(tmp_path: Path) -> None:
+def test_credential_values_are_redacted_before_verified_export(tmp_path: Path) -> None:
     run_id = "issue-2-100-abcdef12"
     runner_root = tmp_path / "runner"
     codex_home = tmp_path / "home" / ".codex"
@@ -757,9 +758,17 @@ def test_credential_findings_quarantine_bundle(tmp_path: Path) -> None:
         codex_home=codex_home,
         output_dir=tmp_path / "bundle",
     )
-    assert manifest["quality"]["tier"] == "quarantined"
-    assert manifest["quality"]["credential_findings"]
-    remote_dir = f"training-bundles/v2/quarantined/{run_id}"
+    assert manifest["quality"]["tier"] == "silver"
+    assert manifest["quality"]["credential_findings"] == []
+    assert manifest["quality"]["credential_redactions"]
+    assert {finding["pattern"] for finding in manifest["quality"]["credential_redactions"]} == {
+        "huggingface_token"
+    }
+    assert "hf_" + "a" * 32 in root_path.read_text()
+    for path in (tmp_path / "bundle").rglob("*"):
+        if path.is_file():
+            assert "hf_" + "a" * 32 not in path.read_text()
+    remote_dir = f"training-bundles/v2/silver/{run_id}"
     record_verified_export(
         ledger_path=ledger,
         run_id=run_id,
@@ -767,6 +776,57 @@ def test_credential_findings_quarantine_bundle(tmp_path: Path) -> None:
         manifest=manifest,
         verified={f"{remote_dir}/{entry['path']}": entry["sha256"] for entry in manifest["files"]},
     )
-    with pytest.raises(RuntimeError, match="refusing cleanup for quarantined"):
-        cleanup_verified_sources(ledger_path=ledger, run_id=run_id, manifest=manifest)
+    cleanup_verified_sources(ledger_path=ledger, run_id=run_id, manifest=manifest)
+    assert not root_path.exists()
+
+
+def test_residual_credential_finding_still_quarantines_bundle(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from src.workspace import trace_backfill
+
+    run_id = "issue-3-100-abcdef12"
+    runner_root = tmp_path / "runner"
+    codex_home = tmp_path / "home" / ".codex"
+    cwd = f"/srv/jobseek-codex/worktrees/company-request-3-{run_id}/apps/crawler"
+    ledger = runner_root / "state" / "ledger.sqlite"
+    ledger.parent.mkdir(parents=True)
+    with sqlite3.connect(ledger) as conn:
+        conn.execute(
+            """
+            CREATE TABLE runs (
+                run_id TEXT PRIMARY KEY, issue INTEGER, state TEXT, pr_url TEXT,
+                branch TEXT, created_at INTEGER, started_at INTEGER,
+                completed_at INTEGER, error TEXT, trace_path TEXT
+            )
+            """
+        )
+        conn.execute(
+            "INSERT INTO runs VALUES (?, 3, 'failed', NULL, NULL, 1, 2, 3, 'x', NULL)",
+            (run_id,),
+        )
+    root_path = codex_home / "sessions" / "2026" / "07" / "20" / "root.jsonl"
+    _write_jsonl(
+        root_path,
+        [
+            _session_meta(thread_id="root", cwd=cwd, source="exec"),
+            _message("assistant", "Leaked token hf_" + "a" * 32, phase="final_answer"),
+        ],
+    )
+    monkeypatch.setattr(
+        trace_backfill,
+        "redact_credentials",
+        lambda text: (text, []),
+    )
+
+    manifest = build_bundle(
+        run_id=run_id,
+        runner_root=runner_root,
+        codex_home=codex_home,
+        output_dir=tmp_path / "bundle",
+    )
+
+    assert manifest["quality"]["tier"] == "quarantined"
+    assert manifest["quality"]["credential_findings"]
     assert root_path.exists()
