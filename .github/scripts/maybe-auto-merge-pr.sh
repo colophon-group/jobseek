@@ -162,6 +162,7 @@ fi
 for attempt in 1 2 3; do
   if gh pr merge "$PR" --repo "$REPO" --rebase 2>/tmp/maybe-auto-merge.err; then
     echo "PR #$PR merged"
+    "$SCRIPTS_DIR/dispatch-company-production-sync.sh"
     "$SCRIPTS_DIR/close-linked-company-request-issues.sh"
     exit 0
   fi
