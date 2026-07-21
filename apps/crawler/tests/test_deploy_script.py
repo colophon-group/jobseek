@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+
 DEPLOY_SH = Path(__file__).resolve().parent.parent / "deploy.sh"
 DOCKERFILE = Path(__file__).resolve().parent.parent / "Dockerfile"
+COMPOSE_FILE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
 
 
 def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
@@ -54,3 +57,27 @@ def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
 
     assert "FROM python:3.13-slim AS base" in dockerfile
     assert "python:3.14" not in dockerfile
+
+
+def test_alloy_uses_explicit_persistent_storage_path() -> None:
+    compose = yaml.safe_load(COMPOSE_FILE.read_text())
+    alloy = compose["services"]["alloy"]
+
+    assert "alloy-data:/data-alloy" in alloy["volumes"]
+    assert "--storage.path=/data-alloy" in alloy["command"]
+    assert compose["volumes"]["alloy-data"]["external"] is True
+    assert compose["volumes"]["alloy-data"]["name"] == "${COMPOSE_PROJECT_NAME}_alloy-data"
+
+
+def test_alloy_state_migrates_before_compose_can_recreate_it() -> None:
+    script = DEPLOY_SH.read_text()
+
+    migration = script.index("\nprepare_alloy_state_volume\n")
+    first_activation = script.index("docker compose up -d --force-recreate alloy", migration)
+    stack_start = script.index("docker compose up -d --remove-orphans", first_activation)
+    forced_recreate = script.index("docker compose up -d --force-recreate alloy", stack_start)
+
+    assert migration < first_activation < stack_start < forced_recreate
+    assert 'docker stop --time=30 "$alloy_container"' in script
+    assert 'docker cp "${alloy_container}:/data-alloy/." "$staging/"' in script
+    assert ".jobseek-persistent-state" in script
