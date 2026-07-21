@@ -26,6 +26,10 @@ const maybeAutoMergeScript = readFileSync(
   ".github/scripts/maybe-auto-merge-pr.sh",
   "utf8",
 );
+const dispatchCompanyProductionSyncScript = readFileSync(
+  ".github/scripts/dispatch-company-production-sync.sh",
+  "utf8",
+);
 const classifyPrPathsScript = readFileSync(
   ".github/scripts/classify-pr-paths.sh",
   "utf8",
@@ -108,6 +112,44 @@ printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
   } catch {
     // A correctly skipped PR does not call `gh workflow run`.
   }
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, calls };
+}
+
+function runDispatchCompanyProductionSync({
+  defaultBranch = "main",
+  includeDefaultBranch = true,
+} = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "dispatch-company-sync-"));
+  const log = join(dir, "gh.log");
+  const gh = join(dir, "gh");
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
+`,
+  );
+  chmodSync(gh, 0o755);
+  const env = {
+    ...process.env,
+    PATH: `${dir}:${process.env.PATH}`,
+    GH_TOKEN: "test-token",
+    REPO: "colophon-group/jobseek",
+    PR: "123",
+    MOCK_GH_LOG: log,
+  };
+  if (includeDefaultBranch) env.DEFAULT_BRANCH = defaultBranch;
+  const result = spawnSync(
+    "bash",
+    [".github/scripts/dispatch-company-production-sync.sh"],
+    {
+      cwd: process.cwd(),
+      env,
+      encoding: "utf8",
+    },
+  );
+  const calls = readFileSync(log, "utf8");
   rmSync(dir, { recursive: true, force: true });
   return { ...result, calls };
 }
@@ -488,7 +530,44 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /wait_for_required_ci\(\)/);
   assert.match(maybeAutoMergeScript, /Required CI is successful/);
   assert.match(maybeAutoMergeScript, /gh pr merge "\$PR" --repo "\$REPO" --rebase/);
+  assert.match(
+    maybeAutoMergeScript,
+    /gh pr merge "\$PR" --repo "\$REPO" --rebase[\s\S]*dispatch-company-production-sync\.sh[\s\S]*close-linked-company-request-issues\.sh/,
+  );
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
+});
+
+test("company auto-merges explicitly dispatch production CSV sync", () => {
+  for (const source of [maybeAutoMergeWorkflow, uploadCompanyImagesWorkflow]) {
+    assert.match(
+      source,
+      /cp \.github\/scripts\/dispatch-company-production-sync\.sh "\$RUNNER_TEMP\/trusted-scripts\/dispatch-company-production-sync\.sh"/,
+    );
+  }
+
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /name: Dispatch production CSV sync[\s\S]*steps\.merge\.outputs\.merged == 'true'[\s\S]*dispatch-company-production-sync\.sh/,
+  );
+  assert.match(
+    dispatchCompanyProductionSyncScript,
+    /gh workflow run sync-data\.yml --repo "\$REPO" --ref "\$default_branch"/,
+  );
+
+  for (const fixture of [
+    { defaultBranch: "main", includeDefaultBranch: false },
+    { defaultBranch: "release", includeDefaultBranch: true },
+  ]) {
+    const result = runDispatchCompanyProductionSync(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    const expectedBranch = fixture.includeDefaultBranch
+      ? fixture.defaultBranch
+      : "main";
+    assert.equal(
+      result.calls,
+      `workflow run sync-data.yml --repo colophon-group/jobseek --ref ${expectedBranch}\n`,
+    );
+  }
 });
 
 test("bot-authored company branch updates dispatch path-aware CI", () => {
