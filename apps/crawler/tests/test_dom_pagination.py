@@ -9,7 +9,9 @@ import httpx
 import pytest
 
 from src.core.monitors.dom import (
+    BotChallengeError,
     _build_url_matcher,
+    _extract_links_rendered,
     _extract_links_static,
     _fetch_via_page,
     _paginate_urls,
@@ -116,6 +118,92 @@ class TestBuildUrlMatcher:
 
 
 class TestDomDiscoverInitialFetch:
+    async def test_siteground_challenge_raises_instead_of_successful_empty(self, monkeypatch):
+        """A SiteGround HTTP-202 captcha shell is not an empty board."""
+
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.shared.http_retry.asyncio.sleep", AsyncMock())
+
+        challenge = (
+            '<html><head><meta http-equiv="refresh" '
+            'content="0;/.well-known/sgcaptcha/?r=%2Fcareer%2F"></head></html>'
+        )
+
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(202, text=challenge)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await dom_discover(
+                    {
+                        "board_url": "https://blocked.example/careers",
+                        "metadata": {"url_filter": "/job/"},
+                    },
+                    client,
+                )
+
+        assert attempts == 3
+        assert exc_info.value.last_status == 202
+
+    async def test_rendered_siteground_challenge_raises(self, monkeypatch):
+        """The Playwright redirect target must also fail the monitor cycle."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/.well-known/captcha/?r=%2Fcareers"
+        page.content = AsyncMock(return_value="<html><body>Checking your browser</body></html>")
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
+    async def test_rendered_siteground_meta_refresh_raises(self, monkeypatch):
+        """Challenge markup must be caught before its redirect settles."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/careers"
+        page.content = AsyncMock(
+            return_value=(
+                '<html><head><meta http-equiv="refresh" '
+                'content="0;/.well-known/sgcaptcha/?r=%2Fcareers"></head></html>'
+            )
+        )
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
+    async def test_rendered_captcha_library_is_not_a_challenge(self, monkeypatch):
+        """A normal page may load BotDetect without being a challenge page."""
+
+        page = MagicMock()
+        page.url = "https://example.com/careers"
+        page.content = AsyncMock(
+            return_value='<html><script src="/BotDetectCaptcha.ashx"></script></html>'
+        )
+        page.evaluate = AsyncMock(return_value=["https://example.com/job/123"])
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        urls = await _extract_links_rendered(
+            page,
+            {"_board_url": "https://example.com/careers"},
+        )
+
+        assert urls == {"https://example.com/job/123"}
+
     async def test_initial_403_raises_instead_of_successful_empty(self, monkeypatch):
         """A blocked listing page must fail the monitor cycle.
 
