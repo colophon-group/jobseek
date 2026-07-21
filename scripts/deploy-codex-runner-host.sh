@@ -17,6 +17,7 @@ START_TIMERS="${JOBSEEK_CODEX_START_TIMERS:-0}"
 LOCK_FILE="${ROOT_DIR}/state/codex-runner.lock"
 
 UNITS=(
+  jobseek-codex-docker-lifecycle.service
   jobseek-codex-governor.service
   jobseek-codex-governor.timer
   jobseek-codex-daily-annotations.service
@@ -29,6 +30,10 @@ TIMERS=(
   jobseek-codex-governor.timer
   jobseek-codex-daily-annotations.timer
   jobseek-codex-daily-error-review.timer
+)
+
+ALWAYS_ON_SERVICES=(
+  jobseek-codex-docker-lifecycle.service
 )
 
 ACTIVE_TIMERS_BEFORE_DEPLOY=()
@@ -137,12 +142,24 @@ install_units() {
   systemctl daemon-reload
   systemd-analyze verify "${UNITS[@]/#//etc/systemd/system/}"
   systemctl enable "${TIMERS[@]}"
+  systemctl enable "${ALWAYS_ON_SERVICES[@]}"
+}
+
+start_always_on_services() {
+  # The watcher imports its implementation at process start, so a repo update
+  # must restart it even when the unit definition itself did not change.
+  systemctl restart "${ALWAYS_ON_SERVICES[@]}"
+  local service
+  for service in "${ALWAYS_ON_SERVICES[@]}"; do
+    systemctl is-active --quiet "${service}" || fail "${service} failed to start"
+  done
 }
 
 verify_entrypoints() {
   as_runner python3 -m py_compile \
     "${REPO_DIR}/scripts/codex-company-resolver-governor.py" \
     "${REPO_DIR}/scripts/codex-daily-routine-runner.py" \
+    "${REPO_DIR}/scripts/codex-docker-lifecycle-watch.py" \
     "${REPO_DIR}/scripts/codex-error-review-bundle.py" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" \
     "${REPO_DIR}/scripts/codex-worktree-reconcile.py" \
@@ -231,6 +248,7 @@ main() {
   sync_crawler_runtime
   install_units
   verify_entrypoints
+  start_always_on_services
   reconcile_codex_worktrees
   report_trace_retention
 }
