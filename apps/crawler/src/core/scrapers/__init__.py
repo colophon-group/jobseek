@@ -149,7 +149,15 @@ class ScraperType:
 _REGISTRY: dict[str, ScraperType] = {}
 
 # Display order for probe results
-_PROBE_ORDER = ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
+_PROBE_ORDER = [
+    "json-ld",
+    "nextdata",
+    "embedded",
+    "onlyfy",
+    "pdf",
+    "dom",
+    "api_sniffer",
+]
 
 
 def register(
@@ -370,6 +378,7 @@ from src.core.scrapers import (  # noqa: E402
     mokahr,  # noqa: F401
     nextdata,  # noqa: F401
     notion,  # noqa: F401
+    onlyfy,  # noqa: F401
     oracle_hcm,  # noqa: F401
     paylocity,  # noqa: F401
     pdf,  # noqa: F401

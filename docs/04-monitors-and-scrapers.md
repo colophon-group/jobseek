@@ -212,6 +212,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `mokahr` | Static | Fetches and decrypts Mokahr detail API records |
 | `nextdata` | Static or Playwright | Extracts from Next.js `__NEXT_DATA__` props |
 | `notion` | Static | Loads Notion blocks through Notion's internal API |
+| `onlyfy` | Static | Fetches Onlyfy/Prescreen server-rendered candidate pages |
 | `oracle_hcm` | Static | Fetches Oracle HCM detail REST responses |
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |

@@ -238,6 +238,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `mokahr`       | Fetch and decrypt Mokahr detail API records        | None                   |
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |
 | `notion`       | Convert Notion API blocks to structured content    | `property_map` optional |
+| `onlyfy`       | Fetch Onlyfy/Prescreen server-rendered candidate pages | `language` optional |
 | `oracle_hcm`   | Fetch Oracle HCM detail REST responses             | `{host, site}`         |
 | `paylocity`    | Parse Paylocity server-rendered detail pages       | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
