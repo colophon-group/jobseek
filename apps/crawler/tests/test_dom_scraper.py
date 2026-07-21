@@ -108,6 +108,26 @@ class TestDomScraper:
             result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
         assert result.title == "Software Engineer"
 
+    async def test_title_extraction_from_semantic_header(self):
+        """Animated headings nested in a page header remain extractable."""
+        from src.core.scrapers.dom import scrape
+
+        html = """
+        <html><body>
+        <header>
+          <nav>Menu</nav>
+          <h1><span><span>H</span><span>e</span><span>a</span><span>d</span></span>
+          <span>of Sales</span></h1>
+        </header>
+        <p>Lead the sales team.</p>
+        </body></html>
+        """
+        page = _make_page(html)
+        config = {"render": True, "steps": [{"tag": "h1", "field": "title"}]}
+        with _patch_playwright(page):
+            result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
+        assert result.title == "Head of Sales"
+
     async def test_description_html(self):
         """html: true step produces an HTML fragment."""
         from src.core.scrapers.dom import scrape
