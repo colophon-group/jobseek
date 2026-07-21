@@ -84,6 +84,12 @@ monitor_dedup_total = Counter(
     ["path"],
 )
 
+monitor_db_transaction_retries_total = Counter(
+    "crawler_monitor_db_transaction_retries_total",
+    "Monitor database transactions retried after a transient PostgreSQL abort",
+    ["phase"],
+)
+
 api_sniffer_fallback_failed_total = Counter(
     "crawler_api_sniffer_fallback_failed_total",
     "api_sniffer replay paths that ended with no data (raised ApiSnifferFallbackError)",

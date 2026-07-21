@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import random
 import re
 from collections import defaultdict
 from dataclasses import dataclass
@@ -22,6 +23,7 @@ from src.core.monitors import BoardGoneError, api_monitor_types
 from src.core.scrapers import enrich_description
 from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
 from src.metrics import (
+    monitor_db_transaction_retries_total,
     monitor_dedup_total,
     monitor_gone_skipped_total,
     monitor_jobs_discovered,
@@ -109,6 +111,8 @@ _API_MONITOR_TYPES = api_monitor_types()
 # Max R2 backfill uploads per board run (touched postings without hashes).
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _SLOW_MONITOR_SECONDS = 30.0
+_DIFF_TRANSACTION_MAX_ATTEMPTS = 3
+_DIFF_TRANSACTION_RETRY_BASE_SECONDS = 0.05
 
 
 # ── URL sanity check ─────────────────────────────────────────────────
@@ -685,6 +689,47 @@ def _throttle_key(board: asyncpg.Record) -> str:
     return urlparse(board["board_url"]).hostname or board["board_url"]
 
 
+async def _fetch_diff_batch(
+    pool: asyncpg.Pool,
+    urls: list[str],
+    board_id: str,
+    is_rich_no_scrape: bool,
+    board_log: structlog.stdlib.BoundLogger,
+) -> list[asyncpg.Record]:
+    """Classify one URL chunk with a bounded deadlock retry.
+
+    ``_DIFF_BATCH`` is atomic and idempotent after rollback, so retrying this
+    narrow transaction cannot duplicate an insert or Redis publication.  The
+    SQL takes posting locks in deterministic order; this retry is the safety
+    net for a conflicting transaction from another posting workflow.
+    """
+    for attempt in range(1, _DIFF_TRANSACTION_MAX_ATTEMPTS + 1):
+        try:
+            async with pool.acquire() as conn, conn.transaction():
+                return await conn.fetch(
+                    _DIFF_BATCH,
+                    urls,
+                    board_id,
+                    is_rich_no_scrape,
+                )
+        except asyncpg.DeadlockDetectedError:
+            if attempt >= _DIFF_TRANSACTION_MAX_ATTEMPTS:
+                raise
+            ceiling = _DIFF_TRANSACTION_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            retry_in = random.uniform(ceiling / 2, ceiling)
+            monitor_db_transaction_retries_total.labels(phase="diff_batch").inc()
+            board_log.warning(
+                "batch.monitor.db_transaction_retry",
+                phase="diff_batch",
+                attempt=attempt,
+                max_attempts=_DIFF_TRANSACTION_MAX_ATTEMPTS,
+                retry_in_s=round(retry_in, 3),
+            )
+            await asyncio.sleep(retry_in)
+
+    raise AssertionError("unreachable")
+
+
 # ── Monitor Processing ───────────────────────────────────────────────
 
 
@@ -865,13 +910,13 @@ async def _process_one_board_streaming(
                         meta_patch.update(metadata_updates)
 
                 is_rich_no_scrape = is_rich and not enrich_fields
-                async with pool.acquire() as conn, conn.transaction():
-                    rows = await conn.fetch(
-                        _DIFF_BATCH,
-                        chunk_urls,
-                        board_id,
-                        is_rich_no_scrape,
-                    )
+                rows = await _fetch_diff_batch(
+                    pool,
+                    chunk_urls,
+                    board_id,
+                    is_rich_no_scrape,
+                    board_log,
+                )
 
                 new_urls: list[str] = []
                 relisted: list[dict] = []
