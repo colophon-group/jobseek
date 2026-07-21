@@ -19,10 +19,12 @@ from src.exporter import (
     PostingSchema,
     TaxonomyMaps,
     _build_typesense_docs,
+    _DownstreamBackoff,
     _export_changed_boards,
     _export_changed_postings,
     _export_postings_dual,
     _get_cursor,
+    _is_downstream_unavailable,
     _reconciliation_loop,
     _save_cursor,
     _save_cursors_atomic,
@@ -491,6 +493,46 @@ class TestExportPostingsDual:
         # per-row fallback during a target-wide outage.
         assert conn.execute.await_count == 1
 
+    async def test_supabase_outage_backs_off_without_blocking_typesense(self):
+        """A refused connection must not be retried on every one-second tick.
+
+        Supabase's cursor remains pinned for replay, while the next tick reads
+        from the advanced Typesense cursor instead of replaying the same local
+        batch. The independent Typesense leg therefore stays live without
+        amplifying the Supabase outage (#5712).
+        """
+        ts = datetime(2026, 7, 16, 8, 52, 33, tzinfo=UTC)
+        cursor = (datetime(2026, 7, 16, 8, 50, 0, tzinfo=UTC), _ZERO_UUID)
+        pid = uuid.uuid4()
+
+        local = _make_pool()
+        local.fetch = AsyncMock(side_effect=[[_posting_row(posting_id=pid, ts=ts)], []])
+        supa, conn = _supa_pool_with_capture()
+        conn.execute = AsyncMock(side_effect=asyncpg.ConnectionFailureError("connection refused"))
+        backoff = _DownstreamBackoff("supabase-test", 5.0, 300.0)
+
+        with patch("src.exporter._upsert_to_typesense", new=AsyncMock()) as upsert_ts:
+            count, new_supa, new_ts = await _export_postings_dual(
+                local, supa, cursor, cursor, TaxonomyMaps(), backoff
+            )
+            next_count, retry_supa, retry_ts = await _export_postings_dual(
+                local, supa, new_supa, new_ts, TaxonomyMaps(), backoff
+            )
+
+        assert count == 1
+        assert new_supa == cursor
+        assert new_ts == (ts, pid)
+        assert backoff.consecutive_failures == 1
+
+        assert next_count == 0
+        assert retry_supa == cursor
+        assert retry_ts == (ts, pid)
+        # Only the first tick touched Supabase. The blocked tick fetched from
+        # Typesense's cursor, not the pinned Supabase cursor.
+        assert conn.execute.await_count == 1
+        assert local.fetch.await_args_list[1].args[1:3] == (ts, pid)
+        assert upsert_ts.await_count == 1
+
     async def test_no_rows_returns_zero_and_unchanged_cursors(self):
         local = _make_pool()
         supa, _ = _supa_pool_with_capture()
@@ -504,6 +546,32 @@ class TestExportPostingsDual:
         assert count == 0
         assert new_supa == supa_cur
         assert new_ts == ts_cur
+
+
+class TestDownstreamBackoff:
+    def test_connection_failures_are_classified_but_row_errors_are_not(self):
+        assert _is_downstream_unavailable(asyncpg.ConnectionFailureError("connection refused"))
+        assert _is_downstream_unavailable(TimeoutError("pool acquisition timed out"))
+        assert not _is_downstream_unavailable(asyncpg.ForeignKeyViolationError("bad company_id"))
+        assert not _is_downstream_unavailable(RuntimeError("unknown exporter bug"))
+
+    def test_exponential_delay_is_bounded_and_recovery_resets_state(self):
+        backoff = _DownstreamBackoff("supabase-state-test", 5.0, 300.0)
+
+        assert backoff.record_failure(now=10.0) == 5.0
+        assert not backoff.ready(now=14.99)
+        assert backoff.ready(now=15.0)
+        assert backoff.record_failure(now=15.0) == 10.0
+
+        for failure_number in range(3, 2_000):
+            delay = backoff.record_failure(now=float(failure_number))
+        assert delay == 300.0
+
+        recovery = backoff.record_success(now=2_001.0)
+        assert recovery == (1_999, 1_991.0)
+        assert backoff.consecutive_failures == 0
+        assert backoff.retry_at == 0.0
+        assert backoff.outage_started_at is None
 
 
 # ---------------------------------------------------------------------------
@@ -1122,6 +1190,10 @@ class TestRunExporter:
         local.fetch = AsyncMock(return_value=[])
         local.execute = AsyncMock()
         local.fetchval = AsyncMock(return_value=0)
+        local.get_size = MagicMock(return_value=1)
+        local.get_idle_size = MagicMock(return_value=1)
+        supa.get_size = MagicMock(return_value=1)
+        supa.get_idle_size = MagicMock(return_value=1)
 
         with patch(
             "src.exporter.get_queue_depths",

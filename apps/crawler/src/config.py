@@ -138,6 +138,8 @@ class Settings(BaseSettings):
     # Exporter
     export_interval: int = 1
     export_batch_limit: int = 2000
+    export_downstream_backoff_base_seconds: float = 5.0
+    export_downstream_backoff_max_seconds: float = 300.0
     reconciliation_interval: int = 86400
 
     # Typesense (disabled when typesense_admin_key is empty)

@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 import asyncpg
 import structlog
-from prometheus_client import Gauge
+from prometheus_client import Counter, Gauge
 
 from src.config import settings
 from src.metrics import (
@@ -34,7 +34,7 @@ from src.metrics import (
 )
 from src.redis_queue import get_queue_depths
 
-# These two gauges are only ever set by this module (the exporter), so we
+# These availability gauges are only ever set by this module (the exporter), so we
 # define them here instead of in metrics.py. Defining them at metrics.py's
 # module scope would have every crawler container that imports metrics
 # export a default-0 sample, which masquerades as "redis disconnected" or
@@ -47,6 +47,21 @@ redis_connected = Gauge(
 typesense_healthy = Gauge(
     "crawler_typesense_healthy",
     "Typesense health status (1=healthy, 0=unhealthy)",
+)
+exporter_downstream_available = Gauge(
+    "crawler_exporter_downstream_available",
+    "Exporter downstream availability (1=available, 0=in backoff)",
+    ["target"],
+)
+exporter_downstream_backoff_seconds = Gauge(
+    "crawler_exporter_downstream_backoff_seconds",
+    "Seconds remaining before the exporter retries a downstream",
+    ["target"],
+)
+exporter_downstream_skipped_total = Counter(
+    "crawler_exporter_downstream_skipped_total",
+    "Exporter downstream attempts skipped by outage backoff",
+    ["target"],
 )
 
 log = structlog.get_logger()
@@ -68,6 +83,75 @@ _EXPERIENCE_MAX_OPEN_ENDED = 99
 # Cursor is a (timestamp, id) pair for keyset pagination.
 # Stored as "ts_iso|uuid" in exporter_state.
 Cursor = tuple[datetime, uuid.UUID]
+
+
+@dataclass(slots=True)
+class _DownstreamBackoff:
+    """Bound repeated exporter attempts during a downstream outage.
+
+    The exporter normally runs every second. Without state carried between
+    ticks, a refused connection turns one provider incident into a retry
+    storm. This circuit only opens for target-wide availability failures;
+    deterministic row errors retain their existing isolation path.
+    """
+
+    target: str
+    base_seconds: float
+    max_seconds: float
+    consecutive_failures: int = 0
+    retry_at: float = 0.0
+    outage_started_at: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.base_seconds <= 0:
+            raise ValueError("base_seconds must be positive")
+        if self.max_seconds < self.base_seconds:
+            raise ValueError("max_seconds must be at least base_seconds")
+        exporter_downstream_available.labels(target=self.target).set(1)
+        exporter_downstream_backoff_seconds.labels(target=self.target).set(0)
+
+    def ready(self, now: float | None = None) -> bool:
+        current = time.monotonic() if now is None else now
+        remaining = max(0.0, self.retry_at - current)
+        exporter_downstream_backoff_seconds.labels(target=self.target).set(remaining)
+        return remaining == 0
+
+    def record_skip(self, now: float | None = None) -> None:
+        self.ready(now)
+        exporter_downstream_skipped_total.labels(target=self.target).inc()
+
+    def record_failure(self, now: float | None = None) -> float:
+        current = time.monotonic() if now is None else now
+        if self.outage_started_at is None:
+            self.outage_started_at = current
+        self.consecutive_failures += 1
+        # Once the cap is reached there is no reason to keep growing the
+        # exponent (and an extremely long outage must not overflow a float).
+        cap_exponent = math.ceil(math.log2(self.max_seconds / self.base_seconds))
+        exponent = min(self.consecutive_failures - 1, cap_exponent)
+        delay = min(self.max_seconds, self.base_seconds * (2**exponent))
+        self.retry_at = current + delay
+        exporter_downstream_available.labels(target=self.target).set(0)
+        exporter_downstream_backoff_seconds.labels(target=self.target).set(delay)
+        return delay
+
+    def record_success(self, now: float | None = None) -> tuple[int, float] | None:
+        if self.consecutive_failures == 0:
+            return None
+        current = time.monotonic() if now is None else now
+        failures = self.consecutive_failures
+        outage_started_at = self.outage_started_at
+        outage_seconds = max(
+            0.0,
+            current - (current if outage_started_at is None else outage_started_at),
+        )
+        self.consecutive_failures = 0
+        self.retry_at = 0.0
+        self.outage_started_at = None
+        exporter_downstream_available.labels(target=self.target).set(1)
+        exporter_downstream_backoff_seconds.labels(target=self.target).set(0)
+        return failures, outage_seconds
+
 
 __all__ = [
     "Cursor",
@@ -700,6 +784,12 @@ def _exc_fields(exc: BaseException) -> dict[str, object]:
 
 
 _ROW_POISON_SQLSTATE_CLASSES = frozenset({"21", "22", "23"})
+_DOWNSTREAM_UNAVAILABLE_SQLSTATES = frozenset(
+    {
+        "53300",  # too_many_connections
+        "57P03",  # cannot_connect_now
+    }
+)
 
 
 def _is_supabase_row_poison(exc: BaseException) -> bool:
@@ -722,6 +812,36 @@ def _is_supabase_row_poison(exc: BaseException) -> bool:
         isinstance(exc, asyncpg.PostgresError)
         and isinstance(sqlstate, str)
         and sqlstate[:2] in _ROW_POISON_SQLSTATE_CLASSES
+    )
+
+
+def _is_downstream_unavailable(exc: BaseException) -> bool:
+    """Return whether an error represents target-wide unavailability.
+
+    SQLSTATE class 08 covers connection exceptions such as the production
+    ``ConnectionFailureError`` (08006). Pool/network timeouts and socket
+    failures may arrive as built-in exceptions before asyncpg can attach a
+    SQLSTATE. Capacity and startup/shutdown rejections are also target-wide.
+    Row-local and unknown failures deliberately do not open the circuit.
+    """
+    sqlstate = getattr(exc, "sqlstate", None)
+    return (
+        (isinstance(sqlstate, str) and sqlstate.startswith("08"))
+        or sqlstate in _DOWNSTREAM_UNAVAILABLE_SQLSTATES
+        or isinstance(exc, (TimeoutError, ConnectionError, OSError))
+    )
+
+
+def _record_downstream_recovery(backoff: _DownstreamBackoff) -> None:
+    recovery = backoff.record_success()
+    if recovery is None:
+        return
+    failed_attempts, outage_seconds = recovery
+    log.info(
+        "exporter.downstream_recovered",
+        target=backoff.target,
+        failed_attempts=failed_attempts,
+        outage_duration_s=round(outage_seconds, 2),
     )
 
 
@@ -851,13 +971,21 @@ async def _export_postings_dual(
     supa_cursor: Cursor,
     ts_cursor: Cursor,
     maps: TaxonomyMaps,
+    supa_backoff: _DownstreamBackoff | None = None,
 ) -> tuple[int, Cursor, Cursor]:
     """Fetch changed postings and upsert to both Supabase and Typesense concurrently.
 
     Uses two-cursor design: SELECT from MIN(supa_cursor, ts_cursor), then
     post-filter rows for each target. Returns (total_fetched, new_supa_cursor, new_ts_cursor).
     """
-    fetch_cursor = _min_cursor(supa_cursor, ts_cursor)
+    supa_ready = supa_backoff is None or supa_backoff.ready()
+    if not supa_ready and supa_backoff is not None:
+        # Supabase's cursor remains pinned, but reading from it on every
+        # one-second tick would replay the same local batch throughout the
+        # outage. Read from Typesense's cursor until the retry deadline so
+        # that independent search indexing can continue without local churn.
+        supa_backoff.record_skip()
+    fetch_cursor = _min_cursor(supa_cursor, ts_cursor) if supa_ready else ts_cursor
     fetch_ts, fetch_id = fetch_cursor
 
     rows = await local_pool.fetch(
@@ -869,7 +997,9 @@ async def _export_postings_dual(
     if not rows:
         return 0, supa_cursor, ts_cursor
 
-    supa_rows = [r for r in rows if _cursor_gt(r["updated_at"], r["id"], supa_cursor)]
+    supa_rows = (
+        [r for r in rows if _cursor_gt(r["updated_at"], r["id"], supa_cursor)] if supa_ready else []
+    )
     ts_rows = [r for r in rows if _cursor_gt(r["updated_at"], r["id"], ts_cursor)]
 
     tasks = []
@@ -896,11 +1026,17 @@ async def _export_postings_dual(
             # so we retry next tick — same shape as the original
             # implementation. ``_upsert_to_supabase`` swallows per-row
             # poison-pills and returns them as a set instead.
-            log.error(
-                "exporter.supabase_upsert_error",
-                **_exc_fields(results[0]),
-            )
+            fields = _exc_fields(results[0])
+            if supa_backoff is not None and _is_downstream_unavailable(results[0]):
+                retry_in = supa_backoff.record_failure()
+                fields.update(
+                    retry_in_s=round(retry_in, 2),
+                    consecutive_failures=supa_backoff.consecutive_failures,
+                )
+            log.error("exporter.supabase_upsert_error", **fields)
         else:
+            if supa_backoff is not None:
+                _record_downstream_recovery(supa_backoff)
             failed_supa_ids: set[uuid.UUID] = results[0] or set()
             last = supa_rows[-1]
             # Advance the cursor past the whole batch even if some rows
@@ -1268,6 +1404,11 @@ async def run_exporter(
     """
     interval = settings.export_interval
     posting_cursor = await _get_cursor(local_pool, "job_posting")
+    supa_backoff = _DownstreamBackoff(
+        target="supabase",
+        base_seconds=settings.export_downstream_backoff_base_seconds,
+        max_seconds=settings.export_downstream_backoff_max_seconds,
+    )
 
     ts_enabled = _typesense_enabled()
     ts_cursor: Cursor = (_EPOCH, _ZERO_UUID)
@@ -1288,7 +1429,12 @@ async def run_exporter(
 
                 # Two-cursor dual export
                 exported, posting_cursor, ts_cursor = await _export_postings_dual(
-                    local_pool, supa_pool, posting_cursor, ts_cursor, maps
+                    local_pool,
+                    supa_pool,
+                    posting_cursor,
+                    ts_cursor,
+                    maps,
+                    supa_backoff,
                 )
                 # Save both cursors in a single transaction so a crash
                 # between writes cannot leave one cursor advanced while
@@ -1302,9 +1448,27 @@ async def run_exporter(
                 )
             else:
                 # Supabase-only export (original path)
-                exported, posting_cursor = await _export_changed_postings(
-                    local_pool, supa_pool, posting_cursor
-                )
+                if not supa_backoff.ready():
+                    supa_backoff.record_skip()
+                    exported = 0
+                else:
+                    try:
+                        exported, posting_cursor = await _export_changed_postings(
+                            local_pool, supa_pool, posting_cursor
+                        )
+                    except Exception as exc:
+                        if not _is_downstream_unavailable(exc):
+                            raise
+                        retry_in = supa_backoff.record_failure()
+                        log.error(
+                            "exporter.supabase_upsert_error",
+                            retry_in_s=round(retry_in, 2),
+                            consecutive_failures=supa_backoff.consecutive_failures,
+                            **_exc_fields(exc),
+                        )
+                        exported = 0
+                    else:
+                        _record_downstream_recovery(supa_backoff)
                 await _save_cursor(local_pool, "job_posting", posting_cursor)
 
             await _update_metrics(
