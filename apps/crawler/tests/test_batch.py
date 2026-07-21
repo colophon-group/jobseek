@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import asyncpg
 import pytest
 
 from src.batch import (
@@ -48,6 +49,7 @@ from src.core.location_resolve import LocationResolver, ResolvedLocation
 from src.core.monitor import MonitorResult
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
+from src.processing.board import _fetch_diff_batch
 
 
 @pytest.fixture(autouse=True)
@@ -1596,6 +1598,16 @@ class TestInsertSqlContract:
         # new_urls must check "any board", not "this board only".
         assert "NOT EXISTS" in _DIFF_BATCH
 
+    def test_diff_batch_locks_all_existing_matches_in_global_order(self):
+        sql_compact = " ".join(_DIFF_BATCH.split())
+        lock_start = sql_compact.index("locked_existing AS MATERIALIZED")
+        touched_start = sql_compact.index("touched AS (")
+        assert lock_start < touched_start
+        lock_section = sql_compact[lock_start:touched_start]
+        assert "ORDER BY jp.id FOR UPDATE OF jp" in lock_section
+        assert "FROM locked_existing locked" in sql_compact
+        assert "job_posting.id = locked.id" in sql_compact
+
     def test_diff_batch_touched_self_heals_stuck_next_scrape_at(self):
         # #2996: the touched branch must reset next_scrape_at = now() when
         # the row is stuck (description_r2_hash IS NULL AND
@@ -1673,6 +1685,80 @@ class TestInsertSqlContract:
 
 
 # ── TestDuplicateSourceUrl ───────────────────────────────────────────
+
+
+class TestDiffBatchDeadlockRetry:
+    async def test_retries_aborted_transaction_then_returns_rows(self, mock_pool):
+        pool, conn = mock_pool
+        expected = [{"action": "touched", "id": "posting-1"}]
+        conn.fetch.side_effect = [
+            asyncpg.DeadlockDetectedError("synthetic deadlock"),
+            expected,
+        ]
+        board_log = MagicMock()
+
+        with (
+            patch("src.processing.board.random.uniform", return_value=0.04),
+            patch("src.processing.board.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            rows = await _fetch_diff_batch(
+                pool,
+                ["https://example.com/job/1"],
+                "board-1",
+                False,
+                board_log,
+            )
+
+        assert rows == expected
+        assert conn.fetch.await_count == 2
+        assert pool.acquire.call_count == 2
+        sleep.assert_awaited_once_with(0.04)
+        board_log.warning.assert_called_once_with(
+            "batch.monitor.db_transaction_retry",
+            phase="diff_batch",
+            attempt=1,
+            max_attempts=3,
+            retry_in_s=0.04,
+        )
+
+    async def test_stops_after_bounded_deadlock_attempts(self, mock_pool):
+        pool, conn = mock_pool
+        conn.fetch.side_effect = asyncpg.DeadlockDetectedError("persistent deadlock")
+
+        with (
+            patch("src.processing.board.random.uniform", return_value=0.04),
+            patch("src.processing.board.asyncio.sleep", new_callable=AsyncMock) as sleep,
+            pytest.raises(asyncpg.DeadlockDetectedError),
+        ):
+            await _fetch_diff_batch(
+                pool,
+                ["https://example.com/job/1"],
+                "board-1",
+                False,
+                MagicMock(),
+            )
+
+        assert conn.fetch.await_count == 3
+        assert sleep.await_count == 2
+
+    async def test_does_not_retry_non_deadlock_errors(self, mock_pool):
+        pool, conn = mock_pool
+        conn.fetch.side_effect = RuntimeError("query bug")
+
+        with (
+            patch("src.processing.board.asyncio.sleep", new_callable=AsyncMock) as sleep,
+            pytest.raises(RuntimeError, match="query bug"),
+        ):
+            await _fetch_diff_batch(
+                pool,
+                ["https://example.com/job/1"],
+                "board-1",
+                False,
+                MagicMock(),
+            )
+
+        assert conn.fetch.await_count == 1
+        sleep.assert_not_awaited()
 
 
 class TestDuplicateSourceUrl:
