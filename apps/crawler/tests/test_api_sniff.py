@@ -239,6 +239,46 @@ class TestDetectJobList:
         assert result.url_field == "url"
         assert result.total_count == 100
 
+    def test_prefers_bamboohr_jobs_over_currency_reference_data(self):
+        currency_items = [
+            {"id": i, "code": f"C{i}", "name": f"Currency {i}", "symbol": "$"} for i in range(20)
+        ]
+        job_items = [
+            {
+                "id": str(i),
+                "jobOpeningName": f"Engineer {i}",
+                "departmentLabel": "Engineering",
+                "employmentStatusLabel": "Full-Time",
+                "location": {"city": "Sheffield", "state": "South Yorkshire"},
+                "locationType": "0",
+            }
+            for i in range(10)
+        ]
+        currency = _make_exchange(
+            url="https://example.bamboohr.com/ajax/get_currency",
+            body={"data": currency_items},
+        )
+        careers = _make_exchange(
+            url="https://example.bamboohr.com/careers/list",
+            body={"meta": {"totalCount": 10}, "result": job_items},
+        )
+
+        result = detect_job_list(
+            [currency, careers],
+            "https://example.bamboohr.com/careers",
+        )
+
+        assert result is not None
+        assert result.candidate.exchange.url.endswith("/careers/list")
+        assert result.candidate.json_path == "result"
+        assert auto_map_fields(result.candidate.items) == {
+            "title": "jobOpeningName",
+            "employment_type": "employmentStatusLabel",
+            "job_location_type": "locationType",
+            "locations": "location.city",
+            "metadata.team": "departmentLabel",
+        }
+
     def test_returns_none_no_exchanges(self):
         assert detect_job_list([], "https://example.com") is None
 

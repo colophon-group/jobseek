@@ -110,7 +110,8 @@ JOB_KEYWORDS = re.compile(
 )
 
 TITLE_FIELDS = re.compile(
-    r"^(title|name|job_?title|position_?title|label|heading|role|job_?name)$",
+    r"^(title|name|job_?title|position_?title|label|heading|role|job_?name"
+    r"|job_?opening_?name)$",
     re.IGNORECASE,
 )
 
@@ -190,7 +191,8 @@ _SKIP_HEADERS = frozenset(
 
 FIELD_PATTERNS: dict[str, re.Pattern] = {
     "title": re.compile(
-        r"^(title|name|job_?title|position_?title|label|heading|role|job_?name)$",
+        r"^(title|name|job_?title|position_?title|label|heading|role|job_?name"
+        r"|job_?opening_?name)$",
         re.I,
     ),
     "description": re.compile(
@@ -200,7 +202,7 @@ FIELD_PATTERNS: dict[str, re.Pattern] = {
     ),
     "employment_type": re.compile(
         r"^(employment_?type|type|job_?type|work_?type|contract_?type"
-        r"|employmentType|workType)$",
+        r"|employmentType|workType|employment_?status_?label)$",
         re.I,
     ),
     "date_posted": re.compile(
@@ -229,7 +231,8 @@ _LOCATION_SUBFIELD_PATTERNS = re.compile(
 _METADATA_PATTERNS: dict[str, re.Pattern] = {
     "metadata.team": re.compile(
         r"^(team|department|group|division|org|organization|category"
-        r"|departmentName|teamName|team_?name|department_?name)$",
+        r"|departmentName|teamName|team_?name|department_?name"
+        r"|department_?label)$",
         re.I,
     ),
 }
@@ -884,6 +887,20 @@ def auto_map_fields(items: list[dict]) -> dict[str, str]:
                                 mapping["locations"] = f"{key}[].{subkey}"
                                 break
                     break
+            if isinstance(first, dict):
+                # BambooHR and similar APIs return a single location object
+                # (for example ``{"city": "Sheffield", "state": "..."}``)
+                # instead of an array. Prefer a recognised display subfield.
+                for subkey in first:
+                    if _LOCATION_SUBFIELD_PATTERNS.match(subkey):
+                        mapping["locations"] = f"{key}.{subkey}"
+                        break
+                else:
+                    for subkey, subval in first.items():
+                        if isinstance(subval, str) and subval:
+                            mapping["locations"] = f"{key}.{subkey}"
+                            break
+                break
 
     # Metadata patterns (team/department)
     for field_name, pattern in _METADATA_PATTERNS.items():
