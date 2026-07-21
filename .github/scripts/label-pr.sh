@@ -29,7 +29,7 @@ fi
 ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/VERSION"
 # Keep these static: this script runs with pull_request_target write
 # permissions and must not import PR-controllable Python.
-VALID_MONITOR_TYPES='accenture|almacareer|amazon|api_sniffer|ashby|bite|breezy|comeet|deel|dom|dvinci|eightfold|gem|greenhouse|hireology|inline|jobylon|join|lever|mokahr|nextdata|notion|oracle_hcm|paylocity|personio|phenom|pinpoint|recruitee|recruiter_co_kr|rippling|rss|sitemap|smartrecruiters|softgarden|talentbrew|traffit|umantis|workable|workday|ycombinator'
+VALID_MONITOR_TYPES='accenture|almacareer|amazon|api_sniffer|ashby|bite|breezy|comeet|deel|dom|dvinci|eightfold|gem|greenhouse|hirehive|hireology|inline|jobylon|join|lever|mokahr|nextdata|notion|oracle_hcm|paylocity|personio|phenom|pinpoint|recruitee|recruiter_co_kr|rippling|rss|sitemap|smartrecruiters|softgarden|talentbrew|traffit|umantis|workable|workday|ycombinator'
 VALID_SCRAPER_TYPES='api_sniffer|bite|dom|eightfold|embedded|json-ld|mokahr|nextdata|notion|oracle_hcm|paylocity|pdf|rippling|skip|smartrecruiters|workable|workday'
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'

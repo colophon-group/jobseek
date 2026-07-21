@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from src.core.monitor import MonitorResult
-from src.core.monitors import DiscoveredJob
+from src.core.monitors import BoardGoneError, DiscoveredJob
 from src.core.monitors.hirehive import (
     _parse_job,
     _parse_language,
@@ -84,6 +84,12 @@ class TestParsing:
             "experience": "MidLevel",
         }
 
+    def test_configured_job_location_type_is_normalized(self):
+        result = _parse_job(_raw_job(), default_job_location_type="Hybrid")
+
+        assert isinstance(result, DiscoveredJob)
+        assert result.job_location_type == "hybrid"
+
     def test_missing_hosted_url_is_skipped(self):
         raw = _raw_job()
         raw["hosted_url"] = None
@@ -155,6 +161,28 @@ class TestDiscover:
         assert len(result) == 2
         assert calls == [1, 2]
 
+    async def test_configured_location_type_default_is_applied(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "meta": {"has_next_page": False},
+                    "items": [_raw_job()],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(
+                {
+                    "board_url": "https://acme.hirehive.com/",
+                    "metadata": {"defaults": {"job_location_type": "hybrid"}},
+                },
+                client,
+            )
+
+        assert isinstance(result, list)
+        assert result[0].job_location_type == "hybrid"
+
     async def test_empty_published_board(self):
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(
@@ -222,6 +250,93 @@ class TestDiscover:
         assert isinstance(result, list)
         assert len(result) == 1
         assert calls == 2
+
+    async def test_first_page_not_found_marks_board_gone(self):
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(404))
+        ) as client:
+            with pytest.raises(BoardGoneError, match="tenant 'acme' no longer exists"):
+                await discover(
+                    {"board_url": "https://acme.hirehive.com", "metadata": {}},
+                    client,
+                )
+
+    @pytest.mark.parametrize("invalid_items", [None, {}, "jobs"])
+    async def test_invalid_items_are_rejected(self, invalid_items: object):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={"meta": {"has_next_page": False}, "items": invalid_items},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="invalid items"):
+                await discover(
+                    {"board_url": "https://acme.hirehive.com", "metadata": {}},
+                    client,
+                )
+
+    @pytest.mark.parametrize("invalid_meta", [None, {}, {"has_next_page": 1}])
+    async def test_invalid_pagination_metadata_is_rejected(self, invalid_meta: object):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json={"meta": invalid_meta, "items": []})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="invalid meta"):
+                await discover(
+                    {"board_url": "https://acme.hirehive.com", "metadata": {}},
+                    client,
+                )
+
+    async def test_page_cap_bounds_endless_empty_pagination(self, monkeypatch: pytest.MonkeyPatch):
+        from src.core.monitors import hirehive as hirehive_module
+
+        monkeypatch.setattr(hirehive_module, "MAX_JOBS", 2)
+        monkeypatch.setattr(hirehive_module, "PAGE_SIZE", 1)
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            return httpx.Response(
+                200,
+                json={"meta": {"has_next_page": True}, "items": []},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(
+                {"board_url": "https://acme.hirehive.com", "metadata": {}},
+                client,
+            )
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == set()
+        assert calls == 2
+
+    async def test_final_page_over_cap_is_truncated(self, monkeypatch: pytest.MonkeyPatch):
+        from src.core.monitors import hirehive as hirehive_module
+
+        monkeypatch.setattr(hirehive_module, "MAX_JOBS", 1)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "meta": {"has_next_page": False},
+                    "items": [_raw_job("job_1"), _raw_job("job_2")],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(
+                {"board_url": "https://acme.hirehive.com", "metadata": {}},
+                client,
+            )
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert len(result.urls) == 1
 
     async def test_truncation_is_signalled(self, monkeypatch: pytest.MonkeyPatch):
         from src.core.monitors import hirehive as hirehive_module

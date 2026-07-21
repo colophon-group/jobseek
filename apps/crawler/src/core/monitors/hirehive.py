@@ -18,12 +18,12 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.enum_normalize import normalize_salary_unit
-from src.core.monitors import DiscoveredJob, register
+from src.core.enum_normalize import normalize_job_location_type, normalize_salary_unit
+from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.raw import save_json_response
 from src.core.salary_extract import parse_salary_text
-from src.shared.http_retry import fetch_json_page_with_retry
+from src.shared.http_retry import PaginationFetchError, fetch_json_page_with_retry
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -108,7 +108,11 @@ def _parse_salary(raw: dict) -> dict | None:
     return parse_salary_text(salary) if isinstance(salary, str) and salary.strip() else None
 
 
-def _parse_job(raw: dict) -> DiscoveredJob | None:
+def _parse_job(
+    raw: dict,
+    *,
+    default_job_location_type: str | None = None,
+) -> DiscoveredJob | None:
     url = raw.get("hosted_url")
     if not isinstance(url, str) or not url:
         return None
@@ -134,6 +138,7 @@ def _parse_job(raw: dict) -> DiscoveredJob | None:
         description=_parse_description(raw),
         locations=_parse_locations(raw),
         employment_type=employment_type,
+        job_location_type=normalize_job_location_type(default_job_location_type, default=None),
         date_posted=raw.get("published_date"),
         base_salary=_parse_salary(raw),
         language=_parse_language(raw),
@@ -174,34 +179,66 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         )
 
     url = _api_url(slug)
+    defaults = metadata.get("defaults") or {}
+    if not isinstance(defaults, dict):
+        raise ValueError(f"HireHive metadata defaults for {slug!r} must be an object")
+    default_job_location_type = defaults.get("job_location_type")
+    if default_job_location_type is not None and not isinstance(default_job_location_type, str):
+        raise ValueError(f"HireHive default job_location_type for {slug!r} must be a string")
+
     jobs: list[DiscoveredJob] = []
     page = 1
+    max_pages = max(1, (MAX_JOBS + PAGE_SIZE - 1) // PAGE_SIZE)
 
     while True:
-        data = await _get_page_with_retry(
-            client,
-            url,
-            {"page": page, "page_size": PAGE_SIZE},
-        )
-        items = data.get("items") or []
+        try:
+            data = await _get_page_with_retry(
+                client,
+                url,
+                {"page": page, "page_size": PAGE_SIZE},
+            )
+        except PaginationFetchError as exc:
+            if page == 1 and exc.last_status in {404, 410}:
+                raise BoardGoneError(
+                    f"HireHive tenant {slug!r} no longer exists",
+                    url=url,
+                ) from exc
+            raise
+
+        items = data.get("items")
         if not isinstance(items, list):
             raise ValueError(f"HireHive jobs response for {slug!r} has invalid items")
 
         for raw in items:
             if isinstance(raw, dict):
-                job = _parse_job(raw)
+                job = _parse_job(
+                    raw,
+                    default_job_location_type=default_job_location_type,
+                )
                 if job:
                     jobs.append(job)
 
-        meta = data.get("meta") or {}
-        has_next = bool(meta.get("has_next_page")) if isinstance(meta, dict) else False
+        meta = data.get("meta")
+        if not isinstance(meta, dict) or not isinstance(meta.get("has_next_page"), bool):
+            raise ValueError(f"HireHive jobs response for {slug!r} has invalid meta")
+        has_next = meta["has_next_page"]
+
+        over_job_cap = len(jobs) > MAX_JOBS
+        exhausted_with_more = has_next and (len(jobs) >= MAX_JOBS or page >= max_pages)
+        if over_job_cap or exhausted_with_more:
+            log.warning(
+                "hirehive.truncated",
+                slug=slug,
+                total=len(jobs),
+                cap=MAX_JOBS,
+                page=page,
+            )
+            return truncated_rich_result(jobs[:MAX_JOBS])
+
         if not has_next:
             break
 
         page += 1
-        if len(jobs) >= MAX_JOBS:
-            log.warning("hirehive.truncated", slug=slug, total=len(jobs), cap=MAX_JOBS)
-            return truncated_rich_result(jobs)
 
     return jobs
 
