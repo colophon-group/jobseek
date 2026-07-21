@@ -43,7 +43,7 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -123,6 +123,18 @@ class BoardWork:
     board_id: str
     config: dict
     domain: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class MonitorSchedule:
+    """One monitor/config write for the deploy-time Redis schedule sync."""
+
+    domain: str
+    board_id: str
+    next_check_at: float
+    config: dict
+    browser: bool = False
+    first_time: bool = False
 
 
 @dataclass
@@ -465,6 +477,59 @@ async def enqueue_monitor(
     return bool(added)
 
 
+async def enqueue_monitors(schedules: Sequence[MonitorSchedule]) -> list[bool]:
+    """Pipeline a complete monitor schedule without per-board round trips.
+
+    The enqueue Lua script remains the authority for queue/ready-set atomicity;
+    pipelining only transports the same ordered commands in bounded batches.
+    This is used by ``crawler sync``, where thousands of sequential EVALSHA,
+    HSET, and SET awaits otherwise dominate every deployment.
+    """
+    if not schedules:
+        return []
+
+    await _load_scripts()
+    assert _ENQUEUE_SHA is not None
+    r = get_redis()
+    added: list[bool] = []
+    batch_size = 1000
+
+    for start in range(0, len(schedules), batch_size):
+        batch = schedules[start : start + batch_size]
+        pipe = r.pipeline(transaction=False)
+        enqueue_result_indexes: list[int] = []
+        command_count = 0
+        now = str(time.time())
+
+        for schedule in batch:
+            wtype = "browser" if schedule.browser else "simple"
+            enqueue_result_indexes.append(command_count)
+            pipe.evalsha(
+                _ENQUEUE_SHA,
+                0,
+                wtype,
+                schedule.domain,
+                schedule.board_id,
+                str(schedule.next_check_at),
+                "monitor",
+                "1" if schedule.first_time else "0",
+                now,
+            )
+            command_count += 1
+
+            if schedule.config:
+                config = {**schedule.config, "domain": schedule.domain}
+                pipe.hset(f"board:{schedule.board_id}", mapping=config)
+                command_count += 1
+            pipe.set(f"delay:{schedule.domain}", str(delay_for_domain(schedule.domain)))
+            command_count += 1
+
+        results = await pipe.execute()
+        added.extend(bool(results[index]) for index in enqueue_result_indexes)
+
+    return added
+
+
 async def remove_monitor(domain: str, board_id: str) -> None:
     """Remove a board monitor task from Redis and delete its config hash.
 
@@ -485,6 +550,20 @@ async def remove_monitor(domain: str, board_id: str) -> None:
         pipe.zrem(f"monitors_{wtype}:{domain}", board_id)
     pipe.delete(f"board:{board_id}")
     await pipe.execute()
+
+
+async def remove_monitors(monitors: Sequence[tuple[str, str]]) -> None:
+    """Pipeline deploy-time removal of disabled monitor schedules."""
+    batch_size = 1000
+    r = get_redis()
+    for start in range(0, len(monitors), batch_size):
+        pipe = r.pipeline(transaction=False)
+        for domain, board_id in monitors[start : start + batch_size]:
+            for wtype in ("simple", "browser"):
+                pipe.zrem(f"ft_monitors_{wtype}:{domain}", board_id)
+                pipe.zrem(f"monitors_{wtype}:{domain}", board_id)
+            pipe.delete(f"board:{board_id}")
+        await pipe.execute()
 
 
 async def enqueue_scrape(

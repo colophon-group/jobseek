@@ -11,6 +11,10 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { getSimilarCompanies, type SimilarCompany } from "@/lib/actions/company";
 import type { Locale } from "@/lib/i18n";
+import {
+  searchFilterParamsToObject,
+  serializeSearchFilterParams,
+} from "@/lib/search/query-params";
 import { SimilarCompanyCard } from "./similar-company-card";
 
 type Props = {
@@ -35,10 +39,14 @@ export function SimilarCompaniesStrip({
 }: Props) {
   const { t } = useLingui();
   const searchParams = useSearchParams();
-  // URL query string → stable cache key for the effect + the card links.
-  // Empty string means no filters, matches SSR semantics.
-  const paramsKey = searchParams.toString();
-  const spObject = useMemo(() => _searchParamsToObject(searchParams), [paramsKey]);
+  // Result-bearing query string → stable cache key for the effect + card
+  // links. UI-only ``show`` changes must only replace the detail panel;
+  // they do not affect counts or belong on another company's URL (#5766).
+  const paramsKey = serializeSearchFilterParams(searchParams);
+  const spObject = useMemo(
+    () => searchFilterParamsToObject(new URLSearchParams(paramsKey)),
+    [paramsKey],
+  );
   // Suppress the inaugural fetch only when SSR already produced
   // cards. When the parent passes `initialCompanies=[]` (the page is
   // statically prerendered and hands off to the client to load), the
@@ -191,18 +199,3 @@ function SignInPromptCard() {
     </li>
   );
 }
-
-function _searchParamsToObject(
-  sp: URLSearchParams | ReadonlyURLSearchParams,
-): Record<string, string | string[]> {
-  const out: Record<string, string | string[]> = {};
-  for (const key of new Set(sp.keys())) {
-    const values = sp.getAll(key);
-    out[key] = values.length > 1 ? values : values[0];
-  }
-  return out;
-}
-
-// Re-export Next's readonly searchParams type narrowly so TS can infer
-// the intersection with the standard URLSearchParams iterator.
-type ReadonlyURLSearchParams = ReturnType<typeof useSearchParams>;

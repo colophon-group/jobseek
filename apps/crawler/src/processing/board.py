@@ -206,12 +206,19 @@ _SUCCESSFACTORS_VOLATILE_PARAMS = frozenset(
 _TAL_NET_XF_SEGMENT = re.compile(r"/xf-[a-f0-9]+(?=/)")
 
 
+# Overwolf's Comeet ``url_active_page`` has used both a marketing-source
+# parameter and a numeric cache-busting timestamp for the same posting UID.
+# The values are not identity, but keeping them made ``source_url`` uniqueness
+# insert the same opportunity again on later monitor cycles (issue #5807).
+_OVERWOLF_VOLATILE_PARAMS = frozenset({"src"})
+
+
 def _canonicalize_url(url: str) -> str:
     """Strip session-scoped tokens from URLs on platforms where a
     ``<a href>`` embeds a per-render CSRF/session value that otherwise
     makes every monitor cycle rediscover the same posting as "new".
 
-    Currently handles two ATS platforms:
+    Currently handles three known URL shapes:
 
     - **SuccessFactors family** (``*.successfactors.*`` / ``*.sapsf.*``)
       — token is a *query param*; drop the ones listed in
@@ -221,6 +228,9 @@ def _canonicalize_url(url: str) -> str:
       segment matching :data:`_TAL_NET_XF_SEGMENT` (``/xf-<hex>/``);
       drop it. Everything else in the path (``/brand-N/``,
       ``/opp/<id>``, ``/en-GB``, …) carries identity and stays.
+    - **Overwolf's Comeet active pages** (``careers.overwolf.com``) —
+      drop the confirmed marketing ``src`` parameter and numeric ``t``
+      cache-buster while preserving every other query parameter.
     """
     if not url:
         return url
@@ -229,6 +239,17 @@ def _canonicalize_url(url: str) -> str:
     except ValueError:
         return url
     host = (p.netloc or "").lower()
+    if host == "careers.overwolf.com":
+        params = parse_qsl(p.query, keep_blank_values=True)
+        kept = [
+            (key, value)
+            for key, value in params
+            if key.casefold() not in _OVERWOLF_VOLATILE_PARAMS
+            and not (key.casefold() == "t" and value.isdecimal())
+        ]
+        if len(kept) == len(params):
+            return url
+        return urlunparse(p._replace(query=urlencode(kept)))
     if ".successfactors." in host or ".sapsf." in host:
         # keep_blank_values=True preserves stable no-value keys like
         # ``jobAlertController_jobAlertId=`` — filtering here would

@@ -63,6 +63,11 @@ from src.redis_queue import (
     update_board_metadata_cache,
 )
 from src.shared.http import RequestHostTracker, track_request_hosts
+from src.workers.monitor_memory import (
+    cgroup_memory_bytes,
+    process_rss_bytes,
+    reclaim_process_memory,
+)
 
 log = structlog.get_logger()
 
@@ -729,9 +734,8 @@ async def _discovery_worker(
     Claims work from Redis, dispatches to the appropriate processing
     function, reschedules in Redis, and loops until shutdown.
 
-    ``monitor_semaphore`` caps concurrent monitor processing to bound
-    peak memory (monitors hold full board results in memory).  Scrapes
-    are lightweight and not limited.
+    ``monitor_semaphore`` caps concurrent monitor processing. Scrapes are
+    lightweight and not limited.
 
     Browser workers create a shared Playwright server process per worker
     to avoid spawning (and leaking) a new process on every task.
@@ -1013,10 +1017,36 @@ async def _process_monitor_work(
         )
 
         extender = DeadlineExtender()
+        worker_log.info(
+            "pipeline.monitor.started",
+            process_rss_bytes=process_rss_bytes(),
+            cgroup_memory_bytes=cgroup_memory_bytes(),
+        )
         try:
-            with track_request_hosts() as host_tracker:
-                success, duration = await _process_one_board_streaming(
-                    board_record, local_pool, http, extender, pw=pw
+            try:
+                with track_request_hosts() as host_tracker:
+                    success, duration = await _process_one_board_streaming(
+                        board_record, local_pool, http, extender, pw=pw
+                    )
+            finally:
+                # Streaming bounds the live result set. Return allocator
+                # arenas after each board so a previous large response does
+                # not become the next monitor's baseline inside the cgroup.
+                reclaimed = reclaim_process_memory()
+                event = (
+                    worker_log.info
+                    if reclaimed.rss_reclaimed_bytes >= 16 * 1024 * 1024
+                    else worker_log.debug
+                )
+                event(
+                    "pipeline.monitor.memory_reclaimed",
+                    collected_objects=reclaimed.collected_objects,
+                    malloc_trimmed=reclaimed.malloc_trimmed,
+                    rss_before_bytes=reclaimed.rss_before_bytes,
+                    rss_after_bytes=reclaimed.rss_after_bytes,
+                    rss_reclaimed_bytes=reclaimed.rss_reclaimed_bytes,
+                    cgroup_before_bytes=reclaimed.cgroup_before_bytes,
+                    cgroup_after_bytes=reclaimed.cgroup_after_bytes,
                 )
         except BoardGoneError:
             # board.py already recorded gone + delisted postings.

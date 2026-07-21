@@ -551,9 +551,9 @@ export interface OccupationItem {
   parentId: number | null;
   /**
    * Domain id this occupation belongs to. `null` for occupations with no
-   * domain (rare). Used by the modal to disable every descendant when a
-   * domain header is selected as a single filter (#2978 — domain headers
-   * are now ancestor filters, not "select all children" loops).
+   * domain (rare). Used to group occupation rows under the modal's domain
+   * headers; domain headers toggle their disjoint first-level occupations
+   * rather than entering the occupation-id filter namespace (#3027).
    */
   domainId: number | null;
 }
@@ -727,10 +727,10 @@ async function _fetchAllOccupationsGrouped(
     const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
 
     // Facet on the ancestor-expanded `occupation_ids` (not `occupation_id`)
-    // so parent / family-parent / domain IDs receive the true subtree count
-    // directly from the facet — the exporter stamps every posting with
-    // `[self, parent_chain, domain_id]`, so `occupation_ids` facet entries
-    // already encode "match anywhere under this node" semantics. See
+    // so parent / family-parent IDs receive the true subtree count directly
+    // from the facet — the exporter stamps every posting with
+    // `[self, parent_chain]`, so `occupation_ids` facet entries already
+    // encode "match anywhere under this occupation node" semantics. See
     // exporter.py `_load_occupation_ancestors`. Issue #3033 — the previous
     // `occupation_id` facet returned only direct counts, and the modal
     // summed parent + children to fake a subtree total, which under-counts
@@ -747,9 +747,8 @@ async function _fetchAllOccupationsGrouped(
     });
 
     // Extract facet counts: ancestor_id -> count (occupation_ids contains
-    // self + parent chain + domain id). For an occupation row, this is the
-    // true subtree count; for a domain row, this is the count of all
-    // postings under that domain.
+    // self + parent chain). For an occupation row, this is the true subtree
+    // count. Domain ids deliberately never enter this namespace (#3027).
     const facetCounts = new Map<number, number>();
     const occFacet = result.facet_counts?.find(
       (f) => (f as { field_name: string }).field_name === "occupation_ids",
@@ -765,12 +764,9 @@ async function _fetchAllOccupationsGrouped(
     // Load hierarchy metadata
     const { occupations, domains } = await _getOccupationHierarchyCache();
 
-    // Build items with counts from facet data. The facet contains a mix of
-    // occupation IDs AND domain IDs (the exporter unions both into
-    // `occupation_ids` for parity with location macro membership). Domain
-    // IDs are filtered out here — only rows that match an occupation in
-    // the hierarchy survive. The facet entry for each domain is consulted
-    // separately further down when computing the domain header count.
+    // Build items with counts from facet data. Every facet value is an
+    // occupation id; occupation-domain ids come from a separate database
+    // sequence and must not be interpreted in this namespace (#3027).
     type OccRow = { id: number; slug: string; name: string; cnt: number; parentId: number | null; domainId: number | null };
     const items: OccRow[] = [];
 
@@ -926,18 +922,14 @@ async function _fetchAllOccupationsGrouped(
       }
       standalone.sort((a, b) => b.count - a.count);
 
-      // Domain count: prefer the direct facet count for the domain id —
-      // exporter unions domain_id into `occupation_ids`, so its facet
-      // entry is the true subtree count for the whole domain. Fall back
-      // to the parent/standalone first-level sum when no facet entry
-      // exists (e.g. the domain has only zero-count occupations, which
-      // shouldn't be displayed anyway).
-      const domainFacetCount = facetCounts.get(meta.id);
+      // Domain headers are UI groups, not occupation filters. Sum the
+      // disjoint first-level occupation subtrees instead of looking up the
+      // domain's numeric id in the occupation facet: the two tables use
+      // independent sequences and their ids can collide (#3027).
       const firstLevelSum = subGroups.reduce((s, sg) => s + sg.parent.count, 0)
         + standalone.reduce((s, it) => s + it.count, 0);
-      const totalCount = domainFacetCount ?? firstLevelSum;
       groupedResult.push({
-        domain: { id: meta.id, slug: meta.slug, name: meta.name, count: totalCount },
+        domain: { id: meta.id, slug: meta.slug, name: meta.name, count: firstLevelSum },
         subGroups,
         standalone,
       });

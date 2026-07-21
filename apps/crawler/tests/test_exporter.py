@@ -32,6 +32,8 @@ from src.exporter import (
     _update_metrics,
     _update_typesense_health,
     _upsert_to_supabase,
+    _upsert_typesense_backfill_batch,
+    backfill_typesense,
     run_exporter,
     run_exporter_with_reconciliation,
     run_reconciliation,
@@ -870,6 +872,65 @@ class TestSupabasePerRowFallback:
         # Cursor advances past the dropped row to the batch's last id.
         assert new_supa == (ts2, pid2)
         assert new_ts == (ts2, pid2)
+
+
+class TestTypesenseBackfillSafety:
+    async def test_batch_retries_transport_failure_before_succeeding(self):
+        docs = [{"id": "posting-1"}]
+        upsert = AsyncMock(side_effect=[httpx.ReadTimeout("timed out"), set()])
+
+        with (
+            patch("src.exporter._upsert_to_typesense", new=upsert),
+            patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            await _upsert_typesense_backfill_batch(
+                docs,
+                max_attempts=3,
+                base_delay_s=0.5,
+            )
+
+        assert upsert.await_count == 2
+        sleep.assert_awaited_once_with(0.5)
+
+    async def test_batch_retries_per_document_import_failures(self):
+        docs = [{"id": "posting-1"}]
+        upsert = AsyncMock(side_effect=[{"posting-1"}, set()])
+
+        with (
+            patch("src.exporter._upsert_to_typesense", new=upsert),
+            patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            await _upsert_typesense_backfill_batch(
+                docs,
+                max_attempts=2,
+                base_delay_s=1.0,
+            )
+
+        assert upsert.await_count == 2
+        sleep.assert_awaited_once_with(1.0)
+
+    async def test_exhausted_batch_does_not_save_cursor(self):
+        posting_id = uuid.uuid4()
+        updated_at = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
+        row = {"id": posting_id, "updated_at": updated_at}
+        local = _make_pool()
+        supa = _make_pool()
+        local.fetch = AsyncMock(return_value=[row])
+        maps = MagicMock(stale=False)
+        upsert = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
+
+        with (
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch("src.exporter._build_typesense_docs", return_value=[{"id": str(posting_id)}]),
+            patch("src.exporter._upsert_to_typesense", new=upsert),
+            patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+            pytest.raises(httpx.ReadTimeout, match="timed out"),
+        ):
+            await backfill_typesense(local, supa)
+
+        assert upsert.await_count == 5
+        assert [call.args[0] for call in sleep.await_args_list] == [2.0, 4.0, 8.0, 16.0]
+        local.execute.assert_not_awaited()
 
 
 class TestTypesensePerDocFallback:
@@ -1893,128 +1954,61 @@ class TestLoadLocationAncestors:
 
 
 class TestLoadOccupationAncestors:
-    """Tests for TaxonomyMaps._load_occupation_ancestors domain handling.
+    """Tests for collision-free occupation ancestor expansion (#3027)."""
 
-    Issue #2980: occupation ancestors used to walk only the ``parent_id``
-    chain, so a posting tagged with a specific occupation never carried
-    its ``domain_id`` (e.g. Software Engineering = 1) in the expanded
-    ``occupation_ids``. As a result, ``occupation_ids:=<domain_id>``
-    returned 0 — domain-as-single-filter could not work. The fix unions
-    the row's ``domain_id`` into the ancestor set, mirroring the location
-    macro expansion in ``_load_location_ancestors`` (#2977).
-    """
-
-    async def test_domain_id_is_unioned_into_ancestors(self):
-        """Each occupation's ancestor set must include its domain_id when
-        present, so ``occupation_ids:=<domain_id>`` matches every posting
-        in that domain.
-        """
+    async def test_domain_ids_are_not_unioned_into_occupation_ids(self):
+        """Independent domain IDs must never masquerade as occupations."""
         pool = _make_pool()
-        # Hierarchy:
-        #  - frontend-developer(2): parent=1 (software-engineer), domain=1 (SE)
-        #  - software-engineer(1):  parent=None,                 domain=1 (SE)
-        #  - solutions-architect(18): parent=None,               domain=3 (infra-security)
-        #  - data-engineer(7):       parent=None,                domain=2 (data-ai)
-        #  - orphan(99):             parent=None,                domain=None (no domain)
+        # Production assigns domain and occupation IDs from separate
+        # sequences. Healthcare domain 9 therefore collides with Data
+        # Analyst occupation 9. A Pharmacist posting (occupation 92,
+        # domain 9) must not carry 9 in its occupation_ids array.
         pool.fetch = AsyncMock(
             return_value=[
-                {"id": 1, "parent_id": None, "domain_id": 1},
-                {"id": 2, "parent_id": 1, "domain_id": 1},
-                {"id": 18, "parent_id": None, "domain_id": 3},
-                {"id": 7, "parent_id": None, "domain_id": 2},
-                {"id": 99, "parent_id": None, "domain_id": None},
+                {"id": 9, "parent_id": None},
+                {"id": 92, "parent_id": None},
+                {"id": 104, "parent_id": None},
             ]
         )
 
         maps = TaxonomyMaps()
         await maps._load_occupation_ancestors(pool)
 
-        # Sanity: query selected the new domain_id column.
         sql = pool.fetch.await_args.args[0]
-        assert "domain_id" in sql, f"query missing domain_id: {sql!r}"
+        assert "domain_id" not in sql
+        assert set(maps.occupation_ancestors[9]) == {9}
+        assert set(maps.occupation_ancestors[92]) == {92}
+        assert set(maps.occupation_ancestors[104]) == {104}
 
-        # Leaf occupation gets parent + domain.
-        assert set(maps.occupation_ancestors[2]) == {2, 1}, (
-            "frontend-developer(2): self + parent(1) — note domain(1) "
-            "happens to coincide with parent id, so set has 2 elems"
-        )
-        # Top-level occupation in SE: self only (domain==self id is
-        # skipped to avoid stamping the same id twice).
-        assert set(maps.occupation_ancestors[1]) == {1}, (
-            "software-engineer(1): domain_id(1) coincides with self id"
-        )
-        # Top-level occupation in a different domain: self + domain.
-        assert set(maps.occupation_ancestors[18]) == {18, 3}, (
-            "solutions-architect(18): self + domain(3) — domain ancestor "
-            "is the smoking-gun for the #2980 fix"
-        )
-        # Another domain stamping
-        assert set(maps.occupation_ancestors[7]) == {7, 2}, (
-            "data-engineer(7): self + domain(2 = data-ai)"
-        )
-        # Occupation with no domain is unchanged (parent chain only).
-        assert set(maps.occupation_ancestors[99]) == {99}
-
-    async def test_parent_chain_still_walked_when_domain_present(self):
-        """A multi-level parent chain plus a domain id should produce the
-        full ancestor set: self + every parent up the chain + domain id.
-        """
+    async def test_parent_chain_is_still_walked(self):
+        """Real occupation parents retain subtree-filter semantics."""
         pool = _make_pool()
-        # 3-level chain with shared domain id 5
         pool.fetch = AsyncMock(
             return_value=[
-                {"id": 1, "parent_id": None, "domain_id": 5},
-                {"id": 2, "parent_id": 1, "domain_id": 5},
-                {"id": 3, "parent_id": 2, "domain_id": 5},
+                {"id": 1, "parent_id": None},
+                {"id": 2, "parent_id": 1},
+                {"id": 3, "parent_id": 2},
             ]
         )
 
         maps = TaxonomyMaps()
         await maps._load_occupation_ancestors(pool)
 
-        # Leaf gets self, parent, grandparent, plus domain
-        assert set(maps.occupation_ancestors[3]) == {3, 2, 1, 5}
-        assert set(maps.occupation_ancestors[2]) == {2, 1, 5}
-        assert set(maps.occupation_ancestors[1]) == {1, 5}
-
-    async def test_null_domain_is_safe(self):
-        """Occupations without a domain (domain_id IS NULL) must not crash
-        and must not add a stray None or 0 to the ancestor set.
-        """
-        pool = _make_pool()
-        pool.fetch = AsyncMock(
-            return_value=[
-                {"id": 1, "parent_id": None, "domain_id": None},
-                {"id": 2, "parent_id": 1, "domain_id": None},
-            ]
-        )
-
-        maps = TaxonomyMaps()
-        await maps._load_occupation_ancestors(pool)
-
-        assert set(maps.occupation_ancestors[1]) == {1}
+        assert set(maps.occupation_ancestors[3]) == {3, 2, 1}
         assert set(maps.occupation_ancestors[2]) == {2, 1}
+        assert set(maps.occupation_ancestors[1]) == {1}
 
-    def test_build_typesense_docs_includes_domain_ancestor(self):
-        """End-to-end check: a posting tagged with a top-level occupation
-        in a non-coinciding domain must carry the domain id in its
-        expanded ``occupation_ids`` — the invariant the domain-as-single-
-        filter UX (#2980) relies on.
-        """
+    def test_build_typesense_docs_excludes_colliding_domain_id(self):
+        """A Pharmacist document cannot match the Data Analyst ID."""
         maps = _make_taxonomy_maps()
-        # Solutions Architect (id=18, no parent, domain=3 = infra-security)
-        maps.occupation_names[18] = "Solutions Architect"
-        maps.occupation_ancestors[18] = [18, 3]
-        # Domain 3 is not represented as an occupation row but must
-        # still appear in the posting's occupation_ids array.
+        maps.occupation_names[92] = "Pharmacist"
+        maps.occupation_ancestors[92] = [92]
 
-        row = _make_posting_record(occupation_id=18)
+        row = _make_posting_record(occupation_id=92)
         docs = _build_typesense_docs([row], maps)
-        assert 3 in docs[0]["occupation_ids"], (
-            "domain id missing from occupation_ids — domain filter would not match this posting"
-        )
-        # Leaf occupation_id (singular) is still the specific occupation.
-        assert docs[0]["occupation_id"] == 18
+        assert docs[0]["occupation_ids"] == [92]
+        assert 9 not in docs[0]["occupation_ids"]
+        assert docs[0]["occupation_id"] == 92
 
 
 # ---------------------------------------------------------------------------
