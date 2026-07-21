@@ -49,7 +49,7 @@
     "@vercel/speed-insights": "^2.0.0",
     "apify-client": "^2",
     "better-auth": "^1.6.18",
-    "dompurify": "^3.4.11",
+    "dompurify": "^3.4.12",
     "drizzle-orm": "^0.45.2",
     "gray-matter": "^4.0.3",
     "isomorphic-dompurify": "^3.12.0",
