@@ -262,6 +262,29 @@ class TestDomScraper:
             )
         assert result.title == "Static Title"
 
+    async def test_static_avature_406_retries_and_recovers(self):
+        """Avature uses bursty 406s as a throttle on otherwise-live pages."""
+        from src.core.scrapers.dom import scrape
+
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return httpx.Response(406, text="temporarily unavailable")
+            return httpx.Response(200, text="<html><body><h1>Recovered</h1></body></html>")
+
+        url = "https://jobs.totalenergies.com/en_US/careers/JobDetail/Role/123"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                url,
+                {"render": False, "steps": [{"tag": "h1", "field": "title"}]},
+                client,
+            )
+
+        assert calls["n"] == 2
+        assert result.title == "Recovered"
+
     async def test_static_fetch_multiple_fields(self):
         """render: false extracts multiple fields from static HTML."""
         from src.core.scrapers.dom import scrape

@@ -76,9 +76,11 @@ such as `tesla-debug`, `stupefied_hofstadter`, and `goofy_haibt`.
    exactly matches the report header.
    When the Hetzner runner provides a redacted evidence bundle, read
    `manifest.json`, `host/docker-inspect-state.txt`, and
-   `host/docker-cgroup-memory.json` before classifying host incidents. The
-   JSON file records the container ID, creation/start timestamps, and
-   cgroup-v2 `memory.events` counters needed for generation-safe deltas.
+   `host/docker-cgroup-memory.json` before classifying host incidents. Also
+   read `host/docker-lifecycle.jsonl`, the durable allowlisted stream of
+   `create/start/restart/die/oom/kill/stop/destroy` events. These files record
+   container identity, exit code or signal, event time, restart count, and
+   cgroup-v2 `memory.events` counters without exposing arbitrary Docker labels.
 2. Read every `.md` report under
    `~/dev/claude/review-jobseek-errors/` before classifying. The directory
    name is legacy; keep using it for cross-run continuity unless a migration
@@ -107,7 +109,7 @@ df -h /var/lib/docker
 free -h
 uptime
 docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'
-docker inspect --format '{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' $(docker ps -aq)
+docker inspect --format '{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} Error={{json .State.Error}}' $(docker ps -aq)
 dmesg -T 2>/dev/null | tail -n 500
 journalctl -k --since "24 hours ago" --no-pager 2>/dev/null | tail -500
 ```
@@ -127,6 +129,23 @@ it:
 - A container created inside the window already has a positive counter.
 - An exited container finished inside the window with `OOMKilled=true`, or
   kernel logs timestamp the OOM inside the window.
+- The durable lifecycle stream timestamps the same container's `die`, `oom`,
+  `kill`, or subsequent `start` event inside the window.
+
+Use lifecycle sequences to classify the mechanism, not to guess a caller:
+
+- `oom` or inspected `oom_killed=true` followed by `die` is a cgroup/kernel OOM.
+- `kill` records a Docker API signal; report the signal and say the caller is
+  unknown unless deployment or host evidence identifies it.
+- `die` without a preceding `kill`/`oom` is a native process exit; use its
+  exit code and adjacent application logs.
+- `stop/die/destroy` followed by a new container ID's `create/start` is a
+  replacement or deployment, while `die/start` on the same ID with an
+  incremented restart count is an automatic restart.
+
+If the lifecycle journal has `connect_error`/`stream_closed` records or does
+not cover the full window, report the evidence gap explicitly. Do not infer a
+clean window from a missing or unavailable journal.
 
 A changed container ID normally means a deployment or replacement, not a
 restart-count delta. A sticky `OOMKilled=true` without a same-generation
@@ -140,6 +159,8 @@ Flag an incident if any of these are true:
   the window.
 - A same-container `RestartCount` increment proves a restart inside the
   window.
+- A lifecycle `die`/`start` sequence proves a restart inside the window even
+  when yesterday's snapshot is unavailable.
 - 15-minute load average is greater than CPU count x 2.
 - Swap usage is greater than 50% of swap total.
 - Kernel logs show `Out of memory: Killed process`, `I/O error`,

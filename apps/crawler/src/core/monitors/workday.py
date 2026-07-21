@@ -46,6 +46,11 @@ _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
 # thundering herd of sub-second retries can entrench the rate limit.
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY = 1.0
+# Workday returned a provider-wide burst of 303 responses without a usable
+# canonical redirect across 21 boards (#5715). Following 303 would convert the
+# list endpoint's POST into GET. Retry the original POST instead, then let the
+# board backoff/shared host circuit handle a sustained provider incident.
+_TRANSIENT_REDIRECT_STATUSES = frozenset({303})
 
 # In-stream sentinel used by ``_api_list_stream`` and ``_list_all_sites_stream``
 # to signal that the MAX_JOBS cap was hit (#3216). Distinct from any real
@@ -116,6 +121,7 @@ async def _post_page_with_retry(
         json_body=payload,
         headers={"Content-Type": "application/json"},
         expect_shape=dict,
+        retryable_statuses=_TRANSIENT_REDIRECT_STATUSES,
         retries=retries,
         base_delay=base_delay,
         log_event="workday.list_backoff",

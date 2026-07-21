@@ -6,6 +6,7 @@ import fakeredis.aioredis
 import pytest
 
 import src.redis_queue as rq
+from src.config import settings
 
 
 @pytest.fixture(autouse=True)
@@ -60,6 +61,38 @@ async def test_enqueue_monitor_first_time_flag():
     assert await r.zcard("ready:simple:0") >= 1  # tier 0 = first-time
 
 
+async def test_enqueue_monitors_pipelines_mixed_worker_schedules():
+    now = time.time() - 10
+    schedules = [
+        rq.MonitorSchedule(
+            domain="greenhouse",
+            board_id="board-batch-simple",
+            next_check_at=now,
+            config={"monitor": "greenhouse"},
+            first_time=True,
+        ),
+        rq.MonitorSchedule(
+            domain="example.com",
+            board_id="board-batch-browser",
+            next_check_at=now,
+            config={"monitor": "dom"},
+            browser=True,
+            first_time=True,
+        ),
+    ]
+
+    assert await rq.enqueue_monitors(schedules) == [True, True]
+    assert await rq.enqueue_monitors(schedules) == [False, False]
+
+    r = rq.get_redis()
+    simple_config = await r.hgetall("board:board-batch-simple")
+    browser_config = await r.hgetall("board:board-batch-browser")
+    assert simple_config["domain"] == "greenhouse"
+    assert browser_config["domain"] == "example.com"
+    assert await r.zcard("ft_monitors_simple:greenhouse") == 1
+    assert await r.zcard("ft_monitors_browser:example.com") == 1
+
+
 # ---------------------------------------------------------------------------
 # Monitor queue: empty + future items
 # ---------------------------------------------------------------------------
@@ -81,6 +114,66 @@ async def test_claim_work_respects_due_time():
 
     work = await rq.claim_work(browser=False)
     assert work is None
+
+
+async def test_host_failure_streak_opens_shared_circuit_atomically(mock_redis, monkeypatch):
+    """Three board-run failures on one origin must create one shared block."""
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+    now = time.time()
+
+    first = await rq.record_host_failure("Apply.Example.COM.", now=now)
+    second = await rq.record_host_failure("apply.example.com", now=now + 1)
+    third = await rq.record_host_failure("apply.example.com", now=now + 2)
+
+    assert (first.failures, first.is_open) == (1, False)
+    assert (second.failures, second.is_open) == (2, False)
+    assert third.failures == 3
+    assert third.opened_now is True
+    assert third.open_until == pytest.approx(now + 1802)
+    assert await rq.get_host_circuit_open_until("apply.example.com") == third.open_until
+
+    # A success resets the next failure streak but deliberately cannot close
+    # an already-open circuit early; recovery waits for its bounded probe time.
+    await rq.record_host_success("apply.example.com")
+    assert await mock_redis.get("host_fail:apply.example.com") is None
+    assert await rq.get_host_circuit_open_until("apply.example.com") == third.open_until
+
+
+async def test_expired_circuit_allows_one_probe_then_closes_or_reopens(mock_redis, monkeypatch):
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 30)
+    monkeypatch.setattr(settings, "host_circuit_probe_seconds", 60)
+
+    await rq.record_host_failure("probe.example.com", now=1000)
+    await rq.record_host_failure("probe.example.com", now=1001)
+    opened = await rq.record_host_failure("probe.example.com", now=1002)
+    assert opened.open_until == 1032
+
+    # A late success from a run that started before opening resets the streak
+    # but must not close the still-open circuit.
+    assert await rq.record_host_success("probe.example.com", now=1010) == 1032
+    assert await mock_redis.get("host_fail:probe.example.com") is None
+
+    assert await rq.acquire_host_circuit_probe("probe.example.com") is True
+    assert await rq.acquire_host_circuit_probe("probe.example.com") is False
+
+    # One failed half-open probe reopens immediately even though its new
+    # failure streak is only one; it also releases the old probe lease.
+    reopened = await rq.record_host_failure("probe.example.com", now=1033)
+    assert reopened.failures == 1
+    assert reopened.open_until == 1063
+    assert reopened.opened_now is True
+    assert await mock_redis.get("host_probe:probe.example.com") is None
+
+    # The next successful half-open probe closes the expired circuit.
+    assert await rq.acquire_host_circuit_probe("probe.example.com") is True
+    assert await rq.record_host_success("probe.example.com", now=1064) is None
+    assert await rq.get_host_circuit_open_until("probe.example.com") is None
+    assert await mock_redis.get("host_probe:probe.example.com") is None
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +254,38 @@ async def test_remove_monitor_is_idempotent_on_missing_board():
     r = rq.get_redis()
     await rq.remove_monitor("lever", "never-existed")
     assert await r.exists("board:never-existed") == 0
+
+
+async def test_remove_monitors_pipelines_all_queue_variants():
+    now = time.time() - 10
+    await rq.enqueue_monitors(
+        [
+            rq.MonitorSchedule("lever", "batch-gone-1", now, {"monitor": "lever"}),
+            rq.MonitorSchedule(
+                "example.com",
+                "batch-gone-2",
+                now,
+                {"monitor": "dom"},
+                browser=True,
+                first_time=True,
+            ),
+        ]
+    )
+
+    await rq.remove_monitors(
+        [
+            ("lever", "batch-gone-1"),
+            ("example.com", "batch-gone-2"),
+        ]
+    )
+
+    r = rq.get_redis()
+    for board_id in ("batch-gone-1", "batch-gone-2"):
+        assert await r.exists(f"board:{board_id}") == 0
+    for domain in ("lever", "example.com"):
+        for wtype in ("simple", "browser"):
+            assert await r.zcard(f"ft_monitors_{wtype}:{domain}") == 0
+            assert await r.zcard(f"monitors_{wtype}:{domain}") == 0
 
 
 async def test_remove_monitor_after_claim_clears_domain_on_next_claim():

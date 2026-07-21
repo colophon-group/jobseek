@@ -49,6 +49,13 @@ cgroup-v2 memory counters. Reviews compare OOM and restart counters only for
 the same container ID; a sticky Docker `OOMKilled=true` flag or a deployment
 that replaced the container is not, by itself, a new daily incident.
 
+Container-exit classification is event-backed. The always-on root
+`jobseek-codex-docker-lifecycle.service` filters out health-check noise,
+allowlists non-secret lifecycle fields, and persists them in journald. The
+bundle exports the requested window as `host/docker-lifecycle.jsonl`, so exit
+codes, signals, OOM events, container identity, and replacement/restart timing
+survive Docker's volatile event buffer and container recreation.
+
 Compatibility fallback:
 [`.claude/commands/jobseek-error-review.md`](../.claude/commands/jobseek-error-review.md).
 Keep it behaviorally aligned with the Codex skill when it is edited, but do

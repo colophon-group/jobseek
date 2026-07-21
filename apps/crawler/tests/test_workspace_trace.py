@@ -262,6 +262,47 @@ def test_trace_credential_detector_catches_json_escaped_assignments() -> None:
     assert "url_password" in patterns
 
 
+def test_trace_credential_redactor_removes_values_and_preserves_audit_metadata() -> None:
+    payload = "\n".join(
+        [
+            "Authorization: bearer abcdefghijklmnopqrstuvwxyz0123456789",
+            "AWS_ACCESS_KEY_ID=AKIAABCDEFGHIJKLMNOP",
+            'SECRET_KEY="supersecretvalue"',
+            "DATABASE_URL=postgres://real-user:real-password@example.com/db",
+            "-----BEGIN PRIVATE KEY-----\nprivate-body\n-----END PRIVATE KEY-----",
+            "HF_TOKEN=<redacted>",
+        ]
+    )
+
+    redacted, findings = trace.redact_credentials(payload)
+
+    assert {finding["pattern"] for finding in findings} >= {
+        "aws_access_key",
+        "bearer_token",
+        "private_key",
+        "sensitive_assignment",
+        "url_password",
+    }
+    assert redacted.count("<REDACTED_CREDENTIAL>") >= 5
+    assert "private-body" not in redacted
+    assert "real-password" not in redacted
+    assert "HF_TOKEN=<redacted>" in redacted
+    assert trace.detect_credentials(redacted) == []
+
+
+def test_trace_credential_redactor_handles_json_escaped_assignments() -> None:
+    payload = trace._trace_payload(
+        {"_trace_header": True},
+        [{"output": 'SECRET_KEY="supersecretvalue"'}],
+    )
+
+    redacted, findings = trace.redact_credentials(payload)
+
+    assert any(finding["pattern"] == "sensitive_assignment" for finding in findings)
+    assert "supersecretvalue" not in redacted
+    assert trace.detect_credentials(redacted) == []
+
+
 def test_upload_trace_refuses_payload_with_credentials(monkeypatch) -> None:
     header = {"_trace_header": True, "date": "2026-07-09", "record_count": 1}
     records = [

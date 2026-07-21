@@ -214,6 +214,22 @@ _DIFF_BATCH = """
 WITH discovered AS (
   SELECT unnest($1::text[]) AS url
 ),
+-- A batch can contain both rows owned by this board and cross-board
+-- duplicates owned by another board.  The old data-modifying CTEs locked
+-- those groups independently (own rows in touched/relisted, foreign rows in
+-- foreign_touched).  Concurrent boards that discovered each other's URLs
+-- could therefore lock A -> B and B -> A and deadlock (#5103).
+--
+-- Lock every existing match exactly once, in a global order, before any CTE
+-- updates it.  MATERIALIZED is intentional: every write below depends on the
+-- completed lock set rather than letting the planner inline/reorder the scan.
+locked_existing AS MATERIALIZED (
+  SELECT jp.id, jp.source_url, jp.board_id, jp.is_active
+  FROM job_posting jp
+  JOIN discovered d ON d.url = jp.source_url
+  ORDER BY jp.id
+  FOR UPDATE OF jp
+),
 -- Self-heal touched rows (#2996, #4952): when a previously-stuck
 -- rich-monitor posting (description_r2_hash IS NULL AND next_scrape_at
 -- IS NULL) is re-scanned by a board that NOW has enrich
@@ -243,10 +259,10 @@ touched AS (
           THEN now()
           ELSE job_posting.next_scrape_at
       END
-  FROM discovered d
-  WHERE job_posting.board_id = $2
-    AND job_posting.is_active = true
-    AND job_posting.source_url = d.url
+  FROM locked_existing locked
+  WHERE job_posting.id = locked.id
+    AND locked.board_id = $2
+    AND locked.is_active = true
   RETURNING job_posting.id,
             job_posting.source_url,
             job_posting.description_r2_hash,
@@ -269,10 +285,10 @@ relisted AS (
       scrape_failures = 0,
       last_seen_at = now(),
       next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
-  FROM discovered d
-  WHERE job_posting.board_id = $2
-    AND job_posting.is_active = false
-    AND job_posting.source_url = d.url
+  FROM locked_existing locked
+  WHERE job_posting.id = locked.id
+    AND locked.board_id = $2
+    AND locked.is_active = false
   RETURNING job_posting.id,
             job_posting.source_url,
             job_posting.description_r2_hash,
@@ -293,17 +309,17 @@ relisted AS (
 foreign_touched AS (
   UPDATE job_posting
   SET last_seen_at = now()
-  FROM discovered d
-  WHERE job_posting.source_url = d.url
-    AND job_posting.board_id != $2
+  FROM locked_existing locked
+  WHERE job_posting.id = locked.id
+    AND locked.board_id != $2
   RETURNING job_posting.source_url
 ),
 new_urls AS (
   SELECT d.url
   FROM discovered d
   WHERE NOT EXISTS (
-    SELECT 1 FROM job_posting jp
-    WHERE jp.source_url = d.url
+    SELECT 1 FROM locked_existing locked
+    WHERE locked.source_url = d.url
   )
 )
 SELECT 'touched' AS action,

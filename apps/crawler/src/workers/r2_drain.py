@@ -2,10 +2,11 @@
 
 Producer claims rows atomically (``r2_uploaded = false`` → ``NULL``) and feeds
 them into an asyncio.Queue buffer. Consumers pop from the buffer, PUT to R2,
-and mark ``r2_uploaded = true``. On failure, rows revert to ``false``.
+and mark ``r2_uploaded = true``. On failure, rows return to ``false`` with a
+durable, exponentially increasing retry timestamp.
 
 Three-state ``r2_uploaded``:
-- ``false``: pending upload (workers write this)
+- ``false``: pending upload, eligible at ``r2_next_attempt_at``
 - ``NULL``: claimed by producer, in-flight
 - ``true``: uploaded to R2
 
@@ -16,9 +17,11 @@ update leaves the row permanently invisible (issue #3168). OOM kills,
 SIGKILL, segfaults and host reboots are the common triggers.
 
 Tuning knobs (env vars via config):
-- ``DRAIN_PRODUCERS``: number of producer coroutines (default 1)
+- ``DRAIN_PRODUCERS``: number of producer coroutines (default 2)
 - ``DRAIN_CONSUMERS``: number of consumer coroutines (default 30)
 - ``DRAIN_BUFFER_SIZE``: asyncio.Queue maxsize (default 200)
+- ``DRAIN_RETRY_BASE_SECONDS``: first durable retry ceiling (default 5)
+- ``DRAIN_RETRY_MAX_SECONDS``: durable retry ceiling cap (default 900)
 - ``DRAIN_REAPER_INTERVAL``: seconds between background reaper sweeps
   (default 300 = 5 minutes)
 """
@@ -27,15 +30,23 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import math
+import random
 import time
 from datetime import timedelta
 
 import asyncpg
+import httpx
 import structlog
 
 from src.config import settings
 from src.core.description_store import put_description
-from src.metrics import r2_upload_duration, r2_uploaded_total
+from src.metrics import (
+    r2_retry_delay,
+    r2_retry_scheduled_total,
+    r2_upload_duration,
+    r2_uploaded_total,
+)
 
 log = structlog.get_logger()
 
@@ -47,6 +58,38 @@ _DEFAULT_REAPER_INTERVAL = 300  # 5 minutes
 # is a generous floor that avoids reaping in-flight claims on a slow
 # consumer while still recovering reasonably fast after a real crash.
 _REAP_STALE_AFTER_SECONDS = 600  # 10 minutes
+
+
+def _retry_delay_seconds(failure_count: int) -> float:
+    """Return an equal-jitter durable delay for one description.
+
+    ``failure_count`` is one-based. Equal jitter keeps a useful minimum
+    cooldown (unlike full jitter, which can approach zero) while spreading
+    many rows after a provider incident.
+    """
+    base = settings.drain_retry_base_seconds
+    maximum = settings.drain_retry_max_seconds
+    if base <= 0 or maximum < base:
+        raise ValueError(
+            "DRAIN_RETRY_BASE_SECONDS must be positive and no greater than DRAIN_RETRY_MAX_SECONDS"
+        )
+    cap_exponent = math.ceil(math.log2(maximum / base))
+    exponent = min(max(0, failure_count - 1), cap_exponent)
+    ceiling = min(maximum, base * (2**exponent))
+    return random.uniform(ceiling / 2, ceiling)
+
+
+def _failure_reason(exc: BaseException) -> str:
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        return "http_5xx" if 500 <= status <= 599 else "http_other"
+    if isinstance(exc, httpx.TimeoutException):
+        return "timeout"
+    if isinstance(exc, httpx.TransportError):
+        return "transport"
+    if isinstance(exc, asyncpg.PostgresError):
+        return "database"
+    return "other"
 
 
 async def _reap_orphaned_claims(
@@ -151,12 +194,19 @@ async def _producer(
             # crash-orphans (#3168).
             async with local_pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "UPDATE descriptions SET r2_uploaded = NULL, updated_at = now() "
-                    "WHERE (posting_id, locale) IN ("
+                    "WITH candidates AS MATERIALIZED ("
                     "  SELECT posting_id, locale FROM descriptions "
-                    "  WHERE r2_uploaded = false "
+                    "  WHERE r2_uploaded = false AND r2_next_attempt_at <= now() "
+                    "  ORDER BY r2_next_attempt_at, posting_id, locale "
+                    "  FOR UPDATE SKIP LOCKED "
                     "  LIMIT $1"
-                    ") RETURNING posting_id, locale, html, hash",
+                    ") "
+                    "UPDATE descriptions AS d "
+                    "SET r2_uploaded = NULL, updated_at = now() "
+                    "FROM candidates AS c "
+                    "WHERE d.posting_id = c.posting_id AND d.locale = c.locale "
+                    "RETURNING d.posting_id, d.locale, d.html, d.hash, "
+                    "d.r2_upload_failures",
                     _FETCH_BATCH,
                 )
         except Exception:
@@ -184,7 +234,7 @@ async def _consumer(
     drain_log: structlog.stdlib.BoundLogger,
     stats: dict,
 ) -> None:
-    """Pop from buffer, PUT to R2, mark true. On failure revert to false."""
+    """Pop from buffer, PUT to R2, and durably record success or retry."""
     while not shutdown_event.is_set():
         try:
             row = await asyncio.wait_for(buffer.get(), timeout=1.0)
@@ -195,54 +245,99 @@ async def _consumer(
         try:
             await put_description(str(row["posting_id"]), row["locale"], row["html"])
 
-            await local_pool.execute(
-                "UPDATE descriptions SET r2_uploaded = true WHERE posting_id = $1 AND locale = $2",
+            marked_current = await local_pool.fetchval(
+                "UPDATE descriptions SET r2_uploaded = true, "
+                "r2_upload_failures = 0, "
+                "r2_next_attempt_at = '-infinity'::timestamptz "
+                "WHERE posting_id = $1 AND locale = $2 AND hash = $3 "
+                "RETURNING true",
                 row["posting_id"],
                 row["locale"],
-            )
-
-            await local_pool.execute(
-                "UPDATE job_posting SET description_r2_hash = $2, "
-                "to_be_enriched = true, "
-                "updated_at = CASE WHEN description_r2_hash IS DISTINCT FROM $2 "
-                "THEN now() ELSE updated_at END "
-                "WHERE id = $1",
-                row["posting_id"],
                 row["hash"],
             )
 
-            stats["uploaded"] += 1
             stats["total_time"] += time.monotonic() - t0
-            r2_uploaded_total.labels(status="succeeded").inc()
             r2_upload_duration.observe(time.monotonic() - t0)
-            # Lifecycle anchor: mirror the error path's per-row event so an
-            # operator with only the posting_id can confirm "yes, the
-            # description for this row reached R2" instead of having to
-            # diff the r2_drain.stats aggregate (#3192). r2_drain throughput
-            # is bounded by new/touched postings per cycle (not by every
-            # scrape claim) so per-row info is sustainable.
-            drain_log.info(
-                "r2_drain.uploaded",
-                posting_id=str(row["posting_id"]),
-                locale=row["locale"],
-            )
+            if marked_current:
+                await local_pool.execute(
+                    "UPDATE job_posting SET description_r2_hash = $2, "
+                    "to_be_enriched = true, "
+                    "updated_at = CASE WHEN description_r2_hash IS DISTINCT FROM $2 "
+                    "THEN now() ELSE updated_at END "
+                    "WHERE id = $1",
+                    row["posting_id"],
+                    row["hash"],
+                )
 
-        except Exception:
+                stats["uploaded"] += 1
+                r2_uploaded_total.labels(status="succeeded").inc()
+                # Lifecycle anchor: mirror the error path's per-row event so
+                # an operator can confirm the description reached R2 (#3192).
+                drain_log.info(
+                    "r2_drain.uploaded",
+                    posting_id=str(row["posting_id"]),
+                    locale=row["locale"],
+                )
+            else:
+                # A newer version replaced the claimed row while this PUT was
+                # in flight. Do not mark the old hash current; the newer row
+                # remains pending and will overwrite the R2 object.
+                r2_uploaded_total.labels(status="superseded").inc()
+                drain_log.info(
+                    "r2_drain.upload_superseded",
+                    posting_id=str(row["posting_id"]),
+                    locale=row["locale"],
+                    hash=row["hash"],
+                )
+
+        except Exception as exc:
+            failure_count = int(row.get("r2_upload_failures", 0)) + 1
+            retry_in = _retry_delay_seconds(failure_count)
+            retry_scheduled = False
+            try:
+                retry_scheduled = bool(
+                    await local_pool.fetchval(
+                        "UPDATE descriptions SET r2_uploaded = false, "
+                        "r2_upload_failures = $3, "
+                        "r2_next_attempt_at = now() + $4::interval "
+                        "WHERE posting_id = $1 AND locale = $2 AND hash = $5 "
+                        "RETURNING true",
+                        row["posting_id"],
+                        row["locale"],
+                        failure_count,
+                        timedelta(seconds=retry_in),
+                        row["hash"],
+                    )
+                )
+            except Exception:
+                # The row stays NULL and the orphan reaper remains the safety
+                # net. Surface this separately instead of claiming the retry
+                # was durably scheduled.
+                drain_log.warning(
+                    "r2_drain.retry_schedule_error",
+                    posting_id=str(row["posting_id"]),
+                    locale=row["locale"],
+                    exc_info=True,
+                )
+
             drain_log.warning(
                 "r2_drain.consumer_error",
                 posting_id=str(row["posting_id"]),
+                locale=row["locale"],
+                error_type=type(exc).__name__,
+                http_status=(
+                    exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+                ),
+                failure_count=failure_count,
+                retry_in_s=round(retry_in, 2),
+                retry_scheduled=retry_scheduled,
                 exc_info=True,
             )
             stats["errors"] += 1
             r2_uploaded_total.labels(status="failed").inc()
-            # Revert to pending so it gets retried
-            with contextlib.suppress(Exception):
-                await local_pool.execute(
-                    "UPDATE descriptions SET r2_uploaded = false "
-                    "WHERE posting_id = $1 AND locale = $2",
-                    row["posting_id"],
-                    row["locale"],
-                )
+            if retry_scheduled:
+                r2_retry_scheduled_total.labels(reason=_failure_reason(exc)).inc()
+                r2_retry_delay.observe(retry_in)
         finally:
             buffer.task_done()
 

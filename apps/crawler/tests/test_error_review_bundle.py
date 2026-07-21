@@ -102,13 +102,57 @@ def test_collect_container_cgroup_memory_records_container_generation(tmp_path, 
             },
             "container_id": "abc123",
             "created_at": "2026-07-20T14:28:00Z",
+            "exit_code": None,
+            "finished_at": "",
             "image": "ghcr.io/colophon-group/jobseek-crawler:v0.13.114",
             "name": "deploy-browser-1-1",
             "oom_killed": False,
             "pid": 4321,
             "restart_count": 0,
+            "state_error": "",
             "started_at": "2026-07-20T14:28:01Z",
             "status": "running",
         }
     ]
     assert manifest["container_cgroup_memory"]["path"].endswith("host/docker-cgroup-memory.json")
+
+
+def test_collect_docker_lifecycle_journal_uses_exact_window(tmp_path, monkeypatch):
+    calls = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return 0, '{"action":"die","event_exit_code":"137"}\n'
+
+    monkeypatch.setattr(bundle, "_run", fake_run)
+    manifest = {}
+    since = bundle.datetime(2026, 7, 20, 9, 0, tzinfo=bundle.UTC)
+    until = bundle.datetime(2026, 7, 21, 9, 0, tzinfo=bundle.UTC)
+
+    bundle._collect_docker_lifecycle_journal(
+        tmp_path,
+        manifest,
+        since=since,
+        until=until,
+    )
+
+    assert calls == [
+        [
+            "journalctl",
+            "--unit",
+            "jobseek-codex-docker-lifecycle.service",
+            "--identifier",
+            "jobseek-docker-lifecycle",
+            "--since",
+            "@1784538000",
+            "--until",
+            "@1784624400",
+            "--output=cat",
+            "--quiet",
+            "--no-pager",
+        ]
+    ]
+    assert (tmp_path / "host" / "docker-lifecycle.jsonl").read_text() == (
+        '{"action":"die","event_exit_code":"137"}\n'
+    )
+    assert manifest["docker_lifecycle"]["returncode"] == 0

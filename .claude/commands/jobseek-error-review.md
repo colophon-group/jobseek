@@ -50,8 +50,11 @@ INPUTS
    explicit --since/--until pair so the window matches the report header
    exactly.
    If a runner evidence bundle is available, read manifest.json,
-   host/docker-inspect-state.txt, and host/docker-cgroup-memory.json first.
-   The latter contains container IDs plus cgroup-v2 memory.events counters.
+   host/docker-inspect-state.txt, host/docker-cgroup-memory.json, and
+   host/docker-lifecycle.jsonl first. The lifecycle stream durably records
+   allowlisted create/start/restart/die/oom/kill/stop/destroy events, exit
+   codes/signals, and container IDs; the cgroup file contains generation-safe
+   memory.events counters.
 2. Prior review reports: read every `.md` under
    ~/dev/claude/review-jobseek-errors/ before classifying. That directory
    is the agent's cross-run memory.
@@ -73,7 +76,7 @@ All runnable without sudo by the `deploy` user:
   docker stats --no-stream --format \
     'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'
   docker inspect --format \
-    '{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' \
+    '{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} Error={{json .State.Error}}' \
     $(docker ps -aq)
   dmesg -T 2>/dev/null | tail -n 500
   journalctl -k --since "24 hours ago" --no-pager 2>/dev/null | tail -500
@@ -86,6 +89,7 @@ Flag as INCIDENT if ANY of:
     created in-window has a positive counter, or an exited container/kernel
     log proves an OOM inside the window
   - Same-container RestartCount incremented since yesterday's report
+  - Lifecycle die/start proves a restart inside the window
   - Load average (15m) > CPU count × 2
   - Swap usage > 50% of swap total
   - dmesg/journalctl shows "Out of memory: Killed process", "I/O error",
@@ -101,6 +105,13 @@ one container object. Compare counters only when container IDs match. A
 changed ID normally means deployment/replacement; do not subtract its values
 from the prior container. OOMKilled=true without a same-generation counter
 delta or timestamped exited/kernel evidence is not a fresh daily incident.
+
+Use lifecycle sequences to identify the mechanism: oom+die is an OOM;
+kill+die is a Docker API signal (the caller remains unknown unless correlated
+evidence identifies it); die without kill/oom is a native process exit;
+same-ID die/start is an automatic restart; stop/die/destroy followed by a new
+ID create/start is a replacement. Report stream_closed/connect_error or
+missing journal coverage as an evidence gap rather than a clean window.
 
 ================================================================
 LOG COLLECTION
