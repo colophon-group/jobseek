@@ -41,7 +41,7 @@ jobs:
     outputs:
       codeql: ${{ steps.default.outputs.codeql || steps.manual-pr.outputs.codeql || steps.filter.outputs.codeql }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -62,7 +62,7 @@ jobs:
       - name: Detect changed paths
         id: filter
         if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         with:
           predicate-quantifier: every
           filters: |
@@ -97,16 +97,16 @@ jobs:
         if: needs.changes.outputs.codeql != 'true'
         run: echo "Only non-code paths changed; preserving the required CodeQL status without running analysis."
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: needs.changes.outputs.codeql == 'true'
 
       - name: Initialize CodeQL
         if: needs.changes.outputs.codeql == 'true'
-        uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4
+        uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a # v4
         with:
           languages: ${{ matrix.language }}
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Perform CodeQL Analysis
         if: needs.changes.outputs.codeql == 'true'
-        uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4
+        uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a # v4

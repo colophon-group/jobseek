@@ -62,7 +62,9 @@ DEFAULT_WAIT = "networkidle"
 # status quo, and sites that do settle under ``networkidle`` are untouched.
 DEFAULT_WAIT_FALLBACK = "domcontentloaded"
 DEFAULT_TIMEOUT = 30_000
+FALLBACK_WAIT_TIMEOUT = 5_000
 CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 minutes
+BROWSER_CLOSE_TIMEOUT_SECONDS = 15.0
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
 OVERLAY_SELECTORS = (
     '[class*="cookie-banner"]',
@@ -114,6 +116,31 @@ DEFAULT_LOCALE = "en-US"
 # without silently activating previously-dropped launch-time keys (``stealth``,
 # ``user_agent``, ``cookies``, etc.) on boards that set them.
 NAVIGATE_KEYS = frozenset({"wait", "wait_fallback", "timeout", "actions"})
+
+
+async def _close_browser_resource(resource, resource_name: str) -> None:
+    """Close a Playwright resource without allowing teardown to hang forever."""
+    try:
+        await asyncio.wait_for(resource.close(), timeout=BROWSER_CLOSE_TIMEOUT_SECONDS)
+    except TimeoutError:
+        metrics.browser_cleanup_failures_total.labels(
+            resource=resource_name,
+            outcome="timeout",
+        ).inc()
+        log.warning(
+            "browser.cleanup.timeout",
+            resource=resource_name,
+            timeout_seconds=BROWSER_CLOSE_TIMEOUT_SECONDS,
+        )
+        raise
+    except Exception:
+        metrics.browser_cleanup_failures_total.labels(
+            resource=resource_name,
+            outcome="error",
+        ).inc()
+        log.warning("browser.cleanup.error", resource=resource_name, exc_info=True)
+        raise
+
 
 # ---------------------------------------------------------------------------
 # Config placeholders
@@ -365,9 +392,16 @@ async def open_page(
             await page.goto(warmup_url, wait_until="domcontentloaded", timeout=DEFAULT_TIMEOUT)
         yield page
     finally:
-        if context:
-            await context.close()
-        await browser.close()
+        # A context close can fail when Chromium was killed or its transport
+        # disappeared. The nested finally is deliberate: the old straight-line
+        # cleanup skipped browser.close() in exactly that case, leaving the
+        # outer Playwright driver to retain a surviving child until container
+        # restart (#5488).
+        try:
+            if context:
+                await _close_browser_resource(context, "context")
+        finally:
+            await _close_browser_resource(browser, "browser")
 
 
 @asynccontextmanager
@@ -428,7 +462,7 @@ async def _open_persistent_page(
         yield page
     finally:
         with contextlib.suppress(Exception):
-            await context.close()
+            await _close_browser_resource(context, "persistent_context")
         shutil.rmtree(user_data_dir, ignore_errors=True)
 
 
@@ -442,15 +476,16 @@ async def navigate(
     Config keys:
         ``wait``           Primary wait strategy (default ``"networkidle"``).
         ``timeout``        Navigation timeout in ms (default ``30000``).
-        ``wait_fallback``  Fallback wait strategy retried once when the primary
-                           ``page.goto`` raises Playwright's ``TimeoutError``
-                           (non-timeout errors propagate unchanged). Defaults
-                           to ``DEFAULT_WAIT_FALLBACK`` ("domcontentloaded")
-                           so SPA sites that never reach ``networkidle`` still
-                           produce usable HTML. Set to ``None`` in config to
-                           opt out; set to the same value as ``wait`` for an
-                           effective no-op. The fallback reuses the original
-                           timeout, so worst-case wall-clock is ``2 * timeout``.
+        ``wait_fallback``  Fallback load state checked on the current document
+                           when the primary ``page.goto`` raises Playwright's
+                           ``TimeoutError`` (non-timeout errors propagate
+                           unchanged). Defaults to ``DEFAULT_WAIT_FALLBACK``
+                           ("domcontentloaded") so SPA sites that never reach
+                           ``networkidle`` still produce usable HTML. Set to
+                           ``None`` in config to opt out; set to the same value
+                           as ``wait`` for an effective no-op. The fallback is
+                           capped at ``FALLBACK_WAIT_TIMEOUT`` and never starts
+                           a duplicate navigation.
     """
     config = config or {}
     wait_strategy = config.get("wait", DEFAULT_WAIT)
@@ -491,15 +526,21 @@ async def navigate(
             ).inc()
             raise
 
+    fallback_timeout = min(timeout, FALLBACK_WAIT_TIMEOUT)
     log.info(
-        "browser.navigate.fallback",
+        "browser.navigate.fallback_wait",
         url=url,
         primary=wait_strategy,
         fallback=fallback_strategy,
-        timeout_ms=timeout,
+        timeout_ms=fallback_timeout,
     )
     try:
-        await page.goto(url, wait_until=fallback_strategy, timeout=timeout)
+        # A wait-strategy timeout does not imply that navigation failed. In
+        # the common networkidle case the document is already committed and
+        # DOMContentLoaded has fired; reissuing goto discards that usable page,
+        # doubles origin traffic, and can turn a recoverable wait into another
+        # timeout. Check the current document's state instead (#5708).
+        await page.wait_for_load_state(fallback_strategy, timeout=fallback_timeout)
     except Exception:
         metrics.browser_navigate_fallback_total.labels(
             primary=wait_strategy, fallback=fallback_strategy, outcome="failed"

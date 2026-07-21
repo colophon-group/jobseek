@@ -264,7 +264,7 @@ Claims from `ready:simple:*` queues. Processes both monitors and scrapes. 3 repl
 
 ### Browser Worker (`crawler run-browser`)
 
-Claims from `ready:browser:*` queues. Same pipeline pattern but with Chromium available. 1 replica with 3 CPUs and 4GB memory.
+Claims from `ready:browser:*` queues. Same pipeline pattern but with Chromium available. 1 replica with 3 CPUs and 6GB memory. Each discovery coroutine reuses one Playwright driver between claims and recycles it after six hours to bound long-lived driver and renderer memory growth.
 
 ### Processing Flow
 

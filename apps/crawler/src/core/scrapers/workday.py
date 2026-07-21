@@ -9,6 +9,9 @@ fetches details on the daily scrape schedule.
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import random
 import re
 
 import httpx
@@ -18,6 +21,38 @@ from src.core.enum_normalize import normalize_job_location_type
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
+
+_DETAIL_HEADERS = {"Accept": "application/json"}
+_DETAIL_RETRY_ATTEMPTS = 3
+_DETAIL_RETRY_BASE_DELAY = 0.5
+
+
+class WorkdayDetailPayloadError(Exception):
+    """A Workday detail endpoint repeatedly returned an invalid success body."""
+
+    def __init__(
+        self,
+        *,
+        attempts: int,
+        reason: str,
+        status: int,
+        content_type: str,
+        body_length: int,
+        body_sha256: str,
+    ) -> None:
+        self.attempts = attempts
+        self.reason = reason
+        self.status = status
+        self.content_type = content_type
+        self.body_length = body_length
+        self.body_sha256 = body_sha256
+        super().__init__(
+            "Workday detail payload remained invalid "
+            f"after {attempts} attempts "
+            f"(reason={reason}, status={status}, content_type={content_type!r}, "
+            f"body_length={body_length}, body_sha256={body_sha256})"
+        )
+
 
 # Matches Workday job URLs — extracts company, wd instance number, site, and job path
 _JOB_URL_RE = re.compile(
@@ -156,25 +191,82 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
 
     company, wd_instance, site, path = parsed
     api_url = _detail_url(company, wd_instance, site, path)
+    sleep = kwargs.get("sleep", asyncio.sleep)
 
-    resp = await http.get(api_url, headers={"Content-Type": "application/json"})
-    # Workday soft-fails (posting removed between list + detail fetches):
-    #   - 404 is the documented "not found" case.
-    #   - 403 with errorCode=S22 ("permission denied") is the *undocumented*
-    #     case Workday actually uses for closed/unlisted requisitions.
-    #     Verified 2026-04-19 against 15 consecutive 403 URLs from Loki:
-    #     0/15 were in the current LIST output — all genuinely delisted.
-    # Anything else (real WAF block, 5xx, other S-codes): raise so it
-    # surfaces in batch.scrape.error and gets retried.
-    if resp.status_code == 404:
-        log.info("workday_scraper.detail_gone", url=url, status=404)
-        return JobContent()
-    if resp.status_code == 403 and _is_gone_response(resp):
-        log.info("workday_scraper.detail_gone", url=url, status=403, error_code="S22")
-        return JobContent()
-    resp.raise_for_status()
+    from src.metrics import http_retry_attempts_total, http_retry_host
 
-    return _parse_detail(resp.json())
+    host = http_retry_host(api_url)
+    retried = False
+    last_payload: dict[str, object] | None = None
+
+    for attempt in range(_DETAIL_RETRY_ATTEMPTS):
+        # ``Accept`` describes the representation we want back. The previous
+        # request sent ``Content-Type`` on a bodyless GET and inherited the
+        # shared browser-oriented Accept header, leaving an API response open
+        # to HTML content negotiation during degraded edge behavior (#5230).
+        resp = await http.get(api_url, headers=_DETAIL_HEADERS)
+
+        # Workday soft-fails (posting removed between list + detail fetches):
+        #   - 404 is the documented "not found" case.
+        #   - 403 with errorCode=S22 ("permission denied") is the *undocumented*
+        #     case Workday actually uses for closed/unlisted requisitions.
+        #     Verified 2026-04-19 against 15 consecutive 403 URLs from Loki:
+        #     0/15 were in the current LIST output — all genuinely delisted.
+        # Anything else (real WAF block, 5xx, other S-codes): raise so it
+        # surfaces in batch.scrape.error and gets retried by the queue.
+        if resp.status_code == 404:
+            log.info("workday_scraper.detail_gone", url=url, status=404)
+            return JobContent()
+        if resp.status_code == 403 and _is_gone_response(resp):
+            log.info("workday_scraper.detail_gone", url=url, status=403, error_code="S22")
+            return JobContent()
+        resp.raise_for_status()
+
+        reason: str | None = None
+        try:
+            data = resp.json()
+        except ValueError:
+            data = None
+            reason = "json_decode"
+        if reason is None and not isinstance(data, dict):
+            reason = f"json_{type(data).__name__}"
+        if reason is None and not isinstance(data.get("jobPostingInfo"), dict):
+            reason = "missing_job_posting_info"
+        if reason is None:
+            if retried:
+                http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+            return _parse_detail(data)
+
+        body = resp.content
+        last_payload = {
+            "reason": reason,
+            "status": resp.status_code,
+            "content_type": resp.headers.get("content-type", ""),
+            "body_length": len(body),
+            "body_sha256": hashlib.sha256(body).hexdigest()[:16],
+        }
+        retried = True
+        http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+        log.info(
+            "workday_scraper.detail_payload_retry",
+            url=url,
+            attempt=attempt + 1,
+            **last_payload,
+        )
+        if attempt < _DETAIL_RETRY_ATTEMPTS - 1:
+            delay = _DETAIL_RETRY_BASE_DELAY * (2**attempt) * (0.5 + random.random())
+            await sleep(delay)
+
+    assert last_payload is not None
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
+    raise WorkdayDetailPayloadError(
+        attempts=_DETAIL_RETRY_ATTEMPTS,
+        reason=str(last_payload["reason"]),
+        status=int(last_payload["status"]),
+        content_type=str(last_payload["content_type"]),
+        body_length=int(last_payload["body_length"]),
+        body_sha256=str(last_payload["body_sha256"]),
+    )
 
 
 def _is_gone_response(resp: httpx.Response) -> bool:

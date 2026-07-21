@@ -48,6 +48,8 @@ services:
       retries: 3
 
   # -- Workers (3x HTTP, each on its own metrics port) -------------
+  # Each worker has 1 CPU / 1 GiB. Keep discovery at the code default and
+  # cap monitors at five; paginating monitors must stream bounded batches.
   worker-1:
     image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
     init: true
@@ -60,8 +62,8 @@ services:
     environment:
       <<: *common-env
       METRICS_PORT: "9095"
-      DISCOVERY_CONCURRENCY: "30"
-      MONITOR_CONCURRENCY: "10"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
       CRAWLER_DB_POOL_MAX: "20"
     depends_on:
       redis:
@@ -85,8 +87,8 @@ services:
     environment:
       <<: *common-env
       METRICS_PORT: "9096"
-      DISCOVERY_CONCURRENCY: "30"
-      MONITOR_CONCURRENCY: "10"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
       CRAWLER_DB_POOL_MAX: "20"
     depends_on:
       redis:
@@ -110,8 +112,8 @@ services:
     environment:
       <<: *common-env
       METRICS_PORT: "9097"
-      DISCOVERY_CONCURRENCY: "30"
-      MONITOR_CONCURRENCY: "10"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
       CRAWLER_DB_POOL_MAX: "20"
     depends_on:
       redis:
@@ -178,6 +180,9 @@ services:
       DISCOVERY_CONCURRENCY: "7"
       MONITOR_CONCURRENCY: "4"
       CRAWLER_DB_POOL_MAX: "10"
+      # Bound the lifetime of each long-lived Playwright Node driver. Recycle
+      # only between claims; in-flight browser tasks are never interrupted.
+      BROWSER_PLAYWRIGHT_RECYCLE_SECONDS: "21600"
     depends_on:
       redis:
         condition: service_healthy
@@ -406,6 +411,7 @@ services:
     pid: host
     volumes:
       - ./alloy.river:/etc/alloy/config.river:ro
+      - alloy-data:/data-alloy
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /:/host:ro
     environment:
@@ -415,12 +421,15 @@ services:
       LOKI_URL: ${GRAFANA_LOKI_URL}
       LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
       LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
-    command: run --server.http.listen-addr=0.0.0.0:12346 /etc/alloy/config.river
+    command: run --storage.path=/data-alloy --server.http.listen-addr=0.0.0.0:12346 /etc/alloy/config.river
     mem_limit: 256m
     cpus: 0.25
 
 volumes:
   redis-data:
+  alloy-data:
+    external: true
+    name: "${COMPOSE_PROJECT_NAME}_alloy-data"
   # Hydrated at deploy time by `murmur-shim-runtime-init` from the
   # crawler image; consumed read-only by `murmur-shim` via subpath
   # mounts. See the init service for the layout (venv/ + src/).

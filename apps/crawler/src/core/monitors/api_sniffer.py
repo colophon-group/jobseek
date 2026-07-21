@@ -20,8 +20,10 @@ import contextlib
 import json
 import random
 import re
+from collections.abc import Callable
 from math import ceil
 from pathlib import Path
+from string import Formatter
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
@@ -460,6 +462,111 @@ async def discover(
 
 _DEFAULT_HREF_RE = re.compile(r'href=["\']([^"\'#][^"\']*)["\']')
 _HTML_WITH_LINKS_RE = re.compile(r"<[a-z][\s\S]*?href=", re.IGNORECASE)
+_SIMPLE_ITEM_PATH_RE = re.compile(
+    r"^(?P<root>[A-Za-z_][A-Za-z0-9_-]*)"
+    r"(?:(?:\.[A-Za-z_][A-Za-z0-9_-]*)|(?:\[(?:\d+|\*)?\]))*$"
+)
+
+
+def _item_path_root(path: object) -> str | None:
+    """Return a safe top-level key for a simple JMESPath expression.
+
+    Compaction is deliberately disabled for filters, pipes, expressions, or
+    whole-object selectors: retaining a larger object is preferable to
+    changing extraction semantics for an unusual board configuration.
+    """
+    if not isinstance(path, str) or not path or path.startswith("="):
+        return None
+    match = _SIMPLE_ITEM_PATH_RE.fullmatch(path)
+    return match.group("root") if match else None
+
+
+def _collect_spec_roots(spec: object, roots: set[str]) -> bool:
+    """Collect item roots used by an ``extract_field`` spec if it is safe."""
+    if isinstance(spec, str):
+        if spec.startswith("="):
+            return True
+        root = _item_path_root(spec)
+        if root is None:
+            return False
+        roots.add(root)
+        return True
+    if isinstance(spec, list):
+        return all(_collect_spec_roots(part, roots) for part in spec)
+    if not isinstance(spec, dict):
+        return False
+    if "concat" in spec:
+        return _collect_spec_roots(spec["concat"], roots)
+    if "lookup_from" in spec and "key_from" in spec:
+        return _collect_spec_roots(spec["key_from"], roots)
+    if "path" in spec:
+        return _collect_spec_roots(spec["path"], roots)
+    if "each" in spec:
+        return _collect_spec_roots(spec["each"], roots)
+    return False
+
+
+def _build_item_projector(
+    fields_map: dict,
+    url_field: str | None,
+    url_template: str | None,
+    url_template_fields: dict[str, str],
+) -> Callable[[dict], dict] | None:
+    """Build a conservative projector for explicitly configured rich APIs.
+
+    Auto-detection and URL-less configurations need the whole object, so they
+    intentionally opt out.  For explicit rich configs, only top-level roots
+    used by field extraction and URL construction survive pagination.  Any
+    scalar absolute URL is also retained so ``_extract_rich`` keeps its
+    existing URL fallback behaviour.
+    """
+    if not fields_map or not (url_field or url_template):
+        return None
+
+    roots: set[str] = set()
+    if not all(_collect_spec_roots(spec, roots) for spec in fields_map.values()):
+        return None
+
+    if url_field:
+        root = _item_path_root(url_field)
+        if root is None:
+            return None
+        roots.add(root)
+
+    if url_template:
+        try:
+            parsed_fields = list(Formatter().parse(url_template))
+        except ValueError:
+            return None
+        for _literal, field_name, format_spec, _conversion in parsed_fields:
+            if field_name is None:
+                continue
+            if "{" in format_spec:
+                return None
+            alias = field_name.split(".", 1)[0].split("[", 1)[0]
+            alias_path = url_template_fields.get(alias)
+            root = _item_path_root(alias_path) if alias_path is not None else _item_path_root(alias)
+            if root is None:
+                return None
+            roots.add(root)
+
+    for path in url_template_fields.values():
+        root = _item_path_root(path)
+        if root is None:
+            return None
+        roots.add(root)
+
+    required = frozenset(roots)
+
+    def _project(item: dict) -> dict:
+        return {
+            key: value
+            for key, value in item.items()
+            if key in required
+            or (isinstance(value, str) and value.startswith(("http://", "https://")))
+        }
+
+    return _project
 
 
 def score_array(path: str, items: list[dict], api_url: str) -> int:
@@ -897,6 +1004,12 @@ async def _discover_http(
         from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
 
         items = [item for item in content if isinstance(item, dict)]
+        item_projector = _build_item_projector(
+            fields_map,
+            url_field,
+            url_template,
+            url_template_fields,
+        )
 
         if pagination_config and items:
             pag = PaginationInfo(
@@ -924,7 +1037,14 @@ async def _discover_http(
                 pagination=pag,
             )
             page_cap = pagination_config.get("max_pages", _HTTP_MAX_PAGES)
-            items = await paginate_all(make_http_fetcher(client), job_result, page_cap)
+            items = await paginate_all(
+                make_http_fetcher(client),
+                job_result,
+                page_cap,
+                item_projector=item_projector,
+            )
+        elif item_projector:
+            items = [item_projector(item) for item in items]
 
         # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
         # item so the URLs the monitor *did* collect are still inserted,
@@ -1244,6 +1364,13 @@ async def _discover_replay(
             log.warning("api_sniffer.no_items", api_url=api_url, json_path=json_path)
             return list() if fields_map else set()
 
+        item_projector = _build_item_projector(
+            fields_map,
+            url_field,
+            url_template,
+            url_template_fields,
+        )
+
         # Paginate if configured
         if pagination_config and len(items) > 0:
             pag = PaginationInfo(
@@ -1279,7 +1406,14 @@ async def _discover_replay(
                 needed = (total_count + len(items) - 1) // len(items)
                 if needed > max_pg:
                     max_pg = min(needed, _HTTP_MAX_PAGES)
-            items = await paginate_all(fetch_fn, job_result, max_pg)
+            items = await paginate_all(
+                fetch_fn,
+                job_result,
+                max_pg,
+                item_projector=item_projector,
+            )
+        elif item_projector:
+            items = [item_projector(item) for item in items]
 
         # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
         # item so the URLs the monitor *did* collect are still inserted,

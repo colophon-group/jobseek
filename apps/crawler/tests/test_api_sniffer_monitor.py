@@ -10,11 +10,110 @@ import pytest
 
 from src.core.monitors.api_sniffer import (
     ApiSnifferFallbackError,
+    _build_item_projector,
     _discover_live_url,
     _extract_rich,
     _extract_urls_from_template,
     discover,
 )
+
+
+class TestItemProjector:
+    def test_keeps_only_explicit_peoplestrong_fields(self):
+        projector = _build_item_projector(
+            {
+                "title": "jobTitle",
+                "locations": "locationHierarchy",
+                "date_posted": "jobPostedDate",
+            },
+            "jobDetailUrl",
+            None,
+            {},
+        )
+
+        assert projector is not None
+        item = {
+            "jobTitle": "Engineer",
+            "locationHierarchy": ["India", "Pune"],
+            "jobPostedDate": "2026-07-21",
+            "jobDetailUrl": "/job/123",
+            "description": "x" * 50_000,
+            "twenty_more_vendor_fields": {"large": "x" * 50_000},
+        }
+        assert projector(item) == {
+            "jobTitle": "Engineer",
+            "locationHierarchy": ["India", "Pune"],
+            "jobPostedDate": "2026-07-21",
+            "jobDetailUrl": "/job/123",
+        }
+
+    def test_keeps_nested_roots_lookup_keys_and_template_aliases(self):
+        projector = _build_item_projector(
+            {
+                "title": "details.title",
+                "locations": {"concat": ["office.city", "office.country"]},
+                "metadata.team": {
+                    "lookup_from": "lookups.departments",
+                    "key_from": "department_id",
+                },
+            },
+            None,
+            "https://example.com/jobs/{external_id}/{itemID}",
+            {"external_id": "custom.fields[0].value"},
+        )
+
+        assert projector is not None
+        projected = projector(
+            {
+                "details": {"title": "Engineer", "unused": "large"},
+                "office": {"city": "Paris", "country": "France"},
+                "department_id": 7,
+                "custom": {"fields": [{"value": "123"}]},
+                "itemID": "abc",
+                "unused": "large",
+            }
+        )
+        assert set(projected) == {
+            "details",
+            "office",
+            "department_id",
+            "custom",
+            "itemID",
+        }
+
+    def test_keeps_absolute_url_fallback(self):
+        projector = _build_item_projector(
+            {"title": "title"},
+            "configured_url",
+            None,
+            {},
+        )
+
+        assert projector is not None
+        assert projector(
+            {
+                "title": "Engineer",
+                "configured_url": None,
+                "canonical": "https://example.com/jobs/123",
+                "unused": "large",
+            }
+        ) == {
+            "title": "Engineer",
+            "configured_url": None,
+            "canonical": "https://example.com/jobs/123",
+        }
+
+    @pytest.mark.parametrize(
+        ("fields", "url_field"),
+        [
+            ({}, "url"),
+            ({"title": "jobs[?active].title"}, "url"),
+            ({"title": "@"}, "url"),
+            ({"title": "title"}, "url || canonical"),
+        ],
+    )
+    def test_unsafe_or_auto_detected_configs_disable_compaction(self, fields, url_field):
+        assert _build_item_projector(fields, url_field, None, {}) is None
 
 
 def _http_status_error_resp(status: int) -> MagicMock:

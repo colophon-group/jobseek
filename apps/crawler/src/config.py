@@ -30,15 +30,22 @@ class Settings(BaseSettings):
 
     # Redis (local instance, not Upstash)
     redis_url: str = "redis://localhost:6379/0"
-    # Pool size MUST be >= ``discovery_concurrency + monitor_concurrency``
-    # for a worker process — otherwise concurrent ``claim_work`` calls
-    # exhaust the pool and the 21st task crashes with
-    # ``MaxConnectionsError``. Production runs DISCOVERY_CONCURRENCY=30
-    # and MONITOR_CONCURRENCY=10 → 40 needed; 60 gives headroom for
-    # ad-hoc Redis calls (lookups, metrics) and bursts during reschedule.
+    # The pool must cover all concurrent discovery claim loops plus Redis
+    # work triggered by active tasks; otherwise ``claim_work`` can exhaust it
+    # and raise ``MaxConnectionsError``. Production runs
+    # DISCOVERY_CONCURRENCY=20; 60 leaves headroom for monitor work, lookups,
+    # metrics, and bursts during reschedule.
     redis_max_connections: int = 60
     throttle_delay_default: float = 2.0
     throttle_delay_ats: float = 0.5
+    # Shared upstream-host circuit breaker. Board and posting failures still
+    # follow their durable Postgres retry ramps, while these Redis-backed
+    # settings stop sibling boards/postings from independently hammering the
+    # same failing origin.
+    host_circuit_failure_threshold: int = 3
+    host_circuit_failure_window_seconds: int = 600
+    host_circuit_open_seconds: int = 1800
+    host_circuit_probe_seconds: int = 600
 
     # Inflight lease + reaper (#3159 / #3173). When ``claim_work``
     # atomically pops a task off the per-domain ZSET it also records
@@ -91,6 +98,15 @@ class Settings(BaseSettings):
     # us mid-drain. We use 30s here against a 60s docker stop budget.
     shutdown_grace_seconds: int = 30
 
+    # Browser workers keep one Playwright driver process per discovery
+    # coroutine. Those Node driver processes are intentionally reused between
+    # jobs, but production memory snapshots showed their aggregate cgroup
+    # footprint growing over a multi-day container lifetime until a Chromium
+    # child was OOM-killed (#5488). Recycle each driver between jobs after a
+    # bounded lifetime so driver/browser allocator fragmentation cannot grow
+    # for the lifetime of the container. Set to 0 only for diagnostics.
+    browser_playwright_recycle_seconds: int = 6 * 60 * 60
+
     # Upstash (web app only, kept for backward compat)
     upstash_redis_rest_url: str = ""
     upstash_redis_rest_token: str = ""
@@ -104,7 +120,7 @@ class Settings(BaseSettings):
 
     # Pipeline concurrency (per-instance)
     discovery_concurrency: int = 20
-    monitor_concurrency: int = 5  # max concurrent monitors (bounds peak memory)
+    monitor_concurrency: int = 5  # max concurrent monitors
     raw_buffer_size: int = 10
     done_buffer_size: int = 10
     writeback_concurrency: int = 5
@@ -112,6 +128,8 @@ class Settings(BaseSettings):
     drain_producers: int = 2
     drain_consumers: int = 30
     drain_buffer_size: int = 200
+    drain_retry_base_seconds: float = 5.0
+    drain_retry_max_seconds: float = 900.0
     # Periodic reaper for orphaned r2_uploaded=NULL rows (#3168). The
     # startup reaper always runs once before producers; this sweep
     # catches consumer crashes that happen later in the process
@@ -121,6 +139,8 @@ class Settings(BaseSettings):
     # Exporter
     export_interval: int = 1
     export_batch_limit: int = 2000
+    export_downstream_backoff_base_seconds: float = 5.0
+    export_downstream_backoff_max_seconds: float = 300.0
     reconciliation_interval: int = 86400
 
     # Typesense (disabled when typesense_admin_key is empty)
@@ -128,6 +148,7 @@ class Settings(BaseSettings):
     typesense_port: int = 8108
     typesense_protocol: str = "http"
     typesense_admin_key: str = ""
+    typesense_health_interval_seconds: float = 30.0
 
     # Enrichment (disabled by default — empty provider means skip)
     enrich_provider: str = ""
@@ -156,6 +177,18 @@ class Settings(BaseSettings):
     # sweep hammers Vercel image transforms. Unsubmitted URLs stay
     # hash-mismatched and return next tick. Set to 0 to disable the cap.
     indexnow_max_urls_per_tick: int = 500
+
+    @model_validator(mode="after")
+    def _validate_drain_retry_window(self) -> Settings:
+        if (
+            self.drain_retry_base_seconds <= 0
+            or self.drain_retry_max_seconds < self.drain_retry_base_seconds
+        ):
+            raise ValueError(
+                "DRAIN_RETRY_BASE_SECONDS must be positive and no greater than "
+                "DRAIN_RETRY_MAX_SECONDS"
+            )
+        return self
 
     @model_validator(mode="after")
     def _normalize_indexnow(self) -> Settings:

@@ -156,6 +156,62 @@ def _parse_docker_timestamp(value: str) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
+def _parse_cgroup_scalar(value: str) -> int | str | None:
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if normalized == "max":
+        return normalized
+    try:
+        return int(normalized)
+    except ValueError:
+        return normalized
+
+
+def _parse_cgroup_key_values(text: str) -> dict[str, int]:
+    """Parse a cgroup ``key value`` file, ignoring malformed rows."""
+    values: dict[str, int] = {}
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) != 2:
+            continue
+        try:
+            values[parts[0]] = int(parts[1])
+        except ValueError:
+            continue
+    return values
+
+
+def _read_cgroup_memory_files(root: Path) -> dict[str, object]:
+    """Read cgroup-v2 memory evidence from a container's cgroup mount."""
+    result: dict[str, object] = {"version": 2}
+    scalar_files = {
+        "memory.current": "current_bytes",
+        "memory.peak": "peak_bytes",
+        "memory.max": "limit_bytes",
+        "memory.swap.current": "swap_current_bytes",
+    }
+    for filename, key in scalar_files.items():
+        try:
+            parsed = _parse_cgroup_scalar((root / filename).read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        if parsed is not None:
+            result[key] = parsed
+
+    for filename, key in (
+        ("memory.events", "events"),
+        ("memory.events.local", "events_local"),
+    ):
+        try:
+            result[key] = _parse_cgroup_key_values(
+                (root / filename).read_text(encoding="utf-8")
+            )
+        except OSError:
+            continue
+    return result
+
+
 def _collect_command(
     run_dir: Path,
     manifest: dict[str, object],
@@ -210,6 +266,72 @@ def _collect_container_logs(
                 "error_lines": err_info,
             }
         )
+
+
+def _collect_container_cgroup_memory(
+    run_dir: Path,
+    manifest: dict[str, object],
+) -> None:
+    """Capture generation-aware Docker and cgroup-v2 memory evidence."""
+    containers: list[dict[str, object]] = []
+    for container in LONG_RUNNING_CONTAINERS:
+        code, output = _run(["docker", "inspect", container], timeout=60)
+        if code != 0:
+            containers.append(
+                {
+                    "name": container,
+                    "inspect_returncode": code,
+                    "inspect_error": output[:500],
+                }
+            )
+            continue
+        try:
+            inspect_data = json.loads(output)[0]
+        except (IndexError, json.JSONDecodeError) as exc:
+            containers.append(
+                {
+                    "name": container,
+                    "inspect_returncode": code,
+                    "inspect_error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+            continue
+
+        state = inspect_data.get("State", {})
+        try:
+            pid = int(state.get("Pid", 0))
+        except (TypeError, ValueError):
+            pid = 0
+        entry: dict[str, object] = {
+            "name": str(inspect_data.get("Name", "")).lstrip("/") or container,
+            "container_id": str(inspect_data.get("Id", "")),
+            "image": str(inspect_data.get("Config", {}).get("Image", "")),
+            "created_at": str(inspect_data.get("Created", "")),
+            "started_at": str(state.get("StartedAt", "")),
+            "finished_at": str(state.get("FinishedAt", "")),
+            "status": str(state.get("Status", "")),
+            "exit_code": state.get("ExitCode"),
+            "state_error": str(state.get("Error", "")),
+            "restart_count": inspect_data.get("RestartCount", 0),
+            "oom_killed": bool(state.get("OOMKilled", False)),
+            "pid": pid,
+        }
+        if pid > 0:
+            cgroup_root = Path(f"/proc/{pid}/root/sys/fs/cgroup")
+            cgroup = _read_cgroup_memory_files(cgroup_root)
+            if len(cgroup) > 1:
+                entry["cgroup_memory"] = cgroup
+            else:
+                entry["cgroup_memory_error"] = (
+                    f"no readable cgroup-v2 memory files under {cgroup_root}"
+                )
+        containers.append(entry)
+
+    file_info = _write(
+        run_dir / "host" / "docker-cgroup-memory.json",
+        json.dumps(containers, indent=2, sort_keys=True),
+    )
+    manifest["container_cgroup_memory"] = file_info
 
 
 def _collect_exited_containers(
@@ -269,6 +391,10 @@ def _collect_exited_containers(
                     "image": image,
                     "finished_at": finished_at.isoformat(),
                     "status": str(state.get("Status", "")),
+                    "exit_code": str(state.get("ExitCode", "")),
+                    "state_error": str(state.get("Error", "")),
+                    "restart_count": str(inspect_data.get("RestartCount", 0)),
+                    "oom_killed": str(bool(state.get("OOMKilled", False))).lower(),
                 }
             )
 
@@ -280,6 +406,10 @@ def _collect_exited_containers(
                 candidate["image"],
                 candidate["finished_at"],
                 candidate["status"],
+                candidate["exit_code"],
+                candidate["state_error"],
+                candidate["restart_count"],
+                candidate["oom_killed"],
             )
         )
         for candidate in candidates
@@ -332,10 +462,43 @@ def _collect_exited_containers(
                 "name": name,
                 "image": candidate["image"],
                 "finished_at": candidate["finished_at"],
+                "exit_code": candidate["exit_code"],
+                "state_error": candidate["state_error"],
+                "restart_count": candidate["restart_count"],
+                "oom_killed": candidate["oom_killed"],
                 "returncode": code,
                 **info,
             }
         )
+
+
+def _collect_docker_lifecycle_journal(
+    run_dir: Path,
+    manifest: dict[str, object],
+    *,
+    since: datetime,
+    until: datetime,
+) -> None:
+    """Collect the allowlisted event stream persisted by the root watcher."""
+    code, output = _run(
+        [
+            "journalctl",
+            "--unit",
+            "jobseek-codex-docker-lifecycle.service",
+            "--identifier",
+            "jobseek-docker-lifecycle",
+            "--since",
+            f"@{since.timestamp():.0f}",
+            "--until",
+            f"@{until.timestamp():.0f}",
+            "--output=cat",
+            "--quiet",
+            "--no-pager",
+        ],
+        timeout=180,
+    )
+    file_info = _write(run_dir / "host" / "docker-lifecycle.jsonl", output)
+    manifest["docker_lifecycle"] = {"returncode": code, **file_info}
 
 
 def _chgrp_readable(path: Path, *, group: str) -> None:
@@ -394,8 +557,11 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
     )
     inspect_state_command = (
         "ids=$(docker ps -aq); test -z \"$ids\" || docker inspect --format "
-        "'{{.Name}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} "
-        "RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' $ids"
+        "'{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} "
+        "StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} "
+        "Status={{.State.Status}} RestartCount={{.RestartCount}} "
+        "FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} "
+        "Error={{json .State.Error}}' $ids"
     )
     _collect_shell(
         run_dir,
@@ -404,6 +570,8 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
         inspect_state_command,
         timeout=180,
     )
+    _collect_container_cgroup_memory(run_dir, manifest)
+    _collect_docker_lifecycle_journal(run_dir, manifest, since=since, until=until)
     kernel_log_command = (
         f"journalctl -k --since '{since.isoformat()}' --until '{until.isoformat()}' "
         "--no-pager 2>/dev/null | tail -500"

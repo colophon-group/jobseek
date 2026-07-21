@@ -16,6 +16,8 @@ set -euo pipefail
 : "${PR:?PR is required}"
 : "${REPO:?REPO is required}"
 
+SCRIPTS_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
 # Only label add-company/* branches — developer branches are reviewed manually
 BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
 if [[ "$BRANCH" != add-company/* ]]; then
@@ -27,8 +29,8 @@ fi
 ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/VERSION"
 # Keep these static: this script runs with pull_request_target write
 # permissions and must not import PR-controllable Python.
-VALID_MONITOR_TYPES='accenture|almacareer|amazon|api_sniffer|ashby|bite|breezy|deel|dom|dvinci|eightfold|gem|greenhouse|hireology|inline|jobylon|join|lever|mokahr|nextdata|notion|oracle_hcm|personio|phenom|pinpoint|recruitee|recruiter_co_kr|rippling|rss|sitemap|smartrecruiters|softgarden|talentbrew|traffit|umantis|workable|workday|ycombinator'
-VALID_SCRAPER_TYPES='api_sniffer|bite|dom|eightfold|embedded|json-ld|mokahr|nextdata|notion|oracle_hcm|pdf|rippling|skip|smartrecruiters|workable|workday'
+VALID_MONITOR_TYPES='accenture|almacareer|amazon|api_sniffer|ashby|bite|breezy|comeet|deel|dom|dvinci|eightfold|gem|greenhouse|hireology|inline|jobylon|join|lever|mokahr|nextdata|notion|oracle_hcm|paylocity|personio|phenom|pinpoint|recruitee|recruiter_co_kr|rippling|rss|sitemap|smartrecruiters|softgarden|talentbrew|traffit|umantis|workable|workday|ycombinator'
+VALID_SCRAPER_TYPES='api_sniffer|bite|dom|eightfold|embedded|json-ld|mokahr|nextdata|notion|oracle_hcm|paylocity|pdf|rippling|skip|smartrecruiters|workable|workday'
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
 # --- Check changed files ---
@@ -64,26 +66,20 @@ done <<< "$FILES"
 # --- Check diff size and content ---
 
 DIFF=$(gh pr diff "$PR" --repo "$REPO")
-# Count/validate only CSV hunks so non-CSV assets (e.g. KB markdown) don't affect CSV checks.
-CSV_DIFF=$(echo "$DIFF" | awk '
-  BEGIN { in_csv = 0 }
-  /^diff --git / {
-    in_csv = ($0 ~ /^diff --git a\/apps\/crawler\/data\/(companies|boards|company_descriptions)\.csv b\/apps\/crawler\/data\/(companies|boards|company_descriptions)\.csv$/)
-  }
-  in_csv { print }
-')
-RAW_ADDED=$(echo "$CSV_DIFF" | grep -c '^+[^+]' || true)
-RAW_REMOVED=$(echo "$CSV_DIFF" | grep -c '^-[^-]' || true)
-ADDED_LINES=$((RAW_ADDED - RAW_REMOVED))
-[ "$ADDED_LINES" -lt 0 ] && ADDED_LINES=0
+# Validate only semantic CSV additions. Stale company branches commonly move
+# already-merged rows while restoring sort order; treating the added half of a
+# remove/add pair as new made unrelated historical monitor types affect the
+# current PR's decision (#5764).
+CSV_ADDITIONS=$(printf '%s\n' "$DIFF" | python3 "$SCRIPTS_DIR/label_pr_csv_diff.py")
+ADDED_LINES=$(grep -c '.' <<< "$CSV_ADDITIONS" || true)
 
 # Dynamic limit: 1 company + 1 description + N boards + 1 margin.
-# Count added board rows (7-field CSV lines in boards.csv hunk).
-BOARD_ROWS=$(echo "$CSV_DIFF" | grep '^+[^+]' | python3 -c "
+# Count net-new board rows (7-field CSV lines).
+BOARD_ROWS=$(printf '%s\n' "$CSV_ADDITIONS" | python3 -c "
 import csv, io, sys
 n = 0
 for line in sys.stdin:
-    line = line.lstrip('+').strip()
+    line = line.strip()
     if not line or line.startswith('company_slug,'):
         continue
     try:
@@ -114,10 +110,9 @@ for row in csv.reader([sys.argv[1]]):
 " "$1"
 }
 
-# Validate each added line in the diff (skip diff headers)
+# Validate each net-new CSV row.
 while IFS= read -r line; do
-  # Strip the leading "+"
-  content="${line:1}"
+  content="$line"
 
   # Skip empty lines and CSV headers
   [ -z "$content" ] && continue
@@ -178,7 +173,7 @@ while IFS= read -r line; do
       DIFF_OK=false
     fi
   fi
-done < <(echo "$CSV_DIFF" | grep '^+[^+]' || true)
+done <<< "$CSV_ADDITIONS"
 
 # --- Check PR completeness (full file inspection) ---
 

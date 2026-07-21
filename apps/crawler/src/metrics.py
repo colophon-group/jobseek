@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import socketserver
+import sys
+import threading
+from typing import Any
 from urllib.parse import urlparse
+from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
-from prometheus_client import Counter, Gauge, Histogram, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, make_wsgi_app
 
 # ── Worker metrics (per profile) ────────────────────────────────────
 
@@ -79,6 +84,12 @@ monitor_dedup_total = Counter(
     ["path"],
 )
 
+monitor_db_transaction_retries_total = Counter(
+    "crawler_monitor_db_transaction_retries_total",
+    "Monitor database transactions retried after a transient PostgreSQL abort",
+    ["phase"],
+)
+
 api_sniffer_fallback_failed_total = Counter(
     "crawler_api_sniffer_fallback_failed_total",
     "api_sniffer replay paths that ended with no data (raised ApiSnifferFallbackError)",
@@ -102,6 +113,27 @@ monitor_failed_per_board_total = Counter(
     "crawler_monitor_failed_per_board_total",
     "Monitor pipeline failures attributed to a specific board",
     ["board_id"],
+)
+
+# Redis-backed per-upstream-host circuit breaker (#3195). Only hosts that
+# fail or are checked by the breaker create a series, keeping cardinality
+# bounded to crawler origins rather than individual boards/postings.
+host_circuit_state = Gauge(
+    "crawler_host_circuit_state",
+    "Upstream-host circuit state (1=open, 0.5=half-open probe, 0=closed)",
+    ["egress_host"],
+)
+
+host_circuit_opened_total = Counter(
+    "crawler_host_circuit_opened_total",
+    "Times consecutive crawler failures opened an upstream-host circuit",
+    ["egress_host"],
+)
+
+host_circuit_skipped_total = Counter(
+    "crawler_host_circuit_skipped_total",
+    "Crawler tasks deferred before network I/O because their upstream-host circuit was open",
+    ["egress_host"],
 )
 
 # TDM-Reservation respect (#2842). Emitted when a fetch helper observes
@@ -212,6 +244,18 @@ r2_upload_duration = Histogram(
     "crawler_r2_upload_duration_seconds",
     "R2 PUT duration per file",
     buckets=[0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+)
+
+r2_retry_scheduled_total = Counter(
+    "crawler_r2_retry_scheduled_total",
+    "R2 description retries scheduled after an exhausted upload attempt",
+    ["reason"],
+)
+
+r2_retry_delay = Histogram(
+    "crawler_r2_retry_delay_seconds",
+    "Durable per-description delay scheduled after an R2 drain failure",
+    buckets=[1, 2.5, 5, 10, 30, 60, 300, 900],
 )
 
 r2_upload_bytes = Counter(
@@ -366,11 +410,11 @@ shutdown_cancelled_total = Counter(
 
 browser_navigate_fallback_total = Counter(
     "crawler_browser_navigate_fallback_total",
-    # Outcomes: success = fallback recovered the navigation; failed = fallback
-    # also timed out or errored; disabled = board opted out via
+    # Outcomes: success = the current document reached the fallback state;
+    # failed = the fallback state also timed out or errored; disabled = board opted out via
     # wait_fallback=None; match = fallback strategy equals primary so no
-    # retry was attempted.
-    "Browser navigate() fallback retries after primary wait-strategy timeout",
+    # fallback wait was attempted.
+    "Browser navigate() fallback waits after primary wait-strategy timeout",
     ["primary", "fallback", "outcome"],
 )
 
@@ -438,6 +482,18 @@ browser_headless_coerced_total = Counter(
     ["reason"],
 )
 
+browser_playwright_recycles_total = Counter(
+    "crawler_browser_playwright_recycles_total",
+    "Long-lived Playwright driver recycle attempts between browser jobs",
+    ["outcome"],
+)
+
+browser_cleanup_failures_total = Counter(
+    "crawler_browser_cleanup_failures_total",
+    "Browser/context cleanup failures that required outer lifecycle recovery",
+    ["resource", "outcome"],
+)
+
 
 # Build info — emitted once at startup so Grafana can confirm which
 # ``apps/crawler/VERSION`` each container is running without SSH-ing in.
@@ -461,9 +517,50 @@ def _read_version() -> str:
         return "unknown"
 
 
+class _SilentMetricsHandler(WSGIRequestHandler):
+    """Serve metrics without writing one access-log line per scrape."""
+
+    def log_message(self, format: str, *args: object) -> None:
+        pass
+
+
+class _QuietThreadingWSGIServer(socketserver.ThreadingMixIn, WSGIServer):
+    """Threaded metrics server that ignores expected client disconnects."""
+
+    daemon_threads = True
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        # Prometheus/Alloy probes can disappear between connect and the first
+        # request byte, or while a response is being written. The standard
+        # socketserver handler prints these routine disconnects as full
+        # tracebacks, which Alloy then ingests as crawler errors (#5354).
+        # Preserve the default traceback for every unexpected exception.
+        error = sys.exception()
+        if isinstance(error, (BrokenPipeError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
+
+
+def _start_metrics_http_server(
+    port: int,
+    addr: str = "0.0.0.0",
+) -> tuple[WSGIServer, threading.Thread]:
+    """Start the shared metrics listener and return it for lifecycle tests."""
+    server = make_server(
+        addr,
+        port,
+        make_wsgi_app(),
+        _QuietThreadingWSGIServer,
+        handler_class=_SilentMetricsHandler,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread
+
+
 def start_metrics_server(port: int) -> None:
     build_info.labels(version=_read_version()).set(1)
-    start_http_server(port)
+    _start_metrics_http_server(port)
 
 
 # ── HTTP retry helpers (#3210) ─────────────────────────────────────────

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import random
 import re
 from collections import defaultdict
 from dataclasses import dataclass
@@ -22,6 +23,7 @@ from src.core.monitors import BoardGoneError, api_monitor_types
 from src.core.scrapers import enrich_description
 from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
 from src.metrics import (
+    monitor_db_transaction_retries_total,
     monitor_dedup_total,
     monitor_gone_skipped_total,
     monitor_jobs_discovered,
@@ -109,6 +111,8 @@ _API_MONITOR_TYPES = api_monitor_types()
 # Max R2 backfill uploads per board run (touched postings without hashes).
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _SLOW_MONITOR_SECONDS = 30.0
+_DIFF_TRANSACTION_MAX_ATTEMPTS = 3
+_DIFF_TRANSACTION_RETRY_BASE_SECONDS = 0.05
 
 
 # ── URL sanity check ─────────────────────────────────────────────────
@@ -202,12 +206,19 @@ _SUCCESSFACTORS_VOLATILE_PARAMS = frozenset(
 _TAL_NET_XF_SEGMENT = re.compile(r"/xf-[a-f0-9]+(?=/)")
 
 
+# Overwolf's Comeet ``url_active_page`` has used both a marketing-source
+# parameter and a numeric cache-busting timestamp for the same posting UID.
+# The values are not identity, but keeping them made ``source_url`` uniqueness
+# insert the same opportunity again on later monitor cycles (issue #5807).
+_OVERWOLF_VOLATILE_PARAMS = frozenset({"src"})
+
+
 def _canonicalize_url(url: str) -> str:
     """Strip session-scoped tokens from URLs on platforms where a
     ``<a href>`` embeds a per-render CSRF/session value that otherwise
     makes every monitor cycle rediscover the same posting as "new".
 
-    Currently handles two ATS platforms:
+    Currently handles three known URL shapes:
 
     - **SuccessFactors family** (``*.successfactors.*`` / ``*.sapsf.*``)
       — token is a *query param*; drop the ones listed in
@@ -217,6 +228,9 @@ def _canonicalize_url(url: str) -> str:
       segment matching :data:`_TAL_NET_XF_SEGMENT` (``/xf-<hex>/``);
       drop it. Everything else in the path (``/brand-N/``,
       ``/opp/<id>``, ``/en-GB``, …) carries identity and stays.
+    - **Overwolf's Comeet active pages** (``careers.overwolf.com``) —
+      drop the confirmed marketing ``src`` parameter and numeric ``t``
+      cache-buster while preserving every other query parameter.
     """
     if not url:
         return url
@@ -225,6 +239,17 @@ def _canonicalize_url(url: str) -> str:
     except ValueError:
         return url
     host = (p.netloc or "").lower()
+    if host == "careers.overwolf.com":
+        params = parse_qsl(p.query, keep_blank_values=True)
+        kept = [
+            (key, value)
+            for key, value in params
+            if key.casefold() not in _OVERWOLF_VOLATILE_PARAMS
+            and not (key.casefold() == "t" and value.isdecimal())
+        ]
+        if len(kept) == len(params):
+            return url
+        return urlunparse(p._replace(query=urlencode(kept)))
     if ".successfactors." in host or ".sapsf." in host:
         # keep_blank_values=True preserves stable no-value keys like
         # ``jobAlertController_jobAlertId=`` — filtering here would
@@ -685,6 +710,47 @@ def _throttle_key(board: asyncpg.Record) -> str:
     return urlparse(board["board_url"]).hostname or board["board_url"]
 
 
+async def _fetch_diff_batch(
+    pool: asyncpg.Pool,
+    urls: list[str],
+    board_id: str,
+    is_rich_no_scrape: bool,
+    board_log: structlog.stdlib.BoundLogger,
+) -> list[asyncpg.Record]:
+    """Classify one URL chunk with a bounded deadlock retry.
+
+    ``_DIFF_BATCH`` is atomic and idempotent after rollback, so retrying this
+    narrow transaction cannot duplicate an insert or Redis publication.  The
+    SQL takes posting locks in deterministic order; this retry is the safety
+    net for a conflicting transaction from another posting workflow.
+    """
+    for attempt in range(1, _DIFF_TRANSACTION_MAX_ATTEMPTS + 1):
+        try:
+            async with pool.acquire() as conn, conn.transaction():
+                return await conn.fetch(
+                    _DIFF_BATCH,
+                    urls,
+                    board_id,
+                    is_rich_no_scrape,
+                )
+        except asyncpg.DeadlockDetectedError:
+            if attempt >= _DIFF_TRANSACTION_MAX_ATTEMPTS:
+                raise
+            ceiling = _DIFF_TRANSACTION_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            retry_in = random.uniform(ceiling / 2, ceiling)
+            monitor_db_transaction_retries_total.labels(phase="diff_batch").inc()
+            board_log.warning(
+                "batch.monitor.db_transaction_retry",
+                phase="diff_batch",
+                attempt=attempt,
+                max_attempts=_DIFF_TRANSACTION_MAX_ATTEMPTS,
+                retry_in_s=round(retry_in, 3),
+            )
+            await asyncio.sleep(retry_in)
+
+    raise AssertionError("unreachable")
+
+
 # ── Monitor Processing ───────────────────────────────────────────────
 
 
@@ -849,311 +915,112 @@ async def _process_one_board_streaming(
                     else None
                 )
 
-                async with pool.acquire() as conn, conn.transaction():
-                    # Persist monitor-signalled metadata updates once per batch.
-                    # Merges both the sitemap URL (for monitors that discover it
-                    # dynamically) and arbitrary metadata_updates (used by
-                    # incremental monitors to persist a watermark / probe result)
-                    # into a single JSONB shallow-merge call.
-                    if _chunk_start == 0:
-                        meta_patch: dict = {}
-                        new_sitemap_url = getattr(result, "new_sitemap_url", None)
-                        if new_sitemap_url:
-                            meta_patch["sitemap_url"] = new_sitemap_url
-                        metadata_updates = getattr(result, "metadata_updates", None)
-                        if metadata_updates:
-                            meta_patch.update(metadata_updates)
-                        if meta_patch:
-                            await conn.execute(
-                                _UPDATE_METADATA,
-                                board_id,
-                                json.dumps(meta_patch),
-                            )
+                # Keep database ownership narrow.  This first transaction only
+                # classifies the batch.  Rich-data
+                # normalization, location backfills, and Redis queue writes can
+                # take seconds; holding a pool connection across them starves
+                # unrelated scrape workers and eventually surfaces as a bare
+                # pool-acquire TimeoutError (#5489).
+                meta_patch: dict = {}
+                if _chunk_start == 0:
+                    new_sitemap_url = getattr(result, "new_sitemap_url", None)
+                    if new_sitemap_url:
+                        meta_patch["sitemap_url"] = new_sitemap_url
+                    metadata_updates = getattr(result, "metadata_updates", None)
+                    if metadata_updates:
+                        meta_patch.update(metadata_updates)
 
-                    is_rich_no_scrape = is_rich and not enrich_fields
-                    rows = await conn.fetch(
-                        _DIFF_BATCH,
-                        chunk_urls,
-                        board_id,
-                        is_rich_no_scrape,
+                is_rich_no_scrape = is_rich and not enrich_fields
+                rows = await _fetch_diff_batch(
+                    pool,
+                    chunk_urls,
+                    board_id,
+                    is_rich_no_scrape,
+                    board_log,
+                )
+
+                new_urls: list[str] = []
+                relisted: list[dict] = []
+                touched: list[dict] = []
+                n_foreign = 0
+
+                for row in rows:
+                    action = row["action"]
+                    if action == "new":
+                        new_urls.append(row["url"])
+                    elif action == "relisted":
+                        r2h = row["description_r2_hash"]
+                        relisted.append(
+                            {
+                                "id": row["id"],
+                                "url": row["url"],
+                                "r2_hash": int(r2h) if r2h is not None else None,
+                            }
+                        )
+                    elif action == "touched":
+                        r2h = row["description_r2_hash"]
+                        touched.append(
+                            {
+                                "id": row["id"],
+                                "url": row["url"],
+                                "r2_hash": int(r2h) if r2h is not None else None,
+                                "needs_scrape_enqueue": bool(row["needs_scrape_enqueue"]),
+                            }
+                        )
+                    elif action == "foreign":
+                        n_foreign += 1
+
+                if n_foreign:
+                    monitor_dedup_total.labels(path="cross_board").inc(n_foreign)
+                    board_log.info(
+                        "batch.monitor.cross_board_duplicate",
+                        count=n_foreign,
                     )
 
-                    new_urls: list[str] = []
-                    relisted: list[dict] = []
-                    touched: list[dict] = []
-                    n_foreign = 0
+                total_new += len(new_urls)
+                total_relisted += len(relisted)
+                all_new_urls.extend(new_urls)
 
-                    for row in rows:
-                        action = row["action"]
-                        if action == "new":
-                            new_urls.append(row["url"])
-                        elif action == "relisted":
-                            r2h = row["description_r2_hash"]
-                            relisted.append(
-                                {
-                                    "id": row["id"],
-                                    "url": row["url"],
-                                    "r2_hash": int(r2h) if r2h is not None else None,
-                                }
-                            )
-                        elif action == "touched":
-                            r2h = row["description_r2_hash"]
-                            touched.append(
-                                {
-                                    "id": row["id"],
-                                    "url": row["url"],
-                                    "r2_hash": int(r2h) if r2h is not None else None,
-                                    "needs_scrape_enqueue": bool(row["needs_scrape_enqueue"]),
-                                }
-                            )
-                        elif action == "foreign":
-                            # Cross-tenant duplicate — the row is already
-                            # owned by another board and _DIFF_BATCH has
-                            # refreshed its last_seen_at. We don't insert
-                            # and don't enqueue; just count the signal.
-                            n_foreign += 1
+                # Hybrid monitors return rich data for only some URLs.  Keep
+                # the remainder on the URL-only insert path.
+                if chunk_jobs is not None:
+                    rich_new_urls = [u for u in new_urls if u in chunk_jobs]
+                    stub_new_urls = [u for u in new_urls if u not in chunk_jobs]
+                else:
+                    rich_new_urls = []
+                    stub_new_urls = list(new_urls)
 
-                    if n_foreign:
-                        monitor_dedup_total.labels(path="cross_board").inc(n_foreign)
-                        board_log.info(
-                            "batch.monitor.cross_board_duplicate",
-                            count=n_foreign,
-                        )
+                new_records: list[tuple] = []
+                r2_staging: list[tuple[object, object]] = []
+                update_triples: list[tuple] = []
+                rich_update_records: list[tuple] = []
+                update_descriptions: list[tuple[str, str, str, int]] = []
 
-                    total_new += len(new_urls)
-                    total_relisted += len(relisted)
-                    all_new_urls.extend(new_urls)
+                # All normalization and location-cache work happens without a
+                # checked-out Postgres connection.  backfill_misses() acquires
+                # its own short-lived connection only when the local cache has
+                # misses.
+                if chunk_jobs:
+                    new_jobs = [chunk_jobs[u] for u in rich_new_urls]
 
-                    # Hybrid monitors (eightfold) return a partial chunk_jobs
-                    # dict — rich data only for some new URLs. Split new_urls
-                    # so URLs with rich data go to the rich insert path and
-                    # URLs without rich data fall through to the URL-only stub
-                    # insert path (which enqueues a scrape to fill content).
-                    # When chunk_jobs is None, stub_new_urls == new_urls and
-                    # the behaviour is identical to pre-refactor.
-                    if chunk_jobs is not None:
-                        rich_new_urls = [u for u in new_urls if u in chunk_jobs]
-                        stub_new_urls = [u for u in new_urls if u not in chunk_jobs]
-                    else:
-                        rich_new_urls = []
-                        stub_new_urls = list(new_urls)
+                    if new_jobs:
 
-                    if chunk_jobs:
-                        new_jobs = [chunk_jobs[u] for u in rich_new_urls]
-
-                        if new_jobs:
-                            # CPU-heavy per-job processing -- run off the event loop
-                            def _process_new_jobs_cpu(jobs):
-                                """Pure CPU: normalize, detect language, resolve, extract."""
-                                records = []
-                                r2_staging = []
-                                for j in jobs:
-                                    j.description = normalize_description_html(j.description)
-                                    enrich_description(j)
-                                    if not j.language and j.description:
-                                        j.language = detect_language(j.description)
-
-                                    loc_ids_r, loc_types_r = _resolve_locations_sync(
-                                        loc_resolver,
-                                        _coerce_locations(j.locations),
-                                        _coerce_text(j.job_location_type),
-                                        _coerce_text(j.language),
-                                    )
-                                    desc_text = _coerce_text(j.description)
-                                    s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
-                                        desc_text, rates
-                                    )
-                                    exp_min, exp_max = _extract_experience_fields(desc_text)
-                                    t_ids = _resolve_technology_ids(desc_text, tech_id_map)
-                                    title_text = _coerce_text(j.title)
-                                    all_titles = _build_titles(title_text, j.localizations)
-                                    occ_id, sen_id = _resolve_occupation_seniority(
-                                        all_titles, occ_ids, sen_ids
-                                    )
-                                    detected_langs = (
-                                        detect_all_languages(j.description) if j.description else []
-                                    )
-                                    records.append(
-                                        (
-                                            company_id,
-                                            board_id,
-                                            normalize_employment_type(
-                                                _coerce_text(j.employment_type)
-                                            ),
-                                            j.url,
-                                            all_titles,
-                                            _build_locales(
-                                                _coerce_text(j.language),
-                                                j.localizations,
-                                                detected_languages=detected_langs,
-                                            ),
-                                            loc_ids_r,
-                                            loc_types_r,
-                                            s_min,
-                                            s_max,
-                                            s_cur,
-                                            s_per,
-                                            s_eur,
-                                            exp_min,
-                                            exp_max,
-                                            t_ids,
-                                            occ_id,
-                                            sen_id,
-                                        )
-                                    )
-                                    r2_staging.append((j, t_ids))
-                                return records, r2_staging
-
-                            records, r2_staging = _process_new_jobs_cpu(new_jobs)
-
-                            # DB backfill for location cache misses (rare)
-                            if await loc_resolver.backfill_misses():
-                                loc_resolver.drain_location_misses()
-
-                            # Batch insert all new jobs. ON CONFLICT (source_url)
-                            # DO NOTHING is a belt-and-braces safety net for
-                            # the rare race where two workers running DIFF
-                            # concurrently both classify the same URL as new
-                            # (the bulk cross-tenant case is handled upstream
-                            # in _DIFF_BATCH.foreign_touched). We must pair
-                            # each r2_staging entry with its own insert
-                            # outcome in the same pass — a trailing zip would
-                            # silently misalign descriptions with posting ids.
-                            insert_sql = (
-                                _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
-                            )
-                            inserted_rich: list[tuple[object, object, str]] = []
-                            n_rich_dedup = 0
-                            for rec, (j, t_ids) in zip(records, r2_staging, strict=True):
-                                row = await conn.fetchrow(insert_sql, *rec)
-                                if row is None:
-                                    n_rich_dedup += 1
-                                    continue
-                                new_posting_id = str(row["id"])
-                                inserted_rich.append((j, t_ids, new_posting_id))
-                                # Lifecycle anchor: per-posting discovery event so
-                                # operators can grep Loki by posting_id from the
-                                # URL to find when (and from which board) the row
-                                # first entered the pipeline (#3192).
-                                board_log.info(
-                                    "posting.discovered",
-                                    posting_id=new_posting_id,
-                                    board_id=board_id,
-                                    source_url=j.url,
-                                    path="rich",
-                                )
-                            if n_rich_dedup:
-                                monitor_dedup_total.labels(path="rich").inc(n_rich_dedup)
-                                board_log.info(
-                                    "batch.monitor.duplicate_source_url",
-                                    path="rich",
-                                    count=n_rich_dedup,
-                                )
-
-                            # Write descriptions for inserted jobs.
-                            # Rich-monitor path uses a plain HTML-only hash
-                            # (no extras, no metadata), so there's no legacy
-                            # vs new-algo split — pass the same value for
-                            # both hash params.
-                            for j, _t_ids, posting_id in inserted_rich:
-                                desc_html = _coerce_text(j.description)
-                                if desc_html:
-                                    locale = _coerce_text(j.language) or "en"
-                                    _h = content_hash(desc_html)
-                                    await conn.execute(
-                                        _UPSERT_DESCRIPTION,
-                                        posting_id,
-                                        locale,
-                                        desc_html,
-                                        _h,
-                                        _h,
-                                    )
-
-                            # Enqueue scrapes for rich jobs that need enrichment
-                            if enrich_fields and inserted_rich:
-                                rich_rows = [
-                                    {"id": pid, "source_url": j.url}
-                                    for j, _t_ids, pid in inserted_rich
-                                ]
-                                await _enqueue_scrapes_for_new(
-                                    rich_rows,
-                                    board_id,
-                                    metadata,
-                                    board_log,
-                                    crawler_type=crawler_type,
-                                )
-
-                        # Update content for relisted and touched.
-                        # Hybrid monitors (partial rich data) skip BOTH the
-                        # touched AND relisted update paths because
-                        # _BATCH_UPDATE_RICH_CONTENT uses plain SET (not
-                        # COALESCE) for core fields — feeding partial rich
-                        # data would null out previously-scraped fields
-                        # (employment_type, salary_*, experience_*). Relisted
-                        # jobs still get refreshed content via the enrich
-                        # scrape path: _DIFF_BATCH resets ``next_scrape_at
-                        # = now()`` for relisted when ``is_rich_no_scrape``
-                        # is False, and the subsequent json-ld scrape fills
-                        # missing fields via ``_UPDATE_ENRICH_CONTENT``
-                        # (which DOES use COALESCE, so it's safe on partial
-                        # data). See ``_enqueue_scrapes_for_relisted`` below.
-                        if getattr(result, "hybrid", False):
-                            update_triples = []
-                        else:
-                            update_triples = [
-                                (item["id"], chunk_jobs[item["url"]], item.get("r2_hash"))
-                                for item in relisted + touched
-                                if item["url"] in chunk_jobs
-                            ]
-                        if update_triples:
-                            for _, j, _ in update_triples:
+                        def _process_new_jobs_cpu(jobs):
+                            """Pure CPU: normalize, detect language, resolve, extract."""
+                            records = []
+                            staging = []
+                            for j in jobs:
                                 j.description = normalize_description_html(j.description)
                                 enrich_description(j)
                                 if not j.language and j.description:
                                     j.language = detect_language(j.description)
 
-                            # Resolve locations with the cache-only sync helper
-                            # so the per-row loop doesn't await one DB round
-                            # trip per miss (#3206). A single batched backfill
-                            # runs after the loop, mirroring the NEW-jobs path
-                            # above (board.py:893-963).
-                            #
-                            # Unlike that path (INSERT with NULL is fine, the
-                            # next cycle fills it via touched-update),
-                            # _BATCH_UPDATE_RICH_CONTENT uses plain SET (not
-                            # COALESCE) for location_ids/location_types -- a
-                            # None here would null out a previously-resolved
-                            # value. So if backfill added new names, we re-
-                            # resolve every row in a second sync pass (pure
-                            # cache, zero DB round trips).
-                            resolved: list[tuple[list[int] | None, list[str] | None]] = [
-                                _resolve_locations_sync(
+                                loc_ids_r, loc_types_r = _resolve_locations_sync(
                                     loc_resolver,
                                     _coerce_locations(j.locations),
                                     _coerce_text(j.job_location_type),
                                     _coerce_text(j.language),
                                 )
-                                for _, j, _ in update_triples
-                            ]
-
-                            # Single DB round trip for any cache misses (rare).
-                            if await loc_resolver.backfill_misses():
-                                loc_resolver.drain_location_misses()
-                                resolved = [
-                                    _resolve_locations_sync(
-                                        loc_resolver,
-                                        _coerce_locations(j.locations),
-                                        _coerce_text(j.job_location_type),
-                                        _coerce_text(j.language),
-                                    )
-                                    for _, j, _ in update_triples
-                                ]
-
-                            await conn.execute(_CREATE_RICH_UPDATES_TEMP)
-                            records = []
-                            for (pid, j, _), (loc_ids, loc_types) in zip(
-                                update_triples, resolved, strict=True
-                            ):
                                 desc_text = _coerce_text(j.description)
                                 s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
                                     desc_text, rates
@@ -1170,16 +1037,18 @@ async def _process_one_board_streaming(
                                 )
                                 records.append(
                                     (
-                                        pid,
+                                        company_id,
+                                        board_id,
                                         normalize_employment_type(_coerce_text(j.employment_type)),
+                                        j.url,
                                         all_titles,
                                         _build_locales(
                                             _coerce_text(j.language),
                                             j.localizations,
                                             detected_languages=detected_langs,
                                         ),
-                                        loc_ids,
-                                        loc_types,
+                                        loc_ids_r,
+                                        loc_types_r,
                                         s_min,
                                         s_max,
                                         s_cur,
@@ -1192,95 +1061,233 @@ async def _process_one_board_streaming(
                                         sen_id,
                                     )
                                 )
-                            await conn.copy_records_to_table("_rich_updates", records=records)
-                            await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
+                                staging.append((j, t_ids))
+                            return records, staging
 
-                            # Write descriptions for updated postings
-                            # (rich-monitor path — see insert branch above
-                            # for the $4/$5 "same hash twice" rationale).
-                            for pid, j, _existing_hash in update_triples:
+                        new_records, r2_staging = _process_new_jobs_cpu(new_jobs)
+                        if await loc_resolver.backfill_misses():
+                            loc_resolver.drain_location_misses()
+
+                    # Partial rich data must not overwrite fully scraped rows.
+                    if not getattr(result, "hybrid", False):
+                        update_triples = [
+                            (item["id"], chunk_jobs[item["url"]], item.get("r2_hash"))
+                            for item in relisted + touched
+                            if item["url"] in chunk_jobs
+                        ]
+
+                    if update_triples:
+                        for _, j, _ in update_triples:
+                            j.description = normalize_description_html(j.description)
+                            enrich_description(j)
+                            if not j.language and j.description:
+                                j.language = detect_language(j.description)
+
+                        resolved: list[tuple[list[int] | None, list[str] | None]] = [
+                            _resolve_locations_sync(
+                                loc_resolver,
+                                _coerce_locations(j.locations),
+                                _coerce_text(j.job_location_type),
+                                _coerce_text(j.language),
+                            )
+                            for _, j, _ in update_triples
+                        ]
+                        if await loc_resolver.backfill_misses():
+                            loc_resolver.drain_location_misses()
+                            resolved = [
+                                _resolve_locations_sync(
+                                    loc_resolver,
+                                    _coerce_locations(j.locations),
+                                    _coerce_text(j.job_location_type),
+                                    _coerce_text(j.language),
+                                )
+                                for _, j, _ in update_triples
+                            ]
+
+                        for (pid, j, _), (loc_ids, loc_types) in zip(
+                            update_triples, resolved, strict=True
+                        ):
+                            desc_text = _coerce_text(j.description)
+                            s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
+                                desc_text, rates
+                            )
+                            exp_min, exp_max = _extract_experience_fields(desc_text)
+                            t_ids = _resolve_technology_ids(desc_text, tech_id_map)
+                            title_text = _coerce_text(j.title)
+                            all_titles = _build_titles(title_text, j.localizations)
+                            occ_id, sen_id = _resolve_occupation_seniority(
+                                all_titles, occ_ids, sen_ids
+                            )
+                            detected_langs = (
+                                detect_all_languages(j.description) if j.description else []
+                            )
+                            rich_update_records.append(
+                                (
+                                    pid,
+                                    normalize_employment_type(_coerce_text(j.employment_type)),
+                                    all_titles,
+                                    _build_locales(
+                                        _coerce_text(j.language),
+                                        j.localizations,
+                                        detected_languages=detected_langs,
+                                    ),
+                                    loc_ids,
+                                    loc_types,
+                                    s_min,
+                                    s_max,
+                                    s_cur,
+                                    s_per,
+                                    s_eur,
+                                    exp_min,
+                                    exp_max,
+                                    t_ids,
+                                    occ_id,
+                                    sen_id,
+                                )
+                            )
+                            if desc_text:
+                                locale = _coerce_text(j.language) or "en"
+                                update_descriptions.append(
+                                    (str(pid), locale, desc_text, content_hash(desc_text))
+                                )
+
+                inserted_rich: list[tuple[object, object, str]] = []
+                inserted: list = []
+                n_rich_dedup = 0
+                never_scrape = is_rich_no_scrape or _is_skip_no_scrape(metadata, crawler_type)
+
+                # The second transaction contains database writes only.  Queue
+                # publication follows commit so Redis can never advertise a
+                # posting that was rolled back in Postgres.
+                if meta_patch or new_records or rich_update_records or stub_new_urls:
+                    async with pool.acquire() as conn, conn.transaction():
+                        if new_records:
+                            insert_sql = (
+                                _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
+                            )
+                            for rec, (j, t_ids) in zip(new_records, r2_staging, strict=True):
+                                row = await conn.fetchrow(insert_sql, *rec)
+                                if row is None:
+                                    n_rich_dedup += 1
+                                    continue
+                                new_posting_id = str(row["id"])
+                                inserted_rich.append((j, t_ids, new_posting_id))
+
+                            for j, _t_ids, posting_id in inserted_rich:
                                 desc_html = _coerce_text(j.description)
                                 if desc_html:
                                     locale = _coerce_text(j.language) or "en"
-                                    _h = content_hash(desc_html)
+                                    desc_hash = content_hash(desc_html)
                                     await conn.execute(
                                         _UPSERT_DESCRIPTION,
-                                        str(pid),
+                                        posting_id,
                                         locale,
                                         desc_html,
-                                        _h,
-                                        _h,
+                                        desc_hash,
+                                        desc_hash,
                                     )
 
-                    # URL-only path -- insert stubs with next_scrape_at.
-                    # Runs when chunk_jobs is None (traditional URL-only
-                    # monitor) OR when it's a partial dict and has new URLs
-                    # without rich data (hybrid monitors like eightfold).
-                    if stub_new_urls:
-                        # If a rich-monitor board falls into this path (e.g. an
-                        # API fallback that returns URLs only for a cycle), the
-                        # runtime ``is_rich_no_scrape`` flag is False because
-                        # ``is_rich`` is False. We need the metadata-level
-                        # classifier to catch it too — otherwise ``next_scrape_at``
-                        # gets set to now() and the posting re-enters the skip-
-                        # scraper loop.
-                        never_scrape = is_rich_no_scrape or _is_skip_no_scrape(
-                            metadata, crawler_type
-                        )
-                        inserted = await conn.fetch(
-                            _INSERT_URL_ONLY_JOBS,
-                            company_id,
-                            board_id,
-                            stub_new_urls,
-                            never_scrape,
-                        )
-                        # _INSERT_URL_ONLY_JOBS uses ON CONFLICT (source_url)
-                        # DO NOTHING — some rows may silently no-op when the
-                        # same URL is already owned by another board.
-                        n_deduped = len(new_urls) - len(inserted)
-                        if n_deduped:
-                            monitor_dedup_total.labels(path="url_only").inc(n_deduped)
-                            board_log.info(
-                                "batch.monitor.duplicate_source_url",
-                                path="url_only",
-                                count=n_deduped,
+                        if rich_update_records:
+                            await conn.execute(_CREATE_RICH_UPDATES_TEMP)
+                            await conn.copy_records_to_table(
+                                "_rich_updates", records=rich_update_records
                             )
-                        board_log.info("batch.inserted_for_scrape", count=len(inserted))
-                        # Lifecycle anchor: per-posting discovery event so an
-                        # operator with only the posting_id (from the public
-                        # URL) can grep Loki to find when and from which board
-                        # the row entered the pipeline (#3192). URL-only path
-                        # — rich data arrives later via the scrape branch's
-                        # ``posting.scraped`` event.
-                        for ins in inserted:
-                            board_log.info(
-                                "posting.discovered",
-                                posting_id=str(ins["id"]),
-                                board_id=board_id,
-                                source_url=ins["source_url"],
-                                path="url_only",
-                            )
-                        await _enqueue_scrapes_for_new(
-                            inserted, board_id, metadata, board_log, crawler_type=crawler_type
-                        )
+                            await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
+                            for posting_id, locale, desc_html, desc_hash in update_descriptions:
+                                await conn.execute(
+                                    _UPSERT_DESCRIPTION,
+                                    posting_id,
+                                    locale,
+                                    desc_html,
+                                    desc_hash,
+                                    desc_hash,
+                                )
 
-                    # Enqueue scrapes for relisted jobs (came back after gone)
-                    # Skip for rich monitors without enrichment — they already have full data
-                    if not is_rich_no_scrape:
-                        await _enqueue_scrapes_for_relisted(
-                            relisted,
-                            board_id,
-                            metadata,
-                            board_log,
-                            crawler_type=crawler_type,
+                        if stub_new_urls:
+                            inserted = await conn.fetch(
+                                _INSERT_URL_ONLY_JOBS,
+                                company_id,
+                                board_id,
+                                stub_new_urls,
+                                never_scrape,
+                            )
+
+                        # Incremental monitor watermarks must commit atomically
+                        # with inserts.  If any DB write fails, leaving this
+                        # patch unapplied makes the monitor rediscover the same
+                        # range on its next run instead of skipping jobs.
+                        if meta_patch:
+                            await conn.execute(
+                                _UPDATE_METADATA,
+                                board_id,
+                                json.dumps(meta_patch),
+                            )
+
+                # Metrics, lifecycle logs, and Redis all run after commit.
+                if n_rich_dedup:
+                    monitor_dedup_total.labels(path="rich").inc(n_rich_dedup)
+                    board_log.info(
+                        "batch.monitor.duplicate_source_url",
+                        path="rich",
+                        count=n_rich_dedup,
+                    )
+                for j, _t_ids, posting_id in inserted_rich:
+                    board_log.info(
+                        "posting.discovered",
+                        posting_id=posting_id,
+                        board_id=board_id,
+                        source_url=j.url,
+                        path="rich",
+                    )
+                if enrich_fields and inserted_rich:
+                    rich_rows = [
+                        {"id": pid, "source_url": j.url} for j, _t_ids, pid in inserted_rich
+                    ]
+                    await _enqueue_scrapes_for_new(
+                        rich_rows,
+                        board_id,
+                        metadata,
+                        board_log,
+                        crawler_type=crawler_type,
+                    )
+
+                if stub_new_urls:
+                    n_deduped = len(stub_new_urls) - len(inserted)
+                    if n_deduped:
+                        monitor_dedup_total.labels(path="url_only").inc(n_deduped)
+                        board_log.info(
+                            "batch.monitor.duplicate_source_url",
+                            path="url_only",
+                            count=n_deduped,
                         )
-                        await _enqueue_scrapes_for_touched_missing(
-                            touched,
-                            board_id,
-                            metadata,
-                            board_log,
-                            crawler_type=crawler_type,
+                    board_log.info("batch.inserted_for_scrape", count=len(inserted))
+                    for ins in inserted:
+                        board_log.info(
+                            "posting.discovered",
+                            posting_id=str(ins["id"]),
+                            board_id=board_id,
+                            source_url=ins["source_url"],
+                            path="url_only",
                         )
+                    await _enqueue_scrapes_for_new(
+                        inserted, board_id, metadata, board_log, crawler_type=crawler_type
+                    )
+
+                if not is_rich_no_scrape:
+                    await _enqueue_scrapes_for_relisted(
+                        relisted,
+                        board_id,
+                        metadata,
+                        board_log,
+                        crawler_type=crawler_type,
+                    )
+                    await _enqueue_scrapes_for_touched_missing(
+                        touched,
+                        board_id,
+                        metadata,
+                        board_log,
+                        crawler_type=crawler_type,
+                    )
 
             board_log.info(
                 "batch.monitor.stream_batch",

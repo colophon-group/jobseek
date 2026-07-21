@@ -50,6 +50,7 @@ from src.queries.scrape import (
     _UPDATE_ENRICH_CONTENT,
 )
 from src.shared.html_normalize import normalize_description_html
+from src.shared.http import is_avature_job_detail_url
 from src.shared.langdetect import detect_all_languages, detect_language
 
 log = structlog.get_logger()
@@ -70,6 +71,14 @@ _UPSERT_DESCRIPTION = (
     "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
     "  THEN descriptions.r2_uploaded "
     "  ELSE false END, "
+    "r2_upload_failures = CASE "
+    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
+    "  THEN descriptions.r2_upload_failures "
+    "  ELSE 0 END, "
+    "r2_next_attempt_at = CASE "
+    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
+    "  THEN descriptions.r2_next_attempt_at "
+    "  ELSE '-infinity'::timestamptz END, "
     "updated_at = CASE "
     "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
     "  THEN descriptions.updated_at "
@@ -167,12 +176,14 @@ class _BoardScraperInfo:
 #   * ``permanent_gone`` (HTTP 404 / 410): RFC-defined "this resource is
 #     gone". Tombstone IMMEDIATELY, on the first failure, no budget
 #     consumed. Caller passes ``permanent_gone=True`` to the SQL.
-#   * ``budget_eligible`` (4xx other than 401, 403, 429): the upstream
+#   * ``budget_eligible`` (4xx other than 401, 403, 429 and provider-specific
+#     transient statuses): the upstream
 #     said "no" with a status that's typically meaningful — most
 #     archived-posting flows return one of these. Counts toward the
 #     3-failure tombstone budget. Caller passes ``permanent_gone=False``;
 #     the budget condition in the SQL fires after 3 such failures.
 #   * ``transient`` (5xx, timeouts, connect errors, 401/403/429,
+#     provider-specific overload responses such as Avature JobDetail 406,
 #     successful HTTP fetch with empty extraction): the upstream is
 #     either temporarily unhealthy or our extraction config is broken.
 #     Either way, tombstoning is wrong. Caller takes the
@@ -219,9 +230,10 @@ def _is_budget_eligible_failure(exc: BaseException) -> bool:
     """Return True for failures that should COUNT toward the 3-failure
     tombstone budget in ``_RECORD_SCRAPE_FAILURE``.
 
-    Eligible: HTTP 4xx other than 401 / 403 / 404 / 410 / 429.
+    Eligible: HTTP 4xx other than 401 / 403 / 404 / 410 / 429 and Avature
+    JobDetail 406 responses.
     Ineligible: everything else (5xx, network errors, 401 / 403 / 429,
-    non-HTTP exceptions, AND 404 / 410 — those go through the
+    Avature JobDetail 406, non-HTTP exceptions, AND 404 / 410 — those go through the
     immediate-tombstone short-circuit via ``_is_permanent_gone``, NOT
     the budget). 404 / 410 are excluded here so the two predicates
     stay disjoint at the call site: callers test ``permanent_gone``
@@ -232,6 +244,11 @@ def _is_budget_eligible_failure(exc: BaseException) -> bool:
     s = exc.response.status_code
     if s in (404, 410):
         # Disjoint from _is_permanent_gone. See docstring.
+        return False
+    if s == 406 and is_avature_job_detail_url(str(exc.request.url)):
+        # #5710: five Avature tenants emitted bursty 406s for live pages that
+        # later returned 200 unchanged. Counting these toward the three-strike
+        # tombstone budget can hide valid jobs during a provider throttle.
         return False
     return 400 <= s < 500 and s not in (401, 403, 429)
 
@@ -703,6 +720,7 @@ async def _process_one_scrape(
     from src.redis_queue import enqueue_scrape
 
     t0 = monotonic()
+    operation = "scrape_fetch"
     try:
         board_cfg = scraper_config or {}
 
@@ -759,10 +777,12 @@ async def _process_one_scrape(
                 # workday) doesn't tombstone thousands of live postings
                 # — the monitor authority will delist real archives
                 # eventually.
+                operation = "record_empty_result"
                 async with pool.acquire() as conn:
                     await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
             return False, monotonic() - t0
 
+        operation = "content_processing"
         content.description = normalize_description_html(content.description)
 
         # Detect language if not already set
@@ -779,6 +799,7 @@ async def _process_one_scrape(
         norm_emp_type = normalize_employment_type(raw_emp_type)
 
         # Resolve locations
+        operation = "location_lookup"
         loc_resolver = await _batch._get_location_resolver(pool)
         loc_ids, loc_types = await _batch._resolve_locations(
             loc_resolver,
@@ -788,6 +809,7 @@ async def _process_one_scrape(
         )
 
         # Resolve technologies from description
+        operation = "taxonomy_lookup"
         tech_id_map = await _batch._get_technology_ids(pool)
         tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
 
@@ -835,6 +857,7 @@ async def _process_one_scrape(
             if (lang_text or detected_langs)
             else None
         )
+        operation = "database_save"
         async with pool.acquire() as conn:
             update_result = await conn.execute(
                 _UPDATE_ENRICH_CONTENT,
@@ -869,11 +892,13 @@ async def _process_one_scrape(
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 
+        operation = "location_miss_flush"
         await _batch._flush_location_misses(loc_resolver, pool)
 
         # Enqueue next fallback step if one exists
         next_fb = _get_next_fallback(scraper_type, scraper_config, scrape_step)
         if next_fb:
+            operation = "fallback_enqueue"
             fb_type, fb_cfg, _fb_fields = next_fb
             needs_browser = scraper_needs_browser(fb_type, fb_cfg)
             domain = urlparse(item.url).hostname or ""
@@ -921,6 +946,7 @@ async def _process_one_scrape(
                 "batch.scrape.gone",
                 url=item.url,
                 error=error_msg,
+                operation=operation,
                 step=scrape_step,
                 duration_s=round(elapsed, 2),
             )
@@ -929,6 +955,7 @@ async def _process_one_scrape(
                 "batch.scrape.error",
                 url=item.url,
                 error=error_msg,
+                operation=operation,
                 step=scrape_step,
                 duration_s=round(elapsed, 2),
             )
