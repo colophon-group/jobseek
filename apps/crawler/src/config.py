@@ -120,7 +120,7 @@ class Settings(BaseSettings):
 
     # Pipeline concurrency (per-instance)
     discovery_concurrency: int = 20
-    monitor_concurrency: int = 5  # max concurrent monitors (bounds peak memory)
+    monitor_concurrency: int = 5  # max concurrent monitors
     raw_buffer_size: int = 10
     done_buffer_size: int = 10
     writeback_concurrency: int = 5

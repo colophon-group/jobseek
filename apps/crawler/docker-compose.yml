@@ -49,8 +49,7 @@ services:
 
   # -- Workers (3x HTTP, each on its own metrics port) -------------
   # Each worker has 1 CPU / 1 GiB. Keep discovery at the code default and
-  # cap full-board monitor results at five concurrent tasks so large APIs do
-  # not multiply their retained pagination footprint up to the cgroup limit.
+  # cap monitors at five; paginating monitors must stream bounded batches.
   worker-1:
     image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
     init: true
