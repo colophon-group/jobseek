@@ -17,7 +17,7 @@ import httpx
 import structlog
 
 from src.core.enum_normalize import normalize_job_location_type, normalize_salary_unit
-from src.core.monitors import DiscoveredJob, register
+from src.core.monitors import DiscoveredJob, register, slug_guess_allowed
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.shared.truncation import truncated_rich_result
 
@@ -247,6 +247,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         initial_context=None,
         result_builder=_slug_result,
         page_token_probe=_probe_template_slug,
+        allow_slug_guess=slug_guess_allowed(),
         log_token_field="slug",
     )
 
