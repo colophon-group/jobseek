@@ -240,11 +240,40 @@ EOF
   return 1
 }
 
+running_typesense_maintenance_containers() {
+  docker ps \
+    --filter 'name=^/crawler-(backfill|refresh)-typesense-' \
+    --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Command}}'
+}
+
+ensure_no_running_typesense_maintenance() {
+  local rows
+
+  rows="$(running_typesense_maintenance_containers)"
+  if [[ -z "$rows" ]]; then
+    echo "No running Typesense maintenance containers detected" >&2
+    return 0
+  fi
+
+  cat >&2 <<EOF
+ERROR: running Typesense maintenance containers detected.
+Deploy is refusing to overlap a full backfill or count refresh because its
+inline crawler sync also refreshes Typesense and could publish partial counts.
+
+Container ID\tName\tImage\tStatus\tCommand
+${rows}
+
+Wait for the maintenance job to finish, then rerun the deploy.
+EOF
+  return 1
+}
+
 # Fail before touching services if an operator one-off is still running.
 # Example: `docker compose run --rm worker-1 uv run --no-sync crawler ...`
 # receives the Compose label `com.docker.compose.oneoff=True` and otherwise
 # survives the named-service stop/recreate sequence below.
 ensure_no_running_compose_oneoffs
+ensure_no_running_typesense_maintenance
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
