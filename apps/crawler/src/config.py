@@ -30,12 +30,11 @@ class Settings(BaseSettings):
 
     # Redis (local instance, not Upstash)
     redis_url: str = "redis://localhost:6379/0"
-    # Pool size MUST be >= ``discovery_concurrency + monitor_concurrency``
-    # for a worker process — otherwise concurrent ``claim_work`` calls
-    # exhaust the pool and the 21st task crashes with
-    # ``MaxConnectionsError``. Production runs DISCOVERY_CONCURRENCY=30
-    # and MONITOR_CONCURRENCY=10 → 40 needed; 60 gives headroom for
-    # ad-hoc Redis calls (lookups, metrics) and bursts during reschedule.
+    # The pool must cover all concurrent discovery claim loops plus Redis
+    # work triggered by active tasks; otherwise ``claim_work`` can exhaust it
+    # and raise ``MaxConnectionsError``. Production runs
+    # DISCOVERY_CONCURRENCY=20; 60 leaves headroom for monitor work, lookups,
+    # metrics, and bursts during reschedule.
     redis_max_connections: int = 60
     throttle_delay_default: float = 2.0
     throttle_delay_ats: float = 0.5
