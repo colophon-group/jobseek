@@ -49,6 +49,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `hireology` | Rich | skip | Hireology ATS |
 | `jobylon` | Rich | skip | Jobylon iframe embeds |
 | `lever` | Rich | skip | Lever ATS |
+| `linkedin` | Rich | linkedin | LinkedIn guest-job summaries plus detail enrichment |
 | `mokahr` | Rich | skip | Mokahr ATS |
 | `paylocity` | Rich | paylocity | Paylocity embedded summaries plus detail enrichment |
 | `personio` | Conditional* | — | Personio XML feed; HTML fallback needs scraper |
@@ -74,6 +75,10 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `dom` | URL-only | — | Last resort — link extraction from page HTML |
 
 Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection. Conditional monitors return rich data only under the condition named in the table; otherwise they need a scraper or runtime coverage check.
+
+`linkedin` and `paylocity` are partial-rich exceptions: their listing responses
+provide clean summary fields while their auto-configured scrapers hydrate the
+remaining detail fields on the daily schedule.
 
 ### greenhouse
 
@@ -209,6 +214,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `eightfold` | Static | JSON-LD extraction with Eightfold position API fallback |
 | `embedded` | Static | Extracts from embedded JSON/JS data in page source |
 | `json-ld` | Static | Parses `<script type="application/ld+json">` |
+| `linkedin` | Static | Fetches LinkedIn public guest-job detail fragments |
 | `mokahr` | Static | Fetches and decrypts Mokahr detail API records |
 | `nextdata` | Static or Playwright | Extracts from Next.js `__NEXT_DATA__` props |
 | `notion` | Static | Loads Notion blocks through Notion's internal API |

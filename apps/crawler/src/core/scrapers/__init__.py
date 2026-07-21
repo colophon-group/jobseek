@@ -367,6 +367,7 @@ from src.core.scrapers import (  # noqa: E402
     eightfold,  # noqa: F401
     embedded,  # noqa: F401
     jsonld,  # noqa: F401
+    linkedin,  # noqa: F401
     mokahr,  # noqa: F401
     nextdata,  # noqa: F401
     notion,  # noqa: F401

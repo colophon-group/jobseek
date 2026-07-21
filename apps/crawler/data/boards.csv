@@ -1319,6 +1319,7 @@ d3,d3-greenhouse,https://job-boards.greenhouse.io/d3,greenhouse,"{""token"": ""d
 daedalean,daedalean-careers,https://jobs.lever.co/daedalean,lever,"{""token"": ""daedalean""}",skip,
 dagster-labs,dagster-labs-greenhouse,https://job-boards.greenhouse.io/dagsterlabs,greenhouse,"{""token"": ""dagsterlabs""}",skip,
 dailymotion,dailymotion-careers,https://careers.smartrecruiters.com/Dailymotion,smartrecruiters,"{""token"": ""Dailymotion""}",smartrecruiters,
+damora-therapeutics,damora-therapeutics-linkedin,https://www.linkedin.com/company/damora-therapeutics/jobs/,linkedin,"{""company_id"": ""109559449"", ""company_slug"": ""damora-therapeutics""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 dandelion,dandelion-ashby,https://jobs.ashbyhq.com/dandelion,ashby,"{""token"": ""dandelion""}",skip,
 dares,dares-careers,https://dares.tech/work-with-us/,inline,"{""steps"": [{""text"": ""OPEN POSITIONS"", ""offset"": 4, ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Please, send your CV""}], ""defaults"": {""locations"": [""Castelldefels, Barcelona, Spain""], ""employment_type"": ""full_time"", ""job_location_type"": ""hybrid""}}",skip,
 dark-wolf-solutions,dark-wolf-solutions-greenhouse,https://job-boards.greenhouse.io/darkwolfsolutions,greenhouse,"{""token"": ""darkwolfsolutions""}",skip,
