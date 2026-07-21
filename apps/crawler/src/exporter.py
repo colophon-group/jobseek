@@ -426,20 +426,18 @@ class TaxonomyMaps:
     async def _load_occupation_ancestors(self, pool: asyncpg.Pool) -> None:
         """Build occupation_id -> [self + all ancestor IDs] map.
 
-        Walks the ``parent_id`` chain AND unions in ``domain_id`` so that
-        a posting tagged with a specific occupation carries the domain
-        root in its expanded ``occupation_ids``. Without this, filtering
-        by domain id (e.g. ``occupation_ids:=<software_engineering>``)
-        returns 0 because no posting has the domain id stamped (#2980).
-        Mirrors the location macro expansion in
-        ``_load_location_ancestors`` (#2977).
+        Only occupation IDs belong in ``occupation_ids``. Occupation domains
+        use an independent integer identity sequence, so unioning
+        ``occupation.domain_id`` into this array makes unrelated values
+        collide (for example, Healthcare domain 9 with Data Analyst
+        occupation 9). Domain headers are expanded to their first-level
+        occupations by the web UI and therefore do not need an index-level
+        synthetic ancestor (#3027).
         """
         occ_parents: dict[int, int | None] = {}
-        occ_domains: dict[int, int | None] = {}
-        rows = await pool.fetch("SELECT id, parent_id, domain_id FROM occupation")
+        rows = await pool.fetch("SELECT id, parent_id FROM occupation")
         for r in rows:
             occ_parents[r["id"]] = r["parent_id"]
-            occ_domains[r["id"]] = r["domain_id"]
 
         ancestors: dict[int, list[int]] = {}
         for oid in occ_parents:
@@ -448,11 +446,6 @@ class TaxonomyMaps:
             while current is not None:
                 anc.add(current)
                 current = occ_parents.get(current)
-            # Union in the domain id so domain-as-single-filter works
-            # (parity with location macro membership).
-            domain_id = occ_domains.get(oid)
-            if domain_id is not None and domain_id != oid:
-                anc.add(domain_id)
             ancestors[oid] = list(anc)
         self.occupation_ancestors = ancestors
 
@@ -1566,6 +1559,56 @@ async def run_exporter(
 # ---------------------------------------------------------------------------
 
 
+async def _upsert_typesense_backfill_batch(
+    docs: list[dict],
+    *,
+    batch_start: str | None = None,
+    max_attempts: int = 5,
+    base_delay_s: float = 2.0,
+) -> None:
+    """Upsert one backfill batch without permitting silent gaps.
+
+    A transport timeout can happen after Typesense has accepted the request,
+    so retrying the idempotent upsert is safe.  Exhausted retries and
+    per-document import failures both abort the full backfill; its caller must
+    not advance or persist the scan cursor past documents that were not
+    confirmed written.
+    """
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be at least 1")
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            failed_ids = await _upsert_to_typesense(docs)
+            if failed_ids:
+                raise RuntimeError(
+                    f"Typesense rejected {len(failed_ids)} documents in backfill batch"
+                )
+            return
+        except Exception as exc:
+            if attempt == max_attempts:
+                log.exception(
+                    "backfill.typesense_upsert_failed",
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    batch_size=len(docs),
+                    batch_start=batch_start,
+                )
+                raise
+
+            delay_s = base_delay_s * (2 ** (attempt - 1))
+            log.warning(
+                "backfill.typesense_upsert_retry",
+                attempt=attempt,
+                max_attempts=max_attempts,
+                retry_in_s=delay_s,
+                batch_size=len(docs),
+                batch_start=batch_start,
+                **_exc_fields(exc),
+            )
+            await asyncio.sleep(delay_s)
+
+
 async def backfill_typesense(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
@@ -1596,11 +1639,8 @@ async def backfill_typesense(
             await maps.refresh(local_pool, supa_pool)
 
         docs = _build_typesense_docs(rows, maps)
-        try:
-            await _upsert_to_typesense(docs)
-            typesense_backfill_docs_total.inc(len(docs))
-        except Exception:
-            log.exception("backfill.typesense_upsert_error", batch_start=str(cursor))
+        await _upsert_typesense_backfill_batch(docs, batch_start=str(cursor))
+        typesense_backfill_docs_total.inc(len(docs))
 
         last_row = rows[-1]
         cursor = (last_row["updated_at"], last_row["id"])

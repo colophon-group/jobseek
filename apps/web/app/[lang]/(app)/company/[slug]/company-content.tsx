@@ -6,6 +6,10 @@ import { Trans } from "@lingui/react/macro";
 import { fetchCompanyPageData, type CompanyPageData } from "@/lib/actions/company-page-data";
 import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
 import { CompanySkeleton } from "@/components/search/company-skeleton";
+import {
+  hasSearchFilterParams,
+  serializeSearchFilterParams,
+} from "@/lib/search/query-params";
 import { CompanyPage } from "./company-page";
 
 type CompanyContentProps = {
@@ -28,22 +32,12 @@ type CompanyContentProps = {
  * these are present, the prerendered ``initialData`` doesn't reflect
  * the filters and we must re-fetch the personalized variant.
  *
- * Mirrors the list in `explore-content.tsx` (`FILTER_PARAMS`). Also
- * includes ``show`` — the deep-link param that opens a posting detail
- * panel — because it changes the rendered subtree even though it
- * doesn't affect the postings list itself. Better to refetch and keep
- * the panel responsive than to render with ``initialData`` and have
- * the panel pop in late.
+ * The shared result-bearing parameter list deliberately excludes the
+ * ``show`` deep-link param: it only selects a posting in ``CompanyPage``
+ * and ``JobDetailPanel`` fetches that posting independently. Treating it
+ * as a data input would unmount and refetch the entire company results
+ * view on every posting click (#5766).
  */
-const FILTER_PARAMS = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp", "show"];
-
-function hasAnyFilterParam(searchParams: URLSearchParams): boolean {
-  for (const key of FILTER_PARAMS) {
-    if (searchParams.has(key)) return true;
-  }
-  return false;
-}
-
 function CompanyNotFound() {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -69,7 +63,7 @@ function CompanyNotFound() {
 
 export function CompanyContent({ locale, slug, initialData }: CompanyContentProps) {
   const searchParams = useSearchParams();
-  const paramsKey = searchParams.toString();
+  const dataParamsKey = serializeSearchFilterParams(searchParams);
   const fetchIdRef = useRef(0);
   const [data, setData] = useState<CompanyPageData | null | "not-found">(initialData ?? null);
 
@@ -91,11 +85,11 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
   // slug or locale navigation.
   useEffect(() => {
     const fetchId = ++fetchIdRef.current;
-    const params = new URLSearchParams(paramsKey);
+    const params = new URLSearchParams(dataParamsKey);
     const needsPersonalizedFetch =
       hasLoggedInHint() ||
       hasAnonJobLanguagesHint() ||
-      hasAnyFilterParam(params) ||
+      hasSearchFilterParams(params) ||
       initialData === undefined;
     if (!needsPersonalizedFetch) {
       setData(initialData ?? null);
@@ -120,7 +114,7 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
       console.error("[company] fetchCompanyPageData failed", err);
       if (initialData) setData(initialData);
     });
-  }, [initialData, locale, paramsKey, slug]);
+  }, [dataParamsKey, initialData, locale, slug]);
 
   if (data === null) return <CompanySkeleton />;
   if (data === "not-found") return <CompanyNotFound />;

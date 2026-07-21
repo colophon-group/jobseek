@@ -61,6 +61,38 @@ async def test_enqueue_monitor_first_time_flag():
     assert await r.zcard("ready:simple:0") >= 1  # tier 0 = first-time
 
 
+async def test_enqueue_monitors_pipelines_mixed_worker_schedules():
+    now = time.time() - 10
+    schedules = [
+        rq.MonitorSchedule(
+            domain="greenhouse",
+            board_id="board-batch-simple",
+            next_check_at=now,
+            config={"monitor": "greenhouse"},
+            first_time=True,
+        ),
+        rq.MonitorSchedule(
+            domain="example.com",
+            board_id="board-batch-browser",
+            next_check_at=now,
+            config={"monitor": "dom"},
+            browser=True,
+            first_time=True,
+        ),
+    ]
+
+    assert await rq.enqueue_monitors(schedules) == [True, True]
+    assert await rq.enqueue_monitors(schedules) == [False, False]
+
+    r = rq.get_redis()
+    simple_config = await r.hgetall("board:board-batch-simple")
+    browser_config = await r.hgetall("board:board-batch-browser")
+    assert simple_config["domain"] == "greenhouse"
+    assert browser_config["domain"] == "example.com"
+    assert await r.zcard("ft_monitors_simple:greenhouse") == 1
+    assert await r.zcard("ft_monitors_browser:example.com") == 1
+
+
 # ---------------------------------------------------------------------------
 # Monitor queue: empty + future items
 # ---------------------------------------------------------------------------
@@ -222,6 +254,38 @@ async def test_remove_monitor_is_idempotent_on_missing_board():
     r = rq.get_redis()
     await rq.remove_monitor("lever", "never-existed")
     assert await r.exists("board:never-existed") == 0
+
+
+async def test_remove_monitors_pipelines_all_queue_variants():
+    now = time.time() - 10
+    await rq.enqueue_monitors(
+        [
+            rq.MonitorSchedule("lever", "batch-gone-1", now, {"monitor": "lever"}),
+            rq.MonitorSchedule(
+                "example.com",
+                "batch-gone-2",
+                now,
+                {"monitor": "dom"},
+                browser=True,
+                first_time=True,
+            ),
+        ]
+    )
+
+    await rq.remove_monitors(
+        [
+            ("lever", "batch-gone-1"),
+            ("example.com", "batch-gone-2"),
+        ]
+    )
+
+    r = rq.get_redis()
+    for board_id in ("batch-gone-1", "batch-gone-2"):
+        assert await r.exists(f"board:{board_id}") == 0
+    for domain in ("lever", "example.com"):
+        for wtype in ("simple", "browser"):
+            assert await r.zcard(f"ft_monitors_{wtype}:{domain}") == 0
+            assert await r.zcard(f"monitors_{wtype}:{domain}") == 0
 
 
 async def test_remove_monitor_after_claim_clears_domain_on_next_claim():

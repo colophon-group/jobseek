@@ -1193,6 +1193,31 @@ class TestCaterpillarRateLimitConfig:
         assert scraper_needs_browser("json-ld", sc) is True
 
 
+class TestOverwolfComeetDescriptionCoverage:
+    """Overwolf must use Comeet's rich source directly (#5807).
+
+    The legacy api_sniffer row omitted ``details=true`` and then sent every
+    posting through a rendered detail scrape. The shared Comeet monitor
+    returns the first-party details payload in the listing cycle, so keeping
+    this configuration pinned prevents another 0%-description cohort.
+    """
+
+    def test_overwolf_uses_rich_comeet_monitor_without_detail_scraping(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "overwolf-careers"), None)
+        assert row is not None, "overwolf-careers row missing from boards.csv"
+
+        assert row["monitor_type"] == "comeet"
+        assert json.loads(row.get("monitor_config") or "{}") == {}
+        assert row["scraper_type"] == "skip"
+        assert json.loads(row.get("scraper_config") or "{}") == {}
+
+
 class TestZteMokahrHasMokahrScraperAndEnrich:
     """ZTE's mokahr boards MUST use the mokahr scraper with enrich (#2963).
 

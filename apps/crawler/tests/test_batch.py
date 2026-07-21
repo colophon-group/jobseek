@@ -1569,6 +1569,22 @@ class TestCanonicalizeUrl:
         raw = "https://evercore.tal.net/vx/lang-en-GB/some/xforce/path/opp/1/en"
         assert self.canon(raw) == raw
 
+    # ── Overwolf / Comeet active pages (issue #5807) ────────────────
+
+    def test_overwolf_tracking_variants_canonicalize_equal(self):
+        base = "https://careers.overwolf.com/career/BF.F52"
+        variants = (
+            base,
+            f"{base}?src=LinkedIn",
+            f"{base}?t=1784650000",
+            f"{base}?t=1784650000&src=LinkedIn",
+        )
+        assert {self.canon(url) for url in variants} == {base}
+
+    def test_overwolf_preserves_identity_query_params_and_non_timestamp_t(self):
+        raw = "https://careers.overwolf.com/career/BF.F52?locale=en&t=preview&src=LinkedIn"
+        assert self.canon(raw) == ("https://careers.overwolf.com/career/BF.F52?locale=en&t=preview")
+
 
 # ── TestInsertSqlContract ────────────────────────────────────────────
 
