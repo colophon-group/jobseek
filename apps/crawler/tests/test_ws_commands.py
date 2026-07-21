@@ -160,6 +160,18 @@ class TestHelp:
         assert legacy_result.exit_code != 0
         assert "Unknown monitor type" in legacy_result.output
 
+    def test_dom_help_documents_antibot_browser_options(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        runner = CliRunner()
+
+        for topic in ("monitor", "scraper"):
+            result = runner.invoke(ws, ["help", topic, "dom"])
+            assert result.exit_code == 0
+            assert "proxy" in result.output
+            assert "persistent_context" in result.output
+            assert 'channel: "chrome"' in result.output
+            assert "warmup_url" in result.output
+
     def test_help_industries_uses_repo_data_and_supports_legacy_schema(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         (tmp_path / "industries.csv").write_text(
@@ -2193,6 +2205,44 @@ class TestFeedback:
         board = load_board("test", "careers")
         assert "feedback" in board.configs["gh-api"]
 
+    def test_verified_empty_board_feedback(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="empty"))
+        board = Board(alias="careers", slug="empty-careers", url="https://x.com/jobs")
+        board.configs["rss"] = {
+            "monitor_type": "rss",
+            "monitor_config": {"preset": "teamtailor"},
+            "status": "tested",
+            "run": {"jobs": 0},
+        }
+        board.active_config = "rss"
+        save_board("empty", board)
+        ws_obj = load_workspace("empty")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            ws,
+            [
+                "feedback",
+                "rss",
+                "empty",
+                "--verified-empty-board",
+                "--verdict",
+                "acceptable",
+                "--verdict-notes",
+                "Official board has no openings; valid Teamtailor RSS is empty",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+
+        board = load_board("empty", "careers")
+        feedback = board.configs["rss"]["feedback"]
+        assert feedback["verified_empty_board"] is True
+        assert feedback["fields"] == {}
+        assert feedback["required"]["quality"] == "unverified"
+
     def test_feedback_auto_populates_absent(self, tmp_path, monkeypatch):
         """Fields with 0/N coverage auto-populate as absent (even important ones)."""
         self._setup(tmp_path, monkeypatch)
@@ -2412,6 +2462,25 @@ class TestQualityGates:
 
         blockers, _ = run_quality_gates(ws_obj, [board])
         assert any("feedback" in b.lower() for b in blockers)
+
+    def test_verified_empty_board_is_warning_not_blocker(self):
+        from src.workspace.commands.crawl import run_quality_gates
+
+        ws_obj = Workspace(slug="test", name="Test", website="https://test.com")
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        board.configs["rss"] = {
+            "status": "tested",
+            "run": {"jobs": 0},
+            "feedback": {
+                "verdict": "acceptable",
+                "verified_empty_board": True,
+            },
+        }
+        board.active_config = "rss"
+
+        blockers, warnings = run_quality_gates(ws_obj, [board])
+        assert not any("0 jobs" in blocker for blocker in blockers)
+        assert any("verified empty board" in warning for warning in warnings)
 
     def test_unusable_verdict(self):
         from src.workspace.commands.crawl import run_quality_gates
