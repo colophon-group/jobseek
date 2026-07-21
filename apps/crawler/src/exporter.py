@@ -1559,6 +1559,56 @@ async def run_exporter(
 # ---------------------------------------------------------------------------
 
 
+async def _upsert_typesense_backfill_batch(
+    docs: list[dict],
+    *,
+    batch_start: str | None = None,
+    max_attempts: int = 5,
+    base_delay_s: float = 2.0,
+) -> None:
+    """Upsert one backfill batch without permitting silent gaps.
+
+    A transport timeout can happen after Typesense has accepted the request,
+    so retrying the idempotent upsert is safe.  Exhausted retries and
+    per-document import failures both abort the full backfill; its caller must
+    not advance or persist the scan cursor past documents that were not
+    confirmed written.
+    """
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be at least 1")
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            failed_ids = await _upsert_to_typesense(docs)
+            if failed_ids:
+                raise RuntimeError(
+                    f"Typesense rejected {len(failed_ids)} documents in backfill batch"
+                )
+            return
+        except Exception as exc:
+            if attempt == max_attempts:
+                log.exception(
+                    "backfill.typesense_upsert_failed",
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    batch_size=len(docs),
+                    batch_start=batch_start,
+                )
+                raise
+
+            delay_s = base_delay_s * (2 ** (attempt - 1))
+            log.warning(
+                "backfill.typesense_upsert_retry",
+                attempt=attempt,
+                max_attempts=max_attempts,
+                retry_in_s=delay_s,
+                batch_size=len(docs),
+                batch_start=batch_start,
+                **_exc_fields(exc),
+            )
+            await asyncio.sleep(delay_s)
+
+
 async def backfill_typesense(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
@@ -1589,11 +1639,8 @@ async def backfill_typesense(
             await maps.refresh(local_pool, supa_pool)
 
         docs = _build_typesense_docs(rows, maps)
-        try:
-            await _upsert_to_typesense(docs)
-            typesense_backfill_docs_total.inc(len(docs))
-        except Exception:
-            log.exception("backfill.typesense_upsert_error", batch_start=str(cursor))
+        await _upsert_typesense_backfill_batch(docs, batch_start=str(cursor))
+        typesense_backfill_docs_total.inc(len(docs))
 
         last_row = rows[-1]
         cursor = (last_row["updated_at"], last_row["id"])

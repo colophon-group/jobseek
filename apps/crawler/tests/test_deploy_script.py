@@ -23,12 +23,13 @@ def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
     script = DEPLOY_SH.read_text()
 
     oneoff_guard = script.index("\nensure_no_running_compose_oneoffs\n")
+    typesense_guard = script.index("\nensure_no_running_typesense_maintenance\n")
     legacy_stop = script.index('docker stop --time=60 "${legacy_containers[@]}"')
     env_write = script.index('cat > "$ENV_FILE"')
     pull = script.index("docker compose pull")
     quiesce = script.index("docker compose stop --timeout 60")
 
-    assert oneoff_guard < legacy_stop < env_write < pull < quiesce
+    assert oneoff_guard < typesense_guard < legacy_stop < env_write < pull < quiesce
 
 
 def test_deploy_oneoff_guard_uses_compose_labels_and_reports_context() -> None:
@@ -40,6 +41,14 @@ def test_deploy_oneoff_guard_uses_compose_labels_and_reports_context() -> None:
     assert "label=com.docker.compose.oneoff=True" in script
     assert "Container ID\\tName\\tImage\\tStatus\\tCompose service\\tCommand" in script
     assert "Wait for the one-off job to finish" in script
+
+
+def test_deploy_blocks_named_typesense_maintenance_containers() -> None:
+    script = DEPLOY_SH.read_text()
+
+    assert "name=^/crawler-(backfill|refresh)-typesense-" in script
+    assert "inline crawler sync also refreshes Typesense" in script
+    assert "Wait for the maintenance job to finish" in script
 
 
 def test_deploy_disk_preflight_only_prunes_builder_cache() -> None:

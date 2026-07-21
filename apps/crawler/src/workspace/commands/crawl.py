@@ -2037,6 +2037,14 @@ _IMPORTANT_FIELDS = ("locations", "employment_type", "job_location_type")
     help="Overall verdict",
 )
 @click.option("--verdict-notes", required=True, help="Brief comment on this config's outcome")
+@click.option(
+    "--verified-empty-board",
+    is_flag=True,
+    help=(
+        "Accept a tested 0-job config when the official board explicitly has no "
+        "openings and the configured ATS/feed was independently verified"
+    ),
+)
 def feedback_cmd(
     name: str | None,
     slug: str | None,
@@ -2057,6 +2065,7 @@ def feedback_cmd(
     vt_q: str | None,
     verdict: str,
     verdict_notes: str,
+    verified_empty_board: bool,
 ):
     """Record extraction quality feedback for a configuration."""
     slug = resolve_slug(slug)
@@ -2129,6 +2138,7 @@ def feedback_cmd(
                 verdict_notes=verdict_notes,
                 monitor_run=monitor_run,
                 scraper_run=scraper_run_data,
+                verified_empty_board=verified_empty_board,
             )
         )
     except WsFeedbackIncomplete:
@@ -2261,7 +2271,13 @@ def run_quality_gates(
         if cfg.get("status") != "tested":
             blockers.append(f"Board {b.alias}: config not tested")
         elif cfg.get("run", {}).get("jobs", 0) == 0:
-            blockers.append(f"Board {b.alias}: 0 jobs found")
+            feedback = cfg.get("feedback") or {}
+            if feedback.get("verified_empty_board") and feedback.get("verdict") == "acceptable":
+                warnings.append(
+                    f"Board {b.alias}: verified empty board; field quality is unvalidated"
+                )
+            else:
+                blockers.append(f"Board {b.alias}: 0 jobs found")
 
         fb = cfg.get("feedback")
         if not fb:
