@@ -325,6 +325,7 @@ def test_migrated_monitors_delegate_can_handle_flow_to_ats_template():
         "dvinci",
         "gem",
         "greenhouse",
+        "hirehive",
         "hireology",
         "lever",
         "pinpoint",

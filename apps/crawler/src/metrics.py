@@ -419,7 +419,7 @@ browser_navigate_fallback_total = Counter(
 )
 
 # HTTP retry observability (#3210). The httpx retry path (and per-monitor
-# copies for workday / lever / hireology / smartrecruiters / accenture /
+# copies for workday / lever / hirehive / hireology / smartrecruiters / accenture /
 # PCSX / api_sniff) all retry transient failures and emit structured logs,
 # but had no counter — so operators could not query "what's the retry storm
 # rate?" or "is host X 429-throttling us today?" without grepping Loki.

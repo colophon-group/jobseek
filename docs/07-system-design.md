@@ -180,6 +180,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `dvinci`          | Rich     | skip        | d.vinci ATS API                         |
 | 10   | `gem`             | Rich     | skip        | Gem ATS API                             |
 | 10   | `greenhouse`      | Rich     | skip        | Greenhouse JSON API                     |
+| 10   | `hirehive`        | Rich     | skip        | HireHive public Jobs API                |
 | 10   | `hireology`       | Rich     | skip        | Hireology Careers API                   |
 | 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |

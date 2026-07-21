@@ -19,6 +19,7 @@ def _rebind_probe_loggers(monkeypatch: pytest.MonkeyPatch) -> None:
         monitor_registry,
         monitor_registry.ashby,
         monitor_registry.greenhouse,
+        monitor_registry.hirehive,
         monitor_registry.hireology,
         monitor_registry.lever,
         monitor_registry.recruitee,
@@ -103,6 +104,12 @@ def _invalid_json_response(request: httpx.Request) -> httpx.Response:
             lambda client: monitor_registry.workable._fetch_job_count("acme", client),
             None,
             {"probe": "job_count", "slug": "acme"},
+        ),
+        (
+            "hirehive.probe_failed",
+            lambda client: monitor_registry.hirehive._probe_slug("acme", client),
+            (False, None),
+            {"probe": "slug", "slug": "acme"},
         ),
         (
             "hireology.probe_failed",

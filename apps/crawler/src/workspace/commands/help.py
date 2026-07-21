@@ -83,6 +83,7 @@ Monitor Types (cheapest first):
   dvinci            10      Full job data     No (skipped)
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
+  hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
   paylocity         10      Full/partial      Auto-enriched
@@ -490,6 +491,28 @@ greenhouse — Greenhouse Public API
 
   Detection:  ws probe shows "Greenhouse API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
+
+MONITOR_HIREHIVE = """\
+hirehive — HireHive Public Jobs API
+
+  API:      GET https://{slug}.hirehive.com/api/v2/jobs?page=1&page_size=100
+  Returns:  Full job data (title, HTML description, location, employment_type,
+            date_posted, language, base_salary)
+            metadata: id, category, experience
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      50,000 jobs
+  Note:     Uses the public tenant API instead of the Cloudflare-rate-limited
+            hosted careers HTML.
+
+  Config:
+    {"slug": "acme"}
+
+    slug     HireHive tenant. Auto-filled by ws probe from:
+             1. Direct URL ({slug}.hirehive.com)
+             2. Inline HTML scan for embedded HireHive links
+
+  Detection:  ws probe shows "HireHive API — slug: X, N jobs"
+  Zero jobs?  Verify slug — try /api/v2/jobs?page=1&page_size=1 directly"""
 
 MONITOR_HIREOLOGY = """\
 hireology — Hireology Careers API
@@ -2115,6 +2138,7 @@ MONITOR_CARDS: dict[str, str] = {
     "eightfold": MONITOR_EIGHTFOLD,
     "gem": MONITOR_GEM,
     "greenhouse": MONITOR_GREENHOUSE,
+    "hirehive": MONITOR_HIREHIVE,
     "hireology": MONITOR_HIREOLOGY,
     "jobylon": MONITOR_JOBYLON,
     "join": MONITOR_JOIN,
