@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 dependencies = [
     "asyncpg>=0.30",
     "boto3>=1.35",
-    "click>=8.1",
+    "click>=8.4.2",
     "httpx>=0.28",
     "pydantic-settings>=2.14.2",
     "pyyaml>=6.0",
