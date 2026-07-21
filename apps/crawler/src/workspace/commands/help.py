@@ -14,7 +14,7 @@ Available topics:
   monitors          Monitor type overview + decision tree
   scrapers          Scraper type overview + field importance
   monitor <type>    Per-type reference (join, greenhouse, lever, rss, sitemap, dom, ...)
-  scraper <type>    Per-type reference (json-ld, nextdata, embedded, dom, api_sniffer, reader)
+  scraper <type>    Per-type reference (json-ld, nextdata, embedded, dom, api_sniffer)
   fields            Job data fields — types, formats, importance
   steps             DOM scraper step key reference
   actions           Browser action pipeline
@@ -145,7 +145,6 @@ Scraper Types:
   Type           Fetch       Config needed?   Best for
   ───────────────────────────────────────────────────────────
   json-ld        Static/PW   No (optional render)  Sites with schema.org/JobPosting
-  reader         Reader API  Yes                  Interactive anti-bot challenges
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
   pdf            Static      No               PDF job descriptions
@@ -1460,35 +1459,6 @@ json-ld — Schema.org JobPosting Extractor
 
   Empty fields?  Page may have partial or no JSON-LD. Try dom scraper."""
 
-SCRAPER_READER = """\
-reader — Jina Reader Visible-Text Extractor
-
-  Fetch:    Jina Reader API (rendered visible text; no local browser)
-  Config:
-    {
-      "title_suffix": " - Example Company",
-      "location_after_title": true,
-      "require_location": true,
-      "description_start": "Job Description",
-      "description_stop": "About Example Company"
-    }
-
-    title_suffix          Optional suffix removed from Reader's page title.
-    location_after_title  Use the first non-empty visible-text line after the
-                          job title as the single location.
-    require_location      Fail the scrape instead of accepting a missing
-                          location (default: false).
-    description_start     Exact visible-text line that starts the description.
-    description_stop      Exact later line that ends the description.
-
-  The scraper is intentionally opt-in. Use it when static HTTP is blocked by
-  an interactive anti-bot challenge and Playwright remains unreliable. It
-  requests application/json with X-Respond-With: text from r.jina.ai, validates
-  the original URL with the crawler SSRF guard, and converts bounded text lines
-  to HTML paragraphs.
-
-  Fields extracted: title, locations, description."""
-
 SCRAPER_NEXTDATA = """\
 nextdata — Next.js __NEXT_DATA__ Page Extractor
 
@@ -2304,7 +2274,6 @@ notion — Notion Page API scraper
 
 SCRAPER_CARDS: dict[str, str] = {
     "json-ld": SCRAPER_JSONLD,
-    "reader": SCRAPER_READER,
     "nextdata": SCRAPER_NEXTDATA,
     "embedded": SCRAPER_EMBEDDED,
     "dom": SCRAPER_DOM,

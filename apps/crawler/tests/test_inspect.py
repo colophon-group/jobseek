@@ -1296,3 +1296,36 @@ class TestZteMokahrHasMokahrScraperAndEnrich:
         )
         # Pure HTTP — no Playwright dependency, must run on slim workers.
         assert scraper.needs_browser is False
+
+
+class TestCitadelSecuritiesProxyJsonLdConfig:
+    """Citadel Securities uses the existing structured proxy path (#3972)."""
+
+    def test_board_uses_proxy_backed_persistent_json_ld(self):
+        import json
+
+        from src.core.scrapers import scraper_needs_browser
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "citadel-securities-global"),
+            None,
+        )
+        assert row is not None, "citadel-securities-global row missing from boards.csv"
+
+        assert row["monitor_type"] == "sitemap"
+        assert row["scraper_type"] == "json-ld"
+
+        scraper_config = json.loads(row["scraper_config"])
+        assert scraper_config == {
+            "render": True,
+            "wait": "domcontentloaded",
+            "timeout": 60000,
+            "persistent_context": True,
+            "channel": "chrome",
+            "headless": False,
+            "proxy": True,
+        }
+        assert scraper_needs_browser("json-ld", scraper_config) is True
