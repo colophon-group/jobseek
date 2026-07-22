@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from unittest.mock import MagicMock
 
 import fakeredis.aioredis
 import pytest
@@ -12,13 +13,36 @@ from src.config import settings
 @pytest.fixture(autouse=True)
 def mock_redis(monkeypatch):
     """Replace get_redis with a fakeredis instance for all tests."""
-    fake = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    fake = fakeredis.aioredis.FakeRedis(
+        decode_responses=True,
+        protocol=2,
+        socket_timeout=None,
+        socket_connect_timeout=None,
+    )
     monkeypatch.setattr(rq, "get_redis", lambda: fake)
     # Reset cached Lua script SHAs so they're re-loaded on each test
     monkeypatch.setattr(rq, "_CLAIM_SHA", None)
     monkeypatch.setattr(rq, "_ENQUEUE_SHA", None)
     monkeypatch.setattr(rq, "_RESCHEDULE_SHA", None)
     return fake
+
+
+def test_pool_preserves_redis_7_connection_semantics(monkeypatch):
+    """redis-py 8 must not silently change queue protocol or timeout behavior."""
+    pool = MagicMock()
+    from_url = MagicMock(return_value=pool)
+    monkeypatch.setattr(rq, "_pool", None)
+    monkeypatch.setattr(rq.aioredis.ConnectionPool, "from_url", from_url)
+
+    assert rq.get_pool() is pool
+    from_url.assert_called_once_with(
+        settings.redis_url,
+        max_connections=settings.redis_max_connections,
+        decode_responses=True,
+        protocol=2,
+        socket_timeout=None,
+        socket_connect_timeout=None,
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -69,6 +69,12 @@ def get_pool() -> aioredis.ConnectionPool:
             settings.redis_url,
             max_connections=settings.redis_max_connections,
             decode_responses=True,
+            # redis-py 8 defaults to RESP3 and finite socket timeouts. Keep
+            # the queue's established wire protocol and blocking semantics;
+            # changing either should be a deliberate operational migration.
+            protocol=2,
+            socket_timeout=None,
+            socket_connect_timeout=None,
         )
     return _pool
 

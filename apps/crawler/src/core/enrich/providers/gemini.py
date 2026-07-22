@@ -19,31 +19,29 @@ class GeminiBatchProvider:
     ) -> str:
         from google.genai import types
 
-        inline_requests = []
+        inlined_requests = []
         for req in requests:
-            inline_requests.append(
-                types.BatchJobSource(
-                    key=req.custom_id,
-                    request=types.GenerateContentRequest(
-                        model=self._model,
-                        contents=[
-                            types.Content(
-                                role="user",
-                                parts=[types.Part(text=req.user_content)],
-                            )
-                        ],
-                        config=types.GenerateContentConfig(
-                            system_instruction=req.system_prompt,
-                            response_mime_type="application/json",
-                            response_schema=response_schema,
-                        ),
+            inlined_requests.append(
+                types.InlinedRequest(
+                    model=self._model,
+                    contents=[
+                        types.Content(
+                            role="user",
+                            parts=[types.Part(text=req.user_content)],
+                        )
+                    ],
+                    metadata={"key": req.custom_id},
+                    config=types.GenerateContentConfig(
+                        system_instruction=req.system_prompt,
+                        response_mime_type="application/json",
+                        response_schema=response_schema,
                     ),
                 )
             )
 
         batch = await self._client.aio.batches.create(
             model=self._model,
-            src=types.BatchJobSource(inline_requests=inline_requests),
+            src=types.BatchJobSource(inlined_requests=inlined_requests),
         )
         return batch.name
 
@@ -60,11 +58,13 @@ class GeminiBatchProvider:
         batch = await self._client.aio.batches.get(name=batch_id)
         results: list[tuple[str, dict | None, LLMUsage | None]] = []
 
-        if not batch.dest or not batch.dest.inline_responses:
+        if not batch.dest or not batch.dest.inlined_responses:
             return results
 
-        for resp in batch.dest.inline_responses:
-            custom_id = resp.key
+        for resp in batch.dest.inlined_responses:
+            custom_id = (resp.metadata or {}).get("key")
+            if not custom_id:
+                raise ValueError("Gemini batch response is missing request metadata key")
             parsed = None
             usage = None
 
