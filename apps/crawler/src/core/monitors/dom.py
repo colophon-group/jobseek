@@ -66,6 +66,12 @@ _SITEGROUND_CHALLENGE_PATHS = (
     "/.well-known/sgcaptcha",
 )
 
+_CLOUDFLARE_CHALLENGE_PATH = "/cdn-cgi/challenge-platform/"
+_CLOUDFLARE_CHALLENGE_TEXTS = (
+    "enable javascript and cookies",
+    "sorry, you have been blocked",
+)
+
 
 class BotChallengeError(RuntimeError):
     """The board returned an anti-bot challenge instead of job listings.
@@ -79,7 +85,12 @@ class BotChallengeError(RuntimeError):
 
 def _raise_if_bot_challenge(url: str, html: str) -> None:
     haystack = f"{url}\n{html}".lower()
-    if any(path in haystack for path in _SITEGROUND_CHALLENGE_PATHS):
+    is_siteground = any(path in haystack for path in _SITEGROUND_CHALLENGE_PATHS)
+    is_cloudflare = "<title>just a moment" in haystack or (
+        _CLOUDFLARE_CHALLENGE_PATH in haystack
+        and any(text in haystack for text in _CLOUDFLARE_CHALLENGE_TEXTS)
+    )
+    if is_siteground or is_cloudflare:
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
         )
@@ -245,6 +256,8 @@ async def _fetch_via_page(
           httpx-side ``fetch_with_retry``).
 
     Raises:
+        :exc:`BotChallengeError` when the response body is a recognized
+        anti-bot interstitial, including non-retryable HTTP 403 pages.
         :exc:`PaginationFetchError` when *retries* attempts have all
         hit a retryable failure (5xx including Cloudflare 520-526/530,
         408, 425, 429, **200-with-empty-body**, or a Playwright
@@ -293,6 +306,8 @@ async def _fetch_via_page(
             text = result.get("text") or ""
             resp_headers = result.get("headers") or {}
             last_status = status
+            if text:
+                _raise_if_bot_challenge(url, text)
             if status == 200:
                 if text:
                     # TDM-Reservation respect (#2842). Symmetric with the
@@ -323,9 +338,10 @@ async def _fetch_via_page(
                     status=status,
                 )
                 return None
-        except TDMReservedError:
-            # Publisher policy declaration — never retry, propagate to
-            # the monitor wrapper for graceful skip handling (#2842).
+        except (BotChallengeError, TDMReservedError):
+            # Anti-bot interstitials and publisher policy declarations are
+            # deterministic responses, not transport glitches. Propagate
+            # them so the monitor run fails/skips instead of truncating.
             raise
         except Exception as exc:  # page.evaluate raised — timeout, navigation, page closed
             last_exc = exc
@@ -435,6 +451,7 @@ async def _paginate_urls(
             log.info("dom.pagination.end", page=page_num, url=page_url)
             break
 
+        _raise_if_bot_challenge(page_url, html)
         new_urls = _extract_links_static(html, page_url, url_matcher)
         added: set[str] = set()
         for url in sorted(new_urls):
