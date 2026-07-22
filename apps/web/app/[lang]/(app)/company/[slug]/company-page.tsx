@@ -7,6 +7,7 @@ import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
+import { getCompanyPostingListState } from "./company-posting-state";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
@@ -128,11 +129,13 @@ export function CompanyPage({
 
   const hasMore = !exhausted && !isTruncated && postings.length < yearCount;
   const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
-  const showUnavailable =
-    !isSearching &&
-    !hasFilters &&
-    postings.length === 0 &&
-    (isTruncated || activeCount > 0 || yearCount > 0);
+  const postingListState = getCompanyPostingListState({
+    isSearching,
+    hasFilters,
+    postingCount: postings.length,
+    isTruncated,
+    activeCount,
+  });
 
   /** Convert a salary amount from the user's display currency to EUR. */
   function toEur(amount: number | undefined): number | undefined {
@@ -620,16 +623,22 @@ export function CompanyPage({
       {statsRowMobile}
 
       {/* Posting list */}
-      {isSearching ? (
+      {postingListState === "loading" ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 size={20} className="animate-spin text-muted" />
         </div>
-      ) : showUnavailable ? (
+      ) : postingListState === "unavailable" ? (
         <SearchUnavailable />
-      ) : postings.length === 0 && hasFilters ? (
+      ) : postingListState === "no-matches" ? (
         <p className="py-8 text-center text-sm text-muted">
           <Trans id="company.page.noResults" comment="No postings found message on company page">
             No matching postings found.
+          </Trans>
+        </p>
+      ) : postingListState === "no-active" ? (
+        <p className="py-8 text-center text-sm text-muted">
+          <Trans id="company.page.noActivePostings" comment="Empty-state message when a company has no active job postings">
+            No active postings right now.
           </Trans>
         </p>
       ) : (
