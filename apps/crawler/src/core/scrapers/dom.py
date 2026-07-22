@@ -115,13 +115,10 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
 
     steps: list[dict] = [{"tag": "h1", "field": "title"}]
 
-    # Description: content after h1, stop at known marker
+    # Description: continue from the cursor immediately after the title h1.
+    # Leaving the selector empty intentionally matches the current element;
+    # re-seeking the h1 would either miss it or escape a URL-fragment anchor.
     desc_step: dict = {
-        "tag": "h1",
-        # The title step advances the walk cursor past the first h1.  Search
-        # from the beginning so this range can anchor on that same heading.
-        "from": 0,
-        "offset": 1,
         "field": "description",
         "html": True,
         "optional": True,

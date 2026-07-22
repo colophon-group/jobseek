@@ -22,6 +22,7 @@ from src.core.scrapers.nextdata import (
 from src.core.scrapers.nextdata import (
     can_handle as nextdata_can_handle,
 )
+from src.shared.extract import flatten, walk_steps
 
 
 @pytest.fixture()
@@ -422,8 +423,6 @@ class TestNextdataAutoMap:
 
 class TestDomHeuristicSteps:
     def test_h1_with_content(self):
-        from src.shared.extract import flatten
-
         elements = flatten(_DOM_HTML)
         steps = _heuristic_steps(elements)
         assert steps is not None
@@ -434,25 +433,42 @@ class TestDomHeuristicSteps:
         desc_step = steps[1]
         assert desc_step["field"] == "description"
         assert desc_step["html"] is True
-        assert desc_step["from"] == 0
+        assert "tag" not in desc_step
+        assert "from" not in desc_step
+        assert "offset" not in desc_step
 
         # The title step moves the extraction cursor beyond the h1.  The
-        # generated description step must explicitly re-anchor on that h1.
+        # generated description step must continue from that cursor.
         content = dom_parse_html(_DOM_HTML, {"steps": steps})
         assert content.description
         assert "build amazing products" in content.description
 
-    def test_h1_with_stop_marker(self):
-        from src.shared.extract import flatten
+    def test_description_stays_inside_fragment_cursor(self):
+        elements = flatten(
+            """
+            <h1>Page heading</h1><p>Global page content</p>
+            <section><h1 id="job">Fragment job</h1><p>Job description</p></section>
+            """
+        )
+        steps = _heuristic_steps(elements)
+        assert steps is not None
+        fragment_start = next(
+            i for i, element in enumerate(elements) if element["attrs"].get("id") == "job"
+        )
 
+        raw, _ = walk_steps(elements, steps, start=fragment_start)
+
+        assert raw["title"] == "Fragment job"
+        assert "Job description" in raw["description"]
+        assert "Global page content" not in raw["description"]
+
+    def test_h1_with_stop_marker(self):
         elements = flatten(_DOM_HTML)
         steps = _heuristic_steps(elements)
         desc_step = steps[1]
         assert "stop" in desc_step or "stop_count" in desc_step
 
     def test_location_detected(self):
-        from src.shared.extract import flatten
-
         elements = flatten(_DOM_HTML)
         steps = _heuristic_steps(elements)
         location_steps = [s for s in steps if s.get("field") == "location"]
@@ -460,8 +476,6 @@ class TestDomHeuristicSteps:
         assert location_steps[0]["optional"] is True
 
     def test_no_h1_returns_none(self):
-        from src.shared.extract import flatten
-
         elements = flatten(_NO_H1_HTML)
         steps = _heuristic_steps(elements)
         assert steps is None
