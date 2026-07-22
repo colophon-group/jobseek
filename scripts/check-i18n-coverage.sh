@@ -4,7 +4,7 @@
 # stale relative to the source tree (i.e. the user added a <Trans> or
 # t({…}) call but forgot to run `pnpm extract`).
 #
-# Two checks:
+# Four checks:
 #
 #   1. **Empty msgstr** — a `msgid "<key>"` immediately followed by
 #      `msgstr ""` in any of de/fr/it. The PO file header is
@@ -23,6 +23,12 @@
 #      msgid/msgstr content (stripping `#:` source-location comments
 #      that legitimately churn line-by-line), and fail only on real
 #      content differences. See #3031 for the rationale.
+#
+#   4. **Compiled catalog presence** — runs `lingui compile` and checks
+#      that every committed msgid is present under the same key in each
+#      generated catalog. This catches explicit-ID entries whose PO
+#      metadata was lost: Lingui otherwise compiles them under generated
+#      hashes and the production UI falls back to raw IDs. See #6014.
 #
 # When this fires (per check):
 #
@@ -197,6 +203,31 @@ else
   for locale in en "${NON_SOURCE_LOCALES[@]}"; do
     cp "$SNAPSHOT/$locale.po" "$LOCALES_DIR/$locale.po"
   done
+fi
+
+# ── Check 4: every committed ID survives compile (#6014) ────────────
+#
+# A PO entry can contain a complete translation and still be unusable at
+# runtime when the `js-lingui-explicit-id` extraction marker is missing.
+# Lingui then emits the translation under a generated hash rather than the
+# source ID. Compile the catalogs and compare their actual exported keys to
+# every committed msgid so the gate covers production behavior, not merely
+# PO-file contents.
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "i18n-coverage: pnpm not found — skipping compiled-catalog check"
+elif ! command -v node >/dev/null 2>&1; then
+  echo "i18n-coverage: node not found — skipping compiled-catalog check"
+elif [[ ! -d "$REPO_ROOT/apps/web/node_modules" ]]; then
+  echo "i18n-coverage: apps/web/node_modules missing — skipping compiled-catalog check"
+elif [[ ! -d "$REPO_ROOT/node_modules" ]]; then
+  echo "i18n-coverage: repo node_modules missing — skipping compiled-catalog check"
+elif ! pnpm --dir "$REPO_ROOT/apps/web" compile >/dev/null; then
+  echo ""
+  echo "❌ Lingui catalog compilation failed"
+  failed=1
+elif ! node "$REPO_ROOT/scripts/check-i18n-compiled.mjs" "$REPO_ROOT"; then
+  failed=1
 fi
 
 if [[ "$failed" -ne 0 ]]; then

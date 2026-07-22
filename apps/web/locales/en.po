@@ -5041,49 +5041,73 @@ msgid "myJobs.stats.toDate"
 msgstr "To"
 
 #. Button label while an interview round is being added
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.detail.addingInterview"
 msgstr "Adding…"
 
 #. Screen-reader confirmation after adding an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.added"
 msgstr "Interview added."
 
 #. Error shown when an interview round cannot be added
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.addError"
 msgstr "Couldn't add the interview. Try again."
 
 #. Screen-reader confirmation after updating an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.updated"
 msgstr "Interview updated."
 
 #. Error shown when an interview round cannot be updated
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.updateError"
 msgstr "Couldn't update the interview. Try again."
 
 #. Delete interview confirmation title
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteTitle"
 msgstr "Delete interview?"
 
 #. Delete interview confirmation description
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteDescription"
 msgstr "This permanently deletes this interview round. If it is the last round, the application moves back to Applied."
 
 #. Cancel deleting an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteCancel"
 msgstr "Cancel"
 
 #. Confirm deleting an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteConfirm"
 msgstr "Delete"
 
 #. Delete interview button while deletion is pending
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleting"
 msgstr "Deleting…"
 
 #. Screen-reader confirmation after deleting an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleted"
 msgstr "Interview deleted."
 
 #. Error shown when an interview round cannot be deleted
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteError"
 msgstr "Couldn't delete the interview. Try again."
