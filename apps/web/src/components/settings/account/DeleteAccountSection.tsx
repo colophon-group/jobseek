@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { authClient } from "@/lib/auth-client";
 
 export function DeleteAccountSection() {
   const { t } = useLingui();
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+
+  function handleOpenChange(open: boolean) {
+    setConfirmOpen(open);
+    if (!open) setError("");
+  }
 
   async function handleDelete() {
     setError("");
@@ -36,30 +43,50 @@ export function DeleteAccountSection() {
           Permanently delete your account and all associated data. This action cannot be undone.
         </Trans>
       </p>
-      <ErrorAlert message={error} focusOnRender />
-      {!showConfirm ? (
-        <Button onClick={() => setShowConfirm(true)} variant="danger" size="sm">
+      <AlertDialog.Root open={confirmOpen} onOpenChange={handleOpenChange}>
+        <Button
+          ref={deleteButtonRef}
+          onClick={() => setConfirmOpen(true)}
+          variant="danger"
+          size="sm"
+        >
           {t({ id: "settings.account.delete.button", comment: "Delete account button", message: "Delete my account" })}
         </Button>
-      ) : (
-        <div className="flex gap-2">
-          <Button onClick={handleDelete} disabled={loading} variant="danger" size="sm">
-            {loading
-              ? t({ id: "settings.account.delete.deleting", comment: "Delete button while loading", message: "Deleting..." })
-              : t({ id: "settings.account.delete.confirm", comment: "Confirm delete button", message: "Confirm deletion" })}
-          </Button>
-          <Button
-            onClick={() => {
-              setShowConfirm(false);
-              setError("");
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+          <AlertDialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border-soft bg-surface p-6 shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              deleteButtonRef.current?.focus();
             }}
-            variant="danger-outline"
-            size="sm"
           >
-            {t({ id: "settings.account.delete.cancel", comment: "Cancel delete button", message: "Cancel" })}
-          </Button>
-        </div>
-      )}
+            <AlertDialog.Title className="text-base font-semibold">
+              <Trans id="settings.account.delete.title" comment="Delete account section heading">Delete account</Trans>
+            </AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 text-sm text-muted">
+              <Trans id="settings.account.delete.description" comment="Delete account section description">
+                Permanently delete your account and all associated data. This action cannot be undone.
+              </Trans>
+            </AlertDialog.Description>
+            <div className="mt-4">
+              <ErrorAlert message={error} focusOnRender />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <AlertDialog.Cancel asChild>
+                <Button variant="danger-outline" size="sm" disabled={loading}>
+                  {t({ id: "settings.account.delete.cancel", comment: "Cancel delete button", message: "Cancel" })}
+                </Button>
+              </AlertDialog.Cancel>
+              <Button onClick={handleDelete} disabled={loading} variant="danger" size="sm">
+                {loading
+                  ? t({ id: "settings.account.delete.deleting", comment: "Delete button while loading", message: "Deleting..." })
+                  : t({ id: "settings.account.delete.confirm", comment: "Confirm delete button", message: "Confirm deletion" })}
+              </Button>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </section>
   );
 }
