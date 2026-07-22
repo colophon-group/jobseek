@@ -1298,6 +1298,21 @@ class TestOrangeQuantumSystemsSiteGroundConfig:
 
         assert monitor_config["rescrape_policy"] == "never"
         assert monitor_config["url_filter"] == r"/career/[^/?#]+/?$"
+        assert monitor_config["wait"] == "commit"
+        assert monitor_config["timeout"] == 60000
+        assert monitor_config["actions"] == [
+            {
+                "action": "wait_for",
+                "selector": "a[href*='/career/']",
+                "state": "attached",
+                "timeout": 45,
+            }
+        ]
+        assert scraper_config["wait"] == "commit"
+        assert scraper_config["timeout"] == 60000
+        assert scraper_config["actions"] == [
+            {"action": "wait_for", "selector": "h2", "timeout": 45}
+        ]
         assert scraper_config["defaults"]["locations"] == ["Delft, Netherlands"]
 
         sample_html = """

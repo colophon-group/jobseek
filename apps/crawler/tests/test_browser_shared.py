@@ -45,10 +45,11 @@ def _make_page() -> MagicMock:
     page.evaluate = AsyncMock()
     page.content = AsyncMock(return_value="<html></html>")
 
-    # locator().first  —  count() and click() are async
+    # locator().first  —  count(), click(), and wait_for() are async
     locator_first = MagicMock()
     locator_first.count = AsyncMock(return_value=1)
     locator_first.click = AsyncMock()
+    locator_first.wait_for = AsyncMock()
     locator = MagicMock()
     locator.first = locator_first
     page.locator = MagicMock(return_value=locator)
@@ -315,6 +316,24 @@ class TestRunActions:
         # Should not raise
         await run_actions(page, [{"action": "click", "selector": ".gone"}])
         page.locator.return_value.first.click.assert_not_awaited()
+
+    async def test_wait_for_action(self):
+        page = _make_page()
+        await run_actions(page, [{"action": "wait_for", "selector": "h2"}])
+        page.locator.assert_called_once_with("h2")
+        page.locator.return_value.first.wait_for.assert_awaited_once_with(
+            state="visible", timeout=0
+        )
+
+    async def test_wait_for_action_custom_state(self):
+        page = _make_page()
+        await run_actions(
+            page,
+            [{"action": "wait_for", "selector": "a.job", "state": "attached"}],
+        )
+        page.locator.return_value.first.wait_for.assert_awaited_once_with(
+            state="attached", timeout=0
+        )
 
     async def test_wait_action(self):
         page = _make_page()

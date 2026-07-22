@@ -358,6 +358,7 @@ The action pipeline runs sequentially after page navigation, before content extr
 |--------|------|-------------|
 | `dismiss_overlays` | — | Remove common cookie/consent banners |
 | `click` | `selector` | Click the first element matching the CSS selector |
+| `wait_for` | `selector`, `state` (default `visible`) | Wait until the first matching element reaches a Playwright locator state |
 | `remove` | `selector` | Remove all elements matching the CSS selector from the DOM |
 | `wait` | `ms` (default 1000) | Wait for a fixed duration |
 | `evaluate` | `script` | Run arbitrary JavaScript on the page |
@@ -368,7 +369,7 @@ Example:
   "actions": [
     {"action": "dismiss_overlays"},
     {"action": "click", "selector": "button.load-more"},
-    {"action": "wait", "ms": 2000},
+    {"action": "wait_for", "selector": "article.job"},
     {"action": "remove", "selector": ".cookie-banner"}
   ]
 }
