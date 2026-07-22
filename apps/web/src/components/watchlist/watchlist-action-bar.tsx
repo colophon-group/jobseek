@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, BellOff, Trash2, Pencil, Copy, Loader2, Globe, Lock, AlertTriangle } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -25,18 +25,21 @@ function ActionButton({
   onClick,
   disabled,
   warning,
+  buttonRef,
   children,
 }: {
   label: string;
   onClick: () => void;
   disabled?: boolean;
   warning?: boolean;
+  buttonRef?: React.Ref<HTMLButtonElement>;
   children: React.ReactNode;
 }) {
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
         <button
+          ref={buttonRef}
           type="button"
           onClick={onClick}
           className={`${iconBtnClass} ${disabled ? "opacity-40" : ""}`}
@@ -82,6 +85,7 @@ export function WatchlistActionBar({
   const [busy, setBusy] = useState(false);
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const upgrade = useUpgradeModal();
 
   async function handleCopy() {
@@ -194,19 +198,22 @@ export function WatchlistActionBar({
                 <Copy size={16} aria-hidden="true" />
               </ActionButton>
               <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <AlertDialog.Trigger asChild>
-                  <span>
-                    <ActionButton
-                      label={t({ id: "watchlists.actions.delete", comment: "Delete watchlist tooltip", message: "Delete" })}
-                      onClick={() => setDeleteOpen(true)}
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                    </ActionButton>
-                  </span>
-                </AlertDialog.Trigger>
+                <ActionButton
+                  label={t({ id: "watchlists.actions.delete", comment: "Delete watchlist tooltip", message: "Delete" })}
+                  onClick={() => setDeleteOpen(true)}
+                  buttonRef={deleteButtonRef}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                </ActionButton>
                 <AlertDialog.Portal>
                   <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
-                  <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border-soft bg-surface p-6 shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
+                  <AlertDialog.Content
+                    className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border-soft bg-surface p-6 shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+                    onCloseAutoFocus={(event) => {
+                      event.preventDefault();
+                      deleteButtonRef.current?.focus();
+                    }}
+                  >
                     <AlertDialog.Title className="text-base font-semibold">
                       <Trans id="watchlists.delete.title" comment="Delete watchlist confirmation title">
                         Delete watchlist?
