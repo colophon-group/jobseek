@@ -681,11 +681,17 @@ class TestSafranBoardConfig:
 
         monitor_config = json.loads(row["monitor_config"])
         scraper_config = json.loads(row["scraper_config"])
-        assert monitor_config["proxy"] is True
-        assert scraper_config["proxy"] is True
+        for config in (monitor_config, scraper_config):
+            assert config["render"] is True
+            assert config["proxy"] is True
+            assert config["headless"] is False
+            assert config["persistent_context"] is True
+            assert config["channel"] == "chrome"
+            assert config["stealth"] is True
         assert monitor_config["rescrape_policy"] == "never"
         assert monitor_config["pagination"]["start"] == 0
         assert monitor_config["pagination"]["max_pages"] >= 1000
+        assert monitor_config["pagination"]["browser"] is True
 
         sample_html = """
         <h1>Conformity Inspector</h1>

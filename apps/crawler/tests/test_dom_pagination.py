@@ -206,6 +206,27 @@ class TestDomDiscoverInitialFetch:
                 {"_board_url": "https://blocked.example/careers"},
             )
 
+    async def test_rendered_cloudflare_block_page_raises(self, monkeypatch):
+        """Cloudflare's permanent block page must also fail the cycle."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/careers"
+        page.content = AsyncMock(
+            return_value=(
+                "<html><head><title>Attention Required! | Cloudflare</title></head>"
+                "<body><script src='/cdn-cgi/challenge-platform/h/g/orchestrate/'>"
+                "</script><h1>Sorry, you have been blocked</h1></body></html>"
+            )
+        )
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
     async def test_rendered_captcha_library_is_not_a_challenge(self, monkeypatch):
         """A normal page may load BotDetect without being a challenge page."""
 
@@ -314,6 +335,27 @@ class TestPaginateUrls:
                 MagicMock(),
             )
         assert result == {"https://example.com/jobs/1"}
+
+    async def test_bot_challenge_mid_pagination_raises(self):
+        """A challenge on page 2 must not silently truncate the board."""
+
+        challenge = (
+            "<html><head><title>Attention Required! | Cloudflare</title></head>"
+            "<body><script src='/cdn-cgi/challenge-platform/h/g/orchestrate/'>"
+            "</script><h1>Sorry, you have been blocked</h1></body></html>"
+        )
+        pages = {"https://example.com/careers?p=2": challenge}
+
+        with (
+            patch(_FETCH_PATCH, new=_make_fetch(pages)),
+            pytest.raises(BotChallengeError, match="proxy transport"),
+        ):
+            await _paginate_urls(
+                "https://example.com/careers",
+                {"param_name": "p", "max_pages": 3},
+                {"https://example.com/jobs/1"},
+                MagicMock(),
+            )
 
     async def test_stops_when_tracking_variants_transform_to_the_same_job(self):
         """Transformation-aware identity prevents duplicate pages and 429s."""
@@ -615,6 +657,26 @@ class TestFetchViaPage:
         page.evaluate = AsyncMock(return_value={"status": 403, "text": "forbidden"})
         result = await _fetch_via_page(page, "https://example.com/forbidden")
         assert result is None
+        assert page.evaluate.await_count == 1
+
+    async def test_cloudflare_403_raises_instead_of_stopping(self):
+        """A WAF block is not a legitimate end-of-pagination."""
+
+        page = MagicMock()
+        page.evaluate = AsyncMock(
+            return_value={
+                "status": 403,
+                "text": (
+                    "<title>Attention Required! | Cloudflare</title>"
+                    "<script src='/cdn-cgi/challenge-platform/h/g/orchestrate/'></script>"
+                    "<h1>Sorry, you have been blocked</h1>"
+                ),
+            }
+        )
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _fetch_via_page(page, "https://example.com/forbidden")
+
         assert page.evaluate.await_count == 1
 
     async def test_retries_on_503_then_succeeds(self, monkeypatch):
