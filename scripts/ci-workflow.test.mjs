@@ -359,6 +359,7 @@ test("manual PR classification exports the validated PR base context", () => {
 
 test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   const changesJob = jobBlock("changes");
+  const crawlerImageJob = jobBlock("crawler-image");
   const versionJob = jobBlock("version-check");
   const probeJob = jobBlock("probe-new-boards");
   const requiredCiJob = jobBlock("required-ci");
@@ -367,6 +368,12 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   assert.match(changesJob, /id: manual-pr[\s\S]*classify-pr-paths\.sh/);
   assert.match(changesJob, /id: pull-request[\s\S]*echo "is_pr=true"/);
   assert.match(changesJob, /echo "base_ref=\$BASE_REF"/);
+  assert.match(crawlerImageJob, /if: needs\.changes\.outputs\.is_pr == 'true' && needs\.changes\.outputs\.crawler_code == 'true'/);
+  assert.match(crawlerImageJob, /docker\/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c/);
+  assert.match(crawlerImageJob, /docker\/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a/);
+  assert.match(crawlerImageJob, /context: apps\/crawler/);
+  assert.match(crawlerImageJob, /target: full/);
+  assert.match(crawlerImageJob, /push: false/);
   assert.match(versionJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
   assert.match(versionJob, /gh api "repos\/\$GITHUB_REPOSITORY\/pulls\/\$PR_NUMBER"/);
   assert.match(versionJob, /scripts\/check-crawler-version\.mjs/);
@@ -374,6 +381,7 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   assert.match(probeJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
   assert.match(probeJob, /BASE_REF: \$\{\{ needs\.changes\.outputs\.base_ref \}\}/);
   assert.match(requiredCiJob, /const isPr = needs\.changes\?\.outputs\?\.is_pr === "true"/);
+  assert.match(requiredCiJob, /requireSuccess\("crawler-image", isPr && crawlerCode\)/);
   assert.match(requiredCiJob, /requireSuccess\("version-check", isPr && crawlerCode\)/);
   assert.match(requiredCiJob, /requireSuccess\("probe-new-boards", isPr && boardsCsv\)/);
   assert.doesNotMatch(versionJob, /github\.event_name == 'pull_request'/);

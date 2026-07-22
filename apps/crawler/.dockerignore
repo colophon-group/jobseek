@@ -6,7 +6,8 @@
 .claude/
 tmp/
 tests/
-scripts/
+scripts/*
+!scripts/with-xvfb.sh
 dist/
 traces/
 *.md

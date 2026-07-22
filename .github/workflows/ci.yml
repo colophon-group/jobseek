@@ -161,6 +161,26 @@ jobs:
             boards_csv:
               - 'apps/crawler/data/boards.csv'
 
+  crawler-image:
+    name: Build Crawler Browser Image
+    needs: changes
+    if: needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build full crawler image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: apps/crawler
+          target: full
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=crawler-browser
+          cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
+
   lint-web:
     name: Lint Web
     needs: changes
@@ -718,6 +738,7 @@ jobs:
       - dependency-review
       - workflow-security
       - changes
+      - crawler-image
       - lint-web
       - i18n-coverage
       - lint-crawler
@@ -775,6 +796,7 @@ jobs:
           requireSuccess("changes");
           requireSuccess("data-validation");
           requireSuccess("dependency-review", eventName === "pull_request" && code);
+          requireSuccess("crawler-image", isPr && crawlerCode);
 
           for (const job of [
             "lint-web",
