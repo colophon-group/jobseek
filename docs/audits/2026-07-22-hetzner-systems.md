@@ -94,8 +94,20 @@ pass.
   namespaces proved exact 28-rule activation, cleanup, and whole-namespace
   rollback after an intentionally invalid second group. Mimir's canonical
   `24h` to `1d` duration rewrite is normalized during otherwise exact
-  verification. Production promotion of those two groups remains the final
-  #5926 deployment step at this evidence timestamp.
+  verification. Production promotion of both groups subsequently passed, and
+  #5926 was closed with live fleet coverage evidence.
+- A follow-up retained-series check found that standard Unix-exporter and
+  Alloy series were healthy on all three hosts but every sampler-produced
+  `jobseek_*` family was absent from Grafana. A safe redeploy from then-current
+  `main` reproduced the defect without restarting workloads: the Alloy Unix
+  exporter configured a textfile directory but its explicit collector
+  allowlist omitted `textfile`. The #5993 remediation deployment enabled that
+  collector on all three hosts. Its new post-deploy Grafana gate verified fresh
+  sampler, probe, container, backup, PostgreSQL-readiness, and
+  Typesense-readiness series for every expected role before transactionally
+  re-verifying the rules. Only Alloy restarted; crawler workloads, PostgreSQL,
+  Typesense, and the tunnel were not restarted. The source and regression gate
+  remain tracked by #5993 until this remediation merges.
 
 ## Inventory and ownership
 

@@ -39,7 +39,9 @@ All three hosts run the same repo-owned host telemetry surface:
   world-readable Prometheus textfile containing no credentials or row data.
 - Alloy listens only on `127.0.0.1:12347`, reads that textfile plus host
   CPU/RAM/load/swap/filesystem/inode/kernel/network metrics, and remote-writes
-  directly to Grafana Cloud. No host opens a scrape port.
+  directly to Grafana Cloud. The explicit Unix-exporter collector allowlist
+  includes `textfile`; the textfile block alone does not enable that collector.
+  No host opens a scrape port.
 - The sampler forwards at most 200 new error-class lines per interval from the
   PostgreSQL and Typesense containers into its own journal after redacting
   credentials, URL queries, addresses, UUIDs, and email addresses. Alloy reads
@@ -78,11 +80,15 @@ before declaring a new incident.
 Deployment is owned by
 [`deploy-hetzner-observability.yml`](../.github/workflows/deploy-hetzner-observability.yml).
 It validates the Python, shell, Alloy, alert, and systemd contracts; deploys
-the crawler, PostgreSQL, and Typesense hosts sequentially; then syncs the
-single Mimir rule group only after every host is healthy. Environment-scoped
-host variables are resolved inside runtime steps after the protected
-`production` environment is attached. The installer snapshots the prior
-binary, configuration, secret env, and units under the root-only
+the crawler, PostgreSQL, and Typesense hosts sequentially; then polls Grafana
+until fresh sampler, probe, container, backup, PostgreSQL-readiness, and
+Typesense-readiness textfile series are present and healthy for every expected
+role. Only after that ingestion gate passes does it transactionally sync the
+two Mimir rule groups. This catches a healthy local sampler whose collector
+silently omits the textfile directory. Environment-scoped host variables are
+resolved inside runtime steps after the protected `production` environment is
+attached. The installer snapshots the prior binary, configuration, secret env,
+and units under the root-only
 `/var/lib/jobseek-observability/rollback/` directory and automatically
 restores them if validation, service startup, or loopback readiness fails;
 artifacts that did not exist before the attempt are removed rather than left
@@ -130,6 +136,8 @@ current `up{job="jobseek-alloy"}` series for each stable instance, fresh
 `jobseek_host_observability_last_collect_unixtime`, all required probes equal
 to one, current backup success timestamps on the two data hosts, PostgreSQL
 ready with no new archive failure, and Typesense plus `cloudflared` healthy.
+The deployment workflow verifies those custom series after every host rollout;
+local timer success and Unix-exporter `up` alone are insufficient evidence.
 Treat missing host/sampler series, disk or inode exhaustion, a failed/stale
 backup, PostgreSQL archive/readiness failure, or Typesense/tunnel failure as an
 incident. Inspect evidence first; this telemetry path does not authorize an

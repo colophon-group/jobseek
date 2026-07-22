@@ -36,10 +36,10 @@ jobs:
         run: |
           set -euo pipefail
           bash -n deploy/observability/install-host.sh
-          python3 -m py_compile scripts/jobseek-host-observability.py scripts/sync-grafana-rules.py
+          python3 -m py_compile scripts/jobseek-host-observability.py scripts/sync-grafana-rules.py scripts/verify-grafana-host-metrics.py
           cd apps/crawler
           uv run --frozen python ../../scripts/sync-grafana-rules.py --dry-run
-          uv run --frozen pytest tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py -q
+          uv run --frozen pytest tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py tests/test_grafana_host_metrics.py -q
 
   deploy-hosts:
     needs: validate
@@ -95,8 +95,25 @@ jobs:
             systemctl is-active --quiet jobseek-alloy.service
             systemctl is-active --quiet jobseek-host-observability.timer
 
-  sync-rules:
+  verify-ingestion:
     needs: deploy-hosts
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Require fresh host textfile metrics in Grafana
+        working-directory: apps/crawler
+        env:
+          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+          GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
+          GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}
+        run: uv run --frozen python ../../scripts/verify-grafana-host-metrics.py
+
+  sync-rules:
+    needs: verify-ingestion
     runs-on: ubuntu-latest
     environment: production
     permissions:
