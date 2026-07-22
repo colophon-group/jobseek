@@ -651,6 +651,7 @@ from src.core.monitors import (  # noqa: E402
     eightfold,  # noqa: F401
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
+    hibob,  # noqa: F401
     hirehive,  # noqa: F401
     hireology,  # noqa: F401
     inline,  # noqa: F401

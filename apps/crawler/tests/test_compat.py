@@ -58,6 +58,10 @@ def test_detect_ats_breezy_host():
     assert detect_ats_from_url("https://acme.breezy.hr") == "breezy"
 
 
+def test_detect_ats_hibob_host():
+    assert detect_ats_from_url("https://acme.careers.hibob.com/") == "hibob"
+
+
 def test_detect_ats_hirehive_host():
     assert detect_ats_from_url("https://acme.hirehive.com") == "hirehive"
 
