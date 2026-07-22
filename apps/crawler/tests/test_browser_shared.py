@@ -127,6 +127,7 @@ class TestConstants:
                 "viewport",
                 "locale",
                 "skip_ssl",
+                "proxy",
             }
         )
         assert expected == BROWSER_KEYS
@@ -1118,6 +1119,70 @@ class TestRepeatAction:
                 page, [{"action": "repeat", "selector": "button.more", "wait_ms": 500}]
             )
             mock_sleep.assert_awaited_once_with(0.5)
+
+
+# ---------------------------------------------------------------------------
+# TestPaginateCollectAction
+# ---------------------------------------------------------------------------
+
+
+class TestPaginateCollectAction:
+    async def test_collects_across_full_document_navigation(self):
+        """Page replacement must not destroy the pagination controller."""
+
+        class FakeNext:
+            def __init__(self, page):
+                self.page = page
+                self.first = self
+
+            async def count(self):
+                return int(self.page.index < len(self.page.pages) - 1)
+
+            async def click(self):
+                # A real anchor replaces the document here. The Python-side
+                # controller must resume against the newly loaded page.
+                self.page.index += 1
+
+        class FakePage:
+            def __init__(self):
+                self.pages = [
+                    ["https://example.com/job/1"],
+                    ["https://example.com/job/2"],
+                    ["https://example.com/job/3"],
+                ]
+                self.index = 0
+                self.injected = None
+
+            def locator(self, selector):
+                assert selector == "[data-testid=next-page]"
+                return FakeNext(self)
+
+            async def evaluate(self, _script, arg=None):
+                if arg is not None:
+                    self.injected = arg
+                    return None
+                return self.pages[self.index]
+
+        page = FakePage()
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            await run_actions(
+                page,
+                [
+                    {
+                        "action": "paginate_collect",
+                        "next_selector": "[data-testid=next-page]",
+                        "wait_ms": 0,
+                        "max_pages": 10,
+                    }
+                ],
+            )
+
+        assert page.index == 2
+        assert page.injected == [
+            "https://example.com/job/1",
+            "https://example.com/job/2",
+            "https://example.com/job/3",
+        ]
 
 
 # ---------------------------------------------------------------------------
