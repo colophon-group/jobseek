@@ -7,6 +7,7 @@ import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from src.shared.browser import (
@@ -25,6 +26,7 @@ from src.shared.browser import (
     _resolve_placeholders,
     _x_server_alive,
     dismiss_overlays,
+    is_target_closed_error,
     navigate,
     open_page,
     render,
@@ -79,6 +81,13 @@ def _make_pw(page: MagicMock | None = None) -> MagicMock:
 
 
 class TestConstants:
+    def test_target_closed_error_classification_is_playwright_specific(self):
+        marker = "Page.goto: Target page, context or browser has been closed"
+
+        assert is_target_closed_error(PlaywrightError(marker)) is True
+        assert is_target_closed_error(RuntimeError(marker)) is False
+        assert is_target_closed_error(PlaywrightError("Browser launch failed")) is False
+
     def test_user_agent_contains_chrome(self):
         assert "Chrome/133" in DEFAULT_USER_AGENT
 

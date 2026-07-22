@@ -494,6 +494,12 @@ browser_cleanup_failures_total = Counter(
     ["resource", "outcome"],
 )
 
+browser_target_closed_retries_total = Counter(
+    "crawler_browser_target_closed_retries_total",
+    "Fresh-context scrape retries after Playwright loses a page, context, or browser",
+    ["outcome"],
+)
+
 
 # Build info — emitted once at startup so Grafana can confirm which
 # ``apps/crawler/VERSION`` each container is running without SSH-ing in.

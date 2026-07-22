@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg
 import pytest
+from playwright.async_api import Error as PlaywrightError
 
 from src.batch import (
     _BATCH_UPDATE_RICH_CONTENT,
@@ -2324,6 +2325,68 @@ class TestProcessMonitorBatch:
 
 
 class TestProcessOneScrape:
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_browser_target_closed_retries_with_fresh_context(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """A lost browser target gets one immediate fresh-context attempt."""
+        pool, conn = mock_pool
+        mock_scrape.side_effect = [
+            PlaywrightError("Page.goto: Target page, context or browser has been closed"),
+            _job_content(),
+        ]
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "dom",
+            {"render": True, "steps": [{"tag": "h1", "field": "title"}]},
+            pw=MagicMock(),
+        )
+
+        assert ok is True
+        assert mock_scrape.await_count == 2
+        assert not any(
+            call.args[0] == _RECORD_SCRAPE_TRANSIENT for call in conn.execute.await_args_list
+        )
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_browser_target_closed_retry_is_bounded(self, mock_scrape, mock_pool, mock_http):
+        """Two lost targets exhaust the one-retry budget and back off normally."""
+        pool, conn = mock_pool
+        mock_scrape.side_effect = PlaywrightError(
+            "Page.goto: Target page, context or browser has been closed"
+        )
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "dom",
+            {"render": True, "steps": [{"tag": "h1", "field": "title"}]},
+            pw=MagicMock(),
+        )
+
+        assert ok is False
+        assert mock_scrape.await_count == 2
+        transient_calls = [
+            call
+            for call in conn.execute.await_args_list
+            if call.args[0] == _RECORD_SCRAPE_TRANSIENT
+        ]
+        assert len(transient_calls) == 1
+
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_success_updates_and_records(self, mock_scrape, mock_pool, mock_http):
         """scrape_one returns content -> UPDATE + _RECORD_SCRAPE_SUCCESS -> True."""

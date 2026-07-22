@@ -19,6 +19,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import structlog
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 try:
@@ -116,6 +117,19 @@ DEFAULT_LOCALE = "en-US"
 # without silently activating previously-dropped launch-time keys (``stealth``,
 # ``user_agent``, ``cookies``, etc.) on boards that set them.
 NAVIGATE_KEYS = frozenset({"wait", "wait_fallback", "timeout", "actions"})
+
+# Playwright raises ``TargetClosedError`` (a public ``Error`` subclass) when
+# Chromium loses the page, context, or browser while an operation is in
+# flight.  The concrete subclass is not exported from ``playwright.async_api``,
+# but the message is stable and intentionally identifies all three resources.
+# Keep the classification here so callers do not import Playwright's private
+# ``_impl`` package.
+_TARGET_CLOSED_MARKER = "Target page, context or browser has been closed"
+
+
+def is_target_closed_error(exc: BaseException) -> bool:
+    """Return whether *exc* is Playwright's lost-target failure class."""
+    return isinstance(exc, PlaywrightError) and _TARGET_CLOSED_MARKER in str(exc)
 
 
 async def _close_browser_resource(resource, resource_name: str) -> None:
