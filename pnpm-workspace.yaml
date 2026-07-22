@@ -34,6 +34,9 @@ overrides:
   "ws@>=7.0.0 <7.5.11": 7.5.11
   "ws@>=8.0.0 <8.21.0": 8.21.0
 
+patchedDependencies:
+  next@16.2.11: patches/next@16.2.11.patch
+
 onlyBuiltDependencies:
   - esbuild
   - sharp
