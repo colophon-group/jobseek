@@ -1760,6 +1760,37 @@ export async function getWatchlistPostings(
 }
 
 /**
+ * Session-free counterpart used by cached public-watchlist snapshots.
+ *
+ * `getWatchlistPostings` reads `getSessionUserId()` to apply saved-job state
+ * and anonymous truncation. That request API is intentionally forbidden
+ * inside a shared `"use cache"` boundary, so the public route must pass the
+ * known-anonymous viewer explicitly instead of consulting `headers()`.
+ */
+export async function getPublicWatchlistPostings(
+  params: WatchlistPostingQueryParams,
+): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
+  if (!params.anyCompany && params.companyIds.length === 0) {
+    return { postings: [], total: 0 };
+  }
+
+  if (params.offset >= ANON_MAX_WATCHLIST_POSTINGS) {
+    return { postings: [], total: 0, truncated: true };
+  }
+
+  try {
+    return await _getWatchlistPostingsTypesense(params, null);
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    console.error(
+      "[getPublicWatchlistPostings] Typesense failed, falling back to Postgres",
+      err,
+    );
+    return _getWatchlistPostingsPostgres(params, null);
+  }
+}
+
+/**
  * Year-window posting count for a watchlist's current filter set.
  *
  * Counterpart to `getWatchlistPostings`: same filters, but drops
