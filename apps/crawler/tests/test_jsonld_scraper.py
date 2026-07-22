@@ -550,6 +550,31 @@ class TestScrape:
                 assert result.title == "Rendered"
                 mock_render.assert_called_once_with("https://example.com/job", {}, pw="fake_pw")
 
+    async def test_render_forwards_proxy_to_browser(self):
+        """A proxy-enabled browser scraper must not silently use direct egress."""
+        from unittest.mock import AsyncMock, patch
+
+        page_html = """<script type="application/ld+json">
+        {"@type": "JobPosting", "title": "Proxied"}
+        </script>"""
+
+        with patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render:
+            mock_render.return_value = page_html
+            async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: None)) as client:
+                result = await scrape(
+                    "https://example.com/job",
+                    {"render": True, "proxy": True},
+                    client,
+                    pw="fake_pw",
+                )
+
+        assert result.title == "Proxied"
+        mock_render.assert_awaited_once_with(
+            "https://example.com/job",
+            {"proxy": True},
+            pw="fake_pw",
+        )
+
     async def test_render_false_uses_http(self):
         """When render is false/absent, scrape should use static HTTP."""
         page_html = """<html><head>

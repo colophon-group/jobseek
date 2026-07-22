@@ -97,6 +97,10 @@ BROWSER_KEYS = frozenset(
         "viewport",
         "locale",
         "skip_ssl",
+        # Scrapers project their config through BROWSER_KEYS before calling
+        # render(). Without this entry a board-level proxy opt-in is silently
+        # discarded and the browser launches from direct egress.
+        "proxy",
     }
 )
 
@@ -737,53 +741,53 @@ async def _execute_paginate_collect(page, action: dict) -> None:
     wait_ms = action.get("wait_ms", 5000)
     max_pages = action.get("max_pages", 50)
 
-    total = await page.evaluate(
-        """async ([nextSel, psSel, pageSize, waitMs, maxPages]) => {
-            const delay = ms => new Promise(r => setTimeout(r, ms));
+    if ps_selector and page_size:
+        await page.evaluate(
+            """([selector, value]) => {
+                const sel = document.querySelector(selector);
+                if (!sel) return;
+                sel.value = value;
+                sel.dispatchEvent(new Event('change'));
+                // SuccessFactors uses the juic event bus.
+                if (typeof juic !== 'undefined' && sel.id)
+                    juic.fire(sel.id, '_onChange', new Event('change'));
+            }""",
+            [ps_selector, str(page_size)],
+        )
+        await asyncio.sleep(wait_ms / 1000)
 
-            const getAllLinks = () => Array.from(document.querySelectorAll('a[href]'))
-                .filter(a => a.href.startsWith('http'))
-                .map(a => a.href);
+    collect_js = """() => Array.from(document.querySelectorAll('a[href]'))
+        .map(a => a.href)
+        .filter(href => href.startsWith('http'))"""
+    all_links = set(await page.evaluate(collect_js))
 
-            // Optionally change items-per-page.
-            if (psSel && pageSize) {
-                const sel = document.querySelector(psSel);
-                if (sel) {
-                    sel.value = String(pageSize);
-                    sel.dispatchEvent(new Event('change'));
-                    // SuccessFactors uses juic event bus
-                    if (typeof juic !== 'undefined' && sel.id)
-                        juic.fire(sel.id, '_onChange', new Event('change'));
-                    await delay(waitMs);
-                }
-            }
+    # Keep the controller outside the document. A normal anchor click replaces
+    # the page's JavaScript execution context, so a loop inside one evaluate()
+    # call dies on the first navigation. Locator clicks return only after the
+    # initiated navigation settles, letting each iteration resume against the
+    # newly loaded document; SPA pagination continues to work the same way.
+    for _ in range(max_pages):
+        next_el = page.locator(next_sel).first
+        if await next_el.count() == 0:
+            break
+        await next_el.click()
+        await asyncio.sleep(wait_ms / 1000)
+        all_links.update(await page.evaluate(collect_js))
 
-            // Collect links from all pages.
-            const allLinks = new Set(getAllLinks());
-
-            for (let p = 0; p < maxPages; p++) {
-                const nextEl = document.querySelector(nextSel);
-                if (!nextEl) break;
-                nextEl.click();
-                await delay(waitMs);
-                getAllLinks().forEach(l => allLinks.add(l));
-            }
-
-            // Inject collected links as hidden <a> tags for the dom extractor.
+    await page.evaluate(
+        """urls => {
             const container = document.createElement('div');
             container.style.display = 'none';
-            allLinks.forEach(href => {
+            urls.forEach(href => {
                 const a = document.createElement('a');
                 a.href = href;
                 container.appendChild(a);
             });
             document.body.appendChild(container);
-
-            return allLinks.size;
         }""",
-        [next_sel, ps_selector, str(page_size), wait_ms, max_pages],
+        sorted(all_links),
     )
-    log.info("browser.paginate_collect.done", total=total)
+    log.info("browser.paginate_collect.done", total=len(all_links))
 
 
 async def dismiss_overlays(page) -> None:
