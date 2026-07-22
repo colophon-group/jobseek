@@ -25,4 +25,18 @@ describe("company route partial prerendering", () => {
     expect(source.match(/getCompanyRouteSnapshot\(slug, locale\)/g)).toHaveLength(2);
     expect(source).not.toContain("getCompanyBySlug(slug, locale)");
   });
+
+  it("renders the missing-company fallback with the requested locale and slug", () => {
+    const source = readFileSync(
+      "app/[lang]/(app)/company/[slug]/page.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain("async function CompanyNotFound({ locale, slug }");
+    expect(source).toContain("const { i18n } = await loadCatalog(locale);");
+    expect(source).toContain(
+      "return <CompanyNotFound locale={locale} slug={slug} />;",
+    );
+    expect(source).not.toContain("loadCatalog(defaultLocale);");
+  });
 });

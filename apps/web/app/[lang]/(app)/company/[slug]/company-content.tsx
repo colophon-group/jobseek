@@ -11,6 +11,7 @@ import {
   serializeSearchFilterParams,
 } from "@/lib/search/query-params";
 import { CompanyPage } from "./company-page";
+import { CompanyNotFoundState } from "./company-not-found";
 
 type CompanyContentProps = {
   locale: string;
@@ -38,26 +39,44 @@ type CompanyContentProps = {
  * as a data input would unmount and refetch the entire company results
  * view on every posting click (#5766).
  */
-function CompanyNotFound() {
+function CompanyNotFound({ locale, slug }: { locale: string; slug: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <h1 className="text-2xl font-bold">
+    <CompanyNotFoundState
+      locale={locale}
+      slug={slug}
+      title={
         <Trans
           id="company.notFound.title"
           comment="Heading shown when the company URL slug doesn't resolve to a known company"
         >
           Company not found
         </Trans>
-      </h1>
-      <p className="mt-2 text-muted">
+      }
+      message={
         <Trans
           id="company.notFound.body"
           comment="Body text for the company-not-found page; explains the company is either gone or never existed"
         >
           The company you are looking for does not exist or has been removed.
         </Trans>
-      </p>
-    </div>
+      }
+      exploreLabel={
+        <Trans
+          id="company.notFound.explore"
+          comment="Primary recovery action on the company-not-found page"
+        >
+          Explore companies
+        </Trans>
+      }
+      requestLabel={
+        <Trans
+          id="company.notFound.request"
+          comment="Secondary action on the company-not-found page to request that company"
+        >
+          Request this company
+        </Trans>
+      }
+    />
   );
 }
 
@@ -117,7 +136,7 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
   }, [dataParamsKey, initialData, locale, slug]);
 
   if (data === null) return <CompanySkeleton />;
-  if (data === "not-found") return <CompanyNotFound />;
+  if (data === "not-found") return <CompanyNotFound locale={locale} slug={slug} />;
 
   return (
     <CompanyPage
