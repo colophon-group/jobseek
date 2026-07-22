@@ -7,26 +7,32 @@ import { useSearchableDialogFocus } from "../use-searchable-dialog-focus";
 
 function SearchableDialogHarness() {
   const [open, setOpen] = useState(false);
-  const { searchInputRef, focusSearchInputOnOpen } = useSearchableDialogFocus();
+  const {
+    searchInputRef,
+    focusSearchInputOnOpen,
+    restoreTriggerFocusOnClose,
+  } = useSearchableDialogFocus();
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
-        <button type="button">Open filters</button>
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Content
-          aria-describedby={undefined}
-          onOpenAutoFocus={focusSearchInputOnOpen}
-        >
-          <Dialog.Title>Search filters</Dialog.Title>
-          <Dialog.Close asChild>
-            <button type="button">Close</button>
-          </Dialog.Close>
-          <input ref={searchInputRef} aria-label="Search options" />
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <>
+      {/* Production filter buttons control dialog state without Dialog.Trigger. */}
+      <button type="button" onClick={() => setOpen(true)}>Open filters</button>
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Portal>
+          <Dialog.Content
+            aria-describedby={undefined}
+            onOpenAutoFocus={focusSearchInputOnOpen}
+            onCloseAutoFocus={restoreTriggerFocusOnClose}
+          >
+            <Dialog.Title>Search filters</Dialog.Title>
+            <Dialog.Close asChild>
+              <button type="button">Close</button>
+            </Dialog.Close>
+            <input ref={searchInputRef} aria-label="Search options" />
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </>
   );
 }
 

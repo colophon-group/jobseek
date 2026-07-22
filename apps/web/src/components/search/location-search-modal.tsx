@@ -71,7 +71,11 @@ export function LocationSearchModal({
   const [search, setSearch] = useState("");
   const [warning, setWarning] = useState("");
   const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const { searchInputRef, focusSearchInputOnOpen } = useSearchableDialogFocus();
+  const {
+    searchInputRef,
+    focusSearchInputOnOpen,
+    restoreTriggerFocusOnClose,
+  } = useSearchableDialogFocus();
   // Scroll container — observed by both ScrollFade (gradient overlay) and
   // the bottom IntersectionObserver that triggers loadMore.
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -477,6 +481,7 @@ export function LocationSearchModal({
           className="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border-soft bg-surface shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
           aria-describedby={undefined}
           onOpenAutoFocus={focusSearchInputOnOpen}
+          onCloseAutoFocus={restoreTriggerFocusOnClose}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-divider px-5 py-4">
