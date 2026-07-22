@@ -1308,23 +1308,29 @@ async def _process_one_board_streaming(
                 duration_s=round(elapsed, 2),
                 raw_discovered=total_discovered,
             )
-            # _RECORD_EMPTY_CHECK + delist must be atomic: if the
-            # record commits but the delist fails we'd be back to the
-            # exact phantom-active orphan state this PR fixes.
-            empty_gone_count = 0
+            # Empty is a valid successful state: a company can stop hiring
+            # and start again later.  Keep the board enabled and polling, but
+            # delist its stale postings after the existing six-check
+            # confirmation window.  The state update + delist stay atomic so
+            # a failed delist cannot leave the confirmation recorded without
+            # applying its posting-state consequence.
+            empty_delisted_count = 0
             try:
                 async with pool.acquire() as conn, conn.transaction():
                     rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
-                    if rows and rows[0]["board_status"] == "gone":
-                        empty_gone_count = await _delist_board_postings(conn, board_id)
+                    if rows and rows[0]["should_delist"]:
+                        empty_delisted_count = await _delist_board_postings(conn, board_id)
             except (asyncpg.PostgresError, ConnectionError):
                 board_log.exception("batch.monitor.empty_check_failed")
             else:
                 # Only emit the metric AFTER the transaction commits —
                 # see ``_delist_board_postings`` docstring.
-                if empty_gone_count:
-                    _emit_gone_counter(empty_gone_count)
-                    board_log.warning("batch.monitor.board_gone", gone=empty_gone_count)
+                if empty_delisted_count:
+                    _emit_gone_counter(empty_delisted_count)
+                    board_log.warning(
+                        "batch.monitor.empty_confirmed",
+                        delisted=empty_delisted_count,
+                    )
                     with contextlib.suppress(Exception):
                         await _batch.get_redis().delete("cache:platform-stats")
             return True, elapsed

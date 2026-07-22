@@ -125,6 +125,15 @@ All monitors now use `_process_one_board_streaming()`:
 
 **Conditional `updated_at`** -- the `updated_at` column only bumps when content actually changes, preventing unnecessary CDC exports.
 
+**Empty-board recovery invariant** -- a successful monitor response with zero
+jobs is a valid hiring state, not proof that the endpoint is gone. After three
+consecutive empty checks, the board is marked `suspect`; after six, its stale
+postings are delisted in the same transaction. The board itself remains enabled
+and scheduled, so a later opening returns it to `active` and relists or inserts
+the discovered postings. Only explicit upstream-gone signals (for example a
+supported ATS board API returning 404) or the bounded failure policy may retire
+a board.
+
 ### Scrape Processing
 
 1. Claim scrape task from Redis

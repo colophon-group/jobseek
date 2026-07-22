@@ -328,8 +328,8 @@ class TestProcessOneBoard:
         """Monitor returns empty urls -> _RECORD_EMPTY_CHECK called, no transaction."""
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
-        # _RECORD_EMPTY_CHECK now uses RETURNING, so conn.fetch returns rows
-        conn.fetch.return_value = [{"board_status": "active"}]
+        # _RECORD_EMPTY_CHECK uses RETURNING to communicate the delist gate.
+        conn.fetch.return_value = [{"board_status": "active", "should_delist": False}]
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -339,22 +339,24 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_empty_result_board_gone_delists_postings(
+    async def test_confirmed_empty_delists_postings_but_keeps_board_pollable(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Board transitions to 'gone' after repeated empties -> delist all
-        postings AND emit the ``monitor_jobs_discovered{action="gone"}``
-        counter for each row, so the Grafana ``gone`` series doesn't stay
-        stuck at zero while thousands of rows flip to ``is_active=false``.
+        """Six confirmed empties delist stale postings without retiring the board.
+
+        The ``monitor_jobs_discovered{action="gone"}`` counter still tracks
+        every posting transition even though the healthy, empty board remains
+        enabled as ``suspect`` so future hiring self-recovers.
         """
         from src.processing.board import monitor_jobs_discovered
 
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
-        # First fetch: _RECORD_EMPTY_CHECK -> board_status = 'gone'
+        # First fetch: _RECORD_EMPTY_CHECK -> delist gate reached while the
+        # board remains suspect/pollable.
         # Second fetch: _DELIST_BOARD_POSTINGS -> two rows flipped
         conn.fetch.side_effect = [
-            [{"board_status": "gone"}],
+            [{"board_status": "suspect", "should_delist": True}],
             [{"id": "jp-1"}, {"id": "jp-2"}],
         ]
         mock_redis = AsyncMock()
@@ -380,7 +382,7 @@ class TestProcessOneBoard:
 
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
-        conn.fetch.return_value = [{"board_status": "suspect"}]
+        conn.fetch.return_value = [{"board_status": "suspect", "should_delist": False}]
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 

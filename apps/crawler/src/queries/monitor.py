@@ -152,27 +152,15 @@ SET consecutive_failures = 0,
     next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
     empty_check_count = empty_check_count + 1,
     board_status = CASE
-        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 6
-        THEN 'gone'
         WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 3
         THEN 'suspect'
         ELSE board_status
-    END,
-    gone_at = CASE
-        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 6
-        THEN now()
-        ELSE gone_at
-    END,
-    is_enabled = CASE
-        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 6
-        THEN false
-        ELSE is_enabled
     END,
     lease_owner = NULL,
     leased_until = NULL,
     updated_at = now()
 WHERE id = $1
-RETURNING board_status
+RETURNING board_status, empty_check_count >= 6 AS should_delist
 """
 
 # RETURNING ``last_success_at`` + the post-update ``is_enabled`` lets
