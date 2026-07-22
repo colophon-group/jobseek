@@ -128,7 +128,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: apps/crawler/deploy.sh,apps/crawler/docker-compose.yml,apps/crawler/alloy.river
+          source: apps/crawler/deploy.sh,apps/crawler/deploy_helpers.sh,apps/crawler/docker-compose.yml,apps/crawler/alloy.river
           target: /home/deploy/
           strip_components: 2
 

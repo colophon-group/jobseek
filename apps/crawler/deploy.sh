@@ -50,6 +50,7 @@ fi
 DEPLOY_DIR="/home/deploy"
 ENV_FILE="$DEPLOY_DIR/.env"
 ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
+source "$DEPLOY_DIR/deploy_helpers.sh"
 IMAGE_TAG="${CRAWLER_IMAGE_TAG:-latest}"
 DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
@@ -337,7 +338,7 @@ fi
 
 ensure_deploy_disk_headroom
 
-docker compose pull
+pull_deploy_images
 
 docker compose up -d redis
 
