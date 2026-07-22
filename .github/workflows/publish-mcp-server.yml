@@ -33,6 +33,9 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@11.6.2
+
       - name: Install dependencies
         working-directory: packages/mcp-server
         run: pnpm install --frozen-lockfile
@@ -46,7 +49,7 @@ jobs:
         working-directory: packages/mcp-server
         run: |
           LOCAL=$(node -p "require('./package.json').version")
-          REMOTE=$(npm view @jseek/mcp-server version 2>/dev/null || echo "0.0.0")
+          REMOTE=$(npm view @jseek/mcp-server version)
           if [ "$LOCAL" = "$REMOTE" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
@@ -54,22 +57,10 @@ jobs:
             echo "version=$LOCAL" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check npm auth token
-        if: steps.version.outputs.changed == 'true'
-        run: |
-          if [ -z "${NPM_TOKEN:-}" ]; then
-            echo "NPM_TOKEN is not available. This job expects the secret in the production environment." >&2
-            exit 1
-          fi
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to npm
+      - name: Publish to npm with OIDC
         if: steps.version.outputs.changed == 'true'
         working-directory: packages/mcp-server
-        run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
 
       - name: Install mcp-publisher
         if: steps.version.outputs.changed == 'true'

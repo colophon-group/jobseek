@@ -100,6 +100,27 @@ The server calls `list_taxonomies(type: "seniority")` and returns all available 
 
 The Job Seek API is rate-limited to 30 requests per minute per IP.
 
+## Publishing
+
+Releases publish from `.github/workflows/publish-mcp-server.yml` with npm
+trusted publishing. The workflow uses GitHub OIDC and must not use a long-lived
+`NPM_TOKEN`.
+
+The npm package's trusted publisher must be configured with these exact values:
+
+- provider: GitHub Actions
+- organization: `colophon-group`
+- repository: `jobseek`
+- workflow: `publish-mcp-server.yml`
+- environment: `production`
+- allowed action: `npm publish`
+
+Configure the trust relationship before merging a version bump. Keep the
+versions in `package.json`, `server.json`, and the npm package entry in
+`server.json` identical. A main-branch push publishes only when the local
+version differs from npm; registry lookup failures stop the release instead of
+being treated as a new version.
+
 ## Privacy Policy
 
 https://jseek.co/en/privacy-policy

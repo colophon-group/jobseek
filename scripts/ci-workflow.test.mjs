@@ -1034,3 +1034,17 @@ test("MCP publish workflow caches the pnpm store", () => {
   assert.match(publishMcpServerWorkflow, /cache: pnpm/);
   assert.match(publishMcpServerWorkflow, /cache-dependency-path: pnpm-lock\.yaml/);
 });
+
+test("MCP publish workflow uses npm trusted publishing", () => {
+  assert.match(publishMcpServerWorkflow, /id-token: write/);
+  assert.match(
+    publishMcpServerWorkflow,
+    /npm install --global npm@11\.6\.2/,
+  );
+  assert.match(publishMcpServerWorkflow, /npm publish --access public/);
+  assert.doesNotMatch(publishMcpServerWorkflow, /NPM_TOKEN|NODE_AUTH_TOKEN/);
+  assert.doesNotMatch(
+    publishMcpServerWorkflow,
+    /npm view @jseek\/mcp-server version[^\n]*\|\|/,
+  );
+});
