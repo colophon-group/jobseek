@@ -885,7 +885,10 @@ inline — Single-Page Extraction (rich)
         {"text": "Location", "offset": 1, "field": "location", "optional": true},
         {"tag": "p", "field": "description", "html": true, "stop_tag": "h3"}
       ],
-      "defaults": {"employment_type": "full_time"}
+      "defaults": {"employment_type": "full_time"},
+      "defaults_by_title": {
+        "Account Manager": {"locations": ["USA, Remote"]}
+      }
     }
 
     render       true = Playwright, false = static HTTP (default: false)
@@ -895,6 +898,10 @@ inline — Single-Page Extraction (rich)
     defaults     Default field values applied when extracted value is absent.
                  Supports: locations (list), employment_type, job_location_type,
                  date_posted.
+    defaults_by_title
+                 Exact extracted title -> defaults mapping for pages that omit
+                 per-role fields. Supports the same fields as defaults; title
+                 defaults override global defaults, but extracted values win.
     + browser keys (wait, wait_fallback, timeout, user_agent, etc. — see
       `ws help scraper dom` for the full list; wait_fallback defaults to
       "domcontentloaded" and retries once on Page.goto timeout, set to null

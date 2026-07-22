@@ -91,6 +91,7 @@ async def discover(
         steps      — extraction steps (same format as DOM scraper)
         render     — if true, use Playwright (default: false)
         defaults   — default field values applied to all jobs
+        defaults_by_title — per-title defaults applied to missing fields
         + browser keys (wait, timeout, actions, etc.)
     """
     board_url = board["board_url"]
@@ -102,6 +103,7 @@ async def discover(
         return []
 
     defaults = metadata.get("defaults") or {}
+    defaults_by_title = metadata.get("defaults_by_title") or {}
 
     html = await _fetch_html(board_url, metadata, client, pw)
     elements = flatten(html)
@@ -127,6 +129,8 @@ async def discover(
 
         url = _generate_url(board_url, title, seen_jids)
 
+        job_defaults = {**defaults, **(defaults_by_title.get(title) or {})}
+
         # Build DiscoveredJob with extracted + default fields
         description = result.get("description")
         location = result.get("location")
@@ -141,10 +145,11 @@ async def discover(
             url=url,
             title=title,
             description=description,
-            locations=locations or (defaults.get("locations") if not locations else None),
-            employment_type=result.get("employment_type") or defaults.get("employment_type"),
-            job_location_type=result.get("job_location_type") or defaults.get("job_location_type"),
-            date_posted=result.get("date_posted") or defaults.get("date_posted"),
+            locations=locations or job_defaults.get("locations"),
+            employment_type=result.get("employment_type") or job_defaults.get("employment_type"),
+            job_location_type=result.get("job_location_type")
+            or job_defaults.get("job_location_type"),
+            date_posted=result.get("date_posted") or job_defaults.get("date_posted"),
         )
         jobs.append(job)
 

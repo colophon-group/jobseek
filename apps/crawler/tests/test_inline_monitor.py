@@ -204,6 +204,63 @@ async def test_discover_with_defaults():
 
 
 @pytest.mark.asyncio
+async def test_discover_with_defaults_by_title():
+    client = _FakeClient(SAMPLE_HTML)
+    board = {
+        "board_url": "https://example.com/open-positions",
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description", "stop_tag": "h3"},
+            ],
+            "defaults": {
+                "employment_type": "full_time",
+                "job_location_type": "onsite",
+            },
+            "defaults_by_title": {
+                "Software Engineer": {"locations": ["Zurich, Switzerland"]},
+                "Product Manager": {
+                    "locations": ["Berlin, Germany"],
+                    "job_location_type": "hybrid",
+                },
+            },
+        },
+    }
+
+    jobs = await discover(board, client)
+
+    assert jobs[0].locations == ["Zurich, Switzerland"]
+    assert jobs[0].employment_type == "full_time"
+    assert jobs[0].job_location_type == "onsite"
+    assert jobs[1].locations == ["Berlin, Germany"]
+    assert jobs[1].job_location_type == "hybrid"
+    assert jobs[2].locations is None
+    assert jobs[2].job_location_type == "onsite"
+
+
+@pytest.mark.asyncio
+async def test_extracted_fields_override_defaults_by_title():
+    client = _FakeClient(SAMPLE_HTML)
+    board = {
+        "board_url": "https://example.com/open-positions",
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"text": "Location", "field": "location", "regex": "Location:\\s*(.+)"},
+                {"tag": "p", "field": "description", "stop_tag": "h3"},
+            ],
+            "defaults_by_title": {
+                "Software Engineer": {"locations": ["Wrong default"]},
+            },
+        },
+    }
+
+    jobs = await discover(board, client)
+
+    assert jobs[0].locations == ["Zurich", "Switzerland"]
+
+
+@pytest.mark.asyncio
 async def test_discover_empty_page():
     client = _FakeClient("<html><body></body></html>")
     board = {
