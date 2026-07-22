@@ -27,6 +27,12 @@ updates:
     exclude-paths:
       - "apps/crawler/murmur/**"
       - "apps/murmur-shim/**"
+    ignore:
+      # TypeScript 7 is blocked by typescript-eslint's stable peer range
+      # (<6.1 as of 2026-07-22). Track the deliberate migration in #5866.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
     groups:
       security-updates:
         applies-to: "security-updates"
