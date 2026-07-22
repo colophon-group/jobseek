@@ -67,7 +67,7 @@ export default async function FaqPage({ params }: Props) {
     },
     {
       q: i18n._({ id: "faq.q.freeVsPro", comment: "FAQ question comparing the Free and Pro plans.", message: "What's the difference between Free and Pro?" }),
-      a: i18n._({ id: "faq.a.freeVsPro", comment: "FAQ answer summarizing Free and Pro plan differences.", message: "Free gives you full search across all companies, one watchlist, and the application tracker with interview logging. Pro adds unlimited watchlists and email alerts when new roles match your criteria." }),
+      a: i18n._({ id: "faq.a.freeVsPro", comment: "FAQ answer summarizing Free and the upcoming Pro plan.", message: "Free gives you full search across all companies, one watchlist, and the application tracker with interview logging. Pro is coming soon and will add unlimited watchlists and email alerts when new roles match your criteria." }),
     },
     {
       q: i18n._({ id: "faq.q.whatIsWatchlist", comment: "FAQ question defining a watchlist.", message: "What is a watchlist?" }),

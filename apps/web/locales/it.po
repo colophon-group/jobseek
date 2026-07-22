@@ -1638,11 +1638,11 @@ msgstr "Gratis"
 msgid "settings.billing.plan.free"
 msgstr "Gratuito"
 
-#. FAQ answer summarizing Free and Pro plan differences.
+#. FAQ answer summarizing Free and the upcoming Pro plan.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:70
 msgid "faq.a.freeVsPro"
-msgstr "La versione gratuita offre ricerca completa su tutte le aziende, una watchlist e il tracker delle candidature con registro dei colloqui. Pro aggiunge watchlist illimitate e avvisi email quando nuove offerte corrispondono ai tuoi criteri."
+msgstr "La versione gratuita offre ricerca completa su tutte le aziende, una watchlist e il tracker delle candidature con registro dei colloqui. Pro sarà disponibile a breve e aggiungerà watchlist illimitate e avvisi email quando nuove offerte corrisponderanno ai tuoi criteri."
 
 #. FAQ page heading
 #. js-lingui-explicit-id
