@@ -824,9 +824,12 @@ notion — Notion Site Job Pages
   - Sub-pages: direct child pages of a parent page
   - Databases: rows in embedded collection_view blocks (gallery, table, board)
 
-  No config required — auto-resolves page structure from the board URL.
+  No provider-specific config required — auto-resolves page structure from
+  the board URL.
 
   Config:
+    proxy             Route API requests through the configured proxy provider.
+                      Use when Notion's Cloudflare challenge blocks crawler egress.
     include_nested    Include grandchild pages (default: false)
     collection_index  Zero-based index to select one database when page
                       has multiple (default: use all)
@@ -2317,7 +2320,9 @@ notion — Notion Page API scraper
   API:      POST https://{subdomain}.notion.site/api/v3/loadPageChunk
   Returns:  title, HTML description, locations, employment_type,
             job_location_type, metadata (team/department)
-  Config:   property_map (optional) — custom mapping of Notion property
+  Config:   proxy (optional) — route API requests through the configured proxy
+            provider when Notion blocks crawler egress.
+            property_map (optional) — custom mapping of Notion property
             names to job fields. Default auto-maps common names:
             Location→locations, Department→metadata.team,
             Employment Type→employment_type

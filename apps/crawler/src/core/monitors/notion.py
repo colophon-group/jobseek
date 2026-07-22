@@ -11,6 +11,8 @@ site's public home page, searching for both child pages and embedded
 database views.
 
 Config (``board.metadata``):
+    proxy             Route requests through the configured proxy provider.
+                      Use when Notion's Cloudflare challenge blocks crawler egress.
     include_nested    If true, also include grandchild pages (default: false).
     url_filter        Regex or {"include": ..., "exclude": ...} to filter result
                       URLs — same semantics as the dom/sitemap monitors.
