@@ -6,8 +6,9 @@ import zipfile
 import httpx
 import pytest
 
+from src.core.scrapers import adp as adp_scraper
 from src.core.scrapers import get_scraper_type
-from src.core.scrapers.adp import _docx_to_html, _parse_job_url, scrape
+from src.core.scrapers.adp import _attachment_path, _docx_to_html, _parse_job_url, scrape
 
 JOB_URL = (
     "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/"
@@ -17,8 +18,9 @@ JOB_URL = (
 )
 
 
-def _docx_bytes() -> bytes:
-    document = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+def _docx_bytes(document: bytes | None = None) -> bytes:
+    if document is None:
+        document = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Role overview</w:t></w:r></w:p>
@@ -35,6 +37,21 @@ def _docx_bytes() -> bytes:
     with zipfile.ZipFile(output, "w") as archive:
         archive.writestr("word/document.xml", document)
     return output.getvalue()
+
+
+def _attachment_links(*, schema: str = "ce42b3d3-b462-4bc9-89f0-8ed89f065682") -> list[dict]:
+    return [
+        {
+            "targetSchema": "docx",
+            "schema": schema,
+            "payLoadArguments": [
+                {
+                    "argumentPath": "0034/tenant/Client/Recruitment/RecruitmentDocs/",
+                    "argumentValue": "Product Marketing Manager Job Description.docx",
+                }
+            ],
+        }
+    ]
 
 
 def _detail(*, description: str, links: list[dict] | None = None) -> dict:
@@ -88,6 +105,20 @@ def test_parse_job_url():
     )
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        JOB_URL.replace("https://", "http://"),
+        JOB_URL.replace("workforcenow.adp.com", "workforcenow.adp.com:444"),
+        JOB_URL.replace("https://", "https://attacker@"),
+        JOB_URL.replace("/mdf/recruitment/recruitment.html", "/jobs/recruitment.html"),
+        JOB_URL.replace("jobId=9202920507783_1", "jobId=9202920507783%2F1"),
+    ],
+)
+def test_parse_job_url_rejects_untrusted_variants(url: str):
+    assert _parse_job_url(url) is None
+
+
 def test_docx_to_html_preserves_structure():
     result = _docx_to_html(_docx_bytes())
 
@@ -96,6 +127,22 @@ def test_docx_to_html_preserves_structure():
         "<p>Build detection products &amp; services.</p>\n"
         "<ul><li>Own launches</li><li>Research markets</li></ul>"
     )
+
+
+def test_docx_to_html_rejects_xml_entities():
+    document = b"""<?xml version="1.0"?>
+<!DOCTYPE document [<!ENTITY injected SYSTEM "file:///etc/passwd">]>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body><w:p><w:r><w:t>&injected;</w:t></w:r></w:p></w:body>
+</w:document>"""
+
+    assert _docx_to_html(_docx_bytes(document)) is None
+
+
+def test_attachment_path_rejects_header_injection():
+    detail = {"links": _attachment_links(schema="safe\r\nInjected: true")}
+
+    assert _attachment_path(detail) is None
 
 
 @pytest.mark.asyncio
@@ -136,18 +183,7 @@ async def test_inline_description_and_structured_fields():
 @pytest.mark.asyncio
 async def test_attached_docx_replaces_placeholder_description():
     requests: list[httpx.Request] = []
-    links = [
-        {
-            "targetSchema": "docx",
-            "schema": "ce42b3d3-b462-4bc9-89f0-8ed89f065682",
-            "payLoadArguments": [
-                {
-                    "argumentPath": "0034/tenant/Client/Recruitment/RecruitmentDocs/",
-                    "argumentValue": "Product Marketing Manager Job Description.docx",
-                }
-            ],
-        }
-    ]
+    links = _attachment_links()
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
@@ -172,6 +208,107 @@ async def test_attached_docx_replaces_placeholder_description():
     assert "Role overview" in content.description
     assert "Own launches" in content.description
     assert "See attached" not in content.description
+
+
+@pytest.mark.asyncio
+async def test_attachment_stream_stops_at_size_limit(monkeypatch: pytest.MonkeyPatch):
+    class ChunkedStream(httpx.AsyncByteStream):
+        yielded = 0
+
+        async def __aiter__(self):
+            for chunk in (b"12345", b"67890", b"excess", b"never-read"):
+                self.yielded += 1
+                yield chunk
+
+    stream = ChunkedStream()
+    monkeypatch.setattr(adp_scraper, "_MAX_ATTACHMENT_BYTES", 12)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/documents/123"):
+            return httpx.Response(200, stream=stream)
+        return httpx.Response(
+            200,
+            json=_detail(
+                description="<p>See attached job description</p>",
+                links=_attachment_links(),
+            ),
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        content = await scrape(JOB_URL, {}, client)
+
+    assert content.description is None
+    assert stream.yielded == 3
+
+
+@pytest.mark.asyncio
+async def test_attachment_declared_size_is_rejected_before_read(monkeypatch: pytest.MonkeyPatch):
+    class UnreadStream(httpx.AsyncByteStream):
+        yielded = 0
+
+        async def __aiter__(self):
+            self.yielded += 1
+            yield b"should-not-be-read"
+
+    stream = UnreadStream()
+    monkeypatch.setattr(adp_scraper, "_MAX_ATTACHMENT_BYTES", 12)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/documents/123"):
+            return httpx.Response(200, headers={"Content-Length": "13"}, stream=stream)
+        return httpx.Response(
+            200,
+            json=_detail(
+                description="<p>See attached job description</p>",
+                links=_attachment_links(),
+            ),
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        content = await scrape(JOB_URL, {}, client)
+
+    assert content.description is None
+    assert stream.yielded == 0
+
+
+@pytest.mark.asyncio
+async def test_attachment_transient_http_error_propagates():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/documents/123"):
+            return httpx.Response(503)
+        return httpx.Response(
+            200,
+            json=_detail(
+                description="<p>See attached job description</p>",
+                links=_attachment_links(),
+            ),
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(httpx.HTTPStatusError, match="503 Service Unavailable"):
+            await scrape(JOB_URL, {}, client)
+
+
+@pytest.mark.asyncio
+async def test_optional_custom_fields_require_object_shape():
+    detail = _detail(description="<p>Lead product launches and market research.</p>")
+    detail["customFieldGroup"] = []
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=detail))
+    ) as client:
+        content = await scrape(JOB_URL, {}, client)
+
+    assert content.base_salary == {
+        "currency": "USD",
+        "min": 110000,
+        "max": 125000,
+        "unit": None,
+    }
+    assert content.metadata == {
+        "requisition_id": "1041",
+        "item_id": "9202920507783_1",
+    }
 
 
 @pytest.mark.asyncio
