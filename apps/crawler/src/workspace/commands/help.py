@@ -821,13 +821,13 @@ notion — Notion Site Job Pages
 
   Detects public *.notion.site career pages and enumerates job listings
   via Notion's internal API (/api/v3). Supports two patterns:
-  - Sub-pages: direct child pages of a parent page
+  - Sub-pages: child pages, including pages inside layout/transclusion blocks
   - Databases: rows in embedded collection_view blocks (gallery, table, board)
 
   No config required — auto-resolves page structure from the board URL.
 
   Config:
-    include_nested    Include grandchild pages (default: false)
+    include_nested    Include pages nested inside job pages (default: false)
     collection_index  Zero-based index to select one database when page
                       has multiple (default: use all)
     title_exclude     Regex — exclude rows whose title matches.

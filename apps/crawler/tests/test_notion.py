@@ -274,6 +274,84 @@ class TestExtractChildPages:
         pages = _extract_child_pages(data, _URL_PAGE_ID, include_nested=False)
         assert len(pages) == 3
 
+    def test_extracts_pages_inside_transclusion_container(self):
+        container_id = "ddd44444-4444-4444-4444-444444444444"
+        data = _make_chunk_response(_URL_PAGE_ID, [])
+        data["recordMap"]["block"].update(
+            _make_block(
+                _URL_PAGE_ID,
+                block_type="page",
+                content=[container_id],
+            )
+        )
+        data["recordMap"]["block"].update(
+            _make_block(
+                container_id,
+                block_type="transclusion_container",
+                content=[job["id"] for job in JOB_PAGES],
+                parent_id=_URL_PAGE_ID,
+            )
+        )
+        for job in JOB_PAGES:
+            data["recordMap"]["block"].update(
+                _make_block(
+                    job["id"],
+                    title=job["title"],
+                    parent_id=container_id,
+                )
+            )
+
+        pages = _extract_child_pages(data, _URL_PAGE_ID)
+
+        assert [page["id"] for page in pages] == [job["id"] for job in JOB_PAGES]
+
+    def test_layout_traversal_stops_at_job_pages_by_default(self):
+        container_id = "ddd44444-4444-4444-4444-444444444444"
+        job_id = JOB_PAGES[0]["id"]
+        nested_id = "fff66666-6666-6666-6666-666666666666"
+        data = _make_chunk_response(_URL_PAGE_ID, [])
+        data["recordMap"]["block"].update(_make_block(_URL_PAGE_ID, content=[container_id]))
+        data["recordMap"]["block"].update(
+            _make_block(container_id, block_type="column", content=[job_id])
+        )
+        data["recordMap"]["block"].update(_make_block(job_id, title="Job", content=[nested_id]))
+        data["recordMap"]["block"].update(_make_block(nested_id, title="Description subpage"))
+
+        pages = _extract_child_pages(data, _URL_PAGE_ID)
+
+        assert pages == [{"id": job_id, "title": "Job"}]
+
+    def test_layout_traversal_handles_cycles_and_duplicate_edges(self):
+        first_container = "ddd44444-4444-4444-4444-444444444444"
+        second_container = "eee55555-5555-5555-5555-555555555555"
+        job_id = JOB_PAGES[0]["id"]
+        data = _make_chunk_response(_URL_PAGE_ID, [])
+        data["recordMap"]["block"].update(
+            _make_block(
+                _URL_PAGE_ID,
+                content=[first_container, second_container],
+            )
+        )
+        data["recordMap"]["block"].update(
+            _make_block(
+                first_container,
+                block_type="transclusion_container",
+                content=[second_container, job_id],
+            )
+        )
+        data["recordMap"]["block"].update(
+            _make_block(
+                second_container,
+                block_type="column",
+                content=[first_container, job_id],
+            )
+        )
+        data["recordMap"]["block"].update(_make_block(job_id, title="Job"))
+
+        pages = _extract_child_pages(data, _URL_PAGE_ID)
+
+        assert pages == [{"id": job_id, "title": "Job"}]
+
 
 class TestFindAllCollectionViews:
     def test_finds_direct_collection_view(self):
@@ -623,6 +701,34 @@ class TestDiscover:
         for job in JOB_PAGES:
             expected = _page_url(SUBDOMAIN, job["id"])
             assert expected in urls
+
+    @pytest.mark.asyncio
+    async def test_returns_job_urls_from_transclusion_container(self):
+        container_id = "ddd44444-4444-4444-4444-444444444444"
+        chunk = _make_chunk_response(_URL_PAGE_ID, [])
+        chunk["recordMap"]["block"].update(_make_block(_URL_PAGE_ID, content=[container_id]))
+        chunk["recordMap"]["block"].update(
+            _make_block(
+                container_id,
+                block_type="transclusion_container",
+                content=[job["id"] for job in JOB_PAGES],
+            )
+        )
+        for job in JOB_PAGES:
+            chunk["recordMap"]["block"].update(_make_block(job["id"], title=job["title"]))
+        handler = _make_handler(
+            public_data=_make_public_page_data(),
+            default_chunk=chunk,
+        )
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {},
+        }
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert urls == {_page_url(SUBDOMAIN, job["id"]) for job in JOB_PAGES}
 
     @pytest.mark.asyncio
     async def test_falls_back_to_home_page(self):

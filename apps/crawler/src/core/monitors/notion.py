@@ -10,8 +10,12 @@ board URL.  It tries the URL's own page first, then falls back to the
 site's public home page, searching for both child pages and embedded
 database views.
 
+Layout blocks between the board page and its job pages (for example columns
+and synced/transcluded sections) are traversed automatically.
+
 Config (``board.metadata``):
-    include_nested    If true, also include grandchild pages (default: false).
+    include_nested    If true, also include pages nested inside job pages
+                      (default: false).
     url_filter        Regex or {"include": ..., "exclude": ...} to filter result
                       URLs — same semantics as the dom/sitemap monitors.
     collection_index  Zero-based index of which collection_view to use when a
@@ -43,6 +47,7 @@ log = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 _NOTION_SITE_RE = re.compile(r"^([\w-]+)\.notion\.site$")
+_MAX_BLOCK_GRAPH_NODES = 10_000
 
 
 def _parse_notion_url(url: str) -> tuple[str | None, str | None]:
@@ -322,29 +327,52 @@ def _extract_child_pages(
     *,
     include_nested: bool = False,
 ) -> list[dict]:
-    """Return child page blocks of *parent_id*."""
+    """Return page blocks reachable from *parent_id* through layout blocks.
+
+    Non-page blocks are transparent so jobs inside columns, toggles, and
+    transclusion containers are discovered. Page blocks remain traversal
+    boundaries unless ``include_nested`` is enabled, preserving the distinction
+    between job pages and pages embedded in a job description.
+    """
     blocks = data.get("recordMap", {}).get("block", {})
     parent_block = blocks.get(parent_id, {})
     parent_val = parent_block.get("value", {}).get("value") or parent_block.get("value", {})
-    content_ids: list[str] = parent_val.get("content", [])
+    root_content = parent_val.get("content", [])
+    if not isinstance(root_content, list):
+        return []
 
     pages: list[dict] = []
-    for cid in content_ids:
-        block = blocks.get(cid, {})
-        val = block.get("value", {}).get("value") or block.get("value", {})
-        if val.get("type") != "page":
-            continue
-        if not val.get("alive", True):
-            continue
-        title = _extract_title(val)
-        pages.append({"id": cid, "title": title})
+    pending = [block_id for block_id in reversed(root_content) if isinstance(block_id, str)]
+    visited: set[str] = set()
 
-        if include_nested:
-            for gcid in val.get("content", []):
-                gc_block = blocks.get(gcid, {})
-                gc_val = gc_block.get("value", {}).get("value") or gc_block.get("value", {})
-                if gc_val.get("type") == "page" and gc_val.get("alive", True):
-                    pages.append({"id": gcid, "title": _extract_title(gc_val)})
+    while pending and len(visited) < _MAX_BLOCK_GRAPH_NODES:
+        block_id = pending.pop()
+        if block_id in visited:
+            continue
+        visited.add(block_id)
+
+        block = blocks.get(block_id, {})
+        val = block.get("value", {}).get("value") or block.get("value", {})
+        if not isinstance(val, dict) or not val.get("alive", True):
+            continue
+
+        is_page = val.get("type") == "page"
+        if is_page:
+            pages.append({"id": block_id, "title": _extract_title(val)})
+            if not include_nested:
+                continue
+
+        content = val.get("content", [])
+        if not isinstance(content, list):
+            continue
+        pending.extend(child_id for child_id in reversed(content) if isinstance(child_id, str))
+
+    if pending:
+        log.warning(
+            "notion.block_graph_limit_reached",
+            parent_id=parent_id,
+            limit=_MAX_BLOCK_GRAPH_NODES,
+        )
 
     return pages
 
@@ -462,7 +490,7 @@ async def _find_job_pages(
     """Resolve the board URL and return job pages.
 
     For each candidate page, tries:
-    1. Direct child pages (sub-page pattern)
+    1. Child pages reachable through layout containers (sub-page pattern)
     2. All collection_view blocks on the page → queryCollection (database pattern)
     3. Falls back to the site's public home page
     """
@@ -483,7 +511,7 @@ async def _find_job_pages(
         if not chunk:
             continue
 
-        # Strategy 1: direct child pages
+        # Strategy 1: child pages, including pages wrapped in layout containers
         pages = _extract_child_pages(chunk, cand_id, include_nested=include_nested)
         if pages:
             # Direct subpages have titles but no collection properties.
