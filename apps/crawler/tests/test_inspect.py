@@ -1237,6 +1237,35 @@ class TestGrooveQuantumSiteGroundConfig:
         assert "Build and operate scalable quantum systems" in content.description
 
 
+class TestMetalysisSiteGroundConfig:
+    """Metalysis must bypass SiteGround's crawler-IP challenge (#4351)."""
+
+    def test_monitor_and_scraper_use_proxy_backed_real_browser(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "metalysis-careers"), None)
+        assert row is not None, "metalysis-careers row missing from boards.csv"
+
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "json-ld"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        for config in (monitor_config, scraper_config):
+            assert config["render"] is True
+            assert config["proxy"] is True
+            assert config["persistent_context"] is True
+            assert config["channel"] == "chrome"
+            assert config["headless"] is False
+
+        assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["url_filter"] == "/job/"
+
+
 class TestOverwolfComeetDescriptionCoverage:
     """Overwolf must use Comeet's rich source directly (#5807).
 

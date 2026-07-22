@@ -431,6 +431,7 @@ async def fetch_with_retry(
     timeout: float | None = None,
     headers: dict | None = None,
     transient_403: bool = False,
+    retryable_statuses: Collection[int] = (),
 ) -> str | None:
     """Fetch ``url`` and return its text body.
 
@@ -472,6 +473,11 @@ async def fetch_with_retry(
     "this URL is permanently blocked, drop it" — silently turning that
     into a hard failure would 5-strike-disable boards on first
     encounter.
+
+    ``retryable_statuses`` lets a caller opt specific non-standard statuses
+    into the same retry-and-fail contract.  SiteGround, for example, serves
+    crawler-IP captcha shells as HTTP 202; a DOM monitor must not record that
+    response as a healthy empty board.
 
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
     retries — exponential with full jitter. Defaults to ~0.5–1s,
@@ -538,7 +544,7 @@ async def fetch_with_retry(
                 )
             elif resp.status_code in END_OF_PAGINATION_STATUSES:
                 return None
-            elif is_retryable_status(resp.status_code):
+            elif is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
                 last_exc = None  # status-only, no exception
                 http_retry_attempts_total.labels(host=host, outcome="retry").inc()
                 retried = True
