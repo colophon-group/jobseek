@@ -10,6 +10,7 @@ import yaml
 DEPLOY_SH = Path(__file__).resolve().parent.parent / "deploy.sh"
 DEPLOY_HELPERS_SH = Path(__file__).resolve().parent.parent / "deploy_helpers.sh"
 DOCKERFILE = Path(__file__).resolve().parent.parent / "Dockerfile"
+DOCKERIGNORE = Path(__file__).resolve().parent.parent / ".dockerignore"
 XVFB_ENTRYPOINT = Path(__file__).resolve().parent.parent / "scripts" / "with-xvfb.sh"
 COMPOSE_FILE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
 DEPLOY_WORKFLOW = (
@@ -83,11 +84,16 @@ def test_deploy_disk_preflight_only_prunes_builder_cache() -> None:
 
 def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
     dockerfile = DOCKERFILE.read_text()
+    dockerignore = DOCKERIGNORE.read_text().splitlines()
 
     assert "FROM python:3.13-slim AS base" in dockerfile
     assert "python:3.14" not in dockerfile
     assert "COPY scripts/with-xvfb.sh /usr/local/bin/with-xvfb" in dockerfile
     assert 'ENTRYPOINT ["/usr/local/bin/with-xvfb"]' in dockerfile
+    assert "scripts/*" in dockerignore
+    assert "!scripts/with-xvfb.sh" in dockerignore
+    assert "scripts/" not in dockerignore
+    assert XVFB_ENTRYPOINT.is_file()
 
 
 def _write_executable(path: Path, content: str) -> None:
