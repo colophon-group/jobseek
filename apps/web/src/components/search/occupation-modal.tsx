@@ -10,6 +10,7 @@ import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { useDisabledByAncestor } from "./use-disabled-by-ancestor";
 import { DisabledFilterPill } from "./disabled-filter-pill";
+import { FacetCount } from "./facet-count";
 
 interface OccupationModalProps {
   open: boolean;
@@ -279,9 +280,7 @@ export function OccupationModal({
         }`}
       >
         {item.name}
-        <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-          ({item.count})
-        </span>
+        <FacetCount count={item.count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
       </button>
     );
   }
@@ -367,9 +366,10 @@ export function OccupationModal({
                           }`}
                         >
                           {group.domain.name}
-                          <span className={`ml-1 text-[10px] font-normal normal-case ${allSelected ? "text-primary/70" : "text-muted"}`}>
-                            ({group.domain.count})
-                          </span>
+                          <FacetCount
+                            count={group.domain.count}
+                            className={`ml-1 text-[10px] font-normal normal-case ${allSelected ? "text-primary/70" : "text-muted"}`}
+                          />
                         </button>
                         <div className="h-px flex-1 bg-divider" />
                       </div>
@@ -392,9 +392,9 @@ export function OccupationModal({
                             {parentDisabled ? (
                               <DisabledFilterPill
                                 name={sg.parent.name}
+                                count={totalCount}
                                 ancestorName={ancestorNameOf(sg.parent.id)}
                                 variant="parent"
-                                auxText={`(${totalCount})`}
                               />
                             ) : (
                               <button
@@ -404,9 +404,10 @@ export function OccupationModal({
                                 }`}
                               >
                                 <span className={parentActive ? "underline" : "group-hover/parent:underline"}>{sg.parent.name}</span>
-                                <span className={`ml-1 text-xs font-normal ${parentActive ? "text-primary/70" : "text-muted"}`}>
-                                  ({totalCount})
-                                </span>
+                                <FacetCount
+                                  count={totalCount}
+                                  className={`ml-1 text-xs font-normal ${parentActive ? "text-primary/70" : "text-muted"}`}
+                                />
                               </button>
                             )}
                             {/* Child pills */}

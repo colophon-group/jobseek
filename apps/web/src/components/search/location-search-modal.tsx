@@ -26,6 +26,7 @@ import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { useDisabledByAncestor, pruneRedundantDescendants } from "./use-disabled-by-ancestor";
 import { DisabledFilterPill } from "./disabled-filter-pill";
+import { FacetCount } from "./facet-count";
 
 /** Show region sub-headers when a country has more cities than this. */
 const REGION_THRESHOLD = 8;
@@ -573,9 +574,7 @@ export function LocationSearchModal({
                             }`}
                           >
                             {macro.name}
-                            <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-                              ({macro.count})
-                            </span>
+                            <FacetCount count={macro.count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
                           </button>
                         );
                       })}
@@ -625,9 +624,7 @@ export function LocationSearchModal({
                             }`}
                           >
                             {hit.name}
-                            <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-                              ({hit.count})
-                            </span>
+                            <FacetCount count={hit.count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
                           </button>
                         );
                       })}
@@ -680,9 +677,10 @@ export function LocationSearchModal({
                           <CountryFlag iso={countryIso(country.countryId)} size={14} className="mr-1 inline-block align-middle" />
                           <span className={countryActive ? "underline" : ""}>{countryDisplayName}</span>
                           {country.countryCount > 0 && (
-                            <span className={`ml-1 text-[10px] font-normal normal-case ${countryActive ? "text-primary/70" : "text-muted"}`}>
-                              ({country.countryCount})
-                            </span>
+                            <FacetCount
+                              count={country.countryCount}
+                              className={`ml-1 text-[10px] font-normal normal-case ${countryActive ? "text-primary/70" : "text-muted"}`}
+                            />
                           )}
                         </button>
                       )}
@@ -720,9 +718,10 @@ export function LocationSearchModal({
                                     >
                                       <span className={regionActive ? "underline" : ""}>{region.regionName}</span>
                                       {region.regionCount > 0 && (
-                                        <span className={`ml-1 text-[10px] font-normal ${regionActive ? "text-primary/70" : "text-muted"}`}>
-                                          ({region.regionCount})
-                                        </span>
+                                        <FacetCount
+                                          count={region.regionCount}
+                                          className={`ml-1 text-[10px] font-normal ${regionActive ? "text-primary/70" : "text-muted"}`}
+                                        />
                                       )}
                                     </button>
                                   )
@@ -759,9 +758,7 @@ export function LocationSearchModal({
                                         }`}
                                       >
                                         {loc.name}
-                                        <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-                                          ({loc.count})
-                                        </span>
+                                        <FacetCount count={loc.count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
                                       </button>
                                     );
                                   })}
@@ -796,9 +793,7 @@ export function LocationSearchModal({
                                   }`}
                                 >
                                   {loc.name}
-                                  <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-                                    ({loc.count})
-                                  </span>
+                                  <FacetCount count={loc.count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
                                 </button>
                               );
                             }),

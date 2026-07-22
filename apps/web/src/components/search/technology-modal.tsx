@@ -8,6 +8,7 @@ import { getAllTechnologiesGrouped } from "@/lib/actions/taxonomy";
 import type { TechnologyGroup } from "@/lib/actions/taxonomy";
 import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { FacetCount } from "./facet-count";
 
 interface TechnologyModalProps {
   open: boolean;
@@ -176,9 +177,7 @@ export function TechnologyModal({
                             }`}
                           >
                             <span className="font-medium">{tech.name}</span>
-                            <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-                              ({tech.count})
-                            </span>
+                            <FacetCount count={tech.count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
                           </button>
                         );
                       })}
