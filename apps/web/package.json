@@ -95,7 +95,7 @@
     "playwright": "^1.58.2",
     "svgo": "^4.0.1",
     "tsx": "^4.21.0",
-    "typescript": "^5",
+    "typescript": "^7",
     "typescript-eslint": "^8.65.0",
     "vitest": "^4.1.10"
   }
