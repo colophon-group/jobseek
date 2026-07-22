@@ -2646,6 +2646,12 @@ msgstr "Aucun lieu ne correspond à votre recherche."
 msgid "company.page.noResults"
 msgstr "Aucune offre correspondante trouvée."
 
+#. Empty-state message when a company has no active job postings
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:640
+msgid "company.page.noActivePostings"
+msgstr "Aucune offre active pour le moment."
+
 #. Empty-state message shown when no blog posts have been published yet
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:89
