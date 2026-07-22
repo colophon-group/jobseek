@@ -105,7 +105,11 @@ const mocks = vi.hoisted(() => {
       created_at: new Date(),
     };
     interviewTable.push(row);
-    return [row];
+
+    // postgres.js returns raw timestamp columns from db.execute() as
+    // strings in production, even though Drizzle's schema-level type is
+    // Date. Keep this mock faithful to that raw-query boundary.
+    return [{ ...row, created_at: row.created_at.toISOString() }];
   };
 
   // ---- db.insert(...).values(...).onConflictDoNothing/returning ----
@@ -327,6 +331,9 @@ describe("#3160 — addInterview round-number race", () => {
     const r = await addInterview("sj-1", "technical");
     expect(r.ok).toBe(true);
     expect(r.interview?.round).toBe(3);
+    expect(r.interview?.createdAt).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
 
     const rounds = mocks.interviewTable
       .filter((r) => r.saved_job_id === "sj-1")
