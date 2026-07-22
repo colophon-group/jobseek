@@ -64,7 +64,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "remark-gfm": "^4.0.0",
-    "resend": "^6.17.1",
+    "resend": "^6.18.0",
     "server-only": "^0.0.1",
     "sharp": "^0.35.0",
     "stripe": "^17",
