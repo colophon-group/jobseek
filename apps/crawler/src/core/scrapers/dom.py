@@ -118,6 +118,9 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     # Description: content after h1, stop at known marker
     desc_step: dict = {
         "tag": "h1",
+        # The title step advances the walk cursor past the first h1.  Search
+        # from the beginning so this range can anchor on that same heading.
+        "from": 0,
         "offset": 1,
         "field": "description",
         "html": True,

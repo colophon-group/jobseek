@@ -13,6 +13,7 @@ from src.core.monitors import (
 from src.core.scrapers import _PROBE_ORDER, probe_scrapers
 from src.core.scrapers.dom import _heuristic_steps
 from src.core.scrapers.dom import can_handle as dom_can_handle
+from src.core.scrapers.dom import parse_html as dom_parse_html
 from src.core.scrapers.jsonld import can_handle as jsonld_can_handle
 from src.core.scrapers.nextdata import (
     _auto_map_fields,
@@ -433,6 +434,13 @@ class TestDomHeuristicSteps:
         desc_step = steps[1]
         assert desc_step["field"] == "description"
         assert desc_step["html"] is True
+        assert desc_step["from"] == 0
+
+        # The title step moves the extraction cursor beyond the h1.  The
+        # generated description step must explicitly re-anchor on that h1.
+        content = dom_parse_html(_DOM_HTML, {"steps": steps})
+        assert content.description
+        assert "build amazing products" in content.description
 
     def test_h1_with_stop_marker(self):
         from src.shared.extract import flatten
