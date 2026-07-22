@@ -76,7 +76,7 @@ def test_postgres_auto_uses_full_on_sunday(monkeypatch: pytest.MonkeyPatch) -> N
                 {
                     "label": "20260726-010000F",
                     "type": "full",
-                    "info": {"size": 1234, "repository": {"size": 567}},
+                    "info": {"size": 1234, "repository": {"delta": 567}},
                     "timestamp": {"stop": 1_774_555_555},
                 }
             ]

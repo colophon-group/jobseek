@@ -13,7 +13,7 @@ configuration is under `/etc/jobseek-backup` on the relevant host.
 
 | Data | Consistent source artifact | Off-host repository | Schedule | Retention |
 |---|---|---|---|---|
-| PostgreSQL | pgBackRest physical backup plus continuous WAL archive | encrypted pgBackRest SFTP repository | daily at 01:00 UTC; weekly full, otherwise differential | four full backup chains |
+| PostgreSQL | pgBackRest physical backup plus continuous WAL archive | AES-encrypted pgBackRest repository on a private, encrypted SMB 3 Storage Box mount | daily at 01:00 UTC; weekly full, otherwise differential | four full backup chains |
 | Typesense | Typesense Snapshot API output | encrypted Restic SFTP repository | daily at 02:00 UTC | 14 daily and 4 weekly snapshots |
 
 Recovery objectives:
@@ -30,9 +30,11 @@ and escalation. Production operations also owns a restore drill at least once
 per calendar quarter; attach redacted drill evidence to the tracking issue.
 
 The two repositories use separate, home-directory-isolated Storage Box
-subaccounts and separate SSH keys. The Storage Box is private to Hetzner,
-delete-protected, and creates seven daily ZFS snapshots as secondary deletion
-protection. Those ZFS snapshots are not a substitute for the backups above.
+subaccounts and credentials. PostgreSQL uses a dedicated SMB credential;
+Typesense uses a dedicated SSH key. The Storage Box and both subaccounts are
+private to Hetzner, the box is delete-protected, and it creates seven daily
+ZFS snapshots as secondary deletion protection. Those snapshots are not a
+substitute for the backups above.
 
 The repository encryption secrets are escrowed only in the protected GitHub
 Actions `production` environment as:
@@ -50,6 +52,8 @@ Repository-owned files:
 - `scripts/jobseek-data-backup.py`
 - `deploy/backups/install-host.sh`
 - `deploy/backups/postgresql/Dockerfile`
+- `deploy/backups/postgresql/{mount-repository,smoke-repository,restore-drill}.sh`
+- `deploy/systemd/jobseek-postgresql-backup-repository.service`
 - `deploy/systemd/jobseek-postgresql-backup.{service,timer}`
 - `deploy/systemd/jobseek-typesense-backup.{service,timer}`
 
@@ -57,12 +61,25 @@ Host state:
 
 | Host | Runtime state |
 |---|---|
-| PostgreSQL | `/etc/jobseek-backup/postgresql`, `/var/lib/jobseek-backup/postgresql`, and `jobseek-postgres:16-pgbackrest` |
+| PostgreSQL | `/etc/jobseek-backup/postgresql`, `/var/lib/jobseek-backup/postgresql`, `/mnt/jobseek-postgresql-backups`, and `jobseek-postgres:16-pgbackrest` |
 | Typesense | `/etc/jobseek-backup/typesense.env`, `/etc/jobseek-backup/typesense`, and `/var/lib/jobseek-backup/typesense` |
 
 Both jobs atomically write a redacted JSON result and a Prometheus textfile
 under `/var/lib/jobseek-backup/status`. A failed attempt preserves the time of
 the last successful backup so a failed and a stale backup remain distinct.
+
+## Initial production evidence (2026-07-22)
+
+| Service | Backup evidence | Restore evidence |
+|---|---|---|
+| PostgreSQL | pgBackRest 2.59.0 full backup; 17.1 GiB database, 7.7 GiB repository delta, 199 seconds; repository status `ok`; continuous archive failure count remained zero | restored all 17.1 GiB to root-disk scratch space in 251 seconds, replayed encrypted archived WAL to a writable new timeline in about 210 seconds, then `pg_amcheck --parent-check` passed 384/384 relations and 2,147,497/2,147,497 pages; 2,447,190 postings were readable and the structural-null probe found zero invalid postings |
+| Typesense | Snapshot API produced 1,348,345,503 bytes; encrypted Restic upload, prune, and check completed in about 164 seconds without restarting Typesense | verified Restic restore returned all 1,348,345,503 bytes in 13 seconds; an isolated Typesense 27.1 node became healthy, loaded all seven collections and aliases, matched stable collection counts, served representative reads, and returned live search results |
+
+Temporary restore containers, data, keys and drill credentials were removed.
+The PostgreSQL pre-cutover container remains stopped only as a short-lived
+rollback target until the reviewed revision is merged and redeployed. Legacy
+server backups remain until scheduling and daily error-review alert delivery
+also pass the removal gate below.
 
 ## Installation and scheduling
 
@@ -111,7 +128,9 @@ systemctl list-timers --all jobseek-typesense-backup.timer --no-pager
 
 The production PostgreSQL image is built from the pinned digest in
 `deploy/backups/postgresql/Dockerfile`. It retains PostgreSQL 16 and adds
-pgBackRest plus the SFTP client. PostgreSQL must run with:
+the checksum-pinned pgBackRest 2.59.0 distribution. The image build runs the
+upstream PostgreSQL backup/restore smoke suite and deliberately disables the
+unused libssh2 transport. PostgreSQL must run with:
 
 ```text
 wal_level=replica
@@ -149,15 +168,25 @@ also invoke `rollback` explicitly. Run `finalize` only after the off-host full
 backup and isolated restore have passed; until then the old container remains
 stopped and references the same data directory without taking another copy.
 
-The pgBackRest repository uses strict host-key fingerprint verification,
-AES-256-CBC repository encryption, asynchronous WAL archiving, bundled/block
-incremental storage, and Zstandard compression. Never weaken host-key
-verification to make an SFTP connection succeed.
+The repository mount is owned by a dedicated systemd unit. It requires a
+private-to-Hetzner Storage Box subaccount, SMB 3.1.1 transport encryption
+(`seal`), hard I/O semantics, strict client caching, and CIFS symlink
+emulation. The root-only credential and share coordinate live in
+`storage-box.cifs` and `repository.env`; pgBackRest additionally applies
+AES-256-CBC repository encryption. Asynchronous WAL archiving, bundled/block
+incremental storage, and Zstandard compression remain enabled. The installer
+refuses a mount missing the expected source, CIFS type, `seal`, `hard`, or
+`mfsymlinks` option.
+
+An isolated SFTP compatibility test reproduced a pgBackRest/libssh2
+segmentation fault against the Storage Box on both 2.57.0 and 2.59.0. Do not
+reintroduce that transport without a new isolated stanza-create, backup, and
+restore proof. The mounted repository path is the supported production path.
 
 Run and verify a full backup:
 
 ```bash
-/usr/local/sbin/jobseek-data-backup postgresql --backup-type full
+systemctl start jobseek-postgresql-backup.service
 docker exec --user postgres postgres pgbackrest --stanza=jobseek check
 docker exec --user postgres postgres pgbackrest --stanza=jobseek info
 journalctl -u jobseek-postgresql-backup.service -n 100 --no-pager
@@ -171,6 +200,7 @@ docker exec postgres psql -U crawler -d crawler -Atc \
   "select archived_count, failed_count, last_archived_time, last_failed_time from pg_stat_archiver"
 du -sh /var/lib/jobseek-backup/postgresql/spool
 df -h /mnt/HC_Volume_105256309 /
+df -h /mnt/jobseek-postgresql-backups
 ```
 
 Treat a growing archive failure count, stale `last_archived_time`, or a
@@ -211,17 +241,20 @@ Cloudflare tunnel to a restore drill.
 
 ### PostgreSQL
 
-1. Restore the latest pgBackRest backup into a new host directory with enough
-   free space; never restore over `/mnt/HC_Volume_105256309/pgdata`.
-2. Start a temporary PostgreSQL 16 container bound only to
-   `127.0.0.1:55432`, with the restored directory as its data directory.
-3. Verify startup recovery reaches a consistent state, database and table
-   counts are plausible, constraints can be read, and representative crawler
-   application queries succeed.
+1. Run `/usr/local/sbin/jobseek-postgresql-restore-drill`. It restores into a
+   unique directory on a filesystem with enough free space and refuses to use
+   the live Volume path.
+2. The script starts a temporary PostgreSQL 16 container with Docker networking
+   disabled and `archive_mode=off`; the private repository mount is read only
+   from the recovery process.
+3. It requires startup recovery to reach a writable consistent state, checks
+   version/archive state and key counts, and runs `pg_amcheck` over every heap
+   and B-tree relation with parent checks.
 4. Record backup label, recovery target/time, restored byte count, elapsed
    time, checks performed, and result without recording row contents or
    secrets.
-5. Stop and remove the temporary container and restored data.
+5. The script removes the temporary container and restored data on both
+   success and failure.
 
 ### Typesense
 

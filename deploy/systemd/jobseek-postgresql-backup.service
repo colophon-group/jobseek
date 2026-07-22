@@ -1,8 +1,8 @@
 [Unit]
 Description=Jobseek PostgreSQL encrypted data backup
 Documentation=file:///opt/jobseek-backup/docs/16-hetzner-maintenance.md
-Requires=docker.service
-After=docker.service network-online.target
+Requires=docker.service jobseek-postgresql-backup-repository.service
+After=docker.service network-online.target jobseek-postgresql-backup-repository.service
 Wants=network-online.target
 ConditionPathExists=/usr/local/sbin/jobseek-data-backup
 ConditionPathExists=/etc/jobseek-backup/postgresql/pgbackrest.conf

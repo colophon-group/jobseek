@@ -36,7 +36,12 @@ install -o root -g root -m 0755 \
 
 if [[ "$SERVICE" == "postgresql" ]]; then
   test -s /etc/jobseek-backup/postgresql/pgbackrest.conf
-  test -s /etc/jobseek-backup/postgresql/id_ed25519
+  test -s /etc/jobseek-backup/postgresql/repository.env
+  test -s /etc/jobseek-backup/postgresql/storage-box.cifs
+  if ! command -v mount.cifs >/dev/null 2>&1; then
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cifs-utils
+  fi
   docker build \
     --pull=false \
     --tag jobseek-postgres:16-pgbackrest \
@@ -44,6 +49,18 @@ if [[ "$SERVICE" == "postgresql" ]]; then
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/postgresql/migrate-container.sh" \
     /usr/local/sbin/jobseek-postgresql-enable-pgbackrest
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/deploy/backups/postgresql/smoke-repository.sh" \
+    /usr/local/sbin/jobseek-postgresql-smoke-pgbackrest
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/deploy/backups/postgresql/mount-repository.sh" \
+    /usr/local/sbin/jobseek-postgresql-mount-backup-repository
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/deploy/backups/postgresql/restore-drill.sh" \
+    /usr/local/sbin/jobseek-postgresql-restore-drill
+  install -o root -g root -m 0644 \
+    "$REPO_ROOT/deploy/systemd/jobseek-postgresql-backup-repository.service" \
+    /etc/systemd/system/jobseek-postgresql-backup-repository.service
 else
   test -s /etc/jobseek-backup/typesense.env
   test -s /etc/jobseek-backup/typesense/id_ed25519
@@ -61,6 +78,12 @@ install -o root -g root -m 0644 \
   "$REPO_ROOT/deploy/systemd/jobseek-${SERVICE}-backup.timer" \
   "/etc/systemd/system/jobseek-${SERVICE}-backup.timer"
 systemctl daemon-reload
+if [[ "$SERVICE" == "postgresql" ]]; then
+  systemd-analyze verify /etc/systemd/system/jobseek-postgresql-backup-repository.service
+  /usr/local/sbin/jobseek-postgresql-mount-backup-repository
+  systemctl enable --now jobseek-postgresql-backup-repository.service
+  systemctl is-active --quiet jobseek-postgresql-backup-repository.service
+fi
 systemd-analyze verify "/etc/systemd/system/jobseek-${SERVICE}-backup.service"
 systemd-analyze verify "/etc/systemd/system/jobseek-${SERVICE}-backup.timer"
 if [[ -n "${JOBSEEK_BACKUP_DEPLOY_SHA:-}" ]]; then

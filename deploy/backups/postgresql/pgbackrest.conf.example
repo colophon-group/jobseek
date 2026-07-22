@@ -5,16 +5,8 @@ pg1-socket-path=/var/run/postgresql
 pg1-user=crawler
 
 [global]
-repo1-type=sftp
-repo1-path=/pgbackrest
-repo1-sftp-host=<storage-box-subaccount-host>
-repo1-sftp-host-port=23
-repo1-sftp-host-user=<storage-box-subaccount-user>
-repo1-sftp-private-key-file=/etc/jobseek-backup/id_ed25519
-repo1-sftp-public-key-file=/etc/jobseek-backup/id_ed25519.pub
-repo1-sftp-host-key-check-type=fingerprint
-repo1-sftp-host-key-hash-type=sha256
-repo1-sftp-host-fingerprint=<verified-storage-box-sha256-hex>
+repo1-type=posix
+repo1-path=/mnt/jobseek-postgresql-backups/pgbackrest
 repo1-cipher-type=aes-256-cbc
 repo1-cipher-pass=<generated-and-escrowed-secret>
 repo1-retention-full=4

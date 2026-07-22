@@ -9,6 +9,7 @@ TARGET_IMAGE="jobseek-postgres:16-pgbackrest"
 DATA_DIR="/mnt/HC_Volume_105256309/pgdata"
 CONFIG_DIR="/etc/jobseek-backup/postgresql"
 SPOOL_DIR="/var/lib/jobseek-backup/postgresql/spool"
+REPOSITORY_DIR="/mnt/jobseek-postgresql-backups"
 
 usage() {
   echo "Usage: $0 <apply|rollback|finalize>" >&2
@@ -45,9 +46,11 @@ rollback() {
 apply() {
   test -s "$CONFIG_DIR/postgres.env"
   test -s "$CONFIG_DIR/pgbackrest.conf"
-  test -s "$CONFIG_DIR/id_ed25519"
+  test -x /usr/local/sbin/jobseek-postgresql-smoke-pgbackrest
   test -d "$DATA_DIR"
   test -d "$SPOOL_DIR"
+  mountpoint -q "$REPOSITORY_DIR"
+  [[ "$(findmnt -n -o FSTYPE "$REPOSITORY_DIR")" == cifs ]]
   docker image inspect "$TARGET_IMAGE" >/dev/null
   [[ "$(docker inspect "$CURRENT_NAME" --format '{{.Config.Image}}')" == "$CURRENT_IMAGE" ]]
   if docker container inspect "$ROLLBACK_NAME" >/dev/null 2>&1; then
@@ -60,15 +63,20 @@ apply() {
   target_version="$(docker run --rm --entrypoint postgres "$TARGET_IMAGE" --version)"
   [[ "$target_version" == "$current_version" ]]
 
-  # Validate SFTP, host fingerprint, key access, and repository encryption
-  # before changing the live server. Stanza creation itself happens in the
-  # replacement container, where PostgreSQL's Unix socket is available.
+  # Exercise the exact mounted repository backup and restore path against an
+  # isolated temporary cluster before accepting any production downtime.
+  /usr/local/sbin/jobseek-postgresql-smoke-pgbackrest
+
+  # Validate repository access and encryption before changing the live server.
+  # Stanza creation itself happens in the replacement container, where
+  # PostgreSQL's Unix socket is available.
   docker run --rm \
     --user 70:70 \
     --network host \
     --volume "$CONFIG_DIR:/etc/jobseek-backup:ro" \
     --volume "$CONFIG_DIR/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro" \
     --volume "$SPOOL_DIR:/var/spool/pgbackrest" \
+    --volume "$REPOSITORY_DIR:$REPOSITORY_DIR" \
     "$TARGET_IMAGE" \
     pgbackrest --stanza=jobseek repo-ls >/dev/null
 
@@ -91,6 +99,7 @@ apply() {
     --volume "$CONFIG_DIR:/etc/jobseek-backup:ro" \
     --volume "$CONFIG_DIR/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro" \
     --volume "$SPOOL_DIR:/var/spool/pgbackrest" \
+    --volume "$REPOSITORY_DIR:$REPOSITORY_DIR" \
     "$TARGET_IMAGE" \
     postgres \
       -c 'listen_addresses=*' \

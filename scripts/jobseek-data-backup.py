@@ -28,7 +28,10 @@ from typing import Any
 
 STATUS_DIR = Path(os.environ.get("BACKUP_STATUS_DIR", "/var/lib/jobseek-backup/status"))
 _REDACTIONS = (
-    (re.compile(r"(?i)(api[-_ ]?key|password|secret|token)([=: ]+)[^\s,;]+"), r"\1\2<redacted>"),
+    (
+        re.compile(r"(?i)(api[-_ ]?key|password|secret|token)([=: ]+)[^\s,;]+"),
+        r"\1\2<redacted>",
+    ),
     (re.compile(r"(?i)(authorization:\s*(?:bearer|basic)\s+)[^\s]+"), r"\1<redacted>"),
 )
 
@@ -63,7 +66,9 @@ def run_checked(
         timeout=timeout,
     )
     if completed.returncode:
-        output = "\n".join(part for part in (completed.stdout, completed.stderr) if part)
+        output = "\n".join(
+            part for part in (completed.stdout, completed.stderr) if part
+        )
         raise BackupError(f"{argv[0]} exited {completed.returncode}: {redact(output)}")
     return completed
 
@@ -85,7 +90,9 @@ def read_previous_status(service: str, status_dir: Path = STATUS_DIR) -> dict[st
     return data if isinstance(data, dict) else {}
 
 
-def write_status(service: str, record: dict[str, Any], status_dir: Path = STATUS_DIR) -> None:
+def write_status(
+    service: str, record: dict[str, Any], status_dir: Path = STATUS_DIR
+) -> None:
     atomic_write(
         status_dir / f"{service}.json",
         json.dumps(record, indent=2, sort_keys=True) + "\n",
@@ -184,7 +191,15 @@ def postgres_backup(backup_type: str) -> dict[str, Any]:
     if running != "true":
         raise BackupError(f"PostgreSQL container {container!r} is not running")
 
-    base = ["docker", "exec", "--user", "postgres", container, "pgbackrest", f"--stanza={stanza}"]
+    base = [
+        "docker",
+        "exec",
+        "--user",
+        "postgres",
+        container,
+        "pgbackrest",
+        f"--stanza={stanza}",
+    ]
     run_checked([*base, "check"], timeout=900)
     run_checked([*base, f"--type={backup_type}", "backup"], timeout=43_200)
     run_checked([*base, "check"], timeout=1_800)
@@ -194,6 +209,7 @@ def postgres_backup(backup_type: str) -> dict[str, Any]:
         stanza_info = json.loads(info_output)[0]
         backups = stanza_info["backup"]
         latest = max(backups, key=lambda item: item["timestamp"]["stop"])
+        repository_info = latest["info"]["repository"]
     except (IndexError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         raise BackupError("pgBackRest returned no parseable completed backup") from exc
 
@@ -201,7 +217,11 @@ def postgres_backup(backup_type: str) -> dict[str, Any]:
         "backup_type": latest.get("type", backup_type),
         "backup_label": latest.get("label"),
         "backup_database_bytes": latest.get("info", {}).get("size"),
-        "backup_repository_bytes": latest.get("info", {}).get("repository", {}).get("size"),
+        # pgBackRest 2.59 reports per-backup repository bytes as `delta`;
+        # retain the older `size` fallback for compatible package releases.
+        "backup_repository_bytes": repository_info.get(
+            "delta", repository_info.get("size")
+        ),
         "repository_backup_count": len(backups),
         "repository_latest_stop_unix": latest["timestamp"]["stop"],
     }
@@ -224,14 +244,18 @@ def _snapshot_request(url: str, api_key: str, snapshot_path: str) -> None:
     except json.JSONDecodeError as exc:
         raise BackupError("Typesense snapshot API returned non-JSON output") from exc
     if payload.get("success") is not True:
-        raise BackupError(f"Typesense snapshot API did not report success: {redact(body)}")
+        raise BackupError(
+            f"Typesense snapshot API did not report success: {redact(body)}"
+        )
 
 
 def _tree_size(path: Path) -> int:
     return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
 
 
-def _remove_old_staging(staging_root: Path, *, older_than_seconds: int = 172_800) -> None:
+def _remove_old_staging(
+    staging_root: Path, *, older_than_seconds: int = 172_800
+) -> None:
     if not staging_root.exists():
         return
     cutoff = time.time() - older_than_seconds
@@ -253,7 +277,11 @@ def typesense_backup() -> dict[str, Any]:
     api_key = os.environ.get("TYPESENSE_API_KEY", "")
     if not api_key:
         raise BackupError("TYPESENSE_API_KEY is missing")
-    required_restic = ("RESTIC_REPOSITORY", "RESTIC_PASSWORD_FILE", "RESTIC_SFTP_COMMAND")
+    required_restic = (
+        "RESTIC_REPOSITORY",
+        "RESTIC_PASSWORD_FILE",
+        "RESTIC_SFTP_COMMAND",
+    )
     missing = [name for name in required_restic if not os.environ.get(name)]
     if missing:
         raise BackupError(f"missing Restic configuration: {', '.join(missing)}")
@@ -270,7 +298,11 @@ def typesense_backup() -> dict[str, Any]:
     ).rstrip("/")
     container_path = f"{container_root}/{run_id}"
     staging_root = (
-        Path(os.environ.get("TYPESENSE_SNAPSHOT_HOST_ROOT", "/var/lib/jobseek-backup/typesense"))
+        Path(
+            os.environ.get(
+                "TYPESENSE_SNAPSHOT_HOST_ROOT", "/var/lib/jobseek-backup/typesense"
+            )
+        )
         / "staging"
     )
     local_path = staging_root / run_id
@@ -280,7 +312,9 @@ def typesense_backup() -> dict[str, Any]:
     success = False
 
     try:
-        run_checked(["docker", "exec", container, "rm", "-rf", "--", container_path], timeout=60)
+        run_checked(
+            ["docker", "exec", container, "rm", "-rf", "--", container_path], timeout=60
+        )
         _snapshot_request(url, api_key, container_path)
         run_checked(
             ["docker", "cp", f"{container}:{container_path}/.", str(local_path)],
@@ -324,7 +358,9 @@ def typesense_backup() -> dict[str, Any]:
         )
         run_checked(_restic_command("check"), env=restic_env, timeout=14_400)
         snapshots_output = run_checked(
-            _restic_command("snapshots", "--json", "--latest", "1", "--tag", "jobseek-typesense"),
+            _restic_command(
+                "snapshots", "--json", "--latest", "1", "--tag", "jobseek-typesense"
+            ),
             env=restic_env,
             timeout=300,
         ).stdout
@@ -332,7 +368,9 @@ def typesense_backup() -> dict[str, Any]:
             snapshots = json.loads(snapshots_output)
             latest_snapshot = snapshots[-1]
         except (IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise BackupError("Restic returned no parseable Typesense snapshot") from exc
+            raise BackupError(
+                "Restic returned no parseable Typesense snapshot"
+            ) from exc
         success = True
         return {
             "snapshot_bytes": snapshot_bytes,
@@ -354,7 +392,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="service", required=True)
     postgres = subparsers.add_parser("postgresql")
-    postgres.add_argument("--backup-type", choices=("auto", "full", "diff", "incr"), default="auto")
+    postgres.add_argument(
+        "--backup-type", choices=("auto", "full", "diff", "incr"), default="auto"
+    )
     subparsers.add_parser("typesense")
     return parser
 
