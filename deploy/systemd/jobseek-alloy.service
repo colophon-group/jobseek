@@ -1,0 +1,49 @@
+[Unit]
+Description=Jobseek fleet host telemetry collector
+Documentation=https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
+Wants=network-online.target
+After=network-online.target jobseek-host-observability.service
+ConditionPathExists=/usr/local/bin/jobseek-alloy
+ConditionPathExists=/etc/jobseek-observability/alloy-host.alloy
+ConditionPathExists=/etc/jobseek-observability/alloy.env
+
+[Service]
+Type=simple
+User=jobseek-alloy
+Group=jobseek-alloy
+SupplementaryGroups=systemd-journal
+EnvironmentFile=/etc/jobseek-observability/alloy.env
+ExecStart=/usr/local/bin/jobseek-alloy run --storage.path=/var/lib/jobseek-alloy --server.http.listen-addr=127.0.0.1:12345 /etc/jobseek-observability/alloy-host.alloy
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+StateDirectory=jobseek-alloy
+StateDirectoryMode=0700
+UMask=0077
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+ReadOnlyPaths=/var/lib/jobseek-observability/textfile
+
+[Install]
+WantedBy=multi-user.target

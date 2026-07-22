@@ -15,17 +15,6 @@ prometheus.scrape "crawler" {
   scrape_interval = "15s"
 }
 
-// ── Host metrics ──────────────────────────────────────────
-prometheus.exporter.unix "host" {
-  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "loadavg", "netdev"]
-}
-
-prometheus.scrape "node" {
-  targets        = prometheus.exporter.unix.host.targets
-  forward_to     = [prometheus.remote_write.grafana_cloud.receiver]
-  scrape_interval = "15s"
-}
-
 // ── Redis metrics ─────────────────────────────────────────
 // Needed for the RedisMemoryPressure alert: Redis runs with
 // ``--maxmemory 1gb --maxmemory-policy noeviction`` (see docker-compose.yml),

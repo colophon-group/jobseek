@@ -1,0 +1,38 @@
+[Unit]
+Description=Collect read-only Jobseek host and service telemetry
+Documentation=https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
+After=docker.service
+Wants=docker.service
+ConditionPathExists=/usr/local/sbin/jobseek-host-observability
+ConditionPathExists=/etc/jobseek-observability/host.env
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/jobseek-observability/host.env
+ExecStart=/usr/local/sbin/jobseek-host-observability
+TimeoutStartSec=2m
+UMask=0077
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+ReadWritePaths=/var/lib/jobseek-observability/textfile /var/lib/jobseek-observability/state

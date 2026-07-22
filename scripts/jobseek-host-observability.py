@@ -1,0 +1,447 @@
+#!/usr/bin/env python3
+"""Collect bounded, read-only service metrics for a Jobseek Hetzner host.
+
+The script runs as a hardened root systemd oneshot because Docker's API is a
+privileged boundary. It performs only inspect/log/readiness operations, writes
+one atomic Prometheus textfile for the unprivileged Alloy process, and emits a
+redacted subset of new container error lines to journald.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import time
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+UTC = timezone.utc  # noqa: UP017 - crawler host system Python is 3.10.
+DEFAULT_TEXTFILE = Path("/var/lib/jobseek-observability/textfile/jobseek-host.prom")
+DEFAULT_STATE_DIR = Path("/var/lib/jobseek-observability/state")
+DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
+MAX_LOG_LINES = 200
+
+ROLE_CONTAINERS = {
+    "crawler": (
+        "deploy-worker-1-1",
+        "deploy-worker-2-1",
+        "deploy-worker-3-1",
+        "deploy-browser-1-1",
+        "deploy-exporter-1",
+        "deploy-drain-1",
+        "deploy-redis-1",
+    ),
+    "postgresql": ("postgres",),
+    "typesense": ("typesense",),
+}
+
+ROLE_UNITS = {
+    "crawler": (
+        "docker.service",
+        "jobseek-codex-governor.timer",
+        "jobseek-codex-daily-annotations.timer",
+        "jobseek-codex-daily-error-review.timer",
+    ),
+    "postgresql": (
+        "docker.service",
+        "jobseek-postgresql-backup-repository.service",
+        "jobseek-postgresql-backup.timer",
+    ),
+    "typesense": (
+        "docker.service",
+        "cloudflared.service",
+        "jobseek-typesense-backup.timer",
+    ),
+}
+
+ROLE_BACKUPS = {
+    "crawler": (),
+    "postgresql": ("postgresql",),
+    "typesense": ("typesense",),
+}
+
+_CREDENTIAL_RE = re.compile(
+    r"(?i)\b(authorization|token|secret|password|api[_-]?key)\b\s*[:=]\s*\S+"
+)
+_URL_QUERY_RE = re.compile(r"(https?://[^\s?]+)\?\S+")
+_IP_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
+_UUID_RE = re.compile(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
+_EMAIL_RE = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
+_ERROR_RE = re.compile(r"(?i)\b(error|fatal|panic|exception|oom|killed|failed)\b")
+
+
+class ProbeError(RuntimeError):
+    """A required read-only probe failed."""
+
+
+def _run(argv: list[str], *, timeout: int = 30) -> subprocess.CompletedProcess[str]:
+    try:
+        result = subprocess.run(
+            argv,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ProbeError(f"{argv[0]} unavailable or timed out: {type(exc).__name__}") from exc
+    if result.returncode:
+        detail = _redact((result.stderr or result.stdout or "command failed").strip())
+        raise ProbeError(f"{argv[0]} exited {result.returncode}: {detail[-300:]}")
+    return result
+
+
+def _redact(value: str) -> str:
+    text = _CREDENTIAL_RE.sub(r"\1=<redacted>", value)
+    text = _URL_QUERY_RE.sub(r"\1?<redacted>", text)
+    text = _IP_RE.sub("<redacted-ip>", text)
+    text = _UUID_RE.sub("<redacted-uuid>", text)
+    text = _EMAIL_RE.sub("<redacted-email>", text)
+    return text
+
+
+def _escape_label(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+
+
+def _metric(name: str, value: int | float, **labels: str) -> str:
+    rendered = ""
+    if labels:
+        pairs = ",".join(f'{key}="{_escape_label(val)}"' for key, val in sorted(labels.items()))
+        rendered = "{" + pairs + "}"
+    return f"{name}{rendered} {value}"
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(content, encoding="utf-8")
+    temporary.chmod(0o644)
+    os.replace(temporary, path)
+
+
+def _docker_state(container: str) -> dict[str, Any]:
+    result = _run(["docker", "inspect", container], timeout=30)
+    try:
+        inspected = json.loads(result.stdout)[0]
+    except (IndexError, TypeError, json.JSONDecodeError) as exc:
+        raise ProbeError(f"unparseable docker inspect output for {container}") from exc
+    state = inspected.get("State") or {}
+    return {
+        "running": bool(state.get("Running")),
+        "oom_killed": bool(state.get("OOMKilled")),
+        "restart_count": int(inspected.get("RestartCount") or 0),
+    }
+
+
+def _collect_container_metrics(role: str, lines: list[str]) -> None:
+    for container in ROLE_CONTAINERS[role]:
+        state = _docker_state(container)
+        labels = {"container": container, "host_role": role}
+        lines.append(_metric("jobseek_container_running", int(state["running"]), **labels))
+        lines.append(_metric("jobseek_container_oom_killed", int(state["oom_killed"]), **labels))
+        lines.append(_metric("jobseek_container_restart_count", state["restart_count"], **labels))
+
+
+def _collect_unit_metrics(role: str, lines: list[str]) -> None:
+    for unit in ROLE_UNITS[role]:
+        result = subprocess.run(
+            ["systemctl", "is-active", "--quiet", unit],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        lines.append(
+            _metric(
+                "jobseek_host_unit_active",
+                int(result.returncode == 0),
+                host_role=role,
+                unit=unit,
+            )
+        )
+
+
+def _backup_number(record: dict[str, Any], key: str) -> float:
+    value = record.get(key, 0)
+    if isinstance(value, bool):
+        return float(int(value))
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _collect_backup_metrics(role: str, status_dir: Path, lines: list[str]) -> None:
+    for service in ROLE_BACKUPS[role]:
+        path = status_dir / f"{service}.json"
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ProbeError(f"missing or invalid {service} backup status") from exc
+        if not isinstance(record, dict):
+            raise ProbeError(f"invalid {service} backup status object")
+        labels = {"host_role": role, "service": service}
+        lines.extend(
+            (
+                _metric(
+                    "jobseek_backup_last_attempt_unixtime",
+                    _backup_number(record, "attempt_unix"),
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_backup_last_success_unixtime",
+                    _backup_number(record, "last_success_unix"),
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_backup_last_attempt_success",
+                    int(bool(record.get("success"))),
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_backup_last_duration_seconds",
+                    _backup_number(record, "duration_seconds"),
+                    **labels,
+                ),
+            )
+        )
+
+
+POSTGRES_STATS_SQL = """
+SELECT
+  (SELECT COALESCE(sum(numbackends), 0) FROM pg_stat_database),
+  current_setting('max_connections'),
+  (SELECT archived_count FROM pg_stat_archiver),
+  (SELECT failed_count FROM pg_stat_archiver),
+  (SELECT checkpoints_timed FROM pg_stat_bgwriter),
+  (SELECT checkpoints_req FROM pg_stat_bgwriter),
+  (SELECT COALESCE(sum(pg_database_size(datname)), 0) FROM pg_database WHERE datallowconn);
+""".strip()
+
+
+def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -> None:
+    ready = subprocess.run(
+        [
+            "docker",
+            "exec",
+            "--user",
+            "postgres",
+            container,
+            "sh",
+            "-c",
+            'db="${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"; '
+            'exec pg_isready -q -U "${POSTGRES_USER:-postgres}" -d "$db"',
+        ],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=30,
+    )
+    lines.append(_metric("jobseek_postgresql_ready", int(ready.returncode == 0)))
+    if ready.returncode:
+        raise ProbeError("PostgreSQL readiness probe failed")
+    result = _run(
+        [
+            "docker",
+            "exec",
+            "--user",
+            "postgres",
+            container,
+            "sh",
+            "-c",
+            'db="${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"; '
+            'exec psql -U "${POSTGRES_USER:-postgres}" -d "$db" '
+            "-XAt -F '\t' -v ON_ERROR_STOP=1 -c \"$1\"",
+            "jobseek-observability",
+            POSTGRES_STATS_SQL,
+        ],
+        timeout=60,
+    )
+    fields = result.stdout.strip().split("\t")
+    if len(fields) != 7:
+        raise ProbeError("PostgreSQL statistics query returned an unexpected shape")
+    names = (
+        "jobseek_postgresql_connections",
+        "jobseek_postgresql_max_connections",
+        "jobseek_postgresql_archived_total",
+        "jobseek_postgresql_archive_failed_total",
+        "jobseek_postgresql_checkpoints_timed_total",
+        "jobseek_postgresql_checkpoints_requested_total",
+        "jobseek_postgresql_database_bytes",
+    )
+    try:
+        lines.extend(_metric(name, float(value)) for name, value in zip(names, fields, strict=True))
+    except ValueError as exc:
+        raise ProbeError("PostgreSQL statistics query returned a non-numeric value") from exc
+
+
+def _collect_typesense_metrics(lines: list[str]) -> None:
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:8108/health", timeout=10) as response:  # noqa: S310
+            payload = json.loads(response.read().decode("utf-8"))
+            healthy = response.status == 200 and payload.get("ok") is True
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        lines.append(_metric("jobseek_typesense_healthy", 0))
+        raise ProbeError(f"Typesense health probe failed: {type(exc).__name__}") from exc
+    lines.append(_metric("jobseek_typesense_healthy", int(healthy)))
+    if not healthy:
+        raise ProbeError("Typesense health endpoint did not report ok")
+
+
+def _load_cursor(path: Path, *, now: float) -> dict[str, float]:
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    result: dict[str, float] = {}
+    for key, value in raw.items():
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            continue
+        if now - 86_400 <= parsed <= now:
+            result[str(key)] = parsed
+    return result
+
+
+def _write_cursor(path: Path, cursor: dict[str, float]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(cursor, sort_keys=True) + "\n", encoding="utf-8")
+    temporary.chmod(0o600)
+    os.replace(temporary, path)
+
+
+def _collect_new_error_logs(role: str, state_dir: Path, *, now: float) -> None:
+    if role == "crawler":
+        return  # The crawler Alloy already tails these Docker logs directly.
+    cursor_path = state_dir / "container-log-cursor.json"
+    cursor = _load_cursor(cursor_path, now=now)
+    updated = dict(cursor)
+    until = datetime.fromtimestamp(now, tz=UTC).isoformat()
+    for container in ROLE_CONTAINERS[role]:
+        since_epoch = cursor.get(container, now - 300)
+        since = datetime.fromtimestamp(since_epoch, tz=UTC).isoformat()
+        result = _run(
+            ["docker", "logs", "--since", since, "--until", until, container],
+            timeout=45,
+        )
+        output = "\n".join(part for part in (result.stdout, result.stderr) if part)
+        matches = [line for line in output.splitlines() if _ERROR_RE.search(line)]
+        for line in matches[-MAX_LOG_LINES:]:
+            if "STATEMENT:" in line:
+                continue
+            print(
+                "jobseek_container_error "
+                f"host_role={role} container={container} message={_redact(line)[:2000]}"
+            )
+        updated[container] = now
+    _write_cursor(cursor_path, updated)
+
+
+def collect(
+    role: str,
+    *,
+    textfile: Path = DEFAULT_TEXTFILE,
+    state_dir: Path = DEFAULT_STATE_DIR,
+    backup_status_dir: Path = DEFAULT_BACKUP_STATUS_DIR,
+) -> bool:
+    now = time.time()
+    lines = [
+        "# Jobseek fleet metrics; generated atomically by jobseek-host-observability.",
+        _metric("jobseek_host_reboot_required", int(Path("/var/run/reboot-required").exists())),
+    ]
+    probes: list[tuple[str, Any]] = [
+        ("containers", lambda: _collect_container_metrics(role, lines)),
+        ("systemd", lambda: _collect_unit_metrics(role, lines)),
+        ("backup", lambda: _collect_backup_metrics(role, backup_status_dir, lines)),
+    ]
+    if role == "postgresql":
+        probes.append(("postgresql", lambda: _collect_postgresql_metrics(lines)))
+    elif role == "typesense":
+        probes.append(("typesense", lambda: _collect_typesense_metrics(lines)))
+    probes.append(("container_logs", lambda: _collect_new_error_logs(role, state_dir, now=now)))
+
+    success = True
+    for name, probe in probes:
+        try:
+            probe()
+        except Exception as exc:
+            success = False
+            print(f"jobseek_host_probe_failed probe={name} error={_redact(str(exc))}")
+            lines.append(
+                _metric(
+                    "jobseek_host_observability_probe_success",
+                    0,
+                    host_role=role,
+                    probe=name,
+                )
+            )
+        else:
+            lines.append(
+                _metric(
+                    "jobseek_host_observability_probe_success",
+                    1,
+                    host_role=role,
+                    probe=name,
+                )
+            )
+
+    lines.extend(
+        (
+            _metric(
+                "jobseek_host_observability_collect_success",
+                int(success),
+                host_role=role,
+            ),
+            _metric(
+                "jobseek_host_observability_last_collect_unixtime",
+                int(now),
+                host_role=role,
+            ),
+        )
+    )
+    _atomic_write(textfile, "\n".join(lines) + "\n")
+    return success
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--role",
+        choices=sorted(ROLE_CONTAINERS),
+        default=os.environ.get("JOBSEEK_HOST_ROLE"),
+        required=os.environ.get("JOBSEEK_HOST_ROLE") is None,
+    )
+    parser.add_argument("--textfile", type=Path, default=DEFAULT_TEXTFILE)
+    parser.add_argument("--state-dir", type=Path, default=DEFAULT_STATE_DIR)
+    parser.add_argument("--backup-status-dir", type=Path, default=DEFAULT_BACKUP_STATUS_DIR)
+    return parser
+
+
+def main() -> int:
+    args = _build_parser().parse_args()
+    return (
+        0
+        if collect(
+            args.role,
+            textfile=args.textfile,
+            state_dir=args.state_dir,
+            backup_status_dir=args.backup_status_dir,
+        )
+        else 1
+    )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

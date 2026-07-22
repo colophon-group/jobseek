@@ -1,0 +1,113 @@
+name: Deploy Hetzner Observability
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/crawler/alerts.yaml'
+      - 'deploy/observability/**'
+      - 'deploy/systemd/jobseek-alloy.service'
+      - 'deploy/systemd/jobseek-host-observability.*'
+      - 'scripts/jobseek-host-observability.py'
+      - 'scripts/sync-grafana-rules.py'
+      - 'docs/14-error-review-routine.md'
+      - 'docs/16-hetzner-maintenance.md'
+      - 'docs/19-data-backup-recovery.md'
+      - 'docs/audits/2026-07-22-hetzner-systems.md'
+      - '.github/workflows/deploy-hetzner-observability.yml'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: hetzner-observability-production-sync
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Validate observability artifacts
+        run: |
+          set -euo pipefail
+          bash -n deploy/observability/install-host.sh
+          python3 -m py_compile scripts/jobseek-host-observability.py scripts/sync-grafana-rules.py
+          cd apps/crawler
+          uv run --frozen python ../../scripts/sync-grafana-rules.py --dry-run
+          uv run --frozen pytest tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py -q
+
+  deploy-hosts:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        service: [crawler, postgresql, typesense]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve configured production host
+        env:
+          TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+        run: test -n "$TARGET_HOST"
+
+      - name: Copy observability deployment artifacts
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: scripts/jobseek-host-observability.py,deploy/observability,deploy/systemd/jobseek-alloy.service,deploy/systemd/jobseek-host-observability.service,deploy/systemd/jobseek-host-observability.timer,docs/16-hetzner-maintenance.md,docs/19-data-backup-recovery.md
+          target: /opt/jobseek-observability
+          overwrite: true
+
+      - name: Install pinned host telemetry
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          JOBSEEK_HOST_ROLE: ${{ matrix.service }}
+          JOBSEEK_OBSERVABILITY_DEPLOY_SHA: ${{ github.sha }}
+          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+          GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
+          GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}
+          GRAFANA_LOKI_URL: ${{ secrets.GRAFANA_LOKI_URL }}
+          GRAFANA_LOKI_USERNAME: ${{ secrets.GRAFANA_LOKI_USERNAME }}
+          GRAFANA_LOKI_PASSWORD: ${{ secrets.GRAFANA_LOKI_PASSWORD }}
+        with:
+          host: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: JOBSEEK_HOST_ROLE,JOBSEEK_OBSERVABILITY_DEPLOY_SHA,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd /opt/jobseek-observability
+            bash deploy/observability/install-host.sh "$JOBSEEK_HOST_ROLE"
+            test "$(cat /var/lib/jobseek-observability/deployed-sha)" = "$JOBSEEK_OBSERVABILITY_DEPLOY_SHA"
+            systemctl is-active --quiet jobseek-alloy.service
+            systemctl is-active --quiet jobseek-host-observability.timer
+
+  sync-rules:
+    needs: deploy-hosts
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Transactionally sync Mimir alert rules
+        working-directory: apps/crawler
+        env:
+          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+          GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
+          GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}
+        run: uv run --frozen python ../../scripts/sync-grafana-rules.py

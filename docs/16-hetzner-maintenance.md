@@ -24,6 +24,96 @@ SSH pattern:
 ssh -i ~/.ssh/hetzner_deploy root@<HOST>
 ```
 
+## Fleet Observability
+
+All three hosts run the same repo-owned host telemetry surface:
+
+- `jobseek-alloy.service` runs Alloy 1.18.0 as the dedicated unprivileged
+  `jobseek-alloy` user. The binary is extracted from the checksum-pinned
+  official container image during deployment; no mutable `latest` tag or
+  package repository is trusted at runtime.
+- `jobseek-host-observability.timer` runs the root-owned read-only sampler
+  every minute. Root is required only for Docker inspect/log access and local
+  PostgreSQL statistics. The sampler cannot reach non-loopback IP addresses,
+  performs no Docker or database mutations, and atomically writes a
+  world-readable Prometheus textfile containing no credentials or row data.
+- Alloy listens only on `127.0.0.1:12345`, reads that textfile plus host
+  CPU/RAM/load/swap/filesystem/inode/kernel/network metrics, and remote-writes
+  directly to Grafana Cloud. No host opens a scrape port.
+- The sampler forwards at most 200 new error-class lines per interval from the
+  PostgreSQL and Typesense containers into its own journal after redacting
+  credentials, URL queries, addresses, UUIDs, and email addresses. Alloy reads
+  only the allowlisted Jobseek backup/telemetry/Codex units and `cloudflared`;
+  it never receives Docker-socket access.
+
+The crawler Compose Alloy remains responsible for crawler application/Redis
+metrics and Docker logs. It is pinned to the same digest, has no privileged or
+host-PID mode, and no longer duplicates host metrics. Its read-only Docker
+socket remains a privileged trust boundary and is therefore unavailable to
+the host collector and to `codex-runner`.
+
+Stable labels deliberately describe roles rather than provider identifiers:
+
+| Role | `instance` | `host_role` |
+|---|---|---|
+| Crawler | `jobseek-crawler-browser` | `crawler` |
+| PostgreSQL | `jobseek-postgresql` | `postgresql` |
+| Typesense | `jobseek-typesense` | `typesense` |
+
+The sampler covers container running/restart/OOM state, required systemd
+units, reboot-required state, backup attempt/success/freshness, PostgreSQL
+readiness/connections/WAL archive/checkpoint/database size, and Typesense
+health/tunnel state. Sticky Docker OOM flags and absolute restart counters are
+evidence only; the daily error review applies generation/time-window rules
+before declaring a new incident.
+
+Deployment is owned by
+[`deploy-hetzner-observability.yml`](../.github/workflows/deploy-hetzner-observability.yml).
+It validates the Python, shell, Alloy, alert, and systemd contracts; deploys
+the crawler, PostgreSQL, and Typesense hosts sequentially; then syncs the
+single Mimir rule group only after every host is healthy. Environment-scoped
+host variables are resolved inside runtime steps after the protected
+`production` environment is attached. The installer snapshots the prior
+binary, configuration, secret env, and units under the root-only
+`/var/lib/jobseek-observability/rollback/` directory and automatically
+restores them if validation, service startup, or loopback readiness fails.
+It restarts only Alloy; it does not restart Docker, PostgreSQL, Typesense, the
+tunnel, or any crawler workload.
+
+Alert definitions in [`apps/crawler/alerts.yaml`](../apps/crawler/alerts.yaml)
+are transactionally written through the Mimir ruler API. The sync client first
+captures the old group, requires every alert to have a repository runbook plus
+`owner=codex-error-review` and `route=codex-daily`, verifies the exact active
+rule set, and restores the old group on failure. This corrects the exporter
+alert by selecting only `instance="exporter"` and adds explicit all-host,
+disk/inode, sampler, backup, PostgreSQL, Typesense/tunnel, and reboot alerts.
+The intended notification route is the daily Hetzner Codex error-review issue
+workflow; alert state is not routed to phone or email.
+
+Check one host without printing configuration or credentials:
+
+```bash
+systemctl is-enabled jobseek-alloy.service jobseek-host-observability.timer
+systemctl is-active jobseek-alloy.service jobseek-host-observability.timer
+systemctl list-timers --all jobseek-host-observability.timer --no-pager
+systemctl status jobseek-host-observability.service --no-pager
+curl --fail --silent http://127.0.0.1:12345/-/ready
+ss -ltnp | grep '127.0.0.1:12345'
+grep -v '^#' /var/lib/jobseek-observability/textfile/jobseek-host.prom
+journalctl -u jobseek-alloy.service -u jobseek-host-observability.service \
+  --since '30 minutes ago' --no-pager
+```
+
+Healthy production has one current `up{job="integrations/unix"}` and one
+current `up{job="jobseek-alloy"}` series for each stable instance, fresh
+`jobseek_host_observability_last_collect_unixtime`, all required probes equal
+to one, current backup success timestamps on the two data hosts, PostgreSQL
+ready with no new archive failure, and Typesense plus `cloudflared` healthy.
+Treat missing host/sampler series, disk or inode exhaustion, a failed/stale
+backup, PostgreSQL archive/readiness failure, or Typesense/tunnel failure as an
+incident. Inspect evidence first; this telemetry path does not authorize an
+automatic workload restart.
+
 ## Disk Triage
 
 Use these first when a deploy fails with `No space left on device`, Redis
