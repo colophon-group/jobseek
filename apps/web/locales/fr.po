@@ -4543,6 +4543,11 @@ msgstr "Limite de listes atteinte"
 msgid "watchlist.notFound.title"
 msgstr "Liste de surveillance introuvable"
 
+#. Recovery action on the watchlist-not-found page
+#. js-lingui-explicit-id
+msgid "watchlist.notFound.browse"
+msgstr "Parcourir les watchlists"
+
 #. Title of the watchlists exploration page
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx:127

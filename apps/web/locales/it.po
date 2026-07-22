@@ -4543,6 +4543,11 @@ msgstr "Limite liste raggiunto"
 msgid "watchlist.notFound.title"
 msgstr "Watchlist non trovata"
 
+#. Recovery action on the watchlist-not-found page
+#. js-lingui-explicit-id
+msgid "watchlist.notFound.browse"
+msgstr "Esplora le watchlist"
+
 #. Title of the watchlists exploration page
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx:127
