@@ -5374,6 +5374,7 @@ vicarius,vicarius-careers,https://vicarius.teamtailor.com/jobs,rss,"{""preset"":
 viggle,viggle-careers,https://api.ashbyhq.com/posting-api/job-board/viggle,ashby,"{""token"": ""viggle""}",skip,
 viking-global-investors,viking-global-investors-greenhouse,https://job-boards.greenhouse.io/vikingglobalinvestors,greenhouse,"{""token"": ""vikingglobalinvestors""}",skip,
 viktor,viktor-ashby,https://jobs.ashbyhq.com/viktor,ashby,"{""token"": ""viktor""}",skip,
+vinted,vinted-main,https://careers.vinted.com/jobs,greenhouse,"{""token"": ""vinteden""}",skip,
 vir-biotechnology,vir-biotechnology-greenhouse,https://job-boards.greenhouse.io/virbiotechnologyinc,greenhouse,"{""token"": ""virbiotechnologyinc""}",skip,
 viral-nation-inc,viral-nation-inc-greenhouse,https://job-boards.greenhouse.io/viralnation,greenhouse,"{""token"": ""viralnation""}",skip,
 virgin-atlantic,virgin-atlantic-careers,https://careers.virginatlantic.com/search-and-apply,sitemap,"{""sitemap_url"": ""https://careers.virginatlantic.com/sitemap.xml"", ""url_filter"": ""/search-and-apply/""}",json-ld,
