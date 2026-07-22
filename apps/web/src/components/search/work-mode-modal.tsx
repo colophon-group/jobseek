@@ -7,6 +7,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { getWorkModeCounts } from "@/lib/actions/taxonomy";
 import type { WorkMode } from "@/lib/search/types";
+import { FacetCount } from "./facet-count";
 
 /**
  * Work-mode (location_types) modal — mirrors employment-type-modal.tsx
@@ -116,9 +117,7 @@ export function WorkModeModal({
                       }`}
                     >
                       <span>{opt.label}</span>
-                      <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-                        ({count})
-                      </span>
+                      <FacetCount count={count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
                     </button>
                   );
                 })}
