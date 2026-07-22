@@ -53,11 +53,15 @@ jobs:
 
       - name: Deploy Codex runner host surface
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          GRAFANA_METRICS_READ_URL: ${{ secrets.GRAFANA_METRICS_READ_URL }}
+          GRAFANA_METRICS_READ_USERNAME: ${{ secrets.GRAFANA_METRICS_READ_USERNAME }}
+          GRAFANA_METRICS_READ_TOKEN: ${{ secrets.GRAFANA_METRICS_READ_TOKEN }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: GITHUB_SHA,JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S
+          envs: GITHUB_SHA,JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S,GRAFANA_METRICS_READ_URL,GRAFANA_METRICS_READ_USERNAME,GRAFANA_METRICS_READ_TOKEN
           # Allow the full resolver window to finish, then leave 50 minutes for
           # checkout, runtime sync, verification, and reporting.
           command_timeout: 5h

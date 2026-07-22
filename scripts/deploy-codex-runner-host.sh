@@ -13,6 +13,7 @@ BRANCH="${JOBSEEK_CODEX_BRANCH:-main}"
 EXPECTED_SHA="${JOBSEEK_CODEX_EXPECTED_SHA:-}"
 LOCK_TIMEOUT_S="${JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S:-15000}"
 START_TIMERS="${JOBSEEK_CODEX_START_TIMERS:-0}"
+METRICS_CONFIG=/etc/jobseek-codex/error-review-metrics.env
 
 LOCK_FILE="${ROOT_DIR}/state/codex-runner.lock"
 
@@ -89,6 +90,46 @@ require_runtime_config() {
     fail "codex-runner cannot read governor.env"
   as_runner test -r /etc/jobseek-codex/labeller.env ||
     fail "codex-runner cannot read labeller.env"
+  [[ -r "${METRICS_CONFIG}" ]] || fail "missing ${METRICS_CONFIG}"
+  [[ "$(stat -c '%U:%G:%a' "${METRICS_CONFIG}")" == "root:root:600" ]] ||
+    fail "${METRICS_CONFIG} must be root:root mode 0600"
+  if as_runner test -r "${METRICS_CONFIG}"; then
+    fail "codex-runner can read ${METRICS_CONFIG}"
+  fi
+}
+
+install_metrics_config() {
+  local url="${GRAFANA_METRICS_READ_URL:-}"
+  local username="${GRAFANA_METRICS_READ_USERNAME:-}"
+  local token="${GRAFANA_METRICS_READ_TOKEN:-}"
+  local supplied=0
+  [[ -n "${url}" ]] && ((supplied += 1))
+  [[ -n "${username}" ]] && ((supplied += 1))
+  [[ -n "${token}" ]] && ((supplied += 1))
+
+  if [[ "${supplied}" -eq 0 && -f "${METRICS_CONFIG}" ]]; then
+    log "preserving existing root-only error-review metrics credential"
+    return
+  fi
+  [[ "${supplied}" -eq 3 ]] || fail "all dedicated metrics-read values must be supplied"
+  [[ "${url}" =~ ^https://[^[:space:]]+/api/prom/?$ ]] ||
+    fail "metrics-read URL must be an HTTPS /api/prom query endpoint"
+  [[ "${username}" =~ ^[^[:space:]]+$ ]] || fail "metrics-read username is invalid"
+  [[ "${#token}" -ge 20 && ! "${token}" =~ [[:space:]] ]] ||
+    fail "metrics-read token is invalid"
+
+  local tmp
+  tmp="$(mktemp /etc/jobseek-codex/.error-review-metrics.env.XXXXXX)"
+  chmod 0600 "${tmp}"
+  {
+    printf 'GRAFANA_METRICS_READ_URL=%s\n' "${url%/}"
+    printf 'GRAFANA_METRICS_READ_USERNAME=%s\n' "${username}"
+    printf 'GRAFANA_METRICS_READ_TOKEN=%s\n' "${token}"
+  } >"${tmp}"
+  chown root:root "${tmp}"
+  mv -f "${tmp}" "${METRICS_CONFIG}"
+  chmod 0600 "${METRICS_CONFIG}"
+  unset GRAFANA_METRICS_READ_URL GRAFANA_METRICS_READ_USERNAME GRAFANA_METRICS_READ_TOKEN
 }
 
 update_repo() {
@@ -161,6 +202,7 @@ verify_entrypoints() {
     "${REPO_DIR}/scripts/codex-daily-routine-runner.py" \
     "${REPO_DIR}/scripts/codex-docker-lifecycle-watch.py" \
     "${REPO_DIR}/scripts/codex-error-review-bundle.py" \
+    "${REPO_DIR}/scripts/codex-error-review-conformance.py" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" \
     "${REPO_DIR}/scripts/codex-worktree-reconcile.py" \
     "${REPO_DIR}/scripts/codex-usage-probe.py" \
@@ -235,6 +277,7 @@ restore_timers_on_exit() {
 main() {
   require_root
   ensure_layout
+  install_metrics_config
   require_runtime_config
   pause_timer_activations
 

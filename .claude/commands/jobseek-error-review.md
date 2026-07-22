@@ -55,6 +55,9 @@ INPUTS
    allowlisted create/start/restart/die/oom/kill/stop/destroy events, exit
    codes/signals, and container IDs; the cgroup file contains generation-safe
    memory.events counters.
+   Also read metrics/historical-prometheus.json. It contains only bounded,
+   repo-allowlisted 24h Grafana query results. Record every query's status,
+   series count, and freshness; never seek the root-only query credential.
 2. Prior review reports: read every `.md` under
    ~/dev/claude/review-jobseek-errors/ before classifying. That directory
    is the agent's cross-run memory.
@@ -158,6 +161,12 @@ error class that independently meets a filing criterion inside the
 observed window. State the observed window and evidence gap in the
 report and issue body; do not make unsupported 24-hour trend claims.
 
+Historical metrics fail closed: if historical-prometheus.json reports
+required_complete=false, classify the evidence gap itself as INCIDENT,
+deduplicate/create or update a daily-error-review issue for the failed query
+IDs, and do not report overall health. Do not widen access to Docker, sudo,
+Grafana credentials, Loki, or production env files.
+
 ================================================================
 REPORT (always write, even on a fully healthy day)
 ================================================================
@@ -176,6 +185,12 @@ Schema:
   host kernel log (read/restricted),
   any same-container RestartCount delta since yesterday,
   any same-container cgroup memory.events.oom_kill delta.
+
+  ## Metrics evidence
+  Required evidence complete: yes|no
+  | query | status | series | newest sample | freshness |
+  Include every allowlisted query ID. A `no` result requires a matching
+  incident in Details and a deduplicated issue URL in Filed issues.
 
   ## Totals
   | service | info | warning | error |

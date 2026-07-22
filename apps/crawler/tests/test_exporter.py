@@ -6,7 +6,7 @@ import uuid
 from collections import Counter
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import asyncpg
 import httpx
@@ -27,6 +27,7 @@ from src.exporter import (
     _export_postings_dual,
     _get_cursor,
     _is_downstream_unavailable,
+    _publish_cursor_metrics,
     _save_cursor,
     _save_cursors_atomic,
     _update_metrics,
@@ -1482,6 +1483,23 @@ class TestUpdateTypesenseHealth:
             await _update_typesense_health(backoff)
 
         assert backoff.consecutive_failures == 0
+
+    def test_cursor_metrics_publish_timestamp_without_row_id(self):
+        cursor_time = datetime(2026, 7, 22, 8, 15, tzinfo=UTC)
+        posting_cursor = (cursor_time, uuid.uuid4())
+        typesense_cursor = (cursor_time, uuid.uuid4())
+
+        with patch("src.exporter.exporter_cursor_timestamp_seconds") as gauge:
+            _publish_cursor_metrics(posting_cursor, typesense_cursor)
+
+        assert gauge.labels.call_args_list == [
+            call(target="supabase"),
+            call(target="typesense"),
+        ]
+        assert [call.args[0] for call in gauge.labels.return_value.set.call_args_list] == [
+            cursor_time.timestamp(),
+            cursor_time.timestamp(),
+        ]
 
 
 # ---------------------------------------------------------------------------

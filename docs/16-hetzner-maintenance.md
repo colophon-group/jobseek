@@ -646,8 +646,12 @@ Check the root-collected error-review evidence bundle:
 
 ```bash
 test -s /srv/jobseek-codex/inputs/error-review/latest/manifest.json
+test -s /srv/jobseek-codex/inputs/error-review/latest/metrics/historical-prometheus.json
 sudo -u codex-runner test -r /srv/jobseek-codex/inputs/error-review/latest/manifest.json
-find /srv/jobseek-codex/inputs/error-review/latest -maxdepth 1 -type f -printf '%f\n' | sort
+sudo -u codex-runner test -r /srv/jobseek-codex/inputs/error-review/latest/metrics/historical-prometheus.json
+test "$(stat -c '%U:%G:%a' /etc/jobseek-codex/error-review-metrics.env)" = root:root:600
+! sudo -u codex-runner test -r /etc/jobseek-codex/error-review-metrics.env
+python3 -c 'import json; d=json.load(open("/srv/jobseek-codex/inputs/error-review/latest/metrics/historical-prometheus.json")); print({"required_complete": d["required_complete"], "queries": {q["id"]: q["status"] for q in d["queries"]}})'
 ```
 
 The ChatGPT usage probe is advisory only. A failed probe should be visible in

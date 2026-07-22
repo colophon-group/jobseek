@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -98,9 +99,12 @@ def build_daily_prompt(
             f"read-only evidence bundle at:\n\n    {error_bundle}\n\n"
             "Use that bundle as the primary host/log input. Do not attempt to "
             "read Docker directly, use sudo, mutate host state, or inspect "
-            "production env files. If the bundle is missing or insufficient, "
-            "write the gap in the report and fail closed rather than widening "
-            "host access.\n"
+            "production env files. Read metrics/historical-prometheus.json and "
+            "record every allowlisted query's coverage/freshness under an exact "
+            "'## Metrics evidence' report heading. If required_complete is false, "
+            "classify the evidence gap as an incident, deduplicate/create or update "
+            "the corresponding daily-error-review issue, and do not report the "
+            "system healthy. Fail closed rather than widening host access.\n"
             if error_bundle
             else ""
         )
@@ -378,6 +382,16 @@ class DailyRoutineRunner:
             text = report.read_text(errors="replace")
             if f"Daily error review - {self.run_date}" not in text or "Window:" not in text:
                 return f"error-review report missing required header/window: {report}"
+            if self.error_bundle and (
+                "## Metrics evidence" not in text
+                or re.search(
+                    r"^Required evidence complete: (?:yes|no)\s*$",
+                    text,
+                    flags=re.MULTILINE,
+                )
+                is None
+            ):
+                return f"error-review report missing metrics coverage/freshness: {report}"
             return None
         if self.spec.name == "annotations":
             return self._verify_annotation_upload(worktree)

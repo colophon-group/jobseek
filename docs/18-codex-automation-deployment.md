@@ -240,8 +240,9 @@ Committed deployment templates:
   - starts once per day at 08:00 UTC with jitter and no missed-run catch-up.
 - [`../deploy/systemd/jobseek-codex-daily-error-review.service`](../deploy/systemd/jobseek-codex-daily-error-review.service)
   - root `ExecStartPre` collects a redacted read-only Docker/host evidence
-    bundle, then Codex analyzes that bundle without Docker or deploy-shell
-    access.
+    bundle plus bounded historical Grafana metrics, then an unprivileged
+    sandbox preflight proves Codex can read only the normalized bundle without
+    Docker, deploy-shell, production-env, or metrics-credential access.
 - [`../deploy/systemd/jobseek-codex-daily-error-review.timer`](../deploy/systemd/jobseek-codex-daily-error-review.timer)
   - starts once per day at 09:00 UTC with jitter and no missed-run catch-up.
 - [`../deploy/systemd/jobseek-codex-governor.env.example`](../deploy/systemd/jobseek-codex-governor.env.example)
@@ -316,6 +317,22 @@ and group `codex-runner`. Prefer a read-only local Postgres role that can
 `descriptions`, `company`, and `job_board`). Do not put HuggingFace or Codex
 tokens in this file; HuggingFace upload uses the runner user's local
 HuggingFace cache.
+
+For error review, provision `/etc/jobseek-codex/error-review-metrics.env` as
+`root:root` mode `0600` with exactly these keys:
+
+```text
+GRAFANA_METRICS_READ_URL=https://<metrics-query-host>/api/prom
+GRAFANA_METRICS_READ_USERNAME=<metrics-instance-id>
+GRAFANA_METRICS_READ_TOKEN=<dedicated-access-policy-token>
+```
+
+The token must belong to a single-stack Grafana Cloud access policy with only
+`metrics:read`; never reuse Alloy's `metrics:write` token or add `logs:read`.
+CI stores the three values as production-environment secrets with the same
+names and atomically installs the file during runner deployment. The systemd
+unit does not load this file as an `EnvironmentFile`: only its root preflight
+opens it, so the main `codex-runner` process cannot inherit or read the token.
 
 After the dry-run and one manual live pass are clean, enable the timer:
 
@@ -614,6 +631,10 @@ the directory and count toward the admission ceiling.
 - Read `host/docker-lifecycle.jsonl` with the generation-aware cgroup and
   inspect files; it preserves allowlisted exit codes, signals, OOM events,
   and replacement/restart timing across container recreation.
+- Read `metrics/historical-prometheus.json`, report every allowlisted query's
+  coverage/freshness, and require `required_complete=true` before describing
+  the system as healthy. Missing required evidence is itself a deduplicated
+  daily-error-review incident.
 - Collect host signals before log classification.
 - Classify errors as `known`, `novel`, `regression`, `spike`, or `incident`.
 - Partial evidence windows must be reported as gaps, but they do not
