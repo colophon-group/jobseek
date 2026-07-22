@@ -2388,6 +2388,32 @@ class TestProcessOneScrape:
         assert len(transient_calls) == 1
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_non_browser_target_closed_text_is_not_retried(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """A matching Playwright error cannot add retries to an HTTP scraper."""
+        pool, _conn = mock_pool
+        mock_scrape.side_effect = PlaywrightError(
+            "Page.goto: Target page, context or browser has been closed"
+        )
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "json-ld",
+            None,
+        )
+
+        assert ok is False
+        assert mock_scrape.await_count == 1
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_success_updates_and_records(self, mock_scrape, mock_pool, mock_http):
         """scrape_one returns content -> UPDATE + _RECORD_SCRAPE_SUCCESS -> True."""
         pool, conn = mock_pool
