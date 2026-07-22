@@ -66,16 +66,16 @@ export function HowWeIndexContent() {
                       <p className="text-muted"><Trans id="indexing.assurances.i1.body" comment="Assurance 1 body">Every retry window uses exponential backoff so we never hammer an origin, and we bail if a host keeps timing out.</Trans></p>
                     </li>
                     <li>
-                      <p className="font-semibold"><Trans id="indexing.assurances.i2.title" comment="Assurance 2 title">Robots, attribution, and TDM reservation.</Trans></p>
+                      <p className="font-semibold"><Trans id="indexing.assurances.i2.title" comment="Assurance 2 title">Robots discovery, request identity, and TDM reservation.</Trans></p>
                       <p className="text-muted">
                         <Trans id="indexing.assurances.i2.body" comment="Assurance 2 body">
-                          Our crawler reads <code>robots.txt</code>, honours disallow rules, identifies itself via <code>User-Agent</code>, and respects the W3C <code>TDM-Reservation</code> header{"\u2014"}if a page signals reservation, we skip it.
+                          Our crawler reads <code>robots.txt</code> for sitemap discovery; Disallow enforcement is not yet active. Requests use a stable browser-compatible <code>User-Agent</code>, with an identifying Job Seek UA on source-specific paths. We respect the W3C <code>TDM-Reservation</code> header{"\u2014"}if a page signals reservation, we skip it.
                         </Trans>
                       </p>
                     </li>
                     <li>
-                      <p className="font-semibold"><Trans id="indexing.assurances.i3.title" comment="Assurance 3 title">One page per minute.</Trans></p>
-                      <p className="text-muted"><Trans id="indexing.assurances.i3.body" comment="Assurance 3 body">Even after discovery we retrieve job detail pages at a strict limit of one request per site per minute.</Trans></p>
+                      <p className="font-semibold"><Trans id="indexing.assurances.i3.title" comment="Assurance 3 title">Per-domain pacing.</Trans></p>
+                      <p className="text-muted"><Trans id="indexing.assurances.i3.body" comment="Assurance 3 body">The queue spaces requests to the same rate-limit domain by 2 seconds by default and 0.5 seconds for known ATS APIs. Actual traffic is usually lower, and retries back off exponentially.</Trans></p>
                     </li>
                   </ul>
                 </div>

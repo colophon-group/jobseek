@@ -1379,7 +1379,7 @@ msgstr "Inserisci la tua nuova password qui sotto."
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:78
 msgid "indexing.assurances.i3.body"
-msgstr "Anche dopo la scoperta, recuperiamo le pagine di dettaglio degli annunci con un limite rigoroso di una richiesta per sito al minuto."
+msgstr "La coda distanzia le richieste allo stesso dominio di rate limit di 2 secondi per impostazione predefinita e di 0,5 secondi per le API ATS note. Il traffico reale è solitamente inferiore e i tentativi successivi usano il backoff esponenziale."
 
 #. Feature section 1 heading
 #. js-lingui-explicit-id
@@ -1792,7 +1792,7 @@ msgstr "Come si comporta il crawler sul sito della mia azienda?"
 #: app/[lang]/(public)/how-we-index/page.tsx:22
 #: app/[lang]/(public)/how-we-index/page.tsx:59
 msgid "indexing.meta.description"
-msgstr "Come Job Seek scopre e indicizza le offerte di lavoro: il nostro approccio di sourcing, frequenza di crawl, limiti di frequenza, conformità a robots.txt e TDM-Reservation, e come disattivare."
+msgstr "Come Job Seek scopre e indicizza le offerte: fonti, frequenza di crawl, limiti di frequenza, rilevamento tramite robots.txt, gestione di TDM-Reservation e opt-out."
 
 #. FAQ question about job listing refresh cadence.
 #. js-lingui-explicit-id
@@ -2774,7 +2774,7 @@ msgstr "Una volta recuperato un singolo annuncio, memorizziamo solo i metadati s
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:77
 msgid "indexing.assurances.i3.title"
-msgstr "Una pagina al minuto."
+msgstr "Ritmo per dominio."
 
 #. Username invalid characters hint
 #. js-lingui-explicit-id
@@ -2876,7 +2876,7 @@ msgstr "Altro"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:71
 msgid "indexing.assurances.i2.body"
-msgstr "Il nostro crawler legge il file <0>robots.txt</0>, rispetta le regole di disallow, si identifica tramite <1>User-Agent</1> e rispetta l'header W3C <2>TDM-Reservation</2> — se una pagina segnala una riserva, la saltiamo."
+msgstr "Il nostro crawler legge <0>robots.txt</0> per rilevare le sitemap; l'applicazione delle regole Disallow non è ancora attiva. Le richieste usano uno <1>User-Agent</1> stabile e compatibile con i browser, mentre alcuni percorsi specifici per una fonte usano uno UA Job Seek identificabile. Rispettiamo l'header W3C <2>TDM-Reservation</2> — se una pagina segnala una riserva, la saltiamo."
 
 #. TOC: Our stance on automation
 #. js-lingui-explicit-id
@@ -3510,7 +3510,7 @@ msgstr "Ritmo rispettoso."
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:69
 msgid "indexing.assurances.i2.title"
-msgstr "Robot, attribuzione e riserva TDM."
+msgstr "Rilevamento robots, identità delle richieste e riserva TDM."
 
 #. Label for role/occupation filter in advanced search
 #. js-lingui-explicit-id
@@ -4211,7 +4211,7 @@ msgstr "L'azienda che stai cercando non esiste o è stata rimossa."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx:54
 msgid "about.transparency.p1"
-msgstr "Il codice del crawler è open source, così chiunque può verificare come raccogliamo i dati. Rispettiamo robots.txt, onoriamo gli header TDM-Reservation e ci limitiamo a una richiesta per sito al minuto. Ogni link in uscita include utm_source=jobseek, così i datori di lavoro sanno da dove arriva il traffico."
+msgstr "Il codice del crawler è open source, così chiunque può verificare come raccogliamo i dati. Controlliamo robots.txt per rilevare le sitemap, rispettiamo gli header TDM-Reservation e distanziamo le richieste per dominio di rate limit. Ogni link in uscita include utm_source=jobseek, così i datori di lavoro sanno da dove arriva il traffico."
 
 #. FAQ answer explaining crawler discovery and refresh frequency.
 #. js-lingui-explicit-id
@@ -4633,7 +4633,7 @@ msgstr "Ci opponiamo a delegare le decisioni di assunzione o di ricerca lavoro a
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:82
 msgid "faq.a.crawlingPolicy"
-msgstr "Rispettiamo robots.txt e gli header TDM-Reservation, limitiamo le richieste a una per sito al minuto e utilizziamo il backoff esponenziale. Tutte le richieste si identificano tramite User-Agent. Consulta la nostra pagina sull'indicizzazione per tutti i dettagli."
+msgstr "Controlliamo robots.txt per rilevare le sitemap; l'applicazione delle regole Disallow non è ancora attiva. Rispettiamo gli header TDM-Reservation, distanziamo le richieste per dominio di rate limit e usiamo il backoff esponenziale. La maggior parte delle richieste usa uno User-Agent stabile e compatibile con i browser; alcuni percorsi specifici per una fonte possono usare uno UA Job Seek identificabile. Consulta la nostra pagina sull'indicizzazione per tutti i dettagli."
 
 #. Description telling user a verification link was sent
 #. js-lingui-explicit-id

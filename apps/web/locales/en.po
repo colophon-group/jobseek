@@ -1379,7 +1379,7 @@ msgstr "Enter your new password below."
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:78
 msgid "indexing.assurances.i3.body"
-msgstr "Even after discovery we retrieve job detail pages at a strict limit of one request per site per minute."
+msgstr "The queue spaces requests to the same rate-limit domain by 2 seconds by default and 0.5 seconds for known ATS APIs. Actual traffic is usually lower, and retries back off exponentially."
 
 #. Feature section 1 heading
 #. js-lingui-explicit-id
@@ -1792,7 +1792,7 @@ msgstr "How does the crawler behave on my company's website?"
 #: app/[lang]/(public)/how-we-index/page.tsx:22
 #: app/[lang]/(public)/how-we-index/page.tsx:59
 msgid "indexing.meta.description"
-msgstr "How Job Seek discovers and indexes job postings: our sourcing approach, crawl frequency, rate limits, robots.txt and TDM-Reservation compliance, and how to opt out."
+msgstr "How Job Seek discovers and indexes job postings: sourcing, crawl frequency, rate limits, robots.txt discovery, TDM-Reservation handling, and how to opt out."
 
 #. FAQ question about job listing refresh cadence.
 #. js-lingui-explicit-id
@@ -2774,7 +2774,7 @@ msgstr "Once we fetch an individual posting we store only the job-specific metad
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:77
 msgid "indexing.assurances.i3.title"
-msgstr "One page per minute."
+msgstr "Per-domain pacing."
 
 #. Username invalid characters hint
 #. js-lingui-explicit-id
@@ -2876,7 +2876,7 @@ msgstr "Other"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:71
 msgid "indexing.assurances.i2.body"
-msgstr "Our crawler reads <0>robots.txt</0>, honours disallow rules, identifies itself via <1>User-Agent</1>, and respects the W3C <2>TDM-Reservation</2> header—if a page signals reservation, we skip it."
+msgstr "Our crawler reads <0>robots.txt</0> for sitemap discovery; Disallow enforcement is not yet active. Requests use a stable browser-compatible <1>User-Agent</1>, with an identifying Job Seek UA on source-specific paths. We respect the W3C <2>TDM-Reservation</2> header—if a page signals reservation, we skip it."
 
 #. TOC: Our stance on automation
 #. js-lingui-explicit-id
@@ -3510,7 +3510,7 @@ msgstr "Respectful pacing."
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:69
 msgid "indexing.assurances.i2.title"
-msgstr "Robots, attribution, and TDM reservation."
+msgstr "Robots discovery, request identity, and TDM reservation."
 
 #. Label for role/occupation filter in advanced search
 #. js-lingui-explicit-id
@@ -4211,7 +4211,7 @@ msgstr "The company you are looking for does not exist or has been removed."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx:54
 msgid "about.transparency.p1"
-msgstr "The crawler code is open source so anyone can audit how we collect data. We respect robots.txt, honor TDM-Reservation headers, and limit ourselves to one request per site per minute. Every outbound link includes utm_source=jobseek so employers know where their traffic comes from."
+msgstr "The crawler code is open source so anyone can audit how we collect data. We inspect robots.txt for sitemap discovery, honor TDM-Reservation headers, and pace requests per rate-limit domain. Every outbound link includes utm_source=jobseek so employers know where their traffic comes from."
 
 #. FAQ answer explaining crawler discovery and refresh frequency.
 #. js-lingui-explicit-id
@@ -4633,7 +4633,7 @@ msgstr "We oppose handing hiring or job-search decisions over to black-box autom
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:82
 msgid "faq.a.crawlingPolicy"
-msgstr "We respect robots.txt and TDM-Reservation headers, limit requests to one per site per minute, and use exponential backoff. All requests identify themselves via User-Agent. See our Job Indexing page for full details."
+msgstr "We inspect robots.txt for sitemap discovery; Disallow enforcement is not yet active. We respect TDM-Reservation headers, pace requests per rate-limit domain, and use exponential backoff. Most requests use a stable browser-compatible User-Agent, while source-specific paths may use an identifying Job Seek UA. See our Job Indexing page for full details."
 
 #. Description telling user a verification link was sent
 #. js-lingui-explicit-id
