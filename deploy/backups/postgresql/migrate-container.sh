@@ -66,7 +66,7 @@ apply() {
   docker run --rm \
     --user 70:70 \
     --network host \
-    --volume "$CONFIG_DIR:/etc/jobseek-backup/postgresql:ro" \
+    --volume "$CONFIG_DIR:/etc/jobseek-backup:ro" \
     --volume "$CONFIG_DIR/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro" \
     --volume "$SPOOL_DIR:/var/spool/pgbackrest" \
     "$TARGET_IMAGE" \
@@ -87,7 +87,7 @@ apply() {
     --restart unless-stopped \
     --env-file "$CONFIG_DIR/postgres.env" \
     --volume "$DATA_DIR:/var/lib/postgresql/data" \
-    --volume "$CONFIG_DIR:/etc/jobseek-backup/postgresql:ro" \
+    --volume "$CONFIG_DIR:/etc/jobseek-backup:ro" \
     --volume "$CONFIG_DIR/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro" \
     --volume "$SPOOL_DIR:/var/spool/pgbackrest" \
     "$TARGET_IMAGE" \
