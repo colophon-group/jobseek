@@ -6,7 +6,7 @@ import { Eye, Loader2, LogIn } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
-import type { WatchlistSummary, WatchlistFilters } from "@/lib/actions/watchlists";
+import type { UserWatchlistOverview, WatchlistFilters } from "@/lib/actions/watchlists";
 import { createWatchlist } from "@/lib/actions/watchlists";
 import { WatchlistCard, CreateWatchlistCard } from "@/components/watchlist/watchlist-card";
 import { PublicWatchlistSearch } from "@/components/watchlist/public-watchlist-search";
@@ -17,10 +17,12 @@ export function WatchlistsPage({
   initialWatchlists,
   username,
   limitReached,
+  locale,
 }: {
-  initialWatchlists: WatchlistSummary[];
+  initialWatchlists: UserWatchlistOverview[];
   username: string | null;
   limitReached: boolean;
+  locale: string;
 }) {
   const { t } = useLingui();
   const router = useRouter();
@@ -28,7 +30,49 @@ export function WatchlistsPage({
   const { user, isLoggedIn } = useSession();
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
+  const [watchlists, setWatchlists] = useState(initialWatchlists);
   const upgrade = useUpgradeModal();
+
+  useEffect(() => {
+    setWatchlists(initialWatchlists);
+    if (!isLoggedIn || initialWatchlists.length === 0) return;
+
+    const controller = new AbortController();
+    let disposed = false;
+    const timeoutId = setTimeout(() => controller.abort(), 12_000);
+
+    void fetch(`/api/web/watchlists/counts?locale=${encodeURIComponent(locale)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Watchlist counts failed: ${response.status}`);
+        return response.json() as Promise<{ counts?: Record<string, unknown> }>;
+      })
+      .then(({ counts }) => {
+        if (!counts || disposed) return;
+        setWatchlists((current) =>
+          current.map((watchlist) => {
+            const count = counts[watchlist.id];
+            return {
+              ...watchlist,
+              activeJobCount:
+                typeof count === "number" ? count : watchlist.activeJobCount,
+            };
+          }),
+        );
+      })
+      .catch(() => {
+        // Company counts remain visible when the optional live count fails.
+      })
+      .finally(() => clearTimeout(timeoutId));
+
+    return () => {
+      disposed = true;
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [initialWatchlists, isLoggedIn, locale]);
 
   function showLimitUpgrade() {
     upgrade.show(t({
@@ -149,7 +193,7 @@ export function WatchlistsPage({
               {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
             </Button>
           </div>
-        ) : initialWatchlists.length === 0 ? (
+        ) : watchlists.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center text-muted">
             <Eye size={32} />
             <p className="text-sm">
@@ -175,7 +219,7 @@ export function WatchlistsPage({
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {initialWatchlists.map((wl) => (
+            {watchlists.map((wl) => (
               <WatchlistCard
                 key={wl.id}
                 watchlist={wl}

@@ -39,6 +39,7 @@ export async function WatchlistsLoader({ locale }: { locale: string }) {
         initialWatchlists={watchlists}
         username={session?.user.username ?? null}
         limitReached={limitReached}
+        locale={locale}
       />
     );
   } catch (err) {
