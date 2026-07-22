@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   chmodSync,
+  existsSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -896,6 +897,11 @@ test("Dependabot updates and groups the pnpm workspace from its root", () => {
   );
 });
 
+test("the pnpm workspace has one JavaScript lockfile authority", () => {
+  assert.equal(existsSync("pnpm-lock.yaml"), true);
+  assert.equal(existsSync("apps/trace-viewer/package-lock.json"), false);
+});
+
 test("dependency review scopes the sharp libvips license exception", () => {
   const dependencyReviewJob = workflowJobBlock(workflow, "dependency-review");
 
@@ -1021,6 +1027,7 @@ test("setup-uv steps cache uv downloads by crawler lockfile", () => {
 
     for (const block of blocks) {
       assert.match(block, /enable-cache: true/);
+      assert.match(block, /prune-cache: true/);
       assert.match(block, /cache-dependency-glob: "apps\/crawler\/uv\.lock"/);
     }
   }

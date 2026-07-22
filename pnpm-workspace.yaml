@@ -4,7 +4,7 @@ packages:
   - "packages/*"
 
 overrides:
-  "@hono/node-server": ">=1.19.13"
+  "@hono/node-server": "2.0.10"
   "@babel/core": ">=7.29.6"
   axios: 1.18.0
   basic-ftp: ">=5.3.1"
@@ -12,13 +12,14 @@ overrides:
   defu: ">=6.1.5"
   brace-expansion: 5.0.7
   esbuild: 0.28.1
-  fast-uri: ">=3.1.2"
+  "fast-uri@>=3.0.0 <4.0.0": "3.1.4"
+  "fast-uri@>=4.0.0 <5.0.0": "4.1.1"
   fast-xml-builder: ">=1.1.7"
   fast-xml-parser: ">=5.7.0"
   flatted: ">=3.4.2"
   follow-redirects: ">=1.16.0"
   form-data: ">=4.0.6"
-  hono: 4.12.25
+  hono: 4.12.27
   ip-address: ">=10.1.1"
   js-yaml: 4.3.0
   kysely: 0.29.2

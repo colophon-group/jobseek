@@ -5,12 +5,12 @@ description = "Job listing monitor and extraction crawler"
 requires-python = ">=3.13"
 dependencies = [
     "asyncpg>=0.30",
-    "boto3>=1.35",
+    "boto3>=1.43.53",
     "click>=8.4.2",
     "httpx>=0.28",
     "pydantic-settings>=2.14.2",
     "pyyaml>=6.0",
-    "structlog>=24.4",
+    "structlog>=26.1.0",
     "python-dotenv>=1.2.2",
     "polars>=1.43.0",
     "jmespath>=1.0",
@@ -30,7 +30,7 @@ dependencies = [
     "huggingface-hub>=1.24.0",
     "cryptography>=48.0.1",
     "typesense>=0.21",
-    "beautifulsoup4>=4.12",
+    "beautifulsoup4>=4.15.0",
     "jsonschema>=4.23",
 ]
 
