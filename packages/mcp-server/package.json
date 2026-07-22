@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.13",
-    "typescript": "^5.7.0"
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=18"
