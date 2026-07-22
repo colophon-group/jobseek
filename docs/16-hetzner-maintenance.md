@@ -24,6 +24,106 @@ SSH pattern:
 ssh -i ~/.ssh/hetzner_deploy root@<HOST>
 ```
 
+## Ingress and SSH Baseline
+
+The repository-owned ingress source of truth is:
+
+- [`manage-hetzner-ingress.py`](../scripts/manage-hetzner-ingress.py) for the
+  Hetzner Cloud Firewall attached to the three non-Murmur production servers;
+- [`install-host.sh`](../deploy/networking/install-host.sh) for UFW and sshd;
+- [`harden-postgresql.sh`](../deploy/networking/harden-postgresql.sh) for the
+  PostgreSQL listener and exact HBA;
+- [`jobseek-ingress-conformance.py`](../scripts/jobseek-ingress-conformance.py)
+  for redacted host evidence; and
+- [`deploy-hetzner-ingress.yml`](../.github/workflows/deploy-hetzner-ingress.yml)
+  for protected audit and apply operations.
+
+The public Hetzner firewall is default-deny inbound and allows only TCP 22 and
+ICMP over IPv4/IPv6. It has no outbound rules, so Hetzner's default outbound
+allow behavior remains in effect for backups, Grafana, crawler traffic, and
+Cloudflare Tunnel. Hetzner Cloud Firewalls do not filter private-network
+traffic, so every host also runs UFW with default-deny inbound and
+default-allow outbound:
+
+| role | additional private ingress |
+|---|---|
+| crawler | none |
+| PostgreSQL | TCP 5432 from the crawler's exact private IPv4 only |
+| Typesense | TCP 8108 from the crawler's exact private IPv4 only |
+
+SSH is key-only, keeps `root` as the CI/CD break-glass identity, permits
+`deploy` only where it already has an authorized key, and disables forwarding,
+tunnels, and user-supplied environments. A public SSH allowlist is
+intentionally not required. The PostgreSQL host's root password is locked only
+after a non-empty root `authorized_keys` file and valid effective sshd config
+have been proved. Never remove the protected `HETZNER_SSH_KEY` secret before a
+replacement break-glass path is tested.
+
+Crawler application metrics bind to loopback by default. Compose uses host
+networking, so local Alloy can still scrape ports 9093–9098 without exposing
+them on a host interface. PostgreSQL binds only to loopback and its private
+address. Its exact HBA permits the `crawler` and
+`jobseek_labeller_readonly` roles, on the `crawler` database, from loopback and
+the exact crawler private address, using SCRAM-SHA-256.
+
+PostgreSQL TLS is not required on this local-crawler data path under the
+current threat model: the database contains crawler-source job data rather
+than end-user/auth data, the service is bound to the private interface, both
+provider and host boundaries deny public access, the HBA admits one source,
+and SCRAM prevents plaintext password authentication. Hetzner private-network
+traffic is not encrypted, so this is not a general exception for sensitive
+data. Adding user, authentication, billing, or other confidential data to this
+database requires a separate certificate lifecycle and `verify-full` client
+cutover before that data is admitted.
+
+Run the read-only production audit from GitHub Actions first:
+
+```bash
+gh workflow run deploy-hetzner-ingress.yml \
+  --ref main \
+  -f action=audit
+```
+
+An apply is deliberately ordered to limit lockout and downtime:
+
+1. validate and copy the exact reviewed revision;
+2. stage sshd/UFW independently on all hosts, each with a 15-minute automatic
+   rollback timer;
+3. require a fresh successful PostgreSQL backup, retain the original stopped
+   container, and replace PostgreSQL with the same image/mount/resource
+   contract but a private listener and exact HBA;
+4. prove an actual query and Typesense health request from the crawler's live
+   exporter configuration over the private paths and a fresh SSH session;
+5. commit host transactions only after conformance passes; and
+6. attach the provider firewall last, then externally prove SSH remains open
+   and every known service/metrics port is closed.
+
+Typesense is not restarted or reconfigured by this workflow. PostgreSQL is the
+only workload handoff. Any failed stage rolls itself back; a cross-host path
+failure immediately rolls back every staged host; failed commits roll back any
+transaction left pending; and the independent systemd timers remain armed
+until commit. Provider-firewall changes use a root-only runner-temporary state
+file and restore the previous rules/attachments if apply or external
+verification fails.
+
+Apply only the reviewed revision on `main`:
+
+```bash
+gh workflow run deploy-hetzner-ingress.yml \
+  --ref main \
+  -f action=apply
+```
+
+Before the first apply, this audit is expected to exit nonzero while still
+emitting the redacted control evidence. After maintenance, rerun
+`action=audit`: it exits successfully only when all three hosts, the exact
+provider policy, and the external port probes are compliant. External
+verification and logs intentionally omit addresses,
+resource IDs, credentials, connection strings, and raw HBA contents. Future
+PostgreSQL container migrations source the root-owned
+`/etc/jobseek-ingress/postgresql-network.env`; removing or bypassing that file
+would regress the listener to a wildcard and must fail review.
+
 ## Fleet Observability
 
 All three hosts run the same repo-owned host telemetry surface:

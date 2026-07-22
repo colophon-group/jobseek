@@ -549,9 +549,9 @@ class _QuietThreadingWSGIServer(socketserver.ThreadingMixIn, WSGIServer):
 
 def _start_metrics_http_server(
     port: int,
-    addr: str = "0.0.0.0",
+    addr: str = "127.0.0.1",
 ) -> tuple[WSGIServer, threading.Thread]:
-    """Start the shared metrics listener and return it for lifecycle tests."""
+    """Start the loopback-only metrics listener and return it for lifecycle tests."""
     server = make_server(
         addr,
         port,
