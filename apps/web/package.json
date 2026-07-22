@@ -91,7 +91,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.3",
     "happy-dom": "^20.10.6",
-    "playwright": "^1.58.2",
+    "playwright": "^1.61.1",
     "svgo": "^4.0.2",
     "tsx": "^4.21.0",
     "typescript": "^5",
