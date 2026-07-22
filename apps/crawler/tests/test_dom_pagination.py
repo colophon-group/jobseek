@@ -185,6 +185,27 @@ class TestDomDiscoverInitialFetch:
                 {"_board_url": "https://blocked.example/careers"},
             )
 
+    async def test_rendered_cloudflare_challenge_raises(self, monkeypatch):
+        """Cloudflare's interstitial must not look like an empty board."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/careers"
+        page.content = AsyncMock(
+            return_value=(
+                "<html><head><title>Just a moment...</title></head>"
+                "<body><script src='/cdn-cgi/challenge-platform/scripts/jsd/main.js'>"
+                "</script><p>Enable JavaScript and cookies to continue</p></body></html>"
+            )
+        )
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
     async def test_rendered_captcha_library_is_not_a_challenge(self, monkeypatch):
         """A normal page may load BotDetect without being a challenge page."""
 

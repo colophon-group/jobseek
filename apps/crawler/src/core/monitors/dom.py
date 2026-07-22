@@ -66,6 +66,9 @@ _SITEGROUND_CHALLENGE_PATHS = (
     "/.well-known/sgcaptcha",
 )
 
+_CLOUDFLARE_CHALLENGE_PATH = "/cdn-cgi/challenge-platform/"
+_CLOUDFLARE_CHALLENGE_TEXT = "enable javascript and cookies"
+
 
 class BotChallengeError(RuntimeError):
     """The board returned an anti-bot challenge instead of job listings.
@@ -79,7 +82,12 @@ class BotChallengeError(RuntimeError):
 
 def _raise_if_bot_challenge(url: str, html: str) -> None:
     haystack = f"{url}\n{html}".lower()
-    if any(path in haystack for path in _SITEGROUND_CHALLENGE_PATHS):
+    is_siteground = any(path in haystack for path in _SITEGROUND_CHALLENGE_PATHS)
+    is_cloudflare = "<title>just a moment" in haystack or (
+        _CLOUDFLARE_CHALLENGE_PATH in haystack
+        and _CLOUDFLARE_CHALLENGE_TEXT in haystack
+    )
+    if is_siteground or is_cloudflare:
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
         )

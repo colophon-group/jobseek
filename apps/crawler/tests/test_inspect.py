@@ -663,6 +663,82 @@ class TestMigratedBoardsHaveProxy:
         )
 
 
+class TestSafranBoardConfig:
+    """Safran's global board and BambooHR subsidiary need pinned transports."""
+
+    def test_global_board_uses_proxy_pagination_and_extracts_details(self):
+        import json
+
+        from src.core.scrapers.dom import parse_html
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "safran-global"), None)
+        assert row is not None, "safran-global row missing from boards.csv"
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "dom"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        assert monitor_config["proxy"] is True
+        assert scraper_config["proxy"] is True
+        assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["pagination"]["start"] == 0
+        assert monitor_config["pagination"]["max_pages"] >= 1000
+
+        sample_html = """
+        <h1>Conformity Inspector</h1>
+        <div>Published 04.03.2026</div>
+        <div>
+          Company : Northwest Aerospace Technologies Job field : Quality
+          Location : Everett , Washington , United States
+          Contract type : Permanent Contract duration : Full-time
+          Required degree : Bachelor's Degree
+        </div>
+        <a>Apply</a>
+        <h2>Job Description</h2>
+        <p>Inspect aircraft interiors and verify conformity.</p>
+        <h2>Complementary Description</h2>
+        <p>Work with the quality and manufacturing teams.</p>
+        <a>Apply</a>
+        """
+        content = parse_html(sample_html, scraper_config)
+        assert content.title == "Conformity Inspector"
+        assert content.locations == ["Everett , Washington , United States"]
+        assert content.employment_type == "Full-time"
+        assert content.date_posted == "04.03.2026"
+        assert "Inspect aircraft interiors" in content.description
+        assert "Work with the quality" in content.description
+
+    def test_federal_systems_uses_public_bamboohr_detail_api(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "safran-federal-systems"),
+            None,
+        )
+        assert row is not None, "safran-federal-systems row missing from boards.csv"
+        assert row["monitor_type"] == "api_sniffer"
+        assert row["scraper_type"] == "api_sniffer"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        assert monitor_config["api_url"].endswith("/careers/list")
+        assert monitor_config["url_template"].endswith("/careers/{id}")
+        assert scraper_config["api_url"].endswith("/careers/{id}/detail")
+        assert scraper_config["json_path"] == "result.jobOpening"
+        assert set(scraper_config["enrich"]) == {
+            "description",
+            "locations",
+            "date_posted",
+        }
+
+
 class TestHasbroBoardConfig:
     """Hasbro's retired Eightfold board returns 404; keep it on Greenhouse."""
 
