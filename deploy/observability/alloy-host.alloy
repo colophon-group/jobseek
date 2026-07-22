@@ -15,6 +15,7 @@ prometheus.exporter.unix "host" {
     "meminfo",
     "netdev",
     "stat",
+    "textfile",
     "time",
     "uname",
     "vmstat",

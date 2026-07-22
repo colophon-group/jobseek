@@ -55,6 +55,8 @@ def test_host_metrics_have_stable_roles_and_no_public_listener():
     assert "--server.http.listen-addr=127.0.0.1:12347" in HOST_SERVICE
     assert "/var/run/docker.sock" not in HOST_CONFIG
     assert 'directory = "/var/lib/jobseek-observability/textfile"' in HOST_CONFIG
+    unix_exporter = HOST_CONFIG.split('prometheus.exporter.unix "host" {', 1)[1].split("\n}", 1)[0]
+    assert '"textfile"' in unix_exporter
 
 
 def test_host_alloy_unprivileged_paths_and_readiness_are_enforced():
