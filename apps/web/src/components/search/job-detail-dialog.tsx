@@ -18,6 +18,7 @@ import { ScrollFade } from "@/components/ui/scroll-fade";
 import { usePostingDetail } from "@/lib/use-posting-detail";
 
 import { InterviewList } from "@/components/my-jobs/interview-list";
+import { reconcileInterviewMutation } from "@/components/my-jobs/reconcile-interview-mutation";
 import { updateJobStatus, getMyJobDetail, addInterview, updateInterview, deleteInterview } from "@/lib/actions/my-jobs";
 import type { ApplicationStatus, InterviewEntry, InterviewType } from "@/lib/actions/my-jobs-types";
 import { usePageActions } from "@/components/providers/SearchStateProvider";
@@ -98,37 +99,76 @@ function DetailContent({ detail, descriptionLoaded }: { detail: PostingDetail; d
     });
   }, [savedJobId, interviewsLoaded]);
 
+  function applyTrackedDetail(current: Awaited<ReturnType<typeof getMyJobDetail>>) {
+    if (!current) return;
+    setInterviews(current.interviews);
+    setTrackingStatus(detail.id, current.status as ApplicationStatus);
+  }
+
   async function handleStatusChange(newStatus: ApplicationStatus) {
     if (!savedJobId) return;
     setTrackingStatus(detail.id, newStatus);
     await updateJobStatus(savedJobId, newStatus);
   }
 
-  async function handleAddInterview(type: InterviewType) {
-    if (!savedJobId) return;
-    const result = await addInterview(savedJobId, type);
-    if (result.ok && result.interview) {
-      setInterviews((prev) => [...prev, result.interview!]);
-      // Server auto-transitions applied → interviewing
-      if (trackingStatus === "applied" || trackingStatus === "saved") {
-        setTrackingStatus(detail.id, "interviewing");
-      }
-    }
+  async function handleAddInterview(type: InterviewType): Promise<boolean> {
+    if (!savedJobId) return false;
+    const previousIds = new Set(interviews.map((interview) => interview.id));
+
+    return reconcileInterviewMutation({
+      mutate: () => addInterview(savedJobId, type),
+      refresh: () => getMyJobDetail(savedJobId),
+      applyDetail: applyTrackedDetail,
+      verify: (current) => current.interviews.some((interview) => !previousIds.has(interview.id)),
+      applyFallback: (result) => {
+        if (!result.interview) return false;
+        setInterviews((previous) => previous.some((interview) => interview.id === result.interview!.id)
+          ? previous
+          : [...previous, result.interview!]);
+        if (trackingStatus === "applied") {
+          setTrackingStatus(detail.id, "interviewing");
+        }
+        return true;
+      },
+    });
   }
 
-  async function handleUpdateInterview(id: string, updates: { type?: InterviewType; scheduledAt?: string | null }) {
-    await updateInterview(id, updates);
-    setInterviews((prev) => prev.map((i) => i.id === id ? { ...i, ...updates } : i));
+  async function handleUpdateInterview(id: string, updates: { type?: InterviewType; scheduledAt?: string | null }): Promise<boolean> {
+    if (!savedJobId) return false;
+    return reconcileInterviewMutation({
+      mutate: () => updateInterview(id, updates),
+      refresh: () => getMyJobDetail(savedJobId),
+      applyDetail: applyTrackedDetail,
+      verify: (current) => {
+        const updated = current.interviews.find((interview) => interview.id === id);
+        if (!updated) return false;
+        if (updates.type !== undefined && updated.type !== updates.type) return false;
+        if (updates.scheduledAt !== undefined && updated.scheduledAt !== updates.scheduledAt) return false;
+        return true;
+      },
+      applyFallback: () => {
+        setInterviews((previous) => previous.map((interview) => interview.id === id ? { ...interview, ...updates } : interview));
+        return true;
+      },
+    });
   }
 
-  async function handleDeleteInterview(id: string) {
-    await deleteInterview(id);
-    const remaining = interviews.filter((i) => i.id !== id);
-    setInterviews(remaining);
-    if (remaining.length === 0 && trackingStatus === "interviewing") {
-      setTrackingStatus(detail.id, "applied");
-      if (savedJobId) await updateJobStatus(savedJobId, "applied");
-    }
+  async function handleDeleteInterview(id: string): Promise<boolean> {
+    if (!savedJobId) return false;
+    const fallbackRemaining = interviews.filter((interview) => interview.id !== id);
+    return reconcileInterviewMutation({
+      mutate: () => deleteInterview(id),
+      refresh: () => getMyJobDetail(savedJobId),
+      applyDetail: applyTrackedDetail,
+      verify: (current) => current.interviews.every((interview) => interview.id !== id),
+      applyFallback: () => {
+        setInterviews(fallbackRemaining);
+        if (fallbackRemaining.length === 0 && trackingStatus === "interviewing") {
+          setTrackingStatus(detail.id, "applied");
+        }
+        return true;
+      },
+    });
   }
 
   return (

@@ -24,6 +24,7 @@ import { StatusBadge } from "./status-badge";
 import { withUtmSource } from "@/lib/utm";
 import { sanitizeJobHtml } from "@/lib/sanitize";
 import { InterviewList } from "./interview-list";
+import { reconcileInterviewMutation } from "./reconcile-interview-mutation";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
@@ -123,33 +124,77 @@ export function MyJobDetailPanel({
     }
   }
 
-  async function handleAddInterview(type: InterviewType) {
-    const result = await addInterview(savedJobId, type);
-    if (result.ok) {
-      const detail = await getMyJobDetail(savedJobId);
-      if (detail) {
-        setJobDetail(detail);
-        onStatusChanged?.(savedJobId, detail.status as ApplicationStatus);
-      }
-    }
+  function applyTrackedDetail(detail: MyJobDetail) {
+    setJobDetail(detail);
+    onStatusChanged?.(savedJobId, detail.status as ApplicationStatus);
+  }
+
+  async function handleAddInterview(type: InterviewType): Promise<boolean> {
+    const previousIds = new Set(jobDetail?.interviews.map((interview) => interview.id) ?? []);
+    return reconcileInterviewMutation({
+      mutate: () => addInterview(savedJobId, type),
+      refresh: () => getMyJobDetail(savedJobId),
+      applyDetail: applyTrackedDetail,
+      verify: (detail) => detail.interviews.some((interview) => !previousIds.has(interview.id)),
+      applyFallback: (result) => {
+        if (!result.interview) return false;
+        setJobDetail((previous) => previous ? {
+          ...previous,
+          status: previous.status === "applied" ? "interviewing" : previous.status,
+          interviews: previous.interviews.some((interview) => interview.id === result.interview!.id)
+            ? previous.interviews
+            : [...previous.interviews, result.interview!],
+        } : previous);
+        if (jobDetail?.status === "applied") {
+          onStatusChanged?.(savedJobId, "interviewing");
+        }
+        return true;
+      },
+    });
   }
 
   async function handleUpdateInterview(
     id: string,
     updates: { type?: InterviewType; scheduledAt?: string | null },
-  ) {
-    await updateInterview(id, updates);
-    const detail = await getMyJobDetail(savedJobId);
-    if (detail) setJobDetail(detail);
+  ): Promise<boolean> {
+    return reconcileInterviewMutation({
+      mutate: () => updateInterview(id, updates),
+      refresh: () => getMyJobDetail(savedJobId),
+      applyDetail: applyTrackedDetail,
+      verify: (detail) => {
+        const updated = detail.interviews.find((interview) => interview.id === id);
+        if (!updated) return false;
+        if (updates.type !== undefined && updated.type !== updates.type) return false;
+        if (updates.scheduledAt !== undefined && updated.scheduledAt !== updates.scheduledAt) return false;
+        return true;
+      },
+      applyFallback: () => {
+        setJobDetail((previous) => previous ? {
+          ...previous,
+          interviews: previous.interviews.map((interview) => interview.id === id ? { ...interview, ...updates } : interview),
+        } : previous);
+        return true;
+      },
+    });
   }
 
-  async function handleDeleteInterview(id: string) {
-    await deleteInterview(id);
-    const detail = await getMyJobDetail(savedJobId);
-    if (detail) {
-      setJobDetail(detail);
-      onStatusChanged?.(savedJobId, detail.status as ApplicationStatus);
-    }
+  async function handleDeleteInterview(id: string): Promise<boolean> {
+    return reconcileInterviewMutation({
+      mutate: () => deleteInterview(id),
+      refresh: () => getMyJobDetail(savedJobId),
+      applyDetail: applyTrackedDetail,
+      verify: (detail) => detail.interviews.every((interview) => interview.id !== id),
+      applyFallback: () => {
+        if (!jobDetail) return false;
+        const interviews = jobDetail.interviews.filter((interview) => interview.id !== id);
+        const status = interviews.length === 0 && jobDetail.status === "interviewing"
+          ? "applied"
+          : jobDetail.status;
+        setJobDetail({ ...jobDetail, interviews, status });
+        onStatusChanged?.(savedJobId, status as ApplicationStatus);
+        return true;
+      },
+    });
   }
 
   return (
