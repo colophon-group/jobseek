@@ -279,7 +279,12 @@ class TestResolveScraper:
 @pytest.fixture
 def mock_redis(monkeypatch):
     """Replace get_redis with a fakeredis instance and reset script SHAs."""
-    fake = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    fake = fakeredis.aioredis.FakeRedis(
+        decode_responses=True,
+        protocol=2,
+        socket_timeout=None,
+        socket_connect_timeout=None,
+    )
     monkeypatch.setattr(rq, "get_redis", lambda: fake)
     monkeypatch.setattr(rq, "_CLAIM_SHA", None)
     monkeypatch.setattr(rq, "_ENQUEUE_SHA", None)

@@ -417,7 +417,7 @@ jobs:
         with:
           python-version: "3.13"
 
-      - run: uv sync --group dev
+      - run: uv sync --group dev --extra enrich
         working-directory: apps/crawler
 
       - run: uv run pytest tests/ -v --ignore=tests/e2e/test_typesense_indexing.py

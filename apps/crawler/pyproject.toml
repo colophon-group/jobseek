@@ -18,10 +18,10 @@ dependencies = [
     "Pillow>=12.3.0",
     "cairosvg>=2.9.0",
     "defusedxml>=0.7.1",
-    "playwright>=1.58.0",
+    "playwright>=1.61.0",
     "fast-langdetect>=1.0.1",
     "prometheus-client>=0.21",
-    "redis>=5.0",
+    "redis>=8.0.1",
     "alembic>=1.18.5",
     "psycopg2-binary>=2.9.12",
     "selectolax>=0.4.11",
@@ -40,7 +40,7 @@ ws = "src.workspace.cli:main"
 labeller = "src.labeller.cli:main"
 
 [project.optional-dependencies]
-enrich = ["openai>=2.46.0", "anthropic>=0.116.0", "google-genai>=1.0"]
+enrich = ["openai>=2.46.0", "anthropic>=0.117.1", "google-genai>=2.13.0"]
 
 [dependency-groups]
 dev = [
