@@ -119,6 +119,47 @@ test("unchanged releases get deterministic commit-specific build versions", () =
   );
 });
 
+test("deploy-infrastructure self-triggers get deterministic build versions", () => {
+  assert.deepEqual(
+    deriveCrawlerBuildVersion({
+      sourceVersion: "0.13.152",
+      parentVersion: "0.13.152",
+      commitCount: "6202",
+      sha: "123456789abcdef0",
+      files: [
+        ".github/workflows/deploy-crawler-browser.yml",
+        "scripts/check-crawler-version.mjs",
+        "scripts/crawler-version.test.mjs",
+        "scripts/derive-crawler-build-version.mjs",
+      ],
+    }),
+    {
+      sourceVersion: "0.13.152",
+      packageVersion: "0.13.152+build.6202.g123456789abc",
+      imageTag: "v0.13.152-build.6202.g123456789abc",
+      derived: true,
+    },
+  );
+});
+
+test("deploy-infrastructure self-triggers cannot hide crawler source changes", () => {
+  assert.throws(
+    () =>
+      deriveCrawlerBuildVersion({
+        sourceVersion: "0.13.152",
+        parentVersion: "0.13.152",
+        commitCount: "6202",
+        sha: "123456789abcdef0",
+        files: [
+          ".github/workflows/deploy-crawler-browser.yml",
+          "scripts/derive-crawler-build-version.mjs",
+          "apps/crawler/src/cli.py",
+        ],
+      }),
+    /dependency-only or deploy-infrastructure main commit/,
+  );
+});
+
 test("deployment does not derive versions for arbitrary unchanged code", () => {
   assert.throws(
     () =>
@@ -129,7 +170,7 @@ test("deployment does not derive versions for arbitrary unchanged code", () => {
         sha: "abcdef1234567890",
         files: ["apps/crawler/src/cli.py"],
       }),
-    /dependency-only main commit/,
+    /dependency-only or deploy-infrastructure main commit/,
   );
 });
 

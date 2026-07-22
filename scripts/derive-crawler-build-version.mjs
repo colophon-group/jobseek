@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { isCrawlerDependencyOnly } from "./check-crawler-version.mjs";
+import { isCrawlerDerivedBuildEligible } from "./check-crawler-version.mjs";
 
 function parseVersion(value, label) {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(value.trim());
@@ -49,9 +49,10 @@ export function deriveCrawlerBuildVersion({
     };
   }
 
-  if (!isCrawlerDependencyOnly(files)) {
+  if (!isCrawlerDerivedBuildEligible(files)) {
     throw new Error(
-      "Unchanged crawler VERSION is only valid for a dependency-only main commit",
+      "Unchanged crawler VERSION is only valid for a dependency-only or " +
+        "deploy-infrastructure main commit",
     );
   }
 
