@@ -933,6 +933,16 @@ msgstr "Azienda"
 msgid "company.notFound.title"
 msgstr "Azienda non trovata"
 
+#. Primary recovery action on the company-not-found page
+#. js-lingui-explicit-id
+msgid "company.notFound.explore"
+msgstr "Scopri le aziende"
+
+#. Secondary action on the company-not-found page to request that company
+#. js-lingui-explicit-id
+msgid "company.notFound.request"
+msgstr "Richiedi questa azienda"
+
 #. WebApplication JSON-LD description for Job Seek.
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:121
