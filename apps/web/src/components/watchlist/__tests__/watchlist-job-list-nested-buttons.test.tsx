@@ -184,6 +184,20 @@ describe("WatchlistJobList row a11y (issue #3166)", () => {
     expect(saveBtn.getAttribute("tabindex")).not.toBe("-1");
   });
 
+  it("shows a compact location summary and includes it in the row name", () => {
+    const posting = entry("1");
+    posting.locationNames = ["Zurich", "Geneva", "Zurich"];
+
+    renderList([posting]);
+
+    expect(screen.getByText("Zurich +1")).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: "Company 1 — Job 1 — Zurich +1",
+      }),
+    ).toBeTruthy();
+  });
+
   it("Tab order across two rows is: row1.open, row1.save, row2.open, row2.save", () => {
     const { container } = renderList([entry("1"), entry("2")]);
 

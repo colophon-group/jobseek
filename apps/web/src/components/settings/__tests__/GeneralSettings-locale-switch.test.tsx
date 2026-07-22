@@ -117,6 +117,32 @@ afterEach(() => {
 import { GeneralSettings } from "../GeneralSettings";
 
 describe("GeneralSettings locale switch (#2988)", () => {
+  it("exposes selected theme, locale, and job-language states", () => {
+    act(() => {
+      render(
+        <GeneralSettings
+          savedJobLanguages={[]}
+          savedDisplayCurrency="EUR"
+          savedSalaryPeriod={null}
+          availableCurrencies={["EUR"]}
+          availableLanguages={[
+            { code: "en", count: 1000 },
+            { code: "de", count: 500 },
+          ]}
+          locale="en"
+        />,
+      );
+    });
+
+    expect(screen.getByRole("button", { name: "Dark" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Light" }).getAttribute("aria-pressed")).toBe("false");
+
+    const englishButtons = screen.getAllByRole("button", { name: /English/ });
+    expect(englishButtons[0]?.getAttribute("aria-pressed")).toBe("true");
+    expect(englishButtons[1]?.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "All languages" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("writes NEXT_LOCALE cookie and pushes new-locale URL on Deutsch click", async () => {
     const user = userEvent.setup();
     act(() => {

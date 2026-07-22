@@ -28,6 +28,12 @@ import { formatDateDivider, getDateKey } from "@/components/watchlist/format-dat
 
 const BATCH = 20;
 
+function formatLocationSummary(locationNames: string[] | undefined): string {
+  const names = [...new Set((locationNames ?? []).filter(Boolean))];
+  if (names.length === 0) return "";
+  return names.length === 1 ? names[0]! : `${names[0]} +${names.length - 1}`;
+}
+
 export interface WatchlistJobListFilters {
   companyIds: string[];
   anyCompany?: boolean;
@@ -150,6 +156,7 @@ export function WatchlistJobList({
   const seenDividers = new Set<string>();
 
   for (const entry of postings) {
+    const locationSummary = formatLocationSummary(entry.locationNames);
     const dateKey = getDateKey(entry.firstSeenAt);
     if (dateKey !== lastDateKey && !seenDividers.has(dateKey)) {
       lastDateKey = dateKey;
@@ -196,7 +203,7 @@ export function WatchlistJobList({
           onClick={() => handleOpenPosting(entry.id)}
           aria-label={
             entry.title
-              ? `${entry.company.name} — ${entry.title}`
+              ? `${entry.company.name} — ${entry.title}${locationSummary ? ` — ${locationSummary}` : ""}`
               : t({
                   id: "watchlists.jobList.openPosting",
                   comment: "Aria label for the row open-posting button when the posting title is missing",
@@ -212,8 +219,13 @@ export function WatchlistJobList({
           {entry.company.name}
         </span>
 
-        <span className="min-w-0 flex-1 truncate text-sm">
-          {entry.title ?? "—"}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm">{entry.title ?? "—"}</span>
+          {locationSummary && (
+            <span className="block truncate text-[10px] text-muted">
+              {locationSummary}
+            </span>
+          )}
         </span>
 
         {!entry.title && (

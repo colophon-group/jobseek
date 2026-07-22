@@ -5020,3 +5020,21 @@ msgstr "Impossibile caricare le tue liste di osservazione."
 #: app/[lang]/(app)/watchlists/watchlists-loader.tsx
 msgid "watchlists.load.retry"
 msgstr "Riprova"
+
+#. Label for the company name or careers-page URL request field
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+msgid "companies.request.inputLabel"
+msgstr "Nome dell’azienda o URL della pagina Lavora con noi"
+
+#. Label for the start date in the stats period filter
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx
+msgid "myJobs.stats.fromDate"
+msgstr "Dal"
+
+#. Label for the end date in the stats period filter
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx
+msgid "myJobs.stats.toDate"
+msgstr "Al"
