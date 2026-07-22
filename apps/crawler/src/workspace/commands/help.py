@@ -1844,6 +1844,12 @@ Browser Action Pipeline — pre-extraction actions for Playwright
     {"action": "click", "selector": "button.load-more"}
         Click first matching element (no-op if not found)
 
+    {"action": "wait_for", "selector": "article.job", "state": "visible"}
+        Wait for the first matching element to reach a Playwright locator
+        state. State defaults to "visible"; "attached", "hidden", and
+        "detached" are also supported. Prefer this over a fixed wait when
+        a rendered page exposes a stable readiness selector.
+
     {"action": "wait", "ms": 2000}
         Wait N milliseconds (default: 1000)
 
@@ -1884,7 +1890,7 @@ Browser Action Pipeline — pre-extraction actions for Playwright
     "actions": [
       {"action": "dismiss_overlays"},
       {"action": "click", "selector": "button[data-load-all]"},
-      {"action": "wait", "ms": 2000}
+      {"action": "wait_for", "selector": "article.job"}
     ]
 
     "actions": [

@@ -592,6 +592,13 @@ async def _execute_action(page, action: dict, kind: str | None) -> None:
             await loc.click()
         else:
             log.warning("browser.action.click_no_match", selector=selector)
+    elif kind == "wait_for":
+        selector = action["selector"]
+        state = action.get("state", "visible")
+        # The outer asyncio timeout is the action pipeline's single source of
+        # truth. Disable Playwright's independent 30-second default so a
+        # configured longer action is not cut short inside the locator call.
+        await page.locator(selector).first.wait_for(state=state, timeout=0)
     elif kind == "wait":
         ms = action.get("ms", 1000)
         await asyncio.sleep(ms / 1000)

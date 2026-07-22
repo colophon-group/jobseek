@@ -1266,6 +1266,74 @@ class TestMetalysisSiteGroundConfig:
         assert monitor_config["url_filter"] == "/job/"
 
 
+class TestOrangeQuantumSystemsSiteGroundConfig:
+    """OrangeQS must bypass SiteGround and retain complete job content (#4444)."""
+
+    def test_proxy_backed_real_browser_and_dom_extraction(self):
+        import json
+
+        from src.core.scrapers.dom import parse_html
+        from src.processing.scrape import _apply_defaults
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "orange-quantum-systems-careers"),
+            None,
+        )
+        assert row is not None, "orange-quantum-systems-careers row missing from boards.csv"
+
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "dom"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        for config in (monitor_config, scraper_config):
+            assert config["render"] is True
+            assert config["proxy"] is True
+            assert config["persistent_context"] is True
+            assert config["channel"] == "chrome"
+            assert config["headless"] is False
+
+        assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["url_filter"] == r"/career/[^/?#]+/?$"
+        assert monitor_config["wait"] == "commit"
+        assert monitor_config["timeout"] == 60000
+        assert monitor_config["actions"] == [
+            {
+                "action": "wait_for",
+                "selector": "a[href*='/career/']",
+                "state": "attached",
+                "timeout": 45,
+            }
+        ]
+        assert scraper_config["wait"] == "commit"
+        assert scraper_config["timeout"] == 60000
+        assert scraper_config["actions"] == [
+            {"action": "wait_for", "selector": "h2", "timeout": 45}
+        ]
+        assert scraper_config["defaults"]["locations"] == ["Delft, Netherlands"]
+
+        sample_html = """
+        <h1>Career</h1>
+        <h2>Quantum Project Manager (full-time)</h2>
+        <p>About OrangeQS: We develop quantum chip testing systems.</p>
+        <h3>Role</h3>
+        <p>Coordinate complex technical projects and cross-functional teams.</p>
+        <p>This post was published on: Jan 13, 2026</p>
+        <h3>Full-time positions</h3>
+        <p>Send open applications to recruitment@example.com.</p>
+        """
+        content = _apply_defaults(parse_html(sample_html, scraper_config), scraper_config)
+        assert content.title == "Quantum Project Manager (full-time)"
+        assert content.locations == ["Delft, Netherlands"]
+        assert content.employment_type == "full-time"
+        assert content.date_posted == "Jan 13, 2026"
+        assert "Coordinate complex technical projects" in content.description
+        assert "Send open applications" not in content.description
+
+
 class TestOverwolfComeetDescriptionCoverage:
     """Overwolf must use Comeet's rich source directly (#5807).
 
