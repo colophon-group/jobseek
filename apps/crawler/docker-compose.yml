@@ -404,16 +404,20 @@ services:
 
   # -- Grafana Alloy (metrics + log collector) --------------------
   alloy:
-    image: grafana/alloy:latest
+    image: grafana/alloy:v1.18.0@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308
     restart: unless-stopped
     network_mode: host
-    privileged: true
-    pid: host
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - ./alloy.river:/etc/alloy/config.river:ro
       - alloy-data:/data-alloy
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /:/host:ro
+    tmpfs:
+      - /tmp:size=16m,mode=1777
     environment:
       PROM_URL: ${GRAFANA_PROM_URL}
       PROM_USERNAME: ${GRAFANA_PROM_USERNAME}
@@ -421,7 +425,7 @@ services:
       LOKI_URL: ${GRAFANA_LOKI_URL}
       LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
       LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
-    command: run --storage.path=/data-alloy --server.http.listen-addr=0.0.0.0:12346 /etc/alloy/config.river
+    command: run --storage.path=/data-alloy --server.http.listen-addr=127.0.0.1:12346 /etc/alloy/config.river
     mem_limit: 256m
     cpus: 0.25
 

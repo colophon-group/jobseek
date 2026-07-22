@@ -67,6 +67,13 @@ Host state:
 Both jobs atomically write a redacted JSON result and a Prometheus textfile
 under `/var/lib/jobseek-backup/status`. A failed attempt preserves the time of
 the last successful backup so a failed and a stale backup remain distinct.
+The root-owned fleet sampler republishes only the numeric status fields as
+`jobseek_backup_*` metrics with stable host/service labels; it never forwards
+the JSON error text. `DataBackupFailed` and `DataBackupStale` are owned by the
+daily Codex route in `apps/crawler/alerts.yaml`. This establishes the telemetry
+source, but it does not by itself satisfy the server-backup removal gate: the
+error-review bundle must still prove bounded historical reads and GitHub issue
+delivery without a write credential.
 
 ## Initial production evidence (2026-07-22)
 

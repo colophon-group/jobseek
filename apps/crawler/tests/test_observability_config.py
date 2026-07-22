@@ -45,10 +45,16 @@ def test_alert_fires_when_deadletter_queue_stays_nonempty() -> None:
 
     assert rule["expr"] == "max by (wtype) (crawler_inflight_deadletter_depth) > 0"
     assert rule["for"] == "1h"
-    assert rule["labels"] == {"severity": "email", "service": "crawler"}
+    assert rule["labels"] == {
+        "severity": "medium",
+        "service": "crawler",
+        "owner": "codex-error-review",
+        "route": "codex-daily",
+    }
     assert "crawler_inflight_deadletter_depth" in rule["annotations"]["description"]
-    assert "ZRANGE deadletter:{{ $labels.wtype }} 0 -1 WITHSCORES" in rule["annotations"]["runbook"]
-    assert "ZREM deadletter:{{ $labels.wtype }}" in rule["annotations"]["runbook"]
+    assert rule["annotations"]["runbook"].endswith(
+        "docs/03-crawler-architecture.md#inflight-leases-and-dead-letter-recovery"
+    )
 
 
 def test_upstream_host_circuit_alert_groups_by_real_origin() -> None:
@@ -56,8 +62,44 @@ def test_upstream_host_circuit_alert_groups_by_real_origin() -> None:
 
     assert rule["expr"] == "max by (egress_host) (crawler_host_circuit_state) > 0"
     assert rule["for"] == "5m"
-    assert rule["labels"] == {"severity": "email", "service": "crawler"}
-    assert "host_open:{{ $labels.egress_host }}" in rule["annotations"]["runbook"]
+    assert rule["labels"] == {
+        "severity": "medium",
+        "service": "crawler",
+        "owner": "codex-error-review",
+        "route": "codex-daily",
+    }
+    assert rule["annotations"]["runbook"].endswith("docs/03-crawler-architecture.md")
+
+
+def test_exporter_alert_selects_only_exporter_target() -> None:
+    rule = _alert_rule("ExporterStale")
+
+    assert rule["expr"] == ('time() - crawler_exporter_last_flush_ts{instance="exporter"} > 900')
+    assert rule["labels"]["owner"] == "codex-error-review"
+    assert rule["labels"]["route"] == "codex-daily"
+
+
+def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
+    names = {
+        rule["alert"]
+        for rule in yaml.safe_load((CRAWLER_ROOT / "alerts.yaml").read_text())["groups"][0]["rules"]
+    }
+    assert {
+        "CrawlerHostMetricsMissing",
+        "PostgresqlHostMetricsMissing",
+        "TypesenseHostMetricsMissing",
+        "DiskNearFull",
+        "InodesNearFull",
+        "DataBackupFailed",
+        "DataBackupStale",
+        "PostgreSQLUnavailable",
+        "PostgreSQLArchiveFailure",
+        "TypesenseUnavailable",
+        "TypesenseTunnelUnavailable",
+        "RequiredHostUnitInactive",
+        "RequiredContainerUnavailable",
+        "HostRebootRequired",
+    } <= names
 
 
 def test_deadletter_operator_playbook_is_documented() -> None:

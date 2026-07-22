@@ -589,26 +589,24 @@ curl -s -X POST "https://colophongroup.grafana.net/api/dashboards/db" \
 ### Alert Rules
 
 Alert rules are managed as Prometheus YAML at `apps/crawler/alerts.yaml`
-and pushed to Grafana Cloud Mimir. The current set covers the failure
-modes from the 2026-04-25 dark-window incident (#2696):
-`NoMetricsFromCrawler`, `DiskNearFull`, `RedisMemoryPressure`,
-`ExporterStale`, `TaskFailureRateHigh`; plus the 2026-04-26 false-delisting
-incident (#2722–#2726): `DelistingRateSpike` (page; fleet gone-rate
->3× rolling 7d median) and `GoneDetectionGuardsFiring` (email; resilience
-guards #2723/#2724 actively suppressing mass delistings — investigate
-the underlying monitor truncation). Severity is encoded as a label
-(`severity=page` vs `severity=email`); routing is configured in Grafana
-Cloud Alerting separately.
+and transactionally synced to Grafana Cloud Mimir by
+`.github/workflows/deploy-hetzner-observability.yml` after all three host
+collectors pass deployment. The set covers crawler availability/queues/
+export/delisting plus all-host silence, disk/inodes, backup freshness,
+PostgreSQL readiness/archive/connections, Typesense/tunnel health, and pending
+reboots. Every alert must carry a repository runbook plus
+`owner=codex-error-review` and `route=codex-daily`. The daily Hetzner Codex
+review owns GitHub issue delivery; alert state is not routed to phone/email.
+`ExporterStale` must retain `instance="exporter"` because the shared metrics
+module exposes a default-zero gauge from other crawler endpoints.
 
 ```bash
-# Preferred: push via mimirtool
-mimirtool rules load apps/crawler/alerts.yaml \
-  --address="$MIMIR_URL" \
-  --id="$MIMIR_TENANT" \
-  --key="$MIMIR_KEY"
+# Validate source/ownership without a remote write
+cd apps/crawler
+uv run python ../../scripts/sync-grafana-rules.py --dry-run
 
-# Fallback: import via the Grafana Cloud Alerting UI's
-# "Import from Prometheus YAML" flow.
+# CI/CD uses the same client without --dry-run. It snapshots the old group,
+# verifies the exact active rule set, and rolls back on failure.
 ```
 
 The `RedisMemoryPressure` alert depends on the `redis_exporter` block
@@ -667,7 +665,20 @@ uv run crawler refresh-typesense
 
 ### Alloy (Metrics + Logs Collector)
 
-Alloy scrapes Prometheus metrics from all containers and ships to Grafana Cloud. Config is written to `/tmp/alloy-full.river` on the worker machine. When adding/removing containers, update the static scrape targets and restart alloy.
+The crawler Compose Alloy scrapes crawler application and Redis metrics and
+tails crawler Docker logs. Its official 1.18.0 image is digest-pinned,
+read-only, capability-dropped, and no longer privileged or host-PID aware.
+When adding/removing crawler containers, update the static scrape targets in
+`apps/crawler/alloy.river`; crawler deployment recreates only this collector.
+
+Host metrics and allowlisted journals are a separate fleet surface on the
+crawler, PostgreSQL, and Typesense machines. An unprivileged native
+`jobseek-alloy.service` listens only on loopback, while the root-owned
+`jobseek-host-observability.timer` performs bounded read-only Docker/database
+probes and writes an atomic textfile. Deploy and rollback behavior lives in
+`deploy/observability/` and `.github/workflows/deploy-hetzner-observability.yml`;
+operator checks are in `docs/16-hetzner-maintenance.md#fleet-observability`.
+Neither the native collector nor `codex-runner` receives Docker-socket access.
 
 Credentials for Grafana Cloud Prometheus and Loki are in `.env.local` (`GRAFANA_*` vars). Note: Prometheus and Loki have **different user IDs** (Prometheus = `GRAFANA_USER_ID`, Loki has its own instance ID).
 

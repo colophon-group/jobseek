@@ -6,6 +6,9 @@ import re
 from pathlib import Path
 
 CONFIG = (Path(__file__).resolve().parents[1] / "alloy.river").read_text(encoding="utf-8")
+COMPOSE = (Path(__file__).resolve().parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
+ROOT = Path(__file__).resolve().parents[3]
+HOST_CONFIG = (ROOT / "deploy" / "observability" / "alloy-host.alloy").read_text(encoding="utf-8")
 
 
 def _component_body(kind: str) -> str:
@@ -27,3 +30,24 @@ def test_docker_discovery_and_tailer_refresh_intervals_are_aligned():
 def test_alloy_uses_supported_environment_lookup():
     assert re.search(r"(?<!sys\.)\benv\(", CONFIG) is None
     assert CONFIG.count("sys.env(") == 6
+
+
+def test_crawler_alloy_is_pinned_and_no_longer_privileged():
+    assert "grafana/alloy:v1.18.0@sha256:" in COMPOSE
+    alloy_section = COMPOSE.split("  alloy:\n", 1)[1].split("\nvolumes:", 1)[0]
+    assert "privileged:" not in alloy_section
+    assert "pid: host" not in alloy_section
+    assert "- /:/host:ro" not in alloy_section
+    assert "read_only: true" in alloy_section
+    assert "no-new-privileges:true" in alloy_section
+    assert "cap_drop:\n      - ALL" in alloy_section
+    assert "--server.http.listen-addr=127.0.0.1:12346" in alloy_section
+
+
+def test_host_metrics_have_stable_roles_and_no_public_listener():
+    assert 'replacement  = "integrations/unix"' in HOST_CONFIG
+    assert 'replacement  = sys.env("JOBSEEK_HOST_INSTANCE")' in HOST_CONFIG
+    assert 'replacement  = sys.env("JOBSEEK_HOST_ROLE")' in HOST_CONFIG
+    assert '"__address__" = "127.0.0.1:12345"' in HOST_CONFIG
+    assert "/var/run/docker.sock" not in HOST_CONFIG
+    assert 'directory = "/var/lib/jobseek-observability/textfile"' in HOST_CONFIG

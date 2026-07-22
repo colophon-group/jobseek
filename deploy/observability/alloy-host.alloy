@@ -1,0 +1,119 @@
+// Fleet host telemetry for the three Jobseek Hetzner systems.
+// Credentials and stable role labels are supplied by root-owned systemd env.
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+prometheus.exporter.unix "host" {
+  set_collectors = [
+    "cpu",
+    "diskstats",
+    "filesystem",
+    "loadavg",
+    "meminfo",
+    "netdev",
+    "stat",
+    "time",
+    "uname",
+    "vmstat",
+  ]
+
+  textfile {
+    directory = "/var/lib/jobseek-observability/textfile"
+  }
+}
+
+prometheus.scrape "host" {
+  targets         = prometheus.exporter.unix.host.targets
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.host.receiver]
+}
+
+prometheus.relabel "host" {
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/unix"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("JOBSEEK_HOST_INSTANCE")
+  }
+
+  rule {
+    target_label = "host_role"
+    replacement  = sys.env("JOBSEEK_HOST_ROLE")
+  }
+}
+
+// The host-local loopback listener is never exposed publicly. Shipping the
+// collector's own metrics makes scrape failures, queue growth, and remote
+// write retries distinguishable from application outages.
+prometheus.scrape "alloy" {
+  targets = [{
+    "__address__" = "127.0.0.1:12345",
+    "job"         = "jobseek-alloy",
+    "instance"    = sys.env("JOBSEEK_HOST_INSTANCE"),
+    "host_role"   = sys.env("JOBSEEK_HOST_ROLE"),
+  }]
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = sys.env("PROM_URL")
+    basic_auth {
+      username = sys.env("PROM_USERNAME")
+      password = sys.env("PROM_PASSWORD")
+    }
+  }
+}
+
+// Only repo-owned operational units are forwarded. The root sampler emits a
+// bounded, redacted subset of PostgreSQL/Typesense container error lines into
+// its own journal, so Alloy never needs Docker-socket access.
+loki.source.journal "jobseek" {
+  max_age = "25h"
+  labels = {
+    job       = "hetzner-systemd",
+    instance  = sys.env("JOBSEEK_HOST_INSTANCE"),
+    host_role = sys.env("JOBSEEK_HOST_ROLE"),
+  }
+  relabel_rules = loki.relabel.jobseek.rules
+  forward_to    = [loki.write.grafana_cloud.receiver]
+}
+
+loki.relabel "jobseek" {
+  forward_to = [loki.write.grafana_cloud.receiver]
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    regex         = "(jobseek-(host-observability|postgresql-backup|typesense-backup|codex-.*)\\.(service|timer)|cloudflared\\.service)"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+
+  rule {
+    source_labels = ["__journal_syslog_identifier"]
+    target_label  = "syslog_identifier"
+  }
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = sys.env("LOKI_URL")
+    basic_auth {
+      username = sys.env("LOKI_USERNAME")
+      password = sys.env("LOKI_PASSWORD")
+    }
+  }
+}
