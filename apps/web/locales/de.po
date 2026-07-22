@@ -223,27 +223,17 @@ msgstr "Konto"
 msgid "app.header.avatar.label"
 msgstr "Kontomenü"
 
-#. Active postings count on company page
-#. Active postings count on company page
+#. Locale-formatted active posting count
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:572
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:582
-msgid "company.page.active"
-msgstr "aktiv"
+#: src/components/search/posting-count-labels.tsx
+msgid "common.stats.activeCount"
+msgstr "{count, plural, one {# aktive Stelle} other {# aktive Stellen}}"
 
-#. Active postings count
-#. Active postings count
+#. Locale-formatted postings seen in the last year count
 #. js-lingui-explicit-id
-#: src/components/search/language-stats-row.tsx:36
-#: src/components/search/language-stats-row.tsx:47
-msgid "common.stats.active"
-msgstr "aktiv"
-
-#. Active matches label on company card
-#. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:122
-msgid "search.card.active"
-msgstr "aktiv"
+#: src/components/search/posting-count-labels.tsx
+msgid "common.stats.yearCountWithValue"
+msgstr "{count, plural, one {# im letzten Jahr} other {# im letzten Jahr}}"
 
 #. Title for add companies modal
 #. js-lingui-explicit-id
@@ -1877,28 +1867,6 @@ msgstr "Wenn du ungewöhnliches Crawler-Verhalten bemerkst, es vorziehst, dass w
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:80
 msgid "watchlist.meta.inLocations"
 msgstr "in {locations}"
-
-#. Year postings count on company page
-#. Year postings count on company page
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:574
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:586
-msgid "company.page.yearCount"
-msgstr "im letzten Jahr"
-
-#. Postings seen in the last year count
-#. Postings seen in the last year count
-#. js-lingui-explicit-id
-#: src/components/search/language-stats-row.tsx:39
-#: src/components/search/language-stats-row.tsx:51
-msgid "common.stats.yearCount"
-msgstr "im letzten Jahr"
-
-#. Yearly matches label on company card
-#. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:124
-msgid "search.card.yearCount"
-msgstr "im letzten Jahr"
 
 #. Stat label on a WatchlistCard mention card — 'in the past year' (year-to-date jobs counted by the watchlist filters)
 #. js-lingui-explicit-id

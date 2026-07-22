@@ -256,7 +256,7 @@ export function WatchlistJobList({
           suppressHydrationWarning
           className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted"
         >
-          {timeAgoShort(entry.firstSeenAt)}
+          {timeAgoShort(entry.firstSeenAt, locale)}
         </span>
       </div>,
     );

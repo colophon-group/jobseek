@@ -28,12 +28,14 @@ const fromMessage = (input: MessageLike): string =>
   typeof input === "string" ? input : (input.message ?? input.id ?? "");
 
 vi.mock("@lingui/react", () => ({
-  useLingui: () => ({ _: fromMessage }),
+  useLingui: () => ({ _: fromMessage, i18n: { locale: "en" } }),
 }));
 
 vi.mock("@lingui/react/macro", () => ({
-  useLingui: () => ({ t: fromMessage }),
+  useLingui: () => ({ t: fromMessage, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
+  Plural: ({ value, one, other }: { value: number; one: string; other: string }) =>
+    (value === 1 ? one : other).replace("#", String(value)),
 }));
 
 vi.mock("@lingui/core/macro", () => ({

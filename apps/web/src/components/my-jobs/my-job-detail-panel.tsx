@@ -269,6 +269,7 @@ export function MyJobDetailPanel({
 function PostingContent({ detail }: { detail: PostingDetail }) {
   const { company } = detail;
   const lp = useLocalePath();
+  const { i18n } = useLingui();
 
   return (
     <>
@@ -309,7 +310,7 @@ function PostingContent({ detail }: { detail: PostingDetail }) {
           </span>
         )}
         <span suppressHydrationWarning>
-          {timeAgoShort(detail.firstSeenAt)}
+          {timeAgoShort(detail.firstSeenAt, i18n.locale)}
         </span>
         <SaveButton postingId={detail.id} />
       </div>
