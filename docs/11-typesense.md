@@ -1,6 +1,6 @@
 # Typesense Deployment State
 
-Current production deployment as of April 2026. The earlier docs in this directory (00-05) describe the migration plan and benchmarks; this document describes what was actually deployed.
+Current production deployment as of July 2026. The earlier docs in this directory (00-05) describe the migration plan and benchmarks; this document describes what was actually deployed.
 
 ## Infrastructure
 
@@ -11,6 +11,9 @@ Current production deployment as of April 2026. The earlier docs in this directo
 - **Container**: `typesense/typesense:27.1`, `--network host`, data at `/mnt/typesense-data`
 - **Port**: 8108
 - **Firewall**: SSH from anywhere, port 8108 from private network only (10.0.0.0/16)
+- **Backups**: daily application-consistent Snapshot API backup to an encrypted,
+  home-isolated Storage Box repository; see
+  [`19-data-backup-recovery.md`](19-data-backup-recovery.md)
 
 ### Private Network (Hetzner 10.0.0.0/16)
 

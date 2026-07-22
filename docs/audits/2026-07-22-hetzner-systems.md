@@ -1,8 +1,55 @@
 # Hetzner systems audit — 2026-07-22
 
-Status: host and Hetzner Cloud control-plane evidence collection complete for the three known non-Murmur hosts. Remediation is intentionally paused pending operator approval.
+Status: baseline evidence collection is complete for the three known non-Murmur hosts. The operator subsequently approved staged remediation; the baseline matrices preserve the original observations, and the verified change log below records the evolving production state.
 
 This report records read-only evidence. It omits public IP addresses, resource IDs, credentials, full connection strings, and authentication material. Murmur is excluded. Host inspection was supplemented with read-only Hetzner Cloud API evidence for servers, public/private networking, firewalls, Volumes, backups/snapshots, resource protection, SSH keys, and coarse provider CPU metrics. The project token does not expose account membership, billing ownership, or the Cloudflare control plane.
+
+## Verified remediation change log
+
+Evidence below is additive to the original audit snapshot. A control is not
+called resolved until its issue acceptance criteria and rollback/removal gates
+pass.
+
+### 2026-07-22 — replacement data protection staged
+
+- Provisioned a delete-protected private Hetzner BX11 Storage Box with seven
+  daily secondary snapshots and separate home-isolated PostgreSQL and
+  Typesense writer subaccounts. Credentials and resource identifiers remain
+  outside the repository.
+- Typesense completed an application-consistent Snapshot API backup and
+  encrypted Restic upload without a process restart. The artifact was
+  1,348,345,503 bytes and the run took about 164 seconds. A cross-host restore
+  with verification restored all 1,348,345,503 bytes in 13 seconds; the
+  temporary Typesense 27.1 node became healthy, loaded all seven collections
+  and aliases, matched the six non-posting collection counts exactly, served
+  representative document reads and a live search, and differed from the
+  concurrently advancing production posting count only by newer writes.
+- Captured and independently uploaded a transaction-consistent encrypted
+  PostgreSQL logical checkpoint before storage changes. The attached XFS
+  Volume was expanded online from 20 to 40 GiB; it now has about 22 GiB free.
+- Built PostgreSQL 16.13 with checksum-pinned pgBackRest 2.59.0 and its
+  upstream backup/restore smoke suite. Isolated tests reproduced a 60-second
+  pgBackRest/libssh2 segmentation fault against the Storage Box on both the
+  packaged 2.57.0 client and the source-built 2.59.0 client. The production
+  design therefore uses a private SMB 3.1.1 mount with transport encryption,
+  hard I/O semantics and CIFS symlink emulation, plus pgBackRest AES repository
+  encryption. A filesystem fsync/checksum/rename/symlink probe and an isolated
+  encrypted stanza-create/WAL/full-backup/restore/row-checksum drill passed.
+- Replaced the PostgreSQL container with the pgBackRest-capable image using an
+  automatic rollback script. The measured container handoff was about 0.2
+  seconds. PostgreSQL now has a 4 GiB memory limit, 1 GiB shared buffers, a 4
+  GiB WAL ceiling and continuous archiving. The initial full backup covered
+  17.1 GiB, stored 7.7 GiB, completed in 199 seconds, and left the archive
+  failure count at zero. A clean restore copied all 17.1 GiB in 251 seconds,
+  replayed archived WAL to a writable new timeline, and passed `pg_amcheck`
+  heap and B-tree parent verification across all 384 relations and 2,147,497
+  pages. The restored database exposed 2,447,190 postings with zero rows
+  failing the structural-null probe. Temporary drill state was removed. The
+  exact old container remains stopped as a rollback target until the reviewed
+  revision is merged and redeployed.
+- The PostgreSQL and Typesense timers and the legacy Hetzner OS backups remain
+  unchanged until both restore evidence and daily error-review alert evidence
+  satisfy the removal gate in `docs/19-data-backup-recovery.md`.
 
 ## Inventory and ownership
 

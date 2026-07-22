@@ -1,0 +1,40 @@
+[Unit]
+Description=Jobseek PostgreSQL encrypted data backup
+Documentation=file:///opt/jobseek-backup/docs/16-hetzner-maintenance.md
+Requires=docker.service jobseek-postgresql-backup-repository.service
+After=docker.service network-online.target jobseek-postgresql-backup-repository.service
+Wants=network-online.target
+ConditionPathExists=/usr/local/sbin/jobseek-data-backup
+ConditionPathExists=/etc/jobseek-backup/postgresql/pgbackrest.conf
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+Environment=BACKUP_STATUS_DIR=/var/lib/jobseek-backup/status
+Environment=POSTGRES_CONTAINER=postgres
+Environment=PGBACKREST_STANZA=jobseek
+ExecStart=/usr/local/sbin/jobseek-data-backup postgresql
+TimeoutStartSec=12h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ReadWritePaths=/var/lib/jobseek-backup /run
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
