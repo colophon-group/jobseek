@@ -812,21 +812,18 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
   assert.match(analyzeJob, /Perform CodeQL Analysis[\s\S]*if: needs\.changes\.outputs\.codeql == 'true'/);
 });
 
-test("Dependabot groups npm security updates across pnpm workspace manifests", () => {
+test("Dependabot updates and groups the pnpm workspace from its root", () => {
   const npmConfig = dependabotConfig.match(
     /  - package-ecosystem: "npm"\n([\s\S]*?)(?=\n  - package-ecosystem:)/,
   )?.[1];
 
   assert.ok(npmConfig, "missing npm Dependabot configuration");
-  assert.doesNotMatch(npmConfig, /^    directory: "\/"$/m);
-  for (const directory of [
-    "/",
-    "/apps/trace-viewer",
-    "/apps/web",
-    "/packages/mcp-server",
-  ]) {
-    assert.match(npmConfig, new RegExp(`^      - "${directory}"$`, "m"));
-  }
+  assert.match(npmConfig, /^    directory: "\/"$/m);
+  assert.doesNotMatch(npmConfig, /^    directories:/m);
+  assert.match(
+    npmConfig,
+    /exclude-paths:\n      - "apps\/crawler\/murmur\/\*\*"\n      - "apps\/murmur-shim\/\*\*"/,
+  );
   assert.match(
     npmConfig,
     /security-updates:\n        applies-to: "security-updates"\n        patterns:\n          - "\*"/,

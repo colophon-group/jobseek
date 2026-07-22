@@ -14,14 +14,10 @@ updates:
           - "*"
 
   - package-ecosystem: "npm"
-    # Security alerts are reported against both workspace manifests and the
-    # shared lockfile. Keep them in one updater so fixes are generated as an
-    # atomic pnpm workspace change instead of one PR per manifest boundary.
-    directories:
-      - "/"
-      - "/apps/trace-viewer"
-      - "/apps/web"
-      - "/packages/mcp-server"
+    # pnpm owns workspace resolution and the shared lockfile at the repository
+    # root. Running Dependabot from member directories makes pnpm reject the
+    # update; the root updater still discovers and groups workspace manifests.
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
