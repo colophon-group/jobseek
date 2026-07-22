@@ -21,16 +21,19 @@ vi.mock("../watchlists-page", () => ({
     initialWatchlists,
     username,
     limitReached,
+    locale,
   }: {
     initialWatchlists: unknown[];
     username: string | null;
     limitReached: boolean;
+    locale: string;
   }) => (
     <div
       data-testid="watchlists-page"
       data-count={initialWatchlists.length}
       data-username={username ?? ""}
       data-limit-reached={String(limitReached)}
+      data-locale={locale}
     />
   ),
 }));
@@ -57,6 +60,7 @@ describe("WatchlistsLoader server read (#5896)", () => {
     expect(page.getAttribute("data-count")).toBe("1");
     expect(page.getAttribute("data-username")).toBe("alice");
     expect(page.getAttribute("data-limit-reached")).toBe("false");
+    expect(page.getAttribute("data-locale")).toBe("en");
     expect(mocks.load).toHaveBeenCalledOnce();
     expect(mocks.load).toHaveBeenCalledWith("en");
   });

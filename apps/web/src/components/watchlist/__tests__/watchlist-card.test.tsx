@@ -53,6 +53,28 @@ describe("WatchlistCard navigation", () => {
 
     expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "instant" });
   });
+
+  it("shows a useful company count until the live job count arrives", () => {
+    render(
+      <WatchlistCard
+        ownerUsername="colophongroup"
+        watchlist={{
+          id: "watchlist-1",
+          slug: "maangplus",
+          title: "MAANG+",
+          description: null,
+          isPublic: true,
+          alertsEnabled: false,
+          companyCount: 12,
+          activeJobCount: null,
+          lastAccessedAt: "2026-07-06T00:00:00.000Z",
+          createdAt: "2026-07-06T00:00:00.000Z",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("12 companies")).toBeTruthy();
+  });
 });
 
 describe("CreateWatchlistCard (issue #3036)", () => {

@@ -18,11 +18,11 @@
  *   Typesense `watchlist` collection (1 round-trip), then re-ran the
  *   same N-fanout via `_enrichWatchlistsWithRealCounts`.
  *
- * #3176 post-fix:
- *   - `getUserWatchlists`  one SQL query against Postgres with the
- *     active count denormalized via a `watchlist_company JOIN
- *     job_posting WHERE is_active` subquery. Zero Typesense round-trips
- *     for unfiltered company-scoped rows.
+ * #5896 follow-up:
+ *   - `getUserWatchlists` runs one bounded metadata query against
+ *     Postgres, then one Typesense `multi_search` for all active counts.
+ *     This avoids both the original N-round-trip fan-out and an expensive
+ *     per-watchlist join against the full Postgres posting history.
  *   - `searchPublicWatchlists` / `getPopularWatchlists`  one Typesense
  *     `watchlist` collection search whose returned docs already carry
  *     `active_job_count` for company-scoped watchlists. `anyCompany`
@@ -273,6 +273,7 @@ vi.mock("@/db", () => ({
 // Module under test must be imported AFTER all vi.mock factories.
 import {
   getUserWatchlists,
+  getUserWatchlistsWithLimit,
   getPopularWatchlists,
   searchPublicWatchlists,
 } from "../../services/watchlists";
@@ -285,6 +286,7 @@ beforeEach(() => {
   mocks.getSessionUserId.mockResolvedValue(USER_ID);
   mocks.canCreateWatchlist.mockResolvedValue({ allowed: true });
   mocks.getViewerLanguages.mockResolvedValue(["en"]);
+  mocks.tsMultiSearch.mockResolvedValue({ results: [] });
   mocks.resolveLocationSlugs.mockResolvedValue(new Map([
     ["zurich", { id: 2657896, slug: "zurich", name: "Zurich" }],
     ["switzerland", { id: 2658434, slug: "switzerland", name: "Switzerland" }],
@@ -355,14 +357,34 @@ function fakePublicWatchlistHit(
 // ---- getUserWatchlists (user's own listing page) -----------------------
 
 describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
-  it("fires ZERO Typesense queries when loading N watchlists", async () => {
+  it("keeps the initial overview independent from active-count aggregation (#5896)", async () => {
+    const rows = [fakeUserWatchlistRow(0, 42), fakeUserWatchlistRow(1, 7)];
+    mocks.dbExecute.mockResolvedValueOnce(rows);
+
+    const result = await getUserWatchlistsWithLimit("en");
+
+    expect(result.watchlists.map((watchlist) => watchlist.activeJobCount)).toEqual([
+      null,
+      null,
+    ]);
+    expect(mocks.tsMultiSearch).not.toHaveBeenCalled();
+    expect(mocks.getViewerLanguages).not.toHaveBeenCalled();
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it("batches N watchlist counts into one Typesense multi_search", async () => {
     const N = 50; // paid-tier user, worst-case
     const rows = Array.from({ length: N }, (_, i) => fakeUserWatchlistRow(i, i * 3));
     mocks.dbExecute.mockResolvedValueOnce(rows);
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: rows.map((row) => ({ found: row.active_job_count, hits: [] })),
+    });
 
     await getUserWatchlists("en");
 
     expect(mocks.tsSearch).not.toHaveBeenCalled();
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch.mock.calls[0]?.[0].searches).toHaveLength(N);
     expect(mocks.tsCollectionsCalls).toEqual([]);
   });
 
@@ -373,20 +395,25 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
 
     await getUserWatchlists("en");
 
-    // Only the single SELECT that loads watchlists + their denormalized
-    // active_job_count. Pre-fix this would have been 1 (rows) plus up
-    // to 4N (taxonomy lookups for resolveFilteredJobCount) plus N
-    // (Typesense count).
+    // Only the single bounded metadata SELECT. Counts are handled by one
+    // batched Typesense request rather than SQL joins or N round-trips.
     expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
   });
 
-  it("returns the denormalized active_job_count straight from SQL", async () => {
+  it("returns active counts from the batched Typesense response", async () => {
     const rows = [
       fakeUserWatchlistRow(0, 42),
       fakeUserWatchlistRow(1, 7),
       fakeUserWatchlistRow(2, 0),
     ];
     mocks.dbExecute.mockResolvedValueOnce(rows);
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: [
+        { found: 42, hits: [] },
+        { found: 7, hits: [] },
+        { found: 0, hits: [] },
+      ],
+    });
 
     const result = await getUserWatchlists("en");
 
@@ -416,6 +443,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
       results: [
         { found: 6, hits: [] },
         { found: 3, hits: [] },
+        { found: 12, hits: [] },
       ],
     });
 
@@ -435,6 +463,12 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
         {
           collection: "job_posting",
           q: "python",
+          query_by: "title",
+          per_page: 0,
+        },
+        {
+          collection: "job_posting",
+          q: "*",
           query_by: "title",
           per_page: 0,
         },
@@ -472,19 +506,22 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     mocks.resolveLocationSlugs.mockResolvedValueOnce(new Map([
       ["eu", { id: 6255148, slug: "eu", name: "European Union" }],
     ]));
-    mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 38717, hits: [] }] });
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: [
+        { found: 38717, hits: [] },
+        { found: 12, hits: [] },
+      ],
+    });
 
     const result = await getUserWatchlists("en");
 
     expect(result).toHaveLength(2);
     // Patched from SQL's 0 to the Typesense count.
     expect(result[0].activeJobCount).toBe(38717);
-    // Non-anyCompany row keeps the SQL count untouched — no extra
-    // round-trip fires for it.
+    // The normal row is resolved in the same batch.
     expect(result[1].activeJobCount).toBe(12);
 
-    // Exactly one Typesense call (the anyCompany count). The normal
-    // row goes straight from SQL.
+    // Exactly one Typesense call covers both rows.
     expect(mocks.tsSearch).not.toHaveBeenCalled();
     expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
     expect(mocks.tsCollectionsCalls).toEqual([]);
@@ -507,13 +544,15 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     expect(result[0].activeJobCount).toBe(0); // graceful degradation
   });
 
-  it("fires no Typesense queries when there are zero anyCompany rows", async () => {
+  it("batches unfiltered company-scoped rows without per-row requests", async () => {
     const rows = Array.from({ length: 10 }, (_, i) => fakeUserWatchlistRow(i, i * 3));
     mocks.dbExecute.mockResolvedValueOnce(rows);
 
     await getUserWatchlists("en");
 
     expect(mocks.tsSearch).not.toHaveBeenCalled();
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch.mock.calls[0]?.[0].searches).toHaveLength(10);
   });
 
   // Regression for #3344. The `anyCompany` Typesense patch previously

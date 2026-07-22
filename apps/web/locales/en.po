@@ -2032,6 +2032,18 @@ msgstr "Is the crawler open source?"
 msgid "faq.q.trackerLimit"
 msgstr "Is there a limit to how many jobs I can track?"
 
+#. Singular company count shown while a watchlist job count loads
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:36
+msgid "watchlists.card.companySingular"
+msgstr "company"
+
+#. Plural company count shown while a watchlist job count loads
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:37
+msgid "watchlists.card.companyPlural"
+msgstr "companies"
+
 #. Singular job count on watchlist card
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-card.tsx:31

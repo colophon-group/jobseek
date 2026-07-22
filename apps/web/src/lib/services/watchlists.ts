@@ -107,6 +107,11 @@ export type WatchlistSummary = {
   createdAt: string;
 };
 
+export type UserWatchlistOverview = Omit<WatchlistSummary, "activeJobCount"> & {
+  /** Loaded after the overview renders so count aggregation cannot block navigation. */
+  activeJobCount: number | null;
+};
+
 export type WatchlistDetail = {
   id: string;
   slug: string;
@@ -661,74 +666,46 @@ export async function toggleWatchlistAlerts(
  * value server-side so the gating UX matches the watchlist-detail page.
  */
 export async function getUserWatchlistsWithLimit(
-  locale: string,
-): Promise<{ watchlists: WatchlistSummary[]; limitReached: boolean }> {
+  _locale: string,
+): Promise<{ watchlists: UserWatchlistOverview[]; limitReached: boolean }> {
   const userId = await getSessionUserId();
   if (!userId) return { watchlists: [], limitReached: true };
 
-  const [watchlists, limit] = await Promise.all([
-    getUserWatchlists(locale),
+  const [rows, limit] = await Promise.all([
+    _getUserWatchlistRows(userId),
     canCreateWatchlist(userId),
   ]);
-  return { watchlists, limitReached: !limit.allowed };
+  return {
+    watchlists: rows.map((row) => _toUserWatchlistSummary(row, null)),
+    limitReached: !limit.allowed,
+  };
 }
 
-export async function getUserWatchlists(locale: string): Promise<WatchlistSummary[]> {
-  const userId = await getSessionUserId();
-  if (!userId) return [];
+type UserWatchlistRow = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  is_public: boolean;
+  alerts_enabled: boolean;
+  filters: WatchlistFilters;
+  last_accessed_at: Date;
+  created_at: Date;
+  company_count: number;
+  company_ids: string[];
+};
 
-  // Viewer language preference — used by the batched Typesense count
-  // patch below so filtered listing counts match the watchlist-detail
-  // page's locale-filtered count. The SQL fast path for unfiltered
-  // company-scoped rows still uses the denormalized `active_job_count`;
-  // issue #3261 only pays the Typesense round-trip when a row has
-  // filters that make that approximation visibly wrong.
-  const languages = await getViewerLanguages(locale);
-
-  // Perf (#3176): compute the active job count via a denormalized SQL
-  // aggregation in the same query that loads the watchlist rows. The
-  // previous shape ran N parallel `resolveFilteredJobCount` calls — one
-  // Typesense round-trip per watchlist — which cost ~150-250ms for free
-  // users (5 watchlists) and 1.5-2.5s for paid users (50 watchlists) on
-  // every `/watchlists` load.
+async function _getUserWatchlistRows(userId: string): Promise<UserWatchlistRow[]> {
+  // Keep the database portion bounded to watchlist metadata and company
+  // membership. Counting active postings here used to join every tracked
+  // company against the full `job_posting` history for every watchlist;
+  // production users with larger lists exceeded a 15-second statement
+  // timeout even with an active-company index (#5896).
   //
-  // The new shape returns the "company-scope" active count: SUM over
-  // (watchlist's companies) of (active job_posting rows). This is the
-  // same denominator the crawler's `refresh-typesense` cron writes into
-  // the Typesense `watchlist.active_job_count` field — but computed
-  // server-side at request time so it is fresh, and so it works for
-  // private watchlists too (which never reach Typesense).
-  //
-  // Follow-up (#3261): rows with any real watchlist filters are patched
-  // after this query via one Typesense `multi_search`. Rows without
-  // filters keep this SQL count, preserving the zero-Typesense fast path
-  // for the common "these companies, no filter clauses" watchlist.
-  //
-  // EXCEPTION (#3333): `anyCompany` watchlists have NO `watchlist_company`
-  // rows (the editor toggle disables the company picker, and copies
-  // already strip the rows on save), so the SQL JOIN above returns 0
-  // for them — even when the filters match thousands of active postings.
-  // The denormalized Typesense `active_job_count` field is also 0 for
-  // these (the crawler's `refresh_typesense_counts` joins the same
-  // empty `watchlist_company` table — see `apps/crawler/src/sync.py`).
-  // They are included in the same #3261 multi_search patch; when
-  // Typesense is unavailable they degrade to SQL's structural 0.
+  // Active counts are intentionally resolved outside the initial page load.
   const rows = await withDbRetry(
     () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        slug: string;
-        title: string;
-        is_public: boolean;
-        alerts_enabled: boolean;
-        filters: WatchlistFilters;
-        last_accessed_at: Date;
-        created_at: Date;
-        company_count: number;
-        active_job_count: number;
-        company_ids: string[];
-      }>(sql`
+      db.execute<UserWatchlistRow & { [key: string]: unknown }>(sql`
         SELECT w.id, w.slug, w.title, w.description, w.is_public, w.alerts_enabled, w.filters,
                w.last_accessed_at, w.created_at,
                (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
@@ -736,13 +713,7 @@ export async function getUserWatchlists(locale: string): Promise<WatchlistSummar
                  SELECT COALESCE(array_agg(wc.company_id::text ORDER BY wc.company_id::text), ARRAY[]::text[])
                  FROM watchlist_company wc
                  WHERE wc.watchlist_id = w.id
-               ) AS company_ids,
-               (
-                 SELECT count(*)::int
-                 FROM watchlist_company wc
-                 JOIN job_posting jp ON jp.company_id = wc.company_id AND jp.is_active
-                 WHERE wc.watchlist_id = w.id
-               ) AS active_job_count
+               ) AS company_ids
         FROM watchlist w
         WHERE w.user_id = ${userId}
         ORDER BY w.last_accessed_at DESC
@@ -750,28 +721,50 @@ export async function getUserWatchlists(locale: string): Promise<WatchlistSummar
     { label: "userWatchlists" },
   );
 
-  type Row = {
-    id: string; slug: string; title: string; description: string | null; is_public: boolean;
-    alerts_enabled: boolean; filters: WatchlistFilters; last_accessed_at: Date; created_at: Date;
-    company_count: number; active_job_count: number; company_ids: string[];
+  return rows as unknown as UserWatchlistRow[];
+}
+
+function _toUserWatchlistSummary(
+  row: UserWatchlistRow,
+  activeJobCount: number | null,
+): UserWatchlistOverview {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    isPublic: row.is_public,
+    alertsEnabled: row.alerts_enabled,
+    companyCount: row.company_count,
+    activeJobCount,
+    lastAccessedAt: new Date(row.last_accessed_at).toISOString(),
+    createdAt: new Date(row.created_at).toISOString(),
   };
+}
 
-  const typed = rows as unknown as Row[];
+export async function getUserWatchlists(locale: string): Promise<WatchlistSummary[]> {
+  const userId = await getSessionUserId();
+  if (!userId) return [];
 
-  const preciseCounts = await _resolveUserListingCounts(typed, locale, languages);
+  // Viewer language preference is used by the batched Typesense count so
+  // listing counts match the watchlist-detail page.
+  const [rows, languages] = await Promise.all([
+    _getUserWatchlistRows(userId),
+    getViewerLanguages(locale),
+  ]);
 
-  return typed.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    title: r.title,
-    description: r.description,
-    isPublic: r.is_public,
-    alertsEnabled: r.alerts_enabled,
-    companyCount: r.company_count,
-    activeJobCount: preciseCounts.get(r.id) ?? r.active_job_count,
-    lastAccessedAt: new Date(r.last_accessed_at).toISOString(),
-    createdAt: new Date(r.created_at).toISOString(),
+  const preciseCounts = await _resolveUserListingCounts(rows, locale, languages);
+  return rows.map((row) => ({
+    ..._toUserWatchlistSummary(row, preciseCounts.get(row.id) ?? 0),
+    activeJobCount: preciseCounts.get(row.id) ?? 0,
   }));
+}
+
+export async function getUserWatchlistCounts(locale: string): Promise<Record<string, number>> {
+  const watchlists = await getUserWatchlists(locale);
+  return Object.fromEntries(
+    watchlists.map((watchlist) => [watchlist.id, watchlist.activeJobCount]),
+  );
 }
 
 async function _resolveUserListingCounts(
@@ -779,31 +772,33 @@ async function _resolveUserListingCounts(
     id: string;
     filters: WatchlistFilters | null;
     company_ids: string[] | null;
-    active_job_count: number;
   }>,
   locale: string,
   languages: string[],
 ): Promise<Map<string, number>> {
   const filteredRows = rows.filter((r) => hasPreciseListingCountFilters(r.filters));
-  if (filteredRows.length === 0) return new Map();
 
-  let indexedById: Map<string, IndexedWatchlistFilters | null>;
-  try {
-    indexedById = await buildIndexedFiltersForUserRows(filteredRows, locale);
-  } catch (err) {
-    console.error("[getUserWatchlists] filter id resolution failed", err);
-    return new Map();
+  let indexedById = new Map<string, IndexedWatchlistFilters | null>();
+  if (filteredRows.length > 0) {
+    try {
+      indexedById = await buildIndexedFiltersForUserRows(filteredRows, locale);
+    } catch (err) {
+      console.error("[getUserWatchlists] filter id resolution failed", err);
+    }
   }
 
   const candidates: ListingCountCandidate[] = [];
-  for (const row of filteredRows) {
-    const filters = indexedById.get(row.id);
+  for (const row of rows) {
+    const needsResolvedIds = hasPreciseListingCountFilters(row.filters);
+    const filters = needsResolvedIds
+      ? indexedById.get(row.id)
+      : buildIndexedWatchlistFiltersPayload(row.filters);
     if (!filters || hasUnresolvedIndexedTaxonomy(filters)) continue;
     candidates.push({
       id: row.id,
       filters,
       companyIds: row.company_ids ?? [],
-      fallbackCount: row.active_job_count,
+      fallbackCount: 0,
     });
   }
 
