@@ -10,6 +10,18 @@ DATA_DIR="/mnt/HC_Volume_105256309/pgdata"
 CONFIG_DIR="/etc/jobseek-backup/postgresql"
 SPOOL_DIR="/var/lib/jobseek-backup/postgresql/spool"
 REPOSITORY_DIR="/mnt/jobseek-postgresql-backups"
+NETWORK_CONFIG=/etc/jobseek-ingress/postgresql-network.env
+POSTGRES_LISTEN_ADDRESSES='*'
+
+if [[ -f "$NETWORK_CONFIG" ]]; then
+  # shellcheck disable=SC1090
+  source "$NETWORK_CONFIG"
+  POSTGRES_LISTEN_ADDRESSES="${JOBSEEK_POSTGRES_LISTEN_ADDRESSES:-}"
+  [[ "$POSTGRES_LISTEN_ADDRESSES" =~ ^127\.0\.0\.1,(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)[0-9.]+$ ]] || {
+    echo "Invalid repo-owned PostgreSQL listener policy" >&2
+    exit 1
+  }
+fi
 
 usage() {
   echo "Usage: $0 <apply|rollback|finalize>" >&2
@@ -102,7 +114,7 @@ apply() {
     --volume "$REPOSITORY_DIR:$REPOSITORY_DIR" \
     "$TARGET_IMAGE" \
     postgres \
-      -c 'listen_addresses=*' \
+      -c "listen_addresses=${POSTGRES_LISTEN_ADDRESSES}" \
       -c 'max_connections=100' \
       -c 'shared_buffers=1GB' \
       -c 'work_mem=16MB' \

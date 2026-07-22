@@ -106,8 +106,20 @@ pass.
   sampler, probe, container, backup, PostgreSQL-readiness, and
   Typesense-readiness series for every expected role before transactionally
   re-verifying the rules. Only Alloy restarted; crawler workloads, PostgreSQL,
-  Typesense, and the tunnel were not restarted. The source and regression gate
-  remain tracked by #5993 until this remediation merges.
+  Typesense, and the tunnel were not restarted. The regression test and
+  production evidence were merged, and #5993 is closed.
+
+## Reviewed remediation awaiting production application
+
+The repository now contains the #5923 provider/host ingress, sshd, PostgreSQL
+listener/HBA, rollback, conformance, and deployment design. This is not yet
+recorded as a verified production control: the baseline evidence below remains
+authoritative until the reviewed revision merges to `main`, the protected
+`action=apply` workflow passes, a subsequent read-only audit is compliant, and
+external probes plus the live crawler private-path checks pass. The runbook in
+[`16-hetzner-maintenance.md`](../16-hetzner-maintenance.md) records the exact
+policy, the no-TLS threat-model decision for the crawler-only database, and the
+rollback sequence.
 
 ## Inventory and ownership
 
@@ -155,7 +167,7 @@ pass.
 
 ## Severity-ranked remediation organizer
 
-The confirmed findings are tracked by [#5922](https://github.com/colophon-group/jobseek/issues/5922). All child issues are explicitly on hold.
+The confirmed findings are tracked by [#5922](https://github.com/colophon-group/jobseek/issues/5922). Production remediation is authorized and active; each mutation must retain its documented safety and rollback gates. Murmur remains out of scope.
 
 Severity reflects impact if left unresolved; rank reflects the recommended execution order and dependencies. The existing repository severity taxonomy has high, medium, and low levels.
 
