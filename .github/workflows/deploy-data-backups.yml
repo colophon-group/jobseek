@@ -47,15 +47,15 @@ jobs:
 
       - name: Require configured production host
         env:
-          # Environment-scoped variables are unavailable while GitHub expands
+          # Environment-scoped secrets are unavailable while GitHub expands
           # the job matrix, so resolve the host only after production is attached.
-          TARGET_HOST: ${{ matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+          TARGET_HOST: ${{ matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
         run: test -n "$TARGET_HOST"
 
       - name: Copy backup deployment artifacts
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
-          host: ${{ matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+          host: ${{ matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
           source: scripts/jobseek-data-backup.py,deploy/backups,deploy/systemd/jobseek-postgresql-backup.service,deploy/systemd/jobseek-postgresql-backup.timer,deploy/systemd/jobseek-postgresql-backup-repository.service,deploy/systemd/jobseek-typesense-backup.service,deploy/systemd/jobseek-typesense-backup.timer,docs/19-data-backup-recovery.md,docs/16-hetzner-maintenance.md
@@ -68,7 +68,7 @@ jobs:
           JOBSEEK_BACKUP_DEPLOY_SHA: ${{ github.sha }}
           JOBSEEK_BACKUP_SERVICE: ${{ matrix.service }}
         with:
-          host: ${{ matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+          host: ${{ matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
           envs: JOBSEEK_BACKUP_DEPLOY_SHA,JOBSEEK_BACKUP_SERVICE

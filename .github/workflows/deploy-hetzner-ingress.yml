@@ -44,8 +44,8 @@ jobs:
     env:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
-      HETZNER_POSTGRES_HOST: ${{ vars.HETZNER_POSTGRES_HOST }}
-      HETZNER_TYPESENSE_HOST: ${{ vars.HETZNER_TYPESENSE_HOST }}
+      HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+      HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Audit firewall and derive private inventory
@@ -69,9 +69,9 @@ jobs:
     env:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
-      HETZNER_POSTGRES_HOST: ${{ vars.HETZNER_POSTGRES_HOST }}
-      HETZNER_TYPESENSE_HOST: ${{ vars.HETZNER_TYPESENSE_HOST }}
-      TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+      HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+      HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+      TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
       JOBSEEK_HOST_ROLE: ${{ matrix.service }}
       JOBSEEK_INGRESS_DEPLOY_SHA: ${{ github.sha }}
     steps:
@@ -81,7 +81,7 @@ jobs:
           set -euo pipefail
           python3 scripts/manage-hetzner-ingress.py audit \
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
-            --github-env "$GITHUB_ENV" >/dev/null
+            --github-env "$GITHUB_ENV"
       - name: Copy reviewed ingress tooling
         if: ${{ inputs.action == 'apply' }}
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
@@ -164,8 +164,8 @@ jobs:
     env:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
-      HETZNER_POSTGRES_HOST: ${{ vars.HETZNER_POSTGRES_HOST }}
-      HETZNER_TYPESENSE_HOST: ${{ vars.HETZNER_TYPESENSE_HOST }}
+      HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+      HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Require exact provider policy and external port state
@@ -184,8 +184,8 @@ jobs:
     env:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
-      HETZNER_POSTGRES_HOST: ${{ vars.HETZNER_POSTGRES_HOST }}
-      HETZNER_TYPESENSE_HOST: ${{ vars.HETZNER_TYPESENSE_HOST }}
+      HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+      HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
       JOBSEEK_INGRESS_DEPLOY_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -194,7 +194,7 @@ jobs:
           set -euo pipefail
           python3 scripts/manage-hetzner-ingress.py audit \
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
-            --github-env "$GITHUB_ENV" >/dev/null
+            --github-env "$GITHUB_ENV"
       - name: Verify real crawler private paths over a fresh SSH session
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
@@ -224,9 +224,9 @@ jobs:
     env:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
-      HETZNER_POSTGRES_HOST: ${{ vars.HETZNER_POSTGRES_HOST }}
-      HETZNER_TYPESENSE_HOST: ${{ vars.HETZNER_TYPESENSE_HOST }}
-      TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+      HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+      HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+      TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
       JOBSEEK_HOST_ROLE: ${{ matrix.service }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -235,7 +235,7 @@ jobs:
           set -euo pipefail
           python3 scripts/manage-hetzner-ingress.py audit \
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
-            --github-env "$GITHUB_ENV" >/dev/null
+            --github-env "$GITHUB_ENV"
       - name: Immediately roll back every staged host
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
@@ -270,9 +270,9 @@ jobs:
     env:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
-      HETZNER_POSTGRES_HOST: ${{ vars.HETZNER_POSTGRES_HOST }}
-      HETZNER_TYPESENSE_HOST: ${{ vars.HETZNER_TYPESENSE_HOST }}
-      TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+      HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+      HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+      TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
       JOBSEEK_HOST_ROLE: ${{ matrix.service }}
       JOBSEEK_INGRESS_DEPLOY_SHA: ${{ github.sha }}
     steps:
@@ -282,7 +282,7 @@ jobs:
           set -euo pipefail
           python3 scripts/manage-hetzner-ingress.py audit \
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
-            --github-env "$GITHUB_ENV" >/dev/null
+            --github-env "$GITHUB_ENV"
       - name: Commit host policy after fresh-session and private-path proof
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
@@ -331,8 +331,8 @@ jobs:
     env:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
-      HETZNER_POSTGRES_HOST: ${{ vars.HETZNER_POSTGRES_HOST }}
-      HETZNER_TYPESENSE_HOST: ${{ vars.HETZNER_TYPESENSE_HOST }}
+      HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+      HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Apply, verify, and transactionally retain the provider firewall

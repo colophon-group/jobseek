@@ -124,12 +124,13 @@ main-branch artifacts to both hosts and runs the installer in preserve mode.
 It records the deployed commit without starting, stopping, enabling, or
 disabling an existing timer. Deployment uses the same per-service lock as the
 backup job and fails safely instead of replacing code during an active
-backup. The production environment variables
+backup. The production environment secrets
 `HETZNER_POSTGRES_HOST` and `HETZNER_TYPESENSE_HOST` select the two hosts; the
-workflow reuses the existing Hetzner SSH deployment credential. These are
-environment-scoped variables, so the workflow resolves them inside runtime
-steps after the protected `production` environment is attached; do not embed
-their values in `strategy.matrix`, which GitHub expands earlier.
+workflow reuses the existing Hetzner SSH deployment credential. Host addresses
+are secrets for log-redaction purposes even though they are not authentication
+material. These are environment-scoped secrets, so the workflow resolves them
+inside runtime steps after the protected `production` environment is attached;
+do not embed their values in `strategy.matrix`, which GitHub expands earlier.
 
 Confirm the effective schedule:
 
