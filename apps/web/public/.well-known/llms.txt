@@ -11,7 +11,7 @@
 - Millions of postings tracked over time
 - 4 languages: English, German, French, Italian
 - Free tier: full search, 1 watchlist, application tracker
-- Pro tier ($10/month): unlimited watchlists, email alerts
+- Pro tier (coming soon; $10/month at launch): unlimited watchlists, email alerts
 - Open-source crawler (MIT), job data (CC BY-NC 4.0)
 - Built by Colophon Group, a small developer studio in Switzerland
 
