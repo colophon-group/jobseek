@@ -512,6 +512,13 @@
       "when": 1784720400000,
       "tag": "0081_private_watchlists_and_general_interviews",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1784727570000,
+      "tag": "0082_add_active_job_company_index",
+      "breakpoints": true
     }
   ]
 }
