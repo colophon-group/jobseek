@@ -24,6 +24,8 @@ STATE_ROOT=/var/lib/jobseek-observability
 ROLLBACK_ROOT="${STATE_ROOT}/rollback"
 BINARY=/usr/local/bin/jobseek-alloy
 SAMPLER=/usr/local/sbin/jobseek-host-observability
+ALLOY_LISTEN_ADDR=127.0.0.1:12347
+ALLOY_READY_URL="http://${ALLOY_LISTEN_ADDR}/-/ready"
 UNITS=(
   jobseek-alloy.service
   jobseek-host-observability.service
@@ -127,7 +129,8 @@ snapshot_previous() {
     "$SAMPLER" \
     "${CONFIG_ROOT}/alloy-host.alloy" \
     "${CONFIG_ROOT}/alloy.env" \
-    "${CONFIG_ROOT}/host.env"; do
+    "${CONFIG_ROOT}/host.env" \
+    "${STATE_ROOT}/deployed-sha"; do
     if [[ -e "$source" ]]; then
       cp --archive "$source" "$path/"
     fi
@@ -145,18 +148,37 @@ restore_previous() {
   set +e
   log "deployment failed; restoring previous observability surface"
   systemctl stop jobseek-alloy.service jobseek-host-observability.timer >/dev/null 2>&1
+  systemctl disable jobseek-alloy.service jobseek-host-observability.timer >/dev/null 2>&1
   if [[ -f "${rollback}/jobseek-alloy" ]]; then
     install -o root -g root -m 0755 "${rollback}/jobseek-alloy" "$BINARY"
+  else
+    rm -f "$BINARY"
   fi
   if [[ -f "${rollback}/jobseek-host-observability" ]]; then
     install -o root -g root -m 0755 "${rollback}/jobseek-host-observability" "$SAMPLER"
+  else
+    rm -f "$SAMPLER"
   fi
-  for name in alloy-host.alloy alloy.env host.env; do
+  if [[ -f "${rollback}/alloy-host.alloy" ]]; then
+    install -o root -g jobseek-alloy -m 0640 \
+      "${rollback}/alloy-host.alloy" "${CONFIG_ROOT}/alloy-host.alloy"
+  else
+    rm -f "${CONFIG_ROOT}/alloy-host.alloy"
+  fi
+  for name in alloy.env host.env; do
     if [[ -f "${rollback}/${name}" ]]; then
-      install -o root -g root -m "$([[ "$name" == *.env ]] && echo 0600 || echo 0644)" \
+      install -o root -g root -m 0600 \
         "${rollback}/${name}" "${CONFIG_ROOT}/${name}"
+    else
+      rm -f "${CONFIG_ROOT}/${name}"
     fi
   done
+  if [[ -f "${rollback}/deployed-sha" ]]; then
+    install -o root -g jobseek-alloy -m 0640 \
+      "${rollback}/deployed-sha" "${STATE_ROOT}/deployed-sha"
+  else
+    rm -f "${STATE_ROOT}/deployed-sha"
+  fi
   for unit in "${UNITS[@]}"; do
     if [[ -f "${rollback}/${unit}" ]]; then
       install -o root -g root -m 0644 "${rollback}/${unit}" "/etc/systemd/system/${unit}"
@@ -180,13 +202,22 @@ rollback_on_exit() {
   exit "$deploy_status"
 }
 
+alloy_service_pid_is_expected() {
+  local pid executable
+  pid="$(systemctl show --property MainPID --value jobseek-alloy.service)"
+  [[ "$pid" =~ ^[1-9][0-9]*$ ]] || return 1
+  [[ -e "/proc/${pid}/exe" ]] || return 1
+  executable="$(readlink -f "/proc/${pid}/exe")"
+  [[ "$executable" == "$BINARY" ]]
+}
+
 install_surface() {
   local unit
 
   extract_pinned_alloy
   install -o root -g root -m 0755 \
     "${REPO_ROOT}/scripts/jobseek-host-observability.py" "$SAMPLER"
-  install -o root -g root -m 0644 \
+  install -o root -g jobseek-alloy -m 0640 \
     "${REPO_ROOT}/deploy/observability/alloy-host.alloy" \
     "${CONFIG_ROOT}/alloy-host.alloy"
   write_runtime_env
@@ -208,13 +239,14 @@ install_surface() {
   systemctl enable --now jobseek-host-observability.timer
   systemctl enable jobseek-alloy.service
   systemctl restart jobseek-alloy.service
-  systemctl is-active --quiet jobseek-alloy.service
   systemctl is-active --quiet jobseek-host-observability.timer
 
   local ready=0
   for _ in {1..20}; do
-    if /usr/bin/curl --silent --show-error --fail \
-      http://127.0.0.1:12345/-/ready >/dev/null; then
+    if systemctl is-active --quiet jobseek-alloy.service && \
+      alloy_service_pid_is_expected && \
+      /usr/bin/curl --silent --show-error --fail \
+        "$ALLOY_READY_URL" >/dev/null; then
       ready=1
       break
     fi
@@ -238,8 +270,11 @@ main() {
     useradd --system --user-group --home-dir /nonexistent --shell /usr/sbin/nologin jobseek-alloy
   fi
   usermod -a -G systemd-journal jobseek-alloy
-  install -d -o root -g root -m 0700 "$CONFIG_ROOT" "$STATE_ROOT" "$ROLLBACK_ROOT"
-  install -d -o root -g root -m 0755 "${STATE_ROOT}/textfile"
+  # Alloy stays unprivileged: it can traverse only the config/textfile roots
+  # it needs, while secret env and rollback material remain root-only.
+  install -d -o root -g jobseek-alloy -m 0750 "$CONFIG_ROOT" "$STATE_ROOT"
+  install -d -o root -g root -m 0700 "$ROLLBACK_ROOT"
+  install -d -o root -g jobseek-alloy -m 0750 "${STATE_ROOT}/textfile"
   install -d -o root -g root -m 0700 "${STATE_ROOT}/state"
 
   local rollback
