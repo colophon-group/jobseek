@@ -11,6 +11,7 @@ import { ScrollFade } from "@/components/ui/scroll-fade";
 import { useDisabledByAncestor } from "./use-disabled-by-ancestor";
 import { DisabledFilterPill } from "./disabled-filter-pill";
 import { FacetCount } from "./facet-count";
+import { useSearchableDialogFocus } from "./use-searchable-dialog-focus";
 
 interface OccupationModalProps {
   open: boolean;
@@ -35,6 +36,7 @@ export function OccupationModal({
   const [search, setSearch] = useState("");
   const [warning, setWarning] = useState("");
   const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const { searchInputRef, focusSearchInputOnOpen } = useSearchableDialogFocus();
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -292,6 +294,7 @@ export function OccupationModal({
         <Dialog.Content
           className="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border-soft bg-surface shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
           aria-describedby={undefined}
+          onOpenAutoFocus={focusSearchInputOnOpen}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-divider px-5 py-4">
@@ -315,6 +318,7 @@ export function OccupationModal({
             <div className="flex items-center gap-2 rounded-md border border-border-soft px-3 py-2">
               <Search size={14} className="shrink-0 text-muted" />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setWarning(""); }}
