@@ -390,6 +390,10 @@ test("workflow-security runs repository script tests", () => {
 
 test("crawler deploys derive immutable versions for unchanged releases", () => {
   assert.match(deployCrawlerWorkflow, /'!apps\/crawler\/ws-package\/\*\*'/);
+  assert.match(
+    deployCrawlerWorkflow,
+    /'\.github\/workflows\/deploy-crawler-browser\.yml'/,
+  );
   assert.match(deployCrawlerWorkflow, /fetch-depth: 0/);
   assert.match(
     deployCrawlerWorkflow,

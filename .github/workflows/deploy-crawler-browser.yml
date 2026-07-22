@@ -10,6 +10,8 @@ on:
       - '!apps/crawler/ws-package/**'
       - '!apps/crawler/*.md'
       - '!apps/crawler/**/*.md'
+      # Keep the deploy workflow self-triggered so policy changes exercise the
+      # immutable-version and production rollout path they control (#5873).
       - '.github/workflows/deploy-crawler-browser.yml'
 
 env:

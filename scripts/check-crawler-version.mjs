@@ -4,6 +4,8 @@ import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 const DEPENDABOT_LOGIN = "dependabot[bot]";
+const CRAWLER_DEPLOY_WORKFLOW =
+  ".github/workflows/deploy-crawler-browser.yml";
 const DEPENDENCY_FILES = new Set([
   "apps/crawler/Dockerfile",
   "apps/crawler/docker-compose.yml",
@@ -33,6 +35,24 @@ export function isCrawlerDependencyOnly(files) {
   return (
     uniqueFiles.length > 0 &&
     uniqueFiles.every((file) => DEPENDENCY_FILES.has(file))
+  );
+}
+
+export function isCrawlerDeployInfrastructureCommit(files) {
+  const uniqueFiles = [...new Set(files)].sort();
+  return (
+    uniqueFiles.includes(CRAWLER_DEPLOY_WORKFLOW) &&
+    uniqueFiles.every(
+      (file) =>
+        !file.startsWith("apps/crawler/") || DEPENDENCY_FILES.has(file),
+    )
+  );
+}
+
+export function isCrawlerDerivedBuildEligible(files) {
+  return (
+    isCrawlerDependencyOnly(files) ||
+    isCrawlerDeployInfrastructureCommit(files)
   );
 }
 
