@@ -53,6 +53,10 @@ const deployCodexRunnerWorkflow = readFileSync(
   ".github/workflows/deploy-codex-runner.yml",
   "utf8",
 );
+const deployCrawlerWorkflow = readFileSync(
+  ".github/workflows/deploy-crawler-browser.yml",
+  "utf8",
+);
 const deployCodexRunnerHostScript = readFileSync(
   "scripts/deploy-codex-runner-host.sh",
   "utf8",
@@ -363,6 +367,9 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   assert.match(changesJob, /id: pull-request[\s\S]*echo "is_pr=true"/);
   assert.match(changesJob, /echo "base_ref=\$BASE_REF"/);
   assert.match(versionJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
+  assert.match(versionJob, /gh api "repos\/\$GITHUB_REPOSITORY\/pulls\/\$PR_NUMBER"/);
+  assert.match(versionJob, /scripts\/check-crawler-version\.mjs/);
+  assert.match(versionJob, /\.user\.login/);
   assert.match(probeJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
   assert.match(probeJob, /BASE_REF: \$\{\{ needs\.changes\.outputs\.base_ref \}\}/);
   assert.match(requiredCiJob, /const isPr = needs\.changes\?\.outputs\?\.is_pr === "true"/);
@@ -375,9 +382,31 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
 test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /node --test/);
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
+  assert.match(workflow, /scripts\/crawler-version\.test\.mjs/);
   assert.match(workflow, /scripts\/crawler-host-hygiene\.test\.mjs/);
   assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
+});
+
+test("crawler deploys derive immutable versions for unchanged releases", () => {
+  assert.match(deployCrawlerWorkflow, /'!apps\/crawler\/ws-package\/\*\*'/);
+  assert.match(deployCrawlerWorkflow, /fetch-depth: 0/);
+  assert.match(
+    deployCrawlerWorkflow,
+    /scripts\/derive-crawler-build-version\.mjs[\s\S]*--write-version apps\/crawler\/VERSION[\s\S]*--github-output "\$GITHUB_OUTPUT"/,
+  );
+  assert.match(
+    deployCrawlerWorkflow,
+    /jobseek-crawler:\$\{\{ steps\.version\.outputs\.image_tag \}\}/,
+  );
+  assert.match(
+    deployCrawlerWorkflow,
+    /CRAWLER_IMAGE_TAG: \$\{\{ steps\.version\.outputs\.image_tag \}\}/,
+  );
+  assert.doesNotMatch(
+    deployCrawlerWorkflow,
+    /steps\.version\.outputs\.version/,
+  );
 });
 
 test("web build jobs use one deterministic secretless environment", () => {

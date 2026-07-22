@@ -63,6 +63,7 @@ jobs:
         run: >
           node --test
           scripts/ci-workflow.test.mjs
+          scripts/crawler-version.test.mjs
           scripts/crawler-host-hygiene.test.mjs
           scripts/docs-index.test.mjs
           scripts/dealroom-company-requests.test.mjs
@@ -641,28 +642,34 @@ jobs:
     needs: changes
     if: needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.crawler_code == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Check VERSION increased
+      - name: Resolve trusted PR context
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr }}
         run: |
-          PR_VERSION=$(cat apps/crawler/VERSION | tr -d '[:space:]')
-          MAIN_VERSION=$(git show origin/main:apps/crawler/VERSION | tr -d '[:space:]')
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+          {
+            echo "base_sha=$(jq -r '.base.sha' <<< "$pr")"
+            echo "head_sha=$(jq -r '.head.sha' <<< "$pr")"
+            echo "author=$(jq -r '.user.login' <<< "$pr")"
+          } >> "$GITHUB_OUTPUT"
 
-          IFS='.' read -r pr_major pr_minor pr_patch <<< "$PR_VERSION"
-          IFS='.' read -r main_major main_minor main_patch <<< "$MAIN_VERSION"
-
-          pr_num=$((pr_major * 1000000 + pr_minor * 1000 + pr_patch))
-          main_num=$((main_major * 1000000 + main_minor * 1000 + main_patch))
-
-          if [ "$pr_num" -gt "$main_num" ]; then
-            echo "VERSION bumped: ${MAIN_VERSION} → ${PR_VERSION}"
-          else
-            echo "::error::apps/crawler/VERSION must be bumped for crawler code changes (main: ${MAIN_VERSION}, PR: ${PR_VERSION})"
-            exit 1
-          fi
+      - name: Enforce crawler release policy
+        run: >-
+          node scripts/check-crawler-version.mjs
+          --base "${{ steps.pr.outputs.base_sha }}"
+          --head "${{ steps.pr.outputs.head_sha }}"
+          --author "${{ steps.pr.outputs.author }}"
 
   probe-new-boards:
     name: Probe new/changed boards
