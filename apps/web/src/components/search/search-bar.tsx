@@ -444,11 +444,13 @@ export function SearchBar({
       e.preventDefault();
       if (activeIndex >= 0 && activeIndex < allSuggestions.length) {
         selectItem(allSuggestions[activeIndex]);
-      } else if (allSuggestions.length === 1 && allSuggestions[0].kind === "keyword") {
-        // Auto-select when keyword is the only option
-        selectItem(allSuggestions[0]);
+      } else if (trimmedInput.length >= 2) {
+        // The title-search row is always the first option. Enter should
+        // submit it even after asynchronous taxonomy/company suggestions
+        // arrive; requiring ArrowDown first makes an ordinary search input
+        // appear unresponsive (#5985).
+        submitFreeTextSearch();
       }
-      // Otherwise no action — user must select from dropdown
     } else if (e.key === "Escape") {
       setIsOpen(false);
       setActiveIndex(-1);
