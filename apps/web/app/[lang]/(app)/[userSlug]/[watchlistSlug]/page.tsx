@@ -1,8 +1,16 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
-import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
+import {
+  isLocale,
+  defaultLocale,
+  loadCatalog,
+  ogLocale,
+  ogAlternateLocales,
+  type Locale,
+} from "@/lib/i18n";
 import { watchlistCacheTag } from "@/lib/cache-tags";
-import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
+import { CACHE_TTL_LONG, CACHE_TTL_SHORT } from "@/lib/cache-ttl";
 import {
   getPublicWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
@@ -10,18 +18,24 @@ import {
 import { isQualifyingWatchlist } from "@/lib/watchlist-utils";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, buildWatchlistItemListJsonLd, JsonLd } from "@/lib/seo";
+import {
+  fetchPublicWatchlistPageData,
+  fetchWatchlistPageData,
+} from "@/lib/actions/watchlist-page-data";
 import { WatchlistContent } from "./watchlist-content";
 
-// 1-hour cache for both the metadata and the page body. Each is its
-// own `'use cache'` boundary — under cacheComponents they run in
+// Metadata is cached for an hour; the page body uses the short tier so
+// its posting list stays reasonably fresh. Each is its own `'use cache'`
+// boundary — under cacheComponents they run in
 // separate clean AsyncLocalStorage snapshots, so React's `cache()`
 // wouldn't dedupe the watchlist lookup across them. Cross-boundary
 // dedup lives one level down: `getPublicWatchlistByUserAndSlug` is
 // wrapped in Redis `cached()` (60s TTL) so the two callers share a
 // single SQL roundtrip. Watchlist metadata is shared via the CDN, so
-// per-viewer freshness comes from the client-hydrated body — search
+// the anonymous page body is also rendered at this boundary, while
+// viewers with personalization hints refresh it client-side. Search
 // engines re-crawl on a much slower cadence than an hour anyway. See
-// issue #2648.
+// issues #2648 and #5980.
 
 type Props = {
   params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
@@ -36,7 +50,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const [detail, { i18n }] = await Promise.all([
     // Public-only fetch: never reads session, so the page stays
     // statically prerenderable. The session-aware variant is only used
-    // by the client-fired server action that hydrates the page body.
+    // when viewer-specific data is needed, either in the runtime
+    // missing/private boundary or by the public page's client refresh.
     // See issue #2244. The Redis `cached()` wrapper inside
     // `getPublicWatchlistByUserAndSlug` shares this lookup with the
     // page-render call below.
@@ -144,21 +159,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function WatchlistRoute({ params }: Props) {
+async function getWatchlistRouteSnapshot(
+  locale: Locale,
+  userSlug: string,
+  watchlistSlug: string,
+) {
   "use cache";
-  cacheLife({ revalidate: CACHE_TTL_LONG });
-  const { lang, userSlug, watchlistSlug } = await params;
+  cacheLife({ revalidate: CACHE_TTL_SHORT });
   cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
-  const locale = isLocale(lang) ? lang : defaultLocale;
 
   // Re-fetch the watchlist detail. The Redis `cached()` layer inside
   // `getPublicWatchlistByUserAndSlug` shares the result with the
   // `generateMetadata` call above (single SQL per cold cache fill).
-  // The body is client-rendered via WatchlistContent, but the
-  // structured data must reach non-JS consumers (AI retrievers,
-  // search-engine crawlers that don't execute JS) — emitting it
-  // server-side is the only path.
+  // The body and its structured data must reach non-JS consumers (AI
+  // retrievers and search-engine crawlers that don't execute JS), so
+  // render the anonymous snapshot here. Viewers with personalization
+  // hints replace it through WatchlistContent's server action.
   const detail = await getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug);
+  if (!detail) return null;
+
+  const initialData = await fetchPublicWatchlistPageData({ detail, locale });
 
   // For `anyCompany` watchlists, `detail.companies` is unrelated to
   // what the watchlist actually tracks (it holds leftover rows from
@@ -166,17 +186,72 @@ export default async function WatchlistRoute({ params }: Props) {
   // Emitting `Organization` references for that noise would mislead
   // schema consumers. Skip JSON-LD entirely for those; the page
   // metadata description still describes the watchlist correctly.
-  const itemListJsonLd = detail && !detail.filters.anyCompany
+  const itemListJsonLd = !detail.filters.anyCompany
     ? buildWatchlistItemListJsonLd(
         { title: detail.title, companies: detail.companies },
         locale,
       )
     : null;
 
+  return { initialData, itemListJsonLd };
+}
+
+async function WatchlistRuntimeContent({
+  locale,
+  userSlug,
+  watchlistSlug,
+}: {
+  locale: Locale;
+  userSlug: string;
+  watchlistSlug: string;
+}) {
+  const initialData = await fetchWatchlistPageData({
+    userSlug,
+    watchlistSlug,
+    locale,
+  });
+
+  return (
+    <WatchlistContent
+      lang={locale}
+      userSlug={userSlug}
+      watchlistSlug={watchlistSlug}
+      initialData={initialData}
+      viewerResolved
+    />
+  );
+}
+
+export default async function WatchlistRoute({ params }: Props) {
+  const { lang, userSlug, watchlistSlug } = await params;
+  const locale = isLocale(lang) ? lang : defaultLocale;
+  const snapshot = await getWatchlistRouteSnapshot(
+    locale,
+    userSlug,
+    watchlistSlug,
+  );
+
+  if (!snapshot) {
+    return (
+      <Suspense fallback={null}>
+        <WatchlistRuntimeContent
+          locale={locale}
+          userSlug={userSlug}
+          watchlistSlug={watchlistSlug}
+        />
+      </Suspense>
+    );
+  }
+
   return (
     <>
-      {itemListJsonLd && <JsonLd data={itemListJsonLd} />}
-      <WatchlistContent lang={lang} userSlug={userSlug} watchlistSlug={watchlistSlug} />
+      {snapshot.itemListJsonLd && <JsonLd data={snapshot.itemListJsonLd} />}
+      <WatchlistContent
+        lang={locale}
+        userSlug={userSlug}
+        watchlistSlug={watchlistSlug}
+        initialData={snapshot.initialData}
+      />
     </>
   );
 }
