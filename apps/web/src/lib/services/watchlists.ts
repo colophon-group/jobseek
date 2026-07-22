@@ -242,7 +242,7 @@ export async function createWatchlist(params: {
           slug: candidate,
           title: params.title,
           description: params.description ?? null,
-          isPublic: params.isPublic ?? true,
+          isPublic: params.isPublic ?? false,
           filters: { anyCompany: true, ...params.filters },
         })
         .returning({ id: watchlist.id });
@@ -264,7 +264,7 @@ export async function createWatchlist(params: {
   // request scope — calling notifyIndexNow from a detached .then()
   // chain (the previous shape) silently broke because next/server's
   // after() requires a live request context to attach work.
-  const isPublic = params.isPublic ?? true;
+  const isPublic = params.isPublic ?? false;
   const mergedFilters = { anyCompany: true, ...params.filters };
   const trivial = isTrivialWatchlist(mergedFilters, params.companyIds.length);
 
@@ -552,7 +552,7 @@ export async function copyWatchlist(
           slug: candidate,
           title: source.title,
           description: source.description,
-          isPublic: true,
+          isPublic: false,
           filters: sourceFilters,
           sourceWatchlistId: watchlistId,
         })
@@ -583,7 +583,7 @@ export async function copyWatchlist(
     slug_before: null,
     slug_after: slug,
     is_public_before: null,
-    is_public_after: true,
+    is_public_after: false,
     company_count_delta: companies.length,
   });
 
@@ -591,7 +591,7 @@ export async function copyWatchlist(
   // in the request scope; the previous detached .then() pattern broke
   // notifyIndexNow because the inner after() lost its request context
   // by the time the chain resolved.
-  // Cache invalidation runs unconditionally (even if trivial) — same
+  // Cache invalidation runs unconditionally (even if private/trivial) — same
   // reasoning as `createWatchlist`: a stale null-detail render in the
   // page-level cache needs busting whether or not the watchlist will
   // be sitemap-indexed.
@@ -603,24 +603,8 @@ export async function copyWatchlist(
     }
   });
 
-  if (!isTrivialWatchlist(sourceFilters, companies.length)) {
-    // 1. Upsert the new copy (copies are always public) — unless trivial.
-    after(async () => {
-      try {
-        await _reindexPublicWatchlist(userId, {
-          id: row.id,
-          slug,
-          title: source.title,
-          description: source.description,
-          company_count: companies.length,
-          filters: sourceFilters,
-          logLabel: "copyWatchlist",
-        });
-      } catch (err) {
-        console.error("[copyWatchlist] Typesense upsert hook failed", err);
-      }
-    });
-  }
+  // Copies now default to private, so they must not enter Typesense,
+  // sitemaps, or IndexNow until the owner explicitly makes them public.
 
   // 2. Update source watchlist's mirror_count (increment). No IndexNow
   // here — the source URL hasn't changed visible content.

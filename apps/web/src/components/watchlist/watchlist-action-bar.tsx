@@ -121,14 +121,6 @@ export function WatchlistActionBar({
   }
 
   function handleToggleVisibility() {
-    if (!isPaidPlan && isPublic) {
-      upgrade.show(t({
-        id: "upgrade.reason.makePrivate",
-        comment: "Reason shown in upgrade modal when trying to make watchlist private",
-        message: "Private watchlists are a paid feature. Upgrade to hide your watchlists from others.",
-      }));
-      return;
-    }
     const next = !isPublic;
     setIsPublic(next);
     updateWatchlist({ watchlistId, isPublic: next });
@@ -178,8 +170,6 @@ export function WatchlistActionBar({
                     : t({ id: "watchlists.actions.makePublic", comment: "Make watchlist public tooltip", message: "Make public" })
                 }
                 onClick={handleToggleVisibility}
-                disabled={!isPaidPlan && isPublic}
-                warning={!isPaidPlan && isPublic}
               >
                 {isPublic ? <Globe size={16} aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
               </ActionButton>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { companyCacheTag } from "@/lib/cache-tags";
@@ -10,6 +11,7 @@ import { buildAlternates } from "@/lib/seo";
 import { CompanyHead } from "./company-head";
 import { CompanyContent } from "./company-content";
 import { SimilarSection } from "./similar-section";
+import { CompanySkeleton } from "@/components/search/company-skeleton";
 
 type Props = {
   params: Promise<{ lang: string; slug: string }>;
@@ -142,12 +144,16 @@ export default async function CompanyPageRoute({ params }: Props) {
   return (
     <div className="space-y-4">
       <CompanyHead company={company} locale={locale} />
-      <SimilarSection
-        companyId={company.id}
-        industryId={company.industryId}
-        locale={locale}
-      />
-      <CompanyContent locale={locale} slug={slug} initialData={initialData} />
+      <Suspense fallback={null}>
+        <SimilarSection
+          companyId={company.id}
+          industryId={company.industryId}
+          locale={locale}
+        />
+      </Suspense>
+      <Suspense fallback={<CompanySkeleton />}>
+        <CompanyContent locale={locale} slug={slug} initialData={initialData} />
+      </Suspense>
     </div>
   );
 }

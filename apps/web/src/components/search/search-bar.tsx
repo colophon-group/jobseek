@@ -84,7 +84,7 @@ export function SearchBar({
   onAddSeniority,
   onAddTechnology,
   onAddWorkMode,
-  onSubmitSearch: _onSubmitSearch,
+  onSubmitSearch,
   locale: localeProp,
   keywords: keywordsProp,
   locations: locationsProp,
@@ -404,14 +404,26 @@ export function SearchBar({
         const wmSet = new Set(existingWm);
         const mergedWm = [...existingWm, ...(parsed.workMode ?? []).filter((m) => !wmSet.has(m))];
 
-        router.push(buildFilteredPath(lp("/explore"), mergedKw, mergedLocs, undefined, mergedOccs, mergedSens, mergedTechs, mergedWm));
+        if (onSubmitSearch) {
+          onSubmitSearch(mergedKw, mergedLocs, mergedOccs, mergedSens, mergedTechs, mergedWm);
+        } else if (pageActions) {
+          pageActions.submitSearch(mergedKw, mergedLocs, mergedOccs, mergedSens, mergedTechs, mergedWm);
+        } else {
+          router.push(buildFilteredPath(lp("/explore"), mergedKw, mergedLocs, undefined, mergedOccs, mergedSens, mergedTechs, mergedWm));
+        }
       })
       .catch(() => {
         // Fallback: treat raw input as a keyword and navigate
         const mergedKw = [...existingKw, input];
-        router.push(buildFilteredPath(lp("/explore"), mergedKw, existingLocs, undefined, existingOccs, existingSens, existingTechs, existingWm));
+        if (onSubmitSearch) {
+          onSubmitSearch(mergedKw, existingLocs, existingOccs, existingSens, existingTechs, existingWm);
+        } else if (pageActions) {
+          pageActions.submitSearch(mergedKw, existingLocs, existingOccs, existingSens, existingTechs, existingWm);
+        } else {
+          router.push(buildFilteredPath(lp("/explore"), mergedKw, existingLocs, undefined, existingOccs, existingSens, existingTechs, existingWm));
+        }
       });
-  }, [inputValue, lang, userLat, userLng, getPageActions, router, lp, searchParams, keywordsProp, locationsProp, occupationsProp, senioritiesProp, technologiesProp, workModeProp, currentKeywords, clearResults]);
+  }, [inputValue, lang, userLat, userLng, getPageActions, onSubmitSearch, router, lp, searchParams, keywordsProp, locationsProp, occupationsProp, senioritiesProp, technologiesProp, workModeProp, currentKeywords, clearResults]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {

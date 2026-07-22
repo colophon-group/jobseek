@@ -103,6 +103,9 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
           {
             field_name: "location_ids",
             counts: [
+              // The broad facet can include macro ancestors as well as the
+              // country/city rows. It must not duplicate EU under "Other".
+              { value: "4", count: 146 },
               { value: "100", count: 50 },
               { value: "200", count: 25 },
             ],
@@ -145,6 +148,10 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
     // Country tier still works
     expect(out.countries.length).toBeGreaterThan(0);
     expect(out.countries[0].countryName).toBe("Germany");
+    const hierarchyLocationIds = out.countries.flatMap((country) =>
+      country.regions.flatMap((region) => region.locations.map((location) => location.id)),
+    );
+    expect(hierarchyLocationIds).not.toContain(4);
   });
 
   /**

@@ -784,7 +784,7 @@ export const watchlist = pgTable(
     slug: text("slug").notNull(),
     title: text("title").notNull(),
     description: text("description"),
-    isPublic: boolean("is_public").default(true).notNull(),
+    isPublic: boolean("is_public").default(false).notNull(),
     alertsEnabled: boolean("alerts_enabled").default(false).notNull(),
     filters: jsonb("filters").default({}).notNull(),
     sourceWatchlistId: uuid("source_watchlist_id").references((): AnyPgColumn => watchlist.id, {

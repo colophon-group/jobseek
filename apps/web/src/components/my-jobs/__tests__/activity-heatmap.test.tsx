@@ -208,7 +208,24 @@ describe("ActivityHeatmap — locale labels and plural tooltip (#3150)", () => {
     expect(labels).toContain(new Intl.DateTimeFormat("de", { weekday: "short" }).format(new Date(2026, 0, 5)));
     expect(labels).toContain(new Intl.DateTimeFormat("de", { weekday: "short" }).format(new Date(2026, 0, 7)));
     expect(labels).toContain(new Intl.DateTimeFormat("de", { weekday: "short" }).format(new Date(2026, 0, 9)));
-    expect(labels).toContain(new Intl.DateTimeFormat("de", { month: "short" }).format(new Date(2026, 6, 1)));
+    expect(labels).toContain(new Intl.DateTimeFormat("de", { month: "short" }).format(new Date(2026, 7, 1)));
+  });
+
+  it("omits a partial first-month label when it would collide with the next month", () => {
+    vi.setSystemTime(new Date(2026, 6, 22, 12, 0, 0, 0));
+
+    const { container } = render(<ActivityHeatmap data={[]} />);
+    const monthLabels = Array.from(
+      container.querySelectorAll<SVGTextElement>("text[data-month-column]"),
+    );
+
+    expect(monthLabels[0]?.textContent).toBe(
+      new Intl.DateTimeFormat("en", { month: "short" }).format(new Date(2026, 7, 1)),
+    );
+    const columns = monthLabels.map((label) => Number(label.dataset.monthColumn));
+    for (let index = 1; index < columns.length; index++) {
+      expect(columns[index] - columns[index - 1]).toBeGreaterThanOrEqual(3);
+    }
   });
 
   const tooltipCases: Array<[number, string]> = [

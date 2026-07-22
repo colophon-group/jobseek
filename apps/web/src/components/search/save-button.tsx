@@ -7,6 +7,7 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSavedJobs } from "@/components/providers/SavedJobsProvider";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
+import { withAuthReturnPath } from "@/lib/auth-return";
 
 export function SaveButton({ postingId }: { postingId: string }) {
   const { t } = useLingui();
@@ -25,7 +26,8 @@ export function SaveButton({ postingId }: { postingId: string }) {
     e.stopPropagation();
     if (isPending) return;
     if (!isLoggedIn) {
-      window.location.href = lp("/sign-in");
+      const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.href = withAuthReturnPath(lp("/sign-in"), returnPath);
       return;
     }
     toggle(postingId);

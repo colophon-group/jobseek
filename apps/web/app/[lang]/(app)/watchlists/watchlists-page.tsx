@@ -55,6 +55,7 @@ export function WatchlistsPage({
         description: prefill?.description,
         companyIds: [],
         filters: prefill?.filters,
+        isPublic: false,
       });
       if ("error" in result) {
         // Server-side race: client thought limit wasn't reached, but a

@@ -262,12 +262,13 @@ export function CompanyPage({
         updateUrl();
         runSearch();
       },
-      submitSearch: (nextKeywords, nextLocations, nextOccupations, nextSeniorities, nextTechnologies) => {
+      submitSearch: (nextKeywords, nextLocations, nextOccupations, nextSeniorities, nextTechnologies, nextWorkMode) => {
         setKeywords(nextKeywords);
         setLocations(nextLocations);
         if (nextOccupations) { setOccupations(nextOccupations); }
         if (nextSeniorities) { setSeniorities(nextSeniorities); }
         if (nextTechnologies) { setTechnologies(nextTechnologies); }
+        if (nextWorkMode) { setWorkMode(nextWorkMode); }
         setShowPostingId(null);
         updateUrl();
         runSearch();

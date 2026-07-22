@@ -798,6 +798,11 @@ async function _fetchGlobalLocationsGrouped(
       const loc = hierarchy.get(locationId);
       if (!loc) continue;
 
+      // Macro regions render in the dedicated Regions cluster above. They
+      // have no country parent, so letting them fall through the hierarchy
+      // builder also adds them to the synthetic "Other" country group.
+      if (loc.type === "macro") continue;
+
       // Find region and country for this location
       let regionId: number | null = null;
       let countryId: number | null = null;
