@@ -55,7 +55,7 @@ prometheus.relabel "host" {
 // write retries distinguishable from application outages.
 prometheus.scrape "alloy" {
   targets = [{
-    "__address__" = "127.0.0.1:12345",
+    "__address__" = "127.0.0.1:12347",
     "job"         = "jobseek-alloy",
     "instance"    = sys.env("JOBSEEK_HOST_INSTANCE"),
     "host_role"   = sys.env("JOBSEEK_HOST_ROLE"),

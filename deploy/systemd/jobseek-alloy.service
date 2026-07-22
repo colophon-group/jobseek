@@ -13,7 +13,7 @@ User=jobseek-alloy
 Group=jobseek-alloy
 SupplementaryGroups=systemd-journal
 EnvironmentFile=/etc/jobseek-observability/alloy.env
-ExecStart=/usr/local/bin/jobseek-alloy run --storage.path=/var/lib/jobseek-alloy --server.http.listen-addr=127.0.0.1:12345 /etc/jobseek-observability/alloy-host.alloy
+ExecStart=/usr/local/bin/jobseek-alloy run --storage.path=/var/lib/jobseek-alloy --server.http.listen-addr=127.0.0.1:12347 /etc/jobseek-observability/alloy-host.alloy
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5s

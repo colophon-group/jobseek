@@ -37,7 +37,7 @@ All three hosts run the same repo-owned host telemetry surface:
   PostgreSQL statistics. The sampler cannot reach non-loopback IP addresses,
   performs no Docker or database mutations, and atomically writes a
   world-readable Prometheus textfile containing no credentials or row data.
-- Alloy listens only on `127.0.0.1:12345`, reads that textfile plus host
+- Alloy listens only on `127.0.0.1:12347`, reads that textfile plus host
   CPU/RAM/load/swap/filesystem/inode/kernel/network metrics, and remote-writes
   directly to Grafana Cloud. No host opens a scrape port.
 - The sampler forwards at most 200 new error-class lines per interval from the
@@ -76,9 +76,19 @@ host variables are resolved inside runtime steps after the protected
 `production` environment is attached. The installer snapshots the prior
 binary, configuration, secret env, and units under the root-only
 `/var/lib/jobseek-observability/rollback/` directory and automatically
-restores them if validation, service startup, or loopback readiness fails.
+restores them if validation, service startup, or loopback readiness fails;
+artifacts that did not exist before the attempt are removed rather than left
+as a partial installation.
 It restarts only Alloy; it does not restart Docker, PostgreSQL, Typesense, the
 tunnel, or any crawler workload.
+
+The config and textfile parent directories are `root:jobseek-alloy` with mode
+`0750`; the Alloy config is group-readable, while credential env files,
+sampler state, and rollback snapshots remain root-only. The host listener uses
+port `12347`, distinct from the crawler Compose Alloy listener on `12346`.
+Deployment readiness requires both the loopback endpoint and an active systemd
+main PID whose executable is `/usr/local/bin/jobseek-alloy`, so an unrelated
+listener cannot make a failed service appear healthy.
 
 Alert definitions in [`apps/crawler/alerts.yaml`](../apps/crawler/alerts.yaml)
 are transactionally written through the Mimir ruler API. The sync client first
@@ -97,8 +107,8 @@ systemctl is-enabled jobseek-alloy.service jobseek-host-observability.timer
 systemctl is-active jobseek-alloy.service jobseek-host-observability.timer
 systemctl list-timers --all jobseek-host-observability.timer --no-pager
 systemctl status jobseek-host-observability.service --no-pager
-curl --fail --silent http://127.0.0.1:12345/-/ready
-ss -ltnp | grep '127.0.0.1:12345'
+curl --fail --silent http://127.0.0.1:12347/-/ready
+ss -ltnp | grep '127.0.0.1:12347'
 grep -v '^#' /var/lib/jobseek-observability/textfile/jobseek-host.prom
 journalctl -u jobseek-alloy.service -u jobseek-host-observability.service \
   --since '30 minutes ago' --no-pager

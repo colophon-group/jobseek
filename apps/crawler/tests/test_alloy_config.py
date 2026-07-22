@@ -9,6 +9,8 @@ CONFIG = (Path(__file__).resolve().parents[1] / "alloy.river").read_text(encodin
 COMPOSE = (Path(__file__).resolve().parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
 ROOT = Path(__file__).resolve().parents[3]
 HOST_CONFIG = (ROOT / "deploy" / "observability" / "alloy-host.alloy").read_text(encoding="utf-8")
+HOST_INSTALLER = (ROOT / "deploy" / "observability" / "install-host.sh").read_text(encoding="utf-8")
+HOST_SERVICE = (ROOT / "deploy" / "systemd" / "jobseek-alloy.service").read_text(encoding="utf-8")
 
 
 def _component_body(kind: str) -> str:
@@ -48,6 +50,22 @@ def test_host_metrics_have_stable_roles_and_no_public_listener():
     assert 'replacement  = "integrations/unix"' in HOST_CONFIG
     assert 'replacement  = sys.env("JOBSEEK_HOST_INSTANCE")' in HOST_CONFIG
     assert 'replacement  = sys.env("JOBSEEK_HOST_ROLE")' in HOST_CONFIG
-    assert '"__address__" = "127.0.0.1:12345"' in HOST_CONFIG
+    assert '"__address__" = "127.0.0.1:12347"' in HOST_CONFIG
+    assert "--server.http.listen-addr=127.0.0.1:12347" in HOST_SERVICE
     assert "/var/run/docker.sock" not in HOST_CONFIG
     assert 'directory = "/var/lib/jobseek-observability/textfile"' in HOST_CONFIG
+
+
+def test_host_alloy_unprivileged_paths_and_readiness_are_enforced():
+    assert (
+        'install -d -o root -g jobseek-alloy -m 0750 "$CONFIG_ROOT" "$STATE_ROOT"' in HOST_INSTALLER
+    )
+    assert 'install -d -o root -g jobseek-alloy -m 0750 "${STATE_ROOT}/textfile"' in HOST_INSTALLER
+    assert "install -o root -g jobseek-alloy -m 0640" in HOST_INSTALLER
+    assert "alloy_service_pid_is_expected" in HOST_INSTALLER
+    assert 'readlink -f "/proc/${pid}/exe"' in HOST_INSTALLER
+    assert "systemctl is-active --quiet jobseek-alloy.service" in HOST_INSTALLER
+    assert 'ALLOY_READY_URL="http://${ALLOY_LISTEN_ADDR}/-/ready"' in HOST_INSTALLER
+    assert 'rm -f "$BINARY"' in HOST_INSTALLER
+    assert 'rm -f "$SAMPLER"' in HOST_INSTALLER
+    assert '"${STATE_ROOT}/deployed-sha"' in HOST_INSTALLER
