@@ -38,6 +38,14 @@ const LEGAL_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
 
 type SortBy = "status_changed_at" | "saved_at" | "status" | "company_name";
 
+type DatabaseTimestamp = Date | string;
+
+function serializeDatabaseTimestamp(value: DatabaseTimestamp): string {
+  return value instanceof Date
+    ? value.toISOString()
+    : new Date(value).toISOString();
+}
+
 // ── getMyJobs ────────────────────────────────────────────────────────
 
 export async function getMyJobs(params: {
@@ -252,8 +260,10 @@ export async function getMyJobDetail(
     id: r.id,
     round: r.round,
     type: r.type as InterviewType,
-    scheduledAt: r.scheduledAt?.toISOString() ?? null,
-    createdAt: r.createdAt.toISOString(),
+    scheduledAt: r.scheduledAt
+      ? serializeDatabaseTimestamp(r.scheduledAt)
+      : null,
+    createdAt: serializeDatabaseTimestamp(r.createdAt),
   }));
 
   return {
@@ -403,8 +413,8 @@ export async function addInterview(
         id: string;
         round: number;
         type: string;
-        scheduledAt: Date | null;
-        createdAt: Date;
+        scheduledAt: DatabaseTimestamp | null;
+        createdAt: DatabaseTimestamp;
       }
     | undefined;
   let lastErr: unknown;
@@ -415,8 +425,8 @@ export async function addInterview(
         id: string;
         round: number;
         type: string;
-        scheduled_at: Date | null;
-        created_at: Date;
+        scheduled_at: DatabaseTimestamp | null;
+        created_at: DatabaseTimestamp;
       }>(sql`
         INSERT INTO application_interview (saved_job_id, round, type)
         SELECT
@@ -432,8 +442,8 @@ export async function addInterview(
         id: string;
         round: number;
         type: string;
-        scheduled_at: Date | null;
-        created_at: Date;
+        scheduled_at: DatabaseTimestamp | null;
+        created_at: DatabaseTimestamp;
       }>)[0];
 
       if (!r) {
@@ -488,8 +498,10 @@ export async function addInterview(
       id: inserted.id,
       round: inserted.round,
       type: inserted.type as InterviewType,
-      scheduledAt: inserted.scheduledAt?.toISOString() ?? null,
-      createdAt: inserted.createdAt.toISOString(),
+      scheduledAt: inserted.scheduledAt
+        ? serializeDatabaseTimestamp(inserted.scheduledAt)
+        : null,
+      createdAt: serializeDatabaseTimestamp(inserted.createdAt),
     },
   };
 }
