@@ -26,6 +26,7 @@ import { useLatest, useLatestState } from "@/lib/use-latest";
 import type { SearchResultPosting, HistogramFilters, WorkMode } from "@/lib/search";
 import type { SelectedLocation } from "@/lib/search/types";
 import { useSearchStateStore } from "@/components/providers/SearchStateProvider";
+import { ActivePostingCount, YearPostingCount } from "@/components/search/posting-count-labels";
 
 const PAGE_SIZE = 20;
 
@@ -546,21 +547,19 @@ export function CompanyPage({
   // left/right.
   const statsSlot = (
     <p className="hidden whitespace-nowrap text-xs text-muted md:block">
-      {activeCount} <Trans id="company.page.active" comment="Active postings count on company page">active</Trans>
+      <ActivePostingCount count={activeCount} />
       {" · "}
-      {yearCount} <Trans id="company.page.yearCount" comment="Year postings count on company page">in the last year</Trans>
+      <YearPostingCount count={yearCount} />
     </p>
   );
   // Mobile: dedicated row. Active left, year right.
   const statsRowMobile = (
     <div className="flex items-center justify-between text-xs text-muted md:hidden">
       <span>
-        {activeCount}{" "}
-        <Trans id="company.page.active" comment="Active postings count on company page">active</Trans>
+        <ActivePostingCount count={activeCount} />
       </span>
       <span>
-        {yearCount}{" "}
-        <Trans id="company.page.yearCount" comment="Year postings count on company page">in the last year</Trans>
+        <YearPostingCount count={yearCount} />
       </span>
     </div>
   );
@@ -670,7 +669,7 @@ export function CompanyPage({
               {!posting.title && <PendingJobIcon />}
               <SaveButton postingId={posting.id} />
               <span suppressHydrationWarning className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted">
-                {timeAgoShort(posting.firstSeenAt)}
+                {timeAgoShort(posting.firstSeenAt, uiLocale)}
               </span>
             </div>
           ))}

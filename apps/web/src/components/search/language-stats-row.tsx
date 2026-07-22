@@ -1,7 +1,7 @@
 "use client";
 
-import { Trans } from "@lingui/react/macro";
 import { LanguageNote } from "@/components/search/language-note";
+import { ActivePostingCount, YearPostingCount } from "@/components/search/posting-count-labels";
 
 type Props = {
   jobLanguages: string[];
@@ -21,36 +21,26 @@ type Props = {
  *        the two high-signal numbers mirror the page's own left/right
  *        reading flow).
  *
- * Numbers are locale-formatted (`toLocaleString`) so the thousands
- * separator follows the page locale.
+ * Counts are rendered through ICU plurals so both number formatting and
+ * grammar follow the active locale.
  */
 export function LanguageStatsRow({ jobLanguages, locale, activeCount, yearCount }: Props) {
-  const active = activeCount.toLocaleString(locale);
-  const year = yearCount.toLocaleString(locale);
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-4">
         <LanguageNote jobLanguages={jobLanguages} locale={locale} />
         <p className="hidden whitespace-nowrap text-xs text-muted md:block">
-          {active}{" "}
-          <Trans id="common.stats.active" comment="Active postings count">active</Trans>
+          <ActivePostingCount count={activeCount} />
           {" · "}
-          {year}{" "}
-          <Trans id="common.stats.yearCount" comment="Postings seen in the last year count">
-            in the last year
-          </Trans>
+          <YearPostingCount count={yearCount} />
         </p>
       </div>
       <div className="flex items-center justify-between text-xs text-muted md:hidden">
         <span>
-          {active}{" "}
-          <Trans id="common.stats.active" comment="Active postings count">active</Trans>
+          <ActivePostingCount count={activeCount} />
         </span>
         <span>
-          {year}{" "}
-          <Trans id="common.stats.yearCount" comment="Postings seen in the last year count">
-            in the last year
-          </Trans>
+          <YearPostingCount count={yearCount} />
         </span>
       </div>
     </div>

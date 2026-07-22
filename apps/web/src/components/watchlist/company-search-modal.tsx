@@ -15,6 +15,7 @@ import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { RequestCompanyPrompt } from "@/components/search/request-company";
 import { useStarredCompanies } from "@/components/providers/StarredCompaniesProvider";
+import { ActivePostingCount, YearPostingCount } from "@/components/search/posting-count-labels";
 
 type SelectedCompany = { id: string; name: string; slug: string; icon: string | null };
 
@@ -337,7 +338,9 @@ export function CompanySearchModal({
                             {c.name}
                           </span>
                           <span className="text-xs text-muted">
-                            {c.activeMatches} active · {c.yearMatches} in the last year
+                            <ActivePostingCount count={c.activeMatches} />
+                            {" · "}
+                            <YearPostingCount count={c.yearMatches} />
                           </span>
                         </div>
                         {c.description && (

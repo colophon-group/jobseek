@@ -80,7 +80,7 @@ function DetailContent({ detail, descriptionLoaded }: { detail: PostingDetail; d
   const lp = useLocalePath();
   const pageActions = usePageActions();
   const salary = useSalaryDisplay();
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
   const filterByPrefix = t({ id: "search.detail.filterByPrefix", comment: "Tooltip prefix for clickable filter pills, followed by the value name", message: "Filter by" });
   const { getStatus, getSavedJobId, setStatus: setTrackingStatus } = useSavedJobs();
   const trackingStatus = getStatus(detail.id);
@@ -143,7 +143,7 @@ function DetailContent({ detail, descriptionLoaded }: { detail: PostingDetail; d
           <span className="text-sm font-semibold">{company.name}</span>
         </Link>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <span suppressHydrationWarning className="text-[10px] tabular-nums text-muted">{timeAgoShort(detail.firstSeenAt)}</span>
+          <span suppressHydrationWarning className="text-[10px] tabular-nums text-muted">{timeAgoShort(detail.firstSeenAt, i18n.locale)}</span>
           <SaveButton postingId={detail.id} />
           <a
             href={withUtmSource(detail.sourceUrl)}
