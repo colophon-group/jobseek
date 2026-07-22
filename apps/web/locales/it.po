@@ -5039,3 +5039,51 @@ msgstr "Dal"
 #: app/[lang]/(app)/my-jobs/stats/stats-page.tsx
 msgid "myJobs.stats.toDate"
 msgstr "Al"
+
+#. Button label while an interview round is being added
+msgid "myJobs.detail.addingInterview"
+msgstr "Aggiunta…"
+
+#. Screen-reader confirmation after adding an interview round
+msgid "myJobs.interview.added"
+msgstr "Colloquio aggiunto."
+
+#. Error shown when an interview round cannot be added
+msgid "myJobs.interview.addError"
+msgstr "Impossibile aggiungere il colloquio. Riprova."
+
+#. Screen-reader confirmation after updating an interview round
+msgid "myJobs.interview.updated"
+msgstr "Colloquio aggiornato."
+
+#. Error shown when an interview round cannot be updated
+msgid "myJobs.interview.updateError"
+msgstr "Impossibile aggiornare il colloquio. Riprova."
+
+#. Delete interview confirmation title
+msgid "myJobs.interview.deleteTitle"
+msgstr "Eliminare il colloquio?"
+
+#. Delete interview confirmation description
+msgid "myJobs.interview.deleteDescription"
+msgstr "Questo colloquio verrà eliminato definitivamente. Se è l’ultimo, la candidatura tornerà allo stato « Candidato »."
+
+#. Cancel deleting an interview round
+msgid "myJobs.interview.deleteCancel"
+msgstr "Annulla"
+
+#. Confirm deleting an interview round
+msgid "myJobs.interview.deleteConfirm"
+msgstr "Elimina"
+
+#. Delete interview button while deletion is pending
+msgid "myJobs.interview.deleting"
+msgstr "Eliminazione…"
+
+#. Screen-reader confirmation after deleting an interview round
+msgid "myJobs.interview.deleted"
+msgstr "Colloquio eliminato."
+
+#. Error shown when an interview round cannot be deleted
+msgid "myJobs.interview.deleteError"
+msgstr "Impossibile eliminare il colloquio. Riprova."

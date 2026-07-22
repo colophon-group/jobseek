@@ -5039,3 +5039,51 @@ msgstr "Du"
 #: app/[lang]/(app)/my-jobs/stats/stats-page.tsx
 msgid "myJobs.stats.toDate"
 msgstr "Au"
+
+#. Button label while an interview round is being added
+msgid "myJobs.detail.addingInterview"
+msgstr "Ajout…"
+
+#. Screen-reader confirmation after adding an interview round
+msgid "myJobs.interview.added"
+msgstr "Entretien ajouté."
+
+#. Error shown when an interview round cannot be added
+msgid "myJobs.interview.addError"
+msgstr "Impossible d’ajouter l’entretien. Réessayez."
+
+#. Screen-reader confirmation after updating an interview round
+msgid "myJobs.interview.updated"
+msgstr "Entretien mis à jour."
+
+#. Error shown when an interview round cannot be updated
+msgid "myJobs.interview.updateError"
+msgstr "Impossible de mettre à jour l’entretien. Réessayez."
+
+#. Delete interview confirmation title
+msgid "myJobs.interview.deleteTitle"
+msgstr "Supprimer l’entretien ?"
+
+#. Delete interview confirmation description
+msgid "myJobs.interview.deleteDescription"
+msgstr "Cet entretien sera supprimé définitivement. S’il s’agit du dernier, la candidature repassera à l’état « Postulé »."
+
+#. Cancel deleting an interview round
+msgid "myJobs.interview.deleteCancel"
+msgstr "Annuler"
+
+#. Confirm deleting an interview round
+msgid "myJobs.interview.deleteConfirm"
+msgstr "Supprimer"
+
+#. Delete interview button while deletion is pending
+msgid "myJobs.interview.deleting"
+msgstr "Suppression…"
+
+#. Screen-reader confirmation after deleting an interview round
+msgid "myJobs.interview.deleted"
+msgstr "Entretien supprimé."
+
+#. Error shown when an interview round cannot be deleted
+msgid "myJobs.interview.deleteError"
+msgstr "Impossible de supprimer l’entretien. Réessayez."
