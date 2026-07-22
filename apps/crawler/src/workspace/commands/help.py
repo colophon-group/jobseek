@@ -83,6 +83,7 @@ Monitor Types (cheapest first):
   dvinci            10      Full job data     No (skipped)
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
+  hibob             10      Full job data     No (skipped)
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
@@ -353,6 +354,23 @@ comeet — Comeet hosted data and Careers API monitor
   Detection:  ws probe shows "Comeet — embedded data: company/board, N jobs"
               or "Comeet — API company: X, N jobs"
   Zero jobs?  An empty embedded list or API array is a valid active board."""
+
+MONITOR_HIBOB = """\
+hibob — HiBob public career-site monitor
+
+  Source:   GET https://{tenant}.careers.hibob.com/api/job-ad
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted, salary, responsibilities,
+            qualifications, benefits, and department metadata)
+  Scraper:  Not needed (one request returns all complete job records)
+  Cap:      50,000 jobs
+
+  Config:   None required for https://{tenant}.careers.hibob.com boards.
+            Optional override: {"origin": "https://acme.careers.hibob.com"}
+
+  Detection:  ws probe verifies the public /api/job-ad payload and reports
+              its current job count.
+  Zero jobs?  A valid jobAdDetails: [] payload is an active empty board."""
 
 MONITOR_EIGHTFOLD = """\
 eightfold — Eightfold AI Careers Portal (hybrid sitemap + PCSX)
@@ -2139,6 +2157,7 @@ MONITOR_CARDS: dict[str, str] = {
     "eightfold": MONITOR_EIGHTFOLD,
     "gem": MONITOR_GEM,
     "greenhouse": MONITOR_GREENHOUSE,
+    "hibob": MONITOR_HIBOB,
     "hirehive": MONITOR_HIREHIVE,
     "hireology": MONITOR_HIREOLOGY,
     "jobylon": MONITOR_JOBYLON,

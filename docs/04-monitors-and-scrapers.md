@@ -46,6 +46,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `dvinci` | Rich | skip | d.vinci ATS |
 | `gem` | Rich | skip | Gem ATS |
 | `greenhouse` | Rich | skip | Greenhouse ATS |
+| `hibob` | Rich | skip | HiBob public career sites |
 | `hirehive` | Rich | skip | HireHive public Jobs API |
 | `hireology` | Rich | skip | Hireology ATS |
 | `jobylon` | Rich | skip | Jobylon iframe embeds |
