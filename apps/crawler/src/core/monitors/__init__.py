@@ -657,6 +657,7 @@ from src.core.monitors import (  # noqa: E402
     inline,  # noqa: F401
     jobylon,  # noqa: F401
     join,  # noqa: F401
+    kipt,  # noqa: F401
     lever,  # noqa: F401
     mokahr,  # noqa: F401
     nextdata,  # noqa: F401

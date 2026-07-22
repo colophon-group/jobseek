@@ -72,6 +72,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `talentbrew` | URL-only | json-ld | TalentBrew / Radancy search pages |
 | `sitemap` | URL-only | — | Site has an XML sitemap with job URLs |
 | `inline` | Rich | skip | Single-page inline job listings |
+| `kipt` | Rich | skip | NSC KIPT active PDF vacancy bulletins |
 | `api_sniffer` | Conditional* | skip/— | XHR/fetch capture; rich when `fields` is configured |
 | `dom` | URL-only | — | Last resort — link extraction from page HTML |
 

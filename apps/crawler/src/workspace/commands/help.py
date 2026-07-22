@@ -104,6 +104,7 @@ Monitor Types (cheapest first):
   nextdata          20      URLs or full      If URL-only
   talentbrew        45      URL set           Yes
   sitemap           50      URL set           Yes
+  kipt              60      Full job data     No (skipped)
   api_sniffer       80      URLs or full      If URL-only (no fields)
   dom               100     URL set           Yes
 
@@ -909,6 +910,27 @@ inline — Single-Page Extraction (rich)
 
   Detection:   Not auto-detected. Select manually after inspecting the page.
                Best for small boards (< 50 jobs) with consistent HTML structure."""
+
+MONITOR_KIPT = """\
+kipt — NSC KIPT PDF vacancy bulletins (rich)
+
+  Returns:  Full job data (one posting per position in active PDF bulletins)
+  Scraper:  Not needed (skipped)
+  Cost:     60
+
+  Dedicated monitor for the National Science Center Kharkiv Institute of
+  Physics and Technology. The official board archives dated PDF bulletins,
+  and each PDF may announce multiple positions. The monitor keeps only
+  unexpired bulletins, splits vacancy lines into stable synthetic job URLs,
+  and includes the common requirements and application instructions.
+
+  Config:
+    max_age_days       Bulletin lifetime (default: 30)
+    default_location   Location applied to published positions
+                       (default: "Kharkiv, Ukraine")
+
+  Detection:   Official kipt.kharkov.ua vacancy page with dated vacancy PDFs.
+  Fields:      title, description, locations, date_posted, language, metadata."""
 
 MONITOR_DOM = """\
 dom — Link Extraction (fallback)
@@ -2202,6 +2224,7 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
   Handles pagination automatically via finder param offset suffix.""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
+    "kipt": MONITOR_KIPT,
     "api_sniffer": MONITOR_API_SNIFFER,
     "mokahr": MONITOR_MOKAHR,
     "recruiter_co_kr": MONITOR_RECRUITER_CO_KR,

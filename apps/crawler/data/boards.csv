@@ -3370,6 +3370,7 @@ nash,nash-careers,https://jobs.ashbyhq.com/Nash,ashby,"{""token"": ""Nash""}",sk
 natera,natera-greenhouse,https://job-boards.greenhouse.io/natera,greenhouse,"{""token"": ""natera""}",skip,
 national-design-build-services,national-design-build-services-greenhouse,https://job-boards.greenhouse.io/nationaldbs1,greenhouse,"{""token"": ""nationaldbs1""}",skip,
 national-life-insurance-company,national-life-insurance-company-greenhouse,https://job-boards.greenhouse.io/nationallifeinsurancecompany,greenhouse,"{""token"": ""nationallifeinsurancecompany""}",skip,
+national-science-center-kharkiv-institute-of-physics-and-technology,national-science-center-kharkiv-institute-of-physics-and-technology-vacancies,https://www.kipt.kharkov.ua/ua/vacancy.html,kipt,"{""max_age_days"":30,""default_location"":""Kharkiv, Ukraine""}",skip,
 nationwide,nationwide-careers,https://careers.nationwide.com,phenom,"{""proxy"":true,""rescrape_policy"":""never""}",json-ld,"{""render"":true,""persistent_context"":true,""channel"":""chrome"",""proxy"":true}"
 naturalmotion,naturalmotion-greenhouse,https://job-boards.greenhouse.io/nmcareers,greenhouse,"{""token"": ""nmcareers""}",skip,
 nature-s-bakery,nature-s-bakery-greenhouse,https://job-boards.greenhouse.io/naturesbakery,greenhouse,"{""token"": ""naturesbakery""}",skip,
