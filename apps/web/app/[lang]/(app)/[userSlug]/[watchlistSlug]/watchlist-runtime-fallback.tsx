@@ -1,7 +1,14 @@
 import { Loader2 } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
+import type { Locale } from "@/lib/i18n";
 
-export function WatchlistRuntimeFallback() {
+const loadingLabels: Record<Locale, string> = {
+  en: "Loading…",
+  de: "Laden…",
+  fr: "Chargement…",
+  it: "Caricamento…",
+};
+
+export function WatchlistRuntimeFallback({ locale }: { locale: Locale }) {
   return (
     <div
       role="status"
@@ -10,9 +17,7 @@ export function WatchlistRuntimeFallback() {
       className="flex min-h-64 flex-col items-center justify-center gap-3 text-sm text-muted"
     >
       <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-      <Trans id="myJobs.stats.loading" comment="Loading indicator">
-        Loading…
-      </Trans>
+      {loadingLabels[locale]}
     </div>
   );
 }

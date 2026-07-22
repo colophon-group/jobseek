@@ -234,7 +234,7 @@ export default async function WatchlistRoute({ params }: Props) {
 
   if (!snapshot) {
     return (
-      <Suspense fallback={<WatchlistRuntimeFallback />}>
+      <Suspense fallback={<WatchlistRuntimeFallback locale={locale} />}>
         <WatchlistRuntimeContent
           locale={locale}
           userSlug={userSlug}
