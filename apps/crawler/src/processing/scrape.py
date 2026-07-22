@@ -22,6 +22,7 @@ from src.core.scrapers import (
     get_scraper,
     scraper_needs_browser,
 )
+from src.metrics import browser_target_closed_retries_total
 from src.processing.cpu import (
     BatchResult,
     _build_locales,
@@ -49,6 +50,7 @@ from src.queries.scrape import (
     _RECORD_SCRAPE_TRANSIENT,
     _UPDATE_ENRICH_CONTENT,
 )
+from src.shared.browser import is_target_closed_error
 from src.shared.html_normalize import normalize_description_html
 from src.shared.http import is_avature_job_detail_url
 from src.shared.langdetect import detect_all_languages, detect_language
@@ -456,6 +458,53 @@ def _apply_defaults(content: JobContent, cfg: dict) -> JobContent:
     return content
 
 
+async def _scrape_with_browser_target_recovery(
+    url: str,
+    scraper_type: str,
+    scraper_config: dict | None,
+    http: httpx.AsyncClient,
+    *,
+    pw=None,
+) -> JobContent:
+    """Retry one lost Playwright target with a newly launched context.
+
+    Browser scrapers create and close their browser/context inside each
+    ``scrape_one`` call.  Re-dispatching once after ``TargetClosedError``
+    therefore recreates the failed resource without recycling the worker's
+    healthy long-lived Playwright driver.  Other Playwright and scraper
+    failures propagate unchanged, and a second target loss exhausts the
+    bounded retry so the normal transient queue backoff still applies.
+    """
+    try:
+        return await _batch.scrape_one(url, scraper_type, scraper_config, http, pw=pw)
+    except Exception as exc:
+        if not scraper_needs_browser(scraper_type, scraper_config) or not is_target_closed_error(
+            exc
+        ):
+            raise
+
+    log.warning(
+        "batch.scrape.browser_target_closed_retry",
+        url=url,
+        scraper_type=scraper_type,
+        attempt=1,
+    )
+    try:
+        content = await _batch.scrape_one(url, scraper_type, scraper_config, http, pw=pw)
+    except Exception:
+        browser_target_closed_retries_total.labels(outcome="failed").inc()
+        raise
+
+    browser_target_closed_retries_total.labels(outcome="recovered").inc()
+    log.info(
+        "batch.scrape.browser_target_closed_recovered",
+        url=url,
+        scraper_type=scraper_type,
+        attempts=2,
+    )
+    return content
+
+
 async def _process_one_enrich_scrape(
     item: ScrapeItem,
     pool: asyncpg.Pool,
@@ -483,7 +532,13 @@ async def _process_one_enrich_scrape(
     t0 = monotonic()
     try:
         cfg = scraper_config or {}
-        content = await _batch.scrape_one(item.url, scraper_type, scraper_config, http, pw=pw)
+        content = await _scrape_with_browser_target_recovery(
+            item.url,
+            scraper_type,
+            scraper_config,
+            http,
+            pw=pw,
+        )
         content = _apply_defaults(content, cfg)
 
         # Normalize before checking -- normalize can strip degenerate HTML to None
@@ -735,7 +790,13 @@ async def _process_one_scrape(
         # Resolve which scraper to run at this step
         step_type, step_cfg = _get_scraper_at_step(scraper_type, scraper_config, scrape_step)
 
-        content = await _batch.scrape_one(item.url, step_type, step_cfg or None, http, pw=pw)
+        content = await _scrape_with_browser_target_recovery(
+            item.url,
+            step_type,
+            step_cfg or None,
+            http,
+            pw=pw,
+        )
         content = _apply_defaults(content, step_cfg)
 
         # For step 0, require a usable title; later steps use COALESCE
@@ -993,7 +1054,12 @@ async def _do_one_enrich_scrape(
     enrich_fields = work.enrich_fields or []
     cfg = work.scraper_config or {}
 
-    content = await _batch.scrape_one(item.url, work.scraper_type, work.scraper_config, http)
+    content = await _scrape_with_browser_target_recovery(
+        item.url,
+        work.scraper_type,
+        work.scraper_config,
+        http,
+    )
     content = _apply_defaults(content, cfg)
 
     # Normalize before checking
@@ -1157,7 +1223,12 @@ async def _do_one_scrape(
             work, http, pool, loc_resolver, rates, tech_id_map, occ_ids, sen_ids
         )
 
-    content = await _batch.scrape_one(item.url, work.scraper_type, work.scraper_config, http)
+    content = await _scrape_with_browser_target_recovery(
+        item.url,
+        work.scraper_type,
+        work.scraper_config,
+        http,
+    )
     content = _apply_defaults(content, cfg)
 
     if not content.title or _is_garbage_title(content.title):
