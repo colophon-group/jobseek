@@ -45,11 +45,27 @@ pass.
   heap and B-tree parent verification across all 384 relations and 2,147,497
   pages. The restored database exposed 2,447,190 postings with zero rows
   failing the structural-null probe. Temporary drill state was removed. The
-  exact old container remains stopped as a rollback target until the reviewed
-  revision is merged and redeployed.
-- The PostgreSQL and Typesense timers and the legacy Hetzner OS backups remain
-  unchanged until both restore evidence and daily error-review alert evidence
-  satisfy the removal gate in `docs/19-data-backup-recovery.md`.
+  reviewed revision was then merged and deployed from `main` to both data
+  hosts. A workflow evaluation bug was reproduced and fixed: protected
+  environment variables cannot be resolved while GitHub expands a job matrix,
+  so host selection now occurs only inside runtime steps after the production
+  environment is attached.
+- The exact deployed PostgreSQL service completed a fresh differential backup
+  covering 19.1 GB with a 4.27 GB encrypted repository delta in 140 seconds.
+  The exact deployed Typesense service completed a 1,362,668,187-byte
+  consistent snapshot, encrypted upload, retention prune, and repository check
+  in 78 seconds. Both atomic status files and Prometheus textfiles report
+  success. PostgreSQL stayed ready with zero archive failures; Typesense stayed
+  healthy with its original start time, and neither container restarted or was
+  OOM-killed.
+- Both backup timers are enabled with their next jittered runs visible. Delete
+  and rebuild protection is enabled on the PostgreSQL and Typesense servers,
+  and delete protection is enabled on the PostgreSQL Volume. The stopped
+  pre-cutover PostgreSQL container was removed after these gates passed.
+- The legacy Hetzner OS backups remain unchanged. Their final removal is gated
+  only on proving that backup failure/freshness evidence reaches the daily
+  Codex error-review workflow and can create or update an actionable GitHub
+  issue, as required by `docs/19-data-backup-recovery.md`.
 
 ## Inventory and ownership
 
@@ -214,11 +230,16 @@ Observed project inventory for the in-scope systems: three running servers, one 
 ## Remaining evidence gaps
 
 - Name and verify accountable human owners/on-call escalation paths; the Cloud project API does not expose project membership or billing ownership.
-- Create application-consistent PostgreSQL and Typesense backups in independent storage, verify isolated restores and RPO/RTO, then remove the mistaken Hetzner OS backups.
+- Prove database/search backup failure and freshness evidence in the daily
+  Codex issue-delivery path, then remove the mistaken Hetzner OS backups.
 - Add explicit historical metrics coverage to the root-produced Codex error-review evidence boundary without exposing production or write credentials.
 - Verify the documented Cloudflare per-IP rate-limit rule and notification routing in the Cloudflare control plane.
 - Verify notification delivery rather than rule evaluation only; the false `ExporterStale` alerts show that firing state alone is not useful evidence.
 
 ## Remediation state
 
-No service was restarted, deployed, reconfigured, resized, patched, or mutated during this audit. Database queries and external probes were read-only. Issue creation is organizational only; remediation remains paused.
+The baseline audit phase was read-only. Subsequent operator-approved changes
+are recorded only in the verified remediation change log above so the original
+observations remain reproducible. Replacement database/search backups,
+restores, scheduling, capacity expansion, and resource protections are now
+verified; legacy OS-backup removal remains gated on daily alert-delivery proof.

@@ -76,10 +76,19 @@ the last successful backup so a failed and a stale backup remain distinct.
 | Typesense | Snapshot API produced 1,348,345,503 bytes; encrypted Restic upload, prune, and check completed in about 164 seconds without restarting Typesense | verified Restic restore returned all 1,348,345,503 bytes in 13 seconds; an isolated Typesense 27.1 node became healthy, loaded all seven collections and aliases, matched stable collection counts, served representative reads, and returned live search results |
 
 Temporary restore containers, data, keys and drill credentials were removed.
-The PostgreSQL pre-cutover container remains stopped only as a short-lived
-rollback target until the reviewed revision is merged and redeployed. Legacy
-server backups remain until scheduling and daily error-review alert delivery
-also pass the removal gate below.
+The reviewed revision was deployed from `main` to both hosts, and its exact
+service units completed fresh production backups. PostgreSQL then completed a
+19.1 GB differential scope with a 4.27 GB encrypted repository delta in 140
+seconds; Typesense completed a 1,362,668,187-byte snapshot, encrypted upload,
+prune, and repository check in 78 seconds. Both emitted successful atomic JSON
+and Prometheus freshness records. PostgreSQL remained ready with zero archive
+failures and Typesense remained healthy without a restart.
+
+Both timers are enabled and their next jittered runs are visible. Delete and
+rebuild protection is enabled on both data servers, delete protection is
+enabled on the PostgreSQL Volume, and the validated pre-cutover PostgreSQL
+container has been removed. Legacy server backups remain until daily
+error-review alert delivery passes the removal gate below.
 
 ## Installation and scheduling
 
@@ -110,7 +119,10 @@ disabling an existing timer. Deployment uses the same per-service lock as the
 backup job and fails safely instead of replacing code during an active
 backup. The production environment variables
 `HETZNER_POSTGRES_HOST` and `HETZNER_TYPESENSE_HOST` select the two hosts; the
-workflow reuses the existing Hetzner SSH deployment credential.
+workflow reuses the existing Hetzner SSH deployment credential. These are
+environment-scoped variables, so the workflow resolves them inside runtime
+steps after the protected `production` environment is attached; do not embed
+their values in `strategy.matrix`, which GitHub expands earlier.
 
 Confirm the effective schedule:
 
@@ -282,6 +294,12 @@ are true for both services:
 - failure and freshness status is included in the daily Codex error-review
   evidence and can create or update an actionable GitHub issue;
 - recovery evidence and measured recovery time are recorded in the audit.
+
+Current gate state as of 2026-07-22: off-host backups, repository validation,
+isolated restores, measured recovery evidence, enabled schedules, and visible
+next runs have passed. Daily Codex failure/freshness evidence and proven GitHub
+issue delivery remain pending. Therefore the legacy server backups must remain
+enabled even though the replacement data protection is operating normally.
 
 After the gate passes, disable server backups and delete the residual server
 backup images for PostgreSQL and Typesense. Preserve the independent Storage
