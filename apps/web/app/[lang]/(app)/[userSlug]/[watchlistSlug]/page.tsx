@@ -23,6 +23,7 @@ import {
   fetchWatchlistPageData,
 } from "@/lib/actions/watchlist-page-data";
 import { WatchlistContent } from "./watchlist-content";
+import { WatchlistRuntimeFallback } from "./watchlist-runtime-fallback";
 
 // Metadata is cached for an hour; the page body uses the short tier so
 // its posting list stays reasonably fresh. Each is its own `'use cache'`
@@ -233,7 +234,7 @@ export default async function WatchlistRoute({ params }: Props) {
 
   if (!snapshot) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<WatchlistRuntimeFallback />}>
         <WatchlistRuntimeContent
           locale={locale}
           userSlug={userSlug}
