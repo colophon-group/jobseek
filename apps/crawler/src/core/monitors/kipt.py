@@ -21,7 +21,6 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
-import pypdf
 import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
@@ -164,6 +163,10 @@ def _parse_bulletin(
 
 
 async def _pdf_text(url: str, client: httpx.AsyncClient) -> str:
+    # Keep the dependency lazy so the lightweight ``ws`` wheel can import the
+    # monitor registry without installing crawler-only PDF support.
+    import pypdf
+
     response = await client.get(url, follow_redirects=True)
     response.raise_for_status()
     check_tdm_response(response)
