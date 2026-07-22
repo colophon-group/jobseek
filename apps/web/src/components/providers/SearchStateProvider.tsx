@@ -158,6 +158,7 @@ export interface SearchPageActions {
     occupations?: { id: number; slug: string; name: string }[],
     seniorities?: { id: number; slug: string; name: string }[],
     technologies?: { id: number; slug: string; name: string }[],
+    workMode?: WorkMode[],
   ) => void;
   getLocations: () => SelectedLocation[];
   getKeywords: () => string[];

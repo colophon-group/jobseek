@@ -80,6 +80,9 @@ describe("SaveSearchButton (issue #3036)", () => {
     fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/en/alice/my-search"));
+    expect(createWatchlistMock.mock.calls[0]?.[0]).toMatchObject({
+      isPublic: false,
+    });
   });
 
   it("includes employment type filters when saving the search", async () => {

@@ -36,6 +36,7 @@ export function SankeyFunnel({ data }: { data: FunnelData }) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const { t } = useLingui();
+  const isSmall = useIsSmallScreen();
 
   const l = {
     saved: t({ id: "myJobs.funnel.saved", comment: "Sankey funnel node: saved jobs", message: "Saved" }),
@@ -143,21 +144,93 @@ export function SankeyFunnel({ data }: { data: FunnelData }) {
 
   if (links.length === 0) return null;
 
+  if (isSmall) {
+    const stages = [
+      {
+        key: "saved",
+        label: l.saved,
+        count: data.saved,
+        outcomes: [
+          { label: l.rejected, count: data.rejectedAtSaved },
+          { label: l.notApplied, count: data.noResponseAtSaved },
+        ],
+      },
+      {
+        key: "applied",
+        label: l.applied,
+        count: data.applied,
+        outcomes: [
+          { label: l.rejected, count: data.rejectedAtApplied },
+          { label: l.noResponse, count: data.noResponseAtApplied },
+        ],
+      },
+      ...data.interviewRounds.map((round) => ({
+        key: `round-${round.round}`,
+        label: `${l.round} ${round.round}`,
+        count: round.count,
+        outcomes: [
+          {
+            label: l.rejected,
+            count: data.rejectedAtRound.find((item) => item.round === round.round)?.count ?? 0,
+          },
+          {
+            label: l.noResponse,
+            count: data.noResponseAtRound.find((item) => item.round === round.round)?.count ?? 0,
+          },
+        ],
+      })),
+      {
+        key: "offered",
+        label: l.offered,
+        count: data.offered,
+        outcomes: [],
+      },
+    ].filter((stage) => stage.count > 0);
+
+    return (
+      <ol data-testid="mobile-funnel" className="space-y-2" aria-label={t({
+        id: "myJobs.funnel.mobileLabel",
+        comment: "Accessible label for the mobile application funnel summary",
+        message: "Application funnel",
+      })}>
+        {stages.map((stage, index) => {
+          const outcomes = stage.outcomes.filter((outcome) => outcome.count > 0);
+          return (
+            <li key={stage.key} className="relative rounded-lg border border-border-soft bg-surface px-3 py-2.5">
+              {index > 0 && (
+                <span aria-hidden="true" className="absolute -top-2.5 left-6 h-2.5 border-l border-border-soft" />
+              )}
+              <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0 font-medium">{stage.label}</span>
+                <span className="shrink-0 rounded-full bg-border-soft px-2 py-0.5 font-mono text-sm tabular-nums">
+                  {stage.count}
+                </span>
+              </div>
+              {outcomes.length > 0 && (
+                <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+                  {outcomes.map((outcome) => (
+                    <li key={outcome.label}>
+                      {outcome.label}: <span className="font-mono tabular-nums">{outcome.count}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }
+
   const sankeyData = { nodes: filteredNodes, links };
-  const isSmall = useIsSmallScreen();
-  const layout = isSmall ? "vertical" : "horizontal";
-  const height = isSmall
-    ? Math.max(400, 250 + nodes.length * 20)
-    : Math.max(300, 200 + nodes.length * 16);
-  const margin = isSmall
-    ? { top: 0, right: 20, bottom: 120, left: 20 }
-    : { top: 20, right: 180, bottom: 20, left: 10 };
+  const height = Math.max(300, 200 + nodes.length * 16);
+  const margin = { top: 20, right: 180, bottom: 20, left: 10 };
 
   return (
     <div style={{ height }}>
       <ResponsiveSankey
         data={sankeyData}
-        layout={layout}
+        layout="horizontal"
         margin={margin}
         align="start"
         colors={(node) => getColor(node.id as string)}
@@ -174,7 +247,7 @@ export function SankeyFunnel({ data }: { data: FunnelData }) {
         enableLinkGradient={false}
         label={(node) => labelMap.get(node.id as string) ?? (node.id as string)}
         labelPosition="outside"
-        labelOrientation={isSmall ? "vertical" : "horizontal"}
+        labelOrientation="horizontal"
         labelPadding={12}
         labelTextColor={isDark ? "#e7e5e4" : "#1c1917"}
         theme={{

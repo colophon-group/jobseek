@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { authClient } from "@/lib/auth-client";
@@ -14,6 +14,11 @@ import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { OAuthButtons } from "@/components/ui/OAuthButtons";
+import {
+  localizeAuthReturnPath,
+  normalizeAuthReturnPath,
+  withAuthReturnPath,
+} from "@/lib/auth-return";
 
 type AuthFormProps = {
   mode: "sign-in" | "sign-up";
@@ -21,6 +26,7 @@ type AuthFormProps = {
 
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLingui();
   const lp = useLocalePath();
   const [name, setName] = useState("");
@@ -31,7 +37,10 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
 
   const isSignUp = mode === "sign-up";
-  const dashboardUrl = lp("/explore");
+  const requestedReturnPath = normalizeAuthReturnPath(searchParams.get("next"));
+  const dashboardUrl = requestedReturnPath ?? lp("/explore");
+  const signInUrl = withAuthReturnPath(lp("/sign-in"), requestedReturnPath);
+  const signUpUrl = withAuthReturnPath(lp("/sign-up"), requestedReturnPath);
 
   function goToCheckEmail() {
     sessionStorage.setItem("verify-email", email);
@@ -135,7 +144,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         }
 
         if (targetLocale && !dashboardUrl.startsWith(`/${targetLocale}/`)) {
-          router.push(`/${targetLocale}/explore`);
+          router.push(
+            requestedReturnPath
+              ? localizeAuthReturnPath(requestedReturnPath, targetLocale)
+              : `/${targetLocale}/explore`,
+          );
         } else {
           router.push(dashboardUrl);
         }
@@ -234,14 +247,14 @@ export function AuthForm({ mode }: AuthFormProps) {
         {isSignUp ? (
           <Trans id="auth.signUp.hasAccount" comment="Link to sign-in page from sign-up">
             Already have an account?{" "}
-            <Link href={lp("/sign-in")} prefetch={false} className="font-semibold transition-colors hover:text-muted">
+            <Link href={signInUrl} prefetch={false} className="font-semibold transition-colors hover:text-muted">
               Sign in
             </Link>
           </Trans>
         ) : (
           <Trans id="auth.signIn.noAccount" comment="Link to sign-up page from sign-in">
             Don&apos;t have an account?{" "}
-            <Link href={lp("/sign-up")} prefetch={false} className="font-semibold transition-colors hover:text-muted">
+            <Link href={signUpUrl} prefetch={false} className="font-semibold transition-colors hover:text-muted">
               Sign up
             </Link>
           </Trans>

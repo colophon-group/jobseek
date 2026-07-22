@@ -18,6 +18,7 @@ const DAYS = 7;
 const CELL = 10;
 const GAP = 2;
 const STEP = CELL + GAP;
+const MIN_MONTH_LABEL_COLUMNS = 3;
 
 const LEVELS = [
   "var(--color-border-soft, #e7e5e4)",
@@ -100,7 +101,29 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
       columns.push(col);
     }
 
-    return { grid: columns, monthHeaders };
+    // A partial first month can occupy only one or two columns. Its label
+    // then collides with the next full month (for example Jul/Aug). Prefer
+    // the full month and keep every subsequent label at least three columns
+    // apart, which fits localized three-letter month abbreviations.
+    const visibleMonthHeaders: typeof monthHeaders = [];
+    for (let index = 0; index < monthHeaders.length; index++) {
+      const header = monthHeaders[index];
+      const next = monthHeaders[index + 1];
+      if (
+        index === 0
+        && next
+        && next.col - header.col < MIN_MONTH_LABEL_COLUMNS
+      ) {
+        continue;
+      }
+      const previous = visibleMonthHeaders.at(-1);
+      if (previous && header.col - previous.col < MIN_MONTH_LABEL_COLUMNS) {
+        continue;
+      }
+      visibleMonthHeaders.push(header);
+    }
+
+    return { grid: columns, monthHeaders: visibleMonthHeaders };
   }, [data, MONTHS]);
 
   const labelW = 26;
@@ -162,6 +185,7 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
         {monthHeaders.map((m) => (
           <text
             key={`month-${m.col}`}
+            data-month-column={m.col}
             x={labelW + m.col * STEP}
             y={11}
             className="fill-muted"

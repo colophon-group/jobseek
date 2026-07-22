@@ -1502,12 +1502,6 @@ msgstr "Impossibile reimpostare la password. Il link potrebbe essere scaduto."
 msgid "settings.account.password.error"
 msgstr "Impossibile inviare l'email di reimpostazione"
 
-#. Generic set password error
-#. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:78
-msgid "settings.account.password.setError"
-msgstr "Impossibile impostare la password"
-
 #. Generic username update error
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:267
@@ -3163,12 +3157,6 @@ msgstr "Privacy su Job Seek"
 #: app/[lang]/(public)/privacy-policy/page.tsx:55
 msgid "privacy.meta.title"
 msgstr "Informativa sulla privacy"
-
-#. Reason shown in upgrade modal when trying to make watchlist private
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx:125
-msgid "upgrade.reason.makePrivate"
-msgstr "Le liste private sono una funzionalità a pagamento. Effettua l'upgrade per nascondere le tue liste agli altri."
 
 #. Pro tier name
 #. js-lingui-explicit-id
@@ -5014,3 +5002,21 @@ msgstr "Questa modifica dello stato non è consentita."
 #: src/lib/action-error-messages.ts
 msgid "actions.error.interviewRoundFailed"
 msgstr "Impossibile assegnare il colloquio."
+
+#. Accessible label for the mobile application funnel summary
+#. js-lingui-explicit-id
+#: src/components/my-jobs/sankey-funnel.tsx
+msgid "myJobs.funnel.mobileLabel"
+msgstr "Percorso di candidatura"
+
+#. Error shown when the watchlists overview cannot load after a retry
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-loader.tsx
+msgid "watchlists.load.error"
+msgstr "Impossibile caricare le tue liste di osservazione."
+
+#. Button to retry loading the watchlists overview
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-loader.tsx
+msgid "watchlists.load.retry"
+msgstr "Riprova"

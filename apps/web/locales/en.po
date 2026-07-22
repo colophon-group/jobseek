@@ -1502,12 +1502,6 @@ msgstr "Failed to reset password. The link may have expired."
 msgid "settings.account.password.error"
 msgstr "Failed to send reset email"
 
-#. Generic set password error
-#. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:78
-msgid "settings.account.password.setError"
-msgstr "Failed to set password"
-
 #. Generic username update error
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:267
@@ -3163,12 +3157,6 @@ msgstr "Privacy at Job Seek"
 #: app/[lang]/(public)/privacy-policy/page.tsx:55
 msgid "privacy.meta.title"
 msgstr "Privacy Policy"
-
-#. Reason shown in upgrade modal when trying to make watchlist private
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx:125
-msgid "upgrade.reason.makePrivate"
-msgstr "Private watchlists are a paid feature. Upgrade to hide your watchlists from others."
 
 #. Pro tier name
 #. js-lingui-explicit-id
@@ -5014,3 +5002,21 @@ msgstr "That status change is not allowed."
 #: src/lib/action-error-messages.ts
 msgid "actions.error.interviewRoundFailed"
 msgstr "Could not assign interview round."
+
+#. Accessible label for the mobile application funnel summary
+#. js-lingui-explicit-id
+#: src/components/my-jobs/sankey-funnel.tsx
+msgid "myJobs.funnel.mobileLabel"
+msgstr "Application funnel"
+
+#. Error shown when the watchlists overview cannot load after a retry
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-loader.tsx
+msgid "watchlists.load.error"
+msgstr "We couldn't load your watchlists."
+
+#. Button to retry loading the watchlists overview
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-loader.tsx
+msgid "watchlists.load.retry"
+msgstr "Try again"

@@ -38,9 +38,9 @@ function NavIcon({ href, label, children }: { href: string; label: string; child
 
 function BottomBarLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
   return (
-    <Link href={href} prefetch={false} className="flex flex-1 flex-col items-center gap-0.5 py-1.5 text-foreground transition-colors hover:text-muted">
+    <Link href={href} prefetch={false} className="flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-foreground transition-colors hover:text-muted">
       {children}
-      <span className="text-[10px] leading-tight">{label}</span>
+      <span className="line-clamp-2 min-h-5 max-w-full text-center text-[9px] leading-[10px]">{label}</span>
     </Link>
   );
 }
@@ -173,7 +173,7 @@ export function AppHeader() {
       </header>
 
       {/* ── Mobile bottom bar ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-divider bg-surface-alpha backdrop-blur-md md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-center border-t border-divider bg-surface-alpha backdrop-blur-md md:hidden">
         <BottomBarLink href={appHref} label={exploreLabel}>
           <Compass size={20} />
         </BottomBarLink>
@@ -186,16 +186,16 @@ export function AppHeader() {
         <BottomBarLink href={lp(siteConfig.nav.settings.href)} label={settingsLabel}>
           <Settings size={20} />
         </BottomBarLink>
-        <span className="flex flex-1">
+        <span className="flex h-full min-w-0 flex-1">
           {isPending ? (
-            <span className="flex flex-1 flex-col items-center gap-0.5 py-1.5">
+            <span className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-1">
               <span className="size-6 rounded-full bg-muted/30 animate-pulse" />
               <span className="h-3 w-10 rounded bg-muted/30 animate-pulse" />
             </span>
           ) : isLoggedIn && user ? (
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
-                <button className="flex flex-1 flex-col items-center gap-0.5 py-1.5 transition-colors cursor-pointer">
+                <button className="flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 transition-colors cursor-pointer">
                   <UserAvatar
                     image={user.image}
                     name={user.name}
@@ -203,7 +203,7 @@ export function AppHeader() {
                     size={24}
                     initialsTextClass="text-[10px]"
                   />
-                  <span className="text-[10px] leading-tight text-foreground">
+                  <span className="line-clamp-2 min-h-5 max-w-full text-center text-[9px] leading-[10px] text-foreground">
                     {t({ id: "app.header.nav.account", comment: "Account bottom bar label", message: "Account" })}
                   </span>
                 </button>
@@ -213,9 +213,9 @@ export function AppHeader() {
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
           ) : (
-            <Link href={lp(siteConfig.nav.login.href)} prefetch={false} className="flex flex-1 flex-col items-center gap-0.5 py-1.5 text-foreground transition-colors hover:text-muted">
+            <Link href={lp(siteConfig.nav.login.href)} prefetch={false} className="flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-foreground transition-colors hover:text-muted">
               <LogIn size={20} />
-              <span className="text-[10px] leading-tight">
+              <span className="line-clamp-2 min-h-5 max-w-full text-center text-[9px] leading-[10px]">
                 {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
               </span>
             </Link>
