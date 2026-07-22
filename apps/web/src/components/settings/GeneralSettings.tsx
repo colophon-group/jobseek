@@ -182,6 +182,7 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
           {themeOptions.map((opt) => (
             <button
               key={opt.value}
+              aria-pressed={mounted && theme === opt.value}
               onClick={() => {
                 const now = new Date().toISOString();
                 setTheme(opt.value);
@@ -214,6 +215,7 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
             return (
               <button
                 key={locale}
+                aria-pressed={isActive}
                 onClick={() => handleLocaleSwitch(locale)}
                 className={`flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm transition-colors cursor-pointer ${
                   isActive
@@ -243,6 +245,7 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
         <div className="flex flex-wrap gap-2">
           {/* All languages toggle */}
           <button
+            aria-pressed={isAllLanguages}
             onClick={handleSelectAllLanguages}
             className={`rounded-full border px-4 py-1 text-sm transition-colors cursor-pointer ${
               isAllLanguages
@@ -259,6 +262,7 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
             return (
               <button
                 key={lang.code}
+                aria-pressed={active}
                 onClick={() => handleToggleLanguage(lang.code)}
                 className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-sm transition-colors ${
                   active
@@ -279,6 +283,7 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
             extraSelected.map((lang) => (
               <button
                 key={lang.code}
+                aria-pressed={true}
                 onClick={() => handleToggleLanguage(lang.code)}
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary transition-colors"
               >

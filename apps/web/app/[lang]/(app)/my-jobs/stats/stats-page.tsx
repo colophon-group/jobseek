@@ -61,25 +61,34 @@ export function StatsPage({ initial }: { initial: StatsData }) {
           <span className="text-xs font-semibold">
             <Trans id="myJobs.stats.period" comment="Period filter heading">Period</Trans>
           </span>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => {
-              setFrom(e.target.value);
-              handleFilter(e.target.value, to);
-            }}
-            className="rounded-md border border-border-soft bg-surface px-2.5 py-1.5 text-xs"
-          />
-          <span className="text-xs text-muted">–</span>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => {
-              setTo(e.target.value);
-              handleFilter(from, e.target.value);
-            }}
-            className="rounded-md border border-border-soft bg-surface px-2.5 py-1.5 text-xs"
-          />
+          <label className="flex items-center gap-1.5 text-xs text-muted">
+            <span>
+              <Trans id="myJobs.stats.fromDate" comment="Label for the start date in the stats period filter">From</Trans>
+            </span>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                handleFilter(e.target.value, to);
+              }}
+              className="rounded-md border border-border-soft bg-surface px-2.5 py-1.5 text-xs text-foreground"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted">
+            <span>
+              <Trans id="myJobs.stats.toDate" comment="Label for the end date in the stats period filter">To</Trans>
+            </span>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value);
+                handleFilter(from, e.target.value);
+              }}
+              className="rounded-md border border-border-soft bg-surface px-2.5 py-1.5 text-xs text-foreground"
+            />
+          </label>
           {(from || to) && (
             <button
               onClick={() => {

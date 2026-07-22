@@ -4,8 +4,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { companyCacheTag } from "@/lib/cache-tags";
 import { CACHE_TTL_DETAIL } from "@/lib/cache-ttl";
-import { getCompanyBySlug } from "@/lib/actions/company";
 import { fetchCompanyPageDefaults } from "@/lib/actions/company-page-data";
+import type { Locale } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { CompanyHead } from "./company-head";
@@ -17,21 +17,37 @@ type Props = {
   params: Promise<{ lang: string; slug: string }>;
 };
 
+/**
+ * Keep the dynamic route's metadata and body on one cache-stable data
+ * snapshot. Next.js currently has a Cache Components/PPR resume defect when
+ * async metadata and the page body independently resolve the same dynamic
+ * route data: the prerendered metadata wrapper can disagree with the runtime
+ * metadata boundary and React falls back to a client render. See #5911 and
+ * vercel/next.js#93401.
+ */
+async function getCompanyRouteSnapshot(slug: string, locale: Locale) {
+  "use cache";
+  cacheLife({ revalidate: CACHE_TTL_DETAIL });
+  cacheTag(companyCacheTag(slug));
+  return fetchCompanyPageDefaults({ slug, locale });
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
   cacheLife({ revalidate: CACHE_TTL_DETAIL });
   const { slug, lang } = await params;
   cacheTag(companyCacheTag(slug));
   const locale = isLocale(lang) ? lang : defaultLocale;
-  const [company, { i18n }] = await Promise.all([
-    getCompanyBySlug(slug, locale),
+  const [snapshot, { i18n }] = await Promise.all([
+    getCompanyRouteSnapshot(slug, locale),
     loadCatalog(locale),
   ]);
   // No company = ghost slug (deleted, never existed, typo). Bare `{}`
   // would let `[lang]/layout.tsx`'s `metadata.title.default` ("Job
   // Seek") cascade and leave the URL indexable. Tag explicitly as
   // `noindex,follow` to mirror the watchlist null-detail handling.
-  if (!company) return { robots: { index: false, follow: true } };
+  if (!snapshot) return { robots: { index: false, follow: true } };
+  const { company } = snapshot;
 
   const title = i18n._({
     id: "company.meta.title",
@@ -129,7 +145,7 @@ export default async function CompanyPageRoute({ params }: Props) {
   // ISR-eligible — the client component re-fetches the personalised
   // variant via ``fetchCompanyPageData`` when filters or auth-related
   // hint cookies are present.
-  const initialData = await fetchCompanyPageDefaults({ slug, locale });
+  const initialData = await getCompanyRouteSnapshot(slug, locale);
   if (!initialData) return <CompanyNotFound />;
   const { company } = initialData;
 

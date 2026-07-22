@@ -13,4 +13,16 @@ describe("company route partial prerendering", () => {
     expect(source).toContain("<Suspense fallback={<CompanySkeleton />}>");
     expect(source).toContain("<CompanyContent");
   });
+
+  it("shares one cache-stable company snapshot between metadata and the page body", () => {
+    const source = readFileSync(
+      "app/[lang]/(app)/company/[slug]/page.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain("async function getCompanyRouteSnapshot");
+    expect(source).toContain('return fetchCompanyPageDefaults({ slug, locale });');
+    expect(source.match(/getCompanyRouteSnapshot\(slug, locale\)/g)).toHaveLength(2);
+    expect(source).not.toContain("getCompanyBySlug(slug, locale)");
+  });
 });

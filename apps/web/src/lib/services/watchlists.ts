@@ -134,6 +134,8 @@ export type WatchlistDetail = {
 export type WatchlistPostingEntry = {
   id: string;
   title: string | null;
+  /** Leaf location names, in source order, used to disambiguate repeated titles. */
+  locationNames?: string[];
   sourceUrl: string;
   firstSeenAt: string;
   isActive: boolean;
@@ -2228,6 +2230,9 @@ async function _getWatchlistPostingsTypesense(
     return {
       id: doc.id as string,
       title: (doc.title as string) ?? null,
+      locationNames: Array.isArray(doc.location_names)
+        ? doc.location_names.filter((name): name is string => typeof name === "string" && name.length > 0)
+        : [],
       sourceUrl: (doc.source_url as string) ?? "",
       firstSeenAt: new Date(((doc.first_seen_at as number) ?? 0) * 1000).toISOString(),
       isActive: (doc.is_active as boolean) ?? true,
@@ -2341,6 +2346,9 @@ async function _getWatchlistPostingsBatched(
     return {
       id: doc.id as string,
       title: (doc.title as string) ?? null,
+      locationNames: Array.isArray(doc.location_names)
+        ? doc.location_names.filter((name): name is string => typeof name === "string" && name.length > 0)
+        : [],
       sourceUrl: (doc.source_url as string) ?? "",
       firstSeenAt: new Date(((doc.first_seen_at as number) ?? 0) * 1000).toISOString(),
       isActive: (doc.is_active as boolean) ?? true,
@@ -2535,6 +2543,7 @@ async function _getWatchlistPostingsPostgres(
     postings: (rows as unknown as Row[]).map((r) => ({
       id: r.id,
       title: r.title,
+      locationNames: [],
       sourceUrl: r.source_url,
       firstSeenAt: new Date(r.first_seen_at).toISOString(),
       isActive: r.is_active,
