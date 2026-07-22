@@ -233,6 +233,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(@upstash/redis@1.38.0)(kysely@0.29.2)(postgres@3.4.9)
+      entities:
+        specifier: ^7.0.1
+        version: 7.0.1
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3

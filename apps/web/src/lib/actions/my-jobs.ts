@@ -4,6 +4,7 @@ import { eq, and, desc, asc, count, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { savedJob, jobPosting, company, applicationInterview } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
+import { normalizePostingTitle } from "@/lib/posting-title";
 import {
   type ApplicationStatus,
   type InterviewType,
@@ -172,7 +173,7 @@ export async function getMyJobs(params: {
     interviewCount: interviewCounts.get(r.id) ?? 0,
     posting: {
       id: r.postingId,
-      title: r.postingTitle,
+      title: normalizePostingTitle(r.postingTitle),
       sourceUrl: r.postingSourceUrl,
       firstSeenAt: r.postingFirstSeenAt.toISOString(),
       isActive: r.postingIsActive,
@@ -266,7 +267,7 @@ export async function getMyJobDetail(
     interviewCount: interviews.length,
     posting: {
       id: row.postingId,
-      title: row.postingTitle,
+      title: normalizePostingTitle(row.postingTitle),
       sourceUrl: row.postingSourceUrl,
       firstSeenAt: row.postingFirstSeenAt.toISOString(),
       isActive: row.postingIsActive,

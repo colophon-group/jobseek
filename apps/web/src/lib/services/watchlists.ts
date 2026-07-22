@@ -28,6 +28,7 @@ import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/co
 import { expandLocationIdsBatch, resolveLocationSlugs } from "@/lib/actions/locations";
 import { expandOccupationIdsBatch, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/services/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
+import { normalizePostingTitle } from "@/lib/posting-title";
 import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "@/lib/search/typesense-filters";
 import {
   isTypesenseUnavailableError,
@@ -2224,7 +2225,7 @@ async function _getWatchlistPostingsTypesense(
     const doc = hit.document as Record<string, unknown>;
     return {
       id: doc.id as string,
-      title: (doc.title as string) ?? null,
+      title: normalizePostingTitle(doc.title as string | undefined),
       locationNames: Array.isArray(doc.location_names)
         ? doc.location_names.filter((name): name is string => typeof name === "string" && name.length > 0)
         : [],
@@ -2340,7 +2341,7 @@ async function _getWatchlistPostingsBatched(
     const doc = hit.document as Record<string, unknown>;
     return {
       id: doc.id as string,
-      title: (doc.title as string) ?? null,
+      title: normalizePostingTitle(doc.title as string | undefined),
       locationNames: Array.isArray(doc.location_names)
         ? doc.location_names.filter((name): name is string => typeof name === "string" && name.length > 0)
         : [],
@@ -2537,7 +2538,7 @@ async function _getWatchlistPostingsPostgres(
   return {
     postings: (rows as unknown as Row[]).map((r) => ({
       id: r.id,
-      title: r.title,
+      title: normalizePostingTitle(r.title),
       locationNames: [],
       sourceUrl: r.source_url,
       firstSeenAt: new Date(r.first_seen_at).toISOString(),
