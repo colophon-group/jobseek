@@ -172,16 +172,6 @@ class TestHelp:
             assert 'channel: "chrome"' in result.output
             assert "warmup_url" in result.output
 
-    def test_notion_help_documents_proxy_for_cloudflare_challenges(self, tmp_path, monkeypatch):
-        _patch_all(monkeypatch, tmp_path)
-        runner = CliRunner()
-
-        for topic in ("monitor", "scraper"):
-            result = runner.invoke(ws, ["help", topic, "notion"])
-            assert result.exit_code == 0
-            assert "proxy" in result.output
-            assert "Cloudflare" in result.output or "blocks crawler egress" in result.output
-
     def test_help_industries_uses_repo_data_and_supports_legacy_schema(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         (tmp_path / "industries.csv").write_text(
