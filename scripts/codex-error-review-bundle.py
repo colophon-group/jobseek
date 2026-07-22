@@ -415,19 +415,29 @@ def _load_metrics_config(path: Path, *, required_uid: int | None = None) -> dict
         raise MetricsEvidenceError("metrics credential file is incomplete")
 
     parsed = urllib.parse.urlsplit(values["GRAFANA_METRICS_READ_URL"])
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise MetricsEvidenceError(
+            "metrics query URL is not an approved HTTPS query endpoint"
+        ) from exc
+    hostname = (parsed.hostname or "").lower()
     if (
         parsed.scheme != "https"
-        or not parsed.hostname
+        or not hostname.endswith(".grafana.net")
+        or port not in {None, 443}
         or parsed.username
         or parsed.password
         or parsed.query
         or parsed.fragment
-        or not parsed.path.rstrip("/").endswith("/api/prom")
+        or parsed.path.rstrip("/") != "/api/prom"
     ):
         raise MetricsEvidenceError("metrics query URL is not an approved HTTPS query endpoint")
-    if any(char.isspace() for char in values["GRAFANA_METRICS_READ_USERNAME"]):
+    if not values["GRAFANA_METRICS_READ_USERNAME"].isdecimal():
         raise MetricsEvidenceError("metrics query username is invalid")
-    if len(values["GRAFANA_METRICS_READ_TOKEN"]) < 20:
+    if len(values["GRAFANA_METRICS_READ_TOKEN"]) < 20 or any(
+        char.isspace() for char in values["GRAFANA_METRICS_READ_TOKEN"]
+    ):
         raise MetricsEvidenceError("metrics read token is invalid")
     values["GRAFANA_METRICS_READ_URL"] = values["GRAFANA_METRICS_READ_URL"].rstrip("/")
     return values

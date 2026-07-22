@@ -112,9 +112,9 @@ install_metrics_config() {
     return
   fi
   [[ "${supplied}" -eq 3 ]] || fail "all dedicated metrics-read values must be supplied"
-  [[ "${url}" =~ ^https://[^[:space:]]+/api/prom/?$ ]] ||
-    fail "metrics-read URL must be an HTTPS /api/prom query endpoint"
-  [[ "${username}" =~ ^[^[:space:]]+$ ]] || fail "metrics-read username is invalid"
+  [[ "${url}" =~ ^https://[A-Za-z0-9.-]+\.grafana\.net(:443)?/api/prom/?$ ]] ||
+    fail "metrics-read URL must be an approved Grafana HTTPS /api/prom query endpoint"
+  [[ "${username}" =~ ^[0-9]+$ ]] || fail "metrics-read username is invalid"
   [[ "${#token}" -ge 20 && ! "${token}" =~ [[:space:]] ]] ||
     fail "metrics-read token is invalid"
 

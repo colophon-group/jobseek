@@ -203,6 +203,20 @@ def test_load_metrics_config_rejects_group_read_and_unrelated_keys(tmp_path: Pat
         bundle._load_metrics_config(path, required_uid=os.getuid())
 
 
+def test_load_metrics_config_rejects_non_grafana_exfiltration_endpoint(tmp_path: Path):
+    path = tmp_path / "metrics.env"
+    path.write_text(
+        "GRAFANA_METRICS_READ_URL=https://attacker.example/api/prom\n"
+        "GRAFANA_METRICS_READ_USERNAME=123456\n"
+        "GRAFANA_METRICS_READ_TOKEN=read-only-token-with-safe-length\n",
+        encoding="utf-8",
+    )
+    path.chmod(0o600)
+
+    with pytest.raises(bundle.MetricsEvidenceError, match="approved HTTPS"):
+        bundle._load_metrics_config(path, required_uid=os.getuid())
+
+
 def test_normalized_metric_result_bounds_labels_and_redacts(tmp_path: Path):
     del tmp_path  # pytest fixture keeps the test signature consistent with nearby tests.
     until = bundle.datetime(2026, 7, 22, 9, 0, tzinfo=bundle.UTC)
