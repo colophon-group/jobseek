@@ -2,6 +2,7 @@
 
 import {
   getWatchlistByUserAndSlug,
+  getPublicWatchlistPostings,
   getWatchlistPostings,
   getWatchlistPostingYearCount,
 } from "@/lib/actions/watchlists";
@@ -44,6 +45,7 @@ async function buildWatchlistPageData(params: {
   isPaidPlan: boolean;
   limitReached: boolean;
   jobLanguages: string[];
+  publicSnapshot: boolean;
 }): Promise<WatchlistPageData> {
   const {
     detail,
@@ -52,6 +54,7 @@ async function buildWatchlistPageData(params: {
     isPaidPlan,
     limitReached,
     jobLanguages,
+    publicSnapshot,
   } = params;
   const languages = resolveJobLanguages(jobLanguages, locale);
   const filters = detail.filters;
@@ -124,7 +127,11 @@ async function buildWatchlistPageData(params: {
     languages,
   };
   const [{ postings, total }, yearTotal] = await Promise.all([
-    getWatchlistPostings({ ...sharedCountsParams, offset: 0, limit: 20 }),
+    (publicSnapshot ? getPublicWatchlistPostings : getWatchlistPostings)({
+      ...sharedCountsParams,
+      offset: 0,
+      limit: 20,
+    }),
     getWatchlistPostingYearCount(sharedCountsParams),
   ]);
 
@@ -157,6 +164,7 @@ export async function fetchPublicWatchlistPageData(params: {
     isPaidPlan: false,
     limitReached: true,
     jobLanguages: [],
+    publicSnapshot: true,
   });
 }
 
@@ -193,5 +201,6 @@ export async function fetchWatchlistPageData(params: {
     limitReached,
     locale,
     jobLanguages,
+    publicSnapshot: false,
   });
 }

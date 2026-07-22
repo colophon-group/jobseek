@@ -195,6 +195,7 @@ vi.mock("@/lib/watchlist-utils", () => ({
 }));
 
 import {
+  getPublicWatchlistPostings,
   getWatchlistPostingYearCount,
   getWatchlistPostings,
 } from "../watchlists";
@@ -323,6 +324,20 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
     expect(mocks.withTypesenseRetry).toHaveBeenCalledTimes(1);
     expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(rateLimitError);
     expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("keeps cached public posting snapshots session-free (#5980)", async () => {
+    mocks.tsSearch.mockResolvedValue({ found: 0, hits: [] });
+
+    const result = await getPublicWatchlistPostings({
+      companyIds: ["11111111-1111-1111-1111-111111111111"],
+      offset: 0,
+      limit: 20,
+    });
+
+    expect(result).toEqual({ postings: [], total: 0 });
+    expect(mocks.getSessionUserId).not.toHaveBeenCalled();
+    expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
   });
 
   it("batches active posting queries before the Typesense GET limit (#3477)", async () => {

@@ -99,6 +99,12 @@ export async function getWatchlistPostings(
   return service.getWatchlistPostings(...args);
 }
 
+export async function getPublicWatchlistPostings(
+  ...args: Parameters<typeof service.getPublicWatchlistPostings>
+): ReturnType<typeof service.getPublicWatchlistPostings> {
+  return service.getPublicWatchlistPostings(...args);
+}
+
 export async function getWatchlistPostingYearCount(
   ...args: Parameters<typeof service.getWatchlistPostingYearCount>
 ): ReturnType<typeof service.getWatchlistPostingYearCount> {
