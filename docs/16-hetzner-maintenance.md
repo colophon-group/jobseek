@@ -13,6 +13,11 @@ secrets into commands or documentation.
 | Postgres | `POSTGRESQL_LOCAL_IPv4` | Local crawler Postgres |
 | Typesense | `TYPESENSE_IPv4` | Typesense and `cloudflared` |
 
+PostgreSQL and Typesense data protection is documented separately in
+[`19-data-backup-recovery.md`](19-data-backup-recovery.md). That runbook is
+the source of truth for backup scheduling, validation, restore drills, and
+the removal gate for legacy server backups.
+
 SSH pattern:
 
 ```bash
@@ -392,3 +397,20 @@ growpart /dev/sda 1
 resize2fs /dev/sda1
 df -h /
 ```
+
+The PostgreSQL data filesystem is different: it is XFS on an attached Hetzner
+Volume, and server snapshots do not contain it. Verify the encrypted off-host
+logical checkpoint first, then expand the Volume in the Hetzner control plane
+and grow XFS online:
+
+```bash
+findmnt /mnt/HC_Volume_105256309
+lsblk -f
+xfs_growfs /mnt/HC_Volume_105256309
+df -h /mnt/HC_Volume_105256309
+```
+
+An attached Volume expansion cannot be reversed in place. Record the old and
+new sizes and verify PostgreSQL before proceeding. Do not substitute a server
+backup for the pre-change data checkpoint; follow
+[`19-data-backup-recovery.md`](19-data-backup-recovery.md).

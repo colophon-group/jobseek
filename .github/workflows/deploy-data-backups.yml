@@ -1,0 +1,79 @@
+name: Deploy Data Backups (Hetzner)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/backups/**'
+      - 'deploy/systemd/jobseek-postgresql-backup.*'
+      - 'deploy/systemd/jobseek-typesense-backup.*'
+      - 'scripts/jobseek-data-backup.py'
+      - 'docs/16-hetzner-maintenance.md'
+      - 'docs/19-data-backup-recovery.md'
+      - '.github/workflows/deploy-data-backups.yml'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: hetzner-data-backup-production-sync
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: postgresql
+            host: ${{ vars.HETZNER_POSTGRES_HOST }}
+          - service: typesense
+            host: ${{ vars.HETZNER_TYPESENSE_HOST }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate backup deployment artifacts
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/jobseek-data-backup.py
+          bash -n deploy/backups/install-host.sh
+          bash -n deploy/backups/postgresql/migrate-container.sh
+
+      - name: Require configured production host
+        env:
+          TARGET_HOST: ${{ matrix.host }}
+        run: test -n "$TARGET_HOST"
+
+      - name: Copy backup deployment artifacts
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ matrix.host }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: scripts/jobseek-data-backup.py,deploy/backups,deploy/systemd/jobseek-postgresql-backup.service,deploy/systemd/jobseek-postgresql-backup.timer,deploy/systemd/jobseek-typesense-backup.service,deploy/systemd/jobseek-typesense-backup.timer,docs/19-data-backup-recovery.md,docs/16-hetzner-maintenance.md
+          target: /opt/jobseek-backup
+          overwrite: true
+
+      - name: Install backup host surface without changing schedule
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          JOBSEEK_BACKUP_DEPLOY_SHA: ${{ github.sha }}
+          JOBSEEK_BACKUP_SERVICE: ${{ matrix.service }}
+        with:
+          host: ${{ matrix.host }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: JOBSEEK_BACKUP_DEPLOY_SHA,JOBSEEK_BACKUP_SERVICE
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd /opt/jobseek-backup
+            bash deploy/backups/install-host.sh "$JOBSEEK_BACKUP_SERVICE"
+            systemctl is-enabled "jobseek-${JOBSEEK_BACKUP_SERVICE}-backup.timer" || true
+            systemctl is-active "jobseek-${JOBSEEK_BACKUP_SERVICE}-backup.timer" || true

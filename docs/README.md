@@ -71,6 +71,9 @@ Status tags:
   `[routine]` - gold-dataset sampling, labelling, validation, and upload.
 - [16 - Hetzner Maintenance](16-hetzner-maintenance.md) `[runbook]` -
   disk/headroom checks and Docker cleanup on Hetzner hosts.
+- [19 - Hetzner Data Backup and Recovery](19-data-backup-recovery.md)
+  `[runbook]` - encrypted PostgreSQL and Typesense backups, restore drills,
+  retention, scheduling, and replacement gates for legacy server backups.
 - [Didi Reactivation Runbook](runbook-didi-reactivate-2026-05-10.md)
   `[runbook]` - historical Didi reactivation notes.
 

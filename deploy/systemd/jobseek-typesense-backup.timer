@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule Jobseek Typesense data backups
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 UTC
+RandomizedDelaySec=10min
+AccuracySec=1min
+Persistent=true
+Unit=jobseek-typesense-backup.service
+
+[Install]
+WantedBy=timers.target
