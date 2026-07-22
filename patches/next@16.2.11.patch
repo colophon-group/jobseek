@@ -1,0 +1,50 @@
+diff --git a/dist/server/app-render/app-render.js b/dist/server/app-render/app-render.js
+index 5588d51e277c6098267be890b2fe973b1eefd29b..78d6d80584f3a695cb5869836adf4a34ca73c4bb 100644
+--- a/dist/server/app-render/app-render.js
++++ b/dist/server/app-render/app-render.js
+@@ -305,6 +305,18 @@ function NonIndex({ createElement, pagePath, statusCode, isPossibleServerAction
+     }
+     return null;
+ }
++/**
++ * A resumed PPR render must use the same metadata tree shape as the
++ * prerender that produced the postponed state. Prerenders always enable
++ * streaming metadata, so enabling it on resumes avoids a React tree mismatch
++ * for bot user agents. Backport of vercel/next.js#94630 for Next 16.2.11.
++ */
++function getServeStreamingMetadata(renderOpts) {
++    if (typeof renderOpts.postponed === 'string') {
++        return true;
++    }
++    return !!renderOpts.serveStreamingMetadata;
++}
+ /**
+  * This is used by server actions & client-side navigations to generate RSC data from a client-side request.
+  * This function is only called on "dynamic" requests (ie, there wasn't already a static response).
+@@ -318,7 +330,7 @@ function NonIndex({ createElement, pagePath, statusCode, isPossibleServerAction
+     // action reducer sees a falsy value, it'll simply resolve the action with no data.
+     let flightData = '';
+     const { componentMod: { routeModule: { userland: { loaderTree } }, createElement, createMetadataComponents, Fragment }, query, requestId, flightRouterState, workStore, url } = ctx;
+-    const serveStreamingMetadata = !!ctx.renderOpts.serveStreamingMetadata;
++    const serveStreamingMetadata = getServeStreamingMetadata(ctx.renderOpts);
+     if (!(options == null ? void 0 : options.skipPageRendering)) {
+         var _ctx_renderOpts_prefetchHints;
+         const preloadCallbacks = [];
+@@ -976,7 +988,7 @@ async function getRSCPayload(tree, ctx, options) {
+     const { getDynamicParamFromSegment, query, appUsingSizeAdjustment, componentMod: { createMetadataComponents, createElement, Fragment }, url, workStore } = ctx;
+     const hints = ((_ctx_renderOpts_prefetchHints = ctx.renderOpts.prefetchHints) == null ? void 0 : _ctx_renderOpts_prefetchHints[ctx.pagePath]) ?? null;
+     const initialTree = await (0, _createflightrouterstatefromloadertree.createFlightRouterStateFromLoaderTree)(tree, hints, getDynamicParamFromSegment, query);
+-    const serveStreamingMetadata = !!ctx.renderOpts.serveStreamingMetadata;
++    const serveStreamingMetadata = getServeStreamingMetadata(ctx.renderOpts);
+     const hasGlobalNotFound = !!tree[2]['global-not-found'];
+     const metadataIsRuntimePrefetchable = await (0, _instantconfig.anySegmentHasRuntimePrefetchEnabled)(tree);
+     const { Viewport, Metadata, MetadataOutlet } = createMetadataComponents({
+@@ -1089,7 +1101,7 @@ async function getRSCPayload(tree, ctx, options) {
+ async function getErrorRSCPayload(tree, ctx, ssrError, errorType) {
+     var _ctx_renderOpts_prefetchHints;
+     const { getDynamicParamFromSegment, query, componentMod: { createMetadataComponents, createElement, Fragment }, url, workStore } = ctx;
+-    const serveStreamingMetadata = !!ctx.renderOpts.serveStreamingMetadata;
++    const serveStreamingMetadata = getServeStreamingMetadata(ctx.renderOpts);
+     const metadataIsRuntimePrefetchable = await (0, _instantconfig.anySegmentHasRuntimePrefetchEnabled)(tree);
+     const { Viewport, Metadata } = createMetadataComponents({
+         tree,
