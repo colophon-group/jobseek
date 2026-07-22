@@ -33,6 +33,12 @@ updates:
       - dependency-name: "typescript"
         update-types:
           - "version-update:semver-major"
+      # CI and production run Node 22, while the published MCP package still
+      # supports Node 18. Future Node ambient types would expose APIs that are
+      # unavailable on both supported runtime boundaries.
+      - dependency-name: "@types/node"
+        update-types:
+          - "version-update:semver-major"
     groups:
       security-updates:
         applies-to: "security-updates"
