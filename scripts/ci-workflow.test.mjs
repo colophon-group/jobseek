@@ -13,6 +13,10 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+const webBuildEnvAction = readFileSync(
+  ".github/actions/setup-web-build-env/action.yml",
+  "utf8",
+);
 const codeqlWorkflow = readFileSync(".github/workflows/codeql.yml", "utf8");
 const dependabotConfig = readFileSync(".github/dependabot.yml", "utf8");
 const uploadCompanyImagesWorkflow = readFileSync(
@@ -374,6 +378,29 @@ test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /scripts\/crawler-host-hygiene\.test\.mjs/);
   assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
+});
+
+test("web build jobs use one deterministic secretless environment", () => {
+  for (const jobId of ["test-web-isr", "web-smoke"]) {
+    const job = jobBlock(jobId);
+    assert.match(job, /uses: \.\/\.github\/actions\/setup-web-build-env/);
+    assert.doesNotMatch(job, /environment: Production/);
+    assert.doesNotMatch(job, /secrets\./);
+  }
+
+  for (const variable of [
+    "DATABASE_URL",
+    "DATABASE_URL_UNPOOLED",
+    "TYPESENSE_HOST",
+    "TYPESENSE_PORT",
+    "TYPESENSE_PROTOCOL",
+  ]) {
+    assert.match(webBuildEnvAction, new RegExp(`echo '${variable}='`));
+  }
+  assert.match(webBuildEnvAction, /BETTER_AUTH_URL=\$APP_URL/);
+  assert.match(webBuildEnvAction, /COMPANY_OG_PRERENDER_TOP_N=0/);
+  assert.doesNotMatch(webBuildEnvAction, /secrets\./);
+  assert.doesNotMatch(webBuildEnvAction, /postgres(?:ql)?:\/\//);
 });
 
 test("Codex deploy transport outlives the runner lock wait", () => {
