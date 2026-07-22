@@ -14,6 +14,7 @@ import { spawnSync } from "node:child_process";
 
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const codeqlWorkflow = readFileSync(".github/workflows/codeql.yml", "utf8");
+const dependabotConfig = readFileSync(".github/dependabot.yml", "utf8");
 const uploadCompanyImagesWorkflow = readFileSync(
   ".github/workflows/upload-company-images.yml",
   "utf8",
@@ -809,6 +810,60 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
   assert.match(analyzeJob, /if: needs\.changes\.outputs\.codeql != 'true'/);
   assert.match(analyzeJob, /Initialize CodeQL[\s\S]*if: needs\.changes\.outputs\.codeql == 'true'/);
   assert.match(analyzeJob, /Perform CodeQL Analysis[\s\S]*if: needs\.changes\.outputs\.codeql == 'true'/);
+});
+
+test("Dependabot groups npm security updates across pnpm workspace manifests", () => {
+  const npmConfig = dependabotConfig.match(
+    /  - package-ecosystem: "npm"\n([\s\S]*?)(?=\n  - package-ecosystem:)/,
+  )?.[1];
+
+  assert.ok(npmConfig, "missing npm Dependabot configuration");
+  assert.doesNotMatch(npmConfig, /^    directory: "\/"$/m);
+  for (const directory of [
+    "/",
+    "/apps/trace-viewer",
+    "/apps/web",
+    "/packages/mcp-server",
+  ]) {
+    assert.match(npmConfig, new RegExp(`^      - "${directory}"$`, "m"));
+  }
+  assert.match(
+    npmConfig,
+    /security-updates:\n        applies-to: "security-updates"\n        patterns:\n          - "\*"/,
+  );
+  assert.match(npmConfig, /next-react:\n        applies-to: "version-updates"/);
+  assert.match(npmConfig, /test-tooling:\n        applies-to: "version-updates"/);
+  assert.match(
+    npmConfig,
+    /workspace-dependencies:\n        applies-to: "version-updates"\n        patterns:\n          - "\*"\n        group-by: "dependency-name"/,
+  );
+});
+
+test("dependency review scopes the sharp libvips license exception", () => {
+  const dependencyReviewJob = workflowJobBlock(workflow, "dependency-review");
+
+  assert.match(
+    dependencyReviewJob,
+    /deny-licenses: .*LGPL-2\.0, LGPL-2\.1, LGPL-3\.0/,
+  );
+  for (const platform of [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm",
+    "linux-arm64",
+    "linux-ppc64",
+    "linux-riscv64",
+    "linux-s390x",
+    "linux-x64",
+    "linuxmusl-arm64",
+    "linuxmusl-x64",
+  ]) {
+    assert.match(
+      dependencyReviewJob,
+      new RegExp(`pkg:npm/@img/sharp-libvips-${platform}`),
+    );
+  }
+  assert.doesNotMatch(dependencyReviewJob, /allow-licenses:/);
 });
 
 test("main branch ruleset does not require non-path-aware code scanning", () => {

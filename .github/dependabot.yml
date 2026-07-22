@@ -14,7 +14,14 @@ updates:
           - "*"
 
   - package-ecosystem: "npm"
-    directory: "/"
+    # Security alerts are reported against both workspace manifests and the
+    # shared lockfile. Keep them in one updater so fixes are generated as an
+    # atomic pnpm workspace change instead of one PR per manifest boundary.
+    directories:
+      - "/"
+      - "/apps/trace-viewer"
+      - "/apps/web"
+      - "/packages/mcp-server"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -25,27 +32,41 @@ updates:
       - "apps/crawler/murmur/**"
       - "apps/murmur-shim/**"
     groups:
+      security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
       next-react:
+        applies-to: "version-updates"
         patterns:
           - "next"
           - "@next/*"
           - "react"
           - "react-dom"
       lingui:
+        applies-to: "version-updates"
         patterns:
           - "@lingui/*"
       typesense:
+        applies-to: "version-updates"
         patterns:
           - "typesense"
       aws-sdk:
+        applies-to: "version-updates"
         patterns:
           - "@aws-sdk/*"
       test-tooling:
+        applies-to: "version-updates"
         dependency-type: "development"
         patterns:
           - "@testing-library/*"
           - "@vitest/*"
           - "vitest"
+      workspace-dependencies:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        group-by: "dependency-name"
 
   - package-ecosystem: "uv"
     directory: "/apps/crawler"
