@@ -5,15 +5,19 @@ from pathlib import Path
 import yaml
 
 DEPLOY_SH = Path(__file__).resolve().parent.parent / "deploy.sh"
+DEPLOY_HELPERS_SH = Path(__file__).resolve().parent.parent / "deploy_helpers.sh"
 DOCKERFILE = Path(__file__).resolve().parent.parent / "Dockerfile"
 COMPOSE_FILE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
+DEPLOY_WORKFLOW = (
+    Path(__file__).resolve().parents[3] / ".github/workflows/deploy-crawler-browser.yml"
+)
 
 
 def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
     script = DEPLOY_SH.read_text()
 
     preflight = script.index("\nensure_deploy_disk_headroom\n")
-    pull = script.index("docker compose pull")
+    pull = script.index("\npull_deploy_images\n")
     quiesce = script.index("docker compose stop --timeout 60")
 
     assert preflight < pull < quiesce
@@ -26,10 +30,22 @@ def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
     typesense_guard = script.index("\nensure_no_running_typesense_maintenance\n")
     legacy_stop = script.index('docker stop --time=60 "${legacy_containers[@]}"')
     env_write = script.index('cat > "$ENV_FILE"')
-    pull = script.index("docker compose pull")
+    pull = script.index("\npull_deploy_images\n")
     quiesce = script.index("docker compose stop --timeout 60")
 
     assert oneoff_guard < typesense_guard < legacy_stop < env_write < pull < quiesce
+
+
+def test_deploy_sources_pull_helpers_and_workflow_copies_them() -> None:
+    script = DEPLOY_SH.read_text()
+    workflow = DEPLOY_WORKFLOW.read_text()
+
+    source = script.index('source "$DEPLOY_DIR/deploy_helpers.sh"')
+    pull = script.index("\npull_deploy_images\n")
+
+    assert source < pull
+    assert "apps/crawler/deploy_helpers.sh" in workflow
+    assert DEPLOY_HELPERS_SH.exists()
 
 
 def test_deploy_oneoff_guard_uses_compose_labels_and_reports_context() -> None:
