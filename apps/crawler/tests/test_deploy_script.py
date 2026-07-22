@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import stat
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -7,6 +10,7 @@ import yaml
 DEPLOY_SH = Path(__file__).resolve().parent.parent / "deploy.sh"
 DEPLOY_HELPERS_SH = Path(__file__).resolve().parent.parent / "deploy_helpers.sh"
 DOCKERFILE = Path(__file__).resolve().parent.parent / "Dockerfile"
+XVFB_ENTRYPOINT = Path(__file__).resolve().parent.parent / "scripts" / "with-xvfb.sh"
 COMPOSE_FILE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
 DEPLOY_WORKFLOW = (
     Path(__file__).resolve().parents[3] / ".github/workflows/deploy-crawler-browser.yml"
@@ -82,6 +86,92 @@ def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
 
     assert "FROM python:3.13-slim AS base" in dockerfile
     assert "python:3.14" not in dockerfile
+    assert "COPY scripts/with-xvfb.sh /usr/local/bin/with-xvfb" in dockerfile
+    assert 'ENTRYPOINT ["/usr/local/bin/with-xvfb"]' in dockerfile
+
+
+def _write_executable(path: Path, content: str) -> None:
+    path.write_text(content, encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IXUSR)
+
+
+def test_xvfb_entrypoint_cleans_stale_display_artifacts_on_restart(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    socket_dir = runtime / ".X11-unix"
+    socket_dir.mkdir(parents=True)
+    # Docker gives the restarted container a fresh PID namespace, so a stale
+    # Xvfb PID can be reused by an unrelated live process. That must not make
+    # the stale lock permanent.
+    (runtime / ".X99-lock").write_text(f"{os.getpid()}\n", encoding="utf-8")
+    (socket_dir / "X99").write_text("stale", encoding="utf-8")
+
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    _write_executable(
+        binaries / "xdpyinfo",
+        '#!/bin/sh\ntest -f "$XVFB_RUNTIME_DIR/.display-ready"\n',
+    )
+    _write_executable(
+        binaries / "Xvfb",
+        '#!/bin/sh\ntouch "$XVFB_RUNTIME_DIR/.display-ready"\nsleep 0.5\n',
+    )
+    target = tmp_path / "target"
+    _write_executable(
+        target,
+        "#!/bin/sh\n"
+        'test ! -e "$XVFB_RUNTIME_DIR/.X99-lock"\n'
+        'test ! -e "$XVFB_RUNTIME_DIR/.X11-unix/X99"\n'
+        'test "$DISPLAY" = :99\n'
+        "echo target-started\n",
+    )
+
+    result = subprocess.run(
+        ["/bin/sh", str(XVFB_ENTRYPOINT), str(target)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=5,
+        env={
+            **os.environ,
+            "PATH": f"{binaries}:{os.environ['PATH']}",
+            "XVFB_RUNTIME_DIR": str(runtime),
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "target-started"
+
+
+def test_xvfb_entrypoint_keeps_artifacts_when_display_is_live(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    socket_dir = runtime / ".X11-unix"
+    socket_dir.mkdir(parents=True)
+    lock = runtime / ".X99-lock"
+    socket = socket_dir / "X99"
+    lock.write_text(f"{os.getpid()}\n", encoding="utf-8")
+    socket.write_text("live", encoding="utf-8")
+
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    _write_executable(binaries / "xdpyinfo", "#!/bin/sh\nexit 0\n")
+
+    result = subprocess.run(
+        ["/bin/sh", str(XVFB_ENTRYPOINT), "/bin/true"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=5,
+        env={
+            **os.environ,
+            "PATH": f"{binaries}:{os.environ['PATH']}",
+            "XVFB_RUNTIME_DIR": str(runtime),
+        },
+    )
+
+    assert result.returncode != 0
+    assert "display 99 is already active" in result.stderr
+    assert lock.exists()
+    assert socket.exists()
 
 
 def test_alloy_uses_explicit_persistent_storage_path() -> None:
