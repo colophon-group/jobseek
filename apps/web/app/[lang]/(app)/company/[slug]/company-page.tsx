@@ -4,8 +4,6 @@ import { useState, useCallback, useTransition, useEffect, useMemo } from "react"
 import { Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import { timeAgoShort } from "@/lib/time";
-import { SaveButton } from "@/components/search/save-button";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { getCompanyPostingListState } from "./company-posting-state";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
@@ -17,8 +15,6 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
-import { TrackingDot } from "@/components/TrackingDot";
-import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
 import type { CompanyDetail } from "@/lib/actions/company";
 import { buildFilteredPath } from "@/lib/search/query-params";
@@ -27,6 +23,7 @@ import type { SearchResultPosting, HistogramFilters, WorkMode } from "@/lib/sear
 import type { SelectedLocation } from "@/lib/search/types";
 import { useSearchStateStore } from "@/components/providers/SearchStateProvider";
 import { ActivePostingCount, YearPostingCount } from "@/components/search/posting-count-labels";
+import { CompanyPostingRow } from "./company-posting-row";
 
 const PAGE_SIZE = 20;
 
@@ -643,35 +640,13 @@ export function CompanyPage({
       ) : (
         <div>
           {postings.map((posting) => (
-            <div
+            <CompanyPostingRow
               key={posting.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleOpenPosting(posting.id)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleOpenPosting(posting.id); }}
-              className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === showPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
-            >
-              <TrackingDot postingId={posting.id} />
-              <span className="min-w-0 flex-1 truncate text-sm">{posting.title ?? "—"}</span>
-              {posting.isActive === false && (
-                <span className="shrink-0 rounded bg-border-soft px-1 py-0.5 text-[10px] text-muted">
-                  <Trans id="company.page.closed" comment="Label for inactive/closed job postings on company page">
-                    Closed
-                  </Trans>
-                </span>
-              )}
-              {posting.locations.length > 0 && (
-                <span className={`shrink-0 text-xs text-muted ${posting.locations[0].geoType && posting.locations[0].geoType !== "city" ? "italic" : ""}`}>
-                  {posting.locations[0].name}
-                  {posting.locations.length > 1 && ` +${posting.locations.length - 1}`}
-                </span>
-              )}
-              {!posting.title && <PendingJobIcon />}
-              <SaveButton postingId={posting.id} />
-              <span suppressHydrationWarning className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted">
-                {timeAgoShort(posting.firstSeenAt, uiLocale)}
-              </span>
-            </div>
+              posting={posting}
+              selected={posting.id === showPostingId}
+              uiLocale={uiLocale}
+              onOpen={handleOpenPosting}
+            />
           ))}
           {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoadingMore} />}
           {!hasMore && isTruncated && <TruncationPrompt type="postings" />}
