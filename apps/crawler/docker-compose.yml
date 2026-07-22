@@ -315,7 +315,7 @@ services:
   # is exporter-only.
   #
   # Port choice: 8080. Verified free on the box at deploy time
-  # (existing crawler stack uses 6379, 9093-9098, 12345/12346 only).
+  # (existing crawler stack uses 6379, 9093-9098, 12346/12347 only).
   # The shim's `/health` route is bearer-free per H2 design so this
   # healthcheck and the cloudflared origin-up probe both work without
   # secrets.
@@ -405,6 +405,7 @@ services:
   # -- Grafana Alloy (metrics + log collector) --------------------
   alloy:
     image: grafana/alloy:v1.18.0@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308
+    user: "0:0"
     restart: unless-stopped
     network_mode: host
     read_only: true

@@ -106,3 +106,7 @@ def test_alloy_state_migrates_before_compose_can_recreate_it() -> None:
     assert 'docker stop --time=30 "$alloy_container"' in script
     assert 'docker cp "${alloy_container}:/data-alloy/." "$staging/"' in script
     assert ".jobseek-persistent-state" in script
+    assert 'normalize_alloy_state_volume "$volume_name"' in script
+    assert "chown -R 0:0 /data-alloy && chmod 0700 /data-alloy" in script
+    assert "grafana/alloy:latest" not in script
+    assert "http://127.0.0.1:12346/-/ready" in script
