@@ -11,6 +11,7 @@
  * AND the fail-closed behaviour when a signature is missing or invalid.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import Stripe from "stripe";
 import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 // We never touch the DB in these tests — the request must be rejected
@@ -162,5 +163,21 @@ describe("POST /api/stripe/webhook — signature verification when STRIPE_WEBHOO
       makeRequest(FORGED_CHECKOUT_EVENT, { signature: "garbage" }),
     );
     expect(res.status).toBe(400);
+  });
+
+  it("accepts a valid signed V1 event with the current Stripe SDK", async () => {
+    const payload = JSON.stringify({
+      id: "evt_signed_001",
+      type: "invoice.payment_failed",
+      data: { object: {} },
+    });
+    const signature = Stripe.webhooks.generateTestHeaderString({
+      payload,
+      secret: "whsec_test_only_not_a_real_secret",
+    });
+
+    const res = await POST(makeRequest(payload, { signature }));
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ received: true });
   });
 });
