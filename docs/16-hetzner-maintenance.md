@@ -38,6 +38,14 @@ The repository-owned ingress source of truth is:
 - [`deploy-hetzner-ingress.yml`](../.github/workflows/deploy-hetzner-ingress.yml)
   for protected audit and apply operations.
 
+The protected `production` environment stores `HETZNER_API_TOKEN`,
+`HETZNER_HOST`, `HETZNER_POSTGRES_HOST`, `HETZNER_TYPESENSE_HOST`, and
+`HETZNER_SSH_KEY` as secrets. Host addresses are secrets for log-redaction
+purposes even though they are not authentication material. Do not convert them
+to GitHub variables: Actions prints ordinary variables in step environments.
+The inventory helper emits GitHub masking commands before exporting derived
+private addresses; suppressing that output would disable the masks.
+
 The public Hetzner firewall is default-deny inbound and allows only TCP 22 and
 ICMP over IPv4/IPv6. It has no outbound rules, so Hetzner's default outbound
 allow behavior remains in effect for backups, Grafana, crawler traffic, and

@@ -57,13 +57,13 @@ jobs:
 
       - name: Resolve configured production host
         env:
-          TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+          TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
         run: test -n "$TARGET_HOST"
 
       - name: Copy observability deployment artifacts
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
-          host: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+          host: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
           source: scripts/jobseek-host-observability.py,deploy/observability,deploy/systemd/jobseek-alloy.service,deploy/systemd/jobseek-host-observability.service,deploy/systemd/jobseek-host-observability.timer,docs/16-hetzner-maintenance.md,docs/19-data-backup-recovery.md
@@ -82,7 +82,7 @@ jobs:
           GRAFANA_LOKI_USERNAME: ${{ secrets.GRAFANA_LOKI_USERNAME }}
           GRAFANA_LOKI_PASSWORD: ${{ secrets.GRAFANA_LOKI_PASSWORD }}
         with:
-          host: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && vars.HETZNER_POSTGRES_HOST || vars.HETZNER_TYPESENSE_HOST }}
+          host: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
           envs: JOBSEEK_HOST_ROLE,JOBSEEK_OBSERVABILITY_DEPLOY_SHA,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD
