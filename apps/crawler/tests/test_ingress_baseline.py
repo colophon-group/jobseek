@@ -361,4 +361,6 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
     assert "Roll back any transaction left pending by a failed commit" in workflow
     assert "Audit host without writing to production" in workflow
     assert "<scripts/jobseek-ingress-conformance.py" in workflow
+    assert "provider-audit-conformance:" in workflow
+    assert "Require exact provider policy and external port state" in workflow
     assert workflow.index("commit-hosts:") < workflow.index("provider-firewall:")

@@ -111,7 +111,7 @@ jobs:
             -o StrictHostKeyChecking=accept-new \
             -o UserKnownHostsFile="$known_hosts" \
             "root@${TARGET_HOST}" \
-            "python3 - --role '${JOBSEEK_HOST_ROLE}' --crawler-private-ip '${JOBSEEK_CRAWLER_PRIVATE_IP}'" \
+            "python3 - --role '${JOBSEEK_HOST_ROLE}' --crawler-private-ip '${JOBSEEK_CRAWLER_PRIVATE_IP}' --require-enforced" \
             <scripts/jobseek-ingress-conformance.py
       - name: Stage host policy
         if: ${{ inputs.action == 'apply' }}
@@ -153,6 +153,26 @@ jobs:
             if [[ -x /usr/local/sbin/jobseek-ingress-baseline ]]; then
               /usr/local/sbin/jobseek-ingress-baseline rollback "$JOBSEEK_HOST_ROLE"
             fi
+
+  provider-audit-conformance:
+    if: ${{ always() && inputs.action == 'audit' }}
+    needs: host-stage-or-audit
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_POSTGRES_HOST: ${{ vars.HETZNER_POSTGRES_HOST }}
+      HETZNER_TYPESENSE_HOST: ${{ vars.HETZNER_TYPESENSE_HOST }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Require exact provider policy and external port state
+        run: |
+          set -euo pipefail
+          python3 scripts/manage-hetzner-ingress.py verify \
+            --state "${RUNNER_TEMP}/unused-firewall-state.json"
 
   validate-private-paths:
     if: ${{ inputs.action == 'apply' }}

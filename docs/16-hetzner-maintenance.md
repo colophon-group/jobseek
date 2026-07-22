@@ -114,8 +114,11 @@ gh workflow run deploy-hetzner-ingress.yml \
   -f action=apply
 ```
 
-After maintenance, rerun `action=audit` and require a compliant result for all
-three roles. External verification and logs intentionally omit addresses,
+Before the first apply, this audit is expected to exit nonzero while still
+emitting the redacted control evidence. After maintenance, rerun
+`action=audit`: it exits successfully only when all three hosts, the exact
+provider policy, and the external port probes are compliant. External
+verification and logs intentionally omit addresses,
 resource IDs, credentials, connection strings, and raw HBA contents. Future
 PostgreSQL container migrations source the root-owned
 `/etc/jobseek-ingress/postgresql-network.env`; removing or bypassing that file
