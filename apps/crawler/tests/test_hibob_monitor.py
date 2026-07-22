@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import httpx
 
+from src.core.enum_normalize import normalize_employment_type
 from src.core.monitors import _REGISTRY
 from src.core.monitors.hibob import (
     _build_description,
@@ -98,7 +99,8 @@ class TestMapping:
         assert job.url == f"{ORIGIN}/jobs/25d303ad-e3c3-40a3-a1af-b08b3aa261a5"
         assert job.title == "Support Engineer"
         assert job.locations == ["Israel"]
-        assert job.employment_type == "Employee"
+        assert job.employment_type == "Permanent"
+        assert normalize_employment_type(job.employment_type) == "full_time"
         assert job.job_location_type == "hybrid"
         assert job.date_posted == "2025-11-20T08:53:08.443293133Z"
         assert job.language == "en"
@@ -143,6 +145,8 @@ async def test_discover_maps_job_ad_details():
 
     assert len(jobs) == 2
     assert jobs[1].locations == ["EMEA"]
+    assert jobs[1].employment_type == "Contractor"
+    assert normalize_employment_type(jobs[1].employment_type) == "contract"
     assert jobs[1].job_location_type == "remote"
     assert jobs[1].base_salary is None
 

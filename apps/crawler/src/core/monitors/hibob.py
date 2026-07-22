@@ -124,7 +124,11 @@ def _parse_job(raw: dict, origin: str) -> DiscoveredJob | None:
         title=raw.get("title"),
         description=description,
         locations=_location(raw),
-        employment_type=raw.get("employmentType") or raw.get("employmentTypeId"),
+        # HiBob's display label can be an unclassifiable worker category such
+        # as "Employee", while the stable ID carries the actual arrangement
+        # (for example "Permanent" or "Contractor").  Prefer the ID so the
+        # shared enum normalizer can preserve the employment type.
+        employment_type=raw.get("employmentTypeId") or raw.get("employmentType"),
         job_location_type=normalize_job_location_type(
             raw.get("workspaceType") or raw.get("workspaceTypeId"),
             default=None,
