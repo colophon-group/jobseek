@@ -56,6 +56,7 @@ DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$DEPLOY_DIR")}"
 export COMPOSE_PROJECT_NAME
+ALLOY_IMAGE="grafana/alloy:v1.18.0@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308"
 ALLOY_STATE_ACTIVATION_REQUIRED=0
 
 rollback_deploy() {
@@ -88,7 +89,11 @@ compose_service_ready() {
   fi
 
   health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null || true)"
-  [[ "$health" == "none" || "$health" == "healthy" ]]
+  [[ "$health" == "none" || "$health" == "healthy" ]] || return 1
+  if [[ "$service" == "alloy" ]]; then
+    curl --fail --silent --show-error --max-time 2 \
+      http://127.0.0.1:12346/-/ready >/dev/null
+  fi
 }
 
 wait_for_core_services() {
@@ -117,6 +122,18 @@ wait_for_core_services() {
   return 1
 }
 
+normalize_alloy_state_volume() {
+  local volume_name="$1"
+
+  # The long-running collector is explicit root with every capability dropped.
+  # Make it the volume owner so it can write its WAL/cursors without relying on
+  # CAP_DAC_OVERRIDE. The helper is pinned, networkless, and exits immediately.
+  docker run --rm --network none --user 0:0 \
+    -v "${volume_name}:/data-alloy" \
+    --entrypoint sh "$ALLOY_IMAGE" \
+    -c 'chown -R 0:0 /data-alloy && chmod 0700 /data-alloy'
+}
+
 prepare_alloy_state_volume() {
   local volume_name="${COMPOSE_PROJECT_NAME}_alloy-data"
   local marker="/data-alloy/.jobseek-persistent-state"
@@ -134,9 +151,9 @@ prepare_alloy_state_volume() {
   # Fast path for every deploy after the migration. The marker lives in the
   # named volume, so force-recreating Alloy below cannot erase it or the
   # Docker-source positions stored beside it.
-  if docker run --rm --network none \
+  if docker run --rm --network none --user 0:0 \
     -v "${volume_name}:/data-alloy" \
-    --entrypoint sh grafana/alloy:latest \
+    --entrypoint sh "$ALLOY_IMAGE" \
     -c "test -f '${marker}'"; then
     echo "Alloy state volume already initialized: ${volume_name}" >&2
     if [[ "$state" != "running" || "$state_volume" != "$volume_name" ]]; then
@@ -144,6 +161,7 @@ prepare_alloy_state_volume() {
       # changed service spec became active. Recreate immediately on retry.
       ALLOY_STATE_ACTIVATION_REQUIRED=1
     fi
+    normalize_alloy_state_volume "$volume_name"
     return 0
   fi
 
@@ -162,10 +180,10 @@ prepare_alloy_state_volume() {
       echo "ERROR: failed to stage current Alloy state" >&2
       return 1
     fi
-    if ! docker run --rm --network none \
+    if ! docker run --rm --network none --user 0:0 \
       -v "${staging}:/source:ro" \
       -v "${volume_name}:/data-alloy" \
-      --entrypoint sh grafana/alloy:latest \
+      --entrypoint sh "$ALLOY_IMAGE" \
       -c 'tar -C /source -cf - . | tar -C /data-alloy -xpf -'; then
       rm -rf "$staging"
       echo "ERROR: failed to seed persistent Alloy state" >&2
@@ -178,10 +196,11 @@ prepare_alloy_state_volume() {
     echo "No existing Alloy container; initializing an empty state volume" >&2
   fi
 
-  docker run --rm --network none \
+  docker run --rm --network none --user 0:0 \
     -v "${volume_name}:/data-alloy" \
-    --entrypoint sh grafana/alloy:latest \
+    --entrypoint sh "$ALLOY_IMAGE" \
     -c "touch '${marker}'"
+  normalize_alloy_state_volume "$volume_name"
 }
 
 deploy_disk_free_kb() {

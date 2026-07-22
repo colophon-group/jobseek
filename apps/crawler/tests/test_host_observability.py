@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 
 import pytest
-import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 HOST_SCRIPT = ROOT / "scripts" / "jobseek-host-observability.py"
@@ -120,16 +119,21 @@ def test_cursor_rejects_future_and_old_values(tmp_path: Path) -> None:
     assert host._load_cursor(path, now=100_000) == {"ok": 99_950}
 
 
-def test_rule_source_has_single_owned_group() -> None:
-    group = rules._load_group(ROOT / "apps" / "crawler" / "alerts.yaml")
-    assert group["name"] == "jobseek_crawler_reliability"
-    assert len(group["rules"]) >= 20
-    for rule in group["rules"]:
-        assert rule["labels"]["owner"] == "codex-error-review"
-        assert rule["labels"]["route"] == "codex-daily"
-        assert rule["annotations"]["runbook"].startswith(
-            "https://github.com/colophon-group/jobseek/"
-        )
+def test_rule_source_has_bounded_owned_groups() -> None:
+    groups = rules._load_groups(ROOT / "apps" / "crawler" / "alerts.yaml")
+    assert {group["name"] for group in groups} == {
+        "jobseek_hetzner_fleet",
+        "jobseek_crawler_reliability",
+    }
+    assert sum(len(group["rules"]) for group in groups) >= 28
+    for group in groups:
+        assert 0 < len(group["rules"]) <= rules.MAX_RULES_PER_GROUP
+        for rule in group["rules"]:
+            assert rule["labels"]["owner"] == "codex-error-review"
+            assert rule["labels"]["route"] == "codex-daily"
+            assert rule["annotations"]["runbook"].startswith(
+                "https://github.com/colophon-group/jobseek/"
+            )
 
 
 def test_rule_url_accepts_read_or_write_endpoint() -> None:
@@ -143,32 +147,97 @@ def test_rule_url_accepts_read_or_write_endpoint() -> None:
         rules._ruler_base("https://metrics.example/api")
 
 
-def test_rule_sync_rolls_back_previous_group(monkeypatch) -> None:
+def test_rule_signature_normalizes_equivalent_prometheus_durations() -> None:
+    assert rules._duration_signature("24h") == rules._duration_signature("1d")
+    assert rules._duration_signature("1h30m") == rules._duration_signature("90m")
+    assert rules._duration_signature("not-a-duration") == "not-a-duration"
+
+
+def test_remote_namespace_yaml_keeps_all_groups() -> None:
+    payload = b"""namespace:
+  - name: first
+    rules: []
+  - name: second
+    rules: []
+"""
+    assert [group["name"] for group in rules._yaml_groups(payload, namespace="namespace")] == [
+        "first",
+        "second",
+    ]
+
+
+def test_sync_rejects_oversized_group_before_remote_access() -> None:
     group = {
-        "name": "jobseek_crawler_reliability",
-        "rules": [{"alert": "New", "expr": "vector(1)"}],
+        "name": "oversized",
+        "rules": [{"alert": f"Rule{index}", "expr": "vector(1)"} for index in range(21)],
     }
-    previous = {"name": group["name"], "rules": [{"alert": "Old", "expr": "vector(0)"}]}
 
-    class Client:
-        def __init__(self):
-            self.calls = []
+    with pytest.raises(rules.RuleSyncError, match="between 1 and 20"):
+        rules.sync_groups(object(), "namespace", [group])
 
-        def request(self, method, path, **kwargs):
-            self.calls.append((method, path, kwargs.get("body")))
-            if method == "GET" and "/config/" in path:
-                return 200, yaml.safe_dump(previous).encode()
-            if method == "POST":
-                return 202, b""
-            return 200, b"{}"
 
-    client = Client()
-    monkeypatch.setattr(rules, "_remote_rule_names", lambda *_args: set())
-    monkeypatch.setattr(rules.time, "sleep", lambda *_args: None)
+def test_rule_sync_rolls_back_the_whole_namespace(monkeypatch) -> None:
+    previous_group = {
+        "name": "legacy",
+        "rules": [{"alert": "Old", "expr": "vector(0)"}],
+    }
+    first = {"name": "first", "rules": [{"alert": "First", "expr": "vector(1)"}]}
+    second = {"name": "second", "rules": [{"alert": "Second", "expr": "vector(1)"}]}
+    state = {"legacy": previous_group}
+    deleted: list[str] = []
 
-    with pytest.raises(rules.RuleSyncError):
-        rules.sync_group(client, "namespace", group)
+    monkeypatch.setattr(rules, "_remote_groups", lambda *_args: dict(state))
 
-    post_bodies = [body for method, _path, body in client.calls if method == "POST"]
-    assert len(post_bodies) == 2
-    assert yaml.safe_load(post_bodies[-1]) == previous
+    def post(_client, _namespace, group):
+        if group["name"] == "second":
+            raise rules.RuleSyncError("injected second-group failure")
+        state[group["name"]] = group
+
+    def delete(_client, _namespace, name):
+        deleted.append(name)
+        state.pop(name, None)
+
+    monkeypatch.setattr(rules, "_post_group", post)
+    monkeypatch.setattr(rules, "_delete_group", delete)
+    monkeypatch.setattr(
+        rules,
+        "_groups_match",
+        lambda _client, _namespace, expected, *, exact_names: (
+            set(state) == set(expected) if exact_names else set(expected) <= set(state)
+        ),
+    )
+
+    with pytest.raises(rules.RuleSyncError, match="injected second-group failure"):
+        rules.sync_groups(object(), "namespace", [first, second])
+
+    assert state == {"legacy": previous_group}
+    assert deleted == ["first"]
+
+
+def test_rule_sync_removes_stale_group_after_desired_groups_verify(monkeypatch) -> None:
+    stale = {"name": "stale", "rules": [{"alert": "Old", "expr": "vector(0)"}]}
+    desired = {"name": "desired", "rules": [{"alert": "New", "expr": "vector(1)"}]}
+    state = {"stale": stale}
+
+    monkeypatch.setattr(rules, "_remote_groups", lambda *_args: dict(state))
+    monkeypatch.setattr(
+        rules,
+        "_post_group",
+        lambda _client, _namespace, group: state.__setitem__(group["name"], group),
+    )
+    monkeypatch.setattr(
+        rules,
+        "_delete_group",
+        lambda _client, _namespace, name: state.pop(name, None),
+    )
+    monkeypatch.setattr(
+        rules,
+        "_groups_match",
+        lambda _client, _namespace, expected, *, exact_names: (
+            set(state) == set(expected) if exact_names else set(expected) <= set(state)
+        ),
+    )
+
+    rules.sync_groups(object(), "namespace", [desired])
+
+    assert state == {"desired": desired}

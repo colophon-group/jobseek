@@ -52,6 +52,14 @@ host-PID mode, and no longer duplicates host metrics. Its read-only Docker
 socket remains a privileged trust boundary and is therefore unavailable to
 the host collector and to `codex-runner`.
 
+Compose Alloy runs as explicit UID/GID `0:0` with all Linux capabilities
+dropped, a read-only root filesystem, and `no-new-privileges`. The deploy
+normalizes its persistent WAL/cursor volume to root-owned mode `0700` using a
+networkless helper from the same pinned image; this lets the capability-free
+process write only that mounted volume and access the root-owned Docker socket.
+Deploy success requires the Compose listener at `127.0.0.1:12346` to answer
+`/-/ready`, so a merely restart-looping container cannot pass the rollout.
+
 Stable labels deliberately describe roles rather than provider identifiers:
 
 | Role | `instance` | `host_role` |
@@ -91,10 +99,13 @@ main PID whose executable is `/usr/local/bin/jobseek-alloy`, so an unrelated
 listener cannot make a failed service appear healthy.
 
 Alert definitions in [`apps/crawler/alerts.yaml`](../apps/crawler/alerts.yaml)
-are transactionally written through the Mimir ruler API. The sync client first
-captures the old group, requires every alert to have a repository runbook plus
-`owner=codex-error-review` and `route=codex-daily`, verifies the exact active
-rule set, and restores the old group on failure. This corrects the exporter
+are transactionally written through the Mimir ruler API. Grafana Cloud limits
+this tenant to 20 rules per group, so the source separates fleet and crawler
+alerts into two logical groups below that limit. The sync client first
+captures the complete owned namespace, requires every alert to have a
+repository runbook plus `owner=codex-error-review` and `route=codex-daily`,
+verifies the exact active group/rule set, removes stale owned groups, and
+restores the whole prior namespace on failure. This corrects the exporter
 alert by selecting only `instance="exporter"` and adds explicit all-host,
 disk/inode, sampler, backup, PostgreSQL, Typesense/tunnel, and reboot alerts.
 The intended notification route is the daily Hetzner Codex error-review issue

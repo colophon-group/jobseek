@@ -1,7 +1,7 @@
 # Prometheus alert rules for the jobseek crawler.
 #
 # Source of truth for the alerts described in #2703 and #5926. The
-# deploy-hetzner-observability workflow transactionally syncs this group to
+# deploy-hetzner-observability workflow transactionally syncs these groups to
 # Grafana Cloud Mimir after all three host collectors pass deployment.
 # Manual validation/sync uses the same repo-owned client:
 #
@@ -23,7 +23,7 @@
 # response routine.
 
 groups:
-  - name: jobseek_crawler_reliability
+  - name: jobseek_hetzner_fleet
     interval: 30s
     rules:
 
@@ -287,6 +287,10 @@ groups:
           summary: "Reboot remains required on {{ $labels.instance }}"
           description: "The host has required a reboot for at least 24 hours; schedule it through the maintenance runbook."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
+
+  - name: jobseek_crawler_reliability
+    interval: 30s
+    rules:
 
       # Redis runs with `--maxmemory 1gb --maxmemory-policy noeviction`
       # (apps/crawler/docker-compose.yml). Pressure → write stalls,

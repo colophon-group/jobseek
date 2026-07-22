@@ -67,6 +67,36 @@ pass.
   Codex error-review workflow and can create or update an actionable GitHub
   issue, as required by `docs/19-data-backup-recovery.md`.
 
+### 2026-07-22 — fleet observability staged
+
+- Merged and deployed the repo-owned host telemetry surface from `main` to the
+  crawler, PostgreSQL, and Typesense hosts. Each runs the pinned Alloy binary
+  as a dedicated unprivileged systemd user on a loopback-only listener, plus a
+  root-owned read-only sampler timer. Live Grafana queries returned all three
+  expected host and collector series and zero failed sampler probes.
+- The first deployment exposed two rollout defects rather than hiding them:
+  root-only config parents prevented the unprivileged service from reading its
+  config, while a shared transitional listener let the crawler readiness probe
+  reach the older Compose collector. The corrected installer uses group-only
+  traversal, a distinct host port, main-PID/executable verification, and
+  removal of first-install artifacts during rollback.
+- Direct verification then found the hardened crawler Compose Alloy
+  restart-looping because its existing WAL/cursor volume was owned by the
+  deploy account while the root process had every capability dropped. The
+  volume was stopped, normalized to root-owned mode `0700` with a pinned
+  networkless helper, and only Alloy was restarted. Its loopback readiness and
+  six crawler scrape targets recovered; workers, PostgreSQL, and Typesense were
+  not restarted. The repo deploy now enforces this ownership contract and
+  gates success on the Compose readiness endpoint.
+- The production Mimir write correctly rejected 28 rules in one group because
+  the tenant limit is 20 and restored the prior group. The source is now split
+  into logical fleet and crawler groups (18 and 10 rules). Temporary live
+  namespaces proved exact 28-rule activation, cleanup, and whole-namespace
+  rollback after an intentionally invalid second group. Mimir's canonical
+  `24h` to `1d` duration rewrite is normalized during otherwise exact
+  verification. Production promotion of those two groups remains the final
+  #5926 deployment step at this evidence timestamp.
+
 ## Inventory and ownership
 
 | host | role | platform | persistent data | deployment/owner surface |

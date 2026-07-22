@@ -41,6 +41,7 @@ def test_crawler_alloy_is_pinned_and_no_longer_privileged():
     assert "pid: host" not in alloy_section
     assert "- /:/host:ro" not in alloy_section
     assert "read_only: true" in alloy_section
+    assert 'user: "0:0"' in alloy_section
     assert "no-new-privileges:true" in alloy_section
     assert "cap_drop:\n      - ALL" in alloy_section
     assert "--server.http.listen-addr=127.0.0.1:12346" in alloy_section

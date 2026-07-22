@@ -9,6 +9,11 @@ ROOT = Path(__file__).resolve().parents[3]
 CRAWLER_ROOT = ROOT / "apps/crawler"
 
 
+def _alert_rules() -> list[dict]:
+    groups = yaml.safe_load((CRAWLER_ROOT / "alerts.yaml").read_text())["groups"]
+    return [rule for group in groups for rule in group["rules"]]
+
+
 def _dashboard_panel(title: str) -> dict:
     dashboard = json.loads((CRAWLER_ROOT / "grafana-dashboard.json").read_text())
     for panel in dashboard["panels"]:
@@ -18,8 +23,7 @@ def _dashboard_panel(title: str) -> dict:
 
 
 def _alert_rule(name: str) -> dict:
-    rules = yaml.safe_load((CRAWLER_ROOT / "alerts.yaml").read_text())["groups"][0]["rules"]
-    for rule in rules:
+    for rule in _alert_rules():
         if rule.get("alert") == name:
             return rule
     raise AssertionError(f"missing alert rule {name!r}")
@@ -80,10 +84,7 @@ def test_exporter_alert_selects_only_exporter_target() -> None:
 
 
 def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
-    names = {
-        rule["alert"]
-        for rule in yaml.safe_load((CRAWLER_ROOT / "alerts.yaml").read_text())["groups"][0]["rules"]
-    }
+    names = {rule["alert"] for rule in _alert_rules()}
     assert {
         "CrawlerHostMetricsMissing",
         "PostgresqlHostMetricsMissing",
