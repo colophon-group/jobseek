@@ -9,8 +9,8 @@ This report records read-only evidence. It omits public IP addresses, resource I
 | host | role | platform | persistent data | deployment/owner surface |
 |---|---|---|---|---|
 | `jobseek-crawler-browser` (`jobseek-crawler` in Hetzner) | HTTP workers, browser worker, exporter, R2 drain, Redis, Alloy, Codex runners | Hetzner CX43, 8 shared vCPU, 16 GiB RAM, 160 GB root disk; Ubuntu 22.04; no host swap; Docker/Compose plus systemd | Redis Docker volume; Alloy position volume; `/srv/jobseek-codex` state, inputs, traces, and worktrees | repo-owned deploy paths exist and the resource has production/project/role labels; Hetzner backups are disabled and delete/rebuild protection is off; accountable human ownership remains implicit |
-| `jobseek-postings-postgresql` | authoritative crawler PostgreSQL | Hetzner CX33, 4 shared vCPU, 8 GiB RAM, 80 GB root disk; Ubuntu 24.04; no swap; `postgres:16-alpine` with host networking | separate 20 GB XFS Hetzner Volume; PostgreSQL database is about 16 GiB | manually operated Docker container; daily server-root backups are enabled but exclude the attached database Volume; delete/rebuild and Volume-delete protection are off; no labels, repo-owned host deploy, database backup job, or named service owner found |
-| `jobseek-typesense` | Typesense and Cloudflare Tunnel | Hetzner CX23, 2 shared vCPU, 4 GiB RAM, 40 GB root disk; Ubuntu 24.04; no swap; `typesense/typesense:27.1` with host networking | `/mnt/typesense-data` on the root disk, about 1.8 GiB | manually operated Docker container and systemd `cloudflared`; seven daily root-disk backups exist, but no restore test or snapshot exists; delete/rebuild protection is off and the resource has no ownership labels |
+| `jobseek-postings-postgresql` | authoritative crawler PostgreSQL | Hetzner CX33, 4 shared vCPU, 8 GiB RAM, 80 GB root disk; Ubuntu 24.04; no swap; `postgres:16-alpine` with host networking | separate 20 GB XFS Hetzner Volume; PostgreSQL database is about 16 GiB | manually operated Docker container; mistaken daily OS backups are enabled but exclude the attached database Volume; delete/rebuild and Volume-delete protection are off; no labels, repo-owned host deploy, database backup job, or named service owner found |
+| `jobseek-typesense` | Typesense and Cloudflare Tunnel | Hetzner CX23, 2 shared vCPU, 4 GiB RAM, 40 GB root disk; Ubuntu 24.04; no swap; `typesense/typesense:27.1` with host networking | `/mnt/typesense-data` on the root disk, about 1.8 GiB | manually operated Docker container and systemd `cloudflared`; seven mistaken daily OS backups incidentally include the data path, but no Typesense snapshot/archive or restore test exists; delete/rebuild protection is off and the resource has no ownership labels |
 
 ## Host coverage matrix
 
@@ -21,10 +21,10 @@ This report records read-only evidence. It omits public IP addresses, resource I
 | ingress/firewall/private network | host listeners, UFW, external probes, public IPs, private-network attachment, provider firewall checked | host listeners, UFW, PostgreSQL bind/HBA, external probes, public IPs, private-network attachment, provider firewall checked | UFW, private port, public tunnel, DNS, external probes, public IPs, private-network attachment, provider firewall checked | the project has zero Hetzner Firewall resources; all three hosts have public IPv4 and IPv6 plus one shared private subnet; crawler and PostgreSQL have no active host firewall, and crawler operational endpoints and PostgreSQL are Internet-reachable; Typesense origin port is correctly private-only |
 | Docker/service state | containers, limits, restarts, OOM history, image tags/digests checked | container state, memory, restart/OOM, config checked | container state, memory, restart/OOM, config checked | current services healthy; crawler OOM history predates the verified fixes in #5102/#5798/#5800 |
 | CPU/RAM/swap/load/disk/inodes | host state plus seven-day provider CPU metrics | host state plus seven-day provider CPU metrics | host state plus seven-day provider CPU metrics | PostgreSQL data Volume is 91% full with about 1.7 GiB free; seven-day crawler CPU averaged 52.6% of capacity, p95 76.1%, peak 95.3%; other filesystems and inodes have headroom; no host has swap |
-| backups/restore | Hetzner backups disabled; Redis is explicitly disposable; Codex SQLite state present; no host recovery test | seven daily server-root backups exist, but Hetzner does not include attached Volumes and the database lives entirely on the attached Volume; no snapshot, local backup/archive/replica, deletion protection, or restore evidence | seven daily root-disk backups exist and include the rebuildable Typesense data path; no snapshot, deletion protection, or restore evidence | the apparent PostgreSQL server backups do not contain the authoritative database; recoverability remains unproven and is the primary durability gap |
+| backups/restore | Hetzner backups disabled; Redis is explicitly disposable; Codex SQLite state present; no host recovery test | seven mistaken daily server-root backups exist, but Hetzner does not include attached Volumes and the database lives entirely on the attached Volume; no snapshot, local backup/archive/replica, deletion protection, or restore evidence | seven mistaken daily OS backups incidentally include the rebuildable Typesense data path; no application-consistent snapshot/archive, independent retention, deletion protection, or restore evidence | neither service has the intended data-level backup; establish and restore-test PostgreSQL and Typesense backups before removing the OS backups |
 | secrets/config permissions | deploy env is 0600; Codex runner cannot read env or Docker | Docker metadata is root-only; no deploy source-of-truth found | Cloudflare token and Typesense admin key are in process arguments visible to unprivileged local users | Codex isolation is good; Typesense host secret delivery must change and affected credentials must later be rotated |
 | TLS/DNS | no public app endpoint in scope | PostgreSQL TLS disabled; private use intended but public listener exists | Cloudflare DNS/TLS valid; health public; API requires a key; documented rate limit not independently verifiable | tunnel edge is healthy; database exposure violates its intended private-network design |
-| monitoring/alerts | Alloy and host exporter present | absent | only indirect Typesense health/memory from crawler exporter | Grafana sees crawler host only; PostgreSQL and Typesense host disks/OS are absent; `DiskNearFull` cannot protect them |
+| monitoring/alerts | Alloy and host exporter present; the Hetzner Codex error-review service has no supported historical metrics evidence path | absent | only indirect Typesense health/memory from crawler exporter | Grafana sees crawler host only; PostgreSQL and Typesense host disks/OS are absent; `DiskNearFull` cannot protect them; scheduled error review cannot query the retained metrics |
 | maintenance/runbooks | deploy, Docker GC, Codex, error review documented | resize guidance only | rebuild guidance documented | no complete fleet patch, backup/restore, incident-owner, or host rebuild runbook |
 
 ## Service coverage matrix
@@ -39,9 +39,9 @@ This report records read-only evidence. It omits public IP addresses, resource I
 | Alloy/Grafana | remote write and logs healthy; operational ports bind publicly; host exporter covers only crawler | functional but incomplete and unnecessarily exposed |
 | Codex governor | timer enabled and admitting checks; scheduler skips because every remaining company request already has an open draft PR | healthy; absence of new company runs is expected |
 | daily annotations | failed after two 30-second PostgreSQL statement timeouts; final HuggingFace 404 was downstream symptom | confirmed root cause: active 24-hour sample scans/sorts the active set because no `first_seen_at` index supports the query |
-| daily error review | completed; evidence bundles and lifecycle journal present | healthy |
+| daily error review | Hetzner systemd timer/service completed; root preflight bundle and lifecycle journal present, but the bundle has no metric time series and the restricted runner has no supported Grafana query path | operational but incomplete; tracked by #5948 |
 | PostgreSQL | PostgreSQL 16.13; about 2.44M postings and 2.11M descriptions; descriptions relation about 14 GiB; 51,106 requested versus 6,330 timed checkpoints; `max_wal_size=1GB`; 2 GiB container limit; separate 20 GB Volume is 91% full and excluded from all seven Hetzner server backups | active capacity/performance and durability incident |
-| Typesense | 27.1; health OK; seven aliases point to seven versioned collections; total posting documents differ from local PostgreSQL by only about 10 at observation | structurally healthy, but `is_active` field drift exists and secrets are delivered unsafely |
+| Typesense | 27.1; health OK; seven aliases point to seven versioned collections; total posting documents differ from local PostgreSQL by only about 10 at observation; mistaken OS backups exist but no supported snapshot/archive workflow was found | structurally healthy, but `is_active` field drift, unsafe secret delivery, and unproven data recovery remain |
 | Cloudflare Tunnel | active; public DNS resolves through Cloudflare; certificate valid; unauthenticated collections rejected | healthy edge; token delivery unsafe |
 | refresh-typesense | scheduled workflow generally succeeds, with two recent failures among ten sampled runs | operating; reconciliation semantics are insufficient for field drift |
 | IndexNow | scheduler intentionally retired in #2821; code/table remain | intentionally inactive, not an incident |
@@ -56,14 +56,15 @@ Severity reflects impact if left unresolved; rank reflects the recommended execu
 
 | rank | severity | issue | evidence-based reason and solution boundary |
 |---:|---|---|---|
-| 1 | high | [#5927](https://github.com/colophon-group/jobseek/issues/5927) | the authoritative database Volume has no backup; the seven apparent PostgreSQL server backups exclude it, no snapshot exists, and server/Volume deletion protection is off; establish an independent backup and prove restore first |
+| 1 | high | [#5927](https://github.com/colophon-group/jobseek/issues/5927) | PostgreSQL has no data backup and Typesense lacks its intended application-consistent backup; establish and restore-test both replacement paths before removing the mistaken OS backups |
 | 2 | high | [#5923](https://github.com/colophon-group/jobseek/issues/5923) | the project has no provider firewall, while PostgreSQL and operational endpoints are publicly reachable and fleet SSH permits passwords; enforce private ingress and key-only SSH |
 | 3 | high | [#5928](https://github.com/colophon-group/jobseek/issues/5928) | the unbacked database Volume is 91% full with about 1.7 GiB free and sustained checkpoint pressure; expand and tune after minimum recovery evidence exists |
 | 4 | high | [#5930](https://github.com/colophon-group/jobseek/issues/5930) | more than half a million stale active rows exist downstream while repeated deploys prevent reconciliation; make reconciliation deploy-independent, then repair and verify parity |
 | 5 | high | [#5925](https://github.com/colophon-group/jobseek/issues/5925) | long-lived Typesense and Cloudflare credentials are recoverable by unprivileged local users; deploy protected delivery, then rotate |
 | 6 | high | [#5926](https://github.com/colophon-group/jobseek/issues/5926) | monitoring missed the near-full database Volume and continuously false-fires exporter alerts; deploy full-fleet telemetry and ownership-correct alerts |
-| 7 | medium | [#5929](https://github.com/colophon-group/jobseek/issues/5929) | a missing production access-path index blocks daily annotation sampling but not the serving/crawling path; add the index/query guard and preserve the causal error |
-| 8 | medium | [#5924](https://github.com/colophon-group/jobseek/issues/5924) | overdue reboots, mutable images, missing resource labels, and ad hoc host lifecycle accumulate risk but are not the current data-loss/availability trigger |
+| 7 | medium | [#5948](https://github.com/colophon-group/jobseek/issues/5948) | the Hetzner error-review service can reach point-in-time localhost endpoints but has no supported historical metrics evidence path; add least-privilege bounded queries without weakening runner isolation |
+| 8 | medium | [#5929](https://github.com/colophon-group/jobseek/issues/5929) | a missing production access-path index blocks daily annotation sampling but not the serving/crawling path; add the index/query guard and preserve the causal error |
+| 9 | medium | [#5924](https://github.com/colophon-group/jobseek/issues/5924) | overdue reboots, mutable images, missing resource labels, and ad hoc host lifecycle accumulate risk but are not the current data-loss/availability trigger |
 
 ## Confirmed root-cause findings
 
@@ -75,13 +76,15 @@ Hetzner control-plane evidence confirms that the project has no Firewall resourc
 
 Root cause: private and operational services rely on intended topology rather than enforced provider/host firewall policy and narrow bind addresses; fleet SSH policy is not codified.
 
-### 2. PostgreSQL has insufficient capacity and unproven recovery
+### 2. PostgreSQL and Typesense lack their intended data backups; PostgreSQL also has insufficient capacity
 
 The 20 GB data Volume is 91% full with about 1.7 GiB free. The database is about 16 GiB, dominated by the 14 GiB `descriptions` relation. Checkpoints are overwhelmingly requested rather than timed (51,106 versus 6,330), consistent with a 1 GiB WAL ceiling under sustained writes. There is no host-local `pg_dump`, base backup, WAL archive, replica, backup timer, or restore evidence. `archive_mode` and checksums are off.
 
 The control plane contains seven daily backups bound to the PostgreSQL server, but they cover its 80 GB root disk only. The live database is on the separate 20 GB Volume, and [Hetzner explicitly excludes attached Volumes from server backups and snapshots](https://docs.hetzner.com/cloud/servers/backups-snapshots/overview/). There are no project snapshots. Delete/rebuild protection is disabled on the server and delete protection is disabled on the database Volume; bound backups are deleted with their server.
 
-Root cause: the authoritative datastore has no capacity/recovery SLO or automated evidence gate. The presence of server backups was mistaken for database protection even though the data was deliberately placed on an excluded Volume, and the original 20 GB sizing, 2 GiB container memory limit, and 1 GiB WAL ceiling have not evolved with the 16 GiB workload.
+The Typesense host also has seven daily server backups. Its data path is on the root disk, so those artifacts incidentally include it, but the operator confirmed that OS backup was not the intended design for either service. No Typesense Snapshot API workflow, independently retained archive, or restore evidence exists. [Typesense's supported backup flow](https://typesense.org/docs/guide/backups.html) first creates a consistent snapshot through `POST /operations/snapshot`; the completed snapshot directory can then be archived and moved off-host. Archiving the active data directory directly is not a safe substitute.
+
+Root cause: the provider's OS-backup switch was used as a proxy for application-data protection without an explicit data-boundary, consistency, retention, or restore contract. This left PostgreSQL completely unprotected and Typesense incidentally protected by the wrong artifact. Separately, the original 20 GB database sizing, 2 GiB container memory limit, and 1 GiB WAL ceiling have not evolved with the 16 GiB workload.
 
 ### 3. Downstream reconciliation is structurally prevented from running
 
@@ -99,19 +102,27 @@ Hetzner's coarse seven-day CPU series adds capacity context but is not a substit
 
 Root cause: metrics and rules are defined per crawler container without ownership selectors, and fleet monitoring was never deployed to the standalone database/search hosts.
 
-### 5. Service credentials are exposed through process arguments
+### 5. The Hetzner Codex error-review service lacks historical metrics evidence
+
+The daily error review is scheduled by `jobseek-codex-daily-error-review.timer` on the crawler host, not by GitHub Actions. A root `ExecStartPre` collects a redacted bundle, then the review runs as the restricted `codex-runner` account. The bundle covers host signals, selected container logs, cgroup state, and lifecycle journal entries, but not metric time series or bounded Grafana queries. The service receives no metrics-read credential or documented historical-query helper.
+
+Live read-only checks as `codex-runner` reached application `/metrics` and Alloy self-telemetry on localhost. Those endpoints expose a current scrape, not the retained 24-hour data required by the routine; Alloy forwards telemetry to Grafana Cloud but is not the historical query store. Direct localhost reachability is also ambiguous because two Alloy-generation listeners are currently present.
+
+Root cause: the runner was correctly isolated from Docker, sudo, and production environment files, but the root-owned evidence boundary was designed around logs and point-in-time host evidence and never extended with a least-privilege historical metrics contract. This is tracked by [#5948](https://github.com/colophon-group/jobseek/issues/5948).
+
+### 6. Service credentials are exposed through process arguments
 
 The Cloudflare Tunnel systemd unit is world-readable and embeds its token in `ExecStart`; an unprivileged account can read it through systemd metadata. The Typesense admin key is likewise present in server arguments visible through the process table.
 
 Root cause: long-lived credentials are passed as command-line arguments instead of protected credential files/systemd credentials or root-only environment delivery.
 
-### 6. Daily annotation sampling lacks its access-path index
+### 7. Daily annotation sampling lacks its access-path index
 
 The daily annotation run reached PostgreSQL but the 24-hour sample query timed out twice at the enforced 30-second statement timeout. `EXPLAIN` uses the partial active index to visit a large active set, filters by `first_seen_at`, then sorts; no index begins with `first_seen_at` for active rows. The final missing HuggingFace file is only the terminal symptom.
 
 Root cause: the sampler query and production table growth were not paired with a supporting partial/composite index or a query-plan performance test.
 
-### 7. Fleet patch and image provenance are not controlled end to end
+### 8. Fleet patch and image provenance are not controlled end to end
 
 All hosts require reboot. Pending package counts are 26/46/58, including security updates on crawler and Typesense. External services use mutable tags (`grafana/alloy:latest`, `redis:8-alpine`, `postgres:16-alpine`); Postgres and Typesense have no repo-owned host deployment/upgrade workflow.
 
@@ -121,7 +132,7 @@ Root cause: unattended upgrades, container pulls, reboot decisions, resource pro
 
 ## Healthy controls worth preserving
 
-- The Codex runner account has no sudo/Docker access and cannot read the crawler environment file.
+- The Codex runner account has no sudo/Docker access and cannot read the crawler environment file; preserve this isolation while adding bounded metrics evidence.
 - Sensitive crawler env and authorized-key files have restrictive permissions.
 - Typesense origin port is denied publicly and allowed only from the Hetzner private network; API endpoints enforce keys.
 - Typesense aliases and collection inventory are internally consistent.
@@ -156,7 +167,8 @@ Observed project inventory for the in-scope systems: three running servers, one 
 ## Remaining evidence gaps
 
 - Name and verify accountable human owners/on-call escalation paths; the Cloud project API does not expose project membership or billing ownership.
-- Create an authoritative PostgreSQL backup that actually includes the attached Volume's database data, then verify an isolated restore and record RPO/RTO.
+- Create application-consistent PostgreSQL and Typesense backups in independent storage, verify isolated restores and RPO/RTO, then remove the mistaken Hetzner OS backups.
+- Add explicit historical metrics coverage to the root-produced Codex error-review evidence boundary without exposing production or write credentials.
 - Verify the documented Cloudflare per-IP rate-limit rule and notification routing in the Cloudflare control plane.
 - Verify notification delivery rather than rule evaluation only; the false `ExporterStale` alerts show that firing state alone is not useful evidence.
 
