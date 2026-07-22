@@ -1379,7 +1379,7 @@ msgstr "Gib unten dein neues Passwort ein."
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:78
 msgid "indexing.assurances.i3.body"
-msgstr "Auch nach der Entdeckung rufen wir Stellendetailseiten mit einem strikten Limit von einer Anfrage pro Seite pro Minute ab."
+msgstr "Die Queue hält zwischen Anfragen an dieselbe Rate-Limit-Domain standardmäßig 2 Sekunden und bei bekannten ATS-APIs 0,5 Sekunden Abstand. Der tatsächliche Traffic ist meist geringer, und Wiederholungen verwenden exponentielles Backoff."
 
 #. Feature section 1 heading
 #. js-lingui-explicit-id
@@ -1792,7 +1792,7 @@ msgstr "Wie verhält sich der Crawler auf der Website meines Unternehmens?"
 #: app/[lang]/(public)/how-we-index/page.tsx:22
 #: app/[lang]/(public)/how-we-index/page.tsx:59
 msgid "indexing.meta.description"
-msgstr "Wie Job Seek Stellenanzeigen entdeckt und indexiert: unser Sourcing-Ansatz, Crawl-Frequenz, Rate-Limits, robots.txt- und TDM-Reservation-Konformität und wie du dich abmeldest."
+msgstr "Wie Job Seek Stellenanzeigen entdeckt und indexiert: Quellen, Crawl-Frequenz, Rate-Limits, robots.txt-Erkennung, Umgang mit TDM-Reservation und Opt-out."
 
 #. FAQ question about job listing refresh cadence.
 #. js-lingui-explicit-id
@@ -2774,7 +2774,7 @@ msgstr "Sobald wir eine einzelne Stellenanzeige abrufen, speichern wir nur die s
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:77
 msgid "indexing.assurances.i3.title"
-msgstr "Eine Seite pro Minute."
+msgstr "Taktung pro Domain."
 
 #. Username invalid characters hint
 #. js-lingui-explicit-id
@@ -2876,7 +2876,7 @@ msgstr "Sonstige"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:71
 msgid "indexing.assurances.i2.body"
-msgstr "Unser Crawler liest <0>robots.txt</0>, befolgt Disallow-Regeln, identifiziert sich über <1>User-Agent</1> und respektiert den W3C-<2>TDM-Reservation</2>-Header — wenn eine Seite Reservation signalisiert, überspringen wir sie."
+msgstr "Unser Crawler liest <0>robots.txt</0> zur Sitemap-Erkennung; die Durchsetzung von Disallow-Regeln ist noch nicht aktiv. Anfragen verwenden einen stabilen, browserkompatiblen <1>User-Agent</1>, wobei quellenspezifische Pfade einen identifizierenden Job-Seek-UA verwenden. Wir respektieren den W3C-<2>TDM-Reservation</2>-Header — wenn eine Seite eine Reservation signalisiert, überspringen wir sie."
 
 #. TOC: Our stance on automation
 #. js-lingui-explicit-id
@@ -3510,7 +3510,7 @@ msgstr "Respektvolles Tempo."
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:69
 msgid "indexing.assurances.i2.title"
-msgstr "Robots, Attribution und TDM-Reservation."
+msgstr "Robots-Erkennung, Anfrageidentität und TDM-Reservation."
 
 #. Label for role/occupation filter in advanced search
 #. js-lingui-explicit-id
@@ -4211,7 +4211,7 @@ msgstr "Das gesuchte Unternehmen existiert nicht oder wurde entfernt."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx:54
 msgid "about.transparency.p1"
-msgstr "Der Crawler-Code ist Open Source, damit jeder prüfen kann, wie wir Daten sammeln. Wir respektieren robots.txt, beachten TDM-Reservation-Header und beschränken uns auf eine Anfrage pro Seite pro Minute. Jeder ausgehende Link enthält utm_source=jobseek, damit Arbeitgeber wissen, woher ihr Traffic kommt."
+msgstr "Der Crawler-Code ist Open Source, damit jeder prüfen kann, wie wir Daten sammeln. Wir prüfen robots.txt zur Sitemap-Erkennung, beachten TDM-Reservation-Header und takten Anfragen pro Rate-Limit-Domain. Jeder ausgehende Link enthält utm_source=jobseek, damit Arbeitgeber wissen, woher ihr Traffic kommt."
 
 #. FAQ answer explaining crawler discovery and refresh frequency.
 #. js-lingui-explicit-id
@@ -4633,7 +4633,7 @@ msgstr "Wir lehnen es ab, Einstellungs- oder Jobsuch-Entscheidungen an undurchsi
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:82
 msgid "faq.a.crawlingPolicy"
-msgstr "Wir respektieren robots.txt und TDM-Reservation-Header, beschränken Anfragen auf eine pro Seite pro Minute und verwenden exponentielles Backoff. Alle Anfragen identifizieren sich über den User-Agent. Weitere Details findest du auf unserer Indexierungsseite."
+msgstr "Wir prüfen robots.txt zur Sitemap-Erkennung; die Durchsetzung von Disallow-Regeln ist noch nicht aktiv. Wir beachten TDM-Reservation-Header, takten Anfragen pro Rate-Limit-Domain und verwenden exponentielles Backoff. Die meisten Anfragen nutzen einen stabilen, browserkompatiblen User-Agent; quellenspezifische Pfade können einen identifizierenden Job-Seek-UA verwenden. Weitere Details findest du auf unserer Indexierungsseite."
 
 #. Description telling user a verification link was sent
 #. js-lingui-explicit-id
