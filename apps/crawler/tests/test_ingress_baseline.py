@@ -364,3 +364,20 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
     assert "provider-audit-conformance:" in workflow
     assert "Require exact provider policy and external port state" in workflow
     assert workflow.index("commit-hosts:") < workflow.index("provider-firewall:")
+
+
+def test_network_verification_does_not_sigpipe_live_producers() -> None:
+    host = (ROOT / "deploy/networking/install-host.sh").read_text(encoding="utf-8")
+    postgres = (ROOT / "deploy/networking/harden-postgresql.sh").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github/workflows/deploy-hetzner-ingress.yml").read_text(encoding="utf-8")
+
+    assert "sshd -T | grep" not in host
+    assert "ufw status | grep" not in host
+    assert "| grep -Fqx" not in postgres
+    assert 'sshd_effective="$(sshd -T)"' in host
+    assert 'ufw_status="$(ufw status)"' in host
+    assert "systemctl is-active --quiet ufw.service ||" not in host
+    assert host.index("ufw --force disable >/dev/null") < host.index("rm -rf /etc/ufw")
+    assert 'settings="$(' in postgres
+    assert workflow.count("-s /var/lib/jobseek-ingress/pending") >= 3
+    assert "-x /usr/local/sbin/jobseek-ingress-baseline" not in workflow

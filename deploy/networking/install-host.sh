@@ -64,13 +64,17 @@ current_tx() {
 }
 
 snapshot_previous() {
-  local stamp tx
+  local stamp tx ufw_status
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
   tx="${ROLLBACK_ROOT}/${stamp}"
   install -d -o root -g root -m 0700 "$tx"
   cp -a /etc/ufw "$tx/ufw"
   cp -a /etc/default/ufw "$tx/default-ufw"
-  if systemctl is-active --quiet ufw.service || ufw status | grep -Fqx 'Status: active'; then
+  ufw_status="$(ufw status)"
+  # ufw.service is a oneshot unit and may remain "active (exited)" while the
+  # firewall itself is disabled. Only UFW's own status reflects whether the
+  # pre-transaction policy must be re-enabled during rollback.
+  if grep -Fqx 'Status: active' <<<"$ufw_status"; then
     touch "$tx/ufw-was-active"
   fi
   if [[ -f "$SSHD_DROPIN" ]]; then
@@ -104,6 +108,10 @@ restore_previous() {
   local tx="$1"
   [[ "$tx" == "$ROLLBACK_ROOT"/* && -d "$tx/ufw" ]] || fail "invalid rollback transaction"
   cancel_rollback_timer
+  # Flush the live staged policy while its ENABLED=yes state is still on
+  # disk. Replacing /etc/ufw first can make `ufw disable` treat an active
+  # kernel policy as already disabled and leave the host unreachable.
+  ufw --force disable >/dev/null
   rm -rf /etc/ufw
   cp -a "$tx/ufw" /etc/ufw
   cp -a "$tx/default-ufw" /etc/default/ufw
@@ -207,9 +215,12 @@ stage() {
   if [[ "$ROLE" == "postgresql" ]]; then
     passwd -l root >/dev/null
   fi
-  sshd -T | grep -Fqx 'passwordauthentication no'
-  sshd -T | grep -Eq '^permitrootlogin (without-password|prohibit-password)$'
-  ufw status | grep -Fqx 'Status: active'
+  local sshd_effective ufw_status
+  sshd_effective="$(sshd -T)"
+  ufw_status="$(ufw status)"
+  grep -Fqx 'passwordauthentication no' <<<"$sshd_effective"
+  grep -Eq '^permitrootlogin (without-password|prohibit-password)$' <<<"$sshd_effective"
+  grep -Fqx 'Status: active' <<<"$ufw_status"
   ROLLBACK_ARMED=0
   trap - ERR EXIT
   echo "Staged host ingress policy for role=${ROLE}; automatic rollback remains armed"

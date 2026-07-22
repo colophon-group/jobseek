@@ -236,10 +236,13 @@ run_replacement() {
 }
 
 verify_local() {
+  local settings
   wait_ready
-  docker exec "$CURRENT_NAME" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -Atc \
-    "select current_setting('listen_addresses'), current_setting('password_encryption'), current_setting('archive_mode')" \
-    | grep -Fqx "127.0.0.1,${POSTGRES_PRIVATE_IP}|scram-sha-256|on"
+  settings="$(
+    docker exec "$CURRENT_NAME" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -Atc \
+      "select current_setting('listen_addresses'), current_setting('password_encryption'), current_setting('archive_mode')"
+  )"
+  grep -Fqx "127.0.0.1,${POSTGRES_PRIVATE_IP}|scram-sha-256|on" <<<"$settings"
   docker exec --user postgres "$CURRENT_NAME" pgbackrest --stanza=jobseek check >/dev/null
 }
 
