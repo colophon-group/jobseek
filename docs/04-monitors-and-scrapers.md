@@ -204,6 +204,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 
 | Type | Fetch mode | How it works |
 |------|-----------|-------------|
+| `adp` | Static | Fetches ADP Workforce Now detail records and DOCX job-description attachments |
 | `api_sniffer` | Playwright | Captures XHR/fetch API responses on job detail pages |
 | `bite` | Static | Fetches BITE detail JSON |
 | `dom` | Static or Playwright | Step-based extraction engine |

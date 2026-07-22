@@ -230,6 +230,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 
 | Type           | Method                                             | Config Required        |
 |----------------|----------------------------------------------------|------------------------|
+| `adp`          | Fetch ADP detail JSON and DOCX description attachments | None               |
 | `api_sniffer`  | Capture XHR/fetch network requests on job pages    | `{api_url, fields, pagination}` |
 | `bite`         | Fetch BITE detail JSON                             | None                   |
 | `dom`          | Step-based DOM extraction (static or Playwright)   | `{steps, render, ...}` |
