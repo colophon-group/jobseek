@@ -151,6 +151,7 @@ Scraper Types:
   pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
+  adp            API         No               ADP Workforce Now detail + DOCX attachments
   workable       API         No               Workable job pages (auto-configured)
   workday        API         No               Workday job pages (auto-configured)
 
@@ -2331,6 +2332,21 @@ SCRAPER_CARDS: dict[str, str] = {
     "embedded": SCRAPER_EMBEDDED,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
+    "adp": """\
+adp — ADP Workforce Now Detail API scraper
+
+  Fetches a requisition from ADP's public career-center detail API. If the
+  requisition stores its job description in a DOCX attachment, the scraper
+  downloads the attachment and converts its paragraphs, headings, lists, and
+  tables to HTML. No browser needed.
+
+  Pair with an api_sniffer listing monitor whose job URL contains ccId, cid,
+  lang, and jobId query parameters.
+
+  Config: {"enrich": ["description"]}
+
+  Available fields: title, description, locations, employment_type,
+  date_posted, base_salary, requisition metadata.""",
     "pdf": SCRAPER_PDF,
     "notion": SCRAPER_NOTION,
     "oracle_hcm": """\

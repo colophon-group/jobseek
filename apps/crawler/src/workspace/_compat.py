@@ -92,6 +92,7 @@ def all_monitor_types() -> frozenset[str]:
 
 _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
     {
+        "adp",
         "api_sniffer",
         "bite",
         "dom",

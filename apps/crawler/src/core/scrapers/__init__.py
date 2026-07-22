@@ -361,6 +361,7 @@ async def probe_scrapers(
 
 # Import modules to trigger registration
 from src.core.scrapers import (  # noqa: E402
+    adp,  # noqa: F401
     api_sniffer,  # noqa: F401
     bite,  # noqa: F401
     dom,  # noqa: F401
