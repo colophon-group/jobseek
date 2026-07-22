@@ -29,7 +29,7 @@ dependencies = [
     "huggingface-hub>=1.24.0",
     "cryptography>=48.0.1",
     "typesense>=0.21",
-    "beautifulsoup4>=4.12",
+    "beautifulsoup4>=4.15.0",
     "jsonschema>=4.23",
 ]
 
