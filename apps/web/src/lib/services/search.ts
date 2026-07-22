@@ -12,6 +12,7 @@ import { getSessionUserId } from "@/lib/sessionCache";
 import { ANON_MAX_COMPANIES, ANON_MAX_CARD_POSTINGS } from "@/lib/search/constants";
 import { canonicalStringCompare } from "@/lib/sort";
 import { normalizeHistogramFilters, type NormalizedHistogramFilters } from "@/lib/search/histogram-filters";
+import { normalizePostingTitle } from "@/lib/posting-title";
 
 // ── Posting detail ──────────────────────────────────────────────────
 
@@ -197,7 +198,7 @@ async function _fetchPostingDetail(
 
   return {
     id: row.id,
-    title: row.title,
+    title: normalizePostingTitle(row.title),
     company: {
       id: row.company_id,
       name: row.company_name,

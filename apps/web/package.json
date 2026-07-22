@@ -51,6 +51,7 @@
     "better-auth": "^1.6.23",
     "dompurify": "^3.4.12",
     "drizzle-orm": "^0.45.2",
+    "entities": "^7.0.1",
     "gray-matter": "^4.0.3",
     "isomorphic-dompurify": "^3.19.0",
     "jose": "^6.2.4",

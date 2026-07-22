@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { savedJob, jobPosting, company } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { isUniqueViolation } from "@/lib/db-conflict";
+import { normalizePostingTitle } from "@/lib/posting-title";
 
 export type SavedJobEntry = {
   id: string;
@@ -139,7 +140,7 @@ export async function getSavedJobs(params: {
     savedAt: r.savedAt.toISOString(),
     posting: {
       id: r.postingId,
-      title: r.postingTitle,
+      title: normalizePostingTitle(r.postingTitle),
       sourceUrl: r.postingSourceUrl,
       firstSeenAt: r.postingFirstSeenAt.toISOString(),
       isActive: r.postingIsActive,

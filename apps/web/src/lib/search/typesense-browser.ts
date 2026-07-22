@@ -14,6 +14,7 @@ import type {
   SalaryBucket,
   ExperienceBucket,
 } from "./types";
+import { normalizePostingTitle } from "@/lib/posting-title";
 
 interface JobPostingDoc {
   id: string;
@@ -129,7 +130,7 @@ function mapHitToPosting(
 ): SearchResultPosting {
   return {
     id: hit.document.id,
-    title: hit.document.title || null,
+    title: normalizePostingTitle(hit.document.title),
     firstSeenAt: new Date(hit.document.first_seen_at * 1000),
     relevanceScore: hit.text_match ?? 0,
     locations: buildLocations(hit.document, filteredLocationIds),
