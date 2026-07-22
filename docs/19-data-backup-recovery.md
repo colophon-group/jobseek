@@ -117,9 +117,17 @@ pgBackRest plus the SFTP client. PostgreSQL must run with:
 wal_level=replica
 max_wal_senders=3
 archive_mode=on
-archive_command=pgbackrest --stanza=jobseek archive-push %p
+archive_command=test -f /var/spool/pgbackrest/archive-enabled && pgbackrest --stanza=jobseek archive-push %p
 archive_timeout=60s
 ```
+
+During the initial cutover the sentinel is absent, so PostgreSQL retains WAL
+without racing `archive-push` against repository stanza creation. The
+migration script creates the stanza, writes the sentinel to the persistent
+pgBackRest spool mount, and immediately runs `pgbackrest check`. Normal
+container/host restarts preserve the validated sentinel. A fresh cutover
+removes it before starting the replacement; until validation recreates it,
+archival intentionally fails closed and retains WAL.
 
 The same single maintenance restart raises the container limit from 2 to 4
 GiB, `shared_buffers` from 512 MiB to 1 GiB, and `max_wal_size` from 1 to 4

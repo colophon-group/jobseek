@@ -79,6 +79,7 @@ apply() {
 
   docker stop --time 60 "$CURRENT_NAME" >/dev/null
   docker rename "$CURRENT_NAME" "$ROLLBACK_NAME"
+  rm -f "$SPOOL_DIR/archive-enabled"
 
   docker run --detach \
     --name "$CURRENT_NAME" \
@@ -104,11 +105,12 @@ apply() {
       -c 'checkpoint_completion_target=0.9' \
       -c 'wal_compression=on' \
       -c 'archive_mode=on' \
-      -c 'archive_command=pgbackrest --stanza=jobseek archive-push %p' \
+      -c 'archive_command=test -f /var/spool/pgbackrest/archive-enabled && pgbackrest --stanza=jobseek archive-push %p' \
       -c 'archive_timeout=60s' >/dev/null
 
   wait_ready
   docker exec --user postgres "$CURRENT_NAME" pgbackrest --stanza=jobseek stanza-create
+  docker exec --user postgres "$CURRENT_NAME" touch /var/spool/pgbackrest/archive-enabled
   docker exec --user postgres "$CURRENT_NAME" pgbackrest --stanza=jobseek check
   docker exec "$CURRENT_NAME" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -Atc \
     "select current_setting('server_version'), current_setting('archive_mode'), current_setting('wal_level'), current_setting('max_wal_senders'), current_setting('max_wal_size'), current_setting('shared_buffers')"
