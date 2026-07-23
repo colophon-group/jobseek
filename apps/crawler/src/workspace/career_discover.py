@@ -91,6 +91,7 @@ _ATS_URL_RE = re.compile(
     r"|job-boards(?:\.[\w-]+)?\.greenhouse\.io/[\w-]+"
     r"|jobs\.ashbyhq\.com/[\w-]+"
     r"|jobs\.lever\.co/[\w-]+"
+    r"|(?:www\.)?linkedin\.com/company/[\w-]+/jobs/?"
     r"|[\w-]+\.recruitee\.com"
     r"|[\w-]+\.jobs\.personio\.(?:de|com)"
     r"|[\w-]+\.pinpointhq\.com"

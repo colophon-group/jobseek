@@ -917,6 +917,7 @@ _MONITOR_CONFIG_HINTS = {
     "hirehive": "Requires: slug (auto-filled from probe)",
     "hireology": "Requires: slug (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
+    "linkedin": "Requires: company_id (numeric f_C value; auto-filled from probe)",
     "paylocity": "No config required (uses embedded window.pageData)",
     "pinpoint": "Requires: slug (auto-filled from probe)",
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",

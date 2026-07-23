@@ -29,6 +29,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "jobylon",
         "kipt",
         "lever",
+        "linkedin",
         "mokahr",
         "oracle_hcm",
         "paylocity",
@@ -46,12 +47,16 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
-# ``oracle_hcm`` and ``paylocity``, which auto-resolve to dedicated scrapers
+# ``oracle_hcm``, ``paylocity``, and ``linkedin``, which auto-resolve to dedicated scrapers
 # with enrich fields.
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
 # rich boards (``scraper_type`` unset in metadata) are treated the same as
 # explicit ``scraper_type = "skip"`` boards. See issue 01-rich-monitor-scheduling.
-_AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {"oracle_hcm", "paylocity"}
+_AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
+    "linkedin",
+    "oracle_hcm",
+    "paylocity",
+}
 
 
 def auto_skip_crawler_types() -> frozenset[str]:
@@ -101,6 +106,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "eightfold",
         "embedded",
         "json-ld",
+        "linkedin",
         "mokahr",
         "nextdata",
         "notion",
@@ -135,6 +141,14 @@ def detect_ats_from_url(url: str) -> str | None:
         return "greenhouse"
     if host == "jobs.lever.co":
         return "lever"
+    if (host == "linkedin.com" or host.endswith(".linkedin.com")) and (
+        (
+            parsed.path.lower().startswith("/company/")
+            and parsed.path.lower().rstrip("/").endswith("/jobs")
+        )
+        or (parsed.path.lower().startswith("/jobs/search") and "f_C=" in parsed.query)
+    ):
+        return "linkedin"
     if host == "jobs.ashbyhq.com":
         return "ashby"
     if host == "jobs.gem.com":
@@ -263,6 +277,11 @@ def auto_scraper_type(
     if monitor_type == "paylocity":
         return (
             "paylocity",
+            {"enrich": ["description", "employment_type", "job_location_type"]},
+        )
+    if monitor_type == "linkedin":
+        return (
+            "linkedin",
             {"enrich": ["description", "employment_type", "job_location_type"]},
         )
     if monitor_type in _RICH_MONITORS:

@@ -87,6 +87,7 @@ Monitor Types (cheapest first):
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
+  linkedin          10      Full/partial      Auto-enriched
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
   recruitee         10      Full job data     No (skipped)
@@ -578,6 +579,27 @@ lever — Lever Postings API
 
   Detection:  ws probe shows "Lever API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
+
+MONITOR_LINKEDIN = """\
+linkedin — LinkedIn public guest-jobs endpoints
+
+  Listing:  GET https://www.linkedin.com/jobs-guest/jobs/api/
+            seeMoreJobPostings/search?f_C={company_id}&start=N
+  Returns:  Rich summaries (URL, title, location, date)
+  Scraper:  Auto-configured (linkedin) — enriches description and work types
+  Cap:      1,000 jobs
+  Note:     Intended for companies whose official careers link points only to
+            LinkedIn. Prefer a first-party ATS whenever one exists.
+
+  Config:
+    {"company_id": "109559449", "company_slug": "damora-therapeutics"}
+
+    company_id    Numeric LinkedIn company ID (the f_C search-filter value).
+                  Auto-resolved for active company jobs pages during probing.
+    company_slug  Optional exact company slug used to reject unrelated cards.
+
+  Detection:  ws probe shows "LinkedIn guest jobs — company: X, N jobs"
+  Zero jobs?  Verify the f_C value; an empty company board is valid."""
 
 MONITOR_JOBYLON = """\
 jobylon — Jobylon (Nordic ATS, inline-embed widget)
@@ -2198,6 +2220,7 @@ MONITOR_CARDS: dict[str, str] = {
     "jobylon": MONITOR_JOBYLON,
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
+    "linkedin": MONITOR_LINKEDIN,
     "ashby": MONITOR_ASHBY,
     "recruitee": MONITOR_RECRUITEE,
     "rippling": MONITOR_RIPPLING,
@@ -2271,6 +2294,17 @@ paylocity — Paylocity server-rendered detail scraper
   Note:     Auto-configured when selecting the paylocity monitor. The detail
             content is server-rendered despite Paylocity's surrounding
             unsupported-browser warning, so Playwright is not required.
+"""
+
+SCRAPER_LINKEDIN = """\
+linkedin — LinkedIn public guest-job detail scraper
+
+  API:      GET https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{id}
+  Returns:  title, HTML description, locations, employment_type,
+            job_location_type, metadata (seniority, function, industries)
+  Config:   None needed — derives the numeric ID from the public job URL
+  Note:     Auto-configured when selecting the linkedin monitor. Runs on the
+            daily scrape schedule rather than every monitor cycle.
 """
 
 SCRAPER_WORKDAY = """\
@@ -2419,6 +2453,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
   Best used with enrich: ["description"] — monitor provides title/location/date,
   scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
+    "linkedin": SCRAPER_LINKEDIN,
     "paylocity": SCRAPER_PAYLOCITY,
     "bite": SCRAPER_BITE,
     "mokahr": SCRAPER_MOKAHR,

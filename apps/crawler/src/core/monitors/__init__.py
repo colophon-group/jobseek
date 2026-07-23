@@ -299,6 +299,10 @@ def slugs_from_url(url: str) -> list[str]:
     """
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower().removeprefix("www.")
+    # LinkedIn is the platform host, not the hiring company's slug. Guessing
+    # ``linkedin`` here hits LinkedIn's own Greenhouse/Lever test boards.
+    if host == "linkedin.com" or host.endswith(".linkedin.com"):
+        return []
     parts = host.split(".")
     if len(parts) >= 2:
         return [parts[-2]]
@@ -405,6 +409,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"JOIN \u2014 slug: {slug}, {jobs} jobs"
         return f"JOIN \u2014 slug: {slug}"
+    if name == "linkedin":
+        company_id = metadata.get("company_id", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"LinkedIn guest jobs \u2014 company: {company_id}, {jobs} jobs"
+        return f"LinkedIn guest jobs \u2014 company: {company_id}"
     if name == "nextdata":
         path = metadata.get("path", "?")
         count = metadata.get("count")
@@ -659,6 +669,7 @@ from src.core.monitors import (  # noqa: E402
     join,  # noqa: F401
     kipt,  # noqa: F401
     lever,  # noqa: F401
+    linkedin,  # noqa: F401
     mokahr,  # noqa: F401
     nextdata,  # noqa: F401
     notion,  # noqa: F401
