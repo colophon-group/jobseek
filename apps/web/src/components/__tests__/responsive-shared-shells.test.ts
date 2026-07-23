@@ -26,4 +26,20 @@ describe("responsive shared shells", () => {
     );
     expect(source).not.toContain('className="flex list-none gap-4 p-0"');
   });
+
+  it("keeps both auth wordmarks as compact vector-only assets", () => {
+    const blackLogo = readFileSync("public/js_wide_logo_black.svg", "utf8");
+    const whiteLogo = readFileSync("public/js_wide_logo_white.svg", "utf8");
+
+    expect(Buffer.byteLength(blackLogo) + Buffer.byteLength(whiteLogo)).toBeLessThan(
+      20_000,
+    );
+    for (const logo of [blackLogo, whiteLogo]) {
+      expect(logo).toContain('viewBox="0 0 900 225"');
+      expect(logo).toContain("<path");
+      expect(logo).not.toMatch(/<image|data:image|<mask|<filter/);
+    }
+    expect(blackLogo).toContain('fill="#000"');
+    expect(whiteLogo).toContain('fill="#fff"');
+  });
 });
