@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -36,7 +37,69 @@ def test_error_review_prompt_uses_bundle_without_host_widening() -> None:
     assert ".agents/skills/jobseek-error-review/SKILL.md" in prompt
     assert "/srv/jobseek-codex/inputs/error-review/latest" in prompt
     assert "Do not attempt to read Docker directly" in prompt
+    assert "metrics/historical-prometheus.json" in prompt
+    assert "## Metrics evidence" in prompt
+    assert "required_complete is false" in prompt
     assert "Do not print, copy, upload, or commit secrets" in prompt
+
+
+def test_error_review_report_requires_metrics_coverage_when_bundle_is_configured(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    report = tmp_path / "dev" / "claude" / "review-jobseek-errors" / "2026-07-09.md"
+    report.parent.mkdir(parents=True)
+    report.write_text(
+        "# Daily error review - 2026-07-09\nWindow: 2026-07-08 09:00 UTC -> 2026-07-09 09:00 UTC\n",
+        encoding="utf-8",
+    )
+    bundle_path = tmp_path / "bundle"
+    (bundle_path / "metrics").mkdir(parents=True)
+    (bundle_path / "metrics" / "historical-prometheus.json").write_text(
+        json.dumps(
+            {
+                "required_complete": False,
+                "queries": [{"id": "scrape_targets", "status": "missing"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    runner = DailyRoutineRunner(
+        _config(tmp_path),
+        routine="error-review",
+        run_date="2026-07-09",
+        error_bundle=bundle_path,
+    )
+
+    error = runner._verify_output(tmp_path, started_at=0)
+
+    assert error is not None
+    assert "missing metrics coverage/freshness" in error
+
+    report.write_text(
+        report.read_text() + "\n## Metrics evidence\nRequired evidence complete: unknown\n",
+        encoding="utf-8",
+    )
+    assert runner._verify_output(tmp_path, started_at=0) is not None
+
+    report.write_text(
+        report.read_text().replace("complete: unknown", "complete: no")
+        + "| query | status | series | newest sample | freshness |\n"
+        + "|---|---|---:|---|---:|\n"
+        + "| scrape_targets | missing | 0 | none | n/a |\n"
+        + "\n## Filed issues\n"
+        + "https://github.com/colophon-group/jobseek/issues/5948\n",
+        encoding="utf-8",
+    )
+    assert runner._verify_output(tmp_path, started_at=0) is None
+
+    report.write_text(
+        report.read_text().replace("complete: no", "complete: yes"),
+        encoding="utf-8",
+    )
+    error = runner._verify_output(tmp_path, started_at=0)
+    assert error is not None
+    assert "contradicts metrics evidence completeness" in error
 
 
 def test_daily_runner_skips_date_after_completed_ledger_row(tmp_path: Path) -> None:

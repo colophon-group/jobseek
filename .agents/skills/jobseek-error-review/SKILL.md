@@ -81,6 +81,11 @@ such as `tesla-debug`, `stupefied_hofstadter`, and `goofy_haibt`.
    `create/start/restart/die/oom/kill/stop/destroy` events. These files record
    container identity, exit code or signal, event time, restart count, and
    cgroup-v2 `memory.events` counters without exposing arbitrary Docker labels.
+   Read `metrics/historical-prometheus.json` before classification. It contains
+   only repo-allowlisted, bounded 24-hour Grafana Cloud query results. Verify
+   the window matches the manifest, record every query's status, series count,
+   and freshness, and correlate it with point-in-time host/log evidence. Never
+   attempt to find or read the root-only query credential.
 2. Read every `.md` report under
    `~/dev/claude/review-jobseek-errors/` before classifying. The directory
    name is legacy; keep using it for cross-run continuity unless a migration
@@ -212,6 +217,15 @@ the observed window. In that case, state the observed window and evidence gap
 in the report and issue body, avoid unsupported 24-hour trend claims, and use
 severity based only on the verified blast radius.
 
+Historical metrics use a stricter completeness gate. If
+`metrics/historical-prometheus.json` has `required_complete=false`, classify
+the evidence gap itself as an `incident`, deduplicate/create or update a
+`daily-error-review` issue for the failing query IDs, and do not describe the
+system as healthy. Continue classifying concrete log/host incidents from the
+evidence that is available; never widen access to Docker, Grafana credentials,
+Loki, sudo, or production env files. `ok_empty` is valid only for the
+allowlisted alert-state query because no pending/firing alerts is healthy.
+
 ## Report
 
 Always write a report, even on a healthy day.
@@ -234,6 +248,11 @@ Window: YYYY-MM-DD HH:MM UTC -> YYYY-MM-DD HH:MM UTC
 ## Host
 | metric | value |
 |---|---|
+
+## Metrics evidence
+Required evidence complete: yes|no
+| query | status | series | newest sample | freshness |
+|---|---|---:|---|---:|
 
 ## Totals
 | service | info | warning | error |
@@ -260,6 +279,11 @@ Under `## Details`, include every novel, regression, spike, or incident class:
 
 Under `## Filed issues`, list issue URLs filed or updated in this run, or
 write `none`.
+
+Under `## Metrics evidence`, include every query ID even when it is empty,
+missing, stale, or failed. Use only the normalized bundle values. A `no`
+completeness result must have a matching incident in `## Details` and a
+deduplicated issue URL under `## Filed issues`.
 
 ## GitHub Issues
 

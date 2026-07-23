@@ -69,6 +69,11 @@ exporter_downstream_skipped_total = Counter(
     "Exporter downstream attempts skipped by outage backoff",
     ["target"],
 )
+exporter_cursor_timestamp_seconds = Gauge(
+    "crawler_exporter_cursor_timestamp_seconds",
+    "Updated-at timestamp at the durable exporter cursor for each downstream",
+    ["target"],
+)
 
 log = structlog.get_logger()
 
@@ -90,6 +95,17 @@ _EXPERIENCE_MAX_OPEN_ENDED = 99
 # Cursor is a (timestamp, id) pair for keyset pagination.
 # Stored as "ts_iso|uuid" in exporter_state.
 Cursor = tuple[datetime, uuid.UUID]
+
+
+def _publish_cursor_metrics(posting_cursor: Cursor, ts_cursor: Cursor | None) -> None:
+    """Publish durable cursor positions without exposing row identifiers."""
+    exporter_cursor_timestamp_seconds.labels(target="supabase").set(
+        max(0.0, posting_cursor[0].timestamp())
+    )
+    if ts_cursor is not None:
+        exporter_cursor_timestamp_seconds.labels(target="typesense").set(
+            max(0.0, ts_cursor[0].timestamp())
+        )
 
 
 @dataclass(slots=True)
@@ -1488,6 +1504,8 @@ async def run_exporter(
         maps = await _get_taxonomy_maps(local_pool, supa_pool)
         log.info("exporter.typesense_enabled")
 
+    _publish_cursor_metrics(posting_cursor, ts_cursor if ts_enabled else None)
+
     while not shutdown_event.is_set():
         t0 = time.monotonic()
         try:
@@ -1555,6 +1573,8 @@ async def run_exporter(
                         else:
                             _record_downstream_recovery(supa_backoff)
                     await _save_cursor(local_pool, "job_posting", posting_cursor)
+
+            _publish_cursor_metrics(posting_cursor, ts_cursor if ts_enabled else None)
 
             probe_typesense_health = ts_enabled and t0 >= next_typesense_health_at
             if probe_typesense_health:

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -98,9 +99,12 @@ def build_daily_prompt(
             f"read-only evidence bundle at:\n\n    {error_bundle}\n\n"
             "Use that bundle as the primary host/log input. Do not attempt to "
             "read Docker directly, use sudo, mutate host state, or inspect "
-            "production env files. If the bundle is missing or insufficient, "
-            "write the gap in the report and fail closed rather than widening "
-            "host access.\n"
+            "production env files. Read metrics/historical-prometheus.json and "
+            "record every allowlisted query's coverage/freshness under an exact "
+            "'## Metrics evidence' report heading. If required_complete is false, "
+            "classify the evidence gap as an incident, deduplicate/create or update "
+            "the corresponding daily-error-review issue, and do not report the "
+            "system healthy. Fail closed rather than widening host access.\n"
             if error_bundle
             else ""
         )
@@ -378,9 +382,87 @@ class DailyRoutineRunner:
             text = report.read_text(errors="replace")
             if f"Daily error review - {self.run_date}" not in text or "Window:" not in text:
                 return f"error-review report missing required header/window: {report}"
+            if self.error_bundle:
+                metrics_error = self._verify_error_review_metrics(text)
+                if metrics_error:
+                    return f"{metrics_error}: {report}"
             return None
         if self.spec.name == "annotations":
             return self._verify_annotation_upload(worktree)
+        return None
+
+    def _verify_error_review_metrics(self, report_text: str) -> str | None:
+        if self.error_bundle is None:
+            return None
+        metrics_path = self.error_bundle / "metrics" / "historical-prometheus.json"
+        try:
+            evidence = json.loads(metrics_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return "error-review historical metrics evidence is unreadable"
+        if not isinstance(evidence, dict) or not isinstance(
+            evidence.get("required_complete"), bool
+        ):
+            return "error-review historical metrics evidence is invalid"
+        queries = evidence.get("queries")
+        if not isinstance(queries, list) or not queries:
+            return "error-review historical metrics evidence has no queries"
+        query_ids: list[str] = []
+        for query in queries:
+            query_id = query.get("id") if isinstance(query, dict) else None
+            if not isinstance(query_id, str) or not query_id:
+                return "error-review historical metrics evidence has an invalid query"
+            query_ids.append(query_id)
+        if len(query_ids) != len(set(query_ids)):
+            return "error-review historical metrics evidence has duplicate queries"
+
+        section = re.search(
+            r"^## Metrics evidence\s*$\n(?P<body>.*?)(?=^## |\Z)",
+            report_text,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        if section is None:
+            return "error-review report missing metrics coverage/freshness"
+        completeness = re.search(
+            r"^Required evidence complete: (yes|no)\s*$",
+            section.group("body"),
+            flags=re.MULTILINE,
+        )
+        if completeness is None:
+            return "error-review report missing metrics coverage/freshness"
+        reported_complete = completeness.group(1) == "yes"
+        if reported_complete is not evidence["required_complete"]:
+            return "error-review report contradicts metrics evidence completeness"
+
+        missing_query_ids = [
+            query_id
+            for query_id in query_ids
+            if re.search(
+                rf"^\|\s*{re.escape(query_id)}\s*\|",
+                section.group("body"),
+                flags=re.MULTILINE,
+            )
+            is None
+        ]
+        if missing_query_ids:
+            return "error-review report omits metrics queries: " + ", ".join(
+                sorted(missing_query_ids)
+            )
+
+        if not evidence["required_complete"]:
+            filed = re.search(
+                r"^## Filed issues\s*$\n(?P<body>.*?)(?=^## |\Z)",
+                report_text,
+                flags=re.MULTILINE | re.DOTALL,
+            )
+            if (
+                filed is None
+                or re.search(
+                    r"https://github\.com/colophon-group/jobseek/issues/\d+",
+                    filed.group("body"),
+                )
+                is None
+            ):
+                return "incomplete metrics evidence lacks a filed or updated issue"
         return None
 
     def _verify_annotation_upload(self, worktree: Path) -> str | None:

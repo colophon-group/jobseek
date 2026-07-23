@@ -56,6 +56,20 @@ bundle exports the requested window as `host/docker-lifecycle.jsonl`, so exit
 codes, signals, OOM events, container identity, and replacement/restart timing
 survive Docker's volatile event buffer and container recreation.
 
+Historical metrics are collected by the same root preflight through a
+dedicated Grafana Cloud access-policy token with only `metrics:read`. The
+collector runs a repo-owned allowlist of bounded 24-hour PromQL queries and
+writes normalized results to `metrics/historical-prometheus.json`; the token,
+query endpoint, and arbitrary query access never reach `codex-runner`. This is
+distinct from application `/metrics` and Alloy self-metrics, which expose only
+current process state, and from Alloy remote write, which sends telemetry but
+does not provide a historical read path.
+
+Every daily report must include `## Metrics evidence`, the value of
+`required_complete`, and per-query coverage/freshness. Missing, stale, or
+failed required metrics are an incident and must be deduplicated into a GitHub
+issue; the routine may not report a healthy system while that gate is false.
+
 Compatibility fallback:
 [`.claude/commands/jobseek-error-review.md`](../.claude/commands/jobseek-error-review.md).
 Keep it behaviorally aligned with the Codex skill when it is edited, but do
