@@ -164,7 +164,9 @@ uv run crawler run-browser             # Browser worker (claims from browser que
 uv run crawler export                  # CDC exporter loop (Supabase + Typesense)
 uv run crawler drain                   # R2 description uploader
 uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis + Typesense
-uv run crawler reconcile               # Compare local vs Supabase, fix discrepancies (also runs daily in-process inside the exporter container)
+uv run crawler reconcile               # Read-only deterministic cross-store slice
+uv run crawler reconcile --repair --max-partitions 16  # Resume verified Supabase + Typesense repairs (host timer uses this)
+uv run crawler reconcile --repair --full --target typesense  # Operator full remaining target cycle
 uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense (manual; workflow_dispatch in .github/workflows/crawler-scheduled-maintenance.yml)
 uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists (every 4h via .github/workflows/crawler-scheduled-maintenance.yml, plus inline at every deploy/CSV sync)
 uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (RETIRED in #2821 — kept for revival; no scheduler invokes it)
@@ -469,7 +471,10 @@ When existing monitors/scrapers can't handle a site, agents may propose code cha
 
 ## Hetzner Operations
 
-All crawler services run on Hetzner. Machine IPs, credentials, and API keys are in `apps/crawler/.env.local` — never hardcode them.
+All crawler services run on Hetzner. Machine addresses, credentials, and API
+keys are supplied through protected deployment/host environments; ignored
+`apps/crawler/.env.local` files are for local operator access only. Never
+hardcode or commit them.
 
 See [docs/16-hetzner-maintenance.md](../../docs/16-hetzner-maintenance.md)
 for disk triage, Docker image garbage collection, Redis disk-full recovery,
@@ -661,7 +666,7 @@ uv run crawler backfill-typesense
 uv run crawler refresh-typesense
 ```
 
-**Grafana metrics**: `typesense_export_docs_total`, `typesense_export_lag`, `typesense_export_duration_seconds`, `typesense_healthy` (0/1), `typesense_memory_bytes`, `typesense_reconciliation_discrepancies`.
+**Grafana metrics**: `typesense_export_docs_total`, `typesense_export_lag`, `typesense_export_duration_seconds`, `typesense_healthy` (0/1), `typesense_memory_bytes`, and durable host metrics under `jobseek_cross_store_reconciliation_*`. Posting reconciliation runs from `jobseek-crawler-reconciliation.timer`, not from the exporter process or GitHub cron; see `docs/03-crawler-architecture.md#cross-store-reconciliation`.
 
 ### Alloy (Metrics + Logs Collector)
 
@@ -680,7 +685,10 @@ probes and writes an atomic textfile. Deploy and rollback behavior lives in
 operator checks are in `docs/16-hetzner-maintenance.md#fleet-observability`.
 Neither the native collector nor `codex-runner` receives Docker-socket access.
 
-Credentials for Grafana Cloud Prometheus and Loki are in `.env.local` (`GRAFANA_*` vars). Note: Prometheus and Loki have **different user IDs** (Prometheus = `GRAFANA_USER_ID`, Loki has its own instance ID).
+Local operator credentials for Grafana Cloud Prometheus and Loki may be in the
+ignored `.env.local` (`GRAFANA_*` vars); production copies are protected
+deployment secrets. Prometheus and Loki have **different user IDs**
+(`GRAFANA_USER_ID` for Prometheus; Loki has its own instance ID).
 
 ### Deploying Code Changes
 

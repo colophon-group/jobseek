@@ -1686,7 +1686,7 @@
     {
       "id": 904,
       "type": "stat",
-      "title": "Typesense Reconciliation Discrepancies",
+      "title": "Cross-store Unresolved Drift",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
@@ -1736,8 +1736,8 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "crawler_typesense_reconciliation_discrepancies",
-          "legendFormat": "discrepancies"
+          "expr": "jobseek_cross_store_reconciliation_last_unresolved",
+          "legendFormat": "{{target}} unresolved"
         }
       ]
     },

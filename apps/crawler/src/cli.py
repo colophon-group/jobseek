@@ -57,10 +57,38 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("sync", help="CSV -> local Postgres + Supabase + Redis")
 
-    recon_p = sub.add_parser("reconcile", help="Reconciliation")
-    recon_g = recon_p.add_mutually_exclusive_group()
-    recon_g.add_argument("--full", action="store_true", help="Touch all rows")
-    recon_g.add_argument("--bootstrap", action="store_true", help="Bootstrap local from Supabase")
+    recon_p = sub.add_parser(
+        "reconcile",
+        help="Deterministic local -> Supabase/Typesense reconciliation",
+    )
+    recon_p.add_argument(
+        "--repair",
+        action="store_true",
+        help="Apply and verify idempotent repairs (default is read-only)",
+    )
+    recon_p.add_argument(
+        "--full",
+        action="store_true",
+        help="Process the full remaining 256-partition cycle",
+    )
+    recon_p.add_argument(
+        "--max-partitions",
+        type=int,
+        default=16,
+        help="Bounded partitions per target when --full is not set (default: 16)",
+    )
+    recon_p.add_argument(
+        "--start-partition",
+        type=int,
+        default=0,
+        help="Read-only starting partition, 0-255 (repair resumes durable state)",
+    )
+    recon_p.add_argument(
+        "--target",
+        choices=("all", "supabase", "typesense"),
+        default="all",
+        help="Mirror to inspect (default: all)",
+    )
 
     sub.add_parser("backfill-locations", help="Enqueue re-scrapes for jobs missing locations")
 
@@ -358,9 +386,9 @@ async def run() -> None:
             settings.export_interval = args.interval
             local_pool = await create_local_pool()
             supa_pool = await create_pool()
-            from src.exporter import run_exporter_with_reconciliation
+            from src.exporter import run_exporter
 
-            await run_exporter_with_reconciliation(local_pool, supa_pool, shutdown_event)
+            await run_exporter(local_pool, supa_pool, shutdown_event)
 
         elif args.command == "drain":
             start_metrics_server(settings.metrics_port)
@@ -543,9 +571,17 @@ async def run() -> None:
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
             supa_pool = await create_pool()
-            from src.exporter import run_reconciliation
+            from src.reconciliation import run_reconciliation
 
-            await run_reconciliation(local_pool, supa_pool)
+            await run_reconciliation(
+                local_pool,
+                supa_pool,
+                repair=args.repair,
+                full=args.full,
+                max_partitions=args.max_partitions,
+                start_partition=args.start_partition,
+                target_scope=args.target,
+            )
 
         elif args.command == "board":
             local_pool = await create_local_pool()

@@ -319,7 +319,11 @@ The `descriptions` table in local Postgres serves as the upload queue:
 src/exporter.py    # CDC: local Postgres -> Supabase
 ```
 
-The exporter is the only component that writes to Supabase. It queries local Postgres for rows with `updated_at > last_export_ts` and batch COPYs them to Supabase.
+The exporter is the only steady-state component that writes posting rows to
+Supabase. It queries local Postgres with a commit-safe `(updated_at, id)`
+cursor and batch COPYs rows to Supabase. The separately scheduled reconciler
+is the sole exception: it performs bounded, fenced, verified repairs from a
+locked local snapshot.
 
 ### Export Loop
 
@@ -335,9 +339,17 @@ The exporter is the only component that writes to Supabase. It queries local Pos
 
 ### Reconciliation
 
-Daily reconciliation compares local Postgres against Supabase and re-exports any discrepancies by touching `updated_at` on local Postgres (picked up by CDC on next cycle).
+An hourly Hetzner systemd timer resumes deterministic 1/256 UUID partitions
+from durable local PostgreSQL state. Supabase is repaired to local active-state
+semantics while retaining remote-only inactive history; Typesense is repaired
+to the exact local document set. A target cursor advances only after the
+direct repair is verified. This survives exporter recreation and does not
+mutate local posting timestamps.
 
-CLI: `crawler reconcile [--full]`
+CLI: `crawler reconcile [--repair] [--full] [--max-partitions N] [--target all|supabase|typesense]`
+
+See [Cross-store reconciliation](03-crawler-architecture.md#cross-store-reconciliation)
+for locking, scheduling, alerting, and recovery contracts.
 
 ---
 

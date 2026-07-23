@@ -67,6 +67,8 @@ uv run crawler run-browser        # Run browser worker (claims from Redis browse
 uv run crawler export             # Run CDC exporter (local Postgres -> Supabase + Typesense)
 uv run crawler drain              # Run R2 description uploader
 uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Redis + Typesense taxonomies
+uv run crawler reconcile          # Read-only deterministic cross-store slice
+uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs
 uv run crawler board <slug>       # Process single board (debug)
 uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
 uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
@@ -203,7 +205,7 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 
 - **Exporter** (CDC): database-triggered shared writer markers + a non-blocking oldest-writer transaction floor prevent commit-order skips without starving under continuous writes; Supabase and Typesense cursors advance independently; concurrent upserts via `asyncio.gather`
 - **Sync**: taxonomy collections (location, occupation, seniority, technology) and the `company` collection populated after CSV sync. Company docs include extended fields (logo, website, employee_count_range, founded_year) and per-locale variants (`description_{de,fr,it}`, `industry_name_{de,fr,it}`) for the company detail page reader. Handles taxonomy rename detection
-- **Reconciliation**: daily count check + sample comparison
+- **Reconciliation**: deploy-independent Hetzner systemd timer; durable 256-partition Supabase/Typesense comparison and fail-closed verified repair from local truth
 - **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation. Runs inline at every deploy/CSV sync (via `crawler sync`) and every 4h via `.github/workflows/crawler-scheduled-maintenance.yml` out-of-band
 
 ### Web App Integration

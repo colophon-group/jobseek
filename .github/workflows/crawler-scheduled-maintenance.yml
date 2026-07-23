@@ -12,8 +12,9 @@ name: Crawler scheduled maintenance
 #                        so there is no surface left for the notifier to
 #                        push. Module + CLI subcommand kept for revival;
 #                        no scheduled invocation anywhere in the repo.
-#   reconcile          — NOT this workflow. Runs daily in-process inside the
-#                        exporter container; see docs/11-typesense.md.
+#   reconcile          — NOT this workflow. A deploy-independent systemd
+#                        timer on the crawler host resumes bounded repairs;
+#                        see docs/03-crawler-architecture.md.
 #   backfill-typesense — NOT scheduled. Full re-index, invoked manually via
 #                        workflow_dispatch below when a schema change or
 #                        count drift requires it.
@@ -87,6 +88,11 @@ jobs:
           command_timeout: 2h
           script: |
             set -euo pipefail
+            exec 9>/run/lock/jobseek-crawler-mutation.lock
+            flock -w 7200 9 || {
+              echo "Timed out waiting for the crawler mutation lock" >&2
+              exit 1
+            }
             TASK="${{ steps.task.outputs.task }}"
             NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
             tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"

@@ -20,6 +20,7 @@ import pytest
 import typesense
 from typesense.exceptions import ObjectNotFound
 
+from src.reconciliation import TypesenseReconciliationClient
 from src.typesense_schema import COLLECTIONS
 
 # ---------------------------------------------------------------------------
@@ -366,7 +367,8 @@ def _make_postings() -> list[dict]:
         experience_min = -1 if i % 3 == 0 else (i + 1)
         experience_max = -1 if experience_min == -1 else 99
         posting: dict = {
-            "id": f"{_PREFIX}_posting_{i}",
+            "id": str(uuid.UUID(hex=f"{i % 2:02x}{i + 1:030x}")),
+            "reconciliation_bucket": f"{i % 2:02x}",
             "company_id": company["id"],
             "company_name": company["name"],
             "company_slug": company["slug"],
@@ -548,6 +550,9 @@ class TestSchemas:
         assert fields_by_name["experience_max_years"]["type"] == "float"
         assert fields_by_name["experience_min"]["type"] == "int32"
         assert fields_by_name["experience_max"]["type"] == "int32"
+        assert fields_by_name["reconciliation_bucket"]["type"] == "string"
+        assert fields_by_name["reconciliation_bucket"].get("facet") is True
+        assert fields_by_name["reconciliation_bucket"].get("optional") is True
         assert "coordinates" not in fields_by_name, (
             "coordinates should only be on location collection, not job_posting"
         )
@@ -616,6 +621,44 @@ class TestDataIntegrity:
             assert len(doc["location_names"]) == len(doc["location_ids"])
             assert len(doc["technology_names"]) == len(doc["technology_ids"])
             assert doc["first_seen_at"] > 0
+
+    def test_job_posting_reconciliation_bucket_is_exactly_filterable(
+        self,
+        ts_client: typesense.Client,
+        alias_map: dict,
+    ):
+        col = _col(ts_client, alias_map, "job_posting")
+        results = col.documents.search(
+            {
+                "q": "*",
+                "query_by": "title",
+                "filter_by": "reconciliation_bucket:=00",
+                "per_page": 250,
+            }
+        )
+        returned = {hit["document"]["id"] for hit in results["hits"]}
+        expected = {
+            posting["id"] for posting in POSTINGS if posting["reconciliation_bucket"] == "00"
+        }
+        assert returned == expected
+
+    async def test_async_reconciliation_export_streams_one_exact_bucket(
+        self,
+        ts_client: typesense.Client,
+    ):
+        assert ts_client.operations.is_healthy()
+        client = TypesenseReconciliationClient()
+        try:
+            snapshot = await client.partition_snapshot(0)
+        finally:
+            await client.aclose()
+
+        expected = {
+            uuid.UUID(posting["id"]): posting["is_active"]
+            for posting in POSTINGS
+            if posting["reconciliation_bucket"] == "00"
+        }
+        assert snapshot.states == expected
 
     def test_job_posting_timestamps_are_unix(self, ts_client: typesense.Client, alias_map: dict):
         """first_seen_at and last_seen_at are integers (unix timestamps),

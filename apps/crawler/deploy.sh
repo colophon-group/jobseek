@@ -4,6 +4,16 @@
 # Called by CI with env vars set from GitHub secrets.
 set -euo pipefail
 
+# Serialize deploys with host-scheduled data maintenance. The database-level
+# reconciler lock prevents duplicate jobs, while this host lock also closes
+# the race where a new timer starts after deploy preflight but before the old
+# writer containers are quiesced.
+exec 9>/run/lock/jobseek-crawler-mutation.lock
+flock -w 7200 9 || {
+  echo "ERROR: timed out waiting for the crawler mutation lock" >&2
+  exit 1
+}
+
 # ── Validate required env vars ─────────────────────────────────────────
 required_vars=(
   OWNER

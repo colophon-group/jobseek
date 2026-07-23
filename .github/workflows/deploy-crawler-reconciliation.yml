@@ -1,0 +1,61 @@
+name: Deploy Crawler Reconciliation (Hetzner)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/reconciliation/**'
+      - 'deploy/systemd/jobseek-crawler-reconciliation.*'
+      - '.github/workflows/deploy-crawler-reconciliation.yml'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: crawler-reconciliation-production-sync
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate reconciliation deployment artifacts
+        run: |
+          set -euo pipefail
+          bash -n deploy/reconciliation/run.sh
+          bash -n deploy/reconciliation/install-host.sh
+          test -s deploy/systemd/jobseek-crawler-reconciliation.service
+          test -s deploy/systemd/jobseek-crawler-reconciliation.timer
+
+      - name: Copy reconciliation deployment artifacts
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: deploy/reconciliation,deploy/systemd/jobseek-crawler-reconciliation.service,deploy/systemd/jobseek-crawler-reconciliation.timer
+          target: /opt/jobseek-reconciliation
+          overwrite: true
+
+      - name: Install reconciliation host surface
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          JOBSEEK_RECONCILIATION_DEPLOY_SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: JOBSEEK_RECONCILIATION_DEPLOY_SHA
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd /opt/jobseek-reconciliation
+            bash deploy/reconciliation/install-host.sh
+            test "$(cat /var/lib/jobseek-reconciliation/deployed-sha)" = "$JOBSEEK_RECONCILIATION_DEPLOY_SHA"
+            systemctl is-active --quiet jobseek-crawler-reconciliation.timer

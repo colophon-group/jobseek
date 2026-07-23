@@ -95,13 +95,24 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
         returncode = 0
 
     monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: Result())
-    monkeypatch.setattr(
-        host,
-        "_run",
-        lambda *_args, **_kwargs: type(
-            "Completed", (), {"stdout": "12\t100\t500\t2\t700\t900\t19000000000\n"}
-        )(),
-    )
+
+    def query(_container: str, sql: str, **_kwargs) -> str:
+        if sql == host.POSTGRES_STATS_SQL:
+            return "12\t100\t500\t2\t700\t900\t19000000000"
+        if "to_regclass" in sql:
+            return "cross_store_reconciliation_state"
+        if sql == host.RECONCILIATION_STATS_SQL:
+            return (
+                "supabase\t1000\t900\t950\t12.5\t670000\t1200000\t42\t42\t0"
+                "\trepaired\t16\t256\t1\n"
+                "typesense\t1001\t901\t951\t13.5\t670000\t694000\t7\t7\t0"
+                "\trepaired\t16\t256\t0"
+            )
+        if "cross_store_reconciliation_run" in sql:
+            return "0"
+        raise AssertionError(sql)
+
+    monkeypatch.setattr(host, "_postgresql_query", query)
     lines: list[str] = []
 
     host._collect_postgresql_metrics(lines)
@@ -111,6 +122,36 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_postgresql_connections 12.0" in content
     assert "jobseek_postgresql_archive_failed_total 2.0" in content
     assert "jobseek_postgresql_database_bytes 19000000000.0" in content
+    assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
+    assert 'jobseek_cross_store_reconciliation_last_detected{target="supabase"} 42.0' in content
+    assert (
+        'jobseek_cross_store_reconciliation_last_attempt_success{target="typesense"} 1' in content
+    )
+    assert (
+        'jobseek_cross_store_reconciliation_bootstrap_complete{target="typesense"} 0.0' in content
+    )
+    assert "jobseek_cross_store_reconciliation_stuck_runs 0.0" in content
+
+
+def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypatch) -> None:
+    class Result:
+        returncode = 0
+
+    monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: Result())
+
+    def query(_container: str, sql: str, **_kwargs) -> str:
+        if sql == host.POSTGRES_STATS_SQL:
+            return "1\t2\t3\t0\t4\t5\t6"
+        if "to_regclass" in sql:
+            return ""
+        raise AssertionError(sql)
+
+    monkeypatch.setattr(host, "_postgresql_query", query)
+    lines: list[str] = []
+
+    host._collect_postgresql_metrics(lines)
+
+    assert "jobseek_cross_store_reconciliation_schema_ready 0" in "\n".join(lines)
 
 
 def test_cursor_rejects_future_and_old_values(tmp_path: Path) -> None:

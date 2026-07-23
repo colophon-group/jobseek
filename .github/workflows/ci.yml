@@ -496,7 +496,7 @@ jobs:
         working-directory: apps/crawler
 
   test-crawler-postgres-cdc-e2e:
-    name: Test Crawler PostgreSQL CDC E2E
+    name: Test Crawler PostgreSQL E2E
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -794,6 +794,7 @@ jobs:
       - test-shim
       - test-crawler
       - test-crawler-typesense-e2e
+      - test-crawler-postgres-cdc-e2e
       - coverage-crawler
       - coverage-web
       - coverage-shim
@@ -854,6 +855,7 @@ jobs:
             "test-shim",
             "test-crawler",
             "test-crawler-typesense-e2e",
+            "test-crawler-postgres-cdc-e2e",
             "coverage-crawler",
             "coverage-web",
             "coverage-shim",

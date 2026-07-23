@@ -277,11 +277,81 @@ Every steady-state tick:
 5. advance only successful target cursors, atomically when saving both; and
 6. release the repair fence.
 
-The exporter is the **only component that writes posting rows to Supabase**.
-Workers never touch Supabase directly. A daily count/sample reconciliation
-touches discrepant local rows for idempotent replay and increments
-`crawler_reconciliation_discrepancies_total`; `CdcReconciliationDrift` routes
-that evidence to the daily Codex error review.
+The exporter is the only **steady-state** component that writes posting rows
+to Supabase. Workers never touch Supabase directly. The separately scheduled
+cross-store reconciler may perform a bounded, fenced repair from authoritative
+local rows; it does not invent downstream state or mutate local posting data.
+
+### Cross-store reconciliation
+
+Healthy CDC cursors prove only that new changes after each cursor were
+processed. They cannot prove that historic rows before a cursor still agree.
+The deploy-independent reconciler in `src/reconciliation.py` therefore checks
+the complete posting population deterministically:
+
+- local PostgreSQL is authoritative;
+- UUID high-byte ranges `00` through `ff` form 256 stable, indexed partitions;
+- Supabase must contain every local row with matching `is_active`; a
+  Supabase-only active row is deactivated, while a Supabase-only inactive row
+  is retained as tolerated user-facing history;
+- Typesense must have the exact local document set and matching `is_active`;
+  missing/mismatched documents are upserted and Typesense-only documents are
+  deleted; and
+- Typesense documents carry `reconciliation_bucket`, avoiding a whole-index
+  materialization during normal runs. During the first cycle, all local
+  documents are upserted with a bucket before a streamed cleanup removes only
+  legacy unbucketed documents absent from local truth. An unbucketed document
+  that still exists locally fails the bootstrap closed.
+
+Repair is direct rather than an `updated_at` touch/replay loop. For every
+candidate set it acquires the exporter/operator fence, locks the current local
+rows `FOR SHARE`, writes that current snapshot downstream, and verifies the
+partition before advancing. A concurrent later local change is stamped for
+normal CDC after the row lock releases. A rejection, transport failure,
+verification mismatch, or interrupted process leaves the durable cursor on
+the same partition for an idempotent retry.
+
+Two local PostgreSQL tables make scheduling visible across deploys:
+
+- `cross_store_reconciliation_state` holds independent Supabase and Typesense
+  cursors, cycle totals, last attempt/success/outcome, and the Typesense
+  bootstrap flag; and
+- `cross_store_reconciliation_run` records bounded run lifecycle and exposes
+  interrupted/stuck executions without storing posting IDs.
+
+The crawler host's `jobseek-crawler-reconciliation.timer` starts one hour
+after the previous service completes, with a bounded random delay. Each
+resource-capped, read-only one-shot container repairs at most 16 partitions per
+target, so a full cycle normally completes within 16 successful starts. The
+host mutation lock serializes it with crawler
+deploys, Typesense refreshes, and backfills; a PostgreSQL advisory lock rejects
+duplicate reconcilers even if host scheduling is bypassed. Reconciliation
+does not restart PostgreSQL, Typesense, or crawler services. It can briefly
+delay one exporter tick and candidate-row updates while its verified repair
+section holds the existing fence/row locks.
+
+The CLI is read-only unless `--repair` is explicit:
+
+```bash
+crawler reconcile --target all --max-partitions 16
+crawler reconcile --repair --target all --max-partitions 16
+crawler reconcile --repair --full --target supabase
+crawler reconcile --repair --full --target typesense
+```
+
+Repair mode resumes persisted target cursors; `--start-partition` applies only
+to read-only inspection. Do not reset a cursor or mark the Typesense bootstrap
+complete manually. Inspect the failed partition and downstream health, then
+rerun the same command.
+
+The PostgreSQL host sampler publishes only aggregate state as
+`jobseek_cross_store_reconciliation_*`.
+`CrossStoreReconciliationSchemaMissing`, `CrossStoreReconciliationFailed`,
+`CrossStoreReconciliationStale`, `CrossStoreReconciliationDrift`, and
+`CrossStoreReconciliationRunStuck` all route to the daily Codex error review.
+No posting IDs, credentials, addresses, or database contents enter those
+metrics. A healthy state has a full-cycle success newer than 30 hours,
+`last_unresolved = 0`, no stuck run, and a completed Typesense bootstrap.
 
 ### Commit-safe posting CDC
 
@@ -400,7 +470,8 @@ crawler run-browser      # Browser worker (claims from browser queues)
 crawler export           # CDC exporter loop
 crawler drain            # R2 description uploader
 crawler sync             # CSV -> DB + Redis
-crawler reconcile        # Compare local vs Supabase, fix discrepancies
+crawler reconcile        # Read-only deterministic Supabase + Typesense slice
+crawler reconcile --repair --max-partitions 16  # Resume verified repairs
 crawler board <slug>     # Process single board (debug)
 ```
 
@@ -435,6 +506,7 @@ Docker images:
 | Supabase down | Exporter can't flush | Changed rows accumulate in local Postgres; catches up on recovery |
 | Exporter crash | CDC paused | Resumes independently from both durable `(updated_at, id)` cursors |
 | CDC writer barrier timeout | Freshness pauses; cursors stay pinned | Inspect the owning long transaction; exporter retries without skipped rows |
+| Reconciliation failure | One target partition remains pinned | Inspect the systemd journal/downstream, then rerun; never skip the failed partition |
 | R2 drain failure | Unuploaded descriptions | Rows stay r2_uploaded = false; retried automatically |
 
 Redis is **disposable infrastructure** -- state is rebuildable from CSV via sync.py. Local Postgres is the **authoritative store** -- protected by volume snapshots.

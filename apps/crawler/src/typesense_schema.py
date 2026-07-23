@@ -38,6 +38,16 @@ COLLECTIONS: list[dict] = [
     {
         "name": "job_posting",
         "fields": [
+            # Stable UUID high-byte partition for bounded bidirectional
+            # reconciliation. Optional only for the in-place rollout; every
+            # new/upserted document carries it, and the first complete repair
+            # cycle removes legacy documents that still lack it.
+            {
+                "name": "reconciliation_bucket",
+                "type": "string",
+                "facet": True,
+                "optional": True,
+            },
             {"name": "company_id", "type": "string", "facet": True},
             {"name": "company_name", "type": "string", "facet": True},
             {"name": "company_slug", "type": "string", "index": False},

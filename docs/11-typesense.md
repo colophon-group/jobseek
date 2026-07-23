@@ -41,7 +41,10 @@ The Vercel-hosted web app has no stable IPs, so it cannot be firewalled into the
 
 ## API Keys
 
-Four scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub secrets (CI), Vercel env vars (web app).
+Four scoped keys. Stored in ignored developer `apps/crawler/.env.local` files
+when needed locally, protected GitHub environment secrets for CI/CD, and
+protected Vercel environment variables for the web app. They are never part
+of a Git branch.
 
 | Environment Variable | Scope | Used By | Connection Path |
 |---------------------|-------|---------|-----------------|
@@ -147,7 +150,8 @@ The exporter uses a **two-cursor design**: Supabase and Typesense each have thei
 The Typesense document builder (`_build_typesense_docs`) expands `location_ids` and `occupation_ids` with all ancestor IDs using pre-loaded hierarchy maps (`TaxonomyMaps.location_ancestors`, `occupation_ancestors`). This means even legacy Postgres rows with leaf-only IDs produce correct hierarchy-filterable Typesense documents.
 
 If one target fails, only its cursor stalls. The other continues unaffected.
-No cutoff lock is held across either network upsert. See
+The exporter/operator fence is held across the mutable-row read, downstream
+upserts, and cursor save so an operator repair cannot race past the cursor. See
 [`03-crawler-architecture.md`](03-crawler-architecture.md#commit-safe-posting-cdc)
 for the trigger contract, writer-floor delay alert, and deployment ordering.
 
@@ -198,14 +202,24 @@ For local development/testing only:
 cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--limit N]
 ```
 
-### Reconciliation
+### Posting Reconciliation
 
-Daily reconciliation (run by the exporter loop):
+Posting parity is not inferred from collection counts or a random sample. The
+deploy-independent crawler-host timer runs the deterministic reconciler
+documented in
+[`03-crawler-architecture.md`](03-crawler-architecture.md#cross-store-reconciliation).
+Each posting document contains an optional indexed
+`reconciliation_bucket` equal to the UUID high byte. The field is optional
+only for the additive rollout; the exporter, backfill, and reconciler write it
+on every upsert.
 
-1. Compare document counts: Postgres vs Typesense `num_documents`
-2. If counts diverge by >1%, trigger a full backfill
-3. Sample random posting IDs, compare `is_active` between Postgres and Typesense
-4. Touch discrepant rows in Postgres so CDC picks them up on the next tick
+Normal runs export one bounded bucket at a time and compare exact IDs plus
+`is_active`. Missing/mismatched documents are rebuilt with the ordinary
+denormalization path, and Typesense-only documents are deleted. During the
+first complete repair cycle, all authoritative local documents are upserted
+before a streamed unbucketed cleanup; cleanup fails closed if any unbucketed
+ID still exists locally. No Typesense restart, collection rebuild, or search
+downtime is required.
 
 ## Web App Integration
 
@@ -276,11 +290,17 @@ Metrics exposed by the exporter and scraped by Alloy:
 | `typesense_export_duration_seconds` | Time per Typesense batch upsert |
 | `typesense_healthy` | 0 or 1, from `/health` endpoint |
 | `typesense_memory_bytes` | Typesense process memory from `/stats.json` |
-| `typesense_reconciliation_discrepancies` | Count mismatches found during daily reconciliation |
+| `jobseek_cross_store_reconciliation_last_unresolved{target="typesense"}` | Unresolved drift from the last target outcome, read from durable PostgreSQL state |
+| `jobseek_cross_store_reconciliation_last_success_unixtime{target="typesense"}` | Last complete verified Typesense cycle |
+| `jobseek_cross_store_reconciliation_progress_partition{target="typesense"}` | Durable next UUID partition |
+| `jobseek_cross_store_reconciliation_bootstrap_complete{target="typesense"}` | Whether legacy unbucketed cleanup was verified |
 
 ## Credentials Reference
 
-All IPs, API keys, and connection strings are in `apps/crawler/.env.local` on the main branch. Never hardcode them. Key environment variables:
+Production addresses, API keys, and connection strings live only in protected
+deployment/host environment files. Developer `.env.local` files are ignored
+and must never be committed. Never print or hardcode their values. Key
+environment variables:
 
 | Variable | Description |
 |----------|-------------|

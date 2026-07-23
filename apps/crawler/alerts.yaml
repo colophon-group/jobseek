@@ -492,25 +492,98 @@ groups:
             `cdc_snapshot_cutoff.delayed` event before terminating anything.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#commit-safe-posting-cdc
 
-      # The daily sample reconciliation now has an explicit alert path rather
-      # than only a log line. Any discrepancy is actionable evidence that a
-      # downstream missed or diverged from local authoritative state.
-      - alert: CdcReconciliationDrift
-        expr: increase(crawler_reconciliation_discrepancies_total{instance="exporter"}[25h]) > 0
-        for: 5m
+      # Reconciliation evidence is persisted in authoritative PostgreSQL and
+      # scraped by the PostgreSQL host collector, so exporter recreation can
+      # neither reset the schedule nor erase the last outcome.
+      - alert: CrossStoreReconciliationSchemaMissing
+        expr: jobseek_cross_store_reconciliation_schema_ready != 1
+        for: 15m
         labels:
           severity: high
-          service: crawler
+          service: cross-store-reconciliation
           owner: codex-error-review
           route: codex-daily
         annotations:
-          summary: "Posting reconciliation found downstream drift"
+          summary: "The durable reconciliation schema is unavailable"
+          description: "The PostgreSQL host is healthy but the reconciliation state table is absent; verify the crawler Alembic deployment before running repairs."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#cross-store-reconciliation
+
+      - alert: CrossStoreReconciliationFailed
+        expr: |
+          jobseek_cross_store_reconciliation_last_attempt_unixtime > 0
+            and on (target)
+          jobseek_cross_store_reconciliation_last_attempt_success == 0
+        for: 15m
+        labels:
+          severity: high
+          service: cross-store-reconciliation
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.target }} reconciliation failed"
           description: |
-            The daily local PostgreSQL comparison found at least one missing
-            or divergent Supabase/Typesense row. The reconciler touched the
-            sampled rows for idempotent replay; confirm cursor health and run
-            the exact reconciliation procedure before closing the incident.
-          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#commit-safe-posting-cdc
+            The last bounded reconciliation attempt failed and retained its
+            durable partition cursor for a fail-closed retry. Inspect the
+            systemd service journal and the persisted target outcome.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#cross-store-reconciliation
+
+      - alert: CrossStoreReconciliationStale
+        expr: |
+          (
+            jobseek_cross_store_reconciliation_last_success_unixtime > 0
+              and on (target)
+            time() - jobseek_cross_store_reconciliation_last_success_unixtime > 108000
+          )
+          or
+          (
+            jobseek_cross_store_reconciliation_last_success_unixtime == 0
+              and on (target)
+            jobseek_cross_store_reconciliation_cycle_started_unixtime > 0
+              and on (target)
+            time() - jobseek_cross_store_reconciliation_cycle_started_unixtime > 108000
+          )
+          or
+          (
+            jobseek_cross_store_reconciliation_last_attempt_unixtime == 0
+              and on ()
+            jobseek_cross_store_reconciliation_schema_ready == 1
+          )
+        for: 2h
+        labels:
+          severity: high
+          service: cross-store-reconciliation
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.target }} reconciliation has no fresh full-cycle success"
+          description: "No complete verified reconciliation cycle has succeeded within the 30-hour freshness budget."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#cross-store-reconciliation
+
+      - alert: CrossStoreReconciliationDrift
+        expr: jobseek_cross_store_reconciliation_last_unresolved > 0
+        for: 15m
+        labels:
+          severity: high
+          service: cross-store-reconciliation
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.target }} reconciliation retains unresolved drift"
+          description: "A deterministic partition found downstream active-state or document-set drift that was not verified as repaired."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#cross-store-reconciliation
+
+      - alert: CrossStoreReconciliationRunStuck
+        expr: jobseek_cross_store_reconciliation_stuck_runs > 0
+        for: 15m
+        labels:
+          severity: high
+          service: cross-store-reconciliation
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "A reconciliation run has remained unfinished for over two hours"
+          description: "The durable run ledger contains a stale running row; inspect the host timer, container, and database advisory lock before clearing anything."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#cross-store-reconciliation
 
       # Catches steady-state degradation: WAF blocking a major board
       # source, Postgres going read-only, etc. >50% failure rate is
