@@ -12,8 +12,9 @@
  *   3. consumers without a provider in scope still mount and receive
  *      a graceful empty table (no fallback fetch, no crash)
  */
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@/test-utils/lingui-mock";
 
 const getCurrencyRatesMock = vi.fn();
@@ -51,8 +52,69 @@ function FormatterProbe() {
   );
 }
 
+function PreferenceProbe() {
+  const salary = useSalaryDisplay();
+  return (
+    <>
+      <span data-testid="currency">{salary.displayCurrency ?? "none"}</span>
+      <span data-testid="period">{salary.displayPeriod ?? "original"}</span>
+      <button
+        type="button"
+        onClick={() =>
+          salary.update({ displayCurrency: "CHF", salaryPeriod: "hourly" })
+        }
+      >
+        Update salary display
+      </button>
+    </>
+  );
+}
+
+function BootstrapPreferenceHarness() {
+  const [preferences, setPreferences] = useState<{
+    currency: string | null;
+    period: string | null;
+  }>({ currency: null, period: null });
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setPreferences({ currency: "GBP", period: "yearly" })}
+      >
+        Load account preferences
+      </button>
+      <SalaryDisplayProvider
+        displayCurrency={preferences.currency}
+        salaryPeriod={preferences.period}
+      >
+        <PreferenceProbe />
+      </SalaryDisplayProvider>
+    </>
+  );
+}
+
 beforeEach(() => {
   getCurrencyRatesMock.mockReset();
+  const memory = new Map<string, string>();
+  const stub: Storage = {
+    get length() {
+      return memory.size;
+    },
+    clear: () => memory.clear(),
+    getItem: (key: string) => memory.get(key) ?? null,
+    key: (index: number) => Array.from(memory.keys())[index] ?? null,
+    removeItem: (key: string) => {
+      memory.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+      memory.set(key, value);
+    },
+  };
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: stub,
+  });
 });
 
 describe("SalaryDisplayProvider rate sharing (issue #3181)", () => {
@@ -91,5 +153,57 @@ describe("SalaryDisplayProvider rate sharing (issue #3181)", () => {
 
     expect(screen.getByTestId("orphan").textContent).toBe("");
     expect(getCurrencyRatesMock).toHaveBeenCalledTimes(0);
+  });
+});
+
+describe("SalaryDisplayProvider preference persistence (#6035)", () => {
+  it("rehydrates anonymous preferences and persists updates across remounts", async () => {
+    getCurrencyRatesMock.mockResolvedValue([]);
+    window.localStorage.setItem("pref-display-currency", "USD");
+    window.localStorage.setItem("pref-salary-period", "monthly");
+
+    const first = render(
+      <SalaryDisplayProvider>
+        <PreferenceProbe />
+      </SalaryDisplayProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("currency").textContent).toBe("USD");
+      expect(screen.getByTestId("period").textContent).toBe("monthly");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Update salary display" }));
+    expect(window.localStorage.getItem("pref-display-currency")).toBe("CHF");
+    expect(window.localStorage.getItem("pref-salary-period")).toBe("hourly");
+    first.unmount();
+
+    render(
+      <SalaryDisplayProvider>
+        <PreferenceProbe />
+      </SalaryDisplayProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("currency").textContent).toBe("CHF");
+      expect(screen.getByTestId("period").textContent).toBe("hourly");
+    });
+  });
+
+  it("lets asynchronously loaded account preferences override anonymous values", async () => {
+    getCurrencyRatesMock.mockResolvedValue([]);
+    window.localStorage.setItem("pref-display-currency", "USD");
+    window.localStorage.setItem("pref-salary-period", "monthly");
+
+    render(<BootstrapPreferenceHarness />);
+    await waitFor(() => {
+      expect(screen.getByTestId("currency").textContent).toBe("USD");
+      expect(screen.getByTestId("period").textContent).toBe("monthly");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Load account preferences" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("currency").textContent).toBe("GBP");
+      expect(screen.getByTestId("period").textContent).toBe("yearly");
+    });
   });
 });

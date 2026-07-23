@@ -59,6 +59,7 @@ export function AppBootstrapProvider({ children }: { children: ReactNode }) {
           <SalaryDisplayProvider
             displayCurrency={prefs?.displayCurrency ?? null}
             salaryPeriod={prefs?.salaryPeriod ?? null}
+            persistLocally={!isPending && user === null}
           >
             <BannerProvider serverDismissed={prefs?.dismissedBanners}>
               {prefs && (

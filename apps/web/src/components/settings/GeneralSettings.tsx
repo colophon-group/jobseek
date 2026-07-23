@@ -50,6 +50,11 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
   const [displayCurrency, setDisplayCurrency] = useState(savedDisplayCurrency);
   const [salaryPeriod, setSalaryPeriod] = useState(savedSalaryPeriod ?? "");
   const salaryDisplay = useSalaryDisplay();
+  useEffect(() => {
+    if (salaryDisplay.displayCurrency === null) return;
+    setDisplayCurrency(salaryDisplay.displayCurrency);
+    setSalaryPeriod(salaryDisplay.displayPeriod ?? "");
+  }, [salaryDisplay.displayCurrency, salaryDisplay.displayPeriod]);
 
   const isAllLanguages = jobLanguages.includes("*");
   const isDefault = jobLanguages.length === 0;

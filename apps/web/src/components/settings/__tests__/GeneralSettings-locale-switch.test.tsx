@@ -53,14 +53,17 @@ vi.mock("@/lib/actions/preferences", () => ({
 // `server-only` is imported transitively via the preferences action.
 vi.mock("server-only", () => ({}));
 
-// SalaryDisplayProvider context — minimal stub so the component renders.
+// SalaryDisplayProvider context — mutable so salary hydration can be covered.
+let salaryDisplayCurrency: string | null = "EUR";
+let salaryDisplayPeriod: "yearly" | "monthly" | "daily" | "hourly" | null = null;
+const salaryDisplayUpdateMock = vi.fn();
 vi.mock("@/components/providers/SalaryDisplayProvider", () => ({
   useSalaryDisplay: () => ({
-    displayCurrency: "EUR",
-    displayPeriod: null,
+    displayCurrency: salaryDisplayCurrency,
+    displayPeriod: salaryDisplayPeriod,
     rates: [],
     format: () => "",
-    update: vi.fn(),
+    update: salaryDisplayUpdateMock,
   }),
 }));
 
@@ -73,6 +76,9 @@ beforeEach(() => {
   pushMock.mockReset();
   refreshMock.mockReset();
   updatePreferencesMock.mockReset().mockResolvedValue(null);
+  salaryDisplayCurrency = "EUR";
+  salaryDisplayPeriod = null;
+  salaryDisplayUpdateMock.mockReset();
   currentPathname = "/en/settings";
   cookieValue = "";
   cookieWrites = [];
@@ -272,5 +278,34 @@ describe("GeneralSettings overflow languages (#6027)", () => {
           !preferences.jobLanguages.includes("*"),
       ),
     ).toEqual([[{ jobLanguages: ["sv"] }]]);
+  });
+});
+
+describe("GeneralSettings salary preference hydration (#6035)", () => {
+  it("reflects the provider's rehydrated anonymous salary preferences", async () => {
+    salaryDisplayCurrency = "USD";
+    salaryDisplayPeriod = "monthly";
+
+    render(
+      <GeneralSettings
+        savedJobLanguages={[]}
+        savedDisplayCurrency="EUR"
+        savedSalaryPeriod={null}
+        availableCurrencies={["EUR", "USD"]}
+        availableLanguages={[]}
+        locale="en"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        (screen.getByRole("combobox", { name: "Currency" }) as HTMLSelectElement)
+          .value,
+      ).toBe("USD");
+      expect(
+        (screen.getByRole("combobox", { name: "Pay period" }) as HTMLSelectElement)
+          .value,
+      ).toBe("monthly");
+    });
   });
 });
