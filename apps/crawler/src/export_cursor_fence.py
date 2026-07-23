@@ -19,7 +19,7 @@ from datetime import datetime
 import asyncpg
 import structlog
 
-from src.metrics import exporter_cdc_barrier_timeouts, exporter_cdc_barrier_wait
+from src.metrics import exporter_cdc_active_writers, exporter_cdc_cutoff_delay
 
 log = structlog.get_logger()
 
@@ -33,14 +33,42 @@ _UNLOCK_SQL = "SELECT pg_advisory_unlock($1::bigint)"
 
 # Distinct from the long operator-repair fence above. Every transaction that
 # changes an exported job_posting field takes the shared side from a database
-# trigger; the exporter briefly takes the exclusive side before choosing its
-# cutoff. ASCII-ish ``CDCLOCK`` encoded as a positive bigint.
+# trigger. The exporter observes those holders to choose a conservative
+# non-blocking cutoff. ASCII-ish ``CDCLOCK`` encoded as a positive bigint.
 CDC_WRITER_BARRIER_ID = 0x4344434C4F434B
-_CDC_TRY_LOCK_SQL = "SELECT pg_try_advisory_lock($1::bigint)"
-_CDC_CUTOFF_SQL = "SELECT clock_timestamp()"
-_CDC_LOCK_TIMEOUT_SECONDS = 120.0
-_CDC_LOCK_RETRY_SECONDS = 0.1
-_CDC_SLOW_WAIT_SECONDS = 1.0
+_CDC_CUTOFF_SQL = """
+WITH captured AS MATERIALIZED (
+    SELECT clock_timestamp() AS captured_at
+),
+writers AS MATERIALIZED (
+    SELECT 1 AS present, activity.xact_start
+    FROM captured
+    JOIN pg_locks AS locks ON true
+    LEFT JOIN pg_stat_activity AS activity ON activity.pid = locks.pid
+    WHERE locks.locktype = 'advisory'
+      AND locks.database = (
+          SELECT oid FROM pg_database WHERE datname = current_database()
+      )
+      AND locks.classid = (($1::bigint >> 32) & 4294967295)::oid
+      AND locks.objid = ($1::bigint & 4294967295)::oid
+      AND locks.objsubid = 1
+      AND locks.mode = 'ShareLock'
+      AND locks.granted
+)
+SELECT captured.captured_at,
+       LEAST(
+           captured.captured_at,
+           COALESCE(min(writers.xact_start), captured.captured_at)
+       ) AS cutoff,
+       count(writers.present)::int AS active_writers,
+       count(writers.present) FILTER (
+           WHERE writers.xact_start IS NULL
+       )::int AS unknown_writers
+FROM captured
+LEFT JOIN writers ON true
+GROUP BY captured.captured_at
+"""
+_CDC_SLOW_CUTOFF_SECONDS = 30.0
 
 CursorFenceFactory = Callable[[asyncpg.Pool], AbstractAsyncContextManager[None]]
 CutoffFactory = Callable[[asyncpg.Pool], Awaitable[datetime]]
@@ -107,76 +135,58 @@ async def capture_cdc_snapshot_cutoff(pool: asyncpg.Pool) -> datetime:
     """Return a commit-safe upper bound for one posting export tick.
 
     The matching database trigger holds a shared transaction advisory lock
-    from the first relevant statement until commit or rollback. Non-blocking
-    exclusive probes avoid queuing healthy writers behind one long transaction.
-    Once a probe succeeds:
+    from the first relevant statement until commit or rollback. In one
+    statement, capture the database clock and inspect the transaction start of
+    every current holder. The safe cutoff is no later than the oldest holder's
+    transaction start:
 
-    * writers that stamped before this call must commit before it returns;
-    * writers that reach the trigger while it is held stamp only after the
-      returned cutoff; and
-    * the exporter can safely query ``updated_at < cutoff`` without holding
-      the lock during downstream network I/O.
+    * an existing holder stamps with ``clock_timestamp()`` at or after its
+      transaction start, so ``updated_at < cutoff`` excludes its invisible
+      writes until a later tick;
+    * a transaction that reaches the trigger after the clock capture stamps at
+      or after the captured clock and is excluded by the same strict bound;
+    * a holder that commits before the catalog scan is visible to the export
+      query and is safe to include; and
+    * older committed rows remain exportable while writers are active.
 
-    A finite polling window bounds exporter staleness if a writer is wedged,
-    without advancing a cursor or imposing that wait on new writers. Any
-    acquisition/cutoff/release uncertainty terminates the dedicated pooled
-    session so PostgreSQL releases a possibly-held lock.
+    This avoids both exclusive-lock starvation under continuously overlapping
+    writers and blocking back-pressure on new worker statements. A prepared or
+    otherwise unidentifiable holder fails closed because no safe transaction
+    floor can be proven.
     """
 
     async with pool.acquire() as conn:
-        acquired = False
-        started = time.monotonic()
-        try:
-            while not acquired:
-                try:
-                    attempt = await conn.fetchval(_CDC_TRY_LOCK_SQL, CDC_WRITER_BARRIER_ID)
-                except BaseException:
-                    conn.terminate()
-                    raise
+        row = await conn.fetchrow(_CDC_CUTOFF_SQL, CDC_WRITER_BARRIER_ID)
 
-                if attempt is True:
-                    acquired = True
-                    break
-                if attempt is not False:
-                    conn.terminate()
-                    raise RuntimeError("PostgreSQL returned an invalid CDC barrier result")
+    if row is None:
+        raise RuntimeError("PostgreSQL returned no CDC cutoff")
+    captured_at = row["captured_at"]
+    cutoff = row["cutoff"]
+    active_writers = row["active_writers"]
+    unknown_writers = row["unknown_writers"]
+    if (
+        not isinstance(captured_at, datetime)
+        or not isinstance(cutoff, datetime)
+        or not isinstance(active_writers, int)
+        or not isinstance(unknown_writers, int)
+    ):
+        raise RuntimeError("PostgreSQL returned an invalid CDC cutoff result")
 
-                elapsed = time.monotonic() - started
-                if elapsed >= _CDC_LOCK_TIMEOUT_SECONDS:
-                    exporter_cdc_barrier_timeouts.inc()
-                    log.error(
-                        "cdc_snapshot_barrier.timeout",
-                        timeout_s=_CDC_LOCK_TIMEOUT_SECONDS,
-                    )
-                    raise TimeoutError("timed out waiting for a commit-safe CDC cutoff")
-                await asyncio.sleep(
-                    min(_CDC_LOCK_RETRY_SECONDS, _CDC_LOCK_TIMEOUT_SECONDS - elapsed)
-                )
+    exporter_cdc_active_writers.set(active_writers)
+    if unknown_writers:
+        log.error(
+            "cdc_snapshot_cutoff.unknown_writer",
+            active_writers=active_writers,
+            unknown_writers=unknown_writers,
+        )
+        raise RuntimeError("CDC writer transaction start is unavailable")
 
-            wait_s = time.monotonic() - started
-            exporter_cdc_barrier_wait.observe(wait_s)
-            if wait_s >= _CDC_SLOW_WAIT_SECONDS:
-                log.warning(
-                    "cdc_snapshot_barrier.acquired_after_wait",
-                    wait_s=round(wait_s, 3),
-                )
-
-            cutoff = await conn.fetchval(_CDC_CUTOFF_SQL)
-            if not isinstance(cutoff, datetime):
-                conn.terminate()
-                raise RuntimeError("PostgreSQL returned an invalid CDC cutoff")
-            return cutoff
-        except BaseException:
-            if acquired:
-                conn.terminate()
-            raise
-        finally:
-            if acquired and not conn.is_closed():
-                try:
-                    unlocked = await conn.fetchval(_UNLOCK_SQL, CDC_WRITER_BARRIER_ID)
-                except BaseException:
-                    conn.terminate()
-                    raise
-                if unlocked is not True:
-                    conn.terminate()
-                    raise RuntimeError("CDC writer advisory barrier was not held")
+    delay_s = max(0.0, (captured_at - cutoff).total_seconds())
+    exporter_cdc_cutoff_delay.set(delay_s)
+    if delay_s >= _CDC_SLOW_CUTOFF_SECONDS:
+        log.warning(
+            "cdc_snapshot_cutoff.delayed",
+            delay_s=round(delay_s, 3),
+            active_writers=active_writers,
+        )
+    return cutoff

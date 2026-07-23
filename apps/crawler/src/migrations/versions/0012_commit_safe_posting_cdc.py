@@ -3,9 +3,9 @@
 PostgreSQL ``now()`` is the transaction-start timestamp, not the commit
 timestamp. A writer could therefore stamp a row behind the exporter's cursor,
 remain invisible to the exporter's statement snapshot, then commit after the
-cursor advanced. Install a shared-writer/exclusive-exporter advisory barrier
-and stamp exported field changes with ``clock_timestamp()`` only after the
-writer holds the shared side.
+cursor advanced. Install a shared writer marker and stamp exported field
+changes with ``clock_timestamp()`` only after the writer holds it. The
+exporter derives a safe non-blocking cutoff from current marker holders.
 
 Revision ID: 0012
 Create Date: 2026-07-23

@@ -66,7 +66,7 @@ src/
 │   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
 ├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
 ├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py            # Commit-safe CDC: local Postgres -> Supabase + Typesense (two-cursor)
+├── exporter.py            # Commit-safe CDC with non-blocking writer floor (two-cursor)
 ├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
 ├── sync.py                # CSV -> local Postgres + Supabase + Redis + Typesense taxonomies
 ├── bootstrap.py           # One-time: Supabase -> local Postgres copy

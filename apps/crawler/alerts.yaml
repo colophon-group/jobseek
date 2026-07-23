@@ -473,12 +473,10 @@ groups:
             Export Lag panel.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md
 
-      # A timeout means at least one posting writer held its transaction open
-      # beyond the barrier's bounded 120s wait. The exporter deliberately did
-      # not choose a cutoff or advance either cursor, preserving data at the
-      # cost of freshness. Route the root signal to the daily Codex review.
-      - alert: CdcWriterBarrierTimeout
-        expr: increase(crawler_exporter_cdc_barrier_timeouts_total{instance="exporter"}[15m]) > 0
+      # The exporter never waits for a zero-writer gap. A sustained old cutoff
+      # means a marked posting-writer transaction is holding back freshness.
+      - alert: CdcWriterCutoffDelayed
+        expr: max_over_time(crawler_exporter_cdc_cutoff_delay_seconds{instance="exporter"}[5m]) > 120
         for: 1m
         labels:
           severity: high
@@ -486,13 +484,12 @@ groups:
           owner: codex-error-review
           route: codex-daily
         annotations:
-          summary: "CDC writer barrier timed out"
+          summary: "CDC writer floor is delaying export by >120s"
           description: |
-            The exporter could not establish a commit-safe posting cutoff
-            within 120 seconds. It kept both cursors pinned. Inspect
-            `pg_stat_activity` for a long transaction and the
-            `cdc_snapshot_barrier.timeout` exporter event before terminating
-            anything.
+            The exporter is progressing with a conservative cutoff more than
+            120 seconds behind the database clock. Inspect
+            `crawler_exporter_cdc_active_writers`, `pg_stat_activity`, and the
+            `cdc_snapshot_cutoff.delayed` event before terminating anything.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#commit-safe-posting-cdc
 
       # The daily sample reconciliation now has an explicit alert path rather

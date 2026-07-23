@@ -201,7 +201,7 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 
 ### Indexing Pipeline
 
-- **Exporter** (CDC): database-triggered shared writer barrier + brief exclusive cutoff prevents commit-order skips; Supabase and Typesense cursors advance independently; concurrent upserts via `asyncio.gather`
+- **Exporter** (CDC): database-triggered shared writer markers + a non-blocking oldest-writer transaction floor prevent commit-order skips without starving under continuous writes; Supabase and Typesense cursors advance independently; concurrent upserts via `asyncio.gather`
 - **Sync**: taxonomy collections (location, occupation, seniority, technology) and the `company` collection populated after CSV sync. Company docs include extended fields (logo, website, employee_count_range, founded_year) and per-locale variants (`description_{de,fr,it}`, `industry_name_{de,fr,it}`) for the company detail page reader. Handles taxonomy rename detection
 - **Reconciliation**: daily count check + sample comparison
 - **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation. Runs inline at every deploy/CSV sync (via `crawler sync`) and every 4h via `.github/workflows/crawler-scheduled-maintenance.yml` out-of-band

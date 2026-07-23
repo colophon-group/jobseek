@@ -35,7 +35,7 @@ async def _changed_rows(
 
 
 async def test_uncommitted_old_stamp_cannot_fall_behind_export_cursor() -> None:
-    """A pre-cutoff writer commits into batch one; a later writer lands in batch two."""
+    """An open writer lowers the cutoff while older committed work progresses."""
 
     dsn = os.environ["LOCAL_DATABASE_URL"]
     pool = await asyncpg.create_pool(dsn, min_size=1, max_size=2)
@@ -45,7 +45,7 @@ async def test_uncommitted_old_stamp_cannot_fall_behind_export_cursor() -> None:
     writer_c = await asyncpg.connect(dsn)
     company_id = uuid.uuid4()
     board_id = uuid.uuid4()
-    posting_ids = [uuid.uuid4() for _ in range(3)]
+    posting_ids = [uuid.uuid4() for _ in range(4)]
 
     try:
         await control.execute(
@@ -72,47 +72,53 @@ async def test_uncommitted_old_stamp_cannot_fall_behind_export_cursor() -> None:
         )
         cursor = (initial[0]["updated_at"], initial[0]["id"])
 
+        # A committed change older than the open writer remains exportable.
+        await control.execute(
+            "UPDATE job_posting SET is_active = false, updated_at = now() WHERE id = $1",
+            posting_ids[0],
+        )
+
         # Writer A explicitly supplies a stale transaction-era timestamp and
         # stays uncommitted. The trigger must replace it after acquiring the
         # shared transaction lock.
         await writer_a.execute("BEGIN")
         await writer_a.execute(
             "UPDATE job_posting SET is_active = false, updated_at = $2 WHERE id = $1",
-            posting_ids[0],
+            posting_ids[1],
             datetime(2000, 1, 1, tzinfo=UTC),
         )
         stamped_a = await writer_a.fetchval(
-            "SELECT updated_at FROM job_posting WHERE id = $1", posting_ids[0]
+            "SELECT updated_at FROM job_posting WHERE id = $1", posting_ids[1]
         )
         assert stamped_a.year != 2000
 
         # A later writer may commit while A is still invisible.
         await writer_b.execute(
             "UPDATE job_posting SET is_active = false, updated_at = now() WHERE id = $1",
-            posting_ids[1],
+            posting_ids[2],
         )
 
-        barrier = asyncio.create_task(capture_cdc_snapshot_cutoff(pool))
-        await asyncio.sleep(0.1)
-        assert not barrier.done()
-
-        await writer_a.execute("COMMIT")
-        first_cutoff = await asyncio.wait_for(barrier, timeout=5)
+        # The cutoff query returns the open writer's transaction-start floor
+        # without waiting for a zero-writer gap. A remains open throughout.
+        first_cutoff = await asyncio.wait_for(capture_cdc_snapshot_cutoff(pool), timeout=1)
+        assert writer_a.is_in_transaction()
+        assert first_cutoff <= stamped_a
 
         # A writer that starts after the acquired boundary stamps above the
         # cutoff and is intentionally deferred to the next idempotent batch.
         await writer_c.execute(
             "UPDATE job_posting SET is_active = false, updated_at = now() WHERE id = $1",
-            posting_ids[2],
+            posting_ids[3],
         )
 
         first_batch = await _changed_rows(control, cursor, first_cutoff)
-        assert {row["id"] for row in first_batch} == set(posting_ids[:2])
+        assert [row["id"] for row in first_batch] == [posting_ids[0]]
         first_cursor = (first_batch[-1]["updated_at"], first_batch[-1]["id"])
 
+        await writer_a.execute("COMMIT")
         second_cutoff = await capture_cdc_snapshot_cutoff(pool)
         second_batch = await _changed_rows(control, first_cursor, second_cutoff)
-        assert [row["id"] for row in second_batch] == [posting_ids[2]]
+        assert {row["id"] for row in second_batch} == set(posting_ids[1:])
         second_cursor = (second_batch[-1]["updated_at"], second_batch[-1]["id"])
 
         final_cutoff = await capture_cdc_snapshot_cutoff(pool)

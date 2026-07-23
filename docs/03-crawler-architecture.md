@@ -302,30 +302,37 @@ protocol:
   `clock_timestamp()` after that shared lock is held; explicit `updated_at`
   touches are also re-stamped, while lease/schedule/`last_seen_at` bookkeeping
   is intentionally not a CDC change signal;
-- the exporter uses non-blocking probes for the exclusive side, captures
-  `clock_timestamp()` once current shared writers drain, releases immediately,
-  then selects `updated_at < cutoff`; and
-- writers stamped before the boundary must therefore be committed and visible,
-  while a writer that reaches the trigger during the brief exclusive hold
-  stamps at or after the cutoff and waits for the next tick.
+- in one non-blocking statement, the exporter captures `clock_timestamp()` and
+  reads the transaction start of every granted shared `CDCLOCK` holder;
+- the safe cutoff is the earlier of that clock and the oldest holder's
+  transaction start, and the exporter selects only `updated_at < cutoff`; and
+- an existing holder cannot have stamped before its own transaction start,
+  while a transaction that reaches the trigger after the clock capture stamps
+  at or after that clock. Both remain above the strict cutoff until a later
+  tick, while older committed rows can continue exporting immediately.
 
-The exclusive lock is **not** held during Supabase or Typesense I/O, so normal
-worker back-pressure is limited to the millisecond cutoff query itself; the
-wait for existing writers happens through non-blocking probes. Acquisition is
-bounded at 120 seconds. On timeout the known-unlocked connection returns to the
-pool, neither cursor advances, the next tick retries,
-`crawler_exporter_cdc_barrier_timeouts_total` increments, and
-`CdcWriterBarrierTimeout` routes the failure to Codex error review. Inspect
-`pg_stat_activity` and the `cdc_snapshot_barrier.timeout` event to identify the
-long transaction; do not terminate a production backend without confirming
-its owner and rollback consequences.
+The exporter never takes the exclusive side and never waits for a moment with
+zero writers. This matters under steady load: individually short worker
+transactions can overlap continuously and starve repeated non-blocking
+exclusive probes. A blocking exclusive waiter would instead queue new trigger
+statements and risk their 30-second statement timeout. The conservative writer
+floor avoids both failure modes; its freshness cost is only the age of the
+oldest current posting-writer transaction.
+
+`crawler_exporter_cdc_cutoff_delay_seconds` reports that cost and
+`crawler_exporter_cdc_active_writers` reports the observed holder count.
+`CdcWriterCutoffDelayed` routes a cutoff older than 120 seconds to Codex error
+review. Inspect `pg_stat_activity` and `cdc_snapshot_cutoff.delayed` before
+terminating a production backend. A holder with no attributable transaction
+start (for example a prepared transaction) fails the tick closed because the
+exporter cannot prove a safe floor.
 
 Local worker connections enforce a 30-second per-statement timeout and a
 5-minute idle-in-transaction timeout. Multi-statement write transactions do
 not have a separate total-duration cap, so a legitimate unusually large batch
-can outlive one 120-second probe window. That is a freshness event, not a data
-loss fallback: the exporter saves no cursor, reports the timeout, and retries
-until it observes a clean boundary.
+can keep the cutoff old. That is a monitored freshness delay, not a data-loss
+fallback: rows at or above the writer floor remain for a later tick while all
+older committed rows continue to advance.
 
 Deploys stop workers, browser, exporter, and drain **before** Alembic, then run
 the Typesense schema patch and `crawler sync` inside the same quiescence window.

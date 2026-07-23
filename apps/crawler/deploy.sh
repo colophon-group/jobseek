@@ -363,7 +363,7 @@ docker compose up -d redis
 
 # ── Quiesce every local-Postgres writer before schema cutover ──────
 # Migrations may introduce a database/runtime protocol (for example the
-# shared-writer/exclusive-exporter CDC barrier). Stop both sides before
+# shared-writer/oldest-writer-floor CDC boundary). Stop both sides before
 # Alembic so no old process can write or advance a cursor in the interval
 # between the schema change and the new containers starting. `--timeout 60`
 # matches the app's 30s bounded drain with headroom before Docker sends

@@ -84,12 +84,12 @@ def test_exporter_alert_selects_only_exporter_target() -> None:
 
 
 def test_cdc_safety_alerts_route_to_daily_error_review() -> None:
-    timeout = _alert_rule("CdcWriterBarrierTimeout")
+    delayed = _alert_rule("CdcWriterCutoffDelayed")
     drift = _alert_rule("CdcReconciliationDrift")
 
-    assert "crawler_exporter_cdc_barrier_timeouts_total" in timeout["expr"]
+    assert "crawler_exporter_cdc_cutoff_delay_seconds" in delayed["expr"]
     assert "crawler_reconciliation_discrepancies_total" in drift["expr"]
-    for rule in (timeout, drift):
+    for rule in (delayed, drift):
         assert rule["labels"]["severity"] == "high"
         assert rule["labels"]["owner"] == "codex-error-review"
         assert rule["labels"]["route"] == "codex-daily"

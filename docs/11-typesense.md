@@ -135,9 +135,9 @@ The `company` collection doubles as the source for the company detail page (see 
 
 The exporter uses a **two-cursor design**: Supabase and Typesense each have their own keyset cursor (`(updated_at, id)` tuple). On each tick:
 
-1. Probe without blocking transactions changing exported posting fields,
-   capture a commit-safe clock cutoff once they drain, and release that
-   database barrier immediately.
+1. Capture the database clock and the oldest current posting-writer
+   transaction start in one non-blocking query, using the earlier value as the
+   commit-safe cutoff.
 2. SELECT changed postings after `MIN(supabase_cursor, typesense_cursor)` and
    strictly before the cutoff.
 3. Concurrently (`asyncio.gather`):
@@ -147,9 +147,9 @@ The exporter uses a **two-cursor design**: Supabase and Typesense each have thei
 The Typesense document builder (`_build_typesense_docs`) expands `location_ids` and `occupation_ids` with all ancestor IDs using pre-loaded hierarchy maps (`TaxonomyMaps.location_ancestors`, `occupation_ancestors`). This means even legacy Postgres rows with leaf-only IDs produce correct hierarchy-filterable Typesense documents.
 
 If one target fails, only its cursor stalls. The other continues unaffected.
-The cutoff barrier is not held across either network upsert. See
+No cutoff lock is held across either network upsert. See
 [`03-crawler-architecture.md`](03-crawler-architecture.md#commit-safe-posting-cdc)
-for the trigger contract, timeout behavior, alerts, and deployment ordering.
+for the trigger contract, writer-floor delay alert, and deployment ordering.
 
 **Feature flag**: Typesense writes only happen when `TYPESENSE_ADMIN_KEY` is set (non-empty). Environments without Typesense are unaffected. The env var must be passed to containers in `docker-compose.yml` (`x-common-env`).
 
