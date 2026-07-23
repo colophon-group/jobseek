@@ -189,6 +189,17 @@ exporter_last_flush_ts = Gauge(
     "Unix timestamp of last successful exporter flush",
 )
 
+exporter_cdc_barrier_wait = Histogram(
+    "crawler_exporter_cdc_barrier_wait_seconds",
+    "Time spent waiting for in-flight posting writers before capturing a CDC cutoff",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 15, 30, 60, 120],
+)
+
+exporter_cdc_barrier_timeouts = Counter(
+    "crawler_exporter_cdc_barrier_timeouts_total",
+    "CDC cutoff barrier acquisitions that exceeded the bounded wait",
+)
+
 export_errors_total = Counter(
     "crawler_export_errors_total",
     # Bumped per row dropped by the per-row fallback path (#3180). The

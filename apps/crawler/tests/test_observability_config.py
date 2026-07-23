@@ -83,6 +83,21 @@ def test_exporter_alert_selects_only_exporter_target() -> None:
     assert rule["labels"]["route"] == "codex-daily"
 
 
+def test_cdc_safety_alerts_route_to_daily_error_review() -> None:
+    timeout = _alert_rule("CdcWriterBarrierTimeout")
+    drift = _alert_rule("CdcReconciliationDrift")
+
+    assert "crawler_exporter_cdc_barrier_timeouts_total" in timeout["expr"]
+    assert "crawler_reconciliation_discrepancies_total" in drift["expr"]
+    for rule in (timeout, drift):
+        assert rule["labels"]["severity"] == "high"
+        assert rule["labels"]["owner"] == "codex-error-review"
+        assert rule["labels"]["route"] == "codex-daily"
+        assert rule["annotations"]["runbook"].endswith(
+            "docs/03-crawler-architecture.md#commit-safe-posting-cdc"
+        )
+
+
 def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
     names = {rule["alert"] for rule in _alert_rules()}
     assert {

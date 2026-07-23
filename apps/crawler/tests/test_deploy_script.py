@@ -28,6 +28,17 @@ def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
     assert preflight < pull < quiesce
 
 
+def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
+    script = DEPLOY_SH.read_text()
+
+    quiesce = script.index("docker compose stop --timeout 60")
+    migrate = script.index("alembic -c src/migrations/alembic.ini upgrade head")
+    typesense_schema = script.index("uv run --no-sync crawler setup-typesense")
+    sync = script.index("uv run --no-sync crawler sync")
+
+    assert quiesce < migrate < typesense_schema < sync
+
+
 def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
     script = DEPLOY_SH.read_text()
 

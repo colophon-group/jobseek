@@ -495,6 +495,50 @@ jobs:
       - run: uv run pytest tests/e2e/test_typesense_indexing.py -v
         working-directory: apps/crawler
 
+  test-crawler-postgres-cdc-e2e:
+    name: Test Crawler PostgreSQL CDC E2E
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: crawler
+        options: >-
+          --health-cmd "pg_isready -U crawler -d crawler"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      LOCAL_DATABASE_URL: postgresql://crawler:crawler@localhost:5432/crawler
+      REQUIRE_POSTGRES_E2E: "true"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - run: uv sync --group dev
+        working-directory: apps/crawler
+
+      - run: uv run alembic -c src/migrations/alembic.ini upgrade head
+        working-directory: apps/crawler
+
+      - run: uv run pytest tests/e2e/test_postgres_cdc_commit_order.py -v
+        working-directory: apps/crawler
+
   coverage-crawler:
     name: Coverage Crawler
     needs: changes
