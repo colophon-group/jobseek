@@ -93,11 +93,23 @@ msgstr "{count, plural, one {azienda} other {aziende}}"
 msgid "watchlist.meta.tracking"
 msgstr "{count, plural, one {# azienda monitorata} other {# aziende monitorate}}. {description}"
 
-#. Heatmap tooltip shown when hovering an application-activity day; {date} is a YYYY-MM-DD date and {count} is the number of applications that day.
+#. Heatmap tooltip and accessible summary for an application-activity day; {date} is a localized date and {count} is the number of applications that day.
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:117
+#: src/components/my-jobs/activity-heatmap.tsx:158
 msgid "myJobs.heatmap.tooltip"
 msgstr "{count, plural, =0 {Nessuna candidatura il {date}} one {# candidatura il {date}} other {# candidature il {date}}}"
+
+#. Accessible label for the application activity heatmap
+#. js-lingui-explicit-id
+#: src/components/my-jobs/activity-heatmap.tsx:209
+msgid "myJobs.heatmap.label"
+msgstr "Attività di candidatura"
+
+#. Accessible summary when the application activity heatmap has no non-zero days
+#. js-lingui-explicit-id
+#: src/components/my-jobs/activity-heatmap.tsx:222
+msgid "myJobs.heatmap.emptySummary"
+msgstr "Nessuna attività di candidatura nell’anno visualizzato."
 
 #. SEO metadata suffix when a watchlist includes more companies than can be listed by name.
 #. js-lingui-explicit-id
