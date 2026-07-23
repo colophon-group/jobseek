@@ -267,9 +267,7 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
                 className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-sm transition-colors ${
                   active
                     ? "bg-primary/10 text-primary font-medium"
-                    : isAllLanguages
-                      ? "border border-border-soft text-muted opacity-50"
-                      : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
+                    : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
                 }`}
               >
                 {lang.flag && <CountryFlag iso={lang.flag} size={16} className="shrink-0 rounded-[2px]" />}
@@ -296,12 +294,7 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
           {hasOverflow && (
             <button
               onClick={() => setLangModalOpen(true)}
-              disabled={isAllLanguages}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-1 text-sm transition-colors cursor-pointer ${
-                isAllLanguages
-                  ? "border-border-soft text-muted opacity-50"
-                  : "border-dashed border-divider bg-surface hover:bg-border-soft text-muted hover:text-foreground"
-              }`}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-divider bg-surface px-4 py-1 text-sm text-muted transition-colors hover:bg-border-soft hover:text-foreground"
             >
               <Search size={13} className="shrink-0" />
               <Trans id="settings.general.jobLanguages.findMore" comment="Button to open modal with all languages">
