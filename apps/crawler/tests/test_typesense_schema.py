@@ -578,7 +578,7 @@ def test_run_setup_uses_long_timeout_for_schema_alters(
     setup_collections = MagicMock()
     monkeypatch.setattr(typesense, "Client", FakeClient)
     monkeypatch.setattr("src.typesense_schema.setup_collections", setup_collections)
-    monkeypatch.setattr(config_mod.settings, "typesense_admin_key", "admin-key")
+    monkeypatch.setattr(config_mod.settings, "typesense_operations_key", "admin-key")
     monkeypatch.setattr(config_mod.settings, "typesense_host", "typesense.local")
     monkeypatch.setattr(config_mod.settings, "typesense_port", 8108)
     monkeypatch.setattr(config_mod.settings, "typesense_protocol", "http")

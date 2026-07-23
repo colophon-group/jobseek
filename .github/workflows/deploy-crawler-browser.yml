@@ -116,7 +116,7 @@ jobs:
               -e TYPESENSE_HOST=localhost \
               -e TYPESENSE_PORT=8108 \
               -e TYPESENSE_PROTOCOL=http \
-              -e TYPESENSE_ADMIN_KEY=smoke \
+              -e TYPESENSE_OPERATIONS_KEY=smoke \
               -e DATABASE_URL=postgresql://stub:stub@localhost:5432/stub \
               "$IMAGE" \
               uv run --no-sync crawler setup-typesense
@@ -138,7 +138,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: OWNER,CRAWLER_IMAGE_TAG,DATABASE_URL_UNPOOLED,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_ADMIN_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
+          envs: OWNER,CRAWLER_IMAGE_TAG,DATABASE_URL_UNPOOLED,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
           script: bash /home/deploy/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
@@ -159,7 +159,7 @@ jobs:
           TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
           TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
           TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
-          TYPESENSE_ADMIN_KEY: ${{ secrets.TYPESENSE_ADMIN_KEY }}
+          TYPESENSE_OPERATIONS_KEY: ${{ secrets.TYPESENSE_OPERATIONS_KEY }}
           # Proxy provider — see src/shared/proxy.py. All three vars are
           # safe-empty: deploy.sh defaults PROXY_PROVIDER to "none" and
           # the proxy module treats empty URLs as a disabled provider.

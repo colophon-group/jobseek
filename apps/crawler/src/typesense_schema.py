@@ -614,10 +614,10 @@ def run_setup(*, force: bool = False) -> None:
 
     from src.config import settings
 
-    if not settings.typesense_admin_key:
+    if not settings.typesense_operations_key:
         log.error(
-            "typesense.setup.missing_admin_key",
-            message="TYPESENSE_ADMIN_KEY not set. Cannot proceed.",
+            "typesense.setup.missing_operations_key",
+            message="TYPESENSE_OPERATIONS_KEY not set. Cannot proceed.",
         )
         sys.exit(1)
     if not settings.typesense_host:
@@ -636,7 +636,7 @@ def run_setup(*, force: bool = False) -> None:
                     "protocol": settings.typesense_protocol,
                 }
             ],
-            "api_key": settings.typesense_admin_key,
+            "api_key": settings.typesense_operations_key,
             "connection_timeout_seconds": _SETUP_CONNECTION_TIMEOUT_SECONDS,
         }
     )

@@ -14,9 +14,9 @@ def get_typesense_client(*, num_retries: int = 3) -> typesense.Client | None:
     Exporter requests use ``num_retries=0`` because its cross-tick outage
     circuit owns retry timing; maintenance and sync callers retain the client
     default for their finite, operator-facing commands.
-    Returns None when ``typesense_admin_key`` is empty (feature disabled).
+    Returns None when ``typesense_operations_key`` is empty (feature disabled).
     """
-    if not settings.typesense_admin_key:
+    if not settings.typesense_operations_key:
         return None
     if num_retries < 0:
         raise ValueError("num_retries must be non-negative")
@@ -30,7 +30,7 @@ def get_typesense_client(*, num_retries: int = 3) -> typesense.Client | None:
                         "protocol": settings.typesense_protocol,
                     }
                 ],
-                "api_key": settings.typesense_admin_key,
+                "api_key": settings.typesense_operations_key,
                 "connection_timeout_seconds": 5,
                 "num_retries": num_retries,
             }

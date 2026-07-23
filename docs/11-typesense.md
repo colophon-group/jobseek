@@ -8,7 +8,9 @@ Current production deployment as of July 2026. The earlier docs in this director
 
 - **Hetzner CX22**: 4 GB RAM, 2 vCPU, dedicated IPv4
 - **OS**: Ubuntu (Docker host)
-- **Container**: `typesense/typesense:27.1`, `--network host`, data at `/mnt/typesense-data`
+- **Container**: `typesense/typesense:27.1`, `--network host`, data at
+  `/mnt/typesense-data`; the only command argument is the path to a read-only
+  config file
 - **Port**: 8108
 - **Firewall**: SSH from anywhere, port 8108 from private network only (10.0.0.0/16)
 - **Backups**: daily application-consistent Snapshot API backup to an encrypted,
@@ -33,7 +35,10 @@ The Vercel-hosted web app has no stable IPs, so it cannot be firewalled into the
 
 - **Hostname**: `typesense.colophon-group.org`
 - **Routes to**: `localhost:8108` on the Typesense machine
-- **Daemon**: `cloudflared` running as a systemd service, auto-starts on reboot
+- **Daemon**: `cloudflared` running as the dedicated unprivileged
+  `cloudflared` user, auto-starts on reboot. The root-only token source is
+  delivered through systemd `LoadCredential`; neither the unit nor process
+  arguments contain the token.
 - **Cache bypass rule**: configured in Cloudflare dashboard -- without it, Cloudflare may cache GET search responses and return stale results (Typesense does not set `Cache-Control` headers by default)
 - **Rate-limit rule** (zone `colophon-group.org`, phase `http_ratelimit`): per-IP, 200 requests / 10 s on `(http.host eq "typesense.colophon-group.org")`, action `block` for 10 s. Required because the search key is exposed to browsers (see "Web App Integration") and the origin is a single 4 GB / 2 vCPU box.
 - **CORS**: Typesense container emits `Access-Control-Allow-Origin: *` directly -- no Cloudflare Transform Rule needed. Verified via `curl -X OPTIONS -H 'Origin: https://jseek.co' https://typesense.colophon-group.org/health`.
@@ -41,19 +46,42 @@ The Vercel-hosted web app has no stable IPs, so it cannot be firewalled into the
 
 ## API Keys
 
-Four scoped keys. Stored in ignored developer `apps/crawler/.env.local` files
-when needed locally, protected GitHub environment secrets for CI/CD, and
-protected Vercel environment variables for the web app. They are never part
-of a Git branch.
+The server bootstrap key and five generated keys have separate owners and
+lifecycles. Values are stored only where their consumer needs them: protected
+GitHub environment secrets for CI/CD, root-only host files, protected Vercel
+environment variables for the web app, and ignored developer
+`apps/crawler/.env.local` files when local access is required. They are never
+part of a Git branch.
 
 | Environment Variable | Scope | Used By | Connection Path |
 |---------------------|-------|---------|-----------------|
-| `TYPESENSE_ADMIN_KEY` | Full access | Exporter, sync, backfill, setup scripts | Private network (crawler -> Typesense) |
+| `TYPESENSE_BOOTSTRAP_KEY` | Server bootstrap/full access; not a generated application key | Starts Typesense only; root-owned host deployment | Root-only `/etc/jobseek-typesense/typesense-server.ini` |
+| `TYPESENSE_OPERATIONS_KEY` | Generated key: `collections:*`, `documents:*`, `aliases:*` on all collections, plus `metrics.json:list` | Exporter, sync, backfill, setup, reconciliation, health metrics | Private network (crawler -> Typesense) |
+| `TYPESENSE_BACKUP_KEY` | Generated, revocable wildcard key | Root-owned Typesense Snapshot API backup service only | Loopback on Typesense host |
 | `TYPESENSE_SEARCH_KEY` | `documents:search` + `documents:get` on all collections | Web app server-side search (server actions) | Cloudflare tunnel |
 | `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` on all collections (no other action) | Web app `/api/typesense-key` route handler -- mints scoped keys for direct browser->Typesense calls | Cloudflare tunnel (browser, scoped key) |
 | `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` collection only | Web app watchlist mutations | Cloudflare tunnel |
 
 `TYPESENSE_BROWSER_PARENT_KEY` is a separate parent because Typesense rejects scoped keys derived from a parent that has any actions other than `documents:search` (the server returns `Forbidden - a valid x-typesense-api-key header must be sent.` when used with a multi-action parent).
+
+Typesense 27.1 does not accept a generated key restricted to
+`operations:snapshot` or `operations:*` for `POST /operations/snapshot`; a
+live negative authorization test returned 401 for both. The backup consumer
+therefore has a generated wildcard key as a documented version-specific
+exception. It remains revocable and is confined to the root-owned backup
+environment; it is never shared with crawler or web workloads. Re-test a
+snapshot-only scope when Typesense is upgraded.
+
+The repository-owned host deployment is
+`.github/workflows/deploy-typesense-host.yml`. Pushes validate its shell,
+systemd, conformance, and a real Typesense 27.1 config-file smoke test, but do
+not mutate production. An operator explicitly dispatches `typesense`,
+`cloudflared`, or `all`. The installer requires recent successful Typesense
+backup evidence before a Typesense handoff, refuses to overlap an active
+backup, pulls the image before downtime, skips conformant services, and
+restores prior credential files and services when a health gate fails. See
+[`16-hetzner-maintenance.md`](16-hetzner-maintenance.md#typesense-host-credentials)
+for rotation and verification.
 
 ## Collections
 
@@ -155,7 +183,10 @@ upserts, and cursor save so an operator repair cannot race past the cursor. See
 [`03-crawler-architecture.md`](03-crawler-architecture.md#commit-safe-posting-cdc)
 for the trigger contract, writer-floor delay alert, and deployment ordering.
 
-**Feature flag**: Typesense writes only happen when `TYPESENSE_ADMIN_KEY` is set (non-empty). Environments without Typesense are unaffected. The env var must be passed to containers in `docker-compose.yml` (`x-common-env`).
+**Feature flag**: Typesense writes only happen when
+`TYPESENSE_OPERATIONS_KEY` is set (non-empty). Environments without Typesense
+are unaffected. The env var must be passed to containers in
+`docker-compose.yml` (`x-common-env`).
 
 **Denormalization**: The exporter's `TaxonomyMaps` reads all lookup data from **local Postgres** (the source of truth). Company info, location names, occupation names, seniority names, and technology names are all loaded from local. A Supabase fallback exists for company_info only (for pre-migration compatibility). All ancestor chain computation (locations + macro regions, occupations) uses local Postgres data exclusively.
 
@@ -307,7 +338,9 @@ environment variables:
 | `TYPESENSE_HOST` | Typesense private IP (for crawler) |
 | `TYPESENSE_PORT` | 8108 |
 | `TYPESENSE_PROTOCOL` | `http` (private network, no TLS) |
-| `TYPESENSE_ADMIN_KEY` | Admin API key |
+| `TYPESENSE_OPERATIONS_KEY` | Generated crawler key scoped to collection, document, alias, and read-only metrics operations |
+| `TYPESENSE_BOOTSTRAP_KEY` | Root-only server bootstrap key; protected deployment secret, never a crawler/web variable |
+| `TYPESENSE_BACKUP_KEY` | Root-only generated backup key; protected deployment secret |
 | `TYPESENSE_SEARCH_KEY` | Search/read key for web server-side Typesense calls (via tunnel uses `https`) |
 | `TYPESENSE_BROWSER_PARENT_KEY` | Search-only parent key for `/api/typesense-key` scoped browser keys |
 | `TYPESENSE_WRITE_KEY` | Watchlist write key (web app) |

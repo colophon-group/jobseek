@@ -51,7 +51,7 @@ def test_runner_is_bounded_immutable_and_fail_closed() -> None:
         "TYPESENSE_HOST",
         "TYPESENSE_PORT",
         "TYPESENSE_PROTOCOL",
-        "TYPESENSE_ADMIN_KEY",
+        "TYPESENSE_OPERATIONS_KEY",
     ):
         assert key in source
     assert "chmod 0600" in source

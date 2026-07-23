@@ -58,6 +58,14 @@ const deployCrawlerWorkflow = readFileSync(
   ".github/workflows/deploy-crawler-browser.yml",
   "utf8",
 );
+const deployDataBackupsWorkflow = readFileSync(
+  ".github/workflows/deploy-data-backups.yml",
+  "utf8",
+);
+const deployTypesenseHostWorkflow = readFileSync(
+  ".github/workflows/deploy-typesense-host.yml",
+  "utf8",
+);
 const deployCodexRunnerHostScript = readFileSync(
   "scripts/deploy-codex-runner-host.sh",
   "utf8",
@@ -989,7 +997,7 @@ test("CI runs Typesense E2E suites against a service container", () => {
   assert.match(crawlerJob, /image: typesense\/typesense:27\.1/);
   assert.match(crawlerJob, /options: --tmpfs \/data:rw/);
   assert.match(crawlerJob, /TYPESENSE_DATA_DIR: \/data/);
-  assert.match(crawlerJob, /TYPESENSE_ADMIN_KEY: local_dev_typesense_key/);
+  assert.match(crawlerJob, /TYPESENSE_OPERATIONS_KEY: local_dev_typesense_key/);
   assert.match(crawlerJob, /REQUIRE_TYPESENSE_E2E: "true"/);
   assert.match(
     crawlerJob,
@@ -997,6 +1005,42 @@ test("CI runs Typesense E2E suites against a service container", () => {
   );
   assert.match(crawlerJob, /uv run python \.\.\/\.\.\/scripts\/typesense-setup\.py --force/);
   assert.match(crawlerJob, /uv run pytest tests\/e2e\/test_typesense_indexing\.py -v/);
+});
+
+test("Typesense credentials are separated by consumer and host promotion is manual", () => {
+  assert.match(
+    deployCrawlerWorkflow,
+    /TYPESENSE_OPERATIONS_KEY: \$\{\{ secrets\.TYPESENSE_OPERATIONS_KEY \}\}/,
+  );
+  assert.doesNotMatch(deployCrawlerWorkflow, /TYPESENSE_ADMIN_KEY/);
+  assert.match(
+    deployDataBackupsWorkflow,
+    /JOBSEEK_TYPESENSE_BACKUP_KEY: \$\{\{ matrix\.service == 'typesense' && secrets\.TYPESENSE_BACKUP_KEY \|\| '' \}\}/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /TYPESENSE_BOOTSTRAP_KEY: \$\{\{ secrets\.TYPESENSE_BOOTSTRAP_KEY \}\}/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /CLOUDFLARE_TUNNEL_TOKEN: \$\{\{ secrets\.CLOUDFLARE_TUNNEL_TOKEN \}\}/,
+  );
+  assert.doesNotMatch(
+    deployTypesenseHostWorkflow,
+    /envs: [^\n]*TYPESENSE_BOOTSTRAP_KEY[^\n]*CLOUDFLARE_TUNNEL_TOKEN|envs: [^\n]*CLOUDFLARE_TUNNEL_TOKEN[^\n]*TYPESENSE_BOOTSTRAP_KEY/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /deploy:\n    if: github\.event_name == 'workflow_dispatch'/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /--config=\/run\/secrets\/typesense-server\.ini/,
+  );
+  assert.doesNotMatch(
+    deployTypesenseHostWorkflow,
+    /--api-key[= ]\$\{\{/,
+  );
 });
 
 test("broad CI test jobs exclude service-backed Typesense E2E suites", () => {

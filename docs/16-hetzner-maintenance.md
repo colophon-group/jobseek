@@ -24,6 +24,100 @@ SSH pattern:
 ssh -i ~/.ssh/hetzner_deploy root@<HOST>
 ```
 
+## Typesense Host Credentials
+
+Typesense and its Cloudflare Tunnel have a repo-owned, manually promoted host
+surface:
+
+- [`install-host.sh`](../deploy/typesense-host/install-host.sh) performs the
+  locked, health-gated, rollback-capable transition;
+- [`cloudflared.service`](../deploy/systemd/cloudflared.service) runs as an
+  unprivileged service and uses systemd `LoadCredential`;
+- [`verify-typesense-host-credentials.py`](../scripts/verify-typesense-host-credentials.py)
+  emits only boolean conformance evidence; and
+- [`deploy-typesense-host.yml`](../.github/workflows/deploy-typesense-host.yml)
+  validates on relevant pushes but mutates production only on an explicit
+  `workflow_dispatch`.
+
+The Typesense container receives one argument:
+`--config=/run/secrets/typesense-server.ini`. Its bind-mounted source is
+`/etc/jobseek-typesense/typesense-server.ini`, owned by root with mode `0600`.
+The Cloudflare token source is
+`/etc/jobseek-typesense/cloudflare-tunnel-token`, also root-owned `0600`;
+systemd copies it into the service credential directory for the dedicated
+`cloudflared` user. Neither credential may appear in Docker environment
+metadata, Docker/process arguments, a systemd unit, or world-readable host
+state.
+
+The protected `production` environment owns four deployment secrets:
+
+| secret | consumer and scope |
+|---|---|
+| `TYPESENSE_BOOTSTRAP_KEY` | starts the Typesense server only; never passed to crawler, web, or backup workloads |
+| `TYPESENSE_OPERATIONS_KEY` | generated/revocable crawler key with `collections:*`, `documents:*`, and `aliases:*` on all collections plus `metrics.json:list` |
+| `TYPESENSE_BACKUP_KEY` | generated/revocable wildcard key confined to the root-owned backup service; Typesense 27.1 rejected narrower snapshot scopes |
+| `CLOUDFLARE_TUNNEL_TOKEN` | one named Cloudflare Tunnel only |
+
+For the initial transition, create the two generated Typesense consumer keys
+and set all four protected secrets first. Merge and verify crawler and backup
+deployments before changing the host. Then dispatch the reviewed `main`
+revision one independent rollback boundary at a time:
+
+```bash
+gh workflow run deploy-typesense-host.yml \
+  --ref main \
+  -f component=typesense
+gh workflow run deploy-typesense-host.yml \
+  --ref main \
+  -f component=cloudflared
+```
+
+The Typesense step requires successful backup evidence no older than 36 hours
+and refuses to run while `jobseek-typesense-backup.service` is active. It
+pulls the pinned image before stopping the container, waits up to 60 seconds
+for a graceful stop, restores the prior config on failure, and requires local
+health plus a bootstrap-key admin probe. The tunnel step preserves the prior
+unit/token, restarts only `cloudflared`, and requires both systemd readiness
+and public tunnel health. A repeat dispatch compares the credential file and
+service contract and skips each conformant restart.
+
+Rotate in dependency order:
+
+1. create a new generated consumer key;
+2. update its protected GitHub secret and deploy that consumer;
+3. prove intended operations succeed and privileged operations fail;
+4. delete the superseded generated key;
+5. generate a new random bootstrap key, update
+   `TYPESENSE_BOOTSTRAP_KEY`, dispatch `component=typesense`, and prove the old
+   bootstrap key returns 401; and
+6. rotate the named Cloudflare Tunnel token in the Cloudflare control plane,
+   update `CLOUDFLARE_TUNNEL_TOKEN`, dispatch `component=cloudflared`, and
+   prove the old token differs and the new connector/public API path is
+   healthy.
+
+Cloudflare token rotation prevents the old token from starting new
+connectors; an already running connector remains until restarted. Update the
+protected secret before dispatching the restart. Never rotate a Typesense
+bootstrap key before all generated consumer keys are independently working,
+because changing the server bootstrap invalidates the old bootstrap access
+immediately.
+
+Read-only, redacted verification:
+
+```bash
+/usr/local/sbin/jobseek-verify-typesense-host-credentials
+systemctl is-active cloudflared.service
+docker inspect typesense --format \
+  'running={{.State.Running}} oom={{.State.OOMKilled}} restarts={{.RestartCount}} cmd={{json .Config.Cmd}}'
+curl --fail --silent http://127.0.0.1:8108/health
+curl --fail --silent https://typesense.colophon-group.org/health
+```
+
+Do not manually recreate Typesense with `--api-key`, put a token directly in
+`ExecStart`, or print either root-only credential file. Use a component
+dispatch for recovery; its transaction and conformance checks are the
+supported restart path.
+
 ## Ingress and SSH Baseline
 
 The repository-owned ingress source of truth is:

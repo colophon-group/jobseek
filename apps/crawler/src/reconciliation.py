@@ -202,14 +202,14 @@ class TypesenseReconciliationClient:
     """Bounded streaming access to the Typesense reconciliation surface."""
 
     def __init__(self) -> None:
-        if not settings.typesense_host or not settings.typesense_admin_key:
+        if not settings.typesense_host or not settings.typesense_operations_key:
             raise ReconciliationError("Typesense reconciliation is not configured")
         self._base_url = (
             f"{settings.typesense_protocol}://{settings.typesense_host}:"
             f"{settings.typesense_port}/collections/job_posting/documents"
         )
         self._client = httpx.AsyncClient(
-            headers={"X-TYPESENSE-API-KEY": settings.typesense_admin_key},
+            headers={"X-TYPESENSE-API-KEY": settings.typesense_operations_key},
             timeout=httpx.Timeout(connect=5.0, read=300.0, write=60.0, pool=5.0),
         )
 

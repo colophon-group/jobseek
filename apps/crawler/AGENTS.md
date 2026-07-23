@@ -627,30 +627,35 @@ Typesense 27.1 runs as a Docker container on a dedicated Hetzner CX22 (4 GB RAM,
 # SSH to Typesense machine
 ssh -i ~/.ssh/hetzner_deploy root@<TYPESENSE_IP>
 
-# Check health
-curl -s http://localhost:8108/health -H "X-TYPESENSE-API-KEY: <ADMIN_KEY>"
-
-# View stats
-curl -s http://localhost:8108/stats.json -H "X-TYPESENSE-API-KEY: <ADMIN_KEY>"
+# Check unauthenticated health
+curl --fail --silent http://localhost:8108/health
 
 # View container
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.MemUsage}}"
 docker logs typesense 2>&1 | tail -20
 
-# Restart Typesense
-docker rm -f typesense && docker run -d --name typesense --restart unless-stopped \
-  --network host -v /mnt/typesense-data:/data \
-  typesense/typesense:27.1 --data-dir /data --api-key=<ADMIN_KEY>
+# Verify protected credential delivery without printing secrets
+/usr/local/sbin/jobseek-verify-typesense-host-credentials
 ```
 
-**Cloudflare tunnel**: `cloudflared` runs as a systemd service, routing `typesense.colophon-group.org` to `localhost:8108`. Auto-starts on reboot.
+Never recreate Typesense with an inline `--api-key`. The bootstrap key belongs
+only in the root-owned server config; crawler commands use the generated
+`TYPESENSE_OPERATIONS_KEY`, and backups use their separate generated key.
+Restart/reconcile the reviewed host surface through the manual
+`.github/workflows/deploy-typesense-host.yml` dispatch described in
+`docs/16-hetzner-maintenance.md#typesense-host-credentials`.
+
+**Cloudflare tunnel**: `cloudflared` runs as a dedicated unprivileged systemd
+service, routing `typesense.colophon-group.org` to `localhost:8108`. Its token
+is delivered from a root-only source through systemd `LoadCredential`; never
+place it directly in the unit or process arguments.
 
 ```bash
 # Check tunnel status
 systemctl status cloudflared
 
-# Restart tunnel
-systemctl restart cloudflared
+# Reconcile or rotate via the reviewed host workflow
+gh workflow run deploy-typesense-host.yml --ref main -f component=cloudflared
 ```
 
 **Collection management** (from `apps/crawler/` on any machine with connectivity):

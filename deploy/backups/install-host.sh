@@ -64,6 +64,31 @@ if [[ "$SERVICE" == "postgresql" ]]; then
 else
   test -s /etc/jobseek-backup/typesense.env
   test -s /etc/jobseek-backup/typesense/id_ed25519
+  : "${JOBSEEK_TYPESENSE_BACKUP_KEY:?JOBSEEK_TYPESENSE_BACKUP_KEY is required}"
+  export JOBSEEK_TYPESENSE_BACKUP_KEY
+  python3 - <<'PY'
+import os
+from pathlib import Path
+
+path = Path("/etc/jobseek-backup/typesense.env")
+key = os.environ["JOBSEEK_TYPESENSE_BACKUP_KEY"]
+if not key or any(character.isspace() for character in key):
+    raise SystemExit("ERROR: Typesense backup key must be a non-empty single token")
+lines = path.read_text(encoding="utf-8").splitlines()
+matches = [
+    index for index, line in enumerate(lines) if line.startswith("TYPESENSE_API_KEY=")
+]
+if len(matches) != 1:
+    raise SystemExit("ERROR: Typesense backup environment must contain one API key")
+lines[matches[0]] = f"TYPESENSE_API_KEY={key}"
+temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+    stream.write("\n".join(lines) + "\n")
+os.chown(temporary, 0, 0)
+os.chmod(temporary, 0o600)
+os.replace(temporary, path)
+PY
   if ! command -v restic >/dev/null 2>&1; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends restic
