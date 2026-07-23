@@ -217,6 +217,21 @@ def test_load_metrics_config_rejects_non_grafana_exfiltration_endpoint(tmp_path:
         bundle._load_metrics_config(path, required_uid=os.getuid())
 
 
+def test_metrics_query_refuses_redirect_before_forwarding_credential():
+    handler = bundle._NoMetricsRedirectHandler()
+
+    with pytest.raises(bundle.MetricsEvidenceError, match="redirect refused"):
+        handler.redirect_request(None, None, 302, "Found", {}, "https://attacker.example/")
+
+
+def test_reconciliation_query_uses_durable_host_metrics():
+    spec = next(query for query in bundle.METRIC_QUERIES if query["id"] == "reconciliation")
+
+    assert "jobseek_cross_store_reconciliation_last_attempt_unixtime" in spec["query"]
+    assert "jobseek_cross_store_reconciliation_last_unresolved" in spec["query"]
+    assert "crawler_reconciliation_last_run_timestamp_seconds" not in spec["query"]
+
+
 def test_normalized_metric_result_bounds_labels_and_redacts(tmp_path: Path):
     del tmp_path  # pytest fixture keeps the test signature consistent with nearby tests.
     until = bundle.datetime(2026, 7, 22, 9, 0, tzinfo=bundle.UTC)

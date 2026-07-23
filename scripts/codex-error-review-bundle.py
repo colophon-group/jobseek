@@ -187,22 +187,23 @@ METRIC_QUERIES: tuple[dict[str, Any], ...] = (
         "id": "exporter_progress",
         "signal": "Exporter cursors, lag, downstream state, and flush freshness",
         "query": (
-            "label_replace(crawler_exporter_cursor_timestamp_seconds, "
+            'label_replace(crawler_exporter_cursor_timestamp_seconds{instance="exporter"}, '
             '"signal", "cursor_timestamp", "", ".*") '
-            "or label_replace(crawler_exporter_export_lag, "
+            'or label_replace(crawler_exporter_export_lag{instance="exporter"}, '
             '"signal", "supabase_lag", "", ".*") '
-            "or label_replace(crawler_typesense_export_lag, "
+            'or label_replace(crawler_typesense_export_lag{instance="exporter"}, '
             '"signal", "typesense_lag", "", ".*") '
-            "or label_replace(crawler_exporter_downstream_available, "
+            'or label_replace(crawler_exporter_downstream_available{instance="exporter"}, '
             '"signal", "downstream_available", "", ".*") '
-            "or label_replace(crawler_exporter_downstream_backoff_seconds, "
+            'or label_replace(crawler_exporter_downstream_backoff_seconds{instance="exporter"}, '
             '"signal", "downstream_backoff", "", ".*") '
-            "or label_replace(crawler_exporter_last_flush_ts, "
+            'or label_replace(crawler_exporter_last_flush_ts{instance="exporter"}, '
             '"signal", "last_flush", "", ".*")'
         ),
         "mode": "range",
         "required": True,
         "allow_empty": False,
+        "min_fresh_series": 9,
         "required_signals": (
             "cursor_timestamp",
             "downstream_available",
@@ -211,7 +212,7 @@ METRIC_QUERIES: tuple[dict[str, Any], ...] = (
             "supabase_lag",
             "typesense_lag",
         ),
-        "max_series": 24,
+        "max_series": 12,
     },
     {
         "id": "reconciliation",
@@ -254,8 +255,9 @@ METRIC_QUERIES: tuple[dict[str, Any], ...] = (
         "id": "drain_health",
         "signal": "R2 drain backlog, progress, and failures",
         "query": (
-            'label_replace(crawler_r2_pending, "signal", "pending", "", ".*") '
-            "or label_replace(crawler_redis_r2_stream_length, "
+            'label_replace(crawler_r2_pending{instance="drain"}, '
+            '"signal", "pending", "", ".*") '
+            'or label_replace(crawler_redis_r2_stream_length{instance="drain"}, '
             '"signal", "stream_length", "", ".*") '
             "or label_replace((sum(increase(crawler_r2_uploaded_total[5m])) or vector(0)), "
             '"signal", "upload_progress", "", ".*") '
@@ -266,13 +268,14 @@ METRIC_QUERIES: tuple[dict[str, Any], ...] = (
         "mode": "range",
         "required": True,
         "allow_empty": False,
+        "min_fresh_series": 4,
         "required_signals": (
             "pending",
             "retry_scheduled",
             "stream_length",
             "upload_progress",
         ),
-        "max_series": 16,
+        "max_series": 8,
     },
     {
         "id": "codex_alert_state",
@@ -282,7 +285,7 @@ METRIC_QUERIES: tuple[dict[str, Any], ...] = (
         "required": True,
         "allow_empty": True,
         "allow_stale": True,
-        "max_series": 50,
+        "max_series": 150,
     },
 )
 
@@ -376,6 +379,17 @@ def _write_bounded_json(path: Path, value: object) -> dict[str, object]:
 
 class MetricsEvidenceError(RuntimeError):
     """A bounded metrics query or its dedicated credential is invalid."""
+
+
+class _NoMetricsRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Never forward the dedicated Basic credential across an HTTP redirect."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        del req, fp, code, msg, headers, newurl
+        raise MetricsEvidenceError("metrics query redirect refused")
+
+
+_METRICS_OPENER = urllib.request.build_opener(_NoMetricsRedirectHandler())
 
 
 def _load_metrics_config(path: Path, *, required_uid: int | None = None) -> dict[str, str]:
@@ -482,7 +496,7 @@ def _metrics_request(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with _METRICS_OPENER.open(request, timeout=30) as response:
             payload = response.read(MAX_METRICS_RESPONSE_BYTES + 1)
     except urllib.error.HTTPError as exc:
         raise MetricsEvidenceError(f"metrics query returned HTTP {exc.code}") from exc
