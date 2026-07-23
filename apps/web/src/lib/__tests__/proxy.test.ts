@@ -167,6 +167,7 @@ describe("proxy config", () => {
     "/sitemap.xml",
     "/flags/ch.svg",
     "/fonts/JetBrainsMono-Regular.woff2",
+    "/screenshots/en/feature1-dark.png",
   ])("bypasses known static or discovery route %s", (url) => {
     expect(
       unstable_doesMiddlewareMatch({ config, nextConfig: {}, url }),
