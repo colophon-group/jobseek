@@ -140,6 +140,20 @@ uv run labeller upload --date "$RUN_DATE"
 
 Use `--dry-run` for upload verification.
 
+10. End the final response with exactly one single-line runner outcome:
+
+```text
+JOBSEEK_ROUTINE_RESULT={"status":"completed","phase":"upload-verification","primary_error":null}
+```
+
+For a fail-closed run, use `status: "failed"`, name the first failing phase,
+and put a concise redacted description of the first causal error in
+`primary_error`. A missing sample artifact or remote date partition is a
+downstream consequence when an earlier database/model/validation command
+already failed, so it must not replace that causal error. Emit the marker even
+when the runner was invoked manually; the Hetzner runner consumes it from the
+Codex JSONL trace.
+
 ## Legacy Fallback
 
 The older per-section extractors (`extract_team`, `extract_role`, `extract_requirements`, `extract_preferred`, `extract_benefits`, `extract_globals`) remain available for compatibility. Prefer `extract_all` unless the user explicitly asks for granular retries or debugging of a specific section kind.

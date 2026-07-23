@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -74,6 +75,17 @@ class DailyRunResult:
     stderr_path: Path | None = None
     worktree_path: Path | None = None
     error: str | None = None
+
+
+@dataclass(frozen=True)
+class ReportedRoutineOutcome:
+    status: str
+    phase: str
+    primary_error: str | None
+
+
+_ROUTINE_RESULT_PREFIX = "JOBSEEK_ROUTINE_RESULT="
+_ROUTINE_PHASE_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
 
 
 def utc_run_date(value: str | None = None) -> str:
@@ -156,6 +168,13 @@ Hard limits:
 - Do not print, copy, upload, or commit secrets.
 - Stop after upload verification for {run_date} is complete, or after a clear
   fail-closed report if prerequisites are missing.
+
+Your final response must end with exactly one machine-readable line:
+JOBSEEK_ROUTINE_RESULT={{"status":"completed","phase":"upload-verification","primary_error":null}}
+On failure, use status "failed", set phase to the first failing phase (for
+example "sampling"), and put a concise redacted description of the first causal
+error in primary_error. Do not replace it with a missing downstream artifact
+or upload-verification symptom.
 """
 
 
@@ -346,11 +365,19 @@ class DailyRoutineRunner:
 
         summary = parse_codex_usage_jsonl(trace_path)
         self.ledger.ingest_trace_once(run_id, trace_path, summary)
-        output_error = None
+        verification_error = None
         if exit_code == 0:
-            output_error = self._verify_output(worktree, started_at=started_at)
-        state = "completed" if exit_code == 0 and output_error is None else "failed"
-        error = output_error if output_error else (None if exit_code == 0 else f"exit {exit_code}")
+            verification_error = self._verify_output(worktree, started_at=started_at)
+        reported_outcome = (
+            _read_reported_routine_outcome(trace_path) if self.spec.name == "annotations" else None
+        )
+        error = _compose_routine_error(
+            routine=self.spec.name,
+            exit_code=exit_code,
+            verification_error=verification_error,
+            reported_outcome=reported_outcome,
+        )
+        state = "completed" if error is None else "failed"
         self.ledger.finish(run_id, state, error=error)
         if state == "completed" and cfg.cleanup_success_worktree:
             self._cleanup_worktree(worktree)
@@ -412,15 +439,18 @@ raise SystemExit(0 if rows == {self.count} else 4)
             "LABELLER_DATA_ROOT",
             str(self.config.root / "data" / "postings-labelled"),
         )
-        result = subprocess.run(
-            ["uv", "run", "python", "-c", script],
-            cwd=worktree / "apps" / "crawler",
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                ["uv", "run", "python", "-c", script],
+                cwd=worktree / "apps" / "crawler",
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return "annotation upload verification timed out after 120 seconds"
         if result.returncode == 0:
             return None
         detail_lines = (result.stderr or result.stdout or "").strip().splitlines()
@@ -453,6 +483,98 @@ raise SystemExit(0 if rows == {self.count} else 4)
 
     def _new_run_id(self) -> str:
         return f"{self._run_prefix()}{int(time.time())}-{uuid.uuid4().hex[:8]}"
+
+
+def _safe_routine_error(value: str) -> str:
+    from src.workspace.trace import detect_credentials, redact_credentials
+
+    compact = " ".join(value.split())
+    redacted, _ = redact_credentials(compact)
+    if detect_credentials(redacted):
+        return "details redacted by credential scanner"
+    return redacted[:1000]
+
+
+def _read_reported_routine_outcome(trace_path: Path) -> ReportedRoutineOutcome | None:
+    """Read the last valid routine-result marker from a Codex JSONL trace."""
+
+    if not trace_path.is_file():
+        return None
+    outcome: ReportedRoutineOutcome | None = None
+    with trace_path.open(errors="replace") as trace:
+        for raw in trace:
+            try:
+                event = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            item = event.get("item")
+            if (
+                event.get("type") != "item.completed"
+                or not isinstance(item, dict)
+                or item.get("type") != "agent_message"
+                or not isinstance(item.get("text"), str)
+            ):
+                continue
+            for line in item["text"].splitlines():
+                stripped = line.strip()
+                if not stripped.startswith(_ROUTINE_RESULT_PREFIX):
+                    continue
+                try:
+                    payload = json.loads(stripped.removeprefix(_ROUTINE_RESULT_PREFIX))
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(payload, dict):
+                    continue
+                status = payload.get("status")
+                phase = payload.get("phase")
+                primary_error = payload.get("primary_error")
+                if (
+                    status not in {"completed", "failed"}
+                    or not isinstance(phase, str)
+                    or _ROUTINE_PHASE_RE.fullmatch(phase) is None
+                    or (
+                        status == "failed"
+                        and (not isinstance(primary_error, str) or not primary_error.strip())
+                    )
+                    or (status == "completed" and primary_error is not None)
+                ):
+                    continue
+                outcome = ReportedRoutineOutcome(
+                    status=status,
+                    phase=phase,
+                    primary_error=(
+                        _safe_routine_error(primary_error)
+                        if isinstance(primary_error, str)
+                        else None
+                    ),
+                )
+    return outcome
+
+
+def _compose_routine_error(
+    *,
+    routine: str,
+    exit_code: int,
+    verification_error: str | None,
+    reported_outcome: ReportedRoutineOutcome | None,
+) -> str | None:
+    if routine == "annotations" and reported_outcome is not None:
+        if reported_outcome.status == "failed":
+            error = (
+                f"annotation routine failed in {reported_outcome.phase}: "
+                f"{reported_outcome.primary_error}"
+            )
+            if exit_code != 0:
+                error += f"; Codex exited with status {exit_code}"
+            if verification_error:
+                error += f"; downstream verification: {verification_error}"
+            return error
+        if exit_code != 0:
+            return f"Codex exited with status {exit_code}"
+        return verification_error
+    if exit_code != 0:
+        return f"exit {exit_code}"
+    return verification_error
 
 
 def _build_parser() -> argparse.ArgumentParser:
