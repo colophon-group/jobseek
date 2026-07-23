@@ -17,6 +17,7 @@ function createRequest(
   pathname: string,
   acceptLanguage?: string,
   cookieLocale?: string,
+  loggedIn = false,
 ): NextRequest {
   const url = new URL(`http://localhost${pathname}`);
   const headers: Record<string, string> = {};
@@ -24,6 +25,7 @@ function createRequest(
 
   const request = new NextRequest(url, { headers });
   if (cookieLocale) request.cookies.set("NEXT_LOCALE", cookieLocale);
+  if (loggedIn) request.cookies.set("logged_in", "1");
   return request;
 }
 
@@ -89,7 +91,7 @@ describe("proxy", () => {
       createRequest("/indexnow-verification-token.txt"),
     );
 
-    expect(redirectSpy).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
@@ -133,10 +135,53 @@ describe("proxy caching", () => {
   });
 });
 
+describe("company request auth boundary", () => {
+  it("redirects anonymous visitors before the app shell and preserves prefills", () => {
+    const response = proxy(
+      createRequest(
+        "/de/companies/request?name=MissingCo&website=https%3A%2F%2Fexample.com%2Fcareers",
+      ),
+    );
+
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/de/sign-in");
+    expect(location.searchParams.get("next")).toBe(
+      "/de/companies/request?name=MissingCo&website=https%3A%2F%2Fexample.com%2Fcareers",
+    );
+  });
+
+  it("lets hinted visitors reach the server-verified request page", () => {
+    const response = proxy(
+      createRequest("/en/companies/request?name=Acme", undefined, undefined, true),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+});
+
 describe("proxy config", () => {
   it("has a matcher pattern", () => {
     expect(config.matcher).toBeDefined();
     expect(config.matcher.length).toBeGreaterThan(0);
+  });
+
+  it("matches the localized company-request auth boundary only", () => {
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/companies/request?name=Acme",
+      }),
+    ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/explore",
+      }),
+    ).toBe(false);
   });
 
   it.each([
