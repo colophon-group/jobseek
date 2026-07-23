@@ -126,6 +126,8 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "DataBackupFailed",
         "DataBackupStale",
         "PostgreSQLUnavailable",
+        "PostgreSQLDataVolumeHeadroomLow",
+        "PostgreSQLCheckpointPressure",
         "PostgreSQLSharedMemoryPressure",
         "PostgreSQLArchiveFailure",
         "TypesenseUnavailable",
@@ -134,6 +136,46 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "RequiredContainerUnavailable",
         "HostRebootRequired",
     } <= names
+
+
+def test_postgresql_capacity_alert_uses_current_and_forecast_headroom() -> None:
+    rule = _alert_rule("PostgreSQLDataVolumeHeadroomLow")
+
+    assert 'host_role="postgresql"' in rule["expr"]
+    assert 'fstype="xfs"' in rule["expr"]
+    assert "< 0.25" in rule["expr"]
+    assert "predict_linear" in rule["expr"]
+    assert "jobseek_postgresql_database_bytes" in rule["expr"]
+    assert "30 * 24 * 60 * 60" in rule["expr"]
+    assert rule["for"] == "6h"
+    assert rule["labels"] == {
+        "severity": "high",
+        "service": "postgresql",
+        "owner": "codex-error-review",
+        "route": "codex-daily",
+    }
+    assert rule["annotations"]["runbook"].endswith(
+        "docs/16-hetzner-maintenance.md#postgresql-capacity-and-checkpoint-pressure"
+    )
+
+
+def test_postgresql_checkpoint_alert_requires_requested_dominance() -> None:
+    rule = _alert_rule("PostgreSQLCheckpointPressure")
+
+    assert "jobseek_postgresql_checkpoints_requested_total" in rule["expr"]
+    assert "jobseek_postgresql_checkpoints_timed_total" in rule["expr"]
+    assert "[6h]" in rule["expr"]
+    assert ">= 4" in rule["expr"]
+    assert rule["for"] == "30m"
+    assert rule["labels"] == {
+        "severity": "high",
+        "service": "postgresql",
+        "owner": "codex-error-review",
+        "route": "codex-daily",
+    }
+    assert rule["annotations"]["runbook"].endswith(
+        "docs/16-hetzner-maintenance.md#postgresql-capacity-and-checkpoint-pressure"
+    )
 
 
 def test_postgresql_shared_memory_alert_enforces_contract_and_capacity() -> None:

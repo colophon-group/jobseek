@@ -21,6 +21,8 @@ QUERIES = {
     "failed_backups": "count(jobseek_backup_last_attempt_success == 0)",
     "postgresql_ready": "count(jobseek_postgresql_ready == 1)",
     "postgresql_shared_memory": "count(jobseek_postgresql_shared_memory_configured_bytes)",
+    "postgresql_checkpoint_metrics": ("count(jobseek_postgresql_checkpoint_write_seconds_total)"),
+    "postgresql_query_latency": ("count(jobseek_postgresql_stats_query_duration_seconds)"),
     "typesense_ready": "count(jobseek_typesense_healthy == 1)",
 }
 
@@ -86,6 +88,10 @@ def validate_results(
         raise VerificationError("PostgreSQL readiness metric is missing or unhealthy")
     if _scalar(results, "postgresql_shared_memory") != 1:
         raise VerificationError("PostgreSQL shared-memory metric is missing")
+    if _scalar(results, "postgresql_checkpoint_metrics") != 1:
+        raise VerificationError("PostgreSQL checkpoint-duration metric is missing")
+    if _scalar(results, "postgresql_query_latency") != 1:
+        raise VerificationError("PostgreSQL statistics-query latency metric is missing")
     if _scalar(results, "typesense_ready") != 1:
         raise VerificationError("Typesense readiness metric is missing or unhealthy")
 

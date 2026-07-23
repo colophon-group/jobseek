@@ -310,6 +310,107 @@ groups:
           description: "The host has required a reboot for at least 24 hours; schedule it through the maintenance runbook."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
+  - name: jobseek_postgresql_capacity
+    interval: 30s
+    rules:
+
+      - alert: PostgreSQLDataVolumeHeadroomLow
+        expr: |
+          (
+            max(
+              node_filesystem_avail_bytes{
+                job="integrations/unix",
+                host_role="postgresql",
+                fstype="xfs",
+                mountpoint=~"/mnt/.*"
+              }
+            )
+              /
+            max(
+              node_filesystem_size_bytes{
+                job="integrations/unix",
+                host_role="postgresql",
+                fstype="xfs",
+                mountpoint=~"/mnt/.*"
+              }
+            )
+              < 0.25
+          )
+            or
+          (
+            max(
+              predict_linear(
+                jobseek_postgresql_database_bytes{host_role="postgresql"}[24h],
+                30 * 24 * 60 * 60
+              )
+            )
+              - max(jobseek_postgresql_database_bytes{host_role="postgresql"})
+              >
+            max(
+              node_filesystem_avail_bytes{
+                job="integrations/unix",
+                host_role="postgresql",
+                fstype="xfs",
+                mountpoint=~"/mnt/.*"
+              }
+            )
+          )
+        for: 6h
+        labels:
+          severity: high
+          service: postgresql
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "PostgreSQL data Volume has insufficient durable headroom"
+          description: |
+            The attached XFS data Volume has remained below 25% free, or the
+            retained database-size trend projects that database growth will
+            consume all current filesystem headroom within 30 days. Verify the
+            backup and growth evidence before expanding the Volume; do not
+            delete descriptions or raise a threshold to hide the forecast.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#postgresql-capacity-and-checkpoint-pressure
+
+      - alert: PostgreSQLCheckpointPressure
+        expr: |
+          max(
+            increase(
+              jobseek_postgresql_checkpoints_requested_total{
+                host_role="postgresql"
+              }[6h]
+            )
+          )
+            >
+          max(
+            increase(
+              jobseek_postgresql_checkpoints_timed_total{
+                host_role="postgresql"
+              }[6h]
+            )
+          )
+            and
+          max(
+            increase(
+              jobseek_postgresql_checkpoints_requested_total{
+                host_role="postgresql"
+              }[6h]
+            )
+          ) >= 4
+        for: 30m
+        labels:
+          severity: high
+          service: postgresql
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Requested checkpoints dominate PostgreSQL again"
+          description: |
+            WAL pressure has forced at least four checkpoints in six hours and
+            requested checkpoints outnumber timed checkpoints. Inspect WAL
+            generation, archive health, checkpoint write/sync time, and the
+            data Volume before changing max_wal_size or checkpoint timing.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#postgresql-capacity-and-checkpoint-pressure
+
   - name: jobseek_crawler_reliability
     interval: 30s
     rules:

@@ -292,6 +292,101 @@ cgroup limit, archive failure count stays flat, and no container records an OOM
 or restart. Do not replay task identifiers manually unless queue and database
 evidence proves the normal reschedule path failed.
 
+## PostgreSQL Capacity and Checkpoint Pressure
+
+The authoritative PostgreSQL database lives on the attached XFS data Volume,
+not on the server root disk. The Volume was expanded online from 20 to 40 GiB
+on 2026-07-22 after a transaction-consistent encrypted checkpoint passed. The
+provider action cannot be reversed in place. Current and future expansion must
+therefore preserve the same sequence: fresh backup and restore evidence,
+recorded pre-change capacity, provider resize, online `xfs_growfs`, PostgreSQL
+and archive verification, then recorded post-change capacity. Never use a
+server backup as a substitute; server images do not contain this Volume.
+
+The live PostgreSQL contract is deliberately consistent across
+`deploy/backups/postgresql/migrate-container.sh` and
+`deploy/networking/harden-postgresql.sh`: 4 GiB memory, 1 GiB shared buffers,
+1 GiB container shared memory, `max_wal_size=4GB`, `min_wal_size=1GB`,
+`checkpoint_timeout=15min`, and `checkpoint_completion_target=0.9`.
+PostgreSQL can retain close to the configured WAL ceiling and the ceiling is
+not a hard limit, so filesystem forecasts must leave room for WAL and archive
+failure as well as relation growth.
+
+The host sampler publishes:
+
+- `jobseek_postgresql_database_bytes`;
+- timed and requested checkpoint counters;
+- cumulative checkpoint write and sync seconds;
+- checkpoint buffers and the statistics-reset timestamp;
+- duration of the sampler's bounded PostgreSQL statistics query; and
+- standard Unix-exporter filesystem size, free-byte, and inode series.
+
+`PostgreSQLDataVolumeHeadroomLow` is the early capacity control. It remains
+pending for six hours before firing when either the attached XFS Volume has
+less than 25% free or a linear regression over the retained 24-hour database
+size projects that database growth alone will consume all current filesystem
+headroom within 30 days. The forecast intentionally uses database size rather
+than short-window filesystem slope: recycled WAL can move filesystem free
+space by several GiB without representing durable data growth.
+`PostgreSQLCheckpointPressure` fires only when at least four requested
+checkpoints occur within six hours and requested checkpoints outnumber timed
+checkpoints. Both route to the daily Codex error review. The fleet-wide
+`DiskNearFull` rule remains the last-resort critical control below 10% free.
+
+Read-only live verification:
+
+```bash
+docker exec postgres psql -U crawler -d crawler -XAt -F '|' -c \
+  "select checkpoints_timed, checkpoints_req, checkpoint_write_time,
+          checkpoint_sync_time, buffers_checkpoint, stats_reset
+     from pg_stat_bgwriter"
+docker exec postgres psql -U crawler -d crawler -XAt -c \
+  "select pg_database_size(current_database())"
+docker exec postgres psql -U crawler -d crawler -XAt -c \
+  "select relname, pg_total_relation_size(relid), n_live_tup, n_dead_tup,
+          last_autovacuum
+     from pg_stat_user_tables
+    order by pg_total_relation_size(relid) desc
+    limit 10"
+df -h <POSTGRESQL_DATA_MOUNT>
+df -i <POSTGRESQL_DATA_MOUNT>
+docker exec --user postgres postgres pgbackrest --stanza=jobseek info
+```
+
+Use Grafana/Mimir to reproduce the capacity decision without exposing a host
+or Volume identifier:
+
+```promql
+max(node_filesystem_avail_bytes{
+  job="integrations/unix",host_role="postgresql",
+  fstype="xfs",mountpoint=~"/mnt/.*"
+})
+```
+
+```promql
+max(predict_linear(
+  jobseek_postgresql_database_bytes{host_role="postgresql"}[24h],
+  30 * 24 * 60 * 60
+)) - max(jobseek_postgresql_database_bytes{host_role="postgresql"})
+```
+
+When the capacity rule fires, first distinguish durable database growth from
+WAL/archive accumulation and temporary checkpoint recycling. Confirm backup
+freshness and archive failures, compare database and top-relation growth, and
+check autovacuum progress. Do not run `VACUUM FULL`, delete descriptions, or
+offload rows merely to clear an alert: those actions change lock, recovery,
+and read-path requirements and need their own measured retention design.
+Resize only when the retained growth window and recovery evidence justify the
+irreversible change.
+
+When checkpoint pressure fires, compare six-hour counter increases and
+checkpoint write/sync time with archive health, WAL directory size, workload
+changes, and query-path errors. Occasional requested checkpoints during bulk
+work are expected; sustained requested dominance is not. Change WAL or
+checkpoint settings only through both repo-owned container creation paths,
+with a fresh backup and the guarded rollback workflow. Do not force a
+checkpoint or increase `max_wal_size` merely to make the alert disappear.
+
 ## Fleet Observability
 
 All three hosts run the same repo-owned host telemetry surface:
@@ -340,11 +435,11 @@ Stable labels deliberately describe roles rather than provider identifiers:
 
 The sampler covers container running/restart/OOM state, required systemd
 units, reboot-required state, backup attempt/success/freshness, PostgreSQL
-readiness/connections/WAL archive/checkpoint/database size/shared-memory
-capacity, durable cross-store reconciliation state, and Typesense
-health/tunnel state. Sticky Docker OOM flags and absolute restart counters are
-evidence only; the daily error review applies generation/time-window rules
-before declaring a new incident.
+readiness/connections/WAL archive/checkpoint duration and dominance/database
+size and 30-day capacity forecast/shared-memory capacity, durable cross-store
+reconciliation state, and Typesense health/tunnel state. Sticky Docker OOM
+flags and absolute restart counters are evidence only; the daily error review
+applies generation/time-window rules before declaring a new incident.
 
 Deployment is owned by
 [`deploy-hetzner-observability.yml`](../.github/workflows/deploy-hetzner-observability.yml).
@@ -353,7 +448,7 @@ the crawler, PostgreSQL, and Typesense hosts sequentially; then polls Grafana
 until fresh sampler, probe, container, backup, PostgreSQL-readiness, and
 Typesense-readiness textfile series are present and healthy for every expected
 role. Only after that ingestion gate passes does it transactionally sync the
-two Mimir rule groups. This catches a healthy local sampler whose collector
+three Mimir rule groups. This catches a healthy local sampler whose collector
 silently omits the textfile directory. Environment-scoped host variables are
 resolved inside runtime steps after the protected `production` environment is
 attached. The installer snapshots the prior binary, configuration, secret env,
@@ -375,8 +470,9 @@ listener cannot make a failed service appear healthy.
 
 Alert definitions in [`apps/crawler/alerts.yaml`](../apps/crawler/alerts.yaml)
 are transactionally written through the Mimir ruler API. Grafana Cloud limits
-this tenant to 20 rules per group, so the source separates fleet and crawler
-alerts into two logical groups below that limit. The sync client first
+this tenant to 20 rules per group, so the source separates fleet, PostgreSQL
+capacity, and crawler alerts into three logical groups at or below that limit.
+The sync client first
 captures the complete owned namespace, requires every alert to have a
 repository runbook plus `owner=codex-error-review` and `route=codex-daily`,
 verifies the exact active group/rule set, removes stale owned groups, and
