@@ -111,7 +111,7 @@ def test_graceful_sigterm_exit_is_not_reported_as_forced_termination():
     assert pause["forced_termination"] is False
 
 
-def test_expected_marker_sigterm_brackets_window_without_becoming_a_failed_oneoff():
+def test_expected_marker_termination_brackets_window_without_becoming_a_failed_oneoff():
     provenance_contract = {
         "operation": "crawler-deploy",
         "issue": 3409,
@@ -151,7 +151,7 @@ def test_expected_marker_sigterm_brackets_window_without_becoming_a_failed_oneof
             "container_generation": "marker-generation",
             "compose_service": "maintenance-window",
             "compose_oneoff": "True",
-            "event_exit_code": "143",
+            "event_exit_code": "137",
             "maintenance_provenance": provenance_contract,
         },
     ]
@@ -163,6 +163,105 @@ def test_expected_marker_sigterm_brackets_window_without_becoming_a_failed_oneof
     assert window["status"] == "completed"
     assert window["oneoffs"] == []
     assert window["service_pauses"][0]["downtime_seconds"] == 50.0
+
+
+def test_transient_unmonitored_service_does_not_stretch_a_maintenance_window():
+    provenance_contract = {
+        "operation": "crawler-deploy",
+        "issue": 3409,
+        "revision": "d" * 40,
+        "budget_seconds": 1800,
+    }
+    events = [
+        {
+            "source": "docker_event",
+            "event_at": "2026-07-23T04:00:00+00:00",
+            "action": "die",
+            "container_generation": "old-init-generation",
+            "compose_service": "murmur-shim-runtime-init",
+            "compose_oneoff": "False",
+            "event_exit_code": "0",
+        },
+        {
+            "source": "docker_event",
+            "event_at": "2026-07-23T05:00:00+00:00",
+            "action": "start",
+            "container_generation": "marker-generation",
+            "compose_service": "maintenance-window",
+            "compose_oneoff": "True",
+            "maintenance_provenance": provenance_contract,
+        },
+        {
+            "source": "docker_event",
+            "event_at": "2026-07-23T05:01:00+00:00",
+            "action": "die",
+            "container_generation": "marker-generation",
+            "compose_service": "maintenance-window",
+            "compose_oneoff": "True",
+            "event_exit_code": "137",
+            "maintenance_provenance": provenance_contract,
+        },
+        {
+            "source": "docker_event",
+            "event_at": "2026-07-23T05:01:01+00:00",
+            "action": "start",
+            "container_generation": "new-init-generation",
+            "compose_service": "murmur-shim-runtime-init",
+            "compose_oneoff": "False",
+        },
+        {
+            "source": "docker_event",
+            "event_at": "2026-07-23T05:01:05+00:00",
+            "action": "die",
+            "container_generation": "new-init-generation",
+            "compose_service": "murmur-shim-runtime-init",
+            "compose_oneoff": "False",
+            "event_exit_code": "0",
+        },
+    ]
+
+    summary = provenance.correlate_events(events)
+
+    assert summary["unattributed_service_pauses"] == []
+    window = summary["maintenance_windows"][0]
+    assert window["duration_seconds"] == 60.0
+    assert window["service_pauses"] == []
+    assert window["status"] == "completed"
+
+
+def test_marker_oom_remains_actionable():
+    provenance_contract = {
+        "operation": "crawler-deploy",
+        "issue": 3409,
+        "revision": "d" * 40,
+        "budget_seconds": 1800,
+    }
+    events = [
+        {
+            "source": "docker_event",
+            "event_at": "2026-07-23T05:00:00+00:00",
+            "action": "start",
+            "container_generation": "marker-generation",
+            "compose_service": "maintenance-window",
+            "compose_oneoff": "True",
+            "maintenance_provenance": provenance_contract,
+        },
+        {
+            "source": "docker_event",
+            "event_at": "2026-07-23T05:00:10+00:00",
+            "action": "oom",
+            "container_generation": "marker-generation",
+            "compose_service": "maintenance-window",
+            "compose_oneoff": "True",
+            "state": {"oom_killed": True},
+            "maintenance_provenance": provenance_contract,
+        },
+    ]
+
+    window = provenance.correlate_events(events)["maintenance_windows"][0]
+
+    assert window["status"] == "actionable"
+    assert window["actionable_reasons"] == ["oom"]
 
 
 def test_missing_service_restoration_remains_actionable():

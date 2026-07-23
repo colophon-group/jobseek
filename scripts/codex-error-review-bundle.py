@@ -9,6 +9,7 @@ writes files readable by the unprivileged ``codex-runner`` account.
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import os
 import re
@@ -47,17 +48,17 @@ MAX_FILE_BYTES = 25 * 1024 * 1024
 REDACTIONS: tuple[tuple[re.Pattern[str], str], ...] = (
     (
         re.compile(
-            r"(?i)\b(authorization|proxy-authorization)\s*[:=]\s*"
-            r"(bearer|basic)\s+[A-Za-z0-9._~+/\-]+=*"
+            r"""(?i)(\b(?:authorization|proxy-authorization)["']?\s*[:=]\s*"""
+            r"""["']?(?:bearer|basic)\s+)[A-Za-z0-9._~+/\-]+=*"""
         ),
-        r"\1: <redacted>",
+        r"\1<redacted>",
     ),
     (
         re.compile(
-            r"(?i)\b([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API[_-]?KEY|PRIVATE[_-]?KEY)"
-            r"[A-Z0-9_]*)\s*[:=]\s*([^\s,;\"']+)"
+            r"""(?i)(\b[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API[_-]?KEY|PRIVATE[_-]?KEY)"""
+            r"""[A-Z0-9_]*["']?\s*[:=]\s*["']?)(?!<redacted>)[^\s,;"']+"""
         ),
-        r"\1=<redacted>",
+        r"\1<redacted>",
     ),
     (
         re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._~+/\-]+=*"),
@@ -75,11 +76,30 @@ REDACTIONS: tuple[tuple[re.Pattern[str], str], ...] = (
         "-----BEGIN PRIVATE KEY-----<redacted>-----END PRIVATE KEY-----",
     ),
 )
+IPV4_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
+IPV6_CANDIDATE_RE = re.compile(
+    r"(?<![0-9A-Fa-f:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}"
+    r"(?![0-9A-Fa-f:])"
+)
+UUID_RE = re.compile(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
+RAW_RESOURCE_ID_RE = re.compile(r"(?i)(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
+
+
+def _redact_ipv6(match: re.Match[str]) -> str:
+    try:
+        address = ipaddress.ip_address(match.group(0))
+    except ValueError:
+        return match.group(0)
+    return "<redacted-host-address>" if address.version == 6 else match.group(0)
 
 
 def _redact(text: str) -> str:
     for pattern, replacement in REDACTIONS:
         text = pattern.sub(replacement, text)
+    text = IPV4_RE.sub("<redacted-host-address>", text)
+    text = IPV6_CANDIDATE_RE.sub(_redact_ipv6, text)
+    text = UUID_RE.sub("<redacted-resource-id>", text)
+    text = RAW_RESOURCE_ID_RE.sub("<redacted-resource-id>", text)
     return text
 
 

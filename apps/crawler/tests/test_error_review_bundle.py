@@ -13,6 +13,42 @@ bundle = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(bundle)
 
 
+def test_redact_removes_private_identifiers_and_quoted_credentials():
+    raw_resource_id = "a" * 64
+    text = bundle._redact(
+        """
+        endpoint=192.0.2.4 peer=[2001:db8::1]:8108
+        posting=123e4567-e89b-12d3-a456-426614174000
+        image=sha256:{raw_resource_id}
+        TOKEN=plain-secret
+        "api_key": "json-secret"
+        "Authorization": "Bearer bearer-secret"
+        """.replace("{raw_resource_id}", raw_resource_id).strip()
+    )
+
+    for private_value in (
+        "192.0.2.4",
+        "2001:db8::1",
+        "123e4567-e89b-12d3-a456-426614174000",
+        raw_resource_id,
+        "plain-secret",
+        "json-secret",
+        "bearer-secret",
+    ):
+        assert private_value not in text
+    assert text.count("<redacted-host-address>") == 2
+    assert text.count("<redacted-resource-id>") == 2
+    assert text.count("<redacted>") == 3
+
+    redacted_json = bundle._redact(
+        '{"api_key": "json-secret", "Authorization": "Bearer bearer-secret"}'
+    )
+    assert json.loads(redacted_json) == {
+        "api_key": "<redacted>",
+        "Authorization": "Bearer <redacted>",
+    }
+
+
 def test_parse_cgroup_key_values_ignores_malformed_rows():
     assert bundle._parse_cgroup_key_values("low 0\nhigh 2\nmalformed\noom nope\noom_kill 3\n") == {
         "low": 0,
