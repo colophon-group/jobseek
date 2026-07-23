@@ -79,13 +79,10 @@ const JOB_LANGUAGE_DEPENDENT_PATHS = [
 function invalidateJobLanguageDependentPages(): void {
   for (const path of JOB_LANGUAGE_DEPENDENT_PATHS) {
     try {
-      // Match the existing convention from
-      // `app/api/web/companies/request/[run_id]/status/route.ts` —
-      // single-arg call invalidates that page's cache entries across
-      // every locale. Passing the second `"page"` arg is also valid
-      // but the unspecified default is what the rest of the codebase
-      // uses for App-Router page paths.
-      revalidatePath(path);
+      // Dynamic route patterns require an explicit type; without it Next
+      // warns and skips invalidation entirely. "page" covers every concrete
+      // locale/parameter combination represented by each pattern.
+      revalidatePath(path, "page");
     } catch (err) {
       console.warn("[preferences] revalidatePath failed for", path, err);
     }
