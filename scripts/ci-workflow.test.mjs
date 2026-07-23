@@ -1037,6 +1037,10 @@ test("Typesense credentials are separated by consumer and host promotion is manu
     deployTypesenseHostWorkflow,
     /--config=\/run\/secrets\/typesense-server\.ini/,
   );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /-p 127\.0\.0\.1:18108:8108[\s\S]*http:\/\/127\.0\.0\.1:18108\/health/,
+  );
   assert.doesNotMatch(
     deployTypesenseHostWorkflow,
     /--api-key[= ]\$\{\{/,
