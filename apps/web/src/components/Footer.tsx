@@ -34,7 +34,7 @@ export function Footer({ lang }: FooterProps) {
           </Trans>
         </p>
         <nav aria-label={i18n._(msg({ id: "common.footer.ariaLabel", comment: "Aria label for footer navigation", message: "Footer" }))} className="order-1 sm:order-2">
-          <ul className="flex list-none gap-4 p-0">
+          <ul className="flex flex-wrap list-none gap-x-4 gap-y-2 p-0">
             <li>
               <a className={linkClass} href={links.github.href} target="_blank" rel="noreferrer">
                 <Trans id="common.footer.github" comment="Footer link to GitHub repo">GitHub</Trans>
