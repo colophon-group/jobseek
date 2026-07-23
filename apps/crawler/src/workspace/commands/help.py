@@ -1393,15 +1393,16 @@ paylocity — Paylocity embedded job data
               lag after postings close."""
 
 MONITOR_API_SNIFFER = """\
-api_sniffer — XHR/Fetch API Capture (Playwright)
+api_sniffer — Direct API Replay or XHR/Fetch Capture
 
-  Captures JSON API responses during page load via Playwright.
-  Works for React SPAs, custom platforms, and any site that
-  loads job data via internal JSON APIs.
+  Replays a configured api_url over plain HTTP by default. Without api_url,
+  captures JSON API responses during page load via Playwright. Set
+  browser: true only when replay requires page cookies/browser execution.
+  Set proxy: true when the API blocks direct crawler egress.
 
   Returns:  Full job data (if fields auto-mapped) or URL set
   Cost:     80 — between sitemap (50) and dom (100)
-  Requires: Playwright
+  Requires: Playwright only for auto-discovery or browser: true replay
 
   Config (auto-filled from ws probe monitor):
     {
@@ -1427,7 +1428,9 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
       }
     }
 
-    api_url          Captured API endpoint URL (auto-filled)
+    api_url          Captured API endpoint URL (auto-filled). This exact key
+                     selects direct HTTP replay; legacy "url" is ignored by
+                     runtime code and rejected by CSV validation.
     method           HTTP method: GET or POST (auto-filled)
     json_path        Dot-notation path to jobs array in response
     url_field        Field name containing job URL (if found)
@@ -1461,6 +1464,15 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
     settle           Seconds to wait after navigation for late XHRs. Default: 3.
 
   Modes:
+    Direct HTTP (api_url present, browser absent/false):
+      Fetches the API without opening Playwright. proxy: true routes the
+      per-board client through the configured proxy provider.
+    Browser replay (api_url present, browser: true):
+      Opens the board page for cookies/auth, then replays the API in-browser.
+    Auto-discovery (api_url absent):
+      Opens Playwright and captures XHR/fetch responses during page load and
+      fallback interactions. A timed-out navigation with no usable document
+      fails the cycle rather than returning an authoritative empty result.
     Rich (fields present):  Returns list[DiscoveredJob], scraper skipped.
       Auto-mapped from API response during probe. Verify quality —
       auto-mapping may miss fields or map wrong keys.

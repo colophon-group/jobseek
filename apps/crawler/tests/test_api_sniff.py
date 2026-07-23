@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.shared.api_sniff import (
+    ApiSnifferDomUnavailableError,
     ArrayCandidate,
     Exchange,
     JobListResult,
@@ -30,6 +31,7 @@ from src.shared.api_sniff import (
     score_candidate,
     set_body_param,
     set_url_param,
+    trigger_interactions,
 )
 
 
@@ -46,6 +48,38 @@ def _make_exchange(
         content_type="application/json",
         phase=phase,
     )
+
+
+class TestTriggerInteractions:
+    @pytest.mark.asyncio
+    async def test_rejects_missing_document_body_with_stable_error(self):
+        page = AsyncMock()
+        page.evaluate.return_value = False
+
+        with pytest.raises(
+            ApiSnifferDomUnavailableError,
+            match="require a usable document body",
+        ):
+            await trigger_interactions(page, [])
+
+        page.click.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_scroll_race_does_not_dereference_null_body(self):
+        page = AsyncMock()
+        page.evaluate.side_effect = [True, None, False]
+        page.click.side_effect = RuntimeError("selector absent")
+        exchanges = [_make_exchange(), _make_exchange()]
+
+        with pytest.raises(
+            ApiSnifferDomUnavailableError,
+            match="require a usable document body",
+        ):
+            await trigger_interactions(page, exchanges)
+
+        scroll_script = page.evaluate.await_args_list[-1].args[0]
+        assert "document.scrollingElement" in scroll_script
+        assert "if (!root) return false" in scroll_script
 
 
 class TestFindArrays:

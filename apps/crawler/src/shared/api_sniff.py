@@ -23,6 +23,11 @@ from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
+
+class ApiSnifferDomUnavailableError(RuntimeError):
+    """The page cannot safely run API-sniffer fallback interactions."""
+
+
 # ---------------------------------------------------------------------------
 # Transport abstraction
 # ---------------------------------------------------------------------------
@@ -977,6 +982,17 @@ async def capture_exchanges(page, page_host: str) -> list[Exchange]:
 
 async def trigger_interactions(page, exchanges: list[Exchange]) -> None:
     """Dismiss overlays and trigger pagination / load-more to capture more exchanges."""
+    try:
+        has_body = await page.evaluate("() => document.body !== null")
+    except Exception as exc:
+        raise ApiSnifferDomUnavailableError(
+            "API sniffer fallback interactions require a usable document body"
+        ) from exc
+    if not has_body:
+        raise ApiSnifferDomUnavailableError(
+            "API sniffer fallback interactions require a usable document body"
+        )
+
     before = len(exchanges)
 
     # Phase A: search button click for Taleo/Workday-style pages
@@ -1056,7 +1072,17 @@ async def trigger_interactions(page, exchanges: list[Exchange]) -> None:
 
     # Scroll to bottom for infinite-scroll triggers
     if len(exchanges) == before_pagination:
-        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        scrolled = await page.evaluate("""() => {
+            const root =
+                document.scrollingElement || document.documentElement || document.body;
+            if (!root) return false;
+            window.scrollTo(0, root.scrollHeight);
+            return true;
+        }""")
+        if not scrolled:
+            raise ApiSnifferDomUnavailableError(
+                "API sniffer fallback interactions require a usable document body"
+            )
         await asyncio.sleep(3)
 
     for ex in exchanges[before:]:
