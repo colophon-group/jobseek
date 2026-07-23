@@ -267,9 +267,7 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, saved
                 className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-sm transition-colors ${
                   active
                     ? "bg-primary/10 text-primary font-medium"
-                    : isAllLanguages
-                      ? "border border-border-soft text-muted opacity-50"
-                      : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
+                    : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
                 }`}
               >
                 {lang.flag && <CountryFlag iso={lang.flag} size={16} className="shrink-0 rounded-[2px]" />}
