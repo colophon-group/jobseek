@@ -110,7 +110,7 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
 
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
-            return "12\t100\t500\t2\t700\t900\t19000000000"
+            return "12\t100\t500\t2\t700\t900\t1234.5\t67.8\t4000\t1800000000\t19000000000"
         if "to_regclass" in sql:
             return "cross_store_reconciliation_state"
         if sql == host.RECONCILIATION_STATS_SQL:
@@ -133,6 +133,11 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_postgresql_ready 1" in content
     assert "jobseek_postgresql_connections 12.0" in content
     assert "jobseek_postgresql_archive_failed_total 2.0" in content
+    assert "jobseek_postgresql_stats_query_duration_seconds " in content
+    assert "jobseek_postgresql_checkpoint_write_seconds_total 1.2345" in content
+    assert "jobseek_postgresql_checkpoint_sync_seconds_total 0.0678" in content
+    assert "jobseek_postgresql_checkpoint_buffers_total 4000.0" in content
+    assert "jobseek_postgresql_stats_reset_unixtime 1800000000.0" in content
     assert "jobseek_postgresql_database_bytes 19000000000.0" in content
     assert "jobseek_postgresql_shared_memory_configured_bytes 1073741824" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
@@ -157,7 +162,7 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
 
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
-            return "1\t2\t3\t0\t4\t5\t6"
+            return "1\t2\t3\t0\t4\t5\t6\t7\t8\t9\t10"
         if "to_regclass" in sql:
             return ""
         raise AssertionError(sql)
@@ -210,9 +215,14 @@ def test_rule_source_has_bounded_owned_groups() -> None:
     groups = rules._load_groups(ROOT / "apps" / "crawler" / "alerts.yaml")
     assert {group["name"] for group in groups} == {
         "jobseek_hetzner_fleet",
+        "jobseek_postgresql_capacity",
         "jobseek_crawler_reliability",
     }
-    assert sum(len(group["rules"]) for group in groups) >= 28
+    assert {group["name"]: len(group["rules"]) for group in groups} == {
+        "jobseek_hetzner_fleet": 19,
+        "jobseek_postgresql_capacity": 2,
+        "jobseek_crawler_reliability": 17,
+    }
     for group in groups:
         assert 0 < len(group["rules"]) <= rules.MAX_RULES_PER_GROUP
         for rule in group["rules"]:

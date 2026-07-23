@@ -31,6 +31,8 @@ def _healthy_results(now: float) -> dict:
         "failed_backups": [],
         "postgresql_ready": [_row(1)],
         "postgresql_shared_memory": [_row(1)],
+        "postgresql_checkpoint_metrics": [_row(1)],
+        "postgresql_query_latency": [_row(1)],
         "typesense_ready": [_row(1)],
     }
 
@@ -70,3 +72,15 @@ def test_validate_results_rejects_silent_probe_or_backup_failure() -> None:
     missing_shm["postgresql_shared_memory"] = []
     with pytest.raises(verify.VerificationError, match="shared-memory metric is missing"):
         verify.validate_results(missing_shm, now=now, max_age_seconds=300)
+
+    missing_checkpoint = _healthy_results(now)
+    missing_checkpoint["postgresql_checkpoint_metrics"] = []
+    with pytest.raises(verify.VerificationError, match="checkpoint-duration metric is missing"):
+        verify.validate_results(missing_checkpoint, now=now, max_age_seconds=300)
+
+    missing_query_latency = _healthy_results(now)
+    missing_query_latency["postgresql_query_latency"] = []
+    with pytest.raises(
+        verify.VerificationError, match="statistics-query latency metric is missing"
+    ):
+        verify.validate_results(missing_query_latency, now=now, max_age_seconds=300)

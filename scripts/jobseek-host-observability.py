@@ -224,6 +224,10 @@ SELECT
   (SELECT failed_count FROM pg_stat_archiver),
   (SELECT checkpoints_timed FROM pg_stat_bgwriter),
   (SELECT checkpoints_req FROM pg_stat_bgwriter),
+  (SELECT checkpoint_write_time FROM pg_stat_bgwriter),
+  (SELECT checkpoint_sync_time FROM pg_stat_bgwriter),
+  (SELECT buffers_checkpoint FROM pg_stat_bgwriter),
+  (SELECT COALESCE(extract(epoch FROM stats_reset), 0) FROM pg_stat_bgwriter),
   (SELECT COALESCE(sum(pg_database_size(datname)), 0) FROM pg_database WHERE datallowconn);
 """.strip()
 
@@ -316,20 +320,31 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
     lines.append(_metric("jobseek_postgresql_ready", int(ready.returncode == 0)))
     if ready.returncode:
         raise ProbeError("PostgreSQL readiness probe failed")
+    query_started = time.monotonic()
     fields = _postgresql_query(container, POSTGRES_STATS_SQL).split("\t")
-    if len(fields) != 7:
+    query_duration = time.monotonic() - query_started
+    lines.append(_metric("jobseek_postgresql_stats_query_duration_seconds", query_duration))
+    if len(fields) != 11:
         raise ProbeError("PostgreSQL statistics query returned an unexpected shape")
-    names = (
-        "jobseek_postgresql_connections",
-        "jobseek_postgresql_max_connections",
-        "jobseek_postgresql_archived_total",
-        "jobseek_postgresql_archive_failed_total",
-        "jobseek_postgresql_checkpoints_timed_total",
-        "jobseek_postgresql_checkpoints_requested_total",
-        "jobseek_postgresql_database_bytes",
+    metrics = (
+        ("jobseek_postgresql_connections", 1.0),
+        ("jobseek_postgresql_max_connections", 1.0),
+        ("jobseek_postgresql_archived_total", 1.0),
+        ("jobseek_postgresql_archive_failed_total", 1.0),
+        ("jobseek_postgresql_checkpoints_timed_total", 1.0),
+        ("jobseek_postgresql_checkpoints_requested_total", 1.0),
+        # PostgreSQL exposes the two checkpoint durations in milliseconds.
+        ("jobseek_postgresql_checkpoint_write_seconds_total", 0.001),
+        ("jobseek_postgresql_checkpoint_sync_seconds_total", 0.001),
+        ("jobseek_postgresql_checkpoint_buffers_total", 1.0),
+        ("jobseek_postgresql_stats_reset_unixtime", 1.0),
+        ("jobseek_postgresql_database_bytes", 1.0),
     )
     try:
-        lines.extend(_metric(name, float(value)) for name, value in zip(names, fields, strict=True))
+        lines.extend(
+            _metric(name, float(value) * scale)
+            for (name, scale), value in zip(metrics, fields, strict=True)
+        )
     except ValueError as exc:
         raise ProbeError("PostgreSQL statistics query returned a non-numeric value") from exc
 

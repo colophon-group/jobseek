@@ -87,6 +87,47 @@ pass.
   backup state must be checked directly during production maintenance and
   backup incident review.
 
+### 2026-07-23 — PostgreSQL capacity and checkpoint pressure stabilized
+
+- Hetzner action history independently confirms that the attached PostgreSQL
+  Volume was expanded from 20 to 40 GiB on 2026-07-22 and subsequently gained
+  delete protection. The live guest sees the full 40 GiB XFS filesystem.
+- A fresh read-only measurement found about 17.2 GiB available (43% free),
+  1% inode use, a 19.2 GB database, and a 16.5 GB `descriptions` relation. The
+  PostgreSQL container is the pgBackRest-capable image with a 4 GiB memory
+  limit and 1 GiB shared-memory mount; it has no restart count or OOM flag.
+  The native backup timer and repository mount are active, and the latest
+  differential backup succeeded with zero WAL archive failures. Five
+  executions of the sampler's exact bounded statistics query completed in
+  71–96 ms; the original audit did not retain an equivalent pre-change query
+  latency, so that unavailable history is not reconstructed.
+- The prior audit recorded 51,106 requested versus 6,330 timed checkpoints
+  under a 1 GiB WAL ceiling (89% requested). After the guarded backup
+  migration established a 4 GiB ceiling, 15-minute timeout, and 0.9 completion
+  target, the next 18.4 hours recorded 13 requested versus 64 timed
+  checkpoints (17% requested). Cumulative checkpoint writes were spread over
+  the configured interval; archive failures remained zero.
+- The most recent retained 24-hour database-size regression measured about
+  4.1 KB/s of physical database growth. If that rate persisted unchanged, 30
+  days would add about 10.7 GB against about 18.4 GB of current filesystem
+  availability, leaving more than 30 days to exhaustion. Short-window
+  filesystem regression was rejected for this decision because the newly
+  enlarged/recycled WAL set caused multi-GiB reversible swings.
+- The repo-owned sampler now exports checkpoint write/sync duration, buffers,
+  statistics-reset evidence, and the duration of its bounded PostgreSQL
+  statistics query. The source now has bounded fleet, PostgreSQL-capacity, and
+  crawler groups containing 19, 2, and 17 rules: one new rule holds a 25%
+  current-free threshold and a 30-day database-growth forecast for six hours;
+  another requires at least four requested checkpoints in six hours and
+  requested dominance for 30 minutes. The observability deploy gates on the
+  new checkpoint and query-latency metrics before transactionally promoting
+  the rules.
+- No description deletion, offload, `VACUUM FULL`, or further Volume expansion
+  was justified. Autovacuum is active on both dominant relations, the current
+  database-growth forecast has more than 30 days of headroom, and changing
+  retention semantics would introduce a larger data-integrity and recovery
+  risk than the measured state.
+
 ### 2026-07-22 — fleet observability staged
 
 - Merged and deployed the repo-owned host telemetry surface from `main` to the
