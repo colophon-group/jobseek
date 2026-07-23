@@ -29,7 +29,8 @@ export default async function AppLayout({ children }: Props) {
             <WatchlistTipBanner aboveBottomBar />
             <main
               id="main-content"
-              className="mx-auto w-full max-w-[1200px] px-4 py-8 pb-20 md:pb-8"
+              tabIndex={-1}
+              className="mx-auto w-full max-w-[1200px] scroll-mt-12 px-4 py-8 pb-20 md:pb-8"
             >
               {children}
             </main>

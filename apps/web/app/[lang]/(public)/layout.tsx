@@ -22,7 +22,9 @@ export default async function PublicLayout({ children, params }: Props) {
       <div className="fixed top-0 right-0 left-0 z-50">
         <HeaderShell />
       </div>
-      <div id="main-content" className="pt-12">{children}</div>
+      <div id="main-content" tabIndex={-1} className="scroll-mt-12 pt-12">
+        {children}
+      </div>
       <Footer lang={locale} />
     </>
   );
