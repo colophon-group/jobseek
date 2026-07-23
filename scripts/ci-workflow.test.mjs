@@ -1023,6 +1023,15 @@ test("Required CI gates Typesense E2E jobs", () => {
   assert.match(workflow, /"test-crawler-typesense-e2e"/);
 });
 
+test("Required CI gates PostgreSQL reconciliation E2E", () => {
+  assert.match(workflow, /needs:[\s\S]*- test-crawler-postgres-cdc-e2e/);
+  assert.match(workflow, /"test-crawler-postgres-cdc-e2e"/);
+  assert.match(
+    workflow,
+    /uv run pytest tests\/e2e\/test_postgres_cdc_commit_order\.py -v/,
+  );
+});
+
 test("setup-uv steps cache uv downloads by crawler lockfile", () => {
   const checkedWorkflows = {
     ci: workflow,

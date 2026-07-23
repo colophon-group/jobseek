@@ -94,7 +94,7 @@ loki.relabel "jobseek" {
 
   rule {
     source_labels = ["__journal__systemd_unit"]
-    regex         = "(jobseek-(host-observability|postgresql-backup|typesense-backup|codex-.*)\\.(service|timer)|cloudflared\\.service)"
+    regex         = "(jobseek-(host-observability|postgresql-backup|typesense-backup|crawler-reconciliation|codex-.*)\\.(service|timer)|cloudflared\\.service)"
     action        = "keep"
   }
 

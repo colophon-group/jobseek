@@ -29,7 +29,6 @@ from src.metrics import (
     local_db_pool_idle,
     local_db_pool_size,
     r2_pending_gauge,
-    reconciliation_discrepancies,
     redis_queue_depth,
     supa_db_pool_idle,
     supa_db_pool_size,
@@ -38,7 +37,6 @@ from src.metrics import (
     typesense_export_duration_seconds,
     typesense_export_lag,
     typesense_memory_bytes,
-    typesense_reconciliation_discrepancies,
 )
 from src.redis_queue import get_queue_depths
 
@@ -171,8 +169,6 @@ __all__ = [
     "backfill_typesense",
     "redis_connected",
     "run_exporter",
-    "run_exporter_with_reconciliation",
-    "run_reconciliation",
     "typesense_healthy",
 ]
 
@@ -562,6 +558,10 @@ def _build_typesense_docs(
 
         doc: dict = {
             "id": str(row["id"]),
+            # Stable UUID range bucket used by the deploy-independent
+            # reconciler. Keeping it in the document avoids whole-index loads
+            # and bounds normal scans to 1/256 of the collection.
+            "reconciliation_bucket": row["id"].hex[:2],
             "company_id": str(company_id),
             "company_name": company_name,
             "company_slug": company_slug,
@@ -1501,10 +1501,9 @@ async def run_exporter(
                     if maps.stale:
                         await maps.refresh(local_pool, supa_pool)
 
-                    # Probe until transactions that changed exported posting
-                    # fields have committed, capture a clock cutoff, then
-                    # immediately release the writer barrier. Rows stamped by
-                    # later transactions stay above this strict upper bound.
+                    # Capture a nonblocking clock cutoff no later than the
+                    # oldest current writer transaction. Rows stamped by that
+                    # writer or a later one stay above the strict upper bound.
                     cutoff = await cutoff_factory(local_pool)
 
                     # Two-cursor dual export
@@ -1686,187 +1685,3 @@ async def backfill_typesense(
     # Save the final cursor so the CDC exporter picks up from here
     await _save_cursor(local_pool, "typesense:job_posting", cursor)
     log.info("backfill.completed", total=total)
-
-
-# ---------------------------------------------------------------------------
-# Reconciliation
-# ---------------------------------------------------------------------------
-
-
-async def run_reconciliation(
-    local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
-) -> int:
-    """Lightweight reconciliation: count comparison + random sample.
-
-    Instead of reading every row from Supabase (which was eating 40% of
-    Supabase compute), this does:
-    1. Compare total counts (local vs Supabase)
-    2. Sample 200 random local rows and check if they exist + match in Supabase
-    3. Touch discrepant rows so the CDC exporter picks them up
-
-    Returns the number of discrepancies found.
-    """
-    discrepancies = 0
-
-    # 1. Count comparison
-    local_count_row = await local_pool.fetchrow("SELECT count(*)::int AS cnt FROM job_posting")
-    supa_count_row = await supa_pool.fetchrow("SELECT count(*)::int AS cnt FROM job_posting")
-    local_count = local_count_row["cnt"] if local_count_row else 0
-    supa_count = supa_count_row["cnt"] if supa_count_row else 0
-
-    if local_count > 0 and abs(local_count - supa_count) / local_count > 0.05:
-        log.warning(
-            "reconciliation.count_drift",
-            local=local_count,
-            supabase=supa_count,
-            drift_pct=round(abs(local_count - supa_count) / local_count * 100, 1),
-        )
-
-    # 2. Random sample check (200 rows)
-    sample_rows = await local_pool.fetch(
-        "SELECT id, is_active, description_r2_hash FROM job_posting ORDER BY random() LIMIT 200"
-    )
-
-    if sample_rows:
-        sample_ids = [r["id"] for r in sample_rows]
-        supa_rows = await supa_pool.fetch(
-            "SELECT id, is_active, description_r2_hash FROM job_posting WHERE id = ANY($1::uuid[])",
-            sample_ids,
-        )
-        supa_map = {r["id"]: r for r in supa_rows}
-
-        for local in sample_rows:
-            remote = supa_map.get(local["id"])
-            if remote is None or (
-                remote["is_active"] != local["is_active"]
-                or remote["description_r2_hash"] != local["description_r2_hash"]
-            ):
-                await local_pool.execute(
-                    "UPDATE job_posting SET updated_at = now() WHERE id = $1",
-                    local["id"],
-                )
-                discrepancies += 1
-
-    # Typesense reconciliation (if enabled)
-    if _typesense_enabled():
-        ts_discrepancies = await _reconcile_typesense(local_pool)
-        discrepancies += ts_discrepancies
-
-    reconciliation_discrepancies.inc(discrepancies)
-    log.info("reconciliation.completed", discrepancies=discrepancies)
-    return discrepancies
-
-
-async def _reconcile_typesense(local_pool: asyncpg.Pool) -> int:
-    """Compare Postgres vs Typesense, touch discrepant rows.
-
-    1. Compare total doc counts
-    2. Sample 100 random IDs from Postgres, check in Typesense
-    Sets typesense_reconciliation_discrepancies gauge.
-    Returns number of discrepancies found.
-    """
-    from src.typesense_client import get_typesense_client
-
-    client = get_typesense_client()
-    if client is None:
-        return 0
-
-    discrepancies = 0
-    loop = asyncio.get_running_loop()
-
-    # 1. Compare document counts
-    try:
-        pg_count = await local_pool.fetchval("SELECT count(*) FROM job_posting")
-        collection_info = await loop.run_in_executor(
-            None,
-            lambda: client.collections["job_posting"].retrieve(),
-        )
-        ts_count = collection_info.get("num_documents", 0)
-
-        log.info(
-            "reconciliation.typesense.counts",
-            postgres=pg_count,
-            typesense=ts_count,
-        )
-    except Exception:
-        log.exception("reconciliation.typesense.count_error")
-        return 0
-
-    # 2. Sample 100 random IDs from Postgres, verify in Typesense
-    try:
-        sample_rows = await local_pool.fetch(
-            "SELECT id, is_active FROM job_posting ORDER BY random() LIMIT 100"
-        )
-
-        for row in sample_rows:
-            posting_id = str(row["id"])
-            try:
-                ts_doc = await loop.run_in_executor(
-                    None,
-                    lambda pid=posting_id: (
-                        client.collections["job_posting"].documents[pid].retrieve()
-                    ),
-                )
-                # Check is_active match
-                if ts_doc.get("is_active") != row["is_active"]:
-                    await local_pool.execute(
-                        "UPDATE job_posting SET updated_at = now() WHERE id = $1",
-                        row["id"],
-                    )
-                    discrepancies += 1
-            except Exception:
-                # Document not found in Typesense -- touch to trigger CDC
-                await local_pool.execute(
-                    "UPDATE job_posting SET updated_at = now() WHERE id = $1",
-                    row["id"],
-                )
-                discrepancies += 1
-    except Exception:
-        log.exception("reconciliation.typesense.sample_error")
-
-    typesense_reconciliation_discrepancies.set(discrepancies)
-    log.info("reconciliation.typesense.completed", discrepancies=discrepancies)
-    return discrepancies
-
-
-# ---------------------------------------------------------------------------
-# Reconciliation loop
-# ---------------------------------------------------------------------------
-
-
-async def _reconciliation_loop(
-    local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
-    shutdown_event: asyncio.Event,
-) -> None:
-    """Periodically run reconciliation in the background."""
-    interval = settings.reconciliation_interval
-    while not shutdown_event.is_set():
-        # Sleep first -- reconciliation is not urgent on startup.
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(shutdown_event.wait(), timeout=interval)
-        if shutdown_event.is_set():
-            break
-        try:
-            discrepancies = await run_reconciliation(local_pool, supa_pool)
-            log.info("reconciliation.tick", discrepancies=discrepancies)
-        except Exception:
-            log.exception("reconciliation.error")
-
-
-# ---------------------------------------------------------------------------
-# Combined runner
-# ---------------------------------------------------------------------------
-
-
-async def run_exporter_with_reconciliation(
-    local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
-    shutdown_event: asyncio.Event,
-) -> None:
-    """Run the exporter and reconciliation loops concurrently."""
-    await asyncio.gather(
-        run_exporter(local_pool, supa_pool, shutdown_event),
-        _reconciliation_loop(local_pool, supa_pool, shutdown_event),
-    )

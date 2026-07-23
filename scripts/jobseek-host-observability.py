@@ -44,6 +44,7 @@ ROLE_CONTAINERS = {
 ROLE_UNITS = {
     "crawler": (
         "docker.service",
+        "jobseek-crawler-reconciliation.timer",
         "jobseek-codex-governor.timer",
         "jobseek-codex-daily-annotations.timer",
         "jobseek-codex-daily-error-review.timer",
@@ -226,6 +227,48 @@ SELECT
   (SELECT COALESCE(sum(pg_database_size(datname)), 0) FROM pg_database WHERE datallowconn);
 """.strip()
 
+RECONCILIATION_STATS_SQL = """
+SELECT
+  target,
+  COALESCE(extract(epoch FROM last_attempt_at), 0),
+  COALESCE(extract(epoch FROM last_success_at), 0),
+  COALESCE(extract(epoch FROM cycle_started_at), 0),
+  last_duration_seconds,
+  last_local_rows,
+  last_remote_rows,
+  last_missing_remote + last_state_mismatch + last_remote_only_active
+    + CASE WHEN target = 'typesense' THEN last_remote_only_inactive ELSE 0 END,
+  last_repaired,
+  last_unresolved,
+  last_outcome,
+  next_partition,
+  partition_count,
+  bootstrap_complete::int
+FROM cross_store_reconciliation_state
+ORDER BY target;
+""".strip()
+
+
+def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
+    result = _run(
+        [
+            "docker",
+            "exec",
+            "--user",
+            "postgres",
+            container,
+            "sh",
+            "-c",
+            'db="${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"; '
+            'exec psql -U "${POSTGRES_USER:-postgres}" -d "$db" '
+            "-XAt -F '\t' -v ON_ERROR_STOP=1 -c \"$1\"",
+            "jobseek-observability",
+            sql,
+        ],
+        timeout=timeout,
+    )
+    return result.stdout.strip()
+
 
 def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -> None:
     ready = subprocess.run(
@@ -248,24 +291,7 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
     lines.append(_metric("jobseek_postgresql_ready", int(ready.returncode == 0)))
     if ready.returncode:
         raise ProbeError("PostgreSQL readiness probe failed")
-    result = _run(
-        [
-            "docker",
-            "exec",
-            "--user",
-            "postgres",
-            container,
-            "sh",
-            "-c",
-            'db="${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"; '
-            'exec psql -U "${POSTGRES_USER:-postgres}" -d "$db" '
-            "-XAt -F '\t' -v ON_ERROR_STOP=1 -c \"$1\"",
-            "jobseek-observability",
-            POSTGRES_STATS_SQL,
-        ],
-        timeout=60,
-    )
-    fields = result.stdout.strip().split("\t")
+    fields = _postgresql_query(container, POSTGRES_STATS_SQL).split("\t")
     if len(fields) != 7:
         raise ProbeError("PostgreSQL statistics query returned an unexpected shape")
     names = (
@@ -281,6 +307,115 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
         lines.extend(_metric(name, float(value)) for name, value in zip(names, fields, strict=True))
     except ValueError as exc:
         raise ProbeError("PostgreSQL statistics query returned a non-numeric value") from exc
+
+    relation = _postgresql_query(
+        container,
+        "SELECT COALESCE(to_regclass('cross_store_reconciliation_state')::text, '')",
+    )
+    schema_ready = int(relation == "cross_store_reconciliation_state")
+    lines.append(_metric("jobseek_cross_store_reconciliation_schema_ready", schema_ready))
+    if not schema_ready:
+        return
+
+    state_rows = _postgresql_query(container, RECONCILIATION_STATS_SQL)
+    for raw in state_rows.splitlines():
+        fields = raw.split("\t")
+        if len(fields) != 14:
+            raise ProbeError("reconciliation state query returned an unexpected shape")
+        target = fields[0]
+        outcome = fields[10]
+        numbers = (*fields[1:10], *fields[11:14])
+        try:
+            (
+                last_attempt,
+                last_success,
+                cycle_started,
+                duration,
+                local_rows,
+                remote_rows,
+                detected,
+                repaired,
+                unresolved,
+                next_partition,
+                partition_count,
+                bootstrap_complete,
+            ) = (float(value) for value in numbers)
+        except ValueError as exc:
+            raise ProbeError("reconciliation state query returned a non-numeric value") from exc
+        labels = {"target": target}
+        lines.extend(
+            (
+                _metric(
+                    "jobseek_cross_store_reconciliation_last_attempt_unixtime",
+                    last_attempt,
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_cross_store_reconciliation_last_success_unixtime",
+                    last_success,
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_cross_store_reconciliation_cycle_started_unixtime",
+                    cycle_started,
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_cross_store_reconciliation_last_duration_seconds",
+                    duration,
+                    **labels,
+                ),
+                _metric("jobseek_cross_store_reconciliation_last_local_rows", local_rows, **labels),
+                _metric(
+                    "jobseek_cross_store_reconciliation_last_remote_rows",
+                    remote_rows,
+                    **labels,
+                ),
+                _metric("jobseek_cross_store_reconciliation_last_detected", detected, **labels),
+                _metric("jobseek_cross_store_reconciliation_last_repaired", repaired, **labels),
+                _metric(
+                    "jobseek_cross_store_reconciliation_last_unresolved",
+                    unresolved,
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_cross_store_reconciliation_last_attempt_success",
+                    int(outcome != "failed"),
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_cross_store_reconciliation_progress_partition",
+                    next_partition,
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_cross_store_reconciliation_partition_count",
+                    partition_count,
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_cross_store_reconciliation_bootstrap_complete",
+                    bootstrap_complete,
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_cross_store_reconciliation_outcome_info",
+                    1,
+                    target=target,
+                    outcome=outcome,
+                ),
+            )
+        )
+
+    stuck = _postgresql_query(
+        container,
+        "SELECT count(*) FROM cross_store_reconciliation_run "
+        "WHERE status = 'running' AND started_at < clock_timestamp() - interval '2 hours'",
+    )
+    try:
+        lines.append(_metric("jobseek_cross_store_reconciliation_stuck_runs", float(stuck)))
+    except ValueError as exc:
+        raise ProbeError("reconciliation run query returned a non-numeric value") from exc
 
 
 def _collect_typesense_metrics(lines: list[str]) -> None:

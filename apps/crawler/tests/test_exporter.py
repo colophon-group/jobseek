@@ -27,7 +27,6 @@ from src.exporter import (
     _export_postings_dual,
     _get_cursor,
     _is_downstream_unavailable,
-    _reconciliation_loop,
     _save_cursor,
     _save_cursors_atomic,
     _update_metrics,
@@ -36,8 +35,6 @@ from src.exporter import (
     _upsert_typesense_backfill_batch,
     backfill_typesense,
     run_exporter,
-    run_exporter_with_reconciliation,
-    run_reconciliation,
 )
 from src.metrics import export_errors_total
 
@@ -1230,82 +1227,6 @@ class TestExportChangedBoards:
 
 
 # ---------------------------------------------------------------------------
-# run_reconciliation
-# ---------------------------------------------------------------------------
-
-
-class TestReconciliation:
-    async def test_empty_sample_returns_zero(self):
-        local = _make_pool()
-        supa = _make_pool()
-
-        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        local.fetch = AsyncMock(return_value=[])  # empty sample
-
-        result = await run_reconciliation(local, supa)
-        assert result == 0
-
-    async def test_missing_remote_triggers_touch(self):
-        """A sampled posting missing from Supabase should be touched."""
-        local = _make_pool()
-        supa = _make_pool()
-
-        posting_id = uuid.uuid4()
-        sample = [_make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})]
-
-        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 99}))
-        local.fetch = AsyncMock(return_value=sample)
-        supa.fetch = AsyncMock(return_value=[])  # not found in Supabase
-        local.execute = AsyncMock()
-
-        result = await run_reconciliation(local, supa)
-        assert result == 1
-        local.execute.assert_awaited_once()
-
-    async def test_state_mismatch_triggers_touch(self):
-        """Differing is_active triggers a touch."""
-        local = _make_pool()
-        supa = _make_pool()
-
-        posting_id = uuid.uuid4()
-        local_sample = [
-            _make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})
-        ]
-        supa_match = [
-            _make_record({"id": posting_id, "is_active": False, "description_r2_hash": 111})
-        ]
-
-        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        local.fetch = AsyncMock(return_value=local_sample)
-        supa.fetch = AsyncMock(return_value=supa_match)
-        local.execute = AsyncMock()
-
-        result = await run_reconciliation(local, supa)
-        assert result == 1
-
-    async def test_matching_state_no_touch(self):
-        """When sampled rows match, no touch should happen."""
-        local = _make_pool()
-        supa = _make_pool()
-
-        posting_id = uuid.uuid4()
-        sample = [_make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})]
-
-        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        local.fetch = AsyncMock(return_value=sample)
-        supa.fetch = AsyncMock(return_value=sample)
-        local.execute = AsyncMock()
-
-        result = await run_reconciliation(local, supa)
-        assert result == 0
-        local.execute.assert_not_awaited()
-
-
-# ---------------------------------------------------------------------------
 # run_exporter (single tick)
 # ---------------------------------------------------------------------------
 
@@ -1564,63 +1485,6 @@ class TestUpdateTypesenseHealth:
 
 
 # ---------------------------------------------------------------------------
-# _reconciliation_loop
-# ---------------------------------------------------------------------------
-
-
-class TestReconciliationLoop:
-    async def test_loop_runs_and_shuts_down(self):
-        local = _make_pool()
-        supa = _make_pool()
-        shutdown = asyncio.Event()
-
-        with (
-            patch("src.exporter.settings") as mock_settings,
-            patch(
-                "src.exporter.run_reconciliation",
-                new_callable=AsyncMock,
-                return_value=0,
-            ) as mock_recon,
-        ):
-            # Use a tiny interval so the test is fast
-            mock_settings.reconciliation_interval = 0.05
-
-            async def set_shutdown():
-                await asyncio.sleep(0.15)
-                shutdown.set()
-
-            await asyncio.gather(
-                _reconciliation_loop(local, supa, shutdown),
-                set_shutdown(),
-            )
-
-            # Should have run reconciliation at least once
-            assert mock_recon.await_count >= 1
-
-
-# ---------------------------------------------------------------------------
-# run_exporter_with_reconciliation
-# ---------------------------------------------------------------------------
-
-
-class TestCombinedRunner:
-    async def test_gathers_both_tasks(self):
-        """Combined runner should start both exporter and reconciliation."""
-        local = _make_pool()
-        supa = _make_pool()
-        shutdown = asyncio.Event()
-
-        with (
-            patch("src.exporter.run_exporter", new_callable=AsyncMock) as mock_exp,
-            patch("src.exporter._reconciliation_loop", new_callable=AsyncMock) as mock_recon,
-        ):
-            await run_exporter_with_reconciliation(local, supa, shutdown)
-
-            mock_exp.assert_awaited_once_with(local, supa, shutdown)
-            mock_recon.assert_awaited_once_with(local, supa, shutdown)
-
-
-# ---------------------------------------------------------------------------
 # _build_typesense_docs: ancestor expansion
 # ---------------------------------------------------------------------------
 
@@ -1707,6 +1571,7 @@ class TestBuildTypesenseDocsAncestors:
         row = _make_posting_record(location_ids=[10])
         docs = _build_typesense_docs([row], maps)
         assert len(docs) == 1
+        assert docs[0]["reconciliation_bucket"] == uuid.UUID(docs[0]["id"]).hex[:2]
         loc_ids = set(docs[0]["location_ids"])
         assert 10 in loc_ids  # leaf (city)
         assert 20 in loc_ids  # region ancestor

@@ -211,19 +211,6 @@ export_errors_total = Counter(
     ["table", "phase"],
 )
 
-# ── Reconciliation metrics ──────────────────────────────────────────
-
-reconciliation_duration = Histogram(
-    "crawler_reconciliation_duration_seconds",
-    "Reconciliation cycle duration",
-    buckets=[1, 5, 10, 30, 60, 300],
-)
-
-reconciliation_discrepancies = Counter(
-    "crawler_reconciliation_discrepancies_total",
-    "Discrepancies found during reconciliation",
-)
-
 # ── Redis queue metrics ─────────────────────────────────────────────
 
 redis_queue_depth = Gauge(
@@ -336,11 +323,6 @@ typesense_export_duration_seconds = Histogram(
 typesense_backfill_docs_total = Counter(
     "crawler_typesense_backfill_docs_total",
     "Documents backfilled to Typesense",
-)
-
-typesense_reconciliation_discrepancies = Gauge(
-    "crawler_typesense_reconciliation_discrepancies",
-    "Discrepancies from last Typesense reconciliation run",
 )
 
 # ``crawler_typesense_healthy`` is defined in ``exporter.py`` — see comment

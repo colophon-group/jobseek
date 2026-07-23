@@ -180,10 +180,10 @@ Stable labels deliberately describe roles rather than provider identifiers:
 
 The sampler covers container running/restart/OOM state, required systemd
 units, reboot-required state, backup attempt/success/freshness, PostgreSQL
-readiness/connections/WAL archive/checkpoint/database size, and Typesense
-health/tunnel state. Sticky Docker OOM flags and absolute restart counters are
-evidence only; the daily error review applies generation/time-window rules
-before declaring a new incident.
+readiness/connections/WAL archive/checkpoint/database size, durable cross-store
+reconciliation state, and Typesense health/tunnel state. Sticky Docker OOM
+flags and absolute restart counters are evidence only; the daily error review
+applies generation/time-window rules before declaring a new incident.
 
 Deployment is owned by
 [`deploy-hetzner-observability.yml`](../.github/workflows/deploy-hetzner-observability.yml).
@@ -222,6 +222,9 @@ verifies the exact active group/rule set, removes stale owned groups, and
 restores the whole prior namespace on failure. This corrects the exporter
 alert by selecting only `instance="exporter"` and adds explicit all-host,
 disk/inode, sampler, backup, PostgreSQL, Typesense/tunnel, and reboot alerts.
+It also routes failed, stale, unresolved, and stuck cross-store reconciliation
+state from PostgreSQL-host metrics; reconciliation state does not depend on an
+ephemeral crawler process exposing Prometheus.
 The intended notification route is the daily Hetzner Codex error-review issue
 workflow; alert state is not routed to phone or email.
 
@@ -250,6 +253,90 @@ Treat missing host/sampler series, disk or inode exhaustion, a failed/stale
 backup, PostgreSQL archive/readiness failure, or Typesense/tunnel failure as an
 incident. Inspect evidence first; this telemetry path does not authorize an
 automatic workload restart.
+
+## Cross-store Reconciliation Timer
+
+`jobseek-crawler-reconciliation.timer` is a Hetzner crawler-host systemd timer,
+not a GitHub cron and not an in-process exporter loop. Its first start is 20
+minutes after the timer is activated; it launches
+`/usr/local/sbin/jobseek-crawler-reconciliation` as the unprivileged `deploy`
+user. The wrapper resolves the immutable image tag already deployed in
+`/home/deploy/.env` and starts a read-only one-shot container with a 1 GiB
+memory limit, one CPU, a PID cap, and no persistent container filesystem. It
+processes at most 16 partitions per target and then exits. Lock acquisition
+may wait up to two hours for an authorized deploy/backfill; once acquired, the
+container has a separate 50-minute hard runtime cap. The next timer interval
+starts only after this service is inactive, preventing delayed work from
+causing an immediate second run. The wrapper filters the crawler environment
+into a mode-`0600` ephemeral file containing only the two database URLs and
+four Typesense settings; proxy, R2, Redis, Codex, Murmur, and other unrelated
+credentials never enter the one-shot container, and the file is removed on
+every exit path.
+
+The wrapper holds `/run/lock/jobseek-crawler-mutation.lock` for the whole run.
+Crawler deploys, scheduled Typesense refreshes/backfills, and reconciliation
+all take that same lock, while PostgreSQL additionally enforces a dedicated
+reconciliation advisory lock. This prevents a timer from starting on an old
+image during a deploy and prevents Typesense maintenance overlap. The existing
+exporter/operator fence serializes each direct repair with cursor advancement;
+no crawler, PostgreSQL, or Typesense service is restarted.
+
+Repository-owned deployment is
+[`deploy-crawler-reconciliation.yml`](../.github/workflows/deploy-crawler-reconciliation.yml).
+It validates and installs the wrapper plus service/timer transactionally as
+root, but never starts the reconciliation service directly. A failed install
+restores the previous files. The timer is enabled immediately and normally
+starts after the boot/cadence delay; the application deploy owns Alembic and
+the additive Typesense schema patch.
+
+Read-only health and aggregate evidence:
+
+```bash
+systemctl is-enabled jobseek-crawler-reconciliation.timer
+systemctl is-active jobseek-crawler-reconciliation.timer
+systemctl list-timers --all jobseek-crawler-reconciliation.timer --no-pager
+systemctl status jobseek-crawler-reconciliation.service --no-pager
+journalctl -u jobseek-crawler-reconciliation.service --since '24 hours ago' --no-pager
+docker ps --filter name=jobseek-cross-store-reconciliation --no-trunc
+```
+
+Do not print `/home/deploy/.env`, database rows, or Typesense documents during
+triage. The PostgreSQL-host textfile exposes only aggregate
+`jobseek_cross_store_reconciliation_*` series. Healthy production has both
+targets completing a full verified cycle within 30 hours, zero unresolved
+drift, no run older than two hours still marked running, and Typesense
+bootstrap complete.
+
+To retry the normal bounded repair after correcting a downstream outage:
+
+```bash
+systemctl start jobseek-crawler-reconciliation.service
+systemctl show jobseek-crawler-reconciliation.service \
+  -p ActiveState -p SubState -p Result -p ExecMainStatus
+journalctl -u jobseek-crawler-reconciliation.service -n 120 --no-pager
+```
+
+The database cursor intentionally remains on a failed partition. Never update
+`cross_store_reconciliation_state`, delete a run row, or force the Typesense
+bootstrap flag to bypass a failure. For an authorized initial/full repair,
+first confirm the timer service is inactive, then use the wrapper's validated
+operator mode. It retains the same host lock, immutable deployed image,
+resource limits, secret filter, and 50-minute cap:
+
+```bash
+systemctl is-active jobseek-crawler-reconciliation.service || true
+sudo -u deploy /usr/local/sbin/jobseek-crawler-reconciliation \
+  --full-target supabase
+sudo -u deploy /usr/local/sbin/jobseek-crawler-reconciliation \
+  --full-target typesense
+```
+
+Run one target at a time and inspect its aggregate result before continuing.
+If the cap is reached, the verified partition cursor remains resumable; rerun
+the same command rather than increasing limits during an incident. Stopping
+or disabling the timer is a scheduling rollback only—the migration and
+optional Typesense bucket field are additive, and disabling the timer does not
+undo already verified downstream repairs.
 
 ## Disk Triage
 
