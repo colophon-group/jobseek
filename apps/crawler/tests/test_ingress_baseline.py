@@ -308,6 +308,14 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
 
     def run(command):
         query = command[-1]
+        if command[:2] == ["docker", "inspect"]:
+            return conformance.CommandResult(0, "1073741824\n")
+        if command[-2:] == ["-B1", "/dev/shm"]:
+            return conformance.CommandResult(
+                0,
+                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
+                "shm 1073741824 67108864 1006632960 7% /dev/shm\n",
+            )
         if "pg_settings" in query:
             return conformance.CommandResult(
                 0,
@@ -321,21 +329,45 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
     assert state["compliant"] is False
 
     private_hba = hba.replace("10.0.0.2", "10.0.0.3")
-    monkeypatch.setattr(
-        conformance,
-        "_run",
-        lambda command: (
+
+    def compliant_run(command):
+        if command[:2] == ["docker", "inspect"]:
+            return conformance.CommandResult(0, "1073741824\n")
+        if command[-2:] == ["-B1", "/dev/shm"]:
+            return conformance.CommandResult(
+                0,
+                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
+                "shm 1073741824 67108864 1006632960 7% /dev/shm\n",
+            )
+        return (
             conformance.CommandResult(
                 0,
                 "listen_addresses|127.0.0.1,10.0.0.4\npassword_encryption|scram-sha-256\nssl|off\n",
             )
             if "pg_settings" in command[-1]
             else conformance.CommandResult(0, private_hba)
-        ),
-    )
+        )
+
+    monkeypatch.setattr(conformance, "_run", compliant_run)
     assert conformance._postgres_state("container", conformance._private_address("10.0.0.3"))[
         "compliant"
     ]
+
+    def undersized_run(command):
+        if command[:2] == ["docker", "inspect"]:
+            return conformance.CommandResult(0, "67108864\n")
+        if command[-2:] == ["-B1", "/dev/shm"]:
+            return conformance.CommandResult(
+                0,
+                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
+                "shm 67108864 22315008 44793856 34% /dev/shm\n",
+            )
+        return compliant_run(command)
+
+    monkeypatch.setattr(conformance, "_run", undersized_run)
+    undersized = conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
+    assert undersized["shared_memory_contract"] is False
+    assert undersized["compliant"] is False
 
 
 def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None:
@@ -355,6 +387,10 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
     assert 'run_replacement "$data"' in postgres
     assert "a fresh successful PostgreSQL backup is required" in postgres
     assert "postgresql-network.env" in migration
+    assert '--shm-size "$POSTGRES_SHM_SIZE"' in postgres
+    assert '--shm-size "$POSTGRES_SHM_SIZE"' in migration
+    assert postgres.count("POSTGRES_SHM_BYTES") >= 3
+    assert migration.count("POSTGRES_SHM_BYTES") >= 3
     assert workflow.index("validate-private-paths:") < workflow.index("commit-hosts:")
     assert "rollback-after-staging-or-validation-failure:" in workflow
     assert "Immediately roll back every staged host" in workflow

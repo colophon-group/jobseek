@@ -30,6 +30,7 @@ def _healthy_results(now: float) -> dict:
         "backup_series": [_row(2)],
         "failed_backups": [],
         "postgresql_ready": [_row(1)],
+        "postgresql_shared_memory": [_row(1)],
         "typesense_ready": [_row(1)],
     }
 
@@ -64,3 +65,8 @@ def test_validate_results_rejects_silent_probe_or_backup_failure() -> None:
     missing_backup["backup_series"] = [_row(1)]
     with pytest.raises(verify.VerificationError, match="PostgreSQL and Typesense"):
         verify.validate_results(missing_backup, now=now, max_age_seconds=300)
+
+    missing_shm = _healthy_results(now)
+    missing_shm["postgresql_shared_memory"] = []
+    with pytest.raises(verify.VerificationError, match="shared-memory metric is missing"):
+        verify.validate_results(missing_shm, now=now, max_age_seconds=300)

@@ -132,6 +132,62 @@ PostgreSQL container migrations source the root-owned
 `/etc/jobseek-ingress/postgresql-network.env`; removing or bypassing that file
 would regress the listener to a wildcard and must fail review.
 
+## PostgreSQL Shared Memory
+
+The live PostgreSQL container contract includes a 4 GiB memory cgroup and a
+separate 1 GiB `/dev/shm` ceiling. Docker's default 64 MiB shared-memory mount
+is not acceptable for this workload: PostgreSQL uses POSIX dynamic shared
+memory for parallel queries, and reaching that mount limit raises `ENOSPC`
+even when the host root filesystem and host `/dev/shm` have ample free space.
+`--shm-size 1g` is a capacity ceiling, not a reservation; it does not allocate
+1 GiB at container start. The existing cgroup remains the total memory safety
+boundary.
+
+Both repo-owned live-container creation paths enforce the same contract:
+
+- `deploy/networking/harden-postgresql.sh`, used by the protected ingress
+  transaction; and
+- `deploy/backups/postgresql/migrate-container.sh`, used for the pgBackRest
+  image migration and future recovery of that deployment surface.
+
+Each path checks both Docker's configured `HostConfig.ShmSize` and the
+capacity actually mounted at `/dev/shm` before accepting the replacement.
+The redacted ingress conformance audit also requires at least 1 GiB. Never
+recreate the production container with an ad hoc `docker run`; doing so can
+silently restore Docker's 64 MiB default.
+
+Read-only verification:
+
+```bash
+docker inspect postgres \
+  --format 'configured_bytes={{.HostConfig.ShmSize}} oom={{.State.OOMKilled}} restarts={{.RestartCount}}'
+docker exec postgres df -h /dev/shm
+docker stats --no-stream postgres
+```
+
+Healthy state has `configured_bytes=1073741824`, a 1 GiB mounted capacity,
+no OOM flag, and adequate free capacity under normal parallel load. The host
+sampler publishes configured/capacity/used/available byte gauges. The
+`PostgreSQLSharedMemoryPressure` rule routes to the daily Codex error review
+if the configured contract regresses or available capacity remains below 15%
+for five minutes.
+
+For an unsafe live contract, use the protected `action=apply` ingress workflow.
+It requires a fresh successful PostgreSQL backup, preserves the old container
+as the rollback target, arms a 15-minute automatic rollback, performs the only
+database handoff in that workflow, proves private-path/readiness/pgBackRest
+health, and commits only after cross-host validation. Do not merely restart the
+existing container: Docker cannot change a container's shared-memory mount in
+place.
+
+Crawler monitor and scrape exceptions are rescheduled through Redis with a
+five-minute error backoff, so transient database write failures remain
+retryable. After remediation, verify the shared-memory error count no longer
+increases, workers drain the retried tasks, PostgreSQL remains below its 4 GiB
+cgroup limit, archive failure count stays flat, and no container records an OOM
+or restart. Do not replay task identifiers manually unless queue and database
+evidence proves the normal reschedule path failed.
+
 ## Fleet Observability
 
 All three hosts run the same repo-owned host telemetry surface:
@@ -180,10 +236,11 @@ Stable labels deliberately describe roles rather than provider identifiers:
 
 The sampler covers container running/restart/OOM state, required systemd
 units, reboot-required state, backup attempt/success/freshness, PostgreSQL
-readiness/connections/WAL archive/checkpoint/database size, durable cross-store
-reconciliation state, and Typesense health/tunnel state. Sticky Docker OOM
-flags and absolute restart counters are evidence only; the daily error review
-applies generation/time-window rules before declaring a new incident.
+readiness/connections/WAL archive/checkpoint/database size/shared-memory
+capacity, durable cross-store reconciliation state, and Typesense
+health/tunnel state. Sticky Docker OOM flags and absolute restart counters are
+evidence only; the daily error review applies generation/time-window rules
+before declaring a new incident.
 
 Deployment is owned by
 [`deploy-hetzner-observability.yml`](../.github/workflows/deploy-hetzner-observability.yml).

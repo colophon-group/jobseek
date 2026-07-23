@@ -158,6 +158,32 @@ pass.
   supplies the final downstream acceptance evidence for #6016; it does not
   replace the normal continuous CDC path.
 
+### 2026-07-23 — PostgreSQL shared-memory incident confirmed
+
+- The current PostgreSQL container was recreated with Docker's 64 MiB
+  `/dev/shm` default despite retaining a 4 GiB memory cgroup, 1 GiB
+  `shared_buffers`, 16 MiB `work_mem`, up to eight parallel workers and two
+  workers per gather. The host root filesystem, host `/dev/shm`, RAM, and
+  inodes had headroom; the failure boundary was inside the container.
+- PostgreSQL recorded 31,398 `could not resize shared memory segment` ENOSPC
+  errors since the current container started, including a peak of 1,283 errors
+  in one minute. All crawler worker classes were affected. The
+  container had no restart or OOM flag, separating this incident from host
+  disk exhaustion and cgroup memory exhaustion.
+- Both repo-owned live replacement paths omitted an explicit shared-memory
+  size, so fixing only the current container would have been temporary. The
+  reviewed root-cause change gives both paths a 1 GiB ceiling, validates the
+  configured and mounted capacity, adds the contract to the redacted ingress
+  audit, publishes configured/capacity/used/available metrics, and routes
+  regression or sustained pressure to the daily Codex error review.
+- Monitor and scrape tasks reschedule through Redis with a five-minute error
+  backoff when the database path raises, so normal recovery is to preserve the
+  queues and verify successful retries after the guarded container handoff,
+  not to replay identifiers blindly. Production closure for #6055 requires a
+  fresh backup gate, protected ingress apply with automatic rollback, a
+  subsequent compliant audit, stable WAL archival and cgroup memory, zero new
+  shared-memory ENOSPC errors under normal load, and a draining retry backlog.
+
 ## Reviewed remediation awaiting production application
 
 The repository now contains the #5923 provider/host ingress, sshd, PostgreSQL

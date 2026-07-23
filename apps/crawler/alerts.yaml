@@ -236,6 +236,28 @@ groups:
           description: "Connection use is approaching max_connections and can block crawler/export operations."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
+      - alert: PostgreSQLSharedMemoryPressure
+        expr: |
+          jobseek_postgresql_shared_memory_configured_bytes < 1073741824
+            or
+          jobseek_postgresql_shared_memory_capacity_bytes < 1073741824
+            or
+          jobseek_postgresql_shared_memory_available_bytes
+            / jobseek_postgresql_shared_memory_capacity_bytes < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          service: postgresql
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "PostgreSQL shared-memory contract is unsafe"
+          description: |
+            The PostgreSQL container has regressed below the required 1 GiB
+            `/dev/shm` limit or less than 15% of that capacity remains. Parallel
+            queries can fail with ENOSPC while the host filesystem is healthy.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#postgresql-shared-memory
+
       - alert: PostgreSQLArchiveFailure
         expr: increase(jobseek_postgresql_archive_failed_total[1h]) > 0
         for: 5m

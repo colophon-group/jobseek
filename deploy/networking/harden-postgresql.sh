@@ -18,6 +18,8 @@ NETWORK_CONFIG=/etc/jobseek-ingress/postgresql-network.env
 INSTALLED=/usr/local/sbin/jobseek-postgresql-network
 ROLLBACK_UNIT=jobseek-postgresql-network-rollback
 ROLLBACK_ARMED=0
+POSTGRES_SHM_SIZE=1g
+POSTGRES_SHM_BYTES=1073741824
 
 fail() {
   echo "ERROR: $*" >&2
@@ -84,6 +86,8 @@ validate_container_contract() {
     fail "PostgreSQL must use host networking"
   [[ "$(docker inspect "$CURRENT_NAME" --format '{{.HostConfig.Memory}}')" == 4294967296 ]] ||
     fail "unexpected PostgreSQL memory limit"
+  [[ "$(docker inspect "$CURRENT_NAME" --format '{{.HostConfig.ShmSize}}')" =~ ^[0-9]+$ ]] ||
+    fail "unreadable PostgreSQL shared-memory limit"
   test -s "$CONFIG_DIR/postgres.env"
   test -s "$CONFIG_DIR/pgbackrest.conf"
   test -d "$SPOOL_DIR"
@@ -209,6 +213,7 @@ run_replacement() {
     --name "$CURRENT_NAME" \
     --network host \
     --memory 4g \
+    --shm-size "$POSTGRES_SHM_SIZE" \
     --restart unless-stopped \
     --env-file "$CONFIG_DIR/postgres.env" \
     --volume "$data:/var/lib/postgresql/data" \
@@ -236,8 +241,16 @@ run_replacement() {
 }
 
 verify_local() {
-  local settings
+  local settings shm_capacity
   wait_ready
+  [[ "$(docker inspect "$CURRENT_NAME" --format '{{.HostConfig.ShmSize}}')" == "$POSTGRES_SHM_BYTES" ]] ||
+    fail "unexpected PostgreSQL shared-memory limit"
+  shm_capacity="$(
+    docker exec "$CURRENT_NAME" df -B1 /dev/shm |
+      awk 'NR == 2 { print $2 }'
+  )"
+  [[ "$shm_capacity" == "$POSTGRES_SHM_BYTES" ]] ||
+    fail "unexpected PostgreSQL /dev/shm capacity"
   settings="$(
     docker exec "$CURRENT_NAME" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -Atc \
       "select current_setting('listen_addresses'), current_setting('password_encryption'), current_setting('archive_mode')"
