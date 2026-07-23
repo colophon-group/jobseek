@@ -54,7 +54,7 @@ async def test_recent_active_sampling_is_bounded_and_index_driven() -> None:
                    $1,
                    $2,
                    'https://labeller-plan.invalid/posting/' || n,
-                   $3 - interval '30 days' - n * interval '1 second',
+                   $3::timestamptz - interval '30 days' - n * interval '1 second',
                    true
             FROM generate_series(1, $4) AS n
             """,
