@@ -109,6 +109,55 @@ pass.
   Typesense, and the tunnel were not restarted. The regression test and
   production evidence were merged, and #5993 is closed.
 
+### 2026-07-23 — deploy-independent cross-store reconciliation verified
+
+- Replaced the exporter's restart-sensitive daily sleep and probabilistic
+  samples with a Hetzner-hosted systemd timer, a resource-capped read-only
+  one-shot container, a shared host mutation lock, a PostgreSQL advisory lock,
+  deterministic UUID partitions, independent durable cursors for Supabase and
+  Typesense, aggregate run history, and fleet alert metrics. Crawler deploys,
+  scheduled Typesense maintenance, and reconciliation now serialize without
+  coupling reconciliation freshness to an exporter container lifetime.
+- The production Supabase cycle checked all 256 partitions and 2,476,793 local
+  postings. It detected and repaired 560,601 actionable discrepancies,
+  including 544,611 active-state mismatches, and completed with zero
+  unresolved. Remote-only inactive Supabase rows remain retained by design for
+  downstream history and foreign-key consumers; active-state parity is the
+  enforced contract.
+- The initial Typesense cycle checked 2,477,149 local postings, repaired
+  2,471,915 legacy documents that predated the deterministic bucket field, and
+  completed with zero unresolved. The final two-pass full-collection stream
+  found no invalid or local unbucketed documents, set bootstrap complete, and
+  reset the durable cursor. Typesense was not restarted; its health remained
+  green throughout the 1-CPU repair, and temporary disk growth stayed within
+  the measured capacity envelope.
+- The first full Typesense invocation reached its 50-minute safety cap after
+  198 partitions in that invocation. Its last verified cursor was preserved,
+  the one-shot container was removed, and the next invocation resumed at the
+  exact next partition. That exercise exposed a run-ledger defect: the capped
+  process ignored the registered shutdown event and left its row marked
+  `running`. Crawler v0.13.185 now cancels the one-shot task on `SIGTERM`,
+  records it as interrupted before unlocking, and lets every new advisory-lock
+  holder immediately classify prior running rows as interrupted. Live
+  acceptance reclassified the orphan as `InterruptedRun`; the next bounded run
+  completed 32 partitions with zero detected, repaired, or unresolved rows.
+- Two post-bootstrap scheduled/controlled slices each checked 16 partitions
+  per target with zero actionable discrepancies. Both CDC legs reached zero
+  lag, the timer remained deploy-independent across the v0.13.185 rollout, all
+  crawler Compose containers remained free of restarts and OOM kills, and no
+  maintenance container or advisory lock was left behind.
+- A final stationary recovered-company check held the shared mutation lock,
+  gracefully paused only crawler writers/browser/drain, allowed both exporter
+  legs to reach zero lag, and compared exact active-ID sets without emitting
+  IDs. Local PostgreSQL, Supabase, and Typesense matched bidirectionally for
+  Capital One (1,698 each), ETH Zürich (118), G-Research (60), Hack The Box
+  (19), Snyk (26), and the currently empty Exotec set (0). All paused services
+  restarted healthy; Typesense and PostgreSQL were not restarted.
+- The implementation and follow-up hardening were reviewed in #6053, #6054,
+  and #6057. This closes the systemic reconciliation root cause in #5930 and
+  supplies the final downstream acceptance evidence for #6016; it does not
+  replace the normal continuous CDC path.
+
 ## Reviewed remediation awaiting production application
 
 The repository now contains the #5923 provider/host ingress, sshd, PostgreSQL
