@@ -1009,6 +1009,10 @@ test("CI runs Typesense E2E suites against a service container", () => {
 
 test("Typesense credentials are separated by consumer and host promotion is manual", () => {
   assert.match(
+    deployTypesenseHostWorkflow,
+    /pull_request:\n    branches: \[main\]\n    paths:/,
+  );
+  assert.match(
     deployCrawlerWorkflow,
     /TYPESENSE_OPERATIONS_KEY: \$\{\{ secrets\.TYPESENSE_OPERATIONS_KEY \}\}/,
   );

@@ -1,6 +1,13 @@
 name: Deploy Typesense Host (Hetzner)
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/typesense-host/**'
+      - 'deploy/systemd/cloudflared.service'
+      - 'scripts/verify-typesense-host-credentials.py'
+      - '.github/workflows/deploy-typesense-host.yml'
   push:
     branches: [main]
     paths:
