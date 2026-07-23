@@ -158,9 +158,9 @@ pass.
   supplies the final downstream acceptance evidence for #6016; it does not
   replace the normal continuous CDC path.
 
-### 2026-07-23 — PostgreSQL shared-memory incident confirmed
+### 2026-07-23 — PostgreSQL shared-memory incident remediated
 
-- The current PostgreSQL container was recreated with Docker's 64 MiB
+- The incident PostgreSQL container had been recreated with Docker's 64 MiB
   `/dev/shm` default despite retaining a 4 GiB memory cgroup, 1 GiB
   `shared_buffers`, 16 MiB `work_mem`, up to eight parallel workers and two
   workers per gather. The host root filesystem, host `/dev/shm`, RAM, and
@@ -179,19 +179,44 @@ pass.
 - Monitor and scrape tasks reschedule through Redis with a five-minute error
   backoff when the database path raises, so normal recovery is to preserve the
   queues and verify successful retries after the guarded container handoff,
-  not to replay identifiers blindly. Production closure for #6055 requires a
-  fresh backup gate, protected ingress apply with automatic rollback, a
-  subsequent compliant audit, stable WAL archival and cgroup memory, zero new
-  shared-memory ENOSPC errors under normal load, and a draining retry backlog.
+  not to replay identifiers blindly.
+- The reviewed change in #6059 merged and all automatic crawler, backup and
+  observability deployments completed successfully. A protected ingress apply
+  then passed the fresh-backup gate, replaced PostgreSQL with a measured 1 GiB
+  configured and mounted `/dev/shm`, validated the real crawler private paths,
+  and committed the database transaction. The exact deployed conformance probe
+  reports the PostgreSQL listener, HBA, SCRAM, repository-owned network config,
+  and shared-memory contract compliant. The host sampler series reached Grafana
+  with the same 1 GiB configured/capacity values and the critical pressure
+  alert remained inactive.
+- The remaining fleet-ingress transaction did not falsely pass: a crawler SSH
+  allowlist parser defect caused its commit conformance to fail, so crawler
+  rollback succeeded and the provider-firewall tail was skipped. PostgreSQL
+  remained committed with no pending transaction or rollback container. This
+  outcome reopened #5923 and is not recorded as completion of the fleet
+  ingress control.
+- A final 15-minute-48-second normal-load observation recorded zero PostgreSQL
+  or crawler shared-memory ENOSPC errors, no PostgreSQL/worker/browser restart
+  or OOM state, 3% `/dev/shm` use, 1.82 GiB of the 4 GiB memory cgroup in use,
+  database readiness, and zero WAL archive failures. The workers completed
+  1,659 monitor runs and 151 scrapes during the window. Ready work decreased
+  from 817 to 779 simple tasks and from 271 to 254 browser tasks while the
+  normal 60/7 inflight concurrency remained active; the pre-existing 3/1
+  simple/browser dead-letter counts did not increase. These gates close #6055
+  without manual task replay.
 
 ## Reviewed remediation awaiting production application
 
-The repository now contains the #5923 provider/host ingress, sshd, PostgreSQL
-listener/HBA, rollback, conformance, and deployment design. This is not yet
-recorded as a verified production control: the baseline evidence below remains
-authoritative until the reviewed revision merges to `main`, the protected
-`action=apply` workflow passes, a subsequent read-only audit is compliant, and
-external probes plus the live crawler private-path checks pass. The runbook in
+The repository contains the #5923 provider/host ingress, sshd, PostgreSQL
+listener/HBA, rollback, conformance, and deployment design. The protected
+apply committed the PostgreSQL host and database policy, but its crawler host
+transaction rolled back after a conformance parser false-negative and the
+provider firewall was not applied. This therefore remains an incomplete fleet
+control: the baseline crawler/provider evidence below remains authoritative
+until the parser fix merges, a new guarded apply passes without unnecessarily
+replacing an already-compliant database, a subsequent read-only audit is
+compliant, and external probes plus the live crawler private-path checks pass.
+The runbook in
 [`16-hetzner-maintenance.md`](../16-hetzner-maintenance.md) records the exact
 policy, the no-TLS threat-model decision for the crawler-only database, and the
 rollback sequence.
