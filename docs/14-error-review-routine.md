@@ -79,6 +79,9 @@ classifying instability:
 
 - A single validated maintenance window owns only service pauses that overlap
   it or its bounded two-minute correlation edge.
+- A single exact-overlap candidate takes precedence over windows that reach
+  the pause only through that edge. Multiple exact candidates or multiple
+  padding-only provenance contracts remain ambiguous.
 - Service-pause correlation is limited to the eight monitored long-running
   crawler services: Redis, three HTTP workers, the browser worker, exporter,
   drain, and Alloy. Transient Compose init services cannot stretch a crawler

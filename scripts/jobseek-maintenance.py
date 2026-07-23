@@ -33,6 +33,7 @@ from jobseek_maintenance_provenance import (  # noqa: E402
     OPERATION_RE,
     REVISION_LABEL,
     REVISION_RE,
+    correlate_events,
     docker_label_arguments,
 )
 
@@ -464,6 +465,83 @@ def _self_test() -> None:
             pass
         with _mutation_lock(0, lock_path=Path(temp_dir) / "created.lock"):
             pass
+
+    deploy_provenance = {
+        "operation": "crawler-deploy",
+        "issue": 3409,
+        "revision": "a" * 40,
+        "budget_seconds": 1800,
+    }
+    adjacent_provenance = {
+        "operation": "maintenance-provenance-acceptance",
+        "issue": 6067,
+        "revision": "b" * 40,
+        "budget_seconds": 120,
+    }
+    correlation = correlate_events(
+        [
+            {
+                "source": "docker_event",
+                "event_at": "2026-07-23T05:00:00+00:00",
+                "action": "start",
+                "container_generation": "deploy-marker",
+                "compose_service": "maintenance-window",
+                "compose_oneoff": "True",
+                "maintenance_provenance": deploy_provenance,
+            },
+            {
+                "source": "docker_event",
+                "event_at": "2026-07-23T05:00:40+00:00",
+                "action": "stop",
+                "container_generation": "worker-generation",
+                "compose_service": "worker-1",
+                "compose_oneoff": "False",
+            },
+            {
+                "source": "docker_event",
+                "event_at": "2026-07-23T05:00:50+00:00",
+                "action": "start",
+                "container_generation": "worker-generation",
+                "compose_service": "worker-1",
+                "compose_oneoff": "False",
+            },
+            {
+                "source": "docker_event",
+                "event_at": "2026-07-23T05:01:00+00:00",
+                "action": "die",
+                "container_generation": "deploy-marker",
+                "compose_service": "maintenance-window",
+                "compose_oneoff": "True",
+                "event_exit_code": "137",
+                "maintenance_provenance": deploy_provenance,
+            },
+            {
+                "source": "docker_event",
+                "event_at": "2026-07-23T05:02:49+00:00",
+                "action": "start",
+                "container_generation": "adjacent-marker",
+                "compose_service": "maintenance-window",
+                "compose_oneoff": "True",
+                "maintenance_provenance": adjacent_provenance,
+            },
+            {
+                "source": "docker_event",
+                "event_at": "2026-07-23T05:02:50+00:00",
+                "action": "die",
+                "container_generation": "adjacent-marker",
+                "compose_service": "maintenance-window",
+                "compose_oneoff": "True",
+                "event_exit_code": "137",
+                "maintenance_provenance": adjacent_provenance,
+            },
+        ]
+    )
+    assert correlation["unattributed_service_pauses"] == []
+    windows = {window["operation"]: window for window in correlation["maintenance_windows"]}
+    assert [pause["service"] for pause in windows["crawler-deploy"]["service_pauses"]] == [
+        "worker-1"
+    ]
+    assert windows["maintenance-provenance-acceptance"]["service_pauses"] == []
 
 
 def _add_provenance_arguments(parser: argparse.ArgumentParser) -> None:
