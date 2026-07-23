@@ -82,6 +82,11 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
   duplicate HuggingFace rows, GitHub issues, GitHub PRs, or active `ws` claims.
 - Every run must report what it did, what it skipped, and what requires human
   escalation.
+- Daily annotation runs must end with the documented
+  `JOBSEEK_ROUTINE_RESULT=<json>` marker. The runner treats a reported
+  fail-closed phase/error as primary and a missing or invalid HuggingFace
+  partition as downstream verification evidence. The marker is advisory for
+  success: the independent remote row-count check remains authoritative.
 - Secrets and local paths are deployment configuration. Do not write secrets
   to the repo, reports, traces, GitHub comments, or PR bodies.
 - The unofficial ChatGPT usage endpoint probe is best-effort telemetry. The
@@ -607,6 +612,12 @@ the directory and count toward the admission ceiling.
   targeted quality review.
 - Preserve remote HuggingFace history and README counts when uploading.
 - Verify `data/<YYYY-MM-DD>.jsonl` has exactly 10 rows after upload.
+- Preserve the first causal failure in the local run ledger. The final Codex
+  message must emit `JOBSEEK_ROUTINE_RESULT=<json>` with `status`, `phase`,
+  and a redacted `primary_error`; a missing date partition is appended only as
+  a downstream symptom. HuggingFace verification has its own bounded
+  120-second timeout and records only a concise error, never the embedded
+  verifier command.
 - Escalate labelling-quality issues that point to a prompt or model weakness;
   do not file routine data rejections as prompt/model issues by default.
 
