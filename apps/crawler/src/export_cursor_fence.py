@@ -19,7 +19,12 @@ from datetime import datetime
 import asyncpg
 import structlog
 
-from src.metrics import exporter_cdc_active_writers, exporter_cdc_cutoff_delay
+from src.metrics import (
+    exporter_cdc_active_writers,
+    exporter_cdc_cutoff_delay,
+    exporter_cdc_released_writer_races_total,
+    exporter_cdc_unknown_writers_total,
+)
 
 log = structlog.get_logger()
 
@@ -40,11 +45,10 @@ _CDC_CUTOFF_SQL = """
 WITH captured AS MATERIALIZED (
     SELECT clock_timestamp() AS captured_at
 ),
-writers AS MATERIALIZED (
-    SELECT 1 AS present, activity.xact_start
+initial_writers AS MATERIALIZED (
+    SELECT 1 AS present, locks.pid
     FROM captured
     JOIN pg_locks AS locks ON true
-    LEFT JOIN pg_stat_activity AS activity ON activity.pid = locks.pid
     WHERE locks.locktype = 'advisory'
       AND locks.database = (
           SELECT oid FROM pg_database WHERE datname = current_database()
@@ -54,18 +58,76 @@ writers AS MATERIALIZED (
       AND locks.objsubid = 1
       AND locks.mode = 'ShareLock'
       AND locks.granted
+),
+scan_gate AS MATERIALIZED (
+    -- This dependency guarantees that the initial lock set is captured before
+    -- activity is inspected. The no-op gate is replaced with pg_sleep only by
+    -- the isolated concurrency test that commits a writer between the scans.
+    SELECT true AS ready
+    FROM (SELECT count(*) FROM initial_writers) AS captured_locks
+),
+gated_writers AS MATERIALIZED (
+    SELECT initial_writers.present,
+           initial_writers.pid
+    FROM initial_writers
+    CROSS JOIN scan_gate
+),
+writers AS MATERIALIZED (
+    SELECT gated_writers.present,
+           gated_writers.pid,
+           activity.xact_start
+    FROM gated_writers
+    LEFT JOIN pg_stat_activity AS activity ON activity.pid = gated_writers.pid
+),
+classified AS MATERIALIZED (
+    SELECT writers.present,
+           writers.xact_start,
+           CASE
+               WHEN writers.xact_start IS NOT NULL THEN 'active'
+               WHEN writers.pid IS NULL THEN 'unknown'
+               WHEN EXISTS (
+                   SELECT 1
+                   FROM pg_locks AS recheck
+                   WHERE recheck.locktype = 'advisory'
+                     AND recheck.database = (
+                         SELECT oid
+                         FROM pg_database
+                         WHERE datname = current_database()
+                     )
+                     AND recheck.classid =
+                         (($1::bigint >> 32) & 4294967295)::oid
+                     AND recheck.objid =
+                         ($1::bigint & 4294967295)::oid
+                     AND recheck.objsubid = 1
+                     AND recheck.mode = 'ShareLock'
+                     AND recheck.granted
+                     AND recheck.pid = writers.pid
+               ) THEN 'unknown'
+               ELSE 'released'
+           END AS writer_state
+    FROM writers
 )
 SELECT captured.captured_at,
        LEAST(
            captured.captured_at,
-           COALESCE(min(writers.xact_start), captured.captured_at)
+           COALESCE(
+               min(classified.xact_start) FILTER (
+                   WHERE classified.writer_state = 'active'
+               ),
+               captured.captured_at
+           )
        ) AS cutoff,
-       count(writers.present)::int AS active_writers,
-       count(writers.present) FILTER (
-           WHERE writers.xact_start IS NULL
+       count(classified.present) FILTER (
+           WHERE classified.writer_state IN ('active', 'unknown')
+       )::int AS active_writers,
+       count(classified.present) FILTER (
+           WHERE classified.writer_state = 'released'
+       )::int AS released_writers,
+       count(classified.present) FILTER (
+           WHERE classified.writer_state = 'unknown'
        )::int AS unknown_writers
 FROM captured
-LEFT JOIN writers ON true
+LEFT JOIN classified ON true
 GROUP BY captured.captured_at
 """
 _CDC_SLOW_CUTOFF_SECONDS = 30.0
@@ -150,9 +212,13 @@ async def capture_cdc_snapshot_cutoff(pool: asyncpg.Pool) -> datetime:
     * older committed rows remain exportable while writers are active.
 
     This avoids both exclusive-lock starvation under continuously overlapping
-    writers and blocking back-pressure on new worker statements. A prepared or
-    otherwise unidentifiable holder fails closed because no safe transaction
-    floor can be proven.
+    writers and blocking back-pressure on new worker statements. PostgreSQL's
+    dynamic lock/activity views can race when an error-aborting writer releases
+    its transaction between their scans. Such a holder is rechecked and is safe
+    to ignore only after its lock is gone: it committed or rolled back before
+    the later export statement can take its snapshot. A prepared, session-level,
+    permission-hidden, or otherwise still-held unidentifiable lock fails closed
+    because no safe transaction floor can be proven.
     """
 
     async with pool.acquire() as conn:
@@ -163,17 +229,26 @@ async def capture_cdc_snapshot_cutoff(pool: asyncpg.Pool) -> datetime:
     captured_at = row["captured_at"]
     cutoff = row["cutoff"]
     active_writers = row["active_writers"]
+    released_writers = row["released_writers"]
     unknown_writers = row["unknown_writers"]
     if (
         not isinstance(captured_at, datetime)
         or not isinstance(cutoff, datetime)
         or not isinstance(active_writers, int)
+        or not isinstance(released_writers, int)
         or not isinstance(unknown_writers, int)
     ):
         raise RuntimeError("PostgreSQL returned an invalid CDC cutoff result")
 
     exporter_cdc_active_writers.set(active_writers)
+    if released_writers:
+        exporter_cdc_released_writer_races_total.inc(released_writers)
+        log.info(
+            "cdc_snapshot_cutoff.writer_released_during_scan",
+            released_writers=released_writers,
+        )
     if unknown_writers:
+        exporter_cdc_unknown_writers_total.inc(unknown_writers)
         log.error(
             "cdc_snapshot_cutoff.unknown_writer",
             active_writers=active_writers,

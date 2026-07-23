@@ -372,14 +372,34 @@ protocol:
   `clock_timestamp()` after that shared lock is held; explicit `updated_at`
   touches are also re-stamped, while lease/schedule/`last_seen_at` bookkeeping
   is intentionally not a CDC change signal;
-- in one non-blocking statement, the exporter captures `clock_timestamp()` and
-  reads the transaction start of every granted shared `CDCLOCK` holder;
+- in one non-blocking statement, the exporter captures `clock_timestamp()`,
+  snapshots every granted shared `CDCLOCK` holder, and reads the transaction
+  start of each holder;
 - the safe cutoff is the earlier of that clock and the oldest holder's
   transaction start, and the exporter selects only `updated_at < cutoff`; and
 - an existing holder cannot have stamped before its own transaction start,
   while a transaction that reaches the trigger after the clock capture stamps
   at or after that clock. Both remain above the strict cutoff until a later
   tick, while older committed rows can continue exporting immediately.
+
+`pg_locks` and `pg_stat_activity` are dynamic views, so an error-aborting
+writer can release its transaction after the lock snapshot but before its
+activity row is inspected. That is not an unmarked writer: the exporter
+rechecks the initially unattributable PID. If its lock is already gone, the
+transaction committed or rolled back before the later export statement can
+take its snapshot. A committed stamp below the captured clock is visible; a
+stamp at or above that clock remains excluded by the strict cutoff. A lock
+that is still held without an attributable transaction start remains unsafe
+and fails the tick closed. This preserves protection against session-level,
+prepared, permission-hidden, or otherwise protocol-violating holders.
+
+The distinction was required after three fail-closed ticks occurred during
+the PostgreSQL shared-memory incident: the same 65-second retained-log window
+contained more than 700 worker/browser ENOSPC errors and rapid transaction
+aborts. Prepared transactions were disabled and absent. A deterministic
+PostgreSQL integration test now commits a trigger-marked writer between the
+lock and activity scans and proves that its row is exported exactly once; a
+separate persistent session-lock case must still fail closed.
 
 The exporter never takes the exclusive side and never waits for a moment with
 zero writers. This matters under steady load: individually short worker
@@ -391,6 +411,11 @@ oldest current posting-writer transaction.
 
 `crawler_exporter_cdc_cutoff_delay_seconds` reports that cost and
 `crawler_exporter_cdc_active_writers` reports the observed holder count.
+`crawler_exporter_cdc_released_writer_races_total` counts benign holders that
+disappear during the dynamic-view scan, while
+`crawler_exporter_cdc_unknown_writers_total` counts only still-held markers
+without a safe floor. `CdcWriterIdentityUnavailable` routes any increment of
+the latter to Codex error review; the exporter keeps both cursors pinned.
 `CdcWriterCutoffDelayed` routes a cutoff older than 120 seconds to Codex error
 review. Inspect `pg_stat_activity` and `cdc_snapshot_cutoff.delayed` before
 terminating a production backend. A holder with no attributable transaction

@@ -85,6 +85,7 @@ def test_exporter_alert_selects_only_exporter_target() -> None:
 
 def test_cdc_safety_alerts_route_to_daily_error_review() -> None:
     delayed = _alert_rule("CdcWriterCutoffDelayed")
+    unknown = _alert_rule("CdcWriterIdentityUnavailable")
     schema = _alert_rule("CrossStoreReconciliationSchemaMissing")
     failed = _alert_rule("CrossStoreReconciliationFailed")
     stale = _alert_rule("CrossStoreReconciliationStale")
@@ -92,16 +93,20 @@ def test_cdc_safety_alerts_route_to_daily_error_review() -> None:
     stuck = _alert_rule("CrossStoreReconciliationRunStuck")
 
     assert "crawler_exporter_cdc_cutoff_delay_seconds" in delayed["expr"]
+    assert "crawler_exporter_cdc_unknown_writers_total" in unknown["expr"]
     assert "schema_ready" in schema["expr"]
     assert "last_attempt_success" in failed["expr"]
     assert "last_success_unixtime" in stale["expr"]
     assert "last_unresolved" in drift["expr"]
     assert "stuck_runs" in stuck["expr"]
-    for rule in (delayed, schema, failed, stale, drift, stuck):
+    for rule in (delayed, unknown, schema, failed, stale, drift, stuck):
         assert rule["labels"]["severity"] == "high"
         assert rule["labels"]["owner"] == "codex-error-review"
         assert rule["labels"]["route"] == "codex-daily"
     assert delayed["annotations"]["runbook"].endswith(
+        "docs/03-crawler-architecture.md#commit-safe-posting-cdc"
+    )
+    assert unknown["annotations"]["runbook"].endswith(
         "docs/03-crawler-architecture.md#commit-safe-posting-cdc"
     )
     for rule in (schema, failed, stale, drift, stuck):

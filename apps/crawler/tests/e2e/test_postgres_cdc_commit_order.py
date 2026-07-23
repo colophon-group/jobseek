@@ -10,7 +10,11 @@ from datetime import UTC, datetime
 import asyncpg
 import pytest
 
-from src.export_cursor_fence import capture_cdc_snapshot_cutoff
+from src.export_cursor_fence import (
+    _CDC_CUTOFF_SQL,
+    CDC_WRITER_BARRIER_ID,
+    capture_cdc_snapshot_cutoff,
+)
 from src.reconciliation import reconcile_partition
 
 REQUIRE_POSTGRES_E2E = os.getenv("REQUIRE_POSTGRES_E2E") == "true"
@@ -133,6 +137,119 @@ async def test_uncommitted_old_stamp_cannot_fall_behind_export_cursor() -> None:
         await writer_b.close()
         await writer_c.close()
         await control.close()
+        await pool.close()
+
+
+async def test_writer_commit_between_lock_and_activity_scans_exports_exactly_once() -> None:
+    """A released initial lock is safe; a later statement sees its commit."""
+
+    dsn = os.environ["LOCAL_DATABASE_URL"]
+    pool = await asyncpg.create_pool(dsn, min_size=1, max_size=2)
+    control = await asyncpg.connect(dsn)
+    writer = await asyncpg.connect(dsn)
+    cutoff_connection = await asyncpg.connect(
+        dsn,
+        server_settings={"application_name": "cdc-cutoff-release-race-test"},
+    )
+    company_id = uuid.uuid4()
+    board_id = uuid.uuid4()
+    posting_id = uuid.uuid4()
+
+    try:
+        await control.execute(
+            "INSERT INTO job_board (id, company_id, board_slug, board_url) VALUES ($1, $2, $3, $4)",
+            board_id,
+            company_id,
+            f"cdc-release-race-{board_id}",
+            f"https://cdc-release-race.invalid/{board_id}",
+        )
+        await control.execute(
+            "INSERT INTO job_posting (id, company_id, board_id, source_url) "
+            "VALUES ($1, $2, $3, $4)",
+            posting_id,
+            company_id,
+            board_id,
+            f"https://cdc-release-race.invalid/posting/{posting_id}",
+        )
+        initial_updated_at = await control.fetchval(
+            "SELECT updated_at FROM job_posting WHERE id = $1",
+            posting_id,
+        )
+        cursor = (initial_updated_at, posting_id)
+
+        await writer.execute("BEGIN")
+        await writer.execute(
+            "UPDATE job_posting SET is_active = false WHERE id = $1",
+            posting_id,
+        )
+
+        gate_source = "FROM (SELECT count(*) FROM initial_writers) AS captured_locks"
+        delayed_gate = gate_source + " CROSS JOIN LATERAL (SELECT pg_sleep(1)) AS test_delay"
+        delayed_sql = _CDC_CUTOFF_SQL.replace(gate_source, delayed_gate, 1)
+        assert delayed_sql != _CDC_CUTOFF_SQL
+        cutoff_task = asyncio.create_task(
+            cutoff_connection.fetchrow(delayed_sql, CDC_WRITER_BARRIER_ID)
+        )
+
+        for _ in range(100):
+            sleeping = await control.fetchval(
+                "SELECT EXISTS ("
+                "SELECT 1 FROM pg_stat_activity "
+                "WHERE application_name = 'cdc-cutoff-release-race-test' "
+                "AND wait_event = 'PgSleep'"
+                ")"
+            )
+            if sleeping:
+                break
+            await asyncio.sleep(0.01)
+        else:
+            raise AssertionError("cutoff query did not reach the deterministic scan gate")
+
+        await writer.execute("COMMIT")
+        result = await asyncio.wait_for(cutoff_task, timeout=3)
+
+        assert result["active_writers"] == 0
+        assert result["released_writers"] == 1
+        assert result["unknown_writers"] == 0
+        assert result["cutoff"] == result["captured_at"]
+
+        exported = await _changed_rows(control, cursor, result["cutoff"])
+        assert [row["id"] for row in exported] == [posting_id]
+        next_cursor = (exported[0]["updated_at"], exported[0]["id"])
+        final_cutoff = await capture_cdc_snapshot_cutoff(pool)
+        assert await _changed_rows(control, next_cursor, final_cutoff) == []
+    finally:
+        if writer.is_in_transaction():
+            await writer.execute("ROLLBACK")
+        await control.execute("DELETE FROM job_posting WHERE board_id = $1", board_id)
+        await control.execute("DELETE FROM job_board WHERE id = $1", board_id)
+        await cutoff_connection.close()
+        await writer.close()
+        await control.close()
+        await pool.close()
+
+
+async def test_still_held_session_writer_marker_fails_closed() -> None:
+    """A persistent marker without a transaction floor is not a release race."""
+
+    dsn = os.environ["LOCAL_DATABASE_URL"]
+    pool = await asyncpg.create_pool(dsn, min_size=1, max_size=2)
+    holder = await asyncpg.connect(dsn)
+
+    try:
+        await holder.fetchval(
+            "SELECT pg_advisory_lock_shared($1::bigint)",
+            CDC_WRITER_BARRIER_ID,
+        )
+
+        with pytest.raises(RuntimeError, match="transaction start is unavailable"):
+            await capture_cdc_snapshot_cutoff(pool)
+    finally:
+        await holder.fetchval(
+            "SELECT pg_advisory_unlock_shared($1::bigint)",
+            CDC_WRITER_BARRIER_ID,
+        )
+        await holder.close()
         await pool.close()
 
 

@@ -187,6 +187,7 @@ async def test_cdc_cutoff_uses_captured_clock_without_active_writers() -> None:
         "captured_at": cutoff,
         "cutoff": cutoff,
         "active_writers": 0,
+        "released_writers": 0,
         "unknown_writers": 0,
     }
 
@@ -206,6 +207,7 @@ async def test_cdc_cutoff_uses_oldest_active_writer_floor_without_waiting() -> N
         "captured_at": captured,
         "cutoff": cutoff,
         "active_writers": 7,
+        "released_writers": 0,
         "unknown_writers": 0,
     }
 
@@ -216,6 +218,23 @@ async def test_cdc_cutoff_uses_oldest_active_writer_floor_without_waiting() -> N
 
 
 @pytest.mark.asyncio
+async def test_cdc_cutoff_accepts_writer_released_between_dynamic_view_scans() -> None:
+    pool, connection = _pool_and_connection()
+    captured = datetime(2026, 7, 23, 6, 31, tzinfo=UTC)
+    connection.fetchrow.return_value = {
+        "captured_at": captured,
+        "cutoff": captured,
+        "active_writers": 0,
+        "released_writers": 1,
+        "unknown_writers": 0,
+    }
+
+    assert await capture_cdc_snapshot_cutoff(pool) == captured
+
+    connection.fetchrow.assert_awaited_once_with(_CDC_CUTOFF_SQL, CDC_WRITER_BARRIER_ID)
+
+
+@pytest.mark.asyncio
 async def test_cdc_cutoff_fails_closed_for_unknown_writer_transaction() -> None:
     pool, connection = _pool_and_connection()
     captured = datetime(2026, 7, 23, 6, 31, tzinfo=UTC)
@@ -223,6 +242,7 @@ async def test_cdc_cutoff_fails_closed_for_unknown_writer_transaction() -> None:
         "captured_at": captured,
         "cutoff": captured,
         "active_writers": 1,
+        "released_writers": 0,
         "unknown_writers": 1,
     }
 
@@ -245,7 +265,15 @@ def test_cdc_cutoff_sql_captures_clock_before_inspecting_bigint_lock_holders() -
     compact = " ".join(_CDC_CUTOFF_SQL.split())
 
     assert "captured AS MATERIALIZED ( SELECT clock_timestamp()" in compact
+    assert "initial_writers AS MATERIALIZED" in compact
     assert "FROM captured JOIN pg_locks" in compact
+    assert "scan_gate AS MATERIALIZED" in compact
+    assert "gated_writers AS MATERIALIZED" in compact
+    assert "FROM initial_writers CROSS JOIN scan_gate" in compact
+    assert "FROM gated_writers LEFT JOIN pg_stat_activity" in compact
+    assert "FROM pg_locks AS recheck" in compact
+    assert "recheck.pid = writers.pid" in compact
     assert "locks.objsubid = 1" in compact
     assert "locks.database =" in compact
-    assert "min(writers.xact_start)" in compact
+    assert "classified.writer_state = 'released'" in compact
+    assert "min(classified.xact_start)" in compact

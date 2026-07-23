@@ -514,6 +514,29 @@ groups:
             `cdc_snapshot_cutoff.delayed` event before terminating anything.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#commit-safe-posting-cdc
 
+      # A lock that disappeared between the dynamic pg_locks/activity scans is
+      # safe and counted separately. This alert is reserved for a marker that
+      # remains held without an attributable transaction start; the exporter
+      # fails that tick closed rather than advancing either cursor.
+      - alert: CdcWriterIdentityUnavailable
+        expr: increase(crawler_exporter_cdc_unknown_writers_total{instance="exporter"}[15m]) > 0
+        for: 1m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "A CDC writer lock has no attributable transaction start"
+          description: |
+            The exporter kept both cursors pinned because a shared CDC writer
+            marker remained held after recheck without a visible transaction
+            start. Inspect `pg_locks`, `pg_stat_activity`, prepared
+            transactions, and `cdc_snapshot_cutoff.unknown_writer`; do not
+            terminate a backend until its owner and rollback consequence are
+            understood.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#commit-safe-posting-cdc
+
       # Reconciliation evidence is persisted in authoritative PostgreSQL and
       # scraped by the PostgreSQL host collector, so exporter recreation can
       # neither reset the schedule nor erase the last outcome.
