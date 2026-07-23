@@ -199,6 +199,16 @@ exporter_cdc_active_writers = Gauge(
     "Transactions currently holding the shared posting CDC writer marker",
 )
 
+exporter_cdc_released_writer_races_total = Counter(
+    "crawler_exporter_cdc_released_writer_races_total",
+    "Initially observed CDC writer locks released before the activity recheck",
+)
+
+exporter_cdc_unknown_writers_total = Counter(
+    "crawler_exporter_cdc_unknown_writers_total",
+    "Still-held CDC writer locks without an attributable transaction start",
+)
+
 export_errors_total = Counter(
     "crawler_export_errors_total",
     # Bumped per row dropped by the per-row fallback path (#3180). The
