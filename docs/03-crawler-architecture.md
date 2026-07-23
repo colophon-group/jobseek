@@ -176,6 +176,14 @@ A host allowlist for the Avature 403 pattern was rejected (closed PR #2720) as o
 
 Either authority's tombstone is reversible. The monitor's discovery query (`queries/monitor.py` — the `relisted` CTE) flips `is_active = true`, resets `missing_count = 0`, AND resets `scrape_failures = 0` when a previously-tombstoned URL reappears in a fresh monitor cycle. So a transient 3-failure cluster on a still-live URL self-heals on the next monitor pass; only URLs that the monitor *also* doesn't re-list stay tombstoned.
 
+Relisting also advances `updated_at` in the same transaction. This is a CDC
+invariant: both downstream exporter cursors are keyed by `(updated_at, id)`, so
+changing `is_active` without the timestamp would repair local PostgreSQL while
+leaving Supabase and Typesense permanently inactive. For a bounded historical
+repair, `crawler repair-relisted-cdc --since <timezone-aware timestamp>`
+compares recent local candidates with both downstream activity sets and touches
+only confirmed mismatches; use `--dry-run` before the write pass.
+
 The `scrape_failures` reset is load-bearing: without it, a relisted posting comes back with `scrape_failures = 3`, and the very next failed scrape would re-tombstone it via the budget condition — a flap loop on chronically slow upstreams.
 
 ### 4. Known recovery gap — cross-tenant URLs

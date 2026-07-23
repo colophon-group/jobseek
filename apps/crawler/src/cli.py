@@ -177,6 +177,34 @@ def parse_args() -> argparse.Namespace:
         help="Report the count that would be affected; make no writes.",
     )
 
+    repair_relisted_p = sub.add_parser(
+        "repair-relisted-cdc",
+        help=(
+            "Compare recently seen locally-active postings with Supabase and "
+            "Typesense, then touch confirmed downstream activity mismatches "
+            "so the normal CDC exporter repairs them."
+        ),
+    )
+    from src.repair_relisted_cdc import parse_aware_datetime
+
+    repair_relisted_p.add_argument(
+        "--since",
+        type=parse_aware_datetime,
+        required=True,
+        help="Only scan rows seen since this timezone-aware ISO-8601 timestamp.",
+    )
+    repair_relisted_p.add_argument(
+        "--batch-size",
+        type=int,
+        default=2000,
+        help="Local/Supabase comparison batch size (default 2000).",
+    )
+    repair_relisted_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report confirmed mismatches without touching local CDC timestamps.",
+    )
+
     sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
 
     sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
@@ -417,6 +445,19 @@ async def run() -> None:
                 )
             else:
                 await retry_stalled_scrapes(local_pool, max_age_days=args.max_age_days)
+
+        elif args.command == "repair-relisted-cdc":
+            local_pool = await create_local_pool()
+            supa_pool = await create_pool()
+            from src.repair_relisted_cdc import repair_relisted_cdc
+
+            await repair_relisted_cdc(
+                local_pool,
+                supa_pool,
+                since=args.since,
+                dry_run=args.dry_run,
+                batch_size=args.batch_size,
+            )
 
         elif args.command == "backfill-typesense":
             from src.cron_metrics import cron_run
