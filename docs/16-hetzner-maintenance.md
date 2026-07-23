@@ -759,6 +759,12 @@ Use the installed `/usr/local/sbin/jobseek-maintenance` contract. It:
   window, so service stops and restoration are correlated to the operation
   even when the inner repair has several containers.
 
+The lock inode is shared by root-run operator work and deploy-user workflows.
+The wrapper opens an existing lock read-only before applying `flock`; it never
+creates/truncates that inode merely to acquire it. If root must create a
+missing post-reboot lock, ownership is handed to `deploy` so later workflows
+continue to serialize on the same inode.
+
 The revision must be the reviewed commit that defines the repair. Keep
 credentials in a root/deploy-only environment file; never put them in the
 wrapper or Docker command arguments.

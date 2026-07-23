@@ -562,6 +562,20 @@ test("Codex deploy installs the maintenance contract without granting runner Doc
   );
 });
 
+test("maintenance wrapper self-test covers the cross-owner lock path", () => {
+  const result = spawnSync(
+    "python3",
+    ["scripts/jobseek-maintenance.py", "--self-test"],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /maintenance provenance self-test passed/);
+});
+
 test("Codex deploy restores prior timer state after failure", () => {
   const dir = mkdtempSync(join(tmpdir(), "codex-deploy-timers-"));
   const log = join(dir, "systemctl.log");
