@@ -30,6 +30,18 @@ MAX_BUDGET_SECONDS = 8 * 60 * 60
 
 CORRELATION_PADDING_SECONDS = 120
 MERGE_GAP_SECONDS = 180
+MONITORED_SERVICES = frozenset(
+    {
+        "redis",
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "browser-1",
+        "exporter",
+        "drain",
+        "alloy",
+    }
+)
 
 LIFECYCLE_FIELDS = frozenset(
     {
@@ -336,7 +348,7 @@ def _service_pauses(
     by_service: dict[str, list[tuple[datetime, dict[str, Any]]]] = {}
     for event_at, event in events:
         service = str(event.get("compose_service", ""))
-        if not service or _is_oneoff(event) or service == "maintenance-window":
+        if service not in MONITORED_SERVICES or _is_oneoff(event):
             continue
         action = str(event.get("action", ""))
         if action not in {"kill", "stop", "die", "oom", "start", "restart"}:
@@ -438,7 +450,7 @@ def _public_window(window: dict[str, Any]) -> dict[str, object]:
     for interval in sorted(window["oneoffs"], key=lambda item: item["start"]):
         code = interval.get("exit_code")
         is_marker = interval["compose_service"] == "maintenance-window"
-        if code not in (None, 0) and not (is_marker and code == 143):
+        if code not in (None, 0) and not is_marker:
             reasons.add("oneoff_nonzero_exit")
         if interval.get("oom"):
             reasons.add("oom")

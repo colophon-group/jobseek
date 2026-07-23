@@ -60,6 +60,12 @@ survive Docker's volatile event buffer and container recreation. The root
 collector allowlists the journal again and one-way transforms raw IDs from
 legacy schema rows before the bundle becomes readable by `codex-runner`.
 
+Every file written to the runner bundle passes the same final redaction
+boundary. In addition to credential shapes, it removes IPv4/IPv6 host
+addresses, UUID-shaped domain/resource identifiers, and raw 64-hex
+Docker/image identifiers. The 16-hex `container_generation` remains available
+for same-generation comparisons without exposing the underlying resource ID.
+
 Production maintenance attribution is deterministic rather than inferred from
 container names. Repository-owned one-offs and the
 `/usr/local/sbin/jobseek-maintenance` wrapper attach an all-or-nothing
@@ -73,6 +79,10 @@ classifying instability:
 
 - A single validated maintenance window owns only service pauses that overlap
   it or its bounded two-minute correlation edge.
+- Service-pause correlation is limited to the eight monitored long-running
+  crawler services: Redis, three HTTP workers, the browser worker, exporter,
+  drain, and Alloy. Transient Compose init services cannot stretch a crawler
+  maintenance window.
 - Missing, partial, invalid, or conflicting provenance remains unattributed;
   never infer authorization from a name or an adjacent unlabelled one-off.
 - Authorized maintenance is reported as a maintenance outcome, with its
@@ -80,8 +90,10 @@ classifying instability:
   health, rather than as spontaneous worker instability.
 - OOM/native exits, forced termination, nonzero maintenance one-offs, budget
   overruns, and failed restoration remain actionable even in an authorized
-  window. Update the maintenance issue or create a deduplicated operational
-  follow-up instead of reopening an unrelated instability issue.
+  window. The wrapper-owned marker's expected termination is not a failed
+  maintenance one-off; marker OOM still is. Update the maintenance issue or
+  create a deduplicated operational follow-up instead of reopening an
+  unrelated instability issue.
 
 Compatibility fallback:
 [`.claude/commands/jobseek-error-review.md`](../.claude/commands/jobseek-error-review.md).
