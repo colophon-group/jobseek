@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -87,6 +88,8 @@ async def test_recent_active_sampling_is_bounded_and_index_driven() -> None:
             start,
             end,
         )
+        if isinstance(explained, str):
+            explained = json.loads(explained)
         root = explained[0]["Plan"]
         nodes = _plan_nodes(root)
 
