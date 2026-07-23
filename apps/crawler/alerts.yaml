@@ -194,7 +194,7 @@ groups:
           route: codex-daily
         annotations:
           summary: "{{ $labels.service }} backup failed on {{ $labels.instance }}"
-          description: "The latest application-data backup attempt failed. Legacy OS backups must remain enabled."
+          description: "The latest application-data backup attempt failed. The native repository is now the only recovery path; investigate immediately and preserve existing artifacts."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/19-data-backup-recovery.md#failure-and-removal-gates
 
       - alert: DataBackupStale
