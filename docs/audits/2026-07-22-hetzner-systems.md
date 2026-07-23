@@ -242,6 +242,61 @@ pass.
   threat model and rollback sequence remain in
   [`16-hetzner-maintenance.md`](../16-hetzner-maintenance.md).
 
+### 2026-07-23 — commit-safe CDC writer race verified
+
+- The commit-safe CDC cutoff introduced by #6049/#6052 failed closed three
+  times during a high-frequency PostgreSQL abort storm. The exporter recovered
+  on its next tick and no skipped row was demonstrated, but the repeated
+  `cdc_snapshot_cutoff.unknown_writer` error made the cursor protocol
+  unavailable under exactly the load where it is most important.
+- The holder was not an anonymous session or prepared transaction:
+  `max_prepared_transactions` and the prepared-transaction count were both
+  zero. A 30-second production sample observed 571 cutoff probes and active
+  writers in 236 of them without reproducing an unidentified live holder.
+  Correlated retained logs placed the failures inside the PostgreSQL
+  shared-memory incident, while the cross-store reconciler was not running.
+  The root cause was a race between PostgreSQL's dynamic `pg_locks` and
+  `pg_stat_activity` views: a transaction could be captured in the first lock
+  scan, commit or roll back, and disappear before its transaction start was
+  read. The old query conflated that already-released holder with a still-held
+  lock whose identity was genuinely unavailable.
+- Crawler v0.13.188 materializes the initial lock set, scans activity, and then
+  rechecks the exact PID and advisory-lock key. A holder with a transaction
+  start remains part of the conservative cutoff. A holder that disappeared is
+  classified as a benign released-writer race: its committed change is visible
+  to the export statement that follows, while the strict cutoff still excludes
+  stamps at or after the captured clock. A PID-less prepared holder or a
+  session-level holder that remains locked still fails closed. Dedicated
+  PostgreSQL E2E coverage forces a writer commit between the two scans and
+  proves exactly-once export; a persistent session-lock test proves the unsafe
+  case is still rejected. The complete crawler suite, PostgreSQL E2E, CI and
+  CodeQL passed before the immutable image was deployed.
+- The observability deployment added separate counters for benign released
+  races and genuinely unidentified holders plus a high-severity
+  `CdcWriterIdentityUnavailable` rule routed to the daily Codex error review.
+  Production Grafana ingestion showed three natural released-holder races,
+  zero unknown-writer increase and no firing alert. The exporter emitted the
+  matching three structured release events with zero unknown-writer errors,
+  tick errors or slow-cutoff warnings.
+- Controlled full-cycle completion then verified both downstream stores under
+  the repo-owned 1-CPU/1-GiB reconciler. Supabase's durable 256-partition cycle
+  checked 2,478,703 local rows against 2,484,576 downstream rows, repaired five
+  live active-state differences and ended with zero missing, remote-only
+  active or unresolved rows; the 5,873-row difference is retained downstream
+  inactive history by policy. Typesense's durable cycle checked an exact
+  2,478,922 local and remote documents, repaired six live active-state
+  differences and ended with zero missing, extra or unresolved documents.
+  Both durable cursors reset cleanly and the hourly timer was restored.
+- During a further 10-minute normal-load window the exporter completed 560
+  ticks, stayed running with zero restart/OOM state, and handled three natural
+  released-holder races without an unknown-writer or tick error. Directly
+  sampled lag rose transiently to 42 rows during active write bursts and
+  drained to an exact zero; retained metrics recorded a maximum cutoff delay
+  of 18.1 seconds, below both the warning and alert thresholds. PostgreSQL and
+  Typesense retained their prior start times, Typesense remained healthy, and
+  no maintenance container, failed unit or stale reconciliation run remained.
+  This closes the root cause and production acceptance criteria in #6034.
+
 ## Inventory and ownership
 
 | host | role | platform | persistent data | deployment/owner surface |
