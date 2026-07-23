@@ -14,6 +14,7 @@ import structlog
 from prometheus_client import Counter, Gauge
 
 from src.config import settings
+from src.export_cursor_fence import CursorFenceFactory, export_cursor_fence
 from src.metrics import (
     export_errors_total,
     exporter_export_lag,
@@ -1439,6 +1440,8 @@ async def run_exporter(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
     shutdown_event: asyncio.Event,
+    *,
+    cursor_fence_factory: CursorFenceFactory = export_cursor_fence,
 ) -> None:
     """Main exporter loop.
 
@@ -1473,55 +1476,60 @@ async def run_exporter(
     while not shutdown_event.is_set():
         t0 = time.monotonic()
         try:
-            if ts_enabled and maps is not None:
-                # Refresh taxonomy maps if stale
-                if maps.stale:
-                    await maps.refresh(local_pool, supa_pool)
+            # Serialize the mutable-row read and cursor save with operator
+            # repairs.  Without this fence, a bulk UPDATE can choose its
+            # timestamp before this statement snapshot, commit afterwards,
+            # and be skipped permanently when this tick advances the cursor.
+            async with cursor_fence_factory(local_pool):
+                if ts_enabled and maps is not None:
+                    # Refresh taxonomy maps if stale
+                    if maps.stale:
+                        await maps.refresh(local_pool, supa_pool)
 
-                # Two-cursor dual export
-                exported, posting_cursor, ts_cursor = await _export_postings_dual(
-                    local_pool,
-                    supa_pool,
-                    posting_cursor,
-                    ts_cursor,
-                    maps,
-                    supa_backoff,
-                    ts_backoff,
-                )
-                # Save both cursors in a single transaction so a crash
-                # between writes cannot leave one cursor advanced while
-                # the other is stale (issue #3171).
-                await _save_cursors_atomic(
-                    local_pool,
-                    [
-                        ("job_posting", posting_cursor),
-                        ("typesense:job_posting", ts_cursor),
-                    ],
-                )
-            else:
-                # Supabase-only export (original path)
-                if not supa_backoff.ready():
-                    supa_backoff.record_skip()
-                    exported = 0
+                    # Two-cursor dual export
+                    exported, posting_cursor, ts_cursor = await _export_postings_dual(
+                        local_pool,
+                        supa_pool,
+                        posting_cursor,
+                        ts_cursor,
+                        maps,
+                        supa_backoff,
+                        ts_backoff,
+                    )
+                    # Save both cursors in a single transaction so a crash
+                    # between writes cannot leave one cursor advanced while
+                    # the other is stale (issue #3171).
+                    await _save_cursors_atomic(
+                        local_pool,
+                        [
+                            ("job_posting", posting_cursor),
+                            ("typesense:job_posting", ts_cursor),
+                        ],
+                    )
                 else:
-                    try:
-                        exported, posting_cursor = await _export_changed_postings(
-                            local_pool, supa_pool, posting_cursor
-                        )
-                    except Exception as exc:
-                        if not _is_downstream_unavailable(exc):
-                            raise
-                        retry_in = supa_backoff.record_failure()
-                        log.error(
-                            "exporter.supabase_upsert_error",
-                            retry_in_s=round(retry_in, 2),
-                            consecutive_failures=supa_backoff.consecutive_failures,
-                            **_exc_fields(exc),
-                        )
+                    # Supabase-only export (original path)
+                    if not supa_backoff.ready():
+                        supa_backoff.record_skip()
                         exported = 0
                     else:
-                        _record_downstream_recovery(supa_backoff)
-                await _save_cursor(local_pool, "job_posting", posting_cursor)
+                        try:
+                            exported, posting_cursor = await _export_changed_postings(
+                                local_pool, supa_pool, posting_cursor
+                            )
+                        except Exception as exc:
+                            if not _is_downstream_unavailable(exc):
+                                raise
+                            retry_in = supa_backoff.record_failure()
+                            log.error(
+                                "exporter.supabase_upsert_error",
+                                retry_in_s=round(retry_in, 2),
+                                consecutive_failures=supa_backoff.consecutive_failures,
+                                **_exc_fields(exc),
+                            )
+                            exported = 0
+                        else:
+                            _record_downstream_recovery(supa_backoff)
+                    await _save_cursor(local_pool, "job_posting", posting_cursor)
 
             probe_typesense_health = ts_enabled and t0 >= next_typesense_health_at
             if probe_typesense_health:

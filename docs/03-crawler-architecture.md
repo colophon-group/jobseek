@@ -182,7 +182,14 @@ changing `is_active` without the timestamp would repair local PostgreSQL while
 leaving Supabase and Typesense permanently inactive. For a bounded historical
 repair, `crawler repair-relisted-cdc --since <timezone-aware timestamp>`
 compares recent local candidates with both downstream activity sets and touches
-only confirmed mismatches; use `--dry-run` before the write pass.
+only confirmed mismatches; use `--dry-run` before the write pass. The repair
+and exporter share a PostgreSQL advisory cursor fence. A repair holds the fence
+from its downstream snapshot through its final touch, so exporter ticks wait
+instead of advancing past a bulk transaction that has not committed yet.
+Already-touched candidates remain eligible, making an interrupted or legacy
+unfenced repair safe to rerun until a dry-run reports zero mismatches. Expect
+export lag to grow for the duration of a large repair and verify both cursor
+catch-up and downstream convergence after the command releases the fence.
 
 The `scrape_failures` reset is load-bearing: without it, a relisted posting comes back with `scrape_failures = 3`, and the very next failed scrape would re-tombstone it via the budget condition — a flap loop on chronically slow upstreams.
 

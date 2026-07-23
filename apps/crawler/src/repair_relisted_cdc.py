@@ -24,6 +24,7 @@ from datetime import datetime
 import asyncpg
 import structlog
 
+from src.export_cursor_fence import CursorFenceFactory, export_cursor_fence
 from src.typesense_client import get_typesense_client
 
 log = structlog.get_logger()
@@ -37,7 +38,6 @@ FROM job_posting
 WHERE id > $1::uuid
   AND is_active = true
   AND last_seen_at >= $2::timestamptz
-  AND updated_at < last_seen_at
 ORDER BY id
 LIMIT $3
 """
@@ -109,17 +109,22 @@ async def repair_relisted_cdc(
     dry_run: bool = False,
     batch_size: int = _DEFAULT_BATCH_SIZE,
     typesense_client: object | None = None,
+    cursor_fence_factory: CursorFenceFactory = export_cursor_fence,
 ) -> RepairResult:
     """Touch locally-active rows missing from either downstream active set.
 
-    Candidates are bounded by ``last_seen_at >= since`` and require
-    ``updated_at < last_seen_at``.  The latter excludes rows relisted after the
-    runtime fix, whose two timestamps advance in the same transaction.
+    Candidates are bounded by ``last_seen_at >= since``.  Already-touched rows
+    remain eligible so an interrupted or previously unfenced repair can be
+    retried until both downstreams converge.
 
-    Typesense activity is loaded before any writes.  If the export fails or
-    Typesense is not configured, the command fails closed and touches no rows.
-    Supabase is checked in bounded batches.  A concurrent state change is safe:
-    the final UPDATE rechecks ``is_active=true``.
+    The database advisory fence serializes this entire snapshot/compare/write
+    section with exporter fetch-and-cursor-save ticks.  That prevents a bulk
+    UPDATE from choosing its ``now()`` timestamp before an exporter snapshot,
+    committing after the snapshot, and being stranded behind the newly saved
+    cursor.  Typesense activity is loaded only after the fence is held.  If
+    that export fails or Typesense is not configured, the command fails closed
+    and touches no rows.  Supabase is checked in bounded batches.  The final
+    UPDATE also rechecks ``is_active=true`` against concurrent monitor changes.
     """
     if since.tzinfo is None or since.utcoffset() is None:
         raise ValueError("since must be timezone-aware")
@@ -130,53 +135,55 @@ async def repair_relisted_cdc(
     if client is None:
         raise RuntimeError("Typesense must be configured for downstream activity repair")
 
-    typesense_active = await _load_typesense_active_ids(client)
-    log.info("repair_relisted_cdc.typesense_snapshot", active=len(typesense_active))
+    async with cursor_fence_factory(local_pool):
+        log.info("repair_relisted_cdc.cursor_fence_acquired")
+        typesense_active = await _load_typesense_active_ids(client)
+        log.info("repair_relisted_cdc.typesense_snapshot", active=len(typesense_active))
 
-    cursor = _ZERO_UUID
-    scanned = 0
-    mismatched = 0
-    supabase_mismatched = 0
-    typesense_mismatched = 0
-    touched = 0
+        cursor = _ZERO_UUID
+        scanned = 0
+        mismatched = 0
+        supabase_mismatched = 0
+        typesense_mismatched = 0
+        touched = 0
 
-    while True:
-        rows = await local_pool.fetch(_FETCH_CANDIDATES, cursor, since, batch_size)
-        if not rows:
-            break
-        ids = [row["id"] for row in rows]
-        cursor = ids[-1]
-        scanned += len(ids)
+        while True:
+            rows = await local_pool.fetch(_FETCH_CANDIDATES, cursor, since, batch_size)
+            if not rows:
+                break
+            ids = [row["id"] for row in rows]
+            cursor = ids[-1]
+            scanned += len(ids)
 
-        supa_rows = await supa_pool.fetch(_FETCH_SUPABASE_ACTIVE, ids)
-        supa_active = {row["id"] for row in supa_rows}
+            supa_rows = await supa_pool.fetch(_FETCH_SUPABASE_ACTIVE, ids)
+            supa_active = {row["id"] for row in supa_rows}
 
-        supa_missing = {posting_id for posting_id in ids if posting_id not in supa_active}
-        typesense_missing = {
-            posting_id for posting_id in ids if str(posting_id) not in typesense_active
-        }
-        mismatch_set = supa_missing | typesense_missing
-        # Preserve the local keyset order instead of relying on UUID
-        # implementations from two asyncpg connections being orderable.
-        mismatch_ids = [posting_id for posting_id in ids if posting_id in mismatch_set]
+            supa_missing = {posting_id for posting_id in ids if posting_id not in supa_active}
+            typesense_missing = {
+                posting_id for posting_id in ids if str(posting_id) not in typesense_active
+            }
+            mismatch_set = supa_missing | typesense_missing
+            # Preserve the local keyset order instead of relying on UUID
+            # implementations from two asyncpg connections being orderable.
+            mismatch_ids = [posting_id for posting_id in ids if posting_id in mismatch_set]
 
-        supabase_mismatched += len(supa_missing)
-        typesense_mismatched += len(typesense_missing)
-        mismatched += len(mismatch_ids)
+            supabase_mismatched += len(supa_missing)
+            typesense_mismatched += len(typesense_missing)
+            mismatched += len(mismatch_ids)
 
-        batch_touched = 0
-        if mismatch_ids and not dry_run:
-            touched_rows = await local_pool.fetch(_TOUCH_MISMATCHES, mismatch_ids)
-            batch_touched = len(touched_rows)
-            touched += batch_touched
+            batch_touched = 0
+            if mismatch_ids and not dry_run:
+                touched_rows = await local_pool.fetch(_TOUCH_MISMATCHES, mismatch_ids)
+                batch_touched = len(touched_rows)
+                touched += batch_touched
 
-        log.info(
-            "repair_relisted_cdc.batch",
-            scanned=len(ids),
-            mismatched=len(mismatch_ids),
-            touched=batch_touched,
-            dry_run=dry_run,
-        )
+            log.info(
+                "repair_relisted_cdc.batch",
+                scanned=len(ids),
+                mismatched=len(mismatch_ids),
+                touched=batch_touched,
+                dry_run=dry_run,
+            )
 
     result = RepairResult(
         scanned=scanned,
