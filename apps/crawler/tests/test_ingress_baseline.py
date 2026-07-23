@@ -260,14 +260,95 @@ def test_sshd_parser_requires_key_only_root_and_an_explicit_user_allowlist() -> 
         "permittunnel no\n"
         "permituserenvironment no\n"
         "x11forwarding no\n"
-        "allowusers root deploy\n"
+        "allowusers root\n"
+        "allowusers deploy\n"
     )
     assert state["compliant"] is True
+
+    unexpected_user = conformance._sshd_state(
+        "authenticationmethods publickey\n"
+        "passwordauthentication no\n"
+        "kbdinteractiveauthentication no\n"
+        "pubkeyauthentication yes\n"
+        "permitrootlogin prohibit-password\n"
+        "disableforwarding yes\n"
+        "gatewayports no\n"
+        "permittunnel no\n"
+        "permituserenvironment no\n"
+        "x11forwarding no\n"
+        "allowusers root\n"
+        "allowusers deploy operator\n"
+    )
+    assert unexpected_user["explicit_user_allowlist"] is False
+    assert unexpected_user["compliant"] is False
+
+    conflicting_setting = conformance._sshd_state(
+        "authenticationmethods publickey\n"
+        "passwordauthentication no\n"
+        "passwordauthentication yes\n"
+        "kbdinteractiveauthentication no\n"
+        "pubkeyauthentication yes\n"
+        "permitrootlogin prohibit-password\n"
+        "disableforwarding yes\n"
+        "gatewayports no\n"
+        "permittunnel no\n"
+        "permituserenvironment no\n"
+        "x11forwarding no\n"
+        "allowusers root\n"
+    )
+    assert conflicting_setting["key_only"] is False
+    assert conflicting_setting["compliant"] is False
 
     assert (
         conformance._sshd_state("passwordauthentication yes\nallowusers root\n")["compliant"]
         is False
     )
+
+
+def test_host_only_audit_reuses_exact_host_policy_without_reading_postgres(
+    monkeypatch,
+) -> None:
+    sshd = (
+        "authenticationmethods publickey\n"
+        "passwordauthentication no\n"
+        "kbdinteractiveauthentication no\n"
+        "pubkeyauthentication yes\n"
+        "permitrootlogin prohibit-password\n"
+        "disableforwarding yes\n"
+        "gatewayports no\n"
+        "permittunnel no\n"
+        "permituserenvironment no\n"
+        "x11forwarding no\n"
+        "allowusers root\n"
+        "allowusers deploy\n"
+    )
+
+    def run(command):
+        if command == ["ufw", "status", "verbose"]:
+            return conformance.CommandResult(
+                0,
+                "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n",
+            )
+        if command == ["ufw", "show", "added"]:
+            return conformance.CommandResult(
+                0,
+                "ufw allow 22/tcp\nufw allow from 10.0.0.2 to any port 5432 proto tcp\n",
+            )
+        if command == ["sshd", "-T"]:
+            return conformance.CommandResult(0, sshd)
+        if command == ["passwd", "-S", "root"]:
+            return conformance.CommandResult(0, "root L 2026-07-22 0 99999 7 -1\n")
+        raise AssertionError(f"host-only audit ran unexpected command: {command}")
+
+    monkeypatch.setattr(conformance, "_run", run)
+
+    state = conformance.audit("postgresql", "10.0.0.2", host_only=True)
+
+    assert state["scope"] == "host"
+    assert state["required_listener_scope"] is None
+    assert state["root_password_locked"] is True
+    assert "postgresql" not in state
+    assert state["compliant"] is True
 
 
 def test_ufw_parser_requires_only_the_role_private_service_path() -> None:
@@ -402,6 +483,27 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
     assert workflow.index("commit-hosts:") < workflow.index("provider-firewall:")
 
 
+def test_host_stage_and_postgres_retry_share_exact_conformance_contract() -> None:
+    host = (ROOT / "deploy/networking/install-host.sh").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github/workflows/deploy-hetzner-ingress.yml").read_text(encoding="utf-8")
+
+    assert '"$CONFORMANCE" \\\n    --role "$ROLE"' in host
+    assert "--host-only" in host
+    assert "--require-enforced" in host
+    assert "sshd_effective=" not in host
+    assert "PostgreSQL data-plane contract is already compliant; skipping replacement" in workflow
+    assert workflow.count('python3 "$root/scripts/jobseek-ingress-conformance.py"') == 2
+    assert (
+        '[[ "$JOBSEEK_HOST_ROLE" == postgresql && -s /var/lib/jobseek-ingress/postgresql/pending ]]'
+    ) in workflow
+    postgres_stage = 'bash "$root/deploy/networking/harden-postgresql.sh" stage'
+    final_stage_conformance = (
+        'python3 "$root/scripts/jobseek-ingress-conformance.py" \\\n'
+        '              --role "$JOBSEEK_HOST_ROLE"'
+    )
+    assert workflow.index(postgres_stage) < workflow.index(final_stage_conformance)
+
+
 def test_network_verification_does_not_sigpipe_live_producers() -> None:
     host = (ROOT / "deploy/networking/install-host.sh").read_text(encoding="utf-8")
     postgres = (ROOT / "deploy/networking/harden-postgresql.sh").read_text(encoding="utf-8")
@@ -410,8 +512,7 @@ def test_network_verification_does_not_sigpipe_live_producers() -> None:
     assert "sshd -T | grep" not in host
     assert "ufw status | grep" not in host
     assert "| grep -Fqx" not in postgres
-    assert 'sshd_effective="$(sshd -T)"' in host
-    assert 'ufw_status="$(ufw status)"' in host
+    assert '"$CONFORMANCE"' in host
     assert "systemctl is-active --quiet ufw.service ||" not in host
     assert host.index("ufw --force disable >/dev/null") < host.index("rm -rf /etc/ufw")
     assert 'settings="$(' in postgres

@@ -215,12 +215,11 @@ stage() {
   if [[ "$ROLE" == "postgresql" ]]; then
     passwd -l root >/dev/null
   fi
-  local sshd_effective ufw_status
-  sshd_effective="$(sshd -T)"
-  ufw_status="$(ufw status)"
-  grep -Fqx 'passwordauthentication no' <<<"$sshd_effective"
-  grep -Eq '^permitrootlogin (without-password|prohibit-password)$' <<<"$sshd_effective"
-  grep -Fqx 'Status: active' <<<"$ufw_status"
+  "$CONFORMANCE" \
+    --role "$ROLE" \
+    --crawler-private-ip "$CRAWLER_PRIVATE_IP" \
+    --host-only \
+    --require-enforced
   ROLLBACK_ARMED=0
   trap - ERR EXIT
   echo "Staged host ingress policy for role=${ROLE}; automatic rollback remains armed"
