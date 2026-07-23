@@ -186,6 +186,12 @@ only confirmed mismatches; use `--dry-run` before the write pass. The repair
 and exporter share a PostgreSQL advisory cursor fence. A repair holds the fence
 from its downstream snapshot through its final touch, so exporter ticks wait
 instead of advancing past a bulk transaction that has not committed yet.
+The fence uses non-blocking `pg_try_advisory_lock` polling: a planned long
+repair emits one waiting signal instead of repeatedly hitting the asyncpg
+command timeout. Cancellation or an uncertain unlock terminates the dedicated
+PostgreSQL session before pool reuse, which makes the server release its
+session lock. Verify both the waiting/acquired signals and the absence of
+`exporter.tick_error` during a production contention test.
 Already-touched candidates remain eligible, making an interrupted or legacy
 unfenced repair safe to rerun. After acquiring the fence, the command opens one
 repeatable-read PostgreSQL snapshot, captures a database-time upper cutoff,
