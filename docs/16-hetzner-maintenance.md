@@ -271,7 +271,9 @@ causing an immediate second run. The wrapper filters the crawler environment
 into a mode-`0600` ephemeral file containing only the two database URLs and
 four Typesense settings; proxy, R2, Redis, Codex, Murmur, and other unrelated
 credentials never enter the one-shot container, and the file is removed on
-every exit path.
+every exit path. It invokes the installed `/app/.venv/bin/crawler` entry point
+directly so the read-only root filesystem never depends on a runtime package
+manager cache.
 
 The wrapper holds `/run/lock/jobseek-crawler-mutation.lock` for the whole run.
 Crawler deploys, scheduled Typesense refreshes/backfills, and reconciliation
