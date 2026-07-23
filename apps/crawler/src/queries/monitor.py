@@ -272,6 +272,11 @@ relisted AS (
       -- upstreams.
       scrape_failures = 0,
       last_seen_at = now(),
+      -- Relisting changes a user-visible CDC field.  The exporter reads by
+      -- (updated_at, id), so failing to advance updated_at leaves Supabase
+      -- and Typesense permanently behind once their cursors have passed the
+      -- posting's old timestamp.
+      updated_at = now(),
       next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
   FROM locked_existing locked
   WHERE job_posting.id = locked.id
