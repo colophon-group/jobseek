@@ -519,9 +519,16 @@ def correlate_events(events: Iterable[dict[str, Any]]) -> dict[str, object]:
     unattributed: list[dict[str, object]] = []
     for pause in _service_pauses(parsed):
         candidates = _candidate_windows(pause, windows)
-        provenance_keys = {candidate["provenance_key"] for candidate in candidates}
+        exact_candidates = [
+            candidate for candidate in candidates if _window_distance(pause, candidate) == 0
+        ]
+        preferred_candidates = exact_candidates or candidates
+        provenance_keys = {candidate["provenance_key"] for candidate in preferred_candidates}
         if len(provenance_keys) == 1:
-            selected = min(candidates, key=lambda item: _window_distance(pause, item))
+            selected = min(
+                preferred_candidates,
+                key=lambda item: _window_distance(pause, item),
+            )
             selected["service_pauses"].append(pause)
             continue
         public_pause = _public_pause(pause)
