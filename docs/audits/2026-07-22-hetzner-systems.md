@@ -193,8 +193,8 @@ pass.
   allowlist parser defect caused its commit conformance to fail, so crawler
   rollback succeeded and the provider-firewall tail was skipped. PostgreSQL
   remained committed with no pending transaction or rollback container. This
-  outcome reopened #5923 and is not recorded as completion of the fleet
-  ingress control.
+  outcome reopened #5923 and was not recorded as completion of the fleet
+  ingress control until the independently verified follow-up below.
 - A final 15-minute-48-second normal-load observation recorded zero PostgreSQL
   or crawler shared-memory ENOSPC errors, no PostgreSQL/worker/browser restart
   or OOM state, 3% `/dev/shm` use, 1.82 GiB of the 4 GiB memory cgroup in use,
@@ -205,21 +205,42 @@ pass.
   simple/browser dead-letter counts did not increase. These gates close #6055
   without manual task replay.
 
-## Reviewed remediation awaiting production application
+### 2026-07-23 — fleet ingress and SSH baseline verified
 
-The repository contains the #5923 provider/host ingress, sshd, PostgreSQL
-listener/HBA, rollback, conformance, and deployment design. The protected
-apply committed the PostgreSQL host and database policy, but its crawler host
-transaction rolled back after a conformance parser false-negative and the
-provider firewall was not applied. This therefore remains an incomplete fleet
-control: the baseline crawler/provider evidence below remains authoritative
-until the parser fix merges, a new guarded apply passes without unnecessarily
-replacing an already-compliant database, a subsequent read-only audit is
-compliant, and external probes plus the live crawler private-path checks pass.
-The runbook in
-[`16-hetzner-maintenance.md`](../16-hetzner-maintenance.md) records the exact
-policy, the no-TLS threat-model decision for the crawler-only database, and the
-rollback sequence.
+- The failed crawler commit was traced to the conformance parser treating
+  OpenSSH's repeated `allowusers root` and `allowusers deploy` output as a
+  scalar setting, overwriting the required root entry. The original stage also
+  checked only a weaker subset of the final contract. #6061 unions only
+  repeated allowlist entries, keeps every other security directive
+  single-valued and exact, runs the same host-only conformance during staging,
+  and requires full conformance before a staged host can advance.
+- The retry path first proved that the already-hardened PostgreSQL data plane
+  passed its exact listener, HBA, SCRAM, repository config, shared-memory and
+  authentication contract. Protected apply run `30005417174` therefore skipped
+  its container handoff, staged and committed all three host policies, proved
+  the live crawler-to-PostgreSQL and crawler-to-Typesense private paths, then
+  created and attached the provider firewall last. No rollback path was
+  discarded before its corresponding commit.
+- Direct post-apply inspection found no pending transaction, rollback
+  container or rollback timer. All three hosts passed full redacted
+  conformance: key-only SSH with an explicit allowlist limited to root/deploy,
+  UFW default deny with exact role rules, loopback/private-only service
+  listeners, a locked PostgreSQL root password, and the exact database policy.
+  The provider firewall has only the reviewed SSH and ICMP ingress rules,
+  covers exactly the three non-Murmur hosts, and has no unrelated managed
+  sibling.
+- External probes found SSH reachable on all three hosts and no sensitive
+  public service or metrics port reachable. The independent read-only workflow
+  run `30005562982` then passed every host and provider conformance job from the
+  exact merged revision.
+- PostgreSQL and Typesense retained their pre-apply start times, zero restart
+  and OOM state, database readiness/zero WAL archive failures, origin health
+  and public tunnel health. Crawler retained nine healthy containers, zero
+  restarts, active normal queue concurrency, and unchanged 3/1
+  simple/browser dead-letter counts. The retry therefore completed without a
+  PostgreSQL or Typesense restart and closes #5923. The maintained policy,
+  threat model and rollback sequence remain in
+  [`16-hetzner-maintenance.md`](../16-hetzner-maintenance.md).
 
 ## Inventory and ownership
 
