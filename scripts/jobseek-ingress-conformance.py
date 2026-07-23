@@ -112,12 +112,12 @@ def _listener_scopes(output: str) -> dict[int, set[str]]:
 
 
 def _sshd_state(output: str) -> dict[str, Any]:
-    values: dict[str, str] = {}
+    values: dict[str, list[str]] = {}
     for line in output.splitlines():
         key, separator, value = line.partition(" ")
         if separator:
-            values[key] = value.strip()
-    allow_users = set(values.get("allowusers", "").split())
+            values.setdefault(key, []).append(value.strip())
+    allow_users = {user for directive in values.get("allowusers", []) for user in directive.split()}
     exact_values = {
         "authenticationmethods": "publickey",
         "passwordauthentication": "no",
@@ -130,8 +130,11 @@ def _sshd_state(output: str) -> dict[str, Any]:
         "x11forwarding": "no",
     }
     settings_match = all(
-        values.get(key) == value for key, value in exact_values.items()
-    ) and values.get("permitrootlogin") in {"without-password", "prohibit-password"}
+        values.get(key) == [value] for key, value in exact_values.items()
+    ) and values.get("permitrootlogin") in (
+        ["without-password"],
+        ["prohibit-password"],
+    )
     allowlist_match = (
         bool(allow_users)
         and "root" in allow_users
@@ -343,26 +346,32 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
     }
 
 
-def audit(role: str, crawler_private_ip: str) -> dict[str, Any]:
+def audit(role: str, crawler_private_ip: str, *, host_only: bool = False) -> dict[str, Any]:
     crawler_ip = _private_address(crawler_private_ip)
     ufw_status = _run(["ufw", "status", "verbose"])
     ufw_added = _run(["ufw", "show", "added"])
     sshd = _run(["sshd", "-T"])
-    listeners = _run(["ss", "-H", "-lnt"])
-    if any(item.returncode != 0 for item in (ufw_status, ufw_added, sshd, listeners)):
+    commands = [ufw_status, ufw_added, sshd]
+    listeners = None
+    if not host_only:
+        listeners = _run(["ss", "-H", "-lnt"])
+        commands.append(listeners)
+    if any(item.returncode != 0 for item in commands):
         raise ConformanceError("host policy commands are unavailable")
-    listener_map = _listener_scopes(listeners.stdout)
-    listener_policy = True
-    if role == "crawler":
-        listener_policy = all(
-            bool(listener_map.get(port)) and listener_map[port] <= {"loopback"}
-            for port in CRAWLER_METRICS_PORTS
-        )
-    elif role == "postgresql":
-        listener_policy = bool(listener_map.get(5432)) and listener_map[5432] <= {
-            "loopback",
-            "private",
-        }
+    listener_policy = None
+    if listeners is not None:
+        listener_map = _listener_scopes(listeners.stdout)
+        listener_policy = True
+        if role == "crawler":
+            listener_policy = all(
+                bool(listener_map.get(port)) and listener_map[port] <= {"loopback"}
+                for port in CRAWLER_METRICS_PORTS
+            )
+        elif role == "postgresql":
+            listener_policy = bool(listener_map.get(5432)) and listener_map[5432] <= {
+                "loopback",
+                "private",
+            }
     root_status = _run(["passwd", "-S", "root"])
     root_parts = root_status.stdout.split()
     root_locked = (
@@ -376,12 +385,13 @@ def audit(role: str, crawler_private_ip: str) -> dict[str, Any]:
     )
     result: dict[str, Any] = {
         "role": role,
+        "scope": "host" if host_only else "full",
         "ufw": _ufw_state(ufw_status.stdout, ufw_added.stdout, role, crawler_ip),
         "sshd": _sshd_state(sshd.stdout),
         "required_listener_scope": listener_policy,
         "root_password_locked": root_locked if role == "postgresql" else None,
     }
-    if role == "postgresql":
+    if role == "postgresql" and not host_only:
         container = _postgres_container()
         result["postgresql"] = (
             _postgres_state(container, crawler_ip)
@@ -391,9 +401,9 @@ def audit(role: str, crawler_private_ip: str) -> dict[str, Any]:
     result["compliant"] = (
         result["ufw"]["compliant"]
         and result["sshd"]["compliant"]
-        and listener_policy
+        and (host_only or listener_policy)
         and (role != "postgresql" or root_locked)
-        and (role != "postgresql" or result["postgresql"]["compliant"])
+        and (host_only or role != "postgresql" or result["postgresql"]["compliant"])
     )
     return result
 
@@ -402,13 +412,18 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--role", required=True, choices=("crawler", "postgresql", "typesense"))
     parser.add_argument("--crawler-private-ip", required=True)
+    parser.add_argument(
+        "--host-only",
+        action="store_true",
+        help="require only the SSH, UFW, and PostgreSQL root-lock host baseline",
+    )
     parser.add_argument("--require-enforced", action="store_true")
     return parser
 
 
 def main() -> int:
     args = _parser().parse_args()
-    result = audit(args.role, args.crawler_private_ip)
+    result = audit(args.role, args.crawler_private_ip, host_only=args.host_only)
     print(json.dumps(result, sort_keys=True))
     if args.require_enforced and not result["compliant"]:
         return 1

@@ -131,8 +131,19 @@ jobs:
             root="/tmp/jobseek-ingress/${JOBSEEK_INGRESS_DEPLOY_SHA}"
             bash "$root/deploy/networking/install-host.sh" stage "$JOBSEEK_HOST_ROLE"
             if [[ "$JOBSEEK_HOST_ROLE" == postgresql ]]; then
-              bash "$root/deploy/networking/harden-postgresql.sh" stage
+              if python3 "$root/scripts/jobseek-ingress-conformance.py" \
+                --role postgresql \
+                --crawler-private-ip "$JOBSEEK_CRAWLER_PRIVATE_IP" \
+                --require-enforced; then
+                echo "PostgreSQL data-plane contract is already compliant; skipping replacement"
+              else
+                bash "$root/deploy/networking/harden-postgresql.sh" stage
+              fi
             fi
+            python3 "$root/scripts/jobseek-ingress-conformance.py" \
+              --role "$JOBSEEK_HOST_ROLE" \
+              --crawler-private-ip "$JOBSEEK_CRAWLER_PRIVATE_IP" \
+              --require-enforced
       - name: Roll back a failed host stage
         if: ${{ failure() && inputs.action == 'apply' }}
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
@@ -297,8 +308,10 @@ jobs:
           script: |
             set -euo pipefail
             /usr/local/sbin/jobseek-ingress-baseline commit "$JOBSEEK_HOST_ROLE"
-            if [[ "$JOBSEEK_HOST_ROLE" == postgresql ]]; then
+            if [[ "$JOBSEEK_HOST_ROLE" == postgresql && -s /var/lib/jobseek-ingress/postgresql/pending ]]; then
               /usr/local/sbin/jobseek-postgresql-network commit
+            elif [[ "$JOBSEEK_HOST_ROLE" == postgresql ]]; then
+              echo "PostgreSQL data-plane contract was already compliant; no replacement to commit"
             fi
       - name: Roll back any transaction left pending by a failed commit
         if: ${{ failure() }}

@@ -95,11 +95,13 @@ gh workflow run deploy-hetzner-ingress.yml \
 An apply is deliberately ordered to limit lockout and downtime:
 
 1. validate and copy the exact reviewed revision;
-2. stage sshd/UFW independently on all hosts, each with a 15-minute automatic
-   rollback timer;
-3. require a fresh successful PostgreSQL backup, retain the original stopped
-   container, and replace PostgreSQL with the same image/mount/resource
-   contract but a private listener and exact HBA;
+2. stage sshd/UFW independently on all hosts, require the same exact host-only
+   conformance used at commit, and retain a 15-minute automatic rollback timer
+   for each host;
+3. inspect the full PostgreSQL data-plane contract. If it is already exact,
+   skip the container handoff; otherwise require a fresh successful backup,
+   retain the original stopped container, and replace PostgreSQL with the same
+   image/mount/resource contract but a private listener and exact HBA;
 4. prove an actual query and Typesense health request from the crawler's live
    exporter configuration over the private paths and a fresh SSH session;
 5. commit host transactions only after conformance passes; and
@@ -107,12 +109,20 @@ An apply is deliberately ordered to limit lockout and downtime:
    and every known service/metrics port is closed.
 
 Typesense is not restarted or reconfigured by this workflow. PostgreSQL is the
-only workload handoff. Any failed stage rolls itself back; a cross-host path
+only possible workload handoff, and a repeat apply does not replace it when
+the exact listener, HBA, repository config, shared-memory, and authentication
+contract already passes. Any failed stage rolls itself back; a cross-host path
 failure immediately rolls back every staged host; failed commits roll back any
 transaction left pending; and the independent systemd timers remain armed
 until commit. Provider-firewall changes use a root-only runner-temporary state
 file and restore the previous rules/attachments if apply or external
 verification fails.
+
+OpenSSH may emit one effective `allowusers` line per configured user. The
+conformance parser unions only those repeated allowlist directives; every
+other security directive must appear exactly once with its required value.
+Any additional allowed user or conflicting duplicate setting remains
+noncompliant.
 
 Apply only the reviewed revision on `main`:
 
