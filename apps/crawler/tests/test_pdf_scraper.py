@@ -6,6 +6,8 @@ import httpx
 import pytest
 
 from src.core.scrapers.pdf import (
+    _extract_pattern,
+    _normalize_captured_text,
     _text_to_html,
     _title_from_text,
     _title_from_url,
@@ -101,6 +103,26 @@ class TestTitleFromText:
 
     def test_empty_text(self):
         assert _title_from_text("") is None
+
+
+class TestCapturedText:
+    def test_collapses_layout_whitespace(self):
+        value = " Senior \n Battery Pack \n Manufacturing Engineer "
+        assert _normalize_captured_text(value) == "Senior Battery Pack Manufacturing Engineer"
+
+    def test_rejoins_split_capitalized_word(self):
+        assert (
+            _normalize_captured_text("M\nechanical Engineer", repair_split_initial=True)
+            == "Mechanical Engineer"
+        )
+
+    def test_does_not_rejoin_ambiguous_initial_by_default(self):
+        assert _normalize_captured_text("A\nrole") == "A role"
+
+    def test_extracts_and_normalizes_capture_group(self):
+        text = "Location\n Sawston,\n Cambridge\nWho we are"
+        pattern = r"(?s)Location\s*(.*?)\s*Who we are"
+        assert _extract_pattern(text, pattern) == "Sawston, Cambridge"
 
 
 class TestTextToHtml:
@@ -225,6 +247,29 @@ class TestScrape:
                 client,
             )
             assert result.title == "Research Engineer"
+
+    async def test_location_pattern_applied_to_text(self):
+        pdf_bytes = _make_pdf(
+            "Job Title\nM\nechanical Engineer\nReports to\nLead\n"
+            "Location\nSawston, Cambridge\nWho we are"
+        )
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/job.pdf",
+                {
+                    "title_source": "text",
+                    "title_pattern": r"(?s)Job Title\s*(.*?)\s*Reports to",
+                    "repair_split_initial": True,
+                    "location_pattern": r"(?s)Location\s*(.*?)\s*Who we are",
+                },
+                client,
+            )
+            assert result.title == "Mechanical Engineer"
+            assert result.locations == ["Sawston, Cambridge"]
 
     async def test_title_pattern_no_match_falls_back(self):
         """When title_pattern doesn't match text, falls back to heading heuristic."""
