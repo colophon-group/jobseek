@@ -24,12 +24,21 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: GITHUB_SHA
+          command_timeout: 30m
           script: |
             set -euo pipefail
             NAME="crawler-refresh-currency-rates-$(date -u +%Y%m%dT%H%M%SZ)"
             tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
             tag="${tag:-latest}"
-            docker run --rm \
+            /usr/local/sbin/jobseek-maintenance oneoff \
+              --operation refresh-currency-rates \
+              --issue 3576 \
+              --revision "$GITHUB_SHA" \
+              --budget-seconds 600 \
+              --lock-timeout-seconds 600 \
+              -- \
+              docker run --rm \
               --name "$NAME" \
               --env-file /home/deploy/.env \
               --network host \

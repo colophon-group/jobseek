@@ -14,8 +14,20 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from jobseek_maintenance_provenance import (  # noqa: E402
+    container_generation,
+    correlate_events,
+    parse_jsonl,
+    sanitize_lifecycle_events,
+)
 
 UTC = timezone.utc  # noqa: UP017 - systemd runs this script with Python 3.10.
 
@@ -204,9 +216,7 @@ def _read_cgroup_memory_files(root: Path) -> dict[str, object]:
         ("memory.events.local", "events_local"),
     ):
         try:
-            result[key] = _parse_cgroup_key_values(
-                (root / filename).read_text(encoding="utf-8")
-            )
+            result[key] = _parse_cgroup_key_values((root / filename).read_text(encoding="utf-8"))
         except OSError:
             continue
     return result
@@ -304,7 +314,7 @@ def _collect_container_cgroup_memory(
             pid = 0
         entry: dict[str, object] = {
             "name": str(inspect_data.get("Name", "")).lstrip("/") or container,
-            "container_id": str(inspect_data.get("Id", "")),
+            "container_generation": container_generation(str(inspect_data.get("Id", ""))),
             "image": str(inspect_data.get("Config", {}).get("Image", "")),
             "created_at": str(inspect_data.get("Created", "")),
             "started_at": str(state.get("StartedAt", "")),
@@ -360,7 +370,11 @@ def _collect_exited_containers(
             inspect_code, inspect_output = _run(["docker", "inspect", container_id], timeout=60)
             if inspect_code != 0:
                 inspect_errors.append(
-                    {"id": container_id, "returncode": inspect_code, "output": inspect_output[:500]}
+                    {
+                        "container_generation": container_generation(container_id),
+                        "returncode": inspect_code,
+                        "error": "docker inspect failed",
+                    }
                 )
                 continue
             try:
@@ -368,7 +382,7 @@ def _collect_exited_containers(
             except (IndexError, json.JSONDecodeError) as exc:
                 inspect_errors.append(
                     {
-                        "id": container_id,
+                        "container_generation": container_generation(container_id),
                         "returncode": inspect_code,
                         "output": f"{type(exc).__name__}: {exc}",
                     }
@@ -386,8 +400,9 @@ def _collect_exited_containers(
 
             candidates.append(
                 {
-                    "id": container_id,
-                    "name": str(inspect_data.get("Name", "")).lstrip("/") or container_id,
+                    "_container_id": container_id,
+                    "container_generation": container_generation(container_id),
+                    "name": str(inspect_data.get("Name", "")).lstrip("/") or "unnamed",
                     "image": image,
                     "finished_at": finished_at.isoformat(),
                     "status": str(state.get("Status", "")),
@@ -401,9 +416,9 @@ def _collect_exited_containers(
     listing = "\n".join(
         "\t".join(
             (
-                candidate["id"],
                 candidate["name"],
                 candidate["image"],
+                candidate["container_generation"],
                 candidate["finished_at"],
                 candidate["status"],
                 candidate["exit_code"],
@@ -418,7 +433,7 @@ def _collect_exited_containers(
         listing += "\n"
     list_info = _write(
         run_dir / "host" / "docker-exited-containers.txt",
-        output if code != 0 else listing,
+        "docker ps failed\n" if code != 0 else listing,
     )
     manifest.setdefault("commands", []).append(
         {
@@ -436,7 +451,7 @@ def _collect_exited_containers(
     since_iso = since.isoformat().replace("+00:00", "Z")
     until_iso = until.isoformat().replace("+00:00", "Z")
     for candidate in candidates[:30]:
-        container_id = candidate["id"]
+        container_id = candidate["_container_id"]
         name = candidate["name"]
         code, logs = _run(
             [
@@ -453,12 +468,12 @@ def _collect_exited_containers(
             timeout=180,
         )
         info = _write(
-            run_dir / "exited" / f"{_safe_name(name)}-{container_id}.log",
+            run_dir / "exited" / f"{_safe_name(name)}-{candidate['container_generation']}.log",
             logs,
         )
         manifest.setdefault("exited_container_logs", []).append(
             {
-                "id": container_id,
+                "container_generation": candidate["container_generation"],
                 "name": name,
                 "image": candidate["image"],
                 "finished_at": candidate["finished_at"],
@@ -497,8 +512,16 @@ def _collect_docker_lifecycle_journal(
         ],
         timeout=180,
     )
-    file_info = _write(run_dir / "host" / "docker-lifecycle.jsonl", output)
+    events = sanitize_lifecycle_events(parse_jsonl(output))
+    sanitized_output = "".join(f"{json.dumps(event, sort_keys=True)}\n" for event in events)
+    file_info = _write(run_dir / "host" / "docker-lifecycle.jsonl", sanitized_output)
     manifest["docker_lifecycle"] = {"returncode": code, **file_info}
+    correlation = correlate_events(events)
+    correlation_info = _write(
+        run_dir / "host" / "maintenance-correlation.json",
+        json.dumps(correlation, indent=2, sort_keys=True),
+    )
+    manifest["maintenance_correlation"] = correlation_info
 
 
 def _chgrp_readable(path: Path, *, group: str) -> None:
@@ -556,8 +579,8 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
         timeout=120,
     )
     inspect_state_command = (
-        "ids=$(docker ps -aq); test -z \"$ids\" || docker inspect --format "
-        "'{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} "
+        'ids=$(docker ps -aq); test -z "$ids" || docker inspect --format '
+        "'{{.Name}} Image={{.Config.Image}} Created={{.Created}} "
         "StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} "
         "Status={{.State.Status}} RestartCount={{.RestartCount}} "
         "FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} "

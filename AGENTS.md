@@ -97,8 +97,9 @@ Deployment and maintenance rules live in
 
 - `.agents/skills/jobseek-error-review/SKILL.md` + `docs/14-error-review-routine.md` —
   Codex-first daily review of crawler errors on the Hetzner box. The routine
-  reads logs, dedupes known issues, collects evidence, and files or updates
-  GitHub issues only when the documented criteria are met.
+  reads logs, dedupes known issues, correlates only validated maintenance
+  provenance from the root-collected bundle, and files or updates GitHub
+  issues only when the documented criteria are met.
 - `.agents/skills/jobseek-label-daily/SKILL.md` + `docs/15-data-sampling-routine.md` —
   Codex-first daily gold-dataset routine. It samples diverse postings from the
   last 24h, labels via task-specific subagents with tasks rendered from Jinja

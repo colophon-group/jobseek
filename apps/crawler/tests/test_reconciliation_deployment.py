@@ -17,6 +17,8 @@ WORKFLOW = ROOT / ".github/workflows/deploy-crawler-reconciliation.yml"
 CI_WORKFLOW = ROOT / ".github/workflows/ci.yml"
 DEPLOY = ROOT / "apps/crawler/deploy.sh"
 MAINTENANCE = ROOT / ".github/workflows/crawler-scheduled-maintenance.yml"
+SYNC_DATA = ROOT / ".github/workflows/sync-data.yml"
+REFRESH_CURRENCY = ROOT / ".github/workflows/refresh-currency-rates.yml"
 
 
 def test_reconciliation_shell_surfaces_parse() -> None:
@@ -63,6 +65,19 @@ def test_runner_is_bounded_immutable_and_fail_closed() -> None:
     assert "uv run" not in source
     assert "jobseek-crawler-mutation.lock" in source
     assert "flock -w 7200" in source
+    assert "DEPLOYED_SHA_FILE=/var/lib/jobseek-reconciliation/deployed-sha" in source
+    assert '[[ "$revision" =~ ^[0-9a-f]{40}$ ]]' in source
+    for label in (
+        "com.docker.compose.project=deploy",
+        "com.docker.compose.service=cross-store-reconciliation",
+        "com.docker.compose.oneoff=True",
+        "jobseek.maintenance.operation=cross-store-reconciliation",
+        "jobseek.maintenance.issue=5930",
+        "jobseek.maintenance.revision=${revision}",
+        "jobseek.maintenance.budget-seconds=3000",
+    ):
+        assert label in source
+    assert "jobseek.maintenance=cross-store-reconciliation" not in source
 
 
 def test_ci_smokes_the_entrypoint_on_a_read_only_root() -> None:
@@ -114,6 +129,9 @@ def test_all_crawler_mutation_entrypoints_share_the_host_lock() -> None:
         source = path.read_text(encoding="utf-8")
         assert "/run/lock/jobseek-crawler-mutation.lock" in source
         assert "flock -w 7200" in source
+    for path in (SYNC_DATA, REFRESH_CURRENCY):
+        source = path.read_text(encoding="utf-8")
+        assert "/usr/local/sbin/jobseek-maintenance oneoff" in source
 
 
 def test_systemd_unit_has_separate_wait_and_runtime_budget() -> None:

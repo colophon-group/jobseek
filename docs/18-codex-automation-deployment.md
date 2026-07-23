@@ -63,6 +63,10 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
 - Run Hetzner Codex routines under a dedicated local user with no sudo,
   no Docker group, no production crawler environment, and no read access to
   crawler `.env` files.
+- Keep raw Docker/container and cloud resource IDs out of runner-visible
+  bundles. Root collectors must allowlist lifecycle fields and replace legacy
+  identifiers with pseudonymous container generations before changing group
+  ownership to `codex-runner`.
 - Treat `~/.codex/auth.json`, GitHub auth, and HuggingFace auth as password
   material. Do not print, upload, commit, or include them in traces.
 - Keep Claude-compatible files only as migration fallbacks. When a fallback is
@@ -223,8 +227,9 @@ Committed deployment templates:
 
 - [`../deploy/systemd/jobseek-codex-docker-lifecycle.service`](../deploy/systemd/jobseek-codex-docker-lifecycle.service)
   - runs a root, read-only Docker event watcher; only allowlisted lifecycle
-    fields reach persistent journald, and the Codex runner retains no Docker
-    access.
+    fields plus validated maintenance provenance reach persistent journald,
+    and the Codex runner retains no Docker access. Container generations are
+    pseudonymous in the runner bundle.
 - [`../deploy/systemd/jobseek-codex-governor.service`](../deploy/systemd/jobseek-codex-governor.service)
   - `Type=oneshot`, low-priority CPU/IO scheduling, `CPUQuota=200%`,
   `MemoryHigh=3G`, `MemoryMax=4G`, `TasksMax=1024`, `ProtectSystem=strict`,
@@ -614,6 +619,13 @@ the directory and count toward the admission ceiling.
 - Read `host/docker-lifecycle.jsonl` with the generation-aware cgroup and
   inspect files; it preserves allowlisted exit codes, signals, OOM events,
   and replacement/restart timing across container recreation.
+- Read `host/maintenance-correlation.json` before classifying Docker service
+  exits. Only one validated operation/issue/revision/budget window may own a
+  pause; missing or conflicting provenance stays unknown.
+- Report authorized maintenance separately with its measured downtime and
+  restoration result. Forced termination, OOM/native exits, nonzero one-offs,
+  budget overruns, and failed restoration remain actionable maintenance
+  outcomes.
 - Collect host signals before log classification.
 - Classify errors as `known`, `novel`, `regression`, `spike`, or `incident`.
 - Partial evidence windows must be reported as gaps, but they do not

@@ -417,8 +417,9 @@ Severity reflects impact if left unresolved; rank reflects the recommended execu
 | 5 | high | [#5925](https://github.com/colophon-group/jobseek/issues/5925) | long-lived Typesense and Cloudflare credentials are recoverable by unprivileged local users; deploy protected delivery, then rotate |
 | 6 | high | [#5926](https://github.com/colophon-group/jobseek/issues/5926) | monitoring missed the near-full database Volume and continuously false-fires exporter alerts; deploy full-fleet telemetry and ownership-correct alerts |
 | 7 | medium | [#5948](https://github.com/colophon-group/jobseek/issues/5948) | the Hetzner error-review service can reach point-in-time localhost endpoints but has no supported historical metrics evidence path; add least-privilege bounded queries without weakening runner isolation |
-| 8 | medium | [#5929](https://github.com/colophon-group/jobseek/issues/5929) | a missing production access-path index blocks daily annotation sampling but not the serving/crawling path; add the index/query guard and preserve the causal error |
-| 9 | medium | [#5924](https://github.com/colophon-group/jobseek/issues/5924) | overdue reboots, mutable images, missing resource labels, and ad hoc host lifecycle accumulate risk but are not the current data-loss/availability trigger |
+| 8 | medium | [#6067](https://github.com/colophon-group/jobseek/issues/6067) | authorized maintenance and its downtime were recorded but not explicitly attributable; add a validated operation/issue/revision/budget contract and deterministic daily-review correlation |
+| 9 | medium | [#5929](https://github.com/colophon-group/jobseek/issues/5929) | a missing production access-path index blocks daily annotation sampling but not the serving/crawling path; add the index/query guard and preserve the causal error |
+| 10 | medium | [#5924](https://github.com/colophon-group/jobseek/issues/5924) | overdue reboots, mutable images, missing resource labels, and ad hoc host lifecycle accumulate risk but are not the current data-loss/availability trigger |
 
 ## Confirmed root-cause findings
 
@@ -483,6 +484,23 @@ All hosts require reboot. Pending package counts are 26/46/58, including securit
 Control-plane inventory also shows delete/rebuild protection disabled on all three servers, delete protection disabled on the database Volume and private network, no placement group, and no ownership labels on PostgreSQL or Typesense. The crawler is the only server with environment/project/role labels.
 
 Root cause: unattended upgrades, container pulls, reboot decisions, resource protection/labeling, and service version promotion are separate ad hoc mechanisms with no fleet-wide maintenance window or immutable manifest.
+
+### 9. Production maintenance provenance is implicit
+
+The durable Docker lifecycle evidence retained the July 23 writer stop,
+worker-2 signal-9 exit, three bounded relisted-CDC repair one-offs, verification
+one-off, and service restoration. It did not retain a validated operation,
+tracking issue, reviewed revision, or budget that the daily review could use
+for deterministic attribution. The resulting review reopened an instability
+incident even though #6016 documented the authorized stationary repair in the
+same window.
+
+Root cause: crawler deploys, scheduled jobs, and operator repairs used
+independent Docker commands and naming conventions rather than one
+repository-owned provenance and correlation contract. Temporal adjacency
+could suggest maintenance but could not prove authorization, distinguish
+overlapping work, or preserve fail-closed incident handling. This is tracked
+by [#6067](https://github.com/colophon-group/jobseek/issues/6067).
 
 ## Healthy controls worth preserving
 
