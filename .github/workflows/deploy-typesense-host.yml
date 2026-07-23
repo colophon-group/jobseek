@@ -1,6 +1,13 @@
 name: Deploy Typesense Host (Hetzner)
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/typesense-host/**'
+      - 'deploy/systemd/cloudflared.service'
+      - 'scripts/verify-typesense-host-credentials.py'
+      - '.github/workflows/deploy-typesense-host.yml'
   push:
     branches: [main]
     paths:
@@ -70,17 +77,16 @@ jobs:
           chmod 0600 "$root/typesense-server.ini"
           docker run -d \
             --name "$container" \
-            -p 127.0.0.1::8108 \
+            -p 127.0.0.1:18108:8108 \
             -v "$root/data:/data" \
             -v "$root/typesense-server.ini:/run/secrets/typesense-server.ini:ro" \
             typesense/typesense:27.1 \
             --config=/run/secrets/typesense-server.ini >/dev/null
-          port="$(docker port "$container" 8108/tcp | sed 's/.*://')"
           for _ in $(seq 1 60); do
-            curl -fsS "http://127.0.0.1:${port}/health" >/dev/null && break
+            curl -fsS "http://127.0.0.1:18108/health" >/dev/null && break
             sleep 1
           done
-          curl -fsS "http://127.0.0.1:${port}/health" |
+          curl -fsS "http://127.0.0.1:18108/health" |
             python3 -c 'import json,sys; assert json.load(sys.stdin)["ok"] is True'
           docker inspect "$container" >"$root/inspect.json"
           if grep -Fq 'smoke-bootstrap-key' "$root/inspect.json"; then
