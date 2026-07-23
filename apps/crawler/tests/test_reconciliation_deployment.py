@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import subprocess
 from pathlib import Path
+
+from src.cli import _await_task_or_shutdown
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / "deploy/reconciliation/run.sh"
@@ -81,6 +84,29 @@ def test_runner_rejects_an_unbounded_or_combined_full_target() -> None:
 
     assert result.returncode == 2
     assert "full target must be supabase or typesense" in result.stderr
+
+
+async def test_reconciliation_task_is_cancelled_on_process_shutdown() -> None:
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+    shutdown = asyncio.Event()
+
+    async def blocked_work() -> None:
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    task = asyncio.create_task(blocked_work())
+    waiter = asyncio.create_task(_await_task_or_shutdown(task, shutdown))
+    await started.wait()
+
+    shutdown.set()
+
+    assert await waiter is None
+    assert task.cancelled()
+    assert cancelled.is_set()
 
 
 def test_all_crawler_mutation_entrypoints_share_the_host_lock() -> None:

@@ -550,11 +550,14 @@ async def _start_run(
     local_pool: asyncpg.Pool,
     summary: RunSummary,
 ) -> None:
+    # The caller holds the global reconciliation advisory lock. No prior
+    # reconciliation process can still be live, so every older running ledger
+    # row is an orphan left by a process/container interruption.
     await local_pool.execute(
         "UPDATE cross_store_reconciliation_run "
         "SET status = 'interrupted', completed_at = clock_timestamp(), "
         "error_class = 'InterruptedRun' "
-        "WHERE status = 'running' AND started_at < clock_timestamp() - interval '2 hours'"
+        "WHERE status = 'running'"
     )
     await local_pool.execute(
         "DELETE FROM cross_store_reconciliation_run "
@@ -588,7 +591,7 @@ async def _finish_run(
     local_pool: asyncpg.Pool,
     summary: RunSummary,
     *,
-    status: Literal["success", "failed"],
+    status: Literal["success", "failed", "interrupted"],
     error_class: str | None = None,
 ) -> None:
     await _persist_run_progress(local_pool, summary)
@@ -915,12 +918,13 @@ async def run_reconciliation(
             except BaseException as exc:
                 if not run_finished:
                     try:
+                        interrupted = isinstance(exc, asyncio.CancelledError)
                         await asyncio.shield(
                             _finish_run(
                                 local_pool,
                                 summary,
-                                status="failed",
-                                error_class=type(exc).__name__,
+                                status="interrupted" if interrupted else "failed",
+                                error_class="InterruptedRun" if interrupted else type(exc).__name__,
                             )
                         )
                     except BaseException:
