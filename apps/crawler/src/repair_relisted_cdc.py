@@ -18,6 +18,8 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -32,14 +34,17 @@ log = structlog.get_logger()
 _ZERO_UUID = uuid.UUID(int=0)
 _DEFAULT_BATCH_SIZE = 2000
 
+_FETCH_REPAIR_CUTOFF = "SELECT clock_timestamp()"
+
 _FETCH_CANDIDATES = """
 SELECT id
 FROM job_posting
 WHERE id > $1::uuid
   AND is_active = true
   AND last_seen_at >= $2::timestamptz
+  AND updated_at < $3::timestamptz
 ORDER BY id
-LIMIT $3
+LIMIT $4
 """
 
 _FETCH_SUPABASE_ACTIVE = """
@@ -56,6 +61,8 @@ WHERE id = ANY($1::uuid[])
   AND is_active = true
 RETURNING id
 """
+
+CandidateSnapshotFactory = Callable[[asyncpg.Pool], AbstractAsyncContextManager[asyncpg.Connection]]
 
 
 @dataclass(frozen=True)
@@ -101,6 +108,25 @@ async def _load_typesense_active_ids(client: object) -> set[str]:
     return active_ids
 
 
+@asynccontextmanager
+async def repair_candidate_snapshot(
+    pool: asyncpg.Pool,
+) -> AsyncIterator[asyncpg.Connection]:
+    """Yield one immutable local candidate view for the entire repair scan.
+
+    A wall-clock cutoff cannot exclude a worker transaction that selected its
+    ``updated_at`` before the cutoff but commits after the Typesense snapshot.
+    Reusing one repeatable-read snapshot across every keyset page ensures such
+    transactions remain invisible for the complete scan. Repair touches use
+    separate short transactions and recheck ``is_active`` at write time.
+    """
+    async with (
+        pool.acquire() as conn,
+        conn.transaction(isolation="repeatable_read", readonly=True),
+    ):
+        yield conn
+
+
 async def repair_relisted_cdc(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
@@ -110,12 +136,17 @@ async def repair_relisted_cdc(
     batch_size: int = _DEFAULT_BATCH_SIZE,
     typesense_client: object | None = None,
     cursor_fence_factory: CursorFenceFactory = export_cursor_fence,
+    candidate_snapshot_factory: CandidateSnapshotFactory = repair_candidate_snapshot,
 ) -> RepairResult:
     """Touch locally-active rows missing from either downstream active set.
 
-    Candidates are bounded by ``last_seen_at >= since``.  Already-touched rows
-    remain eligible so an interrupted or previously unfenced repair can be
-    retried until both downstreams converge.
+    Candidates are bounded by ``last_seen_at >= since`` and by a database-time
+    ``updated_at`` cutoff captured inside one repeatable-read snapshot after
+    the cursor fence is acquired but before the Typesense snapshot. Every
+    keyset page uses that same snapshot. Already-touched historical rows remain
+    eligible so an interrupted or previously unfenced repair can be retried,
+    while worker changes committed during the scan stay outside this repair
+    population and flow through the exporter after the fence releases.
 
     The database advisory fence serializes this entire snapshot/compare/write
     section with exporter fetch-and-cursor-save ticks.  That prevents a bulk
@@ -137,53 +168,68 @@ async def repair_relisted_cdc(
 
     async with cursor_fence_factory(local_pool):
         log.info("repair_relisted_cdc.cursor_fence_acquired")
-        typesense_active = await _load_typesense_active_ids(client)
-        log.info("repair_relisted_cdc.typesense_snapshot", active=len(typesense_active))
+        async with candidate_snapshot_factory(local_pool) as candidate_conn:
+            cutoff = await candidate_conn.fetchval(_FETCH_REPAIR_CUTOFF)
+            if (
+                not isinstance(cutoff, datetime)
+                or cutoff.tzinfo is None
+                or cutoff.utcoffset() is None
+            ):
+                raise RuntimeError("local PostgreSQL returned an invalid repair cutoff")
+            log.info("repair_relisted_cdc.cutoff_captured", cutoff=cutoff.isoformat())
+            typesense_active = await _load_typesense_active_ids(client)
+            log.info("repair_relisted_cdc.typesense_snapshot", active=len(typesense_active))
 
-        cursor = _ZERO_UUID
-        scanned = 0
-        mismatched = 0
-        supabase_mismatched = 0
-        typesense_mismatched = 0
-        touched = 0
+            cursor = _ZERO_UUID
+            scanned = 0
+            mismatched = 0
+            supabase_mismatched = 0
+            typesense_mismatched = 0
+            touched = 0
 
-        while True:
-            rows = await local_pool.fetch(_FETCH_CANDIDATES, cursor, since, batch_size)
-            if not rows:
-                break
-            ids = [row["id"] for row in rows]
-            cursor = ids[-1]
-            scanned += len(ids)
+            while True:
+                rows = await candidate_conn.fetch(
+                    _FETCH_CANDIDATES,
+                    cursor,
+                    since,
+                    cutoff,
+                    batch_size,
+                )
+                if not rows:
+                    break
+                ids = [row["id"] for row in rows]
+                cursor = ids[-1]
+                scanned += len(ids)
 
-            supa_rows = await supa_pool.fetch(_FETCH_SUPABASE_ACTIVE, ids)
-            supa_active = {row["id"] for row in supa_rows}
+                supa_rows = await supa_pool.fetch(_FETCH_SUPABASE_ACTIVE, ids)
+                supa_active = {row["id"] for row in supa_rows}
 
-            supa_missing = {posting_id for posting_id in ids if posting_id not in supa_active}
-            typesense_missing = {
-                posting_id for posting_id in ids if str(posting_id) not in typesense_active
-            }
-            mismatch_set = supa_missing | typesense_missing
-            # Preserve the local keyset order instead of relying on UUID
-            # implementations from two asyncpg connections being orderable.
-            mismatch_ids = [posting_id for posting_id in ids if posting_id in mismatch_set]
+                supa_missing = {posting_id for posting_id in ids if posting_id not in supa_active}
+                typesense_missing = {
+                    posting_id for posting_id in ids if str(posting_id) not in typesense_active
+                }
+                mismatch_set = supa_missing | typesense_missing
+                # Preserve the local keyset order instead of relying on UUID
+                # implementations from two asyncpg connections being orderable.
+                mismatch_ids = [posting_id for posting_id in ids if posting_id in mismatch_set]
 
-            supabase_mismatched += len(supa_missing)
-            typesense_mismatched += len(typesense_missing)
-            mismatched += len(mismatch_ids)
+                supabase_mismatched += len(supa_missing)
+                typesense_mismatched += len(typesense_missing)
+                mismatched += len(mismatch_ids)
 
-            batch_touched = 0
-            if mismatch_ids and not dry_run:
-                touched_rows = await local_pool.fetch(_TOUCH_MISMATCHES, mismatch_ids)
-                batch_touched = len(touched_rows)
-                touched += batch_touched
+                batch_touched = 0
+                if mismatch_ids and not dry_run:
+                    touched_rows = await local_pool.fetch(_TOUCH_MISMATCHES, mismatch_ids)
+                    batch_touched = len(touched_rows)
+                    touched += batch_touched
 
-            log.info(
-                "repair_relisted_cdc.batch",
-                scanned=len(ids),
-                mismatched=len(mismatch_ids),
-                touched=batch_touched,
-                dry_run=dry_run,
-            )
+                log.info(
+                    "repair_relisted_cdc.batch",
+                    scanned=len(ids),
+                    mismatched=len(mismatch_ids),
+                    touched=batch_touched,
+                    dry_run=dry_run,
+                )
 
     result = RepairResult(
         scanned=scanned,
