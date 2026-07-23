@@ -76,6 +76,11 @@ class TestTitleFromUrl:
         result = _title_from_url(url, pattern=r"-\s*(.+)$")
         assert result == "Engineer"
 
+    def test_pattern_normalizes_filename_separators(self):
+        url = "https://example.com/03_2025_Senior-QA-Engineer_DE.pdf"
+        result = _title_from_url(url, pattern=r"^\d{2}_\d{4}_(.+?)_DE$")
+        assert result == "Senior QA Engineer"
+
     def test_pattern_no_match_returns_full(self):
         url = "https://example.com/Engineer.pdf"
         result = _title_from_url(url, pattern=r"NOMATCH_(\w+)")

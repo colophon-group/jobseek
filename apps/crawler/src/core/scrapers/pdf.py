@@ -41,7 +41,8 @@ def _title_from_url(url: str, pattern: str | None = None) -> str | None:
     if pattern:
         m = re.search(pattern, name)
         if m and m.lastindex:
-            return m.group(1).replace("_", " ").strip() or None
+            captured = m.group(1).replace("_", " ").replace("-", " ")
+            return re.sub(r"\s+", " ", captured).strip() or None
     name = name.replace("_", " ").replace("-", " ")
     name = re.sub(r"\s+", " ", name).strip()
     return name if name else None
