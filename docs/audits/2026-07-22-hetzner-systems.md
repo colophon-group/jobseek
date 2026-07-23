@@ -67,6 +67,26 @@ pass.
   Codex error-review workflow and can create or update an actionable GitHub
   issue, as required by `docs/19-data-backup-recovery.md`.
 
+### 2026-07-23 — mistaken OS backups retired
+
+- Immediately before the provider change, the scheduled PostgreSQL
+  differential backup and Typesense snapshot/upload/check had both succeeded
+  that day. Their timers were enabled, the next runs were visible, PostgreSQL
+  WAL archive failures were zero, the Storage Box and data resources retained
+  delete protection, both services were healthy with zero restart/OOM counts,
+  and the live backup-success/freshness series had no firing backup alert.
+- At the account owner's explicit direction, the PostgreSQL and Typesense
+  Hetzner server-backup schedules were disabled while #5948 remained paused on
+  account-owner acceptance of updated Grafana terms. Hetzner's disable action
+  also removed all seven residual server-bound images for each server. This was
+  a control-plane-only change; PostgreSQL and Typesense were not restarted.
+- The encrypted pgBackRest/WAL and Typesense Restic repositories, their tested
+  restore procedures, and the Storage Box's seven daily secondary snapshots
+  are now the recovery paths. Daily Codex issue-delivery proof remains a
+  separate high-priority operational gap under #5948; until it is complete,
+  backup state must be checked directly during production maintenance and
+  backup incident review.
+
 ### 2026-07-22 — fleet observability staged
 
 - Merged and deployed the repo-owned host telemetry surface from `main` to the
@@ -461,7 +481,8 @@ Observed project inventory for the in-scope systems: three running servers, one 
 
 - Name and verify accountable human owners/on-call escalation paths; the Cloud project API does not expose project membership or billing ownership.
 - Prove database/search backup failure and freshness evidence in the daily
-  Codex issue-delivery path, then remove the mistaken Hetzner OS backups.
+  Codex issue-delivery path. The mistaken Hetzner OS backups have already been
+  retired under the recorded owner-approved exception.
 - Add explicit historical metrics coverage to the root-produced Codex error-review evidence boundary without exposing production or write credentials.
 - Verify the documented Cloudflare per-IP rate-limit rule and notification routing in the Cloudflare control plane.
 - Verify notification delivery rather than rule evaluation only; the false `ExporterStale` alerts show that firing state alone is not useful evidence.
@@ -472,4 +493,5 @@ The baseline audit phase was read-only. Subsequent operator-approved changes
 are recorded only in the verified remediation change log above so the original
 observations remain reproducible. Replacement database/search backups,
 restores, scheduling, capacity expansion, and resource protections are now
-verified; legacy OS-backup removal remains gated on daily alert-delivery proof.
+verified, and the mistaken OS backups have been retired. Daily alert-to-issue
+delivery remains pending under #5948.

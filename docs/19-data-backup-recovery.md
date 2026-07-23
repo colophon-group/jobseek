@@ -71,9 +71,9 @@ The root-owned fleet sampler republishes only the numeric status fields as
 `jobseek_backup_*` metrics with stable host/service labels; it never forwards
 the JSON error text. `DataBackupFailed` and `DataBackupStale` are owned by the
 daily Codex route in `apps/crawler/alerts.yaml`. This establishes the telemetry
-source, but it does not by itself satisfy the server-backup removal gate: the
-error-review bundle must still prove bounded historical reads and GitHub issue
-delivery without a write credential.
+source. Bounded historical reads and GitHub issue delivery without a write
+credential remain tracked by #5948; the owner-approved legacy-backup retirement
+described below did not waive that follow-up.
 
 ## Initial production evidence (2026-07-22)
 
@@ -94,8 +94,18 @@ failures and Typesense remained healthy without a restart.
 Both timers are enabled and their next jittered runs are visible. Delete and
 rebuild protection is enabled on both data servers, delete protection is
 enabled on the PostgreSQL Volume, and the validated pre-cutover PostgreSQL
-container has been removed. Legacy server backups remain until daily
-error-review alert delivery passes the removal gate below.
+container has been removed.
+
+On 2026-07-23, the account owner explicitly directed retirement of the mistaken
+server backups while #5948 was paused on account-owner acceptance of updated
+Grafana terms. Immediately before the control-plane change, both native backup
+jobs had succeeded that day, both timers were enabled, PostgreSQL WAL archival
+had zero failures, the Storage Box and data resources were delete-protected,
+both services were healthy with zero restarts/OOMs, and no backup alert was
+firing. Disabling the two Hetzner backup schedules also removed all seven
+server-bound backup images for each host. PostgreSQL and Typesense were not
+restarted. The independent encrypted repositories and Storage Box snapshots
+remain the recovery artifacts.
 
 ## Installation and scheduling
 
@@ -302,8 +312,7 @@ Cloudflare tunnel to a restore drill.
 
 ## Failure and removal gates
 
-Do not remove the existing Hetzner server backups until all of the following
-are true for both services:
+The normal replacement gate for any future legacy backup retirement is:
 
 - the off-host backup completed and repository validation passed;
 - an isolated restore using that repository passed;
@@ -312,12 +321,18 @@ are true for both services:
   evidence and can create or update an actionable GitHub issue;
 - recovery evidence and measured recovery time are recorded in the audit.
 
-Current gate state as of 2026-07-22: off-host backups, repository validation,
-isolated restores, measured recovery evidence, enabled schedules, and visible
-next runs have passed. Daily Codex failure/freshness evidence and proven GitHub
-issue delivery remain pending. Therefore the legacy server backups must remain
-enabled even though the replacement data protection is operating normally.
+Current state as of 2026-07-23: off-host backups, repository validation,
+isolated restores, measured recovery evidence, enabled schedules, visible next
+runs, resource protection, and live Grafana backup series have passed. At the
+account owner's explicit direction, the two mistaken Hetzner backup schedules
+were disabled before #5948's daily issue-delivery proof; the provider action
+also removed all residual server-backup images. This is a recorded,
+owner-approved exception, not a relaxation of the normal replacement gate.
 
-After the gate passes, disable server backups and delete the residual server
-backup images for PostgreSQL and Typesense. Preserve the independent Storage
-Box repositories and their secondary snapshots.
+Until #5948 completes, an operator must inspect the atomic backup status,
+repository validation, timers, WAL archive state, and `DataBackupFailed` /
+`DataBackupStale` rule state during production maintenance and backup incident
+review. A failure or stale result is critical because the native encrypted
+repositories are now the only recovery artifacts. Do not re-enable OS backups
+as a substitute for repairing the native data-backup path. Preserve the
+independent Storage Box repositories and their secondary snapshots.
