@@ -473,6 +473,48 @@ groups:
             Export Lag panel.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md
 
+      # A timeout means at least one posting writer held its transaction open
+      # beyond the barrier's bounded 120s wait. The exporter deliberately did
+      # not choose a cutoff or advance either cursor, preserving data at the
+      # cost of freshness. Route the root signal to the daily Codex review.
+      - alert: CdcWriterBarrierTimeout
+        expr: increase(crawler_exporter_cdc_barrier_timeouts_total{instance="exporter"}[15m]) > 0
+        for: 1m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "CDC writer barrier timed out"
+          description: |
+            The exporter could not establish a commit-safe posting cutoff
+            within 120 seconds. It kept both cursors pinned. Inspect
+            `pg_stat_activity` for a long transaction and the
+            `cdc_snapshot_barrier.timeout` exporter event before terminating
+            anything.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#commit-safe-posting-cdc
+
+      # The daily sample reconciliation now has an explicit alert path rather
+      # than only a log line. Any discrepancy is actionable evidence that a
+      # downstream missed or diverged from local authoritative state.
+      - alert: CdcReconciliationDrift
+        expr: increase(crawler_reconciliation_discrepancies_total{instance="exporter"}[25h]) > 0
+        for: 5m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Posting reconciliation found downstream drift"
+          description: |
+            The daily local PostgreSQL comparison found at least one missing
+            or divergent Supabase/Typesense row. The reconciler touched the
+            sampled rows for idempotent replay; confirm cursor health and run
+            the exact reconciliation procedure before closing the incident.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#commit-safe-posting-cdc
+
       # Catches steady-state degradation: WAF blocking a major board
       # source, Postgres going read-only, etc. >50% failure rate is
       # rare in normal operation; legitimate noisy boards top out

@@ -1,0 +1,129 @@
+"""PostgreSQL integration proof for the commit-safe posting CDC boundary."""
+
+from __future__ import annotations
+
+import asyncio
+import os
+import uuid
+from datetime import UTC, datetime
+
+import asyncpg
+import pytest
+
+from src.export_cursor_fence import capture_cdc_snapshot_cutoff
+
+REQUIRE_POSTGRES_E2E = os.getenv("REQUIRE_POSTGRES_E2E") == "true"
+pytestmark = pytest.mark.skipif(
+    not REQUIRE_POSTGRES_E2E,
+    reason="set REQUIRE_POSTGRES_E2E=true against an isolated migrated PostgreSQL",
+)
+
+
+async def _changed_rows(
+    connection: asyncpg.Connection,
+    cursor: tuple[datetime, uuid.UUID],
+    cutoff: datetime,
+) -> list[asyncpg.Record]:
+    return await connection.fetch(
+        "SELECT id, updated_at FROM job_posting "
+        "WHERE (updated_at, id) > ($1, $2) AND updated_at < $3 "
+        "ORDER BY updated_at, id",
+        cursor[0],
+        cursor[1],
+        cutoff,
+    )
+
+
+async def test_uncommitted_old_stamp_cannot_fall_behind_export_cursor() -> None:
+    """A pre-cutoff writer commits into batch one; a later writer lands in batch two."""
+
+    dsn = os.environ["LOCAL_DATABASE_URL"]
+    pool = await asyncpg.create_pool(dsn, min_size=1, max_size=2)
+    control = await asyncpg.connect(dsn)
+    writer_a = await asyncpg.connect(dsn)
+    writer_b = await asyncpg.connect(dsn)
+    writer_c = await asyncpg.connect(dsn)
+    company_id = uuid.uuid4()
+    board_id = uuid.uuid4()
+    posting_ids = [uuid.uuid4() for _ in range(3)]
+
+    try:
+        await control.execute(
+            "INSERT INTO job_board (id, company_id, board_slug, board_url) VALUES ($1, $2, $3, $4)",
+            board_id,
+            company_id,
+            f"cdc-e2e-{board_id}",
+            f"https://cdc-e2e.invalid/{board_id}",
+        )
+        for posting_id in posting_ids:
+            await control.execute(
+                "INSERT INTO job_posting (id, company_id, board_id, source_url) "
+                "VALUES ($1, $2, $3, $4)",
+                posting_id,
+                company_id,
+                board_id,
+                f"https://cdc-e2e.invalid/posting/{posting_id}",
+            )
+
+        initial = await control.fetch(
+            "SELECT id, updated_at FROM job_posting WHERE board_id = $1 "
+            "ORDER BY updated_at DESC, id DESC LIMIT 1",
+            board_id,
+        )
+        cursor = (initial[0]["updated_at"], initial[0]["id"])
+
+        # Writer A explicitly supplies a stale transaction-era timestamp and
+        # stays uncommitted. The trigger must replace it after acquiring the
+        # shared transaction lock.
+        await writer_a.execute("BEGIN")
+        await writer_a.execute(
+            "UPDATE job_posting SET is_active = false, updated_at = $2 WHERE id = $1",
+            posting_ids[0],
+            datetime(2000, 1, 1, tzinfo=UTC),
+        )
+        stamped_a = await writer_a.fetchval(
+            "SELECT updated_at FROM job_posting WHERE id = $1", posting_ids[0]
+        )
+        assert stamped_a.year != 2000
+
+        # A later writer may commit while A is still invisible.
+        await writer_b.execute(
+            "UPDATE job_posting SET is_active = false, updated_at = now() WHERE id = $1",
+            posting_ids[1],
+        )
+
+        barrier = asyncio.create_task(capture_cdc_snapshot_cutoff(pool))
+        await asyncio.sleep(0.1)
+        assert not barrier.done()
+
+        await writer_a.execute("COMMIT")
+        first_cutoff = await asyncio.wait_for(barrier, timeout=5)
+
+        # A writer that starts after the acquired boundary stamps above the
+        # cutoff and is intentionally deferred to the next idempotent batch.
+        await writer_c.execute(
+            "UPDATE job_posting SET is_active = false, updated_at = now() WHERE id = $1",
+            posting_ids[2],
+        )
+
+        first_batch = await _changed_rows(control, cursor, first_cutoff)
+        assert {row["id"] for row in first_batch} == set(posting_ids[:2])
+        first_cursor = (first_batch[-1]["updated_at"], first_batch[-1]["id"])
+
+        second_cutoff = await capture_cdc_snapshot_cutoff(pool)
+        second_batch = await _changed_rows(control, first_cursor, second_cutoff)
+        assert [row["id"] for row in second_batch] == [posting_ids[2]]
+        second_cursor = (second_batch[-1]["updated_at"], second_batch[-1]["id"])
+
+        final_cutoff = await capture_cdc_snapshot_cutoff(pool)
+        assert await _changed_rows(control, second_cursor, final_cutoff) == []
+    finally:
+        if writer_a.is_in_transaction():
+            await writer_a.execute("ROLLBACK")
+        await control.execute("DELETE FROM job_posting WHERE board_id = $1", board_id)
+        await control.execute("DELETE FROM job_board WHERE id = $1", board_id)
+        await writer_a.close()
+        await writer_b.close()
+        await writer_c.close()
+        await control.close()
+        await pool.close()

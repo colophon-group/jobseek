@@ -82,6 +82,10 @@ async def _noop_cursor_fence(_pool):
     yield
 
 
+async def _fixed_cdc_cutoff(_pool):
+    return datetime(9999, 12, 31, tzinfo=UTC)
+
+
 # ---------------------------------------------------------------------------
 # _get_last_export_ts / _save_last_export_ts
 # ---------------------------------------------------------------------------
@@ -336,6 +340,13 @@ class TestPostingSchema:
         )
         for column in upsert_columns:
             assert column in PostingSchema.column_names()
+
+    def test_changed_row_query_has_a_strict_commit_safe_cutoff(self):
+        sql = PostingSchema.select_changed_sql("updated_at")
+
+        assert "(updated_at, id) > ($1, $2)" in sql
+        assert "updated_at < $4" in sql
+        assert "ORDER BY updated_at, id LIMIT $3" in sql
 
 
 class TestUpsertToSupabase:
@@ -1333,6 +1344,7 @@ class TestRunExporter:
                     supa,
                     shutdown,
                     cursor_fence_factory=_noop_cursor_fence,
+                    cutoff_factory=_fixed_cdc_cutoff,
                 ),
                 set_shutdown(),
             )
@@ -1379,6 +1391,7 @@ class TestRunExporter:
                 supa,
                 shutdown,
                 cursor_fence_factory=_noop_cursor_fence,
+                cutoff_factory=_fixed_cdc_cutoff,
             )
 
         assert probe_values == [True, False]
@@ -1405,6 +1418,10 @@ class TestRunExporter:
             events.append("export")
             return 0, cursor, cursor
 
+        async def tracking_cutoff(_pool):
+            events.append("cutoff")
+            return datetime(9999, 12, 31, tzinfo=UTC)
+
         async def fake_save(*_args, **_kwargs):
             events.append("cursor-save")
             shutdown.set()
@@ -1427,9 +1444,10 @@ class TestRunExporter:
                 supa,
                 shutdown,
                 cursor_fence_factory=tracking_fence,
+                cutoff_factory=tracking_cutoff,
             )
 
-        assert events == ["fence-enter", "export", "cursor-save", "fence-exit"]
+        assert events == ["fence-enter", "cutoff", "export", "cursor-save", "fence-exit"]
 
 
 # ---------------------------------------------------------------------------
@@ -2365,6 +2383,7 @@ class TestRunExporterAtomicCursorWiring:
                     supa,
                     shutdown,
                     cursor_fence_factory=_noop_cursor_fence,
+                    cutoff_factory=_fixed_cdc_cutoff,
                 ),
                 set_shutdown(),
             )

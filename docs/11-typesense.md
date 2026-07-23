@@ -102,7 +102,18 @@ cd apps/crawler && uv run python ../../scripts/typesense-setup.py --force  # Dro
 uv run --no-sync crawler setup-typesense                                   # Same, from inside the image
 ```
 
-The deploy script (`apps/crawler/deploy.sh`) runs Alembic migrations and `crawler setup-typesense` before stopping processors, then runs `crawler sync` while workers/exporter/drain/browser are quiesced. That keeps schema patching ahead of `sync` upserts, while avoiding a Redis reseed race with live workers. The deploy workflow also smoke-runs `setup-typesense` twice against an ephemeral Typesense container before SSHing to prod (the second run exercises the patch path on existing collections), so a schema regression fails CI rather than aborting the deploy mid-stream. The script keeps a rollback copy of `/home/deploy/.env`, starts the previous image again on failure, and only lets the workflow promote the new images to `latest` after the SSH deploy succeeds.
+The deploy script (`apps/crawler/deploy.sh`) stops workers, exporter, drain, and
+browser before running Alembic, `crawler setup-typesense`, and `crawler sync`.
+Keeping the whole schema/runtime transition in one quiescence window prevents
+an old local-Postgres writer or exporter from crossing the commit-safe CDC
+trigger cutover, keeps schema patching ahead of `sync` upserts, and avoids a
+Redis reseed race with live workers. Typesense itself remains online throughout.
+The deploy workflow also smoke-runs `setup-typesense` twice against an ephemeral
+Typesense container before SSHing to prod (the second run exercises the patch
+path on existing collections), so a schema regression fails CI rather than
+aborting the deploy mid-stream. The script keeps a rollback copy of
+`/home/deploy/.env`, starts the previous image again on failure, and only lets
+the workflow promote the new images to `latest` after the SSH deploy succeeds.
 
 ### Company Collection (extended for company detail page)
 
@@ -124,14 +135,21 @@ The `company` collection doubles as the source for the company detail page (see 
 
 The exporter uses a **two-cursor design**: Supabase and Typesense each have their own keyset cursor (`(updated_at, id)` tuple). On each tick:
 
-1. SELECT changed postings after `MIN(supabase_cursor, typesense_cursor)`
-2. Concurrently (`asyncio.gather`):
+1. Probe without blocking transactions changing exported posting fields,
+   capture a commit-safe clock cutoff once they drain, and release that
+   database barrier immediately.
+2. SELECT changed postings after `MIN(supabase_cursor, typesense_cursor)` and
+   strictly before the cutoff.
+3. Concurrently (`asyncio.gather`):
    - Upsert to Supabase, advance Supabase cursor on success
    - Denormalize + expand ancestor IDs + upsert to Typesense, advance Typesense cursor on success
 
 The Typesense document builder (`_build_typesense_docs`) expands `location_ids` and `occupation_ids` with all ancestor IDs using pre-loaded hierarchy maps (`TaxonomyMaps.location_ancestors`, `occupation_ancestors`). This means even legacy Postgres rows with leaf-only IDs produce correct hierarchy-filterable Typesense documents.
 
 If one target fails, only its cursor stalls. The other continues unaffected.
+The cutoff barrier is not held across either network upsert. See
+[`03-crawler-architecture.md`](03-crawler-architecture.md#commit-safe-posting-cdc)
+for the trigger contract, timeout behavior, alerts, and deployment ordering.
 
 **Feature flag**: Typesense writes only happen when `TYPESENSE_ADMIN_KEY` is set (non-empty). Environments without Typesense are unaffected. The env var must be passed to containers in `docker-compose.yml` (`x-common-env`).
 

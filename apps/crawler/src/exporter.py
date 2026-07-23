@@ -14,7 +14,12 @@ import structlog
 from prometheus_client import Counter, Gauge
 
 from src.config import settings
-from src.export_cursor_fence import CursorFenceFactory, export_cursor_fence
+from src.export_cursor_fence import (
+    CursorFenceFactory,
+    CutoffFactory,
+    capture_cdc_snapshot_cutoff,
+    export_cursor_fence,
+)
 from src.metrics import (
     export_errors_total,
     exporter_export_lag,
@@ -24,6 +29,7 @@ from src.metrics import (
     local_db_pool_idle,
     local_db_pool_size,
     r2_pending_gauge,
+    reconciliation_discrepancies,
     redis_queue_depth,
     supa_db_pool_idle,
     supa_db_pool_size,
@@ -73,6 +79,7 @@ log = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 _EPOCH = datetime.min.replace(tzinfo=UTC)
+_MAX_CDC_CUTOFF = datetime.max.replace(tzinfo=UTC)
 _ZERO_UUID = uuid.UUID(int=0)
 
 # Sentinel stamped on Typesense `experience_max` for rows the extractor
@@ -995,6 +1002,8 @@ async def _export_postings_dual(
     maps: TaxonomyMaps,
     supa_backoff: _DownstreamBackoff | None = None,
     ts_backoff: _DownstreamBackoff | None = None,
+    *,
+    cutoff: datetime = _MAX_CDC_CUTOFF,
 ) -> tuple[int, Cursor, Cursor]:
     """Fetch changed postings and upsert to both Supabase and Typesense concurrently.
 
@@ -1027,6 +1036,7 @@ async def _export_postings_dual(
         fetch_ts,
         fetch_id,
         settings.export_batch_limit,
+        cutoff,
     )
     if not rows:
         return 0, supa_cursor, ts_cursor
@@ -1256,7 +1266,8 @@ class PostingSchema:
             + cls.select_list(*extras)
             + " FROM "
             + cls.table
-            + " WHERE (updated_at, id) > ($1, $2) ORDER BY updated_at, id LIMIT $3"
+            + " WHERE (updated_at, id) > ($1, $2)"
+            + " AND updated_at < $4 ORDER BY updated_at, id LIMIT $3"
         )
 
 
@@ -1269,6 +1280,8 @@ async def _export_changed_postings(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
     cursor: Cursor,
+    *,
+    cutoff: datetime = _MAX_CDC_CUTOFF,
 ) -> tuple[int, Cursor]:
     """Export job_posting rows changed since cursor to Supabase.
 
@@ -1286,6 +1299,7 @@ async def _export_changed_postings(
         last_ts,
         last_id,
         settings.export_batch_limit,
+        cutoff,
     )
     if not rows:
         return 0, cursor
@@ -1442,6 +1456,7 @@ async def run_exporter(
     shutdown_event: asyncio.Event,
     *,
     cursor_fence_factory: CursorFenceFactory = export_cursor_fence,
+    cutoff_factory: CutoffFactory = capture_cdc_snapshot_cutoff,
 ) -> None:
     """Main exporter loop.
 
@@ -1486,6 +1501,12 @@ async def run_exporter(
                     if maps.stale:
                         await maps.refresh(local_pool, supa_pool)
 
+                    # Probe until transactions that changed exported posting
+                    # fields have committed, capture a clock cutoff, then
+                    # immediately release the writer barrier. Rows stamped by
+                    # later transactions stay above this strict upper bound.
+                    cutoff = await cutoff_factory(local_pool)
+
                     # Two-cursor dual export
                     exported, posting_cursor, ts_cursor = await _export_postings_dual(
                         local_pool,
@@ -1495,6 +1516,7 @@ async def run_exporter(
                         maps,
                         supa_backoff,
                         ts_backoff,
+                        cutoff=cutoff,
                     )
                     # Save both cursors in a single transaction so a crash
                     # between writes cannot leave one cursor advanced while
@@ -1513,8 +1535,12 @@ async def run_exporter(
                         exported = 0
                     else:
                         try:
+                            cutoff = await cutoff_factory(local_pool)
                             exported, posting_cursor = await _export_changed_postings(
-                                local_pool, supa_pool, posting_cursor
+                                local_pool,
+                                supa_pool,
+                                posting_cursor,
+                                cutoff=cutoff,
                             )
                         except Exception as exc:
                             if not _is_downstream_unavailable(exc):
@@ -1727,6 +1753,7 @@ async def run_reconciliation(
         ts_discrepancies = await _reconcile_typesense(local_pool)
         discrepancies += ts_discrepancies
 
+    reconciliation_discrepancies.inc(discrepancies)
     log.info("reconciliation.completed", discrepancies=discrepancies)
     return discrepancies
 

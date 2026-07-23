@@ -262,19 +262,77 @@ No Redis stream needed -- the `descriptions` table in local Postgres serves as t
 
 ## Exporter (CDC)
 
-Single process exporting changed rows from local Postgres to Supabase:
+One process exports changed `job_posting` rows from authoritative local
+Postgres to Supabase and Typesense. Each target has an independent durable
+`(updated_at, id)` cursor in `exporter_state`; one unavailable target does not
+hold back the other.
 
-```
-Every 1-2 seconds:
-1. SELECT * FROM job_posting WHERE updated_at >= $last_export_ts LIMIT 2000
-2. Batch COPY changed rows to Supabase via temp table + ON CONFLICT upsert
-3. Update last_export_ts (persisted in exporter_state table)
+Every steady-state tick:
 
-Daily:
-4. Reconciliation: compare local vs Supabase, re-export discrepancies
-```
+1. acquire the operator-repair cursor fence;
+2. establish a commit-safe PostgreSQL cutoff (below);
+3. select at most 2,000 rows after the older eligible target cursor and
+   strictly before the cutoff;
+4. upsert eligible rows to Supabase and Typesense concurrently;
+5. advance only successful target cursors, atomically when saving both; and
+6. release the repair fence.
 
-The exporter is the **only component that writes to Supabase**. Workers never touch Supabase directly.
+The exporter is the **only component that writes posting rows to Supabase**.
+Workers never touch Supabase directly. A daily count/sample reconciliation
+touches discrepant local rows for idempotent replay and increments
+`crawler_reconciliation_discrepancies_total`; `CdcReconciliationDrift` routes
+that evidence to the daily Codex error review.
+
+### Commit-safe posting CDC
+
+PostgreSQL `now()` is fixed at transaction start, while a changed row becomes
+visible only at commit. Ordering a keyset cursor by that timestamp alone can
+skip a long transaction: the exporter can miss its uncommitted row, observe a
+later timestamp, advance, and then have the old timestamp commit behind the
+cursor.
+
+Migration `0012_commit_safe_posting_cdc` establishes this database-enforced
+protocol:
+
+- a `BEFORE STATEMENT` trigger takes the shared transaction side of advisory
+  lock `CDCLOCK` for every insert and every update that names a mutable
+  downstream field or `updated_at`;
+- a `BEFORE ROW` trigger compares all mutable fields in
+  `PostingSchema.upsert_columns` and stamps real changes with
+  `clock_timestamp()` after that shared lock is held; explicit `updated_at`
+  touches are also re-stamped, while lease/schedule/`last_seen_at` bookkeeping
+  is intentionally not a CDC change signal;
+- the exporter uses non-blocking probes for the exclusive side, captures
+  `clock_timestamp()` once current shared writers drain, releases immediately,
+  then selects `updated_at < cutoff`; and
+- writers stamped before the boundary must therefore be committed and visible,
+  while a writer that reaches the trigger during the brief exclusive hold
+  stamps at or after the cutoff and waits for the next tick.
+
+The exclusive lock is **not** held during Supabase or Typesense I/O, so normal
+worker back-pressure is limited to the millisecond cutoff query itself; the
+wait for existing writers happens through non-blocking probes. Acquisition is
+bounded at 120 seconds. On timeout the known-unlocked connection returns to the
+pool, neither cursor advances, the next tick retries,
+`crawler_exporter_cdc_barrier_timeouts_total` increments, and
+`CdcWriterBarrierTimeout` routes the failure to Codex error review. Inspect
+`pg_stat_activity` and the `cdc_snapshot_barrier.timeout` event to identify the
+long transaction; do not terminate a production backend without confirming
+its owner and rollback consequences.
+
+Local worker connections enforce a 30-second per-statement timeout and a
+5-minute idle-in-transaction timeout. Multi-statement write transactions do
+not have a separate total-duration cap, so a legitimate unusually large batch
+can outlive one 120-second probe window. That is a freshness event, not a data
+loss fallback: the exporter saves no cursor, reports the timeout, and retries
+until it observes a clean boundary.
+
+Deploys stop workers, browser, exporter, and drain **before** Alembic, then run
+the Typesense schema patch and `crawler sync` inside the same quiescence window.
+This prevents an old writer/exporter from straddling the trigger/runtime
+cutover. A failed deploy restores the previous image; revision 0012 remains
+forward-compatible with it, although the complete commit-order guarantee only
+exists when the new exporter is running.
 
 ## Data Flow
 
@@ -287,7 +345,7 @@ Workers (pipeline.py) claim from Redis -> process board/scrape -> write to Local
                        |
 R2 Drain -> poll descriptions WHERE NOT r2_uploaded -> PUT to R2
                        |
-Exporter CDC -> SELECT WHERE updated_at > cursor -> batch COPY to Supabase
+Exporter CDC -> commit-safe cutoff + keyset read -> Supabase + Typesense
 ```
 
 ## File Structure
@@ -343,7 +401,7 @@ crawler board <slug>     # Process single board (debug)
 
 ```bash
 # docker-compose.yml defines: redis, worker (x3), browser, exporter, drain, alloy
-# deploy.sh: writes rollback-backed .env, pulls the requested tag, preflights alembic + setup-typesense, stops processors, runs crawler sync, starts + gates services
+# deploy.sh: writes rollback-backed .env, pulls the requested tag, stops processors, migrates Postgres, patches Typesense, runs crawler sync, starts + gates services
 # CI: .github/workflows/deploy-crawler-browser.yml builds versioned slim + full images, then promotes them to latest after deploy succeeds
 ```
 
@@ -368,7 +426,8 @@ Docker images:
 | Redis dies | Queued work lost | sync.py rebuilds from CSV; no data loss |
 | Local Postgres down | Workers idle | Resume when Postgres recovers; data on persistent volume |
 | Supabase down | Exporter can't flush | Changed rows accumulate in local Postgres; catches up on recovery |
-| Exporter crash | CDC paused | Resumes from last_export_ts on restart |
+| Exporter crash | CDC paused | Resumes independently from both durable `(updated_at, id)` cursors |
+| CDC writer barrier timeout | Freshness pauses; cursors stay pinned | Inspect the owning long transaction; exporter retries without skipped rows |
 | R2 drain failure | Unuploaded descriptions | Rows stay r2_uploaded = false; retried automatically |
 
 Redis is **disposable infrastructure** -- state is rebuildable from CSV via sync.py. Local Postgres is the **authoritative store** -- protected by volume snapshots.

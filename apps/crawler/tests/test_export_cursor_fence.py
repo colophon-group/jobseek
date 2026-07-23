@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
 from src.export_cursor_fence import (
+    _CDC_CUTOFF_SQL,
+    _CDC_TRY_LOCK_SQL,
     _TRY_LOCK_SQL,
     _UNLOCK_SQL,
+    CDC_WRITER_BARRIER_ID,
     EXPORT_CURSOR_FENCE_ID,
+    capture_cdc_snapshot_cutoff,
     export_cursor_fence,
 )
 
@@ -19,7 +24,12 @@ def _pool_and_connection():
     pool = MagicMock()
     connection = AsyncMock()
     connection.fetchval = AsyncMock(side_effect=[True, True])
-    connection.terminate = MagicMock()
+    connection.is_closed = MagicMock(return_value=False)
+
+    def terminate() -> None:
+        connection.is_closed.return_value = True
+
+    connection.terminate = MagicMock(side_effect=terminate)
     acquire = MagicMock()
     acquire.__aenter__ = AsyncMock(return_value=connection)
     acquire.__aexit__ = AsyncMock(return_value=False)
@@ -165,5 +175,75 @@ async def test_fence_terminates_session_when_unlock_reports_not_held() -> None:
     with pytest.raises(RuntimeError, match="was not held"):
         async with export_cursor_fence(pool):
             pass
+
+    connection.terminate.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_cdc_cutoff_acquires_exclusive_lock_and_releases_same_session() -> None:
+    pool, connection = _pool_and_connection()
+    cutoff = datetime(2026, 7, 23, 6, 30, tzinfo=UTC)
+    connection.fetchval.side_effect = [True, cutoff, True]
+
+    observed = await capture_cdc_snapshot_cutoff(pool)
+
+    assert observed == cutoff
+    assert connection.fetchval.await_args_list == [
+        call(
+            _CDC_TRY_LOCK_SQL,
+            CDC_WRITER_BARRIER_ID,
+        ),
+        call(_CDC_CUTOFF_SQL),
+        call(_UNLOCK_SQL, CDC_WRITER_BARRIER_ID),
+    ]
+    connection.terminate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_cdc_cutoff_probes_without_queuing_writer_backpressure(monkeypatch) -> None:
+    pool, connection = _pool_and_connection()
+    cutoff = datetime(2026, 7, 23, 6, 31, tzinfo=UTC)
+    connection.fetchval.side_effect = [False, False, True, cutoff, True]
+    sleep = AsyncMock()
+    monkeypatch.setattr(asyncio, "sleep", sleep)
+
+    assert await capture_cdc_snapshot_cutoff(pool) == cutoff
+
+    assert connection.fetchval.await_args_list == [
+        call(_CDC_TRY_LOCK_SQL, CDC_WRITER_BARRIER_ID),
+        call(_CDC_TRY_LOCK_SQL, CDC_WRITER_BARRIER_ID),
+        call(_CDC_TRY_LOCK_SQL, CDC_WRITER_BARRIER_ID),
+        call(_CDC_CUTOFF_SQL),
+        call(_UNLOCK_SQL, CDC_WRITER_BARRIER_ID),
+    ]
+    assert sleep.await_count == 2
+    connection.terminate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_cdc_cutoff_times_out_without_terminating_known_unlocked_session(
+    monkeypatch,
+) -> None:
+    pool, connection = _pool_and_connection()
+    connection.fetchval.side_effect = None
+    connection.fetchval.return_value = False
+    monkeypatch.setattr(
+        "src.export_cursor_fence._CDC_LOCK_TIMEOUT_SECONDS",
+        0.0,
+    )
+
+    with pytest.raises(TimeoutError):
+        await capture_cdc_snapshot_cutoff(pool)
+
+    connection.terminate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_cdc_cutoff_terminates_session_when_clock_read_fails() -> None:
+    pool, connection = _pool_and_connection()
+    connection.fetchval.side_effect = [True, RuntimeError("clock read failed")]
+
+    with pytest.raises(RuntimeError, match="clock read failed"):
+        await capture_cdc_snapshot_cutoff(pool)
 
     connection.terminate.assert_called_once_with()

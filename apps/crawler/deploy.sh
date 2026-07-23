@@ -361,6 +361,15 @@ pull_deploy_images
 
 docker compose up -d redis
 
+# ── Quiesce every local-Postgres writer before schema cutover ──────
+# Migrations may introduce a database/runtime protocol (for example the
+# shared-writer/exclusive-exporter CDC barrier). Stop both sides before
+# Alembic so no old process can write or advance a cursor in the interval
+# between the schema change and the new containers starting. `--timeout 60`
+# matches the app's 30s bounded drain with headroom before Docker sends
+# SIGKILL. Redis and Alloy remain available throughout.
+docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
+
 # ── Run Alembic migrations on local Postgres ─────────────────────────
 docker run --rm --env-file "$ENV_FILE" --network host \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
@@ -372,13 +381,6 @@ docker run --rm --env-file "$ENV_FILE" --network host \
 docker run --rm --env-file "$ENV_FILE" --network host \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync crawler setup-typesense
-
-# ── Quiesce processors before reseeding Redis-backed schedules ───────
-# Keep Redis and alloy up, but stop processors so deploy-time
-# `crawler sync` does not race with live workers claiming work while we
-# reseed board monitors. `--timeout 60` matches the app's 30s bounded
-# drain with headroom before Docker sends SIGKILL.
-docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
 
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
 docker run --rm --env-file "$ENV_FILE" --network host \
