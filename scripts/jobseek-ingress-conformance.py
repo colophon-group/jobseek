@@ -29,6 +29,7 @@ KNOWN_PORTS = {
 }
 CRAWLER_METRICS_PORTS = {9093, 9094, 9095, 9096, 9097, 9098}
 POSTGRES_NETWORK_CONFIG = Path("/etc/jobseek-ingress/postgresql-network.env")
+POSTGRES_SHM_MIN_BYTES = 1024 * 1024 * 1024
 
 
 class ConformanceError(RuntimeError):
@@ -153,9 +154,7 @@ def _ufw_state(
     lines = [line.strip().lower() for line in output.splitlines()]
     active = "status: active" in lines
     defaults = any(
-        line.startswith("default:")
-        and "deny (incoming)" in line
-        and "allow (outgoing)" in line
+        line.startswith("default:") and "deny (incoming)" in line and "allow (outgoing)" in line
         for line in lines
     )
     commands = [
@@ -168,17 +167,13 @@ def _ufw_state(
     expected_commands = 1
     if role == "postgresql":
         service_allowed = any(
-            command.startswith(
-                f"ufw allow from {crawler_ip} to any port 5432 proto tcp"
-            )
+            command.startswith(f"ufw allow from {crawler_ip} to any port 5432 proto tcp")
             for command in commands
         )
         expected_commands = 2
     elif role == "typesense":
         service_allowed = any(
-            command.startswith(
-                f"ufw allow from {crawler_ip} to any port 8108 proto tcp"
-            )
+            command.startswith(f"ufw allow from {crawler_ip} to any port 8108 proto tcp")
             for command in commands
         )
         expected_commands = 2
@@ -189,11 +184,7 @@ def _ufw_state(
         "ssh_allowed": ssh_allowed,
         "required_private_service_allowed": service_allowed,
         "exact_managed_rules": exact_rules,
-        "compliant": active
-        and defaults
-        and ssh_allowed
-        and service_allowed
-        and exact_rules,
+        "compliant": active and defaults and ssh_allowed and service_allowed and exact_rules,
     }
 
 
@@ -208,9 +199,21 @@ def _postgres_container() -> str | None:
     return None
 
 
-def _postgres_state(
-    container: str, crawler_ip: ipaddress.IPv4Address
-) -> dict[str, Any]:
+def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[str, Any]:
+    shared_memory = _run(["docker", "inspect", "--format", "{{.HostConfig.ShmSize}}", container])
+    shared_memory_mount = _run(["docker", "exec", container, "df", "-B1", "/dev/shm"])
+    try:
+        shared_memory_bytes = int(shared_memory.stdout.strip())
+        shared_memory_capacity_bytes = int(shared_memory_mount.stdout.splitlines()[-1].split()[1])
+    except (IndexError, ValueError):
+        shared_memory_bytes = 0
+        shared_memory_capacity_bytes = 0
+    shared_memory_match = (
+        shared_memory.returncode == 0
+        and shared_memory_mount.returncode == 0
+        and shared_memory_bytes >= POSTGRES_SHM_MIN_BYTES
+        and shared_memory_capacity_bytes >= POSTGRES_SHM_MIN_BYTES
+    )
     settings = _run(
         [
             "docker",
@@ -229,13 +232,17 @@ def _postgres_state(
         ]
     )
     if settings.returncode != 0:
-        return {"readable": False, "compliant": False}
+        return {
+            "readable": False,
+            "shared_memory_bytes": shared_memory_bytes,
+            "shared_memory_capacity_bytes": shared_memory_capacity_bytes,
+            "shared_memory_contract": shared_memory_match,
+            "compliant": False,
+        }
     parsed_settings = dict(
         line.split("|", 1) for line in settings.stdout.splitlines() if "|" in line
     )
-    listeners = {
-        item.strip() for item in parsed_settings.get("listen_addresses", "").split(",")
-    }
+    listeners = {item.strip() for item in parsed_settings.get("listen_addresses", "").split(",")}
     private_listeners = set()
     for item in listeners - {"127.0.0.1"}:
         try:
@@ -244,9 +251,7 @@ def _postgres_state(
             continue
         if isinstance(address, ipaddress.IPv4Address) and address.is_private:
             private_listeners.add(address)
-    listen_match = (
-        "127.0.0.1" in listeners and len(listeners) == 2 and len(private_listeners) == 1
-    )
+    listen_match = "127.0.0.1" in listeners and len(listeners) == 2 and len(private_listeners) == 1
     config_match = False
     try:
         config_value = POSTGRES_NETWORK_CONFIG.read_text(encoding="utf-8").strip()
@@ -320,12 +325,21 @@ def _postgres_state(
     )
     return {
         "readable": True,
+        "shared_memory_bytes": shared_memory_bytes,
+        "shared_memory_capacity_bytes": shared_memory_capacity_bytes,
+        "shared_memory_contract": shared_memory_match,
         "private_and_loopback_bind_only": listen_match,
         "repo_owned_listener_policy": config_match,
         "scram_password_encryption": encryption_match,
         "tls_required_by_policy": False,
         "hba_exact": rules_match,
-        "compliant": listen_match and config_match and encryption_match and rules_match,
+        "compliant": (
+            shared_memory_match
+            and listen_match
+            and config_match
+            and encryption_match
+            and rules_match
+        ),
     }
 
 
@@ -386,9 +400,7 @@ def audit(role: str, crawler_private_ip: str) -> dict[str, Any]:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--role", required=True, choices=("crawler", "postgresql", "typesense")
-    )
+    parser.add_argument("--role", required=True, choices=("crawler", "postgresql", "typesense"))
     parser.add_argument("--crawler-private-ip", required=True)
     parser.add_argument("--require-enforced", action="store_true")
     return parser

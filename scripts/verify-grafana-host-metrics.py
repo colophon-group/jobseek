@@ -20,6 +20,7 @@ QUERIES = {
     "backup_series": "count(jobseek_backup_last_attempt_success)",
     "failed_backups": "count(jobseek_backup_last_attempt_success == 0)",
     "postgresql_ready": "count(jobseek_postgresql_ready == 1)",
+    "postgresql_shared_memory": "count(jobseek_postgresql_shared_memory_configured_bytes)",
     "typesense_ready": "count(jobseek_typesense_healthy == 1)",
 }
 
@@ -83,6 +84,8 @@ def validate_results(
         )
     if _scalar(results, "postgresql_ready") != 1:
         raise VerificationError("PostgreSQL readiness metric is missing or unhealthy")
+    if _scalar(results, "postgresql_shared_memory") != 1:
+        raise VerificationError("PostgreSQL shared-memory metric is missing")
     if _scalar(results, "typesense_ready") != 1:
         raise VerificationError("Typesense readiness metric is missing or unhealthy")
 

@@ -121,6 +121,7 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "DataBackupFailed",
         "DataBackupStale",
         "PostgreSQLUnavailable",
+        "PostgreSQLSharedMemoryPressure",
         "PostgreSQLArchiveFailure",
         "TypesenseUnavailable",
         "TypesenseTunnelUnavailable",
@@ -128,6 +129,24 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "RequiredContainerUnavailable",
         "HostRebootRequired",
     } <= names
+
+
+def test_postgresql_shared_memory_alert_enforces_contract_and_capacity() -> None:
+    rule = _alert_rule("PostgreSQLSharedMemoryPressure")
+
+    assert "jobseek_postgresql_shared_memory_configured_bytes < 1073741824" in rule["expr"]
+    assert "jobseek_postgresql_shared_memory_capacity_bytes < 1073741824" in rule["expr"]
+    assert "jobseek_postgresql_shared_memory_available_bytes" in rule["expr"]
+    assert rule["for"] == "5m"
+    assert rule["labels"] == {
+        "severity": "critical",
+        "service": "postgresql",
+        "owner": "codex-error-review",
+        "route": "codex-daily",
+    }
+    assert rule["annotations"]["runbook"].endswith(
+        "docs/16-hetzner-maintenance.md#postgresql-shared-memory"
+    )
 
 
 def test_deadletter_operator_playbook_is_documented() -> None:

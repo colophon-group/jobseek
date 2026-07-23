@@ -95,6 +95,18 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
         returncode = 0
 
     monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: Result())
+    monkeypatch.setattr(
+        host,
+        "_collect_postgresql_shared_memory_metrics",
+        lambda lines, _container: lines.extend(
+            (
+                "jobseek_postgresql_shared_memory_configured_bytes 1073741824",
+                "jobseek_postgresql_shared_memory_capacity_bytes 1073741824",
+                "jobseek_postgresql_shared_memory_used_bytes 67108864",
+                "jobseek_postgresql_shared_memory_available_bytes 1006632960",
+            )
+        ),
+    )
 
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
@@ -122,6 +134,7 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_postgresql_connections 12.0" in content
     assert "jobseek_postgresql_archive_failed_total 2.0" in content
     assert "jobseek_postgresql_database_bytes 19000000000.0" in content
+    assert "jobseek_postgresql_shared_memory_configured_bytes 1073741824" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
     assert 'jobseek_cross_store_reconciliation_last_detected{target="supabase"} 42.0' in content
     assert (
@@ -138,6 +151,9 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
         returncode = 0
 
     monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: Result())
+    monkeypatch.setattr(
+        host, "_collect_postgresql_shared_memory_metrics", lambda _lines, _container: None
+    )
 
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
@@ -152,6 +168,36 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
     host._collect_postgresql_metrics(lines)
 
     assert "jobseek_cross_store_reconciliation_schema_ready 0" in "\n".join(lines)
+
+
+def test_postgresql_shared_memory_probe_emits_configured_and_live_capacity(
+    monkeypatch,
+) -> None:
+    class Result:
+        def __init__(self, stdout: str):
+            self.stdout = stdout
+
+    def run(argv, **_kwargs):
+        if argv[:2] == ["docker", "inspect"]:
+            return Result("1073741824\n")
+        if argv[:3] == ["docker", "exec", "postgres"]:
+            return Result(
+                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
+                "shm 1073741824 67108864 1006632960 7% /dev/shm\n"
+            )
+        raise AssertionError(argv)
+
+    monkeypatch.setattr(host, "_run", run)
+    lines: list[str] = []
+
+    host._collect_postgresql_shared_memory_metrics(lines, "postgres")
+
+    assert lines == [
+        "jobseek_postgresql_shared_memory_configured_bytes 1073741824",
+        "jobseek_postgresql_shared_memory_capacity_bytes 1073741824",
+        "jobseek_postgresql_shared_memory_used_bytes 67108864",
+        "jobseek_postgresql_shared_memory_available_bytes 1006632960",
+    ]
 
 
 def test_cursor_rejects_future_and_old_values(tmp_path: Path) -> None:

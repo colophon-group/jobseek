@@ -176,6 +176,15 @@ settings address the measured requested-checkpoint pressure and leave the
 original 2 GiB/minimal-WAL container as the rollback target; they must not be
 applied while the data Volume has only its former 1.8 GiB free.
 
+The live container also requires `--shm-size 1g`. This is independent of
+`shared_buffers`: it raises Docker's POSIX shared-memory mount above the unsafe
+64 MiB default used by parallel-query dynamic shared memory, while the 4 GiB
+container cgroup remains the total memory limit. Both this migration script and
+the ingress replacement script validate Docker's configured value plus the
+mounted `/dev/shm` capacity before accepting a replacement. See
+[`16-hetzner-maintenance.md#postgresql-shared-memory`](16-hetzner-maintenance.md#postgresql-shared-memory)
+for verification, alerting, and rollback.
+
 The migration preserves the exact old container as a stopped rollback target:
 
 ```bash

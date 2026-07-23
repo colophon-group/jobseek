@@ -270,7 +270,32 @@ def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
     return result.stdout.strip()
 
 
+def _collect_postgresql_shared_memory_metrics(lines: list[str], container: str) -> None:
+    configured_result = _run(
+        ["docker", "inspect", "--format", "{{.HostConfig.ShmSize}}", container],
+        timeout=30,
+    )
+    usage_result = _run(["docker", "exec", container, "df", "-B1", "/dev/shm"], timeout=30)
+    try:
+        configured = int(configured_result.stdout.strip())
+        fields = usage_result.stdout.splitlines()[-1].split()
+        capacity, used, available = (int(value) for value in fields[1:4])
+    except (IndexError, TypeError, ValueError) as exc:
+        raise ProbeError("PostgreSQL shared-memory probe returned an unexpected shape") from exc
+    if configured <= 0 or capacity <= 0 or used < 0 or available < 0:
+        raise ProbeError("PostgreSQL shared-memory probe returned invalid capacity")
+    lines.extend(
+        (
+            _metric("jobseek_postgresql_shared_memory_configured_bytes", configured),
+            _metric("jobseek_postgresql_shared_memory_capacity_bytes", capacity),
+            _metric("jobseek_postgresql_shared_memory_used_bytes", used),
+            _metric("jobseek_postgresql_shared_memory_available_bytes", available),
+        )
+    )
+
+
 def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -> None:
+    _collect_postgresql_shared_memory_metrics(lines, container)
     ready = subprocess.run(
         [
             "docker",

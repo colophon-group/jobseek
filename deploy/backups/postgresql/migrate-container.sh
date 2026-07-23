@@ -12,6 +12,8 @@ SPOOL_DIR="/var/lib/jobseek-backup/postgresql/spool"
 REPOSITORY_DIR="/mnt/jobseek-postgresql-backups"
 NETWORK_CONFIG=/etc/jobseek-ingress/postgresql-network.env
 POSTGRES_LISTEN_ADDRESSES='*'
+POSTGRES_SHM_SIZE=1g
+POSTGRES_SHM_BYTES=1073741824
 
 if [[ -f "$NETWORK_CONFIG" ]]; then
   # shellcheck disable=SC1090
@@ -105,6 +107,7 @@ apply() {
     --name "$CURRENT_NAME" \
     --network host \
     --memory 4g \
+    --shm-size "$POSTGRES_SHM_SIZE" \
     --restart unless-stopped \
     --env-file "$CONFIG_DIR/postgres.env" \
     --volume "$DATA_DIR:/var/lib/postgresql/data" \
@@ -130,6 +133,11 @@ apply() {
       -c 'archive_timeout=60s' >/dev/null
 
   wait_ready
+  [[ "$(docker inspect "$CURRENT_NAME" --format '{{.HostConfig.ShmSize}}')" == "$POSTGRES_SHM_BYTES" ]]
+  [[ "$(
+    docker exec "$CURRENT_NAME" df -B1 /dev/shm |
+      awk 'NR == 2 { print $2 }'
+  )" == "$POSTGRES_SHM_BYTES" ]]
   docker exec --user postgres "$CURRENT_NAME" pgbackrest --stanza=jobseek stanza-create
   docker exec --user postgres "$CURRENT_NAME" touch /var/spool/pgbackrest/archive-enabled
   docker exec --user postgres "$CURRENT_NAME" pgbackrest --stanza=jobseek check
@@ -150,6 +158,7 @@ case "${1:-}" in
     ;;
   finalize)
     [[ "$(docker inspect "$CURRENT_NAME" --format '{{.Config.Image}}')" == "$TARGET_IMAGE" ]]
+    [[ "$(docker inspect "$CURRENT_NAME" --format '{{.HostConfig.ShmSize}}')" == "$POSTGRES_SHM_BYTES" ]]
     [[ "$(docker inspect "$ROLLBACK_NAME" --format '{{.State.Running}}')" == "false" ]]
     docker rm "$ROLLBACK_NAME" >/dev/null
     echo "Removed validated PostgreSQL rollback container"
