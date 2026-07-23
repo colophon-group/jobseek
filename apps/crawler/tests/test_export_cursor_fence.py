@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
-from src.export_cursor_fence import EXPORT_CURSOR_FENCE_ID, export_cursor_fence
+from src.export_cursor_fence import (
+    _TRY_LOCK_SQL,
+    _UNLOCK_SQL,
+    EXPORT_CURSOR_FENCE_ID,
+    export_cursor_fence,
+)
 
 
 def _pool_and_connection():
     pool = MagicMock()
     connection = AsyncMock()
-    connection.fetchval = AsyncMock(return_value=True)
+    connection.fetchval = AsyncMock(side_effect=[True, True])
+    connection.terminate = MagicMock()
     acquire = MagicMock()
     acquire.__aenter__ = AsyncMock(return_value=connection)
     acquire.__aexit__ = AsyncMock(return_value=False)
@@ -25,15 +32,13 @@ async def test_fence_acquires_and_releases_same_session_lock() -> None:
     pool, connection = _pool_and_connection()
 
     async with export_cursor_fence(pool):
-        connection.execute.assert_awaited_once_with(
-            "SELECT pg_advisory_lock($1::bigint)",
-            EXPORT_CURSOR_FENCE_ID,
-        )
+        connection.fetchval.assert_awaited_once_with(_TRY_LOCK_SQL, EXPORT_CURSOR_FENCE_ID)
 
-    connection.fetchval.assert_awaited_once_with(
-        "SELECT pg_advisory_unlock($1::bigint)",
-        EXPORT_CURSOR_FENCE_ID,
-    )
+    assert connection.fetchval.await_args_list == [
+        call(_TRY_LOCK_SQL, EXPORT_CURSOR_FENCE_ID),
+        call(_UNLOCK_SQL, EXPORT_CURSOR_FENCE_ID),
+    ]
+    connection.terminate.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -45,6 +50,120 @@ async def test_fence_releases_lock_when_guarded_work_fails() -> None:
             raise RuntimeError("guarded failure")
 
     assert connection.method_calls == [
-        call.execute("SELECT pg_advisory_lock($1::bigint)", EXPORT_CURSOR_FENCE_ID),
-        call.fetchval("SELECT pg_advisory_unlock($1::bigint)", EXPORT_CURSOR_FENCE_ID),
+        call.fetchval(_TRY_LOCK_SQL, EXPORT_CURSOR_FENCE_ID),
+        call.fetchval(_UNLOCK_SQL, EXPORT_CURSOR_FENCE_ID),
     ]
+
+
+@pytest.mark.asyncio
+async def test_fence_polls_without_blocking_command_timeout(monkeypatch) -> None:
+    pool, connection = _pool_and_connection()
+    connection.fetchval.side_effect = [False, False, True, True]
+    sleep = AsyncMock()
+    monkeypatch.setattr(asyncio, "sleep", sleep)
+
+    async with export_cursor_fence(pool):
+        pass
+
+    assert connection.fetchval.await_args_list == [
+        call(_TRY_LOCK_SQL, EXPORT_CURSOR_FENCE_ID),
+        call(_TRY_LOCK_SQL, EXPORT_CURSOR_FENCE_ID),
+        call(_TRY_LOCK_SQL, EXPORT_CURSOR_FENCE_ID),
+        call(_UNLOCK_SQL, EXPORT_CURSOR_FENCE_ID),
+    ]
+    assert sleep.await_count == 2
+    connection.terminate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_contending_fence_enters_only_after_owner_releases(monkeypatch) -> None:
+    owner: str | None = None
+    events: list[str] = []
+    waiter_observed = asyncio.Event()
+    owner_released = asyncio.Event()
+
+    def contender(name: str):
+        async def fetchval(query: str, lock_id: int) -> bool:
+            nonlocal owner
+            assert lock_id == EXPORT_CURSOR_FENCE_ID
+            if query == _TRY_LOCK_SQL:
+                if owner is None:
+                    owner = name
+                    events.append(f"{name}-acquired")
+                    return True
+                events.append(f"{name}-waiting")
+                waiter_observed.set()
+                return False
+            assert query == _UNLOCK_SQL
+            assert owner == name
+            owner = None
+            events.append(f"{name}-released")
+            return True
+
+        pool, connection = _pool_and_connection()
+        connection.fetchval.side_effect = fetchval
+        return pool
+
+    async def controlled_sleep(_seconds: float) -> None:
+        await owner_released.wait()
+
+    monkeypatch.setattr(asyncio, "sleep", controlled_sleep)
+    first = export_cursor_fence(contender("first"))
+    await first.__aenter__()
+
+    async def enter_second() -> None:
+        async with export_cursor_fence(contender("second")):
+            events.append("second-entered")
+
+    second_task = asyncio.create_task(enter_second())
+    await asyncio.wait_for(waiter_observed.wait(), timeout=1)
+    assert "second-entered" not in events
+
+    await first.__aexit__(None, None, None)
+    owner_released.set()
+    await asyncio.wait_for(second_task, timeout=1)
+
+    assert events == [
+        "first-acquired",
+        "second-waiting",
+        "first-released",
+        "second-acquired",
+        "second-entered",
+        "second-released",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fence_terminates_uncertain_session_when_acquisition_is_cancelled() -> None:
+    pool, connection = _pool_and_connection()
+    connection.fetchval.side_effect = asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        async with export_cursor_fence(pool):
+            pass
+
+    connection.terminate.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_fence_terminates_uncertain_session_when_release_is_cancelled() -> None:
+    pool, connection = _pool_and_connection()
+    connection.fetchval.side_effect = [True, asyncio.CancelledError]
+
+    with pytest.raises(asyncio.CancelledError):
+        async with export_cursor_fence(pool):
+            pass
+
+    connection.terminate.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_fence_terminates_session_when_unlock_reports_not_held() -> None:
+    pool, connection = _pool_and_connection()
+    connection.fetchval.side_effect = [True, False]
+
+    with pytest.raises(RuntimeError, match="was not held"):
+        async with export_cursor_fence(pool):
+            pass
+
+    connection.terminate.assert_called_once_with()
