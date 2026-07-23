@@ -189,15 +189,14 @@ exporter_last_flush_ts = Gauge(
     "Unix timestamp of last successful exporter flush",
 )
 
-exporter_cdc_barrier_wait = Histogram(
-    "crawler_exporter_cdc_barrier_wait_seconds",
-    "Time spent waiting for in-flight posting writers before capturing a CDC cutoff",
-    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 15, 30, 60, 120],
+exporter_cdc_cutoff_delay = Gauge(
+    "crawler_exporter_cdc_cutoff_delay_seconds",
+    "Age of the commit-safe CDC cutoff behind the captured database clock",
 )
 
-exporter_cdc_barrier_timeouts = Counter(
-    "crawler_exporter_cdc_barrier_timeouts_total",
-    "CDC cutoff barrier acquisitions that exceeded the bounded wait",
+exporter_cdc_active_writers = Gauge(
+    "crawler_exporter_cdc_active_writers",
+    "Transactions currently holding the shared posting CDC writer marker",
 )
 
 export_errors_total = Counter(
