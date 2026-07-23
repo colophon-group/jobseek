@@ -11,6 +11,7 @@ INSTALLER = ROOT / "deploy/reconciliation/install-host.sh"
 SERVICE = ROOT / "deploy/systemd/jobseek-crawler-reconciliation.service"
 TIMER = ROOT / "deploy/systemd/jobseek-crawler-reconciliation.timer"
 WORKFLOW = ROOT / ".github/workflows/deploy-crawler-reconciliation.yml"
+CI_WORKFLOW = ROOT / ".github/workflows/ci.yml"
 DEPLOY = ROOT / "apps/crawler/deploy.sh"
 MAINTENANCE = ROOT / ".github/workflows/crawler-scheduled-maintenance.yml"
 
@@ -55,9 +56,19 @@ def test_runner_is_bounded_immutable_and_fail_closed() -> None:
     assert "reconciliation_args=(--repair --max-partitions 16)" in source
     assert '"--full-target"' in source
     assert 'reconciliation_args=(--repair --full --target "$2")' in source
-    assert 'crawler reconcile "${reconciliation_args[@]}"' in source
+    assert '/app/.venv/bin/crawler reconcile "${reconciliation_args[@]}"' in source
+    assert "uv run" not in source
     assert "jobseek-crawler-mutation.lock" in source
     assert "flock -w 7200" in source
+
+
+def test_ci_smokes_the_entrypoint_on_a_read_only_root() -> None:
+    workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+
+    assert "Smoke-test read-only crawler entry point" in workflow
+    assert "--read-only" in workflow
+    assert "--tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m" in workflow
+    assert "--entrypoint /app/.venv/bin/crawler" in workflow
 
 
 def test_runner_rejects_an_unbounded_or_combined_full_target() -> None:

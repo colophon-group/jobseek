@@ -177,9 +177,21 @@ jobs:
           context: apps/crawler
           target: full
           platforms: linux/amd64
+          tags: jobseek-crawler-ci:pr
+          load: true
           push: false
           cache-from: type=gha,scope=crawler-browser
           cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
+
+      - name: Smoke-test read-only crawler entry point
+        run: |
+          docker run --rm \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            --entrypoint /app/.venv/bin/crawler \
+            jobseek-crawler-ci:pr \
+            --help >/dev/null
 
   lint-web:
     name: Lint Web

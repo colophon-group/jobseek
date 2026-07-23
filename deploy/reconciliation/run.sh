@@ -106,4 +106,4 @@ timeout --foreground --signal=TERM --kill-after=90s 50m docker run --rm \
   -e PYTHONDONTWRITEBYTECODE=1 \
   --label jobseek.maintenance=cross-store-reconciliation \
   "$image" \
-  uv run --no-sync crawler reconcile "${reconciliation_args[@]}"
+  /app/.venv/bin/crawler reconcile "${reconciliation_args[@]}"
