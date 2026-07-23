@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Search } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -52,6 +52,10 @@ export function JobLanguageModal({
         lang.code.toLowerCase().includes(q),
     );
   }, [available, search]);
+
+  useEffect(() => {
+    if (!open) setSearch("");
+  }, [open]);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

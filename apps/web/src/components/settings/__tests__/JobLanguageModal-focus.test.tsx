@@ -48,5 +48,12 @@ describe("JobLanguageModal focus lifecycle (#5990)", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(trigger));
+
+    await user.click(trigger);
+    const reopenedSearch = screen.getByRole("textbox", {
+      name: "Search languages...",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(reopenedSearch));
+    expect((reopenedSearch as HTMLInputElement).value).toBe("");
   });
 });
