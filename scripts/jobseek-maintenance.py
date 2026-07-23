@@ -6,10 +6,12 @@ from __future__ import annotations
 import argparse
 import fcntl
 import os
+import pwd
 import re
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Sequence
 from contextlib import contextmanager, suppress
@@ -161,12 +163,47 @@ def _run_capture(command: Sequence[str], *, timeout: int = 30) -> subprocess.Com
         raise MaintenanceError(f"Docker control command failed: {type(exc).__name__}") from exc
 
 
-@contextmanager
-def _mutation_lock(timeout_seconds: int):
+def _open_mutation_lock(lock_path: Path):
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    created = False
     try:
-        lock_file = MUTATION_LOCK.open("a+", encoding="utf-8")
+        try:
+            descriptor = os.open(lock_path, flags)
+        except FileNotFoundError:
+            try:
+                descriptor = os.open(
+                    lock_path,
+                    flags | os.O_CREAT | os.O_EXCL,
+                    0o600,
+                )
+                created = True
+            except FileExistsError:
+                descriptor = os.open(lock_path, flags)
     except OSError as exc:
         raise MaintenanceError(f"maintenance lock unavailable: {type(exc).__name__}") from exc
+    if created and os.geteuid() == 0:
+        try:
+            deploy_account = pwd.getpwnam("deploy")
+        except KeyError:
+            pass
+        else:
+            try:
+                os.fchown(descriptor, deploy_account.pw_uid, deploy_account.pw_gid)
+            except OSError as exc:
+                os.close(descriptor)
+                raise MaintenanceError(
+                    f"maintenance lock ownership failed: {type(exc).__name__}"
+                ) from exc
+    try:
+        return os.fdopen(descriptor, "r", encoding="utf-8")
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+@contextmanager
+def _mutation_lock(timeout_seconds: int, *, lock_path: Path | None = None):
+    lock_file = _open_mutation_lock(lock_path or MUTATION_LOCK)
     deadline = time.monotonic() + timeout_seconds
     try:
         while True:
@@ -420,6 +457,13 @@ def _self_test() -> None:
     for label in (OPERATION_LABEL, ISSUE_LABEL, REVISION_LABEL, BUDGET_LABEL):
         assert joined.count(label) == 1
     assert "secret" not in joined.lower()
+    with tempfile.TemporaryDirectory(prefix="jobseek-maintenance-self-test-") as temp_dir:
+        existing_lock = Path(temp_dir) / "existing.lock"
+        existing_lock.touch(mode=0o444)
+        with _mutation_lock(0, lock_path=existing_lock):
+            pass
+        with _mutation_lock(0, lock_path=Path(temp_dir) / "created.lock"):
+            pass
 
 
 def _add_provenance_arguments(parser: argparse.ArgumentParser) -> None:
