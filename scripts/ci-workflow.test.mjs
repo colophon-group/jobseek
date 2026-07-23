@@ -74,6 +74,14 @@ const crawlerScheduledMaintenanceWorkflow = readFileSync(
   ".github/workflows/crawler-scheduled-maintenance.yml",
   "utf8",
 );
+const syncDataWorkflow = readFileSync(
+  ".github/workflows/sync-data.yml",
+  "utf8",
+);
+const refreshCurrencyRatesWorkflow = readFileSync(
+  ".github/workflows/refresh-currency-rates.yml",
+  "utf8",
+);
 const crawlerHostHygieneScript = readFileSync(
   "scripts/crawler-host-hygiene.py",
   "utf8",
@@ -531,6 +539,29 @@ test("Codex deploy persists Docker lifecycle evidence before daily review", () =
   );
 });
 
+test("Codex deploy installs the maintenance contract without granting runner Docker access", () => {
+  assert.match(
+    deployCodexRunnerHostScript,
+    /install_maintenance_contract[\s\S]*jobseek_maintenance_provenance\.py[\s\S]*jobseek-maintenance\.py/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /python3 \/usr\/local\/sbin\/jobseek-maintenance --self-test/,
+  );
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /test ! -w \/var\/run\/docker\.sock/,
+  );
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /runuser -u codex-runner -- docker ps/,
+  );
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /codex-runner unexpectedly has Docker access/,
+  );
+});
+
 test("Codex deploy restores prior timer state after failure", () => {
   const dir = mkdtempSync(join(tmpdir(), "codex-deploy-timers-"));
   const log = join(dir, "systemctl.log");
@@ -583,6 +614,45 @@ test("scheduled maintenance always reports host hygiene independently", () => {
     crawlerScheduledMaintenanceWorkflow,
     /maintenance_status != 0 \|\| hygiene_status != 0/,
   );
+});
+
+test("scheduled maintenance one-offs carry exact validated provenance labels", () => {
+  for (const label of [
+    "com.docker.compose.project=deploy",
+    "com.docker.compose.oneoff=True",
+    "jobseek.maintenance.operation=${TASK}",
+    "jobseek.maintenance.issue=2630",
+    "jobseek.maintenance.revision=${GITHUB_SHA}",
+    "jobseek.maintenance.budget-seconds=7200",
+  ]) {
+    assert.ok(
+      crawlerScheduledMaintenanceWorkflow.includes(label),
+      `missing maintenance label ${label}`,
+    );
+  }
+  assert.match(crawlerScheduledMaintenanceWorkflow, /envs: GITHUB_SHA/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /timeout --foreground --signal=TERM --kill-after=90s 2h docker run --rm/,
+  );
+  assert.match(crawlerScheduledMaintenanceWorkflow, /command_timeout: 5h/);
+});
+
+test("recurring crawler one-offs use the bounded maintenance wrapper", () => {
+  for (const [source, operation, issue, budget] of [
+    [syncDataWorkflow, "csv-data-sync", "2623", "1800"],
+    [refreshCurrencyRatesWorkflow, "refresh-currency-rates", "3576", "600"],
+  ]) {
+    assert.match(source, /\/usr\/local\/sbin\/jobseek-maintenance oneoff/);
+    assert.ok(source.includes(`--operation ${operation}`));
+    assert.ok(source.includes(`--issue ${issue}`));
+    assert.ok(source.includes(`--budget-seconds ${budget}`));
+    assert.match(source, /--lock-timeout-seconds (900|600)/);
+    assert.ok(source.includes('--revision "$GITHUB_SHA"'));
+    assert.match(source, /envs: GITHUB_SHA/);
+    assert.match(source, /docker run --rm[\s\S]*--name "\$NAME"/);
+    assert.match(source, /command_timeout: (1h|30m)/);
+  }
 });
 
 test("maybe-auto-merge wakes without manual retries", () => {

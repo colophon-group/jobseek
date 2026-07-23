@@ -83,9 +83,9 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           envs: GITHUB_SHA
           # A full production re-index currently takes about 45 minutes.
-          # Keep the workflow and its concurrency lock alive for the real
-          # remote operation instead of accepting ssh-action's 10m default.
-          command_timeout: 2h
+          # Allow the two-hour host-lock wait plus the bounded two-hour
+          # operation and leave cleanup headroom beyond ssh-action's default.
+          command_timeout: 5h
           script: |
             set -euo pipefail
             exec 9>/run/lock/jobseek-crawler-mutation.lock
@@ -116,10 +116,18 @@ jobs:
               echo "Another Typesense maintenance container is already running" >&2
               maintenance_status=1
             else
-              docker run --rm \
+              timeout --foreground --signal=TERM --kill-after=90s 2h docker run --rm \
                 --name "$NAME" \
                 --env-file /home/deploy/.env \
                 --network host \
+                --label com.docker.compose.project=deploy \
+                --label "com.docker.compose.service=${TASK}" \
+                --label com.docker.compose.container-number=1 \
+                --label com.docker.compose.oneoff=True \
+                --label "jobseek.maintenance.operation=${TASK}" \
+                --label jobseek.maintenance.issue=2630 \
+                --label "jobseek.maintenance.revision=${GITHUB_SHA}" \
+                --label jobseek.maintenance.budget-seconds=7200 \
                 "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
                 uv run --no-sync crawler "$TASK" || maintenance_status=$?
             fi

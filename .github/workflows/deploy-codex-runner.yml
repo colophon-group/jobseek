@@ -16,6 +16,8 @@ on:
       - 'docs/17-codex-migration-verification-runbook.md'
       - 'docs/18-codex-automation-deployment.md'
       - 'scripts/codex-*.py'
+      - 'scripts/jobseek-maintenance.py'
+      - 'scripts/jobseek_maintenance_provenance.py'
       - '.github/workflows/deploy-codex-runner.yml'
   workflow_dispatch:
 
@@ -67,3 +69,10 @@ jobs:
             export JOBSEEK_CODEX_EXPECTED_SHA="${GITHUB_SHA}"
             export JOBSEEK_CODEX_START_TIMERS=0
             bash "/tmp/jobseek-codex-runner-deploy/${GITHUB_SHA}/deploy-codex-runner-host.sh"
+            test "$(stat -c '%U:%G:%a' /usr/local/sbin/jobseek-maintenance)" = "root:root:755"
+            ! id -nG codex-runner | tr ' ' '\n' | grep -qx docker
+            runuser -u codex-runner -- test ! -w /var/run/docker.sock
+            if runuser -u codex-runner -- docker ps >/dev/null 2>&1; then
+              echo "codex-runner unexpectedly has Docker access" >&2
+              exit 1
+            fi

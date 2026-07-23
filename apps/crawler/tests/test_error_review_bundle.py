@@ -100,7 +100,7 @@ def test_collect_container_cgroup_memory_records_container_generation(tmp_path, 
                 "events": {"oom": 0, "oom_kill": 0},
                 "version": 2,
             },
-            "container_id": "abc123",
+            "container_generation": "6ca13d52ca70c883",
             "created_at": "2026-07-20T14:28:00Z",
             "exit_code": None,
             "finished_at": "",
@@ -119,10 +119,28 @@ def test_collect_container_cgroup_memory_records_container_generation(tmp_path, 
 
 def test_collect_docker_lifecycle_journal_uses_exact_window(tmp_path, monkeypatch):
     calls = []
+    raw_id = "a" * 64
 
     def fake_run(command, **_kwargs):
         calls.append(command)
-        return 0, '{"action":"die","event_exit_code":"137"}\n'
+        return (
+            0,
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "source": "docker_event",
+                    "event_at": "2026-07-21T08:59:00+00:00",
+                    "action": "die",
+                    "container_id": raw_id,
+                    "container_name": "deploy-worker-1-1",
+                    "compose_service": "worker-1",
+                    "compose_oneoff": "False",
+                    "event_exit_code": "137",
+                    "arbitrary_label": "must-not-leak",
+                }
+            )
+            + "\n",
+        )
 
     monkeypatch.setattr(bundle, "_run", fake_run)
     manifest = {}
@@ -152,7 +170,27 @@ def test_collect_docker_lifecycle_journal_uses_exact_window(tmp_path, monkeypatc
             "--no-pager",
         ]
     ]
-    assert (tmp_path / "host" / "docker-lifecycle.jsonl").read_text() == (
-        '{"action":"die","event_exit_code":"137"}\n'
-    )
+    lifecycle = (tmp_path / "host" / "docker-lifecycle.jsonl").read_text()
+    assert raw_id not in lifecycle
+    assert "container_id" not in lifecycle
+    assert "must-not-leak" not in lifecycle
+    assert bundle.container_generation(raw_id) in lifecycle
+    assert json.loads((tmp_path / "host" / "maintenance-correlation.json").read_text()) == {
+        "schema_version": 1,
+        "maintenance_windows": [],
+        "unattributed_service_pauses": [
+            {
+                "downtime_seconds": 0.0,
+                "forced_termination": True,
+                "native_exit": True,
+                "oom": False,
+                "paused_at": "2026-07-21T08:59:00+00:00",
+                "reason": "missing_provenance",
+                "restored": False,
+                "service": "worker-1",
+            }
+        ],
+        "invalid_provenance_events": 0,
+    }
     assert manifest["docker_lifecycle"]["returncode"] == 0
+    assert manifest["maintenance_correlation"]["path"].endswith("host/maintenance-correlation.json")

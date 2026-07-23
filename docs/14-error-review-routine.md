@@ -46,15 +46,42 @@ window.
 Host-memory classification is container-generation aware. The root collector
 writes `host/docker-cgroup-memory.json` with Docker identity/timestamps and
 cgroup-v2 memory counters. Reviews compare OOM and restart counters only for
-the same container ID; a sticky Docker `OOMKilled=true` flag or a deployment
-that replaced the container is not, by itself, a new daily incident.
+the same pseudonymous `container_generation`; a sticky Docker
+`OOMKilled=true` flag or a deployment that replaced the container is not, by
+itself, a new daily incident. Raw Docker resource IDs do not enter the runner
+bundle.
 
 Container-exit classification is event-backed. The always-on root
 `jobseek-codex-docker-lifecycle.service` filters out health-check noise,
 allowlists non-secret lifecycle fields, and persists them in journald. The
 bundle exports the requested window as `host/docker-lifecycle.jsonl`, so exit
 codes, signals, OOM events, container identity, and replacement/restart timing
-survive Docker's volatile event buffer and container recreation.
+survive Docker's volatile event buffer and container recreation. The root
+collector allowlists the journal again and one-way transforms raw IDs from
+legacy schema rows before the bundle becomes readable by `codex-runner`.
+
+Production maintenance attribution is deterministic rather than inferred from
+container names. Repository-owned one-offs and the
+`/usr/local/sbin/jobseek-maintenance` wrapper attach an all-or-nothing
+operation, GitHub issue, reviewed revision, and runtime budget contract. The
+watcher validates only those exact fields and ignores every other Docker
+label. The root collector writes the derived, command-free
+`host/maintenance-correlation.json` before the unprivileged review starts.
+
+Reviews must correlate synchronized service pauses with that file before
+classifying instability:
+
+- A single validated maintenance window owns only service pauses that overlap
+  it or its bounded two-minute correlation edge.
+- Missing, partial, invalid, or conflicting provenance remains unattributed;
+  never infer authorization from a name or an adjacent unlabelled one-off.
+- Authorized maintenance is reported as a maintenance outcome, with its
+  tracking issue, revision, downtime, termination mode, and restoration
+  health, rather than as spontaneous worker instability.
+- OOM/native exits, forced termination, nonzero maintenance one-offs, budget
+  overruns, and failed restoration remain actionable even in an authorized
+  window. Update the maintenance issue or create a deduplicated operational
+  follow-up instead of reopening an unrelated instability issue.
 
 Compatibility fallback:
 [`.claude/commands/jobseek-error-review.md`](../.claude/commands/jobseek-error-review.md).

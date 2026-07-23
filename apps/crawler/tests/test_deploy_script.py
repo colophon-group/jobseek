@@ -39,6 +39,37 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     assert quiesce < migrate < typesense_schema < sync
 
 
+def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -> None:
+    script = DEPLOY_SH.read_text()
+    workflow = DEPLOY_WORKFLOW.read_text()
+
+    marker_start = script.index("\nstart_maintenance_window\n")
+    quiesce = script.index("docker compose stop --timeout 60")
+    ready = script.index("\nwait_for_core_services\n")
+    marker_stop = script.index("\nstop_maintenance_window\n", ready)
+
+    assert marker_start < quiesce < ready < marker_stop
+    assert "JOBSEEK_DEPLOY_REVISION" in workflow
+    assert "JOBSEEK_DEPLOY_REVISION: ${{ github.sha }}" in workflow
+    for label in (
+        "com.docker.compose.project=${COMPOSE_PROJECT_NAME}",
+        "com.docker.compose.oneoff=True",
+        "jobseek.maintenance.operation=${MAINTENANCE_OPERATION}",
+        "jobseek.maintenance.issue=${MAINTENANCE_ISSUE}",
+        "jobseek.maintenance.revision=${JOBSEEK_DEPLOY_REVISION}",
+        "jobseek.maintenance.budget-seconds=${MAINTENANCE_BUDGET_SECONDS}",
+    ):
+        assert label in script
+    for service in (
+        "maintenance-window",
+        "deploy-alloy-state",
+        "deploy-migrate",
+        "deploy-setup-typesense",
+        "deploy-sync",
+    ):
+        assert f"com.docker.compose.service={service}" in script
+
+
 def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
     script = DEPLOY_SH.read_text()
 

@@ -17,6 +17,7 @@ flock -w 7200 9 || {
 # ── Validate required env vars ─────────────────────────────────────────
 required_vars=(
   OWNER
+  JOBSEEK_DEPLOY_REVISION
   DATABASE_URL_UNPOOLED
   LOCAL_DATABASE_URL
   R2_ACCESS_KEY_ID
@@ -66,8 +67,64 @@ DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$DEPLOY_DIR")}"
 export COMPOSE_PROJECT_NAME
+MAINTENANCE_OPERATION=crawler-deploy
+MAINTENANCE_ISSUE=3409
+MAINTENANCE_BUDGET_SECONDS=1800
+MAINTENANCE_MARKER_NAME=""
+if [[ ! "$JOBSEEK_DEPLOY_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "ERROR: JOBSEEK_DEPLOY_REVISION must be a full lowercase Git commit SHA" >&2
+  exit 1
+fi
+MAINTENANCE_PROVENANCE_LABELS=(
+  --label "com.docker.compose.project=${COMPOSE_PROJECT_NAME}"
+  --label com.docker.compose.container-number=1
+  --label com.docker.compose.oneoff=True
+  --label "jobseek.maintenance.operation=${MAINTENANCE_OPERATION}"
+  --label "jobseek.maintenance.issue=${MAINTENANCE_ISSUE}"
+  --label "jobseek.maintenance.revision=${JOBSEEK_DEPLOY_REVISION}"
+  --label "jobseek.maintenance.budget-seconds=${MAINTENANCE_BUDGET_SECONDS}"
+)
 ALLOY_IMAGE="grafana/alloy:v1.18.0@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308"
 ALLOY_STATE_ACTIVATION_REQUIRED=0
+
+stop_maintenance_window() {
+  if [[ -z "$MAINTENANCE_MARKER_NAME" ]]; then
+    return 0
+  fi
+  docker stop --time=1 "$MAINTENANCE_MARKER_NAME" >/dev/null 2>&1 || true
+  docker rm -f "$MAINTENANCE_MARKER_NAME" >/dev/null 2>&1 || true
+  MAINTENANCE_MARKER_NAME=""
+}
+
+start_maintenance_window() {
+  local marker_image
+
+  MAINTENANCE_MARKER_NAME="jobseek-maintenance-window-crawler-deploy-${JOBSEEK_DEPLOY_REVISION:0:12}"
+  marker_image="$(docker inspect --format '{{.Image}}' "${COMPOSE_PROJECT_NAME}-redis-1" 2>/dev/null || true)"
+  if [[ ! "$marker_image" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    docker pull redis:8-alpine >/dev/null
+    marker_image="$(docker image inspect --format '{{.Id}}' redis:8-alpine)"
+  fi
+  [[ "$marker_image" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+    echo "ERROR: a local Redis image is required for the maintenance marker" >&2
+    return 1
+  }
+
+  docker run --detach --rm \
+    --name "$MAINTENANCE_MARKER_NAME" \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges \
+    --memory 16m \
+    --cpus 0.05 \
+    --pids-limit 16 \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=maintenance-window \
+    "$marker_image" \
+    /bin/sh -c \
+    "trap 'exit 0' TERM INT; sleep 28800" >/dev/null
+}
 
 rollback_deploy() {
   local exit_code=$?
@@ -81,6 +138,7 @@ rollback_deploy() {
 
   cd "$DEPLOY_DIR" || exit "$exit_code"
   docker compose up -d --remove-orphans 2>/dev/null || true
+  stop_maintenance_window
   exit "$exit_code"
 }
 
@@ -139,6 +197,8 @@ normalize_alloy_state_volume() {
   # Make it the volume owner so it can write its WAL/cursors without relying on
   # CAP_DAC_OVERRIDE. The helper is pinned, networkless, and exits immediately.
   docker run --rm --network none --user 0:0 \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=deploy-alloy-state \
     -v "${volume_name}:/data-alloy" \
     --entrypoint sh "$ALLOY_IMAGE" \
     -c 'chown -R 0:0 /data-alloy && chmod 0700 /data-alloy'
@@ -147,7 +207,7 @@ normalize_alloy_state_volume() {
 prepare_alloy_state_volume() {
   local volume_name="${COMPOSE_PROJECT_NAME}_alloy-data"
   local marker="/data-alloy/.jobseek-persistent-state"
-  local alloy_container state state_volume staging
+  local alloy_container marker_status state state_volume staging
 
   docker volume create "$volume_name" >/dev/null
   alloy_container="$(docker compose ps -aq alloy 2>/dev/null || true)"
@@ -161,10 +221,13 @@ prepare_alloy_state_volume() {
   # Fast path for every deploy after the migration. The marker lives in the
   # named volume, so force-recreating Alloy below cannot erase it or the
   # Docker-source positions stored beside it.
-  if docker run --rm --network none --user 0:0 \
+  marker_status="$(docker run --rm --network none --user 0:0 \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=deploy-alloy-state \
     -v "${volume_name}:/data-alloy" \
     --entrypoint sh "$ALLOY_IMAGE" \
-    -c "test -f '${marker}'"; then
+    -c "if test -f '${marker}'; then echo present; else echo missing; fi")"
+  if [[ "$marker_status" == "present" ]]; then
     echo "Alloy state volume already initialized: ${volume_name}" >&2
     if [[ "$state" != "running" || "$state_volume" != "$volume_name" ]]; then
       # A prior deploy may have prepared the volume and failed before the
@@ -173,6 +236,10 @@ prepare_alloy_state_volume() {
     fi
     normalize_alloy_state_volume "$volume_name"
     return 0
+  fi
+  if [[ "$marker_status" != "missing" ]]; then
+    echo "ERROR: unexpected Alloy state marker probe result" >&2
+    return 1
   fi
 
   if [[ -n "$alloy_container" ]]; then
@@ -191,6 +258,8 @@ prepare_alloy_state_volume() {
       return 1
     fi
     if ! docker run --rm --network none --user 0:0 \
+      "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+      --label com.docker.compose.service=deploy-alloy-state \
       -v "${staging}:/source:ro" \
       -v "${volume_name}:/data-alloy" \
       --entrypoint sh "$ALLOY_IMAGE" \
@@ -207,6 +276,8 @@ prepare_alloy_state_volume() {
   fi
 
   docker run --rm --network none --user 0:0 \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=deploy-alloy-state \
     -v "${volume_name}:/data-alloy" \
     --entrypoint sh "$ALLOY_IMAGE" \
     -c "touch '${marker}'"
@@ -355,6 +426,8 @@ chmod 600 "$ENV_FILE"
 # ── Pull images and preflight while the old stack is still serving ────
 cd "$DEPLOY_DIR"
 trap rollback_deploy ERR
+trap stop_maintenance_window EXIT
+start_maintenance_window
 
 # Activate persistent Alloy state before any later deploy step can fail and
 # run the rollback against the new Compose service spec. On the first rollout
@@ -382,6 +455,8 @@ docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter d
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────
 docker run --rm --env-file "$ENV_FILE" --network host \
+  "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+  --label com.docker.compose.service=deploy-migrate \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
 
@@ -389,11 +464,15 @@ docker run --rm --env-file "$ENV_FILE" --network host \
 # Must run BEFORE `crawler sync`, otherwise the next sync would upsert
 # docs containing fields that the live schema doesn't know about.
 docker run --rm --env-file "$ENV_FILE" --network host \
+  "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+  --label com.docker.compose.service=deploy-setup-typesense \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync crawler setup-typesense
 
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
 docker run --rm --env-file "$ENV_FILE" --network host \
+  "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+  --label com.docker.compose.service=deploy-sync \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync crawler sync
 
@@ -413,9 +492,11 @@ docker compose up -d --force-recreate alloy
 # murmur shim is intentionally excluded while Murmur remains
 # backburnered; a shim issue should not fail the crawler deploy.
 wait_for_core_services
+stop_maintenance_window
 
 # ── Cleanup ──────────────────────────────────────────────────────────
 trap - ERR
+trap - EXIT
 rm -f "$ROLLBACK_ENV_FILE"
 docker image prune -f
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"

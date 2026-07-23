@@ -741,6 +741,98 @@ sudo -u codex-runner test ! -r /home/deploy/.env
 sudo -u codex-runner test ! -w /var/run/docker.sock
 ```
 
+### Production Maintenance Provenance
+
+Do not run ad-hoc crawler one-offs or pause writer services with bare
+`docker run`, `docker compose run`, `docker compose stop`, or `docker stop`.
+Use the installed `/usr/local/sbin/jobseek-maintenance` contract. It:
+
+- requires a lowercase operation slug, positive GitHub tracking issue, full
+  reviewed Git revision, and a 60-second to 8-hour runtime budget;
+- holds `/run/lock/jobseek-crawler-mutation.lock` for the whole operation;
+- owns the exact Compose and `jobseek.maintenance.*` labels consumed by the
+  lifecycle watcher and rejects attempts to override them;
+- never logs the wrapped command or environment;
+- terminates an over-budget process group, cleans a named one-off, and fails
+  when the expected crawler services are not running/healthy afterward; and
+- creates a constrained, networkless marker before a multi-command pause
+  window, so service stops and restoration are correlated to the operation
+  even when the inner repair has several containers.
+
+The revision must be the reviewed commit that defines the repair. Keep
+credentials in a root/deploy-only environment file; never put them in the
+wrapper or Docker command arguments.
+
+For one bounded Docker one-off:
+
+```bash
+/usr/local/sbin/jobseek-maintenance oneoff \
+  --operation repair-example \
+  --issue 1234 \
+  --revision <40-character-reviewed-git-sha> \
+  --budget-seconds 1800 \
+  -- \
+  docker run --rm --name repair-example \
+    --env-file /run/lock/repair-example.env \
+    --network host \
+    ghcr.io/colophon-group/jobseek-crawler:<deployed-version> \
+    /app/.venv/bin/crawler <bounded-command>
+```
+
+For a complex operation that pauses and restores Compose services, put the
+reviewed steps in a root/deploy-owned script and wrap the entire script:
+
+```bash
+/usr/local/sbin/jobseek-maintenance window \
+  --operation repair-example \
+  --issue 1234 \
+  --revision <40-character-reviewed-git-sha> \
+  --budget-seconds 1800 \
+  -- /home/deploy/maintenance/repair-example.sh
+```
+
+The inner script is still responsible for its domain preconditions, backups,
+and ordered stop/start logic. The wrapper provides serialization, attribution,
+budget enforcement, cleanup, and post-operation health gates. A failed or
+interrupted wrapper must not be treated as successful merely because the
+services later happen to be running.
+
+Repository-owned automated operations use the same contract:
+
+- crawler deploys bracket their writer pause, schema migration, Typesense
+  setup, and CSV sync under `crawler-deploy`, tracking issue #3409;
+- pushed CSV changes use the bounded wrapper as `csv-data-sync`, tracking
+  issue #2623;
+- weekly currency refresh uses the bounded wrapper as
+  `refresh-currency-rates`, tracking issue #3576;
+- scheduled Typesense maintenance attaches exact labels for tracking issue
+  #2630; and
+- cross-store reconciliation attaches exact labels for tracking issue #5930.
+
+The direct-label deploy/reconciliation paths validate a full Git revision,
+share the crawler mutation lock, enforce a finite execution/window budget,
+and clean up their marker or one-off. Missing, partial, invalid, or
+conflicting labels remain unattributed by design.
+
+The root error-review collector writes:
+
+- `host/docker-lifecycle.jsonl`: allowlisted events with pseudonymous
+  container generations (legacy raw IDs are one-way transformed before the
+  runner can read them); and
+- `host/maintenance-correlation.json`: command-free attributed windows,
+  service downtime, forced termination/OOM evidence, one-off exits, budget
+  result, and restoration state.
+
+Verify the installed contract and privilege boundary:
+
+```bash
+python3 /usr/local/sbin/jobseek-maintenance --self-test
+stat -c '%U:%G:%a' /usr/local/sbin/jobseek-maintenance
+id -nG codex-runner | tr ' ' '\n' | grep -qx docker && echo 'unexpected docker group'
+sudo -u codex-runner test ! -w /var/run/docker.sock
+sudo -u codex-runner docker ps >/dev/null 2>&1 && echo 'unexpected Docker access'
+```
+
 Check the timer and latest run:
 
 ```bash
@@ -836,7 +928,9 @@ Check the root-collected error-review evidence bundle:
 
 ```bash
 test -s /srv/jobseek-codex/inputs/error-review/latest/manifest.json
+test -s /srv/jobseek-codex/inputs/error-review/latest/host/maintenance-correlation.json
 sudo -u codex-runner test -r /srv/jobseek-codex/inputs/error-review/latest/manifest.json
+sudo -u codex-runner test -r /srv/jobseek-codex/inputs/error-review/latest/host/maintenance-correlation.json
 find /srv/jobseek-codex/inputs/error-review/latest -maxdepth 1 -type f -printf '%f\n' | sort
 ```
 

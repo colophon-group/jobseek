@@ -131,6 +131,16 @@ sync_crawler_runtime() {
     bash -c "cd '${REPO_DIR}/apps/crawler' && uv sync --frozen --no-dev"
 }
 
+install_maintenance_contract() {
+  install -d -o root -g root -m 0755 /usr/local/lib/jobseek-maintenance
+  install -o root -g root -m 0644 \
+    "${REPO_DIR}/scripts/jobseek_maintenance_provenance.py" \
+    /usr/local/lib/jobseek-maintenance/jobseek_maintenance_provenance.py
+  install -o root -g root -m 0755 \
+    "${REPO_DIR}/scripts/jobseek-maintenance.py" \
+    /usr/local/sbin/jobseek-maintenance
+}
+
 install_units() {
   local unit
   for unit in "${UNITS[@]}"; do
@@ -161,6 +171,8 @@ verify_entrypoints() {
     "${REPO_DIR}/scripts/codex-daily-routine-runner.py" \
     "${REPO_DIR}/scripts/codex-docker-lifecycle-watch.py" \
     "${REPO_DIR}/scripts/codex-error-review-bundle.py" \
+    "${REPO_DIR}/scripts/jobseek_maintenance_provenance.py" \
+    "${REPO_DIR}/scripts/jobseek-maintenance.py" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" \
     "${REPO_DIR}/scripts/codex-worktree-reconcile.py" \
     "${REPO_DIR}/scripts/codex-usage-probe.py" \
@@ -174,6 +186,7 @@ verify_entrypoints() {
   as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" --help >/dev/null
   python3 "${REPO_DIR}/scripts/codex-error-review-bundle.py" --help >/dev/null
+  python3 /usr/local/sbin/jobseek-maintenance --self-test >/dev/null
   as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
     "${REPO_DIR}/scripts/codex-worktree-reconcile.py" --help >/dev/null
 }
@@ -246,6 +259,7 @@ main() {
 
   update_repo
   sync_crawler_runtime
+  install_maintenance_contract
   install_units
   verify_entrypoints
   start_always_on_services

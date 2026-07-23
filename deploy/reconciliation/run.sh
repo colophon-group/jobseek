@@ -4,6 +4,7 @@ set -euo pipefail
 
 ENV_FILE=/home/deploy/.env
 LOCK_FILE=/run/lock/jobseek-crawler-mutation.lock
+DEPLOYED_SHA_FILE=/var/lib/jobseek-reconciliation/deployed-sha
 CONTAINER=jobseek-cross-store-reconciliation
 reconciliation_args=(--repair --max-partitions 16)
 
@@ -37,6 +38,15 @@ command -v flock >/dev/null || {
 }
 command -v timeout >/dev/null || {
   echo "ERROR: timeout is unavailable" >&2
+  exit 1
+}
+[[ -r "$DEPLOYED_SHA_FILE" ]] || {
+  echo "ERROR: reconciliation deployment revision is unavailable" >&2
+  exit 1
+}
+revision="$(<"$DEPLOYED_SHA_FILE")"
+[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || {
+  echo "ERROR: reconciliation deployment revision is invalid" >&2
   exit 1
 }
 
@@ -104,6 +114,13 @@ timeout --foreground --signal=TERM --kill-after=90s 50m docker run --rm \
   --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
   -e PYTHONDONTWRITEBYTECODE=1 \
-  --label jobseek.maintenance=cross-store-reconciliation \
+  --label com.docker.compose.project=deploy \
+  --label com.docker.compose.service=cross-store-reconciliation \
+  --label com.docker.compose.container-number=1 \
+  --label com.docker.compose.oneoff=True \
+  --label jobseek.maintenance.operation=cross-store-reconciliation \
+  --label jobseek.maintenance.issue=5930 \
+  --label "jobseek.maintenance.revision=${revision}" \
+  --label jobseek.maintenance.budget-seconds=3000 \
   "$image" \
   /app/.venv/bin/crawler reconcile "${reconciliation_args[@]}"
