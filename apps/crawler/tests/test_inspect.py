@@ -68,6 +68,44 @@ class TestNavigationTimeoutBoardMigrations:
         ]
 
 
+class TestApiSnifferLegacyUrlMigrations:
+    """Direct API configs must not silently fall back to browser discovery."""
+
+    def test_unitree_uses_proxy_api_with_explicit_job_urls(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "unitree-robotics-careers")
+        config = json.loads(row["monitor_config"])
+
+        assert config["api_url"] == "https://api.unitree.com/website/job/list?perPage=50"
+        assert config["json_path"] == "data.items"
+        assert config["total_path"] == "data.count"
+        assert config["url_template"] == "https://www.unitree.com/position/{id}"
+        assert config["proxy"] is True
+        assert row["scraper_type"] == "skip"
+        assert row["scraper_config"] == ""
+
+    def test_sullivan_cromwell_uses_direct_florecruit_api(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            row for row in rows if row["board_slug"] == "sullivan-cromwell-careers-florecruit"
+        )
+        config = json.loads(row["monitor_config"])
+
+        assert config["api_url"].endswith("/public-jobs/sullcrom/career-page-jobs")
+        assert config["json_path"] == ""
+        assert config["url_field"] == "applyUrl"
+
+
 class TestValidationError:
     def test_str_with_row(self):
         err = ValidationError("file.csv", 5, "bad value")
@@ -347,6 +385,24 @@ class TestValidateCsvs:
         monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert not any("scraper_type='skip' is invalid" in str(e) for e in errors)
+
+    def test_api_sniffer_rejects_ignored_legacy_url_key(self, tmp_path, monkeypatch):
+        cfg = '"{""url"": ""https://api.example.com/jobs"", ""fields"": {""title"": ""title""}}"'
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,api_sniffer,{cfg},skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert any(
+            "'url' in api_sniffer monitor_config is ignored; use 'api_url'" in str(error)
+            for error in errors
+        )
 
     @pytest.mark.parametrize(
         "monitor_type", ["greenhouse", "lever", "ashby", "recruitee", "personio"]

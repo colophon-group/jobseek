@@ -2052,3 +2052,70 @@ class TestDiscoverAutoTruncation:
         # Below-cap path returns the plain list (not a MonitorResult).
         assert isinstance(result, list)
         assert len(result) == 3
+
+    @pytest.mark.asyncio
+    async def test_auto_uses_captured_api_when_dom_interactions_are_unavailable(self, monkeypatch):
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.shared.api_sniff import ApiSnifferDomUnavailableError
+
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        self._patch_auto_pipeline(monkeypatch, items)
+
+        async def _no_dom(_page, _exchanges):
+            raise ApiSnifferDomUnavailableError(
+                "API sniffer fallback interactions require a usable document body"
+            )
+
+        monkeypatch.setattr(api_sniffer_module, "trigger_interactions", _no_dom)
+
+        result = await discover(
+            {
+                "board_url": "https://example.com/careers",
+                "metadata": {
+                    "fields": {"title": "title", "description": "desc"},
+                    "settle": 0,
+                },
+            },
+            AsyncMock(),
+            pw=_make_mock_pw(AsyncMock()),
+        )
+
+        assert isinstance(result, list)
+        assert len(result) == 3
+
+    @pytest.mark.asyncio
+    async def test_auto_fails_when_navigation_leaves_no_dom_or_api(self, monkeypatch):
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.shared.api_sniff import ApiSnifferDomUnavailableError
+
+        items = [
+            {"title": "Dev", "url": "/jobs/1"},
+            {"title": "PM", "url": "/jobs/2"},
+            {"title": "QA", "url": "/jobs/3"},
+        ]
+        self._patch_auto_pipeline(monkeypatch, items)
+
+        async def _no_dom(_page, _exchanges):
+            raise ApiSnifferDomUnavailableError(
+                "API sniffer fallback interactions require a usable document body"
+            )
+
+        monkeypatch.setattr(api_sniffer_module, "trigger_interactions", _no_dom)
+        monkeypatch.setattr(api_sniffer_module, "detect_job_list", lambda *_args: None)
+
+        with pytest.raises(
+            ApiSnifferDomUnavailableError,
+            match="require a usable document body",
+        ):
+            await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {"settle": 0},
+                },
+                AsyncMock(),
+                pw=_make_mock_pw(AsyncMock()),
+            )

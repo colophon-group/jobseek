@@ -78,6 +78,22 @@ A monitor takes a board config and returns either **full job data** (rich monito
 
 Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection. Conditional monitors return rich data only under the condition named in the table; otherwise they need a scraper or runtime coverage check.
 
+### api_sniffer
+
+`api_sniffer` has two distinct transports. A config with `api_url` uses plain
+HTTP by default; set `browser: true` only when the request needs page cookies
+or browser execution. A config without `api_url` uses Playwright to discover
+XHR/fetch responses from the board page. The top-level endpoint key must be
+`api_url`: the legacy key `url` is ignored by runtime code and rejected by CSV
+validation. Set `proxy: true` when the direct API blocks Hetzner egress; the
+per-board HTTP client then uses the configured proxy provider without moving
+the monitor back to the browser queue.
+
+If browser auto-discovery times out and leaves no usable document body,
+fallback interactions fail the monitor cycle with a stable error. They do not
+turn the navigation failure into an authoritative empty result. An API
+response captured before the DOM became unavailable remains usable.
+
 ### greenhouse
 
 Fetches from the Greenhouse public JSON API.

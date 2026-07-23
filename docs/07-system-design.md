@@ -207,7 +207,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 50   | `sitemap`         | URL-only | --          | XML sitemap parsing (auto-discovery)    |
 | 60   | `inline`          | Rich     | skip        | Inline single-page job extraction       |
 | 60   | `kipt`            | Rich     | skip        | Active KIPT PDF bulletin splitting      |
-| 80   | `api_sniffer`     | Conditional* | skip/-- | Playwright XHR/fetch capture            |
+| 80   | `api_sniffer`     | Conditional* | skip/-- | Direct API or Playwright XHR/fetch capture |
 | 100  | `dom`             | URL-only | --          | Static/Playwright DOM link extraction   |
 
 *Conditional monitors return rich data only when their runtime source/config
@@ -233,7 +233,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | Type           | Method                                             | Config Required        |
 |----------------|----------------------------------------------------|------------------------|
 | `adp`          | Fetch ADP detail JSON and DOCX description attachments | None               |
-| `api_sniffer`  | Capture XHR/fetch network requests on job pages    | `{api_url, fields, pagination}` |
+| `api_sniffer`  | Direct API replay or XHR/fetch capture on job pages | `{api_url, fields, pagination}` |
 | `bite`         | Fetch BITE detail JSON                             | None                   |
 | `dom`          | Step-based DOM extraction (static or Playwright)   | `{steps, render, ...}` |
 | `eightfold`    | JSON-LD extraction with Eightfold position API fallback | None              |

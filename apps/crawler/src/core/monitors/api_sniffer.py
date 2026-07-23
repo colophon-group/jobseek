@@ -52,6 +52,7 @@ except ImportError:
 from src.shared.api_sniff import (
     JOB_KEYWORDS,
     TITLE_FIELDS,
+    ApiSnifferDomUnavailableError,
     auto_map_fields,
     capture_exchanges,
     clean_headers,
@@ -1507,9 +1508,25 @@ async def _discover_auto(
 
         await asyncio.sleep(settle)
         await dismiss_overlays(page)
-        await trigger_interactions(page, exchanges)
+        captured_result = None
+        try:
+            await trigger_interactions(page, exchanges)
+        except ApiSnifferDomUnavailableError:
+            # A navigation timeout can leave Playwright on a transient
+            # document with no body. If the page already emitted a usable
+            # jobs response, the DOM fallback is unnecessary; otherwise fail
+            # the cycle instead of converting an origin/navigation failure
+            # into an authoritative empty result.
+            captured_result = detect_job_list(exchanges, board_url)
+            if captured_result is None:
+                raise
+            log.warning(
+                "api_sniffer.interactions_skipped_no_dom",
+                board_url=board_url,
+                captured_exchanges=len(exchanges),
+            )
 
-        result = detect_job_list(exchanges, board_url)
+        result = captured_result or detect_job_list(exchanges, board_url)
         if result is None:
             log.warning("api_sniffer.no_api_detected", board_url=board_url)
             return list() if fields_map else set()
