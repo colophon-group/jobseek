@@ -58,7 +58,7 @@ describe("SankeyFunnel (lazy wrapper) — #3189", () => {
     // Skeleton: a div sized to match the rendered funnel, marked aria-hidden
     // so screen readers ignore the loading state. It uses the
     // `animate-pulse` Tailwind class to indicate loading.
-    const skeleton = container.querySelector('[aria-hidden="true"]');
+    const skeleton = container.querySelector('[data-testid="sankey-loading"]');
     expect(skeleton).not.toBeNull();
     expect(skeleton!.className).toContain("animate-pulse");
     expect(skeleton!.className).toContain("h-[400px]");
@@ -78,6 +78,6 @@ describe("SankeyFunnel (lazy wrapper) — #3189", () => {
     });
 
     // After resolution the skeleton is gone.
-    expect(container.querySelector('[aria-hidden="true"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sankey-loading"]')).toBeNull();
   });
 });

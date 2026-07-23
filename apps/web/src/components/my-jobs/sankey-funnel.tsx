@@ -144,129 +144,136 @@ export function SankeyFunnel({ data }: { data: FunnelData }) {
 
   if (links.length === 0) return null;
 
-  if (isSmall) {
-    const stages = [
-      {
-        key: "saved",
-        label: l.saved,
-        count: data.saved,
-        outcomes: [
-          { label: l.rejected, count: data.rejectedAtSaved },
-          { label: l.notApplied, count: data.noResponseAtSaved },
-        ],
-      },
-      {
-        key: "applied",
-        label: l.applied,
-        count: data.applied,
-        outcomes: [
-          { label: l.rejected, count: data.rejectedAtApplied },
-          { label: l.noResponse, count: data.noResponseAtApplied },
-        ],
-      },
-      ...data.interviewRounds.map((round) => ({
-        key: `round-${round.round}`,
-        label: `${l.round} ${round.round}`,
-        count: round.count,
-        outcomes: [
-          {
-            label: l.rejected,
-            count: data.rejectedAtRound.find((item) => item.round === round.round)?.count ?? 0,
-          },
-          {
-            label: l.noResponse,
-            count: data.noResponseAtRound.find((item) => item.round === round.round)?.count ?? 0,
-          },
-        ],
-      })),
-      {
-        key: "offered",
-        label: l.offered,
-        count: data.offered,
-        outcomes: [],
-      },
-    ].filter((stage) => stage.count > 0);
+  const stages = [
+    {
+      key: "saved",
+      label: l.saved,
+      count: data.saved,
+      outcomes: [
+        { label: l.rejected, count: data.rejectedAtSaved },
+        { label: l.notApplied, count: data.noResponseAtSaved },
+      ],
+    },
+    {
+      key: "applied",
+      label: l.applied,
+      count: data.applied,
+      outcomes: [
+        { label: l.rejected, count: data.rejectedAtApplied },
+        { label: l.noResponse, count: data.noResponseAtApplied },
+      ],
+    },
+    ...data.interviewRounds.map((round) => ({
+      key: `round-${round.round}`,
+      label: `${l.round} ${round.round}`,
+      count: round.count,
+      outcomes: [
+        {
+          label: l.rejected,
+          count: data.rejectedAtRound.find((item) => item.round === round.round)?.count ?? 0,
+        },
+        {
+          label: l.noResponse,
+          count: data.noResponseAtRound.find((item) => item.round === round.round)?.count ?? 0,
+        },
+      ],
+    })),
+    {
+      key: "offered",
+      label: l.offered,
+      count: data.offered,
+      outcomes: [],
+    },
+  ].filter((stage) => stage.count > 0);
 
-    return (
-      <ol data-testid="mobile-funnel" className="space-y-2" aria-label={t({
+  const accessibleSummary = (
+    <ol
+      data-testid="funnel-summary"
+      className={isSmall ? "space-y-2" : "sr-only"}
+      aria-label={t({
         id: "myJobs.funnel.mobileLabel",
-        comment: "Accessible label for the mobile application funnel summary",
+        comment: "Accessible label for the application funnel summary",
         message: "Application funnel",
-      })}>
-        {stages.map((stage, index) => {
-          const outcomes = stage.outcomes.filter((outcome) => outcome.count > 0);
-          return (
-            <li key={stage.key} className="relative rounded-lg border border-border-soft bg-surface px-3 py-2.5">
-              {index > 0 && (
-                <span aria-hidden="true" className="absolute -top-2.5 left-6 h-2.5 border-l border-border-soft" />
-              )}
-              <div className="flex items-center justify-between gap-3">
-                <span className="min-w-0 font-medium">{stage.label}</span>
-                <span className="shrink-0 rounded-full bg-border-soft px-2 py-0.5 font-mono text-sm tabular-nums">
-                  {stage.count}
-                </span>
-              </div>
-              {outcomes.length > 0 && (
-                <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
-                  {outcomes.map((outcome) => (
-                    <li key={outcome.label}>
-                      {outcome.label}: <span className="font-mono tabular-nums">{outcome.count}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    );
-  }
+      })}
+    >
+      {stages.map((stage, index) => {
+        const outcomes = stage.outcomes.filter((outcome) => outcome.count > 0);
+        return (
+          <li key={stage.key} className="relative rounded-lg border border-border-soft bg-surface px-3 py-2.5">
+            {index > 0 && (
+              <span aria-hidden="true" className="absolute -top-2.5 left-6 h-2.5 border-l border-border-soft" />
+            )}
+            <div className="flex items-center justify-between gap-3">
+              <span className="min-w-0 font-medium">{stage.label}</span>
+              <span className="shrink-0 rounded-full bg-border-soft px-2 py-0.5 font-mono text-sm tabular-nums">
+                {stage.count}
+              </span>
+            </div>
+            {outcomes.length > 0 && (
+              <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+                {outcomes.map((outcome) => (
+                  <li key={outcome.label}>
+                    {outcome.label}: <span className="font-mono tabular-nums">{outcome.count}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+
+  if (isSmall) return accessibleSummary;
 
   const sankeyData = { nodes: filteredNodes, links };
   const height = Math.max(300, 200 + nodes.length * 16);
   const margin = { top: 20, right: 180, bottom: 20, left: 10 };
 
   return (
-    <div style={{ height }}>
-      <ResponsiveSankey
-        data={sankeyData}
-        layout="horizontal"
-        margin={margin}
-        align="start"
-        colors={(node) => getColor(node.id as string)}
-        nodeOpacity={1}
-        nodeHoverOpacity={1}
-        nodeThickness={14}
-        nodeSpacing={16}
-        nodeBorderWidth={0}
-        nodeBorderRadius={4}
-        linkOpacity={isDark ? 0.35 : 0.25}
-        linkHoverOpacity={isDark ? 0.55 : 0.4}
-        linkContract={1}
-        linkBlendMode={isDark ? "screen" : "multiply"}
-        enableLinkGradient={false}
-        label={(node) => labelMap.get(node.id as string) ?? (node.id as string)}
-        labelPosition="outside"
-        labelOrientation="horizontal"
-        labelPadding={12}
-        labelTextColor={isDark ? "#e7e5e4" : "#1c1917"}
-        theme={{
-          text: {
-            fontFamily: FONT,
-            fontSize: 11,
-          },
-          tooltip: {
-            container: {
+    <>
+      {accessibleSummary}
+      <div data-testid="sankey-visual" aria-hidden="true" style={{ height }}>
+        <ResponsiveSankey
+          data={sankeyData}
+          layout="horizontal"
+          margin={margin}
+          align="start"
+          colors={(node) => getColor(node.id as string)}
+          nodeOpacity={1}
+          nodeHoverOpacity={1}
+          nodeThickness={14}
+          nodeSpacing={16}
+          nodeBorderWidth={0}
+          nodeBorderRadius={4}
+          linkOpacity={isDark ? 0.35 : 0.25}
+          linkHoverOpacity={isDark ? 0.55 : 0.4}
+          linkContract={1}
+          linkBlendMode={isDark ? "screen" : "multiply"}
+          enableLinkGradient={false}
+          label={(node) => labelMap.get(node.id as string) ?? (node.id as string)}
+          labelPosition="outside"
+          labelOrientation="horizontal"
+          labelPadding={12}
+          labelTextColor={isDark ? "#e7e5e4" : "#1c1917"}
+          theme={{
+            text: {
               fontFamily: FONT,
-              background: isDark ? "#292524" : "#ffffff",
-              color: isDark ? "#e7e5e4" : "#1c1917",
-              fontSize: 12,
-              borderRadius: 6,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              fontSize: 11,
             },
-          },
-        }}
-      />
-    </div>
+            tooltip: {
+              container: {
+                fontFamily: FONT,
+                background: isDark ? "#292524" : "#ffffff",
+                color: isDark ? "#e7e5e4" : "#1c1917",
+                fontSize: 12,
+                borderRadius: 6,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              },
+            },
+          }}
+        />
+      </div>
+    </>
   );
 }
