@@ -122,6 +122,7 @@ export function JobLanguageModal({
                     <button
                       key={lang.code}
                       onClick={() => onToggle(lang.code)}
+                      aria-pressed={active}
                       className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-sm transition-colors ${
                         active
                           ? "bg-primary/10 text-primary font-medium"

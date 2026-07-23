@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import "@/test-utils/lingui-mock";
 import { JobLanguageModal } from "../JobLanguageModal";
 
-const selectedLanguages = new Set<string>();
+const selectedLanguages = new Set(["en"]);
 const availableLanguages = new Set(["de", "en"]);
 const toggleLanguage = vi.fn();
 
@@ -41,6 +41,18 @@ describe("JobLanguageModal focus lifecycle (#5990)", () => {
       name: "Search languages...",
     });
     await waitFor(() => expect(document.activeElement).toBe(search));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog)
+        .getByRole("button", { name: "English" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      within(dialog)
+        .getByRole("button", { name: "Deutsch" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
 
     await user.keyboard("de");
     expect((search as HTMLInputElement).value).toBe("de");
