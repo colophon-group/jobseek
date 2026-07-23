@@ -31,7 +31,7 @@ TYPESENSE_HOST = os.environ.get("TYPESENSE_HOST", "localhost")
 TYPESENSE_PORT = os.environ.get("TYPESENSE_PORT", "8108")
 TYPESENSE_PROTOCOL = os.environ.get("TYPESENSE_PROTOCOL", "http")
 TYPESENSE_API_KEY = os.environ.get(
-    "TYPESENSE_ADMIN_KEY",
+    "TYPESENSE_OPERATIONS_KEY",
     os.environ.get("TYPESENSE_API_KEY", "local_dev_typesense_key"),
 )
 

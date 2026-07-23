@@ -6,7 +6,7 @@ Usage:
     cd apps/crawler
     LOCAL_DATABASE_URL="postgresql://crawler:<pwd>@<host>:5432/crawler" \
     TYPESENSE_HOST=localhost TYPESENSE_PORT=8108 TYPESENSE_PROTOCOL=http \
-    TYPESENSE_ADMIN_KEY=local_dev_typesense_key \
+    TYPESENSE_OPERATIONS_KEY=local_dev_typesense_key \
     uv run python ../../scripts/typesense-seed-taxonomy.py
 """
 
@@ -34,7 +34,7 @@ def _ts() -> typesense.Client:
                     "protocol": os.environ.get("TYPESENSE_PROTOCOL", "http"),
                 }
             ],
-            "api_key": os.environ["TYPESENSE_ADMIN_KEY"],
+            "api_key": os.environ["TYPESENSE_OPERATIONS_KEY"],
             "connection_timeout_seconds": 10,
         }
     )

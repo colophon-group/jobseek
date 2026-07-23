@@ -75,7 +75,7 @@ required_env=(
   TYPESENSE_HOST
   TYPESENSE_PORT
   TYPESENSE_PROTOCOL
-  TYPESENSE_ADMIN_KEY
+  TYPESENSE_OPERATIONS_KEY
 )
 for key in "${required_env[@]}"; do
   mapfile -t matches < <(grep -E "^${key}=" "$ENV_FILE" || true)

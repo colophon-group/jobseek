@@ -1447,7 +1447,7 @@ async def _update_metrics(
 
 def _typesense_enabled() -> bool:
     """Check if Typesense integration is enabled."""
-    return bool(settings.typesense_admin_key)
+    return bool(settings.typesense_operations_key)
 
 
 async def run_exporter(

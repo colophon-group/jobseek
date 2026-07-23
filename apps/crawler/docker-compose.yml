@@ -18,7 +18,7 @@ x-common-env: &common-env
   TYPESENSE_HOST: ${TYPESENSE_HOST}
   TYPESENSE_PORT: ${TYPESENSE_PORT}
   TYPESENSE_PROTOCOL: ${TYPESENSE_PROTOCOL}
-  TYPESENSE_ADMIN_KEY: ${TYPESENSE_ADMIN_KEY}
+  TYPESENSE_OPERATIONS_KEY: ${TYPESENSE_OPERATIONS_KEY}
   # Proxy provider — applies to boards with ``"proxy": true`` in their
   # monitor_config / scraper_config (see src/shared/proxy.py). Secrets
   # for idle providers stay set so operators can swap with one env flip.

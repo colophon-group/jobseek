@@ -473,7 +473,7 @@ jobs:
       TYPESENSE_HOST: localhost
       TYPESENSE_PORT: "8108"
       TYPESENSE_PROTOCOL: http
-      TYPESENSE_ADMIN_KEY: local_dev_typesense_key
+      TYPESENSE_OPERATIONS_KEY: local_dev_typesense_key
       REQUIRE_TYPESENSE_E2E: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

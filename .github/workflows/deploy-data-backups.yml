@@ -67,11 +67,12 @@ jobs:
         env:
           JOBSEEK_BACKUP_DEPLOY_SHA: ${{ github.sha }}
           JOBSEEK_BACKUP_SERVICE: ${{ matrix.service }}
+          JOBSEEK_TYPESENSE_BACKUP_KEY: ${{ matrix.service == 'typesense' && secrets.TYPESENSE_BACKUP_KEY || '' }}
         with:
           host: ${{ matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: JOBSEEK_BACKUP_DEPLOY_SHA,JOBSEEK_BACKUP_SERVICE
+          envs: JOBSEEK_BACKUP_DEPLOY_SHA,JOBSEEK_BACKUP_SERVICE,JOBSEEK_TYPESENSE_BACKUP_KEY
           command_timeout: 20m
           script: |
             set -euo pipefail

@@ -1,0 +1,169 @@
+name: Deploy Typesense Host (Hetzner)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/typesense-host/**'
+      - 'deploy/systemd/cloudflared.service'
+      - 'scripts/verify-typesense-host-credentials.py'
+      - '.github/workflows/deploy-typesense-host.yml'
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Host component to reconcile
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - typesense
+          - cloudflared
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: typesense-host-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate credential-safe host artifacts
+        run: |
+          set -euo pipefail
+          bash -n deploy/typesense-host/install-host.sh
+          shellcheck deploy/typesense-host/install-host.sh
+          python3 -m py_compile scripts/verify-typesense-host-credentials.py
+          python3 scripts/verify-typesense-host-credentials.py --self-test
+          test -s deploy/systemd/cloudflared.service
+          if grep -Eq -- '--(api-key|token)(=|[[:space:]])[^<]' \
+              deploy/typesense-host/install-host.sh \
+              deploy/systemd/cloudflared.service; then
+            echo "secret-bearing command-line flag found in host artifacts" >&2
+            exit 1
+          fi
+
+      - name: Smoke-test Typesense config-file delivery
+        run: |
+          set -euo pipefail
+          root="$(mktemp -d)"
+          container=jobseek-typesense-config-smoke
+          cleanup() {
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            rm -rf "$root"
+          }
+          trap cleanup EXIT
+          install -d -m 0700 "$root/data"
+          {
+            echo 'data-dir = /data'
+            echo 'api-key = smoke-bootstrap-key'
+            echo 'api-port = 8108'
+            echo 'listen-address = 0.0.0.0'
+          } >"$root/typesense-server.ini"
+          chmod 0600 "$root/typesense-server.ini"
+          docker run -d \
+            --name "$container" \
+            -p 127.0.0.1::8108 \
+            -v "$root/data:/data" \
+            -v "$root/typesense-server.ini:/run/secrets/typesense-server.ini:ro" \
+            typesense/typesense:27.1 \
+            --config=/run/secrets/typesense-server.ini >/dev/null
+          port="$(docker port "$container" 8108/tcp | sed 's/.*://')"
+          for _ in $(seq 1 60); do
+            curl -fsS "http://127.0.0.1:${port}/health" >/dev/null && break
+            sleep 1
+          done
+          curl -fsS "http://127.0.0.1:${port}/health" |
+            python3 -c 'import json,sys; assert json.load(sys.stdin)["ok"] is True'
+          docker inspect "$container" >"$root/inspect.json"
+          if grep -Fq 'smoke-bootstrap-key' "$root/inspect.json"; then
+            echo "bootstrap key leaked through Docker metadata" >&2
+            exit 1
+          fi
+          test "$(docker inspect "$container" --format '{{json .Config.Cmd}}')" \
+            = '["--config=/run/secrets/typesense-server.ini"]'
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Copy Typesense-host deployment artifacts
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: deploy/typesense-host,deploy/systemd/cloudflared.service,scripts/verify-typesense-host-credentials.py
+          target: /opt/jobseek-typesense-host
+          overwrite: true
+
+      - name: Install protected Typesense credential delivery
+        if: inputs.component == 'all' || inputs.component == 'typesense'
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA: ${{ github.sha }}
+          TYPESENSE_BOOTSTRAP_KEY: ${{ secrets.TYPESENSE_BOOTSTRAP_KEY }}
+        with:
+          host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA,TYPESENSE_BOOTSTRAP_KEY
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd /opt/jobseek-typesense-host
+            bash deploy/typesense-host/install-host.sh typesense
+
+      - name: Install protected Cloudflare Tunnel credential delivery
+        if: inputs.component == 'all' || inputs.component == 'cloudflared'
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+          JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: CLOUDFLARE_TUNNEL_TOKEN,JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd /opt/jobseek-typesense-host
+            bash deploy/typesense-host/install-host.sh cloudflared
+
+      - name: Verify protected host surface
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            test "$(cat /var/lib/jobseek-typesense-host/deployed-sha)" \
+              = "${{ github.sha }}"
+            /usr/local/sbin/jobseek-verify-typesense-host-credentials \
+              --component "${{ inputs.component }}"
+
+      - name: Verify public tunnel behavior
+        run: |
+          set -euo pipefail
+          curl -fsS https://typesense.colophon-group.org/health |
+            python3 -c 'import json,sys; assert json.load(sys.stdin)["ok"] is True'
+          status="$(
+            curl -sS -o /dev/null -w '%{http_code}' \
+              https://typesense.colophon-group.org/collections
+          )"
+          test "$status" = 401

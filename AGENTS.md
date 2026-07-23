@@ -163,11 +163,15 @@ See [docs/11-typesense.md](docs/11-typesense.md) for full deployment details, in
 
 ### API Keys
 
-Four scoped keys (stored in `apps/crawler/.env.local`, GitHub secrets, and Vercel env vars):
+The bootstrap credential and five generated keys are separated by consumer
+(stored only in root-owned host files, protected GitHub secrets, ignored
+`apps/crawler/.env.local`, or Vercel env vars as appropriate):
 
 | Key | Scope | Used by |
 |-----|-------|---------|
-| `TYPESENSE_ADMIN_KEY` | Full access | Exporter, sync, backfill, setup scripts (crawler machine) |
+| `TYPESENSE_BOOTSTRAP_KEY` | Full server bootstrap | Root-owned Typesense host config only |
+| `TYPESENSE_OPERATIONS_KEY` | `collections:*`, `documents:*`, `aliases:*`, `metrics.json:list` | Exporter, sync, backfill, setup, reconciliation, health metrics |
+| `TYPESENSE_BACKUP_KEY` | Generated wildcard key (Typesense 27.1 snapshot limitation) | Root-owned backup service only |
 | `TYPESENSE_SEARCH_KEY` | `documents:search` + `documents:get` on all collections | Web app server-side search (via Cloudflare tunnel) |
 | `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` on all collections only | Web app `/api/typesense-key` route; mints scoped keys for direct browser -> Typesense calls |
 | `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` only | Web app watchlist mutations |

@@ -254,6 +254,16 @@ host staging directory, uploads it to the encrypted Restic repository, runs
 retention/pruning and `restic check`, then removes both temporary copies. It
 does not stop or restart Typesense.
 
+The API credential is a dedicated generated key, delivered from the protected
+`TYPESENSE_BACKUP_KEY` GitHub environment secret into the root-owned
+`/etc/jobseek-backup/typesense.env` file as `TYPESENSE_API_KEY`. It is not the
+server bootstrap key and is not shared with the crawler. Typesense 27.1
+returned 401 for generated keys limited to `operations:snapshot` and
+`operations:*`, so this consumer currently requires a generated wildcard key.
+That version-specific exception is constrained by root-only file/service
+access and remains independently revocable. Re-test and narrow the action
+scope at the next Typesense upgrade.
+
 Run and verify a backup:
 
 ```bash
