@@ -33,6 +33,33 @@ _rand = uuid.uuid4().hex[:8]
 WORKER_ID = f"{settings.worker_id_prefix}-{_rand}" if settings.worker_id_prefix else _rand
 
 
+async def _await_task_or_shutdown[T](
+    task: asyncio.Task[T],
+    shutdown_event: asyncio.Event,
+) -> T | None:
+    """Cancel one-shot work when the process receives SIGTERM or SIGINT."""
+
+    shutdown_task = asyncio.create_task(shutdown_event.wait())
+    try:
+        done, _pending = await asyncio.wait(
+            (task, shutdown_task),
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if task in done:
+            return await task
+
+        task.cancel()
+        try:
+            return await task
+        except asyncio.CancelledError:
+            return None
+    finally:
+        if not task.done():
+            task.cancel()
+        shutdown_task.cancel()
+        await asyncio.gather(task, shutdown_task, return_exceptions=True)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="crawler")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -573,14 +600,19 @@ async def run() -> None:
             supa_pool = await create_pool()
             from src.reconciliation import run_reconciliation
 
-            await run_reconciliation(
-                local_pool,
-                supa_pool,
-                repair=args.repair,
-                full=args.full,
-                max_partitions=args.max_partitions,
-                start_partition=args.start_partition,
-                target_scope=args.target,
+            await _await_task_or_shutdown(
+                asyncio.create_task(
+                    run_reconciliation(
+                        local_pool,
+                        supa_pool,
+                        repair=args.repair,
+                        full=args.full,
+                        max_partitions=args.max_partitions,
+                        start_partition=args.start_partition,
+                        target_scope=args.target,
+                    )
+                ),
+                shutdown_event,
             )
 
         elif args.command == "board":

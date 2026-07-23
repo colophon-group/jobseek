@@ -275,6 +275,14 @@ every exit path. It invokes the installed `/app/.venv/bin/crawler` entry point
 directly so the read-only root filesystem never depends on a runtime package
 manager cache.
 
+At the runtime cap, the crawler observes the wrapper's `SIGTERM`, cancels the
+in-flight one-shot task, and persists the run as `interrupted` before container
+cleanup. The partition cursor advances only after downstream verification, so
+the next invocation retries an interrupted partition. Because a new invocation
+holds the global reconciliation advisory lock before creating its ledger row,
+it also marks any older `running` rows as interrupted immediately; a prior
+row cannot represent a still-live reconciler once that lock has been acquired.
+
 The wrapper holds `/run/lock/jobseek-crawler-mutation.lock` for the whole run.
 Crawler deploys, scheduled Typesense refreshes/backfills, and reconciliation
 all take that same lock, while PostgreSQL additionally enforces a dedicated
@@ -335,10 +343,11 @@ sudo -u deploy /usr/local/sbin/jobseek-crawler-reconciliation \
 
 Run one target at a time and inspect its aggregate result before continuing.
 If the cap is reached, the verified partition cursor remains resumable; rerun
-the same command rather than increasing limits during an incident. Stopping
-or disabling the timer is a scheduling rollback only—the migration and
-optional Typesense bucket field are additive, and disabling the timer does not
-undo already verified downstream repairs.
+the same command rather than increasing limits during an incident. Confirm the
+interrupted run is recorded and that the next invocation resumes at the last
+verified cursor. Stopping or disabling the timer is a scheduling rollback
+only—the migration and optional Typesense bucket field are additive, and
+disabling the timer does not undo already verified downstream repairs.
 
 ## Disk Triage
 

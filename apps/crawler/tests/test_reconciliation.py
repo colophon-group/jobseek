@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import sys
 import uuid
@@ -17,14 +18,18 @@ from src.cli import parse_args
 from src.exporter import TaxonomyMaps
 from src.reconciliation import (
     PARTITION_COUNT,
+    PartitionResult,
     ReconciliationError,
+    RunSummary,
     StoreSnapshot,
     TypesenseReconciliationClient,
     _bootstrap_typesense_buckets,
+    _start_run,
     compare_snapshots,
     partition_bounds,
     reconcile_partition,
     reconciliation_bucket,
+    run_reconciliation,
 )
 
 
@@ -178,6 +183,69 @@ def test_full_reconciliation_still_requires_explicit_repair(monkeypatch) -> None
     assert args.full is True
     assert args.repair is False
     assert args.target == "typesense"
+
+
+async def test_new_lock_holder_marks_prior_running_ledgers_interrupted() -> None:
+    pool = MagicMock()
+    pool.execute = AsyncMock()
+    summary = RunSummary(
+        run_id=uuid.uuid4(),
+        mode="repair",
+        target_scope="typesense",
+    )
+
+    await _start_run(pool, summary)
+
+    orphan_update = pool.execute.await_args_list[0].args[0]
+    assert "SET status = 'interrupted'" in orphan_update
+    assert "error_class = 'InterruptedRun'" in orphan_update
+    assert "WHERE status = 'running'" in orphan_update
+    assert "interval '2 hours'" not in orphan_update
+
+
+async def test_cancelled_reconciliation_persists_interruption_and_unlocks(
+    monkeypatch,
+) -> None:
+    lock_connection = MagicMock()
+    lock_connection.fetchval = AsyncMock(side_effect=[True, True])
+    local_pool = MagicMock()
+    local_pool.acquire.return_value = _AsyncContext(lock_connection)
+    started = asyncio.Event()
+
+    async def blocked_partition(*_args: object, **_kwargs: object) -> PartitionResult:
+        started.set()
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+    start_run = AsyncMock()
+    finish_run = AsyncMock()
+    monkeypatch.setattr("src.reconciliation._start_run", start_run)
+    monkeypatch.setattr("src.reconciliation._finish_run", finish_run)
+    monkeypatch.setattr("src.reconciliation.reconcile_partition", blocked_partition)
+
+    task = asyncio.create_task(
+        run_reconciliation(
+            local_pool,
+            MagicMock(),
+            repair=False,
+            max_partitions=1,
+            target_scope="supabase",
+        )
+    )
+    await started.wait()
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    finish_run.assert_awaited_once()
+    assert finish_run.await_args.kwargs == {
+        "status": "interrupted",
+        "error_class": "InterruptedRun",
+    }
+    assert (
+        lock_connection.fetchval.await_args_list[-1].args[0].startswith("SELECT pg_advisory_unlock")
+    )
 
 
 def test_snapshot_diff_is_bidirectional_and_preserves_remote_inactive_history() -> None:
