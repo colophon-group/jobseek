@@ -4,6 +4,7 @@ import asyncio
 import dataclasses
 import uuid
 from collections import Counter
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -74,6 +75,11 @@ def _make_record(data: dict) -> MagicMock:
     rec.__getitem__ = lambda self, k: data[k]
     rec.__contains__ = lambda self, k: k in data
     return rec
+
+
+@asynccontextmanager
+async def _noop_cursor_fence(_pool):
+    yield
 
 
 # ---------------------------------------------------------------------------
@@ -1322,7 +1328,12 @@ class TestRunExporter:
                 shutdown.set()
 
             await asyncio.gather(
-                run_exporter(local, supa, shutdown),
+                run_exporter(
+                    local,
+                    supa,
+                    shutdown,
+                    cursor_fence_factory=_noop_cursor_fence,
+                ),
                 set_shutdown(),
             )
 
@@ -1363,9 +1374,62 @@ class TestRunExporter:
             mock_settings.export_downstream_backoff_base_seconds = 5.0
             mock_settings.export_downstream_backoff_max_seconds = 300.0
             mock_settings.typesense_health_interval_seconds = 30.0
-            await run_exporter(local, supa, shutdown)
+            await run_exporter(
+                local,
+                supa,
+                shutdown,
+                cursor_fence_factory=_noop_cursor_fence,
+            )
 
         assert probe_values == [True, False]
+
+    async def test_cursor_fence_wraps_dual_export_and_cursor_save(self):
+        """A repair must not interleave between the row snapshot and cursor save."""
+        local = _make_pool()
+        supa = _make_pool()
+        shutdown = asyncio.Event()
+        cursor = (datetime(2026, 7, 23, 1, 0, tzinfo=UTC), _ZERO_UUID)
+        maps = TaxonomyMaps()
+        maps._last_refresh = 10**20
+        events: list[str] = []
+
+        @asynccontextmanager
+        async def tracking_fence(_pool):
+            events.append("fence-enter")
+            try:
+                yield
+            finally:
+                events.append("fence-exit")
+
+        async def fake_export(*_args, **_kwargs):
+            events.append("export")
+            return 0, cursor, cursor
+
+        async def fake_save(*_args, **_kwargs):
+            events.append("cursor-save")
+            shutdown.set()
+
+        with (
+            patch("src.exporter.settings") as mock_settings,
+            patch("src.exporter._typesense_enabled", return_value=True),
+            patch("src.exporter._get_cursor", new=AsyncMock(return_value=cursor)),
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch("src.exporter._export_postings_dual", side_effect=fake_export),
+            patch("src.exporter._save_cursors_atomic", side_effect=fake_save),
+            patch("src.exporter._update_metrics", new=AsyncMock()),
+        ):
+            mock_settings.export_interval = 0.001
+            mock_settings.export_downstream_backoff_base_seconds = 5.0
+            mock_settings.export_downstream_backoff_max_seconds = 300.0
+            mock_settings.typesense_health_interval_seconds = 30.0
+            await run_exporter(
+                local,
+                supa,
+                shutdown,
+                cursor_fence_factory=tracking_fence,
+            )
+
+        assert events == ["fence-enter", "export", "cursor-save", "fence-exit"]
 
 
 # ---------------------------------------------------------------------------
@@ -2296,7 +2360,12 @@ class TestRunExporterAtomicCursorWiring:
                 shutdown.set()
 
             await asyncio.gather(
-                run_exporter(local, supa, shutdown),
+                run_exporter(
+                    local,
+                    supa,
+                    shutdown,
+                    cursor_fence_factory=_noop_cursor_fence,
+                ),
                 set_shutdown(),
             )
 

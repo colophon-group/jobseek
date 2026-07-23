@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -47,6 +48,11 @@ def _client(active_ids: set[uuid.UUID]) -> SimpleNamespace:
     return SimpleNamespace(collections=_Collections({str(posting_id) for posting_id in active_ids}))
 
 
+@asynccontextmanager
+async def _noop_cursor_fence(_pool):
+    yield
+
+
 def test_relisted_cte_advances_cdc_timestamp() -> None:
     compact = " ".join(_DIFF_BATCH.split())
     start = compact.index("relisted AS (")
@@ -58,7 +64,7 @@ def test_relisted_cte_advances_cdc_timestamp() -> None:
 
 def test_repair_sql_contract_is_bounded_and_race_safe() -> None:
     assert "last_seen_at >= $2::timestamptz" in _FETCH_CANDIDATES
-    assert "updated_at < last_seen_at" in _FETCH_CANDIDATES
+    assert "updated_at < last_seen_at" not in _FETCH_CANDIDATES
     assert "id > $1::uuid" in _FETCH_CANDIDATES
     assert "is_active = true" in _FETCH_SUPABASE_ACTIVE
     assert "SET updated_at = now()" in _TOUCH_MISMATCHES
@@ -92,6 +98,7 @@ async def test_dry_run_detects_each_downstream_without_writes() -> None:
         since=datetime(2026, 7, 22, 23, 52, tzinfo=UTC),
         dry_run=True,
         typesense_client=_client({both, missing_supa}),
+        cursor_fence_factory=_noop_cursor_fence,
     )
 
     assert result.scanned == 3
@@ -122,6 +129,7 @@ async def test_repair_touches_union_of_downstream_mismatches() -> None:
         supa,
         since=datetime(2026, 7, 22, 23, 52, tzinfo=UTC),
         typesense_client=_client({both}),
+        cursor_fence_factory=_noop_cursor_fence,
     )
 
     assert result.mismatched == 1
@@ -140,4 +148,46 @@ async def test_repair_fails_closed_without_typesense() -> None:
             AsyncMock(),
             since=datetime(2026, 7, 22, 23, 52, tzinfo=UTC),
             typesense_client=None,
+            cursor_fence_factory=_noop_cursor_fence,
         )
+
+
+@pytest.mark.asyncio
+async def test_repair_holds_cursor_fence_during_snapshot_and_scan() -> None:
+    events: list[str] = []
+
+    @asynccontextmanager
+    async def tracking_fence(_pool):
+        events.append("fence-enter")
+        try:
+            yield
+        finally:
+            events.append("fence-exit")
+
+    class TrackingDocuments(_Documents):
+        def export(self, params: dict) -> str:
+            events.append("typesense-snapshot")
+            return super().export(params)
+
+    class TrackingCollections:
+        def __init__(self) -> None:
+            self.collection = SimpleNamespace(documents=TrackingDocuments(set()))
+
+        def __getitem__(self, name: str) -> SimpleNamespace:
+            assert name == "job_posting"
+            return self.collection
+
+    client = SimpleNamespace(collections=TrackingCollections())
+    local = AsyncMock()
+    local.fetch = AsyncMock(side_effect=[[]])
+
+    await repair_relisted_cdc(
+        local,
+        AsyncMock(),
+        since=datetime(2026, 7, 22, 23, 52, tzinfo=UTC),
+        dry_run=True,
+        typesense_client=client,
+        cursor_fence_factory=tracking_fence,
+    )
+
+    assert events == ["fence-enter", "typesense-snapshot", "fence-exit"]
