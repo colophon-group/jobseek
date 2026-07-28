@@ -2,6 +2,8 @@
 
 # Job Seek
 
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.colophon-group%2Fjobseek.svg)](https://mcptoplist.com/server/io.github.colophon-group%2Fjobseek)
+
 **An open-source job aggregator that monitors 4,400+ company career pages directly.**
 
 Roles land here within hours of the company posting them — once, in canonical form, with no third-party reposts.
