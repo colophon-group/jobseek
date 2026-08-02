@@ -916,6 +916,7 @@ _MONITOR_CONFIG_HINTS = {
     "greenhouse": "Requires: token (auto-filled from probe)",
     "hirehive": "Requires: slug (auto-filled from probe)",
     "hireology": "Requires: slug (auto-filled from probe)",
+    "jarvi": "Requires: public_api_key; optional currency (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
     "paylocity": "No config required (uses embedded window.pageData)",
     "pinpoint": "Requires: slug (auto-filled from probe)",

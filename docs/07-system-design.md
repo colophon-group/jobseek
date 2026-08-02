@@ -183,6 +183,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `hibob`           | Rich     | skip        | HiBob public career-site API            |
 | 10   | `hirehive`        | Rich     | skip        | HireHive public Jobs API                |
 | 10   | `hireology`       | Rich     | skip        | Hireology Careers API                   |
+| 10   | `jarvi`           | Rich     | skip        | Jarvi public careers API                |
 | 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
 | 10   | `mokahr`          | Rich     | skip        | Mokahr encrypted listing API            |
