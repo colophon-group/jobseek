@@ -104,6 +104,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "mokahr",
         "nextdata",
         "notion",
+        "onlyfy",
         "oracle_hcm",
         "paylocity",
         "pdf",
