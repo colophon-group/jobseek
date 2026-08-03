@@ -18,6 +18,9 @@ TYPESENSE_CONFIG = Path("/etc/jobseek-typesense/typesense-server.ini")
 CLOUDFLARED_TOKEN = Path("/etc/jobseek-typesense/cloudflare-tunnel-token")
 CLOUDFLARED_UNIT = Path("/etc/systemd/system/cloudflared.service")
 TYPESENSE_CONFIG_IN_CONTAINER = "/run/secrets/typesense-server.ini"
+TYPESENSE_NOFILE_LIMIT = 65_536
+TYPESENSE_LOG_MAX_SIZE = "50m"
+TYPESENSE_LOG_MAX_FILES = "3"
 FORBIDDEN_TYPESENSE_ENV = {
     "TYPESENSE_ADMIN_KEY",
     "TYPESENSE_API_KEY",
@@ -59,6 +62,14 @@ def _read_proc_argv(pid: int) -> list[str]:
     ]
 
 
+def _proc_nofile_limits(pid: int) -> tuple[int, int]:
+    for line in Path(f"/proc/{pid}/limits").read_text(encoding="utf-8").splitlines():
+        if line.startswith("Max open files"):
+            fields = line.split()
+            return int(fields[3]), int(fields[4])
+    raise ValueError("process limits did not contain Max open files")
+
+
 def _http_json(url: str) -> dict[str, Any]:
     request = urllib.request.Request(url)
     with urllib.request.urlopen(request, timeout=10) as response:
@@ -73,8 +84,11 @@ def collect_typesense_checks() -> dict[str, bool]:
     container_argv = inspect["Config"].get("Cmd") or []
     container_env = inspect["Config"].get("Env") or []
     mounts = inspect.get("Mounts") or []
+    ulimits = inspect["HostConfig"].get("Ulimits") or []
+    log_config = inspect["HostConfig"].get("LogConfig") or {}
     typesense_pid = int(inspect["State"]["Pid"])
     typesense_argv = _read_proc_argv(typesense_pid)
+    nofile_soft, nofile_hard = _proc_nofile_limits(typesense_pid)
 
     nobody_config = _run(
         ["runuser", "-u", "nobody", "--", "test", "-r", str(TYPESENSE_CONFIG)],
@@ -86,6 +100,11 @@ def collect_typesense_checks() -> dict[str, bool]:
     )
 
     config_stat = TYPESENSE_CONFIG.stat()
+    config_lines = [
+        line.strip()
+        for line in TYPESENSE_CONFIG.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     mounted_config = any(
         mount.get("Source") == str(TYPESENSE_CONFIG)
         and mount.get("Destination") == TYPESENSE_CONFIG_IN_CONTAINER
@@ -102,6 +121,20 @@ def collect_typesense_checks() -> dict[str, bool]:
         "typesense_not_oom_killed": inspect["State"].get("OOMKilled") is False,
         "typesense_image_pinned": inspect["Config"].get("Image") == "typesense/typesense:27.1",
         "typesense_host_network": inspect["HostConfig"].get("NetworkMode") == "host",
+        "typesense_nofile_limit_managed": any(
+            limit.get("Name") == "nofile"
+            and int(limit.get("Soft") or 0) == TYPESENSE_NOFILE_LIMIT
+            and int(limit.get("Hard") or 0) == TYPESENSE_NOFILE_LIMIT
+            for limit in ulimits
+        ),
+        "typesense_process_nofile_limit_effective": (
+            nofile_soft == TYPESENSE_NOFILE_LIMIT and nofile_hard == TYPESENSE_NOFILE_LIMIT
+        ),
+        "typesense_log_rotation_managed": (
+            log_config.get("Type") == "json-file"
+            and (log_config.get("Config") or {}).get("max-size") == TYPESENSE_LOG_MAX_SIZE
+            and (log_config.get("Config") or {}).get("max-file") == TYPESENSE_LOG_MAX_FILES
+        ),
         "typesense_config_only_argv": container_argv
         == [f"--config={TYPESENSE_CONFIG_IN_CONTAINER}"],
         "typesense_process_has_no_inline_api_key": not has_inline_flag(typesense_argv, "--api-key"),
@@ -110,6 +143,7 @@ def collect_typesense_checks() -> dict[str, bool]:
         "typesense_config_root_owned_0600": config_stat.st_uid == 0
         and config_stat.st_gid == 0
         and _mode(TYPESENSE_CONFIG) == 0o600,
+        "typesense_config_has_server_section": bool(config_lines) and config_lines[0] == "[server]",
         "typesense_config_denied_to_nobody": nobody_config.returncode != 0,
         "docker_inspect_denied_to_nobody": nobody_docker.returncode != 0,
     }

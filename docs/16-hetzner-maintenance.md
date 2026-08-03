@@ -126,6 +126,67 @@ Do not manually recreate Typesense with `--api-key`, put a token directly in
 dispatch for recovery; its transaction and conformance checks are the
 supported restart path.
 
+## Typesense Readiness and Raft Recovery
+
+Container uptime is not service readiness. `jobseek_typesense_healthy` is the
+authoritative local readiness signal; the public tunnel health is a separate
+check. The host sampler also exports:
+
+- `jobseek_typesense_open_file_descriptors` and the live soft/hard limits;
+- `jobseek_typesense_threads`;
+- the maximum thread-pool queue and slow-request duration seen in the last
+  five minutes; and
+- bounded five-minute event counts for descriptor exhaustion, leaderlessness,
+  snapshot failure, slow requests, and thread-pool exhaustion.
+
+The managed container requires a 65,536 soft/hard `nofile` limit and rotates
+Docker JSON logs at 50 MB with three files. Deployment conformance verifies
+both Docker metadata and the effective process limit. Allow up to 15 minutes
+for the current 2.5-million-document index to reload before declaring a cold
+start failed.
+
+When readiness fails but the container is running:
+
+1. Preserve `docker inspect`, `/proc/<pid>/limits`, filesystem/inode/memory
+   state, `/health`, `/debug`, and logs covering the first failure. Store them
+   in a root-only incident directory. Never print API keys or full slow-query
+   URLs.
+2. Check the causal signals in order: thread-pool queue, slow requests,
+   descriptor use/exhaustion, snapshot failure, then leaderlessness. Stopping
+   a downstream writer does not repair an already leaderless Raft node.
+3. Verify no Typesense backup is active. Before any peer reset or data-file
+   change, gracefully stop Typesense and make an exact offline copy of
+   `/mnt/typesense-data`; record byte and file counts. Preserve the old
+   container by renaming it rather than deleting it.
+4. Attempt a normal start of the same reviewed image/data first. A healthy
+   single node loads its snapshot, replays the remaining log, elects itself,
+   and reports Raft state `1`. HTTP 503 is expected while the in-memory index
+   reloads.
+5. Use Typesense's `--reset-peers-on-error` only if the fully loaded normal
+   start returns to persistent Raft `ERROR`, and only after the offline copy.
+   The [versioned Typesense documentation](https://typesense.org/docs/27.1/api/server-configuration.html#clustering)
+   warns that forced peer reset can cause intermittent data loss. Remove the
+   flag after the one recovery start.
+
+Recovery acceptance requires all of the following:
+
+```bash
+curl --fail --silent http://127.0.0.1:8108/health
+curl --fail --silent https://typesense.colophon-group.org/health
+docker inspect typesense --format \
+  'running={{.State.Running}} restarts={{.RestartCount}} ulimits={{json .HostConfig.Ulimits}}'
+pid="$(docker inspect typesense --format '{{.State.Pid}}')"
+grep '^Max open files' "/proc/$pid/limits"
+```
+
+From the crawler's protected operations environment, also require `/debug`
+state `1`, all seven aliases, representative posting/company/watchlist reads,
+an ephemeral create/write/read/delete probe, exporter progress, and a complete
+Typesense reconciliation cycle. Preserve the offline copy until the linked
+application-consistent backup and isolated restore have passed. The 2026-08-03
+drill and capacity analysis are in
+[`docs/audits/2026-08-03-typesense-raft-incident.md`](audits/2026-08-03-typesense-raft-incident.md).
+
 ## Ingress and SSH Baseline
 
 The repository-owned ingress source of truth is:
@@ -303,13 +364,17 @@ evidence proves the normal reschedule path failed.
 ## PostgreSQL Capacity and Checkpoint Pressure
 
 The authoritative PostgreSQL database lives on the attached XFS data Volume,
-not on the server root disk. The Volume was expanded online from 20 to 40 GiB
-on 2026-07-22 after a transaction-consistent encrypted checkpoint passed. The
-provider action cannot be reversed in place. Current and future expansion must
-therefore preserve the same sequence: fresh backup and restore evidence,
-recorded pre-change capacity, provider resize, online `xfs_growfs`, PostgreSQL
-and archive verification, then recorded post-change capacity. Never use a
-server backup as a substitute; server images do not contain this Volume.
+not on the server root disk. It was expanded online from 20 to 40 GiB on
+2026-07-22 after a transaction-consistent encrypted checkpoint passed, then
+from 40 to 80 GiB during #6117 recovery on 2026-08-03 after the full backup
+repository had forced more than 21 GiB of unarchived WAL onto the data Volume.
+The second expansion restored crash-recovery workspace; bounded repository
+retention fixes the actual growth source. Provider expansion cannot be
+reversed in place. Current and future expansion must therefore preserve the
+same sequence: fresh backup and restore evidence, recorded pre-change
+capacity, provider resize, online `xfs_growfs`, PostgreSQL and archive
+verification, then recorded post-change capacity. Never use a server backup as
+a substitute; server images do not contain this Volume.
 
 The live PostgreSQL contract is deliberately consistent across
 `deploy/backups/postgresql/migrate-container.sh` and
@@ -319,6 +384,14 @@ The live PostgreSQL contract is deliberately consistent across
 PostgreSQL can retain close to the configured WAL ceiling and the ceiling is
 not a hard limit, so filesystem forecasts must leave room for WAL and archive
 failure as well as relation growth.
+
+The #6117 recovery baseline measured the durable database at 19.79 GB versus
+approximately 19.2 GB on 2026-07-22: less than 0.6 GB growth in twelve days,
+or about 1.5 GB over 30 days at the observed linear rate. After archive
+catch-up, the 80 GiB Volume therefore retains more than 50 GB for ordinary
+headroom after the 2 GiB reserve and the normal WAL ceiling. The 25% current
+headroom rule still leaves substantially more than the measured 30-day growth;
+do not count the emergency reserve as ordinary free space.
 
 The host sampler publishes:
 
@@ -394,6 +467,46 @@ work are expected; sustained requested dominance is not. Change WAL or
 checkpoint settings only through both repo-owned container creation paths,
 with a fresh backup and the guarded rollback workflow. Do not force a
 checkpoint or increase `max_wal_size` merely to make the alert disappear.
+
+## PostgreSQL Emergency Headroom
+
+The attached XFS data Volume contains a root-owned, fully allocated 2 GiB file
+named `.jobseek-postgresql-emergency-reserve`. It is not normal free capacity:
+it is a controlled last-resort reserve that lets crash recovery start and WAL
+archiving resume when ordinary filesystem space has been exhausted. The backup
+host installer creates and verifies it only when at least 8 GiB remains free
+after allocation. A sparse file, symlink, wrong-sized file, or wrong ownership
+does not satisfy the contract.
+
+Check it without changing capacity:
+
+```bash
+/usr/local/sbin/jobseek-postgresql-emergency-headroom status
+```
+
+Release it only after preserving incident evidence and proving that block
+exhaustion prevents PostgreSQL recovery:
+
+```bash
+/usr/local/sbin/jobseek-postgresql-emergency-headroom release
+```
+
+The release command validates the exact file before removing it. It never
+touches PostgreSQL data or WAL. Recreate the reserve before declaring recovery
+complete:
+
+```bash
+/usr/local/sbin/jobseek-postgresql-emergency-headroom reserve
+systemctl restart jobseek-postgresql-emergency-headroom.service
+```
+
+The host sampler publishes allocated and target bytes;
+`PostgreSQLEmergencyHeadroomMissing` fires within five minutes if the reserve
+is absent or under-allocated. Crawler deployment and scheduled maintenance run
+the Grafana-backed PostgreSQL operational preflight before stopping or
+replacing any workload. It requires fresh telemetry, database readiness, at
+least 15% XFS free, at least 20% backup-repository free, the full reserve, a
+fresh successful backup, and no archive failure in the latest hour.
 
 ## Fleet Observability
 

@@ -64,6 +64,8 @@ if [[ "$SERVICE" == "postgresql" ]]; then
   test -s /etc/jobseek-backup/postgresql/pgbackrest.conf
   test -s /etc/jobseek-backup/postgresql/repository.env
   test -s /etc/jobseek-backup/postgresql/storage-box.cifs
+  python3 "$REPO_ROOT/deploy/backups/postgresql/configure-retention.py" \
+    /etc/jobseek-backup/postgresql/pgbackrest.conf
   if ! command -v mount.cifs >/dev/null 2>&1; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cifs-utils
@@ -84,9 +86,15 @@ if [[ "$SERVICE" == "postgresql" ]]; then
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/postgresql/restore-drill.sh" \
     /usr/local/sbin/jobseek-postgresql-restore-drill
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/deploy/backups/postgresql/emergency-headroom.sh" \
+    /usr/local/sbin/jobseek-postgresql-emergency-headroom
   install -o root -g root -m 0644 \
     "$REPO_ROOT/deploy/systemd/jobseek-postgresql-backup-repository.service" \
     /etc/systemd/system/jobseek-postgresql-backup-repository.service
+  install -o root -g root -m 0644 \
+    "$REPO_ROOT/deploy/systemd/jobseek-postgresql-emergency-headroom.service" \
+    /etc/systemd/system/jobseek-postgresql-emergency-headroom.service
 else
   test -s /etc/jobseek-backup/typesense.env
   test -s /etc/jobseek-backup/typesense/id_ed25519
@@ -170,9 +178,13 @@ install -o root -g root -m 0644 \
 systemctl daemon-reload
 if [[ "$SERVICE" == "postgresql" ]]; then
   systemd-analyze verify /etc/systemd/system/jobseek-postgresql-backup-repository.service
+  systemd-analyze verify /etc/systemd/system/jobseek-postgresql-emergency-headroom.service
   /usr/local/sbin/jobseek-postgresql-mount-backup-repository
   systemctl enable --now jobseek-postgresql-backup-repository.service
   systemctl is-active --quiet jobseek-postgresql-backup-repository.service
+  systemctl enable jobseek-postgresql-emergency-headroom.service
+  systemctl restart jobseek-postgresql-emergency-headroom.service
+  systemctl is-active --quiet jobseek-postgresql-emergency-headroom.service
 fi
 systemd-analyze verify "/etc/systemd/system/jobseek-${SERVICE}-backup.service"
 systemd-analyze verify "/etc/systemd/system/jobseek-${SERVICE}-backup.timer"

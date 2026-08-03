@@ -13,7 +13,7 @@ configuration is under `/etc/jobseek-backup` on the relevant host.
 
 | Data | Consistent source artifact | Off-host repository | Schedule | Retention |
 |---|---|---|---|---|
-| PostgreSQL | pgBackRest physical backup plus continuous WAL archive | AES-encrypted pgBackRest repository on a private, encrypted SMB 3 Storage Box mount | daily at 01:00 UTC; weekly full, otherwise differential | four full backup chains |
+| PostgreSQL | pgBackRest physical backup plus continuous WAL archive | AES-encrypted pgBackRest repository on a private, encrypted SMB 3 Storage Box mount | daily at 01:00 UTC; weekly full, otherwise differential | four full backups, seven differential backups, and continuous WAL for the two latest differentials |
 | Typesense | Typesense Snapshot API output | encrypted Restic SFTP repository | daily at 02:00 UTC | 14 daily and 4 weekly snapshots |
 
 Recovery objectives:
@@ -177,9 +177,31 @@ unused libssh2 transport. PostgreSQL must run with:
 wal_level=replica
 max_wal_senders=3
 archive_mode=on
-archive_command=test -f /var/spool/pgbackrest/archive-enabled && pgbackrest --stanza=jobseek archive-push %p
+archive_command=test -f /var/spool/pgbackrest/archive-enabled && flock -s /var/spool/pgbackrest/repository.lock pgbackrest --stanza=jobseek archive-push %p
 archive_timeout=60s
 ```
+
+Repository retention is deliberately split between backup sets and continuous
+WAL. `repo1-retention-full=4` preserves four weekly full recovery points,
+`repo1-retention-diff=7` preserves the latest week of daily differential
+points, and `repo1-retention-archive=2` with archive type `diff` preserves
+point-in-time recovery from the two latest differentials. Continuous WAL must
+not inherit the four-full-backup setting: this workload can generate more than
+100 GB of compressed WAL per day, so retaining four weeks can exhaust the 1 TB
+repository before the fourth full backup exists.
+
+`jobseek-data-backup postgresql` runs a networkless pgBackRest `expire` in a
+separate read-only container before it requires the live PostgreSQL container
+to be healthy. Archive-push holds a shared kernel lock and expiration holds the
+exclusive form, so a process or host crash releases serialization without
+stranding WAL archiving. The wrapper also uses the persistent archive sentinel
+as a fail-closed compatibility hold for a container that predates the lock
+contract. The repository mount alone is writable. This makes a full repository
+recoverable by the next scheduled attempt even when PostgreSQL is already
+down, and the same explicit retention options are passed to every backup so
+its automatic expiration cannot drift from the host configuration. The host
+installer atomically reconciles only the four retention keys and preserves the
+adjacent repository coordinate and encryption secret verbatim.
 
 During the initial cutover the sentinel is absent, so PostgreSQL retains WAL
 without racing `archive-push` against repository stanza creation. The
@@ -256,6 +278,34 @@ df -h /mnt/jobseek-postgresql-backups
 Treat a growing archive failure count, stale `last_archived_time`, or a
 growing spool as urgent. PostgreSQL preserves unarchived WAL, so an archive
 failure can consume the already constrained data Volume.
+
+Treat the repository itself as a bounded operational filesystem. Healthy
+steady state is at least 35% free; the critical control also forecasts its
+seven-day free-space trend. If retention is wrong or the repository is full:
+
+1. preserve `pgbackrest info --output=json`, filesystem, backup-status, WAL,
+   and container evidence;
+2. stop a futile PostgreSQL restart loop without deleting any database/WAL
+   file;
+3. run pgBackRest `expire --dry-run` with the reviewed archive-retention
+   options and verify that no backup set is selected;
+4. run the same expiration under `/run/jobseek-data-backup-postgresql.lock`;
+5. verify repository free space and `pgbackrest info` before restoring the
+   PostgreSQL restart policy; and
+6. require archive catch-up, a fresh backup, and an isolated restore drill.
+
+Never delete repository paths with `rm` or manually remove `pg_wal`. Only
+pgBackRest may expire repository objects, because its backup metadata defines
+the safe archive boundary.
+
+The Storage Box automatic snapshot plan retains two daily snapshots. Provider
+snapshots are a short secondary deletion guard, not additional pgBackRest
+recovery points, and they consume the same 1 TB quota. Do not increase that
+window without including high-churn archived WAL in the capacity forecast. If
+snapshots predate emergency pgBackRest expiration, every one of them can retain
+the obsolete blocks; inspect the exact provider snapshot set and repository
+statistics before deleting it, then re-enable the two-snapshot plan only after
+the repository and fresh backup are healthy.
 
 ## Typesense backup operation
 

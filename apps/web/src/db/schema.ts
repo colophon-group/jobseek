@@ -508,8 +508,10 @@ export const jobPosting = pgTable(
     salaryCurrency: text("salary_currency"),
     salaryPeriod: text("salary_period"),
     salaryEur: integer("salary_eur"),
-    experienceMin: numeric("experience_min", { precision: 3, scale: 1, mode: "number" }),
-    experienceMax: numeric("experience_max", { precision: 3, scale: 1, mode: "number" }),
+    // Supabase keeps the legacy integer mirror columns until job_posting is
+    // removed. Decimal experience lives in local Postgres and Typesense.
+    experienceMin: integer("experience_min"),
+    experienceMax: integer("experience_max"),
 
     // ── Taxonomy FKs ──
     occupationId: integer("occupation_id").references(() => occupation.id),
