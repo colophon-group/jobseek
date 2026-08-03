@@ -25,6 +25,7 @@ UTC = timezone.utc  # noqa: UP017 - crawler host system Python is 3.10.
 DEFAULT_TEXTFILE = Path("/var/lib/jobseek-observability/textfile/jobseek-host.prom")
 DEFAULT_STATE_DIR = Path("/var/lib/jobseek-observability/state")
 DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
+DEFAULT_RECONCILIATION_REVISION = Path("/var/lib/jobseek-reconciliation/deployed-sha")
 POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
 POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
 MAX_LOG_LINES = 200
@@ -214,6 +215,34 @@ def _collect_unit_metrics(role: str, lines: list[str]) -> None:
                 unit=unit,
             )
         )
+
+
+def _collect_reconciliation_deployment_metrics(
+    lines: list[str], revision_path: Path = DEFAULT_RECONCILIATION_REVISION
+) -> None:
+    available = 0
+    modified = 0.0
+    try:
+        revision = revision_path.read_text(encoding="ascii").strip()
+        if not re.fullmatch(r"[0-9a-f]{40}", revision):
+            raise ValueError("invalid revision")
+        modified = revision_path.stat().st_mtime
+        available = 1
+        lines.append(
+            _metric(
+                "jobseek_cross_store_reconciliation_deployed_revision_info",
+                1,
+                revision=revision,
+            )
+        )
+    except (OSError, UnicodeError, ValueError):
+        pass
+    lines.extend(
+        (
+            _metric("jobseek_cross_store_reconciliation_deployed_revision_available", available),
+            _metric("jobseek_cross_store_reconciliation_deployed_revision_mtime_seconds", modified),
+        )
+    )
 
 
 def _backup_number(record: dict[str, Any], key: str) -> float:
@@ -700,8 +729,7 @@ def _collect_alloy_metrics(role: str, lines: list[str]) -> None:
             _read_loopback(f"http://127.0.0.1:{port}/metrics", timeout=15)
         )
         lines.extend(
-            _metric(f"jobseek_alloy_{name}", value, **labels)
-            for name, value in metrics.items()
+            _metric(f"jobseek_alloy_{name}", value, **labels) for name, value in metrics.items()
         )
         lines.append(
             _metric(
@@ -787,6 +815,13 @@ def collect(
         probes.append(("postgresql", lambda: _collect_postgresql_metrics(lines)))
     elif role == "typesense":
         probes.append(("typesense", lambda: _collect_typesense_metrics(lines)))
+    elif role == "crawler":
+        probes.append(
+            (
+                "reconciliation-deployment",
+                lambda: _collect_reconciliation_deployment_metrics(lines),
+            )
+        )
     probes.append(("container_logs", lambda: _collect_new_error_logs(role, state_dir, now=now)))
 
     success = True

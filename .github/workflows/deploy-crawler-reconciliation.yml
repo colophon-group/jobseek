@@ -30,6 +30,7 @@ jobs:
           set -euo pipefail
           bash -n deploy/reconciliation/run.sh
           bash -n deploy/reconciliation/install-host.sh
+          python3 -m py_compile deploy/reconciliation/state.py
           test -s deploy/systemd/jobseek-crawler-reconciliation.service
           test -s deploy/systemd/jobseek-crawler-reconciliation.timer
 
@@ -57,5 +58,10 @@ jobs:
             set -euo pipefail
             cd /opt/jobseek-reconciliation
             bash deploy/reconciliation/install-host.sh
-            test "$(cat /var/lib/jobseek-reconciliation/deployed-sha)" = "$JOBSEEK_RECONCILIATION_DEPLOY_SHA"
+            runuser -u deploy -- /usr/local/sbin/jobseek-reconciliation-state \
+              check --expected-revision "$JOBSEEK_RECONCILIATION_DEPLOY_SHA"
             systemctl is-active --quiet jobseek-crawler-reconciliation.timer
+            systemctl reset-failed jobseek-crawler-reconciliation.service || true
+            systemctl start --no-block jobseek-crawler-reconciliation.service
+            sleep 5
+            ! systemctl is-failed --quiet jobseek-crawler-reconciliation.service
