@@ -364,6 +364,14 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"BambooHR API \u2014 tenant: {tenant}, {jobs} jobs"
         return f"BambooHR API \u2014 tenant: {tenant}"
+    if name == "adp":
+        cid = metadata.get("cid", "?")
+        cc_id = metadata.get("cc_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"cid: {cid}, career center: {cc_id}"
+        if jobs is not None:
+            return f"ADP Workforce Now API \u2014 {label}, {jobs} jobs"
+        return f"ADP Workforce Now API \u2014 {label}"
     if name == "paycom":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -693,6 +701,7 @@ _PROBE_SKIP: frozenset[str] = frozenset({"amazon", "accenture"})
 # Import modules to trigger registration
 from src.core.monitors import (  # noqa: E402
     accenture,  # noqa: F401
+    adp,  # noqa: F401
     almacareer,  # noqa: F401
     amazon,  # noqa: F401
     api_sniffer,  # noqa: F401

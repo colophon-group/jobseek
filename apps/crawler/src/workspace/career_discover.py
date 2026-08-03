@@ -93,6 +93,8 @@ _ATS_URL_RE = re.compile(
     r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.gupy\.io"
     r"(?:/jobs/[1-9]\d{0,19})?/?"
     r"(?:\?jobBoardSource=gupy_public_page)?(?=[#\"'<\s]|$)"
+    r"|workforcenow\.adp\.com/mascsr/default/mdf/recruitment/"
+    r"recruitment\.html\?[^\"'<\s]+"
     r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.csod\.com/"
     r"ux/ats/careersite/[1-9]\d{0,9}/home"
     r"(?:/requisition/[1-9]\d{0,19})?"
@@ -871,6 +873,9 @@ def _dedup_candidates(candidates: list[CareerPageCandidate]) -> list[CareerPageC
         site_id = c.monitor_config.get("site_id")
         corp = c.monitor_config.get("corp")
         portal = c.monitor_config.get("portal")
+        cid = c.monitor_config.get("cid")
+        cc_id = c.monitor_config.get("cc_id")
+        locale = c.monitor_config.get("locale")
         tenant_parts = [tenant] if tenant else []
         if tenant_parts and site_id is not None:
             tenant_parts.append(site_id)
@@ -879,8 +884,13 @@ def _dedup_candidates(candidates: list[CareerPageCandidate]) -> list[CareerPageC
         if tenant_parts and portal:
             tenant_parts.append(portal)
         tenant_key = ":".join(str(part) for part in tenant_parts) or None
+        adp_key = f"{cid}:{cc_id}:{locale}" if cid and cc_id and locale else None
         config_key = (
-            c.monitor_config.get("token") or c.monitor_config.get("slug") or tenant_key or c.url
+            c.monitor_config.get("token")
+            or c.monitor_config.get("slug")
+            or tenant_key
+            or adp_key
+            or c.url
         )
         key = f"{c.monitor_type}:{config_key}"
         if key in by_key:

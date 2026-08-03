@@ -2022,6 +2022,21 @@ class TestSelectMonitorNaming:
         assert selected["scraper_type"] == expected[0] == "paycom"
         assert selected["scraper_config"] == expected[1]
 
+    def test_adp_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """ADP selection carries its native detail enrichment preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "adp"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["adp"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("adp")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "adp"
+        assert selected["scraper_config"] == expected[1]
+
     def test_jazzhr_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
         """JazzHR selection carries its composed static detail scraper."""
         self._setup(tmp_path, monkeypatch)

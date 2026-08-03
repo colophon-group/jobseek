@@ -42,6 +42,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `bamboohr` | Rich | api_sniffer | BambooHR summaries plus detail API enrichment |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
+| `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
 | `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination |
 | `gupy` | URL-only | json-ld | Gupy single-page NextData inventory |
 | `cornerstone` | Rich | skip | Cornerstone bootstrap + regional paginated search API |

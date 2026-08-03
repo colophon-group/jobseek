@@ -170,6 +170,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 9    | `join`            | URL-only | nextdata    | JOIN (join.com) Next.js data            |
 | 9    | `phenom`          | URL-only | json-ld     | Phenom People sitemap-based discovery   |
 | 10   | `accenture`       | Rich     | skip        | Accenture career API                    |
+| 10   | `adp`             | Rich     | adp         | ADP Workforce Now listing API + detail enrichment |
 | 10   | `almacareer`      | Rich     | skip        | AlmaCareer / Capybara GraphQL API       |
 | 10   | `amazon`          | Rich     | skip        | Amazon Jobs                             |
 | 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |

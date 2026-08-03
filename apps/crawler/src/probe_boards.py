@@ -20,6 +20,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 
+from src.shared.adp import adp_board_from_metadata, adp_board_from_url
 from src.shared.cornerstone import (
     cornerstone_board_from_metadata,
     cornerstone_board_from_url,
@@ -243,6 +244,44 @@ async def _probe_paycom(row: dict, client: httpx.AsyncClient) -> ProbeResult:
                     "portal config missing",
                 )
     return _classify(row, "paycom", url, resp)
+
+
+async def _probe_adp(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    try:
+        config = json.loads(row["monitor_config"] or "{}")
+    except (json.JSONDecodeError, TypeError):
+        config = {}
+    board = (
+        adp_board_from_metadata(config) if isinstance(config, dict) else None
+    ) or adp_board_from_url(row["board_url"])
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "adp",
+            row["board_url"],
+            "warn",
+            "no valid cid/cc_id/locale in monitor_config or ADP URL",
+        )
+
+    url = board.search_url(start=1)
+    headers = {
+        "Accept": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        "X-Forwarded-Host": "workforcenow.adp.com",
+    }
+    resp = await _retry(lambda: _get(client, url, headers=headers))
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        try:
+            payload = resp.json()
+        except ValueError:
+            return ProbeResult(row["board_slug"], "adp", url, "warn", "invalid JSON")
+        rows = payload.get("jobRequisitions") if isinstance(payload, dict) else None
+        meta = payload.get("meta") if isinstance(payload, dict) else None
+        total = meta.get("totalNumber") if isinstance(meta, dict) else None
+        if not isinstance(rows, list) or isinstance(total, bool) or not isinstance(total, int):
+            return ProbeResult(row["board_slug"], "adp", url, "warn", "invalid listing shape")
+        return ProbeResult(row["board_slug"], "adp", url, "ok", f"200, {total} jobs")
+    return _classify(row, "adp", url, resp)
 
 
 async def _probe_jazzhr(row: dict, client: httpx.AsyncClient) -> ProbeResult:
@@ -677,6 +716,7 @@ def _classify(
 
 # Monitor types we know how to probe. Others are skipped by probe_row.
 PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] = {
+    "adp": _probe_adp,
     "greenhouse": _probe_greenhouse,
     "lever": _probe_lever,
     "ashby": _probe_ashby,
