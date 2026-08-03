@@ -13,13 +13,10 @@ import {
   typeaheadCompaniesCacheTag,
 } from "@/lib/cache-tags";
 import { getSessionUserId } from "@/lib/sessionCache";
-import { expandLocationIdsBatch } from "@/lib/services/locations";
-import { expandOccupationIdsBatch } from "@/lib/services/taxonomy";
 import { ANON_MAX_COMPANIES, ANON_MAX_POSTINGS } from "@/lib/search/constants";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
-import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import { parseSearchFilters } from "@/lib/services/search-input";
 import { getCurrencyRates } from "@/lib/services/search";
 import { firstOf, idsOrUndefined, parseRangeParam } from "@/lib/search/params";
@@ -45,13 +42,15 @@ export async function suggestCompanies(params: {
   const q = params.query.trim().toLowerCase();
   if (q.length < 2) return [];
 
-  // Per-region in-memory `'use cache'` (revalidate 3600s). Migrated from
-  // Redis-backed `cached()` in #2884 (typeaheads slice). The previous TTL
-  // was 600s; bumped to 3600s to match the other 4 typeahead sites
-  // (issue prescription). The inner fetcher returns `CompanySuggestion[]`
-  // (plain serializable objects, never null), so no throw-and-catch
-  // wrapper is needed here.
-  return _queryCompanySuggestionsCached(q);
+  // Let Typesense failures escape the cache boundary so an outage-shaped
+  // empty list is not cached for an hour. The public surface degrades to no
+  // suggestions until the search service recovers.
+  try {
+    return await _queryCompanySuggestionsCached(q);
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    return [];
+  }
 }
 
 async function _queryCompanySuggestionsCached(
@@ -64,48 +63,25 @@ async function _queryCompanySuggestionsCached(
   // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
   cacheTag(typeaheadCompaniesCacheTag());
 
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        name: string;
-        slug: string;
-        icon: string | null;
-        match_rank: number;
-      }>(sql`
-        WITH prefix_matches AS (
-          SELECT c.id, c.name, c.slug, c.icon, 1 AS match_rank
-          FROM company c
-          WHERE lower(c.name) LIKE ${q + "%"}
-            AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
-          LIMIT 5
-        ),
-        fuzzy_matches AS (
-          SELECT c.id, c.name, c.slug, c.icon, 2 AS match_rank
-          FROM company c
-          WHERE length(${q}) >= 3
-            AND similarity(lower(c.name), ${q}) > 0.3
-            AND c.id NOT IN (SELECT id FROM prefix_matches)
-            AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
-          ORDER BY similarity(lower(c.name), ${q}) DESC
-          LIMIT 5
-        )
-        SELECT * FROM prefix_matches
-        UNION ALL
-        SELECT * FROM fuzzy_matches
-        LIMIT 5
-      `),
-    { label: "companySuggestions" },
-  );
+  const result = await getSearchClient().collections("company").documents().search({
+    q,
+    query_by: "name",
+    filter_by: "active_posting_count:>0",
+    sort_by: "_text_match:desc,active_posting_count:desc",
+    per_page: 5,
+    prefix: true,
+    num_typos: 1,
+  });
 
-  type Row = { id: string; name: string; slug: string; icon: string | null; match_rank: number };
-  return (rows as unknown as Row[]).map((r) => ({
-    id: r.id,
-    name: r.name,
-    slug: r.slug,
-    icon: r.icon,
-  }));
+  return (result.hits ?? []).map((hit) => {
+    const doc = hit.document as Record<string, unknown>;
+    return {
+      id: String(doc.id),
+      name: String(doc.name ?? ""),
+      slug: String(doc.slug ?? ""),
+      icon: typeof doc.icon === "string" ? doc.icon : null,
+    };
+  });
 }
 
 // ── Paginated company search with filter-aware match counts ─────────
@@ -143,8 +119,12 @@ export async function searchCompaniesForWatchlist(params: {
     return await _searchCompaniesForWatchlistTypesense(params);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    logExternalError("error", { service: "typesense", operation: "search_companies_watchlist" }, err);
-    return _searchCompaniesForWatchlistPostgres(params);
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "search_companies_watchlist" },
+      err,
+    );
+    return { companies: [], total: 0 };
   }
 }
 
@@ -409,166 +389,6 @@ async function _searchCompaniesForWatchlistTypesense(params: {
       };
     }),
     total: result.found ?? 0,
-  };
-}
-
-/** Postgres fallback for searchCompaniesForWatchlist (graceful degradation). */
-async function _searchCompaniesForWatchlistPostgres(params: {
-  query?: string;
-  industryId?: number;
-  locale: string;
-  offset: number;
-  limit: number;
-  keywords?: string[];
-  locationIds?: number[];
-  occupationIds?: number[];
-  seniorityIds?: number[];
-  technologyIds?: number[];
-  salaryMin?: number;
-  salaryMax?: number;
-  experienceMin?: number;
-  experienceMax?: number;
-  languages?: string[];
-  starredCompanyIds?: string[];
-}): Promise<{ companies: CompanyListEntry[]; total: number }> {
-  const q = params.query?.trim().toLowerCase();
-  const hasQuery = q && q.length >= 2;
-
-  const companyClauses = [sql`true`];
-  if (hasQuery) {
-    companyClauses.push(
-      sql`(lower(c.name) LIKE ${q + "%"} OR (length(${q}) >= 3 AND similarity(lower(c.name), ${q}) > 0.3))`,
-    );
-  }
-  if (params.industryId != null) {
-    companyClauses.push(sql`c.industry = ${params.industryId}`);
-  }
-  const companyWhere = sql.join(companyClauses, sql` AND `);
-
-  // Batched ancestor/descendant expansion: one recursive CTE per taxonomy
-  // (not L per L seed IDs). The previous `Promise.all(ids.map(expand))`
-  // fired L parallel recursive CTEs against `location` / `occupation` —
-  // ~50–150ms of avoidable work and L extra Redis round-trips even on
-  // warm cache, on the exact Postgres fallback path that runs when
-  // Typesense is degraded. See #3186.
-  const [expandedLocIds, expandedOccIds] = await Promise.all([
-    params.locationIds?.length
-      ? expandLocationIdsBatch(params.locationIds)
-      : undefined,
-    params.occupationIds?.length
-      ? expandOccupationIdsBatch(params.occupationIds)
-      : undefined,
-  ]);
-
-  const jobClauses = [sql`jp.is_active = true`];
-  if (params.keywords && params.keywords.length > 0) {
-    const kwParts = params.keywords.map((k) => {
-      const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const s = /^\w/.test(k) ? "\\m" : "";
-      const e = /\w$/.test(k) ? "\\M" : "";
-      return sql`jp.titles[1] ~* ${s + escaped + e}`;
-    });
-    jobClauses.push(sql`(${sql.join(kwParts, sql` OR `)})`);
-  }
-  if (expandedLocIds?.length) {
-    const a = `{${expandedLocIds.join(",")}}`;
-    jobClauses.push(sql`jp.location_ids && ${a}::integer[]`);
-  }
-  if (expandedOccIds?.length) {
-    const a = `{${expandedOccIds.join(",")}}`;
-    jobClauses.push(sql`jp.occupation_id = ANY(${a}::integer[])`);
-  }
-  if (params.seniorityIds?.length) {
-    const a = `{${params.seniorityIds.join(",")}}`;
-    jobClauses.push(sql`jp.seniority_id = ANY(${a}::integer[])`);
-  }
-  if (params.technologyIds?.length) {
-    const a = `{${params.technologyIds.join(",")}}`;
-    jobClauses.push(sql`jp.technology_ids && ${a}::integer[]`);
-  }
-  if (params.salaryMin != null && params.salaryMax != null) {
-    jobClauses.push(sql`jp.salary_eur BETWEEN ${params.salaryMin} AND ${params.salaryMax}`);
-  } else if (params.salaryMin != null) {
-    jobClauses.push(sql`jp.salary_eur >= ${params.salaryMin}`);
-  } else if (params.salaryMax != null) {
-    jobClauses.push(sql`jp.salary_eur <= ${params.salaryMax}`);
-  }
-  if (params.experienceMin != null || params.experienceMax != null) {
-    if (params.experienceMin != null && params.experienceMax != null) {
-      jobClauses.push(sql`(jp.experience_min IS NULL OR (jp.experience_min >= ${params.experienceMin} AND jp.experience_min <= ${params.experienceMax}))`);
-    } else if (params.experienceMin != null) {
-      jobClauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min >= ${params.experienceMin})`);
-    } else {
-      jobClauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
-    }
-  }
-  const localesClause = localesOrNoneClause(params.languages);
-  if (localesClause) jobClauses.push(localesClause);
-  const jobWhere = sql.join(jobClauses, sql` AND `);
-
-  const [totalRow] = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; cnt: number }>(sql`
-        SELECT count(*)::int AS cnt FROM company c WHERE ${companyWhere}
-      `),
-    { label: "searchCompaniesForWatchlistPostgres.count" },
-  );
-  const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
-  if (total === 0) return { companies: [], total: 0 };
-
-  const starredIds = params.starredCompanyIds;
-  const boostStarred = !hasQuery && starredIds && starredIds.length > 0;
-  const starredArray = boostStarred ? `{${starredIds.join(",")}}` : null;
-
-  const orderClause = boostStarred
-    ? sql`CASE WHEN c.id = ANY(${starredArray}::uuid[]) THEN 0 ELSE 1 END, active_matches DESC, c.name`
-    : sql`active_matches DESC, c.name`;
-
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        name: string;
-        slug: string;
-        icon: string | null;
-        description: string | null;
-        active_matches: number;
-        year_matches: number;
-      }>(sql`
-        SELECT c.id, c.name, c.slug, c.icon,
-               COALESCE(cd.description, c.description) AS description,
-               (SELECT count(*)::int FROM job_posting jp
-                WHERE jp.company_id = c.id AND ${jobWhere}) AS active_matches,
-               (SELECT count(*)::int FROM job_posting jp
-                WHERE jp.company_id = c.id
-                  AND jp.first_seen_at >= now() - interval '1 year'
-                  AND ${jobWhere}) AS year_matches
-        FROM company c
-        LEFT JOIN company_description cd ON cd.company_id = c.id AND cd.locale = ${params.locale}
-        WHERE ${companyWhere}
-        ORDER BY ${orderClause}
-        OFFSET ${params.offset}
-        LIMIT ${params.limit}
-      `),
-    { label: "searchCompaniesForWatchlistPostgres.rows" },
-  );
-
-  type Row = {
-    id: string; name: string; slug: string; icon: string | null;
-    description: string | null; active_matches: number; year_matches: number;
-  };
-  return {
-    companies: (rows as unknown as Row[]).map((r) => ({
-      id: r.id,
-      name: r.name,
-      slug: r.slug,
-      icon: r.icon,
-      description: r.description,
-      activeMatches: r.active_matches,
-      yearMatches: r.year_matches,
-    })),
-    total,
   };
 }
 
