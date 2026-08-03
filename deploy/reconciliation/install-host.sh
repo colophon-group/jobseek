@@ -10,12 +10,14 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_ROOT=/var/lib/jobseek-reconciliation
 DEPLOY_SHA="${JOBSEEK_RECONCILIATION_DEPLOY_SHA:-}"
+WRAPPER_SHA256="$(sha256sum "$REPO_ROOT/deploy/reconciliation/run.sh" | awk '{print $1}')"
 FILES=(
   /usr/local/sbin/jobseek-reconciliation-state
   /usr/local/sbin/jobseek-crawler-reconciliation
   /etc/systemd/system/jobseek-crawler-reconciliation.service
   /etc/systemd/system/jobseek-crawler-reconciliation.timer
   /var/lib/jobseek-reconciliation/deployed-sha
+  /var/lib/jobseek-reconciliation/wrapper-sha256
 )
 ROLLBACK_ARMED=1
 TIMER_WAS_ENABLED=0
@@ -37,12 +39,16 @@ for path in "${FILES[@]}"; do
 done
 
 restore_previous() {
-  local path name
+  local group name path
   systemctl disable --now jobseek-crawler-reconciliation.timer >/dev/null 2>&1 || true
   for path in "${FILES[@]}"; do
     name="${path##*/}"
     if [[ -e "$ROLLBACK/$name" ]]; then
-      install -o root -g root -m "$(stat -c '%a' "$ROLLBACK/$name")" \
+      group=root
+      if [[ "$path" == "$STATE_ROOT/"* ]]; then
+        group=deploy
+      fi
+      install -o root -g "$group" -m "$(stat -c '%a' "$ROLLBACK/$name")" \
         "$ROLLBACK/$name" "$path"
     else
       rm -f "$path"
@@ -92,8 +98,16 @@ systemctl is-active --quiet jobseek-crawler-reconciliation.timer
   echo "ERROR: reconciliation deployment SHA is required" >&2
   exit 1
 }
-/usr/local/sbin/jobseek-reconciliation-state install --revision "$DEPLOY_SHA"
+[[ "$WRAPPER_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+  echo "ERROR: reconciliation wrapper digest is invalid" >&2
+  exit 1
+}
+/usr/local/sbin/jobseek-reconciliation-state install \
+  --revision "$DEPLOY_SHA" \
+  --wrapper-sha256 "$WRAPPER_SHA256"
 runuser -u deploy -- /usr/local/sbin/jobseek-reconciliation-state \
-  check --expected-revision "$DEPLOY_SHA"
+  check \
+  --expected-revision "$DEPLOY_SHA" \
+  --expected-wrapper-sha256 "$WRAPPER_SHA256"
 
 ROLLBACK_ARMED=0

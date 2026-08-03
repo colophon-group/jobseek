@@ -848,8 +848,8 @@ groups:
       # "this job is dead" (CronJobMissing) from "this job is
       # running but broken" (CronJobFailing).
       #
-      # 10m `for:` debounces single transient failures (Supabase
-      # blip, Typesense restart) — the next run usually recovers.
+      # 10m `for:` debounces single transient failures (Postgres
+      # connectivity blip, Typesense restart) — the next run usually recovers.
       - alert: CronJobFailing
         expr: crawler_cron_last_run_status == 0
         for: 10m
@@ -895,8 +895,8 @@ groups:
             before removing anything from Redis.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#inflight-leases-and-dead-letter-recovery
 
-      # Catches "exporter container alive but stuck on a Supabase
-      # write" — a partial-failure mode that does not trigger
+      # Catches "exporter container alive but stuck on a Typesense
+      # write or local CDC fence" — a partial-failure mode that does not trigger
       # NoMetricsFromCrawler. Threshold is 10 expected flush cycles
       # at the natural cadence (<60s p95), with a 5m debounce for
       # transient network blips.

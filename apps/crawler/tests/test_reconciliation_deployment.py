@@ -49,6 +49,26 @@ def test_revision_state_recovers_from_missing_and_corrupt_files(tmp_path: Path) 
 
     state.install_revision(tmp_path, revision)
     assert state.read_revision(tmp_path) == revision
+
+
+def test_wrapper_digest_state_is_atomic_validated_and_group_readable(tmp_path: Path) -> None:
+    revision = "a" * 40
+    wrapper_sha256 = "b" * 64
+
+    state.install_revision(tmp_path, revision)
+    state.install_wrapper_sha256(tmp_path, wrapper_sha256)
+    assert state.read_wrapper_sha256(tmp_path) == wrapper_sha256
+    assert os.stat(tmp_path / "wrapper-sha256").st_mode & 0o777 == 0o640
+
+    (tmp_path / "wrapper-sha256").write_text("corrupt\n", encoding="ascii")
+    with pytest.raises(state.StateError, match="invalid"):
+        state.read_wrapper_sha256(tmp_path)
+    state.install_wrapper_sha256(tmp_path, wrapper_sha256)
+    assert state.read_wrapper_sha256(tmp_path) == wrapper_sha256
+
+    (tmp_path / "wrapper-sha256").unlink()
+    with pytest.raises(state.StateError, match="unavailable"):
+        state.read_wrapper_sha256(tmp_path)
     assert os.stat(tmp_path).st_mode & 0o777 == 0o750
     assert os.stat(tmp_path / "deployed-sha").st_mode & 0o777 == 0o640
 
@@ -220,17 +240,24 @@ def test_install_and_workflow_preserve_rollback_and_privilege_boundary() -> None
     assert "TIMER_WAS_ACTIVE" in installer
     assert "systemctl disable --now jobseek-crawler-reconciliation.timer" in installer
     assert "restore_previous" in installer
+    assert 'if [[ "$path" == "$STATE_ROOT/"* ]]' in installer
+    assert 'install -o root -g "$group"' in installer
     assert "systemd-analyze verify" in installer
     assert "systemctl enable --now jobseek-crawler-reconciliation.timer" in installer
     assert "install -d -o root -g deploy -m 0750" in installer
-    assert "jobseek-reconciliation-state install --revision" in installer
+    assert "jobseek-reconciliation-state install" in installer
+    assert '--revision "$DEPLOY_SHA"' in installer
+    assert "--wrapper-sha256" in installer
+    assert "/var/lib/jobseek-reconciliation/wrapper-sha256" in installer
     assert "runuser -u deploy" in installer
-    assert "grep -Eq '^[0-9a-f]{40}$' /var/lib/jobseek-reconciliation/deployed-sha" in (
-        DEPLOY.read_text(encoding="utf-8")
-    )
+    deploy = DEPLOY.read_text(encoding="utf-8")
+    assert "JOBSEEK_RECONCILIATION_WRAPPER_SHA256" in deploy
+    assert "sha256sum /usr/local/sbin/jobseek-crawler-reconciliation" in deploy
+    assert "--expected-wrapper-sha256" in deploy
     assert "environment: production" in workflow
     assert "username: root" in workflow
     assert "JOBSEEK_RECONCILIATION_DEPLOY_SHA" in workflow
+    assert "JOBSEEK_RECONCILIATION_WRAPPER_SHA256" in workflow
     assert "systemctl start --no-block jobseek-crawler-reconciliation.service" in workflow
     assert "! systemctl is-failed --quiet jobseek-crawler-reconciliation.service" in workflow
     for action in ("actions/checkout", "appleboy/scp-action", "appleboy/ssh-action"):

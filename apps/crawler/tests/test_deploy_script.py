@@ -22,6 +22,7 @@ POSTGRES_PREFLIGHT = (
     Path(__file__).resolve().parent.parent / "scripts/postgresql-operational-preflight.py"
 )
 REPO_ROOT = Path(__file__).resolve().parents[3]
+AGENTS_MD = Path(__file__).resolve().parent.parent / "AGENTS.md"
 
 
 def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
@@ -133,17 +134,95 @@ def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
 
     oneoff_guard = script.index("\nensure_no_running_compose_oneoffs\n")
     typesense_guard = script.index("\nensure_no_running_typesense_maintenance\n")
+    reconciliation_guard = script.index("\nensure_reconciliation_wrapper_compatible\n")
     postgres_guard = script.index(
-        'python3 "$DEPLOY_DIR/scripts/postgresql-operational-preflight.py"'
+        'python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"'
     )
+    activation = script.index("\nactivate_staged_deploy_specs\n")
     legacy_stop = script.index('docker stop --time=60 "${legacy_containers[@]}"')
     env_write = script.index('cat > "$ENV_FILE"')
     pull = script.index("\npull_deploy_images\n")
     quiesce = script.index("docker compose stop --timeout 60")
 
     assert (
-        oneoff_guard < typesense_guard < postgres_guard < legacy_stop < env_write < pull < quiesce
+        oneoff_guard
+        < typesense_guard
+        < reconciliation_guard
+        < postgres_guard
+        < activation
+        < legacy_stop
+        < env_write
+        < pull
+        < quiesce
     )
+
+
+def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
+    script = DEPLOY_SH.read_text()
+    workflow = DEPLOY_WORKFLOW.read_text()
+    rollback = script[
+        script.index("rollback_deploy() {") : script.index("compose_service_ready() {")
+    ]
+
+    assert "docker-compose.yml" in script.partition("DEPLOY_SPEC_FILES=(")[2].partition(")")[0]
+    assert 'tar -C "$snapshot_dir" -cpf' in script
+    assert 'tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"' in script
+    assert 'compose_source="$ACTIVE_COMPOSE_SNAPSHOT"' in script
+    assert 'compose_source="$BOOTSTRAP_ROLLBACK_COMPOSE"' in script
+    assert 'git show "${BEFORE_SHA}:apps/crawler/docker-compose.yml"' in workflow
+    assert "apps/crawler/docker-compose.rollback.yml" in workflow
+    assert 'mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"' in script
+    env_restore = rollback.index('mv "$ROLLBACK_ENV_FILE" "$ENV_FILE"')
+    spec_restore = rollback.index("restore_previous_deploy_specs")
+    old_stack_start = rollback.index("docker compose up -d --remove-orphans")
+    assert env_restore < spec_restore < old_stack_start
+    assert "target: /home/deploy/incoming/" in workflow
+    assert "script: bash /home/deploy/incoming/deploy.sh" in workflow
+    assert "target: /home/deploy/\n" not in workflow
+
+
+def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> None:
+    script = DEPLOY_SH.read_text()
+    workflow = DEPLOY_WORKFLOW.read_text()
+
+    guard = script.index("\nensure_reconciliation_wrapper_compatible\n")
+    snapshot = script.index("\nsnapshot_active_deploy_specs\n")
+    activation = script.index("\nactivate_staged_deploy_specs\n")
+    env_write = script.index('cat > "$ENV_FILE"')
+    assert guard < snapshot < activation < env_write
+    assert "sha256sum /usr/local/sbin/jobseek-crawler-reconciliation" in script
+    assert '--expected-wrapper-sha256 "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256"' in script
+    assert "systemctl is-enabled --quiet jobseek-crawler-reconciliation.timer" in script
+    assert "systemctl is-active --quiet jobseek-crawler-reconciliation.timer" in script
+    assert "RECONCILIATION_COMPAT_WAIT_SECONDS:-1200" in script
+    assert "Derive reconciliation wrapper contract" in workflow
+    assert "sha256sum deploy/reconciliation/run.sh" in workflow
+    assert "JOBSEEK_RECONCILIATION_WRAPPER_SHA256" in workflow
+
+
+def test_crawler_host_mutation_waits_for_same_revision_murmur_workflow() -> None:
+    workflow = DEPLOY_WORKFLOW.read_text()
+
+    wait = workflow.index("- name: Wait for same-revision murmur-shim deployment")
+    host_copy = workflow.index("- name: Copy deploy files")
+    assert wait < host_copy
+    assert "actions: read" in workflow
+    assert "actions/workflows/deploy-murmur-shim.yml/runs" in workflow
+    assert '-f head_sha="$GITHUB_SHA"' in workflow
+    assert "deadline=$((SECONDS + 2700))" in workflow
+    assert "same-revision murmur-shim workflow concluded" in workflow
+    assert "timed out waiting for same-revision murmur-shim deployment" in workflow
+
+
+def test_operator_worker_restart_uses_compose_credential_allowlist() -> None:
+    agents = AGENTS_MD.read_text()
+    container_management = agents[
+        agents.index("### Container Management") : agents.index("### Disk and Docker GC")
+    ]
+
+    assert "docker compose up -d --force-recreate <service>" in container_management
+    assert "--env-file /home/deploy/.env" not in container_management
+    assert "docker run -d --name <name>" not in container_management
 
 
 def test_deploy_copies_postgresql_operational_preflight() -> None:
@@ -164,7 +243,7 @@ def test_deploy_sources_pull_helpers_and_workflow_copies_them() -> None:
     script = DEPLOY_SH.read_text()
     workflow = DEPLOY_WORKFLOW.read_text()
 
-    source = script.index('source "$DEPLOY_DIR/deploy_helpers.sh"')
+    source = script.index('source "$INCOMING_DIR/deploy_helpers.sh"')
     pull = script.index("\npull_deploy_images\n")
 
     assert source < pull

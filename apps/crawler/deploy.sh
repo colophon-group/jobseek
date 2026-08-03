@@ -18,6 +18,7 @@ flock -w 7200 9 || {
 required_vars=(
   OWNER
   JOBSEEK_DEPLOY_REVISION
+  JOBSEEK_RECONCILIATION_WRAPPER_SHA256
   WEB_DATABASE_URL
   LOCAL_DATABASE_URL
   R2_ACCESS_KEY_ID
@@ -59,9 +60,37 @@ if [[ ${#missing[@]} -gt 0 ]]; then
 fi
 
 DEPLOY_DIR="/home/deploy"
+INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$DEPLOY_DIR/.env"
 ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
-source "$DEPLOY_DIR/deploy_helpers.sh"
+ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
+ACTIVE_COMPOSE_SNAPSHOT="$DEPLOY_DIR/.crawler-active-docker-compose.yml"
+BOOTSTRAP_ROLLBACK_COMPOSE="$INCOMING_DIR/docker-compose.rollback.yml"
+ENV_FILE_WAS_PRESENT=0
+DEPLOY_SPEC_FILES=(
+  deploy.sh
+  deploy_helpers.sh
+  docker-compose.yml
+  alloy.river
+  scripts/postgresql-operational-preflight.py
+)
+if [[ "$INCOMING_DIR" == "$DEPLOY_DIR" ]]; then
+  echo "ERROR: deploy artifacts must be staged outside the active deploy directory" >&2
+  exit 1
+fi
+for spec in "${DEPLOY_SPEC_FILES[@]}"; do
+  [[ -f "$INCOMING_DIR/$spec" ]] || {
+    echo "ERROR: staged deploy artifact is unavailable: ${spec}" >&2
+    exit 1
+  }
+done
+[[ -f "$BOOTSTRAP_ROLLBACK_COMPOSE" ]] || {
+  echo "ERROR: staged previous-revision Compose artifact is unavailable" >&2
+  exit 1
+}
+# Staged path is intentionally dynamic; the workflow verifies and supplies it.
+# shellcheck disable=SC1091
+source "$INCOMING_DIR/deploy_helpers.sh"
 IMAGE_TAG="${CRAWLER_IMAGE_TAG:-latest}"
 DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
@@ -73,6 +102,10 @@ MAINTENANCE_BUDGET_SECONDS=1800
 MAINTENANCE_MARKER_NAME=""
 if [[ ! "$JOBSEEK_DEPLOY_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
   echo "ERROR: JOBSEEK_DEPLOY_REVISION must be a full lowercase Git commit SHA" >&2
+  exit 1
+fi
+if [[ ! "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "ERROR: JOBSEEK_RECONCILIATION_WRAPPER_SHA256 must be a lowercase SHA-256" >&2
   exit 1
 fi
 MAINTENANCE_PROVENANCE_LABELS=(
@@ -126,6 +159,97 @@ start_maintenance_window() {
     "trap 'exit 0' TERM INT; sleep 28800" >/dev/null
 }
 
+snapshot_active_deploy_specs() {
+  local compose_source snapshot_dir spec temporary
+
+  for spec in "${DEPLOY_SPEC_FILES[@]}"; do
+    [[ -f "$DEPLOY_DIR/$spec" ]] || {
+      echo "ERROR: active deploy artifact is unavailable: ${spec}" >&2
+      return 1
+    }
+  done
+
+  snapshot_dir="$(mktemp -d "${DEPLOY_DIR}/.deploy-spec.snapshot.XXXXXX")"
+  for spec in "${DEPLOY_SPEC_FILES[@]}"; do
+    if ! install -D -p "$DEPLOY_DIR/$spec" "$snapshot_dir/$spec"; then
+      rm -rf "$snapshot_dir"
+      return 1
+    fi
+  done
+
+  # The independently scheduled shim rollout can already have replaced the
+  # live Compose file. Prefer the last crawler-confirmed spec; bootstrap this
+  # contract from the previous Git revision on the first rollout.
+  compose_source="$BOOTSTRAP_ROLLBACK_COMPOSE"
+  if [[ -f "$ACTIVE_COMPOSE_SNAPSHOT" ]]; then
+    compose_source="$ACTIVE_COMPOSE_SNAPSHOT"
+  fi
+  if ! install -m 0644 "$compose_source" "$snapshot_dir/docker-compose.yml"; then
+    rm -rf "$snapshot_dir"
+    return 1
+  fi
+
+  temporary="$(mktemp "${DEPLOY_DIR}/.deploy-spec.rollback.XXXXXX.tar")"
+  if ! tar -C "$snapshot_dir" -cpf "$temporary" "${DEPLOY_SPEC_FILES[@]}"; then
+    rm -rf "$snapshot_dir"
+    rm -f "$temporary"
+    return 1
+  fi
+  rm -rf "$snapshot_dir"
+  chmod 600 "$temporary"
+  mv "$temporary" "$ROLLBACK_SPEC_ARCHIVE"
+}
+
+activate_staged_deploy_specs() {
+  local mode spec
+
+  for spec in "${DEPLOY_SPEC_FILES[@]}"; do
+    case "$spec" in
+      deploy.sh | deploy_helpers.sh | scripts/*.py) mode=0755 ;;
+      *) mode=0644 ;;
+    esac
+    install -D -m "$mode" "$INCOMING_DIR/$spec" "$DEPLOY_DIR/$spec"
+  done
+}
+
+restore_previous_deploy_specs() {
+  if [[ -f "$ROLLBACK_SPEC_ARCHIVE" ]]; then
+    tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"
+  fi
+}
+
+reconciliation_wrapper_is_compatible() {
+  local actual_wrapper_sha256
+
+  [[ -x /usr/local/sbin/jobseek-reconciliation-state ]] || return 1
+  [[ -r /usr/local/sbin/jobseek-crawler-reconciliation ]] || return 1
+  actual_wrapper_sha256="$({
+    sha256sum /usr/local/sbin/jobseek-crawler-reconciliation
+  } | awk '{print $1}')"
+  [[ "$actual_wrapper_sha256" == "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256" ]] || return 1
+  /usr/local/sbin/jobseek-reconciliation-state check \
+    --expected-wrapper-sha256 "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256" \
+    >/dev/null 2>&1 || return 1
+  systemctl is-enabled --quiet jobseek-crawler-reconciliation.timer || return 1
+  systemctl is-active --quiet jobseek-crawler-reconciliation.timer || return 1
+}
+
+ensure_reconciliation_wrapper_compatible() {
+  local deadline=$((SECONDS + ${RECONCILIATION_COMPAT_WAIT_SECONDS:-1200}))
+
+  while (( SECONDS < deadline )); do
+    if reconciliation_wrapper_is_compatible; then
+      echo "Installed reconciliation wrapper matches the required contract" >&2
+      return 0
+    fi
+    echo "Waiting for the compatible reconciliation host wrapper" >&2
+    sleep 10
+  done
+
+  echo "ERROR: compatible reconciliation host wrapper was not installed before timeout" >&2
+  return 1
+}
+
 rollback_deploy() {
   local exit_code=$?
   trap - ERR
@@ -134,7 +258,10 @@ rollback_deploy() {
   if [[ -f "$ROLLBACK_ENV_FILE" ]]; then
     mv "$ROLLBACK_ENV_FILE" "$ENV_FILE" || true
     chmod 600 "$ENV_FILE" || true
+  elif (( ! ENV_FILE_WAS_PRESENT )); then
+    rm -f "$ENV_FILE"
   fi
+  restore_previous_deploy_specs || true
 
   cd "$DEPLOY_DIR" || exit "$exit_code"
   docker compose up -d --remove-orphans 2>/dev/null || true
@@ -375,7 +502,21 @@ EOF
 # survives the named-service stop/recreate sequence below.
 ensure_no_running_compose_oneoffs
 ensure_no_running_typesense_maintenance
-python3 "$DEPLOY_DIR/scripts/postgresql-operational-preflight.py"
+ensure_reconciliation_wrapper_compatible
+python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
+
+# Snapshot the complete active deployment contract before replacing any file
+# or credential. Rollback restores the old Compose spec and old env together,
+# so an old image never starts with the new credential semantics.
+rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
+snapshot_active_deploy_specs
+if [[ -f "$ENV_FILE" ]]; then
+  ENV_FILE_WAS_PRESENT=1
+  cp "$ENV_FILE" "$ROLLBACK_ENV_FILE"
+  chmod 600 "$ROLLBACK_ENV_FILE"
+fi
+trap rollback_deploy ERR
+activate_staged_deploy_specs
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
@@ -388,11 +529,6 @@ docker rm "${legacy_containers[@]}" 2>/dev/null || true
 # Proxy vars are expanded with ``:-`` defaults so missing provider
 # secrets don't break the deploy — PROXY_PROVIDER=none disables the
 # proxy layer even when the URL envs are empty.
-rm -f "$ROLLBACK_ENV_FILE"
-if [[ -f "$ENV_FILE" ]]; then
-  cp "$ENV_FILE" "$ROLLBACK_ENV_FILE"
-  chmod 600 "$ROLLBACK_ENV_FILE"
-fi
 
 cat > "$ENV_FILE" <<EOF
 OWNER=${OWNER}
@@ -426,7 +562,6 @@ chmod 600 "$ENV_FILE"
 
 # ── Pull images and preflight while the old stack is still serving ────
 cd "$DEPLOY_DIR"
-trap rollback_deploy ERR
 trap stop_maintenance_window EXIT
 start_maintenance_window
 
@@ -507,14 +642,15 @@ docker compose up -d --force-recreate alloy
 # murmur shim is intentionally excluded while Murmur remains
 # backburnered; a shim issue should not fail the crawler deploy.
 wait_for_core_services
-grep -Eq '^[0-9a-f]{40}$' /var/lib/jobseek-reconciliation/deployed-sha
-systemctl is-enabled --quiet jobseek-crawler-reconciliation.timer
-systemctl is-active --quiet jobseek-crawler-reconciliation.timer
+reconciliation_wrapper_is_compatible
 stop_maintenance_window
 
 # ── Cleanup ──────────────────────────────────────────────────────────
+active_compose_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose.XXXXXX")"
+install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$active_compose_temporary"
+mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"
 trap - ERR
 trap - EXIT
-rm -f "$ROLLBACK_ENV_FILE"
+rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
 docker image prune -f
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"

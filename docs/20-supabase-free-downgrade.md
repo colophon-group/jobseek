@@ -90,6 +90,13 @@ contracts. `.github/workflows/deploy-crawler-browser.yml` maps the existing
 provider-neutral `DATABASE_URL_UNPOOLED` secret into the remote process only as
 `WEB_DATABASE_URL`. `deploy.sh` writes that separately named value for explicit
 watchlist sync/count-refresh jobs and omits `DATABASE_URL` entirely.
+Deployment files arrive in `/home/deploy/incoming`; the active env and complete
+Compose deployment spec are snapshotted before activation. A failed rollout
+restores both before restarting the previous image, preserving the previous
+credential semantics rather than combining an old image with a new Compose
+allowlist. The deploy also fails closed before this snapshot unless the
+installed reconciliation wrapper's content and completed-install digest marker
+exactly match the required Typesense-only wrapper contract.
 
 Least privilege is enforced at each runtime surface:
 

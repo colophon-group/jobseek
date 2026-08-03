@@ -24,7 +24,7 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │           ├── queries/     # SQL queries for local Postgres
 │           ├── redis_queue.py # Lua-backed claim/enqueue/reschedule
 │           ├── lua/         # Redis Lua scripts
-│           ├── exporter.py  # CDC: local Postgres -> Supabase + Typesense
+│           ├── exporter.py  # CDC: local Postgres -> Typesense
 │           ├── typesense_client.py # Shared Typesense client (lazy, feature-flagged)
 │           ├── sync.py      # CSV -> DB + Redis + Typesense taxonomy sync
 │           ├── cli.py       # Entry point (crawler run/export/drain/sync/board/...)
@@ -64,9 +64,9 @@ uv sync                           # Install dependencies
 uv run pytest tests/              # Run tests
 uv run crawler run                # Run HTTP worker (claims from Redis simple queues)
 uv run crawler run-browser        # Run browser worker (claims from Redis browser queues)
-uv run crawler export             # Run CDC exporter (local Postgres -> Supabase + Typesense)
+uv run crawler export             # Run CDC exporter (local Postgres -> Typesense)
 uv run crawler drain              # Run R2 description uploader
-uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Redis + Typesense taxonomies
+uv run crawler sync               # Sync CSVs to local/web Postgres + Redis + Typesense
 uv run crawler reconcile          # Read-only deterministic cross-store slice
 uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs
 uv run crawler board <slug>       # Process single board (debug)
@@ -208,9 +208,9 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 
 ### Indexing Pipeline
 
-- **Exporter** (CDC): database-triggered shared writer markers + a non-blocking oldest-writer transaction floor prevent commit-order skips without starving under continuous writes; Supabase and Typesense cursors advance independently; concurrent upserts via `asyncio.gather`
+- **Exporter** (CDC): database-triggered shared writer markers + a non-blocking oldest-writer transaction floor prevent commit-order skips without starving under continuous writes; the Typesense cursor advances independently of the local writer floor, with concurrent document upserts
 - **Sync**: taxonomy collections (location, occupation, seniority, technology) and the `company` collection populated after CSV sync. Company docs include extended fields (logo, website, employee_count_range, founded_year) and per-locale variants (`description_{de,fr,it}`, `industry_name_{de,fr,it}`) for the company detail page reader. Handles taxonomy rename detection
-- **Reconciliation**: deploy-independent Hetzner systemd timer; durable 256-partition Supabase/Typesense comparison and fail-closed verified repair from local truth
+- **Reconciliation**: deploy-independent Hetzner systemd timer; durable 256-partition Typesense comparison and fail-closed verified repair from local truth
 - **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation. Runs inline at every deploy/CSV sync (via `crawler sync`) and every 4h via `.github/workflows/crawler-scheduled-maintenance.yml` out-of-band
 
 ### Web App Integration

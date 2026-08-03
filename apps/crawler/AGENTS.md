@@ -515,11 +515,10 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.CPUPerc}}\t{{.MemUsage}}"
 docker logs <name> 2>&1 | tail -20
 docker logs <name> 2>&1 | grep "error" | tail -10
 
-# Restart a service
-docker rm -f <name> && docker run -d --name <name> --restart unless-stopped \
-  --env-file /home/deploy/.env --network host --memory=1g --cpus=1.0 \
-  -e METRICS_PORT=<port> -e DISCOVERY_CONCURRENCY=30 -e MONITOR_CONCURRENCY=10 \
-  crawler-slim:latest uv run --no-sync crawler run
+# Restart a service through its credential-scoped Compose definition
+cd /home/deploy
+docker compose up -d --force-recreate <service>
+docker compose ps <service>
 
 # Build images after code changes
 rsync -az --delete --exclude='.venv' --exclude='__pycache__' --exclude='.env*' --exclude='*.pyc' \
@@ -728,8 +727,8 @@ rsync -az --delete --exclude='.venv' --exclude='__pycache__' --exclude='.env*' \
 # 2. Build image(s)
 ssh ... 'cd /home/deploy/crawler-src && docker build --target slim -t crawler-slim:latest .'
 
-# 3. Restart affected containers (worker, exporter, drain, etc.)
-ssh ... 'docker rm -f worker-1 && docker run -d --name worker-1 ...'
+# 3. Restart affected services through their credential-scoped Compose definitions
+ssh ... 'cd /home/deploy && docker compose up -d --force-recreate worker-1'
 
 # 4. Re-sync if CSV data changed
 ssh ... 'docker run --rm --env-file /home/deploy/.env --network host \

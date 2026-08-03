@@ -809,13 +809,17 @@ root, then queues one immediate bounded reconciliation run. A failed install
 restores the previous files. The deployed commit is written atomically to
 `/var/lib/jobseek-reconciliation/deployed-sha`: the directory is
 `root:deploy 0750` and the file is `root:deploy 0640`, so the unprivileged
-service can read the revision without being able to replace it. Reinstalling
-the host surface repairs a missing or corrupt file and normalizes incorrect
-ownership. The reconciliation deploy, crawler deploy, and crawler-host
-observability deploy all verify the same installed state contract and active
-timer before succeeding. The timer remains enabled for subsequent hourly
-slices; the application deploy owns Alembic and the additive Typesense schema
-patch.
+service can read the revision without being able to replace it. The installer
+also atomically publishes the exact installed wrapper digest to the
+group-readable `wrapper-sha256` state file as its final compatibility marker.
+Reinstalling the host surface repairs missing or corrupt state and normalizes
+incorrect ownership. Before changing credentials, files, or services, the
+crawler deploy waits for the installed wrapper content and completed-install
+marker to match the digest from its own revision; a timeout fails closed. The
+reconciliation deploy, crawler deploy, and crawler-host observability deploy
+verify the installed state and active timer appropriate to their boundary
+before succeeding. The timer remains enabled for subsequent hourly slices;
+the application deploy owns Alembic and the additive Typesense schema patch.
 
 The 2026-07-23 outage was an ownership regression, not a cleanup operation.
 The revision preflight was added while the state directory was still created
