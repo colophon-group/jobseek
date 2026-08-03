@@ -87,6 +87,7 @@ Monitor Types (cheapest first):
   hibob             10      Full job data     No (skipped)
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
+  icims             10      Job URLs          Auto-configured
   jazzhr            10      Job URLs          Auto-configured
   lever             10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
@@ -1460,6 +1461,31 @@ jazzhr — JazzHR / ApplyToJob static listing
   Detection:  ws probe shows "JazzHR static listing — tenant: X, N jobs"
   Zero jobs?  A valid page still contains the job_listings_wrapper marker."""
 
+MONITOR_ICIMS = """\
+icims — iCIMS server-rendered listings
+
+  Listing:  GET https://{host}/jobs/search?ss=1&in_iframe=1
+  Returns:  Stable https://{host}/jobs/{id}/job?in_iframe=1 detail URLs
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     Pagination is read from the listing and fetched sequentially
+            because iCIMS page state is session-sensitive. Every advertised
+            page must succeed before discovery
+            is authoritative. Duplicate or capped pages suppress tombstoning.
+            JavaScript redirects to custom migrated sites fail detection rather
+            than being treated as an empty iCIMS board.
+
+  Config:
+    {"host": "careers-acme.icims.com"}
+
+    host    Exact single-label *.icims.com public portal host. Auto-filled from
+            direct or explicitly linked iCIMS URLs; no blind host guessing.
+            This is host-wide. Filtered regional listing URLs are rejected
+            rather than silently widened; use a scoped generic DOM board when
+            preserving listing filters is required.
+
+  Detection:  ws probe shows "iCIMS static listing — host: X, N jobs"
+  Zero jobs?  A valid empty page still contains the iCIMS_ListingsPage marker."""
+
 MONITOR_API_SNIFFER = """\
 api_sniffer — Direct API Replay or XHR/Fetch Capture
 
@@ -2282,6 +2308,7 @@ MONITOR_CARDS: dict[str, str] = {
     "bamboohr": MONITOR_BAMBOOHR,
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
+    "icims": MONITOR_ICIMS,
     "recruitee": MONITOR_RECRUITEE,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,

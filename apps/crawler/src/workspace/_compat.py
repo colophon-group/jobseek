@@ -12,6 +12,28 @@ with the actual registries.
 from __future__ import annotations
 
 import re
+from urllib.parse import parse_qsl
+
+_ICIMS_STATIC_QUERY_VALUES = {
+    "in_iframe": "1",
+    "o": "",
+    "schemaId": "",
+    "searchRelation": "keyword_all",
+    "ss": "1",
+}
+
+
+def _icims_query_is_unscoped(query: str) -> bool:
+    """Reject filters that would be lost by the host-wide native monitor."""
+    params = parse_qsl(query, keep_blank_values=True)
+    keys = [key for key, _value in params]
+    if len(keys) != len(set(keys)):
+        return False
+    return all(
+        (key == "pr" and value.isdigit()) or _ICIMS_STATIC_QUERY_VALUES.get(key) == value
+        for key, value in params
+    )
+
 
 _RICH_MONITORS: frozenset[str] = frozenset(
     {
@@ -73,6 +95,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "bite",
     "breezy",
     "eightfold",
+    "icims",
     "jazzhr",
     "join",
     "personio",
@@ -186,6 +209,25 @@ def detect_ats_from_url(url: str) -> str | None:
         )
     ):
         return "jazzhr"
+    if (
+        host.endswith(".icims.com")
+        and host.count(".") == 2
+        and host
+        not in {
+            "api.icims.com",
+            "app.icims.com",
+            "help.icims.com",
+            "support.icims.com",
+            "www.icims.com",
+        }
+        and re.fullmatch(
+            r"(?:/jobs(?:/search|/\d+(?:/[^/?#]+)?/job)?)?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+        and _icims_query_is_unscoped(parsed.query)
+    ):
+        return "icims"
     if host.endswith(".careers.hibob.com"):
         return "hibob"
     if host.endswith(".eightfold.ai"):
@@ -374,6 +416,8 @@ def auto_scraper_type(
         return ("nextdata", None)
     if monitor_type == "jazzhr":
         return ("jazzhr", None)
+    if monitor_type == "icims":
+        return ("json-ld", None)
     if monitor_type == "breezy":
         return ("json-ld", _BREEZY_SCRAPER_CONFIG)
     if monitor_type == "bite":

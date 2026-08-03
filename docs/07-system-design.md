@@ -176,6 +176,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `bamboohr`        | Rich     | api_sniffer | BambooHR public careers API + detail enrichment |
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
 | 10   | `jazzhr`          | URL-only | jazzhr      | ApplyToJob static listing + JSON-LD/DOM detail parsing |
+| 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
 | 10   | `bite`            | URL-only | bite        | b-ite.com ATS API                       |
 | 10   | `breezy`          | URL-only | json-ld     | Breezy HR listing endpoint              |
 | 10   | `comeet`          | Rich     | skip        | Comeet hosted data and Careers API      |

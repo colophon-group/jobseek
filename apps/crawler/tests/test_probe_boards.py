@@ -306,6 +306,62 @@ class TestProbeRow:
         assert "marketing site" in result.message
         assert requests == ["https://acme.applytojob.com/apply/jobs"]
 
+    async def test_icims_uses_config_host(self):
+        row = _row(
+            board_slug="acme-icims",
+            board_url="https://legacy.example/jobs",
+            monitor_type="icims",
+            monitor_config=json.dumps({"host": "careers-acme.icims.com"}),
+        )
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(
+                200,
+                text='<body class="iCIMS_ListingsPage"></body>',
+                request=request,
+            )
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == ("https://careers-acme.icims.com/jobs/search?ss=1&in_iframe=1")
+
+    async def test_icims_custom_site_redirect_page_is_warned(self):
+        row = _row(
+            board_slug="acme-icims",
+            board_url="https://careers-acme.icims.com",
+            monitor_type="icims",
+            monitor_config="",
+        )
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                text="<script>window.top.location.href = 'https://careers.example/jobs'</script>",
+                request=request,
+            )
+
+        result = await self._run(row, handler)
+        assert result.status == "warn"
+        assert "migrated" in result.message
+
+    async def test_icims_filtered_url_is_not_widened(self):
+        row = _row(
+            board_slug="acme-icims",
+            board_url=("https://careers-acme.icims.com/jobs/search?searchLocation=12781--EMEA"),
+            monitor_type="icims",
+            monitor_config="",
+        )
+        transport = httpx.MockTransport(
+            lambda request: (_ for _ in ()).throw(AssertionError("should not fetch"))
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await probe_row(row, client)
+
+        assert result.status == "warn"
+        assert "no valid host" in result.message
+
     async def test_recruitee_uses_host_from_url(self):
         row = _row(
             board_slug="acme-recruitee",
@@ -372,6 +428,7 @@ def test_probe_registry_covers_expected_types():
         "bamboohr",
         "paycom",
         "jazzhr",
+        "icims",
         "recruitee",
         "rippling",
         "smartrecruiters",
