@@ -5,6 +5,7 @@ import json
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -92,6 +93,15 @@ def test_postgres_auto_uses_full_on_sunday(monkeypatch: pytest.MonkeyPatch) -> N
         return completed()
 
     monkeypatch.setattr(backup, "run_checked", fake_run)
+    monkeypatch.setattr(
+        backup,
+        "postgres_expire_archives",
+        lambda _stanza: {
+            "repository_capacity_bytes": 10_000,
+            "repository_available_bytes": 6_000,
+            "repository_available_ratio": 0.6,
+        },
+    )
     monkeypatch.setattr(backup, "utc_now", lambda: datetime(2026, 7, 26, tzinfo=UTC))
 
     result = backup.postgres_backup("auto")
@@ -100,7 +110,153 @@ def test_postgres_auto_uses_full_on_sunday(monkeypatch: pytest.MonkeyPatch) -> N
     assert result["backup_database_bytes"] == 1234
     assert result["backup_repository_bytes"] == 567
     assert any("--type=full" in command for command in commands)
+    backup_command = next(command for command in commands if "backup" in command)
+    assert set(backup.POSTGRES_RETENTION_OPTIONS) <= set(backup_command)
     assert sum("check" in command for command in commands) == 2
+
+
+def test_postgres_expiration_is_networkless_and_independent_of_live_container(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    commands: list[list[str]] = []
+    config = tmp_path / "config"
+    repository = tmp_path / "repository"
+    spool = tmp_path / "spool"
+    for path in (config, repository, spool):
+        path.mkdir()
+    monkeypatch.setenv("PGBACKREST_CONFIG_DIR", str(config))
+    monkeypatch.setenv("PGBACKREST_REPOSITORY_DIR", str(repository))
+    monkeypatch.setenv("PGBACKREST_SPOOL_DIR", str(spool))
+    monkeypatch.setenv("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "0")
+    monkeypatch.setattr(backup, "_postgres_archive_uses_repository_lock", lambda _container: False)
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda argv, **_kwargs: commands.append(argv) or completed(),
+    )
+    monkeypatch.setattr(
+        backup.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=1_000, used=400, free=600),
+    )
+
+    result = backup.postgres_expire_archives("jobseek")
+
+    assert result == {
+        "repository_capacity_bytes": 1_000,
+        "repository_available_bytes": 600,
+        "repository_available_ratio": 0.6,
+    }
+    command = commands[0]
+    assert command[:4] == ["docker", "run", "--rm", "--network"]
+    assert "none" in command
+    assert "--read-only" in command
+    assert "--entrypoint" in command
+    assert "pgbackrest" in command
+    assert set(backup.POSTGRES_RETENTION_OPTIONS) <= set(command)
+    assert command[-1] == "expire"
+    assert "exec" not in command
+
+
+def test_postgres_expiration_holds_and_restores_archive_sentinel(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    spool = tmp_path / "spool"
+    spool.mkdir()
+    sentinel = spool / "archive-enabled"
+    sentinel.touch()
+    observed: list[tuple[bool, bool]] = []
+
+    monkeypatch.setenv("PGBACKREST_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setenv("PGBACKREST_REPOSITORY_DIR", str(tmp_path / "repository"))
+    monkeypatch.setenv("PGBACKREST_SPOOL_DIR", str(spool))
+    monkeypatch.setenv("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "0")
+    monkeypatch.setattr(backup, "_postgres_archive_uses_repository_lock", lambda _container: False)
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda _argv, **_kwargs: (
+            observed.append(
+                (sentinel.exists(), (spool / "archive-enabled.retention-hold").exists())
+            )
+            or completed()
+        ),
+    )
+    monkeypatch.setattr(
+        backup.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=1_000, used=400, free=600),
+    )
+
+    backup.postgres_expire_archives("jobseek")
+
+    assert observed == [(False, True)]
+    assert sentinel.is_file()
+    assert not (spool / "archive-enabled.retention-hold").exists()
+
+
+def test_postgres_archive_hold_refuses_active_worker_timeout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    spool = tmp_path / "spool"
+    spool.mkdir()
+    sentinel = spool / "archive-enabled"
+    sentinel.touch()
+    monkeypatch.setenv("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "0")
+    monkeypatch.setattr(
+        backup.subprocess,
+        "run",
+        lambda *_args, **_kwargs: completed("pgbackrest archive-push segment\n"),
+    )
+
+    with (
+        pytest.raises(backup.BackupError, match="timed out draining"),
+        backup.postgres_archive_hold(spool, "postgres"),
+    ):
+        pytest.fail("archive hold must not yield while a worker is active")
+
+    assert sentinel.is_file()
+    assert not (spool / "archive-enabled.retention-hold").exists()
+
+
+def test_postgres_archive_hold_drains_worker_when_archive_is_already_disabled(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    spool = tmp_path / "spool"
+    spool.mkdir()
+    monkeypatch.setenv("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "0")
+    monkeypatch.setattr(
+        backup.subprocess,
+        "run",
+        lambda *_args, **_kwargs: completed("pgbackrest archive-push segment\n"),
+    )
+
+    with (
+        pytest.raises(backup.BackupError, match="timed out draining"),
+        backup.postgres_archive_hold(spool, "postgres"),
+    ):
+        pytest.fail("archive hold must drain a worker after emergency disable")
+
+    assert not (spool / "archive-enabled").exists()
+    assert not (spool / "archive-enabled.retention-hold").exists()
+
+
+def test_postgres_archive_hold_uses_crash_safe_repository_lock(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    spool = tmp_path / "spool"
+    spool.mkdir()
+    sentinel = spool / "archive-enabled"
+    sentinel.touch()
+    monkeypatch.setenv("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "0")
+    monkeypatch.setattr(backup, "_postgres_archive_uses_repository_lock", lambda _container: True)
+
+    with backup.postgres_archive_hold(spool, "postgres"):
+        assert sentinel.is_file()
+        assert not (spool / "archive-enabled.retention-hold").exists()
+        contender = (spool / "repository.lock").open("r", encoding="utf-8")
+        with contender, pytest.raises(BlockingIOError):
+            backup.fcntl.flock(contender, backup.fcntl.LOCK_SH | backup.fcntl.LOCK_NB)
 
 
 def test_typesense_requires_root_only_configuration(monkeypatch: pytest.MonkeyPatch) -> None:

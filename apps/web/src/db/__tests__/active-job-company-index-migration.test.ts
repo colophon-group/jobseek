@@ -7,15 +7,17 @@ import { describe, expect, it } from "vitest";
 import { jobPosting } from "@/db/schema";
 
 const migrationSql = readFileSync(
-  resolve(process.cwd(), "drizzle/0082_add_active_job_company_index.sql"),
+  resolve(process.cwd(), "drizzle/0083_reconcile_supabase_baseline.sql"),
   "utf8",
 );
 
-describe("active job company index migration", () => {
-  it("adds the partial index used by watchlist active-job counts", () => {
+describe("Supabase baseline reconciliation", () => {
+  it("creates or verifies the exact partial index used by watchlist counts", () => {
     expect(migrationSql).toMatch(
-      /CREATE INDEX IF NOT EXISTS idx_jp_active_company\s+ON job_posting \(company_id\)\s+WHERE is_active = true/i,
+      /CREATE INDEX idx_jp_active_company ON public\.job_posting \(company_id\) WHERE is_active = true/i,
     );
+    expect(migrationSql).toContain("indisvalid");
+    expect(migrationSql).toContain("pg_get_indexdef");
 
     const index = getTableConfig(jobPosting).indexes.find(
       (candidate) => candidate.config.name === "idx_jp_active_company",

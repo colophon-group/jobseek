@@ -375,6 +375,7 @@ EOF
 # survives the named-service stop/recreate sequence below.
 ensure_no_running_compose_oneoffs
 ensure_no_running_typesense_maintenance
+python3 "$DEPLOY_DIR/scripts/postgresql-operational-preflight.py"
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
