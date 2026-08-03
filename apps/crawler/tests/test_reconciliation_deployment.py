@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
+import os
 import subprocess
 from pathlib import Path
+
+import pytest
 
 from src.cli import _await_task_or_shutdown
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / "deploy/reconciliation/run.sh"
 INSTALLER = ROOT / "deploy/reconciliation/install-host.sh"
+STATE = ROOT / "deploy/reconciliation/state.py"
 SERVICE = ROOT / "deploy/systemd/jobseek-crawler-reconciliation.service"
 TIMER = ROOT / "deploy/systemd/jobseek-crawler-reconciliation.timer"
 WORKFLOW = ROOT / ".github/workflows/deploy-crawler-reconciliation.yml"
@@ -19,6 +24,11 @@ DEPLOY = ROOT / "apps/crawler/deploy.sh"
 MAINTENANCE = ROOT / ".github/workflows/crawler-scheduled-maintenance.yml"
 SYNC_DATA = ROOT / ".github/workflows/sync-data.yml"
 REFRESH_CURRENCY = ROOT / ".github/workflows/refresh-currency-rates.yml"
+
+STATE_SPEC = importlib.util.spec_from_file_location("reconciliation_state", STATE)
+assert STATE_SPEC is not None and STATE_SPEC.loader is not None
+state = importlib.util.module_from_spec(STATE_SPEC)
+STATE_SPEC.loader.exec_module(state)
 
 
 def test_reconciliation_shell_surfaces_parse() -> None:
@@ -30,6 +40,27 @@ def test_reconciliation_shell_surfaces_parse() -> None:
             text=True,
         )
         assert result.returncode == 0, result.stderr
+
+
+def test_revision_state_recovers_from_missing_and_corrupt_files(tmp_path: Path) -> None:
+    revision = "a" * 40
+
+    state.install_revision(tmp_path, revision)
+    assert state.read_revision(tmp_path) == revision
+    assert os.stat(tmp_path).st_mode & 0o777 == 0o750
+    assert os.stat(tmp_path / "deployed-sha").st_mode & 0o777 == 0o640
+
+    (tmp_path / "deployed-sha").write_text("corrupt\n", encoding="ascii")
+    with pytest.raises(state.StateError, match="invalid"):
+        state.read_revision(tmp_path)
+    state.install_revision(tmp_path, revision)
+    assert state.read_revision(tmp_path) == revision
+
+    (tmp_path / "deployed-sha").unlink()
+    with pytest.raises(state.StateError, match="unavailable"):
+        state.read_revision(tmp_path)
+    state.install_revision(tmp_path, revision)
+    assert state.read_revision(tmp_path) == revision
 
 
 def test_runner_is_bounded_immutable_and_fail_closed() -> None:
@@ -65,7 +96,7 @@ def test_runner_is_bounded_immutable_and_fail_closed() -> None:
     assert "uv run" not in source
     assert "jobseek-crawler-mutation.lock" in source
     assert "flock -w 7200" in source
-    assert "DEPLOYED_SHA_FILE=/var/lib/jobseek-reconciliation/deployed-sha" in source
+    assert "/usr/local/sbin/jobseek-reconciliation-state check" in source
     assert '[[ "$revision" =~ ^[0-9a-f]{40}$ ]]' in source
     for label in (
         "com.docker.compose.project=deploy",
@@ -161,10 +192,17 @@ def test_install_and_workflow_preserve_rollback_and_privilege_boundary() -> None
     assert "restore_previous" in installer
     assert "systemd-analyze verify" in installer
     assert "systemctl enable --now jobseek-crawler-reconciliation.timer" in installer
+    assert "install -d -o root -g deploy -m 0750" in installer
+    assert "jobseek-reconciliation-state install --revision" in installer
+    assert "runuser -u deploy" in installer
+    assert "grep -Eq '^[0-9a-f]{40}$' /var/lib/jobseek-reconciliation/deployed-sha" in (
+        DEPLOY.read_text(encoding="utf-8")
+    )
     assert "environment: production" in workflow
     assert "username: root" in workflow
     assert "JOBSEEK_RECONCILIATION_DEPLOY_SHA" in workflow
-    assert "systemctl start jobseek-crawler-reconciliation.service" not in workflow
+    assert "systemctl start --no-block jobseek-crawler-reconciliation.service" in workflow
+    assert "! systemctl is-failed --quiet jobseek-crawler-reconciliation.service" in workflow
     for action in ("actions/checkout", "appleboy/scp-action", "appleboy/ssh-action"):
         matching = [line for line in workflow.splitlines() if f"uses: {action}@" in line]
         assert matching and all("@v" not in line for line in matching)

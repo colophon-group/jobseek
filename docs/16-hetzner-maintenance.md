@@ -726,10 +726,26 @@ no crawler, PostgreSQL, or Typesense service is restarted.
 Repository-owned deployment is
 [`deploy-crawler-reconciliation.yml`](../.github/workflows/deploy-crawler-reconciliation.yml).
 It validates and installs the wrapper plus service/timer transactionally as
-root, but never starts the reconciliation service directly. A failed install
-restores the previous files. The timer is enabled immediately and normally
-starts after the boot/cadence delay; the application deploy owns Alembic and
-the additive Typesense schema patch.
+root, then queues one immediate bounded reconciliation run. A failed install
+restores the previous files. The deployed commit is written atomically to
+`/var/lib/jobseek-reconciliation/deployed-sha`: the directory is
+`root:deploy 0750` and the file is `root:deploy 0640`, so the unprivileged
+service can read the revision without being able to replace it. Reinstalling
+the host surface repairs a missing or corrupt file and normalizes incorrect
+ownership. The reconciliation deploy, crawler deploy, and crawler-host
+observability deploy all verify the same installed state contract and active
+timer before succeeding. The timer remains enabled for subsequent hourly
+slices; the application deploy owns Alembic and the additive Typesense schema
+patch.
+
+The 2026-07-23 outage was an ownership regression, not a cleanup operation.
+The revision preflight was added while the state directory was still created
+as `0700 root:root`. The root deployment check passed, but every service run as
+`deploy` failed before starting a container. Non-root inspection reported the
+protected file as unavailable, which looked like deletion. The first failure
+therefore coincided exactly with the revision preflight rollout. No crawler,
+observability, backup, ingress, or Docker lifecycle path removes this state
+directory.
 
 Read-only health and aggregate evidence:
 
@@ -747,7 +763,11 @@ triage. The PostgreSQL-host textfile exposes only aggregate
 `jobseek_cross_store_reconciliation_*` series. Healthy production has both
 targets completing a full verified cycle within 30 hours, zero unresolved
 drift, no run older than two hours still marked running, and Typesense
-bootstrap complete.
+bootstrap complete. The crawler-host collector also publishes the current
+revision as `jobseek_cross_store_reconciliation_deployed_revision_info`, its
+file mtime, and a boolean availability series. A missing/inaccessible revision
+alerts after five minutes; no completed hourly slice within 2.5 hours alerts
+independently of the 30-hour full-cycle freshness budget.
 
 To retry the normal bounded repair after correcting a downstream outage:
 

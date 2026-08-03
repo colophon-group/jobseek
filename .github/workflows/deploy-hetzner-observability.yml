@@ -94,6 +94,12 @@ jobs:
             test "$(cat /var/lib/jobseek-observability/deployed-sha)" = "$JOBSEEK_OBSERVABILITY_DEPLOY_SHA"
             systemctl is-active --quiet jobseek-alloy.service
             systemctl is-active --quiet jobseek-host-observability.timer
+            if [[ "$JOBSEEK_HOST_ROLE" == crawler ]]; then
+              runuser -u deploy -- grep -Eq '^[0-9a-f]{40}$' \
+                /var/lib/jobseek-reconciliation/deployed-sha
+              systemctl is-enabled --quiet jobseek-crawler-reconciliation.timer
+              systemctl is-active --quiet jobseek-crawler-reconciliation.timer
+            fi
 
   verify-ingestion:
     needs: deploy-hosts

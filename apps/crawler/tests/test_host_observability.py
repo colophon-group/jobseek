@@ -182,6 +182,24 @@ def test_crawler_container_inventory_includes_compose_alloy() -> None:
     assert "deploy-alloy-1" in host.ROLE_CONTAINERS["crawler"]
 
 
+def test_reconciliation_deployment_metrics_detect_and_recover_revision_state(
+    tmp_path: Path,
+) -> None:
+    revision_path = tmp_path / "deployed-sha"
+    lines: list[str] = []
+    host._collect_reconciliation_deployment_metrics(lines, revision_path)
+    assert "jobseek_cross_store_reconciliation_deployed_revision_available 0" in lines
+
+    revision = "a" * 40
+    revision_path.write_text(f"{revision}\n", encoding="ascii")
+    lines = []
+    host._collect_reconciliation_deployment_metrics(lines, revision_path)
+    content = "\n".join(lines)
+    assert "jobseek_cross_store_reconciliation_deployed_revision_available 1" in content
+    assert f'revision="{revision}"' in content
+    assert "jobseek_cross_store_reconciliation_deployed_revision_mtime_seconds" in content
+
+
 def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> None:
     class Result:
         returncode = 0
@@ -357,7 +375,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_postgresql_capacity": 4,
         "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,
-        "jobseek_crawler_reliability": 17,
+        "jobseek_crawler_reliability": 19,
     }
     for group in groups:
         assert 0 < len(group["rules"]) <= rules.MAX_RULES_PER_GROUP

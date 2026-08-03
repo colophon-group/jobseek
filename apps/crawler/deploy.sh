@@ -493,6 +493,9 @@ docker compose up -d --force-recreate alloy
 # murmur shim is intentionally excluded while Murmur remains
 # backburnered; a shim issue should not fail the crawler deploy.
 wait_for_core_services
+grep -Eq '^[0-9a-f]{40}$' /var/lib/jobseek-reconciliation/deployed-sha
+systemctl is-enabled --quiet jobseek-crawler-reconciliation.timer
+systemctl is-active --quiet jobseek-crawler-reconciliation.timer
 stop_maintenance_window
 
 # ── Cleanup ──────────────────────────────────────────────────────────

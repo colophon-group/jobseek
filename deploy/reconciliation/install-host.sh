@@ -11,9 +11,11 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_ROOT=/var/lib/jobseek-reconciliation
 DEPLOY_SHA="${JOBSEEK_RECONCILIATION_DEPLOY_SHA:-}"
 FILES=(
+  /usr/local/sbin/jobseek-reconciliation-state
   /usr/local/sbin/jobseek-crawler-reconciliation
   /etc/systemd/system/jobseek-crawler-reconciliation.service
   /etc/systemd/system/jobseek-crawler-reconciliation.timer
+  /var/lib/jobseek-reconciliation/deployed-sha
 )
 ROLLBACK_ARMED=1
 TIMER_WAS_ENABLED=0
@@ -26,8 +28,7 @@ if systemctl is-active --quiet jobseek-crawler-reconciliation.timer 2>/dev/null;
   TIMER_WAS_ACTIVE=1
 fi
 
-mkdir -p "$STATE_ROOT"
-chmod 0700 "$STATE_ROOT"
+install -d -o root -g deploy -m 0750 "$STATE_ROOT"
 ROLLBACK="$(mktemp -d "${STATE_ROOT}/rollback.XXXXXX")"
 for path in "${FILES[@]}"; do
   if [[ -e "$path" ]]; then
@@ -68,6 +69,9 @@ cleanup() {
 trap cleanup EXIT
 
 install -o root -g root -m 0755 \
+  "$REPO_ROOT/deploy/reconciliation/state.py" \
+  /usr/local/sbin/jobseek-reconciliation-state
+install -o root -g root -m 0755 \
   "$REPO_ROOT/deploy/reconciliation/run.sh" \
   /usr/local/sbin/jobseek-crawler-reconciliation
 install -o root -g root -m 0644 \
@@ -84,14 +88,12 @@ systemd-analyze verify \
 systemctl enable --now jobseek-crawler-reconciliation.timer
 systemctl is-active --quiet jobseek-crawler-reconciliation.timer
 
-if [[ -n "$DEPLOY_SHA" ]]; then
-  [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || {
-    echo "ERROR: invalid deployment SHA" >&2
-    exit 1
-  }
-  printf '%s\n' "$DEPLOY_SHA" >"${STATE_ROOT}/deployed-sha.tmp"
-  chmod 0644 "${STATE_ROOT}/deployed-sha.tmp"
-  mv "${STATE_ROOT}/deployed-sha.tmp" "${STATE_ROOT}/deployed-sha"
-fi
+[[ -n "$DEPLOY_SHA" ]] || {
+  echo "ERROR: reconciliation deployment SHA is required" >&2
+  exit 1
+}
+/usr/local/sbin/jobseek-reconciliation-state install --revision "$DEPLOY_SHA"
+runuser -u deploy -- /usr/local/sbin/jobseek-reconciliation-state \
+  check --expected-revision "$DEPLOY_SHA"
 
 ROLLBACK_ARMED=0

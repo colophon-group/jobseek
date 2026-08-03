@@ -960,6 +960,38 @@ groups:
             systemd service journal and the persisted target outcome.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#cross-store-reconciliation
 
+      - alert: CrossStoreReconciliationRevisionUnavailable
+        expr: |
+          absent(jobseek_cross_store_reconciliation_deployed_revision_available)
+          or
+          jobseek_cross_store_reconciliation_deployed_revision_available != 1
+        for: 5m
+        labels:
+          severity: high
+          service: cross-store-reconciliation
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "The crawler host cannot read its deployed reconciliation revision"
+          description: "The immutable reconciliation wrapper revision is missing, corrupt, or inaccessible to the deploy service account; hourly parity checks cannot start."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#cross-store-reconciliation-timer
+
+      - alert: CrossStoreReconciliationAttemptStale
+        expr: |
+          jobseek_cross_store_reconciliation_last_attempt_unixtime == 0
+          or
+          time() - jobseek_cross_store_reconciliation_last_attempt_unixtime > 9000
+        for: 15m
+        labels:
+          severity: high
+          service: cross-store-reconciliation
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.target }} reconciliation has not attempted an hourly slice"
+          description: "No reconciliation attempt has completed within the 2.5-hour timer, jitter, lock-wait, and runtime budget. Inspect the crawler-host timer and deployment revision before changing durable cursors."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#cross-store-reconciliation-timer
+
       - alert: CrossStoreReconciliationStale
         expr: |
           (

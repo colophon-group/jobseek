@@ -4,7 +4,6 @@ set -euo pipefail
 
 ENV_FILE=/home/deploy/.env
 LOCK_FILE=/run/lock/jobseek-crawler-mutation.lock
-DEPLOYED_SHA_FILE=/var/lib/jobseek-reconciliation/deployed-sha
 CONTAINER=jobseek-cross-store-reconciliation
 reconciliation_args=(--repair --max-partitions 16)
 
@@ -40,13 +39,9 @@ command -v timeout >/dev/null || {
   echo "ERROR: timeout is unavailable" >&2
   exit 1
 }
-[[ -r "$DEPLOYED_SHA_FILE" ]] || {
-  echo "ERROR: reconciliation deployment revision is unavailable" >&2
-  exit 1
-}
-revision="$(<"$DEPLOYED_SHA_FILE")"
+revision="$(/usr/local/sbin/jobseek-reconciliation-state check | awk '{print $NF}')"
 [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || {
-  echo "ERROR: reconciliation deployment revision is invalid" >&2
+  echo "ERROR: reconciliation state verifier returned an invalid revision" >&2
   exit 1
 }
 
