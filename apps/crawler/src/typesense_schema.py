@@ -75,6 +75,13 @@ COLLECTIONS: list[dict] = [
             {"name": "technology_names", "type": "string[]", "facet": True},
             {"name": "employment_type", "type": "string", "facet": True, "optional": True},
             {"name": "salary_eur", "type": "int32", "facet": True, "optional": True},
+            # Original salary fields are required by posting detail and saved-job
+            # snapshots. ``salary_eur`` remains the normalized search/facet value;
+            # these fields preserve the source currency and period for display.
+            {"name": "salary_min", "type": "int32", "index": False, "optional": True},
+            {"name": "salary_max", "type": "int32", "index": False, "optional": True},
+            {"name": "salary_currency", "type": "string", "index": False, "optional": True},
+            {"name": "salary_period", "type": "string", "index": False, "optional": True},
             # Precise decimal-year experience fields. Added alongside the
             # legacy integer fields below so production can add them in-place
             # without rebuilding the existing job_posting collection first.

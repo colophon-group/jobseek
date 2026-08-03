@@ -1,11 +1,15 @@
 "use server";
 
-import { eq, and, desc, count, sql } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import { db } from "@/db";
-import { savedJob, jobPosting, company } from "@/db/schema";
+import { savedJob } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { isUniqueViolation } from "@/lib/db-conflict";
 import { normalizePostingTitle } from "@/lib/posting-title";
+import {
+  fetchIndexedPostingSnapshot,
+  fetchIndexedPostingStates,
+} from "@/lib/search/typesense-posting-detail";
 
 export type SavedJobEntry = {
   id: string;
@@ -57,11 +61,31 @@ export async function toggleSavedJob(
 ): Promise<{ saved: boolean; savedJobId?: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
+  const snapshot = await fetchIndexedPostingSnapshot(jobPostingId);
 
   try {
     const [row] = await db
       .insert(savedJob)
-      .values({ userId, jobPostingId })
+      .values({
+        userId,
+        jobPostingId,
+        ...(snapshot
+          ? {
+              postingTitle: snapshot.title,
+              postingSourceUrl: snapshot.sourceUrl,
+              postingFirstSeenAt: new Date(snapshot.firstSeenAt),
+              postingIsActive: snapshot.isActive,
+              postingSalaryMin: snapshot.salaryMin,
+              postingSalaryMax: snapshot.salaryMax,
+              postingSalaryCurrency: snapshot.salaryCurrency,
+              postingSalaryPeriod: snapshot.salaryPeriod,
+              companyId: snapshot.company.id,
+              companyName: snapshot.company.name,
+              companySlug: snapshot.company.slug,
+              companyIcon: snapshot.company.icon,
+            }
+          : {}),
+      })
       .returning({ id: savedJob.id });
     // INSERT succeeded — the row didn't exist before this call.
     return { saved: true, savedJobId: row.id };
@@ -117,23 +141,24 @@ export async function getSavedJobs(params: {
     .select({
       id: savedJob.id,
       savedAt: savedJob.savedAt,
-      postingId: jobPosting.id,
-      postingTitle: sql<string | null>`${jobPosting.titles}[1]`,
-      postingSourceUrl: jobPosting.sourceUrl,
-      postingFirstSeenAt: jobPosting.firstSeenAt,
-      postingIsActive: jobPosting.isActive,
-      companyId: company.id,
-      companyName: company.name,
-      companySlug: company.slug,
-      companyIcon: company.icon,
+      postingId: savedJob.jobPostingId,
+      postingTitle: savedJob.postingTitle,
+      postingSourceUrl: savedJob.postingSourceUrl,
+      postingFirstSeenAt: savedJob.postingFirstSeenAt,
+      postingIsActive: savedJob.postingIsActive,
+      companyId: savedJob.companyId,
+      companyName: savedJob.companyName,
+      companySlug: savedJob.companySlug,
+      companyIcon: savedJob.companyIcon,
     })
     .from(savedJob)
-    .innerJoin(jobPosting, eq(savedJob.jobPostingId, jobPosting.id))
-    .innerJoin(company, eq(jobPosting.companyId, company.id))
     .where(eq(savedJob.userId, userId))
     .orderBy(desc(savedJob.savedAt))
     .offset(params.offset)
     .limit(params.limit);
+  const postingStates = await fetchIndexedPostingStates(
+    rows.map((row) => row.postingId),
+  );
 
   const jobs: SavedJobEntry[] = rows.map((r) => ({
     id: r.id,
@@ -141,14 +166,14 @@ export async function getSavedJobs(params: {
     posting: {
       id: r.postingId,
       title: normalizePostingTitle(r.postingTitle),
-      sourceUrl: r.postingSourceUrl,
-      firstSeenAt: r.postingFirstSeenAt.toISOString(),
-      isActive: r.postingIsActive,
+      sourceUrl: r.postingSourceUrl ?? "",
+      firstSeenAt: (r.postingFirstSeenAt ?? r.savedAt).toISOString(),
+      isActive: postingStates.get(r.postingId)?.isActive ?? r.postingIsActive,
     },
     company: {
-      id: r.companyId,
-      name: r.companyName,
-      slug: r.companySlug,
+      id: r.companyId ?? "",
+      name: r.companyName ?? "",
+      slug: r.companySlug ?? "",
       icon: r.companyIcon,
     },
   }));

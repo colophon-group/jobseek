@@ -573,10 +573,22 @@ export const savedJob = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    jobPostingId: uuid("job_posting_id")
-      .notNull()
-      .references(() => jobPosting.id, { onDelete: "cascade" }),
+    // Deliberately not a FK: application history must survive retirement of
+    // the crawler's Supabase posting mirror.
+    jobPostingId: uuid("job_posting_id").notNull(),
     savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+    postingTitle: text("posting_title"),
+    postingSourceUrl: text("posting_source_url"),
+    postingFirstSeenAt: timestamp("posting_first_seen_at", { withTimezone: true }),
+    postingIsActive: boolean("posting_is_active").default(true).notNull(),
+    postingSalaryMin: integer("posting_salary_min"),
+    postingSalaryMax: integer("posting_salary_max"),
+    postingSalaryCurrency: text("posting_salary_currency"),
+    postingSalaryPeriod: text("posting_salary_period"),
+    companyId: uuid("company_id"),
+    companyName: text("company_name"),
+    companySlug: text("company_slug"),
+    companyIcon: text("company_icon"),
 
     // ── Application tracker fields ──
     status: text("status", {
