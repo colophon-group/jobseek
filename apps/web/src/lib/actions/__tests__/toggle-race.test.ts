@@ -15,10 +15,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * un-handled Postgres `23505` from `idx_sj_user_posting`. The UNIQUE
  * index protected the data but the client saw a 500.
  *
- * Fix matches the #3268 retry-on-conflict shape: try INSERT first,
- * catch `23505` scoped to the specific UNIQUE constraint, and treat
- * the conflict as "toggle was ON, transition to OFF" — DELETE the
- * matching row and return `saved/starred: false`.
+ * The saved-job fix deletes first so an existing save can be removed
+ * even when Typesense is unavailable. If nothing was deleted, it fetches
+ * a durable snapshot and then uses the #3268 retry-on-conflict shape:
+ * catch `23505` scoped to the specific UNIQUE constraint, delete the
+ * racing winner, and return `saved: false`. Starred companies retain the
+ * insert-first implementation because they do not need an external snapshot.
  *
  * Test strategy
  * -------------
@@ -150,33 +152,43 @@ const mocks = vi.hoisted(() => {
     const isSavedJob = table === savedJobRef;
     const isFollowedCompany = table === followedCompanyRef;
     return {
-      where: async (clause: unknown) => {
-        await Promise.resolve();
-        const params = extractParams(clause);
-        const strs = params.filter((p): p is string => typeof p === "string");
-        if (isSavedJob) {
-          const [userId, postingId] = strs;
-          if (!userId || !postingId) return;
-          for (let i = savedJobTable.length - 1; i >= 0; i--) {
-            const r = savedJobTable[i];
-            if (r.user_id === userId && r.job_posting_id === postingId) {
-              savedJobTable.splice(i, 1);
+      where: (clause: unknown) => {
+        const exec = async (returningId: boolean): Promise<unknown[]> => {
+          await Promise.resolve();
+          const params = extractParams(clause);
+          const strs = params.filter((p): p is string => typeof p === "string");
+          if (isSavedJob) {
+            const [userId, postingId] = strs;
+            if (!userId || !postingId) return [];
+            const removed: SavedJobRow[] = [];
+            for (let i = savedJobTable.length - 1; i >= 0; i--) {
+              const r = savedJobTable[i];
+              if (r.user_id === userId && r.job_posting_id === postingId) {
+                removed.push(...savedJobTable.splice(i, 1));
+              }
             }
+            return returningId ? removed.map((row) => ({ id: row.id })) : [];
           }
-          return;
-        }
-        if (isFollowedCompany) {
-          const [userId, companyId] = strs;
-          if (!userId || !companyId) return;
-          for (let i = followedCompanyTable.length - 1; i >= 0; i--) {
-            const r = followedCompanyTable[i];
-            if (r.user_id === userId && r.company_id === companyId) {
-              followedCompanyTable.splice(i, 1);
+          if (isFollowedCompany) {
+            const [userId, companyId] = strs;
+            if (!userId || !companyId) return [];
+            for (let i = followedCompanyTable.length - 1; i >= 0; i--) {
+              const r = followedCompanyTable[i];
+              if (r.user_id === userId && r.company_id === companyId) {
+                followedCompanyTable.splice(i, 1);
+              }
             }
+            return [];
           }
-          return;
-        }
-        throw new Error("dbDelete mock: unknown table");
+          throw new Error("dbDelete mock: unknown table");
+        };
+        return {
+          returning: () => exec(true),
+          then: (
+            resolve: (value: unknown) => unknown,
+            reject?: (reason?: unknown) => unknown,
+          ) => exec(false).then(resolve, reject),
+        };
       },
     };
   };
@@ -243,6 +255,7 @@ const mocks = vi.hoisted(() => {
       followedCompanyRef = f;
     },
     getSessionUserId: vi.fn(),
+    fetchIndexedPostingSnapshot: vi.fn(),
     dbInsert,
     dbDelete,
     dbSelect,
@@ -295,6 +308,11 @@ vi.mock("@/lib/sessionCache", () => ({
   getSessionUserId: mocks.getSessionUserId,
 }));
 
+vi.mock("@/lib/search/typesense-posting-detail", () => ({
+  fetchIndexedPostingSnapshot: mocks.fetchIndexedPostingSnapshot,
+  fetchIndexedPostingStates: vi.fn().mockResolvedValue(new Map()),
+}));
+
 vi.mock("@/db", () => ({
   db: {
     select: () => mocks.dbSelect(),
@@ -308,10 +326,28 @@ vi.mock("@/db", () => ({
 // and `followedCompany` from `@/db/schema`; we grab the same module
 // objects here so dispatch by identity matches.
 beforeEach(async () => {
+  vi.clearAllMocks();
   const schema = await import("@/db/schema");
   mocks.setTableRefs(schema.savedJob, schema.followedCompany);
   mocks.reset();
   mocks.getSessionUserId.mockResolvedValue("user-1");
+  mocks.fetchIndexedPostingSnapshot.mockResolvedValue({
+    id: "posting-1",
+    title: "Engineer",
+    sourceUrl: "https://example.com/jobs/1",
+    firstSeenAt: "2026-01-01T00:00:00.000Z",
+    isActive: true,
+    salaryMin: null,
+    salaryMax: null,
+    salaryCurrency: null,
+    salaryPeriod: null,
+    company: {
+      id: "company-1",
+      name: "Example",
+      slug: "example",
+      icon: null,
+    },
+  });
 });
 
 afterEach(() => {
@@ -332,9 +368,11 @@ describe("#3179 — toggleSavedJob race", () => {
   it("second toggle (row exists) deletes and returns saved=false", async () => {
     const { toggleSavedJob } = await import("@/lib/actions/saved-jobs");
     await toggleSavedJob("posting-1");
+    mocks.fetchIndexedPostingSnapshot.mockClear();
     const r = await toggleSavedJob("posting-1");
     expect(r.saved).toBe(false);
     expect(mocks.savedJobTable.length).toBe(0);
+    expect(mocks.fetchIndexedPostingSnapshot).not.toHaveBeenCalled();
   });
 
   it("two concurrent toggles on empty state — one saved, one un-saved, no exception", async () => {
@@ -358,7 +396,7 @@ describe("#3179 — toggleSavedJob race", () => {
     expect(mocks.savedJobTable.length).toBe(0);
   });
 
-  it("two concurrent toggles on existing state — both delete, idempotent", async () => {
+  it("two concurrent toggles on existing state serialize to off then on", async () => {
     const { toggleSavedJob } = await import("@/lib/actions/saved-jobs");
     // Seed: row already exists.
     await toggleSavedJob("posting-1");
@@ -369,12 +407,32 @@ describe("#3179 — toggleSavedJob race", () => {
       toggleSavedJob("posting-1"),
     ]);
 
-    // Both INSERTs collide with the pre-existing row. Both fall
-    // through to DELETE — one removes the row, the other finds nothing
-    // to remove (silent no-op). Both return saved=false.
-    expect(a.saved).toBe(false);
-    expect(b.saved).toBe(false);
-    expect(mocks.savedJobTable.length).toBe(0);
+    // One caller removes the existing row. The other observes the now-empty
+    // state and creates a new snapshot row, matching two serialized toggles.
+    expect([a.saved, b.saved].sort()).toEqual([false, true]);
+    expect(mocks.savedJobTable.length).toBe(1);
+  });
+
+  it("can unsave an existing row while Typesense is unavailable", async () => {
+    const { toggleSavedJob } = await import("@/lib/actions/saved-jobs");
+    await toggleSavedJob("posting-1");
+    mocks.fetchIndexedPostingSnapshot.mockClear();
+    mocks.fetchIndexedPostingSnapshot.mockRejectedValue(
+      new Error("Typesense unavailable"),
+    );
+
+    await expect(toggleSavedJob("posting-1")).resolves.toEqual({ saved: false });
+    expect(mocks.savedJobTable).toHaveLength(0);
+    expect(mocks.fetchIndexedPostingSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("does not create a save when its Typesense snapshot is unavailable", async () => {
+    const { toggleSavedJob } = await import("@/lib/actions/saved-jobs");
+    const outage = new Error("Typesense unavailable");
+    mocks.fetchIndexedPostingSnapshot.mockRejectedValue(outage);
+
+    await expect(toggleSavedJob("posting-1")).rejects.toBe(outage);
+    expect(mocks.savedJobTable).toHaveLength(0);
   });
 
   it("propagates non-23505 errors unchanged", async () => {
