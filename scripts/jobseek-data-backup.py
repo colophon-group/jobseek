@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -34,12 +35,40 @@ POSTGRES_RETENTION_OPTIONS = (
     "--repo1-retention-archive=2",
     "--repo1-retention-archive-type=diff",
 )
+WEB_POSTGRES_IMAGE = (
+    "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"
+)
+# Durable web/product records plus the small relational support set required
+# by their outbound foreign keys. Crawler postings, taxonomies, enrichment
+# batches, Stripe's unused subscription table, and Murmur are deliberately
+# outside this backup boundary.
+WEB_POSTGRES_TABLES = (
+    ("drizzle", "__drizzle_migrations"),
+    ("public", "user"),
+    ("public", "session"),
+    ("public", "account"),
+    ("public", "verification"),
+    ("public", "user_preferences"),
+    ("public", "industry"),
+    ("public", "company"),
+    ("public", "job_board"),
+    ("public", "saved_job"),
+    ("public", "application_interview"),
+    ("public", "followed_company"),
+    ("public", "company_request"),
+    ("public", "hiring_signal"),
+    ("public", "outreach_draft"),
+    ("public", "watchlist"),
+    ("public", "watchlist_company"),
+)
+WEB_POSTGRES_SEQUENCES = (("drizzle", "__drizzle_migrations_id_seq"),)
 _REDACTIONS = (
     (
         re.compile(r"(?i)(api[-_ ]?key|password|secret|token)([=: ]+)[^\s,;]+"),
         r"\1\2<redacted>",
     ),
     (re.compile(r"(?i)(authorization:\s*(?:bearer|basic)\s+)[^\s]+"), r"\1<redacted>"),
+    (re.compile(r"(?i)postgres(?:ql)?://[^\s'\"]+"), "postgresql://<redacted>"),
 )
 
 
@@ -502,6 +531,478 @@ def _restic_command(*arguments: str) -> list[str]:
     return ["restic", "-o", f"sftp.command={sftp_command}", *arguments]
 
 
+def _quote_identifier(value: str) -> str:
+    return '"' + value.replace('"', '""') + '"'
+
+
+def _quote_literal(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _qualified_table(schema: str, table: str) -> str:
+    return f"{_quote_identifier(schema)}.{_quote_identifier(table)}"
+
+
+def _web_database_url() -> str:
+    value = os.environ.get("WEB_DATABASE_URL", "").strip()
+    if not value:
+        credentials_directory = os.environ.get("CREDENTIALS_DIRECTORY", "")
+        if credentials_directory:
+            credential = Path(credentials_directory) / "web-database-url"
+            try:
+                value = credential.read_text(encoding="utf-8").strip()
+            except OSError:
+                value = ""
+    if not value:
+        raise BackupError("WEB_DATABASE_URL credential is missing")
+    if not value.startswith(("postgres://", "postgresql://")):
+        raise BackupError("WEB_DATABASE_URL must be a PostgreSQL connection URI")
+    return value
+
+
+def _web_postgres_image() -> str:
+    image = os.environ.get("WEB_POSTGRES_IMAGE", WEB_POSTGRES_IMAGE)
+    if "@sha256:" not in image:
+        raise BackupError("WEB_POSTGRES_IMAGE must be digest-pinned")
+    return image
+
+
+def _web_postgres_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["PGDATABASE"] = _web_database_url()
+    env["PGCONNECT_TIMEOUT"] = "30"
+    env["PGAPPNAME"] = "jobseek-web-postgresql-backup"
+    return env
+
+
+def _web_postgres_client_command(
+    *arguments: str,
+    network: str = "host",
+    mounts: Sequence[tuple[Path, str, str]] = (),
+    database_env: bool = True,
+) -> list[str]:
+    command = [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network",
+        network,
+    ]
+    if database_env:
+        command.extend(("--env", "PGDATABASE", "--env", "PGCONNECT_TIMEOUT", "--env", "PGAPPNAME"))
+    for host_path, container_path, mode in mounts:
+        command.extend(("--volume", f"{host_path}:{container_path}:{mode}"))
+    command.extend((_web_postgres_image(), *arguments))
+    return command
+
+
+def _web_psql(sql: str, *, env: dict[str, str]) -> str:
+    return run_checked(
+        _web_postgres_client_command(
+            "psql",
+            "--no-psqlrc",
+            "--set",
+            "ON_ERROR_STOP=1",
+            "--quiet",
+            "--tuples-only",
+            "--no-align",
+            "--field-separator=|",
+            "--command",
+            sql,
+        ),
+        env=env,
+        timeout=600,
+    ).stdout.strip()
+
+
+def _included_tables_values_sql() -> str:
+    values = ", ".join(
+        f"({_quote_literal(schema)}, {_quote_literal(table)})"
+        for schema, table in WEB_POSTGRES_TABLES
+    )
+    return f"VALUES {values}"
+
+
+def _web_postgres_bootstrap_sql() -> str:
+    schemas = sorted(
+        {
+            schema
+            for schema, _relation in (*WEB_POSTGRES_TABLES, *WEB_POSTGRES_SEQUENCES)
+            if schema != "public"
+        }
+    )
+    return "".join(
+        f"CREATE SCHEMA IF NOT EXISTS {_quote_identifier(schema)};\n" for schema in schemas
+    )
+
+
+def _validate_web_postgres_boundary(*, env: dict[str, str]) -> None:
+    """Fail if the allowlist is missing or depends on an excluded table."""
+    values = _included_tables_values_sql()
+    output = _web_psql(
+        f"""
+        WITH included(schema_name, table_name) AS ({values}),
+        missing AS (
+          SELECT 'missing|' || format('%I.%I', schema_name, table_name) AS problem
+          FROM included
+          WHERE to_regclass(format('%I.%I', schema_name, table_name)) IS NULL
+        ),
+        external_fks AS (
+          SELECT DISTINCT
+            'external_fk|' || format('%I.%I -> %I.%I',
+              source_ns.nspname, source.relname, target_ns.nspname, target.relname
+            ) AS problem
+          FROM pg_constraint constraint_row
+          JOIN pg_class source ON source.oid = constraint_row.conrelid
+          JOIN pg_namespace source_ns ON source_ns.oid = source.relnamespace
+          JOIN pg_class target ON target.oid = constraint_row.confrelid
+          JOIN pg_namespace target_ns ON target_ns.oid = target.relnamespace
+          JOIN included source_included
+            ON source_included.schema_name = source_ns.nspname
+           AND source_included.table_name = source.relname
+          LEFT JOIN included target_included
+            ON target_included.schema_name = target_ns.nspname
+           AND target_included.table_name = target.relname
+          WHERE constraint_row.contype = 'f'
+            AND target_included.table_name IS NULL
+        )
+        SELECT problem FROM missing
+        UNION ALL
+        SELECT problem FROM external_fks
+        ORDER BY 1
+        """,
+        env=env,
+    )
+    if output:
+        raise BackupError(
+            "web PostgreSQL backup boundary is not self-contained: "
+            + "; ".join(output.splitlines())
+        )
+    for schema, sequence in WEB_POSTGRES_SEQUENCES:
+        qualified = _qualified_table(schema, sequence)
+        output = _web_psql(
+            "SELECT CASE WHEN relation.relkind = 'S' THEN '' ELSE "
+            f"'missing_sequence|{qualified}' END "
+            f"FROM (SELECT to_regclass({_quote_literal(qualified)}) AS oid) selected "
+            "LEFT JOIN pg_class relation ON relation.oid = selected.oid",
+            env=env,
+        )
+        if output:
+            raise BackupError("web PostgreSQL backup boundary is not self-contained: " + output)
+
+
+def _web_postgres_fingerprints(*, env: dict[str, str]) -> dict[str, dict[str, Any]]:
+    selects: list[str] = []
+    for schema, table in WEB_POSTGRES_TABLES:
+        key = f"{schema}.{table}".replace("'", "''")
+        qualified = _qualified_table(schema, table)
+        selects.append(
+            "SELECT "
+            f"'{key}' AS table_name, "
+            "count(*)::bigint AS row_count, "
+            "md5(COALESCE(string_agg(md5(to_jsonb(row_value)::text), '' "
+            "ORDER BY md5(to_jsonb(row_value)::text)), '')) AS row_digest "
+            f"FROM {qualified} AS row_value"
+        )
+    output = _web_psql(" UNION ALL ".join(selects) + " ORDER BY 1", env=env)
+    fingerprints: dict[str, dict[str, Any]] = {}
+    for line in output.splitlines():
+        parts = line.split("|", 2)
+        if len(parts) != 3 or not parts[1].isdigit() or not re.fullmatch(r"[0-9a-f]{32}", parts[2]):
+            raise BackupError("web PostgreSQL fingerprint output was not parseable")
+        fingerprints[parts[0]] = {
+            "rows": int(parts[1]),
+            "digest": parts[2],
+        }
+    expected = {f"{schema}.{table}" for schema, table in WEB_POSTGRES_TABLES}
+    if set(fingerprints) != expected:
+        raise BackupError("web PostgreSQL fingerprint omitted an allowlisted table")
+    return fingerprints
+
+
+def _web_postgres_sequence_fingerprints(*, env: dict[str, str]) -> dict[str, dict[str, Any]]:
+    selects = [
+        "SELECT "
+        f"{_quote_literal(f'{schema}.{sequence}')} AS sequence_name, "
+        "last_value::bigint, is_called "
+        f"FROM {_qualified_table(schema, sequence)}"
+        for schema, sequence in WEB_POSTGRES_SEQUENCES
+    ]
+    output = _web_psql(" UNION ALL ".join(selects) + " ORDER BY 1", env=env)
+    fingerprints: dict[str, dict[str, Any]] = {}
+    for line in output.splitlines():
+        parts = line.split("|", 2)
+        if (
+            len(parts) != 3
+            or not re.fullmatch(r"-?[0-9]+", parts[1])
+            or parts[2]
+            not in {
+                "t",
+                "f",
+            }
+        ):
+            raise BackupError("web PostgreSQL sequence fingerprint output was not parseable")
+        fingerprints[parts[0]] = {
+            "last_value": int(parts[1]),
+            "is_called": parts[2] == "t",
+        }
+    expected = {f"{schema}.{sequence}" for schema, sequence in WEB_POSTGRES_SEQUENCES}
+    if set(fingerprints) != expected:
+        raise BackupError("web PostgreSQL fingerprint omitted an allowlisted sequence")
+    return fingerprints
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_web_postgres_archive(output: str) -> None:
+    table_definitions: set[str] = set()
+    table_data: set[str] = set()
+    sequence_definitions: set[str] = set()
+    sequence_state: set[str] = set()
+    for line in output.splitlines():
+        fields = line.split()
+        if len(fields) < 7 or not fields[0].endswith(";"):
+            continue
+        object_type = fields[3]
+        if object_type == "TABLE" and fields[4] == "DATA":
+            table_data.add(f"{fields[5]}.{fields[6]}")
+        elif object_type == "TABLE":
+            table_definitions.add(f"{fields[4]}.{fields[5]}")
+        elif object_type == "SEQUENCE" and fields[4] == "SET":
+            sequence_state.add(f"{fields[5]}.{fields[6]}")
+        elif object_type == "SEQUENCE" and fields[4] != "OWNED":
+            sequence_definitions.add(f"{fields[4]}.{fields[5]}")
+    expected_tables = {f"{schema}.{table}" for schema, table in WEB_POSTGRES_TABLES}
+    expected_sequences = {f"{schema}.{sequence}" for schema, sequence in WEB_POSTGRES_SEQUENCES}
+    if table_definitions != expected_tables or table_data != expected_tables:
+        raise BackupError("web PostgreSQL archive table boundary is incomplete or unexpected")
+    if sequence_definitions != expected_sequences or sequence_state != expected_sequences:
+        raise BackupError("web PostgreSQL archive sequence boundary is incomplete or unexpected")
+
+
+def web_postgresql_backup() -> dict[str, Any]:
+    required_restic = (
+        "RESTIC_REPOSITORY",
+        "RESTIC_PASSWORD_FILE",
+        "RESTIC_SFTP_COMMAND",
+    )
+    missing = [name for name in required_restic if not os.environ.get(name)]
+    if missing:
+        raise BackupError(f"missing Restic configuration: {', '.join(missing)}")
+
+    env = _web_postgres_env()
+    _validate_web_postgres_boundary(env=env)
+    server_version = _web_psql("SHOW server_version", env=env)
+    if not server_version.startswith("17."):
+        raise BackupError(
+            "web PostgreSQL server version "
+            f"{server_version!r} is not supported by the pinned client"
+        )
+
+    run_id = utc_now().strftime("%Y%m%dT%H%M%SZ")
+    staging_root = (
+        Path(
+            os.environ.get(
+                "WEB_POSTGRES_STAGING_ROOT",
+                "/run/jobseek-backup/web-postgresql",
+            )
+        )
+        / "staging"
+    )
+    run_path = staging_root / run_id
+    dump_path = run_path / "web-postgresql.dump"
+    bootstrap_path = run_path / "bootstrap.sql"
+    manifest_path = run_path / "manifest.json"
+    _remove_old_staging(staging_root)
+    run_path.mkdir(parents=True, mode=0o700)
+    success = False
+
+    try:
+        before = _web_postgres_fingerprints(env=env)
+        sequences_before = _web_postgres_sequence_fingerprints(env=env)
+        atomic_write(bootstrap_path, _web_postgres_bootstrap_sql())
+        dump_arguments = [
+            "pg_dump",
+            "--format=custom",
+            "--compress=6",
+            "--no-owner",
+            "--no-privileges",
+            "--strict-names",
+            "--lock-wait-timeout=60000",
+            "--serializable-deferrable",
+            "--file=/backup/web-postgresql.dump",
+        ]
+        for schema, table in WEB_POSTGRES_TABLES:
+            dump_arguments.extend(("--table", _qualified_table(schema, table)))
+        for schema, sequence in WEB_POSTGRES_SEQUENCES:
+            dump_arguments.extend(("--table", _qualified_table(schema, sequence)))
+        run_checked(
+            _web_postgres_client_command(
+                *dump_arguments,
+                mounts=((run_path, "/backup", "rw"),),
+            ),
+            env=env,
+            timeout=3_600,
+        )
+        after = _web_postgres_fingerprints(env=env)
+        sequences_after = _web_postgres_sequence_fingerprints(env=env)
+        if before != after or sequences_before != sequences_after:
+            raise BackupError(
+                "web PostgreSQL changed while the logical dump was created; retrying is required"
+            )
+        if not dump_path.is_file() or dump_path.stat().st_size <= 0:
+            raise BackupError("web PostgreSQL logical dump is empty")
+        archive_listing = run_checked(
+            _web_postgres_client_command(
+                "pg_restore",
+                "--list",
+                "/backup/web-postgresql.dump",
+                network="none",
+                mounts=((run_path, "/backup", "ro"),),
+                database_env=False,
+            ),
+            timeout=600,
+        ).stdout
+        _validate_web_postgres_archive(archive_listing)
+
+        dump_sha256 = _sha256_file(dump_path)
+        manifest = {
+            "schema_version": 1,
+            "created_at": utc_now().isoformat(),
+            "server_version": server_version,
+            "archive": dump_path.name,
+            "archive_bytes": dump_path.stat().st_size,
+            "archive_sha256": dump_sha256,
+            "bootstrap": bootstrap_path.name,
+            "bootstrap_sha256": _sha256_file(bootstrap_path),
+            "tables": [f"{schema}.{table}" for schema, table in WEB_POSTGRES_TABLES],
+            "sequences": [f"{schema}.{sequence}" for schema, sequence in WEB_POSTGRES_SEQUENCES],
+            "fingerprints": before,
+            "sequence_fingerprints": sequences_before,
+        }
+        atomic_write(manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+        restic_env = os.environ.copy()
+        run_checked(
+            _restic_command(
+                "backup",
+                "--tag",
+                "jobseek-web-postgresql",
+                "--host",
+                "jobseek-web-postgresql",
+                str(run_path),
+            ),
+            env=restic_env,
+            timeout=3_600,
+        )
+        run_checked(
+            _restic_command(
+                "forget",
+                "--tag",
+                "jobseek-web-postgresql",
+                "--host",
+                "jobseek-web-postgresql",
+                "--group-by",
+                "host,tags",
+                "--keep-daily",
+                "30",
+                "--keep-weekly",
+                "12",
+                "--keep-monthly",
+                "12",
+                "--prune",
+            ),
+            env=restic_env,
+            timeout=3_600,
+        )
+        run_checked(_restic_command("check"), env=restic_env, timeout=3_600)
+        snapshots_output = run_checked(
+            _restic_command(
+                "snapshots",
+                "--json",
+                "--latest",
+                "1",
+                "--tag",
+                "jobseek-web-postgresql",
+                "--host",
+                "jobseek-web-postgresql",
+            ),
+            env=restic_env,
+            timeout=300,
+        ).stdout
+        try:
+            latest_snapshot = json.loads(snapshots_output)[-1]
+        except (IndexError, TypeError, json.JSONDecodeError) as exc:
+            raise BackupError("Restic returned no parseable web PostgreSQL snapshot") from exc
+        success = True
+        return {
+            "archive_bytes": manifest["archive_bytes"],
+            "archive_sha256": dump_sha256,
+            "table_count": len(WEB_POSTGRES_TABLES),
+            "row_count": sum(item["rows"] for item in before.values()),
+            "server_version": server_version,
+            "repository_snapshot_id": latest_snapshot.get("short_id")
+            or latest_snapshot.get("id", "")[:8],
+            "repository_snapshot_time": latest_snapshot.get("time"),
+        }
+    finally:
+        if success:
+            shutil.rmtree(run_path, ignore_errors=True)
+
+
+def verify_web_postgresql_restore(
+    manifest_path: Path, dump_path: Path, bootstrap_path: Path
+) -> dict[str, Any]:
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BackupError("web PostgreSQL restore manifest is not parseable") from exc
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != 1:
+        raise BackupError("web PostgreSQL restore manifest has an unsupported schema")
+    expected_tables = [f"{schema}.{table}" for schema, table in WEB_POSTGRES_TABLES]
+    if manifest.get("tables") != expected_tables:
+        raise BackupError("web PostgreSQL restore manifest table boundary does not match code")
+    expected_sequences = [f"{schema}.{sequence}" for schema, sequence in WEB_POSTGRES_SEQUENCES]
+    if manifest.get("sequences") != expected_sequences:
+        raise BackupError("web PostgreSQL restore manifest sequence boundary does not match code")
+    expected_sha256 = manifest.get("archive_sha256")
+    if (
+        manifest.get("archive") != dump_path.name
+        or manifest.get("archive_bytes") != dump_path.stat().st_size
+        or not isinstance(expected_sha256, str)
+        or _sha256_file(dump_path) != expected_sha256
+    ):
+        raise BackupError("web PostgreSQL restored archive checksum does not match")
+    expected_bootstrap_sha256 = manifest.get("bootstrap_sha256")
+    if (
+        manifest.get("bootstrap") != bootstrap_path.name
+        or not isinstance(expected_bootstrap_sha256, str)
+        or _sha256_file(bootstrap_path) != expected_bootstrap_sha256
+        or bootstrap_path.read_text(encoding="utf-8") != _web_postgres_bootstrap_sql()
+    ):
+        raise BackupError("web PostgreSQL restored bootstrap does not match")
+    env = _web_postgres_env()
+    _validate_web_postgres_boundary(env=env)
+    actual = _web_postgres_fingerprints(env=env)
+    if actual != manifest.get("fingerprints"):
+        raise BackupError("web PostgreSQL restored row fingerprints do not match")
+    actual_sequences = _web_postgres_sequence_fingerprints(env=env)
+    if actual_sequences != manifest.get("sequence_fingerprints"):
+        raise BackupError("web PostgreSQL restored sequence fingerprints do not match")
+    return {
+        "table_count": len(actual),
+        "row_count": sum(item["rows"] for item in actual.values()),
+        "archive_sha256": expected_sha256,
+    }
+
+
 def typesense_backup() -> dict[str, Any]:
     container = os.environ.get("TYPESENSE_CONTAINER", "typesense")
     url = os.environ.get("TYPESENSE_URL", "http://127.0.0.1:8108")
@@ -630,17 +1131,31 @@ def build_parser() -> argparse.ArgumentParser:
     postgres = subparsers.add_parser("postgresql")
     postgres.add_argument("--backup-type", choices=("auto", "full", "diff", "incr"), default="auto")
     subparsers.add_parser("typesense")
+    subparsers.add_parser("web-postgresql")
+    verify = subparsers.add_parser("web-postgresql-verify")
+    verify.add_argument("--manifest", type=Path, required=True)
+    verify.add_argument("--dump", type=Path, required=True)
+    verify.add_argument("--bootstrap", type=Path, required=True)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if args.service == "web-postgresql-verify":
+            result = verify_web_postgresql_restore(args.manifest, args.dump, args.bootstrap)
+            print(
+                "restore verification succeeded: "
+                f"tables={result['table_count']} rows={result['row_count']}"
+            )
+            return 0
         with exclusive_lock(args.service):
             if args.service == "postgresql":
                 record = execute_with_status(
                     "postgresql", lambda: postgres_backup(args.backup_type)
                 )
+            elif args.service == "web-postgresql":
+                record = execute_with_status("web-postgresql", web_postgresql_backup)
             else:
                 record = execute_with_status("typesense", typesense_backup)
     except Exception as exc:

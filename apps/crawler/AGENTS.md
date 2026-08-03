@@ -498,7 +498,7 @@ All machines communicate via Hetzner private network (10.0.0.0/16). See `.env.lo
 |---------|------|
 | Crawler box | Workers, exporter, drain, Redis, Alloy |
 | Postgres box | Local Postgres (source of truth) |
-| Typesense box | Typesense 27.1, Cloudflare tunnel (`cloudflared`) |
+| Typesense box | Typesense 27.1, Cloudflare tunnel (`cloudflared`), encrypted web PostgreSQL logical backups |
 
 ### Container Management
 

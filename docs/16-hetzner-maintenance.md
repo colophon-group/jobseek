@@ -11,9 +11,9 @@ secrets into commands or documentation.
 |------|---------------|---------------|
 | Crawler | `CRAWLER_BROWSER_IPv4` | Workers, browser worker, exporter, drain, Redis, Alloy, murmur shim |
 | Postgres | `POSTGRESQL_LOCAL_IPv4` | Local crawler Postgres |
-| Typesense | `TYPESENSE_IPv4` | Typesense and `cloudflared` |
+| Typesense | `TYPESENSE_IPv4` | Typesense, `cloudflared`, and the encrypted web PostgreSQL logical backup job |
 
-PostgreSQL and Typesense data protection is documented separately in
+Crawler PostgreSQL, Typesense, and web PostgreSQL data protection is documented separately in
 [`19-data-backup-recovery.md`](19-data-backup-recovery.md). That runbook is
 the source of truth for backup scheduling, validation, restore drills, and
 the removal gate for legacy server backups.

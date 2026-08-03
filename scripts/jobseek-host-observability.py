@@ -100,6 +100,18 @@ ROLE_BACKUPS = {
     "typesense": ("typesense",),
 }
 
+OPTIONAL_ROLE_UNITS = {
+    "crawler": (),
+    "postgresql": (),
+    "typesense": ("jobseek-web-postgresql-backup.timer",),
+}
+
+OPTIONAL_ROLE_BACKUPS = {
+    "crawler": (),
+    "postgresql": (),
+    "typesense": (("web-postgresql", "jobseek-web-postgresql-backup.timer"),),
+}
+
 _CREDENTIAL_RE = re.compile(
     r"(?i)\b(authorization|token|secret|password|api[_-]?key)\b\s*[:=]\s*\S+"
 )
@@ -198,8 +210,19 @@ def _collect_container_metrics(role: str, lines: list[str]) -> None:
         lines.append(_metric("jobseek_container_restart_count", state["restart_count"], **labels))
 
 
+def _unit_enabled(unit: str) -> bool:
+    result = subprocess.run(
+        ["systemctl", "is-enabled", "--quiet", unit],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.returncode == 0
+
+
 def _collect_unit_metrics(role: str, lines: list[str]) -> None:
-    for unit in ROLE_UNITS[role]:
+    units = (*ROLE_UNITS[role], *filter(_unit_enabled, OPTIONAL_ROLE_UNITS[role]))
+    for unit in units:
         result = subprocess.run(
             ["systemctl", "is-active", "--quiet", unit],
             check=False,
@@ -227,7 +250,10 @@ def _backup_number(record: dict[str, Any], key: str) -> float:
 
 
 def _collect_backup_metrics(role: str, status_dir: Path, lines: list[str]) -> None:
-    for service in ROLE_BACKUPS[role]:
+    optional_services = (
+        service for service, timer in OPTIONAL_ROLE_BACKUPS[role] if _unit_enabled(timer)
+    )
+    for service in (*ROLE_BACKUPS[role], *optional_services):
         path = status_dir / f"{service}.json"
         try:
             record = json.loads(path.read_text(encoding="utf-8"))
@@ -700,8 +726,7 @@ def _collect_alloy_metrics(role: str, lines: list[str]) -> None:
             _read_loopback(f"http://127.0.0.1:{port}/metrics", timeout=15)
         )
         lines.extend(
-            _metric(f"jobseek_alloy_{name}", value, **labels)
-            for name, value in metrics.items()
+            _metric(f"jobseek_alloy_{name}", value, **labels) for name, value in metrics.items()
         )
         lines.append(
             _metric(
