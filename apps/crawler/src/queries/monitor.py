@@ -193,7 +193,7 @@ WITH previous AS MATERIALIZED (
     FROM previous
     WHERE jb.id = previous.id
     RETURNING CASE
-        WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'gone'
+        WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'provider_gone'
         WHEN previous.board_status = 'quarantined' THEN 'quarantined'
         ELSE NULL
     END AS recovered_from
@@ -246,7 +246,7 @@ WITH previous AS MATERIALIZED (
         jb.board_status,
         jb.empty_check_count >= 6 AS should_delist,
         CASE
-            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'gone'
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'provider_gone'
             WHEN previous.board_status = 'quarantined' THEN 'quarantined'
             ELSE NULL
         END AS recovered_from

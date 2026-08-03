@@ -163,7 +163,7 @@ def test_state_queries_persist_evidence_and_success_self_recovers() -> None:
         assert "gone_recovery_count" in success_sql
         assert "gone_confirmation_count = 0" in success_sql
         assert "gone_at = NULL" in success_sql
-        assert "'gone'" in success_sql
+        assert "'provider_gone'" in success_sql
 
 
 def test_legacy_migration_reactivates_all_one_shot_gone_rows_with_splay() -> None:

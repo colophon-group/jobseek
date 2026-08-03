@@ -347,7 +347,7 @@ def _emit_board_recovery(
     if recovered_from == "quarantined":
         monitor_quarantine_events_total.labels(event="recovered").inc()
         board_log.info("batch.monitor.quarantine_recovered", discovered=discovered)
-    elif recovered_from == "gone":
+    elif recovered_from == "provider_gone":
         monitor_gone_events_total.labels(event="recovered").inc()
         board_log.info("batch.monitor.gone_recovered", discovered=discovered)
 

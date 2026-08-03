@@ -380,7 +380,7 @@ class TestProcessOneBoard:
             {
                 "board_status": "active",
                 "should_delist": False,
-                "recovered_from": "gone",
+                "recovered_from": "provider_gone",
             }
         ]
         before = _counter_value(monitor_gone_events_total, event="recovered")
