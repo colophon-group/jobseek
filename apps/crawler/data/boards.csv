@@ -933,6 +933,7 @@ canonical,canonical-greenhouse,https://job-boards.greenhouse.io/canonical,greenh
 canopy,canopy-greenhouse,https://job-boards.greenhouse.io/canopytax,greenhouse,"{""token"": ""canopytax""}",skip,
 cantina,cantina-ashby,https://jobs.ashbyhq.com/cantina,ashby,"{""token"": ""cantina""}",skip,
 canto,canto-careers,https://boards.greenhouse.io/canto,greenhouse,"{""token"": ""canto""}",skip,
+canva,canva-main,https://www.lifeatcanva.com/en/jobs/,sitemap,"{""sitemap_url"": ""https://www.lifeatcanva.com/sitemap.xml"", ""url_filter"": ""^https://www\\.lifeatcanva\\.com/en/jobs/.+""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply""}, {""text"": ""Country"", ""offset"": 1, ""field"": ""location"", ""optional"": true, ""from"": 0}, {""text"": ""Location"", ""offset"": 1, ""field"": ""job_location_type"", ""optional"": true, ""from"": 0}]}"
 capco,capco-greenhouse,https://job-boards.greenhouse.io/capco,greenhouse,"{""token"": ""capco""}",skip,
 cape,cape-ashby,https://jobs.ashbyhq.com/cape,ashby,"{""token"": ""cape""}",skip,
 capintel,capintel-greenhouse,https://job-boards.greenhouse.io/capintel,greenhouse,"{""token"": ""capintel""}",skip,
