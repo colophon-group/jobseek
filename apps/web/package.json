@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:migrate:verify": "tsx scripts/verify-production-migration-baseline.ts",
+    "db:verify-saved-job-typesense": "tsx scripts/verify-saved-job-typesense-coverage.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:push": "drizzle-kit push",
     "db:check": "drizzle-kit check",
