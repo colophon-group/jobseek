@@ -258,8 +258,20 @@ downtime is required.
 - All search, typeahead, browse-all modals, and watchlist search go through Typesense
 - **Posting detail**: `getPostingDetail` retrieves the posting plus company/location/seniority documents from Typesense and builds the R2 description URL. Original salary amount, currency, and period are denormalized onto the posting document for this reader.
 - **Saved jobs**: `saved_job` owns an immutable posting/company snapshot. The snapshot is populated from Typesense for new saves and backfilled by migration for existing saves, so application history survives later removal of the Supabase `job_posting` mirror. List/detail readers refresh current `is_active` in one bounded Typesense query and retain the snapshot value for missing hits or outages.
-- **Watchlist posting reads**: public watchlist discovery and watchlist posting lists/counts read the Typesense `watchlist` / `job_posting` collections. Together with the posting-detail path above, these named paths do not fall back to the Supabase crawler mirror. Authenticated watchlist metadata, company membership, and mutations remain in the web database
-- **Graceful degradation**: public watchlist discovery and watchlist posting lists return empty results when Typesense is unavailable, while watchlist posting counts return zero. These outages are logged, outage-shaped public discovery results are not cached, and non-availability errors still propagate. This guarantee is scoped to the watchlist and posting-detail paths; the deferred `company.ts` location/taxonomy readers described below remain a deployment blocker
+- **Company- and watchlist-facing reads**: company autocomplete, watchlist company search, public watchlist discovery, watchlist posting lists/counts, the progress-page company/posting counters, and `getCompanyBySlug` read Typesense. They do not fall back to the Supabase crawler mirror. Authenticated watchlist metadata, company membership, and mutations remain in the web database
+- **Location/taxonomy reads**: filter-chip slug resolution, descendant
+  expansion, browse-all location/occupation/seniority/technology metadata,
+  industry suggestions, and company location summaries read the taxonomy,
+  company, and posting collections. They do not read the Supabase crawler
+  mirror.
+- **Graceful degradation**: optional company/location/taxonomy browse surfaces
+  return their empty shape only when Typesense is unavailable, and the catch is
+  outside the cache boundary so an outage-shaped empty is not stored. Exact
+  slug resolvers and unexpected errors (including rate limits and schema/query
+  errors) propagate. Company detail degrades to not found and logs an actual
+  outage. Public watchlist discovery and posting lists return empty results and
+  posting counts return zero during a confirmed Typesense outage. No live
+  fallback returns crawler data from Supabase.
 - **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s). `getCompanyBySlug` is wrapped with a Redis cache (`ttl: 600`, key `company-slug:{slug}:{locale}`) that skips storing nulls so brand-new slugs aren't poisoned
 - **Server-side client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search/read key
 
@@ -283,7 +295,8 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 - Salary/experience histograms (`getSalaryHistogram`/`getExperienceHistogram`, kept on server actions for the 3600 s cache)
 - `getCompanyBySlug` (server-rendered and cached; unavailable Typesense degrades to not found)
 - `getSimilarCompanies` (filtered path requires Postgres slug→id resolution)
-- Browse-all modals (`getGlobalLocationsGrouped`, `getAllOccupationsGrouped`, etc. — need Postgres taxonomy hierarchy)
+- Browse-all modals (`getGlobalLocationsGrouped`, `getAllOccupationsGrouped`,
+  etc. -- server-side Typesense taxonomy snapshots and facets)
 - Watchlist postings for >100 companies (uses batched-merge logic that's only worth maintaining server-side)
 
 **Infrastructure:**
@@ -301,14 +314,8 @@ Three data tiers, three read paths:
 | Tier | Role | Reads |
 |------|------|-------|
 | Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` count aggregations, watchlist active-posting counts (via crawler) |
-| Supabase Postgres | Transitional mirror of crawler data; **only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, `saved_job`, ...) | Auth, watchlist metadata/mutations, saved-job snapshots, watchlist company-pair lookups, and deferred company location/taxonomy reads pending removal |
-| Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads, browse-all modals, watchlist company search/discovery/posting lists/counts, company autocomplete/detail, public site stats, similar-company strip |
-
-**Deployment blocker:** `apps/web/src/lib/services/company.ts` still contains the
-deferred company location/taxonomy aggregations that read the Supabase
-`job_posting` mirror. The production contract-drop in #6249 must not run until
-that separate cutover lands and its deployed-read guard passes. This watchlist
-slice does not change or guard `company.ts`.
+| Supabase Postgres | Transitional crawler mirror pending the protected retirement window; **only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, `saved_job`, ...) | Auth, watchlist metadata/mutations, saved-job snapshots, sitemap watchlists, and watchlist company-pair lookups; no live public web reader uses crawler-owned tables |
+| Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads and taxonomy resolvers, browse-all modals, watchlist search/discovery/posting lists/counts, company autocomplete/detail/location/industry reads, public site stats, similar-company strip |
 
 Aggregation queries against `job_posting` are deliberately kept on local Postgres, not Supabase, to keep Supabase compute reserved for user-facing CRUD. Notable examples:
 

@@ -22,8 +22,6 @@ import { withTestEnv } from "@/test-utils/env";
  *     build-critical (the route handler runs at every sitemap fetch).
  *   - `getCurrencyRates` (via `_fetchCurrencyRates`) — runtime-hot;
  *     used by /explore, /company/<slug>, settings, and salary modal.
- *   - `getCompanyTopLocations` (via `_fetchTopLocations`) — explicitly
- *     called out in the #2918 follow-up bullet list.
  *
  * Each spec mocks `db.execute` to throw an ECONNRESET on the first
  * call and resolve normally on the second. Asserting `toHaveBeenCalledTimes(2)`
@@ -213,28 +211,6 @@ describe("issue #2930 — withDbRetry covers additional call sites", () => {
     const rates = await getCurrencyRates();
 
     expect(rates.find((r) => r.currency === "USD")?.toEur).toBeCloseTo(0.92);
-    expect(dbExecuteMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("retries getCompanyTopLocations after ECONNRESET", async () => {
-    dbExecuteMock
-      .mockRejectedValueOnce(econnreset())
-      .mockResolvedValueOnce([
-        {
-          location_id: 1,
-          loc_slug: "berlin",
-          loc_type: "city",
-          loc_name: "Berlin",
-          cnt: 5,
-          total_locations: 1,
-        },
-      ]);
-
-    const { getCompanyTopLocations } = await import("@/lib/actions/company");
-    const result = await getCompanyTopLocations("c-1", "en");
-
-    expect(result.locations).toHaveLength(1);
-    expect(result.locations[0]?.slug).toBe("berlin");
     expect(dbExecuteMock).toHaveBeenCalledTimes(2);
   });
 
