@@ -15,6 +15,7 @@ __all__ = [
     "_DROP_GUARD_MIN_HISTORY",
     "_DROP_GUARD_THRESHOLD_DEFAULT",
     "_EXTEND_BOARD_LEASE",
+    "_FETCH_BOARD_GONE_STATE",
     "_FETCH_DUE_BOARDS",
     "_INSERT_RICH_JOB",
     "_INSERT_RICH_JOB_ENRICH",
@@ -42,7 +43,7 @@ WITH ranked AS (
          next_check_at
   FROM job_board
   WHERE is_enabled = true
-    AND board_status IN ('active', 'suspect', 'quarantined')
+    AND board_status IN ('active', 'suspect', 'quarantined', 'gone_pending', 'gone')
     AND next_check_at <= now()
     AND (leased_until IS NULL OR leased_until < now())
 ),
@@ -120,13 +121,38 @@ WHERE board_id = $1 AND is_active = true
 RETURNING id
 """
 
+_FETCH_BOARD_GONE_STATE = """
+SELECT board_status,
+       gone_confirmation_count,
+       gone_first_confirmed_at,
+       gone_last_confirmed_at,
+       last_success_at,
+       gone_at
+FROM job_board
+WHERE id = $1
+FOR UPDATE
+"""
+
 _RECORD_BOARD_GONE = """
 UPDATE job_board
-SET board_status = 'gone', gone_at = now(),
-    is_enabled = false,
-    lease_owner = NULL, leased_until = NULL,
+SET board_status = $2,
+    gone_confirmation_count = $3,
+    gone_first_confirmed_at = $4,
+    gone_last_confirmed_at = $5,
+    gone_at = $6,
+    next_check_at = $7,
+    last_error = $8,
+    last_gone_error = $8,
+    last_gone_endpoint = $9,
+    last_gone_status = $10,
+    gone_transition_count = gone_transition_count + CASE WHEN $11 THEN 1 ELSE 0 END,
+    consecutive_failures = 0,
+    is_enabled = true,
+    lease_owner = NULL,
+    leased_until = NULL,
     updated_at = now()
 WHERE id = $1
+RETURNING board_status, gone_confirmation_count, next_check_at
 """
 
 _RECORD_SUCCESS_NONEMPTY = """
@@ -143,15 +169,22 @@ WITH previous AS MATERIALIZED (
         next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
         empty_check_count = 0,
         board_status = 'active',
+        is_enabled = true,
         last_non_empty_at = now(),
         last_recovered_at = CASE
-            WHEN previous.board_status = 'quarantined' THEN now()
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN now()
             ELSE jb.last_recovered_at
         END,
         recovery_count = jb.recovery_count + CASE
-            WHEN previous.board_status = 'quarantined' THEN 1
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN 1
             ELSE 0
         END,
+        gone_recovery_count = jb.gone_recovery_count + CASE
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 1
+            ELSE 0
+        END,
+        gone_confirmation_count = 0,
+        gone_at = NULL,
         quarantined_at = NULL,
         quarantine_probe_count = 0,
         lease_owner = NULL,
@@ -159,9 +192,13 @@ WITH previous AS MATERIALIZED (
         updated_at = now()
     FROM previous
     WHERE jb.id = previous.id
-    RETURNING previous.board_status = 'quarantined' AS recovered
+    RETURNING CASE
+        WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'provider_gone'
+        WHEN previous.board_status = 'quarantined' THEN 'quarantined'
+        ELSE NULL
+    END AS recovered_from
 )
-SELECT recovered FROM updated
+SELECT recovered_from FROM updated
 """
 
 _RECORD_EMPTY_CHECK = """
@@ -180,17 +217,24 @@ WITH previous AS MATERIALIZED (
         board_status = CASE
             WHEN jb.last_non_empty_at IS NOT NULL AND jb.empty_check_count + 1 >= 3
             THEN 'suspect'
-            WHEN previous.board_status = 'quarantined' THEN 'active'
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN 'active'
             ELSE jb.board_status
         END,
+        is_enabled = true,
         last_recovered_at = CASE
-            WHEN previous.board_status = 'quarantined' THEN now()
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN now()
             ELSE jb.last_recovered_at
         END,
         recovery_count = jb.recovery_count + CASE
-            WHEN previous.board_status = 'quarantined' THEN 1
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN 1
             ELSE 0
         END,
+        gone_recovery_count = jb.gone_recovery_count + CASE
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 1
+            ELSE 0
+        END,
+        gone_confirmation_count = 0,
+        gone_at = NULL,
         quarantined_at = NULL,
         quarantine_probe_count = 0,
         lease_owner = NULL,
@@ -201,9 +245,13 @@ WITH previous AS MATERIALIZED (
     RETURNING
         jb.board_status,
         jb.empty_check_count >= 6 AS should_delist,
-        previous.board_status = 'quarantined' AS recovered
+        CASE
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'provider_gone'
+            WHEN previous.board_status = 'quarantined' THEN 'quarantined'
+            ELSE NULL
+        END AS recovered_from
 )
-SELECT board_status, should_delist, recovered FROM updated
+SELECT board_status, should_delist, recovered_from FROM updated
 """
 
 # Ordinary integration and upstream failures enter a recoverable quarantine

@@ -9,6 +9,7 @@ import random
 import re
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from time import monotonic
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -24,6 +25,7 @@ from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
 from src.metrics import (
     monitor_db_transaction_retries_total,
     monitor_dedup_total,
+    monitor_gone_events_total,
     monitor_gone_skipped_total,
     monitor_jobs_discovered,
     monitor_quarantine_events_total,
@@ -47,6 +49,7 @@ from src.processing.cpu import (
     _resolve_occupation_seniority,
     _resolve_technology_ids,
 )
+from src.processing.gone_policy import evaluate_gone_confirmation
 from src.processing.scrape import (
     _UPSERT_DESCRIPTION,
     ScrapeItem,
@@ -68,6 +71,7 @@ from src.queries.monitor import (
     _DROP_GUARD_MIN_HISTORY,
     _DROP_GUARD_THRESHOLD_DEFAULT,
     _EXTEND_BOARD_LEASE,
+    _FETCH_BOARD_GONE_STATE,
     _FETCH_DUE_BOARDS,
     _INSERT_RICH_JOB,
     _INSERT_RICH_JOB_ENRICH,
@@ -330,6 +334,22 @@ def _emit_gone_counter(gone_count: int) -> None:
     """
     if gone_count:
         monitor_jobs_discovered.labels(profile="simple", action="gone").inc(gone_count)
+
+
+def _emit_board_recovery(
+    recovered_from: str | None,
+    board_log: structlog.stdlib.BoundLogger,
+    *,
+    discovered: int,
+) -> None:
+    """Emit the bounded lifecycle metric only after recovery commits."""
+
+    if recovered_from == "quarantined":
+        monitor_quarantine_events_total.labels(event="recovered").inc()
+        board_log.info("batch.monitor.quarantine_recovered", discovered=discovered)
+    elif recovered_from == "provider_gone":
+        monitor_gone_events_total.labels(event="recovered").inc()
+        board_log.info("batch.monitor.gone_recovered", discovered=discovered)
 
 
 def _resolve_delist_threshold(metadata: dict | None, crawler_type: str) -> int:
@@ -1282,12 +1302,12 @@ async def _process_one_board_streaming(
             # a failed delist cannot leave the confirmation recorded without
             # applying its posting-state consequence.
             empty_delisted_count = 0
-            recovered_from_quarantine = False
+            recovered_from: str | None = None
             try:
                 async with pool.acquire() as conn, conn.transaction():
                     rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
                     if rows:
-                        recovered_from_quarantine = rows[0]["recovered"] is True
+                        recovered_from = rows[0]["recovered_from"]
                         if rows[0]["should_delist"]:
                             empty_delisted_count = await _delist_board_postings(conn, board_id)
             except (asyncpg.PostgresError, ConnectionError):
@@ -1303,9 +1323,7 @@ async def _process_one_board_streaming(
                     )
                     with contextlib.suppress(Exception):
                         await _batch.get_redis().delete("cache:platform-stats")
-                if recovered_from_quarantine:
-                    monitor_quarantine_events_total.labels(event="recovered").inc()
-                    board_log.info("batch.monitor.quarantine_recovered", discovered=0)
+                _emit_board_recovery(recovered_from, board_log, discovered=0)
             return True, elapsed
 
         # Mark as gone any active posting not seen during this monitor run.
@@ -1330,15 +1348,8 @@ async def _process_one_board_streaming(
         # cycle proceeds normally.
         if any_truncated:
             async with pool.acquire() as conn, conn.transaction():
-                recovered_from_quarantine = (
-                    await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
-                ) is True
-            if recovered_from_quarantine:
-                monitor_quarantine_events_total.labels(event="recovered").inc()
-                board_log.info(
-                    "batch.monitor.quarantine_recovered",
-                    discovered=total_discovered,
-                )
+                recovered_from = await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
+            _emit_board_recovery(recovered_from, board_log, discovered=total_discovered)
             board_log.warning(
                 "batch.monitor.truncated_partial",
                 discovered=total_discovered,
@@ -1356,16 +1367,9 @@ async def _process_one_board_streaming(
                     delist_threshold,
                     board_log,
                 )
-                recovered_from_quarantine = (
-                    await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
-                ) is True
+                recovered_from = await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
 
-            if recovered_from_quarantine:
-                monitor_quarantine_events_total.labels(event="recovered").inc()
-                board_log.info(
-                    "batch.monitor.quarantine_recovered",
-                    discovered=total_discovered,
-                )
+            _emit_board_recovery(recovered_from, board_log, discovered=total_discovered)
 
             # Emit the skip metric AFTER the transaction commits — same
             # pattern as ``_emit_gone_counter`` (a rollback would otherwise
@@ -1435,35 +1439,76 @@ async def _process_one_board_streaming(
         return True, elapsed
 
     except BoardGoneError as exc:
-        # Upstream confirmed the board no longer exists (404 from
-        # greenhouse/lever/recruitee/ashby per-board API). Skip the
-        # 5-strike `_RECORD_FAILURE` ramp and disable in one shot —
-        # otherwise the Redis monitor task keeps re-firing the dead
-        # endpoint every cycle until sync removes it (which only runs
-        # on CSV pushes). See issue #2215.
+        # A provider-native gone signal enters a recoverable confirmation
+        # window. Recent success raises the bar to three confirmations, every
+        # confirmation is spaced, and even terminal configured boards retain a
+        # daily recovery probe. See #6156 (revises the one-shot #2215 path).
         elapsed = monotonic() - t0
         board_log.warning(
             "batch.monitor.board_gone",
             error=str(exc),
             url=getattr(exc, "url", None),
+            status_code=getattr(exc, "status_code", None),
             duration_s=round(elapsed, 2),
         )
         tasks_total.labels(kind="monitor", status="board_gone").inc()
         loc_resolver.drain_location_misses()
         board_gone_count = 0
+        decision = None
         try:
             async with pool.acquire() as conn, conn.transaction():
-                await conn.execute(_RECORD_BOARD_GONE, board_id)
-                board_gone_count = await _delist_board_postings(conn, board_id)
+                state = await conn.fetchrow(_FETCH_BOARD_GONE_STATE, board_id)
+                if state is None:
+                    raise RuntimeError(f"board {board_id} disappeared before gone recording")
+                decision = evaluate_gone_confirmation(
+                    board_status=state["board_status"],
+                    confirmation_count=state["gone_confirmation_count"],
+                    first_confirmed_at=state["gone_first_confirmed_at"],
+                    last_confirmed_at=state["gone_last_confirmed_at"],
+                    last_success_at=state["last_success_at"],
+                    gone_at=state["gone_at"],
+                    now=datetime.now(UTC),
+                )
+                await conn.fetchrow(
+                    _RECORD_BOARD_GONE,
+                    board_id,
+                    decision.board_status,
+                    decision.confirmation_count,
+                    decision.first_confirmed_at,
+                    decision.last_confirmed_at,
+                    decision.gone_at,
+                    decision.next_check_at,
+                    _error_message(exc),
+                    getattr(exc, "url", None),
+                    getattr(exc, "status_code", None),
+                    decision.terminal_transition,
+                )
+                if decision.terminal_transition:
+                    board_gone_count = await _delist_board_postings(conn, board_id)
         except (asyncpg.PostgresError, ConnectionError):
             board_log.exception("batch.monitor.board_gone_record_failed")
         else:
+            if decision and decision.terminal_transition:
+                monitor_gone_events_total.labels(event="terminal").inc()
+                board_log.warning(
+                    "batch.monitor.gone_confirmed",
+                    confirmations=decision.confirmation_count,
+                    next_probe_at=decision.next_check_at.isoformat(),
+                )
+            elif decision and decision.confirmation_advanced:
+                monitor_gone_events_total.labels(event="confirmation").inc()
+                board_log.warning(
+                    "batch.monitor.gone_pending",
+                    confirmations=decision.confirmation_count,
+                    required_confirmations=decision.required_confirmations,
+                    next_confirmation_at=decision.next_check_at.isoformat(),
+                )
             if board_gone_count:
                 _emit_gone_counter(board_gone_count)
                 with contextlib.suppress(Exception):
                     await _batch.get_redis().delete("cache:platform-stats")
-        # Re-raise so the worker can drop the Redis task instead of
-        # rescheduling — otherwise the dead board keeps cycling.
+        # Re-raise so the Redis worker uses the durable confirmation/recovery
+        # timestamp written above rather than its ordinary success cadence.
         raise
 
     except Exception as exc:

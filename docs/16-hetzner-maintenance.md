@@ -930,6 +930,54 @@ immediately and spreads other legacy disabled boards across six hours. The
 deploy-time sync then re-disables historical rows absent from `boards.csv`, so
 only configured sources enter Redis.
 
+## Provider-Gone Confirmation and Recovery
+
+An explicit provider-native retirement signal such as a board API 404 is not
+terminal on its own. It moves the configured board to `gone_pending`, retains
+its active postings, and schedules the next confirmation six hours later.
+Boards successful during the preceding seven days need three spaced
+confirmations; older sources need two. Only the terminal transition delists
+the board's postings.
+
+Confirmed-gone configured boards remain enabled and receive a provider-native
+probe every 24 hours. A valid non-empty or empty response moves the row back to
+`active` (or the normal empty-board `suspect` state), increments the durable
+recovery counter, and lets the standard posting diff relist matching jobs.
+Removing the board from `boards.csv` remains the only configuration-owned
+terminal disable.
+
+The PostgreSQL host sampler exports:
+
+- `jobseek_crawler_gone_pending_boards`
+- `jobseek_crawler_gone_pending_confirmations`
+- `jobseek_crawler_gone_pending_oldest_seconds`
+- `jobseek_crawler_gone_terminal_boards`
+- `jobseek_crawler_board_gone_transitions_total`
+- `jobseek_crawler_board_gone_recoveries_total`
+
+Inspect without changing state:
+
+```bash
+docker exec -i postgres psql -U crawler -d crawler -X -v ON_ERROR_STOP=1 -c "
+SELECT board_slug, crawler_type, board_status, is_enabled,
+       gone_confirmation_count, gone_first_confirmed_at,
+       gone_last_confirmed_at, next_check_at, last_gone_status,
+       left(last_gone_endpoint, 160) AS last_gone_endpoint,
+       left(last_gone_error, 160) AS last_gone_error
+FROM job_board
+WHERE board_status IN ('gone_pending', 'gone')
+ORDER BY next_check_at, board_slug;"
+```
+
+Do not advance confirmation timestamps or set a row active manually. For a
+live source, run the supported `crawler board <board-slug>` path or wait for
+the durable Redis schedule; the successful provider response is the recovery
+proof. For a stale pending alert, compare `next_check_at` with the Redis task,
+check the stored endpoint/status, and inspect provider-wide failures before
+accepting a terminal transition. Migration 0016 treats every legacy one-shot
+`gone` row as one unconfirmed observation, schedules it within fifteen minutes,
+and lets the deploy-time CSV sync disable rows that are no longer configured.
+
 ## Disk Triage
 
 Use these first when a deploy fails with `No space left on device`, Redis

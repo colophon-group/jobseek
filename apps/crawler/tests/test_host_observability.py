@@ -310,6 +310,10 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
             return "6"
         if sql == host.BOARD_QUARANTINE_STATS_SQL:
             return "121\t86400\t99134\t16"
+        if sql == host.BOARD_GONE_SCHEMA_SQL:
+            return "8"
+        if sql == host.BOARD_GONE_STATS_SQL:
+            return "58\t58\t21600\t181\t239\t19"
         if "to_regclass" in sql:
             return "cross_store_reconciliation_state"
         if sql == host.RECONCILIATION_STATS_SQL:
@@ -345,6 +349,13 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_crawler_quarantine_oldest_seconds 86400.0" in content
     assert "jobseek_crawler_quarantine_active_postings 99134.0" in content
     assert "jobseek_crawler_board_recoveries_total 16.0" in content
+    assert "jobseek_crawler_board_gone_schema_ready 1" in content
+    assert "jobseek_crawler_gone_pending_boards 58.0" in content
+    assert "jobseek_crawler_gone_pending_confirmations 58.0" in content
+    assert "jobseek_crawler_gone_pending_oldest_seconds 21600.0" in content
+    assert "jobseek_crawler_gone_terminal_boards 181.0" in content
+    assert "jobseek_crawler_board_gone_transitions_total 239.0" in content
+    assert "jobseek_crawler_board_gone_recoveries_total 19.0" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
     assert 'jobseek_cross_store_reconciliation_last_detected{target="supabase"} 42.0' in content
     assert (
@@ -371,7 +382,7 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
             return "1\t2\t3\t0\t4\t5\t6\t7\t8\t9\t10"
-        if sql == host.BOARD_QUARANTINE_SCHEMA_SQL:
+        if sql in (host.BOARD_QUARANTINE_SCHEMA_SQL, host.BOARD_GONE_SCHEMA_SQL):
             return "0"
         if "to_regclass" in sql:
             return ""
@@ -384,6 +395,7 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
 
     assert "jobseek_cross_store_reconciliation_schema_ready 0" in "\n".join(lines)
     assert "jobseek_crawler_board_quarantine_schema_ready 0" in "\n".join(lines)
+    assert "jobseek_crawler_board_gone_schema_ready 0" in "\n".join(lines)
 
 
 def test_postgresql_shared_memory_probe_emits_configured_and_live_capacity(
@@ -465,7 +477,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 19,
-        "jobseek_crawler_board_quarantine": 4,
+        "jobseek_crawler_board_quarantine": 7,
         "jobseek_operator_handoffs": 3,
     }
     for group in groups:

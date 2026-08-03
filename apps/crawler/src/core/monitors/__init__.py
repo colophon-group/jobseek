@@ -97,22 +97,27 @@ _ALLOW_SLUG_GUESS = contextvars.ContextVar("allow_slug_guess", default=False)
 
 
 class BoardGoneError(Exception):
-    """The upstream ATS confirms the board no longer exists.
+    """The upstream ATS returned an explicit board-retirement signal.
 
     Raised by API monitors (greenhouse/lever/recruitee/ashby) when the
-    per-board API endpoint returns 404 — i.e. the board's slug/token
-    has been deleted at the source. Distinct from a generic
-    ``HTTPStatusError`` so the board processor can immediately mark
-    the board as ``board_status='gone'`` instead of accumulating five
-    consecutive ``_RECORD_FAILURE`` increments before disabling. See
-    issue #2215.
+    per-board API endpoint returns 404. Distinct from a generic
+    ``HTTPStatusError`` so the board processor can apply the spaced,
+    recoverable provider-gone confirmation policy. See issues #2215 and
+    #6156.
 
-    Carries the upstream URL that returned the 404 for log forensics.
+    Carries the upstream URL and HTTP status for durable forensics.
     """
 
-    def __init__(self, message: str, *, url: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        url: str | None = None,
+        status_code: int | None = None,
+    ) -> None:
         super().__init__(message)
         self.url = url
+        self.status_code = status_code
 
 
 _STREAM_BATCH = 200
