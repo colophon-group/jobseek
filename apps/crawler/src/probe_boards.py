@@ -21,6 +21,11 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from src.shared.adp import adp_board_from_metadata, adp_board_from_url
+from src.shared.beisen import (
+    beisen_board_from_metadata,
+    beisen_board_from_url,
+    extract_beisen_bootstrap,
+)
 from src.shared.cornerstone import (
     cornerstone_board_from_metadata,
     cornerstone_board_from_url,
@@ -34,6 +39,7 @@ from src.shared.dayforce import (
     resolve_dayforce_listing_redirect,
 )
 from src.shared.gupy import normalize_gupy_tenant
+from src.shared.http import DEFAULT_ACCEPT, DEFAULT_USER_AGENT
 from src.shared.recruiterbox import (
     recruiterbox_board_from_metadata,
     recruiterbox_board_from_url,
@@ -661,6 +667,58 @@ async def _probe_recruiterbox(row: dict, client: httpx.AsyncClient) -> ProbeResu
     return _classify(row, "recruiterbox", url, resp)
 
 
+async def _probe_beisen(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = beisen_board_from_metadata(cfg)
+    direct = beisen_board_from_url(row["board_url"])
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "beisen",
+            row["board_url"],
+            "warn",
+            "no valid tenant or portal metadata",
+        )
+    url = board.listing_url() if configured and configured.variant == "legacy" else board.root_url()
+    resp = await _retry(
+        lambda: _get(
+            client,
+            url,
+            follow_redirects=False,
+            headers={"User-Agent": DEFAULT_USER_AGENT, "Accept": DEFAULT_ACCEPT},
+        )
+    )
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        if configured and configured.variant == "legacy":
+            valid = "new_zhiye_com" in resp.text
+            disabled = False
+        else:
+            try:
+                bootstrap = extract_beisen_bootstrap(resp.text, board.tenant)
+            except ValueError as exc:
+                return ProbeResult(row["board_slug"], "beisen", url, "warn", str(exc))
+            valid = bootstrap is not None
+            disabled = bootstrap is not None and not bootstrap[1]
+        if disabled:
+            return ProbeResult(row["board_slug"], "beisen", url, "fail", "portal disabled")
+        if not valid:
+            return ProbeResult(
+                row["board_slug"],
+                "beisen",
+                url,
+                "warn",
+                "Beisen portal marker missing",
+            )
+        return ProbeResult(row["board_slug"], "beisen", url, "ok", "200")
+    return _classify(row, "beisen", url, resp)
+
+
 async def _probe_rippling(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     slug = _token_from_config(row["monitor_config"], "slug", "token")
     if not slug:
@@ -774,6 +832,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "lever": _probe_lever,
     "ashby": _probe_ashby,
     "bamboohr": _probe_bamboohr,
+    "beisen": _probe_beisen,
     "paycom": _probe_paycom,
     "jazzhr": _probe_jazzhr,
     "icims": _probe_icims,

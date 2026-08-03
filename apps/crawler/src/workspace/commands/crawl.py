@@ -912,6 +912,7 @@ _MONITOR_CONFIG_HINTS = {
     "join": "Optional: slug (auto-derived from join.com URL), description_path(s)",
     "ashby": "Requires: token (auto-filled from probe)",
     "bamboohr": "Requires: tenant (auto-filled from a BambooHR careers URL)",
+    "beisen": "Requires: tenant + portal variant (auto-filled from a *.zhiye.com URL)",
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "icims": "Requires: host (auto-filled from an icims.com URL)",

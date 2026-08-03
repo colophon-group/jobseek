@@ -238,6 +238,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "lever",
         "ashby",
         "bamboohr",
+        "beisen",
         "cornerstone",
         "dayforce",
         "paycom",
@@ -278,6 +279,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
 _KNOWN_ATS_DOMAIN_SUFFIXES = (
     ".csod.com",
     ".gupy.io",
+    ".zhiye.com",
     ".recruiterbox.com",
     ".hire.trakstar.com",
 )
