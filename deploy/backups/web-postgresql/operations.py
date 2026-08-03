@@ -47,6 +47,13 @@ ARTIFACT_PATHS = {
     "service": Path("/etc/systemd/system/jobseek-web-postgresql-backup.service"),
     "timer": Path("/etc/systemd/system/jobseek-web-postgresql-backup.timer"),
 }
+ARTIFACT_MODES = {
+    "data_backup": 0o755,
+    "operations": 0o755,
+    "restore_drill": 0o755,
+    "service": 0o644,
+    "timer": 0o644,
+}
 BACKUP_FIELDS = (
     "archive_bytes",
     "archive_sha256",
@@ -138,25 +145,20 @@ def new_restore_resources() -> RestoreResources:
 def docker_resource_absent(kind: str, name: str) -> bool:
     if kind not in {"container", "network"}:
         raise OperationError("restore cleanup resource kind is invalid")
-    inspected = subprocess.run(
-        ["docker", kind, "inspect", name],
+    arguments = ["docker", kind, "ls"]
+    if kind == "container":
+        arguments.append("--all")
+    arguments.extend(("--format", "{{.Names}}" if kind == "container" else "{{.Name}}"))
+    inventory = subprocess.run(
+        arguments,
         check=False,
         capture_output=True,
         text=True,
         timeout=30,
     )
-    if inspected.returncode == 0:
-        return False
-    daemon = subprocess.run(
-        ["docker", "info", "--format", "{{.ServerVersion}}"],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    if daemon.returncode:
-        raise OperationError("Docker availability cannot be proven during restore cleanup")
-    return True
+    if inventory.returncode:
+        raise OperationError("Docker resource inventory is unavailable during restore cleanup")
+    return name not in inventory.stdout.splitlines()
 
 
 def listed_restore_resources(kind: str) -> list[str]:
@@ -448,6 +450,7 @@ def validate_identity(expected: ExpectedIdentity) -> dict[str, str]:
         not re.fullmatch(r"[0-9a-f]{64}", digest) for digest in expected.artifact_sha256.values()
     ):
         raise OperationError("expected artifact digest is invalid")
+    require_root_regular_file(DEPLOYED_SHA_PATH, mode=0o644)
     try:
         deployed_sha = DEPLOYED_SHA_PATH.read_text(encoding="utf-8").strip()
     except OSError as exc:
@@ -455,6 +458,7 @@ def validate_identity(expected: ExpectedIdentity) -> dict[str, str]:
     if deployed_sha != expected.deploy_sha:
         raise OperationError("installed backup revision does not match this dispatch")
     for name, path in ARTIFACT_PATHS.items():
+        require_root_regular_file(path, mode=ARTIFACT_MODES[name])
         try:
             actual = sha256_file(path)
         except OSError as exc:
@@ -481,7 +485,7 @@ def timer_state() -> tuple[str, str]:
     return systemctl_state("is-enabled", TIMER_UNIT), systemctl_state("is-active", TIMER_UNIT)
 
 
-def require_private_regular_file(path: Path) -> None:
+def require_root_regular_file(path: Path, *, mode: int) -> None:
     try:
         metadata = path.lstat()
     except OSError as exc:
@@ -491,9 +495,38 @@ def require_private_regular_file(path: Path) -> None:
         or stat.S_ISLNK(metadata.st_mode)
         or metadata.st_uid != 0
         or metadata.st_gid != 0
-        or stat.S_IMODE(metadata.st_mode) != 0o600
+        or stat.S_IMODE(metadata.st_mode) != mode
     ):
         raise OperationError(f"required root-only file is unsafe: {path.name}")
+
+
+def require_private_regular_file(path: Path) -> None:
+    require_root_regular_file(path, mode=0o600)
+
+
+def validate_loaded_unit(unit: str, expected_path: Path) -> None:
+    output = run_checked(
+        [
+            "systemctl",
+            "show",
+            unit,
+            "--property=FragmentPath",
+            "--property=DropInPaths",
+            "--property=NeedDaemonReload",
+        ]
+    )
+    properties: dict[str, str] = {}
+    for line in output.splitlines():
+        key, separator, value = line.partition("=")
+        if not separator or key in properties:
+            raise OperationError(f"loaded systemd unit metadata is invalid: {unit}")
+        properties[key] = value
+    if properties != {
+        "FragmentPath": str(expected_path),
+        "DropInPaths": "",
+        "NeedDaemonReload": "no",
+    }:
+        raise OperationError(f"loaded systemd unit does not match reviewed artifact: {unit}")
 
 
 def validate_host_readiness(expected: ExpectedIdentity) -> None:
@@ -523,13 +556,18 @@ def validate_host_readiness(expected: ExpectedIdentity) -> None:
         raise OperationError("web database credential is not a PostgreSQL URI") from exc
     if parsed.scheme not in {"postgres", "postgresql"} or not hostname:
         raise OperationError("web database credential is not a PostgreSQL URI")
-    for command in ("docker", "flock", "restic", "systemctl"):
+    for command in ("docker", "flock", "restic", "systemctl", "systemd-analyze"):
         if not command_succeeds(["sh", "-ceu", f"command -v {command} >/dev/null"]):
             raise OperationError(f"required host command is unavailable: {command}")
     if not command_succeeds(["systemctl", "is-active", "--quiet", "docker.service"]):
         raise OperationError("Docker is not active")
-    run_checked(["systemctl", "cat", BACKUP_UNIT])
-    run_checked(["systemctl", "cat", TIMER_UNIT])
+    for unit, path in (
+        (BACKUP_UNIT, ARTIFACT_PATHS["service"]),
+        (TIMER_UNIT, ARTIFACT_PATHS["timer"]),
+    ):
+        validate_loaded_unit(unit, path)
+        run_checked(["systemctl", "cat", unit])
+        run_checked(["systemd-analyze", "verify", str(path)])
     run_checked(["docker", "image", "inspect", RESTORE_IMAGE])
     repository_output = run_checked(
         [

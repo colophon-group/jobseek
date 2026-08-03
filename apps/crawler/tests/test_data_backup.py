@@ -36,7 +36,12 @@ def shell_function(script: str, name: str) -> str:
 
 
 def run_mocked_restore_cleanup(
-    tmp_path: Path, *, container_inspect_status: int, daemon_status: int = 0
+    tmp_path: Path,
+    *,
+    container_inventory: str = "",
+    container_inventory_status: int = 0,
+    network_inventory: str = "",
+    network_inventory_status: int = 0,
 ) -> tuple[subprocess.CompletedProcess[str], str]:
     restore_script = RESTORE_SCRIPT_PATH.read_text(encoding="utf-8")
     fake_bin = tmp_path / "bin"
@@ -46,9 +51,14 @@ def run_mocked_restore_cleanup(
         """#!/bin/sh
 case "$1:$2" in
   rm:-f|network:rm) exit 1 ;;
-  container:inspect) exit "$MOCK_CONTAINER_INSPECT_STATUS" ;;
-  network:inspect) exit 1 ;;
-  info:--format) exit "$MOCK_DAEMON_STATUS" ;;
+  container:ls)
+    printf '%s' "$MOCK_CONTAINER_INVENTORY"
+    exit "$MOCK_CONTAINER_INVENTORY_STATUS"
+    ;;
+  network:ls)
+    printf '%s' "$MOCK_NETWORK_INVENTORY"
+    exit "$MOCK_NETWORK_INVENTORY_STATUS"
+    ;;
   *) exit 2 ;;
 esac
 """,
@@ -81,8 +91,10 @@ esac
         env={
             **os.environ,
             "PATH": f"{fake_bin}:{os.environ['PATH']}",
-            "MOCK_CONTAINER_INSPECT_STATUS": str(container_inspect_status),
-            "MOCK_DAEMON_STATUS": str(daemon_status),
+            "MOCK_CONTAINER_INVENTORY": container_inventory,
+            "MOCK_CONTAINER_INVENTORY_STATUS": str(container_inventory_status),
+            "MOCK_NETWORK_INVENTORY": network_inventory,
+            "MOCK_NETWORK_INVENTORY_STATUS": str(network_inventory_status),
             "STATUS_CAPTURE": str(status_capture),
             "TEST_RESTORE_PATH": str(restore_path),
             "TEST_CREDENTIAL_PATH": str(credential_path),
@@ -662,10 +674,7 @@ def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> No
 def test_restore_cleanup_accepts_failed_remove_only_after_proving_absence(
     tmp_path: Path,
 ) -> None:
-    result, status = run_mocked_restore_cleanup(
-        tmp_path,
-        container_inspect_status=1,
-    )
+    result, status = run_mocked_restore_cleanup(tmp_path)
 
     assert result.returncode == 0
     assert status == "true"
@@ -674,7 +683,17 @@ def test_restore_cleanup_accepts_failed_remove_only_after_proving_absence(
 def test_restore_cleanup_rejects_success_when_container_remains(tmp_path: Path) -> None:
     result, status = run_mocked_restore_cleanup(
         tmp_path,
-        container_inspect_status=0,
+        container_inventory="unrelated\ntest-restore\n",
+    )
+
+    assert result.returncode == 1
+    assert status == "false"
+
+
+def test_restore_cleanup_rejects_inventory_transport_failure(tmp_path: Path) -> None:
+    result, status = run_mocked_restore_cleanup(
+        tmp_path,
+        container_inventory_status=1,
     )
 
     assert result.returncode == 1

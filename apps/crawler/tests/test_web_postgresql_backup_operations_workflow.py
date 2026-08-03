@@ -145,6 +145,10 @@ def test_dispatch_is_bound_to_reviewed_revision_and_installed_helper() -> None:
         assert f"{output}:" in authorize
         assert f"--expected-{output.replace('_', '-')}" in operate
     assert "/usr/local/sbin/jobseek-web-postgresql-operations" in operate
+    assert "test ! -L /usr/local/sbin/jobseek-web-postgresql-operations" in operate
+    assert "stat -c '%U:%G:%a' /usr/local/sbin/jobseek-web-postgresql-operations" in operate
+    assert "test \\\"\\${operations_hash%% *}\\\" = '$EXPECTED_OPERATIONS_SHA256'" in operate
+    assert "exec /usr/local/sbin/jobseek-web-postgresql-operations" in operate
     assert "/usr/local/sbin/jobseek-web-postgresql-operations" in installer
     assert '"/var/lib/jobseek-backup/${SERVICE}-deployed-sha"' in installer
     assert "'.github/workflows/operate-web-postgresql-backup.yml'" in deploy

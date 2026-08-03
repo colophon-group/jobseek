@@ -46,6 +46,7 @@ def test_identity_requires_exact_deployed_revision_and_every_artifact(
     )
     monkeypatch.setattr(operations, "DEPLOYED_SHA_PATH", deployed_path)
     monkeypatch.setattr(operations, "ARTIFACT_PATHS", artifacts)
+    monkeypatch.setattr(operations, "require_root_regular_file", lambda *_args, **_kwargs: None)
 
     actual = operations.validate_identity(expected)
 
@@ -55,6 +56,44 @@ def test_identity_requires_exact_deployed_revision_and_every_artifact(
     artifacts["restore_drill"].write_text("tampered\n", encoding="utf-8")
     with pytest.raises(operations.OperationError, match="restore_drill"):
         operations.validate_identity(expected)
+
+
+def test_root_artifact_boundary_rejects_nonroot_or_writable_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    operations = load_operations()
+
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _path: type(
+            "Metadata",
+            (),
+            {"st_mode": operations.stat.S_IFREG | 0o775, "st_uid": 0, "st_gid": 0},
+        )(),
+    )
+
+    with pytest.raises(operations.OperationError, match="unsafe"):
+        operations.require_root_regular_file(Path("/installed/helper"), mode=0o755)
+
+
+def test_loaded_unit_rejects_drop_ins_or_daemon_reload_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    operations = load_operations()
+    expected_path = Path("/etc/systemd/system/jobseek-web-postgresql-backup.service")
+    monkeypatch.setattr(
+        operations,
+        "run_checked",
+        lambda *_args, **_kwargs: (
+            f"FragmentPath={expected_path}\n"
+            "DropInPaths=/etc/systemd/system/jobseek-web-postgresql-backup.service.d/override.conf\n"
+            "NeedDaemonReload=yes\n"
+        ),
+    )
+
+    with pytest.raises(operations.OperationError, match="does not match reviewed artifact"):
+        operations.validate_loaded_unit(operations.BACKUP_UNIT, expected_path)
 
 
 def test_enable_timer_requires_disabled_and_inactive_before_mutation(
@@ -478,12 +517,10 @@ def test_outer_restore_reconciliation_removes_files_and_rejects_residual_contain
     )
 
     def fake_run(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        if argv[:3] == ["docker", "container", "inspect"]:
-            return subprocess.CompletedProcess(argv, 0, "container-id", "")
-        if argv[:3] == ["docker", "network", "inspect"]:
-            return subprocess.CompletedProcess(argv, 1, "", "not found")
-        if argv[:2] == ["docker", "info"]:
-            return subprocess.CompletedProcess(argv, 0, "27.1", "")
+        if argv[:3] == ["docker", "container", "ls"]:
+            return subprocess.CompletedProcess(argv, 0, resources.container + "\n", "")
+        if argv[:3] == ["docker", "network", "ls"]:
+            return subprocess.CompletedProcess(argv, 0, "", "")
         return subprocess.CompletedProcess(argv, 1, "", "remove failed")
 
     monkeypatch.setattr(operations.subprocess, "run", fake_run)
@@ -492,6 +529,20 @@ def test_outer_restore_reconciliation_removes_files_and_rejects_residual_contain
         operations.reconcile_restore_resources(resources)
 
     assert not operation_root.exists()
+
+
+def test_restore_cleanup_rejects_failed_docker_inventory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    operations = load_operations()
+    monkeypatch.setattr(
+        operations.subprocess,
+        "run",
+        lambda argv, **_kwargs: subprocess.CompletedProcess(argv, 1, "", "transient error"),
+    )
+
+    with pytest.raises(operations.OperationError, match="inventory is unavailable"):
+        operations.docker_resource_absent("container", "test-restore")
 
 
 def test_next_restore_reconciles_only_service_labeled_stale_resources_under_lock(

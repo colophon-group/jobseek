@@ -74,13 +74,24 @@ PY
 
 docker_resource_absent() {
   local kind="$1" name="$2"
-  if docker "$kind" inspect "$name" >/dev/null 2>&1; then
-    return 1
-  fi
-  # Distinguish an absent resource from an inspect failure caused by an
-  # unavailable daemon. Only a reachable daemon plus failed inspect proves
-  # that the named resource no longer exists.
-  docker info --format '{{.ServerVersion}}' >/dev/null 2>&1
+  local inventory resource
+  case "$kind" in
+    container)
+      inventory="$(docker container ls --all --format '{{.Names}}')" || return 2
+      ;;
+    network)
+      inventory="$(docker network ls --format '{{.Name}}')" || return 2
+      ;;
+    *)
+      return 2
+      ;;
+  esac
+  while IFS= read -r resource; do
+    if [[ "$resource" == "$name" ]]; then
+      return 1
+    fi
+  done <<<"$inventory"
+  return 0
 }
 
 cleanup() {
