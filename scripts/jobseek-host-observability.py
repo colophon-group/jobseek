@@ -25,6 +25,8 @@ UTC = timezone.utc  # noqa: UP017 - crawler host system Python is 3.10.
 DEFAULT_TEXTFILE = Path("/var/lib/jobseek-observability/textfile/jobseek-host.prom")
 DEFAULT_STATE_DIR = Path("/var/lib/jobseek-observability/state")
 DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
+POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
+POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
 MAX_LOG_LINES = 200
 ALLOY_METRICS = {
     "alloy_resources_process_resident_memory_bytes": ("resident_memory_bytes", "max"),
@@ -83,6 +85,7 @@ ROLE_UNITS = {
         "docker.service",
         "jobseek-postgresql-backup-repository.service",
         "jobseek-postgresql-backup.timer",
+        "jobseek-postgresql-emergency-headroom.service",
     ),
     "typesense": (
         "docker.service",
@@ -105,6 +108,19 @@ _IP_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 _UUID_RE = re.compile(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
 _EMAIL_RE = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
 _ERROR_RE = re.compile(r"(?i)\b(error|fatal|panic|exception|oom|killed|failed)\b")
+_TYPESENSE_THREADPOOL_RE = re.compile(
+    r"Threadpool exhaustion detected, task_queue_len: (\d+), thread_pool_len: (\d+)"
+)
+_TYPESENSE_SLOW_REQUEST_RE = re.compile(r"event=slow_request, time=(\d+) ms")
+_TYPESENSE_LOG_EVENT_PATTERNS = {
+    "descriptor_exhaustion": re.compile(r"Too many open files", re.IGNORECASE),
+    "leaderless": re.compile(r"Node with no leader|state ERROR, can't reset_peer", re.IGNORECASE),
+    "snapshot_failure": re.compile(
+        r"Timed snapshot failed|SnapshotWriter|SnapshotError", re.IGNORECASE
+    ),
+    "slow_request": _TYPESENSE_SLOW_REQUEST_RE,
+    "threadpool_exhaustion": _TYPESENSE_THREADPOOL_RE,
+}
 
 
 class ProbeError(RuntimeError):
@@ -328,7 +344,43 @@ def _collect_postgresql_shared_memory_metrics(lines: list[str], container: str) 
     )
 
 
+def _collect_postgresql_emergency_reserve_metrics(lines: list[str], container: str) -> None:
+    source = _run(
+        [
+            "docker",
+            "inspect",
+            "--format",
+            '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}'
+            "{{.Source}}{{end}}{{end}}",
+            container,
+        ],
+        timeout=30,
+    ).stdout.strip()
+    if not source:
+        raise ProbeError("PostgreSQL data bind mount was not found")
+    mount = _run(["findmnt", "-n", "-o", "TARGET", "--target", source], timeout=30).stdout.strip()
+    if not mount.startswith("/mnt/"):
+        raise ProbeError("PostgreSQL data filesystem has an unexpected mountpoint")
+    reserve = Path(mount) / POSTGRES_EMERGENCY_RESERVE_NAME
+    lines.append(
+        _metric(
+            "jobseek_postgresql_emergency_reserve_target_bytes",
+            POSTGRES_EMERGENCY_RESERVE_BYTES,
+        )
+    )
+    try:
+        metadata = reserve.lstat()
+    except FileNotFoundError:
+        lines.append(_metric("jobseek_postgresql_emergency_reserve_bytes", 0))
+        return
+    if reserve.is_symlink() or not reserve.is_file():
+        raise ProbeError("PostgreSQL emergency reserve is not a regular file")
+    allocated = metadata.st_blocks * 512
+    lines.append(_metric("jobseek_postgresql_emergency_reserve_bytes", allocated))
+
+
 def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -> None:
+    _collect_postgresql_emergency_reserve_metrics(lines, container)
     _collect_postgresql_shared_memory_metrics(lines, container)
     ready = subprocess.run(
         [
@@ -488,7 +540,86 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
         raise ProbeError("reconciliation run query returned a non-numeric value") from exc
 
 
-def _collect_typesense_metrics(lines: list[str]) -> None:
+def _parse_typesense_nofile_limits(raw: str) -> tuple[int, int]:
+    for line in raw.splitlines():
+        if line.startswith("Max open files"):
+            fields = line.split()
+            try:
+                return int(fields[3]), int(fields[4])
+            except (IndexError, ValueError) as exc:
+                raise ProbeError("Typesense nofile limits were not numeric") from exc
+    raise ProbeError("Typesense process limits omitted Max open files")
+
+
+def _parse_typesense_log_metrics(raw: str) -> dict[str, int]:
+    queue_depths = [int(match.group(1)) for match in _TYPESENSE_THREADPOOL_RE.finditer(raw)]
+    slow_requests = [int(match.group(1)) for match in _TYPESENSE_SLOW_REQUEST_RE.finditer(raw)]
+    metrics = {
+        "threadpool_queue_depth": max(queue_depths, default=0),
+        "slow_request_max_milliseconds": max(slow_requests, default=0),
+    }
+    metrics.update(
+        {
+            f"event_{event}": sum(1 for line in raw.splitlines() if pattern.search(line))
+            for event, pattern in _TYPESENSE_LOG_EVENT_PATTERNS.items()
+        }
+    )
+    return metrics
+
+
+def _collect_typesense_metrics(
+    lines: list[str],
+    container: str = "typesense",
+    proc_root: Path = Path("/proc"),
+) -> None:
+    try:
+        inspected = json.loads(_run(["docker", "inspect", container]).stdout)[0]
+        pid = int(inspected["State"]["Pid"])
+    except (IndexError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise ProbeError("Typesense container inspect returned an unexpected shape") from exc
+    process_root = proc_root / str(pid)
+    try:
+        nofile_soft, nofile_hard = _parse_typesense_nofile_limits(
+            (process_root / "limits").read_text(encoding="utf-8")
+        )
+        open_fds = sum(1 for _entry in (process_root / "fd").iterdir())
+        status = (process_root / "status").read_text(encoding="utf-8")
+        threads_match = re.search(r"^Threads:\s+(\d+)$", status, re.MULTILINE)
+        if threads_match is None:
+            raise ProbeError("Typesense process status omitted Threads")
+        threads = int(threads_match.group(1))
+    except OSError as exc:
+        raise ProbeError("Typesense process metrics were unreadable") from exc
+    log_result = _run(
+        ["docker", "logs", "--since", "5m", "--tail", "5000", container],
+        timeout=30,
+    )
+    recent_logs = "\n".join(part for part in (log_result.stdout, log_result.stderr) if part)
+    log_metrics = _parse_typesense_log_metrics(recent_logs)
+    lines.extend(
+        (
+            _metric("jobseek_typesense_open_file_descriptors", open_fds),
+            _metric("jobseek_typesense_nofile_soft_limit", nofile_soft),
+            _metric("jobseek_typesense_nofile_hard_limit", nofile_hard),
+            _metric("jobseek_typesense_threads", threads),
+            _metric(
+                "jobseek_typesense_threadpool_queue_depth",
+                log_metrics["threadpool_queue_depth"],
+            ),
+            _metric(
+                "jobseek_typesense_slow_request_max_milliseconds",
+                log_metrics["slow_request_max_milliseconds"],
+            ),
+        )
+    )
+    for event in sorted(_TYPESENSE_LOG_EVENT_PATTERNS):
+        lines.append(
+            _metric(
+                "jobseek_typesense_recent_log_events",
+                log_metrics[f"event_{event}"],
+                event=event,
+            )
+        )
     try:
         with urllib.request.urlopen("http://127.0.0.1:8108/health", timeout=10) as response:  # noqa: S310
             payload = json.loads(response.read().decode("utf-8"))

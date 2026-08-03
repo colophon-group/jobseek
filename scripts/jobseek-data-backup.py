@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -27,6 +28,12 @@ from pathlib import Path
 from typing import Any
 
 STATUS_DIR = Path(os.environ.get("BACKUP_STATUS_DIR", "/var/lib/jobseek-backup/status"))
+POSTGRES_RETENTION_OPTIONS = (
+    "--repo1-retention-full=4",
+    "--repo1-retention-diff=7",
+    "--repo1-retention-archive=2",
+    "--repo1-retention-archive-type=diff",
+)
 _REDACTIONS = (
     (
         re.compile(r"(?i)(api[-_ ]?key|password|secret|token)([=: ]+)[^\s,;]+"),
@@ -66,9 +73,7 @@ def run_checked(
         timeout=timeout,
     )
     if completed.returncode:
-        output = "\n".join(
-            part for part in (completed.stdout, completed.stderr) if part
-        )
+        output = "\n".join(part for part in (completed.stdout, completed.stderr) if part)
         raise BackupError(f"{argv[0]} exited {completed.returncode}: {redact(output)}")
     return completed
 
@@ -90,9 +95,7 @@ def read_previous_status(service: str, status_dir: Path = STATUS_DIR) -> dict[st
     return data if isinstance(data, dict) else {}
 
 
-def write_status(
-    service: str, record: dict[str, Any], status_dir: Path = STATUS_DIR
-) -> None:
+def write_status(service: str, record: dict[str, Any], status_dir: Path = STATUS_DIR) -> None:
     atomic_write(
         status_dir / f"{service}.json",
         json.dumps(record, indent=2, sort_keys=True) + "\n",
@@ -177,6 +180,182 @@ def execute_with_status(
     return record
 
 
+def _postgres_archive_uses_repository_lock(container: str) -> bool:
+    inspected = subprocess.run(
+        ["docker", "inspect", "--format", "{{json .Config.Cmd}}", container],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    return (
+        inspected.returncode == 0
+        and "flock -s /var/spool/pgbackrest/repository.lock" in inspected.stdout
+    )
+
+
+def _archive_push_active() -> bool:
+    processes = subprocess.run(
+        ["ps", "-eo", "args="],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if processes.returncode:
+        raise BackupError("unable to inspect active pgBackRest processes")
+    return any(
+        line.strip().startswith("pgbackrest ") and "archive-push" in line
+        for line in processes.stdout.splitlines()
+    )
+
+
+@contextmanager
+def postgres_archive_hold(spool_dir: Path, container: str):
+    """Pause new archive-push commands while repository expiration owns I/O."""
+
+    sentinel = spool_dir / "archive-enabled"
+    hold = spool_dir / "archive-enabled.retention-hold"
+    repository_lock = spool_dir / "repository.lock"
+    if sentinel.is_symlink():
+        raise BackupError("the PostgreSQL archive sentinel is unsafe")
+    enabled = sentinel.exists()
+    drain_seconds = float(os.environ.get("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "60"))
+    if not 0 <= drain_seconds <= 600:
+        raise BackupError("PGBACKREST_ARCHIVE_DRAIN_SECONDS must be between 0 and 600")
+    if hold.exists() or hold.is_symlink():
+        raise BackupError("a PostgreSQL archive-retention hold already exists")
+    if enabled and not sentinel.is_file():
+        raise BackupError("the PostgreSQL archive sentinel is unsafe")
+    archive_uses_lock = _postgres_archive_uses_repository_lock(container)
+    lock_existed = repository_lock.exists()
+    if repository_lock.is_symlink():
+        raise BackupError("the pgBackRest repository lock is unsafe")
+    descriptor = os.open(
+        repository_lock,
+        os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
+        0o600,
+    )
+    lock_metadata = os.fstat(descriptor)
+    if not stat.S_ISREG(lock_metadata.st_mode) or lock_metadata.st_nlink != 1:
+        os.close(descriptor)
+        raise BackupError("the pgBackRest repository lock is unsafe")
+    spool_metadata = spool_dir.stat()
+    if not lock_existed:
+        os.fchown(descriptor, spool_metadata.st_uid, spool_metadata.st_gid)
+        os.fchmod(descriptor, 0o600)
+    elif (
+        lock_metadata.st_uid != spool_metadata.st_uid
+        or lock_metadata.st_gid != spool_metadata.st_gid
+        or stat.S_IMODE(lock_metadata.st_mode) != 0o600
+    ):
+        os.close(descriptor)
+        raise BackupError("the pgBackRest repository lock ownership or mode is unsafe")
+    sentinel_held = False
+    try:
+        if enabled and not archive_uses_lock:
+            sentinel.rename(hold)
+            sentinel_held = True
+            # Close the race with an archive_command that passed its sentinel
+            # check immediately before the atomic rename, then wait out any
+            # archive-push worker already using the repository.
+            time.sleep(min(drain_seconds, 2))
+        deadline = time.monotonic() + max(0, drain_seconds - 2)
+        while True:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise BackupError(
+                        "timed out acquiring the pgBackRest repository lock"
+                    ) from None
+                time.sleep(1)
+        if not archive_uses_lock:
+            while True:
+                if not _archive_push_active():
+                    break
+                if time.monotonic() >= deadline:
+                    raise BackupError("timed out draining active PostgreSQL archive-push workers")
+                time.sleep(1)
+        yield
+    finally:
+        os.close(descriptor)
+        if sentinel_held:
+            if hold.is_symlink() or not hold.is_file():
+                raise BackupError("the PostgreSQL archive-retention hold was altered")
+            if sentinel.exists() or sentinel.is_symlink():
+                raise BackupError("the PostgreSQL archive sentinel changed during retention")
+            hold.replace(sentinel)
+
+
+def postgres_expire_archives(stanza: str) -> dict[str, int | float]:
+    """Expire obsolete WAL without depending on the live database container.
+
+    The repository can fill while PostgreSQL is unavailable. Running expiration
+    in a networkless one-shot container before the database health gate keeps
+    that failure recoverable and applies the reviewed retention contract even
+    if a root-only host config has not yet been reconciled.
+    """
+
+    image = os.environ.get("PGBACKREST_IMAGE", "jobseek-postgres:16-pgbackrest")
+    config_dir = Path(os.environ.get("PGBACKREST_CONFIG_DIR", "/etc/jobseek-backup/postgresql"))
+    repository_dir = Path(
+        os.environ.get("PGBACKREST_REPOSITORY_DIR", "/mnt/jobseek-postgresql-backups")
+    )
+    spool_dir = Path(
+        os.environ.get("PGBACKREST_SPOOL_DIR", "/var/lib/jobseek-backup/postgresql/spool")
+    )
+    container = os.environ.get("POSTGRES_CONTAINER", "postgres")
+    with postgres_archive_hold(spool_dir, container):
+        run_checked(
+            [
+                "docker",
+                "run",
+                "--rm",
+                "--network",
+                "none",
+                "--read-only",
+                "--user",
+                "postgres",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "--memory",
+                "512m",
+                "--cpus",
+                "1.0",
+                "--pids-limit",
+                "64",
+                "--tmpfs",
+                "/tmp:rw,noexec,nosuid,nodev,size=64m",
+                "--entrypoint",
+                "pgbackrest",
+                "--volume",
+                f"{config_dir}:/etc/jobseek-backup:ro",
+                "--volume",
+                f"{config_dir / 'pgbackrest.conf'}:/etc/pgbackrest/pgbackrest.conf:ro",
+                "--volume",
+                f"{spool_dir}:/var/spool/pgbackrest:ro",
+                "--volume",
+                f"{repository_dir}:{repository_dir}",
+                image,
+                f"--stanza={stanza}",
+                "--log-level-file=off",
+                *POSTGRES_RETENTION_OPTIONS,
+                "expire",
+            ],
+            timeout=7_200,
+        )
+    usage = shutil.disk_usage(repository_dir)
+    return {
+        "repository_capacity_bytes": usage.total,
+        "repository_available_bytes": usage.free,
+        "repository_available_ratio": usage.free / usage.total,
+    }
+
+
 def postgres_backup(backup_type: str) -> dict[str, Any]:
     container = os.environ.get("POSTGRES_CONTAINER", "postgres")
     stanza = os.environ.get("PGBACKREST_STANZA", "jobseek")
@@ -184,6 +363,8 @@ def postgres_backup(backup_type: str) -> dict[str, Any]:
         backup_type = "full" if utc_now().isoweekday() == 7 else "diff"
     if backup_type not in {"full", "diff", "incr"}:
         raise BackupError(f"unsupported PostgreSQL backup type: {backup_type}")
+
+    retention = postgres_expire_archives(stanza)
 
     running = run_checked(
         ["docker", "inspect", "--format", "{{.State.Running}}", container], timeout=30
@@ -201,7 +382,15 @@ def postgres_backup(backup_type: str) -> dict[str, Any]:
         f"--stanza={stanza}",
     ]
     run_checked([*base, "check"], timeout=900)
-    run_checked([*base, f"--type={backup_type}", "backup"], timeout=43_200)
+    run_checked(
+        [
+            *base,
+            *POSTGRES_RETENTION_OPTIONS,
+            f"--type={backup_type}",
+            "backup",
+        ],
+        timeout=43_200,
+    )
     run_checked([*base, "check"], timeout=1_800)
     info_output = run_checked([*base, "--output=json", "info"], timeout=300).stdout
 
@@ -214,14 +403,13 @@ def postgres_backup(backup_type: str) -> dict[str, Any]:
         raise BackupError("pgBackRest returned no parseable completed backup") from exc
 
     return {
+        **retention,
         "backup_type": latest.get("type", backup_type),
         "backup_label": latest.get("label"),
         "backup_database_bytes": latest.get("info", {}).get("size"),
         # pgBackRest 2.59 reports per-backup repository bytes as `delta`;
         # retain the older `size` fallback for compatible package releases.
-        "backup_repository_bytes": repository_info.get(
-            "delta", repository_info.get("size")
-        ),
+        "backup_repository_bytes": repository_info.get("delta", repository_info.get("size")),
         "repository_backup_count": len(backups),
         "repository_latest_stop_unix": latest["timestamp"]["stop"],
     }
@@ -244,18 +432,61 @@ def _snapshot_request(url: str, api_key: str, snapshot_path: str) -> None:
     except json.JSONDecodeError as exc:
         raise BackupError("Typesense snapshot API returned non-JSON output") from exc
     if payload.get("success") is not True:
-        raise BackupError(
-            f"Typesense snapshot API did not report success: {redact(body)}"
-        )
+        raise BackupError(f"Typesense snapshot API did not report success: {redact(body)}")
+
+
+_TYPESENSE_ALIASES = (
+    "company",
+    "job_posting",
+    "location",
+    "occupation",
+    "seniority",
+    "technology",
+    "watchlist",
+)
+
+
+def _typesense_json_get(url: str, api_key: str, path: str) -> dict[str, Any]:
+    request = urllib.request.Request(
+        f"{url.rstrip('/')}{path}",
+        headers={"X-TYPESENSE-API-KEY": api_key},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+            payload = json.load(response)
+    except Exception as exc:
+        raise BackupError(f"Typesense inventory API failed: {redact(str(exc))}") from exc
+    if not isinstance(payload, dict):
+        raise BackupError("Typesense inventory API returned a non-object")
+    return payload
+
+
+def _typesense_inventory(url: str, api_key: str) -> dict[str, Any]:
+    alias_payload = _typesense_json_get(url, api_key, "/aliases")
+    try:
+        aliases = {item["name"]: item["collection_name"] for item in alias_payload["aliases"]}
+    except (KeyError, TypeError) as exc:
+        raise BackupError("Typesense alias inventory returned an unexpected shape") from exc
+    if set(aliases) != set(_TYPESENSE_ALIASES):
+        raise BackupError("Typesense alias inventory is incomplete")
+    collection_documents: dict[str, int] = {}
+    for alias in _TYPESENSE_ALIASES:
+        collection = _typesense_json_get(url, api_key, f"/collections/{alias}")
+        try:
+            count = int(collection["num_documents"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise BackupError(f"Typesense collection inventory is invalid for {alias}") from exc
+        if count < 0:
+            raise BackupError(f"Typesense collection inventory is negative for {alias}")
+        collection_documents[alias] = count
+    return {"aliases": aliases, "collection_documents": collection_documents}
 
 
 def _tree_size(path: Path) -> int:
     return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
 
 
-def _remove_old_staging(
-    staging_root: Path, *, older_than_seconds: int = 172_800
-) -> None:
+def _remove_old_staging(staging_root: Path, *, older_than_seconds: int = 172_800) -> None:
     if not staging_root.exists():
         return
     cutoff = time.time() - older_than_seconds
@@ -292,17 +523,15 @@ def typesense_backup() -> dict[str, Any]:
     if running != "true":
         raise BackupError(f"Typesense container {container!r} is not running")
 
+    inventory_before = _typesense_inventory(url, api_key)
+
     run_id = utc_now().strftime("%Y%m%dT%H%M%SZ")
     container_root = os.environ.get(
         "TYPESENSE_SNAPSHOT_CONTAINER_ROOT", "/tmp/jobseek-typesense-snapshots"
     ).rstrip("/")
     container_path = f"{container_root}/{run_id}"
     staging_root = (
-        Path(
-            os.environ.get(
-                "TYPESENSE_SNAPSHOT_HOST_ROOT", "/var/lib/jobseek-backup/typesense"
-            )
-        )
+        Path(os.environ.get("TYPESENSE_SNAPSHOT_HOST_ROOT", "/var/lib/jobseek-backup/typesense"))
         / "staging"
     )
     local_path = staging_root / run_id
@@ -312,10 +541,11 @@ def typesense_backup() -> dict[str, Any]:
     success = False
 
     try:
-        run_checked(
-            ["docker", "exec", container, "rm", "-rf", "--", container_path], timeout=60
-        )
+        run_checked(["docker", "exec", container, "rm", "-rf", "--", container_path], timeout=60)
         _snapshot_request(url, api_key, container_path)
+        inventory_after = _typesense_inventory(url, api_key)
+        if inventory_after != inventory_before:
+            raise BackupError("Typesense inventory changed while the snapshot was being created")
         run_checked(
             ["docker", "cp", f"{container}:{container_path}/.", str(local_path)],
             timeout=7_200,
@@ -359,24 +589,30 @@ def typesense_backup() -> dict[str, Any]:
         run_checked(_restic_command("check"), env=restic_env, timeout=14_400)
         snapshots_output = run_checked(
             _restic_command(
-                "snapshots", "--json", "--latest", "1", "--tag", "jobseek-typesense"
+                "snapshots",
+                "--json",
+                "--tag",
+                "jobseek-typesense",
+                "--host",
+                "jobseek-typesense",
             ),
             env=restic_env,
             timeout=300,
         ).stdout
         try:
             snapshots = json.loads(snapshots_output)
-            latest_snapshot = snapshots[-1]
-        except (IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise BackupError(
-                "Restic returned no parseable Typesense snapshot"
-            ) from exc
+            latest_snapshot = max(snapshots, key=lambda item: item.get("time") or "")
+        except (IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise BackupError("Restic returned no parseable Typesense snapshot") from exc
         success = True
         return {
             "snapshot_bytes": snapshot_bytes,
             "repository_snapshot_id": latest_snapshot.get("short_id")
             or latest_snapshot.get("id", "")[:8],
             "repository_snapshot_time": latest_snapshot.get("time"),
+            "repository_snapshot_count": len(snapshots),
+            "retention": {"keep_daily": 14, "keep_weekly": 4},
+            **inventory_after,
         }
     finally:
         with suppress(Exception):
@@ -392,9 +628,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="service", required=True)
     postgres = subparsers.add_parser("postgresql")
-    postgres.add_argument(
-        "--backup-type", choices=("auto", "full", "diff", "incr"), default="auto"
-    )
+    postgres.add_argument("--backup-type", choices=("auto", "full", "diff", "incr"), default="auto")
     subparsers.add_parser("typesense")
     return parser
 

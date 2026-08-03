@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -65,6 +66,39 @@ def test_backup_status_is_republished_without_error_text(tmp_path: Path) -> None
     assert "jobseek_backup_last_attempt_success" in content
     assert 'service="postgresql"' in content
     assert "must-not-escape" not in content
+
+
+def test_typesense_process_limit_parser_requires_numeric_nofile() -> None:
+    limits = """Limit                     Soft Limit           Hard Limit           Units
+Max open files            65536                65536                files
+"""
+    assert host._parse_typesense_nofile_limits(limits) == (65_536, 65_536)
+
+    with pytest.raises(host.ProbeError, match="omitted Max open files"):
+        host._parse_typesense_nofile_limits("Max processes 100 100 processes\n")
+
+
+def test_typesense_log_metrics_capture_the_incident_chain() -> None:
+    metrics = host._parse_typesense_log_metrics(
+        "\n".join(
+            (
+                "Threadpool exhaustion detected, task_queue_len: 938, thread_pool_len: 16",
+                "event=slow_request, time=225102 ms, endpoint=GET /collections/example",
+                "Fail to open /proc/self/fd: Too many open files [24]",
+                "Timed snapshot failed, error: Fail to create SnapshotWriter",
+                "Node with no leader. Resetting peers of size: 1",
+                "node default_group is in state ERROR, can't reset_peer",
+            )
+        )
+    )
+
+    assert metrics["threadpool_queue_depth"] == 938
+    assert metrics["slow_request_max_milliseconds"] == 225_102
+    assert metrics["event_threadpool_exhaustion"] == 1
+    assert metrics["event_slow_request"] == 1
+    assert metrics["event_descriptor_exhaustion"] == 1
+    assert metrics["event_snapshot_failure"] == 1
+    assert metrics["event_leaderless"] == 2
 
 
 def test_collect_writes_atomic_failure_metrics(tmp_path: Path, monkeypatch) -> None:
@@ -155,6 +189,16 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: Result())
     monkeypatch.setattr(
         host,
+        "_collect_postgresql_emergency_reserve_metrics",
+        lambda lines, _container: lines.extend(
+            (
+                "jobseek_postgresql_emergency_reserve_target_bytes 2147483648",
+                "jobseek_postgresql_emergency_reserve_bytes 2147483648",
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        host,
         "_collect_postgresql_shared_memory_metrics",
         lambda lines, _container: lines.extend(
             (
@@ -197,6 +241,7 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_postgresql_checkpoint_buffers_total 4000.0" in content
     assert "jobseek_postgresql_stats_reset_unixtime 1800000000.0" in content
     assert "jobseek_postgresql_database_bytes 19000000000.0" in content
+    assert "jobseek_postgresql_emergency_reserve_bytes 2147483648" in content
     assert "jobseek_postgresql_shared_memory_configured_bytes 1073741824" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
     assert 'jobseek_cross_store_reconciliation_last_detected{target="supabase"} 42.0' in content
@@ -214,6 +259,9 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
         returncode = 0
 
     monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: Result())
+    monkeypatch.setattr(
+        host, "_collect_postgresql_emergency_reserve_metrics", lambda _lines, _container: None
+    )
     monkeypatch.setattr(
         host, "_collect_postgresql_shared_memory_metrics", lambda _lines, _container: None
     )
@@ -263,6 +311,32 @@ def test_postgresql_shared_memory_probe_emits_configured_and_live_capacity(
     ]
 
 
+def test_postgresql_emergency_reserve_probe_reports_allocated_bytes(
+    monkeypatch,
+) -> None:
+    class Result:
+        def __init__(self, stdout: str):
+            self.stdout = stdout
+
+    def run(argv, **_kwargs):
+        if argv[:2] == ["docker", "inspect"]:
+            return Result("/mnt/postgresql/pgdata\n")
+        if argv[0] == "findmnt":
+            return Result("/mnt/postgresql\n")
+        raise AssertionError(argv)
+
+    monkeypatch.setattr(host, "_run", run)
+    monkeypatch.setattr(host.Path, "lstat", lambda _self: SimpleNamespace(st_blocks=4_194_304))
+    monkeypatch.setattr(host.Path, "is_file", lambda _self: True)
+    monkeypatch.setattr(host.Path, "is_symlink", lambda _self: False)
+    lines: list[str] = []
+
+    host._collect_postgresql_emergency_reserve_metrics(lines, "postgres")
+
+    assert lines[0] == "jobseek_postgresql_emergency_reserve_target_bytes 2147483648"
+    assert lines[1].startswith("jobseek_postgresql_emergency_reserve_bytes ")
+
+
 def test_cursor_rejects_future_and_old_values(tmp_path: Path) -> None:
     path = tmp_path / "cursor.json"
     path.write_text(json.dumps({"ok": 99_950, "old": 1, "future": 100_001, "bad": "x"}))
@@ -275,11 +349,13 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_hetzner_fleet",
         "jobseek_postgresql_capacity",
         "jobseek_telemetry_delivery",
+        "jobseek_typesense_reliability",
         "jobseek_crawler_reliability",
     }
     assert {group["name"]: len(group["rules"]) for group in groups} == {
         "jobseek_hetzner_fleet": 19,
-        "jobseek_postgresql_capacity": 2,
+        "jobseek_postgresql_capacity": 4,
+        "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 17,
     }

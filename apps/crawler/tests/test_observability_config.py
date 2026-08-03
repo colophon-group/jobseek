@@ -152,6 +152,8 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "PostgreSQLUnavailable",
         "PostgreSQLDataVolumeHeadroomLow",
         "PostgreSQLCheckpointPressure",
+        "PostgreSQLBackupRepositoryHeadroomLow",
+        "PostgreSQLEmergencyHeadroomMissing",
         "PostgreSQLSharedMemoryPressure",
         "PostgreSQLArchiveFailure",
         "TypesenseUnavailable",
@@ -160,6 +162,28 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "RequiredContainerUnavailable",
         "HostRebootRequired",
     } <= names
+
+
+def test_typesense_reliability_alerts_cover_the_incident_chain() -> None:
+    expected = {
+        "TypesenseNofileLimitUnsafe": "jobseek_typesense_nofile_soft_limit",
+        "TypesenseFileDescriptorPressure": "jobseek_typesense_open_file_descriptors",
+        "TypesenseThreadPoolSaturated": "jobseek_typesense_threadpool_queue_depth",
+        "TypesenseSlowRequests": "jobseek_typesense_slow_request_max_milliseconds",
+        "TypesenseDescriptorExhausted": 'event="descriptor_exhaustion"',
+        "TypesenseLeaderless": 'event="leaderless"',
+        "TypesenseSnapshotFailure": 'event="snapshot_failure"',
+    }
+
+    for name, signal in expected.items():
+        rule = _alert_rule(name)
+        assert signal in rule["expr"]
+        assert rule["labels"]["service"] == "typesense"
+        assert rule["labels"]["owner"] == "codex-error-review"
+        assert rule["labels"]["route"] == "codex-daily"
+        assert rule["annotations"]["runbook"].endswith(
+            "docs/16-hetzner-maintenance.md#typesense-readiness-and-raft-recovery"
+        )
 
 
 def test_postgresql_capacity_alert_uses_current_and_forecast_headroom() -> None:
@@ -200,6 +224,27 @@ def test_postgresql_checkpoint_alert_requires_requested_dominance() -> None:
     assert rule["annotations"]["runbook"].endswith(
         "docs/16-hetzner-maintenance.md#postgresql-capacity-and-checkpoint-pressure"
     )
+
+
+def test_postgresql_backup_repository_alert_forecasts_cifs_exhaustion() -> None:
+    rule = _alert_rule("PostgreSQLBackupRepositoryHeadroomLow")
+
+    assert 'host_role="postgresql"' in rule["expr"]
+    assert 'fstype="cifs"' in rule["expr"]
+    assert "< 0.35" in rule["expr"]
+    assert "predict_linear" in rule["expr"]
+    assert "7 * 24 * 60 * 60" in rule["expr"]
+    assert rule["for"] == "30m"
+    assert rule["labels"]["severity"] == "critical"
+
+
+def test_postgresql_emergency_reserve_alert_enforces_allocated_headroom() -> None:
+    rule = _alert_rule("PostgreSQLEmergencyHeadroomMissing")
+
+    assert "jobseek_postgresql_emergency_reserve_bytes" in rule["expr"]
+    assert "jobseek_postgresql_emergency_reserve_target_bytes" in rule["expr"]
+    assert rule["for"] == "5m"
+    assert rule["labels"]["severity"] == "critical"
 
 
 def test_postgresql_shared_memory_alert_enforces_contract_and_capacity() -> None:

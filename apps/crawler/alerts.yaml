@@ -310,6 +310,105 @@ groups:
           description: "The host has required a reboot for at least 24 hours; schedule it through the maintenance runbook."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
+  - name: jobseek_typesense_reliability
+    interval: 30s
+    rules:
+
+      - alert: TypesenseNofileLimitUnsafe
+        expr: |
+          jobseek_typesense_nofile_soft_limit < 65536
+            or jobseek_typesense_nofile_hard_limit < 65536
+        for: 2m
+        labels:
+          severity: critical
+          service: typesense
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Typesense file-descriptor limit is below the managed floor"
+          description: "The live Typesense process has regressed below the required 65,536 soft/hard nofile limit."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#typesense-readiness-and-raft-recovery
+
+      - alert: TypesenseFileDescriptorPressure
+        expr: |
+          jobseek_typesense_open_file_descriptors
+            / jobseek_typesense_nofile_soft_limit > 0.75
+        for: 5m
+        labels:
+          severity: high
+          service: typesense
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Typesense file-descriptor use exceeds 75%"
+          description: "Open files/sockets are approaching the process limit that previously caused Raft snapshot failure."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#typesense-readiness-and-raft-recovery
+
+      - alert: TypesenseThreadPoolSaturated
+        expr: jobseek_typesense_threadpool_queue_depth > 32
+        for: 2m
+        labels:
+          severity: high
+          service: typesense
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Typesense request thread pool is saturated"
+          description: "The five-minute log window reports more than two full 16-thread pools of queued work."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#typesense-readiness-and-raft-recovery
+
+      - alert: TypesenseSlowRequests
+        expr: jobseek_typesense_slow_request_max_milliseconds > 10000
+        for: 2m
+        labels:
+          severity: high
+          service: typesense
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Typesense requests exceed ten seconds"
+          description: "The five-minute log window contains a request slower than ten seconds, an early saturation signal."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#typesense-readiness-and-raft-recovery
+
+      - alert: TypesenseDescriptorExhausted
+        expr: jobseek_typesense_recent_log_events{event="descriptor_exhaustion"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: typesense
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Typesense exhausted its file descriptors"
+          description: "Typesense logged `Too many open files` during the last five minutes. Preserve first-cause logs before restarting."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#typesense-readiness-and-raft-recovery
+
+      - alert: TypesenseLeaderless
+        expr: jobseek_typesense_recent_log_events{event="leaderless"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: typesense
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Typesense Raft node has no leader"
+          description: "The single-node Raft group reported no leader or state ERROR during the last five minutes."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#typesense-readiness-and-raft-recovery
+
+      - alert: TypesenseSnapshotFailure
+        expr: jobseek_typesense_recent_log_events{event="snapshot_failure"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: typesense
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Typesense Raft snapshot failed"
+          description: "Typesense logged a snapshot writer or timed-snapshot failure during the last five minutes."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#typesense-readiness-and-raft-recovery
+
   - name: jobseek_postgresql_capacity
     interval: 30s
     rules:
@@ -410,6 +509,74 @@ groups:
             generation, archive health, checkpoint write/sync time, and the
             data Volume before changing max_wal_size or checkpoint timing.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#postgresql-capacity-and-checkpoint-pressure
+
+      - alert: PostgreSQLBackupRepositoryHeadroomLow
+        expr: |
+          (
+            max(
+              node_filesystem_avail_bytes{
+                job="integrations/unix",
+                host_role="postgresql",
+                fstype="cifs",
+                mountpoint=~"/mnt/.*"
+              }
+            )
+              /
+            max(
+              node_filesystem_size_bytes{
+                job="integrations/unix",
+                host_role="postgresql",
+                fstype="cifs",
+                mountpoint=~"/mnt/.*"
+              }
+            )
+              < 0.35
+          )
+            or
+          (
+            min(
+              predict_linear(
+                node_filesystem_avail_bytes{
+                  job="integrations/unix",
+                  host_role="postgresql",
+                  fstype="cifs",
+                  mountpoint=~"/mnt/.*"
+                }[6h],
+                7 * 24 * 60 * 60
+              )
+            ) < 0
+          )
+        for: 30m
+        labels:
+          severity: critical
+          service: postgresql-backup
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "PostgreSQL backup repository is consuming its safety margin"
+          description: |
+            The encrypted repository is below 35% free or its six-hour trend
+            projects exhaustion within seven days. Verify that bounded archive
+            retention is expiring obsolete WAL before the data Volume fills.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/19-data-backup-recovery.md#postgresql-backup-operation
+
+      - alert: PostgreSQLEmergencyHeadroomMissing
+        expr: |
+          jobseek_postgresql_emergency_reserve_bytes
+            < jobseek_postgresql_emergency_reserve_target_bytes
+        for: 5m
+        labels:
+          severity: critical
+          service: postgresql
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "PostgreSQL recovery reserve is missing or under-allocated"
+          description: |
+            The attached XFS data Volume no longer contains the allocated 2 GiB
+            emergency reserve required to recover archiving and crash replay
+            safely during a capacity incident.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#postgresql-emergency-headroom
 
   - name: jobseek_telemetry_delivery
     interval: 30s
@@ -531,7 +698,6 @@ groups:
           summary: "Grafana active-series budget exceeds 80%"
           description: "The tenant is above 12,000 active series against its 15,000-series limit; identify the growing job before writes are rejected."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
-
   - name: jobseek_crawler_reliability
     interval: 30s
     rules:
