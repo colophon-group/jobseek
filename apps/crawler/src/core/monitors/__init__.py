@@ -718,6 +718,7 @@ from src.core.monitors import (  # noqa: E402
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401
     bamboohr,  # noqa: F401
+    beisen,  # noqa: F401
     bite,  # noqa: F401
     breezy,  # noqa: F401
     comeet,  # noqa: F401

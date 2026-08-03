@@ -78,6 +78,7 @@ Monitor Types (cheapest first):
   adp               10      Full/partial      Auto-enriched
   ashby             10      Full job data     No (skipped)
   bamboohr          10      Full/partial      Auto-enriched
+  beisen            10      Full/partial      Auto skip/DOM enrich
   bite              10      Job URLs          Auto-configured
   breezy            10      Job URLs          Auto-configured
   comeet            10      Full job data     No (skipped)
@@ -1105,6 +1106,31 @@ recruiterbox — Recruiterbox / Trakstar Hire static listing monitor
               branded inactive-account page is treated as BoardGone.
   Upstream:   ats-scrapers is inventory input only. Jobseek does not import,
               execute, or depend on upstream scraper code."""
+
+MONITOR_BEISEN = """\
+beisen — Beisen modern API + legacy static listing monitor
+
+  Modern:  POST https://{tenant}.zhiye.com/api/Jobad/GetJobAdPageList
+  Legacy:  GET  https://{tenant}.zhiye.com/{Social|index}?PageIndex={page}
+  Returns:  Full job data for modern portals; partial rich data for legacy portals
+  Scraper:  Modern is skipped; legacy auto-reuses DOM description enrichment
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs
+
+  Modern config:
+    {"tenant":"acme","variant":"modern","portal_id":"...","tenant_id":123}
+
+  Legacy config:
+    {"tenant":"acme","variant":"legacy","listing_path":"/Social",
+     "legacy_template":"standard"}
+
+  Detection verifies the public portal bootstrap and records its exact generation.
+  Modern discovery uses 1,000-row sequential API pages and needs no per-job fetch.
+  Legacy discovery validates every advertised HTML page, returns title/location/date,
+  and lets the existing DOM scraper enrich only descriptions on newly seen jobs.
+
+  Upstream: ats-scrapers is inventory input only. Jobseek does not import, execute,
+            or depend on upstream scraper code."""
 
 MONITOR_SMARTRECRUITERS = """\
 smartrecruiters — SmartRecruiters Posting API (URL-only)
@@ -2475,6 +2501,7 @@ MONITOR_CARDS: dict[str, str] = {
     "ashby": MONITOR_ASHBY,
     "adp": MONITOR_ADP,
     "bamboohr": MONITOR_BAMBOOHR,
+    "beisen": MONITOR_BEISEN,
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "icims": MONITOR_ICIMS,
