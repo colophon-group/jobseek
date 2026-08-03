@@ -253,6 +253,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "recruiterbox",
         "recruiterbox.com",
         "hire.trakstar.com",
+        "taleo",
         "personio",
         "workday",
         "pinpoint",
@@ -284,6 +285,7 @@ _KNOWN_ATS_DOMAIN_SUFFIXES = (
     ".recruiterbox.com",
     ".hire.trakstar.com",
     ".keka.com",
+    ".tbe.taleo.net",
 )
 
 

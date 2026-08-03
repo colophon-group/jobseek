@@ -779,6 +779,7 @@ def test_probe_registry_covers_expected_types():
         "hrmos",
         "recruitee",
         "recruiterbox",
+        "taleo",
         "rippling",
         "smartrecruiters",
         "workday",
