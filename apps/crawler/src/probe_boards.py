@@ -37,6 +37,7 @@ from src.shared.gupy import normalize_gupy_tenant
 from src.shared.recruiterbox import (
     recruiterbox_board_from_metadata,
     recruiterbox_board_from_url,
+    recruiterbox_inactive_from_html,
     recruiterbox_total_from_html,
 )
 
@@ -631,8 +632,16 @@ async def _probe_recruiterbox(row: dict, client: httpx.AsyncClient) -> ProbeResu
         )
 
     url = board.page_url(1)
-    resp = await _retry(lambda: _get(client, url, follow_redirects=True))
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
     if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        if recruiterbox_inactive_from_html(resp.text):
+            return ProbeResult(
+                row["board_slug"],
+                "recruiterbox",
+                url,
+                "fail",
+                "Recruiterbox account is inactive",
+            )
         total = recruiterbox_total_from_html(resp.text)
         if total is None:
             return ProbeResult(

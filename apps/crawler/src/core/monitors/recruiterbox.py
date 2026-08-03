@@ -24,6 +24,7 @@ from src.shared.recruiterbox import (
     RecruiterboxBoard,
     recruiterbox_board_from_metadata,
     recruiterbox_board_from_url,
+    recruiterbox_inactive_from_html,
     recruiterbox_job_token,
     recruiterbox_total_from_html,
 )
@@ -75,6 +76,11 @@ def _parse_page(
     }
     urls = {board.job_url(token) for token in tokens}
     expected = min(PAGE_SIZE, max(total - ((page - 1) * PAGE_SIZE), 0))
+    if expected > 0 and not urls:
+        raise ValueError(
+            f"Recruiterbox tenant {board.tenant!r} advertised {expected} jobs "
+            f"on page {page} but exposed no valid detail links"
+        )
     return total, urls, len(urls) == expected
 
 
@@ -87,7 +93,9 @@ async def _fetch_page(
     body = await fetch_text_page_with_retry(
         client,
         url,
-        follow_redirects=True,
+        # Identities are canonical before fetching. Refuse redirects so a
+        # tenant cannot cross into another board or a branded error shell.
+        follow_redirects=False,
         retryable_statuses=_TRANSIENT_STATUSES,
         require_nonempty=True,
         max_chars=MAX_HTML_CHARS + 1,
@@ -95,6 +103,8 @@ async def _fetch_page(
     )
     if body is None:
         return None
+    if recruiterbox_inactive_from_html(body):
+        raise BoardGoneError("Recruiterbox account is inactive", url=url)
     _raise_if_bot_challenge(url, body)
     over_html_cap = len(body) > MAX_HTML_CHARS
     total, urls, complete = _parse_page(body[:MAX_HTML_CHARS], board, page=page)
@@ -129,13 +139,16 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
 
     expected = min(first_total, MAX_JOBS)
     truncated = truncated or len(observed_totals) != 1 or len(urls) != expected
-    log.info(
+    log_method = log.warning if truncated else log.info
+    log_method(
         "recruiterbox.discovered",
         tenant=key.tenant,
         jobs=len(urls),
         expected=first_total,
         truncated=truncated,
     )
+    if truncated and not urls:
+        raise ValueError(f"Recruiterbox tenant {key.tenant!r} produced an incomplete empty listing")
     return truncated_url_result(urls) if truncated else urls
 
 
@@ -232,7 +245,7 @@ async def save_raw(
         client,
         key.page_url(1, page_size=PAGE_SIZE),
         filename="recruiterbox-listing.html",
-        follow_redirects=True,
+        follow_redirects=False,
     )
 
 

@@ -13,13 +13,6 @@ _TOTAL_JOBS_RE = re.compile(
     r"(?:\btotal_jobs|['\"]total_jobs['\"])\s*:\s*['\"]?([0-9]{1,9})",
     re.IGNORECASE,
 )
-_JOB_HREF_RE = re.compile(r"""href=["']/jobs/[a-z0-9]{3,64}/?""", re.IGNORECASE)
-_PLATFORM_MARKERS = (
-    "hire.trakstar.com",
-    "trakstar hire",
-    "recruiterbox.com",
-    "rb.init_data",
-)
 _RESERVED_TENANTS = frozenset({"api", "app", "help", "static", "support", "www"})
 
 
@@ -133,13 +126,16 @@ def recruiterbox_job_token(url: str, board: RecruiterboxBoard) -> str | None:
 
 
 def recruiterbox_total_from_html(html: str) -> int | None:
-    """Return the authoritative listing total, including branded empty boards."""
+    """Return the authoritative listing total embedded by active boards."""
     match = _TOTAL_JOBS_RE.search(html)
-    if match is not None:
-        return int(match.group(1))
-    if (
-        any(marker in html.casefold() for marker in _PLATFORM_MARKERS)
-        and _JOB_HREF_RE.search(html) is None
-    ):
-        return 0
-    return None
+    return int(match.group(1)) if match is not None else None
+
+
+def recruiterbox_inactive_from_html(html: str) -> bool:
+    """Recognize Trakstar's branded HTTP-200 inactive-account tombstone."""
+    folded = html.casefold()
+    return (
+        "recruiterbox.com/inactive-ats" in folded
+        and "inactive account" in folded
+        and "no longer using trakstar hire" in folded
+    )

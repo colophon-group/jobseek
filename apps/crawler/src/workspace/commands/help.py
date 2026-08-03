@@ -1101,7 +1101,8 @@ recruiterbox — Recruiterbox / Trakstar Hire static listing monitor
 
   Detection:  Direct Recruiterbox/Trakstar URLs or explicit links in career-page HTML.
               Blind tenant guessing is disabled.
-  Zero jobs?  A branded empty listing is valid; missing platform markers are not.
+  Zero jobs?  An active listing with authoritative total 0 is valid. Trakstar's
+              branded inactive-account page is treated as BoardGone.
   Upstream:   ats-scrapers is inventory input only. Jobseek does not import,
               execute, or depend on upstream scraper code."""
 

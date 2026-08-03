@@ -15,6 +15,7 @@ from src.shared.recruiterbox import (
     RecruiterboxBoard,
     recruiterbox_board_from_metadata,
     recruiterbox_board_from_url,
+    recruiterbox_inactive_from_html,
     recruiterbox_job_token,
     recruiterbox_total_from_html,
 )
@@ -40,6 +41,15 @@ def _listing(*tokens: str, total: int | None = None, tenant: str = TENANT) -> st
         "<html><head><title>Careers | Trakstar Hire</title></head><body>"
         f"<script>RB.init_data({{total_jobs: {advertised_total}}});</script>"
         f"{links}</body></html>"
+    )
+
+
+def _inactive_page() -> str:
+    return (
+        '<html><link rel="canonical" href="https://recruiterbox.com/inactive-ats">'
+        "<h3>Inactive account.</h3>"
+        "<p>This employer is no longer using Trakstar Hire to collect applications.</p>"
+        "</html>"
     )
 
 
@@ -108,10 +118,10 @@ class TestIdentity:
     def test_total_parser_distinguishes_empty_from_invalid(self):
         assert recruiterbox_total_from_html(_listing(total=132)) == 132
         assert recruiterbox_total_from_html('{"total_jobs": "7"}') == 7
-        assert (
-            recruiterbox_total_from_html("<html><title>Careers | Trakstar Hire</title></html>") == 0
-        )
+        assert recruiterbox_total_from_html(_inactive_page()) is None
         assert recruiterbox_total_from_html("<html>unrelated page</html>") is None
+        assert recruiterbox_inactive_from_html(_inactive_page()) is True
+        assert recruiterbox_inactive_from_html(_listing(total=0)) is False
 
 
 class TestMonitor:
@@ -157,16 +167,28 @@ class TestMonitor:
         assert result == set()
         assert seen == [f"{BOARD_URL}?limit=100&p=1"]
 
-    async def test_branded_empty_listing_is_authoritative(self):
+    async def test_active_empty_listing_is_authoritative(self):
         transport = httpx.MockTransport(
-            lambda request: httpx.Response(
-                200,
-                text="<html><title>Careers | Trakstar Hire</title></html>",
-                request=request,
-            )
+            lambda request: httpx.Response(200, text=_listing(total=0), request=request)
         )
         async with httpx.AsyncClient(transport=transport) as client:
             assert await discover({"board_url": BOARD_URL}, client) == set()
+
+    async def test_inactive_account_is_board_gone(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_inactive_page(), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(BoardGoneError, match="inactive"):
+                await discover({"board_url": BOARD_URL}, client)
+
+    async def test_nonzero_total_without_links_fails_not_empty(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_listing(total=1), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="exposed no valid detail links"):
+                await discover({"board_url": BOARD_URL}, client)
 
     @pytest.mark.parametrize("status", [404, 410])
     async def test_terminal_first_page_is_board_gone(self, status: int):
@@ -181,6 +203,23 @@ class TestMonitor:
             with pytest.raises(PaginationFetchError) as exc_info:
                 await discover({"board_url": BOARD_URL}, client)
         assert exc_info.value.last_status == 400
+
+    async def test_redirect_is_not_followed(self):
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            return httpx.Response(
+                302,
+                headers={"location": "https://other.hire.trakstar.com/"},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover({"board_url": BOARD_URL}, client)
+        assert exc_info.value.last_status == 302
+        assert requested == [f"{BOARD_URL}?limit=100&p=1"]
 
     @pytest.mark.parametrize("status", [202, 401, 403, 429, 503])
     async def test_retries_transient_statuses(
@@ -281,6 +320,18 @@ class TestMonitor:
         assert isinstance(result, MonitorResult)
         assert result.truncated is True
         assert result.urls == {JOB_URL}
+
+    async def test_empty_html_cap_fails_instead_of_reaching_empty_guard(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        page = _listing(total=0) + "padding"
+        monkeypatch.setattr(recruiterbox, "MAX_HTML_CHARS", len(page) - 1)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=page, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="incomplete empty listing"):
+                await discover({"board_url": BOARD_URL}, client)
 
 
 class TestDetection:
@@ -386,3 +437,12 @@ class TestIntegration:
             result = await probe_row(_row(), client)
         assert result.status == "warn"
         assert "marker" in result.message
+
+    async def test_board_probe_fails_inactive_account(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_inactive_page(), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await probe_row(_row(), client)
+        assert result.status == "fail"
+        assert "inactive" in result.message
