@@ -166,7 +166,7 @@ unused libssh2 transport. PostgreSQL must run with:
 wal_level=replica
 max_wal_senders=3
 archive_mode=on
-archive_command=test -f /var/spool/pgbackrest/archive-enabled && pgbackrest --stanza=jobseek archive-push %p
+archive_command=test -f /var/spool/pgbackrest/archive-enabled && flock -s /var/spool/pgbackrest/repository.lock pgbackrest --stanza=jobseek archive-push %p
 archive_timeout=60s
 ```
 
@@ -181,14 +181,16 @@ repository before the fourth full backup exists.
 
 `jobseek-data-backup postgresql` runs a networkless pgBackRest `expire` in a
 separate read-only container before it requires the live PostgreSQL container
-to be healthy. It atomically holds the persistent archive sentinel first so no
-new archive-push worker can contend with repository expiration, then restores
-the sentinel in a `finally` path. The repository mount alone is writable. This makes a full
-repository recoverable by the next scheduled attempt even when PostgreSQL is
-already down, and the same explicit retention options are passed to every
-backup so its automatic expiration cannot drift from the host configuration.
-The host installer atomically reconciles only the four retention keys and
-preserves the adjacent repository coordinate and encryption secret verbatim.
+to be healthy. Archive-push holds a shared kernel lock and expiration holds the
+exclusive form, so a process or host crash releases serialization without
+stranding WAL archiving. The wrapper also uses the persistent archive sentinel
+as a fail-closed compatibility hold for a container that predates the lock
+contract. The repository mount alone is writable. This makes a full repository
+recoverable by the next scheduled attempt even when PostgreSQL is already
+down, and the same explicit retention options are passed to every backup so
+its automatic expiration cannot drift from the host configuration. The host
+installer atomically reconciles only the four retention keys and preserves the
+adjacent repository coordinate and encryption secret verbatim.
 
 During the initial cutover the sentinel is absent, so PostgreSQL retains WAL
 without racing `archive-push` against repository stanza creation. The

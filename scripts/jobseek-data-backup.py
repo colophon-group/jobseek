@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -183,12 +184,43 @@ def execute_with_status(
     return record
 
 
+def _postgres_archive_uses_repository_lock(container: str) -> bool:
+    inspected = subprocess.run(
+        ["docker", "inspect", "--format", "{{json .Config.Cmd}}", container],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    return (
+        inspected.returncode == 0
+        and "flock -s /var/spool/pgbackrest/repository.lock" in inspected.stdout
+    )
+
+
+def _archive_push_active() -> bool:
+    processes = subprocess.run(
+        ["ps", "-eo", "args="],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if processes.returncode:
+        raise BackupError("unable to inspect active pgBackRest processes")
+    return any(
+        line.strip().startswith("pgbackrest ") and "archive-push" in line
+        for line in processes.stdout.splitlines()
+    )
+
+
 @contextmanager
-def postgres_archive_hold(spool_dir: Path):
+def postgres_archive_hold(spool_dir: Path, container: str):
     """Pause new archive-push commands while repository expiration owns I/O."""
 
     sentinel = spool_dir / "archive-enabled"
     hold = spool_dir / "archive-enabled.retention-hold"
+    repository_lock = spool_dir / "repository.lock"
     if sentinel.is_symlink():
         raise BackupError("the PostgreSQL archive sentinel is unsafe")
     enabled = sentinel.exists()
@@ -197,39 +229,65 @@ def postgres_archive_hold(spool_dir: Path):
         raise BackupError("PGBACKREST_ARCHIVE_DRAIN_SECONDS must be between 0 and 600")
     if hold.exists() or hold.is_symlink():
         raise BackupError("a PostgreSQL archive-retention hold already exists")
-    if enabled:
-        if not sentinel.is_file():
-            raise BackupError("the PostgreSQL archive sentinel is unsafe")
-        sentinel.rename(hold)
+    if enabled and not sentinel.is_file():
+        raise BackupError("the PostgreSQL archive sentinel is unsafe")
+    archive_uses_lock = _postgres_archive_uses_repository_lock(container)
+    lock_existed = repository_lock.exists()
+    if repository_lock.is_symlink():
+        raise BackupError("the pgBackRest repository lock is unsafe")
+    descriptor = os.open(
+        repository_lock,
+        os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
+        0o600,
+    )
+    lock_metadata = os.fstat(descriptor)
+    if not stat.S_ISREG(lock_metadata.st_mode) or lock_metadata.st_nlink != 1:
+        os.close(descriptor)
+        raise BackupError("the pgBackRest repository lock is unsafe")
+    spool_metadata = spool_dir.stat()
+    if not lock_existed:
+        os.fchown(descriptor, spool_metadata.st_uid, spool_metadata.st_gid)
+        os.fchmod(descriptor, 0o600)
+    elif (
+        lock_metadata.st_uid != spool_metadata.st_uid
+        or lock_metadata.st_gid != spool_metadata.st_gid
+        or stat.S_IMODE(lock_metadata.st_mode) != 0o600
+    ):
+        os.close(descriptor)
+        raise BackupError("the pgBackRest repository lock ownership or mode is unsafe")
+    sentinel_held = False
     try:
-        if enabled:
+        if enabled and not archive_uses_lock:
+            sentinel.rename(hold)
+            sentinel_held = True
             # Close the race with an archive_command that passed its sentinel
             # check immediately before the atomic rename, then wait out any
             # archive-push worker already using the repository.
             time.sleep(min(drain_seconds, 2))
-            deadline = time.monotonic() + max(0, drain_seconds - 2)
+        deadline = time.monotonic() + max(0, drain_seconds - 2)
+        while True:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise BackupError(
+                        "timed out acquiring the pgBackRest repository lock"
+                    ) from None
+                time.sleep(1)
+        if sentinel_held:
             while True:
-                processes = subprocess.run(
-                    ["ps", "-eo", "args="],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                if processes.returncode:
-                    raise BackupError("unable to inspect active pgBackRest processes")
-                active = any(
-                    "pgbackrest" in line and "archive-push" in line
-                    for line in processes.stdout.splitlines()
-                )
-                if not active:
+                if not _archive_push_active():
                     break
                 if time.monotonic() >= deadline:
-                    raise BackupError("timed out draining active PostgreSQL archive-push workers")
+                    raise BackupError(
+                        "timed out draining active PostgreSQL archive-push workers"
+                    )
                 time.sleep(1)
         yield
     finally:
-        if enabled:
+        os.close(descriptor)
+        if sentinel_held:
             if hold.is_symlink() or not hold.is_file():
                 raise BackupError("the PostgreSQL archive-retention hold was altered")
             if sentinel.exists() or sentinel.is_symlink():
@@ -254,7 +312,8 @@ def postgres_expire_archives(stanza: str) -> dict[str, int | float]:
     spool_dir = Path(
         os.environ.get("PGBACKREST_SPOOL_DIR", "/var/lib/jobseek-backup/postgresql/spool")
     )
-    with postgres_archive_hold(spool_dir):
+    container = os.environ.get("POSTGRES_CONTAINER", "postgres")
+    with postgres_archive_hold(spool_dir, container):
         run_checked(
             [
                 "docker",

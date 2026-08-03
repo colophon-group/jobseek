@@ -128,6 +128,7 @@ def test_postgres_expiration_is_networkless_and_independent_of_live_container(
     monkeypatch.setenv("PGBACKREST_REPOSITORY_DIR", str(repository))
     monkeypatch.setenv("PGBACKREST_SPOOL_DIR", str(spool))
     monkeypatch.setenv("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "0")
+    monkeypatch.setattr(backup, "_postgres_archive_uses_repository_lock", lambda _container: False)
     monkeypatch.setattr(
         backup,
         "run_checked",
@@ -170,6 +171,7 @@ def test_postgres_expiration_holds_and_restores_archive_sentinel(
     monkeypatch.setenv("PGBACKREST_REPOSITORY_DIR", str(tmp_path / "repository"))
     monkeypatch.setenv("PGBACKREST_SPOOL_DIR", str(spool))
     monkeypatch.setenv("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "0")
+    monkeypatch.setattr(backup, "_postgres_archive_uses_repository_lock", lambda _container: False)
     monkeypatch.setattr(
         backup,
         "run_checked",
@@ -209,12 +211,30 @@ def test_postgres_archive_hold_refuses_active_worker_timeout(
 
     with (
         pytest.raises(backup.BackupError, match="timed out draining"),
-        backup.postgres_archive_hold(spool),
+        backup.postgres_archive_hold(spool, "postgres"),
     ):
         pytest.fail("archive hold must not yield while a worker is active")
 
     assert sentinel.is_file()
     assert not (spool / "archive-enabled.retention-hold").exists()
+
+
+def test_postgres_archive_hold_uses_crash_safe_repository_lock(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    spool = tmp_path / "spool"
+    spool.mkdir()
+    sentinel = spool / "archive-enabled"
+    sentinel.touch()
+    monkeypatch.setenv("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "0")
+    monkeypatch.setattr(backup, "_postgres_archive_uses_repository_lock", lambda _container: True)
+
+    with backup.postgres_archive_hold(spool, "postgres"):
+        assert sentinel.is_file()
+        assert not (spool / "archive-enabled.retention-hold").exists()
+        contender = (spool / "repository.lock").open("r", encoding="utf-8")
+        with contender, pytest.raises(BlockingIOError):
+            backup.fcntl.flock(contender, backup.fcntl.LOCK_SH | backup.fcntl.LOCK_NB)
 
 
 def test_typesense_requires_root_only_configuration(monkeypatch: pytest.MonkeyPatch) -> None:

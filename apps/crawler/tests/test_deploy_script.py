@@ -19,6 +19,7 @@ DEPLOY_WORKFLOW = (
 POSTGRES_PREFLIGHT = (
     Path(__file__).resolve().parent.parent / "scripts/postgresql-operational-preflight.py"
 )
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
@@ -96,6 +97,13 @@ def test_deploy_copies_postgresql_operational_preflight() -> None:
 
     assert POSTGRES_PREFLIGHT.exists()
     assert "apps/crawler/scripts/postgresql-operational-preflight.py" in workflow
+
+
+def test_postgresql_archive_push_uses_shared_repository_lock() -> None:
+    expected = "flock -s /var/spool/pgbackrest/repository.lock pgbackrest"
+
+    assert expected in (REPO_ROOT / "deploy/backups/postgresql/migrate-container.sh").read_text()
+    assert expected in (REPO_ROOT / "deploy/networking/harden-postgresql.sh").read_text()
 
 
 def test_deploy_sources_pull_helpers_and_workflow_copies_them() -> None:
