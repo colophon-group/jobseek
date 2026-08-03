@@ -421,6 +421,10 @@ under `/run`; it is deleted after a successful upload and disappears on reboot.
 A failed upload keeps the runtime packet for bounded diagnosis, and the next
 attempt removes runtime packets older than 48 hours. No plaintext web backup is
 persisted to the host filesystem outside that volatile staging window.
+The database URI is injected into the short-lived PostgreSQL 17 client
+container and expanded there through an explicit `--dbname` argument.
+`PGDATABASE` must not carry the URI: the client treats that environment value
+as a literal database name and otherwise falls back to its local Unix socket.
 
 Run the first backup manually while its timer is disabled:
 

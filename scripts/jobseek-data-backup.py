@@ -577,7 +577,12 @@ def _web_postgres_image() -> str:
 
 def _web_postgres_env() -> dict[str, str]:
     env = os.environ.copy()
-    env["PGDATABASE"] = _web_database_url()
+    # PGDATABASE is only a database-name default. The PostgreSQL 17 client
+    # does not expand a connection URI supplied through that environment
+    # variable, so it falls back to the container-local Unix socket. Keep the
+    # complete credential in a dedicated variable and pass it explicitly as
+    # --dbname from inside the short-lived client container.
+    env["WEB_DATABASE_URL"] = _web_database_url()
     env["PGCONNECT_TIMEOUT"] = "30"
     env["PGAPPNAME"] = "jobseek-web-postgresql-backup"
     return env
@@ -598,10 +603,33 @@ def _web_postgres_client_command(
         network,
     ]
     if database_env:
-        command.extend(("--env", "PGDATABASE", "--env", "PGCONNECT_TIMEOUT", "--env", "PGAPPNAME"))
+        command.extend(
+            (
+                "--env",
+                "WEB_DATABASE_URL",
+                "--env",
+                "PGCONNECT_TIMEOUT",
+                "--env",
+                "PGAPPNAME",
+            )
+        )
     for host_path, container_path, mode in mounts:
         command.extend(("--volume", f"{host_path}:{container_path}:{mode}"))
-    command.extend((_web_postgres_image(), *arguments))
+    command.append(_web_postgres_image())
+    if database_env:
+        # Expand the URI only inside the container. This makes libpq parse the
+        # URI while keeping it out of the host command line and backup logs.
+        command.extend(
+            (
+                "sh",
+                "-ceu",
+                'client="$1"; shift; exec "$client" --dbname="$WEB_DATABASE_URL" "$@"',
+                "jobseek-web-postgresql-client",
+                *arguments,
+            )
+        )
+    else:
+        command.extend(arguments)
     return command
 
 

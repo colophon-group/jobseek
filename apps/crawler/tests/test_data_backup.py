@@ -276,6 +276,28 @@ def test_web_postgresql_requires_a_database_credential(
         backup._web_database_url()
 
 
+def test_web_postgresql_client_passes_connection_uri_explicitly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("PGDATABASE", raising=False)
+    monkeypatch.setenv("WEB_DATABASE_URL", "postgresql://test.invalid/web")
+
+    env = backup._web_postgres_env()
+    command = backup._web_postgres_client_command(
+        "psql",
+        "--no-psqlrc",
+        "--command",
+        "SELECT 1",
+    )
+
+    assert env["WEB_DATABASE_URL"] == "postgresql://test.invalid/web"
+    assert "PGDATABASE" not in env
+    assert command.count("WEB_DATABASE_URL") == 1
+    assert "PGDATABASE" not in command
+    assert any('--dbname="$WEB_DATABASE_URL"' in argument for argument in command)
+    assert command[-4:] == ["psql", "--no-psqlrc", "--command", "SELECT 1"]
+
+
 def test_web_postgresql_boundary_rejects_an_external_foreign_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -414,6 +436,8 @@ def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
     assert result["repository_snapshot_id"] == "abcdef01"
     assert not (tmp_path / "web-postgresql" / "staging" / "20260803T120000Z").exists()
     dump_command = next(command for command in commands if "pg_dump" in command)
+    assert any('--dbname="$WEB_DATABASE_URL"' in argument for argument in dump_command)
+    assert "PGDATABASE" not in dump_command
     selected = [
         dump_command[index + 1]
         for index, argument in enumerate(dump_command)
