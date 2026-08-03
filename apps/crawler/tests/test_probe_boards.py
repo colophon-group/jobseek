@@ -778,6 +778,7 @@ def test_probe_registry_covers_expected_types():
         "herp",
         "hrmos",
         "recruitee",
+        "recruiterbox",
         "rippling",
         "smartrecruiters",
         "workday",

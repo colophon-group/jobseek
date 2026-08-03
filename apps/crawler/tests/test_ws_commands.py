@@ -2048,6 +2048,17 @@ class TestSelectMonitorNaming:
         assert selected["scraper_type"] == "jazzhr"
         assert selected.get("scraper_config") is None
 
+    def test_recruiterbox_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """Recruiterbox selection activates the shared JSON-LD detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "recruiterbox"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["recruiterbox"]
+        assert selected["scraper_type"] == "json-ld"
+        assert selected.get("scraper_config") is None
+
     def test_icims_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
         """iCIMS selection carries the existing JSON-LD detail scraper."""
         self._setup(tmp_path, monkeypatch)

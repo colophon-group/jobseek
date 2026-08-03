@@ -545,6 +545,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Recruitee API \u2014 {label}, {jobs} jobs"
         return f"Recruitee API \u2014 {label}"
+    if name == "recruiterbox":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Recruiterbox / Trakstar Hire \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"Recruiterbox / Trakstar Hire \u2014 tenant: {tenant}"
     if name == "recruiter_co_kr":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -742,6 +748,7 @@ from src.core.monitors import (  # noqa: E402
     pinpoint,  # noqa: F401
     recruitee,  # noqa: F401
     recruiter_co_kr,  # noqa: F401
+    recruiterbox,  # noqa: F401
     rippling,  # noqa: F401
     rss,  # noqa: F401
     sitemap,  # noqa: F401

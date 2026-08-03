@@ -931,6 +931,7 @@ _MONITOR_CONFIG_HINTS = {
     "paylocity": "No config required (uses embedded window.pageData)",
     "pinpoint": "Requires: slug (auto-filled from probe)",
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",
+    "recruiterbox": "Requires: tenant (auto-filled from a Recruiterbox / Trakstar Hire URL)",
     "rippling": "Requires: slug (auto-filled from probe)",
     "smartrecruiters": "Requires: token (auto-filled from probe)",
     "softgarden": "Requires: slug. Optional: job_url_pattern",
