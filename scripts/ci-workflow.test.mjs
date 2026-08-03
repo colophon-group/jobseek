@@ -1151,12 +1151,18 @@ test("Required CI gates Typesense E2E jobs", () => {
   assert.match(workflow, /"test-crawler-typesense-e2e"/);
 });
 
-test("Required CI gates PostgreSQL reconciliation E2E", () => {
+test("Required CI gates PostgreSQL reconciliation and sampling E2E", () => {
+  const postgresJob = jobBlock("test-crawler-postgres-cdc-e2e");
+
   assert.match(workflow, /needs:[\s\S]*- test-crawler-postgres-cdc-e2e/);
   assert.match(workflow, /"test-crawler-postgres-cdc-e2e"/);
   assert.match(
-    workflow,
-    /uv run pytest tests\/e2e\/test_postgres_cdc_commit_order\.py -v/,
+    postgresJob,
+    /uv run pytest[\s\S]*tests\/e2e\/test_postgres_cdc_commit_order\.py/,
+  );
+  assert.match(
+    postgresJob,
+    /tests\/e2e\/test_labeller_sampling_plan\.py[\s\S]*-v/,
   );
 });
 

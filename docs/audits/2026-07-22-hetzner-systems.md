@@ -392,7 +392,7 @@ pass.
 | Redis | `redis:8-alpine`; RDB persistence healthy; 674 MiB used of 1 GiB maxmemory; no evictions/rejections; no AOF; documented disposable/reseedable state | healthy; mutable image tag belongs in lifecycle hardening |
 | Alloy/Grafana | remote write and logs healthy; operational ports bind publicly; host exporter covers only crawler | functional but incomplete and unnecessarily exposed |
 | Codex governor | timer enabled and admitting checks; scheduler skips because every remaining company request already has an open draft PR | healthy; absence of new company runs is expected |
-| daily annotations | failed after two 30-second PostgreSQL statement timeouts; final HuggingFace 404 was downstream symptom | confirmed root cause: active 24-hour sample scans/sorts the active set because no `first_seen_at` index supports the query |
+| daily annotations | the 2026-07-22 run failed after two 30-second PostgreSQL statement timeouts; the next date completed, but that did not remove the unbounded access path | migration `0014` adds the concurrent partial `first_seen_at, id` index, the query has a deterministic tie-breaker, CI exercises the real PostgreSQL plan at fixture scale, and the runner preserves the first causal failure ahead of upload symptoms |
 | daily error review | Hetzner systemd timer/service completed; root preflight bundle and lifecycle journal present, but the bundle has no metric time series and the restricted runner has no supported Grafana query path | operational but incomplete; tracked by #5948 |
 | PostgreSQL | PostgreSQL 16.13; about 2.44M postings and 2.11M descriptions; descriptions relation about 14 GiB; 51,106 requested versus 6,330 timed checkpoints; `max_wal_size=1GB`; 2 GiB container limit; separate 20 GB Volume is 91% full and excluded from all seven Hetzner server backups | active capacity/performance and durability incident |
 | Typesense | 27.1; health OK; seven aliases point to seven versioned collections; total posting documents differ from local PostgreSQL by only about 10 at observation; mistaken OS backups exist but no supported snapshot/archive workflow was found | structurally healthy, but `is_active` field drift, unsafe secret delivery, and unproven data recovery remain |
@@ -417,8 +417,8 @@ Severity reflects impact if left unresolved; rank reflects the recommended execu
 | 5 | high | [#5925](https://github.com/colophon-group/jobseek/issues/5925) | long-lived Typesense and Cloudflare credentials are recoverable by unprivileged local users; deploy protected delivery, then rotate |
 | 6 | high | [#5926](https://github.com/colophon-group/jobseek/issues/5926) | monitoring missed the near-full database Volume and continuously false-fires exporter alerts; deploy full-fleet telemetry and ownership-correct alerts |
 | 7 | medium | [#5948](https://github.com/colophon-group/jobseek/issues/5948) | the Hetzner error-review service can reach point-in-time localhost endpoints but has no supported historical metrics evidence path; add least-privilege bounded queries without weakening runner isolation |
-| 8 | medium | [#6067](https://github.com/colophon-group/jobseek/issues/6067) | authorized maintenance and its downtime were recorded but not explicitly attributable; add a validated operation/issue/revision/budget contract and deterministic daily-review correlation |
-| 9 | medium | [#5929](https://github.com/colophon-group/jobseek/issues/5929) | a missing production access-path index blocks daily annotation sampling but not the serving/crawling path; add the index/query guard and preserve the causal error |
+| 8 | medium | [#6067](https://github.com/colophon-group/jobseek/issues/6067) (resolved) | maintenance operations now carry validated issue/revision/budget provenance, and exact-overlap correlation plus redaction is production-verified |
+| 9 | medium | [#5929](https://github.com/colophon-group/jobseek/issues/5929) | migration `0014`, the production-plan guard, and structured first-failure reporting own the annotation sampling root cause; close after the migrated production plan and a full uploaded date are verified |
 | 10 | medium | [#5924](https://github.com/colophon-group/jobseek/issues/5924) | overdue reboots, mutable images, missing resource labels, and ad hoc host lifecycle accumulate risk but are not the current data-loss/availability trigger |
 
 ## Confirmed root-cause findings
@@ -476,6 +476,13 @@ Root cause: long-lived credentials are passed as command-line arguments instead 
 The daily annotation run reached PostgreSQL but the 24-hour sample query timed out twice at the enforced 30-second statement timeout. `EXPLAIN` uses the partial active index to visit a large active set, filters by `first_seen_at`, then sorts; no index begins with `first_seen_at` for active rows. The final missing HuggingFace file is only the terminal symptom.
 
 Root cause: the sampler query and production table growth were not paired with a supporting partial/composite index or a query-plan performance test.
+
+Remediation contract: migration `0014` creates
+`idx_jp_active_first_seen (first_seen_at DESC, id) WHERE is_active`
+concurrently; the sampler uses the same deterministic order; the dedicated
+PostgreSQL CI job runs an `EXPLAIN (ANALYZE, BUFFERS)` fixture-scale guard; and
+the daily runner consumes the orchestrator's structured outcome so the first
+causal failure remains ahead of downstream HuggingFace verification.
 
 ### 8. Fleet patch and image provenance are not controlled end to end
 

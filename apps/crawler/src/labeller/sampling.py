@@ -12,6 +12,16 @@ from datetime import UTC, datetime, timedelta
 
 import asyncpg
 
+SAMPLE_CANDIDATES_SQL = """
+    SELECT p.id::text AS posting_id,
+           p.company_id::text AS company_id,
+           p.source_url
+    FROM job_posting p
+    WHERE p.first_seen_at >= $1 AND p.first_seen_at < $2
+      AND p.is_active = true
+    ORDER BY p.first_seen_at DESC, p.id
+"""
+
 
 @dataclass(frozen=True)
 class Sample:
@@ -36,19 +46,7 @@ async def sample_postings(
     """
     start_time = end_time_utc - timedelta(hours=window_hours)
 
-    rows = await pool.fetch(
-        """
-        SELECT p.id::text AS posting_id,
-               p.company_id::text AS company_id,
-               p.source_url
-        FROM job_posting p
-        WHERE p.first_seen_at >= $1 AND p.first_seen_at < $2
-          AND p.is_active = true
-        ORDER BY p.first_seen_at DESC
-        """,
-        start_time,
-        end_time_utc,
-    )
+    rows = await pool.fetch(SAMPLE_CANDIDATES_SQL, start_time, end_time_utc)
 
     rng = random.Random(seed)
     per_company: dict[str, list[Sample]] = {}
