@@ -238,6 +238,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "lever",
         "ashby",
         "bamboohr",
+        "cornerstone",
         "paycom",
         "jazzhr",
         "icims",
@@ -267,7 +268,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
     }
 )
 
-_KNOWN_ATS_DOMAIN_SUFFIXES = (".gupy.io",)
+_KNOWN_ATS_DOMAIN_SUFFIXES = (".csod.com", ".gupy.io")
 
 
 def delay_for_domain(domain: str) -> float:

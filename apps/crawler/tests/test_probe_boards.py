@@ -476,6 +476,84 @@ class TestProbeRow:
         assert result.status == "warn"
         assert "no valid tenant" in result.message
 
+    async def test_cornerstone_uses_configured_board_identity(self):
+        row = _row(
+            board_slug="acme-cornerstone",
+            board_url="https://legacy.example/jobs",
+            monitor_type="cornerstone",
+            monitor_config=json.dumps(
+                {"tenant": "aswatsoneurope", "site_id": 16, "corp": "aswatsoneurope"}
+            ),
+        )
+        token = f"{'a' * 24}.{'b' * 24}.{'c' * 24}"
+        context = {
+            "corp": "aswatsoneurope",
+            "token": token,
+            "cultureID": 1,
+            "cultureName": "en-US",
+            "endpoints": {"cloud": "https://eu-fra.api.csod.com/"},
+        }
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(
+                200,
+                text=f"<script>csod.context={json.dumps(context)};</script>",
+                request=request,
+            )
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == (
+            "https://aswatsoneurope.csod.com/ux/ats/careersite/16/home?c=aswatsoneurope"
+        )
+
+    async def test_cornerstone_404_is_failed(self):
+        row = _row(
+            board_slug="acme-cornerstone",
+            board_url=(
+                "https://aswatsoneurope.csod.com/ux/ats/careersite/16/home?c=aswatsoneurope"
+            ),
+            monitor_type="cornerstone",
+            monitor_config="",
+        )
+        result = await self._run(row, lambda request: httpx.Response(404, request=request))
+        assert result.status == "fail"
+        assert "not found" in result.message
+
+    async def test_cornerstone_scoped_url_is_not_widened(self):
+        row = _row(
+            board_slug="acme-cornerstone",
+            board_url=(
+                "https://aswatsoneurope.csod.com/ux/ats/careersite/16/home?c=aswatsoneurope&page=2"
+            ),
+            monitor_type="cornerstone",
+            monitor_config="",
+        )
+        transport = httpx.MockTransport(
+            lambda request: (_ for _ in ()).throw(AssertionError("should not fetch"))
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await probe_row(row, client)
+        assert result.status == "warn"
+        assert "no valid tenant/site_id/corp" in result.message
+
+    async def test_cornerstone_reserved_config_tenant_is_rejected(self):
+        row = _row(
+            board_slug="acme-cornerstone",
+            board_url="https://legacy.example/jobs",
+            monitor_type="cornerstone",
+            monitor_config=json.dumps({"tenant": "portal", "site_id": 1, "corp": "portal"}),
+        )
+        transport = httpx.MockTransport(
+            lambda request: (_ for _ in ()).throw(AssertionError("should not fetch"))
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await probe_row(row, client)
+        assert result.status == "warn"
+        assert "no valid tenant/site_id/corp" in result.message
+
     async def test_hrmos_uses_config_tenant(self):
         row = _row(
             board_slug="acme-hrmos",
@@ -593,6 +671,7 @@ def test_probe_registry_covers_expected_types():
         "jazzhr",
         "icims",
         "gupy",
+        "cornerstone",
         "herp",
         "hrmos",
         "recruitee",

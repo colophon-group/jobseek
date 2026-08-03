@@ -11,6 +11,7 @@ MIGRATED_MONITORS = {
     "src/core/monitors/jazzhr.py": "fetch_text_page_with_retry",
     "src/core/monitors/icims.py": "fetch_text_page_with_retry",
     "src/core/monitors/gupy.py": "fetch_text_page_with_retry",
+    "src/core/monitors/cornerstone.py": "fetch_json_page_with_retry",
     "src/core/monitors/herp.py": "fetch_text_page_with_retry",
     "src/core/monitors/hrmos.py": "fetch_text_page_with_retry",
     "src/core/monitors/paycom.py": "fetch_json_page_with_retry",

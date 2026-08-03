@@ -44,6 +44,7 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "amazon",
     "ashby",
     "comeet",
+    "cornerstone",
     "deel",
     "dvinci",
     "gem",

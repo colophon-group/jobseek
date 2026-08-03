@@ -20,6 +20,11 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 
+from src.shared.cornerstone import (
+    cornerstone_board_from_metadata,
+    cornerstone_board_from_url,
+    extract_cornerstone_context,
+)
 from src.shared.gupy import normalize_gupy_tenant
 
 # Literal set of statuses a probe can return. CI treats "fail" as a hard error
@@ -416,6 +421,37 @@ async def _probe_gupy(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "gupy", url, resp)
 
 
+async def _probe_cornerstone(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    try:
+        raw_config = json.loads(row["monitor_config"]) if row["monitor_config"] else {}
+    except (json.JSONDecodeError, TypeError):
+        raw_config = {}
+    config = raw_config if isinstance(raw_config, dict) else {}
+    board = cornerstone_board_from_metadata(config) or cornerstone_board_from_url(row["board_url"])
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "cornerstone",
+            row["board_url"],
+            "warn",
+            "no valid tenant/site_id/corp in monitor_config or Cornerstone URL",
+        )
+
+    url = board.listing_url()
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response):
+        if resp.status_code in {404, 410}:
+            return ProbeResult(row["board_slug"], "cornerstone", url, "fail", "board not found")
+        if resp.is_redirect:
+            return ProbeResult(row["board_slug"], "cornerstone", url, "warn", "unexpected redirect")
+        if resp.status_code == 200:
+            try:
+                extract_cornerstone_context(resp.text, board)
+            except ValueError as exc:
+                return ProbeResult(row["board_slug"], "cornerstone", url, "warn", str(exc))
+    return _classify(row, "cornerstone", url, resp)
+
+
 async def _probe_hrmos(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     tenant = _token_from_config(row["monitor_config"], "tenant")
     tenant = tenant.strip().lower() if tenant else None
@@ -590,6 +626,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "jazzhr": _probe_jazzhr,
     "icims": _probe_icims,
     "gupy": _probe_gupy,
+    "cornerstone": _probe_cornerstone,
     "herp": _probe_herp,
     "hrmos": _probe_hrmos,
     "recruitee": _probe_recruitee,
