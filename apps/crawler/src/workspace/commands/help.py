@@ -75,6 +75,7 @@ Monitor Types (cheapest first):
   eightfold         8       Hybrid rich+URL   eightfold enrich (description only)
   join              9       Job URLs          Auto-configured
   almacareer        10      Full job data     No (skipped)
+  adp               10      Full/partial      Auto-enriched
   ashby             10      Full job data     No (skipped)
   bamboohr          10      Full/partial      Auto-enriched
   bite              10      Job URLs          Auto-configured
@@ -1401,6 +1402,32 @@ paylocity — Paylocity embedded job data
   Zero jobs?  Confirm window.pageData.Jobs is empty; search-engine counts may
               lag after postings close."""
 
+MONITOR_ADP = """\
+adp — ADP Workforce Now public listing API
+
+  Listing:  GET https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?...
+  Search:   GET https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions
+  Returns:  Rich listing data in complete 20-job pages
+  Scraper:  Auto-configured native ADP detail scraper, including DOCX attachments
+  Browser:  Not required. Both listing and detail APIs are public HTTP endpoints.
+  Note:     Reuses Jobseek's shared API HTTP transport, retry classifier, and
+            pagination engine. Count drift, invalid rows, duplicates, and the
+            50,000-job cap suppress tombstoning. No upstream scraper code or
+            runtime dependency is used.
+
+  Config:
+    {"cid": "00000000-0000-0000-0000-000000000000",
+     "cc_id": "19000101_000001", "locale": "en_US"}
+
+    cid      ADP client UUID.
+    cc_id    Career-center identifier.
+    locale   ADP underscore locale. All fields are auto-filled only from a
+             direct or explicitly linked Workforce Now board URL; no blind
+             company-name or slug guessing is performed.
+
+  Detection:  ws probe shows "ADP Workforce Now API — cid: X, career center: Y, N jobs"
+  Zero jobs?  A valid response reports totalNumber=0 and jobRequisitions=[]."""
+
 MONITOR_PAYCOM = """\
 paycom — Paycom public portal API
 
@@ -2420,6 +2447,7 @@ MONITOR_CARDS: dict[str, str] = {
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
     "ashby": MONITOR_ASHBY,
+    "adp": MONITOR_ADP,
     "bamboohr": MONITOR_BAMBOOHR,
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,

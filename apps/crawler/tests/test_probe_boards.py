@@ -767,6 +767,7 @@ def test_probe_registry_covers_expected_types():
         "greenhouse",
         "lever",
         "ashby",
+        "adp",
         "bamboohr",
         "paycom",
         "jazzhr",

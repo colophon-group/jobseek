@@ -265,8 +265,10 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "oracle_hcm",
         "eightfold",
         "accenture",
+        "adp",
         "deel",
         "jobs.dayforcehcm.com",
+        "workforcenow.adp.com",
     }
 )
 

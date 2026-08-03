@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 from urllib.parse import parse_qsl
 
+from src.shared.adp import adp_board_from_url
 from src.shared.cornerstone import cornerstone_board_from_url
 from src.shared.dayforce import dayforce_board_from_url
 from src.shared.gupy import gupy_tenant_from_url
@@ -42,6 +43,7 @@ def _icims_query_is_unscoped(query: str) -> bool:
 _RICH_MONITORS: frozenset[str] = frozenset(
     {
         "accenture",
+        "adp",
         "almacareer",
         "amazon",
         "ashby",
@@ -78,13 +80,14 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
-# ``oracle_hcm``, ``bamboohr``, ``paycom``, and ``paylocity``, which
+# ``oracle_hcm``, ``adp``, ``bamboohr``, ``paycom``, and ``paylocity``, which
 # auto-resolve to enrichment scrapers (BambooHR uses a generic API preset;
 # Paycom reuses its native bootstrap in a dedicated detail scraper).
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
 # rich boards (``scraper_type`` unset in metadata) are treated the same as
 # explicit ``scraper_type = "skip"`` boards. See issue 01-rich-monitor-scheduling.
 _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
+    "adp",
     "bamboohr",
     "oracle_hcm",
     "paycom",
@@ -188,6 +191,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ashby"
     if host == "jobs.gem.com":
         return "gem"
+    if adp_board_from_url(url) is not None:
+        return "adp"
     if gupy_tenant_from_url(url) is not None:
         return "gupy"
     if cornerstone_board_from_url(url) is not None:
@@ -427,6 +432,20 @@ def auto_scraper_type(
                     "employment_type",
                     "job_location_type",
                     "date_posted",
+                ],
+            },
+        )
+    if monitor_type == "adp":
+        return (
+            "adp",
+            {
+                "enrich": [
+                    "title",
+                    "description",
+                    "locations",
+                    "employment_type",
+                    "date_posted",
+                    "base_salary",
                 ],
             },
         )
