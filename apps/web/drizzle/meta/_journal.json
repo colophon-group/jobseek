@@ -505,6 +505,13 @@
       "when": 1785750000000,
       "tag": "0083_reconcile_supabase_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1785753600000,
+      "tag": "0084_saved_job_snapshot_expand",
+      "breakpoints": true
     }
   ]
 }
