@@ -16,6 +16,7 @@ COMPOSE_FILE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
 DEPLOY_WORKFLOW = (
     Path(__file__).resolve().parents[3] / ".github/workflows/deploy-crawler-browser.yml"
 )
+SYNC_DATA_WORKFLOW = Path(__file__).resolve().parents[3] / ".github/workflows/sync-data.yml"
 POSTGRES_PREFLIGHT = (
     Path(__file__).resolve().parent.parent / "scripts/postgresql-operational-preflight.py"
 )
@@ -41,6 +42,14 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     sync = script.index("uv run --no-sync crawler sync")
 
     assert quiesce < migrate < typesense_schema < sync
+
+
+def test_deploy_explicitly_preserves_legacy_mirror_during_transition() -> None:
+    script = DEPLOY_SH.read_text()
+    sync_workflow = SYNC_DATA_WORKFLOW.read_text()
+
+    assert "uv run --no-sync crawler sync --legacy-mirror" in script
+    assert "uv run --no-sync crawler sync --legacy-mirror" in sync_workflow
 
 
 def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -> None:

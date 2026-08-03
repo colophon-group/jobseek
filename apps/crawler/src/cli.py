@@ -99,7 +99,12 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("drain", help="R2 drain instance")
 
-    sub.add_parser("sync", help="CSV -> local Postgres + legacy mirror + Redis")
+    sync_p = sub.add_parser("sync", help="CSV -> local Postgres + Redis + Typesense")
+    sync_p.add_argument(
+        "--legacy-mirror",
+        action="store_true",
+        help="Also update the transitional crawler mirror (requires DATABASE_URL)",
+    )
 
     recon_p = sub.add_parser(
         "reconcile",
@@ -444,7 +449,7 @@ async def run() -> None:
         elif args.command == "sync":
             from src.sync import run_sync
 
-            await run_sync()
+            await run_sync(legacy_mirror=args.legacy_mirror)
 
         elif args.command == "backfill-locations":
             local_pool = await create_local_pool()

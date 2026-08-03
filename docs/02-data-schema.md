@@ -82,15 +82,16 @@ See [04 — Monitors and Scrapers](./04-monitors-and-scrapers.md) for config det
 
 ## DB Sync
 
-The sync script (`src/sync.py`) runs on deploy and writes to THREE targets in one pass.
+The sync script (`src/sync.py`) runs on deploy. It commits authoritative CSV
+state to local Postgres first, then publishes Redis and Typesense derived state.
 
 ### Sync Behavior
 
 ```
-CSV → DB + Redis rules:
-  companies.csv  → company table (upsert on slug) — both Local Postgres and Supabase
-  boards.csv     → job_board table (upsert on board_url) — Local Postgres (full config),
-                   Supabase (display subset), Redis (queue scheduling + config hashes)
+CSV → local DB → derived targets:
+  companies.csv  → local company table (upsert on slug) → Typesense company docs
+  boards.csv     → local job_board table (upsert on board_url) → Redis scheduling/config
+  --legacy-mirror copies the committed local identities to DATABASE_URL during transition
 ```
 
 - **New rows**: Inserted with staggered `next_check_at` (random offset to prevent thundering herd)
@@ -101,7 +102,8 @@ CSV → DB + Redis rules:
 
 ```bash
 cd apps/crawler
-uv run crawler sync              # sync both CSVs to all targets
+uv run crawler sync                   # local Postgres, Redis, and Typesense
+uv run crawler sync --legacy-mirror   # transition: also update DATABASE_URL
 ```
 
 ## CSV Validation
