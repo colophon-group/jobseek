@@ -194,6 +194,7 @@ vi.mock("@/lib/watchlist-utils", () => ({
 
 import {
   getPublicWatchlistPostings,
+  getWatchlistPostingDisplayCounts,
   getWatchlistPostingYearCount,
   getWatchlistPostings,
 } from "../watchlists";
@@ -201,6 +202,22 @@ import { typesenseQueryStringLength } from "@/lib/search/typesense-query-size";
 
 function makeUuid(index: number): string {
   return `00000000-0000-0000-0000-${String(index).padStart(12, "0")}`;
+}
+
+function postingHit(id: string, textMatch: number, firstSeenAt: number) {
+  return {
+    text_match: textMatch,
+    document: {
+      id,
+      title: `Posting ${id}`,
+      source_url: `https://example.com/${id}`,
+      first_seen_at: firstSeenAt,
+      is_active: true,
+      company_id: "company-1",
+      company_name: "Example",
+      company_slug: "example",
+    },
+  };
 }
 
 describe("watchlist posting read degradation (#6167)", () => {
@@ -383,6 +400,62 @@ describe("watchlist posting read degradation (#6167)", () => {
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
 
+  it("preserves global keyword relevance and freshness across company batches", async () => {
+    const companyIds = Array.from({ length: 101 }, (_, i) => makeUuid(i + 1));
+    let rowBatch = 0;
+    mocks.getSessionUserId.mockResolvedValueOnce("user-1");
+    mocks.tsSearch.mockImplementation((params: { per_page?: number }) => {
+      if (params.per_page === 0) return { found: 2, hits: [] };
+      rowBatch += 1;
+      if (rowBatch === 1) {
+        return {
+          found: 2,
+          hits: [
+            postingHit("best", 100, 100),
+            postingHit("older-tie", 80, 300),
+          ],
+        };
+      }
+      if (rowBatch === 2) {
+        return {
+          found: 2,
+          hits: [
+            postingHit("second-best", 90, 50),
+            postingHit("newer-tie", 80, 400),
+          ],
+        };
+      }
+      return { found: 0, hits: [] };
+    });
+
+    const result = await getWatchlistPostings({
+      companyIds,
+      keywords: ["staff", "engineer"],
+      offset: 1,
+      limit: 2,
+    });
+
+    expect(rowBatch).toBeGreaterThan(1);
+    expect(result.postings.map((posting) => posting.id)).toEqual([
+      "second-best",
+      "newer-tie",
+    ]);
+    const rowQueries = mocks.tsSearch.mock.calls
+      .map(([params]) => params as { per_page?: number; page?: number; sort_by?: string })
+      .filter((params) => params.per_page !== 0);
+    expect(rowQueries.length).toBeGreaterThan(1);
+    expect(rowQueries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          per_page: 3,
+          page: 1,
+          sort_by: "_text_match:desc,first_seen_at:desc",
+        }),
+      ]),
+    );
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
   it("batches year-count queries instead of returning zero for large watchlists (#3477)", async () => {
     const companyIds = Array.from({ length: 99 }, (_, i) => makeUuid(i + 1));
     mocks.tsSearch.mockResolvedValue({ found: 5, hits: [] });
@@ -400,5 +473,55 @@ describe("watchlist posting read degradation (#6167)", () => {
       expect(idsInFilter.length).toBeLessThan(companyIds.length);
     }
     expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("includes work mode and employment type in SSR active and year counts", async () => {
+    const combinedFilter =
+      "location_types:[remote] && employment_type:[full_time]";
+    mocks.buildFilterString.mockReturnValueOnce(combinedFilter);
+    mocks.tsSearch
+      .mockResolvedValueOnce({ found: 11, hits: [] })
+      .mockResolvedValueOnce({ found: 27, hits: [] });
+
+    const result = await getWatchlistPostingDisplayCounts({
+      id: "watchlist-1",
+      slug: "remote-full-time",
+      title: "Remote full-time",
+      description: null,
+      isPublic: true,
+      alertsEnabled: false,
+      filters: {
+        workMode: ["remote"],
+        employmentType: ["full_time"],
+      },
+      sourceWatchlistId: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      owner: {
+        id: "user-1",
+        username: "alice",
+        displayUsername: null,
+        name: "Alice",
+      },
+      companies: [
+        {
+          id: "11111111-1111-1111-1111-111111111111",
+          name: "Example",
+          slug: "example",
+          icon: null,
+        },
+      ],
+    });
+
+    expect(result).toEqual({ activeJobs: 11, yearJobs: 27 });
+    expect(mocks.buildFilterString).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workMode: ["remote"],
+        employmentTypes: ["full_time"],
+      }),
+    );
+    expect(mocks.tsSearch).toHaveBeenCalledTimes(2);
+    for (const [params] of mocks.tsSearch.mock.calls) {
+      expect((params as { filter_by: string }).filter_by).toContain(combinedFilter);
+    }
   });
 });

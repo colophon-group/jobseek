@@ -1763,6 +1763,8 @@ export async function getWatchlistPostingDisplayCounts(
     occupationIds,
     seniorityIds,
     technologyIds,
+    workMode: workModeList(f.workMode),
+    employmentTypes: f.employmentType?.length ? f.employmentType : undefined,
     salaryMinEur: f.salaryMin,
     salaryMaxEur: f.salaryMax,
     experienceMin: f.experienceMin,
@@ -2205,8 +2207,10 @@ async function _getWatchlistPostingsBatched(
   const total = countResults.reduce((sum, r) => sum + (r.found ?? 0), 0);
   if (total === 0 || params.limit === 0) return { postings: [], total };
 
-  // For actual postings, query all batches with enough per_page to cover offset+limit,
-  // then merge and sort by first_seen_at desc, slice to desired page.
+  // For actual postings, query all batches with enough per_page to cover
+  // offset+limit, then merge using the same global order requested from each
+  // batch. Pulling the top K from every disjoint batch is sufficient to
+  // compute the global top K.
   const postingsResults = await Promise.all(
     batches.map((batch) => {
       return withTypesenseRetry(
@@ -2224,6 +2228,10 @@ async function _getWatchlistPostingsBatched(
   allHits.sort((a, b) => {
     const aDoc = a.document as Record<string, unknown>;
     const bDoc = b.document as Record<string, unknown>;
+    if (hasKeywords) {
+      const relevanceDelta = (b.text_match ?? 0) - (a.text_match ?? 0);
+      if (relevanceDelta !== 0) return relevanceDelta;
+    }
     return ((bDoc.first_seen_at as number) ?? 0) - ((aDoc.first_seen_at as number) ?? 0);
   });
 
