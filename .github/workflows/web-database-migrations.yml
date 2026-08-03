@@ -14,7 +14,7 @@ on:
           - verify
           - apply
       confirmation:
-        description: "For apply, enter APPLY-0084"
+        description: "For apply, enter APPLY-0085"
         required: false
         type: string
 
@@ -48,11 +48,12 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate reconciliation migration
+      - name: Validate saved-job contract migration
         working-directory: apps/web
         run: >-
           pnpm exec vitest run
           src/db/__tests__/saved-job-snapshot-expand-migration.test.ts
+          src/db/__tests__/saved-job-snapshot-contract-migration.test.ts
           src/db/__tests__/active-job-company-index-migration.test.ts
           src/db/__tests__/watchlist-privacy-interview-migration.test.ts
           src/db/__tests__/timestamptz-coverage.test.ts
@@ -79,7 +80,7 @@ jobs:
           set -euo pipefail
           test "$EVENT_NAME" = "workflow_dispatch"
           test "$GIT_REF" = "refs/heads/main"
-          test "$DISPATCH_CONFIRMATION" = "APPLY-0084"
+          test "$DISPATCH_CONFIRMATION" = "APPLY-0085"
           test -n "$DATABASE_URL_UNPOOLED"
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -96,9 +97,9 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify audited preflight
+      - name: Verify audited contract preflight
         run: >-
-          pnpm --filter @jobseek/web db:migrate:verify-expand --
+          pnpm --filter @jobseek/web db:migrate:verify-contract --
           preflight "$RUNNER_TEMP/web-database-preflight.json"
 
       - name: Apply reviewed migrations
@@ -107,7 +108,7 @@ jobs:
 
       - name: Verify exact postflight
         run: >-
-          pnpm --filter @jobseek/web db:migrate:verify-expand --
+          pnpm --filter @jobseek/web db:migrate:verify-contract --
           postflight "$RUNNER_TEMP/web-database-postflight.json"
 
       - name: Publish non-sensitive evidence
@@ -153,7 +154,7 @@ jobs:
 
       - name: Check for production baseline drift
         run: >-
-          pnpm --filter @jobseek/web db:migrate:verify-expand --
+          pnpm --filter @jobseek/web db:migrate:verify-contract --
           drift "$RUNNER_TEMP/web-database-drift.json"
 
       - name: Publish non-sensitive evidence

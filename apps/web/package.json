@@ -13,6 +13,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:migrate:verify": "tsx scripts/verify-production-migration-baseline.ts",
     "db:migrate:verify-expand": "tsx scripts/verify-saved-job-expand.ts",
+    "db:migrate:verify-contract": "tsx scripts/verify-saved-job-contract.ts",
     "db:verify-saved-job-typesense": "tsx scripts/verify-saved-job-typesense-coverage.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:push": "drizzle-kit push",

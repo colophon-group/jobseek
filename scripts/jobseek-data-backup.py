@@ -62,6 +62,14 @@ WEB_POSTGRES_TABLES = (
     ("public", "watchlist_company"),
 )
 WEB_POSTGRES_SEQUENCES = (("drizzle", "__drizzle_migrations_id_seq"),)
+WEB_POSTGRES_CONTRACT_CREATED_AT = 1_785_757_200_000
+WEB_POSTGRES_CONTRACT_HASH = "eec5962093a1eb8a7058f9bf031877d148718e2531eaa981b86c5c6bc51165ab"
+WEB_POSTGRES_SAVED_JOB_TEXT_CHECK_DEFINITION = (
+    "CHECK (NULLIF(btrim(posting_title), ''::text) IS NOT NULL AND "
+    "NULLIF(btrim(posting_source_url), ''::text) IS NOT NULL AND "
+    "NULLIF(btrim(company_name), ''::text) IS NOT NULL AND "
+    "NULLIF(btrim(company_slug), ''::text) IS NOT NULL)"
+)
 _REDACTIONS = (
     (
         re.compile(r"(?i)(api[-_ ]?key|password|secret|token)([=: ]+)[^\s,;]+"),
@@ -569,7 +577,12 @@ def _web_postgres_image() -> str:
 
 def _web_postgres_env() -> dict[str, str]:
     env = os.environ.copy()
-    env["PGDATABASE"] = _web_database_url()
+    # PGDATABASE is only a database-name default. The PostgreSQL 17 client
+    # does not expand a connection URI supplied through that environment
+    # variable, so it falls back to the container-local Unix socket. Keep the
+    # complete credential in a dedicated variable and pass it explicitly as
+    # --dbname from inside the short-lived client container.
+    env["WEB_DATABASE_URL"] = _web_database_url()
     env["PGCONNECT_TIMEOUT"] = "30"
     env["PGAPPNAME"] = "jobseek-web-postgresql-backup"
     return env
@@ -590,10 +603,33 @@ def _web_postgres_client_command(
         network,
     ]
     if database_env:
-        command.extend(("--env", "PGDATABASE", "--env", "PGCONNECT_TIMEOUT", "--env", "PGAPPNAME"))
+        command.extend(
+            (
+                "--env",
+                "WEB_DATABASE_URL",
+                "--env",
+                "PGCONNECT_TIMEOUT",
+                "--env",
+                "PGAPPNAME",
+            )
+        )
     for host_path, container_path, mode in mounts:
         command.extend(("--volume", f"{host_path}:{container_path}:{mode}"))
-    command.extend((_web_postgres_image(), *arguments))
+    command.append(_web_postgres_image())
+    if database_env:
+        # Expand the URI only inside the container. This makes libpq parse the
+        # URI while keeping it out of the host command line and backup logs.
+        command.extend(
+            (
+                "sh",
+                "-ceu",
+                'client="$1"; shift; exec "$client" --dbname="$WEB_DATABASE_URL" "$@"',
+                "jobseek-web-postgresql-client",
+                *arguments,
+            )
+        )
+    else:
+        command.extend(arguments)
     return command
 
 
@@ -690,6 +726,226 @@ def _validate_web_postgres_boundary(*, env: dict[str, str]) -> None:
         )
         if output:
             raise BackupError("web PostgreSQL backup boundary is not self-contained: " + output)
+    _validate_web_postgres_contract(env=env)
+
+
+def _validate_web_postgres_contract(*, env: dict[str, str]) -> None:
+    """Require the exact 0085 ledger row and durable saved-job catalog."""
+    output = _web_psql(
+        f"""
+        WITH expected_column(column_name, data_type, is_required) AS (
+          VALUES
+            ('job_posting_id', 'uuid', true),
+            ('posting_title', 'text', true),
+            ('posting_source_url', 'text', true),
+            ('posting_first_seen_at', 'timestamp with time zone', true),
+            ('posting_is_active', 'boolean', true),
+            ('posting_salary_min', 'integer', false),
+            ('posting_salary_max', 'integer', false),
+            ('posting_salary_currency', 'text', false),
+            ('posting_salary_period', 'text', false),
+            ('company_id', 'uuid', true),
+            ('company_name', 'text', true),
+            ('company_slug', 'text', true),
+            ('company_icon', 'text', false)
+        ),
+        column_problem AS (
+          SELECT expected_column.column_name
+          FROM expected_column
+          LEFT JOIN pg_attribute AS attribute
+            ON attribute.attrelid = 'public.saved_job'::regclass
+           AND attribute.attname = expected_column.column_name
+           AND NOT attribute.attisdropped
+          LEFT JOIN pg_attrdef AS default_value
+            ON default_value.adrelid = attribute.attrelid
+           AND default_value.adnum = attribute.attnum
+          WHERE attribute.attnum IS NULL
+             OR format_type(attribute.atttypid, attribute.atttypmod)
+                  <> expected_column.data_type
+             OR attribute.attnotnull <> expected_column.is_required
+             OR default_value.oid IS NOT NULL
+        ),
+        permanent_check AS (
+          SELECT pg_get_constraintdef(oid, true) AS definition
+          FROM pg_constraint
+          WHERE conrelid = 'public.saved_job'::regclass
+            AND conname = 'saved_job_snapshot_text_nonblank_check'
+            AND contype = 'c'
+            AND convalidated
+        )
+        SELECT 'contract_ledger' AS problem
+        WHERE (
+          SELECT count(*)
+          FROM drizzle.__drizzle_migrations
+          WHERE created_at = {WEB_POSTGRES_CONTRACT_CREATED_AT}
+            AND hash = {_quote_literal(WEB_POSTGRES_CONTRACT_HASH)}
+        ) <> 1
+           OR (
+             SELECT count(*)
+             FROM drizzle.__drizzle_migrations
+             WHERE created_at = {WEB_POSTGRES_CONTRACT_CREATED_AT}
+           ) <> 1
+        UNION ALL
+        SELECT 'saved_job_columns'
+        WHERE EXISTS (SELECT 1 FROM column_problem)
+        UNION ALL
+        SELECT 'saved_job_required_values'
+        WHERE EXISTS (
+          SELECT 1
+          FROM public.saved_job
+          WHERE NULLIF(btrim(posting_title), '') IS NULL
+             OR NULLIF(btrim(posting_source_url), '') IS NULL
+             OR posting_first_seen_at IS NULL
+             OR posting_is_active IS NULL
+             OR company_id IS NULL
+             OR NULLIF(btrim(company_name), '') IS NULL
+             OR NULLIF(btrim(company_slug), '') IS NULL
+        )
+        UNION ALL
+        SELECT 'saved_job_permanent_check'
+        WHERE (SELECT count(*) FROM permanent_check) <> 1
+           OR NOT EXISTS (
+             SELECT 1
+             FROM permanent_check
+             WHERE definition = {_quote_literal(WEB_POSTGRES_SAVED_JOB_TEXT_CHECK_DEFINITION)}
+           )
+        UNION ALL
+        SELECT 'saved_job_temporary_check'
+        WHERE EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conrelid = 'public.saved_job'::regclass
+            AND conname = 'saved_job_required_snapshot_check'
+        )
+        UNION ALL
+        SELECT 'saved_job_compatibility_trigger'
+        WHERE EXISTS (
+          SELECT 1
+          FROM pg_trigger
+          WHERE tgrelid = 'public.saved_job'::regclass
+            AND tgname = 'saved_job_snapshot_from_mirror_before_insert'
+            AND NOT tgisinternal
+        )
+           OR to_regprocedure('public.saved_job_snapshot_from_mirror()') IS NOT NULL
+        UNION ALL
+        SELECT 'saved_job_posting_fk'
+        WHERE EXISTS (
+          SELECT 1
+          FROM pg_constraint AS constraint_row
+          WHERE constraint_row.conrelid = 'public.saved_job'::regclass
+            AND constraint_row.contype = 'f'
+            AND constraint_row.conkey = ARRAY[
+              (
+                SELECT attnum
+                FROM pg_attribute
+                WHERE attrelid = 'public.saved_job'::regclass
+                  AND attname = 'job_posting_id'
+                  AND NOT attisdropped
+              )
+            ]::smallint[]
+        )
+        UNION ALL
+        SELECT 'saved_job_user_fk'
+        WHERE (
+          SELECT count(*)
+          FROM pg_constraint AS constraint_row
+          WHERE constraint_row.conrelid = 'public.saved_job'::regclass
+            AND constraint_row.confrelid = 'public.user'::regclass
+            AND constraint_row.conname = 'saved_job_user_id_user_id_fk'
+            AND constraint_row.contype = 'f'
+            AND constraint_row.convalidated
+            AND constraint_row.confdeltype = 'c'
+            AND constraint_row.confupdtype = 'a'
+            AND constraint_row.conkey = ARRAY[
+              (
+                SELECT attnum
+                FROM pg_attribute
+                WHERE attrelid = 'public.saved_job'::regclass
+                  AND attname = 'user_id'
+                  AND NOT attisdropped
+              )
+            ]::smallint[]
+            AND constraint_row.confkey = ARRAY[
+              (
+                SELECT attnum
+                FROM pg_attribute
+                WHERE attrelid = 'public.user'::regclass
+                  AND attname = 'id'
+                  AND NOT attisdropped
+              )
+            ]::smallint[]
+        ) <> 1
+        UNION ALL
+        SELECT 'saved_job_unique_index'
+        WHERE (
+          SELECT count(*)
+          FROM pg_index
+          WHERE indexrelid = to_regclass('public.idx_sj_user_posting')
+            AND indrelid = 'public.saved_job'::regclass
+            AND indisunique
+            AND indisvalid
+            AND indisready
+            AND indpred IS NULL
+            AND indexprs IS NULL
+            AND indnkeyatts = 2
+            AND indkey::text = format(
+              '%s %s',
+              (
+                SELECT attnum
+                FROM pg_attribute
+                WHERE attrelid = 'public.saved_job'::regclass
+                  AND attname = 'user_id'
+                  AND NOT attisdropped
+              ),
+              (
+                SELECT attnum
+                FROM pg_attribute
+                WHERE attrelid = 'public.saved_job'::regclass
+                  AND attname = 'job_posting_id'
+                  AND NOT attisdropped
+              )
+            )
+        ) <> 1
+        UNION ALL
+        SELECT 'application_interview_saved_job_fk'
+        WHERE (
+          SELECT count(*)
+          FROM pg_constraint
+          WHERE conrelid = 'public.application_interview'::regclass
+            AND confrelid = 'public.saved_job'::regclass
+            AND conname = 'application_interview_saved_job_id_fkey'
+            AND contype = 'f'
+            AND convalidated
+            AND confdeltype = 'c'
+            AND confupdtype = 'a'
+            AND conkey = ARRAY[
+              (
+                SELECT attnum
+                FROM pg_attribute
+                WHERE attrelid = 'public.application_interview'::regclass
+                  AND attname = 'saved_job_id'
+                  AND NOT attisdropped
+              )
+            ]::smallint[]
+            AND confkey = ARRAY[
+              (
+                SELECT attnum
+                FROM pg_attribute
+                WHERE attrelid = 'public.saved_job'::regclass
+                  AND attname = 'id'
+                  AND NOT attisdropped
+              )
+            ]::smallint[]
+        ) <> 1
+        ORDER BY 1
+        """,
+        env=env,
+    )
+    if output:
+        raise BackupError(
+            "web PostgreSQL saved-job contract is not the exact 0085 catalog: "
+            + "; ".join(output.splitlines())
+        )
 
 
 def _web_postgres_fingerprints(*, env: dict[str, str]) -> dict[str, dict[str, Any]]:

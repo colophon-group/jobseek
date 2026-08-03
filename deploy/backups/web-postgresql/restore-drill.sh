@@ -166,8 +166,29 @@ INSERT INTO company (id, name, slug) VALUES
   ('00000000-0000-0000-0000-000000000101', 'Restore Smoke', 'restore-smoke-company');
 INSERT INTO job_board (id, company_id, board_url) VALUES
   ('00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000101', 'https://invalid.example/restore-smoke');
-INSERT INTO saved_job (id, user_id, job_posting_id, posting_title) VALUES
-  ('00000000-0000-0000-0000-000000000103', 'restore-smoke-user', '00000000-0000-0000-0000-000000000104', 'Restore Smoke');
+INSERT INTO saved_job (
+  id,
+  user_id,
+  job_posting_id,
+  posting_title,
+  posting_source_url,
+  posting_first_seen_at,
+  posting_is_active,
+  company_id,
+  company_name,
+  company_slug
+) VALUES (
+  '00000000-0000-0000-0000-000000000103',
+  'restore-smoke-user',
+  '00000000-0000-0000-0000-000000000104',
+  'Restore Smoke',
+  'https://invalid.example/restore-smoke/job',
+  now(),
+  true,
+  '00000000-0000-0000-0000-000000000101',
+  'Restore Smoke',
+  'restore-smoke-company'
+);
 INSERT INTO application_interview (id, saved_job_id, round, type) VALUES
   ('00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000103', 1, 'interview');
 INSERT INTO followed_company (user_id, company_id) VALUES

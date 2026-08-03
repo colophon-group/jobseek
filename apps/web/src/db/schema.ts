@@ -13,6 +13,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  check,
   primaryKey,
   jsonb,
   type AnyPgColumn,
@@ -575,23 +576,23 @@ export const savedJob = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    jobPostingId: uuid("job_posting_id")
-      .notNull()
-      .references(() => jobPosting.id, { onDelete: "restrict" }),
+    // Durable external posting identity. 0085 deliberately removes the FK to
+    // the crawler-owned job_posting mirror while preserving NOT NULL and the
+    // per-user unique index.
+    jobPostingId: uuid("job_posting_id").notNull(),
     savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
-    // Nullable during the expand/app phases. 0085 makes the required snapshot
-    // fields NOT NULL only after dual-write/read has been proven in production.
-    postingTitle: text("posting_title"),
-    postingSourceUrl: text("posting_source_url"),
-    postingFirstSeenAt: timestamp("posting_first_seen_at", { withTimezone: true }),
-    postingIsActive: boolean("posting_is_active"),
+    postingTitle: text("posting_title").notNull(),
+    postingSourceUrl: text("posting_source_url").notNull(),
+    postingFirstSeenAt: timestamp("posting_first_seen_at", { withTimezone: true })
+      .notNull(),
+    postingIsActive: boolean("posting_is_active").notNull(),
     postingSalaryMin: integer("posting_salary_min"),
     postingSalaryMax: integer("posting_salary_max"),
     postingSalaryCurrency: text("posting_salary_currency"),
     postingSalaryPeriod: text("posting_salary_period"),
-    companyId: uuid("company_id"),
-    companyName: text("company_name"),
-    companySlug: text("company_slug"),
+    companyId: uuid("company_id").notNull(),
+    companyName: text("company_name").notNull(),
+    companySlug: text("company_slug").notNull(),
     companyIcon: text("company_icon"),
 
     // ── Application tracker fields ──
@@ -612,6 +613,13 @@ export const savedJob = pgTable(
     salaryPeriodOverride: text("salary_period_override"),
   },
   (table) => [
+    check(
+      "saved_job_snapshot_text_nonblank_check",
+      sql`NULLIF(btrim(${table.postingTitle}), '') IS NOT NULL
+        AND NULLIF(btrim(${table.postingSourceUrl}), '') IS NOT NULL
+        AND NULLIF(btrim(${table.companyName}), '') IS NOT NULL
+        AND NULLIF(btrim(${table.companySlug}), '') IS NOT NULL`,
+    ),
     uniqueIndex("idx_sj_user_posting").on(table.userId, table.jobPostingId),
     index("idx_sj_user_saved_at").on(table.userId, table.savedAt),
     index("idx_sj_user_status").on(table.userId, table.status),

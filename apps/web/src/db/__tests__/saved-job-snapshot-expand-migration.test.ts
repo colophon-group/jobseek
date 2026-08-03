@@ -49,12 +49,12 @@ describe("0084 saved-job snapshot expand", () => {
     );
 
     const config = getTableConfig(savedJob);
-    expect(config.foreignKeys).toHaveLength(2);
+    expect(config.foreignKeys).toHaveLength(1);
     const postingForeignKey = config.foreignKeys.find(
         (foreignKey) =>
           getTableName(foreignKey.reference().foreignTable) === "job_posting",
     );
-    expect(postingForeignKey?.onDelete).toBe("restrict");
+    expect(postingForeignKey).toBeUndefined();
   });
 
   it("validates a temporary required-snapshot check", () => {
@@ -62,14 +62,14 @@ describe("0084 saved-job snapshot expand", () => {
     expect(migration).toContain("required snapshot CHECK is not validated");
   });
 
-  it("registers only the expand migration after the baseline repair", () => {
+  it("registers expand immediately before its separate contract", () => {
     const journal = JSON.parse(
       readFileSync(resolve(process.cwd(), "drizzle/meta/_journal.json"), "utf8"),
     ) as { entries: { tag: string }[] };
     const tags = journal.entries.map((entry) => entry.tag);
 
-    expect(tags.at(-2)).toBe("0083_reconcile_supabase_baseline");
-    expect(tags.at(-1)).toBe("0084_saved_job_snapshot_expand");
-    expect(tags).not.toContain("0085_saved_job_snapshot_contract");
+    expect(tags.at(-3)).toBe("0083_reconcile_supabase_baseline");
+    expect(tags.at(-2)).toBe("0084_saved_job_snapshot_expand");
+    expect(tags.at(-1)).toBe("0085_saved_job_snapshot_contract");
   });
 });
