@@ -29,6 +29,10 @@ CLOUDFLARED_UNIT=/etc/systemd/system/cloudflared.service
 TYPESENSE_IMAGE=typesense/typesense:27.1
 TYPESENSE_DATA_DIR=/mnt/typesense-data
 TYPESENSE_CONFIG_IN_CONTAINER=/run/secrets/typesense-server.ini
+TYPESENSE_NOFILE_LIMIT=65536
+TYPESENSE_LOG_MAX_SIZE=50m
+TYPESENSE_LOG_MAX_FILES=3
+TYPESENSE_READY_TIMEOUT_S=900
 LOCK_TIMEOUT_S="${JOBSEEK_TYPESENSE_HOST_DEPLOY_LOCK_TIMEOUT_S:-120}"
 
 install -d -o root -g root -m 0700 "$STATE_DIR" "$CREDENTIAL_DIR"
@@ -62,7 +66,7 @@ atomic_install() {
 }
 
 wait_for_typesense() {
-  local deadline=$((SECONDS + 180))
+  local deadline=$((SECONDS + TYPESENSE_READY_TIMEOUT_S))
   until curl --fail --silent --show-error --max-time 5 \
     http://127.0.0.1:8108/health |
     python3 -c 'import json,sys; raise SystemExit(0 if json.load(sys.stdin).get("ok") is True else 1)'
@@ -96,6 +100,9 @@ run_typesense_container() {
     --name typesense \
     --restart unless-stopped \
     --network host \
+    --ulimit "nofile=$TYPESENSE_NOFILE_LIMIT:$TYPESENSE_NOFILE_LIMIT" \
+    --log-opt "max-size=$TYPESENSE_LOG_MAX_SIZE" \
+    --log-opt "max-file=$TYPESENSE_LOG_MAX_FILES" \
     --volume "$TYPESENSE_DATA_DIR:/data" \
     --volume "$TYPESENSE_CONFIG:$TYPESENSE_CONFIG_IN_CONTAINER:ro" \
     --label jobseek.managed-by=deploy-typesense-host \
@@ -143,6 +150,7 @@ PY
   previous_config="$(mktemp /run/jobseek-typesense-config.rollback.XXXXXX)"
   chmod 0600 "$candidate" "$previous_config"
   printf '%s\n' \
+    '[server]' \
     'data-dir = /data' \
     "api-key = $TYPESENSE_BOOTSTRAP_KEY" \
     'api-port = 8108' \
@@ -167,9 +175,13 @@ import json
 import sys
 
 container = json.load(sys.stdin)[0]
-expected_source, expected_destination = sys.argv[1:]
+expected_source, expected_destination, expected_nofile, expected_log_size, expected_log_files = (
+    sys.argv[1:]
+)
 cmd = container["Config"].get("Cmd") or []
 mounts = container.get("Mounts") or []
+ulimits = container["HostConfig"].get("Ulimits") or []
+log_config = container["HostConfig"].get("LogConfig") or {}
 ok = (
     container["Config"].get("Image") == "typesense/typesense:27.1"
     and container["HostConfig"].get("NetworkMode") == "host"
@@ -180,9 +192,23 @@ ok = (
         and mount.get("RW") is False
         for mount in mounts
     )
+    and any(
+        limit.get("Name") == "nofile"
+        and int(limit.get("Soft") or 0) == int(expected_nofile)
+        and int(limit.get("Hard") or 0) == int(expected_nofile)
+        for limit in ulimits
+    )
+    and log_config.get("Type") == "json-file"
+    and (log_config.get("Config") or {}).get("max-size") == expected_log_size
+    and (log_config.get("Config") or {}).get("max-file") == expected_log_files
 )
 raise SystemExit(0 if ok else 1)
-' "$TYPESENSE_CONFIG" "$TYPESENSE_CONFIG_IN_CONTAINER"
+' \
+        "$TYPESENSE_CONFIG" \
+        "$TYPESENSE_CONFIG_IN_CONTAINER" \
+        "$TYPESENSE_NOFILE_LIMIT" \
+        "$TYPESENSE_LOG_MAX_SIZE" \
+        "$TYPESENSE_LOG_MAX_FILES"
     then
       container_conformant=1
     fi

@@ -118,6 +118,67 @@ Do not manually recreate Typesense with `--api-key`, put a token directly in
 dispatch for recovery; its transaction and conformance checks are the
 supported restart path.
 
+## Typesense Readiness and Raft Recovery
+
+Container uptime is not service readiness. `jobseek_typesense_healthy` is the
+authoritative local readiness signal; the public tunnel health is a separate
+check. The host sampler also exports:
+
+- `jobseek_typesense_open_file_descriptors` and the live soft/hard limits;
+- `jobseek_typesense_threads`;
+- the maximum thread-pool queue and slow-request duration seen in the last
+  five minutes; and
+- bounded five-minute event counts for descriptor exhaustion, leaderlessness,
+  snapshot failure, slow requests, and thread-pool exhaustion.
+
+The managed container requires a 65,536 soft/hard `nofile` limit and rotates
+Docker JSON logs at 50 MB with three files. Deployment conformance verifies
+both Docker metadata and the effective process limit. Allow up to 15 minutes
+for the current 2.5-million-document index to reload before declaring a cold
+start failed.
+
+When readiness fails but the container is running:
+
+1. Preserve `docker inspect`, `/proc/<pid>/limits`, filesystem/inode/memory
+   state, `/health`, `/debug`, and logs covering the first failure. Store them
+   in a root-only incident directory. Never print API keys or full slow-query
+   URLs.
+2. Check the causal signals in order: thread-pool queue, slow requests,
+   descriptor use/exhaustion, snapshot failure, then leaderlessness. Stopping
+   a downstream writer does not repair an already leaderless Raft node.
+3. Verify no Typesense backup is active. Before any peer reset or data-file
+   change, gracefully stop Typesense and make an exact offline copy of
+   `/mnt/typesense-data`; record byte and file counts. Preserve the old
+   container by renaming it rather than deleting it.
+4. Attempt a normal start of the same reviewed image/data first. A healthy
+   single node loads its snapshot, replays the remaining log, elects itself,
+   and reports Raft state `1`. HTTP 503 is expected while the in-memory index
+   reloads.
+5. Use Typesense's `--reset-peers-on-error` only if the fully loaded normal
+   start returns to persistent Raft `ERROR`, and only after the offline copy.
+   The [versioned Typesense documentation](https://typesense.org/docs/27.1/api/server-configuration.html#clustering)
+   warns that forced peer reset can cause intermittent data loss. Remove the
+   flag after the one recovery start.
+
+Recovery acceptance requires all of the following:
+
+```bash
+curl --fail --silent http://127.0.0.1:8108/health
+curl --fail --silent https://typesense.colophon-group.org/health
+docker inspect typesense --format \
+  'running={{.State.Running}} restarts={{.RestartCount}} ulimits={{json .HostConfig.Ulimits}}'
+pid="$(docker inspect typesense --format '{{.State.Pid}}')"
+grep '^Max open files' "/proc/$pid/limits"
+```
+
+From the crawler's protected operations environment, also require `/debug`
+state `1`, all seven aliases, representative posting/company/watchlist reads,
+an ephemeral create/write/read/delete probe, exporter progress, and a complete
+Typesense reconciliation cycle. Preserve the offline copy until the linked
+application-consistent backup and isolated restore have passed. The 2026-08-03
+drill and capacity analysis are in
+[`docs/audits/2026-08-03-typesense-raft-incident.md`](audits/2026-08-03-typesense-raft-incident.md).
+
 ## Ingress and SSH Baseline
 
 The repository-owned ingress source of truth is:
