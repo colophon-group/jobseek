@@ -16,6 +16,7 @@ on:
       - 'docs/17-codex-migration-verification-runbook.md'
       - 'docs/18-codex-automation-deployment.md'
       - 'scripts/codex-*.py'
+      - 'scripts/codex-routine-status.py'
       - 'scripts/jobseek-maintenance.py'
       - 'scripts/jobseek_maintenance_provenance.py'
       - '.github/workflows/deploy-codex-runner.yml'

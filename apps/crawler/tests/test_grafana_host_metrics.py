@@ -35,6 +35,7 @@ def _healthy_results(now: float) -> dict:
         "postgresql_checkpoint_metrics": [_row(1)],
         "postgresql_query_latency": [_row(1)],
         "typesense_ready": [_row(1)],
+        "codex_review_series": [_row(4)],
         "alloy_series": [_row(4)],
         "alloy_unready": [],
         "alloy_rejections": [_row(0)],
@@ -99,6 +100,11 @@ def test_validate_results_rejects_silent_probe_or_backup_failure() -> None:
         verify.VerificationError, match="statistics-query latency metric is missing"
     ):
         verify.validate_results(missing_query_latency, now=now, max_age_seconds=300)
+
+    missing_codex_deadman = _healthy_results(now)
+    missing_codex_deadman["codex_review_series"] = [_row(3)]
+    with pytest.raises(verify.VerificationError, match="daily-review deadman"):
+        verify.validate_results(missing_codex_deadman, now=now, max_age_seconds=300)
 
 
 def test_validate_results_rejects_alloy_delivery_failure_or_series_growth() -> None:

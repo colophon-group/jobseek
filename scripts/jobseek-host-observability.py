@@ -26,6 +26,7 @@ DEFAULT_TEXTFILE = Path("/var/lib/jobseek-observability/textfile/jobseek-host.pr
 DEFAULT_STATE_DIR = Path("/var/lib/jobseek-observability/state")
 DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
 DEFAULT_RECONCILIATION_REVISION = Path("/var/lib/jobseek-reconciliation/deployed-sha")
+DEFAULT_CODEX_ERROR_REVIEW_STATUS = Path("/srv/jobseek-codex/state/error-review-status.json")
 POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
 POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
 MAX_LOG_LINES = 200
@@ -264,6 +265,59 @@ def _collect_reconciliation_deployment_metrics(
         (
             _metric("jobseek_cross_store_reconciliation_deployed_revision_available", available),
             _metric("jobseek_cross_store_reconciliation_deployed_revision_mtime_seconds", modified),
+        )
+    )
+
+
+def _collect_codex_error_review_metrics(
+    lines: list[str], status_path: Path = DEFAULT_CODEX_ERROR_REVIEW_STATUS
+) -> None:
+    try:
+        record = json.loads(status_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        record = {}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProbeError("invalid Codex daily error-review status") from exc
+    if not isinstance(record, dict):
+        raise ProbeError("invalid Codex daily error-review status object")
+
+    values: dict[str, int] = {}
+    for key in (
+        "last_attempt_unixtime",
+        "last_success_unixtime",
+        "last_attempt_success",
+        "run_in_progress",
+    ):
+        raw = record.get(key, 0)
+        if isinstance(raw, bool):
+            raw = int(raw)
+        try:
+            value = int(raw)
+        except (TypeError, ValueError) as exc:
+            raise ProbeError(f"invalid Codex daily error-review {key}") from exc
+        is_boolean_metric = key in {"last_attempt_success", "run_in_progress"}
+        if value < 0 or (is_boolean_metric and value not in (0, 1)):
+            raise ProbeError(f"invalid Codex daily error-review {key}")
+        values[key] = value
+
+    lines.extend(
+        (
+            _metric(
+                "jobseek_codex_daily_error_review_last_attempt_unixtime",
+                values["last_attempt_unixtime"],
+            ),
+            _metric(
+                "jobseek_codex_daily_error_review_last_success_unixtime",
+                values["last_success_unixtime"],
+            ),
+            _metric(
+                "jobseek_codex_daily_error_review_last_attempt_success",
+                values["last_attempt_success"],
+            ),
+            _metric(
+                "jobseek_codex_daily_error_review_run_in_progress",
+                values["run_in_progress"],
+            ),
         )
     )
 
@@ -842,10 +896,16 @@ def collect(
     elif role == "typesense":
         probes.append(("typesense", lambda: _collect_typesense_metrics(lines)))
     elif role == "crawler":
-        probes.append(
+        probes.extend(
             (
-                "reconciliation-deployment",
-                lambda: _collect_reconciliation_deployment_metrics(lines),
+                (
+                    "reconciliation-deployment",
+                    lambda: _collect_reconciliation_deployment_metrics(lines),
+                ),
+                (
+                    "codex-error-review",
+                    lambda: _collect_codex_error_review_metrics(lines),
+                ),
             )
         )
     probes.append(("container_logs", lambda: _collect_new_error_logs(role, state_dir, now=now)))
