@@ -1,6 +1,3 @@
-> [!NOTE]  
-> Something caused a spike in attention to this project on last Sunday. Thank you for all of the stars! Unfortunately, the timimg is not great as I have been in the mountains of Tian Shan and missed some infra related issues. Resolving them now, [jseek.co](https://jseek.co) should be back operational by the end of the day.
-
 <div align="center">
 
 # Job Seek
