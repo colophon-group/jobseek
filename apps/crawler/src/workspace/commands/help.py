@@ -96,6 +96,7 @@ Monitor Types (cheapest first):
   hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
   jazzhr            10      Job URLs          Auto-configured
+  keka              10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
   paylocity         10      Full/partial      Auto-enriched
@@ -1104,6 +1105,33 @@ recruiterbox — Recruiterbox / Trakstar Hire static listing monitor
               Blind tenant guessing is disabled.
   Zero jobs?  An active listing with authoritative total 0 is valid. Trakstar's
               branded inactive-account page is treated as BoardGone.
+  Upstream:   ats-scrapers is inventory input only. Jobseek does not import,
+              execute, or depend on upstream scraper code."""
+
+MONITOR_KEKA = """\
+keka — Keka public career-portal API
+
+  Listing:  GET https://{tenant}.keka.com/careers[/{portal}]
+  Jobs:     GET /careers/api/embedjobs/{portal}/active/{identifier}
+  Returns:  Full job data (title, safe HTML description, locations,
+            employment type, posting date, salary, and metadata)
+  Scraper:  Not needed (public endpoint returns full data; skipped)
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs and a 25 MB jobs payload
+
+  Config:
+    {"tenant":"acme","portal":"default",
+     "identifier":"11111111-1111-4111-8111-111111111111"}
+
+  The listing bootstrap supplies the stable organization identifier. Discovery
+  checks configured tenant/portal/identifier against the URL and live bootstrap,
+  then fetches the authoritative all-active-jobs array in one request. Any
+  malformed/duplicate record or cap breach fails the whole run, preventing
+  partial-result removals. Named portals such as /careers/amfm are supported.
+
+  Detection:  Direct or explicitly linked *.keka.com/careers URLs only; no
+              blind tenant guessing. An exact Keka forbidden-portal redirect
+              and authoritative listing 404/410 are treated as BoardGone.
   Upstream:   ats-scrapers is inventory input only. Jobseek does not import,
               execute, or depend on upstream scraper code."""
 
@@ -2512,6 +2540,7 @@ MONITOR_CARDS: dict[str, str] = {
     "hrmos": MONITOR_HRMOS,
     "recruitee": MONITOR_RECRUITEE,
     "recruiterbox": MONITOR_RECRUITERBOX,
+    "keka": MONITOR_KEKA,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
     "softgarden": MONITOR_SOFTGARDEN,

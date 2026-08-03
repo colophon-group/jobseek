@@ -195,6 +195,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `hirehive`        | Rich     | skip        | HireHive public Jobs API                |
 | 10   | `hireology`       | Rich     | skip        | Hireology Careers API                   |
 | 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
+| 10   | `keka`            | Rich     | skip        | Keka public career-portal jobs API      |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
 | 10   | `mokahr`          | Rich     | skip        | Mokahr encrypted listing API            |
 | 10   | `paylocity`       | Rich     | paylocity   | Paylocity embedded summaries + detail enrich |

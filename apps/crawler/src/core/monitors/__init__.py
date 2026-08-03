@@ -556,6 +556,14 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Recruiterbox / Trakstar Hire \u2014 tenant: {tenant}, {jobs} jobs"
         return f"Recruiterbox / Trakstar Hire \u2014 tenant: {tenant}"
+    if name == "keka":
+        tenant = metadata.get("tenant", "?")
+        portal = metadata.get("portal", "default")
+        jobs = metadata.get("jobs")
+        label = f"tenant: {tenant}, portal: {portal}"
+        if jobs is not None:
+            return f"Keka API \u2014 {label}, {jobs} jobs"
+        return f"Keka API \u2014 {label}"
     if name == "recruiter_co_kr":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -741,6 +749,7 @@ from src.core.monitors import (  # noqa: E402
     jazzhr,  # noqa: F401
     jobylon,  # noqa: F401
     join,  # noqa: F401
+    keka,  # noqa: F401
     kipt,  # noqa: F401
     lever,  # noqa: F401
     mokahr,  # noqa: F401
