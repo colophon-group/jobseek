@@ -411,6 +411,127 @@ groups:
             data Volume before changing max_wal_size or checkpoint timing.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#postgresql-capacity-and-checkpoint-pressure
 
+  - name: jobseek_telemetry_delivery
+    interval: 30s
+    rules:
+
+      - alert: AlloyCollectorUnready
+        expr: jobseek_alloy_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.collector }} Alloy is unready on {{ $labels.instance }}"
+          description: "The independent root sampler cannot reach this Alloy collector's loopback readiness endpoint."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
+      - alert: AlloyRemoteWriteRejected
+        expr: jobseek_alloy_remote_write_rejections_recent > 0
+        for: 2m
+        labels:
+          severity: high
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Grafana rejected {{ $labels.collector }} Alloy writes on {{ $labels.instance }}"
+          description: "Alloy logged at least one HTTP 429 remote-write response in the rolling ten-minute sampler window."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
+      - alert: AlloyRemoteWriteStale
+        expr: time() - jobseek_alloy_remote_write_highest_sent_timestamp_seconds > 180
+        for: 5m
+        labels:
+          severity: high
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.collector }} Alloy remote write is stale on {{ $labels.instance }}"
+          description: "The collector has not confirmed sending a Prometheus sample for more than three minutes."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
+      - alert: AlloyRemoteWriteBacklog
+        expr: jobseek_alloy_remote_write_samples_pending > 3000
+        for: 5m
+        labels:
+          severity: high
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.collector }} Alloy queue is near capacity on {{ $labels.instance }}"
+          description: "More than 3,000 samples are pending in the bounded 4,000-sample remote-write queue."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
+      - alert: AlloyRemoteWriteSamplesLost
+        expr: increase(jobseek_alloy_remote_write_samples_failed_total[10m]) + increase(jobseek_alloy_remote_write_samples_dropped_total[10m]) > 0
+        for: 2m
+        labels:
+          severity: high
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.collector }} Alloy lost metrics on {{ $labels.instance }}"
+          description: "The collector recorded failed or dropped Prometheus samples during the last ten minutes."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
+      - alert: AlloyLokiEntriesDropped
+        expr: increase(jobseek_alloy_loki_dropped_entries_total[10m]) > 0
+        for: 2m
+        labels:
+          severity: high
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.collector }} Alloy dropped logs on {{ $labels.instance }}"
+          description: "The collector recorded dropped Loki entries during the last ten minutes."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
+      - alert: AlloyMemoryPressure
+        expr: jobseek_alloy_resident_memory_bytes > 471859200
+        for: 5m
+        labels:
+          severity: high
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.collector }} Alloy memory is near its hard limit on {{ $labels.instance }}"
+          description: "Alloy resident memory has exceeded 450 MiB for five minutes against a 512 MiB hard limit."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
+      - alert: ComposeAlloyRestartOrOOM
+        expr: jobseek_container_oom_killed{container="deploy-alloy-1"} == 1 or changes(jobseek_container_restart_count{container="deploy-alloy-1"}[15m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Crawler Compose Alloy restarted or was OOM-killed"
+          description: "The independent host sampler observed an Alloy OOM flag or a restart-count change."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
+      - alert: TelemetrySeriesBudgetHigh
+        expr: count({job=~".+"}) > 12000
+        for: 10m
+        labels:
+          severity: high
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Grafana active-series budget exceeds 80%"
+          description: "The tenant is above 12,000 active series against its 15,000-series limit; identify the growing job before writes are rejected."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
   - name: jobseek_crawler_reliability
     interval: 30s
     rules:
@@ -762,7 +883,7 @@ groups:
       # outbound hostname within ten minutes and defers sibling boards and
       # postings for thirty minutes. Alert once per host incident.
       - alert: UpstreamHostCircuitOpen
-        expr: max by (egress_host) (crawler_host_circuit_state) > 0
+        expr: sum(increase(crawler_tasks_total{status=~"host_circuit_(open|half_open)"}[10m])) > 0
         for: 5m
         labels:
           severity: medium
@@ -772,10 +893,10 @@ groups:
         annotations:
           summary: "Crawler upstream-host circuit is open"
           description: |
-            Monitor or scrape work for {{ $labels.egress_host }} is being
-            deferred before network I/O because several tasks failed against
-            the same origin. One half-open probe runs after the stored unblock
-            time; sibling tasks stay deferred until that probe completes.
+            Monitor or scrape work is being deferred before network I/O
+            because several tasks failed against a shared origin. Inspect the
+            `pipeline.*.host_circuit_*` Loki events for bounded per-origin
+            attribution; Prometheus intentionally keeps only fleet outcomes.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md
 
       # Catches the failure mode from the 2026-04-26 NHS spike (#2722):

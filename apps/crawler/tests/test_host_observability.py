@@ -72,6 +72,7 @@ def test_collect_writes_atomic_failure_metrics(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr(host, "_collect_container_metrics", lambda *_: None)
     monkeypatch.setattr(host, "_collect_unit_metrics", lambda *_: None)
     monkeypatch.setattr(host, "_collect_backup_metrics", lambda *_: None)
+    monkeypatch.setattr(host, "_collect_alloy_metrics", lambda *_: None)
     monkeypatch.setattr(host, "_collect_new_error_logs", lambda *_args, **_kwargs: None)
 
     assert host.collect("crawler", textfile=textfile, state_dir=tmp_path / "state") is True
@@ -88,6 +89,63 @@ def test_collect_writes_atomic_failure_metrics(tmp_path: Path, monkeypatch) -> N
     assert 'probe="containers"' in content
     assert "do-not-print" not in content
     assert 'jobseek_host_observability_collect_success{host_role="crawler"} 0' in content
+
+
+def test_alloy_metric_parser_aggregates_only_fixed_families() -> None:
+    payload = """
+alloy_resources_process_resident_memory_bytes 123
+prometheus_remote_storage_samples_pending{remote_name="a",url="redacted"} 2
+prometheus_remote_storage_samples_pending{remote_name="b",url="redacted"} 3
+prometheus_remote_storage_queue_highest_sent_timestamp_seconds{remote_name="a"} 100
+prometheus_remote_storage_queue_highest_sent_timestamp_seconds{remote_name="b"} 105
+loki_write_dropped_entries_total{reason="ingester_error"} 7
+unbounded_metric{origin="example.test"} 999
+"""
+
+    assert host._parse_alloy_metrics(payload) == {
+        "resident_memory_bytes": 123.0,
+        "remote_write_highest_sent_timestamp_seconds": 105.0,
+        "remote_write_samples_pending": 5.0,
+        "remote_write_samples_retried_total": 0,
+        "remote_write_samples_failed_total": 0,
+        "remote_write_samples_dropped_total": 0,
+        "remote_write_enqueue_retries_total": 0,
+        "loki_dropped_entries_total": 7.0,
+    }
+
+
+def test_alloy_probe_emits_bounded_host_and_compose_health(monkeypatch) -> None:
+    payload = """
+alloy_resources_process_resident_memory_bytes 123
+prometheus_remote_storage_queue_highest_sent_timestamp_seconds 1800000000
+prometheus_remote_storage_samples_pending 0
+"""
+
+    def read(url: str, **_kwargs) -> str:
+        return payload if url.endswith("/metrics") else "Alloy is ready."
+
+    monkeypatch.setattr(host, "_read_loopback", read)
+    monkeypatch.setattr(
+        host,
+        "_recent_alloy_rejections",
+        lambda collector: 1 if collector == "compose" else 0,
+    )
+    lines: list[str] = []
+
+    host._collect_alloy_metrics("crawler", lines)
+
+    content = "\n".join(lines)
+    assert 'jobseek_alloy_ready{collector="host",host_role="crawler"} 1' in content
+    assert 'jobseek_alloy_ready{collector="compose",host_role="crawler"} 1' in content
+    assert (
+        'jobseek_alloy_remote_write_rejections_recent{collector="compose",host_role="crawler"} 1'
+        in content
+    )
+    assert "unbounded_metric" not in content
+
+
+def test_crawler_container_inventory_includes_compose_alloy() -> None:
+    assert "deploy-alloy-1" in host.ROLE_CONTAINERS["crawler"]
 
 
 def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> None:
@@ -216,11 +274,13 @@ def test_rule_source_has_bounded_owned_groups() -> None:
     assert {group["name"] for group in groups} == {
         "jobseek_hetzner_fleet",
         "jobseek_postgresql_capacity",
+        "jobseek_telemetry_delivery",
         "jobseek_crawler_reliability",
     }
     assert {group["name"]: len(group["rules"]) for group in groups} == {
         "jobseek_hetzner_fleet": 19,
         "jobseek_postgresql_capacity": 2,
+        "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 17,
     }
     for group in groups:

@@ -34,6 +34,15 @@ def _healthy_results(now: float) -> dict:
         "postgresql_checkpoint_metrics": [_row(1)],
         "postgresql_query_latency": [_row(1)],
         "typesense_ready": [_row(1)],
+        "alloy_series": [_row(4)],
+        "alloy_unready": [],
+        "alloy_rejections": [_row(0)],
+        "alloy_stale": [],
+        "alloy_backlog": [],
+        "active_series": [_row(6000)],
+        "crawler_series": [_row(1000)],
+        "redis_series": [_row(100)],
+        "unix_series": [_row(1200)],
     }
 
 
@@ -84,3 +93,21 @@ def test_validate_results_rejects_silent_probe_or_backup_failure() -> None:
         verify.VerificationError, match="statistics-query latency metric is missing"
     ):
         verify.validate_results(missing_query_latency, now=now, max_age_seconds=300)
+
+
+def test_validate_results_rejects_alloy_delivery_failure_or_series_growth() -> None:
+    now = 1_800_000_000.0
+    rejected = _healthy_results(now)
+    rejected["alloy_rejections"] = [_row(2)]
+    with pytest.raises(verify.VerificationError, match="alloy_rejections is nonzero"):
+        verify.validate_results(rejected, now=now, max_age_seconds=300)
+
+    missing_collector = _healthy_results(now)
+    missing_collector["alloy_series"] = [_row(3)]
+    with pytest.raises(verify.VerificationError, match="three host and one compose"):
+        verify.validate_results(missing_collector, now=now, max_age_seconds=300)
+
+    excessive = _healthy_results(now)
+    excessive["active_series"] = [_row(12_001)]
+    with pytest.raises(verify.VerificationError, match="12000-series budget"):
+        verify.validate_results(excessive, now=now, max_age_seconds=300)
