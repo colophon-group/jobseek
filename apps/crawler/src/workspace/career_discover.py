@@ -92,6 +92,8 @@ _ATS_URL_RE = re.compile(
     r"|jobs\.ashbyhq\.com/[\w-]+"
     r"|herp\.careers/v1/[a-z0-9][a-z0-9_-]{0,62}"
     r"(?:/[A-Za-z0-9_-]{6,64})?/?(?=[#\"'<\s]|$)"
+    r"|hrmos\.co/pages/[a-z0-9][a-z0-9_-]{0,62}/jobs"
+    r"(?:/[A-Za-z0-9_-]{1,64})?/?(?=[#\"'<\s]|$)"
     r"|jobs\.lever\.co/[\w-]+"
     r"|[\w-]+\.recruitee\.com"
     r"|[\w-]+\.jobs\.personio\.(?:de|com)"

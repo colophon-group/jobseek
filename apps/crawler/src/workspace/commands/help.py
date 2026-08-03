@@ -88,6 +88,7 @@ Monitor Types (cheapest first):
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
   herp              10      Job URLs          Auto-configured
+  hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
   jazzhr            10      Job URLs          Auto-configured
   lever             10      Full job data     No (skipped)
@@ -1507,6 +1508,27 @@ herp — HERP Hire server-rendered listing
   Detection:  ws probe shows "HERP static listing — slug: X, N jobs"
   Zero jobs?  A valid page still contains the requisition-list container."""
 
+MONITOR_HRMOS = """\
+hrmos — HRMOS server-rendered listings
+
+  Listing:  GET https://hrmos.co/pages/{tenant}/jobs?page={page}
+  Returns:  Canonical https://hrmos.co/pages/{tenant}/jobs/{job_id} detail URLs
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     Fetches every advertised page sequentially with shared strict
+            retry, DOM link extraction, challenge detection, count-drift
+            protection, and truncation-safe results. No browser or upstream
+            scraper dependency is required.
+
+  Config:
+    {"tenant": "acme"}
+
+    tenant  HRMOS company identifier. Auto-filled only from direct or
+            explicitly linked hrmos.co/pages/{tenant}/jobs URLs; no blind
+            tenant guessing.
+
+  Detection:  ws probe shows "HRMOS static listing — tenant: X, N jobs"
+  Zero jobs?  A valid page still contains the jsi-joblist container and count."""
+
 MONITOR_API_SNIFFER = """\
 api_sniffer — Direct API Replay or XHR/Fetch Capture
 
@@ -2331,6 +2353,7 @@ MONITOR_CARDS: dict[str, str] = {
     "jazzhr": MONITOR_JAZZHR,
     "icims": MONITOR_ICIMS,
     "herp": MONITOR_HERP,
+    "hrmos": MONITOR_HRMOS,
     "recruitee": MONITOR_RECRUITEE,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,

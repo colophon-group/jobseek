@@ -370,6 +370,49 @@ async def _probe_herp(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "herp", url, resp)
 
 
+async def _probe_hrmos(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    tenant = _token_from_config(row["monitor_config"], "tenant")
+    tenant = tenant.strip().lower() if tenant else None
+    if not tenant:
+        from src.workspace._compat import detect_ats_from_url
+
+        parsed = urlparse(row["board_url"])
+        segments = [segment for segment in parsed.path.split("/") if segment]
+        tenant = (
+            segments[1].lower()
+            if detect_ats_from_url(row["board_url"]) == "hrmos" and len(segments) >= 3
+            else None
+        )
+    if not tenant or re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,62}", tenant) is None:
+        return ProbeResult(
+            row["board_slug"],
+            "hrmos",
+            row["board_url"],
+            "warn",
+            "no valid tenant in monitor_config or HRMOS URL",
+        )
+
+    url = f"https://hrmos.co/pages/{tenant}/jobs"
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response):
+        if resp.status_code in {404, 410}:
+            return ProbeResult(row["board_slug"], "hrmos", url, "fail", "board not found")
+        if resp.is_redirect:
+            return ProbeResult(row["board_slug"], "hrmos", url, "warn", "unexpected redirect")
+        if (
+            resp.status_code == 200
+            and re.search(r"\bid=[\"']jsi-joblist[\"']", resp.text, re.IGNORECASE) is None
+        ):
+            return ProbeResult(
+                row["board_slug"],
+                "hrmos",
+                url,
+                "warn",
+                "HRMOS listing marker missing",
+            )
+    return _classify(row, "hrmos", url, resp)
+
+
 async def _probe_recruitee(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     host = urlparse(row["board_url"]).hostname or ""
     if not host:
@@ -501,6 +544,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "jazzhr": _probe_jazzhr,
     "icims": _probe_icims,
     "herp": _probe_herp,
+    "hrmos": _probe_hrmos,
     "recruitee": _probe_recruitee,
     "rippling": _probe_rippling,
     "smartrecruiters": _probe_smartrecruiters,

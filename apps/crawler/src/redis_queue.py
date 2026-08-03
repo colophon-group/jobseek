@@ -234,6 +234,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
     {
         "greenhouse",
         "herp.careers",
+        "hrmos.co",
         "lever",
         "ashby",
         "bamboohr",
