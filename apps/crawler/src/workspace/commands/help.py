@@ -100,6 +100,7 @@ Monitor Types (cheapest first):
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
   recruitee         10      Full job data     No (skipped)
+  recruiterbox      10      Job URLs          Auto-configured
   rippling          10      Job URLs          Auto-configured
   rss               10      Full job data     No (skipped)
   smartrecruiters   10      Job URLs          Auto-configured
@@ -1079,6 +1080,31 @@ recruitee — Recruitee Careers Site API
   Zero jobs?  Verify slug — try the API URL directly in a browser
   Custom domains:  Recruitee supports custom domains (e.g. karriere.herta.de).
                    The API is at https://{custom-domain}/api/offers."""
+
+MONITOR_RECRUITERBOX = """\
+recruiterbox — Recruiterbox / Trakstar Hire static listing monitor
+
+  Listing:  GET https://{tenant}.hire.trakstar.com/?limit=100&p={page}
+  Legacy:   https://{tenant}.recruiterbox.com redirects to Trakstar Hire
+  Returns:  Job URLs from server-rendered HTML
+  Scraper:  Auto-configured (json-ld) for title, description, location, and dates
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs
+
+  Config:
+    {"tenant": "acme"}
+
+  Reuses the shared DOM link extractor, HTTP retry policy, and truncation guard.
+  The monitor reads the listing's authoritative total, requests 100 rows per
+  page, canonicalizes legacy URLs to hire.trakstar.com, and suppresses removals
+  if any page is missing, malformed, duplicated, or changes total mid-run.
+
+  Detection:  Direct Recruiterbox/Trakstar URLs or explicit links in career-page HTML.
+              Blind tenant guessing is disabled.
+  Zero jobs?  An active listing with authoritative total 0 is valid. Trakstar's
+              branded inactive-account page is treated as BoardGone.
+  Upstream:   ats-scrapers is inventory input only. Jobseek does not import,
+              execute, or depend on upstream scraper code."""
 
 MONITOR_SMARTRECRUITERS = """\
 smartrecruiters — SmartRecruiters Posting API (URL-only)
@@ -2458,6 +2484,7 @@ MONITOR_CARDS: dict[str, str] = {
     "herp": MONITOR_HERP,
     "hrmos": MONITOR_HRMOS,
     "recruitee": MONITOR_RECRUITEE,
+    "recruiterbox": MONITOR_RECRUITERBOX,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
     "softgarden": MONITOR_SOFTGARDEN,

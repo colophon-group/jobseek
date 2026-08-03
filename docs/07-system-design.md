@@ -200,6 +200,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `personio`        | Conditional* | --     | Personio XML feed; HTML fallback needs scraper |
 | 10   | `pinpoint`        | Rich     | skip        | Pinpoint API                            |
 | 10   | `recruitee`       | Rich     | skip        | Recruitee Careers API                   |
+| 10   | `recruiterbox`    | URL-only | json-ld     | Recruiterbox / Trakstar Hire static listings |
 | 10   | `rippling`        | URL-only | rippling    | Rippling ATS API                        |
 | 10   | `rss`             | Rich     | skip        | RSS 2.0 feed (SuccessFactors, Teamtailor, generic) |
 | 10   | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters API                 |

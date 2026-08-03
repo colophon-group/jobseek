@@ -66,6 +66,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `personio` | Conditional* | — | Personio XML feed; HTML fallback needs scraper |
 | `pinpoint` | Rich | skip | Pinpoint ATS |
 | `recruitee` | Rich | skip | Recruitee ATS |
+| `recruiterbox` | URL-only | json-ld | Recruiterbox / Trakstar Hire server-rendered listings |
 | `rippling` | URL-only | rippling | Rippling ATS |
 | `rss` | Rich | skip | RSS 2.0 feeds (SuccessFactors, Teamtailor, etc.) |
 | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters ATS |
