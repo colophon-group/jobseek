@@ -273,7 +273,7 @@ class TestDetection:
 
 def test_runtime_and_workspace_integration():
     assert "herp" in all_monitor_types()
-    assert "herp" in _KNOWN_ATS_DOMAINS
+    assert "herp.careers" in _KNOWN_ATS_DOMAINS
     assert detect_ats_from_url(BOARD_URL) == "herp"
     assert detect_ats_from_url(f"{BOARD_URL}?group=engineering") is None
     assert auto_scraper_type("herp") == ("json-ld", None)
