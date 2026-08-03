@@ -329,12 +329,34 @@ class TestProcessOneBoard:
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
         # _RECORD_EMPTY_CHECK uses RETURNING to communicate the delist gate.
-        conn.fetch.return_value = [{"board_status": "active", "should_delist": False}]
+        conn.fetch.return_value = [
+            {"board_status": "active", "should_delist": False, "recovered": False}
+        ]
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
 
         conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1")
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_valid_empty_result_recovers_quarantined_board(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        from src.processing.board import monitor_quarantine_events_total
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
+        conn.fetch.return_value = [
+            {"board_status": "active", "should_delist": False, "recovered": True}
+        ]
+        before = _counter_value(monitor_quarantine_events_total, event="recovered")
+
+        await _process_one_board(_mock_board(), pool, mock_http)
+
+        assert _counter_value(monitor_quarantine_events_total, event="recovered") - before == 1
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
         mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
@@ -356,7 +378,7 @@ class TestProcessOneBoard:
         # board remains suspect/pollable.
         # Second fetch: _DELIST_BOARD_POSTINGS -> two rows flipped
         conn.fetch.side_effect = [
-            [{"board_status": "suspect", "should_delist": True}],
+            [{"board_status": "suspect", "should_delist": True, "recovered": False}],
             [{"id": "jp-1"}, {"id": "jp-2"}],
         ]
         mock_redis = AsyncMock()
@@ -382,7 +404,9 @@ class TestProcessOneBoard:
 
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
-        conn.fetch.return_value = [{"board_status": "suspect", "should_delist": False}]
+        conn.fetch.return_value = [
+            {"board_status": "suspect", "should_delist": False, "recovered": False}
+        ]
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 
@@ -838,7 +862,10 @@ class TestProcessOneBoard:
             [_diff_row("new", url=url)],
             RuntimeError("insert failed"),
         ]
-        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
         enqueue_spy = _enqueue_scrapes_for_new
         enqueue_spy.reset_mock()
         board = _mock_board(crawler_type="dom")
@@ -1016,11 +1043,10 @@ class TestProcessOneBoard:
         pool, conn = mock_pool
         long_error = "x" * 1000
         mock_monitor.side_effect = RuntimeError(long_error)
-        # _RECORD_FAILURE returns (is_enabled, last_success_at). Early
-        # failures (consecutive_failures < 5) leave is_enabled=true, so
-        # the just_disabled check (``not is_enabled``) is False and no
-        # delist runs.
-        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -1032,111 +1058,94 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_five_strike_disable_delists_postings_and_emits_gone(
+    async def test_five_strike_enters_quarantine_without_delisting(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """5-strike disable AND ``last_success_at`` past the 24h
-        recency gate -> _DELIST_BOARD_POSTINGS runs AND the ``gone``
-        Prometheus counter is incremented by the number of rows
-        delisted.
-
-        Before the fix, 5-strike disables left postings stranded
-        (``is_active=true`` on a board the scheduler never polls again)
-        AND emitted no ``gone`` counter, so the Grafana panel showed
-        ``new >> gone`` even when the DB was balanced.
-        """
-        from datetime import UTC, datetime, timedelta
-
-        from src.processing.board import monitor_jobs_discovered
+        """Strike five enters a schedulable quarantine and preserves postings."""
+        from src.processing.board import (
+            monitor_jobs_discovered,
+            monitor_quarantine_events_total,
+        )
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("boom")
-        # _RECORD_FAILURE returns: just disabled, last success 3 days ago.
         conn.fetchrow.return_value = {
-            "is_enabled": False,
-            "last_success_at": datetime.now(tz=UTC) - timedelta(days=3),
+            "board_status": "quarantined",
+            "entered_quarantine": True,
         }
-        # _DELIST_BOARD_POSTINGS now returns the set of rows flipped
-        conn.fetch.return_value = [{"id": f"jp-{i}"} for i in range(7)]
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
         board = _mock_board()
-        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        gone_before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        entered_before = _counter_value(monitor_quarantine_events_total, event="entered")
 
         await _process_one_board(board, pool, mock_http)
 
         failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert len(failure_calls) == 1
-        delist_calls = [
-            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
-        ]
-        assert len(delist_calls) == 1
-        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
-        assert after - before == 7
-        mock_redis.delete.assert_awaited_with("cache:platform-stats")
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
+        assert (
+            _counter_value(monitor_jobs_discovered, profile="simple", action="gone") == gone_before
+        )
+        assert (
+            _counter_value(monitor_quarantine_events_total, event="entered") - entered_before == 1
+        )
+        mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_five_strike_failure_stays_retryable_if_recently_successful(
+    async def test_quarantine_probe_failure_stays_retryable(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Recency gate: a board that succeeded inside the 24h window
-        and burns through the 5-strike backoff remains retryable as
-        ``suspect``. Disabling it would freeze active postings on a
-        board the scheduler never polls again; delisting it would churn
-        search results and IndexNow during short provider outages.
-        """
-        from datetime import UTC, datetime, timedelta
-
-        from src.processing.board import monitor_jobs_discovered
+        """A failed recovery probe remains quarantined without delisting."""
+        from src.processing.board import (
+            monitor_jobs_discovered,
+            monitor_quarantine_events_total,
+        )
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("transient outage")
-        # _RECORD_FAILURE kept the board enabled because last_success_at
-        # is inside the 24h freshness window.
         conn.fetchrow.return_value = {
-            "is_enabled": True,
-            "last_success_at": datetime.now(tz=UTC) - timedelta(hours=2),
+            "board_status": "quarantined",
+            "entered_quarantine": False,
+        }
+        board = _mock_board()
+        gone_before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        probe_before = _counter_value(monitor_quarantine_events_total, event="probe_failed")
+
+        await _process_one_board(board, pool, mock_http)
+
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
+        assert (
+            _counter_value(monitor_jobs_discovered, profile="simple", action="gone") == gone_before
+        )
+        assert (
+            _counter_value(monitor_quarantine_events_total, event="probe_failed") - probe_before
+            == 1
+        )
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_never_successful_board_also_uses_quarantine(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """No success history is not proof of retirement or permission to delist."""
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError("never worked")
+        conn.fetchrow.return_value = {
+            "board_status": "quarantined",
+            "entered_quarantine": True,
         }
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 
         await _process_one_board(board, pool, mock_http)
 
-        delist_calls = [
-            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
-        ]
-        assert delist_calls == []
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after == before
         mock_get_redis.assert_not_called()
-
-    @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one_stream")
-    async def test_five_strike_disable_delists_when_never_succeeded(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
-        """Boards that never had a successful run (NULL last_success_at)
-        bypass the recency gate — they are dead by definition."""
-        from src.processing.board import monitor_jobs_discovered
-
-        pool, conn = mock_pool
-        mock_monitor.side_effect = RuntimeError("never worked")
-        conn.fetchrow.return_value = {"is_enabled": False, "last_success_at": None}
-        conn.fetch.return_value = [{"id": "jp-1"}]
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
-        board = _mock_board()
-        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
-
-        await _process_one_board(board, pool, mock_http)
-
-        delist_calls = [
-            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
-        ]
-        assert len(delist_calls) == 1
-        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
-        assert after - before == 1
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -1148,8 +1157,10 @@ class TestProcessOneBoard:
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("transient")
-        # is_enabled stays True -> not yet disabled -> no delist
-        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 
@@ -1165,29 +1176,25 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_delist_failure_does_not_inc_gone_counter(
+    async def test_record_failure_write_failure_does_not_emit_transition(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """If the delist transaction rolls back (e.g. asyncpg disconnect
-        mid-write), the ``gone`` counter MUST NOT be incremented. The
-        helper splits read-and-emit so a rollback can't desync the
-        metric from the DB state.
-        """
+        """A rolled-back state write cannot produce a quarantine event."""
         import asyncpg
 
-        from src.processing.board import monitor_jobs_discovered
+        from src.processing.board import monitor_quarantine_events_total
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("boom")
-        conn.fetchrow.return_value = {"is_enabled": False, "last_success_at": None}
-        conn.fetch.side_effect = asyncpg.PostgresError("simulated rollback")
+        conn.fetchrow.side_effect = asyncpg.PostgresError("simulated rollback")
         board = _mock_board()
-        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        entered_before = _counter_value(monitor_quarantine_events_total, event="entered")
+        probe_before = _counter_value(monitor_quarantine_events_total, event="probe_failed")
 
         await _process_one_board(board, pool, mock_http)
 
-        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
-        assert after == before
+        assert _counter_value(monitor_quarantine_events_total, event="entered") == entered_before
+        assert _counter_value(monitor_quarantine_events_total, event="probe_failed") == probe_before
         mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
@@ -1276,7 +1283,10 @@ class TestProcessOneBoard:
         """Exceptions with empty str() should still record useful error text."""
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError()
-        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -1681,19 +1691,16 @@ class TestInsertSqlContract:
         relisted_block = sql_compact[relisted_start : relisted_start + 1500]
         assert "next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END" in relisted_block
 
-    def test_record_failure_returns_disable_signal(self):
-        # The RETURNING clause is what lets the Python layer detect the
-        # enabled→disabled transition (post-update ``is_enabled=false``
-        # against a pre-fetch that was ``is_enabled=true``) and apply
-        # the recency gate before delisting. Dropping the RETURNING
-        # would silently re-introduce the phantom-active-jobs bug.
+    def test_record_failure_returns_quarantine_transition(self):
         assert "RETURNING" in _RECORD_FAILURE
-        assert "is_enabled" in _RECORD_FAILURE
-        assert "last_success_at" in _RECORD_FAILURE
+        assert "board_status" in _RECORD_FAILURE
+        assert "entered_quarantine" in _RECORD_FAILURE
 
-    def test_record_failure_keeps_recent_success_boards_retryable(self):
-        assert "last_success_at < now() - interval '24 hours'" in _RECORD_FAILURE
-        assert "THEN 'suspect'" in _RECORD_FAILURE
+    def test_record_failure_quarantine_is_retryable_and_bounded(self):
+        assert "is_enabled = true" in _RECORD_FAILURE
+        assert "THEN 'quarantined'" in _RECORD_FAILURE
+        assert "'1440 minutes'" in _RECORD_FAILURE
+        assert "quarantine_probe_count" in _RECORD_FAILURE
 
     def test_delist_board_postings_returns_ids(self):
         # RETURNING id is what lets _delist_and_count_gone size the

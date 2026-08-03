@@ -1236,6 +1236,64 @@ groups:
             silently truncating (#2722) — needs fixing.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/14-error-review-routine.md
 
+  - name: jobseek_crawler_board_quarantine
+    interval: 30s
+    rules:
+      - alert: CrawlerBoardQuarantineSchemaMissing
+        expr: jobseek_crawler_board_quarantine_schema_ready == 0
+        for: 15m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Crawler board quarantine schema is missing"
+          description: "The host sampler cannot observe recoverable board quarantine state after the deployment grace period."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#board-quarantine-recovery
+
+      - alert: CrawlerBoardQuarantineHasActivePostings
+        expr: jobseek_crawler_quarantine_active_postings > 0
+        for: 30m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Quarantined crawler boards still own active postings"
+          description: "{{ $value }} locally active postings are owned by quarantined boards. Recover the live source before the verified-dead phantom sweep."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#board-quarantine-recovery
+
+      - alert: CrawlerBoardQuarantineStale
+        expr: jobseek_crawler_quarantine_oldest_seconds > 7 * 24 * 60 * 60
+        for: 30m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "A crawler board has remained quarantined for more than seven days"
+          description: "The oldest recoverable board quarantine is {{ $value }} seconds old; classify the integration instead of allowing terminal drift."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#board-quarantine-recovery
+
+      - alert: CrawlerBoardQuarantineRecoveryStalled
+        expr: |
+          jobseek_crawler_quarantined_boards > 0
+            and on()
+          increase(jobseek_crawler_board_recoveries_total[24h]) == 0
+        for: 6h
+        labels:
+          severity: medium
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Crawler quarantine has no recoveries in 24 hours"
+          description: "Configured boards remain quarantined and the durable recovery counter has not advanced."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#board-quarantine-recovery
+
   - name: jobseek_operator_handoffs
     interval: 30s
     rules:

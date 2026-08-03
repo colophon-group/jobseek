@@ -879,6 +879,57 @@ verified cursor. Stopping or disabling the timer is a scheduling rollback
 only—the migration and optional Typesense bucket field are additive, and
 disabling the timer does not undo already verified downstream repairs.
 
+## Board Quarantine Recovery
+
+Ordinary monitor failures are recoverable. After five consecutive failures a
+configured board remains enabled with `board_status='quarantined'`; its
+`next_check_at` continues the exponential schedule capped at 24 hours. Redis
+puts those probes in the recurring tier, so provider/domain throttles bound
+pressure and a deploy cannot create a first-time retry storm.
+
+The PostgreSQL host sampler exports the durable cohort:
+
+- `jobseek_crawler_quarantined_boards`
+- `jobseek_crawler_quarantine_oldest_seconds`
+- `jobseek_crawler_quarantine_active_postings`
+- `jobseek_crawler_board_recoveries_total`
+
+Inspect the source of truth without changing it:
+
+```bash
+docker exec -i postgres psql -U crawler -d crawler -X -v ON_ERROR_STOP=1 -c "
+SELECT board_slug, crawler_type, consecutive_failures,
+       quarantine_probe_count, quarantined_at, next_check_at,
+       left(last_quarantine_error, 160) AS last_quarantine_error
+FROM job_board
+WHERE board_status = 'quarantined'
+ORDER BY next_check_at, board_slug;"
+```
+
+Recovery rules:
+
+1. Do not set a quarantined row to `active` manually and do not delist its
+   postings. A successful provider-native monitor run is the proof that moves
+   the row to `active`, records `last_recovered_at`, and increments
+   `recovery_count`.
+2. Fix monitor code or the CSV-owned monitor configuration normally. `crawler
+   sync` fingerprints the monitor contract; a real config change resets the
+   retry ramp, makes the probe due immediately, and keeps the row quarantined
+   until that probe succeeds.
+3. A failed recovery probe stays quarantined and receives another bounded
+   backoff. Ordinary 401/403/429/5xx, timeout, transport, and parser failures
+   never become terminal retirement evidence.
+4. Only an explicit operator retirement or the separately reviewed, spaced
+   provider-gone confirmation policy may stop scheduling a configured board.
+5. Run the phantom-posting sweep only after live boards recover and the
+   remaining sources have verified-dead evidence. This prevents stale active
+   rows from being tombstoned before their owner can publish a current diff.
+
+Migration 0015 prioritizes the deterministic Ashby recovery cohort
+immediately and spreads other legacy disabled boards across six hours. The
+deploy-time sync then re-disables historical rows absent from `boards.csv`, so
+only configured sources enter Redis.
+
 ## Disk Triage
 
 Use these first when a deploy fails with `No space left on device`, Redis

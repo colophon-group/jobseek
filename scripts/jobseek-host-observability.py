@@ -407,6 +407,35 @@ FROM cross_store_reconciliation_state
 ORDER BY target;
 """.strip()
 
+BOARD_QUARANTINE_SCHEMA_SQL = """
+SELECT count(*)
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'job_board'
+  AND column_name IN (
+    'quarantined_at',
+    'last_quarantined_at',
+    'last_quarantine_error',
+    'quarantine_probe_count',
+    'last_recovered_at',
+    'recovery_count'
+  );
+""".strip()
+
+BOARD_QUARANTINE_STATS_SQL = """
+SELECT
+  count(*) FILTER (WHERE jb.board_status = 'quarantined'),
+  COALESCE(max(extract(epoch FROM now() - jb.quarantined_at))
+    FILTER (WHERE jb.board_status = 'quarantined'), 0),
+  (SELECT count(*)
+   FROM job_posting jp
+   JOIN job_board owner ON owner.id = jp.board_id
+   WHERE jp.is_active = true
+     AND owner.board_status = 'quarantined'),
+  COALESCE(sum(jb.recovery_count), 0)
+FROM job_board jb;
+""".strip()
+
 
 def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
     result = _run(
@@ -427,6 +456,34 @@ def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
         timeout=timeout,
     )
     return result.stdout.strip()
+
+
+def _collect_board_quarantine_metrics(lines: list[str], container: str) -> None:
+    """Expose durable quarantine state from the source-of-truth database."""
+
+    schema_columns = _postgresql_query(container, BOARD_QUARANTINE_SCHEMA_SQL)
+    schema_ready = int(schema_columns == "6")
+    lines.append(_metric("jobseek_crawler_board_quarantine_schema_ready", schema_ready))
+    if not schema_ready:
+        return
+
+    fields = _postgresql_query(container, BOARD_QUARANTINE_STATS_SQL).split("\t")
+    if len(fields) != 4:
+        raise ProbeError("board quarantine statistics query returned an unexpected shape")
+    try:
+        quarantined, oldest_seconds, active_postings, recoveries = (
+            float(value) for value in fields
+        )
+    except ValueError as exc:
+        raise ProbeError("board quarantine statistics query returned a non-numeric value") from exc
+    lines.extend(
+        (
+            _metric("jobseek_crawler_quarantined_boards", quarantined),
+            _metric("jobseek_crawler_quarantine_oldest_seconds", oldest_seconds),
+            _metric("jobseek_crawler_quarantine_active_postings", active_postings),
+            _metric("jobseek_crawler_board_recoveries_total", recoveries),
+        )
+    )
 
 
 def _collect_postgresql_shared_memory_metrics(lines: list[str], container: str) -> None:
@@ -538,6 +595,8 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
         )
     except ValueError as exc:
         raise ProbeError("PostgreSQL statistics query returned a non-numeric value") from exc
+
+    _collect_board_quarantine_metrics(lines, container)
 
     relation = _postgresql_query(
         container,
