@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 import dotenv from "dotenv";
 import postgres from "postgres";
+import { logExternalError } from "../src/lib/safe-external-error";
 
 dotenv.config({ path: ".env.local", quiet: true });
 
@@ -262,6 +263,6 @@ async function main() {
 }
 
 void main().catch((error: unknown) => {
-  console.error("Saved-job expand verification failed:", error);
+  logExternalError("error", { service: "database", operation: "verify_saved_job_expand" }, error);
   process.exitCode = 1;
 });

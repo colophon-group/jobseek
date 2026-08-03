@@ -2,6 +2,7 @@ import { RefreshCw } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
 import { getSession } from "@/lib/sessionCache";
 import { getUserWatchlistsWithLimit } from "@/lib/services/watchlists";
+import { logExternalError } from "@/lib/safe-external-error";
 import { WatchlistsPage } from "./watchlists-page";
 
 const WATCHLIST_LOAD_TIMEOUT_MS = 8_000;
@@ -43,7 +44,7 @@ export async function WatchlistsLoader({ locale }: { locale: string }) {
       />
     );
   } catch (err) {
-    console.error("[watchlists] server load failed", err);
+    logExternalError("error", { service: "database", operation: "load_watchlists" }, err);
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
         <p className="text-sm font-medium">

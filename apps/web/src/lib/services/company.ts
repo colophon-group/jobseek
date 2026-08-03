@@ -25,6 +25,7 @@ import { getCurrencyRates } from "@/lib/services/search";
 import { firstOf, idsOrUndefined, parseRangeParam } from "@/lib/search/params";
 import { convertToEur } from "@/lib/salary";
 import { canonicalStringCompare } from "@/lib/sort";
+import { logExternalError } from "@/lib/safe-external-error";
 
 export { getCompanyBySlug } from "@/lib/services/company-detail";
 export type { CompanyDetail } from "@/lib/services/company-detail";
@@ -142,7 +143,7 @@ export async function searchCompaniesForWatchlist(params: {
     return await _searchCompaniesForWatchlistTypesense(params);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error("[searchCompaniesForWatchlist] Typesense failed, falling back to Postgres", err);
+    logExternalError("error", { service: "typesense", operation: "search_companies_watchlist" }, err);
     return _searchCompaniesForWatchlistPostgres(params);
   }
 }
@@ -775,7 +776,7 @@ async function _fetchSimilarUnfiltered(
     const hasMore = offset + companies.length < found;
     return { companies, hasMore };
   } catch (err) {
-    console.error("[_fetchSimilarUnfiltered] Typesense failed, returning empty page", err);
+    logExternalError("error", { service: "typesense", operation: "similar_companies" }, err);
     return { companies: [], hasMore: false };
   }
 }
@@ -982,7 +983,7 @@ async function _fetchSimilarFiltered(
 
     return { companies, hasMore: false };
   } catch (err) {
-    console.error("[_fetchSimilarFiltered] Typesense failed, returning empty page", err);
+    logExternalError("error", { service: "typesense", operation: "similar_companies_filtered" }, err);
     return { companies: [], hasMore: false };
   }
 }

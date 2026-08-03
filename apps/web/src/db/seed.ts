@@ -3,6 +3,7 @@ dotenv.config({ path: ".env.local" });
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { company, jobPosting } from "./schema";
+import { logExternalError } from "@/lib/safe-external-error";
 
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
 if (!url) {
@@ -83,6 +84,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Seed failed:", err);
+  logExternalError("error", { service: "database", operation: "seed" }, err);
   process.exit(1);
 });

@@ -29,6 +29,7 @@ import { expandLocationIdsBatch, resolveLocationSlugs } from "@/lib/actions/loca
 import { expandOccupationIdsBatch, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/services/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { normalizePostingTitle } from "@/lib/posting-title";
+import { logExternalError } from "@/lib/safe-external-error";
 import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "@/lib/search/typesense-filters";
 import {
   isTypesenseUnavailableError,
@@ -297,7 +298,7 @@ export async function createWatchlist(params: {
       try {
         await _invalidateWatchlistCaches(userId, [slug]);
       } catch (err) {
-        console.error("[createWatchlist] cache invalidate failed", err);
+        logExternalError("error", { service: "redis", operation: "create_watchlist_invalidate" }, err);
       }
     });
   }
@@ -315,7 +316,7 @@ export async function createWatchlist(params: {
           logLabel: "createWatchlist",
         });
       } catch (err) {
-        console.error("[createWatchlist] post-mutation hook failed", err);
+        logExternalError("error", { service: "external_http", operation: "create_watchlist_hook" }, err);
       }
     });
   }
@@ -461,7 +462,7 @@ export async function updateWatchlist(params: {
         );
       }
     } catch (err) {
-      console.error("[updateWatchlist] post-mutation hook failed", err);
+      logExternalError("error", { service: "external_http", operation: "update_watchlist_hook" }, err);
     }
   });
 
@@ -510,7 +511,7 @@ export async function deleteWatchlist(
         "deleteWatchlist",
       );
     } catch (err) {
-      console.error("[deleteWatchlist] post-mutation hook failed", err);
+      logExternalError("error", { service: "external_http", operation: "delete_watchlist_hook" }, err);
     }
   });
 
@@ -607,7 +608,7 @@ export async function copyWatchlist(
     try {
       await _invalidateWatchlistCaches(userId, [slug]);
     } catch (err) {
-      console.error("[copyWatchlist] cache invalidate failed", err);
+      logExternalError("error", { service: "redis", operation: "copy_watchlist_invalidate" }, err);
     }
   });
 
@@ -621,7 +622,7 @@ export async function copyWatchlist(
       const count = await _getWatchlistMirrorCount(watchlistId);
       tsUpdateWatchlistField(watchlistId, { mirror_count: count });
     } catch (err) {
-      console.error("[copyWatchlist] Typesense mirror_count hook failed", err);
+      logExternalError("error", { service: "typesense", operation: "copy_watchlist_mirror_count" }, err);
     }
   });
 
@@ -784,7 +785,7 @@ async function _resolveUserListingCounts(
     try {
       indexedById = await buildIndexedFiltersForUserRows(filteredRows, locale);
     } catch (err) {
-      console.error("[getUserWatchlists] filter id resolution failed", err);
+      logExternalError("error", { service: "typesense", operation: "user_watchlist_filter_ids" }, err);
     }
   }
 
@@ -882,7 +883,7 @@ function hasPreciseListingCountFilters(
 async function resolvePreciseListingCounts(
   candidates: ListingCountCandidate[],
   languages: string[],
-  label: string,
+  _label: string,
 ): Promise<Map<string, number>> {
   if (candidates.length === 0) return new Map();
 
@@ -909,7 +910,11 @@ async function resolvePreciseListingCounts(
       counts.set(candidate.id, results[index]?.found ?? candidate.fallbackCount);
     });
   } catch (err) {
-    console.error(`[${label}] precise listing count multi_search failed`, err);
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "precise_listing_count" },
+      err,
+    );
     for (const candidate of searchable) counts.set(candidate.id, candidate.fallbackCount);
   }
 
@@ -1042,7 +1047,7 @@ export async function getWatchlistByUserAndSlug(
           .set({ lastAccessedAt: new Date() })
           .where(eq(watchlist.id, row.wl_id));
       } catch (err) {
-        console.error("[getWatchlistByUserAndSlug] lastAccessedAt touch failed", err);
+        logExternalError("error", { service: "database", operation: "touch_watchlist_access" }, err);
       }
     });
   }
@@ -1312,7 +1317,7 @@ async function buildIndexedWatchlistFiltersJson(filters: WatchlistFilters): Prom
       technologyIds: techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined,
     };
   } catch (err) {
-    console.error("[buildIndexedWatchlistFiltersJson] taxonomy resolve failed", err);
+    logExternalError("error", { service: "typesense", operation: "indexed_watchlist_taxonomy" }, err);
   }
 
   const payload = buildIndexedWatchlistFiltersPayload(filters, resolvedIds);
@@ -1322,12 +1327,12 @@ async function buildIndexedWatchlistFiltersJson(filters: WatchlistFilters): Prom
 
 async function safeBuildIndexedWatchlistFiltersJson(
   filters: WatchlistFilters,
-  label: string,
+  _label: string,
 ): Promise<string | undefined> {
   try {
     return await buildIndexedWatchlistFiltersJson(filters);
   } catch (err) {
-    console.error(`[${label}] indexed watchlist filters build failed`, err);
+    logExternalError("error", { service: "typesense", operation: "indexed_watchlist_filters" }, err);
     return undefined;
   }
 }
@@ -1440,7 +1445,7 @@ export async function getWatchlistMatchingCompanyCount(
       });
       return result.facet_counts?.[0]?.stats?.total_values ?? 0;
     } catch (err) {
-      console.error("[getWatchlistMatchingCompanyCount] Typesense failed", err);
+      logExternalError("error", { service: "typesense", operation: "watchlist_company_count" }, err);
       return 0;
     }
     // Aligned to the watchlist-detail ISR window (1h, see page.tsx). Bumped
@@ -1529,7 +1534,7 @@ async function queryPublicWatchlists(params: {
     try {
       indexedById = await buildIndexedFiltersForUserRows(filteredRows, params.locale);
     } catch (err) {
-      console.error("[queryPublicWatchlists] filter id resolution failed", err);
+      logExternalError("error", { service: "typesense", operation: "public_watchlist_filter_ids" }, err);
     }
   }
 
@@ -1597,7 +1602,7 @@ async function _patchPreciseCountsForDiscover(
     try {
       hydratedCompanyIds = await _fetchWatchlistCompanyIds(companyScopedEntries.map((e) => e.id));
     } catch (err) {
-      console.error("[_patchPreciseCountsForDiscover] company id hydration failed", err);
+      logExternalError("error", { service: "database", operation: "hydrate_watchlist_company_ids" }, err);
       return entries;
     }
   }
@@ -1680,7 +1685,7 @@ export async function searchPublicWatchlists(params: {
           };
         }
       } catch (err) {
-        console.error("[searchPublicWatchlists] Typesense failed, falling back to Postgres", err);
+        logExternalError("error", { service: "typesense", operation: "search_public_watchlists" }, err);
       }
       // Empty Typesense result or error — fall back to Postgres
       return queryPublicWatchlists({
@@ -1720,7 +1725,7 @@ export async function getPopularWatchlists(params: {
           };
         }
       } catch (err) {
-        console.error("[getPopularWatchlists] Typesense failed, falling back to Postgres", err);
+        logExternalError("error", { service: "typesense", operation: "popular_watchlists" }, err);
       }
       // Empty Typesense result or error — fall back to Postgres
       return queryPublicWatchlists({
@@ -1754,7 +1759,7 @@ export async function getWatchlistPostings(
     return await _getWatchlistPostingsTypesense(params, userId);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error("[getWatchlistPostings] Typesense failed, falling back to Postgres", err);
+    logExternalError("error", { service: "typesense", operation: "watchlist_postings" }, err);
     return _getWatchlistPostingsPostgres(params, userId);
   }
 }
@@ -1782,10 +1787,7 @@ export async function getPublicWatchlistPostings(
     return await _getWatchlistPostingsTypesense(params, null);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[getPublicWatchlistPostings] Typesense failed, falling back to Postgres",
-      err,
-    );
+    logExternalError("error", { service: "typesense", operation: "public_watchlist_postings" }, err);
     return _getWatchlistPostingsPostgres(params, null);
   }
 }
@@ -1852,7 +1854,7 @@ export async function getWatchlistPostingYearCount(
     return results.reduce((sum, result) => sum + (result.found ?? 0), 0);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error("[getWatchlistPostingYearCount] Typesense failed, falling back to Postgres", err);
+    logExternalError("error", { service: "typesense", operation: "watchlist_posting_year_count" }, err);
     return _getWatchlistPostingYearCountPostgres(params);
   }
 }
@@ -1947,7 +1949,7 @@ export async function getWatchlistPostingDisplayCounts(
       yearJobs,
     };
   } catch (err) {
-    console.error("[getWatchlistPostingDisplayCounts] Typesense failed", err);
+    logExternalError("error", { service: "typesense", operation: "watchlist_display_counts" }, err);
     return { activeJobs: 0, yearJobs: 0 };
   }
 }
@@ -1992,7 +1994,7 @@ export async function addCompanyToWatchlist(
         await _invalidateWatchlistCaches(userId, [wl.slug]);
         await _syncWatchlistCompanyCountToTypesense(watchlistId);
       } catch (err) {
-        console.error("[addCompanyToWatchlist] post-mutation hook failed", err);
+        logExternalError("error", { service: "typesense", operation: "add_watchlist_company_hook" }, err);
       }
     });
   }
@@ -2035,7 +2037,7 @@ export async function clearWatchlistCompanies(
         await _invalidateWatchlistCaches(userId, [wl.slug]);
         await _syncWatchlistCompanyCountToTypesense(watchlistId);
       } catch (err) {
-        console.error("[clearWatchlistCompanies] post-mutation hook failed", err);
+        logExternalError("error", { service: "typesense", operation: "clear_watchlist_companies_hook" }, err);
       }
     });
   }
@@ -2084,7 +2086,7 @@ export async function removeCompanyFromWatchlist(
         await _invalidateWatchlistCaches(userId, [wl.slug]);
         await _syncWatchlistCompanyCountToTypesense(watchlistId);
       } catch (err) {
-        console.error("[removeCompanyFromWatchlist] post-mutation hook failed", err);
+        logExternalError("error", { service: "typesense", operation: "remove_watchlist_company_hook" }, err);
       }
     });
   }
@@ -2721,7 +2723,7 @@ async function _invalidateWatchlistCaches(
       try {
         await invalidate(`public-watchlist:${userSlug}:${slug}`);
       } catch (err) {
-        console.error("[invalidateWatchlistCaches] redis invalidate failed", err);
+        logExternalError("error", { service: "redis", operation: "invalidate_watchlist_caches" }, err);
       }
     }
   }

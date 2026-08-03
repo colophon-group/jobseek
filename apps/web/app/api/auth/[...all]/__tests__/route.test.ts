@@ -249,8 +249,10 @@ describe("auth catch-all route — passwordResetLimiter wiring (#3223)", () => {
 
   // --- E2: Redis bypass is logged so the outage is queryable (#3175) ----
 
-  it("logs `[auth-rate-limit] redis bypass` when authLimiter throws (so a Redis outage is visible in Loki, not silent)", async () => {
-    limiterCalls.authLimit.mockRejectedValue(new Error("ECONNREFUSED"));
+  it("logs a safe auth rate-limit event when Redis throws", async () => {
+    limiterCalls.authLimit.mockRejectedValue(
+      Object.assign(new Error("SECRET_CANARY_AUTH_LIMIT"), { code: "ECONNREFUSED" }),
+    );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const { POST } = await import("../route");
@@ -259,17 +261,23 @@ describe("auth catch-all route — passwordResetLimiter wiring (#3223)", () => {
     // Bypass behaviour preserved.
     expect(res.status).toBe(200);
     expect(betterAuthHandlers.POST).toHaveBeenCalledTimes(1);
-    // Stable event prefix so a sustained outage is queryable.
+    // Stable event and operation so a sustained outage is queryable.
     expect(warnSpy).toHaveBeenCalledTimes(1);
-    const [message, errArg] = warnSpy.mock.calls[0];
-    expect(message).toBe("[auth-rate-limit] redis bypass");
-    expect(errArg).toBeInstanceOf(Error);
-    expect((errArg as Error).message).toBe("ECONNREFUSED");
+    const [event, payload] = warnSpy.mock.calls[0];
+    expect(event).toBe("external_client_error");
+    expect(payload).toMatchObject({
+      service: "redis",
+      operation: "auth_rate_limit",
+      code: "ECONNREFUSED",
+    });
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain("SECRET_CANARY_AUTH_LIMIT");
     warnSpy.mockRestore();
   });
 
-  it("logs `[auth-rate-limit] pw-reset redis bypass` when passwordResetLimiter throws on a reset path (email-bombing vector observability)", async () => {
-    limiterCalls.passwordResetLimit.mockRejectedValue(new Error("ECONNREFUSED"));
+  it("logs a safe password-reset rate-limit event when Redis throws", async () => {
+    limiterCalls.passwordResetLimit.mockRejectedValue(
+      Object.assign(new Error("SECRET_CANARY_PASSWORD_RESET"), { code: "ECONNREFUSED" }),
+    );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const { POST } = await import("../route");
@@ -283,10 +291,14 @@ describe("auth catch-all route — passwordResetLimiter wiring (#3223)", () => {
     // Two-axis defence-in-depth means authLimiter still ran with no
     // throw, so only the pw-reset bypass log fires.
     expect(warnSpy).toHaveBeenCalledTimes(1);
-    const [message, errArg] = warnSpy.mock.calls[0];
-    expect(message).toBe("[auth-rate-limit] pw-reset redis bypass");
-    expect(errArg).toBeInstanceOf(Error);
-    expect((errArg as Error).message).toBe("ECONNREFUSED");
+    const [event, payload] = warnSpy.mock.calls[0];
+    expect(event).toBe("external_client_error");
+    expect(payload).toMatchObject({
+      service: "redis",
+      operation: "password_reset_rate_limit",
+      code: "ECONNREFUSED",
+    });
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain("SECRET_CANARY_PASSWORD_RESET");
     warnSpy.mockRestore();
   });
 

@@ -1,3 +1,5 @@
+import { safeExternalError } from "@/lib/safe-external-error";
+
 export interface CompanyDetail {
   id: string;
   name: string;
@@ -80,13 +82,25 @@ export async function resolveCompanyBySlug(
   }
   if (!deps.hasPostgresConfig()) {
     if (typesenseError) {
-      logger.error("[company] Typesense failed and Postgres fallback is unavailable", typesenseError);
+      logger.error(
+        "[company] Typesense failed and Postgres fallback is unavailable",
+        safeExternalError(typesenseError, {
+          service: "typesense",
+          operation: "company_detail_lookup",
+        }),
+      );
     }
     logger.warn("[company] Postgres fallback skipped because DATABASE_URL is not configured");
     return null;
   }
   if (typesenseError) {
-    logger.error("[company] Typesense failed, falling back to Postgres", typesenseError);
+    logger.error(
+      "[company] Typesense failed, falling back to Postgres",
+      safeExternalError(typesenseError, {
+        service: "typesense",
+        operation: "company_detail_lookup",
+      }),
+    );
   }
   return deps.fetchFromPostgres(slug, locale);
 }

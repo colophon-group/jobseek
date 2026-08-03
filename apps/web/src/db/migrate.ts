@@ -3,6 +3,7 @@ dotenv.config({ path: ".env.local", quiet: true });
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { logExternalError } from "@/lib/safe-external-error";
 
 const unpooledUrl = process.env.DATABASE_URL_UNPOOLED;
 const url = unpooledUrl ?? process.env.DATABASE_URL;
@@ -95,6 +96,6 @@ async function main() {
 }
 
 void main().catch((err: unknown) => {
-  console.error("Migration failed:", err);
+  logExternalError("error", { service: "database", operation: "migrate" }, err);
   process.exitCode = 1;
 });

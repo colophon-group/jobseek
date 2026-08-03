@@ -6,6 +6,7 @@ import { savedJob, applicationInterview } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { decodeSavedJobSnapshot } from "@/lib/saved-job-snapshot";
 import { fetchIndexedPostingStates } from "@/lib/search/typesense-posting-detail";
+import { logExternalError } from "@/lib/safe-external-error";
 import {
   type ApplicationStatus,
   type InterviewType,
@@ -465,9 +466,10 @@ export async function addInterview(
     // Exhausted the retry budget without a successful insert. Surface as
     // a soft error so the caller can decide (the UI shows a toast). The
     // server log path picks up the underlying postgres error.
-    console.warn(
-      "[addInterview] failed to assign unique round after retries",
-      { savedJobId, type, lastErr },
+    logExternalError(
+      "warn",
+      { service: "database", operation: "assign_interview_round", retryCount: MAX_ATTEMPTS },
+      lastErr,
     );
     return { ok: false, error: "interview_round_failed" };
   }

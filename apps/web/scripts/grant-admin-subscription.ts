@@ -4,6 +4,7 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import { user, subscription } from "../src/db/schema";
+import { logExternalError } from "../src/lib/safe-external-error";
 
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
 if (!url) {
@@ -55,6 +56,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  logExternalError("error", { service: "database", operation: "grant_admin_subscription" }, err);
   process.exit(1);
 });
