@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 [--start-timer|--disable-timer] <postgresql|typesense>" >&2
+  echo "Usage: $0 [--start-timer|--disable-timer] <postgresql|typesense|web-postgresql>" >&2
 }
 
 TIMER_ACTION=preserve
@@ -15,7 +15,7 @@ elif [[ "${1:-}" == "--disable-timer" ]]; then
   shift
 fi
 SERVICE="${1:-}"
-if [[ "$SERVICE" != "postgresql" && "$SERVICE" != "typesense" ]]; then
+if [[ "$SERVICE" != "postgresql" && "$SERVICE" != "typesense" && "$SERVICE" != "web-postgresql" ]]; then
   usage
   exit 2
 fi
@@ -95,7 +95,7 @@ if [[ "$SERVICE" == "postgresql" ]]; then
   install -o root -g root -m 0644 \
     "$REPO_ROOT/deploy/systemd/jobseek-postgresql-emergency-headroom.service" \
     /etc/systemd/system/jobseek-postgresql-emergency-headroom.service
-else
+elif [[ "$SERVICE" == "typesense" ]]; then
   test -s /etc/jobseek-backup/typesense.env
   test -s /etc/jobseek-backup/typesense/id_ed25519
   : "${JOBSEEK_TYPESENSE_BACKUP_KEY:?JOBSEEK_TYPESENSE_BACKUP_KEY is required}"
@@ -167,6 +167,62 @@ PY
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/typesense/restore-drill.sh" \
     /usr/local/sbin/jobseek-typesense-restore-drill
+else
+  test -s /etc/jobseek-backup/typesense.env
+  test -s /etc/jobseek-backup/typesense/id_ed25519
+  : "${JOBSEEK_WEB_DATABASE_URL:?JOBSEEK_WEB_DATABASE_URL is required}"
+  export JOBSEEK_WEB_DATABASE_URL
+  python3 - <<'PY'
+import os
+from pathlib import Path
+
+source = Path("/etc/jobseek-backup/typesense.env")
+target = Path("/etc/jobseek-backup/web-postgresql.env")
+credential = Path("/etc/jobseek-backup/web-postgresql.database-url")
+allowed = {"RESTIC_REPOSITORY", "RESTIC_PASSWORD_FILE", "RESTIC_SFTP_COMMAND"}
+selected = {}
+for line in source.read_text(encoding="utf-8").splitlines():
+    if not line or line.lstrip().startswith("#") or "=" not in line:
+        continue
+    key = line.split("=", 1)[0]
+    if key in allowed:
+        if key in selected:
+            raise SystemExit(f"ERROR: duplicate {key} in Typesense backup environment")
+        selected[key] = line
+missing = sorted(allowed - set(selected))
+if missing:
+    raise SystemExit(f"ERROR: missing Restic settings: {', '.join(missing)}")
+
+url = os.environ["JOBSEEK_WEB_DATABASE_URL"]
+if not url.startswith(("postgres://", "postgresql://")) or any(
+    character in url for character in "\r\n"
+):
+    raise SystemExit("ERROR: web database URL must be one PostgreSQL URI")
+
+def atomic_write(path: Path, value: str) -> None:
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        stream.write(value)
+    os.chown(temporary, 0, 0)
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, path)
+
+atomic_write(target, "\n".join(selected[key] for key in sorted(selected)) + "\n")
+atomic_write(credential, url + "\n")
+PY
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/scripts/jobseek-data-backup.py" \
+    /usr/local/sbin/jobseek-data-backup
+  if ! command -v restic >/dev/null 2>&1; then
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends restic
+  fi
+  docker pull \
+    postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/deploy/backups/web-postgresql/restore-drill.sh" \
+    /usr/local/sbin/jobseek-web-postgresql-restore-drill
 fi
 
 install -o root -g root -m 0644 \
@@ -218,15 +274,16 @@ elif [[ "$TIMER_ACTION" == "disable" ]]; then
   systemctl stop "jobseek-${SERVICE}-backup.timer" >/dev/null 2>&1 || true
   systemctl disable "jobseek-${SERVICE}-backup.timer" >/dev/null 2>&1 || true
 fi
-if [[ "$TIMER_ACTION" != "disable" ]]; then
-  systemctl is-enabled --quiet "jobseek-${SERVICE}-backup.timer"
+if [[ "$TIMER_ACTION" != "disable" ]] && \
+  systemctl is-enabled --quiet "jobseek-${SERVICE}-backup.timer"; then
   systemctl is-active --quiet "jobseek-${SERVICE}-backup.timer"
   if systemctl is-failed --quiet "jobseek-${SERVICE}-backup.service"; then
     echo "ERROR: jobseek-${SERVICE}-backup.service is failed" >&2
     exit 1
   fi
 fi
-if [[ "$SERVICE" == "typesense" ]]; then
+if [[ "$SERVICE" == "typesense" ]] && \
+  systemctl is-enabled --quiet jobseek-typesense-backup.timer; then
   python3 - <<'PY'
 import json
 import time

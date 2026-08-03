@@ -9,7 +9,8 @@ from types import SimpleNamespace
 
 import pytest
 
-SCRIPT_PATH = Path(__file__).resolve().parents[3] / "scripts" / "jobseek-data-backup.py"
+ROOT = Path(__file__).resolve().parents[3]
+SCRIPT_PATH = ROOT / "scripts" / "jobseek-data-backup.py"
 SPEC = importlib.util.spec_from_file_location("jobseek_data_backup", SCRIPT_PATH)
 assert SPEC and SPEC.loader
 backup = importlib.util.module_from_spec(SPEC)
@@ -265,6 +266,219 @@ def test_typesense_requires_root_only_configuration(monkeypatch: pytest.MonkeyPa
         backup.typesense_backup()
 
 
+def test_web_postgresql_requires_a_database_credential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("WEB_DATABASE_URL", raising=False)
+    monkeypatch.delenv("CREDENTIALS_DIRECTORY", raising=False)
+    with pytest.raises(backup.BackupError, match="credential is missing"):
+        backup._web_database_url()
+
+
+def test_web_postgresql_boundary_rejects_an_external_foreign_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        backup,
+        "_web_psql",
+        lambda *_args, **_kwargs: "external_fk|public.saved_job -> public.job_posting",
+    )
+    with pytest.raises(backup.BackupError, match="saved_job -> public.job_posting"):
+        backup._validate_web_postgres_boundary(env={})
+
+
+def test_web_postgresql_boundary_is_explicitly_product_only() -> None:
+    selected = {f"{schema}.{table}" for schema, table in backup.WEB_POSTGRES_TABLES}
+    assert "drizzle.__drizzle_migrations" in selected
+    assert not any("job_posting" in table for table in selected)
+    assert not any("murmur" in table for table in selected)
+    assert "public.subscription" not in selected
+    assert "public.enrich_batch" not in selected
+    assert backup._web_postgres_bootstrap_sql() == 'CREATE SCHEMA IF NOT EXISTS "drizzle";\n'
+
+
+def test_web_postgresql_boundary_rejects_a_missing_sequence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    outputs = iter(("", 'missing_sequence|"drizzle"."__drizzle_migrations_id_seq"'))
+    monkeypatch.setattr(backup, "_web_psql", lambda *_args, **_kwargs: next(outputs))
+    with pytest.raises(backup.BackupError, match="missing_sequence"):
+        backup._validate_web_postgres_boundary(env={})
+
+
+def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    commands: list[list[str]] = []
+    fingerprint = "\n".join(
+        f"{schema}.{table}|1|{'a' * 32}" for schema, table in backup.WEB_POSTGRES_TABLES
+    )
+    sequence_fingerprint = "\n".join(
+        f"{schema}.{sequence}|42|t" for schema, sequence in backup.WEB_POSTGRES_SEQUENCES
+    )
+    monkeypatch.setenv("WEB_DATABASE_URL", "postgresql://test.invalid/web")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("WEB_POSTGRES_STAGING_ROOT", str(tmp_path / "web-postgresql"))
+    monkeypatch.setattr(backup, "_validate_web_postgres_boundary", lambda **_: None)
+    monkeypatch.setattr(
+        backup,
+        "utc_now",
+        lambda: datetime(2026, 8, 3, 12, 0, tzinfo=UTC),
+    )
+
+    def fake_psql(sql: str, **_: object) -> str:
+        if sql == "SHOW server_version":
+            return "17.6"
+        if "last_value::bigint" in sql:
+            return sequence_fingerprint
+        return fingerprint
+
+    def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        commands.append(argv)
+        if "pg_dump" in argv:
+            mount = argv[argv.index("--volume") + 1]
+            host_path = Path(mount.split(":/backup:", 1)[0])
+            (host_path / "web-postgresql.dump").write_bytes(b"portable-logical-dump")
+        if "pg_restore" in argv and "--list" in argv:
+            toc = []
+            for schema, table in backup.WEB_POSTGRES_TABLES:
+                toc.append(f"1; 1259 1 TABLE {schema} {table} postgres")
+                toc.append(f"2; 0 1 TABLE DATA {schema} {table} postgres")
+            for schema, sequence in backup.WEB_POSTGRES_SEQUENCES:
+                toc.append(f"3; 1259 2 SEQUENCE {schema} {sequence} postgres")
+                toc.append(f"4; 0 0 SEQUENCE SET {schema} {sequence} postgres")
+            return completed("\n".join(toc))
+        if "snapshots" in argv:
+            return completed(
+                json.dumps(
+                    [
+                        {
+                            "id": "abcdef0123456789",
+                            "short_id": "abcdef01",
+                            "time": "2026-08-03T12:00:05Z",
+                        }
+                    ]
+                )
+            )
+        return completed()
+
+    monkeypatch.setattr(backup, "_web_psql", fake_psql)
+    monkeypatch.setattr(backup, "run_checked", fake_run)
+
+    result = backup.web_postgresql_backup()
+
+    assert result["table_count"] == len(backup.WEB_POSTGRES_TABLES)
+    assert result["row_count"] == len(backup.WEB_POSTGRES_TABLES)
+    assert result["repository_snapshot_id"] == "abcdef01"
+    assert not (tmp_path / "web-postgresql" / "staging" / "20260803T120000Z").exists()
+    dump_command = next(command for command in commands if "pg_dump" in command)
+    selected = [
+        dump_command[index + 1]
+        for index, argument in enumerate(dump_command)
+        if argument == "--table"
+    ]
+    assert selected == [
+        backup._qualified_table(schema, table) for schema, table in backup.WEB_POSTGRES_TABLES
+    ] + [
+        backup._qualified_table(schema, sequence)
+        for schema, sequence in backup.WEB_POSTGRES_SEQUENCES
+    ]
+    assert all("job_posting" not in table for table in selected)
+    assert "--serializable-deferrable" in dump_command
+    assert any("backup" in command for command in commands)
+    assert any("forget" in command and "--prune" in command for command in commands)
+    assert any("check" in command for command in commands)
+
+
+def test_web_postgresql_restore_verifies_checksum_and_fingerprints(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    dump_path = tmp_path / "web-postgresql.dump"
+    dump_path.write_bytes(b"restored-logical-dump")
+    bootstrap_path = tmp_path / "bootstrap.sql"
+    bootstrap_path.write_text(backup._web_postgres_bootstrap_sql(), encoding="utf-8")
+    fingerprints = {
+        f"{schema}.{table}": {"rows": 1, "digest": "b" * 32}
+        for schema, table in backup.WEB_POSTGRES_TABLES
+    }
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "archive": dump_path.name,
+                "archive_bytes": dump_path.stat().st_size,
+                "archive_sha256": backup._sha256_file(dump_path),
+                "bootstrap": bootstrap_path.name,
+                "bootstrap_sha256": backup._sha256_file(bootstrap_path),
+                "tables": [f"{schema}.{table}" for schema, table in backup.WEB_POSTGRES_TABLES],
+                "sequences": [
+                    f"{schema}.{sequence}" for schema, sequence in backup.WEB_POSTGRES_SEQUENCES
+                ],
+                "fingerprints": fingerprints,
+                "sequence_fingerprints": {
+                    f"{schema}.{sequence}": {"last_value": 42, "is_called": True}
+                    for schema, sequence in backup.WEB_POSTGRES_SEQUENCES
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("WEB_DATABASE_URL", "postgresql://test.invalid/restored")
+    monkeypatch.setattr(backup, "_validate_web_postgres_boundary", lambda **_: None)
+    monkeypatch.setattr(
+        backup,
+        "_web_postgres_fingerprints",
+        lambda **_: fingerprints,
+    )
+    monkeypatch.setattr(
+        backup,
+        "_web_postgres_sequence_fingerprints",
+        lambda **_: {
+            f"{schema}.{sequence}": {"last_value": 42, "is_called": True}
+            for schema, sequence in backup.WEB_POSTGRES_SEQUENCES
+        },
+    )
+
+    result = backup.verify_web_postgresql_restore(manifest_path, dump_path, bootstrap_path)
+
+    assert result["table_count"] == len(backup.WEB_POSTGRES_TABLES)
+    assert result["row_count"] == len(backup.WEB_POSTGRES_TABLES)
+
+
+def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> None:
+    service = (ROOT / "deploy/systemd/jobseek-web-postgresql-backup.service").read_text(
+        encoding="utf-8"
+    )
+    workflow = (ROOT / ".github/workflows/deploy-data-backups.yml").read_text(encoding="utf-8")
+    restore = (ROOT / "deploy/backups/web-postgresql/restore-drill.sh").read_text(encoding="utf-8")
+
+    assert "LoadCredential=web-database-url:" in service
+    assert "EnvironmentFile=/etc/jobseek-backup/web-postgresql.env" in service
+    assert "typesense.env" not in service
+    assert "postgres:17-alpine@sha256:" in service
+    assert "RuntimeDirectory=jobseek-backup/web-postgresql" in service
+    assert "RuntimeDirectoryPreserve=yes" in service
+    assert "WEB_POSTGRES_STAGING_ROOT=/run/jobseek-backup/web-postgresql" in service
+    assert "service: [postgresql, typesense, web-postgresql]" in workflow
+    assert "max-parallel: 1" in workflow
+    assert 'elif [[ "$JOBSEEK_BACKUP_SERVICE" != "web-postgresql" ]]' in workflow
+    assert "--publish 127.0.0.1::5432" in restore
+    assert "WEB_POSTGRES_DRILL_ROOT:-/run/jobseek-backup/web-postgresql/drills" in restore
+    assert "--file /restore/bootstrap.sql" in restore
+    assert "saved_job" in restore
+    assert "murmur" not in restore.lower()
+
+
+def test_backup_installer_allows_only_the_staged_web_timer_to_remain_disabled() -> None:
+    installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+
+    assert 'systemctl is-enabled --quiet "jobseek-${SERVICE}-backup.timer"' in installer
+    assert '[[ "$SERVICE" == "typesense" ]] &&' in installer
+
+
 def test_restic_command_injects_the_restricted_sftp_transport(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -415,7 +629,11 @@ def test_typesense_backup_rejects_inventory_changes_during_snapshot(
 
 
 def test_redact_removes_common_secret_shapes() -> None:
-    value = backup.redact("api_key=abc password: def Authorization: Bearer ghi")
+    value = backup.redact(
+        "api_key=abc password: def Authorization: Bearer ghi "
+        "postgresql://user:database-secret@example.invalid/web"
+    )
     assert "abc" not in value
     assert "def" not in value
     assert "ghi" not in value
+    assert "database-secret" not in value

@@ -101,6 +101,30 @@ def test_typesense_log_metrics_capture_the_incident_chain() -> None:
     assert metrics["event_leaderless"] == 2
 
 
+def test_typesense_host_collects_web_backup_only_after_activation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    timer = "jobseek-web-postgresql-backup.timer"
+    assert timer in host.OPTIONAL_ROLE_UNITS["typesense"]
+    assert ("web-postgresql", timer) in host.OPTIONAL_ROLE_BACKUPS["typesense"]
+    (tmp_path / "typesense.json").write_text(
+        json.dumps({"success": True, "last_success_unix": 100}), encoding="utf-8"
+    )
+    (tmp_path / "web-postgresql.json").write_text(
+        json.dumps({"success": True, "last_success_unix": 200}), encoding="utf-8"
+    )
+
+    monkeypatch.setattr(host, "_unit_enabled", lambda _unit: False)
+    lines: list[str] = []
+    host._collect_backup_metrics("typesense", tmp_path, lines)
+    assert not any('service="web-postgresql"' in line for line in lines)
+
+    monkeypatch.setattr(host, "_unit_enabled", lambda unit: unit == timer)
+    lines = []
+    host._collect_backup_metrics("typesense", tmp_path, lines)
+    assert any('service="web-postgresql"' in line for line in lines)
+
+
 def test_collect_writes_atomic_failure_metrics(tmp_path: Path, monkeypatch) -> None:
     textfile = tmp_path / "metrics" / "host.prom"
     monkeypatch.setattr(host, "_collect_container_metrics", lambda *_: None)
