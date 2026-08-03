@@ -2077,6 +2077,17 @@ class TestSelectMonitorNaming:
         assert selected["scraper_type"] == "skip"
         assert selected.get("scraper_config") is None
 
+    def test_dayforce_rich_monitor_skip_is_persisted(self, tmp_path, monkeypatch):
+        """Dayforce selection skips redundant per-job scraping."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "dayforce"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["dayforce"]
+        assert selected["scraper_type"] == "skip"
+        assert selected.get("scraper_config") is None
+
     def test_hrmos_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
         """HRMOS selection carries the existing JSON-LD detail scraper."""
         self._setup(tmp_path, monkeypatch)

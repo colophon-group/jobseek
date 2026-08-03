@@ -239,6 +239,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "ashby",
         "bamboohr",
         "cornerstone",
+        "dayforce",
         "paycom",
         "jazzhr",
         "icims",
@@ -265,6 +266,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "eightfold",
         "accenture",
         "deel",
+        "jobs.dayforcehcm.com",
     }
 )
 

@@ -81,6 +81,7 @@ Monitor Types (cheapest first):
   breezy            10      Job URLs          Auto-configured
   comeet            10      Full job data     No (skipped)
   cornerstone       10      Full job data     No (skipped)
+  dayforce          10      Full job data     No (skipped)
   deel              10      Full job data     No (skipped)
   dvinci            10      Full job data     No (skipped)
   gem               10      Full job data     No (skipped)
@@ -1555,6 +1556,30 @@ cornerstone — Cornerstone public career-site API
   Detection:  ws probe shows "Cornerstone API — tenant: X, site: N, M jobs"
   Zero jobs?  A valid API response reports totalCount=0 and requisitions=[]."""
 
+MONITOR_DAYFORCE = """\
+dayforce — Dayforce public career-site API
+
+  Listing:  GET  https://jobs.dayforcehcm.com/{tenant}/{portal}
+  Search:   POST https://jobs.dayforcehcm.com/api/geo/{tenant}/jobposting/search
+  Returns:  Full job data streamed in 25-job pages; no detail fan-out
+  Scraper:  None (rich monitor)
+  Browser:  Required. Dayforce's public same-origin BFF rejects stateless HTTP
+            replay, so the monitor reuses Jobseek's browser fetch transport.
+  Note:     Validates server-rendered site identity over HTTP before browser
+            startup, preserves tenant+portal as the complete board identity,
+            and uses shared retry, TDM, and truncation handling. No upstream
+            scraper code or runtime dependency is used.
+
+  Config:
+    {"tenant": "acme", "portal": "CANDIDATEPORTAL"}
+
+    tenant  Dayforce client namespace.
+    portal  Case-preserving career-site code. Auto-filled only from direct or
+            explicitly linked jobs.dayforcehcm.com URLs; no blind guessing.
+
+  Detection:  ws probe shows "Dayforce API — tenant: X, portal: Y"
+  Zero jobs?  A valid search response reports maxCount=0 and jobPostings=[]."""
+
 MONITOR_HRMOS = """\
 hrmos — HRMOS server-rendered listings
 
@@ -2401,6 +2426,7 @@ MONITOR_CARDS: dict[str, str] = {
     "icims": MONITOR_ICIMS,
     "gupy": MONITOR_GUPY,
     "cornerstone": MONITOR_CORNERSTONE,
+    "dayforce": MONITOR_DAYFORCE,
     "herp": MONITOR_HERP,
     "hrmos": MONITOR_HRMOS,
     "recruitee": MONITOR_RECRUITEE,

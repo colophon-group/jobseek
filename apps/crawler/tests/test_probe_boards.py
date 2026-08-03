@@ -27,6 +27,37 @@ def _row(**overrides) -> dict:
     return base
 
 
+def _dayforce_page(*, disabled=None, culture="en-US") -> str:
+    data = {
+        "query": {
+            "clientNamespace": "allianthcm",
+            "careerSiteXRefCode": "Alliant",
+        },
+        "props": {
+            "pageProps": {
+                "dehydratedState": {
+                    "queries": [
+                        {
+                            "queryKey": ["site-info", {}],
+                            "state": {
+                                "data": {
+                                    "clientNamespace": "allianthcm",
+                                    "jobBoardCode": "alliant",
+                                    "cultureCode": culture,
+                                    "jobBoardId": 7,
+                                    "isoCultureCodes": [culture],
+                                    "isDisabled": disabled,
+                                }
+                            },
+                        }
+                    ]
+                }
+            }
+        },
+    }
+    return f'<script id="__NEXT_DATA__">{json.dumps(data)}</script>'
+
+
 class TestRowsAddedOrChanged:
     def test_new_row_is_included(self):
         base = [_row()]
@@ -554,6 +585,76 @@ class TestProbeRow:
         assert result.status == "warn"
         assert "no valid tenant/site_id/corp" in result.message
 
+    async def test_dayforce_uses_configured_board_identity(self):
+        row = _row(
+            board_slug="acme-dayforce",
+            board_url="https://legacy.example/jobs",
+            monitor_type="dayforce",
+            monitor_config=json.dumps({"tenant": "allianthcm", "portal": "Alliant"}),
+        )
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(200, text=_dayforce_page(), request=request)
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == "https://jobs.dayforcehcm.com/allianthcm/Alliant"
+
+    async def test_dayforce_404_and_disabled_are_failed(self):
+        row = _row(
+            board_slug="acme-dayforce",
+            board_url="https://jobs.dayforcehcm.com/allianthcm/Alliant",
+            monitor_type="dayforce",
+            monitor_config="",
+        )
+        missing = await self._run(row, lambda request: httpx.Response(404, request=request))
+        disabled = await self._run(
+            row,
+            lambda request: httpx.Response(
+                200, text=_dayforce_page(disabled=True), request=request
+            ),
+        )
+        assert missing.status == "fail"
+        assert disabled.status == "fail"
+
+    async def test_dayforce_trusted_localized_redirect_is_ok(self):
+        row = _row(
+            board_slug="acme-dayforce",
+            board_url="https://jobs.dayforcehcm.com/allianthcm/Alliant",
+            monitor_type="dayforce",
+            monitor_config="",
+        )
+
+        def handler(request):
+            if str(request.url) == "https://jobs.dayforcehcm.com/allianthcm/Alliant":
+                return httpx.Response(
+                    307,
+                    headers={"location": "/en-GB/allianthcm/Alliant"},
+                    request=request,
+                )
+            return httpx.Response(200, text=_dayforce_page(culture="en-GB"), request=request)
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert result.probe_url == "https://jobs.dayforcehcm.com/en-GB/allianthcm/Alliant"
+
+    async def test_dayforce_scoped_url_is_not_widened(self):
+        row = _row(
+            board_slug="acme-dayforce",
+            board_url="https://jobs.dayforcehcm.com/allianthcm/Alliant?page=2",
+            monitor_type="dayforce",
+            monitor_config="",
+        )
+        transport = httpx.MockTransport(
+            lambda request: (_ for _ in ()).throw(AssertionError("should not fetch"))
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await probe_row(row, client)
+        assert result.status == "warn"
+        assert "no valid tenant/portal" in result.message
+
     async def test_hrmos_uses_config_tenant(self):
         row = _row(
             board_slug="acme-hrmos",
@@ -672,6 +773,7 @@ def test_probe_registry_covers_expected_types():
         "icims",
         "gupy",
         "cornerstone",
+        "dayforce",
         "herp",
         "hrmos",
         "recruitee",
