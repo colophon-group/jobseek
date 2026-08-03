@@ -53,6 +53,11 @@ omitted.
   container and 19.1 GB restore directory were removed.
 - 2026-08-03 12:28 — the Storage Box automatic plan was re-enabled for one
   daily 06:00 UTC snapshot with a hard maximum of two retained snapshots.
+- 2026-08-03 12:37 — the crawler-side operational preflight passed all eight
+  readiness, telemetry, filesystem, reserve, backup, and archive-health gates.
+- 2026-08-03 12:48 — the three HTTP workers, browser worker, exporter, and R2
+  drain resumed without recreating their containers. All worker/browser health
+  checks passed with zero restarts or OOM kills.
 
 ## Root cause
 
@@ -110,3 +115,6 @@ gate passes.
 - Backup, emergency-headroom, Alloy, and host-sampler timers/services are
   enabled and active. Root-only machine-readable evidence is retained under
   `/var/lib/jobseek-incidents/6117/20260803T083440Z`.
+- The crawler operational preflight passed immediately before workload resume.
+  Resumed services remained healthy while WAL archiving continued without any
+  increase beyond the incident failure baseline.
