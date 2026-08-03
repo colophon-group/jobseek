@@ -420,6 +420,10 @@ services:
     tmpfs:
       - /tmp:size=16m,mode=1777
     environment:
+      # Leave half the cgroup for the remote-write WAL, mapped files, runtime,
+      # and Docker log tailing. GOMEMLIMIT is a soft Go heap target, not the
+      # container's hard limit.
+      GOMEMLIMIT: 256MiB
       PROM_URL: ${GRAFANA_PROM_URL}
       PROM_USERNAME: ${GRAFANA_PROM_USERNAME}
       PROM_PASSWORD: ${GRAFANA_PROM_PASSWORD}
@@ -427,8 +431,8 @@ services:
       LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
       LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
     command: run --storage.path=/data-alloy --server.http.listen-addr=127.0.0.1:12346 /etc/alloy/config.river
-    mem_limit: 256m
-    cpus: 0.25
+    mem_limit: 512m
+    cpus: 0.5
 
 volumes:
   redis-data:

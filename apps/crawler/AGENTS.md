@@ -559,7 +559,7 @@ docker exec deploy-redis-1 redis-cli SET disk_probe ok EX 60
 | browser-1 | crawler-full | 9098 | 3 | 6GB |
 | exporter | crawler-slim | 9093 | — | — |
 | drain | crawler-slim | 9094 | — | — |
-| alloy | grafana/alloy | 12346 | 0.25 | 256MB |
+| alloy | grafana/alloy | 12346 | 0.5 | 512MB (256MiB Go soft limit) |
 | redis | redis:7-alpine | — | — | 1.5GB (1GB maxmemory) |
 
 ### Querying Metrics
@@ -678,6 +678,11 @@ uv run crawler refresh-typesense
 The crawler Compose Alloy scrapes crawler application and Redis metrics and
 tails crawler Docker logs. Its official 1.18.0 image is digest-pinned,
 read-only, capability-dropped, and no longer privileged or host-PID aware.
+Its remote-write queue uses one bounded shard, Redis metrics use an explicit
+operational allowlist, and per-origin circuit-breaker metrics are dropped in
+favor of bounded fleet task outcomes plus Loki attribution. These controls are
+part of the Grafana 15,000-active-series safety budget and must not be removed
+without measuring production cardinality first.
 When adding/removing crawler containers, update the static scrape targets in
 `apps/crawler/alloy.river`; crawler deployment recreates only this collector.
 

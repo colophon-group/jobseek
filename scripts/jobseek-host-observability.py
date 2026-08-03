@@ -28,6 +28,35 @@ DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
 POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
 POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
 MAX_LOG_LINES = 200
+ALLOY_METRICS = {
+    "alloy_resources_process_resident_memory_bytes": ("resident_memory_bytes", "max"),
+    "prometheus_remote_storage_queue_highest_sent_timestamp_seconds": (
+        "remote_write_highest_sent_timestamp_seconds",
+        "max",
+    ),
+    "prometheus_remote_storage_samples_pending": ("remote_write_samples_pending", "sum"),
+    "prometheus_remote_storage_samples_retried_total": (
+        "remote_write_samples_retried_total",
+        "sum",
+    ),
+    "prometheus_remote_storage_samples_failed_total": (
+        "remote_write_samples_failed_total",
+        "sum",
+    ),
+    "prometheus_remote_storage_samples_dropped_total": (
+        "remote_write_samples_dropped_total",
+        "sum",
+    ),
+    "prometheus_remote_storage_enqueue_retries_total": (
+        "remote_write_enqueue_retries_total",
+        "sum",
+    ),
+    "loki_write_dropped_entries_total": ("loki_dropped_entries_total", "sum"),
+}
+_PROMETHEUS_SAMPLE_RE = re.compile(
+    r"^(?P<name>[A-Za-z_:][A-Za-z0-9_:]*)(?:\{[^}]*\})?\s+(?P<value>\S+)"
+)
+_HTTP_429_RE = re.compile(r"(?i)(?:status|code|http(?: status)?)\D{0,8}429|429 too many")
 
 ROLE_CONTAINERS = {
     "crawler": (
@@ -38,6 +67,7 @@ ROLE_CONTAINERS = {
         "deploy-exporter-1",
         "deploy-drain-1",
         "deploy-redis-1",
+        "deploy-alloy-1",
     ),
     "postgresql": ("postgres",),
     "typesense": ("typesense",),
@@ -602,6 +632,86 @@ def _collect_typesense_metrics(
         raise ProbeError("Typesense health endpoint did not report ok")
 
 
+def _read_loopback(url: str, *, timeout: int = 10) -> str:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310
+            if response.status != 200:
+                raise ProbeError(f"loopback probe returned HTTP {response.status}")
+            return response.read().decode("utf-8", errors="replace")
+    except (OSError, urllib.error.URLError) as exc:
+        raise ProbeError(f"loopback probe failed: {type(exc).__name__}") from exc
+
+
+def _parse_alloy_metrics(payload: str) -> dict[str, float]:
+    values: dict[str, list[float]] = {name: [] for name in ALLOY_METRICS}
+    for line in payload.splitlines():
+        match = _PROMETHEUS_SAMPLE_RE.match(line)
+        if match is None or match.group("name") not in values:
+            continue
+        try:
+            value = float(match.group("value"))
+        except ValueError:
+            continue
+        if value == value and value not in (float("inf"), float("-inf")):
+            values[match.group("name")].append(value)
+
+    aggregated: dict[str, float] = {}
+    for source, (target, operation) in ALLOY_METRICS.items():
+        samples = values[source]
+        aggregated[target] = max(samples) if samples and operation == "max" else sum(samples)
+    return aggregated
+
+
+def _recent_alloy_rejections(collector: str) -> int:
+    if collector == "compose":
+        result = _run(["docker", "logs", "--since", "10m", "deploy-alloy-1"], timeout=30)
+    else:
+        result = _run(
+            [
+                "journalctl",
+                "--unit",
+                "jobseek-alloy.service",
+                "--since",
+                "10 minutes ago",
+                "--no-pager",
+                "--output",
+                "cat",
+            ],
+            timeout=30,
+        )
+    output = "\n".join(part for part in (result.stdout, result.stderr) if part)
+    return sum(bool(_HTTP_429_RE.search(line)) for line in output.splitlines())
+
+
+def _collect_alloy_metrics(role: str, lines: list[str]) -> None:
+    collectors = [("host", 12347)]
+    if role == "crawler":
+        collectors.append(("compose", 12346))
+
+    for collector, port in collectors:
+        labels = {"collector": collector, "host_role": role}
+        try:
+            _read_loopback(f"http://127.0.0.1:{port}/-/ready")
+        except ProbeError:
+            lines.append(_metric("jobseek_alloy_ready", 0, **labels))
+            raise
+        lines.append(_metric("jobseek_alloy_ready", 1, **labels))
+        metrics = _parse_alloy_metrics(
+            _read_loopback(f"http://127.0.0.1:{port}/metrics", timeout=15)
+        )
+        lines.extend(
+            _metric(f"jobseek_alloy_{name}", value, **labels)
+            for name, value in metrics.items()
+        )
+        lines.append(
+            _metric(
+                "jobseek_alloy_remote_write_rejections_recent",
+                _recent_alloy_rejections(collector),
+                **labels,
+            )
+        )
+
+
 def _load_cursor(path: Path, *, now: float) -> dict[str, float]:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
@@ -671,6 +781,7 @@ def collect(
         ("containers", lambda: _collect_container_metrics(role, lines)),
         ("systemd", lambda: _collect_unit_metrics(role, lines)),
         ("backup", lambda: _collect_backup_metrics(role, backup_status_dir, lines)),
+        ("alloy", lambda: _collect_alloy_metrics(role, lines)),
     ]
     if role == "postgresql":
         probes.append(("postgresql", lambda: _collect_postgresql_metrics(lines)))

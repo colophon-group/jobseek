@@ -61,10 +61,12 @@ def test_alert_fires_when_deadletter_queue_stays_nonempty() -> None:
     )
 
 
-def test_upstream_host_circuit_alert_groups_by_real_origin() -> None:
+def test_upstream_host_circuit_alert_uses_bounded_fleet_outcomes() -> None:
     rule = _alert_rule("UpstreamHostCircuitOpen")
 
-    assert rule["expr"] == "max by (egress_host) (crawler_host_circuit_state) > 0"
+    assert rule["expr"] == (
+        'sum(increase(crawler_tasks_total{status=~"host_circuit_(open|half_open)"}[10m])) > 0'
+    )
     assert rule["for"] == "5m"
     assert rule["labels"] == {
         "severity": "medium",
@@ -72,7 +74,29 @@ def test_upstream_host_circuit_alert_groups_by_real_origin() -> None:
         "owner": "codex-error-review",
         "route": "codex-daily",
     }
+    assert "Loki" in rule["annotations"]["description"]
     assert rule["annotations"]["runbook"].endswith("docs/03-crawler-architecture.md")
+
+
+def test_alloy_delivery_alerts_cover_rejection_loss_memory_and_restart() -> None:
+    expected = {
+        "AlloyCollectorUnready",
+        "AlloyRemoteWriteRejected",
+        "AlloyRemoteWriteStale",
+        "AlloyRemoteWriteBacklog",
+        "AlloyRemoteWriteSamplesLost",
+        "AlloyLokiEntriesDropped",
+        "AlloyMemoryPressure",
+        "ComposeAlloyRestartOrOOM",
+        "TelemetrySeriesBudgetHigh",
+    }
+    rules = {rule["alert"]: rule for rule in _alert_rules() if rule.get("alert") in expected}
+
+    assert set(rules) == expected
+    assert "rejections_recent" in rules["AlloyRemoteWriteRejected"]["expr"]
+    assert "samples_failed_total" in rules["AlloyRemoteWriteSamplesLost"]["expr"]
+    assert "resident_memory_bytes" in rules["AlloyMemoryPressure"]["expr"]
+    assert 'container="deploy-alloy-1"' in rules["ComposeAlloyRestartOrOOM"]["expr"]
 
 
 def test_exporter_alert_selects_only_exporter_target() -> None:

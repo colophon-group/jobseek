@@ -531,6 +531,12 @@ All three hosts run the same repo-owned host telemetry surface:
   credentials, URL queries, addresses, UUIDs, and email addresses. Alloy reads
   only the allowlisted Jobseek backup/telemetry/Codex units and `cloudflared`;
   it never receives Docker-socket access.
+- The sampler also probes the native Alloy listener on all three hosts and the
+  crawler Compose Alloy listener. It republishes only a fixed set of readiness,
+  memory, queue, send-timestamp, rejection, failure, and dropped-entry values.
+  Full Alloy self-scrapes are deliberately prohibited because they previously
+  consumed roughly 1,565 active series per host and could disappear at exactly
+  the same time as the collector they were meant to monitor.
 
 The crawler Compose Alloy remains responsible for crawler application/Redis
 metrics and Docker logs. It is pinned to the same digest, has no privileged or
@@ -592,7 +598,8 @@ listener cannot make a failed service appear healthy.
 Alert definitions in [`apps/crawler/alerts.yaml`](../apps/crawler/alerts.yaml)
 are transactionally written through the Mimir ruler API. Grafana Cloud limits
 this tenant to 20 rules per group, so the source separates fleet, PostgreSQL
-capacity, and crawler alerts into three logical groups at or below that limit.
+capacity, telemetry-delivery, and crawler alerts into four logical groups at
+or below that limit.
 The sync client first
 captures the complete owned namespace, requires every alert to have a
 repository runbook plus `owner=codex-error-review` and `route=codex-daily`,
@@ -620,8 +627,9 @@ journalctl -u jobseek-alloy.service -u jobseek-host-observability.service \
   --since '30 minutes ago' --no-pager
 ```
 
-Healthy production has one current `up{job="integrations/unix"}` and one
-current `up{job="jobseek-alloy"}` series for each stable instance, fresh
+Healthy production has one current `up{job="integrations/unix"}` series for
+each stable instance, four `jobseek_alloy_ready == 1` series (three native and
+one crawler Compose collector), fresh
 `jobseek_host_observability_last_collect_unixtime`, all required probes equal
 to one, current backup success timestamps on the two data hosts, PostgreSQL
 ready with no new archive failure, and Typesense plus `cloudflared` healthy.
@@ -631,6 +639,52 @@ Treat missing host/sampler series, disk or inode exhaustion, a failed/stale
 backup, PostgreSQL archive/readiness failure, or Typesense/tunnel failure as an
 incident. Inspect evidence first; this telemetry path does not authorize an
 automatic workload restart.
+
+### Telemetry delivery budgets
+
+Grafana Cloud enforces 15,000 active series and 1,500 ingested samples per
+second for this tenant. Deployment stops before rule sync unless the total is
+at most 12,000 series, crawler application metrics are at most 2,000, Redis is
+at most 200, and Unix/textfile host metrics are at most 2,000. The 20% tenant
+headroom is an incident buffer, not capacity available to a new unbounded
+label. Before adding labels, query the proposed family by label count in
+Grafana and state its worst-case fleet cardinality in the change.
+
+Both native and Compose Alloy remote writes are fixed at one shard with a
+4,000-sample queue, 500 samples per send, five-second batch deadline, bounded
+backoff, and HTTP 429 retry. The crawler path drops
+`crawler_host_circuit_*` because `egress_host` grows with every career-site
+origin; the `crawler_tasks_total{status=~"host_circuit_.*"}` outcomes preserve
+alerting and structured Loki events preserve origin attribution. Redis keeps
+capacity, persistence, connection, error, traffic, CPU, and keyspace signals,
+but drops per-command histograms.
+
+Compose Alloy has a 512 MiB cgroup limit, a 256 MiB Go soft memory target, and
+0.5 CPU. Native Alloy has a 512 MiB systemd hard limit, 448 MiB high watermark,
+and 384 MiB Go soft target. The difference between the Go target and hard limit
+is required for remote-write WAL mappings, file-backed RSS, runtime overhead,
+and log tailing; `docker stats` subtracts inactive file pages and is not the
+acceptance measurement. Use the sampler's resident-memory series and the
+cgroup/systemd values together.
+
+Production acceptance requires all four collectors ready, their highest sent
+timestamp less than three minutes old, zero HTTP 429 responses in the rolling
+ten-minute window, no queue above 3,000, and no new failed/dropped samples,
+Loki drops, Compose restarts, or OOM flags. Check locally without exposing
+credentials:
+
+```bash
+curl --fail --silent http://127.0.0.1:12347/-/ready
+curl --fail --silent http://127.0.0.1:12347/metrics \
+  | grep -E 'alloy_resources_process_resident_memory_bytes|prometheus_remote_storage_(queue_highest_sent_timestamp_seconds|samples_pending|samples_(failed|dropped)_total)'
+systemctl show jobseek-alloy.service \
+  -p ActiveState -p NRestarts -p MemoryCurrent -p MemoryPeak -p MemoryMax
+```
+
+On the crawler, repeat the loopback probes on port `12346` and inspect
+`docker inspect deploy-alloy-1` for the 512 MiB limit, restart count, and sticky
+OOM flag. Any 429, series-budget breach, stale send timestamp, or new drop is a
+telemetry incident even when application services remain healthy.
 
 ## Cross-store Reconciliation Timer
 

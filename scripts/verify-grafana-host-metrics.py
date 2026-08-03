@@ -11,6 +11,12 @@ from typing import Any
 import httpx
 
 EXPECTED_ROLES = frozenset({"crawler", "postgresql", "typesense"})
+SERIES_BUDGETS = {
+    "active_series": 12_000,
+    "crawler_series": 2_000,
+    "redis_series": 200,
+    "unix_series": 2_000,
+}
 QUERIES = {
     "fresh_sampler": "jobseek_host_observability_last_collect_unixtime",
     "probe_series": "count by (host_role) (jobseek_host_observability_probe_success)",
@@ -25,6 +31,17 @@ QUERIES = {
     "postgresql_checkpoint_metrics": ("count(jobseek_postgresql_checkpoint_write_seconds_total)"),
     "postgresql_query_latency": ("count(jobseek_postgresql_stats_query_duration_seconds)"),
     "typesense_ready": "count(jobseek_typesense_healthy == 1)",
+    "alloy_series": "count(jobseek_alloy_ready)",
+    "alloy_unready": "count(jobseek_alloy_ready == 0)",
+    "alloy_rejections": "sum(jobseek_alloy_remote_write_rejections_recent)",
+    "alloy_stale": (
+        "count(time() - jobseek_alloy_remote_write_highest_sent_timestamp_seconds > 180)"
+    ),
+    "alloy_backlog": "count(jobseek_alloy_remote_write_samples_pending > 3000)",
+    "active_series": 'count({job=~".+"})',
+    "crawler_series": 'count({job="crawler"})',
+    "redis_series": 'count({job="integrations/redis"})',
+    "unix_series": 'count({job="integrations/unix"})',
 }
 
 
@@ -97,6 +114,17 @@ def validate_results(
         raise VerificationError("PostgreSQL statistics-query latency metric is missing")
     if _scalar(results, "typesense_ready") != 1:
         raise VerificationError("Typesense readiness metric is missing or unhealthy")
+    if _scalar(results, "alloy_series") != 4:
+        raise VerificationError(
+            "Alloy self-monitoring does not cover three host and one compose collectors"
+        )
+    for name in ("alloy_unready", "alloy_rejections", "alloy_stale", "alloy_backlog"):
+        if _scalar(results, name) != 0:
+            raise VerificationError(f"{name} is nonzero")
+    for name, budget in SERIES_BUDGETS.items():
+        value = _scalar(results, name)
+        if value <= 0 or value > budget:
+            raise VerificationError(f"{name} exceeds its {budget}-series budget or is missing")
 
 
 def _query_all(base_url: str, username: str, password: str) -> dict[str, list[dict[str, Any]]]:
@@ -166,7 +194,7 @@ def main() -> int:
         wait_seconds=args.wait_seconds,
         max_age_seconds=args.max_age_seconds,
     )
-    print("verified fresh host textfile metrics for all expected roles")
+    print("verified host health, Alloy delivery, and bounded Grafana series budgets")
     return 0
 
 
