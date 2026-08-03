@@ -175,6 +175,34 @@ root-only systemd credential and copies only the three Restic transport fields
 from the existing Typesense backup environment. The Typesense API key is not
 available to the web backup service.
 
+### Protected web PostgreSQL activation
+
+When direct production SSH is unavailable, use
+`.github/workflows/operate-web-postgresql-backup.yml` from `main`. It attaches
+the protected `production` environment before using
+`HETZNER_TYPESENSE_HOST` and `HETZNER_SSH_KEY`; it does not receive the web
+database URI or Restic credentials because those remain in root-only host
+files. The workflow shares the backup deployment concurrency group, runs no
+command with shell tracing, and publishes only aggregate counts, sizes and
+timing. Repository output and restore command output stay in root-only
+temporary files and are deleted before the job exits.
+
+Each dispatch is main-only and requires the exact token for its selected mode:
+
+| Mode | Confirmation | Effect |
+|---|---|---|
+| `verify` | `VERIFY-WEB-POSTGRESQL` | Read-only validation of installed code, root-only credential/config modes, pinned restore image, encrypted repository reachability, deployed-revision marker, and current timer state |
+| `backup` | `RUN-WEB-POSTGRESQL-BACKUP` | Starts one systemd backup, requires fresh successful aggregate status, and proves the timer state did not change |
+| `restore` | `RUN-WEB-POSTGRESQL-RESTORE-DRILL` | Requires a successful backup from the last nine hours, runs the loopback-only self-cleaning restore drill, matches its archive/count evidence to that backup, and proves the timer state did not change |
+| `enable-timer` | `ENABLE-WEB-POSTGRESQL-TIMER` | Requires a fresh backup followed by a fresh successful restore of the same SHA-256-bound archive, then and only then enables and starts the six-hour timer and verifies a next run exists |
+
+Run the modes in that order for first activation. `verify`, `backup`, and
+`restore` never enable or disable the timer. A failed or stale evidence file,
+a restore that predates the latest backup, mismatched archive/count evidence,
+the wrong confirmation, or a non-`main` dispatch fails closed. The direct host
+commands below remain the break-glass/operator equivalents, not a way to skip
+the activation gate.
+
 Confirm the effective schedule:
 
 ```bash
