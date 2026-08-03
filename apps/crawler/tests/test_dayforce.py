@@ -380,6 +380,59 @@ class TestMonitor:
                 await anext(iterator)
         assert offsets == [0, 25]
 
+    @pytest.mark.parametrize("status", [429, 503])
+    async def test_retries_transient_search_status(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        status: int,
+    ):
+        attempts = 0
+
+        async def fetch(_method, url, _headers, _body):
+            nonlocal attempts
+            attempts += 1
+            if attempts < 3:
+                request = httpx.Request("POST", url)
+                response = httpx.Response(status, request=request, json={"error": "transient"})
+                raise httpx.HTTPStatusError(
+                    "transient",
+                    request=request,
+                    response=response,
+                )
+            return _search_payload([])
+
+        async def no_sleep(_delay: float) -> None:
+            return None
+
+        monkeypatch.setattr("src.shared.api_sniff.asyncio.sleep", no_sleep)
+        pw = _install_browser(monkeypatch, fetch)
+        async with _bootstrap_client() as client:
+            jobs = await discover({"board_url": BOARD_URL}, client, pw=pw)
+
+        assert jobs == []
+        assert attempts == 3
+
+    async def test_does_not_retry_non_transient_search_status(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        attempts = 0
+
+        async def fetch(_method, url, _headers, _body):
+            nonlocal attempts
+            attempts += 1
+            request = httpx.Request("POST", url)
+            response = httpx.Response(400, request=request, json={"error": "invalid"})
+            raise httpx.HTTPStatusError("invalid", request=request, response=response)
+
+        pw = _install_browser(monkeypatch, fetch)
+        async with _bootstrap_client() as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover({"board_url": BOARD_URL}, client, pw=pw)
+
+        assert attempts == 1
+        assert exc_info.value.last_status == 400
+
     async def test_valid_empty_board(self, monkeypatch: pytest.MonkeyPatch):
         async def fetch(_method, _url, _headers, _body):
             return _search_payload([])
