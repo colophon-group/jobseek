@@ -3,7 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { after } from "next/server";
 import { updateTag } from "next/cache";
-import { eq, and, sql, type SQL } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   watchlist,
@@ -25,8 +25,8 @@ import {
   insertWatchlistWithUniqueSlug,
 } from "@/lib/watchlist-slug";
 import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/constants";
-import { expandLocationIdsBatch, resolveLocationSlugs } from "@/lib/actions/locations";
-import { expandOccupationIdsBatch, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/services/taxonomy";
+import { resolveLocationSlugs } from "@/lib/actions/locations";
+import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/services/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { normalizePostingTitle } from "@/lib/posting-title";
 import { logExternalError } from "@/lib/safe-external-error";
@@ -39,7 +39,6 @@ import {
   isTypesenseQueryStringSafe,
   splitValuesForTypesenseQuery,
 } from "@/lib/search/typesense-query-size";
-import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import {
   upsertWatchlist as tsUpsertWatchlist,
   deleteWatchlist as tsDeleteWatchlist,
@@ -1366,29 +1365,6 @@ function pgTextArrayLiteral(values: string[]): string {
   return `{${escaped.join(",")}}`;
 }
 
-/**
- * SQL predicate: the watchlist is **not** trivial.
- *
- * Mirror of `isTrivialWatchlist` from `@/lib/watchlist-utils`. A watchlist is
- * trivial when it tracks no companies and carries no meaningful filters; we
- * use this in Postgres fallbacks for public listings to match the Typesense
- * indexing rule. Keep the two in sync.
- */
-const nonTrivialWatchlistPredicate = sql`(
-  (SELECT count(*) FROM watchlist_company wc WHERE wc.watchlist_id = w.id) > 0
-  OR jsonb_array_length(COALESCE(w.filters->'keywords', '[]'::jsonb)) > 0
-  OR jsonb_array_length(COALESCE(w.filters->'locationSlugs', '[]'::jsonb)) > 0
-  OR jsonb_array_length(COALESCE(w.filters->'occupationSlugs', '[]'::jsonb)) > 0
-  OR jsonb_array_length(COALESCE(w.filters->'senioritySlugs', '[]'::jsonb)) > 0
-  OR jsonb_array_length(COALESCE(w.filters->'technologySlugs', '[]'::jsonb)) > 0
-  OR jsonb_array_length(COALESCE(w.filters->'workMode', '[]'::jsonb)) > 0
-  OR jsonb_array_length(COALESCE(w.filters->'employmentType', '[]'::jsonb)) > 0
-  OR (w.filters ? 'salaryMin')
-  OR (w.filters ? 'salaryMax')
-  OR (w.filters ? 'experienceMin')
-  OR (w.filters ? 'experienceMax')
-)`;
-
 // `buildFilterCacheKey` lives in `@/lib/watchlist-utils` so it can be unit
 // tested without booting the `"use server"` module surface — `"use server"`
 // modules may only export async functions, which rules out exporting the
@@ -1452,117 +1428,6 @@ export async function getWatchlistMatchingCompanyCount(
     // from 600s with #2648 — metadata freshness from a viewer's perspective
     // comes from the client-hydrated body, not the cached count.
   }, { ttl: CACHE_TTL_LONG });
-}
-
-async function queryPublicWatchlists(params: {
-  whereClause: ReturnType<typeof sql>;
-  orderClause: ReturnType<typeof sql>;
-  offset: number;
-  limit: number;
-  locale: string;
-  /**
-   * Currently unused — the Postgres fallback returns the same
-   * "company-scope" active count the Typesense path returns
-   * (denormalized, ignores filters and viewer-language scoping). See
-   * the `getUserWatchlists` block comment for rationale. Kept on the
-   * signature so callers still pass through their resolved viewer
-   * languages — if the listing surface ever needs viewer-scoped counts
-   * the parameter is already plumbed through.
-   */
-  languages?: string[];
-}): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
-  const [totalRow] = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; cnt: number }>(sql`
-        SELECT count(*)::int AS cnt FROM watchlist w WHERE ${params.whereClause}
-      `),
-    { label: "queryPublicWatchlists.count" },
-  );
-  const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
-  if (total === 0) return { watchlists: [], total: 0 };
-
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string; slug: string; title: string; is_public: boolean;
-        alerts_enabled: boolean; filters: WatchlistFilters;
-        last_accessed_at: Date; created_at: Date;
-        owner_name: string; owner_username: string | null;
-        company_count: number; active_job_count: number; company_ids: string[];
-        mirror_count: number;
-      }>(sql`
-        SELECT w.id, w.slug, w.title, w.description, w.is_public, w.alerts_enabled, w.filters,
-               w.last_accessed_at, w.created_at,
-               u.name AS owner_name, u.username AS owner_username,
-               (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
-               (
-                 SELECT COALESCE(array_agg(wc.company_id::text ORDER BY wc.company_id::text), ARRAY[]::text[])
-                 FROM watchlist_company wc
-                 WHERE wc.watchlist_id = w.id
-               ) AS company_ids,
-               (
-                 SELECT count(*)::int
-                 FROM watchlist_company wc
-                 JOIN job_posting jp ON jp.company_id = wc.company_id AND jp.is_active
-                 WHERE wc.watchlist_id = w.id
-               ) AS active_job_count,
-               (SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) AS mirror_count
-        FROM watchlist w
-        JOIN "user" u ON u.id = w.user_id
-        WHERE ${params.whereClause}
-        ORDER BY ${params.orderClause}
-        OFFSET ${params.offset}
-        LIMIT ${params.limit}
-      `),
-    { label: "queryPublicWatchlists.rows" },
-  );
-
-  type Row = {
-    id: string; slug: string; title: string; description: string | null; is_public: boolean;
-    alerts_enabled: boolean; filters: WatchlistFilters;
-    last_accessed_at: Date; created_at: Date;
-    owner_name: string; owner_username: string | null;
-    company_count: number; active_job_count: number; company_ids: string[];
-    mirror_count: number;
-  };
-
-  const typed = rows as unknown as Row[];
-  let indexedById: Map<string, IndexedWatchlistFilters | null> = new Map();
-  const filteredRows = typed.filter((r) => hasPreciseListingCountFilters(r.filters));
-  if (filteredRows.length > 0) {
-    try {
-      indexedById = await buildIndexedFiltersForUserRows(filteredRows, params.locale);
-    } catch (err) {
-      logExternalError("error", { service: "typesense", operation: "public_watchlist_filter_ids" }, err);
-    }
-  }
-
-  const entries: InternalPublicWatchlistEntry[] = typed.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    title: r.title,
-    description: r.description,
-    isPublic: r.is_public,
-    alertsEnabled: r.alerts_enabled,
-    companyCount: r.company_count,
-    activeJobCount: r.active_job_count,
-    lastAccessedAt: new Date(r.last_accessed_at).toISOString(),
-    createdAt: new Date(r.created_at).toISOString(),
-    ownerName: r.owner_name,
-    ownerUsername: r.owner_username,
-    mirrorCount: r.mirror_count,
-    indexedFilters: indexedById.get(r.id) ?? null,
-    indexedFilterCacheKey: null,
-    companyIds: r.company_ids ?? [],
-  }));
-
-  const patched = await _patchPreciseCountsForDiscover(entries, params.languages ?? []);
-
-  return {
-    watchlists: stripIndexedWatchlistFields(patched),
-    total,
-  };
 }
 
 /**
@@ -1666,39 +1531,30 @@ export async function searchPublicWatchlists(params: {
   const languages = await getViewerLanguages(params.locale);
   const langKey = languagesCacheKey(languages);
 
-  return cached(
-    `public-watchlist-search:${q}:${params.offset}:${params.limit}:${langKey}`,
-    async () => {
-      try {
+  try {
+    return await cached(
+      `public-watchlist-search:${q}:${params.offset}:${params.limit}:${langKey}`,
+      async () => {
         const tsResult = await _searchPublicWatchlistsTypesense(q, params.offset, params.limit);
-        if (tsResult.watchlists.length > 0) {
-          // Perf (#3176/#3492): unfiltered company-scoped cards trust
-          // the denormalized `active_job_count` carried on each
-          // Typesense `watchlist` doc. Filtered or `anyCompany` cards
-          // use the self-contained `filters_json` payload plus one
-          // batched `job_posting` multi_search for precise counts
-          // (#3261).
-          const patched = await _patchPreciseCountsForDiscover(tsResult.watchlists, languages);
-          return {
-            watchlists: stripIndexedWatchlistFields(patched),
-            total: tsResult.total,
-          };
-        }
-      } catch (err) {
-        logExternalError("error", { service: "typesense", operation: "search_public_watchlists" }, err);
-      }
-      // Empty Typesense result or error — fall back to Postgres
-      return queryPublicWatchlists({
-        whereClause: sql`w.is_public = true AND ${nonTrivialWatchlistPredicate} AND (w.title ILIKE ${"%" + q + "%"} OR w.description ILIKE ${"%" + q + "%"})`,
-        orderClause: sql`w.created_at DESC`,
-        offset: params.offset,
-        limit: params.limit,
-        locale: params.locale,
-        languages,
-      });
-    },
-    { ttl: CACHE_TTL_SHORT },
-  );
+        // Perf (#3176/#3492): unfiltered company-scoped cards trust
+        // the denormalized `active_job_count` carried on each
+        // Typesense `watchlist` doc. Filtered or `anyCompany` cards
+        // use the self-contained `filters_json` payload plus one
+        // batched `job_posting` multi_search for precise counts
+        // (#3261).
+        const patched = await _patchPreciseCountsForDiscover(tsResult.watchlists, languages);
+        return {
+          watchlists: stripIndexedWatchlistFields(patched),
+          total: tsResult.total,
+        };
+      },
+      { ttl: CACHE_TTL_SHORT },
+    );
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError("error", { service: "typesense", operation: "search_public_watchlists" }, err);
+    return { watchlists: [], total: 0 };
+  }
 }
 
 export async function getPopularWatchlists(params: {
@@ -1709,36 +1565,27 @@ export async function getPopularWatchlists(params: {
   const languages = await getViewerLanguages(params.locale);
   const langKey = languagesCacheKey(languages);
 
-  return cached(
-    `popular-watchlists:${params.offset}:${params.limit}:${langKey}`,
-    async () => {
-      try {
+  try {
+    return await cached(
+      `popular-watchlists:${params.offset}:${params.limit}:${langKey}`,
+      async () => {
         const tsResult = await _getPopularWatchlistsTypesense(params.offset, params.limit);
-        if (tsResult.watchlists.length > 0) {
-          // Use the same count semantics as `searchPublicWatchlists`:
-          // denormalized for unfiltered company-scoped rows, batched
-          // precise counts for filtered or `anyCompany` rows (#3261).
-          const patched = await _patchPreciseCountsForDiscover(tsResult.watchlists, languages);
-          return {
-            watchlists: stripIndexedWatchlistFields(patched),
-            total: tsResult.total,
-          };
-        }
-      } catch (err) {
-        logExternalError("error", { service: "typesense", operation: "popular_watchlists" }, err);
-      }
-      // Empty Typesense result or error — fall back to Postgres
-      return queryPublicWatchlists({
-        whereClause: sql`w.is_public = true AND ${nonTrivialWatchlistPredicate}`,
-        orderClause: sql`(u.username = 'colophongroup')::int DESC, (SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) DESC, (w.description IS NOT NULL AND w.description != '')::int DESC, w.created_at DESC`,
-        offset: params.offset,
-        limit: params.limit,
-        locale: params.locale,
-        languages,
-      });
-    },
-    { ttl: CACHE_TTL_POPULAR },
-  );
+        // Use the same count semantics as `searchPublicWatchlists`:
+        // denormalized for unfiltered company-scoped rows, batched
+        // precise counts for filtered or `anyCompany` rows (#3261).
+        const patched = await _patchPreciseCountsForDiscover(tsResult.watchlists, languages);
+        return {
+          watchlists: stripIndexedWatchlistFields(patched),
+          total: tsResult.total,
+        };
+      },
+      { ttl: CACHE_TTL_POPULAR },
+    );
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError("error", { service: "typesense", operation: "popular_watchlists" }, err);
+    return { watchlists: [], total: 0 };
+  }
 }
 
 export async function getWatchlistPostings(
@@ -1760,7 +1607,13 @@ export async function getWatchlistPostings(
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
     logExternalError("error", { service: "typesense", operation: "watchlist_postings" }, err);
-    return _getWatchlistPostingsPostgres(params, userId);
+    return {
+      postings: [],
+      total: 0,
+      ...(!userId && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS
+        ? { truncated: true }
+        : {}),
+    };
   }
 }
 
@@ -1788,7 +1641,13 @@ export async function getPublicWatchlistPostings(
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
     logExternalError("error", { service: "typesense", operation: "public_watchlist_postings" }, err);
-    return _getWatchlistPostingsPostgres(params, null);
+    return {
+      postings: [],
+      total: 0,
+      ...(params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS
+        ? { truncated: true }
+        : {}),
+    };
   }
 }
 
@@ -1855,7 +1714,7 @@ export async function getWatchlistPostingYearCount(
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
     logExternalError("error", { service: "typesense", operation: "watchlist_posting_year_count" }, err);
-    return _getWatchlistPostingYearCountPostgres(params);
+    return 0;
   }
 }
 
@@ -2392,195 +2251,6 @@ async function _getWatchlistPostingsBatched(
 
   return {
     postings,
-    total,
-    ...(!userId && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS ? { truncated: true } : {}),
-  };
-}
-
-async function buildWatchlistPostgresWhereClause(
-  params: WatchlistPostingFilterParams,
-  options: {
-    activeOnly: boolean;
-    firstSeenAfter?: Date;
-  },
-): Promise<SQL> {
-  // Batched ancestor/descendant expansion: one recursive CTE per taxonomy
-  // (not L per L seed IDs). The previous `Promise.all(ids.map(expand))`
-  // fired L parallel recursive CTEs against `location` / `occupation` —
-  // ~50–150ms of avoidable work and L extra Redis round-trips even on
-  // warm cache, on the exact Postgres fallback path that runs when
-  // Typesense is degraded. See #3186.
-  const [expandedLocationIds, expandedOccupationIds] = await Promise.all([
-    params.locationIds && params.locationIds.length > 0
-      ? expandLocationIdsBatch(params.locationIds)
-      : undefined,
-    params.occupationIds && params.occupationIds.length > 0
-      ? expandOccupationIdsBatch(params.occupationIds)
-      : undefined,
-  ]);
-
-  // Mirrors the Typesense `POSTING_BASE_FILTER` / `POSTING_FLOW_FILTER`
-  // content-quality checks so the Supabase fallback hides the same
-  // incomplete postings: non-empty title AND an R2 description blob.
-  const clauses: SQL[] = [
-    sql`jp.titles IS NOT NULL AND cardinality(jp.titles) > 0 AND btrim(jp.titles[1]) <> ''`,
-    sql`jp.description_r2_hash IS NOT NULL`,
-  ];
-  if (options.activeOnly) {
-    clauses.unshift(sql`jp.is_active = true`);
-  }
-  if (options.firstSeenAfter) {
-    clauses.push(sql`jp.first_seen_at >= ${options.firstSeenAfter}`);
-  }
-
-  if (params.companyIds.length > 0) {
-    const pgCompanyArray = `{${params.companyIds.join(",")}}`;
-    clauses.push(sql`jp.company_id = ANY(${pgCompanyArray}::uuid[])`);
-  }
-
-  if (params.keywords && params.keywords.length > 0) {
-    const kwClauses = params.keywords.map((k) => {
-      const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const startBound = /^\w/.test(k) ? "\\m" : "";
-      const endBound = /\w$/.test(k) ? "\\M" : "";
-      return sql`jp.titles[1] ~* ${startBound + escaped + endBound}`;
-    });
-    clauses.push(sql`(${sql.join(kwClauses, sql` OR `)})`);
-  }
-  if (expandedLocationIds && expandedLocationIds.length > 0) {
-    const pgArr = `{${expandedLocationIds.join(",")}}`;
-    clauses.push(sql`jp.location_ids && ${pgArr}::integer[]`);
-  }
-  if (expandedOccupationIds && expandedOccupationIds.length > 0) {
-    const pgArr = `{${expandedOccupationIds.join(",")}}`;
-    clauses.push(sql`jp.occupation_id = ANY(${pgArr}::integer[])`);
-  }
-  if (params.seniorityIds && params.seniorityIds.length > 0) {
-    const pgArr = `{${params.seniorityIds.join(",")}}`;
-    clauses.push(sql`jp.seniority_id = ANY(${pgArr}::integer[])`);
-  }
-  if (params.technologyIds && params.technologyIds.length > 0) {
-    const pgArr = `{${params.technologyIds.join(",")}}`;
-    clauses.push(sql`jp.technology_ids && ${pgArr}::integer[]`);
-  }
-  if (params.workMode && params.workMode.length > 0) {
-    // `location_types` is `text[]`. Use && (array overlap) to mirror
-    // Typesense `location_types:[a,b]` (OR semantics across values).
-    // Postings with NULL/empty `location_types` (~0.9% of active on
-    // 2026-05-09) drop out silently — matches the Typesense path.
-    const pgArr = `{${params.workMode.join(",")}}`;
-    clauses.push(sql`jp.location_types && ${pgArr}::text[]`);
-  }
-  if (params.employmentType && params.employmentType.length > 0) {
-    // `employment_type` is a single text column — use `= ANY(...)`.
-    const pgArr = `{${params.employmentType.join(",")}}`;
-    clauses.push(sql`jp.employment_type = ANY(${pgArr}::text[])`);
-  }
-  if (params.salaryMin != null && params.salaryMax != null) {
-    clauses.push(sql`jp.salary_eur BETWEEN ${params.salaryMin} AND ${params.salaryMax}`);
-  } else if (params.salaryMin != null) {
-    clauses.push(sql`jp.salary_eur >= ${params.salaryMin}`);
-  } else if (params.salaryMax != null) {
-    clauses.push(sql`jp.salary_eur <= ${params.salaryMax}`);
-  }
-  if (params.experienceMin != null || params.experienceMax != null) {
-    if (params.experienceMin != null && params.experienceMax != null) {
-      clauses.push(sql`(jp.experience_min IS NULL OR (jp.experience_min >= ${params.experienceMin} AND jp.experience_min <= ${params.experienceMax}))`);
-    } else if (params.experienceMin != null) {
-      clauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min >= ${params.experienceMin})`);
-    } else {
-      clauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
-    }
-  }
-  const localesClause = localesOrNoneClause(params.languages);
-  if (localesClause) clauses.push(localesClause);
-
-  return sql.join(clauses, sql` AND `);
-}
-
-async function _getWatchlistPostingYearCountPostgres(
-  params: WatchlistPostingFilterParams,
-): Promise<number> {
-  const oneYearAgo = new Date(Date.now() - 365 * 24 * 3600 * 1000);
-  const whereClause = await buildWatchlistPostgresWhereClause(params, {
-    activeOnly: false,
-    firstSeenAfter: oneYearAgo,
-  });
-
-  const [row] = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; cnt: number }>(
-        sql`SELECT count(*)::int AS cnt FROM job_posting jp WHERE ${whereClause}`,
-      ),
-    { label: "getWatchlistPostingYearCountPostgres.count" },
-  );
-  return (row as unknown as { cnt: number })?.cnt ?? 0;
-}
-
-/** Postgres fallback for getWatchlistPostings (graceful degradation). */
-async function _getWatchlistPostingsPostgres(
-  params: WatchlistPostingQueryParams,
-  userId: string | null,
-): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
-  const whereClause = await buildWatchlistPostgresWhereClause(params, {
-    activeOnly: true,
-  });
-
-  const [totalRow] = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; cnt: number }>(
-        sql`SELECT count(*)::int AS cnt FROM job_posting jp WHERE ${whereClause}`,
-      ),
-    { label: "getWatchlistPostingsPostgres.count" },
-  );
-  const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
-  if (total === 0 || params.limit === 0) return { postings: [], total };
-
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        title: string | null;
-        source_url: string;
-        first_seen_at: Date;
-        is_active: boolean;
-        company_id: string;
-        company_name: string;
-        company_slug: string;
-        company_icon: string | null;
-      }>(sql`
-        SELECT jp.id, jp.titles[1] AS title, jp.source_url, jp.first_seen_at, jp.is_active,
-               c.id AS company_id, c.name AS company_name, c.slug AS company_slug, c.icon AS company_icon
-        FROM job_posting jp
-        JOIN company c ON c.id = jp.company_id
-        WHERE ${whereClause}
-        ORDER BY jp.first_seen_at DESC
-        OFFSET ${params.offset}
-        LIMIT ${params.limit}
-      `),
-    { label: "getWatchlistPostingsPostgres.rows" },
-  );
-
-  type Row = {
-    id: string; title: string | null; source_url: string; first_seen_at: Date;
-    is_active: boolean; company_id: string; company_name: string;
-    company_slug: string; company_icon: string | null;
-  };
-
-  return {
-    postings: (rows as unknown as Row[]).map((r) => ({
-      id: r.id,
-      title: normalizePostingTitle(r.title),
-      locationNames: [],
-      sourceUrl: r.source_url,
-      firstSeenAt: new Date(r.first_seen_at).toISOString(),
-      isActive: r.is_active,
-      company: {
-        id: r.company_id, name: r.company_name,
-        slug: r.company_slug, icon: r.company_icon,
-      },
-    })),
     total,
     ...(!userId && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS ? { truncated: true } : {}),
   };

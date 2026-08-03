@@ -35,4 +35,27 @@ describe("Supabase posting read cutover", () => {
     expect(detailSection).not.toContain("db.execute");
     expect(detailSection).not.toMatch(/FROM\s+(job_posting|company|location)/i);
   });
+
+  it("keeps watchlist posting and public listing reads off the crawler mirror", () => {
+    const contents = source("src/lib/services/watchlists.ts");
+    const readStart = contents.indexOf("export async function searchPublicWatchlists");
+    const readEnd = contents.indexOf("export async function addCompanyToWatchlist");
+    expect(readStart).toBeGreaterThanOrEqual(0);
+    expect(readEnd).toBeGreaterThan(readStart);
+    const liveReadSection = contents.slice(
+      readStart,
+      readEnd,
+    );
+
+    expect(contents).toContain('collections("watchlist")');
+    expect(contents).toContain('collections("job_posting")');
+    expect(contents).not.toMatch(/(?:FROM|JOIN)\s+(?:public\.)?job_posting\b/i);
+    expect(contents).not.toMatch(
+      /(?:queryPublicWatchlists|_getWatchlistPostingYearCountPostgres|_getWatchlistPostingsPostgres|buildWatchlistPostgresWhereClause)/,
+    );
+
+    expect(liveReadSection).not.toContain("db.execute");
+    expect(liveReadSection).not.toMatch(/\bsql`/);
+    expect(liveReadSection).not.toMatch(/Postgres fallback|fall back to Postgres/i);
+  });
 });

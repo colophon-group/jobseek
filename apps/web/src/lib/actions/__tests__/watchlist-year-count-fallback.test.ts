@@ -1,11 +1,9 @@
 /**
- * Regression test for issue #3056.
+ * Watchlist posting read degradation tests.
  *
- * `getWatchlistPostingYearCount` feeds the "N active · M in the last year"
- * row on watchlist detail pages. The active count already falls back to
- * Postgres when Typesense is unavailable; the year count used to catch
- * the same outage and return 0, producing misleading "0 in the last year"
- * stats for watchlists that still had matching postings in Postgres.
+ * The Supabase `job_posting` mirror is no longer a valid fallback read plane.
+ * When Typesense is unavailable these readers fail closed to empty/zero data;
+ * they must never expose stale crawler rows from Postgres (#6167/#6249).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -205,7 +203,7 @@ function makeUuid(index: number): string {
   return `00000000-0000-0000-0000-${String(index).padStart(12, "0")}`;
 }
 
-describe("getWatchlistPostingYearCount fallback (#3056)", () => {
+describe("watchlist posting read degradation (#6167)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -231,13 +229,12 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
     vi.restoreAllMocks();
   });
 
-  it("falls back to a filtered Postgres year count when Typesense fails", async () => {
+  it("returns zero without querying Postgres when the year count is unavailable", async () => {
     const typesenseError = Object.assign(new Error("read ECONNRESET"), {
       code: "ECONNRESET",
     });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.tsSearch.mockRejectedValueOnce(typesenseError);
-    mocks.dbExecute.mockResolvedValueOnce([{ cnt: 37 }]);
 
     const count = await getWatchlistPostingYearCount({
       companyIds: ["11111111-1111-1111-1111-111111111111"],
@@ -254,14 +251,14 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
       experienceMax: 7,
     });
 
-    expect(count).toBe(37);
+    expect(count).toBe(0);
     expect(mocks.withTypesenseRetry).toHaveBeenCalledTimes(1);
     expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
     expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(typesenseError);
-    expect(mocks.expandLocationIdsBatch).toHaveBeenCalledWith([1]);
-    expect(mocks.expandOccupationIdsBatch).toHaveBeenCalledWith([2]);
-    expect(mocks.withDbRetry).toHaveBeenCalledTimes(1);
-    expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
+    expect(mocks.expandLocationIdsBatch).not.toHaveBeenCalled();
+    expect(mocks.expandOccupationIdsBatch).not.toHaveBeenCalled();
+    expect(mocks.withDbRetry).not.toHaveBeenCalled();
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
     expect(consoleError).toHaveBeenCalledWith(
       "external_client_error",
       expect.objectContaining({
@@ -270,26 +267,47 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
         code: "ECONNRESET",
       }),
     );
+  });
 
-    const query = mocks.dbExecute.mock.calls[0]?.[0] as {
-      text: string;
-      values: unknown[];
-    };
-    expect(query.text).toContain("SELECT count(*)::int AS cnt FROM job_posting jp WHERE");
-    expect(query.text).toContain("jp.description_r2_hash IS NOT NULL");
-    expect(query.text).toContain("jp.first_seen_at >=");
-    expect(query.text).toContain("jp.company_id = ANY");
-    expect(query.text).toContain("jp.location_ids &&");
-    expect(query.text).toContain("jp.occupation_id = ANY");
-    expect(query.text).toContain("jp.salary_eur BETWEEN");
-    expect(query.text).not.toContain("jp.is_active = true");
-    expect(
-      query.values.some(
-        (value) =>
-          value instanceof Date &&
-          value.toISOString() === "2025-06-16T12:00:00.000Z",
-      ),
-    ).toBe(true);
+  it("returns an empty authenticated posting page without querying Postgres on outage", async () => {
+    const typesenseError = Object.assign(new Error("read ECONNRESET"), {
+      code: "ECONNRESET",
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.getSessionUserId.mockResolvedValueOnce("user-1");
+    mocks.tsSearch.mockRejectedValueOnce(typesenseError);
+
+    const result = await getWatchlistPostings({
+      companyIds: ["11111111-1111-1111-1111-111111111111"],
+      offset: 40,
+      limit: 20,
+    });
+
+    expect(result).toEqual({ postings: [], total: 0 });
+    expect(mocks.getSessionUserId).toHaveBeenCalledTimes(1);
+    expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(typesenseError);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+    expect(mocks.withDbRetry).not.toHaveBeenCalled();
+  });
+
+  it("returns an empty session-free public posting page on outage", async () => {
+    const typesenseError = Object.assign(new Error("read ECONNRESET"), {
+      code: "ECONNRESET",
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.tsSearch.mockRejectedValueOnce(typesenseError);
+
+    const result = await getPublicWatchlistPostings({
+      companyIds: ["11111111-1111-1111-1111-111111111111"],
+      offset: 40,
+      limit: 20,
+    });
+
+    expect(result).toEqual({ postings: [], total: 0, truncated: true });
+    expect(mocks.getSessionUserId).not.toHaveBeenCalled();
+    expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(typesenseError);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+    expect(mocks.withDbRetry).not.toHaveBeenCalled();
   });
 
   it("does not reroute Typesense 429 rate limits to Postgres", async () => {
