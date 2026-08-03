@@ -68,6 +68,39 @@ def test_backup_status_is_republished_without_error_text(tmp_path: Path) -> None
     assert "must-not-escape" not in content
 
 
+def test_typesense_process_limit_parser_requires_numeric_nofile() -> None:
+    limits = """Limit                     Soft Limit           Hard Limit           Units
+Max open files            65536                65536                files
+"""
+    assert host._parse_typesense_nofile_limits(limits) == (65_536, 65_536)
+
+    with pytest.raises(host.ProbeError, match="omitted Max open files"):
+        host._parse_typesense_nofile_limits("Max processes 100 100 processes\n")
+
+
+def test_typesense_log_metrics_capture_the_incident_chain() -> None:
+    metrics = host._parse_typesense_log_metrics(
+        "\n".join(
+            (
+                "Threadpool exhaustion detected, task_queue_len: 938, thread_pool_len: 16",
+                "event=slow_request, time=225102 ms, endpoint=GET /collections/example",
+                "Fail to open /proc/self/fd: Too many open files [24]",
+                "Timed snapshot failed, error: Fail to create SnapshotWriter",
+                "Node with no leader. Resetting peers of size: 1",
+                "node default_group is in state ERROR, can't reset_peer",
+            )
+        )
+    )
+
+    assert metrics["threadpool_queue_depth"] == 938
+    assert metrics["slow_request_max_milliseconds"] == 225_102
+    assert metrics["event_threadpool_exhaustion"] == 1
+    assert metrics["event_slow_request"] == 1
+    assert metrics["event_descriptor_exhaustion"] == 1
+    assert metrics["event_snapshot_failure"] == 1
+    assert metrics["event_leaderless"] == 2
+
+
 def test_collect_writes_atomic_failure_metrics(tmp_path: Path, monkeypatch) -> None:
     textfile = tmp_path / "metrics" / "host.prom"
     monkeypatch.setattr(host, "_collect_container_metrics", lambda *_: None)
@@ -257,11 +290,13 @@ def test_rule_source_has_bounded_owned_groups() -> None:
     assert {group["name"] for group in groups} == {
         "jobseek_hetzner_fleet",
         "jobseek_postgresql_capacity",
+        "jobseek_typesense_reliability",
         "jobseek_crawler_reliability",
     }
     assert {group["name"]: len(group["rules"]) for group in groups} == {
         "jobseek_hetzner_fleet": 19,
         "jobseek_postgresql_capacity": 4,
+        "jobseek_typesense_reliability": 7,
         "jobseek_crawler_reliability": 17,
     }
     for group in groups:

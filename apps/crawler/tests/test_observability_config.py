@@ -140,6 +140,28 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
     } <= names
 
 
+def test_typesense_reliability_alerts_cover_the_incident_chain() -> None:
+    expected = {
+        "TypesenseNofileLimitUnsafe": "jobseek_typesense_nofile_soft_limit",
+        "TypesenseFileDescriptorPressure": "jobseek_typesense_open_file_descriptors",
+        "TypesenseThreadPoolSaturated": "jobseek_typesense_threadpool_queue_depth",
+        "TypesenseSlowRequests": "jobseek_typesense_slow_request_max_milliseconds",
+        "TypesenseDescriptorExhausted": 'event="descriptor_exhaustion"',
+        "TypesenseLeaderless": 'event="leaderless"',
+        "TypesenseSnapshotFailure": 'event="snapshot_failure"',
+    }
+
+    for name, signal in expected.items():
+        rule = _alert_rule(name)
+        assert signal in rule["expr"]
+        assert rule["labels"]["service"] == "typesense"
+        assert rule["labels"]["owner"] == "codex-error-review"
+        assert rule["labels"]["route"] == "codex-daily"
+        assert rule["annotations"]["runbook"].endswith(
+            "docs/16-hetzner-maintenance.md#typesense-readiness-and-raft-recovery"
+        )
+
+
 def test_postgresql_capacity_alert_uses_current_and_forecast_headroom() -> None:
     rule = _alert_rule("PostgreSQLDataVolumeHeadroomLow")
 
