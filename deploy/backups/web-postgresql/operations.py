@@ -4,15 +4,20 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
 import re
+import secrets
+import shutil
 import signal
 import stat
 import subprocess
 import sys
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +29,10 @@ DEPLOYED_SHA_PATH = Path("/var/lib/jobseek-backup/web-postgresql-deployed-sha")
 EVIDENCE_PATH = STATUS_DIR / "web-postgresql-activation.json"
 BACKUP_STATUS_PATH = STATUS_DIR / "web-postgresql.json"
 RESTORE_STATUS_PATH = STATUS_DIR / "web-postgresql-restore.json"
+RESTORE_RUNTIME_ROOT = Path("/run/jobseek-backup/web-postgresql/drills")
+RESTORE_LOCK_PATH = Path("/run/jobseek-data-backup-web-postgresql.lock")
+DEPLOYMENT_LOCK_PATH = Path("/run/jobseek-backup-deployment.lock")
+RESTORE_RESOURCE_LABEL = "jobseek.backup.service=web-postgresql-restore"
 BACKUP_UNIT = "jobseek-web-postgresql-backup.service"
 TIMER_UNIT = "jobseek-web-postgresql-backup.timer"
 BACKUP_ENV_PATH = Path("/etc/jobseek-backup/web-postgresql.env")
@@ -74,6 +83,14 @@ class ExpectedIdentity:
     artifact_sha256: dict[str, str]
 
 
+@dataclass(frozen=True)
+class RestoreResources:
+    operation_id: str
+    container: str
+    network: str
+    operation_root: Path
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -105,6 +122,278 @@ def command_succeeds(argv: list[str], *, timeout: int = 60) -> bool:
         timeout=timeout,
     )
     return completed.returncode == 0
+
+
+def new_restore_resources() -> RestoreResources:
+    operation_id = secrets.token_hex(16)
+    container = f"jobseek-web-postgresql-restore-{operation_id}"
+    return RestoreResources(
+        operation_id=operation_id,
+        container=container,
+        network=f"{container}-network",
+        operation_root=RESTORE_RUNTIME_ROOT / f"operation-{operation_id}",
+    )
+
+
+def docker_resource_absent(kind: str, name: str) -> bool:
+    if kind not in {"container", "network"}:
+        raise OperationError("restore cleanup resource kind is invalid")
+    inspected = subprocess.run(
+        ["docker", kind, "inspect", name],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if inspected.returncode == 0:
+        return False
+    daemon = subprocess.run(
+        ["docker", "info", "--format", "{{.ServerVersion}}"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if daemon.returncode:
+        raise OperationError("Docker availability cannot be proven during restore cleanup")
+    return True
+
+
+def listed_restore_resources(kind: str) -> list[str]:
+    if kind not in {"container", "network"}:
+        raise OperationError("restore cleanup resource kind is invalid")
+    arguments = ["docker", kind, "ls"]
+    if kind == "container":
+        arguments.append("--all")
+    arguments.extend(("--quiet", "--filter", f"label={RESTORE_RESOURCE_LABEL}"))
+    completed = subprocess.run(
+        arguments,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if completed.returncode:
+        raise OperationError("stale restore resource inventory is unavailable")
+    return [line for line in completed.stdout.splitlines() if line]
+
+
+def reconcile_restore_resources(resources: RestoreResources) -> None:
+    cleanup_failed = False
+    for command in (
+        ["docker", "rm", "--force", resources.container],
+        ["docker", "network", "rm", resources.network],
+    ):
+        try:
+            subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            cleanup_failed = True
+    for kind, name in (
+        ("container", resources.container),
+        ("network", resources.network),
+    ):
+        try:
+            if not docker_resource_absent(kind, name):
+                cleanup_failed = True
+        except (OSError, subprocess.TimeoutExpired, OperationError):
+            cleanup_failed = True
+    try:
+        if resources.operation_root.is_symlink() or resources.operation_root.is_file():
+            resources.operation_root.unlink()
+        elif resources.operation_root.exists():
+            shutil.rmtree(resources.operation_root)
+    except OSError:
+        cleanup_failed = True
+    if resources.operation_root.exists() or resources.operation_root.is_symlink():
+        cleanup_failed = True
+    if cleanup_failed:
+        raise OperationError("isolated restore residue cleanup could not be proven")
+
+
+@contextmanager
+def service_data_lock() -> Iterator[int]:
+    RESTORE_LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with RESTORE_LOCK_PATH.open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise OperationError("web PostgreSQL backup or restore is already running") from exc
+        os.fchmod(handle.fileno(), 0o600)
+        yield handle.fileno()
+
+
+@contextmanager
+def deployment_identity_lock() -> Iterator[int]:
+    DEPLOYMENT_LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with DEPLOYMENT_LOCK_PATH.open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise OperationError("another backup deployment or operation is active") from exc
+        os.fchmod(handle.fileno(), 0o600)
+        yield handle.fileno()
+
+
+def reconcile_stale_restore_resources() -> None:
+    cleanup_failed = False
+    for kind in ("container", "network"):
+        try:
+            identifiers = listed_restore_resources(kind)
+        except (OSError, subprocess.TimeoutExpired, OperationError):
+            cleanup_failed = True
+            continue
+        for identifier in identifiers:
+            command = (
+                ["docker", "rm", "--force", identifier]
+                if kind == "container"
+                else ["docker", "network", "rm", identifier]
+            )
+            try:
+                subprocess.run(
+                    command,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+            except (OSError, subprocess.TimeoutExpired):
+                cleanup_failed = True
+        try:
+            if listed_restore_resources(kind):
+                cleanup_failed = True
+        except (OSError, subprocess.TimeoutExpired, OperationError):
+            cleanup_failed = True
+    if RESTORE_RUNTIME_ROOT.exists():
+        try:
+            for child in RESTORE_RUNTIME_ROOT.iterdir():
+                if re.fullmatch(r"operation-[0-9a-f]{32}", child.name):
+                    if child.is_symlink() or child.is_file():
+                        child.unlink()
+                    else:
+                        shutil.rmtree(child)
+                else:
+                    cleanup_failed = True
+        except OSError:
+            cleanup_failed = True
+    if cleanup_failed:
+        raise OperationError("stale isolated restore cleanup could not be proven")
+
+
+def process_group_absent(process_group_id: int) -> bool:
+    try:
+        os.killpg(process_group_id, 0)
+    except ProcessLookupError:
+        return True
+    except OSError:
+        return False
+    return False
+
+
+def terminate_restore_process(process: subprocess.Popen[str]) -> None:
+    if not process_group_absent(process.pid):
+        with suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGTERM)
+    with suppress(subprocess.TimeoutExpired):
+        process.communicate(timeout=20)
+    if not process_group_absent(process.pid):
+        with suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+    deadline = time.monotonic() + 10
+    while not process_group_absent(process.pid) and time.monotonic() < deadline:
+        time.sleep(0.1)
+    if process.poll() is None:
+        with suppress(subprocess.TimeoutExpired):
+            process.wait(timeout=max(0.1, deadline - time.monotonic()))
+    if process.poll() is None or not process_group_absent(process.pid):
+        raise OperationError("isolated restore process group termination could not be proven")
+
+
+def run_restore_drill(
+    resources: RestoreResources,
+    *,
+    service_lock_fd: int | None = None,
+    deployment_lock_fd: int | None = None,
+    timeout: int = 90 * 60,
+) -> None:
+    env = os.environ.copy()
+    env.update(
+        {
+            "WEB_POSTGRES_RESTORE_OPERATION_ID": resources.operation_id,
+            "WEB_POSTGRES_RESTORE_CONTAINER": resources.container,
+            "WEB_POSTGRES_RESTORE_NETWORK": resources.network,
+            "WEB_POSTGRES_RESTORE_OPERATION_ROOT": str(resources.operation_root),
+        }
+    )
+    if (service_lock_fd is None) != (deployment_lock_fd is None):
+        raise OperationError("restore lock boundary is incomplete")
+    pass_fds: tuple[int, ...] = ()
+    if service_lock_fd is not None and deployment_lock_fd is not None:
+        env["WEB_POSTGRES_RESTORE_LOCK_FD"] = str(service_lock_fd)
+        env["WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD"] = str(deployment_lock_fd)
+        pass_fds = (service_lock_fd, deployment_lock_fd)
+    process: subprocess.Popen[str] | None = None
+    failure: BaseException | None = None
+    previous_handlers: dict[signal.Signals, Any] = {}
+
+    def interrupted(signum: int, _frame: Any) -> None:
+        raise OperationError(f"restore drill interrupted by signal {signum}")
+
+    try:
+        process = subprocess.Popen(
+            [str(ARTIFACT_PATHS["restore_drill"])],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+            pass_fds=pass_fds,
+            start_new_session=True,
+        )
+        for event in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+            previous_handlers[event] = signal.signal(event, interrupted)
+        try:
+            process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            failure = OperationError("isolated restore drill timed out")
+            failure.add_note(str(exc))
+        except BaseException as exc:
+            failure = exc
+        if process.poll() is None or not process_group_absent(process.pid):
+            if failure is None:
+                failure = OperationError("isolated restore left a live process group")
+            terminate_restore_process(process)
+        if failure is None and process.returncode:
+            failure = OperationError("isolated restore drill failed")
+    except BaseException as exc:
+        failure = exc
+    finally:
+        for event, handler in previous_handlers.items():
+            signal.signal(event, handler)
+    if process is not None and (process.poll() is None or not process_group_absent(process.pid)):
+        try:
+            terminate_restore_process(process)
+        except BaseException as exc:
+            if failure is None:
+                failure = exc
+    if process is not None and (process.poll() is None or not process_group_absent(process.pid)):
+        raise OperationError(
+            "isolated restore process group liveness cannot be excluded"
+        ) from failure
+    try:
+        reconcile_restore_resources(resources)
+    except OperationError as cleanup_error:
+        if failure is not None:
+            raise cleanup_error from failure
+        raise
+    if failure is not None:
+        if isinstance(failure, (OperationError, OSError)):
+            raise failure
+        raise OperationError("isolated restore drill was interrupted") from failure
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -310,6 +599,12 @@ def write_backup_evidence(
 
 
 def run_backup(expected: ExpectedIdentity) -> None:
+    with deployment_identity_lock():
+        run_backup_locked(expected)
+
+
+def run_backup_locked(expected: ExpectedIdentity) -> None:
+    validate_host_readiness(expected)
     artifact_hashes = validate_identity(expected)
     EVIDENCE_PATH.unlink(missing_ok=True)
     before = timer_state()
@@ -355,10 +650,22 @@ def load_bound_backup(
 
 
 def run_restore(expected: ExpectedIdentity) -> None:
+    with deployment_identity_lock() as deployment_lock_fd:
+        run_restore_locked(expected, deployment_lock_fd=deployment_lock_fd)
+
+
+def run_restore_locked(expected: ExpectedIdentity, *, deployment_lock_fd: int) -> None:
+    validate_host_readiness(expected)
     load_bound_backup(expected, clear_restore=True)
     before = timer_state()
     started = int(time.time())
-    run_checked([str(ARTIFACT_PATHS["restore_drill"])], timeout=90 * 60)
+    with service_data_lock() as service_lock_fd:
+        reconcile_stale_restore_resources()
+        run_restore_drill(
+            new_restore_resources(),
+            service_lock_fd=service_lock_fd,
+            deployment_lock_fd=deployment_lock_fd,
+        )
     if timer_state() != before:
         raise OperationError("restore operation changed the timer state")
     evidence, backup = load_bound_backup(expected)
@@ -416,6 +723,12 @@ def validate_activation_evidence(expected: ExpectedIdentity) -> dict[str, Any]:
 
 
 def enable_timer(expected: ExpectedIdentity) -> None:
+    with deployment_identity_lock():
+        enable_timer_locked(expected)
+
+
+def enable_timer_locked(expected: ExpectedIdentity) -> None:
+    validate_host_readiness(expected)
     safe = validate_activation_evidence(expected)
     if timer_state() != ("disabled", "inactive"):
         raise OperationError("timer must be disabled and inactive before activation")
@@ -429,8 +742,8 @@ def enable_timer(expected: ExpectedIdentity) -> None:
         previous_handlers[event] = signal.signal(event, interrupted)
     try:
         run_checked(["systemctl", "reset-failed", BACKUP_UNIT])
-        run_checked(["systemctl", "enable", "--now", TIMER_UNIT])
-        if timer_state() != ("enabled", "active"):
+        run_checked(["systemctl", "start", TIMER_UNIT])
+        if timer_state() != ("disabled", "active"):
             raise OperationError("timer activation postcondition failed")
         if command_succeeds(["systemctl", "is-failed", "--quiet", BACKUP_UNIT]):
             raise OperationError("backup service is failed after timer activation")
@@ -438,8 +751,11 @@ def enable_timer(expected: ExpectedIdentity) -> None:
             ["systemctl", "show", TIMER_UNIT, "--property=NextElapseUSecRealtime", "--value"]
         ).strip()
         if not next_run or next_run == "n/a":
-            raise OperationError("enabled timer has no next run")
+            raise OperationError("started timer has no next run")
         validate_identity(expected)
+        run_checked(["systemctl", "enable", TIMER_UNIT])
+        if timer_state() != ("enabled", "active"):
+            raise OperationError("timer persistence commit failed")
         rollback_required = False
     finally:
         if rollback_required:
@@ -488,7 +804,8 @@ def main(argv: list[str] | None = None) -> int:
     expected = expected_identity(args)
     try:
         if args.mode == "verify":
-            validate_host_readiness(expected)
+            with deployment_identity_lock():
+                validate_host_readiness(expected)
         elif args.mode == "backup":
             run_backup(expected)
         elif args.mode == "restore":

@@ -6,8 +6,26 @@ IMAGE="${WEB_POSTGRES_IMAGE:-postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458
 ENV_FILE="${WEB_POSTGRES_BACKUP_ENV_FILE:-/etc/jobseek-backup/web-postgresql.env}"
 STATUS_FILE="${WEB_POSTGRES_RESTORE_STATUS_FILE:-/var/lib/jobseek-backup/status/web-postgresql-restore.json}"
 DRILL_ROOT="${WEB_POSTGRES_DRILL_ROOT:-/run/jobseek-backup/web-postgresql/drills}"
-CONTAINER="jobseek-web-postgresql-restore-${RANDOM}-$$"
-NETWORK="${CONTAINER}-network"
+OPERATION_ID="${WEB_POSTGRES_RESTORE_OPERATION_ID:-}"
+if [[ -z "$OPERATION_ID" ]]; then
+  OPERATION_ID="$(python3 - <<'PY'
+import secrets
+
+print(secrets.token_hex(16))
+PY
+)"
+fi
+[[ "$OPERATION_ID" =~ ^[0-9a-f]{32}$ ]] || {
+  echo "ERROR: invalid restore operation ID" >&2
+  exit 2
+}
+EXPECTED_CONTAINER="jobseek-web-postgresql-restore-${OPERATION_ID}"
+CONTAINER="${WEB_POSTGRES_RESTORE_CONTAINER:-$EXPECTED_CONTAINER}"
+NETWORK="${WEB_POSTGRES_RESTORE_NETWORK:-${EXPECTED_CONTAINER}-network}"
+OPERATION_ROOT="${WEB_POSTGRES_RESTORE_OPERATION_ROOT:-$DRILL_ROOT/operation-${OPERATION_ID}}"
+[[ "$CONTAINER" == "$EXPECTED_CONTAINER" ]]
+[[ "$NETWORK" == "${EXPECTED_CONTAINER}-network" ]]
+[[ "$OPERATION_ROOT" == "$DRILL_ROOT/operation-${OPERATION_ID}" ]]
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 STARTED_UNIX="$(date +%s)"
 SUCCESS=false
@@ -16,7 +34,6 @@ ROW_COUNT=0
 ARCHIVE_SHA256=""
 RESTORE_PATH=""
 CREDENTIAL_PATH=""
-NETWORK_CREATED=false
 
 write_status() {
   local finished_unix duration
@@ -55,23 +72,51 @@ os.replace(temporary, path)
 PY
 }
 
+docker_resource_absent() {
+  local kind="$1" name="$2"
+  if docker "$kind" inspect "$name" >/dev/null 2>&1; then
+    return 1
+  fi
+  # Distinguish an absent resource from an inspect failure caused by an
+  # unavailable daemon. Only a reachable daemon plus failed inspect proves
+  # that the named resource no longer exists.
+  docker info --format '{{.ServerVersion}}' >/dev/null 2>&1
+}
+
 cleanup() {
-  local exit_code=$?
-  docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  if [[ "$NETWORK_CREATED" == true ]]; then
-    docker network rm "$NETWORK" >/dev/null 2>&1 || true
+  local exit_code=$? cleanup_failed=false
+  trap - EXIT HUP INT TERM
+  set +e
+  docker rm -f "$CONTAINER" >/dev/null 2>&1
+  if ! docker_resource_absent container "$CONTAINER"; then
+    cleanup_failed=true
+  fi
+  docker network rm "$NETWORK" >/dev/null 2>&1
+  if ! docker_resource_absent network "$NETWORK"; then
+    cleanup_failed=true
   fi
   if [[ -n "$RESTORE_PATH" ]]; then
-    rm -rf -- "$RESTORE_PATH"
+    rm -rf -- "$RESTORE_PATH" || cleanup_failed=true
   fi
   if [[ -n "$CREDENTIAL_PATH" ]]; then
-    rm -rf -- "$CREDENTIAL_PATH"
+    rm -rf -- "$CREDENTIAL_PATH" || cleanup_failed=true
   fi
-  write_status
-  trap - EXIT
+  if [[ -n "$OPERATION_ROOT" ]]; then
+    rm -rf -- "$OPERATION_ROOT" || cleanup_failed=true
+  fi
+  if [[ "$exit_code" -ne 0 || "$cleanup_failed" == true ]]; then
+    SUCCESS=false
+    exit_code=1
+  fi
+  if ! write_status; then
+    exit_code=1
+  fi
   exit "$exit_code"
 }
 trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 [[ "$IMAGE" == *@sha256:* ]] || {
   echo "ERROR: WEB_POSTGRES_IMAGE must be digest-pinned" >&2
@@ -86,14 +131,33 @@ set +a
 : "${RESTIC_PASSWORD_FILE:?RESTIC_PASSWORD_FILE is required}"
 : "${RESTIC_SFTP_COMMAND:?RESTIC_SFTP_COMMAND is required}"
 
-exec 9>/run/jobseek-data-backup-web-postgresql.lock
-flock -n 9 || {
-  echo "ERROR: web PostgreSQL backup or restore is already running" >&2
-  exit 1
-}
+if [[ -n "${WEB_POSTGRES_RESTORE_LOCK_FD:-}" || \
+  -n "${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}" ]]; then
+  [[ "${WEB_POSTGRES_RESTORE_LOCK_FD:-}" =~ ^[0-9]+$ ]]
+  [[ "${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}" =~ ^[0-9]+$ ]]
+  [[ "$(readlink "/proc/$$/fd/${WEB_POSTGRES_RESTORE_LOCK_FD:-}")" == \
+    /run/jobseek-data-backup-web-postgresql.lock ]]
+  [[ "$(readlink "/proc/$$/fd/${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}")" == \
+    /run/jobseek-backup-deployment.lock ]]
+  flock -n "${WEB_POSTGRES_RESTORE_LOCK_FD:-}"
+  flock -n "${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}"
+else
+  exec 8>/run/jobseek-backup-deployment.lock
+  flock -n 8 || {
+    echo "ERROR: another backup deployment or protected operation is active" >&2
+    exit 1
+  }
+  exec 9>/run/jobseek-data-backup-web-postgresql.lock
+  flock -n 9 || {
+    echo "ERROR: web PostgreSQL backup or restore is already running" >&2
+    exit 1
+  }
+fi
 
 install -d -m 0700 "$DRILL_ROOT"
-RESTORE_PATH="$(mktemp -d "$DRILL_ROOT/restore.XXXXXX")"
+mkdir -m 0700 "$OPERATION_ROOT"
+RESTORE_PATH="$OPERATION_ROOT/restore"
+mkdir -m 0700 "$RESTORE_PATH"
 restic -o "sftp.command=${RESTIC_SFTP_COMMAND}" restore latest \
   --tag jobseek-web-postgresql \
   --host jobseek-web-postgresql \
@@ -115,7 +179,8 @@ ARCHIVE_DIR="$(dirname "$DUMP_PATH")"
   exit 1
 }
 
-CREDENTIAL_PATH="$(mktemp -d "$DRILL_ROOT/credential.XXXXXX")"
+CREDENTIAL_PATH="$OPERATION_ROOT/credential"
+mkdir -m 0700 "$CREDENTIAL_PATH"
 PASSWORD_FILE="$CREDENTIAL_PATH/postgres-password"
 PGPASS_FILE="$CREDENTIAL_PATH/pgpass"
 python3 - "$PASSWORD_FILE" "$PGPASS_FILE" <<'PY'
@@ -131,10 +196,14 @@ pgpass_path.write_text(f"*:*:*:postgres:{password}\n", encoding="utf-8")
 password_path.chmod(0o600)
 pgpass_path.chmod(0o600)
 PY
-docker network create --driver bridge --internal "$NETWORK" >/dev/null
-NETWORK_CREATED=true
+docker network create --driver bridge --internal \
+  --label jobseek.backup.service=web-postgresql-restore \
+  --label "jobseek.backup.operation=$OPERATION_ID" \
+  "$NETWORK" >/dev/null
 docker run --detach --rm \
   --name "$CONTAINER" \
+  --label jobseek.backup.service=web-postgresql-restore \
+  --label "jobseek.backup.operation=$OPERATION_ID" \
   --pull=never \
   --network "$NETWORK" \
   --env POSTGRES_PASSWORD_FILE=/run/secrets/postgres-password \

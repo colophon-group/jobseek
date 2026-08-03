@@ -30,7 +30,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preauthorize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      DISPATCH_MODE: ${{ inputs.mode }}
+      DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+      DISPATCH_EVENT: ${{ github.event_name }}
+      DISPATCH_REF: ${{ github.ref }}
+    steps:
+      - name: Reject unauthorized dispatches before requesting approval
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_EVENT" = workflow_dispatch
+          test "$DISPATCH_REF" = refs/heads/main
+          case "$DISPATCH_MODE:$DISPATCH_CONFIRMATION" in
+            verify:VERIFY-WEB-POSTGRESQL) ;;
+            backup:RUN-WEB-POSTGRESQL-BACKUP) ;;
+            restore:RUN-WEB-POSTGRESQL-RESTORE-DRILL) ;;
+            enable-timer:ENABLE-WEB-POSTGRESQL-TIMER) ;;
+            *) exit 2 ;;
+          esac
+
   authorize:
+    needs: preauthorize
+    if: github.actor == 'viktor-shcherb' && github.triggering_actor == 'viktor-shcherb'
     runs-on: ubuntu-latest
     environment: production-backup-operations
     timeout-minutes: 5
@@ -43,6 +71,7 @@ jobs:
       timer_sha256: ${{ steps.artifacts.outputs.timer_sha256 }}
     env:
       DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
       DISPATCH_MODE: ${{ inputs.mode }}
       DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
       DISPATCH_EVENT: ${{ github.event_name }}
@@ -53,6 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
           test "$DISPATCH_EVENT" = workflow_dispatch
           test "$DISPATCH_REF" = refs/heads/main
           [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
@@ -112,12 +142,15 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   operate:
-    needs: authorize
+    needs: [preauthorize, authorize]
+    if: github.actor == 'viktor-shcherb' && github.triggering_actor == 'viktor-shcherb'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 180
     env:
       OPERATION_MODE: ${{ inputs.mode }}
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
       TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
       SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
       SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
@@ -132,6 +165,8 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
           case "$OPERATION_MODE" in
             verify|backup|restore|enable-timer) ;;
             *) exit 2 ;;
@@ -175,7 +210,7 @@ jobs:
           )
           # All interpolated remote arguments are allowlisted or regex-validated above.
           # shellcheck disable=SC2029
-          timeout --foreground --signal=TERM --kill-after=30s 2h45m \
+          timeout --foreground --signal=TERM --kill-after=30s 165m \
             ssh "${ssh_options[@]}" "root@$TARGET_HOST" \
             "/usr/local/sbin/jobseek-web-postgresql-operations '$OPERATION_MODE' \
               --expected-deploy-sha '$EXPECTED_DEPLOY_SHA' \

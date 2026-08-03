@@ -59,7 +59,7 @@ root-readable only.
 Repository-owned files:
 
 - `scripts/jobseek-data-backup.py`
-- `deploy/backups/install-host.sh`
+- `deploy/backups/{deploy-remote,install-host-from-stdin,install-host}.sh`
 - `deploy/backups/postgresql/Dockerfile`
 - `deploy/backups/postgresql/{mount-repository,smoke-repository,restore-drill}.sh`
 - `deploy/backups/typesense/restore-drill.sh`
@@ -149,15 +149,22 @@ main-branch artifacts to both hosts and runs the three installers serially in
 preserve mode. The web job shares the Typesense host only as an execution and
 encrypted-repository location; it does not read Typesense data or credentials.
 It records the deployed commit without starting, stopping, enabling, or
-disabling an existing timer. Deployment uses the same per-service lock as the
-backup job and fails safely instead of replacing code during an active
-backup. The production environment secrets
+disabling an existing timer. Deployment takes a host-wide deployment/identity
+lock before the per-service data lock, so it cannot replace the shared backup
+runtime during any protected operation or overlap an active backup for that
+service. The production environment secrets
 `HETZNER_POSTGRES_HOST` and `HETZNER_TYPESENSE_HOST` select the two hosts; the
-workflow reuses the existing Hetzner SSH deployment credential. Host addresses
-are secrets for log-redaction purposes even though they are not authentication
-material. These are environment-scoped secrets, so the workflow resolves them
-inside runtime steps after the protected `production` environment is attached;
-do not embed their values in `strategy.matrix`, which GitHub expands earlier.
+workflow reuses the existing Hetzner SSH deployment credential and validates
+both hosts against the pre-provisioned `HETZNER_BACKUP_KNOWN_HOSTS`. Artifacts
+travel over native strict OpenSSH, and database/Typesense credentials travel
+only as a root-only stdin payload to the reviewed host-side installer, never in
+the remote command line. `ssh-keyscan` and runtime-downloaded SSH clients are
+not used. Host addresses are secrets for log-redaction purposes even though
+they are not authentication material. These are environment-scoped secrets,
+so the workflow resolves them inside runtime steps after the main-only
+`production` environment is attached; do not embed their values in
+`strategy.matrix`, which GitHub expands earlier. The workflow has no manual
+dispatch surface; rerun the trusted latest `main` push run for a resync.
 
 For Typesense, the protected `TYPESENSE_BACKUP_KEY` is authorization-probed
 against authenticated `GET /stats.json` before host state is changed. The
@@ -173,16 +180,31 @@ The web installer receives `DATABASE_URL_UNPOOLED` only after the protected
 production environment is attached. It atomically writes the URL to the
 root-only systemd credential and copies only the three Restic transport fields
 from the existing Typesense backup environment. The Typesense API key is not
-available to the web backup service.
+available to the web backup service. A changed database URL or Restic setting
+is transactional: the installer stages both root-only candidate files while
+leaving live files untouched. When the web timer is enabled or active, it first
+proves the timer disabled/inactive, releases only the service data lock, and
+runs a fresh backup/freshness check with the candidate credential directory
+and candidate Restic environment while retaining the host-wide deployment
+lock. It reacquires the service lock before atomically moving both candidates
+into place, then restores and verifies the exact prior timer state. A smoke or
+lock-reacquisition failure leaves both live files byte-identical. An incomplete
+two-file commit leaves the timer disabled fail-safe, and the next installer
+reconciles only exact root-owned candidate directories. An unchanged candidate
+does not run a deployment smoke, and an initially disabled staged timer remains
+disabled so the protected manual backup/restore sequence remains the first
+connection proof.
 
 ### Protected web PostgreSQL activation
 
 When direct production SSH is unavailable, use
 `.github/workflows/operate-web-postgresql-backup.yml` from `main`. Its first
-job attaches the protected `production-backup-operations` environment, which
-allows protected branches only and requires owner review, and also requires
-the dispatch actor to be `viktor-shcherb`. Only after that job succeeds does a
-second job attach `production` and read `HETZNER_TYPESENSE_HOST`,
+job rejects the wrong original actor, rerun-triggering actor, ref, event, mode,
+or token before any environment approval is requested. The second job attaches
+the main-only `production-backup-operations` environment, requires owner
+review, revalidates the dispatch, and binds artifacts. Only after that job
+succeeds does a third job recheck both actors, attach the main-only `production`
+environment, and read `HETZNER_TYPESENSE_HOST`,
 `HETZNER_SSH_KEY`, and the pre-provisioned trusted host-key entries in
 `HETZNER_TYPESENSE_KNOWN_HOSTS`. The dispatcher uses native OpenSSH with
 strict host-key checking and never discovers trust with `ssh-keyscan`.
@@ -208,14 +230,26 @@ concurrency group, runs no command with shell tracing, and publishes only
 aggregate counts, sizes and timing. Repository and restore command output is
 captured without being relayed into GitHub logs.
 
+`backup`, `restore`, and `enable-timer` each rerun the same non-mutating host
+readiness gate used by `verify`; the documented sequence is not trusted as
+advisory state. Credential modes, exact Restic configuration, Docker, pinned
+image, units, repository access, deployed identity, and current timer state
+must still be valid at the point of every later operation.
+
+Every protected operation holds the host-wide deployment/identity lock across
+readiness, evidence validation, mutation, and its final identity check. Restore
+also holds the web service data lock. Both open lock descriptions are inherited
+and path-verified by the restore child, so a killed parent cannot release the
+artifact boundary while the child can still invoke the shared backup runtime.
+
 Each dispatch is main-only and requires the exact token for its selected mode:
 
 | Mode | Confirmation | Effect |
 |---|---|---|
 | `verify` | `VERIFY-WEB-POSTGRESQL` | Read-only validation of installed code, root-only credential/config modes, pinned restore image, encrypted repository reachability, deployed-revision marker, and current timer state |
 | `backup` | `RUN-WEB-POSTGRESQL-BACKUP` | Starts one systemd backup, requires fresh successful aggregate status, and proves the timer state did not change |
-| `restore` | `RUN-WEB-POSTGRESQL-RESTORE-DRILL` | Requires a bound successful backup from the last nine hours, runs the private-network-only self-cleaning restore drill, matches its archive/count evidence to that backup, and proves the timer state did not change |
-| `enable-timer` | `ENABLE-WEB-POSTGRESQL-TIMER` | Requires the timer to be disabled/inactive plus a fresh bound backup followed by a fresh successful restore of the same SHA-256-bound archive; activation rolls back to disabled on every failed postcondition and commits only after a visible next run |
+| `restore` | `RUN-WEB-POSTGRESQL-RESTORE-DRILL` | Requires a bound successful backup from the last nine hours, runs the private-network-only self-cleaning restore drill, matches its archive/count evidence to that backup, proves exact container/network/decrypted-directory removal, and proves the timer state did not change |
+| `enable-timer` | `ENABLE-WEB-POSTGRESQL-TIMER` | Requires the timer to be disabled/inactive plus a fresh bound backup followed by a fresh successful restore of the same SHA-256-bound archive; starts the timer non-persistently, verifies active state, service health, a visible next run, and installed identity, then enables persistence as the final commit; handled failure rolls back to disabled |
 
 Run the modes in that order for first activation. `verify`, `backup`, and
 `restore` never enable or disable the timer. A failed or stale evidence file,
@@ -566,8 +600,15 @@ the Cloudflare tunnel to a restore drill.
    company requests, and hiring/outreach constraints.
 5. The script atomically records aggregate drill evidence in
    `/var/lib/jobseek-backup/status/web-postgresql-restore.json`, then removes
-   the container, restored archive, and temporary database on success or
-   failure. Attach that redacted evidence to #6169 before the mirror purge.
+   the exact container, internal network, restored archive, credential files,
+   and temporary database on success, failure, or handled signal. The protected
+   parent passes its held service-data and deployment/identity lock descriptors
+   into the restore process,
+   terminates and reaps the exact process group on timeout, and will not accept
+   evidence until Docker and directory absence are proven. A later run cleans
+   only stale service-labeled restore resources under that same lock, covering
+   a prior parent or child `SIGKILL`. Attach the redacted evidence to #6169
+   before the mirror purge.
 
 ## Failure and removal gates
 

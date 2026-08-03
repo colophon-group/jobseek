@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
+import re
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,6 +14,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = ROOT / "scripts" / "jobseek-data-backup.py"
+RESTORE_SCRIPT_PATH = ROOT / "deploy/backups/web-postgresql/restore-drill.sh"
 SPEC = importlib.util.spec_from_file_location("jobseek_data_backup", SCRIPT_PATH)
 assert SPEC and SPEC.loader
 backup = importlib.util.module_from_spec(SPEC)
@@ -20,6 +23,74 @@ SPEC.loader.exec_module(backup)
 
 def completed(stdout: str = "") -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess([], 0, stdout=stdout, stderr="")
+
+
+def shell_function(script: str, name: str) -> str:
+    match = re.search(
+        rf"^{re.escape(name)}\(\) \{{\n.*?^\}}$",
+        script,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    assert match is not None, f"missing shell function {name}"
+    return match.group(0)
+
+
+def run_mocked_restore_cleanup(
+    tmp_path: Path, *, container_inspect_status: int, daemon_status: int = 0
+) -> tuple[subprocess.CompletedProcess[str], str]:
+    restore_script = RESTORE_SCRIPT_PATH.read_text(encoding="utf-8")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_docker = fake_bin / "docker"
+    fake_docker.write_text(
+        """#!/bin/sh
+case "$1:$2" in
+  rm:-f|network:rm) exit 1 ;;
+  container:inspect) exit "$MOCK_CONTAINER_INSPECT_STATUS" ;;
+  network:inspect) exit 1 ;;
+  info:--format) exit "$MOCK_DAEMON_STATUS" ;;
+  *) exit 2 ;;
+esac
+""",
+        encoding="utf-8",
+    )
+    fake_docker.chmod(0o755)
+    status_capture = tmp_path / "status"
+    restore_path = tmp_path / "restore"
+    credential_path = tmp_path / "credential"
+    restore_path.mkdir()
+    credential_path.mkdir()
+    cleanup_script = "\n".join(
+        (
+            shell_function(restore_script, "docker_resource_absent"),
+            shell_function(restore_script, "cleanup"),
+            'write_status() { printf "%s" "$SUCCESS" > "$STATUS_CAPTURE"; }',
+            "SUCCESS=true",
+            'CONTAINER="test-restore"',
+            'NETWORK="test-restore-network"',
+            'RESTORE_PATH="$TEST_RESTORE_PATH"',
+            'CREDENTIAL_PATH="$TEST_CREDENTIAL_PATH"',
+            "cleanup",
+        )
+    )
+    result = subprocess.run(
+        ["bash", "-c", cleanup_script],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "MOCK_CONTAINER_INSPECT_STATUS": str(container_inspect_status),
+            "MOCK_DAEMON_STATUS": str(daemon_status),
+            "STATUS_CAPTURE": str(status_capture),
+            "TEST_RESTORE_PATH": str(restore_path),
+            "TEST_CREDENTIAL_PATH": str(credential_path),
+        },
+    )
+    assert not restore_path.exists()
+    assert not credential_path.exists()
+    return result, status_capture.read_text(encoding="utf-8")
 
 
 def test_execute_with_status_preserves_last_success_on_failure(tmp_path: Path) -> None:
@@ -542,6 +613,7 @@ def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> No
         encoding="utf-8"
     )
     workflow = (ROOT / ".github/workflows/deploy-data-backups.yml").read_text(encoding="utf-8")
+    receiver = (ROOT / "deploy/backups/install-host-from-stdin.sh").read_text(encoding="utf-8")
     restore = (ROOT / "deploy/backups/web-postgresql/restore-drill.sh").read_text(encoding="utf-8")
 
     assert "LoadCredential=web-database-url:" in service
@@ -553,12 +625,22 @@ def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> No
     assert "WEB_POSTGRES_STAGING_ROOT=/run/jobseek-backup/web-postgresql" in service
     assert "service: [postgresql, typesense, web-postgresql]" in workflow
     assert "max-parallel: 1" in workflow
-    assert 'elif [[ "$JOBSEEK_BACKUP_SERVICE" != "web-postgresql" ]]' in workflow
+    assert 'elif [[ "$service" != "web-postgresql" ]]' in receiver
     assert "docker network create --driver bridge --internal" in restore
     assert "--publish" not in restore
     assert "POSTGRES_HOST_AUTH_METHOD=trust" not in restore
     assert "POSTGRES_PASSWORD_FILE=/run/secrets/postgres-password" in restore
     assert 'docker network rm "$NETWORK"' in restore
+    assert "docker_resource_absent container" in restore
+    assert "docker_resource_absent network" in restore
+    assert "trap 'exit 143' TERM" in restore
+    assert "WEB_POSTGRES_RESTORE_LOCK_FD:-" in restore
+    assert "WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-" in restore
+    assert "/proc/$$/fd/${WEB_POSTGRES_RESTORE_LOCK_FD:-}" in restore
+    assert "/proc/$$/fd/${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}" in restore
+    assert 'flock -n "${WEB_POSTGRES_RESTORE_LOCK_FD:-}"' in restore
+    assert 'flock -n "${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}"' in restore
+    assert "exec 8>/run/jobseek-backup-deployment.lock" in restore
     assert 'WEB_DATABASE_PASSWORD_FILE="$PGPASS_FILE"' in restore
     assert 'WEB_POSTGRES_NETWORK="$NETWORK"' in restore
     assert "WEB_POSTGRES_DRILL_ROOT:-/run/jobseek-backup/web-postgresql/drills" in restore
@@ -577,11 +659,110 @@ def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> No
     assert "murmur" not in restore.lower()
 
 
+def test_restore_cleanup_accepts_failed_remove_only_after_proving_absence(
+    tmp_path: Path,
+) -> None:
+    result, status = run_mocked_restore_cleanup(
+        tmp_path,
+        container_inspect_status=1,
+    )
+
+    assert result.returncode == 0
+    assert status == "true"
+
+
+def test_restore_cleanup_rejects_success_when_container_remains(tmp_path: Path) -> None:
+    result, status = run_mocked_restore_cleanup(
+        tmp_path,
+        container_inspect_status=0,
+    )
+
+    assert result.returncode == 1
+    assert status == "false"
+
+
 def test_backup_installer_allows_only_the_staged_web_timer_to_remain_disabled() -> None:
     installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
 
     assert 'systemctl is-enabled --quiet "jobseek-${SERVICE}-backup.timer"' in installer
     assert '[[ "$SERVICE" == "typesense" ]] &&' in installer
+
+
+def test_web_backup_candidate_detects_credential_or_restic_configuration_changes() -> None:
+    installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+
+    assert (
+        'current_url = live_credential.read_text(encoding="utf-8") '
+        "if live_credential.exists() else None" in installer
+    )
+    assert "current_environment = (" in installer
+    assert "current_url == canonical_url and current_environment == canonical_environment" in (
+        installer
+    )
+    assert 'web_configuration_changed="$(python3' in installer
+    assert 'web_candidate_root="$(mktemp -d /etc/jobseek-backup/' in installer
+
+
+def test_unchanged_or_staged_web_backup_candidate_does_not_run_deploy_smoke() -> None:
+    installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+
+    assert 'elif [[ "$SERVICE" == "web-postgresql" ]]; then' in installer
+    assert 'if [[ "$web_configuration_changed" -eq 1 ]] && \\' in installer
+    assert '"$web_timer_was_enabled" -eq 1 || "$web_timer_was_active" -eq 1' in installer
+    assert "/usr/local/sbin/jobseek-data-backup web-postgresql" in installer
+    assert 'CREDENTIALS_DIRECTORY="$web_candidate_root"' in installer
+    assert "unset WEB_DATABASE_URL" in installer
+    assert "web database credential-change backup smoke did not succeed" in installer
+
+
+def test_web_candidate_smokes_before_atomic_commit_and_restores_timer_on_failure() -> None:
+    installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+    candidate = installer.index('web_candidate_root="$(mktemp -d')
+    stage = installer.index("atomic_write(candidate_credential, canonical_url)", candidate)
+    smoke = installer.index("/usr/local/sbin/jobseek-data-backup web-postgresql", stage)
+    reacquire = installer.index(
+        "could not reacquire web PostgreSQL service data lock after smoke", smoke
+    )
+    commit_function = installer.index("commit_web_candidate()")
+    commit_call = installer.index("  commit_web_candidate", reacquire)
+    marker = installer.index('>"/var/lib/jobseek-backup/${SERVICE}-deployed-sha.tmp"', reacquire)
+
+    assert candidate < stage < smoke < reacquire < commit_call < marker
+    assert commit_function < candidate
+    assert (
+        'mv "$web_candidate_root/web-database-url" \\\n'
+        "    /etc/jobseek-backup/web-postgresql.database-url"
+    ) in installer
+    assert installer.index("flock -u 9", stage) < smoke
+    assert "restore_web_timer_state" in installer
+    assert "web backup timer disabled/inactive rollback state could not be proven" in installer
+    assert (
+        '[[ "$web_timer_enabled_state" == disabled && '
+        '"$web_timer_active_state" == inactive ]]' in installer
+    )
+    fail_safe = installer[installer.index("disable_web_timer_fail_safe()") : commit_function]
+    assert "systemctl disable --now jobseek-web-postgresql-backup.timer" in fail_safe
+    assert "systemctl stop jobseek-web-postgresql-backup.service" in fail_safe
+    assert "|| true" not in fail_safe
+    assert "web_candidate_commit_started=1" in installer
+    assert "web_candidate_commit_complete=1" in installer
+    assert "web candidate commit is incomplete; timer will remain disabled" in installer
+
+
+def test_web_candidate_stale_plaintext_is_reconciled_under_exact_boundary() -> None:
+    installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+    global_lock = installer.index('flock -w "$LOCK_TIMEOUT_S" 8')
+    inventory = installer.index(
+        "stale_web_candidates=(/etc/jobseek-backup/.web-postgresql-candidate.*)"
+    )
+    removal = installer.index('rm -rf -- "$stale_candidate"', inventory)
+    candidate = installer.index('web_candidate_root="$(mktemp -d', removal)
+
+    assert global_lock < inventory < removal < candidate
+    assert "^\\.web-postgresql-candidate\\.[A-Za-z0-9]{6}$" in installer
+    assert '[[ -d "$stale_candidate" && ! -L "$stale_candidate" ]]' in installer
+    assert '[[ "$(stat -c \'%U:%G:%a\' "$stale_candidate")" == root:root:700 ]]' in (installer)
+    assert '[[ ! -e "$stale_candidate" && ! -L "$stale_candidate" ]]' in installer
 
 
 def test_restic_command_injects_the_restricted_sftp_transport(

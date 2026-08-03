@@ -63,14 +63,23 @@ def _latest_deploy_sha(repository: Path, dispatch_sha: str, paths: tuple[str, ..
 
 def test_operations_require_owner_review_main_and_exact_confirmation() -> None:
     workflow = _workflow()
+    preauthorize = _job(workflow, "preauthorize")
     authorize = _job(workflow, "authorize")
+    operate = _job(workflow, "operate")
 
     assert "workflow_dispatch:" in workflow
     assert "schedule:" not in workflow
     assert "push:" not in workflow
+    assert "environment:" not in preauthorize
+    assert "needs: preauthorize" in authorize
     assert "environment: production-backup-operations" in authorize
-    assert 'test "$DISPATCH_ACTOR" = viktor-shcherb' in authorize
+    for job in (preauthorize, authorize, operate):
+        assert 'test "$DISPATCH_ACTOR" = viktor-shcherb' in job
+        assert 'test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb' in job
+    assert 'test "$DISPATCH_REF" = refs/heads/main' in preauthorize
     assert 'test "$DISPATCH_REF" = refs/heads/main' in authorize
+    assert "github.triggering_actor == 'viktor-shcherb'" in authorize
+    assert "github.triggering_actor == 'viktor-shcherb'" in operate
     for mode, confirmation in (
         ("verify", "VERIFY-WEB-POSTGRESQL"),
         ("backup", "RUN-WEB-POSTGRESQL-BACKUP"),
@@ -85,10 +94,10 @@ def test_secret_bearing_job_uses_strict_native_openssh_after_authorization() -> 
     workflow = _workflow()
     operate = _job(workflow, "operate")
 
-    assert len(workflow.splitlines()) < 220
+    assert len(workflow.splitlines()) < 260
     assert "group: hetzner-data-backup-production-sync" in workflow
     assert "cancel-in-progress: false" in workflow
-    assert "needs: authorize" in operate
+    assert "needs: [preauthorize, authorize]" in operate
     assert "environment: production" in operate
     assert "secrets.HETZNER_TYPESENSE_HOST" in operate
     assert "secrets.HETZNER_SSH_KEY" in operate
@@ -98,6 +107,8 @@ def test_secret_bearing_job_uses_strict_native_openssh_after_authorization() -> 
     assert "GlobalKnownHostsFile=/dev/null" in operate
     assert "PasswordAuthentication=no" in operate
     assert 'ssh-keygen -F "$TARGET_HOST"' in operate
+    assert "timeout --foreground --signal=TERM --kill-after=30s 165m" in operate
+    assert "2h45m" not in operate
     assert "appleboy/ssh-action" not in workflow
     assert "ssh-keyscan" not in workflow
     assert "secrets.DATABASE_URL" not in workflow
@@ -119,6 +130,11 @@ def test_dispatch_is_bound_to_reviewed_revision_and_installed_helper() -> None:
     assert 'git log -1 --format=%H "$DISPATCH_SHA" -- "${deploy_paths[@]}"' in authorize
     assert 'git merge-base --is-ancestor "$deploy_sha" "$DISPATCH_SHA"' in authorize
     assert _authorization_deploy_paths(workflow) == _deploy_trigger_paths(deploy)
+    assert _authorization_deploy_paths(deploy) == _deploy_trigger_paths(deploy)
+    assert "workflow_dispatch:" not in deploy
+    assert "fetch-depth: 0" in deploy
+    assert 'git log -1 --format=%H "$CHECKOUT_SHA" -- "${deploy_paths[@]}"' in deploy
+    assert "DEPLOY_SHA: ${{ steps.deployment-revision.outputs.deploy_sha }}" in deploy
     for output in (
         "data_backup_sha256",
         "operations_sha256",
@@ -133,6 +149,31 @@ def test_dispatch_is_bound_to_reviewed_revision_and_installed_helper() -> None:
     assert '"/var/lib/jobseek-backup/${SERVICE}-deployed-sha"' in installer
     assert "'.github/workflows/operate-web-postgresql-backup.yml'" in deploy
     assert "py_compile deploy/backups/web-postgresql/operations.py" in deploy
+
+
+def test_backup_deploy_uses_strict_native_transport_and_stdin_credentials() -> None:
+    deploy = DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
+    transport = (ROOT / "deploy/backups/deploy-remote.sh").read_text(encoding="utf-8")
+    receiver = (ROOT / "deploy/backups/install-host-from-stdin.sh").read_text(encoding="utf-8")
+
+    assert "appleboy/" not in deploy
+    assert "timeout-minutes: 360" in deploy
+    assert "secrets.HETZNER_BACKUP_KNOWN_HOSTS" in deploy
+    assert 'bash deploy/backups/deploy-remote.sh "$BACKUP_SERVICE" "$DEPLOY_SHA"' in deploy
+    assert "StrictHostKeyChecking=yes" in transport
+    assert "timeout --foreground --signal=TERM --kill-after=30s 330m" in transport
+    assert " 6h" not in transport
+    assert "UserKnownHostsFile=$ssh_root/known_hosts" in transport
+    assert "ssh-keyscan" not in transport
+    assert "install-host-from-stdin.sh" in transport
+    assert "JOBSEEK_WEB_DATABASE_URL" not in " ".join(
+        line for line in transport.splitlines() if "ssh " in line
+    )
+    assert "JOBSEEK_TYPESENSE_BACKUP_KEY_FILE" in receiver
+    assert "JOBSEEK_WEB_DATABASE_URL_FILE" in receiver
+    assert "exec 8>/run/jobseek-backup-deployment.lock" in (
+        ROOT / "deploy/backups/install-host.sh"
+    ).read_text(encoding="utf-8")
 
 
 def test_deploy_revision_ignores_unrelated_commits_but_tracks_relevant_changes(
