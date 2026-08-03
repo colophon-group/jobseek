@@ -18,6 +18,40 @@ ALTER TABLE public.saved_job ADD COLUMN company_name text;--> statement-breakpoi
 ALTER TABLE public.saved_job ADD COLUMN company_slug text;--> statement-breakpoint
 ALTER TABLE public.saved_job ADD COLUMN company_icon text;--> statement-breakpoint
 
+DO $snapshot$
+DECLARE
+  posting_fk record;
+BEGIN
+  SELECT conname, convalidated, confdeltype
+  INTO posting_fk
+  FROM pg_constraint
+  WHERE conrelid = 'public.saved_job'::regclass
+    AND confrelid = 'public.job_posting'::regclass
+    AND contype = 'f';
+
+  IF posting_fk.conname IS DISTINCT FROM
+       'saved_job_job_posting_id_job_posting_id_fk'
+     OR posting_fk.convalidated IS DISTINCT FROM true
+     OR posting_fk.confdeltype IS DISTINCT FROM 'c'
+  THEN
+    RAISE EXCEPTION
+      'Saved-job expand expected the validated cascading posting FK, got %',
+      row_to_json(posting_fk);
+  END IF;
+END
+$snapshot$;--> statement-breakpoint
+
+-- Prevent a crawler-side posting/company deletion from cascading into user
+-- application history while the compatibility FK still exists.
+ALTER TABLE public.saved_job
+  DROP CONSTRAINT saved_job_job_posting_id_job_posting_id_fk;--> statement-breakpoint
+ALTER TABLE public.saved_job
+  ADD CONSTRAINT saved_job_job_posting_id_job_posting_id_fk
+  FOREIGN KEY (job_posting_id)
+  REFERENCES public.job_posting(id)
+  ON DELETE RESTRICT
+  ON UPDATE NO ACTION;--> statement-breakpoint
+
 CREATE FUNCTION public.saved_job_snapshot_from_mirror()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -133,6 +167,20 @@ FROM public.job_posting AS jp
 JOIN public.company AS c ON c.id = jp.company_id
 WHERE sj.job_posting_id = jp.id;--> statement-breakpoint
 
+-- Columns remain physically nullable for a rolling app deploy, but every old
+-- and new row must already satisfy the future contract.
+ALTER TABLE public.saved_job
+  ADD CONSTRAINT saved_job_required_snapshot_check
+  CHECK (
+    NULLIF(btrim(posting_title), '') IS NOT NULL
+    AND NULLIF(btrim(posting_source_url), '') IS NOT NULL
+    AND posting_first_seen_at IS NOT NULL
+    AND posting_is_active IS NOT NULL
+    AND company_id IS NOT NULL
+    AND NULLIF(btrim(company_name), '') IS NOT NULL
+    AND NULLIF(btrim(company_slug), '') IS NOT NULL
+  );--> statement-breakpoint
+
 DO $snapshot$
 DECLARE
   saved_job_count bigint;
@@ -165,9 +213,23 @@ BEGIN
     WHERE conrelid = 'public.saved_job'::regclass
       AND confrelid = 'public.job_posting'::regclass
       AND contype = 'f'
+      AND convalidated
+      AND confdeltype = 'r'
   ) THEN
     RAISE EXCEPTION
-      'Saved-job expand failed: job_posting FK must remain until contract';
+      'Saved-job expand failed: restrictive job_posting FK must remain until contract';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.saved_job'::regclass
+      AND conname = 'saved_job_required_snapshot_check'
+      AND contype = 'c'
+      AND convalidated
+  ) THEN
+    RAISE EXCEPTION
+      'Saved-job expand failed: required snapshot CHECK is not validated';
   END IF;
 END
 $snapshot$;

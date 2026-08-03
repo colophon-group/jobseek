@@ -113,12 +113,25 @@ async function main() {
           AND NOT attisdropped
         ORDER BY attname
       `;
-      const [foreignKey] = await tx<{ count: number }[]>`
-        SELECT count(*)::integer AS count
+      const [foreignKey] = await tx<
+        { count: number; deleteAction: string | null; validated: boolean | null }[]
+      >`
+        SELECT
+          count(*)::integer AS count,
+          min(confdeltype::text) AS "deleteAction",
+          bool_and(convalidated) AS validated
         FROM pg_constraint
         WHERE conrelid = 'public.saved_job'::regclass
           AND confrelid = 'public.job_posting'::regclass
           AND contype = 'f'
+      `;
+      const [requiredCheck] = await tx<{ count: number }[]>`
+        SELECT count(*)::integer AS count
+        FROM pg_constraint
+        WHERE conrelid = 'public.saved_job'::regclass
+          AND conname = 'saved_job_required_snapshot_check'
+          AND contype = 'c'
+          AND convalidated
       `;
       const [trigger] = await tx<{ count: number }[]>`
         SELECT count(*)::integer AS count
@@ -169,6 +182,7 @@ async function main() {
       assert(ledger, "Could not read the migration ledger");
       assert(migrationRows, "Could not read reconciliation/expand ledger rows");
       assert(foreignKey?.count === 1, "The saved_job → job_posting FK is not exact");
+      assert(requiredCheck, "Could not audit the required snapshot CHECK");
       assert(source, "Could not audit saved-job sources");
       assert(
         legacyLedger.rowCount === verifiedLegacyLedger.rowCount &&
@@ -191,6 +205,11 @@ async function main() {
         assert(migrationRows.expand === 0, "0084 is already recorded");
         assert(actualColumns.length === 0, "Snapshot columns already exist before 0084");
         assert(trigger?.count === 0, "Compatibility trigger exists before 0084");
+        assert(
+          foreignKey.deleteAction === "c" && foreignKey.validated === true,
+          `Expected the validated cascading pre-expand FK: ${JSON.stringify(foreignKey)}`,
+        );
+        assert(requiredCheck.count === 0, "Required snapshot CHECK exists before 0084");
       } else {
         assert(migrationRows.expand === 1, "The exact 0084 expand is not recorded once");
         assert(
@@ -199,6 +218,11 @@ async function main() {
           `Saved-job snapshot columns differ: ${JSON.stringify(actualColumns)}`,
         );
         assert(trigger?.count === 1, "Compatibility trigger is not enabled exactly once");
+        assert(
+          foreignKey.deleteAction === "r" && foreignKey.validated === true,
+          `Expected the validated restrictive expand FK: ${JSON.stringify(foreignKey)}`,
+        );
+        assert(requiredCheck.count === 1, "Required snapshot CHECK is not validated once");
         assert(
           snapshots?.total === source.total && snapshots.incompleteRequired === 0,
           `Saved-job snapshots are incomplete: ${JSON.stringify(snapshots)}`,
@@ -223,7 +247,8 @@ async function main() {
         source,
         snapshots,
         snapshotColumns: actualColumns,
-        postingForeignKeys: foreignKey.count,
+        postingForeignKey: foreignKey,
+        requiredSnapshotChecks: requiredCheck.count,
         compatibilityTriggers: trigger?.count ?? 0,
       };
     });

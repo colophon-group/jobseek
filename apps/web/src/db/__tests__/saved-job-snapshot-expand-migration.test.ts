@@ -39,18 +39,27 @@ describe("0084 saved-job snapshot expand", () => {
     expect(verification).not.toContain("company_icon");
   });
 
-  it("retains the outbound posting FK throughout the expand phase", () => {
-    expect(migration).not.toMatch(/DROP CONSTRAINT/i);
-    expect(migration).toContain("job_posting FK must remain until contract");
+  it("retains a restrictive outbound posting FK throughout expand", () => {
+    expect(migration).toContain(
+      "DROP CONSTRAINT saved_job_job_posting_id_job_posting_id_fk",
+    );
+    expect(migration).toContain("ON DELETE RESTRICT");
+    expect(migration).toContain(
+      "restrictive job_posting FK must remain until contract",
+    );
 
     const config = getTableConfig(savedJob);
     expect(config.foreignKeys).toHaveLength(2);
-    expect(
-      config.foreignKeys.some(
+    const postingForeignKey = config.foreignKeys.find(
         (foreignKey) =>
           getTableName(foreignKey.reference().foreignTable) === "job_posting",
-      ),
-    ).toBe(true);
+    );
+    expect(postingForeignKey?.onDelete).toBe("restrict");
+  });
+
+  it("validates a temporary required-snapshot check", () => {
+    expect(migration).toContain("saved_job_required_snapshot_check");
+    expect(migration).toContain("required snapshot CHECK is not validated");
   });
 
   it("registers only the expand migration after the baseline repair", () => {

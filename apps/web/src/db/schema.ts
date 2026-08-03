@@ -577,7 +577,7 @@ export const savedJob = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     jobPostingId: uuid("job_posting_id")
       .notNull()
-      .references(() => jobPosting.id, { onDelete: "cascade" }),
+      .references(() => jobPosting.id, { onDelete: "restrict" }),
     savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
     // Nullable during the expand/app phases. 0085 makes the required snapshot
     // fields NOT NULL only after dual-write/read has been proven in production.
