@@ -32,6 +32,7 @@ RESTORE_STATUS_PATH = STATUS_DIR / "web-postgresql-restore.json"
 RESTORE_RUNTIME_ROOT = Path("/run/jobseek-backup/web-postgresql/drills")
 RESTORE_LOCK_PATH = Path("/run/jobseek-data-backup-web-postgresql.lock")
 DEPLOYMENT_LOCK_PATH = Path("/run/jobseek-backup-deployment.lock")
+DEPLOYMENT_LOCK_FD_ENV = "JOBSEEK_BACKUP_DEPLOYMENT_LOCK_FD"
 RESTORE_RESOURCE_LABEL = "jobseek.backup.service=web-postgresql-restore"
 BACKUP_UNIT = "jobseek-web-postgresql-backup.service"
 TIMER_UNIT = "jobseek-web-postgresql-backup.timer"
@@ -232,13 +233,42 @@ def service_data_lock() -> Iterator[int]:
 
 @contextmanager
 def deployment_identity_lock() -> Iterator[int]:
+    inherited_fd = os.environ.get(DEPLOYMENT_LOCK_FD_ENV, "")
+    if inherited_fd:
+        if not inherited_fd.isdecimal():
+            raise OperationError("inherited backup deployment lock descriptor is invalid")
+        descriptor = int(inherited_fd)
+        try:
+            target = os.readlink(f"/proc/self/fd/{descriptor}")
+            metadata = os.fstat(descriptor)
+        except OSError as exc:
+            raise OperationError("inherited backup deployment lock is unavailable") from exc
+        if (
+            target != str(DEPLOYMENT_LOCK_PATH)
+            or not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != 0
+            or metadata.st_gid != 0
+            or stat.S_IMODE(metadata.st_mode) != 0o600
+        ):
+            raise OperationError("inherited backup deployment lock boundary is unsafe")
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise OperationError("inherited backup deployment lock is not held") from exc
+        yield descriptor
+        return
     DEPLOYMENT_LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if DEPLOYMENT_LOCK_PATH.is_symlink():
+        raise OperationError("backup deployment lock path is unsafe")
     with DEPLOYMENT_LOCK_PATH.open("a+", encoding="utf-8") as handle:
+        metadata = os.fstat(handle.fileno())
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0 or metadata.st_gid != 0:
+            raise OperationError("backup deployment lock path is unsafe")
+        os.fchmod(handle.fileno(), 0o600)
         try:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise OperationError("another backup deployment or operation is active") from exc
-        os.fchmod(handle.fileno(), 0o600)
         yield handle.fileno()
 
 

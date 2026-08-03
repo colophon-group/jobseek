@@ -21,7 +21,11 @@ if [[ "$SERVICE" != "postgresql" && "$SERVICE" != "typesense" && "$SERVICE" != "
 fi
 
 LOCK_TIMEOUT_S="${JOBSEEK_BACKUP_DEPLOY_LOCK_TIMEOUT_S:-60}"
+umask 077
+test ! -L /run/jobseek-backup-deployment.lock
 exec 8>/run/jobseek-backup-deployment.lock
+chown root:root /run/jobseek-backup-deployment.lock
+chmod 0600 /run/jobseek-backup-deployment.lock
 if ! flock -w "$LOCK_TIMEOUT_S" 8; then
   echo "Another backup deployment or protected operation is active" >&2
   exit 1

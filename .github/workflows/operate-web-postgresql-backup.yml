@@ -213,11 +213,19 @@ jobs:
           timeout --foreground --signal=TERM --kill-after=30s 165m \
             ssh "${ssh_options[@]}" "root@$TARGET_HOST" \
             "set -eu; \
+              umask 077; \
+              test ! -L /run/jobseek-backup-deployment.lock; \
+              exec 8>/run/jobseek-backup-deployment.lock; \
+              chown root:root /run/jobseek-backup-deployment.lock; \
+              chmod 0600 /run/jobseek-backup-deployment.lock; \
+              test \"\$(stat -c '%U:%G:%a' /run/jobseek-backup-deployment.lock)\" = root:root:600; \
+              flock -w 60 8; \
               test ! -L /usr/local/sbin/jobseek-web-postgresql-operations; \
               test -f /usr/local/sbin/jobseek-web-postgresql-operations; \
               test \"\$(stat -c '%U:%G:%a' /usr/local/sbin/jobseek-web-postgresql-operations)\" = root:root:755; \
               operations_hash=\$(sha256sum /usr/local/sbin/jobseek-web-postgresql-operations); \
               test \"\${operations_hash%% *}\" = '$EXPECTED_OPERATIONS_SHA256'; \
+              export JOBSEEK_BACKUP_DEPLOYMENT_LOCK_FD=8; \
               exec /usr/local/sbin/jobseek-web-postgresql-operations '$OPERATION_MODE' \
               --expected-deploy-sha '$EXPECTED_DEPLOY_SHA' \
               --expected-data-backup-sha256 '$EXPECTED_DATA_BACKUP_SHA256' \

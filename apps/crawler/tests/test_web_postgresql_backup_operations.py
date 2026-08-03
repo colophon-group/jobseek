@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from contextlib import contextmanager, nullcontext
@@ -642,3 +643,134 @@ def test_restore_wrapper_holds_and_passes_deployment_identity_lock(
 
     assert observed_fd == 84
     assert lock_is_held is False
+
+
+def test_deployment_lock_reuses_and_validates_inherited_open_description(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    operations = load_operations()
+    lock_path = tmp_path / "deployment.lock"
+    descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    flock_operations: list[int] = []
+    real_fstat = operations.os.fstat
+
+    def fake_fstat(value: int) -> object:
+        metadata = real_fstat(value)
+        return type(
+            "Metadata",
+            (),
+            {
+                "st_mode": metadata.st_mode,
+                "st_uid": 0,
+                "st_gid": 0,
+            },
+        )()
+
+    try:
+        monkeypatch.setattr(operations, "DEPLOYMENT_LOCK_PATH", lock_path)
+        monkeypatch.setenv(operations.DEPLOYMENT_LOCK_FD_ENV, str(descriptor))
+        monkeypatch.setattr(operations.os, "readlink", lambda _path: str(lock_path))
+        monkeypatch.setattr(operations.os, "fstat", fake_fstat)
+        monkeypatch.setattr(
+            operations.fcntl,
+            "flock",
+            lambda _fd, operation: flock_operations.append(operation),
+        )
+
+        with operations.deployment_identity_lock() as inherited_fd:
+            assert inherited_fd == descriptor
+
+        assert flock_operations == [operations.fcntl.LOCK_EX | operations.fcntl.LOCK_NB]
+    finally:
+        os.close(descriptor)
+
+
+def test_inherited_deployment_lock_rejects_invalid_descriptor_boundaries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    operations = load_operations()
+    lock_path = tmp_path / "deployment.lock"
+    descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        monkeypatch.setattr(operations, "DEPLOYMENT_LOCK_PATH", lock_path)
+        monkeypatch.setenv(operations.DEPLOYMENT_LOCK_FD_ENV, "not-a-descriptor")
+        with (
+            pytest.raises(operations.OperationError, match="descriptor is invalid"),
+            operations.deployment_identity_lock(),
+        ):
+            pass
+
+        monkeypatch.setenv(operations.DEPLOYMENT_LOCK_FD_ENV, str(descriptor))
+        monkeypatch.setattr(operations.os, "readlink", lambda _path: "/run/wrong.lock")
+        with (
+            pytest.raises(operations.OperationError, match="boundary is unsafe"),
+            operations.deployment_identity_lock(),
+        ):
+            pass
+
+        monkeypatch.setattr(operations.os, "readlink", lambda _path: str(lock_path))
+        monkeypatch.setattr(
+            operations.os,
+            "fstat",
+            lambda _fd: type(
+                "Metadata",
+                (),
+                {"st_mode": operations.stat.S_IFREG | 0o666, "st_uid": 0, "st_gid": 0},
+            )(),
+        )
+        with (
+            pytest.raises(operations.OperationError, match="boundary is unsafe"),
+            operations.deployment_identity_lock(),
+        ):
+            pass
+
+        monkeypatch.setattr(
+            operations.os,
+            "fstat",
+            lambda _fd: type(
+                "Metadata",
+                (),
+                {"st_mode": operations.stat.S_IFREG | 0o600, "st_uid": 0, "st_gid": 0},
+            )(),
+        )
+        monkeypatch.setattr(
+            operations.fcntl,
+            "flock",
+            lambda *_args: (_ for _ in ()).throw(BlockingIOError()),
+        )
+        with (
+            pytest.raises(operations.OperationError, match="is not held"),
+            operations.deployment_identity_lock(),
+        ):
+            pass
+    finally:
+        os.close(descriptor)
+
+
+def test_shell_deployment_lock_descriptor_survives_exec(tmp_path: Path) -> None:
+    if not Path("/proc/self/fd").exists():
+        pytest.skip("Linux /proc descriptor verification is required")
+    lock_path = tmp_path / "deployment.lock"
+    completed = subprocess.run(
+        [
+            "bash",
+            "-ceu",
+            """
+            umask 077
+            exec 8>"$1"
+            flock -n 8
+            exec bash -ceu '
+              test "$(readlink /proc/$$/fd/8)" = "$1"
+              flock -n 8
+            ' inherited "$1"
+            """,
+            "parent",
+            str(lock_path),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert lock_path.stat().st_mode & 0o777 == 0o600

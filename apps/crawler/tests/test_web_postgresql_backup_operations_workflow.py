@@ -149,6 +149,15 @@ def test_dispatch_is_bound_to_reviewed_revision_and_installed_helper() -> None:
     assert "stat -c '%U:%G:%a' /usr/local/sbin/jobseek-web-postgresql-operations" in operate
     assert "test \\\"\\${operations_hash%% *}\\\" = '$EXPECTED_OPERATIONS_SHA256'" in operate
     assert "exec /usr/local/sbin/jobseek-web-postgresql-operations" in operate
+    lock = operate.index("exec 8>/run/jobseek-backup-deployment.lock")
+    remote_umask = operate.index("umask 077;", operate.index('ssh "${ssh_options[@]}"'))
+    attest = operate.index("operations_hash=", lock)
+    execute = operate.index("exec /usr/local/sbin/jobseek-web-postgresql-operations", attest)
+    assert remote_umask < lock < attest < execute
+    assert "flock -w 60 8" in operate[lock:attest]
+    assert "export JOBSEEK_BACKUP_DEPLOYMENT_LOCK_FD=8" in operate[attest:execute]
+    installer_lock = installer.index("exec 8>/run/jobseek-backup-deployment.lock")
+    assert installer.index("umask 077") < installer_lock
     assert "/usr/local/sbin/jobseek-web-postgresql-operations" in installer
     assert '"/var/lib/jobseek-backup/${SERVICE}-deployed-sha"' in installer
     assert "'.github/workflows/operate-web-postgresql-backup.yml'" in deploy
