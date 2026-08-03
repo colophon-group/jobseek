@@ -1992,6 +1992,21 @@ class TestSelectMonitorNaming:
             {"enrich": ["description", "employment_type", "job_location_type"]},
         )
 
+    def test_bamboohr_api_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """BambooHR selection carries its complete generic detail API preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "bamboohr"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["bamboohr"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("bamboohr")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "api_sniffer"
+        assert selected["scraper_config"] == expected[1]
+
     def test_reselect_monitor_preserves_explicit_empty_scraper_config(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
         board = load_board("test", "careers")

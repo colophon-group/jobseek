@@ -160,6 +160,64 @@ class TestProbeRow:
         assert result.status == "ok"
         assert "job-board/acme-new" in captured["url"]
 
+    async def test_bamboohr_uses_config_tenant(self):
+        row = _row(
+            board_slug="acme-bamboohr",
+            board_url="https://legacy.example/jobs",
+            monitor_type="bamboohr",
+            monitor_config=json.dumps({"tenant": "acme"}),
+        )
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(200, json={"meta": {"totalCount": 0}, "result": []})
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == "https://acme.bamboohr.com/careers/list"
+
+    async def test_bamboohr_parses_tenant_url_and_fails_404(self):
+        row = _row(
+            board_slug="acme-bamboohr",
+            board_url="https://acme.bamboohr.com/careers",
+            monitor_type="bamboohr",
+            monitor_config="",
+        )
+
+        def handler(request):
+            assert str(request.url) == "https://acme.bamboohr.com/careers/list"
+            return httpx.Response(404)
+
+        result = await self._run(row, handler)
+        assert result.status == "fail"
+        assert "404" in result.message
+
+    async def test_bamboohr_retirement_redirect_is_not_followed(self):
+        row = _row(
+            board_slug="acme-bamboohr",
+            board_url="https://acme.bamboohr.com/careers",
+            monitor_type="bamboohr",
+            monitor_config="",
+        )
+        requests: list[str] = []
+
+        def handler(request):
+            requests.append(str(request.url))
+            return httpx.Response(
+                302,
+                headers={"location": "https://www.bamboohr.com/careers/"},
+                request=request,
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport, follow_redirects=True) as client:
+            result = await probe_row(row, client)
+
+        assert result.status == "fail"
+        assert "marketing site" in result.message
+        assert requests == ["https://acme.bamboohr.com/careers/list"]
+
     async def test_recruitee_uses_host_from_url(self):
         row = _row(
             board_slug="acme-recruitee",
@@ -223,6 +281,7 @@ def test_probe_registry_covers_expected_types():
         "greenhouse",
         "lever",
         "ashby",
+        "bamboohr",
         "recruitee",
         "rippling",
         "smartrecruiters",
