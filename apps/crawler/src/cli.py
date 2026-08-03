@@ -302,6 +302,31 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    phantom_p = sub.add_parser(
+        "sweep-phantoms",
+        help=(
+            "Classify terminal boards and delist active postings only for "
+            "removed configuration or spaced provider-gone confirmations"
+        ),
+    )
+    phantom_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report the classified candidate count without changing postings",
+    )
+    phantom_p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=1_000,
+        help="Rows committed per transaction (default: 1000; max: 10000)",
+    )
+    phantom_p.add_argument(
+        "--max-chunks",
+        type=int,
+        default=100,
+        help="Maximum committed chunks in this resumable invocation (default: 100)",
+    )
+
     board_p = sub.add_parser("board", help="Dev testing for a single board")
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
@@ -594,6 +619,36 @@ async def run() -> None:
                     log.warning("invalidate-typeahead: completed with warnings")
             finally:
                 await http.aclose()
+
+        elif args.command == "sweep-phantoms":
+            local_pool = await create_local_pool()
+            from src.phantom_sweep import refresh_derived_surfaces, sweep_phantom_postings
+
+            summary = await _await_task_or_shutdown(
+                asyncio.create_task(
+                    sweep_phantom_postings(
+                        local_pool,
+                        dry_run=args.dry_run,
+                        chunk_size=args.chunk_size,
+                        max_chunks=args.max_chunks,
+                    )
+                ),
+                shutdown_event,
+            )
+            if summary is not None:
+                log.info(
+                    "phantom_sweep.done",
+                    dry_run=summary.dry_run,
+                    eligible_boards=summary.eligible_boards,
+                    configured_disabled_boards=summary.configured_disabled_boards,
+                    candidate_postings=summary.candidate_postings,
+                    updated_postings=summary.updated_postings,
+                    remaining_postings=summary.remaining_postings,
+                    chunks_committed=summary.chunks_committed,
+                    complete=summary.complete,
+                )
+                if not summary.dry_run:
+                    await refresh_derived_surfaces(local_pool)
 
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
