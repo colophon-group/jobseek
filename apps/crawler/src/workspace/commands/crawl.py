@@ -911,6 +911,7 @@ _MONITOR_CONFIG_HINTS = {
     "join": "Optional: slug (auto-derived from join.com URL), description_path(s)",
     "ashby": "Requires: token (auto-filled from probe)",
     "bamboohr": "Requires: tenant (auto-filled from a BambooHR careers URL)",
+    "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
     "bite": "Requires: key (auto-filled from probe)",
     "breezy": "Optional: portal_url or slug (auto-filled from probe)",
     "comeet": "No config required (company and board ID are derived from the URL)",

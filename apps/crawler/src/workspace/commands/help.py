@@ -88,6 +88,7 @@ Monitor Types (cheapest first):
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
+  paycom            10      Full/partial      Auto-enriched
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
   recruitee         10      Full job data     No (skipped)
@@ -1393,6 +1394,28 @@ paylocity — Paylocity embedded job data
   Zero jobs?  Confirm window.pageData.Jobs is empty; search-engine counts may
               lag after postings close."""
 
+MONITOR_PAYCOM = """\
+paycom — Paycom public portal API
+
+  Bootstrap: GET https://www.paycomonline.net/v4/ats/web.php/portal/{token}/career-page
+  Listing:   POST the validated regional /api/ats/job-posting-previews/search endpoint
+  Returns:   Rich summaries (URL, title, description preview, location, work type)
+  Scraper:   Auto-configured Paycom API scraper — enriches authoritative details
+  Note:      The short-lived public session token and regional API origin are
+             read from each portal's server-rendered config. Both monitor and
+             scraper reuse the same validated bootstrap. The API origin is
+             restricted to HTTPS Paycom hosts. Listing pagination is bounded,
+             retried, count-checked, and does not hydrate details per job.
+
+  Config:
+    {"token": "0123456789abcdef0123456789abcdef"}
+
+    token   32-character portal ID. Auto-filled only from direct or explicitly
+            linked Paycom public portal URLs; no blind token guessing.
+
+  Detection:  ws probe shows "Paycom API — portal: TOKEN, N jobs"
+  Zero jobs?  Confirm the preview API reports count 0 after a valid bootstrap."""
+
 MONITOR_BAMBOOHR = """\
 bamboohr — BambooHR public careers API
 
@@ -2234,6 +2257,7 @@ MONITOR_CARDS: dict[str, str] = {
     "lever": MONITOR_LEVER,
     "ashby": MONITOR_ASHBY,
     "bamboohr": MONITOR_BAMBOOHR,
+    "paycom": MONITOR_PAYCOM,
     "recruitee": MONITOR_RECRUITEE,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
@@ -2306,6 +2330,19 @@ paylocity — Paylocity server-rendered detail scraper
   Note:     Auto-configured when selecting the paylocity monitor. The detail
             content is server-rendered despite Paylocity's surrounding
             unsupported-browser warning, so Playwright is not required.
+"""
+
+SCRAPER_PAYCOM = """\
+paycom — Paycom public detail API scraper
+
+  Bootstrap: GET the job's public Paycom portal for its short-lived session
+  API:       GET the validated regional /api/ats/job-postings/{id} endpoint
+  Returns:   title, HTML description and qualifications, locations,
+             employment/workplace type, date, salary, and job metadata
+  Config:    None needed — portal token and job ID come from the canonical URL
+  Note:      Auto-configured with the paycom monitor. It reuses the monitor's
+             bootstrap validation and shared HTTP retry path; no browser or
+             upstream scraper dependency is required.
 """
 
 SCRAPER_WORKDAY = """\
@@ -2454,6 +2491,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
   Best used with enrich: ["description"] — monitor provides title/location/date,
   scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
+    "paycom": SCRAPER_PAYCOM,
     "paylocity": SCRAPER_PAYLOCITY,
     "bite": SCRAPER_BITE,
     "mokahr": SCRAPER_MOKAHR,

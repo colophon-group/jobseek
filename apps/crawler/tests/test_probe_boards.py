@@ -218,6 +218,48 @@ class TestProbeRow:
         assert "marketing site" in result.message
         assert requests == ["https://acme.bamboohr.com/careers/list"]
 
+    async def test_paycom_uses_config_token(self):
+        token = "0123456789abcdef0123456789abcdef"
+        row = _row(
+            board_slug="acme-paycom",
+            board_url="https://legacy.example/jobs",
+            monitor_type="paycom",
+            monitor_config=json.dumps({"token": token}),
+        )
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(
+                200,
+                text="<script>var configsFromHost = {};</script>",
+                request=request,
+            )
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"].endswith(f"/portal/{token}/career-page")
+
+    async def test_paycom_unavailable_200_is_failed(self):
+        token = "0123456789abcdef0123456789abcdef"
+        row = _row(
+            board_slug="acme-paycom",
+            board_url=(f"https://www.paycomonline.net/v4/ats/web.php/portal/{token}/career-page"),
+            monitor_type="paycom",
+            monitor_config="",
+        )
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                text="Job board does not exist or is unavailable at this time.",
+                request=request,
+            )
+
+        result = await self._run(row, handler)
+        assert result.status == "fail"
+        assert "unavailable" in result.message
+
     async def test_recruitee_uses_host_from_url(self):
         row = _row(
             board_slug="acme-recruitee",
@@ -282,6 +324,7 @@ def test_probe_registry_covers_expected_types():
         "lever",
         "ashby",
         "bamboohr",
+        "paycom",
         "recruitee",
         "rippling",
         "smartrecruiters",

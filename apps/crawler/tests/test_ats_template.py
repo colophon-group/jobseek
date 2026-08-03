@@ -323,6 +323,7 @@ def test_migrated_monitors_delegate_can_handle_flow_to_ats_template():
     migrated = (
         "ashby",
         "bamboohr",
+        "paycom",
         "dvinci",
         "gem",
         "greenhouse",

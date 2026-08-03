@@ -236,6 +236,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "lever",
         "ashby",
         "bamboohr",
+        "paycom",
         "workable",
         "smartrecruiters",
         "hirehive",

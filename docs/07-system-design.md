@@ -174,6 +174,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `amazon`          | Rich     | skip        | Amazon Jobs                             |
 | 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |
 | 10   | `bamboohr`        | Rich     | api_sniffer | BambooHR public careers API + detail enrichment |
+| 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
 | 10   | `bite`            | URL-only | bite        | b-ite.com ATS API                       |
 | 10   | `breezy`          | URL-only | json-ld     | Breezy HR listing endpoint              |
 | 10   | `comeet`          | Rich     | skip        | Comeet hosted data and Careers API      |
@@ -244,6 +245,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |
 | `notion`       | Convert Notion API blocks to structured content    | `property_map` optional |
 | `oracle_hcm`   | Fetch Oracle HCM detail REST responses             | `{host, site}`         |
+| `paycom`       | Bootstrap Paycom and fetch regional detail API      | None                   |
 | `paylocity`    | Parse Paylocity server-rendered detail pages       | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
 | `rippling`     | Fetch Rippling detail API records                  | None                   |

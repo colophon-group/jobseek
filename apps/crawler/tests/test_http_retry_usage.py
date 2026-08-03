@@ -8,6 +8,7 @@ CRAWLER_ROOT = Path(__file__).resolve().parents[1]
 
 MIGRATED_MONITORS = {
     "src/core/monitors/bamboohr.py": "fetch_json_page_with_retry",
+    "src/core/monitors/paycom.py": "fetch_json_page_with_retry",
     "src/core/monitors/hirehive.py": "fetch_json_page_with_retry",
     "src/core/monitors/hireology.py": "fetch_json_page_with_retry",
     "src/core/monitors/lever.py": "fetch_json_page_with_retry",

@@ -363,6 +363,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"BambooHR API \u2014 tenant: {tenant}, {jobs} jobs"
         return f"BambooHR API \u2014 tenant: {tenant}"
+    if name == "paycom":
+        token = metadata.get("token", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Paycom API \u2014 portal: {token}, {jobs} jobs"
+        return f"Paycom API \u2014 portal: {token}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -670,6 +676,7 @@ from src.core.monitors import (  # noqa: E402
     nextdata,  # noqa: F401
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
+    paycom,  # noqa: F401
     paylocity,  # noqa: F401
     personio,  # noqa: F401
     phenom,  # noqa: F401

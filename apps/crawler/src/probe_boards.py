@@ -194,6 +194,43 @@ async def _probe_bamboohr(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "bamboohr", url, resp)
 
 
+async def _probe_paycom(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    token = _token_from_config(row["monitor_config"], "token")
+    if not token:
+        match = re.search(
+            r"paycomonline\.net/v4/ats/web\.php/portal/([0-9a-f]{32})(?:/|$)",
+            row["board_url"],
+            re.IGNORECASE,
+        )
+        token = match.group(1).lower() if match else None
+    if not token or re.fullmatch(r"[0-9a-f]{32}", token, re.IGNORECASE) is None:
+        return ProbeResult(
+            row["board_slug"],
+            "paycom",
+            row["board_url"],
+            "warn",
+            "no valid token in monitor_config or Paycom URL",
+        )
+
+    url = f"https://www.paycomonline.net/v4/ats/web.php/portal/{token.lower()}/career-page"
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response):
+        if resp.status_code in {404, 410}:
+            return ProbeResult(row["board_slug"], "paycom", url, "fail", "board not found")
+        if resp.status_code == 200:
+            if "job board does not exist or is unavailable" in resp.text.casefold():
+                return ProbeResult(row["board_slug"], "paycom", url, "fail", "board unavailable")
+            if "configsFromHost" not in resp.text:
+                return ProbeResult(
+                    row["board_slug"],
+                    "paycom",
+                    url,
+                    "warn",
+                    "portal config missing",
+                )
+    return _classify(row, "paycom", url, resp)
+
+
 async def _probe_recruitee(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     host = urlparse(row["board_url"]).hostname or ""
     if not host:
@@ -321,6 +358,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "lever": _probe_lever,
     "ashby": _probe_ashby,
     "bamboohr": _probe_bamboohr,
+    "paycom": _probe_paycom,
     "recruitee": _probe_recruitee,
     "rippling": _probe_rippling,
     "smartrecruiters": _probe_smartrecruiters,
