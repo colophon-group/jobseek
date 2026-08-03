@@ -9,6 +9,8 @@ import polars as pl
 import pytest
 
 from src.sync import (
+    _DISABLE_REMOVED_BOARDS,
+    _DISABLE_REMOVED_BOARDS_LOCAL,
     _LOCATION_MACRO_ALIASES,
     _REALIGN_BOARD_POSTING_COMPANIES_LOCAL,
     _REALIGN_BOARD_POSTING_COMPANIES_SUPA,
@@ -503,6 +505,7 @@ class TestSyncBoards:
         # No metadata/crawler_type passed to realign — just the 3-tuple.
         assert len(calls[0].args) == 4
         assert calls[1].args[0] == _UPSERT_BOARDS_SUPA
+        assert calls[3].args[0] == _DISABLE_REMOVED_BOARDS
 
     async def test_rehomes_existing_postings_after_board_company_change(
         self,
@@ -588,6 +591,8 @@ class TestSyncBoards:
         assert batch_call.args[0] == _UPSERT_BOARD_LOCAL
         assert batch_call.args[1] == board_ids
         assert batch_call.args[2] == company_ids
+        local_execute_calls = mock_local_conn.execute.await_args_list
+        assert local_execute_calls[-1].args[0] == _DISABLE_REMOVED_BOARDS_LOCAL
         mock_enqueue.assert_awaited_once()
         assert len(mock_enqueue.await_args.args[0]) == 2
         mock_remove.assert_not_awaited()

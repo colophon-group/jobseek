@@ -15,6 +15,7 @@ from src.queries.monitor import (
 )
 from src.sync import (
     _DISABLE_REMOVED_BOARDS,
+    _DISABLE_REMOVED_BOARDS_LOCAL,
     _FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP,
     _MONITOR_CONFIG_FINGERPRINT,
     _UPSERT_BOARD_LOCAL,
@@ -66,7 +67,12 @@ def test_sync_detects_monitor_contract_repairs_without_retry_storms() -> None:
     assert "RETURNING id::text AS board_id, metadata, next_check_at, board_status" in (
         _UPSERT_BOARD_LOCAL
     )
-    assert "quarantined_at = NULL" in _DISABLE_REMOVED_BOARDS
+    assert "quarantined_at" not in _DISABLE_REMOVED_BOARDS
+    assert "lease_owner" not in _DISABLE_REMOVED_BOARDS
+    assert "leased_until" not in _DISABLE_REMOVED_BOARDS
+    assert "quarantined_at = NULL" in _DISABLE_REMOVED_BOARDS_LOCAL
+    assert "lease_owner = NULL" in _DISABLE_REMOVED_BOARDS_LOCAL
+    assert "leased_until = NULL" in _DISABLE_REMOVED_BOARDS_LOCAL
     assert "'quarantined'" not in _FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP
 
 

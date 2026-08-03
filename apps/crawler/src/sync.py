@@ -521,6 +521,15 @@ _DISABLE_REMOVED_BOARDS = """
 UPDATE job_board
 SET is_enabled = false,
     board_status = 'disabled',
+    updated_at = now()
+WHERE board_url NOT IN (SELECT unnest($1::text[]))
+  AND is_enabled = true
+"""
+
+_DISABLE_REMOVED_BOARDS_LOCAL = """
+UPDATE job_board
+SET is_enabled = false,
+    board_status = 'disabled',
     quarantined_at = NULL,
     lease_owner = NULL,
     leased_until = NULL,
@@ -1464,7 +1473,7 @@ async def sync_boards(
     await local_conn.execute(_REALIGN_BOARD_POSTING_COMPANIES_LOCAL, board_urls)
 
     # Disable removed boards in local Postgres too
-    await local_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
+    await local_conn.execute(_DISABLE_REMOVED_BOARDS_LOCAL, board_urls)
 
     # Purge Redis monitor queue for any board that's no longer eligible to run
     # (just-disabled or previously disabled/gone). Without this, the per-domain
