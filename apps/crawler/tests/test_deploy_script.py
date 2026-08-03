@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import stat
 import subprocess
 from pathlib import Path
@@ -44,12 +45,56 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     assert quiesce < migrate < typesense_schema < sync
 
 
-def test_deploy_explicitly_preserves_legacy_mirror_during_transition() -> None:
+def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
     script = DEPLOY_SH.read_text()
     sync_workflow = SYNC_DATA_WORKFLOW.read_text()
 
-    assert "uv run --no-sync crawler sync --legacy-mirror" in script
-    assert "uv run --no-sync crawler sync --legacy-mirror" in sync_workflow
+    assert "uv run --no-sync crawler sync\n" in script
+    assert "uv run --no-sync crawler sync\n" in sync_workflow
+    assert "--legacy-mirror" not in script
+    assert "--legacy-mirror" not in sync_workflow
+
+
+def test_production_env_omits_crawler_mirror_and_scopes_web_database() -> None:
+    script = DEPLOY_SH.read_text()
+    workflow = DEPLOY_WORKFLOW.read_text()
+    compose = yaml.safe_load(COMPOSE_FILE.read_text())
+    common_env = compose["x-common-env"]
+
+    assert re.search(r"^DATABASE_URL=", script, re.MULTILINE) is None
+    assert "DATABASE_URL_UNPOOLED" not in script
+    assert "WEB_DATABASE_URL=${WEB_DATABASE_URL}" in script
+    assert "WEB_DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}" in workflow
+    assert "DATABASE_URL" not in common_env
+    assert "WEB_DATABASE_URL" not in common_env
+    for service in ("worker-1", "worker-2", "worker-3", "browser-1", "exporter", "drain"):
+        environment = compose["services"][service]["environment"]
+        assert "DATABASE_URL" not in environment
+        assert "WEB_DATABASE_URL" not in environment
+
+    # Migration/schema one-offs receive no web-owned credential. Only the
+    # explicit registry/watchlist sync invocation is allowlisted for it.
+    assert '--env-file "$ENV_FILE"' not in script
+    assert script.count("-e WEB_DATABASE_URL") == 1
+
+
+def test_csv_sync_filters_the_host_environment_to_required_boundaries() -> None:
+    workflow = SYNC_DATA_WORKFLOW.read_text()
+
+    assert "mktemp /run/lock/jobseek-csv-sync-env.XXXXXX" in workflow
+    assert "chmod 0600" in workflow
+    assert '--env-file "$RUNTIME_ENV"' in workflow
+    assert "--env-file /home/deploy/.env" not in workflow
+    assert re.search(r"\bDATABASE_URL\b", workflow) is None
+    for key in (
+        "LOCAL_DATABASE_URL",
+        "WEB_DATABASE_URL",
+        "TYPESENSE_HOST",
+        "TYPESENSE_PORT",
+        "TYPESENSE_PROTOCOL",
+        "TYPESENSE_OPERATIONS_KEY",
+    ):
+        assert key in workflow
 
 
 def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -> None:

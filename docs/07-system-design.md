@@ -29,7 +29,7 @@ Current design of all major subsystems across the crawler and web apps.
 | Web app          | Vercel (Next.js 15)     | Serverless, edge-compatible                |
 | Crawler workers  | Hetzner CPX31 (116.203.192.19) | 8 vCPU, 16GB RAM; 3 HTTP workers, 1 browser worker, exporter, drain, Redis, Alloy |
 | Local Postgres   | Hetzner Dedicated (178.104.102.63) | Postgres 16, 20GB XFS volume; crawler source of truth |
-| Supabase         | Managed Postgres        | Frontend read DB, populated by exporter CDC |
+| Web-owned Postgres | Managed Postgres      | Retained user/auth/watchlist data only      |
 | Redis            | Local (Hetzner)         | Tiered ready queues, domain throttling, task config |
 | Object Storage   | Cloudflare R2           | Job description HTML storage               |
 | Observability    | Grafana Cloud           | Metrics (Prometheus) + logs (Loki) via Alloy |
@@ -39,11 +39,9 @@ Current design of all major subsystems across the crawler and web apps.
 ### Environment Variables
 
 ```
-# Shared
-DATABASE_URL                    # Supabase Postgres connection string
-
 # Crawler
 LOCAL_DATABASE_URL              # Local Postgres (crawler's authoritative DB)
+WEB_DATABASE_URL                # Optional web-owned watchlist boundary for explicit sync/refresh jobs
 REDIS_URL                       # Local Redis (redis://localhost:6379/0)
 R2_ENDPOINT_URL                 # S3-compatible endpoint
 R2_ACCESS_KEY_ID                # R2 API token key ID
@@ -329,14 +327,13 @@ The `descriptions` table in local Postgres serves as the upload queue:
 ## Crawler: Exporter CDC
 
 ```
-src/exporter.py    # CDC: local Postgres -> Supabase
+src/exporter.py    # CDC: local Postgres -> Typesense
 ```
 
 The exporter queries local Postgres with a commit-safe `(updated_at, id)`
-cursor and publishes posting documents to Typesense. While `DATABASE_URL` is
-configured it also maintains the legacy relational mirror with an independent
-cursor. The separately scheduled reconciler performs bounded, fenced,
-verified repairs from a locked local snapshot.
+cursor and publishes posting documents to Typesense. The production command
+never opens the former relational mirror. The separately scheduled reconciler
+performs bounded, fenced, Typesense-only repairs from a locked local snapshot.
 
 ### Export Loop
 
@@ -353,13 +350,11 @@ verified repairs from a locked local snapshot.
 ### Reconciliation
 
 An hourly Hetzner systemd timer resumes deterministic 1/256 UUID partitions
-from durable local PostgreSQL state. Supabase is repaired to local active-state
-semantics while retaining remote-only inactive history; Typesense is repaired
-to the exact local document set. A target cursor advances only after the
-direct repair is verified. This survives exporter recreation and does not
-mutate local posting timestamps.
+from durable local PostgreSQL state and repairs Typesense to the exact local
+document set. The cursor advances only after direct repair is verified. This
+survives exporter recreation and does not mutate local posting timestamps.
 
-CLI: `crawler reconcile [--repair] [--full] [--max-partitions N] [--target all|supabase|typesense]`
+CLI: `crawler reconcile [--repair] [--full] [--max-partitions N] [--target typesense]`
 
 See [Cross-store reconciliation](03-crawler-architecture.md#cross-store-reconciliation)
 for locking, scheduling, alerting, and recovery contracts.
@@ -401,12 +396,11 @@ Quick summary:
 src/sync.py    # CSV -> DB upsert
 ```
 
-CSV files are the source of truth. `sync.py` writes to FOUR targets in one pass:
+CSV files are the source of truth. `sync.py` writes to three targets in one pass:
 
-1. **Local Postgres**: full board config (all columns); company + taxonomy mirror with shared UUIDs
-2. **Supabase**: company display data + minimal board reference (UUIDs match local)
-3. **Redis**: board config and initial schedule in ready queues
-4. **Typesense**: taxonomy collections, the `company` collection (incl. per-locale description and industry name variants used by the company detail page), and the `watchlist` collection. `crawler setup-typesense` runs on each deploy and patches the live schema in place before sync upserts populate new fields -- see [docs/11-typesense.md](./11-typesense.md#schema-definition)
+1. **Local Postgres**: full board config (all columns), companies, and taxonomies
+2. **Redis**: board config and initial schedule in ready queues
+3. **Typesense**: taxonomy collections, the `company` collection (incl. per-locale description and industry name variants used by the company detail page), and the `watchlist` collection. `crawler setup-typesense` runs on each deploy and patches the live schema in place before sync upserts populate new fields -- see [docs/11-typesense.md](./11-typesense.md#schema-definition)
 
 - **New rows**: Inserted with staggered `next_check_at` (random offset to prevent thundering herd)
 - **Existing rows**: Config updated, runtime fields preserved
@@ -417,7 +411,7 @@ CSV files are the source of truth. `sync.py` writes to FOUR targets in one pass:
 See [docs/11-typesense.md#read-paths-summary](./11-typesense.md#read-paths-summary) for the full breakdown. Short version:
 
 - **Job search, typeaheads, browse-all, watchlist search, company detail, similar-company strip** → Typesense
-- **Auth, watchlist mutations, posting detail, watchlist company-pair lookups, Postgres fallbacks** → Supabase Postgres
+- **Auth, watchlist mutations, and watchlist company-pair lookups** → web-owned Postgres
 - **All `job_posting` aggregations** (active counts per company, per taxonomy, per watchlist) → Local Postgres, then upserted into Typesense doc fields. Web pages never aggregate `job_posting` directly
 
 ---
@@ -491,7 +485,8 @@ Redis-backed cache-aside pattern replacing `unstable_cache`.
 ### Two Databases
 
 - **Local Postgres** (Hetzner): Full schema with all crawler columns. Managed by Alembic migrations.
-- **Supabase**: Display subset -- no scheduling, config, or lease columns. Managed by Drizzle ORM.
+- **Web-owned Postgres**: user/auth/watchlist data plus temporarily retained
+  rollback support tables. It is not a crawler posting mirror target.
 
 ### Key Tables
 
@@ -511,7 +506,9 @@ Managed by CSV sync. Source of truth: `data/companies.csv`.
 #### `job_board`
 Managed by CSV sync. Source of truth: `data/boards.csv`.
 
-Local Postgres has full schema (scheduling, config, state). Supabase has display subset only (id, company_id, board_slug, board_url, crawler_type, metadata, board_status, is_enabled).
+Local Postgres has the authoritative full schema (scheduling, config, state).
+The retained web-owned board subset is rollback support and is no longer
+updated by normal crawler sync.
 
 #### `job_posting`
 See [08 -- Job Data Fields](./08-job-data-fields.md) for field types and formats.
@@ -535,8 +532,6 @@ Local Postgres additionally has: `missing_count`, scrape scheduling columns, and
 ```
 data/companies.csv --+
 data/boards.csv    --+  sync.py  -->  Local Postgres transaction --> Redis + Typesense
-                     +----------+                         |
-                                                   --legacy-mirror--> relational mirror
 
 Workers claim from Redis tiered queues
   |
@@ -563,7 +558,7 @@ Workers claim from Redis tiered queues
   |
   +-- Exporter CDC:
         +-- SELECT WHERE updated_at > cursor
-        +-- Batch COPY to Supabase
+        +-- Batch upsert to Typesense
 ```
 
 ### Company Request

@@ -1444,72 +1444,14 @@ class _StubRecord(dict):
 
 
 class TestSyncWatchlistsTypesense:
-    async def test_any_company_filters_json_is_self_contained_without_companies(self):
-        filters = {
-            "anyCompany": True,
-            "locationSlugs": ["switzerland"],
-            "occupationSlugs": ["account-executive", "sales-manager"],
-            "workMode": ["remote"],
-        }
-
-        async def _supa_fetch(sql, *args):
-            if "FROM watchlist w" in sql:
-                return [
-                    {
-                        "id": "4ce80d85-2631-47e9-922e-e345e5551afe",
-                        "slug": "enterprise-sales-in-switzerland",
-                        "title": "Enterprise Sales in Switzerland",
-                        "description": None,
-                        "is_public": True,
-                        "created_at": datetime(2026, 7, 6, tzinfo=UTC),
-                        "filters": filters,
-                        "owner_name": "Colophon Group",
-                        "owner_username": "colophongroup",
-                    }
-                ]
-            if "FROM location WHERE slug" in sql:
-                return [{"slug": "switzerland", "id": 30}]
-            if "FROM occupation WHERE slug" in sql:
-                return [
-                    {"slug": "account-executive", "id": 101},
-                    {"slug": "sales-manager", "id": 102},
-                ]
-            if "FROM watchlist_company" in sql:
-                # Regression fixture: anyCompany watchlists intentionally
-                # have no join rows, but still need a usable Discover count.
-                return []
-            if "source_watchlist_id" in sql:
-                return []
-            raise AssertionError(f"unexpected SQL: {sql}")
-
-        supa_conn = AsyncMock()
-        supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
+    async def test_watchlist_sync_without_local_connection_fails_closed(self):
+        web_conn = AsyncMock()
         client = MagicMock()
 
-        captured: list[tuple[str, list[dict]]] = []
+        with pytest.raises(RuntimeError, match="requires a local Postgres connection"):
+            await sync_watchlists_typesense(web_conn, None, client)
 
-        def _capture_upsert(_client, collection, docs, *_a, **_kw):
-            captured.append((collection, list(docs)))
-
-        with (
-            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
-            patch("src.sync._ts_bulk_delete_ids"),
-        ):
-            await sync_watchlists_typesense(supa_conn, None, client)
-
-        docs = next((docs for collection, docs in captured if collection == "watchlist"), [])
-        assert len(docs) == 1
-        doc = docs[0]
-        assert doc["company_count"] == 0
-        assert doc["active_job_count"] == 0
-
-        payload = json.loads(doc["filters_json"])
-        assert payload["anyCompany"] is True
-        assert payload["locationSlugs"] == ["switzerland"]
-        assert payload["locationIds"] == [30]
-        assert payload["occupationSlugs"] == ["account-executive", "sales-manager"]
-        assert payload["occupationIds"] == [101, 102]
-        assert payload["workMode"] == ["remote"]
+        web_conn.fetch.assert_not_awaited()
 
 
 def _make_loc_row(

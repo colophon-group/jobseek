@@ -18,7 +18,7 @@ flock -w 7200 9 || {
 required_vars=(
   OWNER
   JOBSEEK_DEPLOY_REVISION
-  DATABASE_URL_UNPOOLED
+  WEB_DATABASE_URL
   LOCAL_DATABASE_URL
   R2_ACCESS_KEY_ID
   R2_SECRET_ACCESS_KEY
@@ -397,8 +397,7 @@ fi
 cat > "$ENV_FILE" <<EOF
 OWNER=${OWNER}
 CRAWLER_IMAGE_TAG=${IMAGE_TAG}
-DATABASE_URL=${DATABASE_URL_UNPOOLED}
-WEB_DATABASE_URL=${DATABASE_URL_UNPOOLED}
+WEB_DATABASE_URL=${WEB_DATABASE_URL}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
 R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
 R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
@@ -456,7 +455,9 @@ docker compose up -d redis
 docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────
-docker run --rm --env-file "$ENV_FILE" --network host \
+docker run --rm \
+  -e LOCAL_DATABASE_URL \
+  --network host \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-migrate \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
@@ -465,18 +466,30 @@ docker run --rm --env-file "$ENV_FILE" --network host \
 # ── Patch Typesense schema (idempotent — adds new fields if missing) ─
 # Must run BEFORE `crawler sync`, otherwise the next sync would upsert
 # docs containing fields that the live schema doesn't know about.
-docker run --rm --env-file "$ENV_FILE" --network host \
+docker run --rm \
+  -e TYPESENSE_HOST \
+  -e TYPESENSE_PORT \
+  -e TYPESENSE_PROTOCOL \
+  -e TYPESENSE_OPERATIONS_KEY \
+  --network host \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-setup-typesense \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync crawler setup-typesense
 
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
-docker run --rm --env-file "$ENV_FILE" --network host \
+docker run --rm \
+  -e LOCAL_DATABASE_URL \
+  -e WEB_DATABASE_URL \
+  -e TYPESENSE_HOST \
+  -e TYPESENSE_PORT \
+  -e TYPESENSE_PROTOCOL \
+  -e TYPESENSE_OPERATIONS_KEY \
+  --network host \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-sync \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
-  uv run --no-sync crawler sync --legacy-mirror
+  uv run --no-sync crawler sync
 
 # ── Start the full stack on the freshly seeded Redis state ───────────
 docker compose up -d --remove-orphans

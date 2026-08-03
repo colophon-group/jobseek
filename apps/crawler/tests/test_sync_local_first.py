@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import sys
 from unittest.mock import AsyncMock
 
@@ -196,12 +197,20 @@ async def test_local_failure_rolls_back_and_blocks_every_external_effect(monkeyp
     create_mirror_pool.assert_not_awaited()
 
 
-def test_crawler_sync_legacy_mode_is_explicit_cli_flag(monkeypatch) -> None:
+def test_crawler_sync_cli_cannot_select_legacy_mirror(monkeypatch) -> None:
     monkeypatch.setattr(sys, "argv", ["crawler", "sync"])
-    assert parse_args().legacy_mirror is False
+    assert parse_args().command == "sync"
 
     monkeypatch.setattr(sys, "argv", ["crawler", "sync", "--legacy-mirror"])
-    assert parse_args().legacy_mirror is True
+    with pytest.raises(SystemExit):
+        parse_args()
+
+
+def test_watchlist_sync_has_no_web_job_posting_fallback() -> None:
+    source = inspect.getsource(sync.sync_watchlists_typesense)
+
+    assert "JOIN job_posting" not in source
+    assert "local_conn or web_conn" not in source
 
 
 async def test_legacy_mirror_failure_is_loud_and_blocks_redis(monkeypatch) -> None:

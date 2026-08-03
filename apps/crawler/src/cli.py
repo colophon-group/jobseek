@@ -26,7 +26,6 @@ from src.config import settings  # noqa: E402
 from src.db import (  # noqa: E402
     close_all_pools,
     create_local_pool,
-    create_pool,
     create_web_pool,
 )
 from src.metrics import start_metrics_server  # noqa: E402
@@ -38,13 +37,6 @@ log = structlog.get_logger()
 
 _rand = uuid.uuid4().hex[:8]
 WORKER_ID = f"{settings.worker_id_prefix}-{_rand}" if settings.worker_id_prefix else _rand
-
-
-async def _create_optional_mirror_pool() -> asyncpg.Pool | None:
-    """Open the legacy crawler mirror only when DATABASE_URL is configured."""
-    if not settings.database_url:
-        return None
-    return await create_pool()
 
 
 async def _await_task_or_shutdown[T](
@@ -84,7 +76,7 @@ def parse_args() -> argparse.Namespace:
 
     export_p = sub.add_parser(
         "export",
-        help="CDC exporter (local Postgres -> Typesense and optional relational mirror)",
+        help="CDC exporter (local Postgres -> Typesense)",
     )
     export_p.add_argument(
         "--batch-size",
@@ -99,16 +91,11 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("drain", help="R2 drain instance")
 
-    sync_p = sub.add_parser("sync", help="CSV -> local Postgres + Redis + Typesense")
-    sync_p.add_argument(
-        "--legacy-mirror",
-        action="store_true",
-        help="Also update the transitional crawler mirror (requires DATABASE_URL)",
-    )
+    sub.add_parser("sync", help="CSV -> local Postgres + Redis + Typesense")
 
     recon_p = sub.add_parser(
         "reconcile",
-        help="Deterministic local -> Supabase/Typesense reconciliation",
+        help="Deterministic local -> Typesense reconciliation",
     )
     recon_p.add_argument(
         "--repair",
@@ -134,9 +121,9 @@ def parse_args() -> argparse.Namespace:
     )
     recon_p.add_argument(
         "--target",
-        choices=("all", "supabase", "typesense"),
-        default="all",
-        help="Mirror to inspect (default: all)",
+        choices=("typesense",),
+        default="typesense",
+        help="Derived store to inspect (Typesense only)",
     )
 
     sub.add_parser("backfill-locations", help="Enqueue re-scrapes for jobs missing locations")
@@ -252,34 +239,6 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Report the count that would be affected; make no writes.",
-    )
-
-    repair_relisted_p = sub.add_parser(
-        "repair-relisted-cdc",
-        help=(
-            "Compare recently seen locally-active postings with Supabase and "
-            "Typesense, then touch confirmed downstream activity mismatches "
-            "so the normal CDC exporter repairs them."
-        ),
-    )
-    from src.repair_relisted_cdc import parse_aware_datetime
-
-    repair_relisted_p.add_argument(
-        "--since",
-        type=parse_aware_datetime,
-        required=True,
-        help="Only scan rows seen since this timezone-aware ISO-8601 timestamp.",
-    )
-    repair_relisted_p.add_argument(
-        "--batch-size",
-        type=int,
-        default=2000,
-        help="Local/Supabase comparison batch size (default 2000).",
-    )
-    repair_relisted_p.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Report confirmed mismatches without touching local CDC timestamps.",
     )
 
     sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
@@ -434,10 +393,9 @@ async def run() -> None:
             settings.export_batch_limit = args.batch_size
             settings.export_interval = args.interval
             local_pool = await create_local_pool()
-            supa_pool = await _create_optional_mirror_pool()
             from src.exporter import run_exporter
 
-            await run_exporter(local_pool, supa_pool, shutdown_event)
+            await run_exporter(local_pool, None, shutdown_event)
 
         elif args.command == "drain":
             start_metrics_server(settings.metrics_port)
@@ -449,7 +407,7 @@ async def run() -> None:
         elif args.command == "sync":
             from src.sync import run_sync
 
-            await run_sync(legacy_mirror=args.legacy_mirror)
+            await run_sync()
 
         elif args.command == "backfill-locations":
             local_pool = await create_local_pool()
@@ -522,19 +480,6 @@ async def run() -> None:
                 )
             else:
                 await retry_stalled_scrapes(local_pool, max_age_days=args.max_age_days)
-
-        elif args.command == "repair-relisted-cdc":
-            local_pool = await create_local_pool()
-            supa_pool = await create_pool()
-            from src.repair_relisted_cdc import repair_relisted_cdc
-
-            await repair_relisted_cdc(
-                local_pool,
-                supa_pool,
-                since=args.since,
-                dry_run=args.dry_run,
-                batch_size=args.batch_size,
-            )
 
         elif args.command == "backfill-typesense":
             from src.cron_metrics import cron_run
@@ -620,14 +565,13 @@ async def run() -> None:
 
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
-            supa_pool = await _create_optional_mirror_pool()
             from src.reconciliation import run_reconciliation
 
             await _await_task_or_shutdown(
                 asyncio.create_task(
                     run_reconciliation(
                         local_pool,
-                        supa_pool,
+                        None,
                         repair=args.repair,
                         full=args.full,
                         max_partitions=args.max_partitions,

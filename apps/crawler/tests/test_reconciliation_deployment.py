@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import os
+import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-from src.cli import _await_task_or_shutdown
+from src.cli import _await_task_or_shutdown, parse_args
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / "deploy/reconciliation/run.sh"
@@ -79,7 +81,6 @@ def test_runner_is_bounded_immutable_and_fail_closed() -> None:
     assert '--env-file "$ENV_FILE"' not in source
     assert "required_env=(" in source
     for key in (
-        "DATABASE_URL",
         "LOCAL_DATABASE_URL",
         "TYPESENSE_HOST",
         "TYPESENSE_PORT",
@@ -87,11 +88,14 @@ def test_runner_is_bounded_immutable_and_fail_closed() -> None:
         "TYPESENSE_OPERATIONS_KEY",
     ):
         assert key in source
+    assert re.search(r"\bDATABASE_URL\b", source) is None
+    assert "WEB_DATABASE_URL" not in source
     assert "chmod 0600" in source
     assert 'rm -f "$RUNTIME_ENV"' in source
-    assert "reconciliation_args=(--repair --max-partitions 16)" in source
-    assert '"--full-target"' in source
-    assert 'reconciliation_args=(--repair --full --target "$2")' in source
+    assert "reconciliation_args=(--repair --max-partitions 16 --target typesense)" in source
+    assert '"--full"' in source
+    assert "reconciliation_args=(--repair --full --target typesense)" in source
+    assert "supabase" not in source.lower()
     assert '/app/.venv/bin/crawler reconcile "${reconciliation_args[@]}"' in source
     assert "uv run" not in source
     assert "jobseek-crawler-mutation.lock" in source
@@ -129,7 +133,16 @@ def test_runner_rejects_an_unbounded_or_combined_full_target() -> None:
     )
 
     assert result.returncode == 2
-    assert "full target must be supabase or typesense" in result.stderr
+    assert "usage:" in result.stderr
+
+
+def test_crawler_reconciliation_cli_cannot_select_supabase(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["crawler", "reconcile", "--target", "typesense"])
+    assert parse_args().target == "typesense"
+
+    monkeypatch.setattr(sys, "argv", ["crawler", "reconcile", "--target", "supabase"])
+    with pytest.raises(SystemExit):
+        parse_args()
 
 
 async def test_reconciliation_task_is_cancelled_on_process_shutdown() -> None:
@@ -163,6 +176,23 @@ def test_all_crawler_mutation_entrypoints_share_the_host_lock() -> None:
     for path in (SYNC_DATA, REFRESH_CURRENCY):
         source = path.read_text(encoding="utf-8")
         assert "/usr/local/sbin/jobseek-maintenance oneoff" in source
+
+
+def test_scheduled_oneoffs_filter_database_credentials_by_command() -> None:
+    maintenance = MAINTENANCE.read_text(encoding="utf-8")
+    currency = REFRESH_CURRENCY.read_text(encoding="utf-8")
+
+    assert "--env-file /home/deploy/.env" not in maintenance
+    assert '--env-file "$RUNTIME_ENV"' in maintenance
+    assert 'if [[ "$TASK" == "refresh-typesense" ]]' in maintenance
+    assert "required_env+=(WEB_DATABASE_URL)" in maintenance
+    assert re.search(r"\bDATABASE_URL\b", maintenance) is None
+
+    assert "--env-file /home/deploy/.env" not in currency
+    assert '--env-file "$RUNTIME_ENV"' in currency
+    assert "^LOCAL_DATABASE_URL=" in currency
+    assert "WEB_DATABASE_URL" not in currency
+    assert re.search(r"\bDATABASE_URL\b", currency) is None
 
 
 def test_systemd_unit_has_separate_wait_and_runtime_budget() -> None:
