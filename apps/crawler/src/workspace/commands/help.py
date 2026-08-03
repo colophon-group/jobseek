@@ -76,6 +76,7 @@ Monitor Types (cheapest first):
   join              9       Job URLs          Auto-configured
   almacareer        10      Full job data     No (skipped)
   ashby             10      Full job data     No (skipped)
+  bamboohr          10      Full/partial      Auto-enriched
   bite              10      Job URLs          Auto-configured
   breezy            10      Job URLs          Auto-configured
   comeet            10      Full job data     No (skipped)
@@ -1392,6 +1393,27 @@ paylocity — Paylocity embedded job data
   Zero jobs?  Confirm window.pageData.Jobs is empty; search-engine counts may
               lag after postings close."""
 
+MONITOR_BAMBOOHR = """\
+bamboohr — BambooHR public careers API
+
+  Listing:  GET https://{tenant}.bamboohr.com/careers/list
+  Returns:  Rich summaries (URL, title, location, employment type, department)
+  Scraper:  Auto-configured API preset — enriches description, posting date,
+            and authoritative detail fields on the normal scrape schedule
+  Note:     The listing is one public JSON request per board. No browser,
+            tenant-specific field mapping, or upstream scraper dependency is
+            required. Empty boards remain detectable with a 0-job count.
+
+  Config:
+    {"tenant": "acme"}
+
+    tenant   BambooHR subdomain. Auto-filled from direct or explicitly linked
+             https://{tenant}.bamboohr.com/careers URLs. Jobseek does not make
+             blind tenant guesses.
+
+  Detection:  ws probe shows "BambooHR API — tenant: X, N jobs"
+  Zero jobs?  Confirm /careers/list returns an empty result array."""
+
 MONITOR_API_SNIFFER = """\
 api_sniffer — Direct API Replay or XHR/Fetch Capture
 
@@ -2211,6 +2233,7 @@ MONITOR_CARDS: dict[str, str] = {
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
     "ashby": MONITOR_ASHBY,
+    "bamboohr": MONITOR_BAMBOOHR,
     "recruitee": MONITOR_RECRUITEE,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,

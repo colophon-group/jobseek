@@ -173,6 +173,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `almacareer`      | Rich     | skip        | AlmaCareer / Capybara GraphQL API       |
 | 10   | `amazon`          | Rich     | skip        | Amazon Jobs                             |
 | 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |
+| 10   | `bamboohr`        | Rich     | api_sniffer | BambooHR public careers API + detail enrichment |
 | 10   | `bite`            | URL-only | bite        | b-ite.com ATS API                       |
 | 10   | `breezy`          | URL-only | json-ld     | Breezy HR listing endpoint              |
 | 10   | `comeet`          | Rich     | skip        | Comeet hosted data and Careers API      |

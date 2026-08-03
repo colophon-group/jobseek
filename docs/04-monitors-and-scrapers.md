@@ -39,6 +39,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `almacareer` | Rich | skip | AlmaCareer / Capybara GraphQL boards |
 | `amazon` | Rich | skip | Amazon Jobs |
 | `ashby` | Rich | skip | Ashby ATS |
+| `bamboohr` | Rich | api_sniffer | BambooHR summaries plus detail API enrichment |
 | `bite` | URL-only | bite | b-ite.com ATS |
 | `breezy` | URL-only | json-ld (+dom fallback) | Breezy HR |
 | `comeet` | Rich | skip | Comeet hosted data and Careers API |

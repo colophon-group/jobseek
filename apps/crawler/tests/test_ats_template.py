@@ -322,6 +322,7 @@ async def test_ats_can_handle_can_probe_extra_page_candidates():
 def test_migrated_monitors_delegate_can_handle_flow_to_ats_template():
     migrated = (
         "ashby",
+        "bamboohr",
         "dvinci",
         "gem",
         "greenhouse",

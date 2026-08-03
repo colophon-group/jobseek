@@ -17,6 +17,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "almacareer",
         "amazon",
         "ashby",
+        "bamboohr",
         "comeet",
         "deel",
         "dvinci",
@@ -46,12 +47,16 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
-# ``oracle_hcm`` and ``paylocity``, which auto-resolve to dedicated scrapers
-# with enrich fields.
+# ``oracle_hcm``, ``bamboohr``, and ``paylocity``, which auto-resolve to
+# enrichment scrapers (BambooHR uses the generic API scraper preset).
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
 # rich boards (``scraper_type`` unset in metadata) are treated the same as
 # explicit ``scraper_type = "skip"`` boards. See issue 01-rich-monitor-scheduling.
-_AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {"oracle_hcm", "paylocity"}
+_AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
+    "bamboohr",
+    "oracle_hcm",
+    "paylocity",
+}
 
 
 def auto_skip_crawler_types() -> frozenset[str]:
@@ -149,6 +154,14 @@ def detect_ats_from_url(url: str) -> str | None:
         return "smartrecruiters"
     if host.endswith(".breezy.hr"):
         return "breezy"
+    if host.endswith(".bamboohr.com"):
+        tenant = host.split(".", 1)[0]
+        path = parsed.path.rstrip("/").lower()
+        if tenant not in {"api", "app", "help", "static", "www"} and path in {
+            "/careers",
+            "/jobs/embed2.php",
+        }:
+            return "bamboohr"
     if host.endswith(".careers.hibob.com"):
         return "hibob"
     if host.endswith(".eightfold.ai"):
@@ -260,6 +273,57 @@ def auto_scraper_type(
     # scraping entirely (is_rich_no_scrape = is_rich and not enrich_fields).
     if monitor_type == "oracle_hcm":
         return ("oracle_hcm", {"enrich": ["description"]})
+    if monitor_type == "bamboohr":
+        return (
+            "api_sniffer",
+            {
+                "api_url": "https://{tenant}.bamboohr.com/careers/{id}/detail",
+                "url_pattern": (
+                    r"^https://(?P<tenant>[a-z0-9-]+)\.bamboohr\.com/"
+                    r"careers/(?P<id>\d+)(?:/|$)"
+                ),
+                "json_path": "result.jobOpening",
+                "fields": {
+                    "title": "jobOpeningName",
+                    "description": "description",
+                    "locations": {
+                        "concat": [
+                            "not_null(location.city, atsLocation.city)",
+                            (
+                                "not_null(location.state, location.province, "
+                                "atsLocation.state, atsLocation.province)"
+                            ),
+                            (
+                                "not_null(location.addressCountry, location.country, "
+                                "atsLocation.country)"
+                            ),
+                        ],
+                        "separator": ", ",
+                    },
+                    "employment_type": "employmentStatusLabel",
+                    "job_location_type": {
+                        "path": "not_null(locationType, isRemote)",
+                        "map": {
+                            "0": "onsite",
+                            "1": "remote",
+                            "2": "hybrid",
+                            "True": "remote",
+                        },
+                    },
+                    "date_posted": "datePosted",
+                    "metadata.department": "departmentLabel",
+                    "metadata.department_id": "departmentId",
+                    "metadata.minimum_experience": "minimumExperience",
+                },
+                "enrich": [
+                    "description",
+                    "locations",
+                    "employment_type",
+                    "job_location_type",
+                    "date_posted",
+                ],
+            },
+        )
     if monitor_type == "paylocity":
         return (
             "paylocity",
