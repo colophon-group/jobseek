@@ -16,6 +16,9 @@ COMPOSE_FILE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
 DEPLOY_WORKFLOW = (
     Path(__file__).resolve().parents[3] / ".github/workflows/deploy-crawler-browser.yml"
 )
+POSTGRES_PREFLIGHT = (
+    Path(__file__).resolve().parent.parent / "scripts/postgresql-operational-preflight.py"
+)
 
 
 def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
@@ -75,12 +78,24 @@ def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
 
     oneoff_guard = script.index("\nensure_no_running_compose_oneoffs\n")
     typesense_guard = script.index("\nensure_no_running_typesense_maintenance\n")
+    postgres_guard = script.index(
+        'python3 "$DEPLOY_DIR/scripts/postgresql-operational-preflight.py"'
+    )
     legacy_stop = script.index('docker stop --time=60 "${legacy_containers[@]}"')
     env_write = script.index('cat > "$ENV_FILE"')
     pull = script.index("\npull_deploy_images\n")
     quiesce = script.index("docker compose stop --timeout 60")
 
-    assert oneoff_guard < typesense_guard < legacy_stop < env_write < pull < quiesce
+    assert (
+        oneoff_guard < typesense_guard < postgres_guard < legacy_stop < env_write < pull < quiesce
+    )
+
+
+def test_deploy_copies_postgresql_operational_preflight() -> None:
+    workflow = DEPLOY_WORKFLOW.read_text()
+
+    assert POSTGRES_PREFLIGHT.exists()
+    assert "apps/crawler/scripts/postgresql-operational-preflight.py" in workflow
 
 
 def test_deploy_sources_pull_helpers_and_workflow_copies_them() -> None:

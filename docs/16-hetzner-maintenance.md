@@ -295,13 +295,17 @@ evidence proves the normal reschedule path failed.
 ## PostgreSQL Capacity and Checkpoint Pressure
 
 The authoritative PostgreSQL database lives on the attached XFS data Volume,
-not on the server root disk. The Volume was expanded online from 20 to 40 GiB
-on 2026-07-22 after a transaction-consistent encrypted checkpoint passed. The
-provider action cannot be reversed in place. Current and future expansion must
-therefore preserve the same sequence: fresh backup and restore evidence,
-recorded pre-change capacity, provider resize, online `xfs_growfs`, PostgreSQL
-and archive verification, then recorded post-change capacity. Never use a
-server backup as a substitute; server images do not contain this Volume.
+not on the server root disk. It was expanded online from 20 to 40 GiB on
+2026-07-22 after a transaction-consistent encrypted checkpoint passed, then
+from 40 to 80 GiB during #6117 recovery on 2026-08-03 after the full backup
+repository had forced more than 21 GiB of unarchived WAL onto the data Volume.
+The second expansion restored crash-recovery workspace; bounded repository
+retention fixes the actual growth source. Provider expansion cannot be
+reversed in place. Current and future expansion must therefore preserve the
+same sequence: fresh backup and restore evidence, recorded pre-change
+capacity, provider resize, online `xfs_growfs`, PostgreSQL and archive
+verification, then recorded post-change capacity. Never use a server backup as
+a substitute; server images do not contain this Volume.
 
 The live PostgreSQL contract is deliberately consistent across
 `deploy/backups/postgresql/migrate-container.sh` and
@@ -386,6 +390,46 @@ work are expected; sustained requested dominance is not. Change WAL or
 checkpoint settings only through both repo-owned container creation paths,
 with a fresh backup and the guarded rollback workflow. Do not force a
 checkpoint or increase `max_wal_size` merely to make the alert disappear.
+
+## PostgreSQL Emergency Headroom
+
+The attached XFS data Volume contains a root-owned, fully allocated 2 GiB file
+named `.jobseek-postgresql-emergency-reserve`. It is not normal free capacity:
+it is a controlled last-resort reserve that lets crash recovery start and WAL
+archiving resume when ordinary filesystem space has been exhausted. The backup
+host installer creates and verifies it only when at least 8 GiB remains free
+after allocation. A sparse file, symlink, wrong-sized file, or wrong ownership
+does not satisfy the contract.
+
+Check it without changing capacity:
+
+```bash
+/usr/local/sbin/jobseek-postgresql-emergency-headroom status
+```
+
+Release it only after preserving incident evidence and proving that block
+exhaustion prevents PostgreSQL recovery:
+
+```bash
+/usr/local/sbin/jobseek-postgresql-emergency-headroom release
+```
+
+The release command validates the exact file before removing it. It never
+touches PostgreSQL data or WAL. Recreate the reserve before declaring recovery
+complete:
+
+```bash
+/usr/local/sbin/jobseek-postgresql-emergency-headroom reserve
+systemctl restart jobseek-postgresql-emergency-headroom.service
+```
+
+The host sampler publishes allocated and target bytes;
+`PostgreSQLEmergencyHeadroomMissing` fires within five minutes if the reserve
+is absent or under-allocated. Crawler deployment and scheduled maintenance run
+the Grafana-backed PostgreSQL operational preflight before stopping or
+replacing any workload. It requires fresh telemetry, database readiness, at
+least 15% XFS free, at least 20% backup-repository free, the full reserve, a
+fresh successful backup, and no archive failure in the latest hour.
 
 ## Fleet Observability
 
