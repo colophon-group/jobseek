@@ -466,6 +466,17 @@ SELECT
 FROM job_board jb;
 """.strip()
 
+PHANTOM_ACTIVE_STATS_SQL = """
+SELECT
+  count(DISTINCT jb.id),
+  count(jp.id),
+  COALESCE(max(extract(epoch FROM now() - jp.updated_at)), 0)
+FROM job_posting jp
+JOIN job_board jb ON jb.id = jp.board_id
+WHERE jp.is_active = true
+  AND jb.board_status IN ('disabled', 'gone');
+""".strip()
+
 
 def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
     result = _run(
@@ -542,6 +553,25 @@ def _collect_board_gone_metrics(lines: list[str], container: str) -> None:
             _metric("jobseek_crawler_gone_terminal_boards", terminal),
             _metric("jobseek_crawler_board_gone_transitions_total", transitions),
             _metric("jobseek_crawler_board_gone_recoveries_total", recoveries),
+        )
+    )
+
+
+def _collect_phantom_active_metrics(lines: list[str], container: str) -> None:
+    """Expose active postings that no terminal board can refresh."""
+
+    fields = _postgresql_query(container, PHANTOM_ACTIVE_STATS_SQL).split("\t")
+    if len(fields) != 3:
+        raise ProbeError("phantom-active statistics query returned an unexpected shape")
+    try:
+        boards, postings, oldest_seconds = (float(value) for value in fields)
+    except ValueError as exc:
+        raise ProbeError("phantom-active statistics query returned a non-numeric value") from exc
+    lines.extend(
+        (
+            _metric("jobseek_crawler_phantom_active_boards", boards),
+            _metric("jobseek_crawler_phantom_active_postings", postings),
+            _metric("jobseek_crawler_phantom_active_oldest_seconds", oldest_seconds),
         )
     )
 
@@ -658,6 +688,7 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
 
     _collect_board_quarantine_metrics(lines, container)
     _collect_board_gone_metrics(lines, container)
+    _collect_phantom_active_metrics(lines, container)
 
     relation = _postgresql_query(
         container,

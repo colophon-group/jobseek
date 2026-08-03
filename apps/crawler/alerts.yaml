@@ -1239,6 +1239,23 @@ groups:
   - name: jobseek_crawler_board_quarantine
     interval: 30s
     rules:
+      - alert: CrawlerPhantomActivePostings
+        expr: jobseek_crawler_phantom_active_postings > 0
+        for: 15m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+          page: production
+        annotations:
+          summary: "Terminal crawler boards still own active postings"
+          description: >-
+            {{ $value }} locally active postings are owned by disabled or
+            confirmed-gone boards. Classify configured boards first, then run
+            the bounded phantom-posting sweep and verify Typesense convergence.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#phantom-active-posting-sweep
+
       - alert: CrawlerBoardQuarantineSchemaMissing
         expr: jobseek_crawler_board_quarantine_schema_ready == 0
         for: 15m

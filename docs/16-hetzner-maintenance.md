@@ -930,6 +930,53 @@ immediately and spreads other legacy disabled boards across six hours. The
 deploy-time sync then re-disables historical rows absent from `boards.csv`, so
 only configured sources enter Redis.
 
+## Phantom Active Posting Sweep
+
+The fail-closed `sweep-phantoms` command repairs active postings only after
+their owning board has a terminal classification. It never touches
+`quarantined` or `gone_pending` boards. A `disabled` board is eligible only
+when its exact URL is absent from the deployed `boards.csv`; a configured
+disabled board with active postings aborts the entire mutation and must first
+recover through the provider-native monitor path. A configured `gone` board
+is eligible only after the spaced provider-gone policy has recorded its
+terminal timestamp and at least two confirmations.
+
+Start with the read-only classification from a deployed crawler container:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler sweep-phantoms --dry-run
+```
+
+The live invocation holds a PostgreSQL session advisory lock, commits at most
+1,000 rows per transaction, and rechecks terminal board state inside every
+chunk. `FOR UPDATE SKIP LOCKED` lets live workers finish rows they already
+own. The default invocation is capped at 100 chunks; if `remaining_postings`
+is nonzero, rerun the same command rather than increasing limits during an
+incident:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler sweep-phantoms
+```
+
+Every tombstone sets `updated_at=clock_timestamp()` so the ordered exporter
+publishes it through the normal local PostgreSQL-to-Typesense CDC path. The
+command also invalidates `cache:platform-stats` and recomputes Typesense
+company/taxonomy counts. A signal or failure rolls back only the current
+chunk; already committed chunks remain safe and the next invocation resumes
+from the remaining active rows.
+
+The PostgreSQL host sampler checks the invariant every minute:
+
+- `jobseek_crawler_phantom_active_boards`
+- `jobseek_crawler_phantom_active_postings`
+- `jobseek_crawler_phantom_active_oldest_seconds`
+
+`CrawlerPhantomActivePostings` pages after 15 minutes of nonzero drift. After
+a repair, require the local count to be zero, wait for the exporter cursor to
+pass the repair timestamps, and compare exact active posting IDs in local
+PostgreSQL and Typesense for every affected company. Do not clear the alert or
+edit exporter cursors manually.
+
 ## Provider-Gone Confirmation and Recovery
 
 An explicit provider-native retirement signal such as a board API 404 is not
