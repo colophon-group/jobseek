@@ -132,6 +132,13 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(staging_parent))
     monkeypatch.setattr(backup, "_snapshot_request", lambda *_: None)
+    inventory = {
+        "aliases": {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES},
+        "collection_documents": {
+            alias: index for index, alias in enumerate(backup._TYPESENSE_ALIASES)
+        },
+    }
+    monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: inventory)
     monkeypatch.setattr(
         backup,
         "utc_now",
@@ -166,10 +173,89 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
 
     assert result["snapshot_bytes"] == len(b"consistent-snapshot")
     assert result["repository_snapshot_id"] == "12345678"
+    assert result["repository_snapshot_count"] == 1
+    assert result["retention"] == {"keep_daily": 14, "keep_weekly": 4}
+    assert result["aliases"] == inventory["aliases"]
+    assert result["collection_documents"] == inventory["collection_documents"]
     assert not (staging_parent / "staging" / "20260722T020000Z").exists()
     assert any("backup" in command for command in commands)
     assert any("forget" in command and "--prune" in command for command in commands)
     assert any("check" in command for command in commands)
+
+
+def test_typesense_inventory_requires_all_aliases_and_records_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    aliases = {alias: f"{alias}_v7" for alias in backup._TYPESENSE_ALIASES}
+
+    def fake_get(_url: str, _key: str, path: str) -> dict[str, object]:
+        if path == "/aliases":
+            return {
+                "aliases": [
+                    {"name": alias, "collection_name": target} for alias, target in aliases.items()
+                ]
+            }
+        alias = path.removeprefix("/collections/")
+        return {"num_documents": len(alias)}
+
+    monkeypatch.setattr(backup, "_typesense_json_get", fake_get)
+
+    result = backup._typesense_inventory("http://127.0.0.1:8108", "key")
+
+    assert result["aliases"] == aliases
+    assert result["collection_documents"] == {
+        alias: len(alias) for alias in backup._TYPESENSE_ALIASES
+    }
+
+
+def test_typesense_inventory_rejects_a_missing_alias(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        backup,
+        "_typesense_json_get",
+        lambda *_: {
+            "aliases": [
+                {"name": alias, "collection_name": f"{alias}_v1"}
+                for alias in backup._TYPESENSE_ALIASES[:-1]
+            ]
+        },
+    )
+
+    with pytest.raises(backup.BackupError, match="incomplete"):
+        backup._typesense_inventory("http://127.0.0.1:8108", "key")
+
+
+def test_typesense_backup_rejects_inventory_changes_during_snapshot(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    first = {
+        "aliases": {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES},
+        "collection_documents": {alias: 1 for alias in backup._TYPESENSE_ALIASES},
+    }
+    second = {
+        **first,
+        "collection_documents": {
+            **first["collection_documents"],
+            "watchlist": 2,
+        },
+    }
+    inventories = iter((first, second))
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    monkeypatch.setattr(backup, "_snapshot_request", lambda *_: None)
+    monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: next(inventories))
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda *_args, **_kwargs: completed("true\n"),
+    )
+
+    with pytest.raises(backup.BackupError, match="inventory changed"):
+        backup.typesense_backup()
 
 
 def test_redact_removes_common_secret_shapes() -> None:

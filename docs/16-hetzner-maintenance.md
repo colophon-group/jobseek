@@ -102,6 +102,14 @@ bootstrap key before all generated consumer keys are independently working,
 because changing the server bootstrap invalidates the old bootstrap access
 immediately.
 
+For a backup-key rotation, update `TYPESENSE_BACKUP_KEY` first and deploy
+`.github/workflows/deploy-data-backups.yml`. The backup installer probes the
+candidate against `/stats.json` before mutation, atomically replaces the
+root-only host value, runs a full backup smoke when the value changed, and
+restores the prior value if any later gate fails. Delete the superseded
+generated key only after that backup and the isolated restore drill in
+`19-data-backup-recovery.md` both pass.
+
 Read-only, redacted verification:
 
 ```bash
