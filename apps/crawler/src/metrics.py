@@ -115,6 +115,16 @@ monitor_failed_per_board_total = Counter(
     ["board_id"],
 )
 
+# Configured boards that exhaust the normal retry ramp remain schedulable in a
+# low-frequency quarantine instead of being terminally disabled (#6157).
+# ``event`` is deliberately a three-value allowlist, so the metric remains
+# fleet-bounded while exposing entry, failed recovery probes, and recoveries.
+monitor_quarantine_events_total = Counter(
+    "crawler_monitor_quarantine_events_total",
+    "Monitor quarantine state-machine transitions and recovery probes",
+    ["event"],
+)
+
 # Redis-backed per-upstream-host circuit breaker (#3195). Only hosts that
 # fail or are checked by the breaker create a series, keeping cardinality
 # bounded to crawler origins rather than individual boards/postings.

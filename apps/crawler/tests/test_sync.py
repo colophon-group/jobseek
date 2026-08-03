@@ -25,6 +25,7 @@ from src.sync import (
     _is_trivial_watchlist,
     _load_boards,
     _load_companies,
+    _monitor_config_fingerprint,
     _one_year_ago_epoch,
     _populate_locations_if_empty,
     refresh_typesense_counts,
@@ -55,6 +56,28 @@ _BOARD_SCHEMA = {c: pl.Utf8 for c in _BOARD_COLS}
 
 
 class TestBoardSourceChangeReset:
+    def test_monitor_fingerprint_tracks_discovery_config_only(self):
+        base = _monitor_config_fingerprint(
+            "https://example.test/jobs",
+            "dom",
+            {"selector": "a.job", "scraper_type": "dom"},
+        )
+
+        assert base != _monitor_config_fingerprint(
+            "https://example.test/jobs",
+            "dom",
+            {"selector": "li.job a", "scraper_type": "dom"},
+        )
+        assert base == _monitor_config_fingerprint(
+            "https://example.test/jobs",
+            "dom",
+            {
+                "selector": "a.job",
+                "scraper_type": "dom",
+                "scraper_config": {"enrich": ["description"]},
+            },
+        )
+
     def test_local_upsert_batches_all_boards_in_one_statement(self):
         sql = " ".join(_UPSERT_BOARD_LOCAL.split())
 
@@ -67,21 +90,21 @@ class TestBoardSourceChangeReset:
     def test_material_source_change_resets_runtime_failure_state(self):
         """A replacement source must not inherit a retired source's disable."""
         sql = " ".join(_UPSERT_BOARD_LOCAL.split())
-        changed = (
-            "WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url "
-            "OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type"
+        source_change = (
+            "job_board.board_url IS DISTINCT FROM EXCLUDED.board_url OR "
+            "job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type"
         )
 
-        assert f"metadata = CASE {changed} THEN COALESCE(EXCLUDED.metadata" in sql
-        assert f"is_enabled = CASE {changed} THEN true" in sql
-        assert f"board_status = CASE {changed} THEN 'active'" in sql
-        assert f"consecutive_failures = CASE {changed} THEN 0" in sql
-        assert f"last_error = CASE {changed} THEN NULL" in sql
-        assert f"last_success_at = CASE {changed} THEN NULL" in sql
-        assert f"next_check_at = CASE {changed} THEN now()" in sql
-        assert f"empty_check_count = CASE {changed} THEN 0" in sql
-        assert f"last_non_empty_at = CASE {changed} THEN NULL" in sql
-        assert f"gone_at = CASE {changed} THEN NULL" in sql
+        assert source_change in sql
+        assert "job_board.metadata ? '_monitor_config_fingerprint'" in sql
+        assert "IS DISTINCT FROM EXCLUDED.metadata ->> '_monitor_config_fingerprint'" in sql
+        assert "THEN true WHEN job_board.board_status IN ('disabled', 'gone')" in sql
+        assert "THEN 'quarantined' ELSE job_board.board_status" in sql
+        assert "THEN 0 ELSE job_board.consecutive_failures" in sql
+        assert "THEN 0 ELSE job_board.empty_check_count" in sql
+        assert "THEN NULL ELSE job_board.last_error" in sql
+        assert "THEN now() ELSE job_board.next_check_at" in sql
+        assert "THEN now() ELSE job_board.quarantined_at" in sql
 
     def test_unchanged_disabled_source_stays_disabled(self):
         sql = " ".join(_UPSERT_BOARD_LOCAL.split())
@@ -567,6 +590,65 @@ class TestSyncBoards:
         assert batch_call.args[2] == company_ids
         mock_enqueue.assert_awaited_once()
         assert len(mock_enqueue.await_args.args[0]) == 2
+        mock_remove.assert_not_awaited()
+
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
+    @patch("src.sync.time.time", return_value=1_000.0)
+    async def test_quarantine_uses_recurring_tier_and_durable_due_time(
+        self,
+        _mock_time,
+        mock_enqueue,
+        mock_remove,
+        mock_conn,
+    ):
+        import uuid
+
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme"],
+                "board_slug": ["acme-careers"],
+                "board_url": ["https://acme.test/jobs"],
+                "monitor_type": ["ashby"],
+                "monitor_config": ["{}"],
+                "scraper_type": [""],
+                "scraper_config": [""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+        board_id = uuid.uuid4()
+        company_id = uuid.uuid4()
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": board_id,
+                    "company_id": company_id,
+                    "board_url": "https://acme.test/jobs",
+                }
+            ]
+        )
+        due = datetime.fromtimestamp(2_000, tz=UTC)
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "board_id": str(board_id),
+                        "metadata": {},
+                        "board_status": "quarantined",
+                        "next_check_at": due,
+                    }
+                ],
+                [],
+            ]
+        )
+
+        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+
+        schedule = mock_enqueue.await_args.args[0][0]
+        assert schedule.first_time is False
+        assert schedule.next_check_at == 2_000.0
         mock_remove.assert_not_awaited()
 
     @patch("src.sync.remove_monitors", new_callable=AsyncMock)

@@ -9,7 +9,6 @@ import random
 import re
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from time import monotonic
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -27,6 +26,7 @@ from src.metrics import (
     monitor_dedup_total,
     monitor_gone_skipped_total,
     monitor_jobs_discovered,
+    monitor_quarantine_events_total,
     monitor_skipped_tdm_total,
     monitor_truncated_total,
     monitor_url_filtered_total,
@@ -308,9 +308,9 @@ class BoardError:
 async def _delist_board_postings(conn: asyncpg.Connection, board_id: str) -> int:
     """Run ``_DELIST_BOARD_POSTINGS`` and return the row count.
 
-    Used by the three silent-delist paths that bypass the normal
+    Used by the two silent-delist paths that bypass the normal
     ``_MARK_GONE_BY_TIMESTAMP`` flow: empty-check threshold reached,
-    BoardGoneError (upstream 404), and 5-strike failure auto-disable.
+    and BoardGoneError (upstream 404).
     Without these paths emitting the matching ``gone`` counter, the
     Grafana panel showed ``new >> gone`` even when the DB was balanced.
 
@@ -500,39 +500,6 @@ async def _mark_gone_with_guards(
         json.dumps({"recent_discovered_counts": new_history, "suspect_streak": 0}),
     )
     return len(gone_rows), None
-
-
-# A 5-strike auto-disable doesn't necessarily mean the board is dead.
-# With exponential backoff (5 * 2^n minutes capped at 24h), strike #5
-# fires after ~155 minutes — well inside a single provider outage. If
-# we delisted on every disable, a 3-hour greenhouse blip would tombstone
-# tens of thousands of postings that would all flap back as ``relisted``
-# on recovery, churning search and IndexNow. Gate the delist on
-# ``last_success_at`` so transient outages back off without data loss;
-# only boards that have been failing past this window get delisted.
-_DELIST_AFTER_FAILURE_AGE = timedelta(hours=24)
-
-
-async def _maybe_delist_after_disable(
-    conn: asyncpg.Connection,
-    board_id: str,
-    last_success_at: datetime | None,
-    board_log: structlog.stdlib.BoundLogger,
-) -> int:
-    """Delist a 5-strike-disabled board's postings ONLY if the board
-    has been silent past ``_DELIST_AFTER_FAILURE_AGE``. Returns the
-    count of rows flipped (0 if the recency gate skipped the delist).
-    """
-    # asyncpg returns timezone-aware timestamps for TIMESTAMPTZ
-    now = datetime.now(tz=UTC)
-    if last_success_at is not None and now - last_success_at < _DELIST_AFTER_FAILURE_AGE:
-        board_log.warning(
-            "batch.monitor.five_strike_disable_kept_active",
-            last_success_age_s=int((now - last_success_at).total_seconds()),
-            reason="recent success — likely transient outage",
-        )
-        return 0
-    return await _delist_board_postings(conn, board_id)
 
 
 async def _enqueue_scrapes_for_new(
@@ -1315,11 +1282,14 @@ async def _process_one_board_streaming(
             # a failed delist cannot leave the confirmation recorded without
             # applying its posting-state consequence.
             empty_delisted_count = 0
+            recovered_from_quarantine = False
             try:
                 async with pool.acquire() as conn, conn.transaction():
                     rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
-                    if rows and rows[0]["should_delist"]:
-                        empty_delisted_count = await _delist_board_postings(conn, board_id)
+                    if rows:
+                        recovered_from_quarantine = rows[0]["recovered"] is True
+                        if rows[0]["should_delist"]:
+                            empty_delisted_count = await _delist_board_postings(conn, board_id)
             except (asyncpg.PostgresError, ConnectionError):
                 board_log.exception("batch.monitor.empty_check_failed")
             else:
@@ -1333,6 +1303,9 @@ async def _process_one_board_streaming(
                     )
                     with contextlib.suppress(Exception):
                         await _batch.get_redis().delete("cache:platform-stats")
+                if recovered_from_quarantine:
+                    monitor_quarantine_events_total.labels(event="recovered").inc()
+                    board_log.info("batch.monitor.quarantine_recovered", discovered=0)
             return True, elapsed
 
         # Mark as gone any active posting not seen during this monitor run.
@@ -1357,7 +1330,15 @@ async def _process_one_board_streaming(
         # cycle proceeds normally.
         if any_truncated:
             async with pool.acquire() as conn, conn.transaction():
-                await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+                recovered_from_quarantine = (
+                    await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
+                ) is True
+            if recovered_from_quarantine:
+                monitor_quarantine_events_total.labels(event="recovered").inc()
+                board_log.info(
+                    "batch.monitor.quarantine_recovered",
+                    discovered=total_discovered,
+                )
             board_log.warning(
                 "batch.monitor.truncated_partial",
                 discovered=total_discovered,
@@ -1375,7 +1356,16 @@ async def _process_one_board_streaming(
                     delist_threshold,
                     board_log,
                 )
-                await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+                recovered_from_quarantine = (
+                    await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
+                ) is True
+
+            if recovered_from_quarantine:
+                monitor_quarantine_events_total.labels(event="recovered").inc()
+                board_log.info(
+                    "batch.monitor.quarantine_recovered",
+                    discovered=total_discovered,
+                )
 
             # Emit the skip metric AFTER the transaction commits — same
             # pattern as ``_emit_gone_counter`` (a rollback would otherwise
@@ -1483,35 +1473,33 @@ async def _process_one_board_streaming(
         tasks_total.labels(kind="monitor", status="failed").inc()
         # Discard stale location misses from this failed board
         loc_resolver.drain_location_misses()
-        # A 5-strike failure flips ``is_enabled=false`` + ``board_status='disabled'``.
-        # _FETCH_DUE_BOARDS won't pick the board again, so active postings
-        # would otherwise sit orphaned (``is_active=true``, never to be
-        # refreshed or marked gone). Detect the transition (the pre-fetch
-        # row was ``is_enabled=true``, so any post-update ``false`` is a
-        # fresh disable) and gate the delist on ``last_success_at`` so a
-        # provider outage doesn't mass-tombstone postings that would all
-        # come back on recovery.
-        failure_gone_count = 0
+        # Five strikes enter a recoverable quarantine. The board stays enabled
+        # and Redis mirrors the durable daily-capped next_check_at, so an
+        # upstream, code, or config repair can prove itself without SQL.
+        entered_quarantine = False
+        quarantine_probe_failed = False
         try:
             async with pool.acquire() as conn, conn.transaction():
                 row = await conn.fetchrow(_RECORD_FAILURE, board_id, error_msg)
-                just_disabled = row is not None and not row["is_enabled"]
-                if just_disabled:
-                    failure_gone_count = await _maybe_delist_after_disable(
-                        conn, board_id, row["last_success_at"], board_log
-                    )
-                    if failure_gone_count:
-                        board_log.warning(
-                            "batch.monitor.five_strike_disable",
-                            gone=failure_gone_count,
-                        )
+                entered_quarantine = bool(row and row["entered_quarantine"])
+                quarantine_probe_failed = bool(
+                    row and row["board_status"] == "quarantined" and not entered_quarantine
+                )
         except (asyncpg.PostgresError, ConnectionError):
             board_log.exception("batch.monitor.record_failure_failed")
         else:
-            if failure_gone_count:
-                _emit_gone_counter(failure_gone_count)
-                with contextlib.suppress(Exception):
-                    await _batch.get_redis().delete("cache:platform-stats")
+            if entered_quarantine:
+                monitor_quarantine_events_total.labels(event="entered").inc()
+                board_log.warning(
+                    "batch.monitor.quarantined",
+                    retry="daily_capped_backoff",
+                )
+            elif quarantine_probe_failed:
+                monitor_quarantine_events_total.labels(event="probe_failed").inc()
+                board_log.warning(
+                    "batch.monitor.quarantine_probe_failed",
+                    retry="daily_capped_backoff",
+                )
         return False, elapsed
     finally:
         if pw and pw_owned:

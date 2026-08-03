@@ -306,6 +306,10 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
             return "12\t100\t500\t2\t700\t900\t1234.5\t67.8\t4000\t1800000000\t19000000000"
+        if sql == host.BOARD_QUARANTINE_SCHEMA_SQL:
+            return "6"
+        if sql == host.BOARD_QUARANTINE_STATS_SQL:
+            return "121\t86400\t99134\t16"
         if "to_regclass" in sql:
             return "cross_store_reconciliation_state"
         if sql == host.RECONCILIATION_STATS_SQL:
@@ -336,6 +340,11 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_postgresql_database_bytes 19000000000.0" in content
     assert "jobseek_postgresql_emergency_reserve_bytes 2147483648" in content
     assert "jobseek_postgresql_shared_memory_configured_bytes 1073741824" in content
+    assert "jobseek_crawler_board_quarantine_schema_ready 1" in content
+    assert "jobseek_crawler_quarantined_boards 121.0" in content
+    assert "jobseek_crawler_quarantine_oldest_seconds 86400.0" in content
+    assert "jobseek_crawler_quarantine_active_postings 99134.0" in content
+    assert "jobseek_crawler_board_recoveries_total 16.0" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
     assert 'jobseek_cross_store_reconciliation_last_detected{target="supabase"} 42.0' in content
     assert (
@@ -362,6 +371,8 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
             return "1\t2\t3\t0\t4\t5\t6\t7\t8\t9\t10"
+        if sql == host.BOARD_QUARANTINE_SCHEMA_SQL:
+            return "0"
         if "to_regclass" in sql:
             return ""
         raise AssertionError(sql)
@@ -372,6 +383,7 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
     host._collect_postgresql_metrics(lines)
 
     assert "jobseek_cross_store_reconciliation_schema_ready 0" in "\n".join(lines)
+    assert "jobseek_crawler_board_quarantine_schema_ready 0" in "\n".join(lines)
 
 
 def test_postgresql_shared_memory_probe_emits_configured_and_live_capacity(
@@ -445,6 +457,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_telemetry_delivery",
         "jobseek_typesense_reliability",
         "jobseek_crawler_reliability",
+        "jobseek_crawler_board_quarantine",
     }
     assert {group["name"]: len(group["rules"]) for group in groups} == {
         "jobseek_hetzner_fleet": 19,
@@ -452,6 +465,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 19,
+        "jobseek_crawler_board_quarantine": 4,
         "jobseek_operator_handoffs": 3,
     }
     for group in groups:

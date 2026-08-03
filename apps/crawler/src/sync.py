@@ -18,9 +18,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import time
 from collections import defaultdict
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -50,6 +52,7 @@ from src.shared.logging import setup_logging
 from src.typesense_client import get_typesense_client
 
 _API_MONITOR_TYPES = api_monitor_types()
+_MONITOR_CONFIG_FINGERPRINT = "_monitor_config_fingerprint"
 
 log = structlog.get_logger()
 
@@ -63,6 +66,36 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 # the label promised (issue #3009 / #3238).
 _POSTING_BASE_FILTER = "is_active:true && has_content:!=false"
 _POSTING_FLOW_FILTER = "has_content:!=false"
+
+
+def _monitor_config_fingerprint(
+    board_url: str,
+    monitor_type: str,
+    metadata: Mapping[str, object],
+) -> str:
+    """Hash the CSV-owned monitor contract, excluding scrape-only settings."""
+
+    monitor_owned_config = {
+        key: value
+        for key, value in metadata.items()
+        if key
+        not in {
+            "scraper_type",
+            "scraper_config",
+            _MONITOR_CONFIG_FINGERPRINT,
+        }
+    }
+    payload = json.dumps(
+        {
+            "board_url": board_url,
+            "monitor_type": monitor_type,
+            "monitor_config": monitor_owned_config,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
 
 _UPSERT_OCCUPATION_DOMAINS = """
 INSERT INTO occupation_domain (slug)
@@ -351,23 +384,17 @@ ON CONFLICT (id) DO UPDATE SET
     throttle_key = EXCLUDED.throttle_key,
     monitor_needs_browser = EXCLUDED.monitor_needs_browser,
     scraper_needs_browser = EXCLUDED.scraper_needs_browser,
-    -- Preserve runtime-driven disables when the source itself is unchanged.
-    -- A material source change is an operator repair and must clear state
-    -- inherited from the retired source; otherwise the new config is removed
-    -- from Redis immediately and can never prove itself healthy (#5716).
-    -- ``_RECORD_FAILURE`` and
-    -- ``_RECORD_BOARD_GONE`` set ``is_enabled = false`` plus a
-    -- ``board_status`` of ``'disabled'`` or ``'gone'`` when the
-    -- board has been failing or its upstream slug returned 404.
-    -- Without this CASE, every ``crawler sync`` resurrects
-    -- ``is_enabled = true`` and the (admittedly already-orthogonal-
-    -- to-the-Redis-claim-path) Postgres state diverges from
-    -- the runtime truth. To re-enable, an operator removes the
-    -- ``board_status`` row via SQL or via deleting+re-adding
-    -- the CSV entry. See issue #2215.
+    -- A URL/type/config change is a repair candidate. Keep it schedulable but
+    -- quarantined until a real monitor run proves the repair (#5716/#6157).
+    -- The fingerprint is added without resetting legacy rows on its first
+    -- sync; subsequent CSV-owned monitor changes become immediately eligible.
     is_enabled = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN true
         WHEN job_board.board_status IN ('disabled', 'gone') THEN false
         ELSE EXCLUDED.is_enabled
@@ -375,18 +402,30 @@ ON CONFLICT (id) DO UPDATE SET
     board_status = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
-        THEN 'active'
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN 'quarantined'
         ELSE job_board.board_status
     END,
     consecutive_failures = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN 0
         ELSE job_board.consecutive_failures
     END,
     last_error = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN NULL
         ELSE job_board.last_error
     END,
@@ -405,12 +444,20 @@ ON CONFLICT (id) DO UPDATE SET
     next_check_at = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN now()
         ELSE job_board.next_check_at
     END,
     empty_check_count = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN 0
         ELSE job_board.empty_check_count
     END,
@@ -426,13 +473,58 @@ ON CONFLICT (id) DO UPDATE SET
         THEN NULL
         ELSE job_board.gone_at
     END,
+    quarantined_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN now()
+        ELSE job_board.quarantined_at
+    END,
+    last_quarantined_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN now()
+        ELSE job_board.last_quarantined_at
+    END,
+    last_quarantine_error = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN job_board.last_error
+        ELSE job_board.last_quarantine_error
+    END,
+    quarantine_probe_count = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN 0
+        ELSE job_board.quarantine_probe_count
+    END,
     updated_at = now()
-RETURNING id::text AS board_id, metadata
+RETURNING id::text AS board_id, metadata, next_check_at, board_status
 """
 
 _DISABLE_REMOVED_BOARDS = """
 UPDATE job_board
-SET is_enabled = false, board_status = 'disabled', updated_at = now()
+SET is_enabled = false,
+    board_status = 'disabled',
+    quarantined_at = NULL,
+    lease_owner = NULL,
+    leased_until = NULL,
+    updated_at = now()
 WHERE board_url NOT IN (SELECT unnest($1::text[]))
   AND is_enabled = true
 """
@@ -1144,6 +1236,7 @@ async def sync_boards(
     skipped = 0
 
     for row in boards.iter_rows(named=True):
+        mon_type = row["monitor_type"]
         monitor_config_str = row.get("monitor_config") or None
         scraper_type = _or_none(row.get("scraper_type"))
         scraper_config_str = row.get("scraper_config") or None
@@ -1198,10 +1291,13 @@ async def sync_boards(
                 skipped += 1
                 continue
 
+        metadata_obj[_MONITOR_CONFIG_FINGERPRINT] = _monitor_config_fingerprint(
+            row["board_url"], mon_type, metadata_obj
+        )
+
         metadata: str | None = json.dumps(metadata_obj) if metadata_obj else None
 
         # Compute browser-need flags from crawler_type + config
-        mon_type = row["monitor_type"]
         mon_browser = monitor_needs_browser(mon_type, metadata_obj)
         scr_type = metadata_obj.get("scraper_type")
         scr_cfg = metadata_obj.get("scraper_config")
@@ -1321,7 +1417,7 @@ async def sync_boards(
         [scraper_browser_flags[i] for i in resolved_indexes],
         [True for _ in resolved_indexes],
     )
-    metadata_by_board_id = {str(row["board_id"]): row["metadata"] for row in local_rows}
+    local_state_by_board_id = {str(row["board_id"]): row for row in local_rows}
 
     # Target 3: Redis (board config hash + initial schedule). The Lua script
     # still atomically maintains each board's queue/ready-set relationship;
@@ -1331,14 +1427,22 @@ async def sync_boards(
     for i in resolved_indexes:
         board_id, company_id = url_to_ids[board_urls[i]]
         board_id_str = str(board_id)
-        if board_id_str not in metadata_by_board_id:
+        state = local_state_by_board_id.get(board_id_str)
+        if state is None:
             log.warning("sync.board.local_upsert_missing", board_url=board_urls[i])
             continue
+        metadata = state["metadata"]
+        board_status = state.get("board_status", "active")
+        next_check_at = schedule_time
+        if board_status == "quarantined" and "next_check_at" in state:
+            due = state["next_check_at"]
+            if isinstance(due, datetime):
+                next_check_at = max(schedule_time, due.timestamp())
         config = {
             "board_url": board_urls[i],
             "crawler_type": crawler_types[i],
             "company_id": str(company_id),
-            "metadata": encode_metadata_for_redis(metadata_by_board_id[board_id_str]),
+            "metadata": encode_metadata_for_redis(metadata),
             "check_interval_minutes": "60",
             "scrape_interval_hours": "24",
             "throttle_key": throttle_keys[i],
@@ -1349,10 +1453,10 @@ async def sync_boards(
             MonitorSchedule(
                 domain=throttle_keys[i],
                 board_id=board_id_str,
-                next_check_at=schedule_time,
+                next_check_at=next_check_at,
                 config=config,
                 browser=monitor_browser_flags[i],
-                first_time=True,
+                first_time=board_status != "quarantined",
             )
         )
     await enqueue_monitors(schedules)
