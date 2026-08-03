@@ -164,7 +164,18 @@ def _locations(value: object) -> list[str] | None:
     for raw in value:
         if not isinstance(raw, dict):
             continue
-        label = _clean_string(raw.get("name")) or _clean_string(raw.get("city"))
+        components: list[str] = []
+        seen_components: set[str] = set()
+        for key in ("city", "state", "countryName"):
+            component = _clean_string(raw.get(key))
+            identity = component.casefold() if component is not None else None
+            if component is not None and identity not in seen_components:
+                components.append(component)
+                seen_components.add(identity)
+        # ``name`` is usually an internal office label ("Head Office",
+        # "Bengaluru Center"). Prefer resolvable geography and retain the
+        # label only for records that do not expose structured components.
+        label = ", ".join(components) if components else _clean_string(raw.get("name"))
         if label and label not in locations:
             locations.append(label)
     return locations or None
@@ -217,11 +228,12 @@ def _parse_job(raw: object, board: KekaBoard) -> DiscoveredJob:
         value = _clean_string(raw.get(source))
         if value is not None:
             metadata[target] = value
+    extras: dict[str, object] | None = None
     skills = raw.get("skillNames")
     if isinstance(skills, list):
         cleaned_skills = [value for item in skills if (value := _clean_string(item)) is not None]
         if cleaned_skills:
-            metadata["skills"] = list(dict.fromkeys(cleaned_skills))
+            extras = {"skills": list(dict.fromkeys(cleaned_skills))}
 
     job_type = raw.get("jobType")
     employment_type = "Full Time" if job_type == 2 else "Part Time" if job_type == 1 else None
@@ -238,6 +250,7 @@ def _parse_job(raw: object, board: KekaBoard) -> DiscoveredJob:
         employment_type=employment_type,
         date_posted=_date(raw.get("publishedOn")),
         base_salary=_salary(raw.get("salaryRange")),
+        extras=extras,
         metadata=metadata,
     )
 

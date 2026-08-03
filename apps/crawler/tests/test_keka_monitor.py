@@ -170,7 +170,7 @@ class TestMonitor:
         assert job.url == f"{LISTING_URL}/jobdetails/123"
         assert job.title == "Platform Engineer"
         assert job.description == "<h2>Build</h2><p>Systems</p>"
-        assert job.locations == ["HQ"]
+        assert job.locations == ["Bengaluru, KA, India"]
         assert job.employment_type == "Full Time"
         assert job.date_posted == "2026-08-01"
         assert job.base_salary == {
@@ -185,10 +185,18 @@ class TestMonitor:
             "department": "Engineering",
             "experience": "3 - 5 years",
             "job_number": "ENG-123",
-            "skills": ["Python", "PostgreSQL"],
             "job_type": 2,
         }
+        assert job.extras == {"skills": ["Python", "PostgreSQL"]}
         assert requested == [LISTING_URL, JOBS_URL]
+
+    def test_location_uses_office_label_only_without_structured_geography(self):
+        assert keka_monitor._locations(
+            [
+                {"name": "Head Office", "city": "Paris", "state": "Paris", "countryName": "France"},
+                {"name": "Remote Hub"},
+            ]
+        ) == ["Paris, France", "Remote Hub"]
 
     async def test_custom_portal_uses_named_routes(self):
         custom_jobs_url = f"{LISTING_URL}/api/embedjobs/engineering/active/{IDENTIFIER}"
