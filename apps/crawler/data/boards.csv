@@ -3685,6 +3685,7 @@ optibus,optibus-careers,https://optibus.com/company/careers/jobs/,dom,"{""render
 optics11,optics11-recruitee,https://optics11.recruitee.com/,recruitee,"{""slug"": ""optics11"", ""api_base"": ""https://optics11.recruitee.com""}",skip,
 optimal-care,optimal-care-greenhouse,https://job-boards.greenhouse.io/optimalcare,greenhouse,"{""token"": ""optimalcare""}",skip,
 optimal-dynamics,optimal-dynamics-greenhouse,https://job-boards.greenhouse.io/optimaldynamics,greenhouse,"{""token"": ""optimaldynamics""}",skip,
+optiver,optiver-global,https://www.optiver.com/join-us/jobs/,greenhouse,"{""token"": ""optiverus""}",skip,
 optiver-private-jobs,optiver-private-jobs-greenhouse,https://job-boards.greenhouse.io/optiverprivate,greenhouse,"{""token"": ""optiverprivate""}",skip,
 optiver-trading-academy,optiver-trading-academy-greenhouse,https://job-boards.greenhouse.io/tradingacademy2025,greenhouse,"{""token"": ""tradingacademy2025""}",skip,
 opto-investments,opto-investments-greenhouse,https://job-boards.greenhouse.io/optoinvest,greenhouse,"{""token"": ""optoinvest""}",skip,
