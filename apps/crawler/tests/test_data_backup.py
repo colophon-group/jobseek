@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -306,6 +307,45 @@ def test_web_postgresql_boundary_rejects_a_missing_sequence(
         backup._validate_web_postgres_boundary(env={})
 
 
+def test_web_postgresql_boundary_requires_exact_saved_job_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    outputs = iter(("", "", "contract_ledger"))
+    monkeypatch.setattr(backup, "_web_psql", lambda *_args, **_kwargs: next(outputs))
+
+    with pytest.raises(backup.BackupError, match="exact 0085 catalog"):
+        backup._validate_web_postgres_boundary(env={})
+
+
+def test_web_postgresql_contract_checks_ledger_and_catalog(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    queries: list[str] = []
+
+    def capture(sql: str, **_kwargs: object) -> str:
+        queries.append(sql)
+        return ""
+
+    monkeypatch.setattr(backup, "_web_psql", capture)
+    backup._validate_web_postgres_contract(env={})
+
+    assert str(backup.WEB_POSTGRES_CONTRACT_CREATED_AT) in queries[0]
+    assert backup.WEB_POSTGRES_CONTRACT_HASH in queries[0]
+    assert backup._quote_literal(backup.WEB_POSTGRES_SAVED_JOB_TEXT_CHECK_DEFINITION) in queries[0]
+    assert "expected_column.column_name <> 'job_posting_id'" not in queries[0]
+    assert "saved_job_snapshot_text_nonblank_check" in queries[0]
+    assert "saved_job_required_snapshot_check" in queries[0]
+    assert "saved_job_snapshot_from_mirror_before_insert" in queries[0]
+    assert "saved_job_posting_fk" in queries[0]
+    assert "application_interview_saved_job_id_fkey" in queries[0]
+
+
+def test_web_postgresql_contract_hash_matches_migration() -> None:
+    migration = ROOT / "apps/web/drizzle/0085_saved_job_snapshot_contract.sql"
+
+    assert hashlib.sha256(migration.read_bytes()).hexdigest() == (backup.WEB_POSTGRES_CONTRACT_HASH)
+
+
 def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -469,6 +509,16 @@ def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> No
     assert "WEB_POSTGRES_DRILL_ROOT:-/run/jobseek-backup/web-postgresql/drills" in restore
     assert "--file /restore/bootstrap.sql" in restore
     assert "saved_job" in restore
+    for required_snapshot_field in (
+        "posting_title",
+        "posting_source_url",
+        "posting_first_seen_at",
+        "posting_is_active",
+        "company_id",
+        "company_name",
+        "company_slug",
+    ):
+        assert required_snapshot_field in restore
     assert "murmur" not in restore.lower()
 
 

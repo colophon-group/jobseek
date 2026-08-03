@@ -66,6 +66,11 @@ describe("production migration safety", () => {
       "DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_READONLY }}",
     );
     expect(workflow).toContain('test "$GIT_REF" = "refs/heads/main"');
+    expect(workflow).toContain(
+      'test "$DISPATCH_CONFIRMATION" = "APPLY-0085"',
+    );
+    expect(workflow).not.toContain("APPLY-0084");
+    expect(workflow).toContain("db:migrate:verify-contract");
     expect(workflow).toContain('cancel-in-progress: false');
     expect(workflow).toContain(
       "timeout --signal=TERM --kill-after=15s 12m pnpm db:migrate",

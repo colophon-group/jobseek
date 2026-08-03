@@ -399,7 +399,10 @@ points to an excluded table. In particular, the first production run is gated
 on contract migration `0085_saved_job_snapshot_contract`. That migration runs
 only after the 0084 expand phase and snapshot-writing app release have been
 verified, then removes the remaining `saved_job -> job_posting` FK after
-catching up and asserting every required saved-posting snapshot.
+catching up only absent required fields, asserting every required saved-posting
+snapshot, and installing the final NOT NULL/nonblank contract. The backup
+preflight requires the exact 0085 ledger hash and final saved-job catalog, not
+merely the absence of an external FK.
 
 The job fingerprints every allowlisted table as a row count plus a deterministic
 aggregate hash and records the Drizzle migration sequence state. It runs the

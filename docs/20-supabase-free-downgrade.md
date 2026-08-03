@@ -61,14 +61,21 @@ sequence is:
 3. app release: write complete snapshots, read snapshot-first, and reject
    incomplete new saves while allowing existing saves to be removed during a
    Typesense outage;
-4. contract migration: catch up, assert required snapshot completeness, then
-   drop the foreign key, temporary CHECK, and compatibility trigger;
+4. contract migration: lock `company`, `job_posting`, then `saved_job`; catch
+   up only missing required values; require the seven identity fields; retain
+   a permanent validated nonblank-text CHECK; then remove the temporary CHECK,
+   compatibility trigger/function, and posting foreign key last;
 5. prove encrypted backup/restore, stop mirror writes, and only then drop the
    crawler-owned tables.
 
 Salary and icon fields may remain nullable. Posting title, source URL,
 first-seen timestamp, active state, and company identity/name/slug must be
 complete before the contract phase.
+
+The 0085 preflight verifier checks the exact 0084 ledger/catalog and reads the
+mirror only to prove catch-up sources. Its postflight and scheduled drift modes
+query only durable saved-job/catalog state, so verification remains usable
+after `job_posting` is removed.
 
 Production source evidence collected read-only on 2026-08-03 shows 262 saved
 jobs and zero missing required source fields. Salary is absent for 229 rows and

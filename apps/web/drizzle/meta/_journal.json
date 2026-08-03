@@ -512,6 +512,13 @@
       "when": 1785753600000,
       "tag": "0084_saved_job_snapshot_expand",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1785757200000,
+      "tag": "0085_saved_job_snapshot_contract",
+      "breakpoints": true
     }
   ]
 }
