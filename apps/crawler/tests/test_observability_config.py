@@ -97,6 +97,9 @@ def test_alloy_delivery_alerts_cover_rejection_loss_memory_and_restart() -> None
     assert "samples_failed_total" in rules["AlloyRemoteWriteSamplesLost"]["expr"]
     assert "resident_memory_bytes" in rules["AlloyMemoryPressure"]["expr"]
     assert 'container="deploy-alloy-1"' in rules["ComposeAlloyRestartOrOOM"]["expr"]
+    for name in expected - {"AlloyMemoryPressure", "TelemetrySeriesBudgetHigh"}:
+        assert rules[name]["labels"]["severity"] == "critical"
+        assert rules[name]["labels"]["page"] == "production"
 
 
 def test_exporter_alert_selects_only_exporter_target() -> None:
@@ -123,8 +126,14 @@ def test_cdc_safety_alerts_route_to_daily_error_review() -> None:
     assert "last_success_unixtime" in stale["expr"]
     assert "last_unresolved" in drift["expr"]
     assert "stuck_runs" in stuck["expr"]
-    for rule in (delayed, unknown, schema, failed, stale, drift, stuck):
+    for rule in (delayed, unknown):
         assert rule["labels"]["severity"] == "high"
+        assert rule["labels"]["owner"] == "codex-error-review"
+        assert rule["labels"]["route"] == "codex-daily"
+    for rule in (schema, failed, stale, drift, stuck):
+        assert rule["for"] == "3m"
+        assert rule["labels"]["severity"] == "critical"
+        assert rule["labels"]["page"] == "production"
         assert rule["labels"]["owner"] == "codex-error-review"
         assert rule["labels"]["route"] == "codex-daily"
     assert delayed["annotations"]["runbook"].endswith(
@@ -234,8 +243,9 @@ def test_postgresql_backup_repository_alert_forecasts_cifs_exhaustion() -> None:
     assert "< 0.35" in rule["expr"]
     assert "predict_linear" in rule["expr"]
     assert "7 * 24 * 60 * 60" in rule["expr"]
-    assert rule["for"] == "30m"
+    assert rule["for"] == "3m"
     assert rule["labels"]["severity"] == "critical"
+    assert rule["labels"]["page"] == "production"
 
 
 def test_postgresql_emergency_reserve_alert_enforces_allocated_headroom() -> None:
@@ -243,7 +253,7 @@ def test_postgresql_emergency_reserve_alert_enforces_allocated_headroom() -> Non
 
     assert "jobseek_postgresql_emergency_reserve_bytes" in rule["expr"]
     assert "jobseek_postgresql_emergency_reserve_target_bytes" in rule["expr"]
-    assert rule["for"] == "5m"
+    assert rule["for"] == "3m"
     assert rule["labels"]["severity"] == "critical"
 
 
@@ -253,16 +263,54 @@ def test_postgresql_shared_memory_alert_enforces_contract_and_capacity() -> None
     assert "jobseek_postgresql_shared_memory_configured_bytes < 1073741824" in rule["expr"]
     assert "jobseek_postgresql_shared_memory_capacity_bytes < 1073741824" in rule["expr"]
     assert "jobseek_postgresql_shared_memory_available_bytes" in rule["expr"]
-    assert rule["for"] == "5m"
+    assert rule["for"] == "3m"
     assert rule["labels"] == {
         "severity": "critical",
         "service": "postgresql",
         "owner": "codex-error-review",
         "route": "codex-daily",
+        "page": "production",
     }
     assert rule["annotations"]["runbook"].endswith(
         "docs/16-hetzner-maintenance.md#postgresql-shared-memory"
     )
+
+
+def test_operator_handoffs_cover_daily_review_without_duplicate_mimir_deadman() -> None:
+    failed = _alert_rule("CodexDailyErrorReviewFailed")
+    stale = _alert_rule("CodexDailyErrorReviewStale")
+    stuck = _alert_rule("CodexDailyErrorReviewRunStuck")
+
+    assert all(rule.get("alert") != "PagingRouteDeadman" for rule in _alert_rules())
+    assert "last_attempt_success" in failed["expr"]
+    assert "run_in_progress == 0" in failed["expr"]
+    assert "last_success_unixtime" in stale["expr"]
+    assert "36 * 60 * 60" in stale["expr"]
+    assert "run_in_progress == 1" in stuck["expr"]
+    for rule in (failed, stale, stuck):
+        assert rule["for"] == "3m"
+        assert rule["labels"]["severity"] == "critical"
+        assert rule["labels"]["page"] == "production"
+        assert rule["labels"]["route"] == "codex-daily"
+
+
+def test_daily_error_review_records_status_across_the_systemd_lifecycle() -> None:
+    unit = (ROOT / "deploy/systemd/jobseek-codex-daily-error-review.service").read_text(
+        encoding="utf-8"
+    )
+    deploy = (ROOT / "scripts/deploy-codex-runner-host.sh").read_text(encoding="utf-8")
+
+    assert "ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-routine-status.py" in unit
+    assert (
+        "ExecStartPre=+/usr/bin/python3 "
+        "/srv/jobseek-codex/repo/scripts/codex-routine-status.py begin"
+    ) in unit
+    assert (
+        "ExecStopPost=+/usr/bin/python3 "
+        "/srv/jobseek-codex/repo/scripts/codex-routine-status.py finish "
+        "--service-result ${SERVICE_RESULT}"
+    ) in unit
+    assert '"${REPO_DIR}/scripts/codex-routine-status.py"' in deploy
 
 
 def test_deadletter_operator_playbook_is_documented() -> None:

@@ -601,7 +601,10 @@ export/delisting plus all-host silence, disk/inodes, backup freshness,
 PostgreSQL readiness/archive/connections, Typesense/tunnel health, and pending
 reboots. Every alert must carry a repository runbook plus
 `owner=codex-error-review` and `route=codex-daily`. The daily Hetzner Codex
-review owns GitHub issue delivery; alert state is not routed to phone/email.
+review owns deduplicated GitHub issue delivery. Every critical alert must also
+carry `page=production` and a pending duration of at most three minutes. A
+Grafana-managed bridge queries the Mimir `ALERTS` series and the built-in
+Grafana Alertmanager owns independent email paging, recovery, and repeats.
 `ExporterStale` must retain `instance="exporter"` because the shared metrics
 module exposes a default-zero gauge from other crawler endpoints.
 
@@ -609,6 +612,8 @@ module exposes a default-zero gauge from other crawler endpoints.
 # Validate source/ownership without a remote write
 cd apps/crawler
 uv run python ../../scripts/sync-grafana-rules.py --dry-run
+uv run python ../../scripts/sync-grafana-alertmanager.py \
+  --dry-run --email operator@example.com
 
 # CI/CD uses the same client without --dry-run. It snapshots the old group,
 # verifies the exact active rule set, and rolls back on failure.
@@ -699,6 +704,16 @@ Local operator credentials for Grafana Cloud Prometheus and Loki may be in the
 ignored `.env.local` (`GRAFANA_*` vars); production copies are protected
 deployment secrets. Prometheus and Loki have **different user IDs**
 (`GRAFANA_USER_ID` for Prometheus; Loki has its own instance ID).
+
+Critical alerts also route through the Grafana-managed bridge and built-in
+Alertmanager to the protected production email receiver. Preserve
+`page=production`, a pending duration of at most three minutes,
+`route=codex-daily`, recovery notifications, the 30-minute unresolved repeat,
+the daily deadman, and the scheduled synthetic paging test. The Grafana URL,
+service-account API key, and recipient address belong only in ignored local
+env files or protected production secrets. Operational acknowledgment and
+recovery are defined in
+`docs/16-hetzner-maintenance.md#independent-production-paging`.
 
 ### Deploying Code Changes
 

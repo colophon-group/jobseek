@@ -171,6 +171,7 @@ verify_entrypoints() {
     "${REPO_DIR}/scripts/codex-daily-routine-runner.py" \
     "${REPO_DIR}/scripts/codex-docker-lifecycle-watch.py" \
     "${REPO_DIR}/scripts/codex-error-review-bundle.py" \
+    "${REPO_DIR}/scripts/codex-routine-status.py" \
     "${REPO_DIR}/scripts/jobseek_maintenance_provenance.py" \
     "${REPO_DIR}/scripts/jobseek-maintenance.py" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" \

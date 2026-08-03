@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 HOST_SCRIPT = ROOT / "scripts" / "jobseek-host-observability.py"
@@ -66,6 +67,56 @@ def test_backup_status_is_republished_without_error_text(tmp_path: Path) -> None
     assert "jobseek_backup_last_attempt_success" in content
     assert 'service="postgresql"' in content
     assert "must-not-escape" not in content
+
+
+def test_codex_error_review_status_is_republished_without_result_text(tmp_path: Path) -> None:
+    path = tmp_path / "error-review-status.json"
+    path.write_text(
+        json.dumps(
+            {
+                "last_attempt_unixtime": 120,
+                "last_success_unixtime": 100,
+                "last_attempt_success": 0,
+                "run_in_progress": 0,
+                "last_result": "password=must-not-escape",
+            }
+        ),
+        encoding="utf-8",
+    )
+    lines: list[str] = []
+
+    host._collect_codex_error_review_metrics(lines, path)
+
+    assert lines == [
+        "jobseek_codex_daily_error_review_last_attempt_unixtime 120",
+        "jobseek_codex_daily_error_review_last_success_unixtime 100",
+        "jobseek_codex_daily_error_review_last_attempt_success 0",
+        "jobseek_codex_daily_error_review_run_in_progress 0",
+    ]
+    assert "must-not-escape" not in "\n".join(lines)
+
+
+def test_missing_codex_error_review_status_publishes_fail_closed_zeros(
+    tmp_path: Path,
+) -> None:
+    lines: list[str] = []
+
+    host._collect_codex_error_review_metrics(lines, tmp_path / "missing.json")
+
+    assert lines == [
+        "jobseek_codex_daily_error_review_last_attempt_unixtime 0",
+        "jobseek_codex_daily_error_review_last_success_unixtime 0",
+        "jobseek_codex_daily_error_review_last_attempt_success 0",
+        "jobseek_codex_daily_error_review_run_in_progress 0",
+    ]
+
+
+def test_invalid_codex_error_review_status_fails_probe(tmp_path: Path) -> None:
+    path = tmp_path / "error-review-status.json"
+    path.write_text('{"last_attempt_success": 2}', encoding="utf-8")
+
+    with pytest.raises(host.ProbeError, match="last_attempt_success"):
+        host._collect_codex_error_review_metrics([], path)
 
 
 def test_typesense_process_limit_parser_requires_numeric_nofile() -> None:
@@ -389,6 +440,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
     groups = rules._load_groups(ROOT / "apps" / "crawler" / "alerts.yaml")
     assert {group["name"] for group in groups} == {
         "jobseek_hetzner_fleet",
+        "jobseek_operator_handoffs",
         "jobseek_postgresql_capacity",
         "jobseek_telemetry_delivery",
         "jobseek_typesense_reliability",
@@ -400,12 +452,17 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 19,
+        "jobseek_operator_handoffs": 3,
     }
     for group in groups:
         assert 0 < len(group["rules"]) <= rules.MAX_RULES_PER_GROUP
         for rule in group["rules"]:
             assert rule["labels"]["owner"] == "codex-error-review"
             assert rule["labels"]["route"] == "codex-daily"
+            if rule["labels"]["severity"] == "critical":
+                assert rule["labels"]["page"] == "production"
+                assert isinstance(rules._duration_signature(rule["for"]), int)
+                assert rules._duration_signature(rule["for"]) <= 3 * 60 * 1_000
             assert rule["annotations"]["runbook"].startswith(
                 "https://github.com/colophon-group/jobseek/"
             )
@@ -420,6 +477,69 @@ def test_rule_url_accepts_read_or_write_endpoint() -> None:
     )
     with pytest.raises(rules.RuleSyncError):
         rules._ruler_base("https://metrics.example/api")
+
+
+@pytest.mark.parametrize(
+    ("labels", "pending", "error"),
+    (
+        (
+            {"severity": "critical", "owner": "codex-error-review", "route": "codex-daily"},
+            "3m",
+            "page=production",
+        ),
+        (
+            {
+                "severity": "critical",
+                "owner": "codex-error-review",
+                "route": "codex-daily",
+                "page": "production",
+            },
+            "4m",
+            "exceeds three minutes",
+        ),
+        (
+            {
+                "severity": "critical",
+                "owner": "codex-error-review",
+                "route": "codex-daily",
+                "page": "production",
+            },
+            "invalid",
+            "valid pending duration",
+        ),
+    ),
+)
+def test_rule_source_rejects_unpageable_or_delayed_critical_alerts(
+    tmp_path: Path, labels: dict, pending: str, error: str
+) -> None:
+    path = tmp_path / "alerts.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "groups": [
+                    {
+                        "name": "test",
+                        "rules": [
+                            {
+                                "alert": "CriticalTest",
+                                "expr": "vector(1)",
+                                "for": pending,
+                                "labels": labels,
+                                "annotations": {
+                                    "runbook": "https://github.com/colophon-group/jobseek/test"
+                                },
+                            }
+                        ],
+                    }
+                ]
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(rules.RuleSyncError, match=error):
+        rules._load_groups(path)
 
 
 def test_rule_signature_normalizes_equivalent_prometheus_durations() -> None:

@@ -31,6 +31,7 @@ QUERIES = {
     "postgresql_checkpoint_metrics": ("count(jobseek_postgresql_checkpoint_write_seconds_total)"),
     "postgresql_query_latency": ("count(jobseek_postgresql_stats_query_duration_seconds)"),
     "typesense_ready": "count(jobseek_typesense_healthy == 1)",
+    "codex_review_series": ('count({__name__=~"jobseek_codex_daily_error_review_.*"})'),
     "alloy_series": "count(jobseek_alloy_ready)",
     "alloy_unready": "count(jobseek_alloy_ready == 0)",
     "alloy_rejections": "sum(jobseek_alloy_remote_write_rejections_recent)",
@@ -114,6 +115,8 @@ def validate_results(
         raise VerificationError("PostgreSQL statistics-query latency metric is missing")
     if _scalar(results, "typesense_ready") != 1:
         raise VerificationError("Typesense readiness metric is missing or unhealthy")
+    if _scalar(results, "codex_review_series") != 4:
+        raise VerificationError("Codex daily-review deadman metrics are incomplete")
     if _scalar(results, "alloy_series") != 4:
         raise VerificationError(
             "Alloy self-monitoring does not cover three host and one compose collectors"

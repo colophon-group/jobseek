@@ -7,6 +7,7 @@ After=network-online.target
 ConditionPathIsDirectory=/srv/jobseek-codex/repo
 ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py
 ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-error-review-bundle.py
+ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-routine-status.py
 
 [Service]
 Type=oneshot
@@ -25,8 +26,10 @@ ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n"
 
 ExecStartPre=+/usr/bin/install -d -m 0700 -o codex-runner -g codex-runner /srv/jobseek-codex/worktrees /srv/jobseek-codex/traces /srv/jobseek-codex/state /srv/jobseek-codex/logs
 ExecStartPre=+/usr/bin/install -d -m 0750 -o root -g codex-runner /srv/jobseek-codex/inputs /srv/jobseek-codex/inputs/error-review
+ExecStartPre=+/usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-routine-status.py begin
 ExecStartPre=+/usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-error-review-bundle.py --out-root /srv/jobseek-codex/inputs/error-review --group codex-runner
 ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine error-review
+ExecStopPost=+/usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-routine-status.py finish --service-result ${SERVICE_RESULT}
 
 TimeoutStartSec=8h
 Nice=10

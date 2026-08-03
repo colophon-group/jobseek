@@ -13,9 +13,11 @@
 #   - severity=high     -> urgent degradation or lost safety control
 #   - severity=medium   -> actionable but bounded operational debt
 #
-# Production alert state is consumed by the daily Hetzner Codex error review,
-# which deduplicates and creates/updates GitHub issues. There is intentionally
-# no phone/email receiver while that is the owner approved by #5922.
+# Production alert state is consumed by two routes. Every critical alert has
+# `page=production` for the independent Grafana Cloud email receiver, while
+# `route=codex-daily` remains on every alert so the daily Hetzner Codex review
+# can deduplicate context into GitHub issues. The always-firing deadman route
+# repeats daily and the scheduled synthetic test exercises firing + recovery.
 #
 # Each alert's `for:` is sized to debounce deploy-time flapping.
 # `runbook` annotations link to the operator playbook for the failure
@@ -35,17 +37,18 @@ groups:
       # scraper, so its absence directly maps to "scrape pipeline
       # broken" — which is exactly what we want to page on.
       - alert: NoMetricsFromCrawler
-        expr: absent(up{job="crawler"})
-        for: 5m
+        expr: absent_over_time(up{job="crawler"}[2m])
+        for: 1m
         labels:
           severity: critical
           service: crawler
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "No metrics from any crawler scrape target"
           description: |
-            No `up{job="crawler"}` samples for >5m. Either Alloy has
+            No `up{job="crawler"}` samples for three minutes. Either Alloy has
             stopped on the worker box, all containers exited, or
             remote_write to Grafana Cloud is failing. SSH to the box
             and check `docker ps`.
@@ -54,52 +57,56 @@ groups:
       # Exact expected-host expressions are deliberate: a grouped expression
       # cannot retain a label for a time series that has disappeared.
       - alert: CrawlerHostMetricsMissing
-        expr: absent_over_time(up{job="integrations/unix",instance="jobseek-crawler-browser",host_role="crawler"}[5m])
-        for: 5m
+        expr: absent_over_time(up{job="integrations/unix",instance="jobseek-crawler-browser",host_role="crawler"}[2m])
+        for: 1m
         labels:
           severity: critical
           service: crawler
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Crawler host metrics are missing"
-          description: "The crawler host-level Alloy stream has been absent for at least five minutes."
+          description: "The crawler host-level Alloy stream has been absent for three minutes."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
       - alert: PostgresqlHostMetricsMissing
-        expr: absent_over_time(up{job="integrations/unix",instance="jobseek-postgresql",host_role="postgresql"}[5m])
-        for: 5m
+        expr: absent_over_time(up{job="integrations/unix",instance="jobseek-postgresql",host_role="postgresql"}[2m])
+        for: 1m
         labels:
           severity: critical
           service: postgresql
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "PostgreSQL host metrics are missing"
-          description: "The PostgreSQL host-level Alloy stream has been absent for at least five minutes."
+          description: "The PostgreSQL host-level Alloy stream has been absent for three minutes."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
       - alert: TypesenseHostMetricsMissing
-        expr: absent_over_time(up{job="integrations/unix",instance="jobseek-typesense",host_role="typesense"}[5m])
-        for: 5m
+        expr: absent_over_time(up{job="integrations/unix",instance="jobseek-typesense",host_role="typesense"}[2m])
+        for: 1m
         labels:
           severity: critical
           service: typesense
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Typesense host metrics are missing"
-          description: "The Typesense host-level Alloy stream has been absent for at least five minutes."
+          description: "The Typesense host-level Alloy stream has been absent for three minutes."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
       - alert: HostObservabilitySamplerStale
         expr: time() - jobseek_host_observability_last_collect_unixtime > 180
-        for: 2m
+        for: 30s
         labels:
-          severity: high
+          severity: critical
           service: fleet-observability
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Host sampler stale on {{ $labels.instance }}"
           description: "The root-owned read-only sampler has not produced a fresh textfile for more than three minutes."
@@ -107,15 +114,16 @@ groups:
 
       - alert: HostObservabilityProbeFailed
         expr: jobseek_host_observability_probe_success == 0
-        for: 5m
+        for: 3m
         labels:
-          severity: high
+          severity: critical
           service: fleet-observability
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Host probe {{ $labels.probe }} failed on {{ $labels.instance }}"
-          description: "A required read-only host/service probe has failed for five minutes."
+          description: "A required read-only host/service probe has failed for three minutes."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
       - alert: RequiredHostUnitInactive
@@ -133,15 +141,16 @@ groups:
 
       - alert: RequiredContainerUnavailable
         expr: jobseek_container_running == 0
-        for: 5m
+        for: 3m
         labels:
           severity: critical
           service: fleet-runtime
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Required container {{ $labels.container }} is unavailable on {{ $labels.instance }}"
-          description: "A required crawler, PostgreSQL, Typesense, or Redis container has remained stopped for five minutes."
+          description: "A required crawler, PostgreSQL, Typesense, or Redis container has remained stopped for three minutes."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
       # Hard-outage prevention. Postgres halts when its data volume
@@ -153,12 +162,13 @@ groups:
           node_filesystem_avail_bytes{job="integrations/unix",mountpoint=~"/|/mnt/.*"}
             / node_filesystem_size_bytes{job="integrations/unix",mountpoint=~"/|/mnt/.*"}
             < 0.10
-        for: 15m
+        for: 3m
         labels:
           severity: critical
           service: fleet-storage
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Disk <10% free on {{ $labels.instance }} {{ $labels.mountpoint }}"
           description: |
@@ -173,12 +183,13 @@ groups:
           node_filesystem_files_free{job="integrations/unix",fstype!~"tmpfs|overlay"}
             / node_filesystem_files{job="integrations/unix",fstype!~"tmpfs|overlay"}
             < 0.10
-        for: 15m
+        for: 3m
         labels:
           severity: critical
           service: fleet-storage
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Inodes <10% free on {{ $labels.instance }} {{ $labels.mountpoint }}"
           description: "The filesystem is close to inode exhaustion even if byte capacity remains."
@@ -186,12 +197,13 @@ groups:
 
       - alert: DataBackupFailed
         expr: jobseek_backup_last_attempt_success == 0
-        for: 15m
+        for: 3m
         labels:
           severity: critical
           service: data-backup
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.service }} backup failed on {{ $labels.instance }}"
           description: "The latest application-data backup attempt failed. The native repository is now the only recovery path; investigate immediately and preserve existing artifacts."
@@ -202,12 +214,13 @@ groups:
           (time() - jobseek_backup_last_success_unixtime{service="web-postgresql"} > 9 * 60 * 60)
           or
           (time() - jobseek_backup_last_success_unixtime{service!="web-postgresql"} > 36 * 60 * 60)
-        for: 15m
+        for: 3m
         labels:
           severity: critical
           service: data-backup
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.service }} backup is stale on {{ $labels.instance }}"
           description: "No successful application-data backup has completed inside its recovery window (9 hours for web PostgreSQL; 36 hours for daily data services)."
@@ -221,6 +234,7 @@ groups:
           service: postgresql
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "PostgreSQL readiness failed"
           description: "The local PostgreSQL server is not accepting connections."
@@ -247,12 +261,13 @@ groups:
             or
           jobseek_postgresql_shared_memory_available_bytes
             / jobseek_postgresql_shared_memory_capacity_bytes < 0.15
-        for: 5m
+        for: 3m
         labels:
           severity: critical
           service: postgresql
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "PostgreSQL shared-memory contract is unsafe"
           description: |
@@ -263,12 +278,13 @@ groups:
 
       - alert: PostgreSQLArchiveFailure
         expr: increase(jobseek_postgresql_archive_failed_total[1h]) > 0
-        for: 5m
+        for: 3m
         labels:
           severity: critical
           service: postgresql
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "PostgreSQL WAL archive failure"
           description: "pg_stat_archiver recorded a new WAL archive failure in the last hour."
@@ -282,6 +298,7 @@ groups:
           service: typesense
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Typesense health check failed"
           description: "The local Typesense health endpoint no longer reports ok."
@@ -289,12 +306,13 @@ groups:
 
       - alert: TypesenseTunnelUnavailable
         expr: jobseek_host_unit_active{host_role="typesense",unit="cloudflared.service"} == 0
-        for: 5m
+        for: 3m
         labels:
           severity: critical
           service: typesense-tunnel
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Typesense Cloudflare tunnel is inactive"
           description: "The public Typesense read path is unavailable even if the local process is healthy."
@@ -327,6 +345,7 @@ groups:
           service: typesense
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Typesense file-descriptor limit is below the managed floor"
           description: "The live Typesense process has regressed below the required 65,536 soft/hard nofile limit."
@@ -381,6 +400,7 @@ groups:
           service: typesense
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Typesense exhausted its file descriptors"
           description: "Typesense logged `Too many open files` during the last five minutes. Preserve first-cause logs before restarting."
@@ -394,6 +414,7 @@ groups:
           service: typesense
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Typesense Raft node has no leader"
           description: "The single-node Raft group reported no leader or state ERROR during the last five minutes."
@@ -407,6 +428,7 @@ groups:
           service: typesense
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Typesense Raft snapshot failed"
           description: "Typesense logged a snapshot writer or timed-snapshot failure during the last five minutes."
@@ -549,12 +571,13 @@ groups:
               )
             ) < 0
           )
-        for: 30m
+        for: 3m
         labels:
           severity: critical
           service: postgresql-backup
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "PostgreSQL backup repository is consuming its safety margin"
           description: |
@@ -567,12 +590,13 @@ groups:
         expr: |
           jobseek_postgresql_emergency_reserve_bytes
             < jobseek_postgresql_emergency_reserve_target_bytes
-        for: 5m
+        for: 3m
         labels:
           severity: critical
           service: postgresql
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "PostgreSQL recovery reserve is missing or under-allocated"
           description: |
@@ -593,6 +617,7 @@ groups:
           service: fleet-observability
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.collector }} Alloy is unready on {{ $labels.instance }}"
           description: "The independent root sampler cannot reach this Alloy collector's loopback readiness endpoint."
@@ -602,10 +627,11 @@ groups:
         expr: jobseek_alloy_remote_write_rejections_recent > 0
         for: 2m
         labels:
-          severity: high
+          severity: critical
           service: fleet-observability
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Grafana rejected {{ $labels.collector }} Alloy writes on {{ $labels.instance }}"
           description: "Alloy logged at least one HTTP 429 remote-write response in the rolling ten-minute sampler window."
@@ -613,12 +639,13 @@ groups:
 
       - alert: AlloyRemoteWriteStale
         expr: time() - jobseek_alloy_remote_write_highest_sent_timestamp_seconds > 180
-        for: 5m
+        for: 30s
         labels:
-          severity: high
+          severity: critical
           service: fleet-observability
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.collector }} Alloy remote write is stale on {{ $labels.instance }}"
           description: "The collector has not confirmed sending a Prometheus sample for more than three minutes."
@@ -626,12 +653,13 @@ groups:
 
       - alert: AlloyRemoteWriteBacklog
         expr: jobseek_alloy_remote_write_samples_pending > 3000
-        for: 5m
+        for: 3m
         labels:
-          severity: high
+          severity: critical
           service: fleet-observability
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.collector }} Alloy queue is near capacity on {{ $labels.instance }}"
           description: "More than 3,000 samples are pending in the bounded 4,000-sample remote-write queue."
@@ -641,10 +669,11 @@ groups:
         expr: increase(jobseek_alloy_remote_write_samples_failed_total[10m]) + increase(jobseek_alloy_remote_write_samples_dropped_total[10m]) > 0
         for: 2m
         labels:
-          severity: high
+          severity: critical
           service: fleet-observability
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.collector }} Alloy lost metrics on {{ $labels.instance }}"
           description: "The collector recorded failed or dropped Prometheus samples during the last ten minutes."
@@ -654,10 +683,11 @@ groups:
         expr: increase(jobseek_alloy_loki_dropped_entries_total[10m]) > 0
         for: 2m
         labels:
-          severity: high
+          severity: critical
           service: fleet-observability
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.collector }} Alloy dropped logs on {{ $labels.instance }}"
           description: "The collector recorded dropped Loki entries during the last ten minutes."
@@ -684,6 +714,7 @@ groups:
           service: fleet-observability
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Crawler Compose Alloy restarted or was OOM-killed"
           description: "The independent host sampler observed an Alloy OOM flag or a restart-count change."
@@ -711,16 +742,17 @@ groups:
       # alloy.river in the same PR as this alert.
       - alert: RedisMemoryPressure
         expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
-        for: 10m
+        for: 3m
         labels:
           severity: critical
           service: crawler
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Redis memory >90% on crawler box"
           description: |
-            Redis memory usage above 90% of `maxmemory` for >10m.
+            Redis memory usage above 90% of `maxmemory` for >5m.
             Policy is `noeviction`, so writes will stall when full.
             Investigate queue backlog; consider `crawler sync` to
             reseed if state is stale, or scale `maxmemory` up.
@@ -742,12 +774,13 @@ groups:
       # worker_id label is the stable identity within a container.
       - alert: WorkerStuck
         expr: time() - max by (worker_id) (crawler_worker_heartbeat_timestamp_seconds) > 600
-        for: 5m
+        for: 3m
         labels:
           severity: critical
           service: crawler
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "Crawler worker {{ $labels.worker_id }} heartbeat stale for >10 min"
           description: |
@@ -933,12 +966,13 @@ groups:
       # neither reset the schedule nor erase the last outcome.
       - alert: CrossStoreReconciliationSchemaMissing
         expr: jobseek_cross_store_reconciliation_schema_ready != 1
-        for: 15m
+        for: 3m
         labels:
-          severity: high
+          severity: critical
           service: cross-store-reconciliation
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "The durable reconciliation schema is unavailable"
           description: "The PostgreSQL host is healthy but the reconciliation state table is absent; verify the crawler Alembic deployment before running repairs."
@@ -949,12 +983,13 @@ groups:
           jobseek_cross_store_reconciliation_last_attempt_unixtime > 0
             and on (target)
           jobseek_cross_store_reconciliation_last_attempt_success == 0
-        for: 15m
+        for: 3m
         labels:
-          severity: high
+          severity: critical
           service: cross-store-reconciliation
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.target }} reconciliation failed"
           description: |
@@ -968,12 +1003,13 @@ groups:
           absent(jobseek_cross_store_reconciliation_deployed_revision_available)
           or
           jobseek_cross_store_reconciliation_deployed_revision_available != 1
-        for: 5m
+        for: 3m
         labels:
-          severity: high
+          severity: critical
           service: cross-store-reconciliation
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "The crawler host cannot read its deployed reconciliation revision"
           description: "The immutable reconciliation wrapper revision is missing, corrupt, or inaccessible to the deploy service account; hourly parity checks cannot start."
@@ -984,12 +1020,13 @@ groups:
           jobseek_cross_store_reconciliation_last_attempt_unixtime == 0
           or
           time() - jobseek_cross_store_reconciliation_last_attempt_unixtime > 9000
-        for: 15m
+        for: 3m
         labels:
-          severity: high
+          severity: critical
           service: cross-store-reconciliation
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.target }} reconciliation has not attempted an hourly slice"
           description: "No reconciliation attempt has completed within the 2.5-hour timer, jitter, lock-wait, and runtime budget. Inspect the crawler-host timer and deployment revision before changing durable cursors."
@@ -1016,12 +1053,13 @@ groups:
               and on ()
             jobseek_cross_store_reconciliation_schema_ready == 1
           )
-        for: 2h
+        for: 3m
         labels:
-          severity: high
+          severity: critical
           service: cross-store-reconciliation
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.target }} reconciliation has no fresh full-cycle success"
           description: "No complete verified reconciliation cycle has succeeded within the 30-hour freshness budget."
@@ -1029,12 +1067,13 @@ groups:
 
       - alert: CrossStoreReconciliationDrift
         expr: jobseek_cross_store_reconciliation_last_unresolved > 0
-        for: 15m
+        for: 3m
         labels:
-          severity: high
+          severity: critical
           service: cross-store-reconciliation
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "{{ $labels.target }} reconciliation retains unresolved drift"
           description: "A deterministic partition found downstream active-state or document-set drift that was not verified as repaired."
@@ -1042,12 +1081,13 @@ groups:
 
       - alert: CrossStoreReconciliationRunStuck
         expr: jobseek_cross_store_reconciliation_stuck_runs > 0
-        for: 15m
+        for: 3m
         labels:
-          severity: high
+          severity: critical
           service: cross-store-reconciliation
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
           summary: "A reconciliation run has remained unfinished for over two hours"
           description: "The durable run ledger contains a stale running row; inspect the host timer, container, and database advisory lock before clearing anything."
@@ -1142,19 +1182,20 @@ groups:
           )
           and
           sum(rate(crawler_monitor_jobs_discovered_total{action="gone"}[30m])) > 5
-        for: 30m
+        for: 3m
         labels:
           severity: critical
           service: crawler
           owner: codex-error-review
           route: codex-daily
+          page: production
         annotations:
-          summary: "Crawler delisting rate >3× 7d median for 30m"
+          summary: "Crawler rolling 30m delisting rate is >3× its 7d median"
           description: |
             Fleet-wide
             ``crawler_monitor_jobs_discovered_total{action="gone"}`` rate
             is above 3× the 7-day rolling median *and* above 5/s for
-            >30 minutes. The 2026-04-26 NHS spike (#2722) is the
+            three minutes. The 2026-04-26 NHS spike (#2722) is the
             failure mode this catches: a paginating monitor silently
             truncates URL discovery and ``_MARK_GONE_BY_TIMESTAMP``
             tombstones live postings.
@@ -1194,3 +1235,59 @@ groups:
             the underlying monitor bug — usually a paginating monitor
             silently truncating (#2722) — needs fixing.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/14-error-review-routine.md
+
+  - name: jobseek_operator_handoffs
+    interval: 30s
+    rules:
+      - alert: CodexDailyErrorReviewFailed
+        expr: |
+          jobseek_codex_daily_error_review_last_attempt_unixtime > 0
+            and on (instance)
+          jobseek_codex_daily_error_review_last_attempt_success == 0
+            and on (instance)
+          jobseek_codex_daily_error_review_run_in_progress == 0
+        for: 3m
+        labels:
+          severity: critical
+          service: codex-error-review
+          owner: codex-error-review
+          route: codex-daily
+          page: production
+        annotations:
+          summary: "The daily Codex error review failed"
+          description: "The crawler-host routine completed unsuccessfully. Independent paging remains active; inspect the unit journal and preserve its redacted evidence bundle."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#independent-production-paging
+
+      - alert: CodexDailyErrorReviewStale
+        expr: |
+          jobseek_codex_daily_error_review_last_success_unixtime == 0
+          or
+          time() - jobseek_codex_daily_error_review_last_success_unixtime > 36 * 60 * 60
+        for: 3m
+        labels:
+          severity: critical
+          service: codex-error-review
+          owner: codex-error-review
+          route: codex-daily
+          page: production
+        annotations:
+          summary: "The daily Codex error review has no fresh success"
+          description: "No successful daily review has completed within 36 hours. Grafana Cloud paging is independent of the routine and must remain the primary urgent handoff."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#independent-production-paging
+
+      - alert: CodexDailyErrorReviewRunStuck
+        expr: |
+          jobseek_codex_daily_error_review_run_in_progress == 1
+            and on (instance)
+          time() - jobseek_codex_daily_error_review_last_attempt_unixtime > 3 * 60 * 60
+        for: 3m
+        labels:
+          severity: critical
+          service: codex-error-review
+          owner: codex-error-review
+          route: codex-daily
+          page: production
+        annotations:
+          summary: "The daily Codex error review is stuck"
+          description: "The routine has remained in progress beyond its normal runtime budget. Inspect lock ownership and the unit journal without disabling independent paging."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#independent-production-paging
