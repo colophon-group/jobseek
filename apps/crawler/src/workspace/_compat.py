@@ -11,6 +11,8 @@ with the actual registries.
 
 from __future__ import annotations
 
+import re
+
 _RICH_MONITORS: frozenset[str] = frozenset(
     {
         "accenture",
@@ -32,6 +34,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "lever",
         "mokahr",
         "oracle_hcm",
+        "paycom",
         "paylocity",
         "pinpoint",
         "recruitee",
@@ -47,14 +50,16 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
-# ``oracle_hcm``, ``bamboohr``, and ``paylocity``, which auto-resolve to
-# enrichment scrapers (BambooHR uses the generic API scraper preset).
+# ``oracle_hcm``, ``bamboohr``, ``paycom``, and ``paylocity``, which
+# auto-resolve to enrichment scrapers (BambooHR uses a generic API preset;
+# Paycom reuses its native bootstrap in a dedicated detail scraper).
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
 # rich boards (``scraper_type`` unset in metadata) are treated the same as
 # explicit ``scraper_type = "skip"`` boards. See issue 01-rich-monitor-scheduling.
 _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
     "bamboohr",
     "oracle_hcm",
+    "paycom",
     "paylocity",
 }
 
@@ -110,6 +115,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "nextdata",
         "notion",
         "oracle_hcm",
+        "paycom",
         "paylocity",
         "pdf",
         "rippling",
@@ -162,6 +168,12 @@ def detect_ats_from_url(url: str) -> str | None:
             "/jobs/embed2.php",
         }:
             return "bamboohr"
+    if host in {"paycomonline.net", "www.paycomonline.net"} and re.search(
+        r"^/v4/ats/web\.php/portal/[0-9a-f]{32}/(?:career-page|jobs(?:/|$))",
+        parsed.path,
+        re.IGNORECASE,
+    ):
+        return "paycom"
     if host.endswith(".careers.hibob.com"):
         return "hibob"
     if host.endswith(".eightfold.ai"):
@@ -321,6 +333,21 @@ def auto_scraper_type(
                     "employment_type",
                     "job_location_type",
                     "date_posted",
+                ],
+            },
+        )
+    if monitor_type == "paycom":
+        return (
+            "paycom",
+            {
+                "enrich": [
+                    "title",
+                    "description",
+                    "locations",
+                    "employment_type",
+                    "job_location_type",
+                    "date_posted",
+                    "base_salary",
                 ],
             },
         )

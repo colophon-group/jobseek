@@ -2007,6 +2007,21 @@ class TestSelectMonitorNaming:
         assert selected["scraper_type"] == expected[0] == "api_sniffer"
         assert selected["scraper_config"] == expected[1]
 
+    def test_paycom_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """Paycom selection carries its native detail API preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "paycom"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["paycom"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("paycom")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "paycom"
+        assert selected["scraper_config"] == expected[1]
+
     def test_reselect_monitor_preserves_explicit_empty_scraper_config(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
         board = load_board("test", "careers")
