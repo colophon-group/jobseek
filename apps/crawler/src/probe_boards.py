@@ -40,6 +40,12 @@ from src.shared.dayforce import (
 )
 from src.shared.gupy import normalize_gupy_tenant
 from src.shared.http import DEFAULT_ACCEPT, DEFAULT_USER_AGENT
+from src.shared.keka import (
+    extract_keka_identifier,
+    is_keka_forbidden_redirect,
+    keka_board_from_metadata,
+    keka_board_from_url,
+)
 from src.shared.recruiterbox import (
     recruiterbox_board_from_metadata,
     recruiterbox_board_from_url,
@@ -667,6 +673,80 @@ async def _probe_recruiterbox(row: dict, client: httpx.AsyncClient) -> ProbeResu
     return _classify(row, "recruiterbox", url, resp)
 
 
+async def _probe_keka(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = keka_board_from_metadata(cfg)
+    direct = keka_board_from_url(row["board_url"])
+    if configured is None and any(key in cfg for key in ("tenant", "portal", "identifier")):
+        return ProbeResult(
+            row["board_slug"],
+            "keka",
+            row["board_url"],
+            "warn",
+            "invalid Keka portal identity in monitor_config",
+        )
+    if (
+        configured is not None
+        and direct is not None
+        and (configured.tenant != direct.tenant or configured.portal != direct.portal)
+    ):
+        return ProbeResult(
+            row["board_slug"],
+            "keka",
+            row["board_url"],
+            "fail",
+            "configured Keka portal does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "keka",
+            row["board_url"],
+            "warn",
+            "no valid Keka tenant/portal in monitor_config or URL",
+        )
+
+    url = board.listing_url()
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response):
+        if resp.status_code in {404, 410}:
+            return ProbeResult(row["board_slug"], "keka", url, "fail", "portal not found")
+        if resp.is_redirect and is_keka_forbidden_redirect(board, resp.headers.get("location")):
+            return ProbeResult(
+                row["board_slug"],
+                "keka",
+                url,
+                "fail",
+                "Keka portal is forbidden",
+            )
+        if resp.status_code == 200:
+            identifier = extract_keka_identifier(resp.text)
+            if identifier is None:
+                return ProbeResult(
+                    row["board_slug"],
+                    "keka",
+                    url,
+                    "warn",
+                    "Keka career-portal identity missing",
+                )
+            if board.identifier is not None and board.identifier != identifier:
+                return ProbeResult(
+                    row["board_slug"],
+                    "keka",
+                    url,
+                    "fail",
+                    "Keka live portal identity changed",
+                )
+            return ProbeResult(row["board_slug"], "keka", url, "ok", "200 (identity verified)")
+    return _classify(row, "keka", url, resp)
+
+
 async def _probe_beisen(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     cfg: dict[str, object] = {}
     if row["monitor_config"]:
@@ -843,6 +923,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "hrmos": _probe_hrmos,
     "recruitee": _probe_recruitee,
     "recruiterbox": _probe_recruiterbox,
+    "keka": _probe_keka,
     "rippling": _probe_rippling,
     "smartrecruiters": _probe_smartrecruiters,
     "workday": _probe_workday,

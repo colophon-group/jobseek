@@ -261,6 +261,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "bite",
         "breezy",
         "join",
+        "keka",
         "softgarden",
         "traffit",
         "mokahr",
@@ -282,6 +283,7 @@ _KNOWN_ATS_DOMAIN_SUFFIXES = (
     ".zhiye.com",
     ".recruiterbox.com",
     ".hire.trakstar.com",
+    ".keka.com",
 )
 
 
