@@ -12,6 +12,7 @@ import html
 import json
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 import structlog
@@ -37,7 +38,9 @@ from src.shared.api_sniff import (
 )
 from src.shared.http_retry import PaginationFetchError
 from src.shared.tdm import TDMReservedError
-from src.shared.truncation import truncated_rich_result
+
+if TYPE_CHECKING:
+    from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
 
@@ -226,13 +229,24 @@ async def _fetch_all(
     return list(unique_jobs.values()), truncated
 
 
+def _hybrid_result(jobs: list[DiscoveredJob], *, truncated: bool) -> MonitorResult:
+    from src.core.monitor import MonitorResult
+
+    return MonitorResult(
+        urls={job.url for job in jobs},
+        jobs_by_url={job.url: job for job in jobs},
+        hybrid=True,
+        truncated=truncated,
+    )
+
+
 async def discover(board: dict, client: httpx.AsyncClient, pw=None):
-    """Discover and map all public ADP requisition listing pages."""
+    """Discover partial listing fields without replacing detail enrichment."""
     _ = pw
     key = _board_key(board)
     jobs, truncated = await _fetch_all(key, client)
     log.info("adp.discovered", cid=key.cid, cc_id=key.cc_id, jobs=len(jobs), truncated=truncated)
-    return truncated_rich_result(jobs) if truncated else jobs
+    return _hybrid_result(jobs, truncated=truncated)
 
 
 async def _probe_listing_url(

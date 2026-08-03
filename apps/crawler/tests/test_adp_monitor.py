@@ -147,9 +147,14 @@ class TestMonitor:
             return httpx.Response(200, json=_payload(rows, total=25, start=start), request=request)
 
         async with _client(handler) as client:
-            jobs = await discover({"board_url": BOARD_URL}, client)
+            result = await discover({"board_url": BOARD_URL}, client)
 
         assert starts == [1, 21]
+        assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
+        assert result.truncated is False
+        assert result.jobs_by_url is not None
+        jobs = list(result.jobs_by_url.values())
         assert len(jobs) == 25
         first = jobs[0]
         assert first.url == BOARD.job_url("9200000000001_1")
@@ -169,9 +174,13 @@ class TestMonitor:
             return httpx.Response(200, json=_payload([], total=0, start=1), request=request)
 
         async with _client(handler) as client:
-            jobs = await discover({"board_url": BOARD_URL}, client)
+            result = await discover({"board_url": BOARD_URL}, client)
 
-        assert jobs == []
+        assert isinstance(result, MonitorResult)
+        assert result.urls == set()
+        assert result.jobs_by_url == {}
+        assert result.hybrid is True
+        assert result.truncated is False
         assert calls == 1
 
     @pytest.mark.parametrize("status", [429, 503])
@@ -194,8 +203,33 @@ class TestMonitor:
 
         monkeypatch.setattr("src.shared.api_sniff.asyncio.sleep", no_sleep)
         async with _client(handler) as client:
-            assert await discover({"board_url": BOARD_URL}, client) == []
+            result = await discover({"board_url": BOARD_URL}, client)
+        assert isinstance(result, MonitorResult)
+        assert result.urls == set()
+        assert result.hybrid is True
         assert calls == 3
+
+    async def test_partial_listing_row_is_hybrid_to_preserve_detail_enrichment(self):
+        """Touched rows must not null scraper-derived salary/location/work type."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            row = _raw_job(1, workLevelCode=None, requisitionLocations=None)
+            return httpx.Response(
+                200,
+                json=_payload([row], total=1, start=1),
+                request=request,
+            )
+
+        async with _client(handler) as client:
+            result = await discover({"board_url": BOARD_URL}, client)
+
+        assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
+        assert result.truncated is False
+        assert result.jobs_by_url is not None
+        job = next(iter(result.jobs_by_url.values()))
+        assert job.locations is None
+        assert job.employment_type is None
 
     async def test_authoritative_gone_status(self):
         def handler(request: httpx.Request) -> httpx.Response:
