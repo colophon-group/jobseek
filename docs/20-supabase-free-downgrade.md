@@ -82,3 +82,36 @@ jobs and zero missing required source fields. Salary is absent for 229 rows and
 therefore remains intentionally nullable. Migration 0084 installs the old-app
 compatibility trigger before its backfill and fails unless every required
 snapshot is complete and the outbound posting FK still exists.
+
+## Free-plan guardrails
+
+Supabase's current platform documentation was rechecked on 2026-08-03. The
+Free plan allows 500 MB of database data per project and 1 GB of underlying
+disk; crossing 500 MB can put the database into read-only mode. The destructive
+cutover therefore requires `pg_database_size(current_database()) < 400 MB`,
+leaving at least 20 percent headroom rather than treating 500 MB as a target.
+The organization must also remain within the two-active-Free-project limit.
+
+Free projects do not receive Supabase automatic backups and may be paused after
+seven days of low database activity. The encrypted six-hour logical backup,
+restore drill, freshness alert, and a post-downgrade write canary are therefore
+hard prerequisites. The 24-hour and 7-day checks must include database
+writability, backup freshness, and project status; ordinary production traffic
+is expected to keep the project active, but that is monitored rather than
+assumed.
+
+The organization downgrade is immediate and owner-controlled under **Billing →
+Subscription Plan → Change subscription plan**. Before confirming it, record
+the current billing cycle, active project count, add-ons, database size, and
+latest successful restore evidence. Supabase credits unused prepaid plan time
+but charges accrued overages at the plan change, and average daily usage can
+remain elevated until the billing cycle resets. Record the resulting Free-plan
+state and invoice/credit outcome without copying payment details into the
+repository or issue.
+
+Authoritative references:
+
+- [Database and disk size](https://supabase.com/docs/guides/platform/database-size)
+- [Subscription management](https://supabase.com/docs/guides/platform/manage-your-subscription)
+- [Free-project pausing](https://supabase.com/docs/guides/platform/free-project-pausing)
+- [Billing and plan quotas](https://supabase.com/docs/guides/platform/billing-on-supabase)
