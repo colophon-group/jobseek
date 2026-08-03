@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import structlog
@@ -43,7 +43,8 @@ _PAGE_PATTERNS = [
 ]
 _IGNORE_TENANTS = frozenset({"api", "app", "help", "static", "www"})
 _LOCATION_TYPES = {"0": "onsite", "1": "remote", "2": "hybrid"}
-_TERMINAL_STATUSES = frozenset({301, 302, 303, 307, 308, 404, 410})
+_GONE_STATUSES = frozenset({404, 410})
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 
 
 def _normalize_tenant(value: object) -> str | None:
@@ -134,7 +135,7 @@ def _parse_job(raw: dict, tenant: str) -> DiscoveredJob | None:
     if isinstance(job_id, bool) or not isinstance(job_id, (str, int)):
         return None
     job_id = str(job_id).strip()
-    if not job_id:
+    if not job_id.isdigit():
         return None
 
     metadata: dict = {"job_id": job_id}
@@ -165,6 +166,13 @@ async def _fetch_listing(tenant: str, client: httpx.AsyncClient) -> dict:
         base_delay=0.5,
         log_event="bamboohr.list_backoff",
     )
+
+
+def _is_retirement_redirect(exc: PaginationFetchError) -> bool:
+    if exc.last_status not in _REDIRECT_STATUSES or not exc.last_location:
+        return False
+    host = (urlparse(urljoin(exc.url, exc.last_location)).hostname or "").lower()
+    return host in {"bamboohr.com", "www.bamboohr.com"}
 
 
 def _parse_listing(
@@ -242,7 +250,7 @@ async def discover(
     try:
         payload = await _fetch_listing(tenant, client)
     except PaginationFetchError as exc:
-        if exc.last_status in _TERMINAL_STATUSES:
+        if exc.last_status in _GONE_STATUSES or _is_retirement_redirect(exc):
             raise BoardGoneError(
                 f"BambooHR tenant {tenant!r} no longer exists",
                 url=_list_url(tenant),

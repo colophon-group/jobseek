@@ -14,6 +14,7 @@ from src.core.monitors.bamboohr import (
 from src.core.scrapers import _REGISTRY as scraper_registry
 from src.core.scrapers.api_sniffer import scrape as api_sniffer_scrape
 from src.redis_queue import _KNOWN_ATS_DOMAINS
+from src.shared.http_retry import PaginationFetchError
 from src.workspace._compat import auto_scraper_type, auto_skip_crawler_types, detect_ats_from_url
 from src.workspace.career_discover import _scan_ats_urls_in_html
 from src.workspace.commands.crawl import _MONITOR_CONFIG_HINTS, _SCRAPER_CONFIG_HINTS
@@ -193,20 +194,48 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=transport) as client:
             assert await discover({"board_url": BOARD_URL}, client) == []
 
-    @pytest.mark.parametrize("status", [301, 302, 303, 307, 308, 404, 410])
+    @pytest.mark.parametrize("status", [404, 410])
     async def test_terminal_board_is_gone(self, status: int):
         def handler(request: httpx.Request) -> httpx.Response:
-            headers = {"location": "https://www.bamboohr.com/"} if status < 400 else {}
-            return httpx.Response(status, json={}, headers=headers, request=request)
+            return httpx.Response(status, json={}, request=request)
 
         transport = httpx.MockTransport(handler)
         async with httpx.AsyncClient(transport=transport) as client:
             with pytest.raises(BoardGoneError, match="no longer exists"):
                 await discover({"board_url": BOARD_URL}, client)
 
+    async def test_marketing_redirect_is_gone_without_following(self):
+        requests: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(str(request.url))
+            return httpx.Response(
+                302,
+                headers={"location": "https://www.bamboohr.com/careers/"},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(BoardGoneError, match="no longer exists"):
+                await discover({"board_url": BOARD_URL}, client)
+        assert requests == ["https://acme.bamboohr.com/careers/list"]
+
+    async def test_unknown_redirect_remains_retryable_failure(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                307,
+                headers={"location": "https://status.example.net/maintenance"},
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover({"board_url": BOARD_URL}, client)
+        assert exc_info.value.last_status == 307
+        assert exc_info.value.last_location == "https://status.example.net/maintenance"
+
     async def test_transient_failure_propagates(self, monkeypatch: pytest.MonkeyPatch):
         from src.core.monitors import bamboohr
-        from src.shared.http_retry import PaginationFetchError
 
         async def fail(_tenant: str, _client: httpx.AsyncClient):
             raise PaginationFetchError(
@@ -279,6 +308,20 @@ class TestMonitor:
             lambda request: httpx.Response(
                 200,
                 json=_payload([JOBS[0], {"jobOpeningName": "Missing ID"}]),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover({"board_url": BOARD_URL}, client)
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {"https://acme.bamboohr.com/careers/347"}
+
+    async def test_nonnumeric_id_suppresses_tombstoning(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json=_payload([JOBS[0], {"id": "corrupt", "jobOpeningName": "Bad ID"}]),
                 request=request,
             )
         )

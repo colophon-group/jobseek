@@ -193,6 +193,31 @@ class TestProbeRow:
         assert result.status == "fail"
         assert "404" in result.message
 
+    async def test_bamboohr_retirement_redirect_is_not_followed(self):
+        row = _row(
+            board_slug="acme-bamboohr",
+            board_url="https://acme.bamboohr.com/careers",
+            monitor_type="bamboohr",
+            monitor_config="",
+        )
+        requests: list[str] = []
+
+        def handler(request):
+            requests.append(str(request.url))
+            return httpx.Response(
+                302,
+                headers={"location": "https://www.bamboohr.com/careers/"},
+                request=request,
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport, follow_redirects=True) as client:
+            result = await probe_row(row, client)
+
+        assert result.status == "fail"
+        assert "marketing site" in result.message
+        assert requests == ["https://acme.bamboohr.com/careers/list"]
+
     async def test_recruitee_uses_host_from_url(self):
         row = _row(
             board_slug="acme-recruitee",

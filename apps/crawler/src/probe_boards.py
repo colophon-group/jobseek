@@ -16,7 +16,7 @@ import json
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -179,7 +179,18 @@ async def _probe_bamboohr(row: dict, client: httpx.AsyncClient) -> ProbeResult:
             "no tenant in monitor_config or BambooHR URL",
         )
     url = f"https://{tenant}.bamboohr.com/careers/list"
-    resp = await _retry(lambda: _get(client, url))
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response) and resp.is_redirect:
+        location = resp.headers.get("location", "")
+        redirect_host = (urlparse(urljoin(url, location)).hostname or "").lower()
+        if redirect_host in {"bamboohr.com", "www.bamboohr.com"}:
+            return ProbeResult(
+                row["board_slug"],
+                "bamboohr",
+                url,
+                "fail",
+                "redirected to BambooHR marketing site",
+            )
     return _classify(row, "bamboohr", url, resp)
 
 
