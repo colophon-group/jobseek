@@ -294,6 +294,46 @@ class TestModernMonitor:
                 await discover({"board_url": ROOT_URL}, client)
         assert exc_info.value.last_status == 302
 
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("portal_id", "33333333-3333-4333-8333-333333333333"),
+            ("tenant_id", 456),
+        ],
+    )
+    async def test_configured_identity_must_match_live_portal(self, field: str, value: object):
+        metadata = {
+            "tenant": TENANT,
+            "variant": "modern",
+            "portal_id": PORTAL_ID,
+            "tenant_id": 123,
+        }
+        metadata[field] = value
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_bootstrap(), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="live portal identity changed"):
+                await discover({"board_url": MODERN_URL, "metadata": metadata}, client)
+
+    async def test_configured_tenant_must_match_board_url(self):
+        metadata = {
+            "tenant": TENANT,
+            "variant": "modern",
+            "portal_id": PORTAL_ID,
+            "tenant_id": 123,
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise AssertionError(f"unexpected request to {request.url}")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="does not match board URL tenant"):
+                await discover(
+                    {"board_url": "https://other-tenant.zhiye.com/jobs", "metadata": metadata},
+                    client,
+                )
+
 
 class TestLegacyMonitor:
     @pytest.fixture
@@ -370,6 +410,45 @@ class TestLegacyMonitor:
             )
         assert result.truncated is True
         assert result.urls == {f"{ROOT_URL}zpdetail/101"}
+
+    @pytest.mark.parametrize("status", [404, 410])
+    async def test_terminal_first_listing_is_board_gone(
+        self,
+        standard_config: dict,
+        status: int,
+    ):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if str(request.url) == ROOT_URL:
+                return httpx.Response(200, text=_legacy_page(), request=request)
+            return httpx.Response(status, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(BoardGoneError):
+                await discover(
+                    {"board_url": LEGACY_URL, "metadata": standard_config},
+                    client,
+                )
+
+    @pytest.mark.parametrize("status", [404, 410])
+    async def test_terminal_child_page_is_not_board_gone(
+        self,
+        standard_config: dict,
+        status: int,
+    ):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if str(request.url) == ROOT_URL:
+                return httpx.Response(200, text=_legacy_page(), request=request)
+            if request.url.params.get("PageIndex") is None:
+                return httpx.Response(200, text=_legacy_page(101, page_max=2), request=request)
+            return httpx.Response(status, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(
+                    {"board_url": LEGACY_URL, "metadata": standard_config},
+                    client,
+                )
+        assert exc_info.value.last_status == status
 
 
 class TestWsAndOps:

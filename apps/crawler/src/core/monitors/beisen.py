@@ -332,7 +332,12 @@ def _legacy_record_total(page: str) -> int | None:
     return int(match.group(1).replace(",", "")) if match else None
 
 
-async def _fetch_html(url: str, client: httpx.AsyncClient) -> str:
+async def _fetch_html(
+    url: str,
+    client: httpx.AsyncClient,
+    *,
+    board_gone_on_terminal: bool = False,
+) -> str:
     try:
         page = await fetch_text_page_with_retry(
             client,
@@ -345,7 +350,7 @@ async def _fetch_html(url: str, client: httpx.AsyncClient) -> str:
             log_event="beisen.page_backoff",
         )
     except PaginationFetchError as exc:
-        if exc.last_status in _GONE_STATUSES:
+        if board_gone_on_terminal and exc.last_status in _GONE_STATUSES:
             raise BoardGoneError("Beisen board no longer exists", url=url) from exc
         raise
     if page is None:
@@ -356,7 +361,7 @@ async def _fetch_html(url: str, client: httpx.AsyncClient) -> str:
 
 async def _bootstrap(tenant: str, client: httpx.AsyncClient) -> tuple[str, BeisenBoard | None]:
     url = f"https://{tenant}.zhiye.com/"
-    page = await _fetch_html(url, client)
+    page = await _fetch_html(url, client, board_gone_on_terminal=True)
     if len(page) > MAX_HTML_CHARS:
         raise ValueError(f"Beisen tenant {tenant!r} bootstrap exceeded the HTML safety cap")
     bootstrap = extract_beisen_bootstrap(page, tenant)
@@ -439,7 +444,11 @@ async def _discover_modern(board: BeisenBoard, client: httpx.AsyncClient) -> Mon
 async def _discover_legacy(board: BeisenBoard, client: httpx.AsyncClient) -> MonitorResult:
     from src.core.monitor import MonitorResult
 
-    first_page = await _fetch_html(board.listing_url(), client)
+    first_page = await _fetch_html(
+        board.listing_url(),
+        client,
+        board_gone_on_terminal=True,
+    )
     first_jobs, advertised_pages = _legacy_page_jobs(first_page[:MAX_HTML_CHARS], board)
     advertised_total = _legacy_record_total(first_page)
     truncated = (
@@ -496,6 +505,11 @@ async def _resolved_board(board: dict, client: httpx.AsyncClient) -> BeisenBoard
     metadata = board.get("metadata") or {}
     configured = beisen_board_from_metadata(metadata) if isinstance(metadata, dict) else None
     direct = beisen_board_from_url(board["board_url"])
+    if configured is not None and direct is not None and configured.tenant != direct.tenant:
+        raise ValueError(
+            f"Configured Beisen tenant {configured.tenant!r} does not match "
+            f"board URL tenant {direct.tenant!r}"
+        )
     tenant = configured.tenant if configured is not None else direct.tenant if direct else None
     if tenant is None:
         raise ValueError(f"Cannot derive Beisen tenant from board URL {board['board_url']!r}")
@@ -503,6 +517,10 @@ async def _resolved_board(board: dict, client: httpx.AsyncClient) -> BeisenBoard
     if modern is not None:
         if configured is not None and configured.variant != "modern":
             raise ValueError(f"Beisen tenant {tenant!r} changed from legacy to modern")
+        if configured is not None and (
+            configured.portal_id != modern.portal_id or configured.tenant_id != modern.tenant_id
+        ):
+            raise ValueError(f"Beisen tenant {tenant!r} live portal identity changed")
         return modern
     if configured is not None and configured.variant == "legacy":
         return configured
