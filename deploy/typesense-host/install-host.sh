@@ -67,9 +67,13 @@ atomic_install() {
 
 wait_for_typesense() {
   local deadline=$((SECONDS + TYPESENSE_READY_TIMEOUT_S))
-  until curl --fail --silent --show-error --max-time 5 \
-    http://127.0.0.1:8108/health |
-    python3 -c 'import json,sys; raise SystemExit(0 if json.load(sys.stdin).get("ok") is True else 1)'
+  # Startup can legitimately return connection errors, 503s, or an empty body
+  # for several minutes while Typesense replays its Raft log. Keep those
+  # expected retries out of the deployment log; timeout handling below still
+  # reports a terminal readiness failure.
+  until curl --fail --silent --max-time 5 \
+    http://127.0.0.1:8108/health 2>/dev/null |
+    python3 -c 'import json,sys; raise SystemExit(0 if json.load(sys.stdin).get("ok") is True else 1)' 2>/dev/null
   do
     if (( SECONDS >= deadline )); then
       return 1
