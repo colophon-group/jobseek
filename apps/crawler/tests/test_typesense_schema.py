@@ -41,6 +41,20 @@ def test_job_posting_schema_carries_original_salary_for_detail_views() -> None:
         assert fields[name]["index"] is False
 
 
+def test_taxonomy_schema_carries_web_hierarchy_contract() -> None:
+    schemas = {collection["name"]: collection for collection in COLLECTIONS}
+    posting_fields = {field["name"]: field for field in schemas["job_posting"]["fields"]}
+    location_fields = {field["name"]: field for field in schemas["location"]["fields"]}
+    occupation_fields = {field["name"]: field for field in schemas["occupation"]["fields"]}
+
+    assert posting_fields["location_direct_ids"]["facet"] is True
+    assert location_fields["slug"].get("index", True) is True
+    assert location_fields["ancestor_ids"]["facet"] is True
+    assert {"parent_id", "member_country_ids"} <= location_fields.keys()
+    assert occupation_fields["slug"].get("index", True) is True
+    assert {"parent_id", "domain_id", "domain_slug"} <= occupation_fields.keys()
+
+
 def _stub_client(retrieve_fields: list[dict]):
     """Build a typesense.Client lookalike whose retrieve() returns ``fields``.
 

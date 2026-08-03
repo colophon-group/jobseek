@@ -37,6 +37,7 @@ from src.sync import (
     sync_lookup_tables_local,
     sync_occupation_domains,
     sync_occupations,
+    sync_occupations_typesense,
     sync_watchlists_typesense,
 )
 
@@ -1462,6 +1463,7 @@ def _make_loc_row(
     lat: float | None = None,
     lng: float | None = None,
     population: int | None = None,
+    parent_id: int | None = None,
     parent_name: str | None = None,
 ) -> _StubRecord:
     return _StubRecord(
@@ -1471,12 +1473,20 @@ def _make_loc_row(
         lat=lat,
         lng=lng,
         population=population,
+        parent_id=parent_id,
         parent_name=parent_name,
     )
 
 
-def _make_name_row(*, location_id: int, locale: str, name: str) -> _StubRecord:
-    return _StubRecord(location_id=location_id, locale=locale, name=name)
+def _make_name_row(
+    *, location_id: int, locale: str, name: str, is_display: bool = True
+) -> _StubRecord:
+    return _StubRecord(
+        location_id=location_id,
+        locale=locale,
+        name=name,
+        is_display=is_display,
+    )
 
 
 class TestSyncLocationsTypesense:
@@ -1524,7 +1534,7 @@ class TestSyncLocationsTypesense:
         ]
 
         local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows])
+        local_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows, []])
 
         captured_docs: list[dict] = []
 
@@ -1540,12 +1550,7 @@ class TestSyncLocationsTypesense:
         assert set(by_slug) == {"eu", "emea", "dach", "berlin"}
 
         # The EU macro row carries the suggested aliases verbatim.
-        assert by_slug["eu"]["aliases"] == [
-            "European Union",
-            "Europe",
-            "EEA",
-            "Schengen",
-        ]
+        assert by_slug["eu"]["aliases"] == sorted(["European Union", "Europe", "EEA", "Schengen"])
         # EMEA + DACH carry their respective alias bundles.
         assert "Europe Middle East Africa" in by_slug["emea"]["aliases"]
         assert "Germany Austria Switzerland" in by_slug["dach"]["aliases"]
@@ -1589,7 +1594,7 @@ class TestSyncLocationsTypesense:
             _make_name_row(location_id=42, locale="en", name="Oceania"),
         ]
         local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows])
+        local_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows, []])
 
         captured_docs: list[dict] = []
 
@@ -1603,6 +1608,79 @@ class TestSyncLocationsTypesense:
         assert len(captured_docs) == 1
         assert captured_docs[0]["slug"] == "oceania"
         assert "aliases" not in captured_docs[0]
+
+    async def test_publishes_parent_ancestor_and_macro_membership_contract(self):
+        loc_rows = [
+            _make_loc_row(id=4, slug="eu", type="macro"),
+            _make_loc_row(id=30, slug="germany", type="country"),
+            _make_loc_row(id=20, slug="berlin-region", type="region", parent_id=30),
+            _make_loc_row(id=10, slug="berlin", type="city", parent_id=20),
+        ]
+        name_rows = [
+            _make_name_row(location_id=row["id"], locale="en", name=row["slug"]) for row in loc_rows
+        ]
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(
+            side_effect=[loc_rows, name_rows, [_StubRecord(macro_id=4, country_id=30)]]
+        )
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await sync_locations_typesense(local_conn, MagicMock())
+
+        by_id = {doc["location_id"]: doc for doc in captured_docs}
+        assert by_id[10]["parent_id"] == 20
+        assert set(by_id[10]["ancestor_ids"]) == {10, 20, 30, 4}
+        assert by_id[4]["member_country_ids"] == [30]
+
+
+class TestSyncOccupationsTypesense:
+    async def test_publishes_parent_and_domain_contract(self):
+        rows = [
+            _StubRecord(
+                id=10,
+                slug="backend-developer",
+                parent_id=5,
+                domain_id=2,
+                locale="en",
+                name="Backend developer",
+                is_display=True,
+                domain_slug="engineering",
+            )
+        ]
+        domain_names = [_StubRecord(domain_id=2, locale="en", name="Engineering")]
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=[rows, domain_names])
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        with (
+            patch("src.sync._fetch_facet_counts", return_value={}),
+            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
+        ):
+            await sync_occupations_typesense(local_conn, MagicMock())
+
+        assert captured_docs == [
+            {
+                "id": "10-en",
+                "occupation_id": 10,
+                "slug": "backend-developer",
+                "name": "Backend developer",
+                "aliases": [],
+                "locale": "en",
+                "has_active_postings": False,
+                "active_posting_count": 0,
+                "parent_id": 5,
+                "domain_id": 2,
+                "domain_slug": "engineering",
+                "domain_name": "Engineering",
+            }
+        ]
 
 
 class TestFetchFacetCounts:
