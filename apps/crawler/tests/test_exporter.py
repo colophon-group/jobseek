@@ -1529,6 +1529,10 @@ def _make_posting_record(
     description_r2_hash: int | None = 12345,
     experience_min: float | None = None,
     experience_max: float | None = None,
+    salary_min: int | None = None,
+    salary_max: int | None = None,
+    salary_currency: str | None = None,
+    salary_period: str | None = None,
 ) -> MagicMock:
     """Simulate an asyncpg.Record for a job_posting row."""
     company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -1551,6 +1555,10 @@ def _make_posting_record(
         "first_seen_at": now,
         "last_seen_at": now,
         "salary_eur": None,
+        "salary_min": salary_min,
+        "salary_max": salary_max,
+        "salary_currency": salary_currency,
+        "salary_period": salary_period,
         "source_url": "https://example.com/job",
         "description_r2_hash": description_r2_hash,
     }
@@ -1636,6 +1644,37 @@ class TestBuildTypesenseDocsAncestors:
         # location_names and location_geo_types are only for the leaf
         assert len(docs[0]["location_names"]) == 1
         assert len(docs[0]["location_geo_types"]) == 1
+
+
+class TestBuildTypesenseDocsOriginalSalary:
+    """Posting detail keeps the source salary alongside normalized EUR facets."""
+
+    def test_original_salary_fields_are_indexed_when_present(self):
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(
+            salary_min=120_000,
+            salary_max=150_000,
+            salary_currency="USD",
+            salary_period="year",
+        )
+
+        [doc] = _build_typesense_docs([row], maps)
+
+        assert doc["salary_min"] == 120_000
+        assert doc["salary_max"] == 150_000
+        assert doc["salary_currency"] == "USD"
+        assert doc["salary_period"] == "year"
+
+    def test_null_original_salary_fields_are_omitted(self):
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record()
+
+        [doc] = _build_typesense_docs([row], maps)
+
+        assert "salary_min" not in doc
+        assert "salary_max" not in doc
+        assert "salary_currency" not in doc
+        assert "salary_period" not in doc
 
 
 class TestBuildTypesenseDocsHasContent:

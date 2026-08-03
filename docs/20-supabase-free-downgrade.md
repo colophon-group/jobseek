@@ -52,13 +52,18 @@ in `public`, and can select the migration ledger and audited application tables.
 Do not deploy a schema+app+constraint-drop migration as one release. The safe
 sequence is:
 
-1. expand migration: nullable snapshot columns, backfill, retain the
-   `saved_job → job_posting` foreign key, and protect old-app inserts;
-2. app release: dual-write complete snapshots, read snapshot-first, and reject
-   incomplete saves;
-3. contract migration: catch up, assert required snapshot completeness, then
-   drop the foreign key and temporary compatibility trigger;
-4. prove encrypted backup/restore, stop mirror writes, and only then drop the
+1. add the original salary fields to Typesense, deploy the crawler schema, run
+   a full posting backfill, and prove every saved posting with
+   `pnpm db:verify-saved-job-typesense` using the production server read key;
+2. expand migration: nullable snapshot columns, backfill, replace the
+   cascading posting FK with `ON DELETE RESTRICT`, validate the temporary
+   completeness CHECK, and protect old-app inserts;
+3. app release: write complete snapshots, read snapshot-first, and reject
+   incomplete new saves while allowing existing saves to be removed during a
+   Typesense outage;
+4. contract migration: catch up, assert required snapshot completeness, then
+   drop the foreign key, temporary CHECK, and compatibility trigger;
+5. prove encrypted backup/restore, stop mirror writes, and only then drop the
    crawler-owned tables.
 
 Salary and icon fields may remain nullable. Posting title, source URL,

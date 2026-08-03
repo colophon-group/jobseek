@@ -32,6 +32,15 @@ from src.typesense_schema import (
 )
 
 
+def test_job_posting_schema_carries_original_salary_for_detail_views() -> None:
+    job_posting = next(c for c in COLLECTIONS if c["name"] == "job_posting")
+    fields = {field["name"]: field for field in job_posting["fields"]}
+
+    for name in ("salary_min", "salary_max", "salary_currency", "salary_period"):
+        assert fields[name]["optional"] is True
+        assert fields[name]["index"] is False
+
+
 def _stub_client(retrieve_fields: list[dict]):
     """Build a typesense.Client lookalike whose retrieve() returns ``fields``.
 

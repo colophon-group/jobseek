@@ -597,6 +597,14 @@ def _build_typesense_docs(
             doc["seniority_name"] = sen_name
         if row["salary_eur"] is not None:
             doc["salary_eur"] = row["salary_eur"]
+        if row["salary_min"] is not None:
+            doc["salary_min"] = row["salary_min"]
+        if row["salary_max"] is not None:
+            doc["salary_max"] = row["salary_max"]
+        if row["salary_currency"]:
+            doc["salary_currency"] = row["salary_currency"]
+        if row["salary_period"]:
+            doc["salary_period"] = row["salary_period"]
         if row["source_url"]:
             doc["source_url"] = row["source_url"]
         if last_seen_ts is not None:
