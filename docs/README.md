@@ -74,6 +74,9 @@ Status tags:
 - [19 - Hetzner Data Backup and Recovery](19-data-backup-recovery.md)
   `[runbook]` - encrypted PostgreSQL and Typesense backups, restore drills,
   retention, scheduling, and replacement gates for legacy server backups.
+- [20 - Supabase Free Downgrade](20-supabase-free-downgrade.md) `[runbook]` -
+  guarded migration repair, saved-job cutover order, and production evidence
+  gates for removing the crawler-owned mirror.
 - [Didi Reactivation Runbook](runbook-didi-reactivate-2026-05-10.md)
   `[runbook]` - historical Didi reactivation notes.
 

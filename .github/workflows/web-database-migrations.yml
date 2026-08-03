@@ -1,0 +1,169 @@
+name: Web Database Migrations
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Verify drift or apply the reviewed migration from main"
+        required: true
+        default: verify
+        type: choice
+        options:
+          - verify
+          - apply
+      confirmation:
+        description: "For apply, enter APPLY-0083"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: web-database-migrations-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'apply'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate reconciliation migration
+        working-directory: apps/web
+        run: >-
+          pnpm exec vitest run
+          src/db/__tests__/active-job-company-index-migration.test.ts
+          src/db/__tests__/watchlist-privacy-interview-migration.test.ts
+          src/db/__tests__/timestamptz-coverage.test.ts
+
+      - name: Type-check migration tooling
+        working-directory: apps/web
+        run: pnpm exec tsc --noEmit
+
+  apply:
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'apply'
+    runs-on: ubuntu-latest
+    environment: production-migrations
+    timeout-minutes: 20
+    env:
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      MIGRATION_REQUIRE_UNPOOLED: "true"
+      DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+      EVENT_NAME: ${{ github.event_name }}
+      GIT_REF: ${{ github.ref }}
+    steps:
+      - name: Require main and explicit apply confirmation
+        run: |
+          set -euo pipefail
+          test "$EVENT_NAME" = "workflow_dispatch"
+          test "$GIT_REF" = "refs/heads/main"
+          test "$DISPATCH_CONFIRMATION" = "APPLY-0083"
+          test -n "$DATABASE_URL_UNPOOLED"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify audited preflight
+        run: >-
+          pnpm --filter @jobseek/web db:migrate:verify --
+          preflight "$RUNNER_TEMP/web-database-preflight.json"
+
+      - name: Apply reviewed migrations
+        working-directory: apps/web
+        run: pnpm db:migrate
+
+      - name: Verify exact postflight
+        run: >-
+          pnpm --filter @jobseek/web db:migrate:verify --
+          postflight "$RUNNER_TEMP/web-database-postflight.json"
+
+      - name: Publish non-sensitive evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "### Web database migration evidence"
+            for evidence in "$RUNNER_TEMP"/web-database-*.json; do
+              if [[ -f "$evidence" ]]; then
+                echo '```json'
+                sed -n '1,240p' "$evidence"
+                echo '```'
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  drift:
+    if: github.event_name == 'schedule' || inputs.mode == 'verify'
+    runs-on: ubuntu-latest
+    environment: production-migration-drift
+    timeout-minutes: 15
+    env:
+      # This environment must expose a LOGIN role with CONNECT and SELECT only.
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_READONLY }}
+    steps:
+      - name: Require the read-only production connection
+        run: test -n "$DATABASE_URL_UNPOOLED"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check for production baseline drift
+        run: >-
+          pnpm --filter @jobseek/web db:migrate:verify --
+          drift "$RUNNER_TEMP/web-database-drift.json"
+
+      - name: Publish non-sensitive evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "### Web database drift evidence"
+            if [[ -f "$RUNNER_TEMP/web-database-drift.json" ]]; then
+              echo '```json'
+              sed -n '1,240p' "$RUNNER_TEMP/web-database-drift.json"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
