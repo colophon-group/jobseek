@@ -47,6 +47,7 @@ jobs:
           bash -n deploy/backups/postgresql/mount-repository.sh
           bash -n deploy/backups/postgresql/restore-drill.sh
           bash -n deploy/backups/postgresql/smoke-repository.sh
+          bash -n deploy/backups/typesense/restore-drill.sh
           bash -n deploy/backups/postgresql/emergency-headroom.sh
           cd apps/crawler
           uv run --frozen pytest tests/test_data_backup.py tests/test_pgbackrest_retention.py tests/test_postgresql_emergency_headroom.py -q
@@ -79,10 +80,11 @@ jobs:
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
           envs: JOBSEEK_BACKUP_DEPLOY_SHA,JOBSEEK_BACKUP_SERVICE,JOBSEEK_TYPESENSE_BACKUP_KEY
-          command_timeout: 20m
+          command_timeout: 6h
           script: |
             set -euo pipefail
             cd /opt/jobseek-backup
             bash deploy/backups/install-host.sh "$JOBSEEK_BACKUP_SERVICE"
-            systemctl is-enabled "jobseek-${JOBSEEK_BACKUP_SERVICE}-backup.timer" || true
-            systemctl is-active "jobseek-${JOBSEEK_BACKUP_SERVICE}-backup.timer" || true
+            systemctl is-enabled "jobseek-${JOBSEEK_BACKUP_SERVICE}-backup.timer"
+            systemctl is-active "jobseek-${JOBSEEK_BACKUP_SERVICE}-backup.timer"
+            ! systemctl is-failed --quiet "jobseek-${JOBSEEK_BACKUP_SERVICE}-backup.service"

@@ -53,6 +53,7 @@ Repository-owned files:
 - `deploy/backups/install-host.sh`
 - `deploy/backups/postgresql/Dockerfile`
 - `deploy/backups/postgresql/{mount-repository,smoke-repository,restore-drill}.sh`
+- `deploy/backups/typesense/restore-drill.sh`
 - `deploy/systemd/jobseek-postgresql-backup-repository.service`
 - `deploy/systemd/jobseek-postgresql-backup.{service,timer}`
 - `deploy/systemd/jobseek-typesense-backup.{service,timer}`
@@ -141,6 +142,16 @@ are secrets for log-redaction purposes even though they are not authentication
 material. These are environment-scoped secrets, so the workflow resolves them
 inside runtime steps after the protected `production` environment is attached;
 do not embed their values in `strategy.matrix`, which GitHub expands earlier.
+
+For Typesense, the protected `TYPESENSE_BACKUP_KEY` is authorization-probed
+against authenticated `GET /stats.json` before host state is changed. The
+installer then replaces exactly one `TYPESENSE_API_KEY` assignment with a
+root-owned `0600` temporary file and atomic rename. If the value changed, the
+deployment must complete a fresh snapshot, encrypted Restic upload, retention
+prune, and repository check before committing the rotation. Any later gate
+failure restores the prior environment file. A disabled/inactive timer, failed
+service, failed latest attempt, or stale last success is fatal; the deployed
+revision is recorded only after those checks pass.
 
 Confirm the effective schedule:
 
@@ -314,6 +325,22 @@ That version-specific exception is constrained by root-only file/service
 access and remains independently revocable. Re-test and narrow the action
 scope at the next Typesense upgrade.
 
+Treat these as separate signals:
+
+1. **Process state:** Docker reports the container running with no OOM/restart.
+2. **API readiness:** unauthenticated `GET /health` returns `{"ok": true}`.
+3. **Backup authorization:** the installed backup key can authenticate
+   `GET /stats.json`; this does not by itself prove that a backup ran.
+4. **Backup execution:** the systemd attempt succeeds and the atomic status
+   reports a fresh successful snapshot, Restic upload/prune, and repository
+   check.
+5. **Restore validity:** the newest off-host artifact starts as an isolated
+   node and passes inventory, query, and disposable write/read/delete checks.
+
+A healthy API can coexist with an unauthorized or stale backup. Conversely,
+startup may temporarily return 503 while a valid restored snapshot reloads.
+Do not infer one signal from another.
+
 Run and verify a backup:
 
 ```bash
@@ -357,18 +384,26 @@ Cloudflare tunnel to a restore drill.
 
 ### Typesense
 
-1. Restore the latest Restic snapshot into a new host directory; never write
-   to `/mnt/typesense-data`.
-2. Start `typesense/typesense:27.1` on a host other than the production
-   Typesense machine, bound only to `127.0.0.1:18108`, with a temporary API
-   key and the restored directory.
-3. Compare collection/alias inventory, document counts, and representative
-   document reads with production. Do not expose the drill through
-   Cloudflare.
-4. Record Restic snapshot ID/time, restored byte count, elapsed time, checks,
-   and result without recording document contents or secrets.
-5. Stop and remove the temporary container, restored data, and all temporary
-   credentials and repository access.
+1. Capture a redacted production inventory containing only all seven
+   alias-to-collection mappings and document counts.
+2. Copy `deploy/backups/typesense/restore-drill.sh` plus temporary root-only
+   Restic access to a recovery host that has Docker and at least 4 GiB free.
+   Use the same or a newer Restic version than the backup host; older clients
+   can reject the repository format. The helper refuses to run if a container
+   named `typesense` exists.
+3. Set `JOBSEEK_TYPESENSE_RESTORE_ENV` and
+   `JOBSEEK_TYPESENSE_EXPECTED_INVENTORY`, then run the helper with
+   `latest` or an exact snapshot ID. It restores only into its unique
+   temporary root and binds Typesense only to `127.0.0.1:18108`.
+4. The helper requires health and single-node leadership, exact aliases and
+   counts, a representative job-posting search, and a disposable collection
+   write/read/delete. It emits only snapshot metadata, byte/count totals,
+   duration, and named checks.
+5. Its exit trap force-removes the isolated container, restored data, and
+   generated API key on success, failure, or interruption. Remove the
+   temporary Restic files from the recovery host after copying the redacted
+   result to incident evidence. Never run the drill beside production, write
+   to `/mnt/typesense-data`, or expose it through Cloudflare.
 
 ## Failure and removal gates
 

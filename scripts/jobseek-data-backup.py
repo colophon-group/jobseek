@@ -435,6 +435,53 @@ def _snapshot_request(url: str, api_key: str, snapshot_path: str) -> None:
         raise BackupError(f"Typesense snapshot API did not report success: {redact(body)}")
 
 
+_TYPESENSE_ALIASES = (
+    "company",
+    "job_posting",
+    "location",
+    "occupation",
+    "seniority",
+    "technology",
+    "watchlist",
+)
+
+
+def _typesense_json_get(url: str, api_key: str, path: str) -> dict[str, Any]:
+    request = urllib.request.Request(
+        f"{url.rstrip('/')}{path}",
+        headers={"X-TYPESENSE-API-KEY": api_key},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+            payload = json.load(response)
+    except Exception as exc:
+        raise BackupError(f"Typesense inventory API failed: {redact(str(exc))}") from exc
+    if not isinstance(payload, dict):
+        raise BackupError("Typesense inventory API returned a non-object")
+    return payload
+
+
+def _typesense_inventory(url: str, api_key: str) -> dict[str, Any]:
+    alias_payload = _typesense_json_get(url, api_key, "/aliases")
+    try:
+        aliases = {item["name"]: item["collection_name"] for item in alias_payload["aliases"]}
+    except (KeyError, TypeError) as exc:
+        raise BackupError("Typesense alias inventory returned an unexpected shape") from exc
+    if set(aliases) != set(_TYPESENSE_ALIASES):
+        raise BackupError("Typesense alias inventory is incomplete")
+    collection_documents: dict[str, int] = {}
+    for alias in _TYPESENSE_ALIASES:
+        collection = _typesense_json_get(url, api_key, f"/collections/{alias}")
+        try:
+            count = int(collection["num_documents"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise BackupError(f"Typesense collection inventory is invalid for {alias}") from exc
+        if count < 0:
+            raise BackupError(f"Typesense collection inventory is negative for {alias}")
+        collection_documents[alias] = count
+    return {"aliases": aliases, "collection_documents": collection_documents}
+
+
 def _tree_size(path: Path) -> int:
     return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
 
@@ -476,6 +523,8 @@ def typesense_backup() -> dict[str, Any]:
     if running != "true":
         raise BackupError(f"Typesense container {container!r} is not running")
 
+    inventory_before = _typesense_inventory(url, api_key)
+
     run_id = utc_now().strftime("%Y%m%dT%H%M%SZ")
     container_root = os.environ.get(
         "TYPESENSE_SNAPSHOT_CONTAINER_ROOT", "/tmp/jobseek-typesense-snapshots"
@@ -494,6 +543,9 @@ def typesense_backup() -> dict[str, Any]:
     try:
         run_checked(["docker", "exec", container, "rm", "-rf", "--", container_path], timeout=60)
         _snapshot_request(url, api_key, container_path)
+        inventory_after = _typesense_inventory(url, api_key)
+        if inventory_after != inventory_before:
+            raise BackupError("Typesense inventory changed while the snapshot was being created")
         run_checked(
             ["docker", "cp", f"{container}:{container_path}/.", str(local_path)],
             timeout=7_200,
@@ -536,14 +588,21 @@ def typesense_backup() -> dict[str, Any]:
         )
         run_checked(_restic_command("check"), env=restic_env, timeout=14_400)
         snapshots_output = run_checked(
-            _restic_command("snapshots", "--json", "--latest", "1", "--tag", "jobseek-typesense"),
+            _restic_command(
+                "snapshots",
+                "--json",
+                "--tag",
+                "jobseek-typesense",
+                "--host",
+                "jobseek-typesense",
+            ),
             env=restic_env,
             timeout=300,
         ).stdout
         try:
             snapshots = json.loads(snapshots_output)
-            latest_snapshot = snapshots[-1]
-        except (IndexError, TypeError, json.JSONDecodeError) as exc:
+            latest_snapshot = max(snapshots, key=lambda item: item.get("time") or "")
+        except (IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise BackupError("Restic returned no parseable Typesense snapshot") from exc
         success = True
         return {
@@ -551,6 +610,9 @@ def typesense_backup() -> dict[str, Any]:
             "repository_snapshot_id": latest_snapshot.get("short_id")
             or latest_snapshot.get("id", "")[:8],
             "repository_snapshot_time": latest_snapshot.get("time"),
+            "repository_snapshot_count": len(snapshots),
+            "retention": {"keep_daily": 14, "keep_weekly": 4},
+            **inventory_after,
         }
     finally:
         with suppress(Exception):
