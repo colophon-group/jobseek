@@ -579,6 +579,20 @@ export const savedJob = pgTable(
       .notNull()
       .references(() => jobPosting.id, { onDelete: "cascade" }),
     savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+    // Nullable during the expand/app phases. 0085 makes the required snapshot
+    // fields NOT NULL only after dual-write/read has been proven in production.
+    postingTitle: text("posting_title"),
+    postingSourceUrl: text("posting_source_url"),
+    postingFirstSeenAt: timestamp("posting_first_seen_at", { withTimezone: true }),
+    postingIsActive: boolean("posting_is_active"),
+    postingSalaryMin: integer("posting_salary_min"),
+    postingSalaryMax: integer("posting_salary_max"),
+    postingSalaryCurrency: text("posting_salary_currency"),
+    postingSalaryPeriod: text("posting_salary_period"),
+    companyId: uuid("company_id"),
+    companyName: text("company_name"),
+    companySlug: text("company_slug"),
+    companyIcon: text("company_icon"),
 
     // ── Application tracker fields ──
     status: text("status", {

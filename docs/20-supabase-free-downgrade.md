@@ -69,3 +69,9 @@ sequence is:
 Salary and icon fields may remain nullable. Posting title, source URL,
 first-seen timestamp, active state, and company identity/name/slug must be
 complete before the contract phase.
+
+Production source evidence collected read-only on 2026-08-03 shows 262 saved
+jobs and zero missing required source fields. Salary is absent for 229 rows and
+therefore remains intentionally nullable. Migration 0084 installs the old-app
+compatibility trigger before its backfill and fails unless every required
+snapshot is complete and the outbound posting FK still exists.

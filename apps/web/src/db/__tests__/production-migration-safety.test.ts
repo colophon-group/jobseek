@@ -20,7 +20,7 @@ describe("production migration safety", () => {
       "0081_private_watchlists_and_general_interviews",
     );
     expect(tags).not.toContain("0082_add_active_job_company_index");
-    expect(tags.at(-1)).toBe("0083_reconcile_supabase_baseline");
+    expect(tags).toContain("0083_reconcile_supabase_baseline");
   });
 
   it("keeps transaction ownership with Drizzle", () => {
