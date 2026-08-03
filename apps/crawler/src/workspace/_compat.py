@@ -95,6 +95,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "bite",
     "breezy",
     "eightfold",
+    "herp",
     "icims",
     "jazzhr",
     "join",
@@ -175,6 +176,16 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ashby"
     if host == "jobs.gem.com":
         return "gem"
+    if (
+        host == "herp.careers"
+        and not parsed.query
+        and re.fullmatch(
+            r"/v1/[a-z0-9][a-z0-9_-]{0,62}(?:/[A-Za-z0-9_-]{6,64})?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "herp"
     if host in ("comeet.com", "www.comeet.com", "comeet.co", "www.comeet.co"):
         return "comeet"
     if host == "jobs.deel.com":
@@ -417,6 +428,8 @@ def auto_scraper_type(
     if monitor_type == "jazzhr":
         return ("jazzhr", None)
     if monitor_type == "icims":
+        return ("json-ld", None)
+    if monitor_type == "herp":
         return ("json-ld", None)
     if monitor_type == "breezy":
         return ("json-ld", _BREEZY_SCRAPER_CONFIG)

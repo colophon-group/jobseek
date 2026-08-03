@@ -330,6 +330,46 @@ async def _probe_icims(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "icims", url, resp)
 
 
+async def _probe_herp(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    slug = _token_from_config(row["monitor_config"], "slug")
+    slug = slug.strip().lower() if slug else None
+    if not slug:
+        from src.workspace._compat import detect_ats_from_url
+
+        parsed = urlparse(row["board_url"])
+        segments = [segment for segment in parsed.path.split("/") if segment]
+        slug = (
+            segments[1].lower()
+            if detect_ats_from_url(row["board_url"]) == "herp" and len(segments) >= 2
+            else None
+        )
+    if not slug or re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,62}", slug) is None:
+        return ProbeResult(
+            row["board_slug"],
+            "herp",
+            row["board_url"],
+            "warn",
+            "no valid slug in monitor_config or HERP URL",
+        )
+
+    url = f"https://herp.careers/v1/{slug}"
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response):
+        if resp.status_code in {404, 410}:
+            return ProbeResult(row["board_slug"], "herp", url, "fail", "board not found")
+        if resp.is_redirect:
+            return ProbeResult(row["board_slug"], "herp", url, "warn", "unexpected redirect")
+        if resp.status_code == 200 and 'class="requisition-list"' not in resp.text:
+            return ProbeResult(
+                row["board_slug"],
+                "herp",
+                url,
+                "warn",
+                "HERP listing marker missing",
+            )
+    return _classify(row, "herp", url, resp)
+
+
 async def _probe_recruitee(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     host = urlparse(row["board_url"]).hostname or ""
     if not host:
@@ -460,6 +500,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "paycom": _probe_paycom,
     "jazzhr": _probe_jazzhr,
     "icims": _probe_icims,
+    "herp": _probe_herp,
     "recruitee": _probe_recruitee,
     "rippling": _probe_rippling,
     "smartrecruiters": _probe_smartrecruiters,

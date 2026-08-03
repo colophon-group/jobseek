@@ -161,6 +161,15 @@ class TestExtractLocations:
         result = _extract_locations(posting)
         assert result == ["San Francisco, CA, US"]
 
+    def test_with_string_address(self):
+        posting = {
+            "jobLocation": {
+                "@type": "Place",
+                "address": "東京都新宿区西新宿1-26-2\n新宿野村ビル48階",
+            }
+        }
+        assert _extract_locations(posting) == ["東京都新宿区西新宿1-26-2 新宿野村ビル48階"]
+
     def test_multiple_locations(self):
         posting = {
             "jobLocation": [

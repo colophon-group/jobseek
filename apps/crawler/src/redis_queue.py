@@ -233,6 +233,7 @@ async def _load_scripts() -> None:
 _KNOWN_ATS_DOMAINS = frozenset(
     {
         "greenhouse",
+        "herp",
         "lever",
         "ashby",
         "bamboohr",

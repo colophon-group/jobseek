@@ -381,6 +381,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"iCIMS static listing \u2014 host: {host}, {jobs} jobs"
         return f"iCIMS static listing \u2014 host: {host}"
+    if name == "herp":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"HERP static listing \u2014 slug: {slug}, {jobs} jobs"
+        return f"HERP static listing \u2014 slug: {slug}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -676,6 +682,7 @@ from src.core.monitors import (  # noqa: E402
     eightfold,  # noqa: F401
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
+    herp,  # noqa: F401
     hibob,  # noqa: F401
     hirehive,  # noqa: F401
     hireology,  # noqa: F401
