@@ -23,19 +23,32 @@ if (
   throw new Error("Refusing to migrate through the Supabase transaction pooler");
 }
 
-const sql = postgres(url, {
+const lockSql = postgres(url, {
   max: 1,
   prepare: false,
+  connect_timeout: 15,
+  connection: { application_name: "jobseek-web-migration-lock" },
+});
+const migrationSql = postgres(url, {
+  max: 1,
+  prepare: false,
+  connect_timeout: 15,
   connection: { application_name: "jobseek-web-migrations" },
 });
 
 async function main() {
-  const reserved = await sql.reserve();
-  const db = drizzle(reserved);
+  let lockConnection:
+    | Awaited<ReturnType<typeof lockSql.reserve>>
+    | undefined;
   let advisoryLockHeld = false;
 
   try {
-    const [lock] = await reserved<{ acquired: boolean }[]>`
+    // Drizzle requires the root postgres.js client because migrations call
+    // client.begin(). A reserved client has neither begin() nor options and
+    // cannot be passed to drizzle(). Keep a separate reserved session solely
+    // for the advisory lock while the one-connection migration pool owns DDL.
+    lockConnection = await lockSql.reserve();
+    const [lock] = await lockConnection<{ acquired: boolean }[]>`
       SELECT pg_try_advisory_lock(
         hashtextextended('jobseek:web-schema-migrations', 0)
       ) AS acquired
@@ -45,17 +58,20 @@ async function main() {
       throw new Error("Another web schema migration is already running");
     }
 
-    await reserved`SET lock_timeout = '10s'`;
-    await reserved`SET statement_timeout = '10min'`;
-    await reserved`SET idle_in_transaction_session_timeout = '2min'`;
+    // migrationSql has max=1, so these session settings and the Drizzle
+    // transaction use the same physical connection.
+    await migrationSql`SET lock_timeout = '10s'`;
+    await migrationSql`SET statement_timeout = '10min'`;
+    await migrationSql`SET idle_in_transaction_session_timeout = '2min'`;
 
+    const db = drizzle(migrationSql);
     console.log("Running migrations with the web schema advisory lock...");
     await migrate(db, { migrationsFolder: "./drizzle" });
     console.log("Migrations complete.");
   } finally {
     try {
-      if (advisoryLockHeld) {
-        const [unlock] = await reserved<{ released: boolean }[]>`
+      if (lockConnection && advisoryLockHeld) {
+        const [unlock] = await lockConnection<{ released: boolean }[]>`
           SELECT pg_advisory_unlock(
             hashtextextended('jobseek:web-schema-migrations', 0)
           ) AS released
@@ -66,8 +82,14 @@ async function main() {
         }
       }
     } finally {
-      await reserved.release();
-      await sql.end();
+      try {
+        if (lockConnection) await lockConnection.release();
+      } finally {
+        await Promise.all([
+          lockSql.end({ timeout: 5 }),
+          migrationSql.end({ timeout: 5 }),
+        ]);
+      }
     }
   }
 }

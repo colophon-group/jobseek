@@ -102,7 +102,7 @@ jobs:
 
       - name: Apply reviewed migrations
         working-directory: apps/web
-        run: pnpm db:migrate
+        run: timeout --signal=TERM --kill-after=15s 12m pnpm db:migrate
 
       - name: Verify exact postflight
         run: >-
