@@ -164,20 +164,31 @@ The `company` collection doubles as the source for the company detail page (see 
 
 ### Job Postings (CDC via exporter.py)
 
-The exporter uses a **two-cursor design**: Supabase and Typesense each have their own keyset cursor (`(updated_at, id)` tuple). On each tick:
+The exporter supports two deployment modes:
+
+- **Typesense-only** (the Free-plan cutover target): leave `DATABASE_URL`
+  empty. The process opens no relational-mirror connection and owns only the
+  `typesense:job_posting` keyset cursor.
+- **Dual-write transition**: set `DATABASE_URL` to keep the legacy relational
+  mirror. Supabase and Typesense each have an independent `(updated_at, id)`
+  cursor.
+
+On each tick:
 
 1. Capture the database clock and the oldest current posting-writer
    transaction start in one non-blocking query, using the earlier value as the
    commit-safe cutoff.
-2. SELECT changed postings after `MIN(supabase_cursor, typesense_cursor)` and
-   strictly before the cutoff.
-3. Concurrently (`asyncio.gather`):
-   - Upsert to Supabase, advance Supabase cursor on success
-   - Denormalize + expand ancestor IDs + upsert to Typesense, advance Typesense cursor on success
+2. SELECT changed postings strictly before the cutoff and after the Typesense
+   cursor (or the older eligible target cursor in dual-write mode).
+3. Denormalize + expand ancestor IDs, upsert to Typesense, and advance only the
+   Typesense cursor. In dual-write mode, the relational-mirror upsert runs
+   concurrently and advances only its own cursor.
 
 The Typesense document builder (`_build_typesense_docs`) expands `location_ids` and `occupation_ids` with all ancestor IDs using pre-loaded hierarchy maps (`TaxonomyMaps.location_ancestors`, `occupation_ancestors`). This means even legacy Postgres rows with leaf-only IDs produce correct hierarchy-filterable Typesense documents.
 
-If one target fails, only its cursor stalls. The other continues unaffected.
+In dual-write mode, one target failing stalls only its cursor. In
+Typesense-only mode, no Supabase cursor is loaded, written, or considered when
+selecting rows.
 The exporter/operator fence is held across the mutable-row read, downstream
 upserts, and cursor save so an operator repair cannot race past the cursor. See
 [`03-crawler-architecture.md`](03-crawler-architecture.md#commit-safe-posting-cdc)
@@ -185,10 +196,15 @@ for the trigger contract, writer-floor delay alert, and deployment ordering.
 
 **Feature flag**: Typesense writes only happen when
 `TYPESENSE_OPERATIONS_KEY` is set (non-empty). Environments without Typesense
-are unaffected. The env var must be passed to containers in
+can still run the dual-write transition mode, but the exporter requires at
+least one configured downstream. The env var must be passed to containers in
 `docker-compose.yml` (`x-common-env`).
 
-**Denormalization**: The exporter's `TaxonomyMaps` reads all lookup data from **local Postgres** (the source of truth). Company info, location names, occupation names, seniority names, and technology names are all loaded from local. A Supabase fallback exists for company_info only (for pre-migration compatibility). All ancestor chain computation (locations + macro regions, occupations) uses local Postgres data exclusively.
+**Denormalization**: The exporter's `TaxonomyMaps` reads all lookup data from
+**local Postgres** (the source of truth). Company info, location names,
+occupation names, seniority names, and technology names are all loaded from
+local; there is no Supabase fallback. All ancestor chain computation
+(locations + macro regions, occupations) uses local Postgres data exclusively.
 
 ### Taxonomy Collections (via sync.py)
 
@@ -204,7 +220,9 @@ uv run crawler refresh-typesense
 ```
 
 - Refreshes `active_posting_count` / `has_active_postings` on all taxonomy and company collections
-- Reconciles the `watchlist` collection against Supabase (upserts missing, deletes stale)
+- Reconciles the `watchlist` collection against the web-owned database selected
+  by `WEB_DATABASE_URL` (upserts missing, deletes stale). This boundary is
+  intentionally independent from the optional crawler mirror `DATABASE_URL`.
 
 **When it runs in production** (two paths, both version-controlled):
 
@@ -214,7 +232,7 @@ uv run crawler refresh-typesense
 ### Full Re-index (Backfill)
 
 ```bash
-uv run crawler backfill-typesense    # Production: reads from local Postgres + Supabase
+uv run crawler backfill-typesense    # Production: reads from local Postgres only
 ```
 
 Production backfills are dispatched manually through
@@ -306,7 +324,12 @@ Three data tiers, three read paths:
 
 Aggregation queries against `job_posting` are deliberately kept on local Postgres, not Supabase, to keep Supabase compute reserved for user-facing CRUD. Notable examples:
 
-- **Watchlist active-posting counts** (`refresh-typesense`): pulls `(watchlist_id, company_id)` pairs from Supabase, runs `COUNT(*) WHERE is_active GROUP BY company_id` on local Postgres restricted to those companies, sums per watchlist in Python. Uses the partial index `idx_jp_company_active ON job_posting(company_id) WHERE is_active`.
+- **Watchlist active-posting counts** (`refresh-typesense`): pulls
+  `(watchlist_id, company_id)` pairs from the web-owned database configured by
+  `WEB_DATABASE_URL`, runs `COUNT(*) WHERE is_active GROUP BY company_id` on
+  local Postgres restricted to those companies, and sums per watchlist in
+  Python. Uses the partial index
+  `idx_jp_company_active ON job_posting(company_id) WHERE is_active`.
 - **Public Discover `anyCompany` counts**: the `watchlist` Typesense doc carries a sanitized `filters_json` payload with public filters plus resolved taxonomy IDs. Discover cards use that payload to run an exact live `job_posting` count for `anyCompany` watchlists without hydrating `watchlist.filters` from Postgres. Company-scoped public cards keep using the denormalized `active_job_count` field.
 - **Per-company taxonomy counts** (`refresh_typesense_counts`): aggregated against local Postgres directly, then upserted to the `company` / `location` / `occupation` / `seniority` / `technology` collections as `active_posting_count`.
 

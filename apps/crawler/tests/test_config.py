@@ -28,6 +28,13 @@ class TestSettings:
         s = Settings(_env_file=None)
         assert s.database_url == ""
 
+    def test_web_database_url_is_independent(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "postgresql://mirror@localhost/mirror")
+        monkeypatch.setenv("WEB_DATABASE_URL", "postgresql://web@localhost/web")
+        s = Settings(_env_file=None)
+        assert s.database_url.endswith("/mirror")
+        assert s.web_database_url.endswith("/web")
+
     @pytest.mark.parametrize(
         ("base", "maximum"),
         [(0, 900), (-1, 900), (10, 5)],

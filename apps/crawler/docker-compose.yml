@@ -5,7 +5,8 @@
 # Redis runs locally on the worker machine.
 
 x-common-env: &common-env
-  DATABASE_URL: ${DATABASE_URL}                    # Supabase (exporter writes only)
+  DATABASE_URL: ${DATABASE_URL:-}                   # Optional legacy crawler mirror
+  WEB_DATABASE_URL: ${WEB_DATABASE_URL:-}           # Web-owned watchlists (provider-neutral)
   LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}         # Hetzner Postgres machine
   REDIS_URL: redis://localhost:6379/0
   WORKER_ID_PREFIX: hetzner

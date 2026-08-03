@@ -1,15 +1,19 @@
 # Crawler Architecture
 
-The crawler uses Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase.
+The crawler uses Redis-orchestrated workers writing to authoritative local
+Postgres, with CDC publication to Typesense and an optional legacy Supabase
+mirror during the Free-plan cutover.
 
 ## Infrastructure
 
 ```
-                                +-----------+
-                                | Supabase  |
-                                | (user DB) |
-                                +-----^-----+
-                                      | batch COPY (write-only)
+                         +-----------+       +----------------+
+                         | Typesense |       | Supabase       |
+                         | read index|       | web DB + mirror|
+                         +-----^-----+       +-------^--------+
+                               | document upserts    | optional batch COPY
+                               +----------+----------+
+                                          |
       +-------------------------------+-------------------------------+
       |  Hetzner (116.203.192.19)     |                               |
       |                    +----------+-----------+                    |
@@ -263,24 +267,30 @@ No Redis stream needed -- the `descriptions` table in local Postgres serves as t
 ## Exporter (CDC)
 
 One process exports changed `job_posting` rows from authoritative local
-Postgres to Supabase and Typesense. Each target has an independent durable
-`(updated_at, id)` cursor in `exporter_state`; one unavailable target does not
-hold back the other.
+Postgres to Typesense. During the Supabase exit transition, setting
+`DATABASE_URL` also enables the legacy relational-mirror writer. Each enabled
+target has an independent durable `(updated_at, id)` cursor in
+`exporter_state`; one unavailable target does not hold back the other. With
+`DATABASE_URL` empty, the exporter opens no mirror connection and never loads
+or saves the Supabase cursor.
 
 Every steady-state tick:
 
 1. acquire the operator-repair cursor fence;
 2. establish a commit-safe PostgreSQL cutoff (below);
-3. select at most 2,000 rows after the older eligible target cursor and
-   strictly before the cutoff;
-4. upsert eligible rows to Supabase and Typesense concurrently;
-5. advance only successful target cursors, atomically when saving both; and
+3. select at most 2,000 rows after the Typesense cursor (or the older eligible
+   target cursor in dual-write mode) and strictly before the cutoff;
+4. upsert eligible rows to Typesense and, when configured, the legacy mirror;
+5. advance only successful target cursors, atomically when saving two; and
 6. release the repair fence.
 
-The exporter is the only **steady-state** component that writes posting rows
-to Supabase. Workers never touch Supabase directly. The separately scheduled
-cross-store reconciler may perform a bounded, fenced repair from authoritative
-local rows; it does not invent downstream state or mutate local posting data.
+The exporter is the only **steady-state** component that can write posting rows
+to the legacy Supabase mirror. Workers never touch Supabase directly. The
+separately scheduled cross-store reconciler may perform a bounded, fenced
+repair from authoritative local rows; it does not invent downstream state or
+mutate local posting data. An explicit `--target supabase` requires
+`DATABASE_URL`; the default `--target all` automatically becomes
+Typesense-only when that variable is absent.
 
 ### Cross-store reconciliation
 
@@ -291,9 +301,9 @@ the complete posting population deterministically:
 
 - local PostgreSQL is authoritative;
 - UUID high-byte ranges `00` through `ff` form 256 stable, indexed partitions;
-- Supabase must contain every local row with matching `is_active`; a
-  Supabase-only active row is deactivated, while a Supabase-only inactive row
-  is retained as tolerated user-facing history;
+- when the legacy mirror is enabled, Supabase must contain every local row
+  with matching `is_active`; a Supabase-only active row is deactivated, while
+  a Supabase-only inactive row is retained as tolerated user-facing history;
 - Typesense must have the exact local document set and matching `is_active`;
   missing/mismatched documents are upserted and Typesense-only documents are
   deleted; and
@@ -439,7 +449,7 @@ exists when the new exporter is running.
 ## Data Flow
 
 ```
-CSV -> sync.py -> Local Postgres + Redis queues + Supabase (company display data)
+CSV -> sync.py -> Local Postgres + Redis queues + legacy Supabase mirror (transition)
                        |
 Workers (pipeline.py) claim from Redis -> process board/scrape -> write to Local Postgres
                        | (new/changed jobs)
@@ -447,7 +457,7 @@ Workers (pipeline.py) claim from Redis -> process board/scrape -> write to Local
                        |
 R2 Drain -> poll descriptions WHERE NOT r2_uploaded -> PUT to R2
                        |
-Exporter CDC -> commit-safe cutoff + keyset read -> Supabase + Typesense
+Exporter CDC -> commit-safe cutoff + keyset read -> Typesense (+ optional legacy mirror)
 ```
 
 ## File Structure
@@ -468,8 +478,8 @@ apps/crawler/src/
 │   └── lookups.py           # Cached lookup table loaders
 ├── redis_queue.py           # Lua-backed claim/enqueue/reschedule
 ├── lua/                     # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py              # CDC: local Postgres -> Supabase (job_posting only, no boards)
-├── sync.py                  # CSV -> Supabase + local Postgres + Redis
+├── exporter.py              # CDC: local Postgres -> Typesense + optional relational mirror
+├── sync.py                  # CSV -> local Postgres + Redis + transitional mirror data
 ├── bootstrap.py             # One-time: Supabase -> local Postgres copy
 ├── cli.py                   # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py                # Settings: discovery_concurrency, monitor_concurrency, etc.
@@ -492,10 +502,10 @@ apps/crawler/src/
 ```bash
 crawler run              # HTTP worker (claims from simple queues)
 crawler run-browser      # Browser worker (claims from browser queues)
-crawler export           # CDC exporter loop
+crawler export           # Typesense CDC; also writes mirror when DATABASE_URL is set
 crawler drain            # R2 description uploader
 crawler sync             # CSV -> DB + Redis
-crawler reconcile        # Read-only deterministic Supabase + Typesense slice
+crawler reconcile        # Read-only enabled-target reconciliation slice
 crawler reconcile --repair --max-partitions 16  # Resume verified repairs
 crawler board <slug>     # Process single board (debug)
 ```
@@ -528,8 +538,8 @@ Docker images:
 | Worker crash | Task not completed | Redis schedule stale; sync.py re-bootstraps |
 | Redis dies | Queued work lost | sync.py rebuilds from CSV; no data loss |
 | Local Postgres down | Workers idle | Resume when Postgres recovers; data on persistent volume |
-| Supabase down | Exporter can't flush | Changed rows accumulate in local Postgres; catches up on recovery |
-| Exporter crash | CDC paused | Resumes independently from both durable `(updated_at, id)` cursors |
+| Legacy mirror down (dual-write mode) | Mirror cursor pauses; Typesense continues | Fix the mirror or remove `DATABASE_URL` after completing the cutover gates |
+| Exporter crash | CDC paused | Resumes from each enabled target's durable `(updated_at, id)` cursor |
 | CDC writer barrier timeout | Freshness pauses; cursors stay pinned | Inspect the owning long transaction; exporter retries without skipped rows |
 | Reconciliation failure | One target partition remains pinned | Inspect the systemd journal/downstream, then rerun; never skip the failed partition |
 | R2 drain failure | Unuploaded descriptions | Rows stay r2_uploaded = false; retried automatically |

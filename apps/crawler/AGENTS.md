@@ -4,11 +4,14 @@ Crawler-specific instructions. See the root [AGENTS.md](../../AGENTS.md) for pro
 
 ## Architecture
 
-Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase + Typesense:
+Redis-orchestrated workers writing to local Postgres, with CDC export to
+Typesense and an optional legacy relational mirror:
 
 1. **Single Job** (`src/core/`) — pure async functions, no DB awareness
 2. **Workers** (`src/workers/pipeline.py`) — claim from Redis tiered queues, process, write to local Postgres
-3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Supabase batch COPY + Typesense upserts (two independent cursors, concurrent writes)
+3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Typesense; setting
+   `DATABASE_URL` temporarily enables Supabase batch COPY with an independent
+   cursor
 4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
 5. **Typesense Sync** (`src/sync.py`) — taxonomy + company collections populated after CSV sync; rename detection updates denormalized names on postings
 
@@ -66,13 +69,13 @@ src/
 │   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
 ├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
 ├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py            # Commit-safe CDC with non-blocking writer floor (two-cursor)
+├── exporter.py            # Commit-safe CDC with optional relational-mirror cursor
 ├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
 ├── sync.py                # CSV -> local Postgres + Supabase + Redis + Typesense taxonomies
 ├── bootstrap.py           # One-time: Supabase -> local Postgres copy
 ├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py              # Settings (pydantic-settings)
-├── db.py                  # asyncpg pools (local Postgres + Supabase)
+├── db.py                  # asyncpg pools (local, optional mirror, web-owned data)
 ├── metrics.py             # Prometheus metrics
 ├── migrations/            # Alembic migrations for local Postgres
 ├── workspace/             # Workspace CLI (ws command)
@@ -161,14 +164,14 @@ ws reject --reason <key> --message "..."  # Uses active workspace's issue
 # Run crawler workers
 uv run crawler run                     # HTTP worker (claims from simple queues)
 uv run crawler run-browser             # Browser worker (claims from browser queues)
-uv run crawler export                  # CDC exporter loop (Supabase + Typesense)
+uv run crawler export                  # Typesense CDC (+ mirror when DATABASE_URL is set)
 uv run crawler drain                   # R2 description uploader
 uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis + Typesense
-uv run crawler reconcile               # Read-only deterministic cross-store slice
-uv run crawler reconcile --repair --max-partitions 16  # Resume verified Supabase + Typesense repairs (host timer uses this)
+uv run crawler reconcile               # Read-only enabled-target reconciliation slice
+uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs (host timer uses this)
 uv run crawler reconcile --repair --full --target typesense  # Operator full remaining target cycle
 uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense (manual; workflow_dispatch in .github/workflows/crawler-scheduled-maintenance.yml)
-uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists (every 4h via .github/workflows/crawler-scheduled-maintenance.yml, plus inline at every deploy/CSV sync)
+uv run crawler refresh-typesense       # Refresh counts + reconcile WEB_DATABASE_URL watchlists (every 4h and after sync)
 uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (RETIRED in #2821 — kept for revival; no scheduler invokes it)
 uv run crawler retry-stalled-scrapes   # Reset next_scrape_at for transient-3-strike-stalled postings (#2738; see docs/03-crawler-architecture.md "Delisting model" section 5)
 uv run crawler retry-stalled-scrapes --dry-run  # Report the count without writing

@@ -25,6 +25,7 @@ from src.reconciliation import (
     TypesenseReconciliationClient,
     _bootstrap_typesense_buckets,
     _start_run,
+    _targets,
     compare_snapshots,
     partition_bounds,
     reconcile_partition,
@@ -185,6 +186,12 @@ def test_full_reconciliation_still_requires_explicit_repair(monkeypatch) -> None
     assert args.target == "typesense"
 
 
+def test_default_reconciliation_uses_typesense_when_mirror_is_absent() -> None:
+    assert _targets("all", relational_mirror_available=False) == ("typesense",)
+    with pytest.raises(ReconciliationError, match="requires DATABASE_URL"):
+        _targets("supabase", relational_mirror_available=False)
+
+
 async def test_new_lock_holder_marks_prior_running_ledgers_interrupted() -> None:
     pool = MagicMock()
     pool.execute = AsyncMock()
@@ -334,7 +341,6 @@ async def test_injected_typesense_drift_is_repaired_to_exact_set(monkeypatch) ->
     remote_active = _id(prefix, 4)
     remote_inactive = _id(prefix, 5)
     local = _MemoryPool({shared: True, mismatch: False, missing: True})
-    supabase = _MemoryPool({})
     remote = _MemoryTypesense(
         {
             shared: True,
@@ -365,7 +371,7 @@ async def test_injected_typesense_drift_is_repaired_to_exact_set(monkeypatch) ->
 
     result = await reconcile_partition(
         local,  # type: ignore[arg-type]
-        supabase,  # type: ignore[arg-type]
+        None,
         target="typesense",
         partition=prefix,
         repair=True,

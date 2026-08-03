@@ -362,7 +362,6 @@ async def _repair_supabase_partition(
 
 async def _repair_typesense_partition(
     local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
     typesense: TypesenseReconciliationClient,
     maps: TaxonomyMaps,
     candidate_ids: frozenset[uuid.UUID],
@@ -469,7 +468,7 @@ async def _bootstrap_typesense_buckets(
 
 async def reconcile_partition(
     local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
+    supa_pool: asyncpg.Pool | None,
     *,
     target: ReconciliationTarget,
     partition: int,
@@ -480,6 +479,8 @@ async def reconcile_partition(
     started = time.monotonic()
     local = await _postgres_partition_snapshot(local_pool, partition)
     if target == "supabase":
+        if supa_pool is None:
+            raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
         remote = await _postgres_partition_snapshot(supa_pool, partition)
     else:
         if typesense is None:
@@ -492,6 +493,8 @@ async def reconcile_partition(
 
     if repair and detected:
         if target == "supabase":
+            if supa_pool is None:
+                raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
             repaired, unresolved = await _repair_supabase_partition(
                 local_pool,
                 supa_pool,
@@ -503,7 +506,6 @@ async def reconcile_partition(
                 raise ReconciliationError("Typesense repair dependencies are required")
             repaired, unresolved = await _repair_typesense_partition(
                 local_pool,
-                supa_pool,
                 typesense,
                 maps,
                 diff.actionable_ids(target),
@@ -763,15 +765,21 @@ async def _state_bootstrap_complete(
     return bool(value)
 
 
-def _targets(scope: TargetScope) -> tuple[ReconciliationTarget, ...]:
+def _targets(
+    scope: TargetScope,
+    *,
+    relational_mirror_available: bool,
+) -> tuple[ReconciliationTarget, ...]:
     if scope == "all":
-        return ("supabase", "typesense")
+        return ("supabase", "typesense") if relational_mirror_available else ("typesense",)
+    if scope == "supabase" and not relational_mirror_available:
+        raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
     return (cast(ReconciliationTarget, scope),)
 
 
 async def run_reconciliation(
     local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
+    supa_pool: asyncpg.Pool | None,
     *,
     repair: bool = False,
     full: bool = False,
@@ -811,13 +819,16 @@ async def run_reconciliation(
             maps: TaxonomyMaps | None = None
             try:
                 failures: list[str] = []
-                for target in _targets(target_scope):
+                for target in _targets(
+                    target_scope,
+                    relational_mirror_available=supa_pool is not None,
+                ):
                     last_result: PartitionResult | None = None
                     try:
                         if target == "typesense" and typesense is None:
                             typesense = TypesenseReconciliationClient()
                             if repair:
-                                maps = await _get_taxonomy_maps(local_pool, supa_pool)
+                                maps = await _get_taxonomy_maps(local_pool)
                         partition = (
                             await _ensure_cycle(local_pool, target) if repair else start_partition
                         )
