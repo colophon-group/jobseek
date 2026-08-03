@@ -40,7 +40,12 @@ describe("production migration safety", () => {
   it("reserves one physical session for the advisory lock", () => {
     const runner = readWeb("src/db/migrate.ts");
 
-    expect(runner).toContain("await sql.reserve()");
+    expect(runner).toContain("await lockSql.reserve()");
+    expect(runner).toContain("drizzle(migrationSql)");
+    expect(runner).not.toMatch(/drizzle\((?:reserved|lockConnection)\)/);
+    expect(runner).toContain("connect_timeout: 15");
+    expect(runner).toContain("lockSql.end({ timeout: 5 })");
+    expect(runner).toContain("migrationSql.end({ timeout: 5 })");
     expect(runner).toContain("pg_try_advisory_lock");
     expect(runner).toContain("pg_advisory_unlock");
     expect(runner).toContain("MIGRATION_REQUIRE_UNPOOLED");
@@ -62,5 +67,8 @@ describe("production migration safety", () => {
     );
     expect(workflow).toContain('test "$GIT_REF" = "refs/heads/main"');
     expect(workflow).toContain('cancel-in-progress: false');
+    expect(workflow).toContain(
+      "timeout --signal=TERM --kill-after=15s 12m pnpm db:migrate",
+    );
   });
 });
