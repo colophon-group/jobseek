@@ -87,6 +87,7 @@ Monitor Types (cheapest first):
   hibob             10      Full job data     No (skipped)
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
+  herp              10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
   jazzhr            10      Job URLs          Auto-configured
   lever             10      Full job data     No (skipped)
@@ -1486,6 +1487,26 @@ icims — iCIMS server-rendered listings
   Detection:  ws probe shows "iCIMS static listing — host: X, N jobs"
   Zero jobs?  A valid empty page still contains the iCIMS_ListingsPage marker."""
 
+MONITOR_HERP = """\
+herp — HERP Hire server-rendered listing
+
+  Listing:  GET https://herp.careers/v1/{slug}
+  Returns:  Canonical https://herp.careers/v1/{slug}/{job_id} detail URLs
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     One static HTML response contains every open requisition. The
+            monitor reuses shared strict retry, DOM link extraction, challenge
+            detection, and truncation handling; no browser or upstream scraper
+            dependency is required.
+
+  Config:
+    {"slug": "acme"}
+
+    slug    HERP company slug. Auto-filled only from direct or explicitly
+            linked herp.careers/v1/{slug} URLs; no blind slug guessing.
+
+  Detection:  ws probe shows "HERP static listing — slug: X, N jobs"
+  Zero jobs?  A valid page still contains the requisition-list container."""
+
 MONITOR_API_SNIFFER = """\
 api_sniffer — Direct API Replay or XHR/Fetch Capture
 
@@ -2309,6 +2330,7 @@ MONITOR_CARDS: dict[str, str] = {
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "icims": MONITOR_ICIMS,
+    "herp": MONITOR_HERP,
     "recruitee": MONITOR_RECRUITEE,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,

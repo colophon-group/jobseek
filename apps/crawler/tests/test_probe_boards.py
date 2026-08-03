@@ -362,6 +362,55 @@ class TestProbeRow:
         assert result.status == "warn"
         assert "no valid host" in result.message
 
+    async def test_herp_uses_config_slug(self):
+        row = _row(
+            board_slug="acme-herp",
+            board_url="https://legacy.example/jobs",
+            monitor_type="herp",
+            monitor_config=json.dumps({"slug": "a244"}),
+        )
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(
+                200,
+                text='<div class="requisition-list"></div>',
+                request=request,
+            )
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == "https://herp.careers/v1/a244"
+
+    async def test_herp_404_is_failed(self):
+        row = _row(
+            board_slug="acme-herp",
+            board_url="https://herp.careers/v1/a244",
+            monitor_type="herp",
+            monitor_config="",
+        )
+
+        result = await self._run(row, lambda request: httpx.Response(404, request=request))
+        assert result.status == "fail"
+        assert "not found" in result.message
+
+    async def test_herp_query_scoped_url_is_not_widened(self):
+        row = _row(
+            board_slug="acme-herp",
+            board_url="https://herp.careers/v1/a244?group=engineering",
+            monitor_type="herp",
+            monitor_config="",
+        )
+        transport = httpx.MockTransport(
+            lambda request: (_ for _ in ()).throw(AssertionError("should not fetch"))
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await probe_row(row, client)
+
+        assert result.status == "warn"
+        assert "no valid slug" in result.message
+
     async def test_recruitee_uses_host_from_url(self):
         row = _row(
             board_slug="acme-recruitee",
@@ -429,6 +478,7 @@ def test_probe_registry_covers_expected_types():
         "paycom",
         "jazzhr",
         "icims",
+        "herp",
         "recruitee",
         "rippling",
         "smartrecruiters",

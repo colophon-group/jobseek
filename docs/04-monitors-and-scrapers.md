@@ -43,6 +43,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination |
+| `herp` | URL-only | json-ld | HERP Hire single static requisition listing |
 | `bite` | URL-only | bite | b-ite.com ATS |
 | `breezy` | URL-only | json-ld (+dom fallback) | Breezy HR |
 | `comeet` | Rich | skip | Comeet hosted data and Careers API |

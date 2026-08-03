@@ -164,6 +164,11 @@ def _extract_locations(posting: dict) -> list[str] | None:
             continue
         # Build from address
         address = loc.get("address")
+        if isinstance(address, str):
+            text = re.sub(r"\s+", " ", address).strip()
+            if text:
+                locations.append(text)
+            continue
         if isinstance(address, dict):
             parts = []
             for field in ("addressLocality", "addressRegion", "addressCountry"):
