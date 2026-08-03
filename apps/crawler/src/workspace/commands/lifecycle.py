@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import shutil
@@ -1074,16 +1075,35 @@ def _execute_submit_step(
             if b.monitor_config:
                 board_kwargs["monitor_config"] = json.dumps(b.monitor_config)
             scraper = b.scraper_type
-            if not scraper and b.monitor_type:
+            scraper_config = b.scraper_config
+            active_config = (b.configs or {}).get(b.active_config or "", {})
+            scraper_type_was_empty = not scraper
+            scraper_config_is_explicit = "scraper_config" in active_config and not (
+                # V1 migration materializes a paired null/empty placeholder
+                # even when no scraper was selected. Treat that pair as
+                # legacy absence so both auto tuple elements are restored.
+                scraper_type_was_empty and not active_config.get("scraper_config")
+            )
+            auto = None
+            if b.monitor_type:
                 from src.workspace._compat import auto_scraper_type
 
                 auto = auto_scraper_type(b.monitor_type, b.monitor_config)
-                if auto:
+                if not scraper and auto:
                     scraper = auto[0]
+                # Repair workspace configs created before auto scraper configs
+                # were persisted, while preserving any manual scraper choice
+                # or explicit scraper configuration.
+                if auto and scraper == auto[0] and not scraper_config_is_explicit and auto[1]:
+                    scraper_config = copy.deepcopy(auto[1])
             if scraper:
                 board_kwargs["scraper_type"] = scraper
-            if b.scraper_config:
-                board_kwargs["scraper_config"] = json.dumps(b.scraper_config)
+            if scraper_config:
+                board_kwargs["scraper_config"] = json.dumps(scraper_config)
+            elif scraper_config_is_explicit:
+                # Reconfiguration must be able to clear a previously stored
+                # CSV config when the agent explicitly selected an empty one.
+                board_kwargs["scraper_config"] = ""
             board_add(ws.slug, **board_kwargs)
 
         # Sort CSVs by slug to minimize merge conflicts

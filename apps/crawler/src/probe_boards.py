@@ -16,7 +16,7 @@ import json
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -164,6 +164,36 @@ async def _probe_ashby(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "ashby", url, resp)
 
 
+async def _probe_bamboohr(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    tenant = _token_from_config(row["monitor_config"], "tenant")
+    if not tenant:
+        host = (urlparse(row["board_url"]).hostname or "").lower()
+        match = re.fullmatch(r"([a-z0-9][a-z0-9-]*)\.bamboohr\.com", host)
+        tenant = match.group(1) if match else None
+    if not tenant or tenant in {"api", "app", "help", "static", "www"}:
+        return ProbeResult(
+            row["board_slug"],
+            "bamboohr",
+            row["board_url"],
+            "warn",
+            "no tenant in monitor_config or BambooHR URL",
+        )
+    url = f"https://{tenant}.bamboohr.com/careers/list"
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response) and resp.is_redirect:
+        location = resp.headers.get("location", "")
+        redirect_host = (urlparse(urljoin(url, location)).hostname or "").lower()
+        if redirect_host in {"bamboohr.com", "www.bamboohr.com"}:
+            return ProbeResult(
+                row["board_slug"],
+                "bamboohr",
+                url,
+                "fail",
+                "redirected to BambooHR marketing site",
+            )
+    return _classify(row, "bamboohr", url, resp)
+
+
 async def _probe_recruitee(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     host = urlparse(row["board_url"]).hostname or ""
     if not host:
@@ -290,6 +320,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "greenhouse": _probe_greenhouse,
     "lever": _probe_lever,
     "ashby": _probe_ashby,
+    "bamboohr": _probe_bamboohr,
     "recruitee": _probe_recruitee,
     "rippling": _probe_rippling,
     "smartrecruiters": _probe_smartrecruiters,

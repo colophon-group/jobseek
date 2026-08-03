@@ -120,11 +120,13 @@ class PaginationFetchError(Exception):
         *,
         last_status: int | None = None,
         last_error: str | None = None,
+        last_location: str | None = None,
     ) -> None:
         self.url = url
         self.attempts = attempts
         self.last_status = last_status
         self.last_error = last_error
+        self.last_location = last_location
         detail = f"status={last_status}" if last_status is not None else f"error={last_error}"
         super().__init__(f"pagination fetch failed for {url} after {attempts} attempts ({detail})")
 
@@ -305,6 +307,7 @@ async def fetch_json_page_with_retry(
                     url,
                     attempts=attempt + 1,
                     last_status=resp.status_code,
+                    last_location=resp.headers.get("location"),
                 )
         except (PaginationFetchError, TDMReservedError):
             raise
