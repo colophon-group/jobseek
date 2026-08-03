@@ -1,0 +1,235 @@
+name: Operate Web PostgreSQL Backup (Hetzner)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Staged web PostgreSQL backup operation
+        required: true
+        default: verify
+        type: choice
+        options:
+          - verify
+          - backup
+          - restore
+          - enable-timer
+      confirmation:
+        description: Enter the exact confirmation token documented in the runbook
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  # Share the deployment lock so an operation cannot overlap artifact sync.
+  group: hetzner-data-backup-production-sync
+  cancel-in-progress: false
+
+jobs:
+  preauthorize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      DISPATCH_MODE: ${{ inputs.mode }}
+      DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+      DISPATCH_EVENT: ${{ github.event_name }}
+      DISPATCH_REF: ${{ github.ref }}
+    steps:
+      - name: Reject unauthorized dispatches before requesting approval
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_EVENT" = workflow_dispatch
+          test "$DISPATCH_REF" = refs/heads/main
+          case "$DISPATCH_MODE:$DISPATCH_CONFIRMATION" in
+            verify:VERIFY-WEB-POSTGRESQL) ;;
+            backup:RUN-WEB-POSTGRESQL-BACKUP) ;;
+            restore:RUN-WEB-POSTGRESQL-RESTORE-DRILL) ;;
+            enable-timer:ENABLE-WEB-POSTGRESQL-TIMER) ;;
+            *) exit 2 ;;
+          esac
+
+  authorize:
+    needs: preauthorize
+    if: github.actor == 'viktor-shcherb' && github.triggering_actor == 'viktor-shcherb'
+    runs-on: ubuntu-latest
+    environment: production-backup-operations
+    timeout-minutes: 5
+    outputs:
+      deploy_sha: ${{ steps.artifacts.outputs.deploy_sha }}
+      data_backup_sha256: ${{ steps.artifacts.outputs.data_backup_sha256 }}
+      operations_sha256: ${{ steps.artifacts.outputs.operations_sha256 }}
+      restore_drill_sha256: ${{ steps.artifacts.outputs.restore_drill_sha256 }}
+      service_sha256: ${{ steps.artifacts.outputs.service_sha256 }}
+      timer_sha256: ${{ steps.artifacts.outputs.timer_sha256 }}
+    env:
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      DISPATCH_MODE: ${{ inputs.mode }}
+      DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+      DISPATCH_EVENT: ${{ github.event_name }}
+      DISPATCH_REF: ${{ github.ref }}
+      DISPATCH_SHA: ${{ github.sha }}
+    steps:
+      - name: Require the owner, main, and mode-specific confirmation
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_EVENT" = workflow_dispatch
+          test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
+          case "$DISPATCH_MODE" in
+            verify)
+              expected=VERIFY-WEB-POSTGRESQL
+              ;;
+            backup)
+              expected=RUN-WEB-POSTGRESQL-BACKUP
+              ;;
+            restore)
+              expected=RUN-WEB-POSTGRESQL-RESTORE-DRILL
+              ;;
+            enable-timer)
+              expected=ENABLE-WEB-POSTGRESQL-TIMER
+              ;;
+            *)
+              echo "Unsupported operation mode" >&2
+              exit 2
+              ;;
+          esac
+          test "$DISPATCH_CONFIRMATION" = "$expected"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Bind authorization to the deployed revision and reviewed artifacts
+        id: artifacts
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
+          deploy_paths=(
+            'deploy/backups/**'
+            'deploy/systemd/jobseek-postgresql-backup.*'
+            'deploy/systemd/jobseek-postgresql-backup-repository.service'
+            'deploy/systemd/jobseek-postgresql-emergency-headroom.service'
+            'deploy/systemd/jobseek-typesense-backup.*'
+            'deploy/systemd/jobseek-web-postgresql-backup.*'
+            'scripts/jobseek-data-backup.py'
+            'docs/16-hetzner-maintenance.md'
+            'docs/19-data-backup-recovery.md'
+            '.github/workflows/deploy-data-backups.yml'
+            '.github/workflows/operate-web-postgresql-backup.yml'
+          )
+          deploy_sha="$(git log -1 --format=%H "$DISPATCH_SHA" -- "${deploy_paths[@]}")"
+          [[ "$deploy_sha" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$deploy_sha" "$DISPATCH_SHA"
+          {
+            echo "deploy_sha=$deploy_sha"
+            echo "data_backup_sha256=$(sha256sum scripts/jobseek-data-backup.py | cut -d' ' -f1)"
+            echo "operations_sha256=$(sha256sum deploy/backups/web-postgresql/operations.py | cut -d' ' -f1)"
+            echo "restore_drill_sha256=$(sha256sum deploy/backups/web-postgresql/restore-drill.sh | cut -d' ' -f1)"
+            echo "service_sha256=$(sha256sum deploy/systemd/jobseek-web-postgresql-backup.service | cut -d' ' -f1)"
+            echo "timer_sha256=$(sha256sum deploy/systemd/jobseek-web-postgresql-backup.timer | cut -d' ' -f1)"
+          } >> "$GITHUB_OUTPUT"
+
+  operate:
+    needs: [preauthorize, authorize]
+    if: github.actor == 'viktor-shcherb' && github.triggering_actor == 'viktor-shcherb'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 180
+    env:
+      OPERATION_MODE: ${{ inputs.mode }}
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+      EXPECTED_DEPLOY_SHA: ${{ needs.authorize.outputs.deploy_sha }}
+      EXPECTED_DATA_BACKUP_SHA256: ${{ needs.authorize.outputs.data_backup_sha256 }}
+      EXPECTED_OPERATIONS_SHA256: ${{ needs.authorize.outputs.operations_sha256 }}
+      EXPECTED_RESTORE_DRILL_SHA256: ${{ needs.authorize.outputs.restore_drill_sha256 }}
+      EXPECTED_SERVICE_SHA256: ${{ needs.authorize.outputs.service_sha256 }}
+      EXPECTED_TIMER_SHA256: ${{ needs.authorize.outputs.timer_sha256 }}
+    steps:
+      - name: Run the authorized operation over host-key-pinned OpenSSH
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
+          case "$OPERATION_MODE" in
+            verify|backup|restore|enable-timer) ;;
+            *) exit 2 ;;
+          esac
+          : "${TARGET_HOST:?production host is required}"
+          : "${SSH_PRIVATE_KEY:?SSH private key is required}"
+          : "${SSH_KNOWN_HOSTS:?trusted SSH host keys are required}"
+          [[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          for digest in \
+            "$EXPECTED_DATA_BACKUP_SHA256" \
+            "$EXPECTED_OPERATIONS_SHA256" \
+            "$EXPECTED_RESTORE_DRILL_SHA256" \
+            "$EXPECTED_SERVICE_SHA256" \
+            "$EXPECTED_TIMER_SHA256"; do
+            [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
+          done
+
+          ssh_root="$(mktemp -d "$RUNNER_TEMP/jobseek-web-backup-ssh.XXXXXX")"
+          cleanup() {
+            rm -rf -- "$ssh_root"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_root/id"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_root/known_hosts"
+          chmod 0600 "$ssh_root/id" "$ssh_root/known_hosts"
+          ssh-keygen -y -f "$ssh_root/id" >/dev/null
+          ssh-keygen -F "$TARGET_HOST" -f "$ssh_root/known_hosts" >/dev/null
+          ssh_options=(
+            -F /dev/null
+            -i "$ssh_root/id"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o "UserKnownHostsFile=$ssh_root/known_hosts"
+            -o GlobalKnownHostsFile=/dev/null
+            -o PasswordAuthentication=no
+            -o KbdInteractiveAuthentication=no
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=3
+            -o LogLevel=ERROR
+          )
+          # All interpolated remote arguments are allowlisted or regex-validated above.
+          # shellcheck disable=SC2029
+          timeout --foreground --signal=TERM --kill-after=30s 165m \
+            ssh "${ssh_options[@]}" "root@$TARGET_HOST" \
+            "set -eu; \
+              umask 077; \
+              test ! -L /run/jobseek-backup-deployment.lock; \
+              exec 8>/run/jobseek-backup-deployment.lock; \
+              chown root:root /run/jobseek-backup-deployment.lock; \
+              chmod 0600 /run/jobseek-backup-deployment.lock; \
+              test \"\$(stat -c '%U:%G:%a' /run/jobseek-backup-deployment.lock)\" = root:root:600; \
+              flock -w 60 8; \
+              test ! -L /usr/local/sbin/jobseek-web-postgresql-operations; \
+              test -f /usr/local/sbin/jobseek-web-postgresql-operations; \
+              test \"\$(stat -c '%U:%G:%a' /usr/local/sbin/jobseek-web-postgresql-operations)\" = root:root:755; \
+              operations_hash=\$(sha256sum /usr/local/sbin/jobseek-web-postgresql-operations); \
+              test \"\${operations_hash%% *}\" = '$EXPECTED_OPERATIONS_SHA256'; \
+              export JOBSEEK_BACKUP_DEPLOYMENT_LOCK_FD=8; \
+              exec /usr/local/sbin/jobseek-web-postgresql-operations '$OPERATION_MODE' \
+              --expected-deploy-sha '$EXPECTED_DEPLOY_SHA' \
+              --expected-data-backup-sha256 '$EXPECTED_DATA_BACKUP_SHA256' \
+              --expected-operations-sha256 '$EXPECTED_OPERATIONS_SHA256' \
+              --expected-restore-drill-sha256 '$EXPECTED_RESTORE_DRILL_SHA256' \
+              --expected-service-sha256 '$EXPECTED_SERVICE_SHA256' \
+              --expected-timer-sha256 '$EXPECTED_TIMER_SHA256'"

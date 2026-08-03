@@ -577,12 +577,46 @@ def _web_postgres_image() -> str:
 
 def _web_postgres_env() -> dict[str, str]:
     env = os.environ.copy()
+    password_file_value = os.environ.get("WEB_DATABASE_PASSWORD_FILE", "").strip()
+    if password_file_value:
+        password_file = Path(password_file_value)
+        try:
+            metadata = password_file.lstat()
+        except OSError as exc:
+            raise BackupError("WEB_DATABASE_PASSWORD_FILE is not readable") from exc
+        if (
+            not password_file.is_absolute()
+            or not stat.S_ISREG(metadata.st_mode)
+            or stat.S_ISLNK(metadata.st_mode)
+            or stat.S_IMODE(metadata.st_mode) & 0o077
+        ):
+            raise BackupError("WEB_DATABASE_PASSWORD_FILE must be an absolute private regular file")
+        connection = {
+            "WEB_DATABASE_HOST": os.environ.get("WEB_DATABASE_HOST", "").strip(),
+            "WEB_DATABASE_PORT": os.environ.get("WEB_DATABASE_PORT", "5432").strip(),
+            "WEB_DATABASE_USER": os.environ.get("WEB_DATABASE_USER", "").strip(),
+            "WEB_DATABASE_NAME": os.environ.get("WEB_DATABASE_NAME", "").strip(),
+        }
+        if any(
+            not value or any(character.isspace() for character in value)
+            for value in connection.values()
+        ):
+            raise BackupError("web database password-file connection fields are invalid")
+        try:
+            port = int(connection["WEB_DATABASE_PORT"])
+        except ValueError as exc:
+            raise BackupError("WEB_DATABASE_PORT is invalid") from exc
+        if not 1 <= port <= 65_535:
+            raise BackupError("WEB_DATABASE_PORT is invalid")
+        env.update(connection)
+        env["WEB_DATABASE_PASSWORD_FILE"] = str(password_file)
+    else:
+        env["WEB_DATABASE_URL"] = _web_database_url()
     # PGDATABASE is only a database-name default. The PostgreSQL 17 client
     # does not expand a connection URI supplied through that environment
     # variable, so it falls back to the container-local Unix socket. Keep the
     # complete credential in a dedicated variable and pass it explicitly as
     # --dbname from inside the short-lived client container.
-    env["WEB_DATABASE_URL"] = _web_database_url()
     env["PGCONNECT_TIMEOUT"] = "30"
     env["PGAPPNAME"] = "jobseek-web-postgresql-backup"
     return env
@@ -590,44 +624,81 @@ def _web_postgres_env() -> dict[str, str]:
 
 def _web_postgres_client_command(
     *arguments: str,
-    network: str = "host",
+    network: str | None = None,
     mounts: Sequence[tuple[Path, str, str]] = (),
     database_env: bool = True,
 ) -> list[str]:
+    resolved_network = network or os.environ.get("WEB_POSTGRES_NETWORK", "host")
     command = [
         "docker",
         "run",
         "--rm",
         "--pull=never",
         "--network",
-        network,
+        resolved_network,
     ]
+    password_file = os.environ.get("WEB_DATABASE_PASSWORD_FILE", "").strip()
     if database_env:
-        command.extend(
-            (
-                "--env",
-                "WEB_DATABASE_URL",
-                "--env",
-                "PGCONNECT_TIMEOUT",
-                "--env",
-                "PGAPPNAME",
+        if password_file:
+            command.extend(
+                (
+                    "--env",
+                    "PGPASSFILE=/run/secrets/web-database-pgpass",
+                    "--env",
+                    "WEB_DATABASE_HOST",
+                    "--env",
+                    "WEB_DATABASE_PORT",
+                    "--env",
+                    "WEB_DATABASE_USER",
+                    "--env",
+                    "WEB_DATABASE_NAME",
+                    "--env",
+                    "PGCONNECT_TIMEOUT",
+                    "--env",
+                    "PGAPPNAME",
+                    "--volume",
+                    f"{password_file}:/run/secrets/web-database-pgpass:ro",
+                )
             )
-        )
+        else:
+            command.extend(
+                (
+                    "--env",
+                    "WEB_DATABASE_URL",
+                    "--env",
+                    "PGCONNECT_TIMEOUT",
+                    "--env",
+                    "PGAPPNAME",
+                )
+            )
     for host_path, container_path, mode in mounts:
         command.extend(("--volume", f"{host_path}:{container_path}:{mode}"))
     command.append(_web_postgres_image())
     if database_env:
-        # Expand the URI only inside the container. This makes libpq parse the
-        # URI while keeping it out of the host command line and backup logs.
-        command.extend(
-            (
-                "sh",
-                "-ceu",
-                'client="$1"; shift; exec "$client" --dbname="$WEB_DATABASE_URL" "$@"',
-                "jobseek-web-postgresql-client",
-                *arguments,
+        if password_file:
+            command.extend(
+                (
+                    "sh",
+                    "-ceu",
+                    'client="$1"; shift; exec "$client" '
+                    '--host="$WEB_DATABASE_HOST" --port="$WEB_DATABASE_PORT" '
+                    '--username="$WEB_DATABASE_USER" --dbname="$WEB_DATABASE_NAME" "$@"',
+                    "jobseek-web-postgresql-client",
+                    *arguments,
+                )
             )
-        )
+        else:
+            # Expand the URI only inside the container. This makes libpq parse
+            # the URI while keeping it out of the host command line and logs.
+            command.extend(
+                (
+                    "sh",
+                    "-ceu",
+                    'client="$1"; shift; exec "$client" --dbname="$WEB_DATABASE_URL" "$@"',
+                    "jobseek-web-postgresql-client",
+                    *arguments,
+                )
+            )
     else:
         command.extend(arguments)
     return command

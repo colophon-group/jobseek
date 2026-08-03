@@ -6,7 +6,26 @@ IMAGE="${WEB_POSTGRES_IMAGE:-postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458
 ENV_FILE="${WEB_POSTGRES_BACKUP_ENV_FILE:-/etc/jobseek-backup/web-postgresql.env}"
 STATUS_FILE="${WEB_POSTGRES_RESTORE_STATUS_FILE:-/var/lib/jobseek-backup/status/web-postgresql-restore.json}"
 DRILL_ROOT="${WEB_POSTGRES_DRILL_ROOT:-/run/jobseek-backup/web-postgresql/drills}"
-CONTAINER="jobseek-web-postgresql-restore-${RANDOM}-$$"
+OPERATION_ID="${WEB_POSTGRES_RESTORE_OPERATION_ID:-}"
+if [[ -z "$OPERATION_ID" ]]; then
+  OPERATION_ID="$(python3 - <<'PY'
+import secrets
+
+print(secrets.token_hex(16))
+PY
+)"
+fi
+[[ "$OPERATION_ID" =~ ^[0-9a-f]{32}$ ]] || {
+  echo "ERROR: invalid restore operation ID" >&2
+  exit 2
+}
+EXPECTED_CONTAINER="jobseek-web-postgresql-restore-${OPERATION_ID}"
+CONTAINER="${WEB_POSTGRES_RESTORE_CONTAINER:-$EXPECTED_CONTAINER}"
+NETWORK="${WEB_POSTGRES_RESTORE_NETWORK:-${EXPECTED_CONTAINER}-network}"
+OPERATION_ROOT="${WEB_POSTGRES_RESTORE_OPERATION_ROOT:-$DRILL_ROOT/operation-${OPERATION_ID}}"
+[[ "$CONTAINER" == "$EXPECTED_CONTAINER" ]]
+[[ "$NETWORK" == "${EXPECTED_CONTAINER}-network" ]]
+[[ "$OPERATION_ROOT" == "$DRILL_ROOT/operation-${OPERATION_ID}" ]]
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 STARTED_UNIX="$(date +%s)"
 SUCCESS=false
@@ -14,6 +33,7 @@ TABLE_COUNT=0
 ROW_COUNT=0
 ARCHIVE_SHA256=""
 RESTORE_PATH=""
+CREDENTIAL_PATH=""
 
 write_status() {
   local finished_unix duration
@@ -52,17 +72,62 @@ os.replace(temporary, path)
 PY
 }
 
+docker_resource_absent() {
+  local kind="$1" name="$2"
+  local inventory resource
+  case "$kind" in
+    container)
+      inventory="$(docker container ls --all --format '{{.Names}}')" || return 2
+      ;;
+    network)
+      inventory="$(docker network ls --format '{{.Name}}')" || return 2
+      ;;
+    *)
+      return 2
+      ;;
+  esac
+  while IFS= read -r resource; do
+    if [[ "$resource" == "$name" ]]; then
+      return 1
+    fi
+  done <<<"$inventory"
+  return 0
+}
+
 cleanup() {
-  local exit_code=$?
-  docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  if [[ -n "$RESTORE_PATH" ]]; then
-    rm -rf -- "$RESTORE_PATH"
+  local exit_code=$? cleanup_failed=false
+  trap - EXIT HUP INT TERM
+  set +e
+  docker rm -f "$CONTAINER" >/dev/null 2>&1
+  if ! docker_resource_absent container "$CONTAINER"; then
+    cleanup_failed=true
   fi
-  write_status
-  trap - EXIT
+  docker network rm "$NETWORK" >/dev/null 2>&1
+  if ! docker_resource_absent network "$NETWORK"; then
+    cleanup_failed=true
+  fi
+  if [[ -n "$RESTORE_PATH" ]]; then
+    rm -rf -- "$RESTORE_PATH" || cleanup_failed=true
+  fi
+  if [[ -n "$CREDENTIAL_PATH" ]]; then
+    rm -rf -- "$CREDENTIAL_PATH" || cleanup_failed=true
+  fi
+  if [[ -n "$OPERATION_ROOT" ]]; then
+    rm -rf -- "$OPERATION_ROOT" || cleanup_failed=true
+  fi
+  if [[ "$exit_code" -ne 0 || "$cleanup_failed" == true ]]; then
+    SUCCESS=false
+    exit_code=1
+  fi
+  if ! write_status; then
+    exit_code=1
+  fi
   exit "$exit_code"
 }
 trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 [[ "$IMAGE" == *@sha256:* ]] || {
   echo "ERROR: WEB_POSTGRES_IMAGE must be digest-pinned" >&2
@@ -77,14 +142,33 @@ set +a
 : "${RESTIC_PASSWORD_FILE:?RESTIC_PASSWORD_FILE is required}"
 : "${RESTIC_SFTP_COMMAND:?RESTIC_SFTP_COMMAND is required}"
 
-exec 9>/run/jobseek-data-backup-web-postgresql.lock
-flock -n 9 || {
-  echo "ERROR: web PostgreSQL backup or restore is already running" >&2
-  exit 1
-}
+if [[ -n "${WEB_POSTGRES_RESTORE_LOCK_FD:-}" || \
+  -n "${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}" ]]; then
+  [[ "${WEB_POSTGRES_RESTORE_LOCK_FD:-}" =~ ^[0-9]+$ ]]
+  [[ "${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}" =~ ^[0-9]+$ ]]
+  [[ "$(readlink "/proc/$$/fd/${WEB_POSTGRES_RESTORE_LOCK_FD:-}")" == \
+    /run/jobseek-data-backup-web-postgresql.lock ]]
+  [[ "$(readlink "/proc/$$/fd/${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}")" == \
+    /run/jobseek-backup-deployment.lock ]]
+  flock -n "${WEB_POSTGRES_RESTORE_LOCK_FD:-}"
+  flock -n "${WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD:-}"
+else
+  exec 8>/run/jobseek-backup-deployment.lock
+  flock -n 8 || {
+    echo "ERROR: another backup deployment or protected operation is active" >&2
+    exit 1
+  }
+  exec 9>/run/jobseek-data-backup-web-postgresql.lock
+  flock -n 9 || {
+    echo "ERROR: web PostgreSQL backup or restore is already running" >&2
+    exit 1
+  }
+fi
 
 install -d -m 0700 "$DRILL_ROOT"
-RESTORE_PATH="$(mktemp -d "$DRILL_ROOT/restore.XXXXXX")"
+mkdir -m 0700 "$OPERATION_ROOT"
+RESTORE_PATH="$OPERATION_ROOT/restore"
+mkdir -m 0700 "$RESTORE_PATH"
 restic -o "sftp.command=${RESTIC_SFTP_COMMAND}" restore latest \
   --tag jobseek-web-postgresql \
   --host jobseek-web-postgresql \
@@ -106,42 +190,69 @@ ARCHIVE_DIR="$(dirname "$DUMP_PATH")"
   exit 1
 }
 
+CREDENTIAL_PATH="$OPERATION_ROOT/credential"
+mkdir -m 0700 "$CREDENTIAL_PATH"
+PASSWORD_FILE="$CREDENTIAL_PATH/postgres-password"
+PGPASS_FILE="$CREDENTIAL_PATH/pgpass"
+python3 - "$PASSWORD_FILE" "$PGPASS_FILE" <<'PY'
+import secrets
+import sys
+from pathlib import Path
+
+password = secrets.token_hex(32)
+password_path = Path(sys.argv[1])
+pgpass_path = Path(sys.argv[2])
+password_path.write_text(password + "\n", encoding="utf-8")
+pgpass_path.write_text(f"*:*:*:postgres:{password}\n", encoding="utf-8")
+password_path.chmod(0o600)
+pgpass_path.chmod(0o600)
+PY
+docker network create --driver bridge --internal \
+  --label jobseek.backup.service=web-postgresql-restore \
+  --label "jobseek.backup.operation=$OPERATION_ID" \
+  "$NETWORK" >/dev/null
 docker run --detach --rm \
   --name "$CONTAINER" \
+  --label jobseek.backup.service=web-postgresql-restore \
+  --label "jobseek.backup.operation=$OPERATION_ID" \
   --pull=never \
-  --publish 127.0.0.1::5432 \
-  --env POSTGRES_HOST_AUTH_METHOD=trust \
+  --network "$NETWORK" \
+  --env POSTGRES_PASSWORD_FILE=/run/secrets/postgres-password \
   --env POSTGRES_DB=web_restore \
   --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,noexec,size=512m \
+  --volume "$PASSWORD_FILE:/run/secrets/postgres-password:ro" \
+  --volume "$PGPASS_FILE:/run/secrets/web-database-pgpass:ro" \
   --volume "$ARCHIVE_DIR:/restore:ro" \
   "$IMAGE" >/dev/null
 
 for _ in $(seq 1 60); do
-  if docker exec "$CONTAINER" pg_isready -U postgres -d web_restore >/dev/null 2>&1; then
+  if docker exec "$CONTAINER" pg_isready \
+      --host=127.0.0.1 --username=postgres --dbname=web_restore >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
-docker exec "$CONTAINER" pg_isready -U postgres -d web_restore >/dev/null
-docker exec "$CONTAINER" psql \
-  --no-psqlrc --set ON_ERROR_STOP=1 --quiet \
-  --username postgres --dbname web_restore \
-  --file /restore/bootstrap.sql
-docker exec "$CONTAINER" pg_restore \
-  --exit-on-error \
-  --no-owner \
-  --no-privileges \
-  --username postgres \
-  --dbname web_restore \
-  /restore/web-postgresql.dump
+docker exec "$CONTAINER" pg_isready \
+  --host=127.0.0.1 --username=postgres --dbname=web_restore >/dev/null
+docker exec "$CONTAINER" sh -ceu '
+  export PGPASSFILE=/run/secrets/web-database-pgpass
+  exec psql --no-psqlrc --set ON_ERROR_STOP=1 --quiet \
+    --host=127.0.0.1 --username=postgres --dbname=web_restore \
+    --file /restore/bootstrap.sql
+'
+docker exec "$CONTAINER" sh -ceu '
+  export PGPASSFILE=/run/secrets/web-database-pgpass
+  exec pg_restore --exit-on-error --no-owner --no-privileges \
+    --host=127.0.0.1 --username=postgres --dbname=web_restore \
+    /restore/web-postgresql.dump
+'
 
-PORT_LINE="$(docker port "$CONTAINER" 5432/tcp)"
-PORT="${PORT_LINE##*:}"
-[[ "$PORT" =~ ^[0-9]+$ ]] || {
-  echo "ERROR: could not resolve the loopback restore port" >&2
-  exit 1
-}
-WEB_DATABASE_URL="postgresql://postgres@127.0.0.1:${PORT}/web_restore" \
+WEB_DATABASE_PASSWORD_FILE="$PGPASS_FILE" \
+WEB_DATABASE_HOST="$CONTAINER" \
+WEB_DATABASE_PORT=5432 \
+WEB_DATABASE_USER=postgres \
+WEB_DATABASE_NAME=web_restore \
+WEB_POSTGRES_NETWORK="$NETWORK" \
   /usr/local/sbin/jobseek-data-backup web-postgresql-verify \
   --manifest "$MANIFEST_PATH" \
   --dump "$DUMP_PATH" \
@@ -149,9 +260,11 @@ WEB_DATABASE_URL="postgresql://postgres@127.0.0.1:${PORT}/web_restore" \
 
 # Exercise the restored Better Auth, watchlist, saved-job/interview, followed
 # company, request, and outreach write constraints without retaining fixtures.
-docker exec -i "$CONTAINER" psql \
-  --no-psqlrc --set ON_ERROR_STOP=1 --quiet \
-  --username postgres --dbname web_restore <<'SQL'
+docker exec -i "$CONTAINER" sh -ceu '
+  export PGPASSFILE=/run/secrets/web-database-pgpass
+  exec psql --no-psqlrc --set ON_ERROR_STOP=1 --quiet \
+    --host=127.0.0.1 --username=postgres --dbname=web_restore
+' <<'SQL'
 BEGIN;
 INSERT INTO "user" (id, name, email) VALUES
   ('restore-smoke-user', 'Restore Smoke', 'restore-smoke@invalid.example');
