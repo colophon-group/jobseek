@@ -97,6 +97,11 @@ _ATS_URL_RE = re.compile(
     r"ux/ats/careersite/[1-9]\d{0,9}/home"
     r"(?:/requisition/[1-9]\d{0,19})?"
     r"\?c=[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?(?=[#\"'<\s]|$)"
+    r"|jobs\.dayforcehcm\.com/"
+    r"(?:[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})+/)?"
+    r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?/"
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,126}[A-Za-z0-9])?"
+    r"(?:/jobs/[1-9]\d{0,18})?/?(?=[?#\"'<\s]|$)"
     r"|herp\.careers/v1/[a-z0-9][a-z0-9_-]{0,62}"
     r"(?:/[A-Za-z0-9_-]{6,64})?/?(?=[#\"'<\s]|$)"
     r"|hrmos\.co/pages/[a-z0-9][a-z0-9_-]{0,62}/jobs"
@@ -865,11 +870,14 @@ def _dedup_candidates(candidates: list[CareerPageCandidate]) -> list[CareerPageC
         tenant = c.monitor_config.get("tenant")
         site_id = c.monitor_config.get("site_id")
         corp = c.monitor_config.get("corp")
+        portal = c.monitor_config.get("portal")
         tenant_parts = [tenant] if tenant else []
         if tenant_parts and site_id is not None:
             tenant_parts.append(site_id)
         if tenant_parts and corp:
             tenant_parts.append(corp)
+        if tenant_parts and portal:
+            tenant_parts.append(portal)
         tenant_key = ":".join(str(part) for part in tenant_parts) or None
         config_key = (
             c.monitor_config.get("token") or c.monitor_config.get("slug") or tenant_key or c.url

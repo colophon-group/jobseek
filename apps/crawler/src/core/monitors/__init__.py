@@ -217,12 +217,13 @@ def all_monitor_types() -> frozenset[str]:
 def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
     """Return True if the monitor requires a Playwright browser.
 
-    accenture always needs a browser (cookie extraction via Playwright).
+    accenture and dayforce always need a browser (public session replay via
+    Playwright).
     api_sniffer needs a browser when ``browser`` is set in config or when
     no ``api_url`` is configured (auto-discover mode).  dom always benefits
     from a browser but falls back to static HTML.
     """
-    if name == "accenture":
+    if name in {"accenture", "dayforce"}:
         return True
     if name == "api_sniffer":
         cfg = config or {}
@@ -407,6 +408,10 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Cornerstone API \u2014 {label}, {jobs} jobs"
         return f"Cornerstone API \u2014 {label}"
+    if name == "dayforce":
+        tenant = metadata.get("tenant", "?")
+        portal = metadata.get("portal", "?")
+        return f"Dayforce API \u2014 tenant: {tenant}, portal: {portal}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -697,6 +702,7 @@ from src.core.monitors import (  # noqa: E402
     breezy,  # noqa: F401
     comeet,  # noqa: F401
     cornerstone,  # noqa: F401
+    dayforce,  # noqa: F401
     deel,  # noqa: F401
     dom,  # noqa: F401
     dvinci,  # noqa: F401

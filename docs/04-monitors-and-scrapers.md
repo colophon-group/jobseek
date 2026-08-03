@@ -45,6 +45,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination |
 | `gupy` | URL-only | json-ld | Gupy single-page NextData inventory |
 | `cornerstone` | Rich | skip | Cornerstone bootstrap + regional paginated search API |
+| `dayforce` | Rich | skip | Dayforce browser-context public search BFF |
 | `herp` | URL-only | json-ld | HERP Hire single static requisition listing |
 | `hrmos` | URL-only | json-ld | HRMOS static listings with bounded pagination |
 | `bite` | URL-only | bite | b-ite.com ATS |

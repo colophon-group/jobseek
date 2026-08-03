@@ -15,6 +15,7 @@ import re
 from urllib.parse import parse_qsl
 
 from src.shared.cornerstone import cornerstone_board_from_url
+from src.shared.dayforce import dayforce_board_from_url
 from src.shared.gupy import gupy_tenant_from_url
 
 _ICIMS_STATIC_QUERY_VALUES = {
@@ -47,6 +48,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "bamboohr",
         "comeet",
         "cornerstone",
+        "dayforce",
         "deel",
         "dvinci",
         "gem",
@@ -190,6 +192,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "gupy"
     if cornerstone_board_from_url(url) is not None:
         return "cornerstone"
+    if dayforce_board_from_url(url) is not None:
+        return "dayforce"
     if (
         host == "herp.careers"
         and not parsed.query

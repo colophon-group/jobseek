@@ -124,6 +124,7 @@ async def test_save_raw_logs_handler_failures(
         "ashby",
         "breezy",
         "cornerstone",
+        "dayforce",
         "dom",
         "greenhouse",
         "hirehive",

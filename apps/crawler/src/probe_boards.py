@@ -25,6 +25,13 @@ from src.shared.cornerstone import (
     cornerstone_board_from_url,
     extract_cornerstone_context,
 )
+from src.shared.dayforce import (
+    dayforce_board_from_metadata,
+    dayforce_board_from_url,
+    dayforce_listing_culture_from_url,
+    extract_dayforce_site,
+    resolve_dayforce_listing_redirect,
+)
 from src.shared.gupy import normalize_gupy_tenant
 
 # Literal set of statuses a probe can return. CI treats "fail" as a hard error
@@ -452,6 +459,58 @@ async def _probe_cornerstone(row: dict, client: httpx.AsyncClient) -> ProbeResul
     return _classify(row, "cornerstone", url, resp)
 
 
+async def _probe_dayforce(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    try:
+        raw_config = json.loads(row["monitor_config"]) if row["monitor_config"] else {}
+    except (json.JSONDecodeError, TypeError):
+        raw_config = {}
+    config = raw_config if isinstance(raw_config, dict) else {}
+    board = dayforce_board_from_metadata(config) or dayforce_board_from_url(row["board_url"])
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "dayforce",
+            row["board_url"],
+            "warn",
+            "no valid tenant/portal in monitor_config or Dayforce URL",
+        )
+
+    url = board.listing_url()
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response):
+        if resp.status_code in {404, 410}:
+            return ProbeResult(row["board_slug"], "dayforce", url, "fail", "board not found")
+        if resp.is_redirect:
+            target = resolve_dayforce_listing_redirect(board, url, resp.headers.get("location"))
+            if target is None:
+                return ProbeResult(
+                    row["board_slug"],
+                    "dayforce",
+                    url,
+                    "warn",
+                    "unexpected redirect",
+                )
+            url = target
+            resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+        if isinstance(resp, httpx.Response) and resp.status_code == 200:
+            try:
+                site = extract_dayforce_site(resp.text, board)
+            except ValueError as exc:
+                return ProbeResult(row["board_slug"], "dayforce", url, "warn", str(exc))
+            redirect_culture = dayforce_listing_culture_from_url(url)
+            if redirect_culture and redirect_culture.casefold() != site.culture.casefold():
+                return ProbeResult(
+                    row["board_slug"],
+                    "dayforce",
+                    url,
+                    "warn",
+                    "localized redirect does not match listing culture",
+                )
+            if site.disabled:
+                return ProbeResult(row["board_slug"], "dayforce", url, "fail", "board disabled")
+    return _classify(row, "dayforce", url, resp)
+
+
 async def _probe_hrmos(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     tenant = _token_from_config(row["monitor_config"], "tenant")
     tenant = tenant.strip().lower() if tenant else None
@@ -627,6 +686,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "icims": _probe_icims,
     "gupy": _probe_gupy,
     "cornerstone": _probe_cornerstone,
+    "dayforce": _probe_dayforce,
     "herp": _probe_herp,
     "hrmos": _probe_hrmos,
     "recruitee": _probe_recruitee,
