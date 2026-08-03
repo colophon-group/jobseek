@@ -62,7 +62,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/crawler-host-hygiene.py
+          source: scripts/crawler-host-hygiene.py,apps/crawler/scripts/postgresql-operational-preflight.py
           target: /tmp/jobseek-crawler-maintenance/${{ github.sha }}
           strip_components: 1
 
@@ -81,7 +81,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: GITHUB_SHA
+          envs: GITHUB_SHA,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD
           # A full production re-index currently takes about 45 minutes.
           # Allow the two-hour host-lock wait plus the bounded two-hour
           # operation and leave cleanup headroom beyond ssh-action's default.
@@ -93,6 +93,7 @@ jobs:
               echo "Timed out waiting for the crawler mutation lock" >&2
               exit 1
             }
+            python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler/scripts/postgresql-operational-preflight.py"
             TASK="${{ steps.task.outputs.task }}"
             NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
             tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
@@ -144,3 +145,8 @@ jobs:
             if (( maintenance_status != 0 || hygiene_status != 0 )); then
               exit 1
             fi
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+          GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
+          GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}

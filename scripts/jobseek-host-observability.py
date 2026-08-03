@@ -25,6 +25,8 @@ UTC = timezone.utc  # noqa: UP017 - crawler host system Python is 3.10.
 DEFAULT_TEXTFILE = Path("/var/lib/jobseek-observability/textfile/jobseek-host.prom")
 DEFAULT_STATE_DIR = Path("/var/lib/jobseek-observability/state")
 DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
+POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
+POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
 MAX_LOG_LINES = 200
 
 ROLE_CONTAINERS = {
@@ -53,6 +55,7 @@ ROLE_UNITS = {
         "docker.service",
         "jobseek-postgresql-backup-repository.service",
         "jobseek-postgresql-backup.timer",
+        "jobseek-postgresql-emergency-headroom.service",
     ),
     "typesense": (
         "docker.service",
@@ -298,7 +301,43 @@ def _collect_postgresql_shared_memory_metrics(lines: list[str], container: str) 
     )
 
 
+def _collect_postgresql_emergency_reserve_metrics(lines: list[str], container: str) -> None:
+    source = _run(
+        [
+            "docker",
+            "inspect",
+            "--format",
+            '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}'
+            "{{.Source}}{{end}}{{end}}",
+            container,
+        ],
+        timeout=30,
+    ).stdout.strip()
+    if not source:
+        raise ProbeError("PostgreSQL data bind mount was not found")
+    mount = _run(["findmnt", "-n", "-o", "TARGET", "--target", source], timeout=30).stdout.strip()
+    if not mount.startswith("/mnt/"):
+        raise ProbeError("PostgreSQL data filesystem has an unexpected mountpoint")
+    reserve = Path(mount) / POSTGRES_EMERGENCY_RESERVE_NAME
+    lines.append(
+        _metric(
+            "jobseek_postgresql_emergency_reserve_target_bytes",
+            POSTGRES_EMERGENCY_RESERVE_BYTES,
+        )
+    )
+    try:
+        metadata = reserve.lstat()
+    except FileNotFoundError:
+        lines.append(_metric("jobseek_postgresql_emergency_reserve_bytes", 0))
+        return
+    if reserve.is_symlink() or not reserve.is_file():
+        raise ProbeError("PostgreSQL emergency reserve is not a regular file")
+    allocated = metadata.st_blocks * 512
+    lines.append(_metric("jobseek_postgresql_emergency_reserve_bytes", allocated))
+
+
 def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -> None:
+    _collect_postgresql_emergency_reserve_metrics(lines, container)
     _collect_postgresql_shared_memory_metrics(lines, container)
     ready = subprocess.run(
         [

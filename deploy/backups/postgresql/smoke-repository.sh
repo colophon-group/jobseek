@@ -58,6 +58,7 @@ docker container inspect "$CONTAINER" >/dev/null 2>&1 && {
 
 install -d -o 70 -g 70 -m 0700 "$CONFIG_DIR" "$DATA_DIR" "$SPOOL_DIR"
 install -o 70 -g 70 -m 0600 "$SOURCE_CONFIG/pgbackrest.conf" "$CONFIG_FILE"
+install -o 70 -g 70 -m 0600 /dev/null "$SPOOL_DIR/repository.lock"
 
 # The generated stanza and repository prefix are unique and deliberately
 # outside the pgbackrest directory, so deletion can never target production.
@@ -90,7 +91,7 @@ docker run --detach \
   "$IMAGE" \
   postgres \
     -c 'archive_mode=on' \
-    -c "archive_command=test -f /var/spool/pgbackrest/archive-enabled && pgbackrest --stanza=$STANZA archive-push %p" \
+    -c "archive_command=test -f /var/spool/pgbackrest/archive-enabled && flock -s /var/spool/pgbackrest/repository.lock pgbackrest --stanza=$STANZA archive-push %p" \
     -c 'archive_timeout=5s' >/dev/null
 unset password
 
@@ -142,7 +143,7 @@ docker run --detach \
   "$IMAGE" \
   postgres \
     -c 'archive_mode=on' \
-    -c "archive_command=test -f /var/spool/pgbackrest/archive-enabled && pgbackrest --stanza=$STANZA archive-push %p" \
+    -c "archive_command=test -f /var/spool/pgbackrest/archive-enabled && flock -s /var/spool/pgbackrest/repository.lock pgbackrest --stanza=$STANZA archive-push %p" \
     -c 'archive_timeout=5s' >/dev/null
 for _ in $(seq 1 60); do
   if docker exec "$CONTAINER" pg_isready -U postgres -d compatibility >/dev/null 2>&1; then

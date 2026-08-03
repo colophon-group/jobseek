@@ -209,6 +209,15 @@ rollback_on_error() {
 run_replacement() {
   local data="$1"
   [[ -d "$data" ]] || fail "PostgreSQL data mount disappeared"
+  if [[ ! -e "$SPOOL_DIR/repository.lock" && ! -L "$SPOOL_DIR/repository.lock" ]]; then
+    install -o "$(stat -c %u "$SPOOL_DIR")" -g "$(stat -c %g "$SPOOL_DIR")" \
+      -m 0600 /dev/null "$SPOOL_DIR/repository.lock"
+  fi
+  [[ ! -L "$SPOOL_DIR/repository.lock" && -f "$SPOOL_DIR/repository.lock" ]] ||
+    fail "unsafe pgBackRest repository lock"
+  chmod 0600 "$SPOOL_DIR/repository.lock"
+  chown "$(stat -c %u "$SPOOL_DIR"):$(stat -c %g "$SPOOL_DIR")" \
+    "$SPOOL_DIR/repository.lock"
   docker run --detach \
     --name "$CURRENT_NAME" \
     --network host \
@@ -236,7 +245,7 @@ run_replacement() {
       -c 'checkpoint_completion_target=0.9' \
       -c 'wal_compression=on' \
       -c 'archive_mode=on' \
-      -c 'archive_command=test -f /var/spool/pgbackrest/archive-enabled && pgbackrest --stanza=jobseek archive-push %p' \
+      -c 'archive_command=test -f /var/spool/pgbackrest/archive-enabled && flock -s /var/spool/pgbackrest/repository.lock pgbackrest --stanza=jobseek archive-push %p' \
       -c 'archive_timeout=60s' >/dev/null
 }
 

@@ -411,6 +411,74 @@ groups:
             data Volume before changing max_wal_size or checkpoint timing.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#postgresql-capacity-and-checkpoint-pressure
 
+      - alert: PostgreSQLBackupRepositoryHeadroomLow
+        expr: |
+          (
+            max(
+              node_filesystem_avail_bytes{
+                job="integrations/unix",
+                host_role="postgresql",
+                fstype="cifs",
+                mountpoint=~"/mnt/.*"
+              }
+            )
+              /
+            max(
+              node_filesystem_size_bytes{
+                job="integrations/unix",
+                host_role="postgresql",
+                fstype="cifs",
+                mountpoint=~"/mnt/.*"
+              }
+            )
+              < 0.35
+          )
+            or
+          (
+            min(
+              predict_linear(
+                node_filesystem_avail_bytes{
+                  job="integrations/unix",
+                  host_role="postgresql",
+                  fstype="cifs",
+                  mountpoint=~"/mnt/.*"
+                }[6h],
+                7 * 24 * 60 * 60
+              )
+            ) < 0
+          )
+        for: 30m
+        labels:
+          severity: critical
+          service: postgresql-backup
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "PostgreSQL backup repository is consuming its safety margin"
+          description: |
+            The encrypted repository is below 35% free or its six-hour trend
+            projects exhaustion within seven days. Verify that bounded archive
+            retention is expiring obsolete WAL before the data Volume fills.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/19-data-backup-recovery.md#postgresql-backup-operation
+
+      - alert: PostgreSQLEmergencyHeadroomMissing
+        expr: |
+          jobseek_postgresql_emergency_reserve_bytes
+            < jobseek_postgresql_emergency_reserve_target_bytes
+        for: 5m
+        labels:
+          severity: critical
+          service: postgresql
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "PostgreSQL recovery reserve is missing or under-allocated"
+          description: |
+            The attached XFS data Volume no longer contains the allocated 2 GiB
+            emergency reserve required to recover archiving and crash replay
+            safely during a capacity incident.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#postgresql-emergency-headroom
+
   - name: jobseek_crawler_reliability
     interval: 30s
     rules:
