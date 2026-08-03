@@ -267,10 +267,12 @@ _KNOWN_ATS_DOMAINS = frozenset(
     }
 )
 
+_KNOWN_ATS_DOMAIN_SUFFIXES = (".gupy.io",)
+
 
 def delay_for_domain(domain: str) -> float:
     """Return the throttle delay for a domain."""
-    if domain in _KNOWN_ATS_DOMAINS:
+    if domain in _KNOWN_ATS_DOMAINS or domain.endswith(_KNOWN_ATS_DOMAIN_SUFFIXES):
         return settings.throttle_delay_ats
     return settings.throttle_delay_default
 
