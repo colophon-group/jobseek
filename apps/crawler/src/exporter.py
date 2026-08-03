@@ -1654,6 +1654,7 @@ async def backfill_typesense(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
     *,
+    cursor_fence_factory: CursorFenceFactory = export_cursor_fence,
     cutoff_factory: CutoffFactory = capture_cdc_snapshot_cutoff,
 ) -> None:
     """Iterate ALL job_posting rows and upsert to Typesense.
@@ -1662,38 +1663,46 @@ async def backfill_typesense(
     """
     maps = await _get_taxonomy_maps(local_pool, supa_pool)
 
-    cursor: Cursor = (_EPOCH, _ZERO_UUID)
-    total = 0
-    batch_size = settings.export_batch_limit
-    cutoff = await cutoff_factory(local_pool)
+    # The steady exporter and this full scan write the same Typesense documents
+    # and advance the same cursor. Hold their database-scoped fence from the
+    # first snapshot cutoff through the final cursor save so neither path can
+    # overwrite newer documents or strand a change behind an advanced cursor.
+    async with cursor_fence_factory(local_pool):
+        log.info("backfill.cursor_fence_acquired")
 
-    while True:
-        last_ts, last_id = cursor
-        rows = await local_pool.fetch(
-            PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
-            last_ts,
-            last_id,
-            batch_size,
-            cutoff,
-        )
-        if not rows:
-            break
+        cursor: Cursor = (_EPOCH, _ZERO_UUID)
+        total = 0
+        batch_size = settings.export_batch_limit
+        cutoff = await cutoff_factory(local_pool)
 
-        # Refresh maps periodically during long backfills
-        if maps.stale:
-            await maps.refresh(local_pool, supa_pool)
+        while True:
+            last_ts, last_id = cursor
+            rows = await local_pool.fetch(
+                PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
+                last_ts,
+                last_id,
+                batch_size,
+                cutoff,
+            )
+            if not rows:
+                break
 
-        docs = _build_typesense_docs(rows, maps)
-        await _upsert_typesense_backfill_batch(docs, batch_start=str(cursor))
-        typesense_backfill_docs_total.inc(len(docs))
+            # Refresh maps periodically during long backfills
+            if maps.stale:
+                await maps.refresh(local_pool, supa_pool)
 
-        last_row = rows[-1]
-        cursor = (last_row["updated_at"], last_row["id"])
-        total += len(rows)
+            docs = _build_typesense_docs(rows, maps)
+            await _upsert_typesense_backfill_batch(docs, batch_start=str(cursor))
+            typesense_backfill_docs_total.inc(len(docs))
 
-        if total % 10_000 < batch_size:
-            log.info("backfill.progress", total=total)
+            last_row = rows[-1]
+            cursor = (last_row["updated_at"], last_row["id"])
+            total += len(rows)
 
-    # Save the final cursor so the CDC exporter picks up from here
-    await _save_cursor(local_pool, "typesense:job_posting", cursor)
+            if total % 10_000 < batch_size:
+                log.info("backfill.progress", total=total)
+
+        # Save the final cursor while the fence is still held so the steady
+        # exporter resumes from the exact completed snapshot boundary.
+        await _save_cursor(local_pool, "typesense:job_posting", cursor)
     log.info("backfill.completed", total=total)
