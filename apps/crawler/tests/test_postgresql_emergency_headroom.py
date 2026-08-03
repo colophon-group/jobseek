@@ -61,3 +61,49 @@ def test_reserve_refuses_a_symlink(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert reserve.is_symlink()
+
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="production helper requires GNU stat")
+def test_mount_discovery_deduplicates_systemd_namespace_rows(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "test-bin"
+    mount = tmp_path / "data"
+    bin_dir.mkdir()
+    mount.mkdir()
+    docker = bin_dir / "docker"
+    docker.write_text(
+        f"#!/bin/sh\nprintf '%s\\n' '{mount}/pgdata'\n",
+        encoding="utf-8",
+    )
+    findmnt = bin_dir / "findmnt"
+    findmnt.write_text(
+        "#!/bin/sh\n"
+        'case " $* " in\n'
+        "  *\" FSTYPE \"*) printf '%s\\n%s\\n' xfs xfs ;;\n"
+        f"  *) printf '%s\\n%s\\n' '{mount}' '{mount}' ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    fallocate = bin_dir / "fallocate"
+    fallocate.write_text(
+        '#!/bin/sh\ntest "$1" = --length\ndd if=/dev/zero of="$3" bs="$2" count=1 2>/dev/null\n',
+        encoding="utf-8",
+    )
+    for executable in (docker, findmnt, fallocate):
+        executable.chmod(0o755)
+
+    result = subprocess.run(
+        ["bash", str(SCRIPT), "reserve"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "JOBSEEK_POSTGRES_ALLOW_TEST_FS": "1",
+            "JOBSEEK_POSTGRES_RESERVE_BYTES": "1048576",
+            "JOBSEEK_POSTGRES_MIN_FREE_AFTER_RESERVE_BYTES": "1",
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert (mount / ".jobseek-postgresql-emergency-reserve").is_file()

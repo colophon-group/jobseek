@@ -219,6 +219,28 @@ def test_postgres_archive_hold_refuses_active_worker_timeout(
     assert not (spool / "archive-enabled.retention-hold").exists()
 
 
+def test_postgres_archive_hold_drains_worker_when_archive_is_already_disabled(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    spool = tmp_path / "spool"
+    spool.mkdir()
+    monkeypatch.setenv("PGBACKREST_ARCHIVE_DRAIN_SECONDS", "0")
+    monkeypatch.setattr(
+        backup.subprocess,
+        "run",
+        lambda *_args, **_kwargs: completed("pgbackrest archive-push segment\n"),
+    )
+
+    with (
+        pytest.raises(backup.BackupError, match="timed out draining"),
+        backup.postgres_archive_hold(spool, "postgres"),
+    ):
+        pytest.fail("archive hold must drain a worker after emergency disable")
+
+    assert not (spool / "archive-enabled").exists()
+    assert not (spool / "archive-enabled.retention-hold").exists()
+
+
 def test_postgres_archive_hold_uses_crash_safe_repository_lock(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

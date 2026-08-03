@@ -287,6 +287,15 @@ Never delete repository paths with `rm` or manually remove `pg_wal`. Only
 pgBackRest may expire repository objects, because its backup metadata defines
 the safe archive boundary.
 
+The Storage Box automatic snapshot plan retains two daily snapshots. Provider
+snapshots are a short secondary deletion guard, not additional pgBackRest
+recovery points, and they consume the same 1 TB quota. Do not increase that
+window without including high-churn archived WAL in the capacity forecast. If
+snapshots predate emergency pgBackRest expiration, every one of them can retain
+the obsolete blocks; inspect the exact provider snapshot set and repository
+statistics before deleting it, then re-enable the two-snapshot plan only after
+the repository and fresh backup are healthy.
+
 ## Typesense backup operation
 
 The job asks the live Typesense process to create a consistent snapshot under

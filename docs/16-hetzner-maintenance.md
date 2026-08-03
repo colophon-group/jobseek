@@ -316,6 +316,14 @@ PostgreSQL can retain close to the configured WAL ceiling and the ceiling is
 not a hard limit, so filesystem forecasts must leave room for WAL and archive
 failure as well as relation growth.
 
+The #6117 recovery baseline measured the durable database at 19.79 GB versus
+approximately 19.2 GB on 2026-07-22: less than 0.6 GB growth in twelve days,
+or about 1.5 GB over 30 days at the observed linear rate. After archive
+catch-up, the 80 GiB Volume therefore retains more than 50 GB for ordinary
+headroom after the 2 GiB reserve and the normal WAL ceiling. The 25% current
+headroom rule still leaves substantially more than the measured 30-day growth;
+do not count the emergency reserve as ordinary free space.
+
 The host sampler publishes:
 
 - `jobseek_postgresql_database_bytes`;

@@ -20,7 +20,15 @@ if [[ -z "$DATA_MOUNT" ]]; then
     echo "ERROR: PostgreSQL data bind mount was not found" >&2
     exit 1
   }
-  DATA_MOUNT="$(findmnt -n -o TARGET --target "$data_source")"
+  mapfile -t data_mounts < <(
+    findmnt -n -o TARGET --target "$data_source" |
+      awk 'NF && !seen[$0]++'
+  )
+  [[ "${#data_mounts[@]}" -eq 1 ]] || {
+    echo "ERROR: PostgreSQL data filesystem mountpoint is ambiguous" >&2
+    exit 1
+  }
+  DATA_MOUNT="${data_mounts[0]}"
 fi
 
 [[ -d "$DATA_MOUNT" ]] || {
@@ -32,7 +40,11 @@ if [[ "${JOBSEEK_POSTGRES_ALLOW_TEST_FS:-0}" != 1 && "$DATA_MOUNT" != /mnt/* ]];
   exit 1
 fi
 if [[ "${JOBSEEK_POSTGRES_ALLOW_TEST_FS:-0}" != 1 ]]; then
-  [[ "$(findmnt -n -o FSTYPE --target "$DATA_MOUNT")" == xfs ]] || {
+  mapfile -t data_filesystems < <(
+    findmnt -n -o FSTYPE --target "$DATA_MOUNT" |
+      awk 'NF && !seen[$0]++'
+  )
+  [[ "${#data_filesystems[@]}" -eq 1 && "${data_filesystems[0]}" == xfs ]] || {
     echo "ERROR: PostgreSQL emergency reserve requires the attached XFS Volume" >&2
     exit 1
   }

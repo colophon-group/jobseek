@@ -73,9 +73,7 @@ def run_checked(
         timeout=timeout,
     )
     if completed.returncode:
-        output = "\n".join(
-            part for part in (completed.stdout, completed.stderr) if part
-        )
+        output = "\n".join(part for part in (completed.stdout, completed.stderr) if part)
         raise BackupError(f"{argv[0]} exited {completed.returncode}: {redact(output)}")
     return completed
 
@@ -97,9 +95,7 @@ def read_previous_status(service: str, status_dir: Path = STATUS_DIR) -> dict[st
     return data if isinstance(data, dict) else {}
 
 
-def write_status(
-    service: str, record: dict[str, Any], status_dir: Path = STATUS_DIR
-) -> None:
+def write_status(service: str, record: dict[str, Any], status_dir: Path = STATUS_DIR) -> None:
     atomic_write(
         status_dir / f"{service}.json",
         json.dumps(record, indent=2, sort_keys=True) + "\n",
@@ -275,14 +271,12 @@ def postgres_archive_hold(spool_dir: Path, container: str):
                         "timed out acquiring the pgBackRest repository lock"
                     ) from None
                 time.sleep(1)
-        if sentinel_held:
+        if not archive_uses_lock:
             while True:
                 if not _archive_push_active():
                     break
                 if time.monotonic() >= deadline:
-                    raise BackupError(
-                        "timed out draining active PostgreSQL archive-push workers"
-                    )
+                    raise BackupError("timed out draining active PostgreSQL archive-push workers")
                 time.sleep(1)
         yield
     finally:
@@ -415,9 +409,7 @@ def postgres_backup(backup_type: str) -> dict[str, Any]:
         "backup_database_bytes": latest.get("info", {}).get("size"),
         # pgBackRest 2.59 reports per-backup repository bytes as `delta`;
         # retain the older `size` fallback for compatible package releases.
-        "backup_repository_bytes": repository_info.get(
-            "delta", repository_info.get("size")
-        ),
+        "backup_repository_bytes": repository_info.get("delta", repository_info.get("size")),
         "repository_backup_count": len(backups),
         "repository_latest_stop_unix": latest["timestamp"]["stop"],
     }
@@ -440,18 +432,14 @@ def _snapshot_request(url: str, api_key: str, snapshot_path: str) -> None:
     except json.JSONDecodeError as exc:
         raise BackupError("Typesense snapshot API returned non-JSON output") from exc
     if payload.get("success") is not True:
-        raise BackupError(
-            f"Typesense snapshot API did not report success: {redact(body)}"
-        )
+        raise BackupError(f"Typesense snapshot API did not report success: {redact(body)}")
 
 
 def _tree_size(path: Path) -> int:
     return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
 
 
-def _remove_old_staging(
-    staging_root: Path, *, older_than_seconds: int = 172_800
-) -> None:
+def _remove_old_staging(staging_root: Path, *, older_than_seconds: int = 172_800) -> None:
     if not staging_root.exists():
         return
     cutoff = time.time() - older_than_seconds
@@ -494,11 +482,7 @@ def typesense_backup() -> dict[str, Any]:
     ).rstrip("/")
     container_path = f"{container_root}/{run_id}"
     staging_root = (
-        Path(
-            os.environ.get(
-                "TYPESENSE_SNAPSHOT_HOST_ROOT", "/var/lib/jobseek-backup/typesense"
-            )
-        )
+        Path(os.environ.get("TYPESENSE_SNAPSHOT_HOST_ROOT", "/var/lib/jobseek-backup/typesense"))
         / "staging"
     )
     local_path = staging_root / run_id
@@ -508,9 +492,7 @@ def typesense_backup() -> dict[str, Any]:
     success = False
 
     try:
-        run_checked(
-            ["docker", "exec", container, "rm", "-rf", "--", container_path], timeout=60
-        )
+        run_checked(["docker", "exec", container, "rm", "-rf", "--", container_path], timeout=60)
         _snapshot_request(url, api_key, container_path)
         run_checked(
             ["docker", "cp", f"{container}:{container_path}/.", str(local_path)],
@@ -554,9 +536,7 @@ def typesense_backup() -> dict[str, Any]:
         )
         run_checked(_restic_command("check"), env=restic_env, timeout=14_400)
         snapshots_output = run_checked(
-            _restic_command(
-                "snapshots", "--json", "--latest", "1", "--tag", "jobseek-typesense"
-            ),
+            _restic_command("snapshots", "--json", "--latest", "1", "--tag", "jobseek-typesense"),
             env=restic_env,
             timeout=300,
         ).stdout
@@ -564,9 +544,7 @@ def typesense_backup() -> dict[str, Any]:
             snapshots = json.loads(snapshots_output)
             latest_snapshot = snapshots[-1]
         except (IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise BackupError(
-                "Restic returned no parseable Typesense snapshot"
-            ) from exc
+            raise BackupError("Restic returned no parseable Typesense snapshot") from exc
         success = True
         return {
             "snapshot_bytes": snapshot_bytes,
@@ -588,9 +566,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="service", required=True)
     postgres = subparsers.add_parser("postgresql")
-    postgres.add_argument(
-        "--backup-type", choices=("auto", "full", "diff", "incr"), default="auto"
-    )
+    postgres.add_argument("--backup-type", choices=("auto", "full", "diff", "incr"), default="auto")
     subparsers.add_parser("typesense")
     return parser
 
