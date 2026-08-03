@@ -29,7 +29,7 @@ fi
 ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/VERSION"
 # Keep these static: this script runs with pull_request_target write
 # permissions and must not import PR-controllable Python.
-VALID_MONITOR_TYPES='accenture|adp|almacareer|amazon|api_sniffer|ashby|bamboohr|bite|breezy|comeet|cornerstone|dayforce|deel|dom|dvinci|eightfold|gem|greenhouse|gupy|herp|hibob|hirehive|hireology|hrmos|icims|inline|jazzhr|jobylon|join|kipt|lever|mokahr|nextdata|notion|oracle_hcm|paycom|paylocity|personio|phenom|pinpoint|recruitee|recruiterbox|recruiter_co_kr|rippling|rss|sitemap|smartrecruiters|softgarden|talentbrew|traffit|umantis|workable|workday|ycombinator'
+VALID_MONITOR_TYPES='accenture|adp|almacareer|amazon|api_sniffer|ashby|bamboohr|beisen|bite|breezy|comeet|cornerstone|dayforce|deel|dom|dvinci|eightfold|gem|greenhouse|gupy|herp|hibob|hirehive|hireology|hrmos|icims|inline|jazzhr|jobylon|join|kipt|lever|mokahr|nextdata|notion|oracle_hcm|paycom|paylocity|personio|phenom|pinpoint|recruitee|recruiterbox|recruiter_co_kr|rippling|rss|sitemap|smartrecruiters|softgarden|talentbrew|traffit|umantis|workable|workday|ycombinator'
 VALID_SCRAPER_TYPES='adp|api_sniffer|bite|dom|eightfold|embedded|jazzhr|json-ld|mokahr|nextdata|notion|oracle_hcm|paycom|paylocity|pdf|rippling|skip|smartrecruiters|workable|workday'
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
