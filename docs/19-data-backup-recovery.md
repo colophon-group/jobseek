@@ -396,8 +396,10 @@ logical dump of this exact boundary:
 `subscription` table, and all Murmur tables are excluded. Before dumping, the
 job queries PostgreSQL's FK catalog and refuses to run if any included table
 points to an excluded table. In particular, the first production run is gated
-on migration `0083_saved_job_snapshot`, which removes the current
-`saved_job -> job_posting` FK only after snapshotting every saved posting.
+on contract migration `0085_saved_job_snapshot_contract`. That migration runs
+only after the 0084 expand phase and snapshot-writing app release have been
+verified, then removes the remaining `saved_job -> job_posting` FK after
+catching up and asserting every required saved-posting snapshot.
 
 The job fingerprints every allowlisted table as a row count plus a deterministic
 aggregate hash and records the Drizzle migration sequence state. It runs the
@@ -518,11 +520,11 @@ The normal replacement gate for any future legacy backup retirement is:
 - recovery evidence and measured recovery time are recorded in the audit.
 
 For the Supabase Pro-to-Free downgrade, the web database gate additionally
-requires: migration `0083_saved_job_snapshot` deployed with every existing
-saved row populated; one successful `web-postgresql` backup; one clean restore
-with exact fingerprints and mutation smoke; the six-hour timer enabled with a
-visible next run; and live failure/freshness telemetry. Only then may #6170
-drop crawler-mirror data.
+requires: contract migration `0085_saved_job_snapshot_contract` deployed with
+every existing saved row populated and the posting FK removed; one successful
+`web-postgresql` backup; one clean restore with exact fingerprints and mutation
+smoke; the six-hour timer enabled with a visible next run; and live
+failure/freshness telemetry. Only then may #6170 drop crawler-mirror data.
 
 Current state as of 2026-07-23: off-host backups, repository validation,
 isolated restores, measured recovery evidence, enabled schedules, visible next
