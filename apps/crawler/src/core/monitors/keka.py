@@ -168,8 +168,10 @@ def _locations(value: object) -> list[str] | None:
         seen_components: set[str] = set()
         for key in ("city", "state", "countryName"):
             component = _clean_string(raw.get(key))
-            identity = component.casefold() if component is not None else None
-            if component is not None and identity not in seen_components:
+            if component is None:
+                continue
+            identity = component.casefold()
+            if identity not in seen_components:
                 components.append(component)
                 seen_components.add(identity)
         # ``name`` is usually an internal office label ("Head Office",
