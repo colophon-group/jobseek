@@ -14,6 +14,13 @@ remaining log, elected itself leader in term 3, and returned healthy after a
 9-minute cold start. Public and private health, all aliases, representative
 searches, and an ephemeral create/write/read/delete probe passed.
 
+After the application-consistent backup and isolated restore in #6120 passed,
+the recovered node was replaced by the managed host configuration. The
+bootstrap key is now delivered through a root-owned `0600` INI file mounted
+read-only, and is absent from Docker environment, command, and inspect output.
+The six paused crawler/export services resumed after both PostgreSQL and
+Typesense production preflights passed.
+
 ## Causal chain
 
 Evidence is preserved root-only on the Typesense host under
@@ -43,8 +50,8 @@ request degradation to a persistent leaderless outage.
 Before restarting, the responder stopped Typesense and copied the complete
 1,918,920,698-byte data directory to the incident directory. Source and copy
 byte counts and file counts matched (109 files). The failed container was
-renamed and retained as `typesense-incident-6119-pre-recovery` so its exact
-metadata remains available.
+renamed to `typesense-incident-6119-pre-recovery` while recovery validation was
+in progress.
 
 The least-invasive repair was used first: start the same 27.1 image and data
 with a 65,536 soft/hard `nofile` limit. Typesense rebuilt its in-memory index,
@@ -64,9 +71,13 @@ Acceptance at recovery time:
   delete passed;
 - live process `nofile`: 65,536/65,536; 47 descriptors open; zero restarts.
 
-Rollback remains: stop the recovered container, restore the offline copy to an
-empty data directory, and start the preserved container metadata. Do not copy
-the active data directory while Typesense is live.
+Issue #6120 then produced a fresh encrypted restic snapshot and restored it
+into an isolated Typesense 27.1 container. All seven collection counts,
+leader election, representative search, and create/read/delete operations
+passed. After the managed-key deployment passed private/public checks, the
+superseded stopped container and offline copy were deleted. Their summaries
+and incident logs remain; the verified encrypted snapshot is now the rollback
+source. Do not copy the active data directory while Typesense is live.
 
 ## Capacity and topology
 
@@ -96,8 +107,9 @@ operator response. PostgreSQL remains the rebuild source of truth.
   request-pool saturation, slow requests, descriptor exhaustion, snapshot
   failure, and leaderlessness.
 - Keep peer reset as a documented last resort only after an offline copy.
-- Restore and verify the application-consistent backup in the isolated backup
-  follow-up, issue #6120, before deleting the incident copy.
+- Keep an authorization-safe application-consistent backup and exercise an
+  isolated restore before relying on it; #6120 completed both gates before the
+  incident copy was deleted.
 
 Typesense 27.1's config parser requires a `[server]` INI section even though
 the versioned documentation describes only the parameter names. The managed
