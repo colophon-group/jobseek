@@ -915,6 +915,7 @@ _MONITOR_CONFIG_HINTS = {
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "icims": "Requires: host (auto-filled from an icims.com URL)",
     "herp": "Requires: slug (auto-filled from a herp.careers URL)",
+    "hrmos": "Requires: tenant (auto-filled from an hrmos.co URL)",
     "bite": "Requires: key (auto-filled from probe)",
     "breezy": "Optional: portal_url or slug (auto-filled from probe)",
     "comeet": "No config required (company and board ID are derived from the URL)",

@@ -387,6 +387,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"HERP static listing \u2014 slug: {slug}, {jobs} jobs"
         return f"HERP static listing \u2014 slug: {slug}"
+    if name == "hrmos":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"HRMOS static listing \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"HRMOS static listing \u2014 tenant: {tenant}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -686,6 +692,7 @@ from src.core.monitors import (  # noqa: E402
     hibob,  # noqa: F401
     hirehive,  # noqa: F401
     hireology,  # noqa: F401
+    hrmos,  # noqa: F401
     icims,  # noqa: F401
     inline,  # noqa: F401
     jazzhr,  # noqa: F401
