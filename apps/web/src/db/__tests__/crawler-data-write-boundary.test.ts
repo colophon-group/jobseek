@@ -11,7 +11,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 const webRoot = resolve(__dirname, "../../..");
-const runtimeRoots = ["app", "src"];
+const runtimeDirectories = ["app", "src", "pages"];
 const runtimeExtensions = new Set([
   ".ts",
   ".tsx",
@@ -61,9 +61,38 @@ function listSourceFiles(dir: string, skipTests: boolean): string[] {
   return files;
 }
 
-const runtimeFiles = runtimeRoots.flatMap((root) =>
-  listSourceFiles(join(webRoot, root), true),
-);
+function isRootRuntimeEntry(name: string): boolean {
+  const extension = extname(name);
+  if (!runtimeExtensions.has(extension)) return false;
+
+  const stem = name.slice(0, -extension.length);
+  return (
+    stem === "proxy" ||
+    stem === "middleware" ||
+    stem === "mdx-components" ||
+    stem === "instrumentation" ||
+    stem.startsWith("instrumentation-") ||
+    stem.startsWith("instrumentation.")
+  );
+}
+
+function listRootRuntimeFiles(root: string): string[] {
+  return readdirSync(root)
+    .filter(isRootRuntimeEntry)
+    .map((name) => join(root, name))
+    .filter((path) => statSync(path).isFile())
+    .sort();
+}
+
+const runtimeFiles = [
+  ...runtimeDirectories.flatMap((directory) => {
+    const path = join(webRoot, directory);
+    return existsSync(path) && statSync(path).isDirectory()
+      ? listSourceFiles(path, true)
+      : [];
+  }),
+  ...listRootRuntimeFiles(webRoot),
+];
 const fixtureFiles = listSourceFiles(fixtureRoot, false);
 
 function createAnalysisProgram(): ts.Program {
@@ -393,6 +422,28 @@ describe("web crawler-data write boundary (#6248)", () => {
       .sort();
 
     expect(offenders).toEqual([]);
+  });
+
+  it("discovers and analyzes explicit root Next runtime entries", () => {
+    expect(listRootRuntimeFiles(webRoot)).toContain(join(webRoot, "proxy.ts"));
+
+    const maliciousRoot = join(fixtureRoot, "root-entry");
+    const discoveredFixtures = listRootRuntimeFiles(maliciousRoot);
+    expect(discoveredFixtures.map((path) => relative(maliciousRoot, path))).toEqual([
+      "proxy.ts",
+    ]);
+    expect(discoveredFixtures.every((path) => mutatesCrawlerPostings(sourceFile(path)))).toBe(
+      true,
+    );
+
+    expect(isRootRuntimeEntry("instrumentation.ts")).toBe(true);
+    expect(isRootRuntimeEntry("instrumentation-client.js")).toBe(true);
+    expect(isRootRuntimeEntry("instrumentation.node.mjs")).toBe(true);
+    expect(isRootRuntimeEntry("middleware.ts")).toBe(true);
+    expect(isRootRuntimeEntry("mdx-components.tsx")).toBe(true);
+    expect(isRootRuntimeEntry("next.config.ts")).toBe(false);
+    expect(isRootRuntimeEntry("vitest.config.ts")).toBe(false);
+    expect(isRootRuntimeEntry("drizzle.config.ts")).toBe(false);
   });
 
   it.each([

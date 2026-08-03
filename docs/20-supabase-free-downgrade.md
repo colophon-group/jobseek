@@ -52,10 +52,11 @@ in `public`, and can select the migration ledger and audited application tables.
 Meta posting ingestion belongs to the crawler's `meta-careers` sitemap and
 JSON-LD board. The former web-only Apify endpoint and importer are retired; the
 web deployment has no fallback path that writes crawler postings. A
-TypeScript-symbol-aware source test covers every deployable TS/JS module in
-`app` and `src`; it rejects Drizzle mutations through relative imports,
-namespaces, aliases, re-exports, and local indirection, plus raw SQL and
-Supabase `job_posting` mutations.
+TypeScript-symbol-aware source test covers deployable TS/JS modules in `app`,
+`src`, an optional root `pages` tree, and explicit Next root runtime entries
+such as `proxy`, `middleware`, instrumentation, and MDX components. It rejects
+Drizzle mutations through relative imports, namespaces, aliases, re-exports,
+and local indirection, plus raw SQL and Supabase `job_posting` mutations.
 
 The merged native-crawler cutover in #2361 recorded 534 sitemap URLs in 3.0
 seconds and 10/10 successful stratified job-page samples in 1.8 seconds. The
