@@ -1967,6 +1967,90 @@ class TestSelectMonitorNaming:
         assert "greenhouse" in board.configs
         assert "greenhouse-2" in board.configs
 
+    def test_auto_scraper_config_is_persisted(self, tmp_path, monkeypatch):
+        """Partial-rich monitors retain their required enrichment config."""
+        self._setup(tmp_path, monkeypatch)
+        runner = CliRunner()
+
+        result = runner.invoke(ws, ["select", "monitor", "test", "paylocity"])
+
+        assert result.exit_code == 0
+        board = load_board("test", "careers")
+        selected = board.configs[board.active_config]
+        assert selected["scraper_type"] == "paylocity"
+        assert selected["scraper_config"] == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
+
+        # Mutating workspace state must not mutate the reusable compatibility
+        # default returned for subsequent monitor selections.
+        selected["scraper_config"]["enrich"].append("title")
+        from src.workspace._compat import auto_scraper_type
+
+        assert auto_scraper_type("paylocity") == (
+            "paylocity",
+            {"enrich": ["description", "employment_type", "job_location_type"]},
+        )
+
+    def test_bamboohr_api_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """BambooHR selection carries its complete generic detail API preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "bamboohr"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["bamboohr"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("bamboohr")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "api_sniffer"
+        assert selected["scraper_config"] == expected[1]
+
+    def test_reselect_monitor_preserves_explicit_empty_scraper_config(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        board = load_board("test", "careers")
+        board.configs["custom"] = {
+            "scraper_type": "paylocity",
+            "scraper_config": {},
+        }
+        save_board("test", board)
+
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "paylocity", "--as", "custom"],
+        )
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["custom"]
+        assert selected["scraper_type"] == "paylocity"
+        assert selected["scraper_config"] == {}
+
+    def test_reselect_monitor_repairs_v1_null_scraper_placeholders(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        legacy = Board.from_dict(
+            {
+                "alias": "careers",
+                "slug": "test-careers",
+                "url": "https://test.com/jobs",
+                "monitor": {"type": "paylocity", "config": {}},
+                "scraper": {},
+            }
+        )
+        save_board("test", legacy)
+
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "paylocity", "--as", "paylocity"],
+        )
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["paylocity"]
+        assert selected["scraper_type"] == "paylocity"
+        assert selected["scraper_config"] == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
+
     def test_auto_fill_from_detections(self, tmp_path, monkeypatch):
         """Config auto-fills from board.detections when no --config given."""
         self._setup(tmp_path, monkeypatch)
@@ -2782,6 +2866,114 @@ class TestSubmitStepRegistry:
         non_critical_idx = [i for i, (_, _, c) in enumerate(SUBMIT_STEPS) if not c]
         assert max(critical_idx) < min(non_critical_idx)
 
+    def test_csv_fallback_writes_auto_scraper_config(self, tmp_path, monkeypatch):
+        """Submit fallback writes the full partial-rich auto configuration."""
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        board.configs["paylocity"] = {
+            "monitor_type": "paylocity",
+            "monitor_config": {},
+            # Reproduce workspace state written before auto scraper configs
+            # were persisted: type present, required config missing.
+            "scraper_type": "paylocity",
+            "status": "tested",
+            "run": {"jobs": 3},
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "paylocity"
+        save_board("test", board)
+
+        from src.shared.csv_io import read_csv
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "test-careers")
+        assert row["scraper_type"] == "paylocity"
+        assert json.loads(row["scraper_config"]) == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
+
+    def test_csv_fallback_repairs_v1_null_scraper_placeholders(self, tmp_path, monkeypatch):
+        ws_obj, _ = _setup_submittable_workspace(tmp_path, monkeypatch)
+        board = Board.from_dict(
+            {
+                "alias": "careers",
+                "slug": "test-careers",
+                "url": "https://test.com/jobs",
+                "monitor": {"type": "paylocity", "config": {}},
+                "scraper": {},
+            }
+        )
+
+        from src.shared.csv_io import read_csv
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "test-careers")
+        assert row["scraper_type"] == "paylocity"
+        assert json.loads(row["scraper_config"]) == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
+
+    def test_csv_fallback_preserves_explicit_scraper_config(self, tmp_path, monkeypatch):
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        explicit = {"enrich": ["description"], "proxy": True}
+        board.configs["paylocity"] = {
+            "monitor_type": "paylocity",
+            "monitor_config": {},
+            "scraper_type": "paylocity",
+            "scraper_config": explicit,
+            "status": "tested",
+            "run": {"jobs": 3},
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "paylocity"
+
+        from src.shared.csv_io import read_csv
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "test-careers")
+        assert json.loads(row["scraper_config"]) == explicit
+
+    def test_csv_fallback_preserves_explicit_empty_scraper_config(self, tmp_path, monkeypatch):
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        from src.csvtool import board_add
+
+        board_add(
+            "test",
+            board_slug="test-careers",
+            board_url="https://test.com/jobs",
+            monitor_type="paylocity",
+            scraper_type="paylocity",
+            scraper_config=json.dumps({"enrich": ["description"]}),
+        )
+        board.configs["paylocity"] = {
+            "monitor_type": "paylocity",
+            "monitor_config": {},
+            "scraper_type": "paylocity",
+            "scraper_config": {},
+            "status": "tested",
+            "run": {"jobs": 3},
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "paylocity"
+
+        from src.shared.csv_io import read_csv
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "test-careers")
+        assert row["scraper_type"] == "paylocity"
+        assert row["scraper_config"] == ""
+
 
 class TestSubmitIdempotency:
     """Submit skips already-completed steps on rerun."""
@@ -3331,6 +3523,48 @@ class TestPreflight:
 
 class TestResume:
     """Test ws resume command."""
+
+    def test_resume_preserves_partial_rich_auto_scraper_config(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(
+            slug="test",
+            name="Test Corp",
+            website="https://test.com",
+            active_board="careers",
+        )
+        save_workspace(ws_obj)
+        set_active_slug("test")
+        save_board(
+            "test",
+            Board(alias="careers", slug="test-careers", url="https://test.com/jobs"),
+        )
+
+        selected = CliRunner().invoke(ws, ["select", "monitor", "test", "paylocity"])
+        assert selected.exit_code == 0
+
+        ws_obj = load_workspace("test")
+        ws_obj.branch = "add-company/test"
+        save_workspace(ws_obj)
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "src.workspace.git._run",
+                    return_value=MagicMock(stdout="  add-company/test\n", returncode=0),
+                )
+            )
+            stack.enter_context(
+                patch("src.workspace.git.current_branch", return_value="add-company/test")
+            )
+            resumed = CliRunner().invoke(ws, ["resume", "test"])
+
+        assert resumed.exit_code == 0
+        board = load_board("test", "careers")
+        active = board.configs[board.active_config]
+        assert active["scraper_type"] == "paylocity"
+        assert active["scraper_config"] == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
 
     def test_resume_ready_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import math
 import random
@@ -909,6 +910,7 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
 _MONITOR_CONFIG_HINTS = {
     "join": "Optional: slug (auto-derived from join.com URL), description_path(s)",
     "ashby": "Requires: token (auto-filled from probe)",
+    "bamboohr": "Requires: tenant (auto-filled from a BambooHR careers URL)",
     "bite": "Requires: key (auto-filled from probe)",
     "breezy": "Optional: portal_url or slug (auto-filled from probe)",
     "comeet": "No config required (company and board ID are derived from the URL)",
@@ -1082,7 +1084,24 @@ def select_monitor(
         "initial_load": round(init_load, 2),
     }
     if auto:
-        cfg_entry["scraper_type"] = auto[0]
+        scraper_type_was_empty = not cfg_entry.get("scraper_type")
+        if scraper_type_was_empty:
+            cfg_entry["scraper_type"] = auto[0]
+        if (
+            cfg_entry.get("scraper_type") == auto[0]
+            and (
+                "scraper_config" not in cfg_entry
+                # V1 migration writes null/empty scraper placeholders even
+                # when no scraper was selected. When the type was empty too,
+                # this is legacy absence rather than an explicit empty config.
+                or (scraper_type_was_empty and not cfg_entry.get("scraper_config"))
+            )
+            and auto[1]
+        ):
+            # ``auto_scraper_type`` owns reusable compatibility constants.
+            # Workspace state is mutable, so keep an independent copy rather
+            # than leaking later agent edits back into those shared defaults.
+            cfg_entry["scraper_config"] = copy.deepcopy(auto[1])
 
     action_log.append_to_list(
         board.log,
