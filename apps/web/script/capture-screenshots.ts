@@ -22,6 +22,7 @@ import { mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "dotenv";
+import { logExternalError } from "../src/lib/safe-external-error";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "..", ".env.local") });
@@ -208,7 +209,7 @@ async function run() {
           await page.screenshot({ path: outPath, type: "png" });
           captured++;
         } catch (err) {
-          console.error(`    FAILED: ${err instanceof Error ? err.message : err}`);
+          logExternalError("error", { service: "external_http", operation: "capture_screenshot" }, err);
         } finally {
           await page.close();
         }
@@ -221,6 +222,6 @@ async function run() {
 }
 
 run().catch((err) => {
-  console.error(err);
+  logExternalError("error", { service: "external_http", operation: "capture_screenshots" }, err);
   process.exit(1);
 });

@@ -18,6 +18,7 @@ import type {
   ExperienceBucket,
 } from "./types";
 import { normalizePostingTitle } from "@/lib/posting-title";
+import { logExternalError } from "@/lib/safe-external-error";
 
 // ── Typesense document shapes ──────────────────────────────────────
 
@@ -283,7 +284,7 @@ export class TypesenseSearchProvider implements SearchProvider {
 
       return mapGroupedHits(groupedHits, totalCompanies, yearCountMap, locationIds);
     } catch (err) {
-      console.error("[typesense] search error", err);
+      logExternalError("error", { service: "typesense", operation: "search_jobs" }, err);
       return emptyResponse();
     }
   }
@@ -309,7 +310,7 @@ export class TypesenseSearchProvider implements SearchProvider {
         locationIds,
       );
     } catch (err) {
-      console.error("[typesense] search error", err);
+      logExternalError("error", { service: "typesense", operation: "list_top_companies" }, err);
       return emptyResponse();
     }
   }
@@ -524,7 +525,7 @@ export class TypesenseSearchProvider implements SearchProvider {
         mapHitToPosting(hit, locationIds),
       );
     } catch (err) {
-      console.error("[typesense] search error", err);
+      logExternalError("error", { service: "typesense", operation: "load_postings" }, err);
       return [];
     }
   }
@@ -603,7 +604,7 @@ export class TypesenseSearchProvider implements SearchProvider {
 
       return { postings, activeCount, yearCount };
     } catch (err) {
-      console.error("[typesense] search error", err);
+      logExternalError("error", { service: "typesense", operation: "load_postings_with_counts" }, err);
       return { postings: [], activeCount: 0, yearCount: 0 };
     }
   }
@@ -649,7 +650,7 @@ export class TypesenseSearchProvider implements SearchProvider {
       buckets.sort((a: SalaryBucket, b: SalaryBucket) => a.min - b.min);
       return buckets;
     } catch (err) {
-      console.error("[typesense] search error", err);
+      logExternalError("error", { service: "typesense", operation: "salary_histogram" }, err);
       return [];
     }
   }
@@ -697,7 +698,7 @@ export class TypesenseSearchProvider implements SearchProvider {
       );
       return buckets;
     } catch (err) {
-      console.error("[typesense] search error", err);
+      logExternalError("error", { service: "typesense", operation: "experience_histogram" }, err);
       return [];
     }
   }

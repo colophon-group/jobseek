@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 import dotenv from "dotenv";
 import postgres from "postgres";
+import { logExternalError } from "../src/lib/safe-external-error";
 
 import { isExactSavedJobTextCheck } from "./saved-job-contract-definition";
 
@@ -518,6 +519,6 @@ async function main() {
 }
 
 void main().catch((error: unknown) => {
-  console.error("Saved-job contract verification failed:", error);
+  logExternalError("error", { service: "database", operation: "verify_saved_job_contract" }, error);
   process.exitCode = 1;
 });

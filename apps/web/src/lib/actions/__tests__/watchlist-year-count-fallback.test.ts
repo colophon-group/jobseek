@@ -263,8 +263,12 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
     expect(mocks.withDbRetry).toHaveBeenCalledTimes(1);
     expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
     expect(consoleError).toHaveBeenCalledWith(
-      "[getWatchlistPostingYearCount] Typesense failed, falling back to Postgres",
-      typesenseError,
+      "external_client_error",
+      expect.objectContaining({
+        service: "typesense",
+        operation: "watchlist_posting_year_count",
+        code: "ECONNRESET",
+      }),
     );
 
     const query = mocks.dbExecute.mock.calls[0]?.[0] as {

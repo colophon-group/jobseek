@@ -1,6 +1,7 @@
 import "server-only";
 
 import { normalizePostingTitle } from "@/lib/posting-title";
+import { logExternalError } from "@/lib/safe-external-error";
 import { getSearchClient } from "./typesense-client";
 import { withTypesenseRetry } from "./typesense-retry";
 
@@ -149,7 +150,7 @@ async function retrieveOptionalDocument<T extends Record<string, unknown>>(
   try {
     return await retrieveDocument<T>(collection, id, label);
   } catch (error) {
-    console.warn(`[typesense-posting-detail] ${label} unavailable`, error);
+    logExternalError("warn", { service: "typesense", operation: label }, error);
     return null;
   }
 }
@@ -253,7 +254,7 @@ export async function fetchIndexedPostingStates(
       ]),
     );
   } catch (error) {
-    console.warn("[typesense-posting-detail] saved-job states unavailable", error);
+    logExternalError("warn", { service: "typesense", operation: "saved_job_states" }, error);
     return new Map();
   }
 }
@@ -360,7 +361,7 @@ export async function fetchIndexedPostingDetail(
       descriptionLocale,
     };
   } catch (error) {
-    console.error("[typesense-posting-detail] posting detail unavailable", error);
+    logExternalError("error", { service: "typesense", operation: "posting_detail" }, error);
     return null;
   }
 }

@@ -86,8 +86,11 @@ describe("logIndexNowResult", () => {
     });
   });
 
-  it("emits console.warn with the error message (not the raw object) for errored results", () => {
-    const networkErr = new Error("ECONNRESET");
+  it("emits console.warn with a safe error envelope for errored results", () => {
+    const networkErr = Object.assign(new Error("secret-bearing message"), {
+      code: "ECONNRESET",
+      config: { headers: { Authorization: "SECRET_CANARY_INDEXNOW" } },
+    });
     const result: NotifyIndexNowResult = {
       kind: "errored",
       error: networkErr,
@@ -101,12 +104,20 @@ describe("logIndexNowResult", () => {
     expect(payload).toMatchObject({
       label: "deleteWatchlist",
       kind: "errored",
-      error: "ECONNRESET",
+      error: {
+        event: "external_client_error",
+        service: "indexnow",
+        operation: "submit_urls",
+        kind: "network",
+        timeout: false,
+        code: "ECONNRESET",
+      },
       urlCount: 4,
     });
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain("SECRET_CANARY_INDEXNOW");
   });
 
-  it("stringifies non-Error errored values defensively", () => {
+  it("does not stringify non-Error errored values", () => {
     // `notifyIndexNow` types `error` as `unknown`. A non-Error throw
     // (string, number, AbortSignal timeout's DOMException-ish object)
     // must still serialise cleanly to a log line.
@@ -118,8 +129,13 @@ describe("logIndexNowResult", () => {
     logIndexNowResult("copyWatchlist", result);
 
     expect(warnSpy).toHaveBeenCalledOnce();
-    const payload = warnSpy.mock.calls[0][1] as { error: string };
-    expect(payload.error).toBe("raw string thrown");
+    const payload = warnSpy.mock.calls[0][1] as { error: Record<string, unknown> };
+    expect(payload.error).toMatchObject({
+      event: "external_client_error",
+      service: "indexnow",
+      kind: "unknown",
+    });
+    expect(JSON.stringify(payload)).not.toContain("raw string thrown");
   });
 
   it("emits console.debug (minimal output) for skipped results — preview deploys without INDEXNOW_KEY", () => {

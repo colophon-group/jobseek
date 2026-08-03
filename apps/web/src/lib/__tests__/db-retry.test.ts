@@ -216,9 +216,12 @@ describe("withDbRetry", () => {
 
     await withDbRetry(fn, { sleep, label: "companyBySlug[chevron]" });
 
-    const warnArg = (console.warn as unknown as ReturnType<typeof vi.fn>).mock
-      .calls[0][0] as string;
-    expect(warnArg).toContain("companyBySlug[chevron]");
-    expect(warnArg).toContain("ECONNRESET");
+    const [event, payload] = (console.warn as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0] as [string, Record<string, unknown>];
+    expect(event).toBe("external_client_error");
+    expect(payload).toMatchObject({
+      operation: "company_by_slug_chevron_retry",
+      code: "ECONNRESET",
+    });
   });
 });

@@ -21,13 +21,15 @@
  *   - Retry only on transient connection errors (see `isRetryable`)
  *   - Non-retryable errors (syntax, constraint, business logic) propagate
  *     immediately so callers see the real failure
- *   - `console.warn` on every retry so observability picks it up
+ *   - Structured `external_client_error` warning on every retry
  *
  * Scope of this PR: wraps `_fetchCompanyBySlugFromPostgres` only. Other
  * build-critical Postgres call sites (sitemap, related-posts, company
  * directory) are likely to want the same protection — flagged as a
  * follow-up rather than expanded mechanically here.
  */
+
+import { logExternalError } from "@/lib/safe-external-error";
 
 const RETRYABLE_ERROR_CODES = new Set([
   "ECONNRESET",
@@ -123,13 +125,14 @@ export async function withDbRetry<T>(
       const baseDelay = baseDelays[attempt - 1] ?? baseDelays[baseDelays.length - 1] ?? 200;
       const jitter = Math.floor(Math.random() * (maxJitter + 1));
       const delay = baseDelay + jitter;
-      const code = (err as { code?: unknown }).code;
-      const message = (err as { message?: unknown }).message;
-      console.warn(
-        `[${label}] transient error on attempt ${attempt}/${attempts}, ` +
-          `retrying in ${delay}ms ` +
-          `(code=${typeof code === "string" ? code : "n/a"}, ` +
-          `message=${typeof message === "string" ? message.slice(0, 200) : "n/a"})`,
+      logExternalError(
+        "warn",
+        {
+          service: "database",
+          operation: `${label}_retry`,
+          retryCount: attempt,
+        },
+        err,
       );
       await sleep(delay);
     }

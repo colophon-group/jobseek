@@ -170,7 +170,11 @@ describe("company slug lookup resolver", () => {
     expect(fetchFromPostgres).toHaveBeenCalledWith("acme", "en");
     expect(logger.error).toHaveBeenCalledWith(
       "[company] Typesense failed, falling back to Postgres",
-      error,
+      expect.objectContaining({
+        event: "external_client_error",
+        service: "typesense",
+        operation: "company_detail_lookup",
+      }),
     );
     expect(logger.warn).not.toHaveBeenCalled();
   });

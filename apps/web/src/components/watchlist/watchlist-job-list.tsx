@@ -25,6 +25,7 @@ import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { LanguageStatsRow } from "@/components/search/language-stats-row";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { formatDateDivider, getDateKey } from "@/components/watchlist/format-date-divider";
+import { logExternalError } from "@/lib/safe-external-error";
 
 const BATCH = 20;
 
@@ -126,7 +127,7 @@ export function WatchlistJobList({
       if (cancelled) return;
       setYearTotal(next);
     }).catch((err) => {
-      console.error("[WatchlistJobList] year-count refetch failed", err);
+      logExternalError("error", { service: "typesense", operation: "watchlist_year_count" }, err);
     });
     return () => {
       cancelled = true;

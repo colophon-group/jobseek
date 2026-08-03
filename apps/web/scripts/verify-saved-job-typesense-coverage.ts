@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 import dotenv from "dotenv";
 import postgres from "postgres";
+import { logExternalError } from "../src/lib/safe-external-error";
 
 type SavedPostingSource = {
   postingId: string;
@@ -264,7 +265,7 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   void main().catch((error: unknown) => {
-    console.error("Saved-job Typesense coverage failed:", error);
+    logExternalError("error", { service: "typesense", operation: "verify_saved_job_coverage" }, error);
     process.exitCode = 1;
   });
 }
