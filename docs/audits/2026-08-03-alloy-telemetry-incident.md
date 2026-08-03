@@ -53,3 +53,31 @@ series budgets passing, zero new HTTP 429 responses, and a soak with no Alloy
 restart or OOM. The repo cannot truthfully compress the issue's seven-day
 stability requirement into a single deploy; the new independent alerts and
 fixed acceptance queries preserve that evidence window after rollout.
+
+### Production rollout
+
+Commit `52aacfd300fac2fb2af3a41142cbefd4dcee1536` was deployed on 2026-08-03.
+The crawler Compose rollout recreated only `deploy-alloy-1`; before/after
+container evidence confirmed that all six crawler workloads retained their
+start times. Rollback material and acceptance output are root-only at
+`/var/lib/jobseek-incidents/6126/20260803T132410Z` on the crawler host.
+
+The protected fleet workflow
+[`30817867323`](https://github.com/colophon-group/jobseek/actions/runs/30817867323)
+then validated the artifacts, installed native Alloy and the sampler on the
+crawler, PostgreSQL, and Typesense hosts sequentially, passed the retained
+Grafana ingestion gate, and synced all four alert groups transactionally.
+
+Immediate production acceptance recorded:
+
+- 5,226 total active series against the 12,000 deploy ceiling and 15,000
+  provider limit;
+- crawler 1,026/2,000, Redis 58/200, and Unix/textfile 1,061/2,000 series;
+- four ready collectors, current remote-write timestamps, zero recent HTTP
+  429 responses, and no queue above 386/4,000 samples;
+- zero native Alloy restarts on all three hosts; Compose Alloy running with
+  zero restarts, no OOM flag, and a 512 MiB cgroup limit;
+- no failed or dropped Prometheus samples after rollout.
+
+The independent rules retain the remaining seven-day no-restart/no-OOM and
+no-rejection acceptance evidence without relying on the Compose collector.
