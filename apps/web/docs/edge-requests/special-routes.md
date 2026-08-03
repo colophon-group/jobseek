@@ -6,13 +6,16 @@ These routes don't render visible pages but generate edge requests when accessed
 
 | Request | Type | Notes |
 |---------|------|-------|
-| `GET /sitemap.xml` | Serverless function | Dynamic — queries DB for companies with active postings + public watchlists |
+| `GET /sitemap.xml` | Serverless function | Dynamic — queries the web-owned DB tables for qualifying public watchlists |
 
 Generated on every request (no caching header set by Next.js sitemap convention). Includes:
 - Static pages (7) x 4 locales = 28 URLs
 - Explore page x 4 locales = 4 URLs
-- All active company pages x 4 locales = N URLs
-- Public watchlists x 4 locales = N URLs
+- Qualifying public watchlists x 4 locales = N URLs
+- Translated blog posts (only locales with content)
+
+Company pages are `noindex,follow` and are intentionally excluded. The sitemap
+does not read crawler-mirror company, posting, location, or taxonomy tables.
 
 Each URL includes `<lastmod>` in W3C Datetime format and `<xhtml:link>` hreflang alternates.
 
@@ -106,7 +109,7 @@ The 6 permanent redirects configured in `next.config.ts` each generate 1 edge re
 
 | Route | DB queries | CPU work | Est. duration |
 |-------|-----------|----------|---------------|
-| `sitemap.xml` | 2 (companies + watchlists) | URL generation + XML serialization | 30-120ms |
+| `sitemap.xml` | 1 (watchlists) | URL generation + XML serialization | 30-120ms |
 | `robots.txt` | 0 | Template string | <5ms |
 | OG images (root) | 0 | Font read + Satori render + sharp PNG encode | 60-140ms |
 | OG images (company) | 1 (company lookup) | Font read + Satori + sharp + logo embed | 80-180ms |
