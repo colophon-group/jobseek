@@ -889,6 +889,40 @@ class TestSupabasePerRowFallback:
 
 
 class TestTypesenseBackfillSafety:
+    async def test_query_receives_the_commit_safe_cutoff_as_its_fourth_argument(self):
+        posting_id = uuid.uuid4()
+        updated_at = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
+        cutoff = datetime(2026, 5, 14, 12, 5, 0, tzinfo=UTC)
+        row = {"id": posting_id, "updated_at": updated_at}
+        local = _make_pool()
+        supa = _make_pool()
+        local.fetch = AsyncMock(side_effect=[[row], []])
+        maps = MagicMock(stale=False)
+        cutoff_factory = AsyncMock(return_value=cutoff)
+
+        with (
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch(
+                "src.exporter._build_typesense_docs",
+                return_value=[{"id": str(posting_id)}],
+            ),
+            patch(
+                "src.exporter._upsert_typesense_backfill_batch",
+                new_callable=AsyncMock,
+            ),
+        ):
+            await backfill_typesense(
+                local,
+                supa,
+                cutoff_factory=cutoff_factory,
+            )
+
+        cutoff_factory.assert_awaited_once_with(local)
+        assert local.fetch.await_count == 2
+        for fetch_call in local.fetch.await_args_list:
+            assert len(fetch_call.args) == 5
+            assert fetch_call.args[4] == cutoff
+
     async def test_batch_retries_transport_failure_before_succeeding(self):
         docs = [{"id": "posting-1"}]
         upsert = AsyncMock(side_effect=[httpx.ReadTimeout("timed out"), set()])
@@ -940,7 +974,7 @@ class TestTypesenseBackfillSafety:
             patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
             pytest.raises(httpx.ReadTimeout, match="timed out"),
         ):
-            await backfill_typesense(local, supa)
+            await backfill_typesense(local, supa, cutoff_factory=_fixed_cdc_cutoff)
 
         assert upsert.await_count == 5
         assert [call.args[0] for call in sleep.await_args_list] == [2.0, 4.0, 8.0, 16.0]

@@ -1653,6 +1653,8 @@ async def _upsert_typesense_backfill_batch(
 async def backfill_typesense(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
+    *,
+    cutoff_factory: CutoffFactory = capture_cdc_snapshot_cutoff,
 ) -> None:
     """Iterate ALL job_posting rows and upsert to Typesense.
 
@@ -1663,6 +1665,7 @@ async def backfill_typesense(
     cursor: Cursor = (_EPOCH, _ZERO_UUID)
     total = 0
     batch_size = settings.export_batch_limit
+    cutoff = await cutoff_factory(local_pool)
 
     while True:
         last_ts, last_id = cursor
@@ -1671,6 +1674,7 @@ async def backfill_typesense(
             last_ts,
             last_id,
             batch_size,
+            cutoff,
         )
         if not rows:
             break
