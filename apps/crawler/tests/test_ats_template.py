@@ -324,6 +324,7 @@ def test_migrated_monitors_delegate_can_handle_flow_to_ats_template():
         "ashby",
         "bamboohr",
         "jazzhr",
+        "icims",
         "paycom",
         "dvinci",
         "gem",
