@@ -193,11 +193,13 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=transport) as client:
             assert await discover({"board_url": BOARD_URL}, client) == []
 
-    @pytest.mark.parametrize("status", [404, 410])
+    @pytest.mark.parametrize("status", [301, 302, 303, 307, 308, 404, 410])
     async def test_terminal_board_is_gone(self, status: int):
-        transport = httpx.MockTransport(
-            lambda request: httpx.Response(status, json={}, request=request)
-        )
+        def handler(request: httpx.Request) -> httpx.Response:
+            headers = {"location": "https://www.bamboohr.com/"} if status < 400 else {}
+            return httpx.Response(status, json={}, headers=headers, request=request)
+
+        transport = httpx.MockTransport(handler)
         async with httpx.AsyncClient(transport=transport) as client:
             with pytest.raises(BoardGoneError, match="no longer exists"):
                 await discover({"board_url": BOARD_URL}, client)
@@ -255,8 +257,22 @@ class TestMonitor:
 
     def test_deduplicates_stable_job_urls(self):
         jobs, truncated = _parse_listing(_payload([JOBS[0], JOBS[0]]), "acme")
-        assert truncated is False
+        assert truncated is True
         assert len(jobs) == 1
+
+    async def test_duplicate_ids_suppress_tombstoning(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json=_payload([JOBS[0], JOBS[0]]),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover({"board_url": BOARD_URL}, client)
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {"https://acme.bamboohr.com/careers/347"}
 
     async def test_partially_invalid_listing_suppresses_tombstoning(self):
         transport = httpx.MockTransport(

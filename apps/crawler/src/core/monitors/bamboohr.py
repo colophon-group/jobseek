@@ -43,6 +43,7 @@ _PAGE_PATTERNS = [
 ]
 _IGNORE_TENANTS = frozenset({"api", "app", "help", "static", "www"})
 _LOCATION_TYPES = {"0": "onsite", "1": "remote", "2": "hybrid"}
+_TERMINAL_STATUSES = frozenset({301, 302, 303, 307, 308, 404, 410})
 
 
 def _normalize_tenant(value: object) -> str | None:
@@ -160,7 +161,6 @@ async def _fetch_listing(tenant: str, client: httpx.AsyncClient) -> dict:
         client,
         _list_url(tenant),
         expect_shape=dict,
-        follow_redirects=True,
         retries=3,
         base_delay=0.5,
         log_event="bamboohr.list_backoff",
@@ -178,6 +178,7 @@ def _parse_listing(
     jobs: list[DiscoveredJob] = []
     seen_urls: set[str] = set()
     invalid_records = 0
+    duplicate_records = 0
     for raw in raw_jobs:
         if not isinstance(raw, dict):
             invalid_records += 1
@@ -187,6 +188,7 @@ def _parse_listing(
             invalid_records += 1
             continue
         if job.url in seen_urls:
+            duplicate_records += 1
             continue
         seen_urls.add(job.url)
         jobs.append(job)
@@ -205,12 +207,18 @@ def _parse_listing(
             f"but declared totalCount={total}"
         )
 
-    truncated = invalid_records > 0 or len(jobs) > MAX_JOBS or total > len(raw_jobs)
-    if invalid_records:
+    truncated = (
+        invalid_records > 0
+        or duplicate_records > 0
+        or len(jobs) > MAX_JOBS
+        or total > len(raw_jobs)
+    )
+    if invalid_records or duplicate_records:
         log.warning(
             "bamboohr.invalid_records",
             tenant=tenant,
             invalid=invalid_records,
+            duplicates=duplicate_records,
             rows=len(raw_jobs),
         )
     return jobs[:MAX_JOBS], truncated
@@ -234,7 +242,7 @@ async def discover(
     try:
         payload = await _fetch_listing(tenant, client)
     except PaginationFetchError as exc:
-        if exc.last_status in {404, 410}:
+        if exc.last_status in _TERMINAL_STATUSES:
             raise BoardGoneError(
                 f"BambooHR tenant {tenant!r} no longer exists",
                 url=_list_url(tenant),
