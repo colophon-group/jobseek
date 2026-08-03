@@ -73,6 +73,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "bite",
     "breezy",
     "eightfold",
+    "jazzhr",
     "join",
     "personio",
     "rippling",
@@ -110,6 +111,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "dom",
         "eightfold",
         "embedded",
+        "jazzhr",
         "json-ld",
         "mokahr",
         "nextdata",
@@ -174,6 +176,16 @@ def detect_ats_from_url(url: str) -> str | None:
         re.IGNORECASE,
     ):
         return "paycom"
+    if (
+        host.endswith(".applytojob.com")
+        and host.count(".") == 2
+        and re.fullmatch(
+            r"(?:/apply(?:/jobs(?:/details/[A-Za-z0-9_-]+)?)?)?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "jazzhr"
     if host.endswith(".careers.hibob.com"):
         return "hibob"
     if host.endswith(".eightfold.ai"):
@@ -360,6 +372,8 @@ def auto_scraper_type(
         return ("skip", None)
     if monitor_type == "join":
         return ("nextdata", None)
+    if monitor_type == "jazzhr":
+        return ("jazzhr", None)
     if monitor_type == "breezy":
         return ("json-ld", _BREEZY_SCRAPER_CONFIG)
     if monitor_type == "bite":

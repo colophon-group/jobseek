@@ -260,6 +260,52 @@ class TestProbeRow:
         assert result.status == "fail"
         assert "unavailable" in result.message
 
+    async def test_jazzhr_uses_config_tenant(self):
+        row = _row(
+            board_slug="acme-jazzhr",
+            board_url="https://legacy.example/jobs",
+            monitor_type="jazzhr",
+            monitor_config=json.dumps({"tenant": "acme"}),
+        )
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(
+                200,
+                text='<div id="job_listings_wrapper"></div>',
+                request=request,
+            )
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == "https://acme.applytojob.com/apply/jobs"
+
+    async def test_jazzhr_marketing_redirect_is_failed(self):
+        row = _row(
+            board_slug="acme-jazzhr",
+            board_url="https://acme.applytojob.com/apply",
+            monitor_type="jazzhr",
+            monitor_config="",
+        )
+        requests: list[str] = []
+
+        def handler(request):
+            requests.append(str(request.url))
+            return httpx.Response(
+                302,
+                headers={"location": "https://www.jazzhr.com/"},
+                request=request,
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport, follow_redirects=True) as client:
+            result = await probe_row(row, client)
+
+        assert result.status == "fail"
+        assert "marketing site" in result.message
+        assert requests == ["https://acme.applytojob.com/apply/jobs"]
+
     async def test_recruitee_uses_host_from_url(self):
         row = _row(
             board_slug="acme-recruitee",
@@ -325,6 +371,7 @@ def test_probe_registry_covers_expected_types():
         "ashby",
         "bamboohr",
         "paycom",
+        "jazzhr",
         "recruitee",
         "rippling",
         "smartrecruiters",

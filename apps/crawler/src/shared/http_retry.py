@@ -349,6 +349,8 @@ async def fetch_text_page_with_retry(
     follow_redirects: bool = True,
     retryable_statuses: Collection[int] = (),
     end_of_pagination_statuses: Collection[int] = END_OF_PAGINATION_STATUSES,
+    require_nonempty: bool = False,
+    max_chars: int | None = None,
     log_event: str = "http_retry.text_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
 ) -> str | None:
@@ -359,8 +361,15 @@ async def fetch_text_page_with_retry(
     collection so retired endpoints fail explicitly instead of looking like a
     successful empty page. Provider-specific transient statuses can be added
     through ``retryable_statuses`` without weakening the global 4xx policy.
+    ``require_nonempty`` retries empty 200 responses instead of accepting a
+    likely CDN/WAF glitch, and ``max_chars`` bounds the returned text while
+    leaving response-status handling authoritative.
     """
-    from src.metrics import http_retry_attempts_total, http_retry_host
+    from src.metrics import (
+        http_retry_attempts_total,
+        http_retry_empty_200_total,
+        http_retry_host,
+    )
     from src.shared.tdm import TDMReservedError
     from src.shared.tdm import check_response as _tdm_check
 
@@ -380,12 +389,18 @@ async def fetch_text_page_with_retry(
             last_status = resp.status_code
             if resp.status_code == 200:
                 _tdm_check(resp, body_excerpt=resp.text)
-                if retried:
-                    http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
-                return resp.text
-            if resp.status_code in end_of_pagination_statuses:
+                text = resp.text
+                if not require_nonempty or text:
+                    if retried:
+                        http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+                    return text[:max_chars] if max_chars is not None else text
+                last_exc = None
+                http_retry_empty_200_total.labels(host=host).inc()
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
+            elif resp.status_code in end_of_pagination_statuses:
                 return None
-            if is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
+            elif is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
                 last_exc = None
                 http_retry_attempts_total.labels(host=host, outcome="retry").inc()
                 retried = True
@@ -394,6 +409,7 @@ async def fetch_text_page_with_retry(
                     url,
                     attempts=attempt + 1,
                     last_status=resp.status_code,
+                    last_location=resp.headers.get("location"),
                 )
         except (PaginationFetchError, TDMReservedError):
             raise
