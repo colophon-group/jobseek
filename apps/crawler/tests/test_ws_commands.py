@@ -2022,6 +2022,17 @@ class TestSelectMonitorNaming:
         assert selected["scraper_type"] == expected[0] == "paycom"
         assert selected["scraper_config"] == expected[1]
 
+    def test_jazzhr_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """JazzHR selection carries its composed static detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "jazzhr"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["jazzhr"]
+        assert selected["scraper_type"] == "jazzhr"
+        assert selected.get("scraper_config") is None
+
     def test_reselect_monitor_preserves_explicit_empty_scraper_config(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
         board = load_board("test", "careers")

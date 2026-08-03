@@ -231,6 +231,51 @@ async def _probe_paycom(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "paycom", url, resp)
 
 
+async def _probe_jazzhr(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    tenant = _token_from_config(row["monitor_config"], "tenant")
+    if not tenant:
+        host = (urlparse(row["board_url"]).hostname or "").lower()
+        match = re.fullmatch(
+            r"([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\.applytojob\.com",
+            host,
+        )
+        tenant = match.group(1) if match else None
+    if not tenant or re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", tenant) is None:
+        return ProbeResult(
+            row["board_slug"],
+            "jazzhr",
+            row["board_url"],
+            "warn",
+            "no valid tenant in monitor_config or JazzHR URL",
+        )
+
+    url = f"https://{tenant}.applytojob.com/apply/jobs"
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response):
+        if resp.status_code in {404, 410}:
+            return ProbeResult(row["board_slug"], "jazzhr", url, "fail", "board not found")
+        if resp.is_redirect:
+            location = resp.headers.get("location", "")
+            redirect_host = (urlparse(urljoin(url, location)).hostname or "").lower()
+            if redirect_host in {"jazzhr.com", "www.jazzhr.com"}:
+                return ProbeResult(
+                    row["board_slug"],
+                    "jazzhr",
+                    url,
+                    "fail",
+                    "redirected to JazzHR marketing site",
+                )
+        if resp.status_code == 200 and 'id="job_listings_wrapper"' not in resp.text:
+            return ProbeResult(
+                row["board_slug"],
+                "jazzhr",
+                url,
+                "warn",
+                "JazzHR listing marker missing",
+            )
+    return _classify(row, "jazzhr", url, resp)
+
+
 async def _probe_recruitee(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     host = urlparse(row["board_url"]).hostname or ""
     if not host:
@@ -359,6 +404,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "ashby": _probe_ashby,
     "bamboohr": _probe_bamboohr,
     "paycom": _probe_paycom,
+    "jazzhr": _probe_jazzhr,
     "recruitee": _probe_recruitee,
     "rippling": _probe_rippling,
     "smartrecruiters": _probe_smartrecruiters,

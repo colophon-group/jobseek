@@ -87,6 +87,7 @@ Monitor Types (cheapest first):
   hibob             10      Full job data     No (skipped)
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
+  jazzhr            10      Job URLs          Auto-configured
   lever             10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
   paylocity         10      Full/partial      Auto-enriched
@@ -1437,6 +1438,28 @@ bamboohr — BambooHR public careers API
   Detection:  ws probe shows "BambooHR API — tenant: X, N jobs"
   Zero jobs?  Confirm /careers/list returns an empty result array."""
 
+MONITOR_JAZZHR = """\
+jazzhr — JazzHR / ApplyToJob static listing
+
+  Listing:  GET https://{tenant}.applytojob.com/apply/jobs
+  Returns:  Canonical job detail URLs from one server-rendered HTML response
+  Scraper:  Auto-configured JazzHR scraper — existing JSON-LD parser first,
+            existing DOM parser fallback for older themes
+  Note:     No browser, pagination, or upstream scraper dependency is needed.
+            Shared retry handles empty responses, 202/403 WAF responses, 429,
+            and 5xx failures without turning them into successful empty cycles.
+
+  Config:
+    {"tenant": "acme"}
+
+    tenant   ApplyToJob subdomain. Auto-filled from direct or explicitly linked
+             JazzHR URLs; Jobseek does not make blind tenant guesses.
+    proxy    Optional. Enable only when live 403/WAF evidence requires it, and
+             mirror it into the scraper config for detail requests.
+
+  Detection:  ws probe shows "JazzHR static listing — tenant: X, N jobs"
+  Zero jobs?  A valid page still contains the job_listings_wrapper marker."""
+
 MONITOR_API_SNIFFER = """\
 api_sniffer — Direct API Replay or XHR/Fetch Capture
 
@@ -2258,6 +2281,7 @@ MONITOR_CARDS: dict[str, str] = {
     "ashby": MONITOR_ASHBY,
     "bamboohr": MONITOR_BAMBOOHR,
     "paycom": MONITOR_PAYCOM,
+    "jazzhr": MONITOR_JAZZHR,
     "recruitee": MONITOR_RECRUITEE,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
@@ -2343,6 +2367,19 @@ paycom — Paycom public detail API scraper
   Note:      Auto-configured with the paycom monitor. It reuses the monitor's
              bootstrap validation and shared HTTP retry path; no browser or
              upstream scraper dependency is required.
+"""
+
+SCRAPER_JAZZHR = """\
+jazzhr — JazzHR JSON-LD with DOM fallback
+
+  Page:     GET https://{tenant}.applytojob.com/apply/jobs/details/{id}
+  Returns:  Standard JobPosting title, HTML description, locations,
+            employment/workplace type, date, salary, and structured extras
+  Config:   None needed. Optional proxy:true only for verified WAF tenants.
+  Note:     Fetches once, then reuses Jobseek's JSON-LD parser. Older themes
+            missing JobPosting schema fall back in-memory to the standard
+            JazzHR h1.job_title and div.job_description DOM structure.
+            No browser or upstream dependency is required.
 """
 
 SCRAPER_WORKDAY = """\
@@ -2492,6 +2529,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
   scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
     "paycom": SCRAPER_PAYCOM,
+    "jazzhr": SCRAPER_JAZZHR,
     "paylocity": SCRAPER_PAYLOCITY,
     "bite": SCRAPER_BITE,
     "mokahr": SCRAPER_MOKAHR,

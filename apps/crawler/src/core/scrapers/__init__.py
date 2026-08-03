@@ -367,6 +367,7 @@ from src.core.scrapers import (  # noqa: E402
     dom,  # noqa: F401
     eightfold,  # noqa: F401
     embedded,  # noqa: F401
+    jazzhr,  # noqa: F401
     jsonld,  # noqa: F401
     mokahr,  # noqa: F401
     nextdata,  # noqa: F401

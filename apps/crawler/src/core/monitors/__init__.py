@@ -369,6 +369,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Paycom API \u2014 portal: {token}, {jobs} jobs"
         return f"Paycom API \u2014 portal: {token}"
+    if name == "jazzhr":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"JazzHR static listing \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"JazzHR static listing \u2014 tenant: {tenant}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -668,6 +674,7 @@ from src.core.monitors import (  # noqa: E402
     hirehive,  # noqa: F401
     hireology,  # noqa: F401
     inline,  # noqa: F401
+    jazzhr,  # noqa: F401
     jobylon,  # noqa: F401
     join,  # noqa: F401
     kipt,  # noqa: F401

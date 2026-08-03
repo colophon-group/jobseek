@@ -41,6 +41,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `ashby` | Rich | skip | Ashby ATS |
 | `bamboohr` | Rich | api_sniffer | BambooHR summaries plus detail API enrichment |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
+| `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `bite` | URL-only | bite | b-ite.com ATS |
 | `breezy` | URL-only | json-ld (+dom fallback) | Breezy HR |
 | `comeet` | Rich | skip | Comeet hosted data and Careers API |
@@ -236,6 +237,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `notion` | Static | Loads Notion blocks through Notion's internal API |
 | `oracle_hcm` | Static | Fetches Oracle HCM detail REST responses |
 | `paycom` | Static | Bootstraps a Paycom portal and fetches its regional detail API |
+| `jazzhr` | Static | Parses JobPosting JSON-LD with a DOM fallback for older JazzHR themes |
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
 | `rippling` | Static | Fetches Rippling detail API records |

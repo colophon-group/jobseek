@@ -100,6 +100,8 @@ _ATS_URL_RE = re.compile(
     r"|[\w-]+\.breezy\.hr"
     r"|[\w-]+\.bamboohr\.com/careers"
     r"|(?:www\.)?paycomonline\.net/v4/ats/web\.php/portal/[0-9a-f]{32}/(?:career-page|jobs)"
+    r"|[a-z0-9][a-z0-9-]*\.applytojob\.com"
+    r"(?:/apply(?:/jobs(?:/details/[A-Za-z0-9_-]+)?)?)?/?(?=[?#\"'<\s]|$)"
     r"|(?:www\.)?comeet\.com/jobs/[\w-]+/[\w.]+"
     r"|ats(?:\.[\w]+)?\.rippling\.com/[\w-]+"
     r"|careers\.hireology\.com/[\w-]+"
