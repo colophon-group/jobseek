@@ -32,18 +32,30 @@ concurrency:
 jobs:
   authorize:
     runs-on: ubuntu-latest
+    environment: production-backup-operations
     timeout-minutes: 5
+    outputs:
+      deploy_sha: ${{ steps.artifacts.outputs.deploy_sha }}
+      data_backup_sha256: ${{ steps.artifacts.outputs.data_backup_sha256 }}
+      operations_sha256: ${{ steps.artifacts.outputs.operations_sha256 }}
+      restore_drill_sha256: ${{ steps.artifacts.outputs.restore_drill_sha256 }}
+      service_sha256: ${{ steps.artifacts.outputs.service_sha256 }}
+      timer_sha256: ${{ steps.artifacts.outputs.timer_sha256 }}
     env:
+      DISPATCH_ACTOR: ${{ github.actor }}
       DISPATCH_MODE: ${{ inputs.mode }}
       DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
       DISPATCH_EVENT: ${{ github.event_name }}
       DISPATCH_REF: ${{ github.ref }}
+      DISPATCH_SHA: ${{ github.sha }}
     steps:
-      - name: Require main and the mode-specific confirmation
+      - name: Require the owner, main, and mode-specific confirmation
         run: |
           set -euo pipefail
+          test "$DISPATCH_ACTOR" = viktor-shcherb
           test "$DISPATCH_EVENT" = workflow_dispatch
           test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
           case "$DISPATCH_MODE" in
             verify)
               expected=VERIFY-WEB-POSTGRESQL
@@ -64,355 +76,111 @@ jobs:
           esac
           test "$DISPATCH_CONFIRMATION" = "$expected"
 
-  verify:
-    needs: authorize
-    if: inputs.mode == 'verify'
-    runs-on: ubuntu-latest
-    environment: production
-    timeout-minutes: 15
-    steps:
-      - name: Require configured production host
-        env:
-          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-        run: test -n "$TARGET_HOST"
-
-      - name: Verify staged host readiness without changing state
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          command_timeout: 10m
-          script: |
-            set -euo pipefail
-            umask 077
-            test "$(id -u)" = 0
-            systemctl is-active --quiet docker.service
-            command -v docker >/dev/null
-            command -v flock >/dev/null
-            command -v restic >/dev/null
-            test -x /usr/local/sbin/jobseek-data-backup
-            test -x /usr/local/sbin/jobseek-web-postgresql-restore-drill
-            test -s /etc/jobseek-backup/web-postgresql.env
-            test -s /etc/jobseek-backup/web-postgresql.database-url
-            test ! -L /etc/jobseek-backup/web-postgresql.env
-            test ! -L /etc/jobseek-backup/web-postgresql.database-url
-            test "$(stat -c '%U:%G:%a' /etc/jobseek-backup/web-postgresql.env)" = root:root:600
-            test "$(stat -c '%U:%G:%a' /etc/jobseek-backup/web-postgresql.database-url)" = root:root:600
-            systemctl cat jobseek-web-postgresql-backup.service >/dev/null
-            systemctl cat jobseek-web-postgresql-backup.timer >/dev/null
-            docker image inspect \
-              postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193 \
-              >/dev/null
-            python3 - <<'PY'
-            import re
-            from pathlib import Path
-            from urllib.parse import urlsplit
+          fetch-depth: 0
+          persist-credentials: false
 
-            env_path = Path("/etc/jobseek-backup/web-postgresql.env")
-            assignments = {}
-            for line in env_path.read_text(encoding="utf-8").splitlines():
-                if not line or line.lstrip().startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                if key in assignments:
-                    raise SystemExit("duplicate web backup configuration key")
-                assignments[key] = value
-            expected = {"RESTIC_REPOSITORY", "RESTIC_PASSWORD_FILE", "RESTIC_SFTP_COMMAND"}
-            if set(assignments) != expected or any(not value for value in assignments.values()):
-                raise SystemExit("web backup configuration boundary is incomplete")
+      - name: Bind authorization to the deployed revision and reviewed artifacts
+        id: artifacts
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
+          deploy_paths=(
+            'deploy/backups/**'
+            'deploy/systemd/jobseek-postgresql-backup.*'
+            'deploy/systemd/jobseek-postgresql-backup-repository.service'
+            'deploy/systemd/jobseek-postgresql-emergency-headroom.service'
+            'deploy/systemd/jobseek-typesense-backup.*'
+            'deploy/systemd/jobseek-web-postgresql-backup.*'
+            'scripts/jobseek-data-backup.py'
+            'docs/16-hetzner-maintenance.md'
+            'docs/19-data-backup-recovery.md'
+            '.github/workflows/deploy-data-backups.yml'
+            '.github/workflows/operate-web-postgresql-backup.yml'
+          )
+          deploy_sha="$(git log -1 --format=%H "$DISPATCH_SHA" -- "${deploy_paths[@]}")"
+          [[ "$deploy_sha" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$deploy_sha" "$DISPATCH_SHA"
+          {
+            echo "deploy_sha=$deploy_sha"
+            echo "data_backup_sha256=$(sha256sum scripts/jobseek-data-backup.py | cut -d' ' -f1)"
+            echo "operations_sha256=$(sha256sum deploy/backups/web-postgresql/operations.py | cut -d' ' -f1)"
+            echo "restore_drill_sha256=$(sha256sum deploy/backups/web-postgresql/restore-drill.sh | cut -d' ' -f1)"
+            echo "service_sha256=$(sha256sum deploy/systemd/jobseek-web-postgresql-backup.service | cut -d' ' -f1)"
+            echo "timer_sha256=$(sha256sum deploy/systemd/jobseek-web-postgresql-backup.timer | cut -d' ' -f1)"
+          } >> "$GITHUB_OUTPUT"
 
-            database_url = Path(
-                "/etc/jobseek-backup/web-postgresql.database-url"
-            ).read_text(encoding="utf-8")
-            if "\r" in database_url or database_url.count("\n") != 1:
-                raise SystemExit("web database credential must contain exactly one line")
-            parsed = urlsplit(database_url.rstrip("\n"))
-            if parsed.scheme not in {"postgres", "postgresql"} or not parsed.hostname:
-                raise SystemExit("web database credential is not a PostgreSQL URI")
-
-            deployed_sha = Path("/var/lib/jobseek-backup/deployed-sha").read_text(
-                encoding="utf-8"
-            ).strip()
-            if not re.fullmatch(r"[0-9a-f]{40}", deployed_sha):
-                raise SystemExit("deployed backup revision is missing or invalid")
-            PY
-            snapshot_json="$(mktemp /run/jobseek-web-backup-snapshots.XXXXXX)"
-            snapshot_error="$(mktemp /run/jobseek-web-backup-snapshots-error.XXXXXX)"
-            cleanup() {
-              rm -f -- "$snapshot_json" "$snapshot_error"
-            }
-            trap cleanup EXIT
-            set -a
-            # shellcheck disable=SC1091
-            source /etc/jobseek-backup/web-postgresql.env
-            set +a
-            if ! restic -o "sftp.command=${RESTIC_SFTP_COMMAND}" snapshots \
-                --json --latest 1 \
-                --tag jobseek-web-postgresql \
-                --host jobseek-web-postgresql \
-                >"$snapshot_json" 2>"$snapshot_error"; then
-              echo "ERROR: encrypted web backup repository readiness failed" >&2
-              exit 1
-            fi
-            snapshot_count="$(python3 - "$snapshot_json" <<'PY'
-            import json
-            import sys
-            from pathlib import Path
-
-            snapshots = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-            if not isinstance(snapshots, list):
-                raise SystemExit("Restic snapshot inventory is not a list")
-            print(len(snapshots))
-            PY
-            )"
-            timer_enabled="$(systemctl is-enabled jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            timer_active="$(systemctl is-active jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            printf 'Readiness passed: snapshot_present=%s timer_enabled=%s timer_active=%s\n' \
-              "$([[ "$snapshot_count" -gt 0 ]] && echo true || echo false)" \
-              "$timer_enabled" "$timer_active"
-
-  backup:
+  operate:
     needs: authorize
-    if: inputs.mode == 'backup'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 180
+    env:
+      OPERATION_MODE: ${{ inputs.mode }}
+      TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+      EXPECTED_DEPLOY_SHA: ${{ needs.authorize.outputs.deploy_sha }}
+      EXPECTED_DATA_BACKUP_SHA256: ${{ needs.authorize.outputs.data_backup_sha256 }}
+      EXPECTED_OPERATIONS_SHA256: ${{ needs.authorize.outputs.operations_sha256 }}
+      EXPECTED_RESTORE_DRILL_SHA256: ${{ needs.authorize.outputs.restore_drill_sha256 }}
+      EXPECTED_SERVICE_SHA256: ${{ needs.authorize.outputs.service_sha256 }}
+      EXPECTED_TIMER_SHA256: ${{ needs.authorize.outputs.timer_sha256 }}
     steps:
-      - name: Require configured production host
-        env:
-          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-        run: test -n "$TARGET_HOST"
+      - name: Run the authorized operation over host-key-pinned OpenSSH
+        run: |
+          set -euo pipefail
+          umask 077
+          case "$OPERATION_MODE" in
+            verify|backup|restore|enable-timer) ;;
+            *) exit 2 ;;
+          esac
+          : "${TARGET_HOST:?production host is required}"
+          : "${SSH_PRIVATE_KEY:?SSH private key is required}"
+          : "${SSH_KNOWN_HOSTS:?trusted SSH host keys are required}"
+          [[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          for digest in \
+            "$EXPECTED_DATA_BACKUP_SHA256" \
+            "$EXPECTED_OPERATIONS_SHA256" \
+            "$EXPECTED_RESTORE_DRILL_SHA256" \
+            "$EXPECTED_SERVICE_SHA256" \
+            "$EXPECTED_TIMER_SHA256"; do
+            [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
+          done
 
-      - name: Run one web PostgreSQL backup and record aggregate evidence
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
-        with:
-          host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          command_timeout: 2h30m
-          script: |
-            set -euo pipefail
-            umask 077
-            started="$(date +%s)"
-            timer_enabled_before="$(systemctl is-enabled jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            timer_active_before="$(systemctl is-active jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            systemctl reset-failed jobseek-web-postgresql-backup.service
-            if ! systemctl start jobseek-web-postgresql-backup.service; then
-              echo "ERROR: web PostgreSQL backup failed; inspect root-only host evidence" >&2
-              exit 1
-            fi
-            BACKUP_STARTED="$started" python3 - <<'PY'
-            import json
-            import os
-            import re
-            from pathlib import Path
-
-            status = json.loads(
-                Path("/var/lib/jobseek-backup/status/web-postgresql.json").read_text(
-                    encoding="utf-8"
-                )
-            )
-            started = int(os.environ["BACKUP_STARTED"])
-            if (
-                status.get("service") != "web-postgresql"
-                or status.get("success") is not True
-                or int(status.get("attempt_unix") or 0) < started
-                or int(status.get("last_success_unix") or 0) < started
-                or not re.fullmatch(r"[0-9a-f]{64}", str(status.get("archive_sha256", "")))
-                or not status.get("repository_snapshot_id")
-            ):
-                raise SystemExit("fresh web PostgreSQL backup evidence is incomplete")
-            evidence = {
-                "success": True,
-                "attempt_at": status.get("attempt_at"),
-                "duration_seconds": status.get("duration_seconds"),
-                "archive_bytes": status.get("archive_bytes"),
-                "table_count": status.get("table_count"),
-                "row_count": status.get("row_count"),
-            }
-            print("Backup evidence: " + json.dumps(evidence, sort_keys=True))
-            PY
-            timer_enabled_after="$(systemctl is-enabled jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            timer_active_after="$(systemctl is-active jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            test "$timer_enabled_after" = "$timer_enabled_before"
-            test "$timer_active_after" = "$timer_active_before"
-
-  restore:
-    needs: authorize
-    if: inputs.mode == 'restore'
-    runs-on: ubuntu-latest
-    environment: production
-    timeout-minutes: 120
-    steps:
-      - name: Require configured production host
-        env:
-          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-        run: test -n "$TARGET_HOST"
-
-      - name: Run an isolated restore drill and record aggregate evidence
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
-        with:
-          host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          command_timeout: 1h30m
-          script: |
-            set -euo pipefail
-            umask 077
-            python3 - <<'PY'
-            import json
-            import time
-            from pathlib import Path
-
-            status = json.loads(
-                Path("/var/lib/jobseek-backup/status/web-postgresql.json").read_text(
-                    encoding="utf-8"
-                )
-            )
-            age = time.time() - int(status.get("last_success_unix") or 0)
-            if status.get("success") is not True or age < 0 or age > 9 * 60 * 60:
-                raise SystemExit("a fresh successful web PostgreSQL backup is required")
-            PY
-            started="$(date +%s)"
-            timer_enabled_before="$(systemctl is-enabled jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            timer_active_before="$(systemctl is-active jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            operation_log="$(mktemp /run/jobseek-web-postgresql-restore.XXXXXX)"
-            cleanup() {
-              rm -f -- "$operation_log"
-            }
-            trap cleanup EXIT
-            if ! /usr/local/sbin/jobseek-web-postgresql-restore-drill \
-                >"$operation_log" 2>&1; then
-              echo "ERROR: isolated web PostgreSQL restore failed; inspect root-only host evidence" >&2
-              exit 1
-            fi
-            RESTORE_STARTED="$started" python3 - <<'PY'
-            import json
-            import os
-            from datetime import datetime
-            from pathlib import Path
-
-            def timestamp(value: object) -> int:
-                if not isinstance(value, str):
-                    return 0
-                return int(datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp())
-
-            backup = json.loads(
-                Path("/var/lib/jobseek-backup/status/web-postgresql.json").read_text(
-                    encoding="utf-8"
-                )
-            )
-            restore = json.loads(
-                Path("/var/lib/jobseek-backup/status/web-postgresql-restore.json").read_text(
-                    encoding="utf-8"
-                )
-            )
-            started = int(os.environ["RESTORE_STARTED"])
-            if (
-                restore.get("service") != "web-postgresql-restore"
-                or restore.get("success") is not True
-                or timestamp(restore.get("started_at")) < started
-                or timestamp(restore.get("finished_at")) < started
-                or not restore.get("archive_sha256")
-                or restore.get("archive_sha256") != backup.get("archive_sha256")
-                or restore.get("table_count") != backup.get("table_count")
-                or restore.get("row_count") != backup.get("row_count")
-            ):
-                raise SystemExit("fresh isolated restore evidence does not match the backup")
-            evidence = {
-                "success": True,
-                "started_at": restore.get("started_at"),
-                "finished_at": restore.get("finished_at"),
-                "duration_seconds": restore.get("duration_seconds"),
-                "table_count": restore.get("table_count"),
-                "row_count": restore.get("row_count"),
-            }
-            print("Restore evidence: " + json.dumps(evidence, sort_keys=True))
-            PY
-            timer_enabled_after="$(systemctl is-enabled jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            timer_active_after="$(systemctl is-active jobseek-web-postgresql-backup.timer 2>/dev/null || true)"
-            test "$timer_enabled_after" = "$timer_enabled_before"
-            test "$timer_active_after" = "$timer_active_before"
-
-  enable_timer:
-    needs: authorize
-    if: inputs.mode == 'enable-timer'
-    runs-on: ubuntu-latest
-    environment: production
-    timeout-minutes: 15
-    steps:
-      - name: Require configured production host
-        env:
-          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-        run: test -n "$TARGET_HOST"
-
-      - name: Require matching backup and restore evidence, then enable the timer
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
-        with:
-          host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          command_timeout: 10m
-          script: |
-            set -euo pipefail
-            umask 077
-            python3 - <<'PY'
-            import json
-            import re
-            import time
-            from datetime import datetime
-            from pathlib import Path
-
-            def timestamp(value: object) -> int:
-                if not isinstance(value, str):
-                    return 0
-                return int(datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp())
-
-            backup = json.loads(
-                Path("/var/lib/jobseek-backup/status/web-postgresql.json").read_text(
-                    encoding="utf-8"
-                )
-            )
-            restore = json.loads(
-                Path("/var/lib/jobseek-backup/status/web-postgresql-restore.json").read_text(
-                    encoding="utf-8"
-                )
-            )
-            now = time.time()
-            backup_finished = int(backup.get("last_success_unix") or 0)
-            restore_started = timestamp(restore.get("started_at"))
-            restore_finished = timestamp(restore.get("finished_at"))
-            if backup.get("success") is not True or not 0 <= now - backup_finished <= 9 * 60 * 60:
-                raise SystemExit("fresh successful web PostgreSQL backup evidence is required")
-            if restore.get("success") is not True or not 0 <= now - restore_finished <= 9 * 60 * 60:
-                raise SystemExit("fresh successful web PostgreSQL restore evidence is required")
-            if restore_started < backup_finished:
-                raise SystemExit("restore evidence must postdate the successful backup")
-            archive_sha256 = str(backup.get("archive_sha256", ""))
-            if (
-                not re.fullmatch(r"[0-9a-f]{64}", archive_sha256)
-                or restore.get("archive_sha256") != archive_sha256
-                or restore.get("table_count") != backup.get("table_count")
-                or restore.get("row_count") != backup.get("row_count")
-                or not backup.get("repository_snapshot_id")
-            ):
-                raise SystemExit("backup and restore evidence do not describe the same archive")
-            evidence = {
-                "backup_finished_at": backup.get("finished_at"),
-                "restore_finished_at": restore.get("finished_at"),
-                "table_count": backup.get("table_count"),
-                "row_count": backup.get("row_count"),
-            }
-            print("Activation gate passed: " + json.dumps(evidence, sort_keys=True))
-            PY
-            systemctl reset-failed jobseek-web-postgresql-backup.service
-            systemctl enable --now jobseek-web-postgresql-backup.timer
-            systemctl is-enabled --quiet jobseek-web-postgresql-backup.timer
-            systemctl is-active --quiet jobseek-web-postgresql-backup.timer
-            ! systemctl is-failed --quiet jobseek-web-postgresql-backup.service
-            next_run="$(systemctl show jobseek-web-postgresql-backup.timer \
-              --property=NextElapseUSecRealtime --value)"
-            test -n "$next_run"
-            test "$next_run" != n/a
-            printf 'Web PostgreSQL backup timer enabled; next_run=%s\n' "$next_run"
+          ssh_root="$(mktemp -d "$RUNNER_TEMP/jobseek-web-backup-ssh.XXXXXX")"
+          cleanup() {
+            rm -rf -- "$ssh_root"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_root/id"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_root/known_hosts"
+          chmod 0600 "$ssh_root/id" "$ssh_root/known_hosts"
+          ssh-keygen -y -f "$ssh_root/id" >/dev/null
+          ssh-keygen -F "$TARGET_HOST" -f "$ssh_root/known_hosts" >/dev/null
+          ssh_options=(
+            -F /dev/null
+            -i "$ssh_root/id"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o "UserKnownHostsFile=$ssh_root/known_hosts"
+            -o GlobalKnownHostsFile=/dev/null
+            -o PasswordAuthentication=no
+            -o KbdInteractiveAuthentication=no
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=3
+            -o LogLevel=ERROR
+          )
+          # All interpolated remote arguments are allowlisted or regex-validated above.
+          # shellcheck disable=SC2029
+          timeout --foreground --signal=TERM --kill-after=30s 2h45m \
+            ssh "${ssh_options[@]}" "root@$TARGET_HOST" \
+            "/usr/local/sbin/jobseek-web-postgresql-operations '$OPERATION_MODE' \
+              --expected-deploy-sha '$EXPECTED_DEPLOY_SHA' \
+              --expected-data-backup-sha256 '$EXPECTED_DATA_BACKUP_SHA256' \
+              --expected-operations-sha256 '$EXPECTED_OPERATIONS_SHA256' \
+              --expected-restore-drill-sha256 '$EXPECTED_RESTORE_DRILL_SHA256' \
+              --expected-service-sha256 '$EXPECTED_SERVICE_SHA256' \
+              --expected-timer-sha256 '$EXPECTED_TIMER_SHA256'"

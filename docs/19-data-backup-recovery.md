@@ -66,7 +66,7 @@ Repository-owned files:
 - `deploy/systemd/jobseek-postgresql-backup-repository.service`
 - `deploy/systemd/jobseek-postgresql-backup.{service,timer}`
 - `deploy/systemd/jobseek-typesense-backup.{service,timer}`
-- `deploy/backups/web-postgresql/restore-drill.sh`
+- `deploy/backups/web-postgresql/{operations.py,restore-drill.sh}`
 - `deploy/systemd/jobseek-web-postgresql-backup.{service,timer}`
 
 Host state:
@@ -75,7 +75,7 @@ Host state:
 |---|---|
 | PostgreSQL | `/etc/jobseek-backup/postgresql`, `/var/lib/jobseek-backup/postgresql`, `/mnt/jobseek-postgresql-backups`, and `jobseek-postgres:16-pgbackrest` |
 | Typesense | `/etc/jobseek-backup/typesense.env`, `/etc/jobseek-backup/typesense`, and `/var/lib/jobseek-backup/typesense` |
-| Web PostgreSQL (on the Typesense host) | `/etc/jobseek-backup/web-postgresql.env`, `/etc/jobseek-backup/web-postgresql.database-url`, root-only staging/drills under `/run/jobseek-backup/web-postgresql`, and aggregate status under `/var/lib/jobseek-backup/status` |
+| Web PostgreSQL (on the Typesense host) | `/etc/jobseek-backup/web-postgresql.env`, `/etc/jobseek-backup/web-postgresql.database-url`, root-only staging/drills under `/run/jobseek-backup/web-postgresql`, installed operation tooling under `/usr/local/sbin`, and aggregate/bound activation evidence under `/var/lib/jobseek-backup/status` |
 
 All three jobs atomically write a redacted JSON result and a Prometheus textfile
 under `/var/lib/jobseek-backup/status`. A failed attempt preserves the time of
@@ -178,14 +178,35 @@ available to the web backup service.
 ### Protected web PostgreSQL activation
 
 When direct production SSH is unavailable, use
-`.github/workflows/operate-web-postgresql-backup.yml` from `main`. It attaches
-the protected `production` environment before using
-`HETZNER_TYPESENSE_HOST` and `HETZNER_SSH_KEY`; it does not receive the web
-database URI or Restic credentials because those remain in root-only host
-files. The workflow shares the backup deployment concurrency group, runs no
-command with shell tracing, and publishes only aggregate counts, sizes and
-timing. Repository output and restore command output stay in root-only
-temporary files and are deleted before the job exits.
+`.github/workflows/operate-web-postgresql-backup.yml` from `main`. Its first
+job attaches the protected `production-backup-operations` environment, which
+allows protected branches only and requires owner review, and also requires
+the dispatch actor to be `viktor-shcherb`. Only after that job succeeds does a
+second job attach `production` and read `HETZNER_TYPESENSE_HOST`,
+`HETZNER_SSH_KEY`, and the pre-provisioned trusted host-key entries in
+`HETZNER_TYPESENSE_KNOWN_HOSTS`. The dispatcher uses native OpenSSH with
+strict host-key checking and never discovers trust with `ssh-keyscan`.
+
+The authorization job checks out the exact dispatch SHA with full history,
+derives the latest ancestor commit that touched the backup deployment
+workflow's exact trigger-path set, and hashes the backup script, installed
+operation helper, restore drill, service, and timer from the dispatch checkout.
+The host helper requires the web-installer-specific
+`/var/lib/jobseek-backup/web-postgresql-deployed-sha` marker to equal that latest
+relevant commit and every installed artifact to equal its reviewed hash. The
+service-specific marker is written only after the web matrix leg completes, so
+another service on the shared host cannot attest the web deployment. An
+unrelated later `main` commit therefore does not invalidate operations, while a
+relevant change whose deployment has not completed fails closed. Backup and
+restore evidence is persisted together in root-only
+`web-postgresql-activation.json`, bound to that revision and artifact map, and
+revalidated on every later dispatch.
+
+The workflow does not receive the web database URI or Restic credentials;
+those remain in root-only host files. It shares the backup deployment
+concurrency group, runs no command with shell tracing, and publishes only
+aggregate counts, sizes and timing. Repository and restore command output is
+captured without being relayed into GitHub logs.
 
 Each dispatch is main-only and requires the exact token for its selected mode:
 
@@ -193,8 +214,8 @@ Each dispatch is main-only and requires the exact token for its selected mode:
 |---|---|---|
 | `verify` | `VERIFY-WEB-POSTGRESQL` | Read-only validation of installed code, root-only credential/config modes, pinned restore image, encrypted repository reachability, deployed-revision marker, and current timer state |
 | `backup` | `RUN-WEB-POSTGRESQL-BACKUP` | Starts one systemd backup, requires fresh successful aggregate status, and proves the timer state did not change |
-| `restore` | `RUN-WEB-POSTGRESQL-RESTORE-DRILL` | Requires a successful backup from the last nine hours, runs the loopback-only self-cleaning restore drill, matches its archive/count evidence to that backup, and proves the timer state did not change |
-| `enable-timer` | `ENABLE-WEB-POSTGRESQL-TIMER` | Requires a fresh backup followed by a fresh successful restore of the same SHA-256-bound archive, then and only then enables and starts the six-hour timer and verifies a next run exists |
+| `restore` | `RUN-WEB-POSTGRESQL-RESTORE-DRILL` | Requires a bound successful backup from the last nine hours, runs the private-network-only self-cleaning restore drill, matches its archive/count evidence to that backup, and proves the timer state did not change |
+| `enable-timer` | `ENABLE-WEB-POSTGRESQL-TIMER` | Requires the timer to be disabled/inactive plus a fresh bound backup followed by a fresh successful restore of the same SHA-256-bound archive; activation rolls back to disabled on every failed postcondition and commits only after a visible next run |
 
 Run the modes in that order for first activation. `verify`, `backup`, and
 `restore` never enable or disable the timer. A failed or stale evidence file,
@@ -478,9 +499,10 @@ failure/freshness gate.
 
 A successful upload is not restore evidence. Perform all relevant drills after
 initial deployment and after material backup-format, credential, storage, or
-major-version changes. Keep the restored services bound to loopback and use
-temporary credentials. Do not connect workers, exporters, the web app, or the
-Cloudflare tunnel to a restore drill.
+major-version changes. Keep restored services unexposed: bind to loopback only
+when a host port is required, and otherwise use an internal private network.
+Use temporary credentials. Do not connect workers, exporters, the web app, or
+the Cloudflare tunnel to a restore drill.
 
 ### PostgreSQL
 
@@ -528,11 +550,15 @@ Cloudflare tunnel to a restore drill.
    host. It holds the same lock as the backup and restores the latest encrypted
    `jobseek-web-postgresql` snapshot into a unique root-only directory.
 2. The script starts clean digest-pinned PostgreSQL 17 with a temporary data
-   filesystem and a random port bound only to `127.0.0.1`. It passes no live
-   database credential to the restore container.
+   filesystem on a unique `--internal` Docker network and publishes no host
+   port. It generates an ephemeral random password in root-only files, uses
+   `POSTGRES_PASSWORD_FILE` plus a mounted `pgpass` file, and passes no live
+   database credential or password value through Docker metadata.
 3. The checksum-bound bootstrap creates only the `drizzle` schema, then
    `pg_restore --exit-on-error` recreates the selected tables, data, indexes,
-   sequence, and constraints. The verifier checks both SHA-256 checksums,
+   sequence, and constraints. Its short-lived verifier clients join only that
+   internal network and authenticate from the mounted `pgpass` file. The
+   verifier checks both SHA-256 checksums,
    exact per-table row-count/hash parity, and migration-sequence parity against
    the encrypted manifest.
 4. A rollback-only mutation smoke exercises Better Auth user/session/account

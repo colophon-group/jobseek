@@ -223,6 +223,9 @@ PY
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/web-postgresql/restore-drill.sh" \
     /usr/local/sbin/jobseek-web-postgresql-restore-drill
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/deploy/backups/web-postgresql/operations.py" \
+    /usr/local/sbin/jobseek-web-postgresql-operations
 fi
 
 install -o root -g root -m 0644 \
@@ -299,6 +302,12 @@ PY
 fi
 if [[ -n "${JOBSEEK_BACKUP_DEPLOY_SHA:-}" ]]; then
   [[ "$JOBSEEK_BACKUP_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+  printf '%s\n' "$JOBSEEK_BACKUP_DEPLOY_SHA" \
+    >"/var/lib/jobseek-backup/${SERVICE}-deployed-sha.tmp"
+  chown root:root "/var/lib/jobseek-backup/${SERVICE}-deployed-sha.tmp"
+  chmod 0644 "/var/lib/jobseek-backup/${SERVICE}-deployed-sha.tmp"
+  mv "/var/lib/jobseek-backup/${SERVICE}-deployed-sha.tmp" \
+    "/var/lib/jobseek-backup/${SERVICE}-deployed-sha"
   printf '%s\n' "$JOBSEEK_BACKUP_DEPLOY_SHA" >/var/lib/jobseek-backup/deployed-sha.tmp
   chmod 0644 /var/lib/jobseek-backup/deployed-sha.tmp
   mv /var/lib/jobseek-backup/deployed-sha.tmp /var/lib/jobseek-backup/deployed-sha

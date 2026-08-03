@@ -14,6 +14,7 @@ on:
       - 'docs/16-hetzner-maintenance.md'
       - 'docs/19-data-backup-recovery.md'
       - '.github/workflows/deploy-data-backups.yml'
+      - '.github/workflows/operate-web-postgresql-backup.yml'
   workflow_dispatch:
 
 env:
@@ -44,6 +45,7 @@ jobs:
           set -euo pipefail
           python3 -m py_compile scripts/jobseek-data-backup.py
           python3 -m py_compile deploy/backups/postgresql/configure-retention.py
+          python3 -m py_compile deploy/backups/web-postgresql/operations.py
           bash -n deploy/backups/install-host.sh
           bash -n deploy/backups/postgresql/migrate-container.sh
           bash -n deploy/backups/postgresql/mount-repository.sh

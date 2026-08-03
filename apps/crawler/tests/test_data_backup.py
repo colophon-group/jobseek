@@ -512,6 +512,31 @@ def test_web_postgresql_restore_verifies_checksum_and_fingerprints(
     assert result["row_count"] == len(backup.WEB_POSTGRES_TABLES)
 
 
+def test_web_postgresql_password_file_client_stays_on_private_network(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pgpass = tmp_path / "pgpass"
+    pgpass.write_text("*:*:*:postgres:ephemeral-secret\n", encoding="utf-8")
+    pgpass.chmod(0o600)
+    monkeypatch.delenv("WEB_DATABASE_URL", raising=False)
+    monkeypatch.setenv("WEB_DATABASE_PASSWORD_FILE", str(pgpass))
+    monkeypatch.setenv("WEB_DATABASE_HOST", "restore-container")
+    monkeypatch.setenv("WEB_DATABASE_PORT", "5432")
+    monkeypatch.setenv("WEB_DATABASE_USER", "postgres")
+    monkeypatch.setenv("WEB_DATABASE_NAME", "web_restore")
+    monkeypatch.setenv("WEB_POSTGRES_NETWORK", "restore-internal")
+
+    env = backup._web_postgres_env()
+    command = backup._web_postgres_client_command("psql", "--command", "SELECT 1")
+
+    assert "WEB_DATABASE_URL" not in env
+    assert command[command.index("--network") + 1] == "restore-internal"
+    assert f"{pgpass}:/run/secrets/web-database-pgpass:ro" in command
+    assert "PGPASSFILE=/run/secrets/web-database-pgpass" in command
+    assert any('--host="$WEB_DATABASE_HOST"' in argument for argument in command)
+    assert "ephemeral-secret" not in " ".join(command)
+
+
 def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> None:
     service = (ROOT / "deploy/systemd/jobseek-web-postgresql-backup.service").read_text(
         encoding="utf-8"
@@ -529,7 +554,13 @@ def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> No
     assert "service: [postgresql, typesense, web-postgresql]" in workflow
     assert "max-parallel: 1" in workflow
     assert 'elif [[ "$JOBSEEK_BACKUP_SERVICE" != "web-postgresql" ]]' in workflow
-    assert "--publish 127.0.0.1::5432" in restore
+    assert "docker network create --driver bridge --internal" in restore
+    assert "--publish" not in restore
+    assert "POSTGRES_HOST_AUTH_METHOD=trust" not in restore
+    assert "POSTGRES_PASSWORD_FILE=/run/secrets/postgres-password" in restore
+    assert 'docker network rm "$NETWORK"' in restore
+    assert 'WEB_DATABASE_PASSWORD_FILE="$PGPASS_FILE"' in restore
+    assert 'WEB_POSTGRES_NETWORK="$NETWORK"' in restore
     assert "WEB_POSTGRES_DRILL_ROOT:-/run/jobseek-backup/web-postgresql/drills" in restore
     assert "--file /restore/bootstrap.sql" in restore
     assert "saved_job" in restore
