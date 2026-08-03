@@ -173,23 +173,13 @@ jobs:
             exit 1
           }
 
-      - name: Stage previous crawler Compose contract for rollback
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-        run: |
-          set -euo pipefail
-          [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          git cat-file -e "${BEFORE_SHA}^{commit}"
-          git show "${BEFORE_SHA}:apps/crawler/docker-compose.yml" \
-            > apps/crawler/docker-compose.rollback.yml
-
       - name: Copy deploy files
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: apps/crawler/deploy.sh,apps/crawler/deploy_helpers.sh,apps/crawler/docker-compose.yml,apps/crawler/docker-compose.rollback.yml,apps/crawler/alloy.river,apps/crawler/scripts/postgresql-operational-preflight.py
+          source: apps/crawler/deploy.sh,apps/crawler/deploy_helpers.sh,apps/crawler/docker-compose.yml,apps/crawler/alloy.river,apps/crawler/scripts/postgresql-operational-preflight.py
           target: /home/deploy/incoming/
           strip_components: 2
 

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import stat
 import subprocess
+import tarfile
 from pathlib import Path
 
 import yaml
@@ -75,7 +77,8 @@ def test_production_env_omits_crawler_mirror_and_scopes_web_database() -> None:
 
     # Migration/schema one-offs receive no web-owned credential. Only the
     # explicit registry/watchlist sync invocation is allowlisted for it.
-    assert '--env-file "$ENV_FILE"' not in script
+    assert script.count('--env-file "$ENV_FILE"') == 1
+    assert "env -i \\\n" in script
     assert script.count("-e WEB_DATABASE_URL") == 1
 
 
@@ -167,18 +170,177 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "docker-compose.yml" in script.partition("DEPLOY_SPEC_FILES=(")[2].partition(")")[0]
     assert 'tar -C "$snapshot_dir" -cpf' in script
     assert 'tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"' in script
-    assert 'compose_source="$ACTIVE_COMPOSE_SNAPSHOT"' in script
-    assert 'compose_source="$BOOTSTRAP_ROLLBACK_COMPOSE"' in script
-    assert 'git show "${BEFORE_SHA}:apps/crawler/docker-compose.yml"' in workflow
-    assert "apps/crawler/docker-compose.rollback.yml" in workflow
+    assert 'install -m 0644 "$ACTIVE_COMPOSE_SNAPSHOT"' in script
+    assert "ACTIVE_COMPOSE_SNAPSHOT_SHA256" in script
     assert 'mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"' in script
     env_restore = rollback.index('mv "$ROLLBACK_ENV_FILE" "$ENV_FILE"')
     spec_restore = rollback.index("restore_previous_deploy_specs")
-    old_stack_start = rollback.index("docker compose up -d --remove-orphans")
+    old_stack_start = rollback.index('docker compose --env-file "$ENV_FILE" up')
     assert env_restore < spec_restore < old_stack_start
     assert "target: /home/deploy/incoming/" in workflow
     assert "script: bash /home/deploy/incoming/deploy.sh" in workflow
     assert "target: /home/deploy/\n" not in workflow
+
+
+def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) -> None:
+    script = DEPLOY_SH.read_text()
+    restore = script[
+        script.index("restore_previous_deploy_specs() {") : script.index(
+            "reconciliation_wrapper_is_compatible() {"
+        )
+    ]
+    rollback = script[
+        script.index("rollback_deploy() {") : script.index("compose_service_ready() {")
+    ]
+    harness = "\n".join(
+        (
+            "set -Eeuo pipefail",
+            'DEPLOY_DIR="$TEST_DEPLOY_DIR"',
+            'ENV_FILE="$DEPLOY_DIR/.env"',
+            'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
+            'ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"',
+            "ENV_FILE_WAS_PRESENT=1",
+            "ROLLBACK_ARMED=0",
+            "ROLLBACK_RUNNING=0",
+            'COMPOSE_PROJECT_NAME="deploy"',
+            'MAINTENANCE_MARKER_NAME="test-marker"',
+            "stop_maintenance_window() {",
+            "  printf 'maintenance-stop\\n' >>\"$TEST_LOG\"",
+            "}",
+            restore,
+            rollback,
+            "arm_deploy_rollback",
+            "printf 'CRAWLER_IMAGE_TAG=failed-tag\\n' >\"$ENV_FILE\"",
+            "printf 'new-compose\\n' >\"$DEPLOY_DIR/docker-compose.yml\"",
+            'if [[ "$1" == signal ]]; then',
+            '  kill -HUP "$$"',
+            "else",
+            "  false",
+            "fi",
+            "exit 99",
+        )
+    )
+
+    for mode, expected_status in (("signal", 129), ("error", 1)):
+        deploy_dir = tmp_path / mode
+        deploy_dir.mkdir()
+        env_file = deploy_dir / ".env"
+        rollback_env = deploy_dir / ".env.rollback"
+        compose = deploy_dir / "docker-compose.yml"
+        archive = deploy_dir / ".deploy-spec.rollback.tar"
+        log = deploy_dir / "rollback.log"
+        env_file.write_text("CRAWLER_IMAGE_TAG=failed-tag\n", encoding="utf-8")
+        rollback_env.write_text("CRAWLER_IMAGE_TAG=old-tag\n", encoding="utf-8")
+        compose.write_text("new-compose\n", encoding="utf-8")
+        previous_compose = deploy_dir / "previous-compose.yml"
+        previous_compose.write_text("old-compose\n", encoding="utf-8")
+        with tarfile.open(archive, "w") as rollback_archive:
+            rollback_archive.add(previous_compose, arcname="docker-compose.yml")
+        binary_dir = deploy_dir / "bin"
+        binary_dir.mkdir()
+        _write_executable(
+            binary_dir / "docker",
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            'env_file="$3"\n'
+            'deploy_dir="$(dirname "$env_file")"\n'
+            'log="$deploy_dir/rollback.log"\n'
+            "printf 'compose-up\\n' >>\"$log\"\n"
+            'printf \'process-tag=%s\\n\' "${CRAWLER_IMAGE_TAG:-unset}" >>"$log"\n'
+            'tag="$(sed -n \'s/^CRAWLER_IMAGE_TAG=//p\' "$env_file")"\n'
+            'printf \'env-tag=%s\\n\' "$tag" >>"$log"\n'
+            'printf \'compose=%s\\n\' "$(cat "$deploy_dir/docker-compose.yml")" >>"$log"\n',
+        )
+
+        result = subprocess.run(
+            ["bash", "-c", harness, "deploy-rollback-test", mode],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "CRAWLER_IMAGE_TAG": "failed-tag",
+                "PATH": f"{binary_dir}:{os.environ['PATH']}",
+                "TEST_DEPLOY_DIR": str(deploy_dir),
+                "TEST_LOG": str(log),
+            },
+        )
+
+        assert result.returncode == expected_status, result.stderr
+        assert env_file.read_text(encoding="utf-8") == "CRAWLER_IMAGE_TAG=old-tag\n"
+        assert compose.read_text(encoding="utf-8") == "old-compose\n"
+        events = log.read_text(encoding="utf-8").splitlines()
+        assert events == [
+            "compose-up",
+            "process-tag=unset",
+            "env-tag=old-tag",
+            "compose=old-compose",
+            "maintenance-stop",
+        ]
+
+
+def test_first_rollout_fails_closed_without_verified_compose_preseed(tmp_path: Path) -> None:
+    script = DEPLOY_SH.read_text()
+    verifier = script[
+        script.index("verify_active_compose_snapshot() {") : script.index(
+            "snapshot_active_deploy_specs() {"
+        )
+    ]
+    snapshot = tmp_path / "active-compose.yml"
+    digest = tmp_path / "active-compose.sha256"
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    _write_executable(
+        binary_dir / "sha256sum",
+        '#!/usr/bin/env bash\nshasum -a 256 "$1"\n',
+    )
+    harness = "\n".join(
+        (
+            "set -euo pipefail",
+            'ACTIVE_COMPOSE_SNAPSHOT="$TEST_SNAPSHOT"',
+            'ACTIVE_COMPOSE_SNAPSHOT_SHA256="$TEST_DIGEST"',
+            verifier,
+            "verify_active_compose_snapshot",
+        )
+    )
+    env = {
+        **os.environ,
+        "PATH": f"{binary_dir}:{os.environ['PATH']}",
+        "TEST_SNAPSHOT": str(snapshot),
+        "TEST_DIGEST": str(digest),
+    }
+
+    missing = subprocess.run(
+        ["bash", "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert missing.returncode != 0
+    assert "active Compose snapshot is unavailable" in missing.stderr
+
+    snapshot.write_text("known-old-compose\n", encoding="utf-8")
+    digest.write_text(f"{'0' * 64}\n", encoding="ascii")
+    mismatch = subprocess.run(
+        ["bash", "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert mismatch.returncode != 0
+    assert "snapshot failed verification" in mismatch.stderr
+
+    digest.write_text(f"{hashlib.sha256(snapshot.read_bytes()).hexdigest()}\n", encoding="ascii")
+    verified = subprocess.run(
+        ["bash", "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert verified.returncode == 0, verified.stderr
 
 
 def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> None:
@@ -186,10 +348,12 @@ def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> Non
     workflow = DEPLOY_WORKFLOW.read_text()
 
     guard = script.index("\nensure_reconciliation_wrapper_compatible\n")
+    compose_preseed = script.index("\nverify_active_compose_snapshot\n")
+    rollback_cleanup = script.index('rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"')
     snapshot = script.index("\nsnapshot_active_deploy_specs\n")
     activation = script.index("\nactivate_staged_deploy_specs\n")
     env_write = script.index('cat > "$ENV_FILE"')
-    assert guard < snapshot < activation < env_write
+    assert guard < compose_preseed < rollback_cleanup < snapshot < activation < env_write
     assert "sha256sum /usr/local/sbin/jobseek-crawler-reconciliation" in script
     assert '--expected-wrapper-sha256 "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256"' in script
     assert "systemctl is-enabled --quiet jobseek-crawler-reconciliation.timer" in script

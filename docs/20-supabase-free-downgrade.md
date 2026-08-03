@@ -94,9 +94,35 @@ Deployment files arrive in `/home/deploy/incoming`; the active env and complete
 Compose deployment spec are snapshotted before activation. A failed rollout
 restores both before restarting the previous image, preserving the previous
 credential semantics rather than combining an old image with a new Compose
-allowlist. The deploy also fails closed before this snapshot unless the
-installed reconciliation wrapper's content and completed-install digest marker
-exactly match the required Typesense-only wrapper contract.
+allowlist. Rollback starts Compose with an empty process environment plus the
+restored env file, so the failed SSH process's `CRAWLER_IMAGE_TAG` and other
+inputs cannot override the old contract.
+
+Before the first rollout of this mechanism, explicitly capture the actual
+host-active Compose file while the old crawler deployment still owns it. Do
+this before merging or dispatching a change that can independently replace the
+shared Compose file:
+
+```bash
+install -m 0644 /home/deploy/docker-compose.yml \
+  /home/deploy/.crawler-active-docker-compose.yml
+sha256sum /home/deploy/.crawler-active-docker-compose.yml \
+  | awk '{print $1}' > /home/deploy/.crawler-active-docker-compose.sha256.tmp
+chmod 0644 /home/deploy/.crawler-active-docker-compose.sha256.tmp
+mv /home/deploy/.crawler-active-docker-compose.sha256.tmp \
+  /home/deploy/.crawler-active-docker-compose.sha256
+```
+
+The deploy does not infer first-rollout state from a Git revision: a skipped or
+failed prior deploy can leave the host behind Git. Missing or mismatched
+snapshot evidence fails closed before mutation. Every successful crawler
+deploy replaces both files for the next rollback. The deploy also fails closed
+before activation unless the installed reconciliation wrapper's content and
+completed-install digest marker exactly match the required Typesense-only
+wrapper contract.
+Once activation is armed, ordinary errors, shell exit, SSH hangup, and
+termination signals all run the same guarded rollback exactly once; the guard
+is disarmed only after service readiness and the durable Compose snapshot pass.
 
 Least privilege is enforced at each runtime surface:
 

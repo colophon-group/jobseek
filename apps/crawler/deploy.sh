@@ -65,8 +65,10 @@ ENV_FILE="$DEPLOY_DIR/.env"
 ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
 ACTIVE_COMPOSE_SNAPSHOT="$DEPLOY_DIR/.crawler-active-docker-compose.yml"
-BOOTSTRAP_ROLLBACK_COMPOSE="$INCOMING_DIR/docker-compose.rollback.yml"
+ACTIVE_COMPOSE_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-docker-compose.sha256"
 ENV_FILE_WAS_PRESENT=0
+ROLLBACK_ARMED=0
+ROLLBACK_RUNNING=0
 DEPLOY_SPEC_FILES=(
   deploy.sh
   deploy_helpers.sh
@@ -84,10 +86,6 @@ for spec in "${DEPLOY_SPEC_FILES[@]}"; do
     exit 1
   }
 done
-[[ -f "$BOOTSTRAP_ROLLBACK_COMPOSE" ]] || {
-  echo "ERROR: staged previous-revision Compose artifact is unavailable" >&2
-  exit 1
-}
 # Staged path is intentionally dynamic; the workflow verifies and supplies it.
 # shellcheck disable=SC1091
 source "$INCOMING_DIR/deploy_helpers.sh"
@@ -159,8 +157,31 @@ start_maintenance_window() {
     "trap 'exit 0' TERM INT; sleep 28800" >/dev/null
 }
 
+verify_active_compose_snapshot() {
+  local actual expected
+
+  [[ -f "$ACTIVE_COMPOSE_SNAPSHOT" ]] || {
+    echo "ERROR: crawler-confirmed active Compose snapshot is unavailable" >&2
+    return 1
+  }
+  [[ -f "$ACTIVE_COMPOSE_SNAPSHOT_SHA256" ]] || {
+    echo "ERROR: crawler-confirmed active Compose digest is unavailable" >&2
+    return 1
+  }
+  expected="$(tr -d '[:space:]' <"$ACTIVE_COMPOSE_SNAPSHOT_SHA256")"
+  [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "ERROR: crawler-confirmed active Compose digest is invalid" >&2
+    return 1
+  }
+  actual="$(sha256sum "$ACTIVE_COMPOSE_SNAPSHOT" | awk '{print $1}')"
+  [[ "$actual" == "$expected" ]] || {
+    echo "ERROR: crawler-confirmed active Compose snapshot failed verification" >&2
+    return 1
+  }
+}
+
 snapshot_active_deploy_specs() {
-  local compose_source snapshot_dir spec temporary
+  local snapshot_dir spec temporary
 
   for spec in "${DEPLOY_SPEC_FILES[@]}"; do
     [[ -f "$DEPLOY_DIR/$spec" ]] || {
@@ -178,13 +199,9 @@ snapshot_active_deploy_specs() {
   done
 
   # The independently scheduled shim rollout can already have replaced the
-  # live Compose file. Prefer the last crawler-confirmed spec; bootstrap this
-  # contract from the previous Git revision on the first rollout.
-  compose_source="$BOOTSTRAP_ROLLBACK_COMPOSE"
-  if [[ -f "$ACTIVE_COMPOSE_SNAPSHOT" ]]; then
-    compose_source="$ACTIVE_COMPOSE_SNAPSHOT"
-  fi
-  if ! install -m 0644 "$compose_source" "$snapshot_dir/docker-compose.yml"; then
+  # live Compose file. Only the verified, crawler-confirmed snapshot is valid
+  # rollback evidence; the first rollout must pre-seed it explicitly.
+  if ! install -m 0644 "$ACTIVE_COMPOSE_SNAPSHOT" "$snapshot_dir/docker-compose.yml"; then
     rm -rf "$snapshot_dir"
     return 1
   fi
@@ -251,8 +268,13 @@ ensure_reconciliation_wrapper_compatible() {
 }
 
 rollback_deploy() {
-  local exit_code=$?
-  trap - ERR
+  local exit_code="${1:-1}"
+
+  trap - ERR EXIT HUP INT TERM
+  if (( ! ROLLBACK_ARMED || ROLLBACK_RUNNING )); then
+    exit "$exit_code"
+  fi
+  ROLLBACK_RUNNING=1
   echo "Deploy failed — restoring crawler containers on previous image" >&2
 
   if [[ -f "$ROLLBACK_ENV_FILE" ]]; then
@@ -264,9 +286,32 @@ rollback_deploy() {
   restore_previous_deploy_specs || true
 
   cd "$DEPLOY_DIR" || exit "$exit_code"
-  docker compose up -d --remove-orphans 2>/dev/null || true
+  # Compose gives process variables precedence over the restored env file.
+  # Start rollback in a clean environment so the failed release tag and every
+  # other current SSH input cannot override the previous deployment contract.
+  env -i \
+    "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
+    "HOME=${HOME:-$DEPLOY_DIR}" \
+    "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
+    docker compose --env-file "$ENV_FILE" up -d --remove-orphans \
+    2>/dev/null || true
   stop_maintenance_window
+  ROLLBACK_ARMED=0
   exit "$exit_code"
+}
+
+arm_deploy_rollback() {
+  ROLLBACK_ARMED=1
+  trap 'rollback_deploy $?' ERR
+  trap 'rollback_deploy $?' EXIT
+  trap 'rollback_deploy 129' HUP
+  trap 'rollback_deploy 130' INT
+  trap 'rollback_deploy 143' TERM
+}
+
+disarm_deploy_rollback() {
+  ROLLBACK_ARMED=0
+  trap - ERR EXIT HUP INT TERM
 }
 
 compose_service_ready() {
@@ -504,6 +549,7 @@ ensure_no_running_compose_oneoffs
 ensure_no_running_typesense_maintenance
 ensure_reconciliation_wrapper_compatible
 python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
+verify_active_compose_snapshot
 
 # Snapshot the complete active deployment contract before replacing any file
 # or credential. Rollback restores the old Compose spec and old env together,
@@ -515,7 +561,7 @@ if [[ -f "$ENV_FILE" ]]; then
   cp "$ENV_FILE" "$ROLLBACK_ENV_FILE"
   chmod 600 "$ROLLBACK_ENV_FILE"
 fi
-trap rollback_deploy ERR
+arm_deploy_rollback
 activate_staged_deploy_specs
 
 # ── Stop any manually-started containers that conflict with compose ──
@@ -562,7 +608,6 @@ chmod 600 "$ENV_FILE"
 
 # ── Pull images and preflight while the old stack is still serving ────
 cd "$DEPLOY_DIR"
-trap stop_maintenance_window EXIT
 start_maintenance_window
 
 # Activate persistent Alloy state before any later deploy step can fail and
@@ -647,10 +692,13 @@ stop_maintenance_window
 
 # ── Cleanup ──────────────────────────────────────────────────────────
 active_compose_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose.XXXXXX")"
+active_compose_digest_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose-digest.XXXXXX")"
 install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$active_compose_temporary"
+sha256sum "$active_compose_temporary" | awk '{print $1}' >"$active_compose_digest_temporary"
+chmod 0644 "$active_compose_digest_temporary"
 mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"
-trap - ERR
-trap - EXIT
+mv "$active_compose_digest_temporary" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256"
+disarm_deploy_rollback
 rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
 docker image prune -f
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"
