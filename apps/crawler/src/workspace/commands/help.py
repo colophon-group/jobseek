@@ -80,6 +80,7 @@ Monitor Types (cheapest first):
   bite              10      Job URLs          Auto-configured
   breezy            10      Job URLs          Auto-configured
   comeet            10      Full job data     No (skipped)
+  cornerstone       10      Full job data     No (skipped)
   deel              10      Full job data     No (skipped)
   dvinci            10      Full job data     No (skipped)
   gem               10      Full job data     No (skipped)
@@ -1530,6 +1531,30 @@ gupy — Gupy NextData listing
   Zero jobs?  A valid page still contains matching NextData career metadata
               and an empty jobs array."""
 
+MONITOR_CORNERSTONE = """\
+cornerstone — Cornerstone public career-site API
+
+  Listing:  GET  https://{tenant}.csod.com/ux/ats/careersite/{site_id}/home?c={corp}
+  Search:   POST https://{region}.api.csod.com/rec-job-search/external/jobs
+  Returns:  Full job data streamed in 100-job pages; no detail fan-out
+  Scraper:  None (rich monitor)
+  Note:     Validates the short-lived public bootstrap token and regional API
+            origin, refreshes once on authorization expiry, and uses shared
+            strict POST retry and truncation-safe streaming. No browser or
+            upstream scraper dependency is required.
+
+  Config:
+    {"tenant": "acme", "site_id": 1, "corp": "acme"}
+
+    tenant   Single-label *.csod.com tenant.
+    site_id  Positive career-site ID from the canonical URL.
+    corp     Corporation query value from ?c=. Auto-filled only from direct
+             or explicitly linked canonical Cornerstone URLs; no blind
+             tenant guessing.
+
+  Detection:  ws probe shows "Cornerstone API — tenant: X, site: N, M jobs"
+  Zero jobs?  A valid API response reports totalCount=0 and requisitions=[]."""
+
 MONITOR_HRMOS = """\
 hrmos — HRMOS server-rendered listings
 
@@ -2375,6 +2400,7 @@ MONITOR_CARDS: dict[str, str] = {
     "jazzhr": MONITOR_JAZZHR,
     "icims": MONITOR_ICIMS,
     "gupy": MONITOR_GUPY,
+    "cornerstone": MONITOR_CORNERSTONE,
     "herp": MONITOR_HERP,
     "hrmos": MONITOR_HRMOS,
     "recruitee": MONITOR_RECRUITEE,

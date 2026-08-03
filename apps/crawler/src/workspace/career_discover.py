@@ -93,6 +93,10 @@ _ATS_URL_RE = re.compile(
     r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.gupy\.io"
     r"(?:/jobs/[1-9]\d{0,19})?/?"
     r"(?:\?jobBoardSource=gupy_public_page)?(?=[#\"'<\s]|$)"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.csod\.com/"
+    r"ux/ats/careersite/[1-9]\d{0,9}/home"
+    r"(?:/requisition/[1-9]\d{0,19})?"
+    r"\?c=[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?(?=[#\"'<\s]|$)"
     r"|herp\.careers/v1/[a-z0-9][a-z0-9_-]{0,62}"
     r"(?:/[A-Za-z0-9_-]{6,64})?/?(?=[#\"'<\s]|$)"
     r"|hrmos\.co/pages/[a-z0-9][a-z0-9_-]{0,62}/jobs"
@@ -858,11 +862,17 @@ def _dedup_candidates(candidates: list[CareerPageCandidate]) -> list[CareerPageC
     by_key: dict[str, CareerPageCandidate] = {}
     for c in candidates:
         # Use monitor_type + stable ATS identifier as the dedup key.
+        tenant = c.monitor_config.get("tenant")
+        site_id = c.monitor_config.get("site_id")
+        corp = c.monitor_config.get("corp")
+        tenant_parts = [tenant] if tenant else []
+        if tenant_parts and site_id is not None:
+            tenant_parts.append(site_id)
+        if tenant_parts and corp:
+            tenant_parts.append(corp)
+        tenant_key = ":".join(str(part) for part in tenant_parts) or None
         config_key = (
-            c.monitor_config.get("token")
-            or c.monitor_config.get("slug")
-            or c.monitor_config.get("tenant")
-            or c.url
+            c.monitor_config.get("token") or c.monitor_config.get("slug") or tenant_key or c.url
         )
         key = f"{c.monitor_type}:{config_key}"
         if key in by_key:
