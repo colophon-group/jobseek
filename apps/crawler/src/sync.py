@@ -53,6 +53,7 @@ from src.typesense_client import get_typesense_client
 
 _API_MONITOR_TYPES = api_monitor_types()
 _MONITOR_CONFIG_FINGERPRINT = "_monitor_config_fingerprint"
+_RECOVERY_SCHEDULE_STATUSES = frozenset({"quarantined", "gone_pending", "gone"})
 
 log = structlog.get_logger()
 
@@ -396,7 +397,7 @@ ON CONFLICT (id) DO UPDATE SET
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN true
-        WHEN job_board.board_status IN ('disabled', 'gone') THEN false
+        WHEN job_board.board_status = 'disabled' THEN false
         ELSE EXCLUDED.is_enabled
     END,
     board_status = CASE
@@ -470,8 +471,22 @@ ON CONFLICT (id) DO UPDATE SET
     gone_at = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN NULL
         ELSE job_board.gone_at
+    END,
+    gone_confirmation_count = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN 0
+        ELSE job_board.gone_confirmation_count
     END,
     quarantined_at = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
@@ -564,7 +579,7 @@ WHERE jp.board_id = jb.id
 _FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP = """
 SELECT id::text AS board_id, throttle_key
 FROM job_board
-WHERE is_enabled = false OR board_status IN ('disabled', 'gone')
+WHERE is_enabled = false OR board_status = 'disabled'
 """
 
 _FETCH_BOARD_IDS = """
@@ -1443,7 +1458,7 @@ async def sync_boards(
         metadata = state["metadata"]
         board_status = state.get("board_status", "active")
         next_check_at = schedule_time
-        if board_status == "quarantined" and "next_check_at" in state:
+        if board_status in _RECOVERY_SCHEDULE_STATUSES and "next_check_at" in state:
             due = state["next_check_at"]
             if isinstance(due, datetime):
                 next_check_at = max(schedule_time, due.timestamp())
@@ -1465,7 +1480,7 @@ async def sync_boards(
                 next_check_at=next_check_at,
                 config=config,
                 browser=monitor_browser_flags[i],
-                first_time=board_status != "quarantined",
+                first_time=board_status not in _RECOVERY_SCHEDULE_STATUSES,
             )
         )
     await enqueue_monitors(schedules)
@@ -1476,7 +1491,7 @@ async def sync_boards(
     await local_conn.execute(_DISABLE_REMOVED_BOARDS_LOCAL, board_urls)
 
     # Purge Redis monitor queue for any board that's no longer eligible to run
-    # (just-disabled or previously disabled/gone). Without this, the per-domain
+    # (just-disabled or previously disabled). Without this, the per-domain
     # ``monitors_{wtype}:{domain}`` key retains the stale board_id and the
     # worker keeps claiming it every cycle, producing ``batch.monitor.error``
     # 404s that no CSV update can silence.

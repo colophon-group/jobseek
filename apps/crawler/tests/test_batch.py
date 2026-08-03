@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg
@@ -13,9 +14,11 @@ from src.batch import (
     _CREATE_RICH_UPDATES_TEMP,
     _DELIST_BOARD_POSTINGS,
     _DIFF_BATCH,
+    _FETCH_BOARD_GONE_STATE,
     _INSERT_RICH_JOB,
     _INSERT_RICH_JOB_ENRICH,
     _INSERT_URL_ONLY_JOBS,
+    _RECORD_BOARD_GONE,
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
     _RECORD_SCRAPE_SUCCESS,
@@ -330,7 +333,7 @@ class TestProcessOneBoard:
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
         # _RECORD_EMPTY_CHECK uses RETURNING to communicate the delist gate.
         conn.fetch.return_value = [
-            {"board_status": "active", "should_delist": False, "recovered": False}
+            {"board_status": "active", "should_delist": False, "recovered_from": None}
         ]
         board = _mock_board()
 
@@ -349,13 +352,42 @@ class TestProcessOneBoard:
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
         conn.fetch.return_value = [
-            {"board_status": "active", "should_delist": False, "recovered": True}
+            {
+                "board_status": "active",
+                "should_delist": False,
+                "recovered_from": "quarantined",
+            }
         ]
         before = _counter_value(monitor_quarantine_events_total, event="recovered")
 
         await _process_one_board(_mock_board(), pool, mock_http)
 
         assert _counter_value(monitor_quarantine_events_total, event="recovered") - before == 1
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_valid_empty_result_recovers_confirmed_gone_board(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A recreated provider token can self-recover even with zero jobs."""
+        from src.processing.board import monitor_gone_events_total
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
+        conn.fetch.return_value = [
+            {
+                "board_status": "active",
+                "should_delist": False,
+                "recovered_from": "gone",
+            }
+        ]
+        before = _counter_value(monitor_gone_events_total, event="recovered")
+
+        await _process_one_board(_mock_board(), pool, mock_http)
+
+        assert _counter_value(monitor_gone_events_total, event="recovered") - before == 1
         assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
         mock_get_redis.assert_not_called()
 
@@ -378,7 +410,13 @@ class TestProcessOneBoard:
         # board remains suspect/pollable.
         # Second fetch: _DELIST_BOARD_POSTINGS -> two rows flipped
         conn.fetch.side_effect = [
-            [{"board_status": "suspect", "should_delist": True, "recovered": False}],
+            [
+                {
+                    "board_status": "suspect",
+                    "should_delist": True,
+                    "recovered_from": None,
+                }
+            ],
             [{"id": "jp-1"}, {"id": "jp-2"}],
         ]
         mock_redis = AsyncMock()
@@ -405,7 +443,7 @@ class TestProcessOneBoard:
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
         conn.fetch.return_value = [
-            {"board_status": "suspect", "should_delist": False, "recovered": False}
+            {"board_status": "suspect", "should_delist": False, "recovered_from": None}
         ]
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
@@ -1199,26 +1237,48 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_board_gone_error_delists_and_emits_gone(
+    async def test_spaced_board_gone_confirmation_delists_and_emits_gone(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """BoardGoneError (upstream 404) -> _RECORD_BOARD_GONE +
-        _DELIST_BOARD_POSTINGS run, and the ``gone`` counter reflects
-        every row delisted. Exception is re-raised afterwards so the
-        Redis worker drops the task rather than rescheduling a dead
-        board every cycle.
+        """Only a terminal spaced confirmation delists the board postings.
+
+        This represents the third confirmation for a recently healthy source;
+        the exception is re-raised so the Redis worker mirrors the durable
+        daily recovery timestamp.
         """
         from src.core.monitors import BoardGoneError
-        from src.processing.board import monitor_jobs_discovered
+        from src.processing.board import monitor_gone_events_total, monitor_jobs_discovered
 
         pool, conn = mock_pool
-        mock_monitor.side_effect = BoardGoneError("dead upstream", url="https://example.com/dead")
+        mock_monitor.side_effect = BoardGoneError(
+            "dead upstream",
+            url="https://example.com/dead",
+            status_code=404,
+        )
+        now = datetime.now(UTC)
+
+        async def fetchrow(sql, *_args):
+            if sql == _FETCH_BOARD_GONE_STATE:
+                return {
+                    "board_status": "gone_pending",
+                    "gone_confirmation_count": 2,
+                    "gone_first_confirmed_at": now - timedelta(hours=12),
+                    "gone_last_confirmed_at": now - timedelta(hours=6, seconds=1),
+                    "last_success_at": now - timedelta(hours=13),
+                    "gone_at": None,
+                }
+            if sql == _RECORD_BOARD_GONE:
+                return {"board_status": "gone"}
+            return None
+
+        conn.fetchrow.side_effect = fetchrow
         # _DELIST_BOARD_POSTINGS returns three rows
         conn.fetch.return_value = [{"id": "jp-1"}, {"id": "jp-2"}, {"id": "jp-3"}]
         mock_redis = AsyncMock()
         mock_get_redis.return_value = mock_redis
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        terminal_before = _counter_value(monitor_gone_events_total, event="terminal")
 
         with pytest.raises(BoardGoneError):
             await _process_one_board(board, pool, mock_http)
@@ -1229,7 +1289,52 @@ class TestProcessOneBoard:
         assert len(delist_calls) == 1
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after - before == 3
+        assert _counter_value(monitor_gone_events_total, event="terminal") - terminal_before == 1
         mock_redis.delete.assert_awaited_with("cache:platform-stats")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_first_board_gone_confirmation_preserves_active_postings(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A single recent-success 404 records evidence without delisting."""
+        from src.core.monitors import BoardGoneError
+        from src.processing.board import monitor_gone_events_total
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = BoardGoneError(
+            "transient upstream 404",
+            url="https://example.com/dead",
+            status_code=404,
+        )
+        now = datetime.now(UTC)
+
+        async def fetchrow(sql, *_args):
+            if sql == _FETCH_BOARD_GONE_STATE:
+                return {
+                    "board_status": "active",
+                    "gone_confirmation_count": 0,
+                    "gone_first_confirmed_at": None,
+                    "gone_last_confirmed_at": None,
+                    "last_success_at": now - timedelta(hours=1),
+                    "gone_at": None,
+                }
+            if sql == _RECORD_BOARD_GONE:
+                return {"board_status": "gone_pending"}
+            return None
+
+        conn.fetchrow.side_effect = fetchrow
+        confirmation_before = _counter_value(monitor_gone_events_total, event="confirmation")
+
+        with pytest.raises(BoardGoneError):
+            await _process_one_board(_mock_board(), pool, mock_http)
+
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
+        assert (
+            _counter_value(monitor_gone_events_total, event="confirmation") - confirmation_before
+            == 1
+        )
+        mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")

@@ -125,6 +125,15 @@ monitor_quarantine_events_total = Counter(
     ["event"],
 )
 
+# Provider-native 404/retirement signals use a bounded confirmation state
+# machine (#6156). The three events expose durable confirmations, terminal
+# transitions, and self-recoveries without adding a per-board label.
+monitor_gone_events_total = Counter(
+    "crawler_monitor_gone_events_total",
+    "Monitor provider-gone confirmations, terminal transitions, and recoveries",
+    ["event"],
+)
+
 # Redis-backed per-upstream-host circuit breaker (#3195). Only hosts that
 # fail or are checked by the breaker create a series, keeping cardinality
 # bounded to crawler origins rather than individual boards/postings.

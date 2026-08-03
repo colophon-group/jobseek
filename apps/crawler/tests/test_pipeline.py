@@ -1352,6 +1352,7 @@ async def test_process_monitor_work_emits_tasks_total_gone_on_board_gone():
     gone_before = _tasks_total_value("monitor", "gone")
     failed_before = _tasks_total_value("monitor", "failed")
     succeeded_before = _tasks_total_value("monitor", "succeeded")
+    reschedule = AsyncMock(return_value=None)
 
     with (
         patch(
@@ -1360,7 +1361,7 @@ async def test_process_monitor_work_emits_tasks_total_gone_on_board_gone():
         ),
         patch(
             "src.workers.pipeline.reschedule_task",
-            new=AsyncMock(return_value=None),
+            new=reschedule,
         ),
     ):
         await _process_monitor_work(worker_log, work, local_pool, http, browser=False)
@@ -1369,6 +1370,12 @@ async def test_process_monitor_work_emits_tasks_total_gone_on_board_gone():
     # BoardGoneError must NOT be conflated with failed / succeeded.
     assert _tasks_total_value("monitor", "failed") == failed_before
     assert _tasks_total_value("monitor", "succeeded") == succeeded_before
+    reschedule.assert_awaited_once()
+    assert reschedule.await_args.args[:3] == (
+        work.domain,
+        work.board_id,
+        "monitor",
+    )
 
 
 # ---------------------------------------------------------------------------
