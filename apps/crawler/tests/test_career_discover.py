@@ -538,6 +538,31 @@ class TestDedup:
         result = _dedup_candidates(candidates)
         assert len(result) == 2
 
+    def test_same_gupy_tenant_dedupes_listing_and_detail_urls(self):
+        candidates = [
+            CareerPageCandidate(
+                url="https://afya.gupy.io/",
+                source="ats_embed",
+                monitor_type="gupy",
+                monitor_config={"tenant": "afya"},
+                score=0.95,
+                comment="Gupy listing",
+            ),
+            CareerPageCandidate(
+                url="https://afya.gupy.io/jobs/123",
+                source="ats_embed",
+                monitor_type="gupy",
+                monitor_config={"tenant": "afya"},
+                score=0.90,
+                comment="Gupy detail",
+            ),
+        ]
+
+        result = _dedup_candidates(candidates)
+
+        assert len(result) == 1
+        assert result[0].url == "https://afya.gupy.io/"
+
 
 # ── URL resolution ─────────────────────────────────────────────────
 

@@ -14,6 +14,8 @@ from __future__ import annotations
 import re
 from urllib.parse import parse_qsl
 
+from src.shared.gupy import gupy_tenant_from_url
+
 _ICIMS_STATIC_QUERY_VALUES = {
     "in_iframe": "1",
     "o": "",
@@ -95,6 +97,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "bite",
     "breezy",
     "eightfold",
+    "gupy",
     "herp",
     "hrmos",
     "icims",
@@ -165,6 +168,10 @@ def detect_ats_from_url(url: str) -> str | None:
 
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
+    try:
+        _ = parsed.port
+    except ValueError:
+        return None
 
     # Exact host prefixes
     if host in ("boards.greenhouse.io", "job-boards.greenhouse.io") or (
@@ -177,6 +184,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ashby"
     if host == "jobs.gem.com":
         return "gem"
+    if gupy_tenant_from_url(url) is not None:
+        return "gupy"
     if (
         host == "herp.careers"
         and not parsed.query
@@ -442,6 +451,8 @@ def auto_scraper_type(
     if monitor_type == "icims":
         return ("json-ld", None)
     if monitor_type == "herp":
+        return ("json-ld", None)
+    if monitor_type == "gupy":
         return ("json-ld", None)
     if monitor_type == "hrmos":
         return ("json-ld", None)

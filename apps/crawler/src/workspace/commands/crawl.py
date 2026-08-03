@@ -914,6 +914,7 @@ _MONITOR_CONFIG_HINTS = {
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "icims": "Requires: host (auto-filled from an icims.com URL)",
+    "gupy": "Requires: tenant (auto-filled from a *.gupy.io URL)",
     "herp": "Requires: slug (auto-filled from a herp.careers URL)",
     "hrmos": "Requires: tenant (auto-filled from an hrmos.co URL)",
     "bite": "Requires: key (auto-filled from probe)",

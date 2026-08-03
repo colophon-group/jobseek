@@ -84,6 +84,7 @@ Monitor Types (cheapest first):
   dvinci            10      Full job data     No (skipped)
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
+  gupy              10      Job URLs          Auto-configured
   hibob             10      Full job data     No (skipped)
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
@@ -1508,6 +1509,27 @@ herp — HERP Hire server-rendered listing
   Detection:  ws probe shows "HERP static listing — slug: X, N jobs"
   Zero jobs?  A valid page still contains the requisition-list container."""
 
+MONITOR_GUPY = """\
+gupy — Gupy NextData listing
+
+  Listing:  GET https://{tenant}.gupy.io/
+  Returns:  Canonical https://{tenant}.gupy.io/jobs/{job_id} detail URLs
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     Reuses Jobseek's shared NextData parser and URL builder for the
+            complete server-embedded jobs array, plus shared strict retry,
+            challenge detection, and truncation handling. No browser or
+            upstream scraper dependency is required.
+
+  Config:
+    {"tenant": "acme"}
+
+    tenant  Gupy company subdomain. Auto-filled only from direct or
+            explicitly linked *.gupy.io URLs; no blind tenant guessing.
+
+  Detection:  ws probe shows "Gupy NextData listing — tenant: X, N jobs"
+  Zero jobs?  A valid page still contains matching NextData career metadata
+              and an empty jobs array."""
+
 MONITOR_HRMOS = """\
 hrmos — HRMOS server-rendered listings
 
@@ -2352,6 +2374,7 @@ MONITOR_CARDS: dict[str, str] = {
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "icims": MONITOR_ICIMS,
+    "gupy": MONITOR_GUPY,
     "herp": MONITOR_HERP,
     "hrmos": MONITOR_HRMOS,
     "recruitee": MONITOR_RECRUITEE,

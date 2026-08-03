@@ -90,6 +90,9 @@ _ATS_URL_RE = re.compile(
     r"boards\.greenhouse\.io/[\w-]+"
     r"|job-boards(?:\.[\w-]+)?\.greenhouse\.io/[\w-]+"
     r"|jobs\.ashbyhq\.com/[\w-]+"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.gupy\.io"
+    r"(?:/jobs/[1-9]\d{0,19})?/?"
+    r"(?:\?jobBoardSource=gupy_public_page)?(?=[#\"'<\s]|$)"
     r"|herp\.careers/v1/[a-z0-9][a-z0-9_-]{0,62}"
     r"(?:/[A-Za-z0-9_-]{6,64})?/?(?=[#\"'<\s]|$)"
     r"|hrmos\.co/pages/[a-z0-9][a-z0-9_-]{0,62}/jobs"
@@ -854,8 +857,13 @@ def _dedup_candidates(candidates: list[CareerPageCandidate]) -> list[CareerPageC
     """Deduplicate by (monitor_type, monitor_config key), keeping highest score."""
     by_key: dict[str, CareerPageCandidate] = {}
     for c in candidates:
-        # Use monitor_type + token/slug as dedup key
-        config_key = c.monitor_config.get("token") or c.monitor_config.get("slug") or c.url
+        # Use monitor_type + stable ATS identifier as the dedup key.
+        config_key = (
+            c.monitor_config.get("token")
+            or c.monitor_config.get("slug")
+            or c.monitor_config.get("tenant")
+            or c.url
+        )
         key = f"{c.monitor_type}:{config_key}"
         if key in by_key:
             if c.score > by_key[key].score:

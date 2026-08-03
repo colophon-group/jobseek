@@ -2055,6 +2055,17 @@ class TestSelectMonitorNaming:
         assert selected["scraper_type"] == "json-ld"
         assert selected.get("scraper_config") is None
 
+    def test_gupy_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """Gupy selection carries the existing JSON-LD detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "gupy"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["gupy"]
+        assert selected["scraper_type"] == "json-ld"
+        assert selected.get("scraper_config") is None
+
     def test_hrmos_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
         """HRMOS selection carries the existing JSON-LD detail scraper."""
         self._setup(tmp_path, monkeypatch)
