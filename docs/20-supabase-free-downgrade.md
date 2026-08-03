@@ -47,6 +47,21 @@ only `DATABASE_URL_UNPOOLED`. `production-migration-drift` holds only
 has no superuser/database/role/replication/RLS-bypass attributes, cannot create
 in `public`, and can select the migration ledger and audited application tables.
 
+## Web Meta writer retirement (#6248)
+
+Meta posting ingestion belongs to the crawler's `meta-careers` sitemap and
+JSON-LD board. The former web-only Apify endpoint and importer are retired; the
+web deployment has no fallback path that writes crawler postings. A static
+source test rejects direct Drizzle, raw SQL, and Supabase `job_posting`
+mutations from web runtime code.
+
+The merged native-crawler cutover in #2361 recorded 534 sitemap URLs in 3.0
+seconds and 10/10 successful stratified job-page samples in 1.8 seconds. The
+same crawler pipeline persists local PostgreSQL truth and exports it to
+Typesense. `APIFY_TOKEN` was the only Apify credential name read by the retired
+web code; secret-store cleanup remains an operator follow-up after the deployed
+Meta freshness canary, and is not performed by the code change.
+
 ## Saved-job cutover order
 
 Do not deploy a schema+app+constraint-drop migration as one release. The safe
