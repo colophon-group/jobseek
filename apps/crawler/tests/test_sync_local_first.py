@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 import polars as pl
 import pytest
 
+import src.deadletters as deadletters
 import src.sync as sync
 from src.cli import parse_args
 
@@ -91,6 +92,8 @@ def _patch_inputs(monkeypatch) -> tuple[pl.DataFrame, pl.DataFrame]:
     monkeypatch.setattr(sync, "setup_logging", lambda *_args: None)
     monkeypatch.setattr(sync, "close_all_pools", AsyncMock())
     monkeypatch.setattr(sync, "close_redis", AsyncMock())
+    monkeypatch.setattr(deadletters, "classify_deadletters", AsyncMock(return_value=[]))
+    monkeypatch.setattr(deadletters, "lifecycle_counts", lambda _entries: {})
     return companies, boards
 
 
