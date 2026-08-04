@@ -104,11 +104,15 @@ immediately.
 
 For a backup-key rotation, update `TYPESENSE_BACKUP_KEY` first and deploy
 `.github/workflows/deploy-data-backups.yml`. The backup installer probes the
-candidate against `/stats.json` before mutation, atomically replaces the
-root-only host value, runs a full backup smoke when the value changed, and
-restores the prior value if any later gate fails. Delete the superseded
-generated key only after that backup and the isolated restore drill in
-`19-data-backup-recovery.md` both pass.
+candidate against `/stats.json` without changing the live environment. When
+the value changed, it quiesces the timer/service, runs a full backup smoke from
+a root-only candidate environment while retaining the host-wide deployment
+lock, reacquires the service-data lock, and only then atomically commits the
+candidate. Rollback stays armed until fresh status, timer health, and the
+deployment marker have committed. Any failure restores the prior value and
+leaves the timer disabled/inactive; treat a reported rollback failure as a hard
+backup outage. Delete the superseded generated key only after that backup and
+the isolated restore drill in `19-data-backup-recovery.md` both pass.
 
 Read-only, redacted verification:
 

@@ -7,25 +7,50 @@ ROOT = Path(__file__).resolve().parents[3]
 
 def test_typesense_credential_rotation_is_probed_atomic_and_rollback_safe() -> None:
     installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+    rotation = (ROOT / "deploy/backups/typesense/credential-rotation.sh").read_text(
+        encoding="utf-8"
+    )
 
-    probe = installer.index('"http://127.0.0.1:8108/stats.json"')
-    script_install = installer.index('"$REPO_ROOT/scripts/jobseek-data-backup.py"', probe)
-    replacement = installer.index("os.replace(temporary, path)")
-    smoke = installer.index("systemctl start jobseek-typesense-backup.service")
+    stage = rotation.index('typesense_rotation_candidate_env="$typesense_rotation_candidate_root')
+    assert '"http://127.0.0.1:8108/stats.json"' in rotation
+    authorize = rotation.index("typesense_rotation_authorize_candidate", stage)
+    arm = rotation.index("typesense_rotation_pending=1", authorize)
+    quiesce = rotation.index("typesense_rotation_disable_fail_safe", arm)
+    unlock = rotation.index('"$typesense_rotation_flock_command" -u', quiesce)
+    smoke = rotation.index('"$typesense_rotation_backup_command" typesense', unlock)
+    fresh_status = rotation.index("typesense_rotation_validate_fresh_status", smoke)
+    reacquire = rotation.index('"$typesense_rotation_flock_command" -w', fresh_status)
+    commit = rotation.index('mv -f "$typesense_rotation_candidate_env"', reacquire)
+    restore_timer = rotation.index("typesense_rotation_restore_timer_state", commit)
+
+    assert (
+        stage
+        < authorize
+        < arm
+        < quiesce
+        < unlock
+        < smoke
+        < fresh_status
+        < reacquire
+        < commit
+        < restore_timer
+    )
+    assert "typesense_rotation_rollback" in installer
+    assert "typesense_rotation_atomic_restore" in rotation
+    assert "credential rollback failed hard" in rotation
+    assert "|| true" not in rotation
+    assert 'source "$REPO_ROOT/deploy/backups/typesense/credential-rotation.sh"' in installer
+    prepare_call = installer.index("typesense_rotation_prepare")
+    assert prepare_call < installer.index(
+        '"$REPO_ROOT/scripts/jobseek-data-backup.py"', prepare_call
+    )
+    smoke_call = installer.index("typesense_rotation_smoke_and_commit")
     timer_gate = installer.index(
-        'systemctl is-active --quiet "jobseek-${SERVICE}-backup.timer"', smoke
+        'systemctl is-active --quiet "jobseek-${SERVICE}-backup.timer"', smoke_call
     )
-    deployed_revision = installer.index("mv /var/lib/jobseek-backup/deployed-sha.tmp", smoke)
-    commit = installer.index("typesense_rotation_pending=0", smoke)
-
-    assert probe < script_install < replacement < smoke < timer_gate < deployed_revision < commit
-    assert "rollback_typesense_credential" in installer
-    rollback_install = (
-        "install -o root -g root -m 0600 \\\n"
-        '    "$typesense_previous_env" /etc/jobseek-backup/typesense.env'
-    )
-    assert rollback_install in installer
-    assert "credential-change backup smoke did not succeed" in installer
+    marker = installer.index('>"/var/lib/jobseek-backup/${SERVICE}-deployed-sha.tmp"')
+    finalize = installer.index("typesense_rotation_finalize", marker)
+    assert smoke_call < timer_gate < marker < finalize
 
 
 def test_backup_deploy_requires_an_enabled_healthy_timer() -> None:
