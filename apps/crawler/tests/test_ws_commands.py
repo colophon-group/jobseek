@@ -4870,6 +4870,68 @@ class TestNewIdempotent:
         push.assert_not_called()
         create_pr.assert_not_called()
 
+    def test_reconfig_preserves_existing_board_and_adds_inventory_seed(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies="acme,Acme,https://acme.example,,,\n",
+            boards=("acme,acme-careers,https://acme.example/jobs,dom,{},dom,{}\n"),
+        )
+
+        with ExitStack() as stack:
+            self._git_mocks(
+                stack,
+                tmp_path,
+                issue_body=_inventory_issue_body(),
+                issue_labels=("source:ats-inventory",),
+            )
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1", "--reconfig"])
+
+        assert result.exit_code == 0, result.output
+        assert "Seeded greenhouse monitor" in result.output
+        assert {board.alias for board in list_boards("acme")} == {
+            "careers",
+            "inventory-careers",
+        }
+        assert load_board("acme", "careers").url == "https://acme.example/jobs"
+        seeded = load_board("acme", "inventory-careers")
+        assert seeded.url == "https://boards.greenhouse.io/acme"
+        assert seeded.active_config == "inventory-seed"
+        workspace = load_workspace("acme")
+        assert workspace.active_board == "inventory-careers"
+        assert workspace.ats_inventory["board_alias"] == "inventory-careers"
+        from src.workspace.workflow import _load_wf_from_disk
+
+        workflow = _load_wf_from_disk("acme")
+        assert workflow.current_step == "select_monitor"
+        assert workflow.current_board == "inventory-careers"
+
+    def test_reconfig_falls_back_when_inventory_seed_matches_existing_board(
+        self, tmp_path, monkeypatch
+    ):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies="acme,Acme,https://acme.example,,,\n",
+            boards=("acme,acme-careers,https://boards.greenhouse.io/acme,greenhouse,{},dom,{}\n"),
+        )
+
+        with ExitStack() as stack:
+            self._git_mocks(
+                stack,
+                tmp_path,
+                issue_body=_inventory_issue_body(),
+                issue_labels=("source:ats-inventory",),
+            )
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1", "--reconfig"])
+
+        assert result.exit_code == 0, result.output
+        assert "using normal discovery" in result.output
+        assert {board.alias for board in list_boards("acme")} == {"careers"}
+        workspace = load_workspace("acme")
+        assert workspace.active_board == "careers"
+        assert workspace.ats_inventory["status"] == "fallback"
+
     def test_new_ignores_inventory_marker_without_protected_label(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         _setup_csvs(tmp_path)

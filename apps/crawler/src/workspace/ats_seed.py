@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import copy
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -244,8 +244,28 @@ def current_registry_hard_evidence(
     return tuple(index.hard_evidence(candidate))
 
 
-def apply_inventory_seed(ws: Workspace, seed: AtsInventorySeed) -> Board:
-    """Attach a selected native config and provenance to a new workspace."""
+def available_inventory_board_alias(existing_aliases: Iterable[str]) -> str:
+    """Choose a deterministic alias without replacing an existing board."""
+
+    used = set(existing_aliases)
+    if INVENTORY_BOARD_ALIAS not in used:
+        return INVENTORY_BOARD_ALIAS
+    base = "inventory-careers"
+    if base not in used:
+        return base
+    suffix = 2
+    while f"{base}-{suffix}" in used:
+        suffix += 1
+    return f"{base}-{suffix}"
+
+
+def apply_inventory_seed(
+    ws: Workspace,
+    seed: AtsInventorySeed,
+    *,
+    board_alias: str = INVENTORY_BOARD_ALIAS,
+) -> Board:
+    """Attach a selected native config and provenance to a workspace."""
 
     config: dict[str, Any] = {
         "monitor_type": seed.monitor_type,
@@ -263,14 +283,15 @@ def apply_inventory_seed(ws: Workspace, seed: AtsInventorySeed) -> Board:
             config["scraper_config"] = copy.deepcopy(auto_scraper[1])
 
     board = Board(
-        alias=INVENTORY_BOARD_ALIAS,
-        slug=f"{ws.slug}-{INVENTORY_BOARD_ALIAS}",
+        alias=board_alias,
+        slug=f"{ws.slug}-{board_alias}",
         url=seed.board_url,
         active_config=INVENTORY_CONFIG_NAME,
         configs={INVENTORY_CONFIG_NAME: config},
     )
-    ws.active_board = INVENTORY_BOARD_ALIAS
+    ws.active_board = board_alias
     ws.ats_inventory = seed.to_workspace_state()
+    ws.ats_inventory["board_alias"] = board_alias
     return board
 
 
@@ -351,6 +372,7 @@ __all__ = [
     "INVENTORY_BOARD_ALIAS",
     "INVENTORY_CONFIG_NAME",
     "InventorySeedInvalid",
+    "available_inventory_board_alias",
     "apply_inventory_seed",
     "apply_inventory_fallback",
     "current_registry_hard_evidence",
