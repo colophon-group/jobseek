@@ -121,19 +121,80 @@ def parse_args() -> argparse.Namespace:
         "--support-issues",
         choices=("off", "plan", "create"),
         default="off",
-        help="Reconcile unsupported-family issues; writes require explicit 'create'",
+        help="Reconcile unsupported families; refill mode also creates them automatically",
     )
     ats_inventory_p.add_argument(
         "--candidate-issues",
-        choices=("off", "plan"),
+        choices=("off", "plan", "report", "dry-run", "refill"),
         default="off",
-        help="Explain conservative candidate deduplication without GitHub writes",
+        help="Plan candidates, report/simulate the queue, or refill it with GitHub issues",
     )
     ats_inventory_p.add_argument(
         "--candidate-limit",
         type=int,
         default=100,
         help="Maximum impact-ranked rows to explain in candidate plan mode",
+    )
+    ats_inventory_p.add_argument(
+        "--queue-low-water",
+        type=int,
+        default=450,
+        help="Refill only when resolver-available company requests fall below this count",
+    )
+    ats_inventory_p.add_argument(
+        "--queue-target",
+        type=int,
+        default=500,
+        help="Resolver-available company-request target after refill",
+    )
+    ats_inventory_p.add_argument(
+        "--queue-hard-cap",
+        type=int,
+        default=600,
+        help="Maximum total open company-request issues",
+    )
+    ats_inventory_p.add_argument(
+        "--queue-per-tick-cap",
+        type=int,
+        default=25,
+        help="Maximum issues created by one invocation",
+    )
+    ats_inventory_p.add_argument(
+        "--queue-daily-cap",
+        type=int,
+        default=50,
+        help="Maximum issues created per UTC day",
+    )
+    ats_inventory_p.add_argument(
+        "--queue-rollout-cap",
+        type=int,
+        choices=(1, 5, 25),
+        default=1,
+        help="Canary stage cap; deliberately advance from 1 to 5 to 25",
+    )
+    ats_inventory_p.add_argument(
+        "--queue-claim-ttl-hours",
+        type=float,
+        default=4.0,
+        help="Age after which a ws claim no longer reduces resolver availability",
+    )
+    ats_inventory_p.add_argument(
+        "--queue-jitter-min-seconds",
+        type=float,
+        default=1.0,
+        help="Minimum delay between sequential GitHub creates",
+    )
+    ats_inventory_p.add_argument(
+        "--queue-jitter-max-seconds",
+        type=float,
+        default=3.0,
+        help="Maximum delay between sequential GitHub creates",
+    )
+    ats_inventory_p.add_argument(
+        "--github-rate-reserve",
+        type=int,
+        default=100,
+        help="Stop GitHub reads/writes at or below this primary-rate remaining count",
     )
     crawler_root = Path(__file__).resolve().parent.parent
     ats_inventory_p.add_argument(
@@ -626,6 +687,8 @@ async def run() -> None:
             sys.stdout.flush()
 
         elif args.command == "ats-inventory":
+            from datetime import UTC, datetime, timedelta
+
             import httpx
 
             from src.ats_inventory.github import (
@@ -683,16 +746,28 @@ async def run() -> None:
                             client,
                             repo=args.github_repo,
                             token=token,
+                            rate_limit_reserve=args.github_rate_reserve,
                         )
-                    if args.support_issues != "off":
+                    automatic_support_mode = (
+                        "create"
+                        if args.candidate_issues == "refill"
+                        else "plan"
+                        if args.candidate_issues == "dry-run"
+                        else "off"
+                    )
+                    if args.support_issues != "off" or automatic_support_mode != "off":
                         assert github is not None
+                        support_create = (
+                            args.support_issues == "create" or automatic_support_mode == "create"
+                        )
                         actions = await reconcile_support_issues(
                             snapshot,
                             github,
-                            create=args.support_issues == "create",
+                            create=support_create,
                         )
                         report["support_issues"] = {
-                            "mode": args.support_issues,
+                            "mode": "create" if support_create else "plan",
+                            "automatic": automatic_support_mode != "off",
                             "actions": [action.to_dict() for action in actions],
                             "rate_remaining": github.rate_remaining,
                             "rate_reset": github.rate_reset,
@@ -750,6 +825,81 @@ async def run() -> None:
                             "ledger_reconciliation": asdict(coordinator.reconciliation),
                             "rate_remaining": github.rate_remaining,
                             "rate_reset": github.rate_reset,
+                        }
+                    elif args.candidate_issues in {"report", "dry-run", "refill"}:
+                        from dataclasses import asdict
+                        from typing import Literal
+
+                        from src.ats_inventory.candidate_issues import (
+                            CandidateIssueCoordinator,
+                        )
+                        from src.ats_inventory.candidates import LocalRegistryIndex
+                        from src.ats_inventory.ledger import CandidateLedger
+                        from src.ats_inventory.queue import QueuePolicy, QueueRefiller
+
+                        assert github is not None
+                        policy = QueuePolicy(
+                            low_water=args.queue_low_water,
+                            target=args.queue_target,
+                            hard_cap=args.queue_hard_cap,
+                            per_tick_cap=args.queue_per_tick_cap,
+                            daily_cap=args.queue_daily_cap,
+                            rollout_cap=args.queue_rollout_cap,
+                            claim_ttl_seconds=int(args.queue_claim_ttl_hours * 60 * 60),
+                            jitter_min_seconds=args.queue_jitter_min_seconds,
+                            jitter_max_seconds=args.queue_jitter_max_seconds,
+                        )
+                        ledger_path = args.candidate_ledger or (
+                            args.cache_dir / "candidates" / "ledger.sqlite"
+                        )
+                        ledger = CandidateLedger(ledger_path)
+                        items = await github.list_candidate_work_items()
+                        coordinator = await CandidateIssueCoordinator.bootstrap(
+                            client=github,
+                            local=LocalRegistryIndex.from_csv(
+                                args.companies_file, args.boards_file
+                            ),
+                            ledger=ledger,
+                            items=items,
+                        )
+                        claims = await github.list_recent_claims(
+                            since=datetime.now(UTC) - timedelta(seconds=policy.claim_ttl_seconds)
+                        )
+                        companies = ()
+                        queue_mode = cast(
+                            Literal["report", "dry-run", "refill"],
+                            args.candidate_issues,
+                        )
+                        admission_block = None
+                        if queue_mode in {"dry-run", "refill"}:
+                            if not snapshot.coverage.candidate_generation_allowed:
+                                admission_block = "coverage_quarantined"
+                            else:
+                                if impact_snapshot is None:
+                                    impact_snapshot = impact.load_current()
+                                if (
+                                    impact_snapshot.manifest_sha256 != snapshot.manifest_sha256
+                                    or impact_snapshot.inventory_sha256 != snapshot.inventory_sha256
+                                ):
+                                    raise RuntimeError(
+                                        "cached impact does not match the current inventory; rerun "
+                                        "with --impact"
+                                    )
+                                companies = impact_snapshot.ranked()
+                        queue_report = await QueueRefiller(
+                            coordinator=coordinator,
+                            ledger=ledger,
+                            items=items,
+                            claims=claims,
+                            policy=policy,
+                        ).run(
+                            companies,
+                            mode=queue_mode,
+                            admission_block=admission_block,
+                        )
+                        report["candidate_issues"] = {
+                            **queue_report.to_dict(),
+                            "ledger_reconciliation": asdict(coordinator.reconciliation),
                         }
                     log.info("ats_inventory.complete", report=report)
                     tty_message(json.dumps(report, indent=2, sort_keys=True))

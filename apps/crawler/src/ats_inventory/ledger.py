@@ -74,6 +74,13 @@ class CandidateLedger:
                 );
                 CREATE INDEX IF NOT EXISTS remote_items_source
                     ON remote_items(source_key);
+                CREATE TABLE IF NOT EXISTS creation_events (
+                    issue_number INTEGER PRIMARY KEY,
+                    source_key TEXT NOT NULL,
+                    created_at INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS creation_events_created
+                    ON creation_events(created_at);
                 """
             )
 
@@ -228,6 +235,12 @@ class CandidateLedger:
                     now,
                 ),
             )
+            connection.execute(
+                """INSERT OR IGNORE INTO creation_events (
+                       issue_number, source_key, created_at
+                   ) VALUES (?, ?, ?)""",
+                (item.number, source_key, now),
+            )
             connection.commit()
         self._refresh_index()
 
@@ -236,6 +249,16 @@ class CandidateLedger:
 
     def find_url(self, normalized_url: str) -> tuple[LedgerRecord, ...]:
         return self._urls.get(hash_text(normalized_url), ())
+
+    def count_created_since(self, timestamp: int) -> int:
+        """Count coordinator-created issues at or after *timestamp*."""
+
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT COUNT(*) AS count FROM creation_events WHERE created_at >= ?",
+                (timestamp,),
+            ).fetchone()
+        return int(row["count"])
 
     def _refresh_index(self) -> None:
         with self._connect() as connection:

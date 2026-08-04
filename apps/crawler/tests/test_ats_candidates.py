@@ -473,7 +473,7 @@ class _UnknownOutcomeClient:
         self, *, title: str, body: str, labels: list[str]
     ) -> CreatedIssue:
         self.create_calls += 1
-        assert labels == ["company-request"]
+        assert labels == ["company-request", "source:ats-inventory"]
         self.items.append(
             GitHubWorkItem(
                 kind="issue",
@@ -595,6 +595,7 @@ async def test_github_state_is_bulk_indexed_without_per_candidate_searches() -> 
                     "title": "Add company: Acme",
                     "body": "legacy request",
                     "html_url": "https://github.test/issues/1",
+                    "labels": [{"name": "company-request"}, {"name": "source:test"}],
                 },
                 {
                     "number": 2,
@@ -632,6 +633,8 @@ async def test_github_state_is_bulk_indexed_without_per_candidate_searches() -> 
         items = await github.list_candidate_work_items()
 
     assert [(item.kind, item.number) for item in items] == [("issue", 1), ("pr", 3)]
+    assert items[0].labels == ("company-request", "source:test")
+    assert items[1].labels == ()
     assert len(requests) == 2
     assert requests[0].url.params["labels"] == "company-request"
     assert requests[0].url.params["state"] == "all"

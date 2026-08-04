@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from typing import Any, Literal, Protocol
 
 import httpx
@@ -21,9 +22,16 @@ class GitHubError(RuntimeError):
 
 
 class GitHubRateLimitError(GitHubError):
-    def __init__(self, message: str, *, retry_after: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        retry_after: int | None = None,
+        reset_at: int | None = None,
+    ) -> None:
         super().__init__(message)
         self.retry_after = retry_after
+        self.reset_at = reset_at
 
 
 class GitHubCreateOutcomeUnknown(GitHubError):
@@ -53,10 +61,18 @@ class GitHubWorkItem:
     title: str
     body: str
     url: str
+    labels: tuple[str, ...] = ()
 
     @property
     def reference(self) -> str:
         return f"{self.kind}:{self.number} [{self.state}] {self.title} ({self.url})"
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubClaim:
+    issue_number: int
+    body: str
+    created_at: str
 
 
 class SupportIssueClient(Protocol):
@@ -115,7 +131,8 @@ class GitHubSupportIssueClient:
         for page in range(1, 101):
             if self.rate_remaining is not None and self.rate_remaining <= self.rate_limit_reserve:
                 raise GitHubRateLimitError(
-                    f"GitHub primary rate limit is below reserve ({self.rate_remaining})"
+                    f"GitHub primary rate limit is below reserve ({self.rate_remaining})",
+                    reset_at=self.rate_reset,
                 )
             response = await self.client.get(
                 f"https://api.github.com/repos/{self.repo}/issues",
@@ -175,18 +192,57 @@ class GitHubSupportIssueClient:
                             title=str(raw["title"]),
                             body=body if isinstance(body, str) else "",
                             url=str(raw["html_url"]),
+                            labels=_label_names(raw.get("labels")) if kind == "issue" else (),
                         )
                     )
                 except (KeyError, TypeError, ValueError) as exc:
                     raise GitHubError(f"GitHub {kind} has an invalid shape") from exc
         return items
 
+    async def list_recent_claims(self, *, since: datetime) -> list[GitHubClaim]:
+        """Bulk-load recent repository comments containing the ws claim marker."""
+
+        if since.tzinfo is None:
+            raise ValueError("since must be timezone-aware")
+        payloads = await self._list_pages(
+            "issues/comments",
+            params={
+                "since": since.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+                "sort": "created",
+                "direction": "asc",
+            },
+        )
+        claims: list[GitHubClaim] = []
+        for raw in payloads:
+            body = raw.get("body")
+            issue_url = raw.get("issue_url")
+            created_at = raw.get("created_at")
+            if not isinstance(body, str) or not body.startswith("<!-- ws-claim -->"):
+                continue
+            if not isinstance(issue_url, str) or not isinstance(created_at, str):
+                raise GitHubError("GitHub issue comment has an invalid claim shape")
+            try:
+                issue_number = int(issue_url.rstrip("/").rsplit("/", 1)[1])
+            except (IndexError, ValueError) as exc:
+                raise GitHubError("GitHub issue comment has an invalid issue URL") from exc
+            if issue_number <= 0:
+                raise GitHubError("GitHub issue comment has an invalid issue number")
+            claims.append(
+                GitHubClaim(
+                    issue_number=issue_number,
+                    body=body,
+                    created_at=created_at,
+                )
+            )
+        return claims
+
     async def _list_pages(self, endpoint: str, *, params: dict[str, str]) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = []
         for page in range(1, 101):
             if self.rate_remaining is not None and self.rate_remaining <= self.rate_limit_reserve:
                 raise GitHubRateLimitError(
-                    f"GitHub primary rate limit is below reserve ({self.rate_remaining})"
+                    f"GitHub primary rate limit is below reserve ({self.rate_remaining})",
+                    reset_at=self.rate_reset,
                 )
             response = await self.client.get(
                 f"https://api.github.com/repos/{self.repo}/{endpoint}",
@@ -208,7 +264,8 @@ class GitHubSupportIssueClient:
     ) -> CreatedIssue:
         if self.rate_remaining is not None and self.rate_remaining <= self.rate_limit_reserve:
             raise GitHubRateLimitError(
-                f"GitHub primary rate limit is below reserve ({self.rate_remaining})"
+                f"GitHub primary rate limit is below reserve ({self.rate_remaining})",
+                reset_at=self.rate_reset,
             )
         try:
             response = await self.client.post(
@@ -219,8 +276,7 @@ class GitHubSupportIssueClient:
         except httpx.TransportError as exc:
             raise GitHubCreateOutcomeUnknown("GitHub create outcome is unknown") from exc
         if response.status_code >= 500 or response.status_code in {408, 425}:
-            self.rate_remaining = _optional_int(response.headers.get("x-ratelimit-remaining"))
-            self.rate_reset = _optional_int(response.headers.get("x-ratelimit-reset"))
+            self._update_rate(response)
             raise GitHubCreateOutcomeUnknown(
                 f"GitHub create outcome is unknown after HTTP {response.status_code}"
             )
@@ -257,18 +313,26 @@ class GitHubSupportIssueClient:
         return await self.create_support_issue(title=title, body=body, labels=labels)
 
     def _check_response(self, response: httpx.Response) -> None:
-        self.rate_remaining = _optional_int(response.headers.get("x-ratelimit-remaining"))
-        self.rate_reset = _optional_int(response.headers.get("x-ratelimit-reset"))
+        self._update_rate(response)
         if response.status_code in (403, 429):
             retry_after = _optional_int(response.headers.get("retry-after"))
             raise GitHubRateLimitError(
                 f"GitHub rate limited request with HTTP {response.status_code}",
                 retry_after=retry_after,
+                reset_at=self.rate_reset,
             )
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             raise GitHubError(f"GitHub request failed with HTTP {response.status_code}") from exc
+
+    def _update_rate(self, response: httpx.Response) -> None:
+        remaining = _optional_int(response.headers.get("x-ratelimit-remaining"))
+        reset = _optional_int(response.headers.get("x-ratelimit-reset"))
+        if remaining is not None:
+            self.rate_remaining = remaining
+        if reset is not None:
+            self.rate_reset = reset
 
 
 async def reconcile_support_issues(
@@ -431,6 +495,16 @@ def _job_rows(manifest: dict[str, Any], family: str) -> int | None:
 def _markdown_code(value: str) -> str:
     safe = value.replace("`", "\u02cb").replace("@", "@\u200b")
     return f"`{safe}`"
+
+
+def _label_names(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    names: set[str] = set()
+    for raw in value:
+        if isinstance(raw, dict) and isinstance(raw.get("name"), str):
+            names.add(raw["name"])
+    return tuple(sorted(names))
 
 
 def _optional_int(value: str | None) -> int | None:

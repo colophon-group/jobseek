@@ -72,8 +72,10 @@ class CandidateIssueCoordinator:
         client: CandidateIssueClient,
         local: LocalRegistryIndex,
         ledger: CandidateLedger,
+        items: list[GitHubWorkItem] | None = None,
     ) -> CandidateIssueCoordinator:
-        items = await client.list_candidate_work_items()
+        if items is None:
+            items = await client.list_candidate_work_items()
         reconciliation = ledger.reconcile_remote(items)
         return cls(
             client=client,
@@ -98,7 +100,7 @@ class CandidateIssueCoordinator:
             created = await self.client.create_candidate_issue(
                 title=title,
                 body=body,
-                labels=["company-request"],
+                labels=["company-request", "source:ats-inventory"],
             )
         except GitHubCreateOutcomeUnknown:
             recovered = await self.client.list_candidate_work_items()
