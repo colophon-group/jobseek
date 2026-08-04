@@ -2037,6 +2037,21 @@ class TestSelectMonitorNaming:
         assert selected["scraper_type"] == expected[0] == "adp"
         assert selected["scraper_config"] == expected[1]
 
+    def test_avature_dom_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """Avature selection activates the shared DOM detail preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "avature"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["avature"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("avature")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "dom"
+        assert selected["scraper_config"] == expected[1]
+
     def test_jazzhr_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
         """JazzHR selection carries its composed static detail scraper."""
         self._setup(tmp_path, monkeypatch)
