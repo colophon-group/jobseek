@@ -919,14 +919,22 @@ rollback snapshot, so a concurrent emergency disable cannot be undone. Root
 creates a missing post-reboot mutation-lock inode through a deploy-user process
 as `deploy:deploy 0600` and opens it read-only, avoiding a root-owned creation
 window and preserving the shared cross-user lock contract. The runner container
-uses Docker bridge networking, not the host network, so the local loopback-only
-Redis service is outside its network namespace.
+uses the dedicated IPv4-only `jobseek-ats-inventory-egress` bridge. Before every
+run, `jobseek-ats-inventory-network.service` rebuilds a fail-closed
+`DOCKER-USER` policy that rejects the host and private/reserved destinations,
+allows only public HTTPS/DNS, and disables inter-container communication. A
+credential-free container probe must reach GitHub and the inventory source while
+failing TCP connects to both the crawler host and the exact production
+PostgreSQL address. This closes both the loopback Redis and routed private-DB
+paths; a missing rule, stale network, DNS failure, or reachable blocked endpoint
+prevents the runner from starting.
 
 Read-only checks:
 
 ```bash
 systemctl is-enabled jobseek-ats-inventory.timer
 systemctl is-active jobseek-ats-inventory.timer
+systemctl status jobseek-ats-inventory-network.service --no-pager
 systemctl list-timers --all jobseek-ats-inventory.timer --no-pager
 /usr/local/sbin/jobseek-ats-inventory-control status
 python3 -m json.tool /var/lib/jobseek-ats-inventory/status/current.json

@@ -21,7 +21,10 @@ REMOTE = DEPLOY / "deploy-remote.sh"
 TOKEN_HELPER = DEPLOY / "github-app-token.py"
 STATUS_HELPER = DEPLOY / "status.py"
 BOUNDED_TEE = DEPLOY / "bounded-tee.py"
+NETWORK_HELPER = DEPLOY / "network.sh"
+NETWORK_PROBE = DEPLOY / "network-probe.py"
 SERVICE = ROOT / "deploy" / "systemd" / "jobseek-ats-inventory.service"
+NETWORK_SERVICE = ROOT / "deploy" / "systemd" / "jobseek-ats-inventory-network.service"
 TIMER = ROOT / "deploy" / "systemd" / "jobseek-ats-inventory.timer"
 WORKFLOW = ROOT / ".github" / "workflows" / "deploy-ats-inventory.yml"
 
@@ -37,10 +40,11 @@ def _load(name: str, path: Path):
 token_helper = _load("ats_inventory_github_app_token", TOKEN_HELPER)
 status_helper = _load("ats_inventory_status", STATUS_HELPER)
 bounded_tee = _load("ats_inventory_bounded_tee", BOUNDED_TEE)
+network_probe = _load("ats_inventory_network_probe", NETWORK_PROBE)
 
 
 def test_shell_surfaces_parse() -> None:
-    for path in (RUNNER, CONTROL, INSTALLER, RECEIVER, REMOTE):
+    for path in (RUNNER, CONTROL, INSTALLER, RECEIVER, REMOTE, NETWORK_HELPER):
         result = subprocess.run(
             ["bash", "-n", str(path)], capture_output=True, text=True, check=False
         )
@@ -222,6 +226,13 @@ def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> 
     assert "writes-disabled" in source
     assert "effective_mode=report" in source
     assert source.count("apply_write_gate") >= 3
+    assert "NETWORK=jobseek-ats-inventory-egress" in source
+    assert '--network "$NETWORK"' in source
+    assert "--dns 1.1.1.1" in source and "--dns 1.0.0.1" in source
+    assert "--network host" not in source
+    assert "--network bridge" not in source
+    assert "jobseek-ats-inventory-network.verified" in source
+    assert "attestation_age >= 0 && attestation_age <= 300" in source
     assert source.index("STATUS_ARMED=1") < source.index('[[ -r "$CONFIG" ]]')
     assert source.rindex("apply_write_gate") < source.index(
         'run_phase 2700s github "$effective_mode" 1'
@@ -265,8 +276,8 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert '[[ -e "$WRITE_DISABLED" || -e "$ACCEPTANCE_PIN" ]]' in runner
     assert 'exec 8<"$CRAWLER_LOCK"' in installer
     assert 'exec 8>"$CRAWLER_LOCK"' not in installer
-    assert "runuser -u deploy -- sh -c" in installer
-    assert ': >"$1"' in installer
+    assert "runuser -u deploy -- python3 -c" in installer
+    assert "os.O_EXCL|os.O_NOFOLLOW" in installer
     assert 'chown deploy:deploy "$CRAWLER_LOCK"' in installer
     acceptance = installer.index("systemctl start jobseek-ats-inventory.service")
     disarm = installer.rindex("ROLLBACK_ARMED=0")
@@ -287,6 +298,9 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert "${#fields[@]} -eq 6" in receiver
     assert "JOBSEEK_EXPECTED_CRAWLER_IMAGE_TAG" in receiver
     assert "JOBSEEK_EXPECTED_CRAWLER_DEPLOY_REVISION" in receiver
+    assert "jobseek-ats-inventory-network.service" in installer
+    assert "jobseek-ats-inventory-network-probe" in installer
+    assert 'network.sh" teardown' in installer
 
 
 def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
@@ -303,6 +317,10 @@ def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
     assert "ProtectSystem=strict" in service
     assert "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6" in service
     assert "ReadWritePaths=/run/lock /var/lib/jobseek-ats-inventory" in service
+    assert "Requires=docker.service jobseek-ats-inventory-network.service" in service
+    network_service = NETWORK_SERVICE.read_text(encoding="utf-8")
+    assert "User=root" in network_service
+    assert "ExecStart=/usr/local/sbin/jobseek-ats-inventory-network ensure" in network_service
     assert "OnCalendar=*-*-* 03:00:00 UTC" in timer
     assert "Persistent=true" in timer
     assert "RandomizedDelaySec=45m" in timer
@@ -318,6 +336,9 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "ATS_INVENTORY_GITHUB_APP_PRIVATE_KEY" in workflow
     assert "HETZNER_BACKUP_KNOWN_HOSTS" in workflow
     assert "deploy-remote.sh" in workflow
+    assert "deploy/ats-inventory/network-probe.py" in workflow
+    assert 'PYTHONPYCACHEPREFIX="$RUNNER_TEMP/ats-inventory-pycache"' in workflow
+    assert 'PYTHONDONTWRITEBYTECODE: "1"' in workflow
     assert "expected_tag=current" in workflow
     assert "expected_revision=current" in workflow
     assert "derive-crawler-build-version.mjs" in workflow
@@ -346,9 +367,11 @@ def test_remote_deploy_waits_for_exact_image_before_quiescing_install() -> None:
     assert "JOBSEEK_DEPLOY_REVISION" in gate
     assert 'exec 8<"$lock"' in source[:install]
     assert 'exec 8>"$lock"' not in source[:install]
-    assert "runuser -u deploy -- sh -c" in source[:install]
-    assert ': >"$1"' in source[:install]
+    assert "runuser -u deploy -- python3 -c" in source[:install]
+    assert "os.O_EXCL|os.O_NOFOLLOW" in source[:install]
     assert 'chown deploy:deploy "$lock"' in source[:install]
+    assert "jobseek-ats-inventory-network.service" in source[:install]
+    assert 'jobseek-ats-inventory-network.service)" == success' in source
     assert "/home/deploy/.env" not in gate
     assert " 60m " in source
     assert " 250m " in source
@@ -366,7 +389,53 @@ def test_runner_uses_only_committed_release_or_transactional_acceptance_pin() ->
     assert "/home/deploy/.env" not in source
 
 
-def test_runner_uses_bridge_network_without_host_loopback_access() -> None:
-    source = RUNNER.read_text(encoding="utf-8")
-    assert "--network bridge" in source
-    assert "--network host" not in source
+def test_runner_network_is_private_state_isolated_and_runtime_verified(tmp_path: Path) -> None:
+    source = NETWORK_HELPER.read_text(encoding="utf-8")
+    assert "jobseek-ats-inventory-egress" in source
+    assert "br-jobseek-ats" in source
+    assert "DOCKER-USER" in source
+    assert "JOBSEEK-ATS-EGRESS" in source
+    assert "JOBSEEK-ATS-INPUT" in source
+    assert "com.docker.network.bridge.enable_icc=false" in source
+    assert "{{.EnableIPv6}}" in source and "== false" in source
+    for private_cidr in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"):
+        assert private_cidr in source
+    assert "-p tcp --dport 443 -j ACCEPT" in source
+    assert "-p udp --dport 53 -j ACCEPT" in source
+    assert "docker run --rm" in source
+    assert "network-probe.py verify" in source
+    assert "--dns 1.1.1.1" in source and "--dns 1.0.0.1" in source
+    assert "jobseek-ats-inventory-network.verified" in source
+    assert "NETWORK_ID=" in source and "VERIFIED_AT=" in source
+    assert "jobseek-crawler-mutation.lock" in source
+    assert "flock -w 300 8" in source
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "LOCAL_DATABASE_URL=postgresql://crawler:do-not-leak@10.0.0.8:5432/crawler\n",
+        encoding="utf-8",
+    )
+    payload = network_probe.build_endpoints(env_file=env_file, gateway="172.20.0.1")
+    serialized = json.dumps(payload)
+    assert "do-not-leak" not in serialized
+    assert {item["label"] for item in payload["blocked"]} == {
+        "crawler-host",
+        "production-postgresql-1",
+    }
+
+    calls: list[tuple[str, int]] = []
+
+    def fake_connect(host: str, port: int, timeout: float) -> None:
+        del timeout
+        calls.append((host, port))
+        if host in {"172.20.0.1", "10.0.0.8"}:
+            raise ConnectionRefusedError
+
+    original_connect = network_probe._connect
+    network_probe._connect = fake_connect
+    try:
+        result = network_probe.verify_endpoints(payload)
+    finally:
+        network_probe._connect = original_connect
+    assert result["event"] == "ats_inventory.network_boundary_verified"
+    assert ("10.0.0.8", 5432) in calls

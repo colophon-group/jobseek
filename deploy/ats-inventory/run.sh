@@ -10,6 +10,8 @@ DEPLOY_SUCCESS=/home/deploy/.crawler-deploy-success.env
 ACCEPTANCE_PIN="$STATE_ROOT/acceptance-crawler.env"
 CACHE_ROOT="$STATE_ROOT/cache"
 CONTAINER=jobseek-ats-inventory
+NETWORK=jobseek-ats-inventory-egress
+NETWORK_ATTESTATION=/run/lock/jobseek-ats-inventory-network.verified
 TOKEN_FILE=""
 RUN_LOG=""
 requested_mode=report
@@ -67,6 +69,37 @@ STATUS_ARMED=1
 }
 [[ -x /usr/local/sbin/jobseek-ats-inventory-bounded-tee ]] || {
   echo "ERROR: ATS inventory bounded logger is unavailable" >&2
+  exit 1
+}
+[[ -f "$NETWORK_ATTESTATION" && ! -L "$NETWORK_ATTESTATION" ]] || {
+  echo "ERROR: ATS inventory network boundary is not verified" >&2
+  exit 1
+}
+
+read_exact_attestation() {
+  local key="$1"
+  mapfile -t matches < <(sed -n "s/^${key}=//p" "$NETWORK_ATTESTATION")
+  [[ ${#matches[@]} -eq 1 && -n "${matches[0]}" ]] || {
+    echo "ERROR: ${key} must appear exactly once in the network attestation" >&2
+    exit 1
+  }
+  printf '%s' "${matches[0]}"
+}
+
+network_id="$(read_exact_attestation NETWORK_ID)"
+verified_at="$(read_exact_attestation VERIFIED_AT)"
+current_network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
+[[ "$network_id" =~ ^[0-9a-f]{64}$ && "$current_network_id" == "$network_id" ]] || {
+  echo "ERROR: ATS inventory network attestation does not match Docker" >&2
+  exit 1
+}
+[[ "$verified_at" =~ ^[0-9]{10}$ ]] || {
+  echo "ERROR: ATS inventory network attestation timestamp is invalid" >&2
+  exit 1
+}
+attestation_age=$(( started_at - verified_at ))
+(( attestation_age >= 0 && attestation_age <= 300 )) || {
+  echo "ERROR: ATS inventory network boundary verification is stale" >&2
   exit 1
 }
 [[ -r "$CONFIG" ]] || { echo "ERROR: ATS inventory configuration is unavailable" >&2; exit 1; }
@@ -163,7 +196,9 @@ run_phase() {
     --name "$CONTAINER" \
     --init \
     --stop-timeout 60 \
-    --network bridge \
+    --network "$NETWORK" \
+    --dns 1.1.1.1 \
+    --dns 1.0.0.1 \
     --memory 1536m \
     --cpus 1.0 \
     --pids-limit 256 \

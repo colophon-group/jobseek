@@ -1,8 +1,8 @@
 [Unit]
 Description=Jobseek data-only ATS inventory candidate runner
 Documentation=https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md
-Requires=docker.service
-After=docker.service network-online.target
+Requires=docker.service jobseek-ats-inventory-network.service
+After=docker.service jobseek-ats-inventory-network.service network-online.target
 Wants=network-online.target
 ConditionPathExists=/usr/local/sbin/jobseek-ats-inventory
 ConditionPathExists=/home/deploy/.crawler-deploy-success.env

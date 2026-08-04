@@ -48,6 +48,7 @@ ssh_options=(
 
 tar --create --gzip --file - \
   deploy/ats-inventory \
+  deploy/systemd/jobseek-ats-inventory-network.service \
   deploy/systemd/jobseek-ats-inventory.service \
   deploy/systemd/jobseek-ats-inventory.timer |
   timeout --foreground --signal=TERM --kill-after=30s 5m \
@@ -73,8 +74,9 @@ open_shared_lock() {
     # Create as deploy from the first inode-visible instant. Creating as root
     # and chowning afterwards leaves a race where the crawler deploy cannot
     # open its shared lock after a reboot.
-    runuser -u deploy -- sh -c 'umask 077; set -C; : >"$1"' sh "$lock" \
-      2>/dev/null || true
+    runuser -u deploy -- python3 -c \
+      'import os,sys; fd=os.open(sys.argv[1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600); os.close(fd)' \
+      "$lock" 2>/dev/null || true
   fi
   [[ -f "$lock" && ! -L "$lock" ]] || return 1
   chown deploy:deploy "$lock"
@@ -132,6 +134,7 @@ set -euo pipefail
 expected_revision="$1"
 systemctl is-enabled --quiet jobseek-ats-inventory.timer
 systemctl is-active --quiet jobseek-ats-inventory.timer
+[[ "$(systemctl show --property=Result --value jobseek-ats-inventory-network.service)" == success ]]
 /usr/local/sbin/jobseek-ats-inventory-control status
 [[ "$(tr -d '\n' </var/lib/jobseek-ats-inventory/deployed-sha)" == "$expected_revision" ]]
 python3 - <<'PY'

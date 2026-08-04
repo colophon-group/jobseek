@@ -23,6 +23,9 @@ FILES=(
   /usr/local/sbin/jobseek-ats-inventory-bounded-tee
   /usr/local/sbin/jobseek-ats-inventory-github-token
   /usr/local/sbin/jobseek-ats-inventory-status
+  /usr/local/sbin/jobseek-ats-inventory-network
+  /usr/local/libexec/jobseek-ats-inventory-network-probe
+  /etc/systemd/system/jobseek-ats-inventory-network.service
   /etc/systemd/system/jobseek-ats-inventory.service
   /etc/systemd/system/jobseek-ats-inventory.timer
   /etc/jobseek-ats-inventory/config.env
@@ -83,6 +86,7 @@ restore_previous() {
   local group mode name path
   systemctl disable --now jobseek-ats-inventory.timer >/dev/null 2>&1 || true
   systemctl stop jobseek-ats-inventory.service >/dev/null 2>&1 || true
+  "$REPO_ROOT/deploy/ats-inventory/network.sh" teardown >/dev/null 2>&1 || true
   for path in "${FILES[@]}"; do
     name="${path##*/}"
     if [[ -e "$ROLLBACK/$name" ]]; then
@@ -100,6 +104,9 @@ restore_previous() {
     rmdir "$STATE_ROOT/status" "$STATE_ROOT/cache" "$STATE_ROOT" 2>/dev/null || true
   fi
   systemctl daemon-reload
+  if [[ -x /usr/local/sbin/jobseek-ats-inventory-network ]]; then
+    /usr/local/sbin/jobseek-ats-inventory-network ensure >/dev/null 2>&1 || true
+  fi
   (( TIMER_WAS_ENABLED == 0 )) || systemctl enable jobseek-ats-inventory.timer >/dev/null 2>&1 || true
   (( TIMER_WAS_ACTIVE == 0 )) || systemctl start jobseek-ats-inventory.timer >/dev/null 2>&1 || true
   (( SERVICE_WAS_ACTIVE == 0 )) || systemctl start --no-block jobseek-ats-inventory.service >/dev/null 2>&1 || true
@@ -146,8 +153,9 @@ open_shared_crawler_lock() {
     # Create as deploy from the first inode-visible instant. Creating as root
     # and chowning afterwards leaves a race where the crawler deploy cannot
     # open its shared lock after a reboot.
-    runuser -u deploy -- sh -c 'umask 077; set -C; : >"$1"' sh "$CRAWLER_LOCK" \
-      2>/dev/null || true
+    runuser -u deploy -- python3 -c \
+      'import os,sys; fd=os.open(sys.argv[1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600); os.close(fd)' \
+      "$CRAWLER_LOCK" 2>/dev/null || true
   fi
   [[ -f "$CRAWLER_LOCK" && ! -L "$CRAWLER_LOCK" ]] || {
     echo "ERROR: crawler mutation lock is not a regular file" >&2
@@ -203,6 +211,14 @@ install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/github-app-toke
   /usr/local/sbin/jobseek-ats-inventory-github-token
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/status.py" \
   /usr/local/sbin/jobseek-ats-inventory-status
+install -d -o root -g root -m 0755 /usr/local/libexec
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/network.sh" \
+  /usr/local/sbin/jobseek-ats-inventory-network
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/network-probe.py" \
+  /usr/local/libexec/jobseek-ats-inventory-network-probe
+install -o root -g root -m 0644 \
+  "$REPO_ROOT/deploy/systemd/jobseek-ats-inventory-network.service" \
+  /etc/systemd/system/jobseek-ats-inventory-network.service
 install -o root -g root -m 0644 "$REPO_ROOT/deploy/systemd/jobseek-ats-inventory.service" \
   /etc/systemd/system/jobseek-ats-inventory.service
 install -o root -g root -m 0644 "$REPO_ROOT/deploy/systemd/jobseek-ats-inventory.timer" \
@@ -240,6 +256,7 @@ flock -u 8
 
 systemctl daemon-reload
 systemd-analyze verify \
+  /etc/systemd/system/jobseek-ats-inventory-network.service \
   /etc/systemd/system/jobseek-ats-inventory.service \
   /etc/systemd/system/jobseek-ats-inventory.timer
 systemctl enable jobseek-ats-inventory.timer

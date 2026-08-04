@@ -301,12 +301,17 @@ atomic `/home/deploy/.crawler-deploy-success.env` marker published only after
 the crawler health gates pass and rollback is disarmed. It mounts only the
 persistent cache subdirectory and one short-lived GitHub App installation-token
 file, and invokes the installed `crawler` entry point directly. It never
-installs or executes upstream code. The data-only container uses Docker bridge
-networking rather than the host network, so production Redis remains unreachable
-on host loopback. It deliberately has no Docker Compose project/one-off labels:
-it neither touches crawler databases nor participates in crawler cutover, so a
-long inventory fetch cannot block or be removed by an unrelated crawler
-deployment.
+installs or executes upstream code. The data-only container uses a dedicated
+IPv4-only Docker bridge. A root oneshot rebuilds its `DOCKER-USER` egress chain
+before every run: host input and private/reserved destinations are rejected,
+inter-container communication is disabled, and only public HTTPS/DNS egress is
+allowed. It then proves public GitHub/inventory connectivity while TCP connects
+to the crawler host and the exact private production PostgreSQL address fail.
+The runner cannot start if that live boundary probe fails. It deliberately has
+no Docker Compose project/one-off labels: it neither receives crawler database,
+Redis, Typesense, proxy, or object-storage credentials nor participates in
+crawler cutover, so a long inventory fetch cannot block or be removed by an
+unrelated crawler deployment.
 
 The GitHub App private key is delivered with systemd `LoadCredential`. A
 host-side helper signs a nine-minute JWT with OpenSSL, mints an installation
@@ -343,7 +348,11 @@ are deliberately separate:
 ```bash
 # Inspect state; never prints credentials.
 /usr/local/sbin/jobseek-ats-inventory-control status
-systemctl status jobseek-ats-inventory.timer jobseek-ats-inventory.service --no-pager
+systemctl status \
+  jobseek-ats-inventory-network.service \
+  jobseek-ats-inventory.timer \
+  jobseek-ats-inventory.service \
+  --no-pager
 journalctl -u jobseek-ats-inventory.service -n 200 --no-pager
 
 # Report-only source/cache/queue run. The disabled sentinel forces report mode.
