@@ -47,12 +47,18 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-for command in awk date docker flock grep mktemp openssl python3 sed sha256sum stat tail timeout tr; do
+for command in awk date docker flock grep id mktemp openssl python3 sed sha256sum stat tail timeout tr; do
   command -v "$command" >/dev/null || {
     echo "ERROR: required command ${command} is unavailable" >&2
     exit 1
   }
 done
+CONTAINER_UID="$(id -u)"
+CONTAINER_GID="$(id -g)"
+[[ "$CONTAINER_UID" =~ ^[1-9][0-9]*$ && "$CONTAINER_GID" =~ ^[1-9][0-9]*$ ]] || {
+  echo "ERROR: ATS inventory service must run as a non-root host user" >&2
+  exit 1
+}
 exec 9>/run/lock/jobseek-ats-inventory-host.lock
 flock -n 9 || {
   echo "ERROR: another ATS inventory host run is active" >&2
@@ -199,6 +205,7 @@ run_phase() {
   timeout --foreground --signal=TERM --kill-after=90s "$budget" docker run --rm \
     --name "$CONTAINER" \
     --init \
+    --user "${CONTAINER_UID}:${CONTAINER_GID}" \
     --stop-timeout 60 \
     --network "$NETWORK" \
     --dns 1.1.1.1 \
