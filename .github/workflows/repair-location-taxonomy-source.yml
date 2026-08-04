@@ -1,0 +1,230 @@
+name: Repair Local Location Taxonomy Source (Hetzner)
+run-name: "Repair local location taxonomy @ ${{ inputs.expected_crawler_revision }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_crawler_revision:
+        description: Exact deployed main commit SHA containing the repair
+        required: true
+        type: string
+      confirmation:
+        description: Enter REPAIR-LOCAL-LOCATION-TAXONOMY-37526
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  # Serialize with crawler deploys in GitHub and with every crawler mutation
+  # again on the host. Neither boundary is sufficient on its own.
+  group: crawler-production-sync
+  cancel-in-progress: false
+
+jobs:
+  preauthorize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      image_tag: ${{ steps.contract.outputs.image_tag }}
+    env:
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      DISPATCH_EVENT: ${{ github.event_name }}
+      DISPATCH_REF: ${{ github.ref }}
+      DISPATCH_SHA: ${{ github.sha }}
+      EXPECTED_CRAWLER_REVISION: ${{ inputs.expected_crawler_revision }}
+      DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Reject unauthorized dispatches before requesting production approval
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_EVENT" = workflow_dispatch
+          test "$DISPATCH_REF" = refs/heads/main
+          [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"
+          test "$DISPATCH_CONFIRMATION" = REPAIR-LOCAL-LOCATION-TAXONOMY-37526
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Bind the operation to the reviewed release image
+        id: contract
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CRAWLER_REVISION"
+          version="$(tr -d '[:space:]' < apps/crawler/VERSION)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "image_tag=v${version}" >> "$GITHUB_OUTPUT"
+
+  repair:
+    needs: preauthorize
+    if: github.actor == 'viktor-shcherb' && github.triggering_actor == 'viktor-shcherb'
+    runs-on: ubuntu-latest
+    environment: production-migrations
+    timeout-minutes: 30
+    env:
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      EXPECTED_CRAWLER_REVISION: ${{ inputs.expected_crawler_revision }}
+      EXPECTED_IMAGE_TAG: ${{ needs.preauthorize.outputs.image_tag }}
+      GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+      GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
+      GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate the PostgreSQL recovery-headroom preflight
+        run: python3 -m py_compile apps/crawler/scripts/postgresql-operational-preflight.py
+
+      - name: Copy the reviewed preflight without database credentials
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: apps/crawler/scripts/postgresql-operational-preflight.py
+          target: /tmp/jobseek-location-taxonomy-repair/${{ github.sha }}
+          strip_components: 1
+
+      - name: Run one locked, attested, fail-closed repair
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: DISPATCH_ACTOR,DISPATCH_TRIGGERING_ACTOR,EXPECTED_CRAWLER_REVISION,EXPECTED_IMAGE_TAG,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD
+          command_timeout: 25m
+          script: |
+            set -euo pipefail
+            umask 077
+            test "$DISPATCH_ACTOR" = viktor-shcherb
+            test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
+            [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
+            [[ "$EXPECTED_IMAGE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+
+            exec 9>/run/lock/jobseek-crawler-mutation.lock
+            flock -w 600 9 || {
+              echo "Timed out waiting for the crawler mutation lock" >&2
+              exit 1
+            }
+
+            python3 "/tmp/jobseek-location-taxonomy-repair/${EXPECTED_CRAWLER_REVISION}/crawler/scripts/postgresql-operational-preflight.py"
+
+            ENV_FILE=/home/deploy/.env
+            test -f "$ENV_FILE"
+            test ! -L "$ENV_FILE"
+            test "$(stat -c '%U:%G:%a' "$ENV_FILE")" = deploy:deploy:600
+
+            read_exact_env() {
+              local key="$1"
+              local -a matches=()
+              mapfile -t matches < <(grep -E "^${key}=" "$ENV_FILE" || true)
+              if [[ ${#matches[@]} -ne 1 || -z "${matches[0]#*=}" ]]; then
+                echo "Required host environment identity is missing or duplicated: ${key}" >&2
+                return 1
+              fi
+              printf '%s' "${matches[0]#*=}"
+            }
+
+            active_revision="$(read_exact_env JOBSEEK_DEPLOY_REVISION)"
+            active_tag="$(read_exact_env CRAWLER_IMAGE_TAG)"
+            owner="$(read_exact_env OWNER)"
+            test "$active_revision" = "$EXPECTED_CRAWLER_REVISION"
+            test "$active_tag" = "$EXPECTED_IMAGE_TAG"
+            test "$owner" = colophon-group
+            test "$active_tag" != latest
+
+            if grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED)=' "$ENV_FILE"; then
+              echo "Legacy crawler mirror credential is still present" >&2
+              exit 1
+            fi
+
+            exporter_id="$(docker ps -q \
+              --filter label=com.docker.compose.project=deploy \
+              --filter label=com.docker.compose.service=exporter)"
+            [[ -n "$exporter_id" && "$(wc -w <<<"$exporter_id")" -eq 1 ]] || {
+              echo "Expected exactly one live exporter container" >&2
+              exit 1
+            }
+            test "$(docker inspect --format '{{.Config.Image}}' "$exporter_id")" = \
+              "ghcr.io/${owner}/jobseek-crawler:${active_tag}"
+            if docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$exporter_id" \
+              | cut -d= -f1 \
+              | grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL|LOCAL_DATABASE_URL)$'; then
+              echo "Live exporter has a relational database credential" >&2
+              exit 1
+            fi
+
+            RUNTIME_ENV="$(mktemp /run/lock/jobseek-location-taxonomy-repair-env.XXXXXX)"
+            NAME="crawler-repair-location-taxonomy-${EXPECTED_CRAWLER_REVISION:0:12}"
+            cleanup() {
+              status=$?
+              trap - EXIT HUP INT TERM
+              if docker ps -a --format '{{.Names}}' | grep -Fxq "$NAME"; then
+                docker rm -f "$NAME" >/dev/null 2>&1 || true
+              fi
+              rm -f "$RUNTIME_ENV"
+              rm -rf "/tmp/jobseek-location-taxonomy-repair/${EXPECTED_CRAWLER_REVISION}"
+              exit "$status"
+            }
+            trap cleanup EXIT HUP INT TERM
+            chmod 0600 "$RUNTIME_ENV"
+
+            local_url="$(read_exact_env LOCAL_DATABASE_URL)"
+            source_url="$(read_exact_env WEB_DATABASE_URL)"
+            [[ "$local_url" == postgresql://* || "$local_url" == postgres://* ]]
+            [[ "$source_url" == postgresql://* || "$source_url" == postgres://* ]]
+            test "$local_url" != "$source_url"
+            printf 'LOCAL_DATABASE_URL=%s\n' "$local_url" > "$RUNTIME_ENV"
+            printf 'WEB_DATABASE_URL=%s\n' "$source_url" >> "$RUNTIME_ENV"
+            test "$(wc -l < "$RUNTIME_ENV")" -eq 2
+
+            set +e
+            evidence="$(
+              timeout --foreground --signal=TERM --kill-after=30s 15m \
+                docker run --rm \
+                --name "$NAME" \
+                --env-file "$RUNTIME_ENV" \
+                --network host \
+                --label com.docker.compose.project=deploy \
+                --label com.docker.compose.service=repair-location-taxonomy-source \
+                --label com.docker.compose.container-number=1 \
+                --label com.docker.compose.oneoff=True \
+                --label jobseek.maintenance.operation=repair-location-taxonomy-source \
+                --label jobseek.maintenance.issue=6282 \
+                --label "jobseek.maintenance.revision=${EXPECTED_CRAWLER_REVISION}" \
+                --label jobseek.maintenance.budget-seconds=900 \
+                "ghcr.io/${owner}/jobseek-crawler:${active_tag}" \
+                uv run --no-sync crawler repair-location-taxonomy-source 2>&1
+            )"
+            operation_status=$?
+            set -e
+
+            if (( ${#evidence} > 4096 )); then
+              echo "Repair evidence exceeded the bounded output contract" >&2
+              exit 1
+            fi
+            if grep -Eiq '(postgres(ql)?://|password=|LOCAL_DATABASE_URL=|WEB_DATABASE_URL=)' <<<"$evidence"; then
+              echo "Repair output violated the nonsecret evidence contract" >&2
+              exit 1
+            fi
+            printf '%s\n' "$evidence"
+            if (( operation_status != 0 )); then
+              echo "Location taxonomy repair failed with status ${operation_status}" >&2
+              exit "$operation_status"
+            fi
+            grep -Fq '"expected_rows": 37526' <<<"$evidence"
+            grep -Fq '"source_rows": 37526' <<<"$evidence"
+            grep -Fq '"local_rows": 37526' <<<"$evidence"
+            grep -Fq '"source_local_equal": true' <<<"$evidence"
+            grep -Fq '"constraint_validated": true' <<<"$evidence"
