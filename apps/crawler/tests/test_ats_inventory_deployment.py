@@ -335,7 +335,8 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "ATS_INVENTORY_GITHUB_APP_ID" in workflow
     assert "ATS_INVENTORY_GITHUB_APP_INSTALLATION_ID" in workflow
     assert "ATS_INVENTORY_GITHUB_APP_PRIVATE_KEY" in workflow
-    assert "HETZNER_BACKUP_KNOWN_HOSTS" in workflow
+    assert "HETZNER_CRAWLER_KNOWN_HOSTS" in workflow
+    assert "HETZNER_BACKUP_KNOWN_HOSTS" not in workflow
     assert "deploy-remote.sh" in workflow
     assert "deploy/ats-inventory/network-probe.py" in workflow
     assert "deploy/systemd/jobseek-ats-inventory-network.service" in workflow
