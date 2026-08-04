@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import copy
 import os
+import re
 import time
 from email.utils import parseaddr
 from typing import Any
@@ -21,6 +22,7 @@ BRIDGE_RULE_UID = "jobseek-production-page-bridge"
 DEADMAN_RULE_UID = "jobseek-paging-route-deadman"
 OWNED_RULE_UIDS = (BRIDGE_RULE_UID, DEADMAN_RULE_UID)
 PROMETHEUS_UID = "grafanacloud-prom"
+_UNOBSERVED = object()
 BRIDGE_EXPRESSION = (
     'sum(ALERTS{alertstate="firing",page="production",deadman!="notification-route"}) or vector(0)'
 )
@@ -28,6 +30,31 @@ BRIDGE_EXPRESSION = (
 
 class AlertmanagerSyncError(RuntimeError):
     """Grafana-managed paging could not be validated or synchronized."""
+
+
+class GrafanaRequestError(AlertmanagerSyncError):
+    """A bounded, sanitized Grafana API failure."""
+
+    def __init__(self, method: str, path: str, status_code: int, detail: str = "") -> None:
+        self.status_code = status_code
+        self.detail = detail
+        suffix = f": {detail}" if detail else ""
+        super().__init__(f"Grafana {method} {path} returned HTTP {status_code}{suffix}")
+
+    @property
+    def is_optimistic_conflict(self) -> bool:
+        if self.status_code != 409:
+            return False
+        normalized = self.detail.casefold()
+        return any(
+            marker in normalized
+            for marker in (
+                "optimistic",
+                "version conflict",
+                "concurrent update",
+                "conflict while updating",
+            )
+        )
 
 
 def _validate_email(value: str) -> str:
@@ -254,17 +281,36 @@ def _rule_signature(rule: dict[str, Any] | None) -> dict[str, Any] | None:
     if rule is None:
         return None
     data = rule.get("data") or []
-    query = next((item for item in data if item.get("refId") == "A"), {})
+    queries = {str(item.get("refId")): item for item in data if isinstance(item, dict)}
+    query = queries.get("A", {})
+    condition = queries.get("B", {})
+    query_model = query.get("model") or {}
+    condition_model = condition.get("model") or {}
     return {
         "uid": rule.get("uid"),
         "title": rule.get("title"),
         "ruleGroup": rule.get("ruleGroup"),
         "folderUID": rule.get("folderUID"),
+        "orgID": rule.get("orgID"),
         "condition": rule.get("condition"),
-        "expression": (query.get("model") or {}).get("expr"),
+        "query": {
+            "relativeTimeRange": query.get("relativeTimeRange"),
+            "datasourceUid": query.get("datasourceUid"),
+            "expr": query_model.get("expr"),
+            "instant": query_model.get("instant"),
+            "range": query_model.get("range"),
+        },
+        "condition_query": {
+            "relativeTimeRange": condition.get("relativeTimeRange"),
+            "datasourceUid": condition.get("datasourceUid"),
+            "conditions": condition_model.get("conditions"),
+            "expression": condition_model.get("expression"),
+            "type": condition_model.get("type"),
+        },
         "noDataState": rule.get("noDataState"),
         "execErrState": rule.get("execErrState"),
         "for": rule.get("for"),
+        "annotations": rule.get("annotations"),
         "labels": rule.get("labels"),
         "isPaused": rule.get("isPaused", False),
     }
@@ -298,6 +344,41 @@ def _writable_rule(rule: dict[str, Any] | None) -> dict[str, Any] | None:
     return writable
 
 
+def _disable_provenance_for(resource: dict[str, Any] | None) -> bool:
+    """Keep the resource's existing provenance mode on provisioning writes."""
+
+    if resource is None:
+        return True
+    return not bool(resource.get("provenance"))
+
+
+def _safe_error_detail(response: httpx.Response, *, secret: str) -> str:
+    """Extract a small diagnostic without echoing credentials or addresses."""
+
+    candidates: list[str] = []
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+    if isinstance(payload, dict):
+        for key in ("message", "error", "errorCode", "code"):
+            value = payload.get(key)
+            if isinstance(value, str):
+                candidates.append(value)
+    if not candidates and response.text:
+        candidates.append(response.text)
+    detail = " | ".join(candidates)
+    if secret:
+        detail = detail.replace(secret, "[redacted]")
+    detail = re.sub(
+        r"(?i)(?<![\w.+-])[\w.+-]+@[\w.-]+\.[a-z]{2,}(?![\w.-])",
+        "[redacted-email]",
+        detail,
+    )
+    detail = " ".join(detail.split())
+    return detail[:300]
+
+
 class GrafanaClient:
     def __init__(self, base_url: str, api_key: str) -> None:
         self.base_url = _validate_base_url(base_url)
@@ -310,16 +391,17 @@ class GrafanaClient:
         *,
         json_body: Any = None,
         allow_not_found: bool = False,
+        disable_provenance: bool = False,
     ) -> tuple[int, Any]:
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        if disable_provenance:
+            headers["X-Disable-Provenance"] = "true"
         try:
             response = httpx.request(
                 method,
                 f"{self.base_url}{path}",
                 json=json_body,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "X-Disable-Provenance": "true",
-                },
+                headers=headers,
                 timeout=30,
                 follow_redirects=False,
             )
@@ -330,8 +412,12 @@ class GrafanaClient:
         if allow_not_found and response.status_code == 404:
             return response.status_code, None
         if response.is_error:
-            raise AlertmanagerSyncError(
-                f"Grafana {method} {path.split('?', 1)[0]} returned HTTP {response.status_code}"
+            safe_path = path.split("?", 1)[0]
+            raise GrafanaRequestError(
+                method,
+                safe_path,
+                response.status_code,
+                _safe_error_detail(response, secret=self.api_key),
             )
         if not response.content:
             return response.status_code, None
@@ -349,15 +435,23 @@ class GrafanaClient:
     def contact(self) -> dict[str, Any] | None:
         return next((item for item in self.contacts() if item.get("uid") == EMAIL_CONTACT), None)
 
-    def put_contact(self, contact: dict[str, Any], *, exists: bool) -> None:
+    def put_contact(
+        self, contact: dict[str, Any], *, exists: bool, disable_provenance: bool = True
+    ) -> None:
         if exists:
             self.request(
                 "PUT",
                 f"/api/v1/provisioning/contact-points/{quote(EMAIL_CONTACT, safe='')}",
                 json_body=contact,
+                disable_provenance=disable_provenance,
             )
         else:
-            self.request("POST", "/api/v1/provisioning/contact-points", json_body=contact)
+            self.request(
+                "POST",
+                "/api/v1/provisioning/contact-points",
+                json_body=contact,
+                disable_provenance=disable_provenance,
+            )
 
     def delete_contact(self) -> None:
         self.request(
@@ -372,14 +466,26 @@ class GrafanaClient:
             raise AlertmanagerSyncError("Grafana notification policy is not a mapping")
         return payload
 
-    def put_policy(self, policy: dict[str, Any]) -> None:
-        self.request("PUT", "/api/v1/provisioning/policies", json_body=policy)
+    def put_policy(self, policy: dict[str, Any], *, disable_provenance: bool = True) -> None:
+        self.request(
+            "PUT",
+            "/api/v1/provisioning/policies",
+            json_body=policy,
+            disable_provenance=disable_provenance,
+        )
 
-    def folder_exists(self) -> bool:
-        status, _ = self.request(
+    def folder(self) -> dict[str, Any] | None:
+        status, payload = self.request(
             "GET", f"/api/folders/{quote(FOLDER_UID, safe='')}", allow_not_found=True
         )
-        return status != 404
+        if status == 404:
+            return None
+        if not isinstance(payload, dict):
+            raise AlertmanagerSyncError("Grafana folder response is not a mapping")
+        return payload
+
+    def folder_exists(self) -> bool:
+        return self.folder() is not None
 
     def create_folder(self) -> None:
         self.request("POST", "/api/folders", json_body={"uid": FOLDER_UID, "title": FOLDER_TITLE})
@@ -399,16 +505,40 @@ class GrafanaClient:
             raise AlertmanagerSyncError("Grafana alert-rule response is not a mapping")
         return payload
 
-    def put_rule(self, rule: dict[str, Any], *, exists: bool) -> None:
+    def put_rule(
+        self,
+        rule: dict[str, Any],
+        *,
+        exists: bool,
+        disable_provenance: bool = True,
+    ) -> bool:
+        """Write a rule, accepting raced convergence and one explicit lock retry."""
+
         uid = str(rule["uid"])
-        if exists:
-            self.request(
-                "PUT",
-                f"/api/v1/provisioning/alert-rules/{quote(uid, safe='')}",
-                json_body=rule,
-            )
-        else:
-            self.request("POST", "/api/v1/provisioning/alert-rules", json_body=rule)
+        item_path = f"/api/v1/provisioning/alert-rules/{quote(uid, safe='')}"
+        for attempt in range(2):
+            method = "PUT" if exists else "POST"
+            path = item_path if exists else "/api/v1/provisioning/alert-rules"
+            try:
+                self.request(
+                    method,
+                    path,
+                    json_body=rule,
+                    disable_provenance=disable_provenance,
+                )
+                return True
+            except GrafanaRequestError as exc:
+                if exc.status_code != 409:
+                    raise
+                observed = self.rule(uid)
+                if _rule_signature(observed) == _rule_signature(rule):
+                    return False
+                if attempt == 0 and exc.is_optimistic_conflict:
+                    exists = observed is not None
+                    disable_provenance = _disable_provenance_for(observed)
+                    continue
+                raise
+        raise AssertionError("bounded Grafana rule retry exhausted")
 
     def delete_rule(self, uid: str) -> None:
         self.request(
@@ -433,18 +563,45 @@ def sync_config(client: GrafanaClient, email: str) -> None:
     desired_contact = _contact_point(email)
     previous_contact = client.contact()
     previous_policy = client.policy()
-    previous_folder = client.folder_exists()
-    previous_rules = {uid: _writable_rule(client.rule(uid)) for uid in OWNED_RULE_UIDS}
+    previous_folder = client.folder()
+    observed_rules = {uid: client.rule(uid) for uid in OWNED_RULE_UIDS}
+    previous_rules = {uid: _writable_rule(rule) for uid, rule in observed_rules.items()}
     desired_policy = merge_owned_policy(previous_policy)
     desired_rules = _desired_rules()
+    mutations: list[tuple[str, str | None, Any]] = []
 
     try:
-        client.put_contact(desired_contact, exists=previous_contact is not None)
-        client.put_policy(desired_policy)
-        if not previous_folder:
+        if _contact_signature(previous_contact) != _contact_signature(desired_contact):
+            client.put_contact(
+                desired_contact,
+                exists=previous_contact is not None,
+                disable_provenance=_disable_provenance_for(previous_contact),
+            )
+            mutations.append(("contact", None, _UNOBSERVED))
+            mutations[-1] = ("contact", None, client.contact())
+        if _owned_policy_signature(previous_policy) != _owned_policy_signature(desired_policy):
+            client.put_policy(
+                desired_policy,
+                disable_provenance=_disable_provenance_for(previous_policy),
+            )
+            mutations.append(("policy", None, _UNOBSERVED))
+            mutations[-1] = ("policy", None, client.policy())
+        if previous_folder is None:
             client.create_folder()
+            mutations.append(("folder", None, _UNOBSERVED))
+            mutations[-1] = ("folder", None, client.folder())
         for uid, rule in desired_rules.items():
-            client.put_rule(rule, exists=previous_rules[uid] is not None)
+            observed = observed_rules[uid]
+            if _rule_signature(observed) == _rule_signature(rule):
+                continue
+            changed = client.put_rule(
+                rule,
+                exists=observed is not None,
+                disable_provenance=_disable_provenance_for(observed),
+            )
+            if changed:
+                mutations.append(("rule", uid, _UNOBSERVED))
+                mutations[-1] = ("rule", uid, client.rule(uid))
         for _ in range(12):
             if _verified(client, desired_contact, desired_policy):
                 return
@@ -452,33 +609,70 @@ def sync_config(client: GrafanaClient, email: str) -> None:
         raise AlertmanagerSyncError("Grafana did not expose the expected paging resources")
     except Exception as sync_error:
         rollback_failed = False
-        for uid, previous in previous_rules.items():
+        rollback_conflicted = False
+        for kind, uid, expected in reversed(mutations):
             try:
-                if previous is None:
-                    client.delete_rule(uid)
+                if kind == "rule":
+                    assert uid is not None
+                    current_rule = client.rule(uid)
+                    if current_rule != expected:
+                        rollback_conflicted = True
+                        continue
+                    previous_rule = previous_rules[uid]
+                    if _rule_signature(current_rule) == _rule_signature(previous_rule):
+                        continue
+                    if previous_rule is None:
+                        client.delete_rule(uid)
+                    else:
+                        client.put_rule(
+                            previous_rule,
+                            exists=current_rule is not None,
+                            disable_provenance=_disable_provenance_for(current_rule),
+                        )
+                elif kind == "folder":
+                    current_folder = client.folder()
+                    if current_folder != expected:
+                        rollback_conflicted = True
+                        continue
+                    if current_folder is not None:
+                        client.delete_folder()
+                elif kind == "policy":
+                    current_policy = client.policy()
+                    if current_policy != expected:
+                        rollback_conflicted = True
+                        continue
+                    if current_policy != previous_policy:
+                        client.put_policy(
+                            previous_policy,
+                            disable_provenance=_disable_provenance_for(current_policy),
+                        )
+                elif kind == "contact":
+                    current_contact = client.contact()
+                    if current_contact != expected:
+                        rollback_conflicted = True
+                        continue
+                    if _contact_signature(current_contact) == _contact_signature(previous_contact):
+                        continue
+                    if previous_contact is None:
+                        client.delete_contact()
+                    else:
+                        client.put_contact(
+                            previous_contact,
+                            exists=current_contact is not None,
+                            disable_provenance=_disable_provenance_for(current_contact),
+                        )
                 else:
-                    client.put_rule(previous, exists=True)
-            except Exception:
-                rollback_failed = True
-        try:
-            client.put_policy(previous_policy)
-        except Exception:
-            rollback_failed = True
-        try:
-            if previous_contact is None:
-                client.delete_contact()
-            else:
-                client.put_contact(previous_contact, exists=True)
-        except Exception:
-            rollback_failed = True
-        if not previous_folder:
-            try:
-                client.delete_folder()
+                    raise AssertionError(f"unknown rollback resource: {kind}")
             except Exception:
                 rollback_failed = True
         if rollback_failed:
             raise AlertmanagerSyncError(
                 f"paging sync failed ({type(sync_error).__name__}) and rollback also failed"
+            ) from sync_error
+        if rollback_conflicted:
+            raise AlertmanagerSyncError(
+                f"paging sync failed ({type(sync_error).__name__}) and rollback preserved "
+                "resources whose post-write state could not be proven"
             ) from sync_error
         raise
 
