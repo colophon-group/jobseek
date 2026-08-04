@@ -313,6 +313,11 @@ Redis, Typesense, proxy, or object-storage credentials nor participates in
 crawler cutover, so a long inventory fetch cannot block or be removed by an
 unrelated crawler deployment.
 
+The deployment workflow pins the crawler host through the dedicated protected
+`HETZNER_CRAWLER_KNOWN_HOSTS` secret. Do not reuse the backup-host pin set: it
+contains the PostgreSQL and Typesense targets, so native OpenSSH must reject it
+for the crawler before any payload transfer.
+
 The GitHub App private key is delivered with systemd `LoadCredential`. A
 host-side helper signs a nine-minute JWT with OpenSSL, mints an installation
 token, and writes that token to a mode-`0600` temporary file. The container sees
