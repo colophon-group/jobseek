@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import signal
+import sys
 import uuid
 
 import dotenv
@@ -399,6 +401,76 @@ def parse_args() -> argparse.Namespace:
         help="Count what would be removed; do not write.",
     )
 
+    deadletter_p = sub.add_parser(
+        "deadletters",
+        help="Inspect or explicitly resolve lifecycle-classified monitor deadletters",
+    )
+    deadletter_p.add_argument(
+        "action",
+        choices=("inspect", "retry", "prune"),
+        help="Inspect all entries, retry active entries, or prune authoritative stale entries",
+    )
+    deadletter_p.add_argument(
+        "--entry",
+        action="append",
+        default=None,
+        help=(
+            "Exact '<wtype>:<member>' selector from inspect output. Repeat for multiple "
+            "entries. Required for retry/prune."
+        ),
+    )
+    deadletter_p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Perform selected retry/prune mutations (default is dry-run)",
+    )
+
+    redis_capacity_p = sub.add_parser(
+        "redis-capacity",
+        help="Inspect budgets, prune orphan scrape configs, or rebuild schedules",
+    )
+    redis_capacity_p.add_argument("action", choices=("inspect", "prune", "rebuild"))
+    redis_capacity_p.add_argument(
+        "--format",
+        choices=("json", "prometheus"),
+        default="json",
+        help="Inspect output format (default: json)",
+    )
+    redis_capacity_p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply prune/rebuild mutations (default is dry-run)",
+    )
+    redis_capacity_p.add_argument(
+        "--cursor",
+        type=int,
+        default=0,
+        help="Redis SCAN cursor returned by a prior prune invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--max-scanned",
+        type=int,
+        default=50_000,
+        help="Maximum scrape hashes classified by one prune invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--max-delete",
+        type=int,
+        default=50_000,
+        help="Maximum scrape hashes unlinked by one prune invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--after-id",
+        default=None,
+        help="Posting UUID cursor returned by a prior rebuild invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--limit",
+        type=int,
+        default=10_000,
+        help="Maximum durable schedules selected by one rebuild invocation",
+    )
+
     return parser.parse_args()
 
 
@@ -711,6 +783,66 @@ async def run() -> None:
                 dry_run=args.dry_run,
             )
             log.info("prune.scrape_queues.done", dry_run=args.dry_run, **result)
+
+        elif args.command == "deadletters":
+            local_pool = await create_local_pool()
+            from src.deadletters import resolve_deadletters
+
+            result = await resolve_deadletters(
+                local_pool,
+                action=args.action,
+                selected_refs=args.entry,
+                apply=args.apply,
+            )
+            output = json.dumps(result, indent=2, sort_keys=True)
+            log.info(
+                "deadletters.complete",
+                action=args.action,
+                dry_run=not args.apply,
+                selected=result["selected"],
+                counts=result["counts"],
+            )
+            tty_message(output)
+
+        elif args.command == "redis-capacity":
+            from src.redis_capacity import (
+                format_prometheus,
+                inventory,
+                prune_orphan_scrape_configs,
+                rebuild_scrape_schedules,
+            )
+
+            if args.action == "inspect":
+                snapshot = await inventory()
+                output = (
+                    format_prometheus(snapshot)
+                    if args.format == "prometheus"
+                    else json.dumps(snapshot, indent=2, sort_keys=True)
+                )
+            elif args.action == "prune":
+                result = await prune_orphan_scrape_configs(
+                    cursor=args.cursor,
+                    max_scanned=args.max_scanned,
+                    max_delete=args.max_delete,
+                    apply=args.apply,
+                )
+                output = json.dumps(result, indent=2, sort_keys=True)
+            else:
+                local_pool = await create_local_pool()
+                result = await rebuild_scrape_schedules(
+                    local_pool,
+                    after_id=args.after_id,
+                    limit=args.limit,
+                    apply=args.apply,
+                )
+                output = json.dumps(result, indent=2, sort_keys=True)
+            # This command is also invoked non-interactively by the host
+            # metrics sampler and recovery runbooks; stdout is its stable
+            # machine interface, unlike tty_message's interactive-only path.
+            sys.stdout.write(output)
+            if not output.endswith("\n"):
+                sys.stdout.write("\n")
+            sys.stdout.flush()
 
         elif args.command == "retire-stale-boards":
             from src.retire_stale_boards import report_stale_boards

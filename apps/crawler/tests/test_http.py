@@ -8,6 +8,7 @@ import pytest
 from src.shared.http import (
     DEFAULT_ACCEPT,
     DEFAULT_USER_AGENT,
+    WORKDAY_LIST_303_INCIDENT,
     RequestHostTrackingTransport,
     _client_kwargs,
     _make_ssl_context,
@@ -16,6 +17,8 @@ from src.shared.http import (
     create_logging_http_client,
     create_nossl_http_client,
     is_avature_job_detail_url,
+    mark_provider_incident,
+    mark_transient_response_failure,
     track_request_hosts,
 )
 
@@ -154,6 +157,44 @@ class TestRequestHostTracking:
                 await client.get("https://api.example.com/v1/search")
 
         assert tracker.transient_failure_host is None
+
+    async def test_new_response_clears_promoted_application_failure(self):
+        responses = iter((200, 200))
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(next(responses), request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                first = await client.get("https://degraded.example/detail")
+                mark_transient_response_failure(str(first.url), reason="provider_invalid_payload")
+                assert tracker.transient_failure_host == "degraded.example"
+
+                await client.get("https://degraded.example/recovered")
+
+        assert tracker.last_application_error is None
+        assert tracker.transient_failure_host is None
+
+    async def test_provider_incident_retains_its_origin_across_later_responses(self):
+        """Concurrent multi-site requests cannot overwrite terminal evidence."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                await client.get("https://failed.wd1.example/jobs")
+                mark_provider_incident(
+                    "https://failed.wd1.example/jobs",
+                    incident=WORKDAY_LIST_303_INCIDENT,
+                )
+                await client.get("https://later.wd2.example/jobs")
+
+        assert tracker.last_provider_incident == WORKDAY_LIST_303_INCIDENT
+        assert tracker.last_provider_incident_host == "failed.wd1.example"
+        assert tracker.last_host == "later.wd2.example"
 
 
 @pytest.mark.parametrize(

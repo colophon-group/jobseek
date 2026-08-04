@@ -65,7 +65,6 @@ const expectedToolSchemas = {
     ],
     required: ["title"],
   },
-  get_discovery_results: { properties: [], required: [] },
   get_ghost_analysis: {
     properties: ["position", "runId"],
     required: ["runId"],
@@ -92,10 +91,6 @@ const expectedToolSchemas = {
     properties: ["companies"],
     required: ["companies"],
   },
-  trigger_discovery_run: {
-    properties: ["enableAiDiscovery", "sources"],
-    required: [],
-  },
   trigger_ghost_analysis: {
     properties: ["companyName", "inventoryMode", "maxSnapshots", "portalUrl"],
     required: ["portalUrl"],
@@ -114,6 +109,11 @@ try {
   ]);
 
   const { tools } = await client.listTools();
+  const retiredTools = ["get_discovery_results", "trigger_discovery_run"];
+  assert(
+    retiredTools.every((name) => !tools.some((tool) => tool.name === name)),
+    "MCP tool registry must not restore the retired vendor-backed discovery tools",
+  );
   assert(
     JSON.stringify(tools.map(({ name }) => name).sort()) ===
       JSON.stringify(expectedTools),
