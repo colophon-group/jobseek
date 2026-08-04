@@ -182,6 +182,7 @@ def test_collect_writes_atomic_failure_metrics(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr(host, "_collect_unit_metrics", lambda *_: None)
     monkeypatch.setattr(host, "_collect_backup_metrics", lambda *_: None)
     monkeypatch.setattr(host, "_collect_alloy_metrics", lambda *_: None)
+    monkeypatch.setattr(host, "_collect_redis_capacity_metrics", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(host, "_collect_new_error_logs", lambda *_args, **_kwargs: None)
 
     assert host.collect("crawler", textfile=textfile, state_dir=tmp_path / "state") is True
@@ -198,6 +199,45 @@ def test_collect_writes_atomic_failure_metrics(tmp_path: Path, monkeypatch) -> N
     assert 'probe="containers"' in content
     assert "do-not-print" not in content
     assert 'jobseek_host_observability_collect_success{host_role="crawler"} 0' in content
+
+
+def test_redis_capacity_snapshot_is_cached_and_republished(tmp_path: Path, monkeypatch) -> None:
+    output = "\n".join(
+        (
+            "ignored log line",
+            "jobseek_redis_capacity_snapshot_unixtime 100",
+            'jobseek_redis_key_family_keys{family="scrape_config"} 2',
+        )
+    )
+    calls = []
+
+    def run(argv, **_kwargs):
+        calls.append(argv)
+        return SimpleNamespace(stdout=output)
+
+    monkeypatch.setattr(host, "_run", run)
+    lines: list[str] = []
+    host._collect_redis_capacity_metrics(lines, tmp_path, now=100)
+    assert calls
+    assert "ignored log line" not in lines
+    assert "jobseek_redis_capacity_snapshot_available 1" in lines
+    assert 'jobseek_redis_key_family_keys{family="scrape_config"} 2' in lines
+
+    monkeypatch.setattr(host, "_run", lambda *_args, **_kwargs: pytest.fail("cache missed"))
+    lines = []
+    host._collect_redis_capacity_metrics(lines, tmp_path, now=101)
+    assert "jobseek_redis_capacity_snapshot_available 1" in lines
+
+
+def test_redis_capacity_refresh_failure_is_rollout_safe(tmp_path: Path, monkeypatch) -> None:
+    def fail(*_args, **_kwargs):
+        raise host.ProbeError("crawler command unavailable")
+
+    monkeypatch.setattr(host, "_run", fail)
+    lines: list[str] = []
+    host._collect_redis_capacity_metrics(lines, tmp_path, now=100)
+
+    assert lines == ["jobseek_redis_capacity_snapshot_available 0"]
 
 
 def test_alloy_metric_parser_aggregates_only_fixed_families() -> None:
@@ -310,6 +350,12 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
             return "6"
         if sql == host.BOARD_QUARANTINE_STATS_SQL:
             return "121\t86400\t99134\t16"
+        if sql == host.BOARD_GONE_SCHEMA_SQL:
+            return "8"
+        if sql == host.BOARD_GONE_STATS_SQL:
+            return "58\t58\t21600\t181\t239\t19"
+        if sql == host.PHANTOM_ACTIVE_STATS_SQL:
+            return "4\t136\t7776000"
         if "to_regclass" in sql:
             return "cross_store_reconciliation_state"
         if sql == host.RECONCILIATION_STATS_SQL:
@@ -345,6 +391,16 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_crawler_quarantine_oldest_seconds 86400.0" in content
     assert "jobseek_crawler_quarantine_active_postings 99134.0" in content
     assert "jobseek_crawler_board_recoveries_total 16.0" in content
+    assert "jobseek_crawler_board_gone_schema_ready 1" in content
+    assert "jobseek_crawler_gone_pending_boards 58.0" in content
+    assert "jobseek_crawler_gone_pending_confirmations 58.0" in content
+    assert "jobseek_crawler_gone_pending_oldest_seconds 21600.0" in content
+    assert "jobseek_crawler_gone_terminal_boards 181.0" in content
+    assert "jobseek_crawler_board_gone_transitions_total 239.0" in content
+    assert "jobseek_crawler_board_gone_recoveries_total 19.0" in content
+    assert "jobseek_crawler_phantom_active_boards 4.0" in content
+    assert "jobseek_crawler_phantom_active_postings 136.0" in content
+    assert "jobseek_crawler_phantom_active_oldest_seconds 7776000.0" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
     assert 'jobseek_cross_store_reconciliation_last_detected{target="supabase"} 42.0' in content
     assert (
@@ -371,8 +427,10 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
             return "1\t2\t3\t0\t4\t5\t6\t7\t8\t9\t10"
-        if sql == host.BOARD_QUARANTINE_SCHEMA_SQL:
+        if sql in (host.BOARD_QUARANTINE_SCHEMA_SQL, host.BOARD_GONE_SCHEMA_SQL):
             return "0"
+        if sql == host.PHANTOM_ACTIVE_STATS_SQL:
+            return "0\t0\t0"
         if "to_regclass" in sql:
             return ""
         raise AssertionError(sql)
@@ -384,6 +442,8 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
 
     assert "jobseek_cross_store_reconciliation_schema_ready 0" in "\n".join(lines)
     assert "jobseek_crawler_board_quarantine_schema_ready 0" in "\n".join(lines)
+    assert "jobseek_crawler_board_gone_schema_ready 0" in "\n".join(lines)
+    assert "jobseek_crawler_phantom_active_postings 0.0" in "\n".join(lines)
 
 
 def test_postgresql_shared_memory_probe_emits_configured_and_live_capacity(
@@ -458,6 +518,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_typesense_reliability",
         "jobseek_crawler_reliability",
         "jobseek_crawler_board_quarantine",
+        "jobseek_redis_capacity",
     }
     assert {group["name"]: len(group["rules"]) for group in groups} == {
         "jobseek_hetzner_fleet": 19,
@@ -465,7 +526,8 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 19,
-        "jobseek_crawler_board_quarantine": 4,
+        "jobseek_crawler_board_quarantine": 8,
+        "jobseek_redis_capacity": 4,
         "jobseek_operator_handoffs": 3,
     }
     for group in groups:

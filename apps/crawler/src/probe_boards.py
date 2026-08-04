@@ -21,11 +21,22 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from src.shared.adp import adp_board_from_metadata, adp_board_from_url
+from src.shared.avature import (
+    avature_board_from_metadata,
+    avature_board_from_url,
+    parse_avature_page,
+)
+from src.shared.beisen import (
+    beisen_board_from_metadata,
+    beisen_board_from_url,
+    extract_beisen_bootstrap,
+)
 from src.shared.cornerstone import (
     cornerstone_board_from_metadata,
     cornerstone_board_from_url,
     extract_cornerstone_context,
 )
+from src.shared.darwinbox import darwinbox_board_from_metadata, darwinbox_board_from_url
 from src.shared.dayforce import (
     dayforce_board_from_metadata,
     dayforce_board_from_url,
@@ -34,12 +45,37 @@ from src.shared.dayforce import (
     resolve_dayforce_listing_redirect,
 )
 from src.shared.gupy import normalize_gupy_tenant
+from src.shared.http import DEFAULT_ACCEPT, DEFAULT_USER_AGENT
+from src.shared.http_retry import PaginationFetchError
+from src.shared.jobvite import (
+    is_jobvite_invalid_redirect,
+    jobvite_board_from_metadata,
+    jobvite_board_from_url,
+)
+from src.shared.keka import (
+    extract_keka_identifier,
+    is_keka_forbidden_redirect,
+    keka_board_from_metadata,
+    keka_board_from_url,
+)
+from src.shared.pageup import pageup_board_from_metadata, pageup_board_from_url
 from src.shared.recruiterbox import (
     recruiterbox_board_from_metadata,
     recruiterbox_board_from_url,
     recruiterbox_inactive_from_html,
     recruiterbox_total_from_html,
 )
+from src.shared.successfactors import (
+    successfactors_legacy_board_from_metadata,
+    successfactors_legacy_board_from_url,
+)
+from src.shared.taleo import (
+    taleo_board_from_metadata,
+    taleo_board_from_url,
+    taleo_listing_marker_from_html,
+    taleo_total_from_html,
+)
+from src.shared.ukg import ukg_board_from_metadata, ukg_board_from_url
 
 # Literal set of statuses a probe can return. CI treats "fail" as a hard error
 # and "skipped" / "ok" / "warn" as non-blocking.
@@ -556,6 +592,29 @@ async def _probe_dayforce(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "dayforce", url, resp)
 
 
+async def _probe_darwinbox(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    try:
+        raw_config = json.loads(row["monitor_config"]) if row["monitor_config"] else {}
+    except (json.JSONDecodeError, TypeError):
+        raw_config = {}
+    config = raw_config if isinstance(raw_config, dict) else {}
+    board = darwinbox_board_from_metadata(config) or darwinbox_board_from_url(row["board_url"])
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "darwinbox",
+            row["board_url"],
+            "warn",
+            "no valid host/company_id in monitor_config or Darwinbox URL",
+        )
+
+    url = board.listing_url()
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response) and resp.status_code in {404, 410}:
+        return ProbeResult(row["board_slug"], "darwinbox", url, "fail", "board not found")
+    return _classify(row, "darwinbox", url, resp)
+
+
 async def _probe_hrmos(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     tenant = _token_from_config(row["monitor_config"], "tenant")
     tenant = tenant.strip().lower() if tenant else None
@@ -661,6 +720,488 @@ async def _probe_recruiterbox(row: dict, client: httpx.AsyncClient) -> ProbeResu
     return _classify(row, "recruiterbox", url, resp)
 
 
+async def _probe_keka(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = keka_board_from_metadata(cfg)
+    direct = keka_board_from_url(row["board_url"])
+    if configured is None and any(key in cfg for key in ("tenant", "portal", "identifier")):
+        return ProbeResult(
+            row["board_slug"],
+            "keka",
+            row["board_url"],
+            "warn",
+            "invalid Keka portal identity in monitor_config",
+        )
+    if (
+        configured is not None
+        and direct is not None
+        and (configured.tenant != direct.tenant or configured.portal != direct.portal)
+    ):
+        return ProbeResult(
+            row["board_slug"],
+            "keka",
+            row["board_url"],
+            "fail",
+            "configured Keka portal does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "keka",
+            row["board_url"],
+            "warn",
+            "no valid Keka tenant/portal in monitor_config or URL",
+        )
+
+    url = board.listing_url()
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response):
+        if resp.status_code in {404, 410}:
+            return ProbeResult(row["board_slug"], "keka", url, "fail", "portal not found")
+        if resp.is_redirect and is_keka_forbidden_redirect(board, resp.headers.get("location")):
+            return ProbeResult(
+                row["board_slug"],
+                "keka",
+                url,
+                "fail",
+                "Keka portal is forbidden",
+            )
+        if resp.status_code == 200:
+            identifier = extract_keka_identifier(resp.text)
+            if identifier is None:
+                return ProbeResult(
+                    row["board_slug"],
+                    "keka",
+                    url,
+                    "warn",
+                    "Keka career-portal identity missing",
+                )
+            if board.identifier is not None and board.identifier != identifier:
+                return ProbeResult(
+                    row["board_slug"],
+                    "keka",
+                    url,
+                    "fail",
+                    "Keka live portal identity changed",
+                )
+            return ProbeResult(row["board_slug"], "keka", url, "ok", "200 (identity verified)")
+    return _classify(row, "keka", url, resp)
+
+
+async def _probe_taleo(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    board = taleo_board_from_metadata(cfg) or taleo_board_from_url(row["board_url"])
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "taleo",
+            row["board_url"],
+            "warn",
+            "no valid identity in monitor_config or Taleo TBE URL",
+        )
+
+    url = board.listing_url()
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        total = taleo_total_from_html(resp.text)
+        if total is None:
+            if taleo_listing_marker_from_html(resp.text):
+                return ProbeResult(
+                    row["board_slug"],
+                    "taleo",
+                    url,
+                    "ok",
+                    "200 (cursor listing verified)",
+                )
+            return ProbeResult(
+                row["board_slug"],
+                "taleo",
+                url,
+                "warn",
+                "Taleo listing marker or job total missing",
+            )
+        return ProbeResult(row["board_slug"], "taleo", url, "ok", f"200 ({total} jobs)")
+    return _classify(row, "taleo", url, resp)
+
+
+async def _probe_avature(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = avature_board_from_metadata(cfg)
+    direct = avature_board_from_url(row["board_url"], allow_custom_host=True)
+    if configured is None and "listing_url" in cfg:
+        return ProbeResult(
+            row["board_slug"],
+            "avature",
+            row["board_url"],
+            "warn",
+            "invalid Avature listing_url in monitor_config",
+        )
+    if (
+        configured is not None
+        and direct is not None
+        and configured.listing_url.casefold() != direct.listing_url.casefold()
+    ):
+        return ProbeResult(
+            row["board_slug"],
+            "avature",
+            configured.listing_url,
+            "fail",
+            "configured Avature portal does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "avature",
+            row["board_url"],
+            "warn",
+            "no valid Avature listing identity",
+        )
+
+    url = board.listing_url
+    resp = await _retry(lambda: _get(client, url, follow_redirects=True))
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        page = parse_avature_page(resp.text, url)
+        if page is None:
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "warn",
+                "Avature portal metadata missing",
+            )
+        if configured is not None and page.board.listing_url.casefold() != url.casefold():
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "fail",
+                "configured Avature portal redirected to another identity",
+            )
+        configured_portal_id = cfg.get("portal_id")
+        if configured_portal_id is not None and str(configured_portal_id) != page.portal_id:
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "fail",
+                "configured Avature portal ID changed",
+            )
+        if page.board.page == "SearchJobsMaps":
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "ok",
+                "200 (map listing verified)",
+            )
+        if page.total is None or (page.total > 0 and not page.jobs):
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "warn",
+                "Avature result count or first-page job links missing",
+            )
+        suffix = "+" if not page.total_exact else ""
+        return ProbeResult(
+            row["board_slug"],
+            "avature",
+            url,
+            "ok",
+            f"200 ({page.total}{suffix} jobs)",
+        )
+    return _classify(row, "avature", url, resp)
+
+
+async def _probe_jobvite(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = jobvite_board_from_metadata(cfg)
+    direct = jobvite_board_from_url(row["board_url"])
+    if configured is None and ({"tenant", "listing_url"} & cfg.keys()):
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            row["board_url"],
+            "warn",
+            "invalid Jobvite tenant/listing_url in monitor_config",
+        )
+    if configured is not None and direct is not None and configured.tenant != direct.tenant:
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            configured.listing_url,
+            "fail",
+            "configured Jobvite tenant does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            row["board_url"],
+            "warn",
+            "no valid Jobvite listing identity",
+        )
+
+    from src.core.monitors.jobvite import resolve_listing
+
+    try:
+        resolved, jobs = await resolve_listing(board, client, terminal=False)
+    except PaginationFetchError as exc:
+        if exc.last_status in {404, 410} or is_jobvite_invalid_redirect(exc.last_location):
+            return ProbeResult(
+                row["board_slug"],
+                "jobvite",
+                board.listing_url,
+                "fail",
+                f"terminal Jobvite listing response ({exc.last_status})",
+            )
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            board.listing_url,
+            "warn",
+            f"Jobvite listing fetch failed ({exc.last_status or exc.last_error})",
+        )
+    except ValueError as exc:
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            board.listing_url,
+            "warn",
+            str(exc),
+        )
+    return ProbeResult(
+        row["board_slug"],
+        "jobvite",
+        resolved.listing_url,
+        "ok",
+        f"200 ({len(jobs)} jobs)",
+    )
+
+
+async def _probe_pageup(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = pageup_board_from_metadata(cfg)
+    direct = pageup_board_from_url(row["board_url"])
+    identity_keys = {"instance", "source_pointer", "locale", "listing_url"}
+    if configured is None and identity_keys & cfg.keys():
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            row["board_url"],
+            "warn",
+            "invalid PageUp identity in monitor_config",
+        )
+    if configured is not None and direct is not None and configured != direct:
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            configured.listing_url,
+            "fail",
+            "configured PageUp identity does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            row["board_url"],
+            "warn",
+            "no valid PageUp listing identity",
+        )
+
+    from src.core.monitors.pageup import (
+        PROBE_PAGE_SIZE,
+        _fetch_listing_page,
+        _parse_listing_page,
+    )
+
+    try:
+        url, document = await _fetch_listing_page(
+            board,
+            client,
+            page=1,
+            page_size=PROBE_PAGE_SIZE,
+            terminal=False,
+        )
+        _jobs, total, _has_next = _parse_listing_page(
+            document,
+            url,
+            board,
+            page=1,
+            page_size=PROBE_PAGE_SIZE,
+            expected_total=None,
+        )
+    except PaginationFetchError as exc:
+        status = "fail" if exc.last_status in {404, 410} else "warn"
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            board.listing_url,
+            status,
+            f"PageUp listing fetch failed ({exc.last_status or exc.last_error})",
+        )
+    except ValueError as exc:
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            board.listing_url,
+            "warn",
+            str(exc),
+        )
+    return ProbeResult(
+        row["board_slug"],
+        "pageup",
+        board.listing_url,
+        "ok",
+        f"200 ({total} jobs)",
+    )
+
+
+async def _probe_ukg(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = ukg_board_from_metadata(cfg)
+    direct = ukg_board_from_url(row["board_url"])
+    if configured is not None and direct is not None and configured != direct:
+        return ProbeResult(
+            row["board_slug"],
+            "ukg",
+            configured.listing_url(),
+            "fail",
+            "configured UKG board does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "ukg",
+            row["board_url"],
+            "warn",
+            "no valid UKG board identity",
+        )
+
+    url = board.search_url()
+    payload = {"opportunitySearch": {"Top": 1, "Skip": 0, "QueryString": "", "Filters": []}}
+    resp = await _retry(
+        lambda: _get(
+            client,
+            url,
+            method="POST",
+            json=payload,
+            headers={"content-type": "application/json"},
+            follow_redirects=False,
+        )
+    )
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        try:
+            data = resp.json()
+        except ValueError:
+            data = None
+        total = data.get("totalCount") if isinstance(data, dict) else None
+        rows = data.get("opportunities") if isinstance(data, dict) else None
+        if (
+            not isinstance(total, int)
+            or isinstance(total, bool)
+            or total < 0
+            or not isinstance(rows, list)
+            or len(rows) > 1
+        ):
+            return ProbeResult(
+                row["board_slug"],
+                "ukg",
+                url,
+                "warn",
+                "UKG search response shape changed",
+            )
+        return ProbeResult(row["board_slug"], "ukg", url, "ok", f"200 ({total} jobs)")
+    return _classify(row, "ukg", url, resp)
+
+
+async def _probe_beisen(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = beisen_board_from_metadata(cfg)
+    direct = beisen_board_from_url(row["board_url"])
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "beisen",
+            row["board_url"],
+            "warn",
+            "no valid tenant or portal metadata",
+        )
+    url = board.listing_url() if configured and configured.variant == "legacy" else board.root_url()
+    resp = await _retry(
+        lambda: _get(
+            client,
+            url,
+            follow_redirects=False,
+            headers={"User-Agent": DEFAULT_USER_AGENT, "Accept": DEFAULT_ACCEPT},
+        )
+    )
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        if configured and configured.variant == "legacy":
+            valid = "new_zhiye_com" in resp.text
+            disabled = False
+        else:
+            try:
+                bootstrap = extract_beisen_bootstrap(resp.text, board.tenant)
+            except ValueError as exc:
+                return ProbeResult(row["board_slug"], "beisen", url, "warn", str(exc))
+            valid = bootstrap is not None
+            disabled = bootstrap is not None and not bootstrap[1]
+        if disabled:
+            return ProbeResult(row["board_slug"], "beisen", url, "fail", "portal disabled")
+        if not valid:
+            return ProbeResult(
+                row["board_slug"],
+                "beisen",
+                url,
+                "warn",
+                "Beisen portal marker missing",
+            )
+        return ProbeResult(row["board_slug"], "beisen", url, "ok", "200")
+    return _classify(row, "beisen", url, resp)
+
+
 async def _probe_rippling(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     slug = _token_from_config(row["monitor_config"], "slug", "token")
     if not slug:
@@ -738,6 +1279,98 @@ async def _probe_workday(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "workday", url, resp)
 
 
+async def _probe_rss(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict = {}
+    if row["monitor_config"]:
+        try:
+            decoded = json.loads(row["monitor_config"])
+        except (json.JSONDecodeError, TypeError):
+            decoded = None
+        if isinstance(decoded, dict):
+            cfg = decoded
+
+    if cfg.get("preset") == "successfactors" and cfg.get("variant") == "legacy":
+        identity = successfactors_legacy_board_from_metadata(cfg)
+        direct = successfactors_legacy_board_from_url(row["board_url"])
+        if identity is None:
+            identity = direct
+        if identity is None or (direct is not None and direct != identity):
+            return ProbeResult(
+                row["board_slug"],
+                "rss",
+                row["board_url"],
+                "fail",
+                "invalid SuccessFactors legacy identity",
+            )
+        from src.core.monitors import BoardGoneError
+        from src.core.monitors._successfactors_legacy import (
+            SuccessFactorsLegacyProtocolError,
+            probe_legacy,
+        )
+
+        try:
+            result = await probe_legacy(identity, client)
+        except BoardGoneError:
+            return ProbeResult(
+                row["board_slug"],
+                "rss",
+                identity.listing_url,
+                "fail",
+                "legacy SuccessFactors board is gone",
+            )
+        except (PaginationFetchError, SuccessFactorsLegacyProtocolError) as exc:
+            return ProbeResult(
+                row["board_slug"],
+                "rss",
+                identity.listing_url,
+                "fail",
+                f"legacy SuccessFactors probe failed: {exc}",
+            )
+        return ProbeResult(
+            row["board_slug"],
+            "rss",
+            identity.listing_url,
+            "ok",
+            f"legacy SuccessFactors DWR: {result['jobs']} jobs",
+        )
+
+    feed_url = cfg.get("feed_url")
+    if not isinstance(feed_url, str) or not feed_url:
+        preset = cfg.get("preset")
+        suffix = "/jobs.rss" if preset == "teamtailor" else "/googlefeed.xml"
+        parsed = urlparse(row["board_url"])
+        if parsed.scheme in {"http", "https"} and parsed.netloc:
+            feed_url = f"{parsed.scheme}://{parsed.netloc}{suffix}"
+    if not isinstance(feed_url, str) or not feed_url:
+        return ProbeResult(
+            row["board_slug"],
+            "rss",
+            row["board_url"],
+            "warn",
+            "no feed_url in monitor_config",
+        )
+    # Reuse the runtime's streamed XML parser so a retired feed returning an
+    # HTML landing page with HTTP 200 cannot be reported healthy here.
+    from src.core.monitors.rss import _probe_feed
+
+    valid, count = await _probe_feed(feed_url, client, cfg.get("preset"))
+    if not valid:
+        return ProbeResult(
+            row["board_slug"],
+            "rss",
+            feed_url,
+            "fail",
+            "feed did not return valid RSS/XML",
+        )
+    return ProbeResult(
+        row["board_slug"],
+        "rss",
+        feed_url,
+        "ok",
+        f"valid RSS/XML: {count or 0} jobs",
+    )
+
+
 def _classify(
     row: dict,
     monitor_type: str,
@@ -770,23 +1403,32 @@ def _classify(
 # Monitor types we know how to probe. Others are skipped by probe_row.
 PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] = {
     "adp": _probe_adp,
+    "avature": _probe_avature,
+    "jobvite": _probe_jobvite,
+    "pageup": _probe_pageup,
+    "ukg": _probe_ukg,
     "greenhouse": _probe_greenhouse,
     "lever": _probe_lever,
     "ashby": _probe_ashby,
     "bamboohr": _probe_bamboohr,
+    "beisen": _probe_beisen,
     "paycom": _probe_paycom,
     "jazzhr": _probe_jazzhr,
     "icims": _probe_icims,
     "gupy": _probe_gupy,
     "cornerstone": _probe_cornerstone,
+    "darwinbox": _probe_darwinbox,
     "dayforce": _probe_dayforce,
     "herp": _probe_herp,
     "hrmos": _probe_hrmos,
     "recruitee": _probe_recruitee,
     "recruiterbox": _probe_recruiterbox,
+    "keka": _probe_keka,
+    "taleo": _probe_taleo,
     "rippling": _probe_rippling,
     "smartrecruiters": _probe_smartrecruiters,
     "workday": _probe_workday,
+    "rss": _probe_rss,
 }
 
 

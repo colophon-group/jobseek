@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import signal
+import sys
 import uuid
 
 import dotenv
@@ -302,6 +304,31 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    phantom_p = sub.add_parser(
+        "sweep-phantoms",
+        help=(
+            "Classify terminal boards and delist active postings only for "
+            "removed configuration or spaced provider-gone confirmations"
+        ),
+    )
+    phantom_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report the classified candidate count without changing postings",
+    )
+    phantom_p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=1_000,
+        help="Rows committed per transaction (default: 1000; max: 10000)",
+    )
+    phantom_p.add_argument(
+        "--max-chunks",
+        type=int,
+        default=100,
+        help="Maximum committed chunks in this resumable invocation (default: 100)",
+    )
+
     board_p = sub.add_parser("board", help="Dev testing for a single board")
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
@@ -319,15 +346,12 @@ def parse_args() -> argparse.Namespace:
     retire_p = sub.add_parser(
         "retire-stale-boards",
         help=(
-            "Two-section retirement report: Section A — boards that are dead "
-            "and safe to retire (board_status in ('disabled', 'gone'); "
-            "last_success_at is NULL or older than --days; zero active "
-            "postings; company has at least one live sibling board). "
-            "Section B (#2714) — companies whose ENTIRE board set is dead "
-            "(every board fails the dispatcher's live filter; every dead "
-            "board passes --days; zero active postings across all boards) "
-            "and are ripe for companies.csv removal in addition to "
-            "per-board retirement."
+            "Fail-closed retirement evidence report. Database terminal state "
+            "selects candidates, then current provider-native probes split "
+            "verified gone, live again, inconclusive, integration-broken, "
+            "and zero-board registry orphan sections. Executable removal "
+            "output requires current gone evidence plus durable spaced "
+            "confirmations."
         ),
     )
     retire_p.add_argument(
@@ -341,11 +365,19 @@ def parse_args() -> argparse.Namespace:
     )
     retire_p.add_argument(
         "--format",
-        choices=["md", "shell"],
+        choices=["md", "json", "shell"],
         default="md",
-        help="Output format: `md` markdown table for PR descriptions; "
-        "`shell` `grep -vF` snippets that drop the matching rows from "
-        "boards.csv.",
+        help=(
+            "Output format: `md` evidence report, `json` structured reason "
+            "codes, or `shell` commands only for candidates that pass every "
+            "provider and durable-confirmation gate."
+        ),
+    )
+    retire_p.add_argument(
+        "--probe-concurrency",
+        type=int,
+        default=5,
+        help="Concurrent provider-native liveness probes (default: 5; max: 20)",
     )
 
     prune_p = sub.add_parser(
@@ -367,6 +399,76 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Count what would be removed; do not write.",
+    )
+
+    deadletter_p = sub.add_parser(
+        "deadletters",
+        help="Inspect or explicitly resolve lifecycle-classified monitor deadletters",
+    )
+    deadletter_p.add_argument(
+        "action",
+        choices=("inspect", "retry", "prune"),
+        help="Inspect all entries, retry active entries, or prune authoritative stale entries",
+    )
+    deadletter_p.add_argument(
+        "--entry",
+        action="append",
+        default=None,
+        help=(
+            "Exact '<wtype>:<member>' selector from inspect output. Repeat for multiple "
+            "entries. Required for retry/prune."
+        ),
+    )
+    deadletter_p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Perform selected retry/prune mutations (default is dry-run)",
+    )
+
+    redis_capacity_p = sub.add_parser(
+        "redis-capacity",
+        help="Inspect budgets, prune orphan scrape configs, or rebuild schedules",
+    )
+    redis_capacity_p.add_argument("action", choices=("inspect", "prune", "rebuild"))
+    redis_capacity_p.add_argument(
+        "--format",
+        choices=("json", "prometheus"),
+        default="json",
+        help="Inspect output format (default: json)",
+    )
+    redis_capacity_p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply prune/rebuild mutations (default is dry-run)",
+    )
+    redis_capacity_p.add_argument(
+        "--cursor",
+        type=int,
+        default=0,
+        help="Redis SCAN cursor returned by a prior prune invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--max-scanned",
+        type=int,
+        default=50_000,
+        help="Maximum scrape hashes classified by one prune invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--max-delete",
+        type=int,
+        default=50_000,
+        help="Maximum scrape hashes unlinked by one prune invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--after-id",
+        default=None,
+        help="Posting UUID cursor returned by a prior rebuild invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--limit",
+        type=int,
+        default=10_000,
+        help="Maximum durable schedules selected by one rebuild invocation",
     )
 
     return parser.parse_args()
@@ -595,6 +697,36 @@ async def run() -> None:
             finally:
                 await http.aclose()
 
+        elif args.command == "sweep-phantoms":
+            local_pool = await create_local_pool()
+            from src.phantom_sweep import refresh_derived_surfaces, sweep_phantom_postings
+
+            summary = await _await_task_or_shutdown(
+                asyncio.create_task(
+                    sweep_phantom_postings(
+                        local_pool,
+                        dry_run=args.dry_run,
+                        chunk_size=args.chunk_size,
+                        max_chunks=args.max_chunks,
+                    )
+                ),
+                shutdown_event,
+            )
+            if summary is not None:
+                log.info(
+                    "phantom_sweep.done",
+                    dry_run=summary.dry_run,
+                    eligible_boards=summary.eligible_boards,
+                    configured_disabled_boards=summary.configured_disabled_boards,
+                    candidate_postings=summary.candidate_postings,
+                    updated_postings=summary.updated_postings,
+                    remaining_postings=summary.remaining_postings,
+                    chunks_committed=summary.chunks_committed,
+                    complete=summary.complete,
+                )
+                if not summary.dry_run:
+                    await refresh_derived_surfaces(local_pool)
+
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
             supa_pool = await create_pool()
@@ -652,16 +784,82 @@ async def run() -> None:
             )
             log.info("prune.scrape_queues.done", dry_run=args.dry_run, **result)
 
+        elif args.command == "deadletters":
+            local_pool = await create_local_pool()
+            from src.deadletters import resolve_deadletters
+
+            result = await resolve_deadletters(
+                local_pool,
+                action=args.action,
+                selected_refs=args.entry,
+                apply=args.apply,
+            )
+            output = json.dumps(result, indent=2, sort_keys=True)
+            log.info(
+                "deadletters.complete",
+                action=args.action,
+                dry_run=not args.apply,
+                selected=result["selected"],
+                counts=result["counts"],
+            )
+            tty_message(output)
+
+        elif args.command == "redis-capacity":
+            from src.redis_capacity import (
+                format_prometheus,
+                inventory,
+                prune_orphan_scrape_configs,
+                rebuild_scrape_schedules,
+            )
+
+            if args.action == "inspect":
+                snapshot = await inventory()
+                output = (
+                    format_prometheus(snapshot)
+                    if args.format == "prometheus"
+                    else json.dumps(snapshot, indent=2, sort_keys=True)
+                )
+            elif args.action == "prune":
+                result = await prune_orphan_scrape_configs(
+                    cursor=args.cursor,
+                    max_scanned=args.max_scanned,
+                    max_delete=args.max_delete,
+                    apply=args.apply,
+                )
+                output = json.dumps(result, indent=2, sort_keys=True)
+            else:
+                local_pool = await create_local_pool()
+                result = await rebuild_scrape_schedules(
+                    local_pool,
+                    after_id=args.after_id,
+                    limit=args.limit,
+                    apply=args.apply,
+                )
+                output = json.dumps(result, indent=2, sort_keys=True)
+            # This command is also invoked non-interactively by the host
+            # metrics sampler and recovery runbooks; stdout is its stable
+            # machine interface, unlike tty_message's interactive-only path.
+            sys.stdout.write(output)
+            if not output.endswith("\n"):
+                sys.stdout.write("\n")
+            sys.stdout.flush()
+
         elif args.command == "retire-stale-boards":
             from src.retire_stale_boards import report_stale_boards
 
             local_pool = await create_local_pool()
             async with local_pool.acquire() as conn:
-                output = await report_stale_boards(conn, days=args.days, fmt=args.format)
+                output = await report_stale_boards(
+                    conn,
+                    days=args.days,
+                    fmt=args.format,
+                    concurrency=args.probe_concurrency,
+                )
             log.info(
                 "retire_stale_boards.report",
                 days=args.days,
                 format=args.format,
+                probe_concurrency=args.probe_concurrency,
                 output=output,
             )
             tty_message(output)

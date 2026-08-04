@@ -65,7 +65,7 @@ async def _candidate_snapshot(local):
 def test_relisted_cte_advances_cdc_timestamp() -> None:
     compact = " ".join(_DIFF_BATCH.split())
     start = compact.index("relisted AS (")
-    end = compact.index("foreign_touched AS (", start)
+    end = compact.index("foreign_relisted AS (", start)
     relisted = compact[start:end]
     assert "SET is_active = true" in relisted
     assert "updated_at = now()" in relisted

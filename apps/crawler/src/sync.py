@@ -48,11 +48,14 @@ from src.redis_queue import (
     enqueue_monitors,
     remove_monitors,
 )
+from src.shared.avature import avature_request_host
 from src.shared.logging import setup_logging
+from src.shared.taleo import taleo_request_host
 from src.typesense_client import get_typesense_client
 
 _API_MONITOR_TYPES = api_monitor_types()
 _MONITOR_CONFIG_FINGERPRINT = "_monitor_config_fingerprint"
+_RECOVERY_SCHEDULE_STATUSES = frozenset({"quarantined", "gone_pending", "gone"})
 
 log = structlog.get_logger()
 
@@ -396,7 +399,7 @@ ON CONFLICT (id) DO UPDATE SET
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN true
-        WHEN job_board.board_status IN ('disabled', 'gone') THEN false
+        WHEN job_board.board_status = 'disabled' THEN false
         ELSE EXCLUDED.is_enabled
     END,
     board_status = CASE
@@ -470,8 +473,22 @@ ON CONFLICT (id) DO UPDATE SET
     gone_at = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN NULL
         ELSE job_board.gone_at
+    END,
+    gone_confirmation_count = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN 0
+        ELSE job_board.gone_confirmation_count
     END,
     quarantined_at = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
@@ -564,7 +581,7 @@ WHERE jp.board_id = jb.id
 _FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP = """
 SELECT id::text AS board_id, throttle_key
 FROM job_board
-WHERE is_enabled = false OR board_status IN ('disabled', 'gone')
+WHERE is_enabled = false OR board_status = 'disabled'
 """
 
 _FETCH_BOARD_IDS = """
@@ -590,10 +607,32 @@ def _or_none(val: str | None) -> str | None:
     return val if val else None
 
 
-def _compute_throttle_key(monitor_type: str, board_url: str) -> str:
+def _compute_throttle_key(
+    monitor_type: str,
+    board_url: str,
+    metadata: Mapping[str, object] | None = None,
+) -> str:
     """Compute rate-limit grouping key from monitor type and board URL."""
+    if monitor_type == "darwinbox":
+        from src.shared.darwinbox import darwinbox_board_from_metadata, darwinbox_board_from_url
+
+        resolved = darwinbox_board_from_metadata(metadata or {}) or darwinbox_board_from_url(
+            board_url
+        )
+        if resolved is not None:
+            return resolved.host
+    if monitor_type == "avature":
+        resolved_host = avature_request_host(board_url, metadata or {})
+        if resolved_host:
+            return resolved_host
+    if monitor_type == "pageup":
+        return "careers.pageuppeople.com"
     if monitor_type in _API_MONITOR_TYPES:
         return monitor_type
+    if monitor_type == "taleo":
+        resolved_host = taleo_request_host(board_url, metadata or {})
+        if resolved_host:
+            return resolved_host
     return urlparse(board_url).hostname or board_url
 
 
@@ -1326,7 +1365,7 @@ async def sync_boards(
         crawler_types.append(mon_type)
         metadatas.append(metadata)
         metadata_objs.append(metadata_obj)
-        throttle_keys.append(_compute_throttle_key(mon_type, row["board_url"]))
+        throttle_keys.append(_compute_throttle_key(mon_type, row["board_url"], metadata_obj))
         monitor_browser_flags.append(mon_browser)
         scraper_browser_flags.append(scr_browser)
 
@@ -1443,7 +1482,7 @@ async def sync_boards(
         metadata = state["metadata"]
         board_status = state.get("board_status", "active")
         next_check_at = schedule_time
-        if board_status == "quarantined" and "next_check_at" in state:
+        if board_status in _RECOVERY_SCHEDULE_STATUSES and "next_check_at" in state:
             due = state["next_check_at"]
             if isinstance(due, datetime):
                 next_check_at = max(schedule_time, due.timestamp())
@@ -1465,7 +1504,7 @@ async def sync_boards(
                 next_check_at=next_check_at,
                 config=config,
                 browser=monitor_browser_flags[i],
-                first_time=board_status != "quarantined",
+                first_time=board_status not in _RECOVERY_SCHEDULE_STATUSES,
             )
         )
     await enqueue_monitors(schedules)
@@ -1476,7 +1515,7 @@ async def sync_boards(
     await local_conn.execute(_DISABLE_REMOVED_BOARDS_LOCAL, board_urls)
 
     # Purge Redis monitor queue for any board that's no longer eligible to run
-    # (just-disabled or previously disabled/gone). Without this, the per-domain
+    # (just-disabled or previously disabled). Without this, the per-domain
     # ``monitors_{wtype}:{domain}`` key retains the stale board_id and the
     # worker keeps claiming it every cycle, producing ``batch.monitor.error``
     # 404s that no CSV update can silence.
@@ -3216,6 +3255,20 @@ async def run_sync(dry_run: bool = False) -> None:
                         industries,
                         dry_run,
                     )
+
+        # Reconcile visibility after board hashes/schedules and retired-board
+        # cleanup are complete. This deliberately classifies and reports only:
+        # active poison descriptors remain parked until an explicit operator
+        # retry, and retired descriptors remain until an explicit prune.
+        if local_pool is not None and not dry_run:
+            from src.deadletters import classify_deadletters, lifecycle_counts
+
+            deadletters = await classify_deadletters(local_pool)
+            log.info(
+                "sync.deadletters.reconciled",
+                total=len(deadletters),
+                counts=lifecycle_counts(deadletters),
+            )
 
         log.info(
             "sync.complete",

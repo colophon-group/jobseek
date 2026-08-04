@@ -1992,6 +1992,28 @@ class TestSelectMonitorNaming:
             {"enrich": ["description", "employment_type", "job_location_type"]},
         )
 
+    def test_legacy_successfactors_static_enrichment_is_persisted(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        config = json.dumps(
+            {
+                "preset": "successfactors",
+                "variant": "legacy",
+                "host": "career5.successfactors.eu",
+                "company": "Acme",
+            }
+        )
+
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "rss", "--config", config],
+        )
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["rss"]
+        assert selected["scraper_type"] == "dom"
+        assert selected["scraper_config"]["scope"] == ".joqReqDescription"
+        assert selected["scraper_config"]["enrich"] == ["description"]
+
     def test_bamboohr_api_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
         """BambooHR selection carries its complete generic detail API preset."""
         self._setup(tmp_path, monkeypatch)
@@ -2035,6 +2057,21 @@ class TestSelectMonitorNaming:
         expected = auto_scraper_type("adp")
         assert expected is not None
         assert selected["scraper_type"] == expected[0] == "adp"
+        assert selected["scraper_config"] == expected[1]
+
+    def test_avature_dom_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """Avature selection activates the shared DOM detail preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "avature"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["avature"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("avature")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "dom"
         assert selected["scraper_config"] == expected[1]
 
     def test_jazzhr_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
@@ -2111,6 +2148,17 @@ class TestSelectMonitorNaming:
 
         assert result.exit_code == 0
         selected = load_board("test", "careers").configs["dayforce"]
+        assert selected["scraper_type"] == "skip"
+        assert selected.get("scraper_config") is None
+
+    def test_darwinbox_rich_monitor_skip_is_persisted(self, tmp_path, monkeypatch):
+        """Darwinbox selection skips redundant per-job scraping."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "darwinbox"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["darwinbox"]
         assert selected["scraper_type"] == "skip"
         assert selected.get("scraper_config") is None
 

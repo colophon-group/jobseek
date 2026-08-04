@@ -27,6 +27,7 @@ DEFAULT_STATE_DIR = Path("/var/lib/jobseek-observability/state")
 DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
 DEFAULT_RECONCILIATION_REVISION = Path("/var/lib/jobseek-reconciliation/deployed-sha")
 DEFAULT_CODEX_ERROR_REVIEW_STATUS = Path("/srv/jobseek-codex/state/error-review-status.json")
+REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS = 6 * 60 * 60
 POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
 POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
 MAX_LOG_LINES = 200
@@ -210,6 +211,68 @@ def _collect_container_metrics(role: str, lines: list[str]) -> None:
         lines.append(_metric("jobseek_container_running", int(state["running"]), **labels))
         lines.append(_metric("jobseek_container_oom_killed", int(state["oom_killed"]), **labels))
         lines.append(_metric("jobseek_container_restart_count", state["restart_count"], **labels))
+
+
+def _collect_redis_capacity_metrics(
+    lines: list[str],
+    state_dir: Path,
+    *,
+    now: float | None = None,
+) -> None:
+    """Refresh the expensive key-family SCAN at most once every six hours.
+
+    The crawler and host-observability deployments can finish in either order.
+    Missing CLI support therefore publishes ``available=0`` without failing the
+    whole host sampler; the stale-snapshot alert provides a bounded rollout
+    grace period. A prior valid snapshot remains published during refresh
+    failures so operators retain the last family attribution.
+    """
+    current = time.time() if now is None else now
+    cache = state_dir / "redis-capacity.prom"
+    cached = ""
+    cache_age = float("inf")
+    try:
+        cached = cache.read_text(encoding="utf-8")
+        cache_age = max(0.0, current - cache.stat().st_mtime)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        print(f"jobseek_redis_capacity_cache_failed error={type(exc).__name__}")
+
+    available = False
+    if cached and cache_age <= REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS:
+        available = True
+    else:
+        try:
+            result = _run(
+                [
+                    "docker",
+                    "exec",
+                    "deploy-worker-1-1",
+                    "/app/.venv/bin/crawler",
+                    "redis-capacity",
+                    "inspect",
+                    "--format",
+                    "prometheus",
+                ],
+                timeout=100,
+            )
+            rendered = "\n".join(
+                line
+                for line in result.stdout.splitlines()
+                if line.startswith("jobseek_redis_")
+            )
+            if "jobseek_redis_capacity_snapshot_unixtime " not in rendered:
+                raise ProbeError("Redis capacity output omitted its snapshot timestamp")
+            cached = rendered + "\n"
+            _atomic_write(cache, cached)
+            available = True
+        except Exception as exc:
+            print(f"jobseek_redis_capacity_refresh_failed error={_redact(str(exc))}")
+
+    if cached:
+        lines.extend(line for line in cached.splitlines() if line.startswith("jobseek_redis_"))
+    lines.append(_metric("jobseek_redis_capacity_snapshot_available", int(available)))
 
 
 def _unit_enabled(unit: str) -> bool:
@@ -436,6 +499,47 @@ SELECT
 FROM job_board jb;
 """.strip()
 
+BOARD_GONE_SCHEMA_SQL = """
+SELECT count(*)
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'job_board'
+  AND column_name IN (
+    'gone_confirmation_count',
+    'gone_first_confirmed_at',
+    'gone_last_confirmed_at',
+    'last_gone_error',
+    'last_gone_endpoint',
+    'last_gone_status',
+    'gone_transition_count',
+    'gone_recovery_count'
+  );
+""".strip()
+
+BOARD_GONE_STATS_SQL = """
+SELECT
+  count(*) FILTER (WHERE jb.is_enabled = true AND jb.board_status = 'gone_pending'),
+  COALESCE(sum(jb.gone_confirmation_count)
+    FILTER (WHERE jb.is_enabled = true AND jb.board_status = 'gone_pending'), 0),
+  COALESCE(max(extract(epoch FROM now() - jb.gone_first_confirmed_at))
+    FILTER (WHERE jb.is_enabled = true AND jb.board_status = 'gone_pending'), 0),
+  count(*) FILTER (WHERE jb.is_enabled = true AND jb.board_status = 'gone'),
+  COALESCE(sum(jb.gone_transition_count), 0),
+  COALESCE(sum(jb.gone_recovery_count), 0)
+FROM job_board jb;
+""".strip()
+
+PHANTOM_ACTIVE_STATS_SQL = """
+SELECT
+  count(DISTINCT jb.id),
+  count(jp.id),
+  COALESCE(max(extract(epoch FROM now() - jp.updated_at)), 0)
+FROM job_posting jp
+JOIN job_board jb ON jb.id = jp.board_id
+WHERE jp.is_active = true
+  AND jb.board_status IN ('disabled', 'gone');
+""".strip()
+
 
 def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
     result = _run(
@@ -482,6 +586,55 @@ def _collect_board_quarantine_metrics(lines: list[str], container: str) -> None:
             _metric("jobseek_crawler_quarantine_oldest_seconds", oldest_seconds),
             _metric("jobseek_crawler_quarantine_active_postings", active_postings),
             _metric("jobseek_crawler_board_recoveries_total", recoveries),
+        )
+    )
+
+
+def _collect_board_gone_metrics(lines: list[str], container: str) -> None:
+    """Expose durable provider-gone confirmation and recovery state."""
+
+    schema_columns = _postgresql_query(container, BOARD_GONE_SCHEMA_SQL)
+    schema_ready = int(schema_columns == "8")
+    lines.append(_metric("jobseek_crawler_board_gone_schema_ready", schema_ready))
+    if not schema_ready:
+        return
+
+    fields = _postgresql_query(container, BOARD_GONE_STATS_SQL).split("\t")
+    if len(fields) != 6:
+        raise ProbeError("board gone statistics query returned an unexpected shape")
+    try:
+        pending, confirmations, oldest_seconds, terminal, transitions, recoveries = (
+            float(value) for value in fields
+        )
+    except ValueError as exc:
+        raise ProbeError("board gone statistics query returned a non-numeric value") from exc
+    lines.extend(
+        (
+            _metric("jobseek_crawler_gone_pending_boards", pending),
+            _metric("jobseek_crawler_gone_pending_confirmations", confirmations),
+            _metric("jobseek_crawler_gone_pending_oldest_seconds", oldest_seconds),
+            _metric("jobseek_crawler_gone_terminal_boards", terminal),
+            _metric("jobseek_crawler_board_gone_transitions_total", transitions),
+            _metric("jobseek_crawler_board_gone_recoveries_total", recoveries),
+        )
+    )
+
+
+def _collect_phantom_active_metrics(lines: list[str], container: str) -> None:
+    """Expose active postings that no terminal board can refresh."""
+
+    fields = _postgresql_query(container, PHANTOM_ACTIVE_STATS_SQL).split("\t")
+    if len(fields) != 3:
+        raise ProbeError("phantom-active statistics query returned an unexpected shape")
+    try:
+        boards, postings, oldest_seconds = (float(value) for value in fields)
+    except ValueError as exc:
+        raise ProbeError("phantom-active statistics query returned a non-numeric value") from exc
+    lines.extend(
+        (
+            _metric("jobseek_crawler_phantom_active_boards", boards),
+            _metric("jobseek_crawler_phantom_active_postings", postings),
+            _metric("jobseek_crawler_phantom_active_oldest_seconds", oldest_seconds),
         )
     )
 
@@ -597,6 +750,8 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
         raise ProbeError("PostgreSQL statistics query returned a non-numeric value") from exc
 
     _collect_board_quarantine_metrics(lines, container)
+    _collect_board_gone_metrics(lines, container)
+    _collect_phantom_active_metrics(lines, container)
 
     relation = _postgresql_query(
         container,
@@ -964,6 +1119,10 @@ def collect(
                 (
                     "codex-error-review",
                     lambda: _collect_codex_error_review_metrics(lines),
+                ),
+                (
+                    "redis-capacity",
+                    lambda: _collect_redis_capacity_metrics(lines, state_dir, now=now),
                 ),
             )
         )

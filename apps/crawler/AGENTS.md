@@ -172,6 +172,11 @@ uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile wa
 uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (RETIRED in #2821 — kept for revival; no scheduler invokes it)
 uv run crawler retry-stalled-scrapes   # Reset next_scrape_at for transient-3-strike-stalled postings (#2738; see docs/03-crawler-architecture.md "Delisting model" section 5)
 uv run crawler retry-stalled-scrapes --dry-run  # Report the count without writing
+uv run crawler sweep-phantoms --dry-run  # Classify terminal-board active postings
+uv run crawler sweep-phantoms            # Bounded/resumable terminal-board delist
+uv run crawler retire-stale-boards --format md    # Current provider evidence report
+uv run crawler retire-stale-boards --format json  # Machine-readable reason codes
+uv run crawler retire-stale-boards --format shell # Commands only for fully verified gone rows
 uv run crawler reprocess-experience --dry-run   # Report active postings whose stored descriptions would update experience_min/max (#3289)
 uv run crawler reprocess-experience             # Apply the #3289 experience_min/max correction locally; exporter propagates changes
 uv run crawler reprocess-occupations --dry-run  # Report occupation_id changes after taxonomy splits (#3360)

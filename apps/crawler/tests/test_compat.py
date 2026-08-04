@@ -58,6 +58,19 @@ def test_detect_ats_breezy_host():
     assert detect_ats_from_url("https://acme.breezy.hr") == "breezy"
 
 
+def test_detect_ats_avature_vendor_url_is_strict():
+    assert detect_ats_from_url("https://acme.avature.net/en_US/careers/SearchJobs") == "avature"
+    assert (
+        detect_ats_from_url("https://acme.avature.net/en_US/careers/JobDetail/Role/123")
+        == "avature"
+    )
+    assert detect_ats_from_url("https://jobs.example.com/careers/SearchJobs") is None
+    assert (
+        detect_ats_from_url("https://acme.avature.net/en_US/careers/SearchJobs?keyword=engineer")
+        is None
+    )
+
+
 def test_detect_ats_hibob_host():
     assert detect_ats_from_url("https://acme.careers.hibob.com/") == "hibob"
 
