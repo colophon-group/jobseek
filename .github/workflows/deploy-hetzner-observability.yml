@@ -13,6 +13,7 @@ on:
       - 'scripts/sync-grafana-alertmanager.py'
       - 'scripts/sync-grafana-rules.py'
       - 'scripts/test-grafana-paging.py'
+      - 'scripts/verify-grafana-host-metrics.py'
       - 'docs/14-error-review-routine.md'
       - 'docs/16-hetzner-maintenance.md'
       - 'docs/19-data-backup-recovery.md'

@@ -5,12 +5,18 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import time
 from typing import Any
 
 import httpx
 
 EXPECTED_ROLES = frozenset({"crawler", "postgresql", "typesense"})
+REQUIRED_BACKUPS = frozenset(
+    {("postgresql", "postgresql"), ("typesense", "typesense")}
+)
+OPTIONAL_BACKUPS = frozenset({("typesense", "web-postgresql")})
+_SAFE_LABEL_VALUE = re.compile(r"[A-Za-z0-9_.:-]{1,80}")
 SERIES_BUDGETS = {
     "active_series": 12_000,
     "crawler_series": 2_000,
@@ -20,11 +26,11 @@ SERIES_BUDGETS = {
 QUERIES = {
     "fresh_sampler": "jobseek_host_observability_last_collect_unixtime",
     "probe_series": "count by (host_role) (jobseek_host_observability_probe_success)",
-    "failed_probes": "count(jobseek_host_observability_probe_success == 0)",
+    "failed_probes": "jobseek_host_observability_probe_success == 0",
     "container_series": "count by (host_role) (jobseek_container_running)",
-    "stopped_containers": "count(jobseek_container_running == 0)",
-    "backup_series": "count(jobseek_backup_last_attempt_success)",
-    "failed_backups": "count(jobseek_backup_last_attempt_success == 0)",
+    "stopped_containers": "jobseek_container_running == 0",
+    "backup_series": "jobseek_backup_last_attempt_success",
+    "failed_backups": "jobseek_backup_last_attempt_success == 0",
     "postgresql_ready": "count(jobseek_postgresql_ready == 1)",
     "postgresql_shared_memory": "count(jobseek_postgresql_shared_memory_configured_bytes)",
     "postgresql_emergency_reserve": "count(jobseek_postgresql_emergency_reserve_bytes)",
@@ -81,6 +87,30 @@ def _role_values(results: dict[str, list[dict[str, Any]]], name: str) -> dict[st
     return values
 
 
+def _series_keys(
+    results: dict[str, list[dict[str, Any]]], name: str, labels: tuple[str, ...]
+) -> set[tuple[str, ...]]:
+    keys: set[tuple[str, ...]] = set()
+    for row in results[name]:
+        try:
+            metric = row["metric"]
+            key = tuple(str(metric[label]) for label in labels)
+        except (KeyError, TypeError) as exc:
+            raise VerificationError(f"{name} returned invalid series labels") from exc
+        if any(_SAFE_LABEL_VALUE.fullmatch(value) is None for value in key):
+            raise VerificationError(f"{name} returned invalid series labels")
+        keys.add(key)
+    return keys
+
+
+def _format_series(keys: set[tuple[str, ...]]) -> str:
+    ordered = sorted("/".join(key) for key in keys)
+    rendered = ", ".join(ordered[:10])
+    if len(ordered) > 10:
+        rendered += f", +{len(ordered) - 10} more"
+    return rendered
+
+
 def validate_results(
     results: dict[str, list[dict[str, Any]]], *, now: float, max_age_seconds: int
 ) -> None:
@@ -96,13 +126,26 @@ def validate_results(
         values = _role_values(results, name)
         if set(values) != EXPECTED_ROLES or any(value < 1 for value in values.values()):
             raise VerificationError(f"{name} does not cover all expected host roles")
-    for name in ("failed_probes", "stopped_containers", "failed_backups"):
-        if _scalar(results, name) != 0:
-            raise VerificationError(f"{name} is nonzero")
-    if _scalar(results, "backup_series") != 2:
-        raise VerificationError(
-            "application-data backup metrics do not cover PostgreSQL and Typesense"
-        )
+    unhealthy_series = (
+        ("failed_probes", ("host_role", "probe")),
+        ("stopped_containers", ("host_role", "container")),
+        ("failed_backups", ("host_role", "service")),
+    )
+    for name, labels in unhealthy_series:
+        keys = _series_keys(results, name, labels)
+        if keys:
+            raise VerificationError(f"{name} is nonzero: {_format_series(keys)}")
+
+    backups = _series_keys(results, "backup_series", ("host_role", "service"))
+    missing_backups = REQUIRED_BACKUPS - backups
+    unexpected_backups = backups - REQUIRED_BACKUPS - OPTIONAL_BACKUPS
+    if missing_backups or unexpected_backups:
+        details: list[str] = []
+        if missing_backups:
+            details.append(f"missing={_format_series(missing_backups)}")
+        if unexpected_backups:
+            details.append(f"unexpected={_format_series(unexpected_backups)}")
+        raise VerificationError("application-data backup coverage invalid: " + "; ".join(details))
     if _scalar(results, "postgresql_ready") != 1:
         raise VerificationError("PostgreSQL readiness metric is missing or unhealthy")
     if _scalar(results, "postgresql_shared_memory") != 1:
