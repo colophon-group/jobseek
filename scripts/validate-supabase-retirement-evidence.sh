@@ -123,7 +123,7 @@ backfill_title="Crawler maintenance: backfill-typesense @ ${crawler_sha}"
 backfill_sha="$(validate_run \
   "$TYPESENSE_BACKFILL_RUN_ID" \
   '.github/workflows/crawler-scheduled-maintenance.yml' \
-  'Crawler scheduled maintenance' \
+  "$backfill_title" \
   "$backfill_title" \
   workflow_dispatch \
   14400 \
