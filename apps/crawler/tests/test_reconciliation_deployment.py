@@ -206,7 +206,8 @@ def test_scheduled_oneoffs_filter_database_credentials_by_command() -> None:
     assert '--env-file "$RUNTIME_ENV"' in maintenance
     assert 'if [[ "$TASK" == "refresh-typesense" ]]' in maintenance
     assert "required_env+=(WEB_DATABASE_URL)" in maintenance
-    assert re.search(r"\bDATABASE_URL\b", maintenance) is None
+    assert re.findall(r"\bDATABASE_URL\b", maintenance) == ["DATABASE_URL"]
+    assert "grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL)$'" in maintenance
 
     assert "--env-file /home/deploy/.env" not in currency
     assert '--env-file "$RUNTIME_ENV"' in currency
@@ -263,3 +264,49 @@ def test_install_and_workflow_preserve_rollback_and_privilege_boundary() -> None
     for action in ("actions/checkout", "appleboy/scp-action", "appleboy/ssh-action"):
         matching = [line for line in workflow.splitlines() if f"uses: {action}@" in line]
         assert matching and all("@v" not in line for line in matching)
+
+
+def test_backfill_dispatch_attests_the_exact_live_deployment() -> None:
+    maintenance = MAINTENANCE.read_text(encoding="utf-8")
+
+    assert "expected_crawler_revision:" in maintenance
+    assert "^[0-9a-f]{40}$" in maintenance
+    assert "EXPECTED_CRAWLER_REVISION: ${{ steps.task.outputs.expected_revision }}" in maintenance
+    assert "JOBSEEK_DEPLOY_REVISION=" in maintenance
+    assert '[[ "$active_revision" == "$EXPECTED_CRAWLER_REVISION" ]]' in maintenance
+    assert '[[ "$tag" != latest && -n "$tag" ]]' in maintenance
+    assert "Expected exactly one live exporter container" in maintenance
+    assert "com.docker.compose.service=exporter" in maintenance
+    assert "Live exporter image does not match the active crawler tag" in maintenance
+    assert "Live exporter still has a relational mirror credential" in maintenance
+
+
+def test_backfill_proof_is_one_locked_fail_closed_chain() -> None:
+    maintenance = MAINTENANCE.read_text(encoding="utf-8")
+    chain = (
+        "uv run --no-sync crawler backfill-typesense && "
+        "uv run --no-sync crawler reconcile --repair --full --fresh-cycle "
+        "--target typesense && "
+        "uv run --no-sync crawler verify-typesense-taxonomies"
+    )
+
+    lock = maintenance.index("exec 9>/run/lock/jobseek-crawler-mutation.lock")
+    proof = maintenance.index(chain)
+    hygiene = maintenance.index('crawler-host-hygiene.py"')
+
+    assert maintenance.count(chain) == 1
+    assert lock < proof < hygiene
+    assert "operation_budget=14400" in maintenance
+    assert 'timeout --foreground --signal=TERM --kill-after=90s "$operation_budget"' in maintenance
+    assert "command_timeout: 8h" in maintenance
+
+
+def test_scheduled_refresh_resolves_the_common_image_owner_before_dispatch() -> None:
+    maintenance = MAINTENANCE.read_text(encoding="utf-8")
+
+    owner = maintenance.index("owner=\"$(grep -E '^OWNER='")
+    backfill_only = maintenance.index('if [[ "$TASK" == backfill-typesense ]]')
+    image = maintenance.index('"ghcr.io/${owner}/jobseek-crawler:${tag}"')
+
+    assert owner < backfill_only < image
+    assert '[[ -n "$owner" ]]' in maintenance

@@ -169,7 +169,7 @@ The `company` collection doubles as the source for the company detail page (see 
 | `description` | string (en) | fallback when no per-locale variant |
 | `description_de`, `description_fr`, `description_it` | string | per-locale variants from `company_description`; reader falls back to `description` |
 | `industry_id`, `industry_name` | scalar | en industry name from `industry.name` |
-| `industry_name_de`, `industry_name_fr`, `industry_name_it` | string | per-locale display names from `industry_name`; same fallback rule |
+| `industry_name_de`, `industry_name_fr`, `industry_name_it` | indexed string | per-locale display names from `industry_name`; queried together with English by industry browse/search and therefore cannot be `index: false` |
 | `active_posting_count`, `year_posting_count` | int32 | counts (refreshed by `refresh-typesense`) |
 
 ## Indexing Pipeline
@@ -258,6 +258,29 @@ exponential backoff. If Typesense still rejects or times out a batch, the
 command fails without advancing the scan or CDC cursor past that batch;
 operators must fix the downstream failure and rerun the backfill before
 running `refresh-typesense`.
+
+The production dispatch requires the exact 40-character live crawler revision.
+Before mutation it verifies that `/home/deploy/.env` records that revision and
+an immutable image tag, that exactly one exporter uses the same image, and that
+the exporter has no relational-mirror credential. One fail-closed container
+then runs the following chain while the host mutation lock remains held:
+
+```bash
+uv run --no-sync crawler backfill-typesense && \
+uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense && \
+uv run --no-sync crawler verify-typesense-taxonomies
+```
+
+The fresh reconciliation restarts durable progress at bucket 0, repairs and
+verifies all 256 posting buckets, and rejects an incomplete summary. The final
+gate reads one repeatable-read local PostgreSQL snapshot and compares every
+document and every static consumer-facing field in `location`, `occupation`,
+`seniority`, `technology`, and company-industry data. It also validates the
+live schema, including location hierarchy fields and indexed localized
+industry names. Evidence contains exact counts and projection hashes plus a
+bounded, ID-hashed mismatch list; it never emits row values. Posting-derived
+taxonomy/company counts are excluded from this static gate and remain the
+responsibility of `refresh-typesense`.
 
 `location_direct_ids` is populated by the exporter for new changes, but adding
 the field does not rewrite older posting documents. Roll out this read contract

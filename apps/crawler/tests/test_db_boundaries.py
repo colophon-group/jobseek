@@ -85,6 +85,7 @@ async def test_reconcile_command_always_passes_no_mirror_pool(monkeypatch) -> No
             command="reconcile",
             repair=True,
             full=False,
+            fresh_cycle=False,
             max_partitions=16,
             start_partition=0,
             target="typesense",

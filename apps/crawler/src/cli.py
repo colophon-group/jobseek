@@ -156,6 +156,14 @@ def parse_args() -> argparse.Namespace:
         help="Process the full remaining 256-partition cycle",
     )
     recon_p.add_argument(
+        "--fresh-cycle",
+        action="store_true",
+        help=(
+            "Start the selected target(s) at partition 0 instead of resuming "
+            "durable progress (requires --repair --full)"
+        ),
+    )
+    recon_p.add_argument(
         "--max-partitions",
         type=int,
         default=16,
@@ -503,7 +511,10 @@ def parse_args() -> argparse.Namespace:
         help="Maximum durable schedules selected by one rebuild invocation",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.command == "reconcile" and args.fresh_cycle and not (args.repair and args.full):
+        parser.error("reconcile --fresh-cycle requires --repair --full")
+    return args
 
 
 async def run() -> None:
@@ -820,6 +831,7 @@ async def run() -> None:
                         None,
                         repair=args.repair,
                         full=args.full,
+                        fresh_cycle=args.fresh_cycle,
                         max_partitions=args.max_partitions,
                         start_partition=args.start_partition,
                         target_scope=args.target,

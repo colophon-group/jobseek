@@ -7,9 +7,10 @@ one read-only local PostgreSQL snapshot, verifies the live Typesense schema,
 and returns a non-zero status for any unverifiable or divergent state.
 
 Posting-derived active counts are deliberately excluded from this static
-projection. The protected maintenance operation proves those documents with a
-full backfill followed by a fresh 256-partition reconciliation under the same
-host mutation lock.
+projection and remain governed by ``refresh-typesense``. The protected
+maintenance operation separately proves the posting corpus with a full
+backfill followed by a fresh 256-partition reconciliation under the same host
+mutation lock.
 """
 
 from __future__ import annotations
