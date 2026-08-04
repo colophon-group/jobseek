@@ -285,6 +285,33 @@ class TestDomScraper:
         assert calls["n"] == 2
         assert result.title == "Recovered"
 
+    async def test_static_configured_status_retry_covers_branded_avature_route(self):
+        """A monitor preset can retry Avature custom hosts without URL guessing."""
+        from src.core.scrapers.dom import scrape
+
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return httpx.Response(406, text="temporarily unavailable")
+            return httpx.Response(200, text="<html><body><h2>Recovered</h2></body></html>")
+
+        url = "https://jobs.example.com/en_US/jobsGlobal/FolderDetail/Role/123"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                url,
+                {
+                    "render": False,
+                    "retry_statuses": {"406": 2},
+                    "steps": [{"tag": "h2", "field": "title"}],
+                },
+                client,
+            )
+
+        assert calls["n"] == 2
+        assert result.title == "Recovered"
+
     async def test_static_fetch_multiple_fields(self):
         """render: false extracts multiple fields from static HTML."""
         from src.core.scrapers.dom import scrape

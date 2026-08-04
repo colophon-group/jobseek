@@ -176,6 +176,14 @@ class TestThrottleKey:
         )
         assert _throttle_key(board) == "phh.tbe.taleo.net"
 
+    def test_avature_uses_configured_listing_host(self):
+        board = self._board(
+            crawler_type="avature",
+            board_url="https://www.acme.com/careers",
+            metadata={"listing_url": "https://acme.avature.net/careers/SearchJobs"},
+        )
+        assert _throttle_key(board) == "acme.avature.net"
+
     def test_no_hostname_fallback(self):
         board = self._board(crawler_type="sitemap", board_url="not-a-url")
         assert _throttle_key(board) == "not-a-url"

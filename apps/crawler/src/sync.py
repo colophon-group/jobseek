@@ -48,6 +48,7 @@ from src.redis_queue import (
     enqueue_monitors,
     remove_monitors,
 )
+from src.shared.avature import avature_request_host
 from src.shared.logging import setup_logging
 from src.shared.taleo import taleo_request_host
 from src.typesense_client import get_typesense_client
@@ -620,6 +621,10 @@ def _compute_throttle_key(
         )
         if resolved is not None:
             return resolved.host
+    if monitor_type == "avature":
+        resolved_host = avature_request_host(board_url, metadata or {})
+        if resolved_host:
+            return resolved_host
     if monitor_type in _API_MONITOR_TYPES:
         return monitor_type
     if monitor_type == "taleo":
