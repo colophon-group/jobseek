@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = ROOT / ".github/workflows/repair-location-taxonomy-source.yml"
 RUNBOOK = ROOT / "docs/20-supabase-free-downgrade.md"
+COMPOSE = ROOT / "apps/crawler/docker-compose.yml"
 
 
 def _job(workflow: str, name: str, next_name: str | None = None) -> str:
@@ -103,7 +106,7 @@ def test_operation_attests_exact_deployment_image_and_credentials_without_exposi
     assert 'test "$active_tag" = "$EXPECTED_IMAGE_TAG"' in repair
     assert 'test "$owner" = colophon-group' in repair
     assert "Expected exactly one live exporter container" in repair
-    assert "Live exporter has a relational database credential" in repair
+    assert "Live exporter has a forbidden database credential" in repair
     assert "LOCAL_DATABASE_URL" in repair
     assert "WEB_DATABASE_URL" in repair
     assert "DATABASE_URL_UNPOOLED" in repair
@@ -111,6 +114,27 @@ def test_operation_attests_exact_deployment_image_and_credentials_without_exposi
     assert "postgres(ql)?://|password=" in repair
     assert "Repair output violated the nonsecret evidence contract" in repair
     assert "${{ secrets.DATABASE_URL" not in workflow
+
+
+def test_live_exporter_allows_only_its_required_local_database_boundary() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    repair = _job(workflow, "repair")
+    compose = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
+    exporter_environment = compose["services"]["exporter"]["environment"]
+
+    assert "LOCAL_DATABASE_URL" in exporter_environment
+    assert "DATABASE_URL" not in exporter_environment
+    assert "DATABASE_URL_UNPOOLED" not in exporter_environment
+    assert "WEB_DATABASE_URL" not in exporter_environment
+
+    guard_start = repair.index(
+        "if docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}'"
+    )
+    guard_end = repair.index("            fi", guard_start)
+    credential_guard = repair[guard_start:guard_end]
+    assert "^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL)$" in credential_guard
+    assert "LOCAL_DATABASE_URL" not in credential_guard
+    assert "Live exporter has a forbidden database credential" in credential_guard
 
 
 def test_repair_is_one_bounded_mutation_locked_transactional_command() -> None:
