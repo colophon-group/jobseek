@@ -12,7 +12,6 @@ on:
       - 'scripts/codex-routine-status.py'
       - 'scripts/sync-grafana-alertmanager.py'
       - 'scripts/sync-grafana-rules.py'
-      - 'scripts/test-grafana-paging.py'
       - 'scripts/verify-grafana-host-metrics.py'
       - 'docs/14-error-review-routine.md'
       - 'docs/16-hetzner-maintenance.md'
@@ -42,15 +41,30 @@ jobs:
         run: |
           set -euo pipefail
           bash -n deploy/observability/install-host.sh
-          python3 -m py_compile scripts/codex-routine-status.py scripts/jobseek-host-observability.py scripts/sync-grafana-alertmanager.py scripts/sync-grafana-rules.py scripts/test-grafana-paging.py scripts/verify-grafana-host-metrics.py
+          python3 -m py_compile scripts/codex-routine-status.py scripts/jobseek-host-observability.py scripts/sync-grafana-alertmanager.py scripts/sync-grafana-rules.py scripts/verify-grafana-host-metrics.py
           cd apps/crawler
           uv run --frozen python ../../scripts/sync-grafana-alertmanager.py \
-            --dry-run --url https://grafana.example.com \
-            --api-key test-only --email operator@example.com
-          uv run --frozen python ../../scripts/sync-grafana-rules.py --dry-run
-          uv run --frozen python ../../scripts/test-grafana-paging.py \
             --dry-run --url https://grafana.example.com --api-key test-only
-          uv run --frozen pytest tests/test_alertmanager_paging.py tests/test_codex_routine_status.py tests/test_grafana_paging_e2e.py tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py tests/test_grafana_host_metrics.py -q
+          uv run --frozen python ../../scripts/sync-grafana-rules.py --dry-run
+          uv run --frozen pytest tests/test_alertmanager_paging.py tests/test_codex_routine_status.py tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py tests/test_grafana_host_metrics.py -q
+
+  disable-paging:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Ensure production paging remains disabled
+        working-directory: apps/crawler
+        env:
+          GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+          GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+        run: uv run --frozen python ../../scripts/sync-grafana-alertmanager.py --disable
 
   deploy-hosts:
     needs: validate
@@ -134,7 +148,7 @@ jobs:
         run: uv run --frozen python ../../scripts/verify-grafana-host-metrics.py
 
   sync-rules:
-    needs: verify-ingestion
+    needs: [disable-paging, verify-ingestion]
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -144,13 +158,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-      - name: Transactionally sync independent paging routes
-        working-directory: apps/crawler
-        env:
-          GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
-          GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
-          GRAFANA_ALERT_EMAIL: ${{ secrets.GRAFANA_ALERT_EMAIL }}
-        run: uv run --frozen python ../../scripts/sync-grafana-alertmanager.py
       - name: Transactionally sync Mimir alert rules
         working-directory: apps/crawler
         env:
