@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import asdict, dataclass
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 import httpx
 
@@ -43,6 +43,20 @@ class ExistingIssue:
 class CreatedIssue:
     number: int
     url: str
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubWorkItem:
+    kind: Literal["issue", "pr"]
+    number: int
+    state: str
+    title: str
+    body: str
+    url: str
+
+    @property
+    def reference(self) -> str:
+        return f"{self.kind}:{self.number} [{self.state}] {self.title} ({self.url})"
 
 
 class SupportIssueClient(Protocol):
@@ -139,6 +153,56 @@ class GitHubSupportIssueClient:
                 return issues
         raise GitHubError("GitHub issue pagination exceeded 100 pages")
 
+    async def list_candidate_work_items(self) -> list[GitHubWorkItem]:
+        """Bulk-index all company requests plus currently active PRs."""
+
+        issue_payloads = await self._list_pages(
+            "issues", params={"state": "all", "labels": "company-request"}
+        )
+        pr_payloads = await self._list_pages("pulls", params={"state": "open"})
+        items: list[GitHubWorkItem] = []
+        for kind, payloads in (("issue", issue_payloads), ("pr", pr_payloads)):
+            for raw in payloads:
+                if kind == "issue" and "pull_request" in raw:
+                    continue
+                body = raw.get("body")
+                try:
+                    items.append(
+                        GitHubWorkItem(
+                            kind=kind,  # type: ignore[arg-type]
+                            number=int(raw["number"]),
+                            state=str(raw["state"]),
+                            title=str(raw["title"]),
+                            body=body if isinstance(body, str) else "",
+                            url=str(raw["html_url"]),
+                        )
+                    )
+                except (KeyError, TypeError, ValueError) as exc:
+                    raise GitHubError(f"GitHub {kind} has an invalid shape") from exc
+        return items
+
+    async def _list_pages(self, endpoint: str, *, params: dict[str, str]) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+        for page in range(1, 101):
+            if self.rate_remaining is not None and self.rate_remaining <= self.rate_limit_reserve:
+                raise GitHubRateLimitError(
+                    f"GitHub primary rate limit is below reserve ({self.rate_remaining})"
+                )
+            response = await self.client.get(
+                f"https://api.github.com/repos/{self.repo}/{endpoint}",
+                headers=self.headers,
+                params={**params, "per_page": "100", "page": str(page)},
+            )
+            self._check_response(response)
+            await asyncio.sleep(self.pace_seconds)
+            payload = response.json()
+            if not isinstance(payload, list) or not all(isinstance(item, dict) for item in payload):
+                raise GitHubError(f"GitHub {endpoint} response is not an object list")
+            result.extend(payload)
+            if len(payload) < 100:
+                return result
+        raise GitHubError(f"GitHub {endpoint} pagination exceeded 100 pages")
+
     async def create_support_issue(
         self, *, title: str, body: str, labels: list[str]
     ) -> CreatedIssue:
@@ -154,15 +218,43 @@ class GitHubSupportIssueClient:
             )
         except httpx.TransportError as exc:
             raise GitHubCreateOutcomeUnknown("GitHub create outcome is unknown") from exc
+        if response.status_code >= 500 or response.status_code in {408, 425}:
+            self.rate_remaining = _optional_int(response.headers.get("x-ratelimit-remaining"))
+            self.rate_reset = _optional_int(response.headers.get("x-ratelimit-reset"))
+            raise GitHubCreateOutcomeUnknown(
+                f"GitHub create outcome is unknown after HTTP {response.status_code}"
+            )
         self._check_response(response)
-        await asyncio.sleep(max(1.0, self.pace_seconds))
-        payload = response.json()
-        if not isinstance(payload, dict):
-            raise GitHubError("GitHub create response is not an object")
         try:
-            return CreatedIssue(number=int(payload["number"]), url=str(payload["html_url"]))
-        except (KeyError, TypeError, ValueError) as exc:
-            raise GitHubError("GitHub create response has an invalid shape") from exc
+            payload = response.json()
+        except ValueError as exc:
+            raise GitHubCreateOutcomeUnknown(
+                "GitHub create committed but returned invalid JSON"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise GitHubCreateOutcomeUnknown(
+                "GitHub create committed but returned a non-object response"
+            )
+        number = payload.get("number")
+        url = payload.get("html_url")
+        if (
+            not isinstance(number, int)
+            or isinstance(number, bool)
+            or number <= 0
+            or not isinstance(url, str)
+            or not url.strip()
+        ):
+            raise GitHubCreateOutcomeUnknown(
+                "GitHub create committed but returned an invalid issue shape"
+            )
+        created = CreatedIssue(number=number, url=url)
+        await asyncio.sleep(max(1.0, self.pace_seconds))
+        return created
+
+    async def create_candidate_issue(
+        self, *, title: str, body: str, labels: list[str]
+    ) -> CreatedIssue:
+        return await self.create_support_issue(title=title, body=body, labels=labels)
 
     def _check_response(self, response: httpx.Response) -> None:
         self.rate_remaining = _optional_int(response.headers.get("x-ratelimit-remaining"))

@@ -89,6 +89,47 @@ next-best improvement is a direct `tenant_key` column on every job row and the
 matching key in `companies.csv`. Jobseek will consume either as data, while
 continuing to own and run all production monitors.
 
+## Candidate identity and conservative deduplication
+
+Every candidate receives a stable source key beginning
+`ats-scrapers:<family>:`. The final component is a locally derived provider
+tenant/board identity; it is not copied from or coupled to upstream scraper
+code. Provider-host/API/embed aliases and explicit native monitor configuration
+are normalized where the native monitor uses one tenant token, while real
+board scopes such as Taleo CWS portals, Moka campus
+portals, Keka sub-boards, and distinct Workday sites remain distinct. The issue
+body contains the readable source key and normalized board URL. Its machine
+marker stores a reversible base32 source identity plus a full SHA-256 URL
+identity, avoiding HTML-marker injection and lossy URL truncation.
+
+Only these exact facts are hard skips:
+
+- the stable source key already exists in the ledger or a marked GitHub work
+  item;
+- the normalized board URL already exists in `boards.csv`, the ledger, or a
+  marked GitHub work item;
+- the exact native ATS plus tenant/board scope is already configured;
+- a prior create remains in the ledger even if its remote item has drifted.
+
+Names, slugs, shared homepage domains, parent/subsidiary/region relationships,
+and similar company-request or active-PR titles are always soft warnings. They
+are attached to the generated issue for the configuration agent and never
+discard a candidate. This deliberately preserves acquisitions, renamed
+companies, subsidiaries, regional portals, and valid second ATS/board setups.
+
+Local companies and boards are loaded once from their CSV registries. GitHub
+company-request issues (open and closed) and active PRs are fetched in paginated
+bulk lists; there is no per-candidate GitHub search. Marked issues are
+reconciled into `candidates/ledger.sqlite` at startup. Active PR markers remain
+ephemeral hard stops and never become durable ledger records. Each successful
+create is committed immediately with SQLite WAL enabled. If a create response
+is lost, returns an ambiguous 5xx, or has a malformed success body, the
+coordinator refreshes the bulk marker index before returning an unknown
+outcome. If the process dies between GitHub commit and the local commit, the
+next startup repairs the ledger from the marker. A missing remote record is
+reported as `remote_missing` and remains a fail-closed hard skip instead of
+silently recreating the issue.
+
 ## Compatibility and quarantine
 
 `apps/crawler/src/ats_inventory/compat.py` is the explicit compatibility source
@@ -126,6 +167,14 @@ uv run crawler ats-inventory \
   --cache-dir /var/lib/jobseek/ats-inventory \
   --impact
 
+# Explain exact hard skips and all advisory matches for the top ranked rows.
+# This mode never creates company issues.
+GH_TOKEN=... uv run crawler ats-inventory \
+  --cache-dir /var/lib/jobseek/ats-inventory \
+  --impact \
+  --candidate-issues plan \
+  --candidate-limit 100
+
 # Reconcile unsupported families without writes
 GH_TOKEN=... uv run crawler ats-inventory \
   --cache-dir /var/lib/jobseek/ats-inventory \
@@ -139,5 +188,6 @@ GH_TOKEN=... uv run crawler ats-inventory \
 
 The normal command emits a structured `ats_inventory.complete` log record. An
 interactive terminal also receives a readable JSON report. The eventual queue
-refill service uses this source snapshot, the derived job-impact snapshot, and
-the deduplication ledger described by #6186-#6190.
+refill service uses this source snapshot, the derived job-impact snapshot, the
+bulk indexes, and this same idempotent candidate coordinator. Queue admission,
+daily caps, and rollout state remain the separate #6188 stage.

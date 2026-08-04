@@ -109,10 +109,11 @@ def _cornerstone(parsed, _ats_id: object) -> str | None:  # type: ignore[no-unty
 
 def _dayforce(parsed, _ats_id: object) -> str | None:  # type: ignore[no-untyped-def]
     parts = _segments(parsed)
-    if not parts:
+    first = next(iter(parts), None)
+    if first is None:
         return None
     portal = parts[1] if len(parts) > 1 and parts[1] not in {"jobs", "job"} else ""
-    return f"dayforce:{parts[0]}/{portal}"
+    return f"dayforce:{first}/{portal}"
 
 
 def _moka(parsed, _ats_id: object) -> str | None:  # type: ignore[no-untyped-def]
