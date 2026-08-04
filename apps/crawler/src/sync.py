@@ -651,6 +651,8 @@ def _compute_throttle_key(
         resolved_host = avature_request_host(board_url, metadata or {})
         if resolved_host:
             return resolved_host
+    if monitor_type == "pageup":
+        return "careers.pageuppeople.com"
     if monitor_type in _API_MONITOR_TYPES:
         return monitor_type
     if monitor_type == "taleo":
@@ -3064,6 +3066,20 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
 
         if not dry_run:
             await apply_board_redis_effects(board_effects)
+
+        # Reconcile visibility after board hashes/schedules and retired-board
+        # cleanup are complete. This deliberately classifies and reports only:
+        # active poison descriptors remain parked until an explicit operator
+        # retry, and retired descriptors remain until an explicit prune.
+        if local_pool is not None and not dry_run:
+            from src.deadletters import classify_deadletters, lifecycle_counts
+
+            deadletters = await classify_deadletters(local_pool)
+            log.info(
+                "sync.deadletters.reconciled",
+                total=len(deadletters),
+                counts=lifecycle_counts(deadletters),
+            )
 
         log.info(
             "sync.complete",

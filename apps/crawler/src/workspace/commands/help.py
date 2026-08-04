@@ -98,6 +98,7 @@ Monitor Types (cheapest first):
   hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
   jazzhr            10      Job URLs          Auto-configured
+  pageup            10      Full/partial      Auto-enriched DOM
   keka              10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
@@ -110,6 +111,7 @@ Monitor Types (cheapest first):
   smartrecruiters   10      Job URLs          Auto-configured
   softgarden        10      Job URLs          Auto-configured
   traffit           10      Full job data     No (skipped)
+  ukg               10      Full/partial      Auto-enriched
   workable          10      Job URLs          Auto-configured
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
@@ -1161,6 +1163,90 @@ avature — Avature public static listing monitor
 """
 
 
+MONITOR_UKG = """\
+ukg — UKG Pro public recruiting API
+
+  Listing:  https://{host}/{tenant}/JobBoard/{board_id}
+  Search:   POST {listing}/JobBoardView/LoadSearchResults
+  Config:   {"host":"recruiting.ultipro.com","tenant":"ACM1000ACME",
+             "board_id":"11111111-1111-4111-8111-111111111111"}
+
+  Returns rich summaries from bounded, streamed API pages: title, locations,
+  employment and workplace type, posting date, brief description, and stable
+  OpportunityDetail URLs. The shared embedded scraper enriches only the full
+  Description field from UKG's CandidateOpportunityDetail JSON constructor.
+
+  Detection accepts direct or explicitly linked public UKG board URLs on
+  recruiting*.ultipro.com and recruiting.ultipro.ca. It never guesses tenant
+  or board UUIDs. First-page 404/410 is definitive gone; transient auth, rate
+  limit, transport, and server failures fail the run without removing jobs.
+  Pagination is capped at 50,000 opportunities.
+
+  Upstream ats-scrapers is inventory input only. Jobseek neither imports nor
+  executes upstream scraper code.
+"""
+
+
+MONITOR_JOBVITE = """\
+jobvite — Jobvite public static listing monitor
+
+  Listing:  https://jobs.jobvite.com/{tenant}
+  Branded:  /careers/{tenant}, /{tenant}/jobs/positions
+  Returns:  Canonical /{tenant}/job/{id} detail URLs
+  Scraper:  Auto-configured shared json-ld scraper
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs and 5 MB listing HTML
+
+  Config:
+    {"tenant":"acme","listing_url":"https://jobs.jobvite.com/acme"}
+
+  The monitor reuses the shared DOM link extractor, HTTP retry policy, and
+  bot-challenge guard. It validates Jobvite's first-party careersiteName
+  marker before accepting empty results. Branded landing pages are resolved
+  only through explicit same-tenant Jobs links, never tenant guessing.
+
+  Detection: Direct Jobvite listing/detail URLs or explicit Jobvite links in
+             career-page HTML. Unknown-tenant redirects are BoardGone;
+             transient status, transport, empty-body, and malformed-page
+             failures do not remove jobs.
+  Upstream:  ats-scrapers is inventory input only. Jobseek does not import,
+             execute, or depend on upstream scraper code.
+"""
+
+
+MONITOR_PAGEUP = """\
+pageup — PageUp public static listing monitor
+
+  Listing:  https://careers.pageuppeople.com/{instance}/{source}/{locale}
+  Returns:  Rich title summaries plus stable /job/{id}/{slug} detail URLs
+  Scraper:  Auto-configured shared static DOM description enrichment
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs, 500 jobs/page, 5 MB/page
+
+  Config:
+    {"instance":873,"source_pointer":"cw","locale":"en-us",
+     "listing_url":"https://careers.pageuppeople.com/873/cw/en-us"}
+
+  Each page is checked against PageUp's first-party PU.Jobs.source identity
+  when present, stable visible titles, exact page size, and explicit next-page
+  remaining count. Branded proxy templates that omit PU.Jobs.source are accepted
+  only with non-empty same-board job links; they can never assert an empty board.
+  Duplicate responsive-layout anchors are collapsed. Missing, overlapping,
+  conflicting, or changing pages fail the run instead of removing jobs. Pages
+  stream in bounded batches to keep worker heartbeats live.
+
+  The monitor never fetches per-job details. The shared DOM scraper enriches
+  only descriptions on its normal schedule and recognizes PageUp's explicit
+  jobnotfound redirect as a permanent gone signal.
+
+  Detection: Direct PageUp listing/detail URLs or explicit PageUp links in a
+             career page. Instance IDs are never guessed.
+  Zero jobs? A first-party listing with authoritative total 0 is valid.
+  Upstream:  ats-scrapers is inventory input only. Jobseek does not import,
+             execute, or depend on upstream scraper code.
+"""
+
+
 MONITOR_TALEO = """\
 taleo — Taleo Business Edition static listing monitor
 
@@ -1431,20 +1517,25 @@ personio — Personio XML Feed + HTML Fallback
   Zero jobs?  Verify slug — try the listing page in a browser"""
 
 MONITOR_RSS = """\
-rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
+rss — RSS 2.0 Feed Monitor + legacy SuccessFactors (presets: successfactors, teamtailor, generic)
 
   Feed:     GET {feed_url}
-  Returns:  Full job data (title, HTML description, locations, date_posted)
+  Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
+            posting date, and stable URL; static DOM enriches description.
             metadata: id and preset-specific fields
-  Scraper:  Not needed (feed returns full data, scraper step is skipped)
+  Scraper:  Feeds are skipped. Legacy SuccessFactors automatically uses the
+            static DOM scraper scoped to .joqReqDescription.
   Cap:      50,000 jobs
   Note:     One monitor type with multiple ATS presets:
             - successfactors: /googlefeed.xml (Google Base namespace)
+              or native static DWR pagination for /career?company=... boards
             - teamtailor: /jobs.rss (offset-paginated)
             - generic: standard RSS 2.0 (manual feed URL)
 
   Config:
     {"preset": "successfactors", "feed_url": "https://jobs.sap.com/googlefeed.xml"}
+    {"preset": "successfactors", "variant": "legacy",
+     "host": "career5.successfactors.eu", "company": "1657261P"}
     {"preset": "teamtailor", "feed_url": "https://company.teamtailor.com/jobs.rss"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
 
@@ -1452,9 +1543,12 @@ rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
                Defaults to "generic" when not set.
     feed_url   RSS URL. For known presets, ws probe can auto-fill this from
                the board URL; for generic feeds set it explicitly.
+    variant    SuccessFactors only: "feed" or "legacy". Legacy identity and
+               listing_url are auto-filled from strict SAP board URLs.
 
   Detection:  ws probe shows labels like:
               "SuccessFactors RSS — <feed_url>, N jobs"
+              "SuccessFactors legacy DWR — company: X @ host, N jobs"
               "Teamtailor RSS — <feed_url>, N jobs"
               "RSS (generic) — <feed_url>, N jobs"
   Zero jobs?  Verify feed_url directly in a browser and confirm it returns
@@ -2604,10 +2698,13 @@ MONITOR_CARDS: dict[str, str] = {
     "ashby": MONITOR_ASHBY,
     "adp": MONITOR_ADP,
     "avature": MONITOR_AVATURE,
+    "ukg": MONITOR_UKG,
     "bamboohr": MONITOR_BAMBOOHR,
     "beisen": MONITOR_BEISEN,
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
+    "jobvite": MONITOR_JOBVITE,
+    "pageup": MONITOR_PAGEUP,
     "icims": MONITOR_ICIMS,
     "gupy": MONITOR_GUPY,
     "cornerstone": MONITOR_CORNERSTONE,

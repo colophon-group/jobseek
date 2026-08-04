@@ -55,7 +55,7 @@ from src.processing.scrape import (
     _UPSERT_DESCRIPTION,
     ScrapeItem,
     _apply_defaults,
-    _board_has_enrich,
+    _effective_board_enrich,
     _is_skip_no_scrape,
     _PipelineResult,
 )
@@ -719,6 +719,8 @@ def _throttle_key(board: asyncpg.Record) -> str:
             resolved_host = avature_request_host(board["board_url"], metadata)
             if resolved_host:
                 return resolved_host
+    if crawler_type == "pageup":
+        return "careers.pageuppeople.com"
     if crawler_type in _API_MONITOR_TYPES:
         return crawler_type
     if crawler_type == "taleo":
@@ -815,7 +817,7 @@ async def _process_one_board_streaming(
         if isinstance(metadata, str):
             metadata = json.loads(metadata)
 
-        enrich_fields = _board_has_enrich(metadata)
+        enrich_fields = _effective_board_enrich(metadata, crawler_type)
 
         # Use a per-board http client when the monitor opts out of SSL
         # verification or into the proxy provider. We reuse the shared
@@ -1708,7 +1710,7 @@ async def dry_run_single_board(
     metadata = _parse_metadata(board["metadata"])
     if pcsx_force_full_crawl:
         metadata = {**metadata, "pcsx_force_full_crawl": True}
-    enrich_fields = _board_has_enrich(metadata)
+    enrich_fields = _effective_board_enrich(metadata, crawler_type)
 
     log.info(
         "dry_run.start",

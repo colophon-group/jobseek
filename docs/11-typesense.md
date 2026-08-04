@@ -275,8 +275,8 @@ downtime is required.
 - All search, typeahead, browse-all modals, and watchlist search go through Typesense
 - **Posting detail**: `getPostingDetail` retrieves the posting plus company/location/seniority documents from Typesense and builds the R2 description URL. Original salary amount, currency, and period are denormalized onto the posting document for this reader.
 - **Saved jobs**: `saved_job` owns an immutable posting/company snapshot. The snapshot is populated from Typesense for new saves and backfilled by migration for existing saves, so application history survives later removal of the Supabase `job_posting` mirror. List/detail readers refresh current `is_active` in one bounded Typesense query and retain the snapshot value for missing hits or outages.
-- **Company detail page**: `getCompanyBySlug` reads the `company` collection by slug filter. Postgres is a fallback when Typesense errors or returns 0 hits (so brand-new companies whose Typesense upsert lagged still render)
-- **Graceful degradation**: all Typesense errors return empty results; Postgres fallback for watchlist write functions
+- **Watchlist posting reads**: public watchlist discovery and watchlist posting lists/counts read the Typesense `watchlist` / `job_posting` collections. Together with the posting-detail path above, these named paths do not fall back to the Supabase crawler mirror. Authenticated watchlist metadata, company membership, and mutations remain in the web database
+- **Graceful degradation**: public watchlist discovery and watchlist posting lists return empty results when Typesense is unavailable, while watchlist posting counts return zero. These outages are logged, outage-shaped public discovery results are not cached, and non-availability errors still propagate. This guarantee is scoped to the watchlist and posting-detail paths; the deferred `company.ts` location/taxonomy readers described below remain a deployment blocker
 - **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s). `getCompanyBySlug` is wrapped with a Redis cache (`ttl: 600`, key `company-slug:{slug}:{locale}`) that skips storing nulls so brand-new slugs aren't poisoned
 - **Server-side client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search/read key
 
@@ -298,7 +298,7 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 - `getPostingDetail` (Typesense document reads + R2 URL construction — needs the server search/read key)
 - `getCurrencyRates` (DB read, not Typesense)
 - Salary/experience histograms (`getSalaryHistogram`/`getExperienceHistogram`, kept on server actions for the 3600 s cache)
-- `getCompanyBySlug` (server-rendered company page, has Postgres fallback for cold reads)
+- `getCompanyBySlug` (server-rendered and cached; unavailable Typesense degrades to not found)
 - `getSimilarCompanies` (filtered path requires Postgres slug→id resolution)
 - Browse-all modals (`getGlobalLocationsGrouped`, `getAllOccupationsGrouped`, etc. — need Postgres taxonomy hierarchy)
 - Watchlist postings for >100 companies (uses batched-merge logic that's only worth maintaining server-side)
@@ -319,7 +319,7 @@ Three data tiers, three read paths:
 |------|------|-------|
 | Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` count aggregations, watchlist active-posting counts (via crawler) |
 | Web-owned Postgres | **Only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, `saved_job`, ...) | Auth, watchlist mutations, saved-job snapshots, and watchlist company-pair lookups |
-| Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads, browse-all modals, watchlist search, company detail page, similar-company strip |
+| Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads, browse-all modals, watchlist company search/discovery/posting lists/counts, company autocomplete/detail, public site stats, similar-company strip |
 
 Aggregation queries against `job_posting` are deliberately kept on local Postgres, not Supabase, to keep Supabase compute reserved for user-facing CRUD. Notable examples:
 

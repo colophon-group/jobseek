@@ -964,6 +964,7 @@ class TestRunSync:
 
         mock_create_pool.assert_not_called()
 
+    @patch("src.deadletters.classify_deadletters", new_callable=AsyncMock)
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
     @patch("src.sync._load_company_descriptions")
@@ -1002,6 +1003,7 @@ class TestRunSync:
         mock_load_company_descriptions,
         mock_load_boards,
         mock_setup_logging,
+        mock_classify_deadletters,
     ):
         """Calls all sync functions in order within a transaction."""
         occupation_domains_df = pl.DataFrame()
@@ -1041,6 +1043,7 @@ class TestRunSync:
         mock_load_companies.return_value = companies_df
         mock_load_company_descriptions.return_value = company_descs_df
         mock_load_boards.return_value = boards_df
+        mock_classify_deadletters.return_value = []
 
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()

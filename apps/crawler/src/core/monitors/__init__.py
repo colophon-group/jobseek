@@ -389,6 +389,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"JazzHR static listing \u2014 tenant: {tenant}, {jobs} jobs"
         return f"JazzHR static listing \u2014 tenant: {tenant}"
+    if name == "jobvite":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Jobvite static listing \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"Jobvite static listing \u2014 tenant: {tenant}"
     if name == "icims":
         host = metadata.get("host", "?")
         jobs = metadata.get("jobs")
@@ -435,6 +441,20 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Avature static listing \u2014 {jobs} jobs at {listing_url}"
         return f"Avature static listing \u2014 {listing_url}"
+    if name == "pageup":
+        listing_url = metadata.get("listing_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"PageUp static listing \u2014 {jobs} jobs at {listing_url}"
+        return f"PageUp static listing \u2014 {listing_url}"
+    if name == "ukg":
+        tenant = metadata.get("tenant", "?")
+        board_id = metadata.get("board_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"tenant: {tenant}, board: {board_id}"
+        if jobs is not None:
+            return f"UKG Pro API \u2014 {label}, {jobs} jobs"
+        return f"UKG Pro API \u2014 {label}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -651,6 +671,13 @@ def _build_comment(name: str, metadata: dict) -> str:
         return f"Jobylon embed \u2014 {label}"
     if name == "rss":
         preset = metadata.get("preset", "generic")
+        variant = metadata.get("variant")
+        if preset == "successfactors" and variant == "legacy":
+            company = metadata.get("company", "?")
+            host = metadata.get("host", "?")
+            jobs = metadata.get("jobs")
+            label = f"SuccessFactors legacy DWR \u2014 company: {company} @ {host}"
+            return f"{label}, {jobs} jobs" if jobs is not None else label
         feed_url = metadata.get("feed_url", "?")
         jobs = metadata.get("jobs")
         label = {
@@ -766,6 +793,7 @@ from src.core.monitors import (  # noqa: E402
     icims,  # noqa: F401
     inline,  # noqa: F401
     jazzhr,  # noqa: F401
+    jobvite,  # noqa: F401
     jobylon,  # noqa: F401
     join,  # noqa: F401
     keka,  # noqa: F401
@@ -775,6 +803,7 @@ from src.core.monitors import (  # noqa: E402
     nextdata,  # noqa: F401
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
+    pageup,  # noqa: F401
     paycom,  # noqa: F401
     paylocity,  # noqa: F401
     personio,  # noqa: F401
@@ -791,6 +820,7 @@ from src.core.monitors import (  # noqa: E402
     talentbrew,  # noqa: F401
     taleo,  # noqa: F401
     traffit,  # noqa: F401
+    ukg,  # noqa: F401
     umantis,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
