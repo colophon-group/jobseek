@@ -196,6 +196,8 @@ def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> 
     assert "ghcr.io/colophon-group/jobseek-crawler:latest" not in source
     assert "jobseek-ats-inventory-host.lock" in source
     assert "flock -n 9" in source
+    assert '--user "${CONTAINER_UID}:${CONTAINER_GID}"' in source
+    assert "ATS inventory service must run as a non-root host user" in source
     assert "--read-only" in source
     assert "--cap-drop ALL" in source
     assert "--security-opt no-new-privileges" in source
