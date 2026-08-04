@@ -80,6 +80,11 @@ _AVATURE_UNIQUE_DETAIL_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Stable incident identifier shared by Workday's list monitor and the worker
+# cohort circuit. Keep this provider/status-specific: ordinary Workday
+# failures must never be able to pause every tenant (#5715).
+WORKDAY_LIST_303_INCIDENT = "workday-list-303"
+
 
 def is_avature_job_detail_url(url: str) -> bool:
     """Return whether *url* is a recognizable Avature detail page."""
@@ -121,6 +126,9 @@ class RequestHostTracker:
     last_url: str | None = None
     last_status_code: int | None = None
     last_transport_error: str | None = None
+    last_application_error: str | None = None
+    last_provider_incident: str | None = None
+    last_provider_incident_host: str | None = None
 
     def note(self, host: str) -> None:
         normalized = host.rstrip(".").lower()
@@ -136,26 +144,61 @@ class RequestHostTracker:
         self.last_url = url
         self.last_status_code = None
         self.last_transport_error = None
+        self.last_application_error = None
 
     def note_response(self, host: str, status_code: int) -> None:
         self.note(host)
         self.last_status_code = status_code
         self.last_transport_error = None
+        self.last_application_error = None
 
     def note_transport_error(self, host: str, exc: httpx.TransportError) -> None:
         self.note(host)
         self.last_status_code = None
         self.last_transport_error = type(exc).__name__
+        self.last_application_error = None
+
+    def note_transient_response_failure(self, host: str, url: str, reason: str) -> None:
+        """Promote a provider-verified response failure to a transient outcome.
+
+        Some upstreams return a successful HTTP status with a temporary
+        non-API body during provider incidents. Callers must only use this
+        after exhausting their provider-specific validation and retries; a
+        generic parser failure must remain a reachable-host outcome.
+        """
+
+        self.note(host)
+        self.last_url = url
+        self.last_transport_error = None
+        self.last_application_error = reason
+
+    def note_provider_incident(self, host: str, url: str, incident: str) -> None:
+        """Record a provider-specific exhausted response on the final host.
+
+        The worker may use this marker for a distinct-origin cohort circuit.
+        It deliberately does not change the generic host classification: the
+        monitor path already accounts for every failed run once.
+        """
+
+        self.note(host)
+        self.last_url = url
+        self.last_transport_error = None
+        self.last_application_error = None
+        self.last_provider_incident = incident
+        self.last_provider_incident_host = self.last_host
 
     @property
     def transient_failure_host(self) -> str | None:
         """Return the final host only for an upstream-transient outcome.
 
         Parser/configuration failures after a successful response must not
-        open a host-wide circuit. Network transport errors and overload/
-        availability responses are safe to coalesce across postings.
+        open a host-wide circuit. Network transport errors, overload/
+        availability responses, and explicitly promoted provider incidents
+        are safe to coalesce across postings.
         """
 
+        if self.last_application_error is not None:
+            return self.last_host
         if self.last_transport_error is not None:
             return self.last_host
         status = self.last_status_code
@@ -173,6 +216,28 @@ class RequestHostTracker:
 _request_host_tracker: contextvars.ContextVar[RequestHostTracker | None] = contextvars.ContextVar(
     "request_host_tracker", default=None
 )
+
+
+def mark_transient_response_failure(url: str, *, reason: str) -> None:
+    """Mark the current task's final response as a transient provider incident.
+
+    This is a no-op outside :func:`track_request_hosts`, which keeps scrapers
+    usable in isolation. The URL should identify the final response origin.
+    """
+
+    tracker = _request_host_tracker.get()
+    host = urlparse(url).hostname
+    if tracker is not None and host:
+        tracker.note_transient_response_failure(host, url, reason)
+
+
+def mark_provider_incident(url: str, *, incident: str) -> None:
+    """Attach a verified provider incident to the current task outcome."""
+
+    tracker = _request_host_tracker.get()
+    host = urlparse(url).hostname
+    if tracker is not None and host:
+        tracker.note_provider_incident(host, url, incident)
 
 
 @contextmanager

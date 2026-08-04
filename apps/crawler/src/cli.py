@@ -11,8 +11,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
+import os
 import signal
+import sys
 import uuid
+from pathlib import Path
 from typing import cast
 
 import asyncpg
@@ -92,6 +96,50 @@ def parse_args() -> argparse.Namespace:
     sub.add_parser("drain", help="R2 drain instance")
 
     sub.add_parser("sync", help="CSV -> local Postgres + Redis + Typesense")
+
+    ats_inventory_p = sub.add_parser(
+        "ats-inventory",
+        help="Validate and cache the data-only ats-scrapers company inventory",
+    )
+    ats_inventory_p.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=Path(os.environ.get("ATS_INVENTORY_CACHE_DIR", ".cache/ats-inventory")),
+        help="Persistent checksum-addressed cache directory",
+    )
+    ats_inventory_p.add_argument(
+        "--manifest-url",
+        default="https://storage.stapply.ai/jobhive/v1/manifest.json",
+        help="Published v2 manifest URL (restricted to storage.stapply.ai/jobhive/v1/)",
+    )
+    ats_inventory_p.add_argument(
+        "--support-issues",
+        choices=("off", "plan", "create"),
+        default="off",
+        help="Reconcile unsupported-family issues; writes require explicit 'create'",
+    )
+    ats_inventory_p.add_argument(
+        "--github-repo",
+        default=os.environ.get("ATS_INVENTORY_GITHUB_REPO", "colophon-group/jobseek"),
+        help="Repository used for unsupported-family issues",
+    )
+    ats_inventory_p.add_argument(
+        "--github-token-env",
+        default="GH_TOKEN",
+        help="Environment variable containing an injected GitHub token",
+    )
+    ats_inventory_p.add_argument(
+        "--retention",
+        type=int,
+        default=7,
+        help="Maximum recent validated manifest snapshots to retain",
+    )
+    ats_inventory_p.add_argument(
+        "--max-cache-mib",
+        type=int,
+        default=256,
+        help="Maximum steady-state cache size in MiB",
+    )
 
     recon_p = sub.add_parser(
         "reconcile",
@@ -385,6 +433,76 @@ def parse_args() -> argparse.Namespace:
         help="Count what would be removed; do not write.",
     )
 
+    deadletter_p = sub.add_parser(
+        "deadletters",
+        help="Inspect or explicitly resolve lifecycle-classified monitor deadletters",
+    )
+    deadletter_p.add_argument(
+        "action",
+        choices=("inspect", "retry", "prune"),
+        help="Inspect all entries, retry active entries, or prune authoritative stale entries",
+    )
+    deadletter_p.add_argument(
+        "--entry",
+        action="append",
+        default=None,
+        help=(
+            "Exact '<wtype>:<member>' selector from inspect output. Repeat for multiple "
+            "entries. Required for retry/prune."
+        ),
+    )
+    deadletter_p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Perform selected retry/prune mutations (default is dry-run)",
+    )
+
+    redis_capacity_p = sub.add_parser(
+        "redis-capacity",
+        help="Inspect budgets, prune orphan scrape configs, or rebuild schedules",
+    )
+    redis_capacity_p.add_argument("action", choices=("inspect", "prune", "rebuild"))
+    redis_capacity_p.add_argument(
+        "--format",
+        choices=("json", "prometheus"),
+        default="json",
+        help="Inspect output format (default: json)",
+    )
+    redis_capacity_p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply prune/rebuild mutations (default is dry-run)",
+    )
+    redis_capacity_p.add_argument(
+        "--cursor",
+        type=int,
+        default=0,
+        help="Redis SCAN cursor returned by a prior prune invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--max-scanned",
+        type=int,
+        default=50_000,
+        help="Maximum scrape hashes classified by one prune invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--max-delete",
+        type=int,
+        default=50_000,
+        help="Maximum scrape hashes unlinked by one prune invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--after-id",
+        default=None,
+        help="Posting UUID cursor returned by a prior rebuild invocation",
+    )
+    redis_capacity_p.add_argument(
+        "--limit",
+        type=int,
+        default=10_000,
+        help="Maximum durable schedules selected by one rebuild invocation",
+    )
+
     return parser.parse_args()
 
 
@@ -443,6 +561,60 @@ async def run() -> None:
             from src.sync import run_sync
 
             await run_sync()
+
+        elif args.command == "ats-inventory":
+            import httpx
+
+            from src.ats_inventory.github import (
+                GitHubSupportIssueClient,
+                reconcile_support_issues,
+            )
+            from src.ats_inventory.locking import exclusive_run_lock
+            from src.ats_inventory.source import InventorySource
+
+            timeout = httpx.Timeout(60.0, read=180.0)
+            with exclusive_run_lock(args.cache_dir / "runner.lock"):
+                async with httpx.AsyncClient(
+                    timeout=timeout,
+                    follow_redirects=True,
+                    limits=httpx.Limits(max_connections=4, max_keepalive_connections=2),
+                    headers={"User-Agent": "jobseek-ats-inventory/1"},
+                ) as client:
+                    source = InventorySource(
+                        args.cache_dir,
+                        client,
+                        manifest_url=args.manifest_url,
+                        retention=args.retention,
+                        max_cache_bytes=args.max_cache_mib * 1024 * 1024,
+                    )
+                    snapshot = await source.sync()
+                    report = snapshot.to_report()
+                    report["support_issues"] = {"mode": args.support_issues, "actions": []}
+                    if args.support_issues != "off":
+                        token = os.environ.get(args.github_token_env)
+                        if not token:
+                            raise RuntimeError(
+                                f"{args.github_token_env} is required for support issue "
+                                "reconciliation"
+                            )
+                        github = GitHubSupportIssueClient(
+                            client,
+                            repo=args.github_repo,
+                            token=token,
+                        )
+                        actions = await reconcile_support_issues(
+                            snapshot,
+                            github,
+                            create=args.support_issues == "create",
+                        )
+                        report["support_issues"] = {
+                            "mode": args.support_issues,
+                            "actions": [action.to_dict() for action in actions],
+                            "rate_remaining": github.rate_remaining,
+                            "rate_reset": github.rate_reset,
+                        }
+                    log.info("ats_inventory.complete", report=report)
+                    tty_message(json.dumps(report, indent=2, sort_keys=True))
 
         elif args.command == "backfill-locations":
             local_pool = await create_local_pool()
@@ -692,6 +864,66 @@ async def run() -> None:
                 dry_run=args.dry_run,
             )
             log.info("prune.scrape_queues.done", dry_run=args.dry_run, **result)
+
+        elif args.command == "deadletters":
+            local_pool = await create_local_pool()
+            from src.deadletters import resolve_deadletters
+
+            result = await resolve_deadletters(
+                local_pool,
+                action=args.action,
+                selected_refs=args.entry,
+                apply=args.apply,
+            )
+            output = json.dumps(result, indent=2, sort_keys=True)
+            log.info(
+                "deadletters.complete",
+                action=args.action,
+                dry_run=not args.apply,
+                selected=result["selected"],
+                counts=result["counts"],
+            )
+            tty_message(output)
+
+        elif args.command == "redis-capacity":
+            from src.redis_capacity import (
+                format_prometheus,
+                inventory,
+                prune_orphan_scrape_configs,
+                rebuild_scrape_schedules,
+            )
+
+            if args.action == "inspect":
+                snapshot = await inventory()
+                output = (
+                    format_prometheus(snapshot)
+                    if args.format == "prometheus"
+                    else json.dumps(snapshot, indent=2, sort_keys=True)
+                )
+            elif args.action == "prune":
+                result = await prune_orphan_scrape_configs(
+                    cursor=args.cursor,
+                    max_scanned=args.max_scanned,
+                    max_delete=args.max_delete,
+                    apply=args.apply,
+                )
+                output = json.dumps(result, indent=2, sort_keys=True)
+            else:
+                local_pool = await create_local_pool()
+                result = await rebuild_scrape_schedules(
+                    local_pool,
+                    after_id=args.after_id,
+                    limit=args.limit,
+                    apply=args.apply,
+                )
+                output = json.dumps(result, indent=2, sort_keys=True)
+            # This command is also invoked non-interactively by the host
+            # metrics sampler and recovery runbooks; stdout is its stable
+            # machine interface, unlike tty_message's interactive-only path.
+            sys.stdout.write(output)
+            if not output.endswith("\n"):
+                sys.stdout.write("\n")
+            sys.stdout.flush()
 
         elif args.command == "retire-stale-boards":
             from src.retire_stale_boards import report_stale_boards

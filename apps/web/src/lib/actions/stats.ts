@@ -1,9 +1,8 @@
 "use server";
 
-import { sql } from "drizzle-orm";
 import { cacheLife } from "next/cache";
-import { db } from "@/db";
-import { company, jobPosting } from "@/db/schema";
+import { getSearchClient } from "@/lib/search/typesense-client";
+import { withTypesenseRetry } from "@/lib/search/typesense-retry";
 
 // Per-region in-memory `'use cache'` (cacheLife('hours')). Build ID is
 // included in the key automatically — every deploy re-fetches. Migrated
@@ -13,15 +12,28 @@ import { company, jobPosting } from "@/db/schema";
 export async function getSiteStats() {
   "use cache";
   cacheLife("hours");
-  const [[companyRow], [jobRow]] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(company),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(jobPosting)
-      .where(sql`${jobPosting.isActive} = true`),
+  const client = getSearchClient();
+  const [companies, postings] = await Promise.all([
+    withTypesenseRetry(
+      () =>
+        client.collections("company").documents().search({
+          q: "*",
+          per_page: 0,
+        }),
+      { label: "siteStats.company" },
+    ),
+    withTypesenseRetry(
+      () =>
+        client.collections("job_posting").documents().search({
+          q: "*",
+          filter_by: "is_active:true",
+          per_page: 0,
+        }),
+      { label: "siteStats.jobPosting" },
+    ),
   ]);
   return {
-    companyCount: Number(companyRow.count),
-    jobPostingCount: Number(jobRow.count),
+    companyCount: Number(companies.found ?? 0),
+    jobPostingCount: Number(postings.found ?? 0),
   };
 }

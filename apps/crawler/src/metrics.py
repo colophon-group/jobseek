@@ -399,6 +399,12 @@ inflight_deadletter_depth = Gauge(
     ["wtype"],
 )
 
+monitor_deadletter_lifecycle_depth = Gauge(
+    "crawler_monitor_deadletter_lifecycle_depth",
+    "Monitor dead-letter tasks classified against local Postgres lifecycle state",
+    ["wtype", "lifecycle"],
+)
+
 # Heartbeats: tasks that called ``heartbeat_task`` and got 1 (extended)
 # vs 0 (lease already gone — reaper raced us). The "lost" outcome is
 # the diagnostic for tuning ``inflight_lease_ttl_seconds`` upward when

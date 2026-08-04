@@ -51,7 +51,6 @@
     "@upstash/redis": "^1.38.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "apify-client": "^2.23.4",
     "better-auth": "^1.6.23",
     "dompurify": "^3.4.12",
     "drizzle-orm": "^0.45.2",

@@ -34,20 +34,25 @@ def test_dashboard_surfaces_deadletter_depth() -> None:
 
     assert panel["type"] == "stat"
     assert panel["gridPos"] == {"h": 8, "w": 4, "x": 20, "y": 44}
-    assert panel["targets"][0]["expr"] == ("max by (wtype) (crawler_inflight_deadletter_depth)")
-    assert panel["targets"][0]["legendFormat"] == "{{wtype}}"
+    assert panel["targets"][0]["expr"] == (
+        "max by (wtype, lifecycle) (crawler_monitor_deadletter_lifecycle_depth)"
+    )
+    assert panel["targets"][0]["legendFormat"] == "{{wtype}} {{lifecycle}}"
     assert panel["fieldConfig"]["defaults"]["thresholds"]["steps"] == [
         {"color": "green", "value": None},
         {"color": "red", "value": 1},
     ]
-    assert "ZRANGE deadletter:simple" in panel["description"]
-    assert "ZRANGE deadletter:browser" in panel["description"]
+    assert "actionable/unresolved" in panel["description"]
+    assert "crawler deadletters inspect" in panel["description"]
 
 
 def test_alert_fires_when_deadletter_queue_stays_nonempty() -> None:
     rule = _alert_rule("DeadletterQueueNotEmpty")
 
-    assert rule["expr"] == "max by (wtype) (crawler_inflight_deadletter_depth) > 0"
+    assert rule["expr"] == (
+        "max by (wtype) (crawler_monitor_deadletter_lifecycle_depth{"
+        'lifecycle=~"actionable|unresolved"}) > 0'
+    )
     assert rule["for"] == "1h"
     assert rule["labels"] == {
         "severity": "medium",
@@ -55,7 +60,7 @@ def test_alert_fires_when_deadletter_queue_stays_nonempty() -> None:
         "owner": "codex-error-review",
         "route": "codex-daily",
     }
-    assert "crawler_inflight_deadletter_depth" in rule["annotations"]["description"]
+    assert "crawler_monitor_deadletter_lifecycle_depth" in rule["annotations"]["description"]
     assert rule["annotations"]["runbook"].endswith(
         "docs/03-crawler-architecture.md#inflight-leases-and-dead-letter-recovery"
     )
@@ -216,6 +221,27 @@ def test_postgresql_capacity_alert_uses_current_and_forecast_headroom() -> None:
     )
 
 
+def test_redis_capacity_alerts_cover_attribution_growth_and_lead_time() -> None:
+    stale = _alert_rule("RedisCapacitySnapshotStale")
+    orphan = _alert_rule("RedisOrphanScrapeConfigs")
+    family = _alert_rule("RedisKeyFamilyBudgetHigh")
+    forecast = _alert_rule("RedisMemoryForecastPressure")
+
+    assert "snapshot_available" in stale["expr"]
+    assert "snapshot_unixtime" in stale["expr"]
+    assert 'state="orphan"' in orphan["expr"]
+    assert "estimated_bytes" in family["expr"]
+    assert "budget_bytes" in family["expr"]
+    assert "predict_linear" in forecast["expr"]
+    assert "0.75" in forecast["expr"]
+    for rule in (stale, orphan, family, forecast):
+        assert rule["labels"]["severity"] == "high"
+        assert rule["labels"]["owner"] == "codex-error-review"
+        assert rule["labels"]["route"] == "codex-daily"
+        assert rule["annotations"]["runbook"].endswith("docs/20-redis-capacity.md") is False
+        assert "docs/20-redis-capacity.md#" in rule["annotations"]["runbook"]
+
+
 def test_postgresql_checkpoint_alert_requires_requested_dominance() -> None:
     rule = _alert_rule("PostgreSQLCheckpointPressure")
 
@@ -330,10 +356,12 @@ def test_deadletter_operator_playbook_is_documented() -> None:
 
     for needle in [
         "crawler_inflight_deadletter_depth{wtype}",
+        "crawler_monitor_deadletter_lifecycle_depth{wtype,lifecycle}",
         "DeadletterQueueNotEmpty",
-        "ZRANGE deadletter:simple 0 -1 WITHSCORES",
-        "ZRANGE deadletter:browser 0 -1 WITHSCORES",
+        "crawler deadletters inspect",
+        "crawler deadletters retry",
+        "crawler deadletters prune",
         "task_type|domain|task_id",
-        "ZREM deadletter:simple '<member>'",
+        "--apply",
     ]:
         assert needle in text
