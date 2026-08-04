@@ -19,6 +19,8 @@ run-name: "Crawler maintenance: ${{ inputs.task || 'refresh-typesense' }} @ ${{ 
 #   backfill-typesense — NOT scheduled. Full re-index, invoked manually via
 #                        workflow_dispatch below when a schema change or
 #                        count drift requires it.
+#   verify-typesense-taxonomies — NOT scheduled. Exact, read-only taxonomy
+#                        proof for an explicitly attested live crawler image.
 
 on:
   schedule:
@@ -36,8 +38,9 @@ on:
         options:
           - refresh-typesense
           - backfill-typesense
+          - verify-typesense-taxonomies
       expected_crawler_revision:
-        description: "For backfill, exact live crawler deployment SHA to attest"
+        description: "For exact-revision tasks, live crawler deployment SHA to attest"
         required: false
         type: string
 
@@ -86,13 +89,13 @@ jobs:
             task=refresh-typesense
             expected_revision=""
           fi
-          if [[ "$task" == backfill-typesense ]]; then
+          if [[ "$task" == backfill-typesense || "$task" == verify-typesense-taxonomies ]]; then
             [[ "$expected_revision" =~ ^[0-9a-f]{40}$ ]] || {
-              echo "backfill-typesense requires a full expected_crawler_revision" >&2
+              echo "${task} requires a full expected_crawler_revision" >&2
               exit 1
             }
           elif [[ -n "$expected_revision" ]]; then
-            echo "expected_crawler_revision is valid only for backfill-typesense" >&2
+            echo "expected_crawler_revision is valid only for exact-revision tasks" >&2
             exit 1
           fi
           echo "task=$task" >> "$GITHUB_OUTPUT"
@@ -129,7 +132,7 @@ jobs:
             maintenance_status=0
             RUNTIME_ENV=""
 
-            if [[ "$TASK" == backfill-typesense ]]; then
+            if [[ "$TASK" == backfill-typesense || "$TASK" == verify-typesense-taxonomies ]]; then
               active_revision="$(grep -E '^JOBSEEK_DEPLOY_REVISION=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
               [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
               [[ "$active_revision" == "$EXPECTED_CRAWLER_REVISION" ]] || {
@@ -196,7 +199,8 @@ jobs:
             # The GitHub concurrency lock cannot see a container orphaned by
             # a cancelled or timed-out older SSH session. Refuse to overlap it
             # with another Typesense maintenance operation.
-            if docker ps --format '{{.Names}}' | grep -Eq '^crawler-(backfill|refresh)-typesense-'; then
+            if docker ps --format '{{.Names}}' \
+              | grep -Eq '^crawler-(backfill-typesense|refresh-typesense|verify-typesense-taxonomies)-'; then
               echo "Another Typesense maintenance container is already running" >&2
               maintenance_status=1
             else
@@ -211,6 +215,10 @@ jobs:
                   sh -ceu
                   'uv run --no-sync crawler backfill-typesense && uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense && uv run --no-sync crawler verify-typesense-taxonomies'
                 )
+              elif [[ "$TASK" == verify-typesense-taxonomies ]]; then
+                # Verification-only dispatch: prove the live taxonomy state
+                # without repeating a posting backfill or reconciliation.
+                operation_command=(uv run --no-sync crawler verify-typesense-taxonomies)
               fi
               timeout --foreground --signal=TERM --kill-after=90s "$operation_budget" docker run --rm \
                 --name "$NAME" \

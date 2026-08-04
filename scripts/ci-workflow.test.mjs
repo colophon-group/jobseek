@@ -651,13 +651,42 @@ test("scheduled maintenance one-offs carry exact validated provenance labels", (
   assert.match(crawlerScheduledMaintenanceWorkflow, /operation_budget=7200/);
   assert.match(
     crawlerScheduledMaintenanceWorkflow,
-    /if \[\[ "\$TASK" == backfill-typesense \]\]; then[\s\S]*operation_budget=14400/,
+    /if \[\[ "\$TASK" == backfill-typesense \|\| "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*operation_budget=14400/,
   );
   assert.match(
     crawlerScheduledMaintenanceWorkflow,
     /timeout --foreground --signal=TERM --kill-after=90s "\$operation_budget" docker run --rm/,
   );
   assert.match(crawlerScheduledMaintenanceWorkflow, /command_timeout: 8h/);
+});
+
+test("taxonomy verification dispatch is exact-revision and verification-only", () => {
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /options:[\s\S]*- refresh-typesense[\s\S]*- backfill-typesense[\s\S]*- verify-typesense-taxonomies/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$task" == backfill-typesense \|\| "\$task" == verify-typesense-taxonomies \]\]; then[\s\S]*\^\[0-9a-f\]\{40\}\$/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$TASK" == backfill-typesense \|\| "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*Live crawler revision does not match the requested deployment[\s\S]*Expected exactly one live exporter container[\s\S]*Live exporter still has a relational mirror credential/,
+  );
+  const verificationBranch = crawlerScheduledMaintenanceWorkflow.match(
+    /elif \[\[ "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*?^              fi$/m,
+  );
+  assert.ok(verificationBranch);
+  assert.match(
+    verificationBranch[0],
+    /operation_command=\(uv run --no-sync crawler verify-typesense-taxonomies\)/,
+  );
+  assert.doesNotMatch(verificationBranch[0], /crawler backfill-typesense/);
+  assert.doesNotMatch(verificationBranch[0], /crawler reconcile/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /\^crawler-\(backfill-typesense\|refresh-typesense\|verify-typesense-taxonomies\)-/,
+  );
 });
 
 test("recurring crawler one-offs use the bounded maintenance wrapper", () => {

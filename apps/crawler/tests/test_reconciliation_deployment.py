@@ -266,11 +266,20 @@ def test_install_and_workflow_preserve_rollback_and_privilege_boundary() -> None
         assert matching and all("@v" not in line for line in matching)
 
 
-def test_backfill_dispatch_attests_the_exact_live_deployment() -> None:
+def test_exact_revision_dispatches_attest_the_live_deployment() -> None:
     maintenance = MAINTENANCE.read_text(encoding="utf-8")
 
+    assert "- verify-typesense-taxonomies" in maintenance
     assert "expected_crawler_revision:" in maintenance
     assert "^[0-9a-f]{40}$" in maintenance
+    assert (
+        'if [[ "$task" == backfill-typesense || '
+        '"$task" == verify-typesense-taxonomies ]]' in maintenance
+    )
+    assert (
+        'if [[ "$TASK" == backfill-typesense || '
+        '"$TASK" == verify-typesense-taxonomies ]]' in maintenance
+    )
     assert "EXPECTED_CRAWLER_REVISION: ${{ steps.task.outputs.expected_revision }}" in maintenance
     assert "JOBSEEK_DEPLOY_REVISION=" in maintenance
     assert '[[ "$active_revision" == "$EXPECTED_CRAWLER_REVISION" ]]' in maintenance
@@ -279,6 +288,24 @@ def test_backfill_dispatch_attests_the_exact_live_deployment() -> None:
     assert "com.docker.compose.service=exporter" in maintenance
     assert "Live exporter image does not match the active crawler tag" in maintenance
     assert "Live exporter still has a relational mirror credential" in maintenance
+
+
+def test_taxonomy_verification_dispatch_does_not_backfill_or_reconcile() -> None:
+    maintenance = MAINTENANCE.read_text(encoding="utf-8")
+
+    branch_start = maintenance.index('elif [[ "$TASK" == verify-typesense-taxonomies ]]')
+    branch_end = maintenance.index("              fi", branch_start)
+    branch = maintenance[branch_start:branch_end]
+
+    assert (
+        branch.count("operation_command=(uv run --no-sync crawler verify-typesense-taxonomies)")
+        == 1
+    )
+    assert "crawler backfill-typesense" not in branch
+    assert "crawler reconcile" not in branch
+    assert "LOCAL_DATABASE_URL" in maintenance
+    assert "TYPESENSE_OPERATIONS_KEY" in maintenance
+    assert "verify-typesense-taxonomies)-'" in maintenance
 
 
 def test_backfill_proof_is_one_locked_fail_closed_chain() -> None:
@@ -305,8 +332,10 @@ def test_scheduled_refresh_resolves_the_common_image_owner_before_dispatch() -> 
     maintenance = MAINTENANCE.read_text(encoding="utf-8")
 
     owner = maintenance.index("owner=\"$(grep -E '^OWNER='")
-    backfill_only = maintenance.index('if [[ "$TASK" == backfill-typesense ]]')
+    exact_revision_gate = maintenance.index(
+        'if [[ "$TASK" == backfill-typesense || "$TASK" == verify-typesense-taxonomies ]]'
+    )
     image = maintenance.index('"ghcr.io/${owner}/jobseek-crawler:${tag}"')
 
-    assert owner < backfill_only < image
+    assert owner < exact_revision_gate < image
     assert '[[ -n "$owner" ]]' in maintenance
