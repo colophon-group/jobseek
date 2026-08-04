@@ -45,10 +45,11 @@
 | `getPreferences()` | 1 | parallel | None | 10-30ms |
 | `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
 | `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
-| `getUserWatchlists()` | 1 | — | None | 12-38ms |
+| `getUserWatchlists()` metadata | 1 | parallel with language preferences | None | 12-38ms |
+| Active posting counts | 1 Typesense `multi_search` | after metadata | None | 20-100ms |
 | `canCreateWatchlist()` | 1 | — | None | 10-20ms |
 
-**Total DB queries:** 5 (constant in N — fixed by #3176)
+**Total DB queries:** 5 (constant in N — fixed by #3176). Posting counts do not query the web database.
 **Estimated function duration:** 50-100ms (warm instance)
 
 **Previously the worst N+1 pattern in the app.** Pre-fix, `getUserWatchlists`
@@ -56,17 +57,16 @@ ran `resolveFilteredJobCount()` once per watchlist — each leg ran 4
 parallel taxonomy lookups + 1 Typesense filtered count. A user with 50
 watchlists paid 1.5-2.5s of mostly-serial Typesense round-trips (the
 Typesense host is a single CX22 with effective concurrency ~2) on every
-`/watchlists` load. Issue #3176 (PR fixing this file) collapsed the
-fan-out into a single SQL query whose `watchlist_company JOIN
-job_posting` subquery returns the denormalized "company-scope" active
-count alongside each row.
+`/watchlists` load. The current shape reads only watchlist metadata and
+`watchlist_company` membership from the web database, then sends all
+filter-precise active counts through one bounded Typesense
+`job_posting` `multi_search`. The viewer's language filter is included,
+so listing badges and detail-page counts use the same filter semantics.
 
-**Trade-off:** the listing badge now ignores the per-watchlist filter
-clauses (keywords, locations, work_mode, …) and the viewer's job-language
-preference. The watchlist detail page still surfaces the filter-applied
-count via `getWatchlistPostingDisplayCounts()`. Issue #3261 tracks a
-batched `multi_search`-based path if/when filter-precise badges are
-needed on the listing.
+If Typesense is unavailable, counts fail closed to zero and posting lists
+to empty results. There is no fallback to the removed/stale Supabase
+`job_posting` mirror; user-owned watchlist metadata and mutations remain
+available independently.
 
 ### Client-side server actions
 

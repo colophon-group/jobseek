@@ -633,6 +633,30 @@ describe("getPopularWatchlists — Typesense path (#3176)", () => {
 
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
+
+  it("treats an empty Typesense page as authoritative", async () => {
+    mocks.tsSearch.mockResolvedValueOnce({ hits: [], found: 0 });
+
+    const result = await getPopularWatchlists({ offset: 0, limit: 20, locale: "en" });
+
+    expect(result).toEqual({ watchlists: [], total: 0 });
+    expect(mocks.tsCollectionsCalls).toEqual(["watchlist"]);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("degrades to an empty page without reading Postgres when Typesense is unavailable", async () => {
+    const unavailable = Object.assign(new Error("read ECONNRESET"), {
+      code: "ECONNRESET",
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.tsSearch.mockRejectedValueOnce(unavailable);
+
+    const result = await getPopularWatchlists({ offset: 0, limit: 20, locale: "en" });
+
+    expect(result).toEqual({ watchlists: [], total: 0 });
+    expect(mocks.tsCollectionsCalls).toEqual(["watchlist"]);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
 });
 
 describe("searchPublicWatchlists — Typesense path (#3176)", () => {
@@ -693,6 +717,43 @@ describe("searchPublicWatchlists — Typesense path (#3176)", () => {
 
     expect(result).toEqual({ watchlists: [], total: 0 });
     expect(mocks.tsSearch).not.toHaveBeenCalled();
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("degrades to an empty page without reading Postgres when Typesense is unavailable", async () => {
+    const unavailable = Object.assign(new Error("read ECONNRESET"), {
+      code: "ECONNRESET",
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.tsSearch.mockRejectedValueOnce(unavailable);
+
+    const result = await searchPublicWatchlists({
+      query: "python",
+      offset: 0,
+      limit: 20,
+      locale: "en",
+    });
+
+    expect(result).toEqual({ watchlists: [], total: 0 });
+    expect(mocks.tsCollectionsCalls).toEqual(["watchlist"]);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("does not swallow non-availability Typesense errors", async () => {
+    const rateLimit = Object.assign(new Error("Too Many Requests"), {
+      httpStatus: 429,
+    });
+    mocks.tsSearch.mockRejectedValueOnce(rateLimit);
+
+    await expect(
+      searchPublicWatchlists({
+        query: "python",
+        offset: 0,
+        limit: 20,
+        locale: "en",
+      }),
+    ).rejects.toBe(rateLimit);
+
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
 });
