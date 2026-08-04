@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -18,6 +19,7 @@ from src.ats_inventory.candidates import (
     render_candidate_issue,
 )
 from src.ats_inventory.github import (
+    ATS_INVENTORY_LABEL,
     CreatedIssue,
     GitHubCreateOutcomeUnknown,
     GitHubSupportIssueClient,
@@ -94,6 +96,8 @@ def _github_item(
     kind: str = "issue",
     marked: bool = True,
     title: str | None = None,
+    labels: tuple[str, ...] = (),
+    created_at: str | None = None,
 ) -> GitHubWorkItem:
     body = candidate_marker(candidate.source_key, candidate.board_url) if marked else "Request"
     return GitHubWorkItem(
@@ -103,6 +107,8 @@ def _github_item(
         title=title or f"Add company: {candidate.name}",
         body=body,
         url=f"https://github.test/items/{number}",
+        labels=labels,
+        created_at=created_at,
     )
 
 
@@ -458,6 +464,31 @@ def test_active_pr_marker_is_temporary_and_cannot_poison_durable_ledger(
     assert later_plan.eligible
 
 
+def test_crash_reconciliation_restores_trusted_creation_event(tmp_path: Path) -> None:
+    candidate = Candidate.from_impact(_impact())
+    ledger = CandidateLedger(tmp_path / "ledger.sqlite")
+    created_at = "2026-08-04T11:00:00Z"
+    trusted = _github_item(
+        candidate,
+        labels=("company-request", ATS_INVENTORY_LABEL),
+        created_at=created_at,
+    )
+    untrusted = _github_item(
+        Candidate.from_impact(_impact(slug="other", url="https://boards.greenhouse.io/other")),
+        number=43,
+        created_at=created_at,
+    )
+
+    ledger.reconcile_remote([trusted, untrusted])
+    day_start = int(datetime(2026, 8, 4, tzinfo=UTC).timestamp())
+    assert ledger.count_created_since(day_start) == 1
+
+    # Reconciliation is idempotent and unlabelled contributor markers cannot
+    # consume the trusted daily creation budget.
+    ledger.reconcile_remote([trusted, untrusted])
+    assert ledger.count_created_since(day_start) == 1
+
+
 class _UnknownOutcomeClient:
     def __init__(self, candidate: Candidate) -> None:
         self.candidate = candidate
@@ -473,7 +504,7 @@ class _UnknownOutcomeClient:
         self, *, title: str, body: str, labels: list[str]
     ) -> CreatedIssue:
         self.create_calls += 1
-        assert labels == ["company-request"]
+        assert labels == ["company-request", "source:ats-inventory"]
         self.items.append(
             GitHubWorkItem(
                 kind="issue",
@@ -595,6 +626,7 @@ async def test_github_state_is_bulk_indexed_without_per_candidate_searches() -> 
                     "title": "Add company: Acme",
                     "body": "legacy request",
                     "html_url": "https://github.test/issues/1",
+                    "labels": [{"name": "company-request"}, {"name": "source:test"}],
                 },
                 {
                     "number": 2,
@@ -632,6 +664,8 @@ async def test_github_state_is_bulk_indexed_without_per_candidate_searches() -> 
         items = await github.list_candidate_work_items()
 
     assert [(item.kind, item.number) for item in items] == [("issue", 1), ("pr", 3)]
+    assert items[0].labels == ("company-request", "source:test")
+    assert items[1].labels == ()
     assert len(requests) == 2
     assert requests[0].url.params["labels"] == "company-request"
     assert requests[0].url.params["state"] == "all"

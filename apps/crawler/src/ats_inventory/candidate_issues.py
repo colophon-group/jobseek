@@ -14,6 +14,7 @@ from src.ats_inventory.candidates import (
     render_candidate_issue,
 )
 from src.ats_inventory.github import (
+    ATS_INVENTORY_LABEL,
     CreatedIssue,
     GitHubCreateOutcomeUnknown,
     GitHubWorkItem,
@@ -72,8 +73,10 @@ class CandidateIssueCoordinator:
         client: CandidateIssueClient,
         local: LocalRegistryIndex,
         ledger: CandidateLedger,
+        items: list[GitHubWorkItem] | None = None,
     ) -> CandidateIssueCoordinator:
-        items = await client.list_candidate_work_items()
+        if items is None:
+            items = await client.list_candidate_work_items()
         reconciliation = ledger.reconcile_remote(items)
         return cls(
             client=client,
@@ -98,7 +101,7 @@ class CandidateIssueCoordinator:
             created = await self.client.create_candidate_issue(
                 title=title,
                 body=body,
-                labels=["company-request"],
+                labels=["company-request", ATS_INVENTORY_LABEL],
             )
         except GitHubCreateOutcomeUnknown:
             recovered = await self.client.list_candidate_work_items()
