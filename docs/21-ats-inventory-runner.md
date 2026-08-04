@@ -130,6 +130,62 @@ next startup repairs the ledger from the marker. A missing remote record is
 reported as `remote_missing` and remains a fail-closed hard skip instead of
 silently recreating the issue.
 
+Every coordinator-created issue is recorded in a separate `creation_events`
+ledger table keyed by GitHub issue number. This makes the UTC-day creation cap
+survive restarts while keeping startup reconciliation of older remote markers
+from consuming today's budget. If GitHub commits just before a process crash,
+startup uses the trusted import label and GitHub `created_at` timestamp to
+reconstruct the missing event; unlabelled contributor markers cannot consume
+the daily budget.
+
+## Bounded resolver queue
+
+The queue runner counts every open `company-request`, including human requests
+and imports. An issue is resolver-available unless it has a `ws` claim newer
+than four hours or an open PR body that closes/fixes/resolves the issue. Recent
+repository comments, issues, and PRs are fetched in bulk; candidate selection
+never performs per-company or per-issue searches. Invalid claim timestamps are
+fail-closed and visible in the report.
+
+Refill starts only below 450 available issues, targets 500 available issues,
+and never plans beyond 600 total open issues. Creation is additionally bounded
+to 25 per invocation and 50 per UTC day. `--queue-rollout-cap` is restricted to
+the deliberate canary stages 1, 5, and 25 and defaults to 1. The smallest of
+the target deficit, hard-cap capacity, tick budget, daily budget, and rollout
+stage wins.
+
+Before every production POST, the runner bulk-refreshes the live open-request
+count and refuses to fill the final hard-cap slot, reserving it for one
+concurrent external writer. GitHub does not provide an atomic conditional
+issue-create API, so multiple human/API creates in the tiny interval between
+that read and POST cannot be serialized by this runner; the live recheck and
+reserved slot are the conservative boundary available without a separate
+admission service.
+
+Candidates are sorted with the same stable impact key used by the impact
+snapshot. The runner scans past exact hard duplicates until it has the needed
+number of eligible companies, so an already-configured high-ranked row does
+not waste a queue slot. Soft duplicates remain in the issue body for `ws`.
+Created issues carry both `company-request` and `source:ats-inventory`; the
+source label must be provisioned before the first canary.
+
+Creates are sequential, paced by the GitHub client, and separated by bounded
+jitter. Primary remaining/reset headers and `Retry-After` are retained in the
+report. A 429, primary-limit 403, or recognized secondary-limit 403 stops the
+refill cleanly and records the later of the primary reset and retry delay; it
+does not loop or burst. Permanent permission/policy 403s remain actionable
+errors instead of being retried as throttling. Rate limits during support,
+work-item, or claim preflight also produce a structured `rate_limited_preflight`
+report. The cache-wide
+non-blocking lock rejects a concurrent invocation. Ambiguous create outcomes
+still use the marker reconciliation path described above.
+
+Production `refill` automatically reconciles unsupported families through the
+one-per-family support-issue path first. If classified candidate coverage falls
+below the safety gate, the queue report becomes `coverage_quarantined` with
+zero admissions; supported company issues do not leak through while monitor
+support is incomplete.
+
 ## Compatibility and quarantine
 
 `apps/crawler/src/ats_inventory/compat.py` is the explicit compatibility source
@@ -184,10 +240,28 @@ GH_TOKEN=... uv run crawler ats-inventory \
 GH_TOKEN=... uv run crawler ats-inventory \
   --cache-dir /var/lib/jobseek/ats-inventory \
   --support-issues create
+
+# Read-only resolver queue health (impact cache is not required)
+GH_TOKEN=... uv run crawler ats-inventory \
+  --cache-dir /var/lib/jobseek/ats-inventory \
+  --candidate-issues report
+
+# Simulate the exact stage-1 refill, including candidate selection
+GH_TOKEN=... uv run crawler ats-inventory \
+  --cache-dir /var/lib/jobseek/ats-inventory \
+  --impact \
+  --candidate-issues dry-run \
+  --queue-rollout-cap 1
+
+# Stage-1 production canary. Unsupported families are automatically
+# reconciled into one support issue each before candidate admission.
+GH_TOKEN=... uv run crawler ats-inventory \
+  --cache-dir /var/lib/jobseek/ats-inventory \
+  --impact \
+  --candidate-issues refill \
+  --queue-rollout-cap 1
 ```
 
 The normal command emits a structured `ats_inventory.complete` log record. An
-interactive terminal also receives a readable JSON report. The eventual queue
-refill service uses this source snapshot, the derived job-impact snapshot, the
-bulk indexes, and this same idempotent candidate coordinator. Queue admission,
-daily caps, and rollout state remain the separate #6188 stage.
+interactive terminal also receives a readable JSON report. Rollout deployment,
+pickup observation, and advancement from 1 to 5 to 25 remain gated by #6190.

@@ -28,6 +28,21 @@ def bypass_deployment_lock(monkeypatch: pytest.MonkeyPatch, operations: ModuleTy
     monkeypatch.setattr(operations, "deployment_identity_lock", lambda: nullcontext(41))
 
 
+def failed_backup_status(**updates: object) -> dict[str, object]:
+    status: dict[str, object] = {
+        "schema_version": 1,
+        "service": "web-postgresql",
+        "attempt_at": "1970-01-01T00:16:40+00:00",
+        "attempt_unix": 1_000,
+        "success": False,
+        "finished_at": "1970-01-01T00:16:41+00:00",
+        "duration_seconds": 1.25,
+        "error": "pg_dump exited 1: connection refused",
+    }
+    status.update(updates)
+    return status
+
+
 def test_identity_requires_exact_deployed_revision_and_every_artifact(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -57,6 +72,125 @@ def test_identity_requires_exact_deployed_revision_and_every_artifact(
     artifacts["restore_drill"].write_text("tampered\n", encoding="utf-8")
     with pytest.raises(operations.OperationError, match="restore_drill"):
         operations.validate_identity(expected)
+
+
+def test_failed_backup_emits_only_fresh_aggregate_evidence_and_preserves_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    operations = load_operations()
+    expected = operations.ExpectedIdentity("a" * 40, {})
+    status_path = tmp_path / "web-postgresql.json"
+    original_failure = operations.OperationError("systemctl operation failed")
+    monkeypatch.setattr(operations, "BACKUP_STATUS_PATH", status_path)
+    monkeypatch.setattr(operations, "EVIDENCE_PATH", tmp_path / "activation.json")
+    monkeypatch.setattr(operations, "validate_host_readiness", lambda _expected: None)
+    monkeypatch.setattr(operations, "validate_identity", lambda _expected: {})
+    monkeypatch.setattr(operations, "timer_state", lambda: ("disabled", "inactive"))
+    monkeypatch.setattr(operations.time, "time", lambda: 1_000)
+
+    def fail_start(argv: list[str], **_kwargs: object) -> str:
+        if argv == ["systemctl", "start", operations.BACKUP_UNIT]:
+            status_path.write_text(
+                json.dumps(
+                    failed_backup_status(
+                        row_count=99,
+                        database_url="postgresql://must-not-appear",
+                        environment={"PASSWORD": "must-not-appear"},
+                    )
+                ),
+                encoding="utf-8",
+            )
+            raise original_failure
+        return ""
+
+    monkeypatch.setattr(operations, "run_checked", fail_start)
+
+    with pytest.raises(operations.OperationError) as raised:
+        operations.run_backup_locked(expected)
+
+    assert raised.value is original_failure
+    prefix = "Backup failure evidence: "
+    diagnostic_line = capsys.readouterr().err.strip()
+    assert diagnostic_line.startswith(prefix)
+    assert json.loads(diagnostic_line.removeprefix(prefix)) == {
+        "attempt_at": "1970-01-01T00:16:40+00:00",
+        "duration_seconds": 1.25,
+        "error": "pg_dump exited 1: connection refused",
+    }
+    assert "row_count" not in diagnostic_line
+    assert "database_url" not in diagnostic_line
+    assert "environment" not in diagnostic_line
+
+
+def test_backup_failure_diagnostic_redacts_uris_and_credentials() -> None:
+    operations = load_operations()
+    diagnostic = operations.backup_failure_diagnostic(
+        failed_backup_status(
+            error=(
+                "pg_dump postgresql://db-user:db-password@db.example/jobs failed; "
+                "password=plain-secret token:opaque-secret api_key api-secret "
+                "Authorization: Bearer bearer-secret "
+                "https://user:web-password@example.test/path?token=query-secret"
+            )
+        ),
+        started=1_000,
+    )
+
+    assert len(diagnostic) <= operations.BACKUP_FAILURE_DIAGNOSTIC_LIMIT
+    assert "db-user" not in diagnostic
+    assert "db-password" not in diagnostic
+    assert "plain-secret" not in diagnostic
+    assert "opaque-secret" not in diagnostic
+    assert "api-secret" not in diagnostic
+    assert "bearer-secret" not in diagnostic
+    assert "web-password" not in diagnostic
+    assert "query-secret" not in diagnostic
+    assert "<redacted-uri>" in diagnostic
+    assert "password=<redacted>" in diagnostic
+    assert "token=<redacted>" in diagnostic
+    assert "api_key=<redacted>" in diagnostic
+    assert "authorization=<redacted>" in diagnostic
+
+
+@pytest.mark.parametrize(
+    "status_content",
+    (None, "{", json.dumps(failed_backup_status(attempt_unix=999))),
+)
+def test_failed_backup_without_fresh_valid_evidence_preserves_original_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    status_content: str | None,
+) -> None:
+    operations = load_operations()
+    expected = operations.ExpectedIdentity("a" * 40, {})
+    status_path = tmp_path / "web-postgresql.json"
+    original_failure = operations.OperationError("systemctl operation failed")
+    if status_content is not None:
+        status_path.write_text(status_content, encoding="utf-8")
+    monkeypatch.setattr(operations, "BACKUP_STATUS_PATH", status_path)
+    monkeypatch.setattr(operations, "EVIDENCE_PATH", tmp_path / "activation.json")
+    monkeypatch.setattr(operations, "validate_host_readiness", lambda _expected: None)
+    monkeypatch.setattr(operations, "validate_identity", lambda _expected: {})
+    monkeypatch.setattr(operations, "timer_state", lambda: ("disabled", "inactive"))
+    monkeypatch.setattr(operations.time, "time", lambda: 1_000)
+    monkeypatch.setattr(
+        operations,
+        "run_checked",
+        lambda argv, **_kwargs: (
+            (_ for _ in ()).throw(original_failure)
+            if argv == ["systemctl", "start", operations.BACKUP_UNIT]
+            else ""
+        ),
+    )
+
+    with pytest.raises(operations.OperationError) as raised:
+        operations.run_backup_locked(expected)
+
+    assert raised.value is original_failure
+    assert capsys.readouterr().err == ""
 
 
 def test_root_artifact_boundary_rejects_nonroot_or_writable_files(

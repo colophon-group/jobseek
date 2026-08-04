@@ -29,8 +29,6 @@ jobs:
   preauthorize:
     runs-on: ubuntu-latest
     timeout-minutes: 3
-    outputs:
-      image_tag: ${{ steps.contract.outputs.image_tag }}
     env:
       DISPATCH_ACTOR: ${{ github.actor }}
       DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
@@ -47,34 +45,69 @@ jobs:
           test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
           test "$DISPATCH_EVENT" = workflow_dispatch
           test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
-          test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"
           test "$DISPATCH_CONFIRMATION" = REPAIR-LOCAL-LOCATION-TAXONOMY-37526
 
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Bind the operation to the reviewed release image
-        id: contract
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$EXPECTED_CRAWLER_REVISION"
-          version="$(tr -d '[:space:]' < apps/crawler/VERSION)"
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          echo "image_tag=v${version}" >> "$GITHUB_OUTPUT"
-
-  repair:
+  authorize:
     needs: preauthorize
     if: github.actor == 'viktor-shcherb' && github.triggering_actor == 'viktor-shcherb'
     runs-on: ubuntu-latest
     environment: production-migrations
+    timeout-minutes: 5
+    outputs:
+      crawler_revision: ${{ steps.contract.outputs.crawler_revision }}
+      image_tag: ${{ steps.contract.outputs.image_tag }}
+    env:
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      DISPATCH_EVENT: ${{ github.event_name }}
+      DISPATCH_REF: ${{ github.ref }}
+      DISPATCH_SHA: ${{ github.sha }}
+      EXPECTED_CRAWLER_REVISION: ${{ inputs.expected_crawler_revision }}
+      DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Revalidate the owner, main revision, and confirmation after approval
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_EVENT" = workflow_dispatch
+          test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          test "$DISPATCH_CONFIRMATION" = REPAIR-LOCAL-LOCATION-TAXONOMY-37526
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Bind the operation to the deployed ancestor and release image
+        id: contract
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
+          git cat-file -e "${EXPECTED_CRAWLER_REVISION}^{commit}"
+          git merge-base --is-ancestor "$EXPECTED_CRAWLER_REVISION" "$DISPATCH_SHA"
+          version="$(git show "${EXPECTED_CRAWLER_REVISION}:apps/crawler/VERSION" | tr -d '[:space:]')"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          {
+            echo "crawler_revision=${EXPECTED_CRAWLER_REVISION}"
+            echo "image_tag=v${version}"
+          } >> "$GITHUB_OUTPUT"
+
+  repair:
+    needs: [preauthorize, authorize]
+    if: needs.authorize.result == 'success' && github.actor == 'viktor-shcherb' && github.triggering_actor == 'viktor-shcherb'
+    runs-on: ubuntu-latest
+    environment: Production
     timeout-minutes: 30
     env:
       DISPATCH_ACTOR: ${{ github.actor }}
       DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
-      EXPECTED_CRAWLER_REVISION: ${{ inputs.expected_crawler_revision }}
-      EXPECTED_IMAGE_TAG: ${{ needs.preauthorize.outputs.image_tag }}
+      EXPECTED_CRAWLER_REVISION: ${{ needs.authorize.outputs.crawler_revision }}
+      EXPECTED_IMAGE_TAG: ${{ needs.authorize.outputs.image_tag }}
       GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
       GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
       GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}

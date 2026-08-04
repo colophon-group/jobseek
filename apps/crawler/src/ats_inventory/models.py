@@ -123,25 +123,7 @@ class ImpactSnapshot:
 
     def ranked(self) -> tuple[CompanyImpact, ...]:
         """Rank active companies first, then unknowns, then confirmed zeroes."""
-
-        def key(company: CompanyImpact) -> tuple[object, ...]:
-            if company.active_jobs > 0:
-                impact_group = 0
-            elif company.impact_unknown:
-                impact_group = 1
-            else:
-                impact_group = 2
-            return (
-                impact_group,
-                -company.active_jobs,
-                -company.location_count,
-                -len(company.country_codes),
-                company.country_codes,
-                company.name.casefold(),
-                company.source_key,
-            )
-
-        return tuple(sorted(self.companies, key=key))
+        return tuple(sorted(self.companies, key=company_impact_rank_key))
 
     def to_report(self) -> dict[str, Any]:
         known = sum(not company.impact_unknown for company in self.companies)
@@ -161,3 +143,23 @@ class ImpactSnapshot:
             "family_artifacts": dict(sorted(self.family_artifacts.items())),
             "family_reports": dict(sorted(self.family_reports.items())),
         }
+
+
+def company_impact_rank_key(company: CompanyImpact) -> tuple[object, ...]:
+    """Stable impact ordering shared by cache reports and queue selection."""
+
+    if company.active_jobs > 0:
+        impact_group = 0
+    elif company.impact_unknown:
+        impact_group = 1
+    else:
+        impact_group = 2
+    return (
+        impact_group,
+        -company.active_jobs,
+        -company.location_count,
+        -len(company.country_codes),
+        company.country_codes,
+        company.name.casefold(),
+        company.source_key,
+    )
