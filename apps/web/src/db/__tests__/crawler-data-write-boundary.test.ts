@@ -461,11 +461,17 @@ describe("web crawler-data write boundary (#6248)", () => {
     expect(mutatesCrawlerPostings(sourceFile(join(fixtureRoot, name)))).toBe(true);
   });
 
-  it("does not restore Apify access in the web runtime", () => {
-    const apifyRuntimeMarker = /\bAPIFY_TOKEN\b|api\.apify\.com\/v2/;
-    const offenders = runtimeFiles
+  it("does not restore Apify access in the web deployment", () => {
+    const apifyRuntimeMarker =
+      /\bAPIFY_TOKEN\b|api\.apify\.com\/v2|["']apify-client["']/;
+    const deploymentFiles = [
+      ...runtimeFiles,
+      join(webRoot, "package.json"),
+      resolve(webRoot, "../../pnpm-lock.yaml"),
+    ];
+    const offenders = deploymentFiles
       .filter((path) => apifyRuntimeMarker.test(readFileSync(path, "utf8")))
-      .map((path) => relative(webRoot, path))
+      .map((path) => relative(resolve(webRoot, "../.."), path))
       .sort();
 
     expect(offenders).toEqual([]);
