@@ -13,6 +13,7 @@ import re
 from collections.abc import AsyncIterator
 from html.parser import HTMLParser
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 import httpx
@@ -31,6 +32,9 @@ from src.shared.pageup import (
     pageup_pagination_identity,
 )
 from src.shared.tdm import TDMReservedError
+
+if TYPE_CHECKING:
+    from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
 
@@ -287,7 +291,7 @@ async def stream(
     board: dict,
     client: httpx.AsyncClient,
     pw=None,
-) -> AsyncIterator[list[DiscoveredJob]]:
+) -> AsyncIterator[MonitorResult]:
     """Stream validated listing pages while preserving a constant total."""
 
     _ = pw
@@ -317,7 +321,7 @@ async def stream(
             raise ValueError(f"PageUp pagination repeated {len(overlap)} jobs")
         seen.update(urls)
         if jobs or not has_next:
-            yield jobs
+            yield _hybrid_result(jobs)
         if not has_next:
             if len(seen) != total:
                 raise ValueError("PageUp pagination ended before its authoritative total")
@@ -333,13 +337,25 @@ async def stream(
             raise ValueError("PageUp pagination exceeded the page safety cap")
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
+def _hybrid_result(jobs: list[DiscoveredJob]) -> MonitorResult:
+    """Preserve fields owned by the normal detail-enrichment schedule."""
+
+    from src.core.monitor import MonitorResult
+
+    return MonitorResult(
+        urls={job.url for job in jobs},
+        jobs_by_url={job.url: job for job in jobs},
+        hybrid=True,
+    )
+
+
+async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> MonitorResult:
     """Materialized form used by workspace commands and focused tests."""
 
     jobs: list[DiscoveredJob] = []
     async for batch in stream(board, client, pw=pw):
-        jobs.extend(batch)
-    return jobs
+        jobs.extend((batch.jobs_by_url or {}).values())
+    return _hybrid_result(jobs)
 
 
 async def probe_listing(board: PageUpBoard, client: httpx.AsyncClient) -> int | None:

@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from src.config import settings
+from src.core.monitor import MonitorResult
 from src.core.monitors import (
     BoardGoneError,
     _build_comment,
@@ -324,9 +325,36 @@ class TestMonitor:
             return httpx.Response(200, text=body, request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            jobs = await monitor.discover({"board_url": LISTING_URL}, client)
-        assert {job.url for job in jobs} == {JOB_1, JOB_2, JOB_3}
+            result = await monitor.discover({"board_url": LISTING_URL}, client)
+        assert result.hybrid is True
+        assert result.jobs_by_url is not None
+        assert set(result.jobs_by_url) == {JOB_1, JOB_2, JOB_3}
         assert requested == [BOARD.page_url(1, page_size=2), BOARD.page_url(2, page_size=2)]
+
+    async def test_stream_batches_preserve_dom_enrichment_on_touched_rows(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(monitor, "PAGE_SIZE", 20)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text=_page(
+                    [(560566, "plumber", "Plumber")],
+                    total=1,
+                    page=1,
+                    page_size=20,
+                ),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            batches = [batch async for batch in monitor.stream({"board_url": LISTING_URL}, client)]
+
+        assert len(batches) == 1
+        assert isinstance(batches[0], MonitorResult)
+        assert batches[0].hybrid is True
+        assert batches[0].jobs_by_url is not None
+        assert set(batches[0].jobs_by_url) == {JOB_1}
 
     async def test_overlap_fails_without_partial_completion(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(monitor, "PAGE_SIZE", 1)
