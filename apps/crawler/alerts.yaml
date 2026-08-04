@@ -1408,6 +1408,81 @@ groups:
           description: "More than ten configured boards reached terminal gone after spaced confirmations in one hour; check for a provider/CDN incident before accepting the delist wave."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#provider-gone-confirmation-and-recovery
 
+  - name: jobseek_ats_inventory
+    interval: 30s
+    rules:
+      - alert: AtsInventoryStatusUnavailable
+        expr: jobseek_ats_inventory_status_available == 0
+        for: 2h
+        labels:
+          severity: high
+          service: ats-inventory
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "The ATS inventory operator report is unavailable"
+          description: "The crawler host has not exposed a valid bounded ATS inventory status report for two hours. Inspect the timer, write gate, and immutable deployment revision."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md#hetzner-deployment-and-rollout
+
+      - alert: AtsInventoryRunFailed
+        expr: jobseek_ats_inventory_last_attempt_success == 0
+        for: 15m
+        labels:
+          severity: high
+          service: ats-inventory
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "The latest ATS inventory run failed"
+          description: "The bounded daily source, impact, or GitHub queue pass failed. Writes stop with the prior cache, ledger, and last successful report retained."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md#operator-controls-and-rollback
+
+      - alert: AtsInventoryRunStale
+        expr: |
+          jobseek_ats_inventory_status_available == 1
+            and on (instance)
+          (
+            jobseek_ats_inventory_last_success_unixtime == 0
+            or
+            time() - jobseek_ats_inventory_last_success_unixtime > 36 * 60 * 60
+          )
+        for: 30m
+        labels:
+          severity: high
+          service: ats-inventory
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "The ATS inventory has no fresh daily success"
+          description: "No complete data-only inventory and queue report has succeeded within the 36-hour timer and jitter budget."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md#hetzner-deployment-and-rollout
+
+      - alert: AtsInventoryCoverageQuarantined
+        expr: jobseek_ats_inventory_candidate_coverage_percent < 99
+        for: 15m
+        labels:
+          severity: high
+          service: ats-inventory
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "ATS inventory candidate coverage is below the admission gate"
+          description: "Native Jobseek compatibility fell below 99%; company issue creation is quarantined and one support issue per unknown family should be reconciled automatically."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md#compatibility-and-quarantine
+
+      - alert: AtsInventoryQueueAtHardCap
+        expr: jobseek_ats_inventory_queue_total_open >= 600
+        for: 5m
+        labels:
+          severity: high
+          service: ats-inventory
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "The company-request queue reached its hard cap"
+          description: "At least 600 company-request issues are open. The runner will create nothing; disable writes and inspect resolver throughput and concurrent issue sources."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md#operator-controls-and-rollback
+
   - name: jobseek_operator_handoffs
     interval: 30s
     rules:

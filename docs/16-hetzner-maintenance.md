@@ -888,6 +888,41 @@ verified cursor. Stopping or disabling the timer is a scheduling rollback
 only—the migration and optional Typesense bucket field are additive, and
 disabling the timer does not undo already verified downstream repairs.
 
+## ATS Inventory Candidate Timer
+
+`jobseek-ats-inventory.timer` runs the data-only company inventory and impact
+refresh daily on the crawler host, with persistent catch-up and a 45-minute
+random delay. It uses the immutable deployed crawler image and never runs
+Codex or upstream scraper code. Three root-owned GitHub App credentials enter
+the service through systemd `LoadCredential`; only a short-lived installation
+token file is mounted into the read-only one-shot container. No GitHub token,
+private key, crawler environment file, database credential, or issue body is
+written to Docker metadata or the operator status.
+
+The first install is report-only and has an independent `writes-disabled`
+sentinel. The timer can remain active while writes are disabled: source/cache
+validation and queue reporting continue, while candidate/support issue POSTs
+cannot occur. Cache and ledger data under `/var/lib/jobseek-ats-inventory`
+survive disable, failed installs, and transactional host-surface rollback.
+
+Read-only checks:
+
+```bash
+systemctl is-enabled jobseek-ats-inventory.timer
+systemctl is-active jobseek-ats-inventory.timer
+systemctl list-timers --all jobseek-ats-inventory.timer --no-pager
+/usr/local/sbin/jobseek-ats-inventory-control status
+python3 -m json.tool /var/lib/jobseek-ats-inventory/status/current.json
+journalctl -u jobseek-ats-inventory.service --since '24 hours ago' --no-pager
+```
+
+The host sampler exports `jobseek_ats_inventory_*` aggregate series for
+freshness, success, coverage, queue health, imported issue lifecycle, pickup
+latency, creates, and rollout state. A missing status is explicitly exported
+as unavailable. The complete deployment, report/dry-run/refill controls,
+stage-1/5/25 evidence gates, and emergency disable procedure are documented in
+[`21-ats-inventory-runner.md`](21-ats-inventory-runner.md#hetzner-deployment-and-rollout).
+
 ## Board Quarantine Recovery
 
 Ordinary monitor failures are recoverable. After five consecutive failures a

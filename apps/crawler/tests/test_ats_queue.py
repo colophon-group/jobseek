@@ -31,6 +31,7 @@ def _item(
     state: str = "open",
     body: str = "",
     imported: bool = False,
+    created_at: datetime | None = None,
 ) -> GitHubWorkItem:
     return GitHubWorkItem(
         kind=kind,  # type: ignore[arg-type]
@@ -40,6 +41,9 @@ def _item(
         body=body,
         url=f"https://github.test/{kind}/{number}",
         labels=("company-request", IMPORT_LABEL) if imported else ("company-request",),
+        created_at=(
+            created_at.isoformat().replace("+00:00", "Z") if created_at is not None else None
+        ),
     )
 
 
@@ -168,8 +172,9 @@ async def _refiller(
 def test_queue_counts_humans_and_imports_but_excludes_fresh_claims_and_linked_prs() -> None:
     items = [
         _item(1),
-        _item(2, imported=True),
+        _item(2, imported=True, created_at=NOW - timedelta(minutes=40)),
         _item(3, imported=True),
+        _item(6, imported=True, state="closed"),
         _item(4),
         _item(5),
         _item(90, kind="pr", body="Closes #4\nFixes #5"),
@@ -186,6 +191,12 @@ def test_queue_counts_humans_and_imports_but_excludes_fresh_claims_and_linked_pr
     assert snapshot.active_linked_pr == 2
     assert snapshot.import_open == 2
     assert snapshot.human_open == 3
+    assert snapshot.import_closed == 1
+    assert snapshot.import_fresh_claimed == 1
+    assert snapshot.import_active_linked_pr == 0
+    assert snapshot.import_pickup_latency_samples == 1
+    assert snapshot.import_pickup_latency_avg_seconds == 30 * 60
+    assert snapshot.import_pickup_latency_max_seconds == 30 * 60
     assert snapshot.fresh_claim_issue_numbers == (2, 5)
     assert snapshot.linked_pr_issue_numbers == (4, 5)
 

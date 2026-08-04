@@ -290,5 +290,72 @@ GH_TOKEN=... uv run crawler ats-inventory \
 ```
 
 The normal command emits a structured `ats_inventory.complete` log record. An
-interactive terminal also receives a readable JSON report. Rollout deployment,
-pickup observation, and advancement from 1 to 5 to 25 remain gated by #6190.
+interactive terminal also receives a readable JSON report.
+
+## Hetzner deployment and rollout
+
+Production runs as `jobseek-ats-inventory.timer` on the ordinary crawler host,
+not as a Codex task. The persistent daily timer uses a 45-minute randomized
+delay. Its hardened one-shot resolves the immutable crawler image already
+deployed in `/home/deploy/.env`, mounts only the persistent cache subdirectory
+and one short-lived GitHub App installation-token file, and invokes the
+installed `crawler` entry point directly. It never installs or executes
+upstream code.
+
+The GitHub App private key is delivered with systemd `LoadCredential`. A
+host-side helper signs a nine-minute JWT with OpenSSL, mints an installation
+token, and writes that token to a mode-`0600` temporary file. The container sees
+the file through a read-only bind mount; the token value is absent from Docker
+arguments, environment metadata, reports, and logs. The token file and bounded
+run log are deleted on every exit path.
+
+The persistent root is `/var/lib/jobseek-ats-inventory`. Source and impact
+caches remain bounded by their existing 256/768 MiB limits, raw Parquet files
+remain transient, status history retains 32 runs, and the ledger survives
+disable/rollback. The wrapper has a non-blocking host lock in addition to the
+cache lock, a three-hour runtime cap, 1.5 GiB memory limit, one CPU, PID cap,
+read-only container root, dropped capabilities, and no-new-privileges.
+
+Every run records a credential-free operator status at
+`/var/lib/jobseek-ats-inventory/status/current.json`: inventory freshness and
+coverage, impact counts, human/import queue counts, issue creates, GitHub rate
+state, imported issue claim/PR/terminal counts, sampled pickup latency, refill
+events, and the last successful report when a later attempt fails. The crawler
+host sampler publishes the bounded `jobseek_ats_inventory_*` aggregates; full
+reports remain on the host and structured summaries remain in journald.
+
+### Operator controls and rollback
+
+The write gate is fail-closed on first install. Configuration and enablement
+are deliberately separate:
+
+```bash
+# Inspect state; never prints credentials.
+/usr/local/sbin/jobseek-ats-inventory-control status
+systemctl status jobseek-ats-inventory.timer jobseek-ats-inventory.service --no-pager
+journalctl -u jobseek-ats-inventory.service -n 200 --no-pager
+
+# Report-only source/cache/queue run. The disabled sentinel forces report mode.
+systemctl start jobseek-ats-inventory.service
+
+# Render the exact stage-1 candidate without writes.
+/usr/local/sbin/jobseek-ats-inventory-control configure dry-run 1
+/usr/local/sbin/jobseek-ats-inventory-control enable
+systemctl start jobseek-ats-inventory.service
+
+# Admit exactly one candidate only after reviewing the dry run.
+/usr/local/sbin/jobseek-ats-inventory-control configure refill 1
+systemctl start jobseek-ats-inventory.service
+
+# Emergency/rollback gate: takes effect before the next container starts and
+# retains every cache, report, and ledger file.
+/usr/local/sbin/jobseek-ats-inventory-control disable
+```
+
+After stage 1, record the created issue/source key, resolver claim time,
+verified/fallback/PR/closed outcome, and the exactly-one replacement refill in
+#6190. Repeat those gates at cap 5. Before moving to cap 25, test `disable`, run
+the service once, and prove the effective mode was `report` with zero creates;
+then re-enable only after configuring `refill 25`. The daily cap remains 50,
+the per-tick cap remains 25, all open requests remain below 600, and bootstrap
+toward 500 occurs over multiple daily/manual evidence-gated runs.

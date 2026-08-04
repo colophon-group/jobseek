@@ -1,0 +1,211 @@
+"""Safety contracts for the ordinary Hetzner ATS inventory runner."""
+
+from __future__ import annotations
+
+import base64
+import importlib.util
+import json
+import os
+import subprocess
+from pathlib import Path
+from types import SimpleNamespace
+
+ROOT = Path(__file__).resolve().parents[3]
+DEPLOY = ROOT / "deploy" / "ats-inventory"
+RUNNER = DEPLOY / "run.sh"
+CONTROL = DEPLOY / "control.sh"
+INSTALLER = DEPLOY / "install-host.sh"
+RECEIVER = DEPLOY / "install-host-from-stdin.sh"
+REMOTE = DEPLOY / "deploy-remote.sh"
+TOKEN_HELPER = DEPLOY / "github-app-token.py"
+STATUS_HELPER = DEPLOY / "status.py"
+SERVICE = ROOT / "deploy" / "systemd" / "jobseek-ats-inventory.service"
+TIMER = ROOT / "deploy" / "systemd" / "jobseek-ats-inventory.timer"
+WORKFLOW = ROOT / ".github" / "workflows" / "deploy-ats-inventory.yml"
+
+
+def _load(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+token_helper = _load("ats_inventory_github_app_token", TOKEN_HELPER)
+status_helper = _load("ats_inventory_status", STATUS_HELPER)
+
+
+def test_shell_surfaces_parse() -> None:
+    for path in (RUNNER, CONTROL, INSTALLER, RECEIVER, REMOTE):
+        result = subprocess.run(
+            ["bash", "-n", str(path)], capture_output=True, text=True, check=False
+        )
+        assert result.returncode == 0, f"{path}: {result.stderr}"
+
+
+def test_app_jwt_is_short_lived_and_signed_without_key_material_in_argv(
+    tmp_path: Path, monkeypatch
+) -> None:
+    seen: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        seen.append(argv)
+        assert kwargs["input"].count(b".") == 1
+        return SimpleNamespace(returncode=0, stdout=b"signature")
+
+    monkeypatch.setattr(token_helper.subprocess, "run", fake_run)
+    private_key = tmp_path / "private-key"
+    private_key.write_text("secret-key-material", encoding="utf-8")
+    jwt = token_helper.build_app_jwt("123", private_key, now=1_800_000_000)
+    payload_segment = jwt.split(".")[1]
+    padding = "=" * (-len(payload_segment) % 4)
+    payload = json.loads(base64.urlsafe_b64decode(payload_segment + padding))
+
+    assert payload == {"iat": 1_799_999_940, "exp": 1_800_000_540, "iss": "123"}
+    assert seen == [["openssl", "dgst", "-sha256", "-sign", str(private_key)]]
+    assert "secret-key-material" not in " ".join(seen[0])
+
+
+def test_status_is_atomic_bounded_and_preserves_last_success(tmp_path: Path) -> None:
+    state = tmp_path / "state"
+    log = tmp_path / "run.log"
+    report = {
+        "data_only": True,
+        "rows": 10,
+        "coverage": {},
+        "impact": {},
+        "candidate_issues": {},
+    }
+    log.write_text(
+        json.dumps({"event": "ats_inventory.complete", "report": report}) + "\n",
+        encoding="utf-8",
+    )
+    first = status_helper.record(
+        state,
+        log,
+        return_code=0,
+        requested_mode="report",
+        effective_mode="report",
+        rollout_cap=1,
+        started_at=100,
+        finished_at=120,
+    )
+    assert first["last_attempt_success"] == 1
+    assert first["last_success_unixtime"] == 120
+    assert first["last_success_report"] == report
+    assert os.stat(state / "status" / "current.json").st_mode & 0o777 == 0o640
+
+    log.write_text("container failed before report\n", encoding="utf-8")
+    failed = status_helper.record(
+        state,
+        log,
+        return_code=1,
+        requested_mode="refill",
+        effective_mode="refill",
+        rollout_cap=5,
+        started_at=130,
+        finished_at=140,
+    )
+    assert failed["last_attempt_success"] == 0
+    assert failed["last_success_unixtime"] == 120
+    assert failed["report"] is None
+    assert failed["last_success_report"] == report
+
+    for number in range(150, 190):
+        status_helper.record(
+            state,
+            log,
+            return_code=1,
+            requested_mode="report",
+            effective_mode="report",
+            rollout_cap=1,
+            started_at=number - 1,
+            finished_at=number,
+        )
+    assert len(list((state / "status" / "history").glob("*.json"))) == 32
+
+
+def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> None:
+    source = RUNNER.read_text(encoding="utf-8")
+    assert 'image="ghcr.io/colophon-group/jobseek-crawler:${tag}"' in source
+    assert "ghcr.io/colophon-group/jobseek-crawler:latest" not in source
+    assert "jobseek-ats-inventory-host.lock" in source
+    assert "flock -n 9" in source
+    assert "--read-only" in source
+    assert "--cap-drop ALL" in source
+    assert "--security-opt no-new-privileges" in source
+    assert "--memory 1536m" in source
+    assert "--cpus 1.0" in source
+    assert "--pids-limit 256" in source
+    assert "type=bind,src=$STATE_ROOT/cache,dst=/state/cache" in source
+    assert "type=bind,src=$STATE_ROOT,dst=/state" not in source
+    assert "mktemp /run/lock/jobseek-ats-inventory-log" in source
+    assert "timeout --foreground --signal=TERM --kill-after=90s 3h" in source
+    assert "--impact" in source
+    assert '--candidate-issues "$effective_mode"' in source
+    assert '--queue-rollout-cap "$rollout_cap"' in source
+    assert "--github-token-file /run/credentials/github-token" in source
+    assert "GH_TOKEN=" not in source
+    assert "--env-file" not in source
+    assert "kalil0321/ats-scrapers" not in source
+    assert "pip install" not in source
+    assert "npm install" not in source
+    assert "writes-disabled" in source
+    assert "effective_mode=report" in source
+
+
+def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
+    control = CONTROL.read_text(encoding="utf-8")
+    installer = INSTALLER.read_text(encoding="utf-8")
+    assert "disable)" in control
+    assert "cache and ledger retained" in control
+    assert "configure)" in control and "enable)" in control
+    assert "1|5|25" in control
+    assert "writes-disabled" in control
+    assert "restore_previous" in installer
+    assert 'install -d -o root -g deploy -m 0750 "$STATE_ROOT"' in installer
+    assert "TIMER_WAS_ENABLED" in installer and "TIMER_WAS_ACTIVE" in installer
+    assert "systemd-analyze verify" in installer
+    assert "systemctl enable --now jobseek-ats-inventory.timer" in installer
+    assert "ATS_INVENTORY_MODE=report" in installer
+    assert "ATS_INVENTORY_ROLLOUT_CAP=1" in installer
+    assert 'install -o root -g deploy -m 0640 /dev/null "$CONFIG_ROOT/writes-disabled"' in installer
+    assert "GitHub App private key is not PEM encoded" in installer
+    assert "JOBSEEK_GITHUB_APP_PRIVATE_KEY_FILE" in installer
+    assert '"$payload_size" -le 131072' in RECEIVER.read_text(encoding="utf-8")
+
+
+def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
+    service = SERVICE.read_text(encoding="utf-8")
+    timer = TIMER.read_text(encoding="utf-8")
+    for credential in (
+        "github-app-id",
+        "github-app-installation-id",
+        "github-app-private-key",
+    ):
+        assert f"LoadCredential={credential}:" in service
+    assert "User=deploy" in service
+    assert "NoNewPrivileges=true" in service
+    assert "ProtectSystem=strict" in service
+    assert "RestrictAddressFamilies=AF_UNIX" in service
+    assert "ReadWritePaths=/run/lock /var/lib/jobseek-ats-inventory" in service
+    assert "OnCalendar=*-*-* 03:00:00 UTC" in timer
+    assert "Persistent=true" in timer
+    assert "RandomizedDelaySec=45m" in timer
+
+
+def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    assert "environment: production" in workflow
+    assert "issues: write" in workflow
+    assert "gh label create source:ats-inventory" in workflow
+    assert "ATS_INVENTORY_GITHUB_APP_ID" in workflow
+    assert "ATS_INVENTORY_GITHUB_APP_INSTALLATION_ID" in workflow
+    assert "ATS_INVENTORY_GITHUB_APP_PRIVATE_KEY" in workflow
+    assert "HETZNER_BACKUP_KNOWN_HOSTS" in workflow
+    assert "deploy-remote.sh" in workflow
+    assert "appleboy/" not in workflow
+    checkout = [line for line in workflow.splitlines() if "uses: actions/checkout@" in line]
+    assert checkout and all("@v" not in line for line in checkout)
+    assert "uses: astral-sh/setup-uv@c771a70" in workflow

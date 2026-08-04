@@ -26,6 +26,7 @@ DEFAULT_TEXTFILE = Path("/var/lib/jobseek-observability/textfile/jobseek-host.pr
 DEFAULT_STATE_DIR = Path("/var/lib/jobseek-observability/state")
 DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
 DEFAULT_RECONCILIATION_REVISION = Path("/var/lib/jobseek-reconciliation/deployed-sha")
+DEFAULT_ATS_INVENTORY_STATUS = Path("/var/lib/jobseek-ats-inventory/status/current.json")
 DEFAULT_CODEX_ERROR_REVIEW_STATUS = Path("/srv/jobseek-codex/state/error-review-status.json")
 REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS = 6 * 60 * 60
 POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
@@ -80,6 +81,7 @@ ROLE_UNITS = {
     "crawler": (
         "docker.service",
         "jobseek-crawler-reconciliation.timer",
+        "jobseek-ats-inventory.timer",
         "jobseek-codex-governor.timer",
         "jobseek-codex-daily-annotations.timer",
         "jobseek-codex-daily-error-review.timer",
@@ -328,6 +330,135 @@ def _collect_reconciliation_deployment_metrics(
         (
             _metric("jobseek_cross_store_reconciliation_deployed_revision_available", available),
             _metric("jobseek_cross_store_reconciliation_deployed_revision_mtime_seconds", modified),
+        )
+    )
+
+
+def _collect_ats_inventory_metrics(
+    lines: list[str], status_path: Path = DEFAULT_ATS_INVENTORY_STATUS
+) -> None:
+    """Publish only bounded aggregate fields from the operator status report."""
+    try:
+        payload = json.loads(status_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        lines.append(_metric("jobseek_ats_inventory_status_available", 0))
+        return
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProbeError("ATS inventory status is unreadable") from exc
+    if not isinstance(payload, dict):
+        raise ProbeError("ATS inventory status is not an object")
+
+    def integer(name: str, *, minimum: int = 0) -> int:
+        value = payload.get(name)
+        if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+            raise ProbeError(f"ATS inventory status has invalid {name}")
+        return value
+
+    requested_mode = payload.get("requested_mode")
+    effective_mode = payload.get("effective_mode")
+    if requested_mode not in {"report", "dry-run", "refill"} or effective_mode not in {
+        "report",
+        "dry-run",
+        "refill",
+    }:
+        raise ProbeError("ATS inventory status has invalid mode")
+    attempt_success = integer("last_attempt_success")
+    if attempt_success not in {0, 1}:
+        raise ProbeError("ATS inventory status has invalid last_attempt_success")
+    rollout_cap = integer("rollout_cap", minimum=1)
+    if rollout_cap not in {1, 5, 25}:
+        raise ProbeError("ATS inventory status has invalid rollout_cap")
+    lines.extend(
+        (
+            _metric("jobseek_ats_inventory_status_available", 1),
+            _metric("jobseek_ats_inventory_last_attempt_unixtime", integer("last_attempt_unixtime")),
+            _metric("jobseek_ats_inventory_last_success_unixtime", integer("last_success_unixtime")),
+            _metric("jobseek_ats_inventory_last_attempt_success", attempt_success),
+            _metric(
+                "jobseek_ats_inventory_last_attempt_duration_seconds",
+                integer("last_attempt_duration_seconds"),
+            ),
+            _metric("jobseek_ats_inventory_rollout_cap", rollout_cap),
+            _metric(
+                "jobseek_ats_inventory_mode_info",
+                1,
+                effective_mode=effective_mode,
+                requested_mode=requested_mode,
+            ),
+        )
+    )
+    report = payload.get("report") or payload.get("last_success_report")
+    if not isinstance(report, dict):
+        return
+    coverage = report.get("coverage")
+    impact = report.get("impact")
+    candidate = report.get("candidate_issues")
+    if not all(isinstance(value, dict) for value in (coverage, impact, candidate)):
+        raise ProbeError("ATS inventory aggregate report is incomplete")
+
+    def report_number(mapping: dict[str, Any], name: str) -> int | float:
+        value = mapping.get(name)
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0:
+            raise ProbeError(f"ATS inventory report has invalid {name}")
+        return value
+
+    def optional_report_number(mapping: dict[str, Any], name: str) -> int | float:
+        return 0 if mapping.get(name) is None else report_number(mapping, name)
+
+    queue_status = candidate.get("status")
+    if not isinstance(queue_status, str) or re.fullmatch(r"[a-z0-9_]{1,64}", queue_status) is None:
+        raise ProbeError("ATS inventory queue status is invalid")
+    unsupported_families = coverage.get("unsupported_families")
+    if not isinstance(unsupported_families, list) or not all(
+        isinstance(family, str) for family in unsupported_families
+    ):
+        raise ProbeError("ATS inventory unsupported families are invalid")
+    lines.extend(
+        (
+            _metric("jobseek_ats_inventory_rows", report_number(report, "rows")),
+            _metric(
+                "jobseek_ats_inventory_candidate_coverage_percent",
+                report_number(coverage, "candidate_coverage_pct"),
+            ),
+            _metric(
+                "jobseek_ats_inventory_unsupported_families",
+                len(unsupported_families),
+            ),
+            _metric(
+                "jobseek_ats_inventory_active_companies",
+                report_number(impact, "active_companies"),
+            ),
+            _metric(
+                "jobseek_ats_inventory_queue_status_info",
+                1,
+                status=queue_status,
+            ),
+        )
+    )
+    queue = candidate.get("queue_before")
+    if queue is None and queue_status == "rate_limited_preflight":
+        return
+    if not isinstance(queue, dict):
+        raise ProbeError("ATS inventory queue report is unavailable")
+    lines.extend(
+        (
+            _metric("jobseek_ats_inventory_queue_available", report_number(queue, "available")),
+            _metric("jobseek_ats_inventory_queue_total_open", report_number(queue, "total_open")),
+            _metric("jobseek_ats_inventory_import_open", report_number(queue, "import_open")),
+            _metric("jobseek_ats_inventory_import_closed", report_number(queue, "import_closed")),
+            _metric(
+                "jobseek_ats_inventory_import_fresh_claimed",
+                report_number(queue, "import_fresh_claimed"),
+            ),
+            _metric(
+                "jobseek_ats_inventory_import_active_linked_pr",
+                report_number(queue, "import_active_linked_pr"),
+            ),
+            _metric(
+                "jobseek_ats_inventory_pickup_latency_avg_seconds",
+                optional_report_number(queue, "import_pickup_latency_avg_seconds"),
+            ),
+            _metric("jobseek_ats_inventory_created_last_run", report_number(candidate, "created")),
         )
     )
 
@@ -1124,6 +1255,10 @@ def collect(
                 (
                     "redis-capacity",
                     lambda: _collect_redis_capacity_metrics(lines, state_dir, now=now),
+                ),
+                (
+                    "ats-inventory",
+                    lambda: _collect_ats_inventory_metrics(lines),
                 ),
             )
         )

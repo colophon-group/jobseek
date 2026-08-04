@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Literal, Protocol
 
 import httpx
@@ -16,6 +18,26 @@ from src.ats_inventory.models import InventorySnapshot
 _MARKER_RE = re.compile(r"<!-- ats-inventory-support:family=([a-z0-9][a-z0-9_]{0,63}) -->")
 _API_VERSION = "2022-11-28"
 _RATE_LIMIT_RESERVE = 100
+
+
+def read_injected_github_token(*, env_name: str, token_file: Path | None = None) -> str:
+    """Read an ephemeral GitHub token without putting it in process arguments."""
+    value = os.environ.get(env_name)
+    if value:
+        return value
+    if token_file is None:
+        raise RuntimeError(f"{env_name} or --github-token-file is required for GitHub access")
+    try:
+        stat = token_file.lstat()
+        if token_file.is_symlink() or not token_file.is_file() or stat.st_size > 4096:
+            raise RuntimeError("GitHub token file must be a small regular non-symlink file")
+        raw = token_file.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RuntimeError("GitHub token file is unreadable") from exc
+    lines = raw.splitlines()
+    if len(lines) != 1 or not lines[0].strip() or lines[0] != lines[0].strip():
+        raise RuntimeError("GitHub token file must contain exactly one non-empty line")
+    return lines[0]
 
 
 class GitHubError(RuntimeError):

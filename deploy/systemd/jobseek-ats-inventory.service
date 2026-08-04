@@ -1,0 +1,47 @@
+[Unit]
+Description=Jobseek data-only ATS inventory candidate runner
+Documentation=https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/sbin/jobseek-ats-inventory
+ConditionPathExists=/home/deploy/.env
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+LoadCredential=github-app-id:/etc/jobseek-ats-inventory/github-app-id
+LoadCredential=github-app-installation-id:/etc/jobseek-ats-inventory/github-app-installation-id
+LoadCredential=github-app-private-key:/etc/jobseek-ats-inventory/github-app-private-key
+ExecStart=/usr/local/sbin/jobseek-ats-inventory
+TimeoutStartSec=4h
+TimeoutStopSec=2m
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+UMask=0077
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=read-only
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadWritePaths=/run/lock /var/lib/jobseek-ats-inventory
+
+[Install]
+WantedBy=multi-user.target

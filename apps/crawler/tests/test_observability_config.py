@@ -178,6 +178,28 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
     } <= names
 
 
+def test_ats_inventory_alerts_cover_freshness_coverage_and_hard_cap() -> None:
+    expected = {
+        "AtsInventoryStatusUnavailable": "status_available",
+        "AtsInventoryRunFailed": "last_attempt_success",
+        "AtsInventoryRunStale": "last_success_unixtime",
+        "AtsInventoryCoverageQuarantined": "candidate_coverage_percent < 99",
+        "AtsInventoryQueueAtHardCap": "queue_total_open >= 600",
+    }
+    for name, signal in expected.items():
+        rule = _alert_rule(name)
+        assert signal in rule["expr"]
+        assert rule["labels"] == {
+            "severity": "high",
+            "service": "ats-inventory",
+            "owner": "codex-error-review",
+            "route": "codex-daily",
+        }
+        assert rule["annotations"]["runbook"].startswith(
+            "https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md#"
+        )
+
+
 def test_typesense_reliability_alerts_cover_the_incident_chain() -> None:
     expected = {
         "TypesenseNofileLimitUnsafe": "jobseek_typesense_nofile_soft_limit",
