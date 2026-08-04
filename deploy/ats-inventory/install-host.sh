@@ -38,7 +38,7 @@ TIMER_WAS_ACTIVE=0
 SERVICE_WAS_ACTIVE=0
 STATE_ROOT_WAS_PRESENT=0
 CONFIG_WAS_PRESENT=0
-ROLLBACK_ARMED=1
+ROLLBACK_ARMED=0
 
 [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: deployment SHA is invalid" >&2; exit 1; }
 [[ "$EXPECTED_CRAWLER_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ ]] || {
@@ -143,7 +143,11 @@ stop_unit_if_present() {
 
 open_shared_crawler_lock() {
   if [[ ! -e "$CRAWLER_LOCK" ]]; then
-    (umask 077; set -o noclobber; : >"$CRAWLER_LOCK") 2>/dev/null || true
+    # Create as deploy from the first inode-visible instant. Creating as root
+    # and chowning afterwards leaves a race where the crawler deploy cannot
+    # open its shared lock after a reboot.
+    runuser -u deploy -- sh -c 'umask 077; set -C; : >"$1"' sh "$CRAWLER_LOCK" \
+      2>/dev/null || true
   fi
   [[ -f "$CRAWLER_LOCK" && ! -L "$CRAWLER_LOCK" ]] || {
     echo "ERROR: crawler mutation lock is not a regular file" >&2
@@ -176,6 +180,10 @@ flock -w 300 8 || { echo "ERROR: timed out waiting for crawler mutation lock" >&
   exit 1
 }
 
+# The exact release gate above is read-only with respect to the ATS surface.
+# Arm rollback only at the first live mutation so a stale/missing crawler
+# release cannot stop or rewrite an otherwise healthy existing runner.
+ROLLBACK_ARMED=1
 stop_unit_if_present jobseek-ats-inventory.timer
 stop_unit_if_present jobseek-ats-inventory.service
 

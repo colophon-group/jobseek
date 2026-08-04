@@ -70,7 +70,11 @@ marker=/home/deploy/.crawler-deploy-success.env
 lock=/run/lock/jobseek-crawler-mutation.lock
 open_shared_lock() {
   if [[ ! -e "$lock" ]]; then
-    (umask 077; set -o noclobber; : >"$lock") 2>/dev/null || true
+    # Create as deploy from the first inode-visible instant. Creating as root
+    # and chowning afterwards leaves a race where the crawler deploy cannot
+    # open its shared lock after a reboot.
+    runuser -u deploy -- sh -c 'umask 077; set -C; : >"$1"' sh "$lock" \
+      2>/dev/null || true
   fi
   [[ -f "$lock" && ! -L "$lock" ]] || return 1
   chown deploy:deploy "$lock"

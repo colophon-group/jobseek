@@ -163,7 +163,7 @@ run_phase() {
     --name "$CONTAINER" \
     --init \
     --stop-timeout 60 \
-    --network host \
+    --network bridge \
     --memory 1536m \
     --cpus 1.0 \
     --pids-limit 256 \

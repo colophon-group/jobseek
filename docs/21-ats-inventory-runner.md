@@ -301,10 +301,12 @@ atomic `/home/deploy/.crawler-deploy-success.env` marker published only after
 the crawler health gates pass and rollback is disarmed. It mounts only the
 persistent cache subdirectory and one short-lived GitHub App installation-token
 file, and invokes the installed `crawler` entry point directly. It never
-installs or executes upstream code. The data-only container deliberately has no
-Docker Compose project/one-off labels: it neither touches crawler databases nor
-participates in crawler cutover, so a long inventory fetch cannot block or be
-removed by an unrelated crawler deployment.
+installs or executes upstream code. The data-only container uses Docker bridge
+networking rather than the host network, so production Redis remains unreachable
+on host loopback. It deliberately has no Docker Compose project/one-off labels:
+it neither touches crawler databases nor participates in crawler cutover, so a
+long inventory fetch cannot block or be removed by an unrelated crawler
+deployment.
 
 The GitHub App private key is delivered with systemd `LoadCredential`. A
 host-side helper signs a nine-minute JWT with OpenSSL, mints an installation
@@ -380,8 +382,9 @@ A host-surface-only ATS change instead snapshots the already committed tag and
 revision under the same lock; it does not rebuild or overwrite an unchanged
 crawler image. The installer repeats the exact resolved pair check before
 mutation, closing the gap between the workflow wait and host replacement. Root
-opens the shared mutation lock read-only and normalizes a missing post-reboot
-inode to `deploy:deploy 0600`, preserving access for later deploy-user jobs.
+opens the shared mutation lock read-only and creates a missing post-reboot inode
+through a deploy-user process as `deploy:deploy 0600`, avoiding a root-owned
+creation window and preserving access for later deploy-user jobs.
 
 After stage 1, record the created issue/source key, resolver claim time,
 verified/fallback/PR/closed outcome, and the exactly-one replacement refill in

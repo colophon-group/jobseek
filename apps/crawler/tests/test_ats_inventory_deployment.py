@@ -265,10 +265,19 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert '[[ -e "$WRITE_DISABLED" || -e "$ACCEPTANCE_PIN" ]]' in runner
     assert 'exec 8<"$CRAWLER_LOCK"' in installer
     assert 'exec 8>"$CRAWLER_LOCK"' not in installer
+    assert "runuser -u deploy -- sh -c" in installer
+    assert ': >"$1"' in installer
     assert 'chown deploy:deploy "$CRAWLER_LOCK"' in installer
     acceptance = installer.index("systemctl start jobseek-ats-inventory.service")
-    disarm = installer.index("ROLLBACK_ARMED=0")
+    disarm = installer.rindex("ROLLBACK_ARMED=0")
     assert acceptance < disarm
+    initial_disarm = installer.index("ROLLBACK_ARMED=0")
+    exact_gate = installer.index(
+        '[[ "$(read_exact_release JOBSEEK_DEPLOY_REVISION)" == "$EXPECTED_CRAWLER_REVISION" ]]'
+    )
+    arm = installer.index("ROLLBACK_ARMED=1")
+    first_mutation = installer.index("stop_unit_if_present jobseek-ats-inventory.timer")
+    assert initial_disarm < exact_gate < arm < first_mutation
     assert 'payload["last_attempt_success"] == 1' in installer
     assert 'payload["effective_mode"] == "report"' in installer
     assert "GitHub App private key is not PEM encoded" in installer
@@ -313,7 +322,10 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "expected_revision=current" in workflow
     assert "derive-crawler-build-version.mjs" in workflow
     assert "fetch-depth: 0" in workflow
-    assert 'git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA"' in workflow
+    assert 'changed_paths="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")"' in workflow
+    assert 'done <<< "$changed_paths"' in workflow
+    assert "could not classify the full push range" in workflow
+    assert "done < <(git diff" not in workflow
     assert ".github/workflows/deploy-crawler-browser.yml" in workflow
     assert "timeout-minutes: 355" in workflow
     assert "appleboy/" not in workflow
@@ -334,6 +346,8 @@ def test_remote_deploy_waits_for_exact_image_before_quiescing_install() -> None:
     assert "JOBSEEK_DEPLOY_REVISION" in gate
     assert 'exec 8<"$lock"' in source[:install]
     assert 'exec 8>"$lock"' not in source[:install]
+    assert "runuser -u deploy -- sh -c" in source[:install]
+    assert ': >"$1"' in source[:install]
     assert 'chown deploy:deploy "$lock"' in source[:install]
     assert "/home/deploy/.env" not in gate
     assert " 60m " in source
@@ -350,3 +364,9 @@ def test_runner_uses_only_committed_release_or_transactional_acceptance_pin() ->
     assert 'release_file="$ACCEPTANCE_PIN"' in source
     assert "JOBSEEK_DEPLOY_REVISION" in source
     assert "/home/deploy/.env" not in source
+
+
+def test_runner_uses_bridge_network_without_host_loopback_access() -> None:
+    source = RUNNER.read_text(encoding="utf-8")
+    assert "--network bridge" in source
+    assert "--network host" not in source

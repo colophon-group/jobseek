@@ -916,8 +916,11 @@ timeout, failed report, stale status, or mismatched release fails the install an
 restores the prior units, credentials, and scheduling state. Acceptance uses a
 disposable cache; the independent operator write gate is never part of the
 rollback snapshot, so a concurrent emergency disable cannot be undone. Root
-creates a missing post-reboot mutation-lock inode as `deploy:deploy 0600` and
-opens it read-only, preserving the shared cross-user lock contract.
+creates a missing post-reboot mutation-lock inode through a deploy-user process
+as `deploy:deploy 0600` and opens it read-only, avoiding a root-owned creation
+window and preserving the shared cross-user lock contract. The runner container
+uses Docker bridge networking, not the host network, so the local loopback-only
+Redis service is outside its network namespace.
 
 Read-only checks:
 

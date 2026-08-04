@@ -77,6 +77,10 @@ jobs:
               echo "ERROR: push before-SHA is invalid" >&2
               exit 1
             }
+            changed_paths="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")" || {
+              echo "ERROR: could not classify the full push range" >&2
+              exit 1
+            }
             crawler_changed=0
             while IFS= read -r path; do
               case "$path" in
@@ -84,7 +88,7 @@ jobs:
                 apps/crawler/*.md|apps/crawler/**/*.md) ;;
                 apps/crawler/*|.github/workflows/deploy-crawler-browser.yml) crawler_changed=1 ;;
               esac
-            done < <(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")
+            done <<< "$changed_paths"
             if (( crawler_changed )); then
               version_output="$(mktemp)"
               node scripts/derive-crawler-build-version.mjs \
