@@ -395,6 +395,7 @@ def test_runner_network_is_private_state_isolated_and_runtime_verified(tmp_path:
     assert "jobseek-ats-inventory-egress" in source
     assert "br-jobseek-ats" in source
     assert "DOCKER-USER" in source
+    assert "{{.FirewallBackend.Driver}}" in source
     assert "JOBSEEK-ATS-EGRESS" in source
     assert "JOBSEEK-ATS-INPUT" in source
     assert "com.docker.network.bridge.enable_icc=false" in source

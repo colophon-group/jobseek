@@ -93,6 +93,10 @@ rm -f "$ATTESTATION"
   echo "ERROR: crawler environment is unavailable for boundary verification" >&2
   exit 1
 }
+[[ "$(docker info --format '{{.FirewallBackend.Driver}}')" == iptables ]] || {
+  echo "ERROR: ATS inventory boundary requires Docker's iptables firewall backend" >&2
+  exit 1
+}
 
 if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
   docker network create \
