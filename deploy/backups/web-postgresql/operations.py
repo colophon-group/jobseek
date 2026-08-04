@@ -7,6 +7,7 @@ import argparse
 import fcntl
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -41,6 +42,18 @@ DATABASE_CREDENTIAL_PATH = Path("/etc/jobseek-backup/web-postgresql.database-url
 RESTORE_IMAGE = (
     "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"
 )
+BACKUP_FAILURE_ERROR_LIMIT = 512
+BACKUP_FAILURE_DIAGNOSTIC_LIMIT = 768
+_BACKUP_FAILURE_URI = re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^\s'\"<>]+")
+_BACKUP_FAILURE_AUTHORITY = re.compile(r"(?i)\b[^\s:@/]+:[^\s@/]+@[a-z0-9.-]+")
+_BACKUP_FAILURE_AUTHORIZATION = re.compile(
+    r"(?i)\b(?:authorization|proxy-authorization)\s*:\s*(?:bearer|basic)\s+[^\s,;]+"
+)
+_BACKUP_FAILURE_SECRET = re.compile(
+    r"(?i)\b(?P<name>api[-_ ]?key|credential|password|passwd|secret|token)"
+    r"(?:\s*(?:=|:)\s*|\s+)(?P<value>[^\s,;]+)"
+)
+_BACKUP_FAILURE_CONTROL = re.compile(r"[\x00-\x1f\x7f]+")
 ARTIFACT_PATHS = {
     "data_backup": Path("/usr/local/sbin/jobseek-data-backup"),
     "operations": Path("/usr/local/sbin/jobseek-web-postgresql-operations"),
@@ -471,6 +484,86 @@ def required_int(value: object, field: str) -> int:
     return value
 
 
+def redact_backup_failure_error(value: object) -> str:
+    if not isinstance(value, str) or not value or len(value) > 1200:
+        raise OperationError("fresh failed web PostgreSQL backup error is invalid")
+    text = _BACKUP_FAILURE_URI.sub("<redacted-uri>", value)
+    text = _BACKUP_FAILURE_AUTHORITY.sub("<redacted-authority>", text)
+    text = _BACKUP_FAILURE_AUTHORIZATION.sub("authorization=<redacted>", text)
+    text = _BACKUP_FAILURE_SECRET.sub(
+        lambda match: f"{match.group('name')}=<redacted>",
+        text,
+    )
+    text = " ".join(_BACKUP_FAILURE_CONTROL.sub(" ", text).split())
+    if not text:
+        raise OperationError("fresh failed web PostgreSQL backup error is invalid")
+    if len(text) > BACKUP_FAILURE_ERROR_LIMIT:
+        suffix = " <truncated>"
+        prefix = text[: BACKUP_FAILURE_ERROR_LIMIT - len(suffix)]
+        boundary = prefix.rfind(" ")
+        text = (
+            prefix[:boundary] + suffix
+            if boundary >= BACKUP_FAILURE_ERROR_LIMIT // 2
+            else "backup failure detail exceeded the safe diagnostic limit"
+        )
+    if (
+        len(text) > BACKUP_FAILURE_ERROR_LIMIT
+        or _BACKUP_FAILURE_URI.search(text)
+        or _BACKUP_FAILURE_AUTHORITY.search(text)
+        or _BACKUP_FAILURE_AUTHORIZATION.search(text)
+        or any(
+            match.group("value") != "<redacted>" for match in _BACKUP_FAILURE_SECRET.finditer(text)
+        )
+    ):
+        raise OperationError("backup failure detail violated the nonsecret contract")
+    return text
+
+
+def backup_failure_diagnostic(status: dict[str, Any], *, started: int) -> str:
+    attempt = required_int(status.get("attempt_unix"), "attempt_unix")
+    attempt_at = status.get("attempt_at")
+    finished_at = status.get("finished_at")
+    duration = status.get("duration_seconds")
+    if (
+        status.get("schema_version") != 1
+        or status.get("service") != "web-postgresql"
+        or status.get("success") is not False
+        or attempt < started
+        or not isinstance(attempt_at, str)
+        or len(attempt_at) > 64
+        or parse_timestamp(attempt_at) < started
+        or not isinstance(finished_at, str)
+        or len(finished_at) > 64
+        or parse_timestamp(finished_at) < attempt
+        or isinstance(duration, bool)
+        or not isinstance(duration, (int, float))
+        or not math.isfinite(duration)
+        or duration < 0
+        or duration > 2 * 60 * 60 + 300
+    ):
+        raise OperationError("fresh failed web PostgreSQL backup evidence is invalid")
+    diagnostic = json.dumps(
+        {
+            "attempt_at": attempt_at,
+            "duration_seconds": duration,
+            "error": redact_backup_failure_error(status.get("error")),
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    if len(diagnostic) > BACKUP_FAILURE_DIAGNOSTIC_LIMIT:
+        raise OperationError("backup failure diagnostic exceeded its safe size contract")
+    return diagnostic
+
+
+def emit_backup_failure_diagnostic(*, started: int) -> None:
+    status = read_json(BACKUP_STATUS_PATH)
+    print(
+        "Backup failure evidence: " + backup_failure_diagnostic(status, started=started),
+        file=sys.stderr,
+    )
+
+
 def validate_identity(expected: ExpectedIdentity) -> dict[str, str]:
     if not re.fullmatch(r"[0-9a-f]{40}", expected.deploy_sha):
         raise OperationError("expected deployment revision is invalid")
@@ -678,7 +771,12 @@ def run_backup_locked(expected: ExpectedIdentity) -> None:
     before = timer_state()
     started = int(time.time())
     run_checked(["systemctl", "reset-failed", BACKUP_UNIT])
-    run_checked(["systemctl", "start", BACKUP_UNIT], timeout=2 * 60 * 60 + 300)
+    try:
+        run_checked(["systemctl", "start", BACKUP_UNIT], timeout=2 * 60 * 60 + 300)
+    except (OperationError, OSError, subprocess.TimeoutExpired):
+        with suppress(OperationError, OSError):
+            emit_backup_failure_diagnostic(started=started)
+        raise
     if timer_state() != before:
         raise OperationError("backup operation changed the timer state")
     artifact_hashes = validate_identity(expected)
