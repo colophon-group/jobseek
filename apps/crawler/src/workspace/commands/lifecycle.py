@@ -198,7 +198,7 @@ def new(
         # Inventory-generated issues carry redundant, content-addressed
         # evidence.  Parse it here (after auth, before state creation) so
         # normal human requests remain byte-for-byte on the established path.
-        if issue and not reconfig:
+        if issue:
             from src.workspace.ats_seed import (
                 InventorySeedInvalid,
                 issue_has_inventory_label,
@@ -339,11 +339,13 @@ def new(
                         out.info("reconfig", f"Loaded descriptions: {', '.join(ws.descriptions)}")
                     break
 
+    existing_boards = _load_existing_boards(slug) if reconfig else []
     seeded_board = None
-    if inventory_seed is not None and not reconfig:
+    if inventory_seed is not None:
         from src.workspace.ats_seed import (
             apply_inventory_fallback,
             apply_inventory_seed,
+            available_inventory_board_alias,
             current_registry_hard_evidence,
         )
 
@@ -361,7 +363,20 @@ def new(
                 f"Seed now matches the current registry ({codes}); using normal discovery",
             )
         else:
-            seeded_board = apply_inventory_seed(ws, inventory_seed)
+            existing_aliases: set[str] = set()
+            for row in existing_boards:
+                board_slug = row.get("board_slug", "")
+                alias = (
+                    board_slug.removeprefix(f"{slug}-")
+                    if board_slug.startswith(f"{slug}-")
+                    else board_slug
+                )
+                existing_aliases.add(alias)
+            seeded_board = apply_inventory_seed(
+                ws,
+                inventory_seed,
+                board_alias=available_inventory_board_alias(existing_aliases),
+            )
 
     save_workspace(ws)
 
@@ -378,7 +393,6 @@ def new(
 
     # Pre-populate boards when reconfiguring
     if reconfig:
-        existing_boards = _load_existing_boards(slug)
         for brow in existing_boards:
             board_slug = brow.get("board_slug", "")
             alias = (
@@ -394,10 +408,12 @@ def new(
             save_board(slug, board)
             ws.active_board = alias
             out.info("reconfig", f"Loaded board: {alias} — {board.url}")
+        if seeded_board is not None:
+            ws.active_board = seeded_board.alias
         save_workspace(ws)
 
     # For reconfig, advance workflow past setup/add_boards (already satisfied)
-    if reconfig and existing_boards:
+    if reconfig and (existing_boards or seeded_board is not None):
         from src.workspace.workflow import WorkflowState, _all_step_defs, _save_wf_to_disk
 
         step_id = start_at or "select_monitor"
@@ -407,7 +423,11 @@ def new(
 
         wf = WorkflowState(
             current_step=step_id,
-            current_board=existing_boards[0].get("board_slug", "").removeprefix(f"{slug}-"),
+            current_board=(
+                seeded_board.alias
+                if seeded_board is not None
+                else existing_boards[0].get("board_slug", "").removeprefix(f"{slug}-")
+            ),
         )
         _save_wf_to_disk(slug, wf)
     elif start_at:

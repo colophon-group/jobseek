@@ -12,6 +12,7 @@ from src.workspace.ats_seed import (
     INVENTORY_CONFIG_NAME,
     InventorySeedInvalid,
     apply_inventory_seed,
+    available_inventory_board_alias,
     current_registry_hard_evidence,
     issue_has_inventory_label,
     parse_inventory_seed,
@@ -63,6 +64,14 @@ def test_valid_inventory_issue_seeds_native_monitor_and_scraper() -> None:
     assert board.configs[INVENTORY_CONFIG_NAME]["monitor_type"] == "greenhouse"
     assert board.configs[INVENTORY_CONFIG_NAME]["scraper_type"] == "skip"
     assert board.configs[INVENTORY_CONFIG_NAME]["status"] == "selected"
+
+
+def test_inventory_seed_alias_never_replaces_an_existing_board() -> None:
+    assert available_inventory_board_alias([]) == "careers"
+    assert available_inventory_board_alias(["careers"]) == "inventory-careers"
+    assert (
+        available_inventory_board_alias(["careers", "inventory-careers"]) == "inventory-careers-2"
+    )
 
 
 def test_generic_family_uses_jobseek_owned_shared_monitor_preset() -> None:
@@ -183,6 +192,8 @@ def test_duplicate_check_remains_required_for_seeded_issue() -> None:
     assert 'ws search "<company name>"' in rendered
     assert "Check if the company already exists" in rendered
     assert "verify the company/tenant" in rendered
+    assert "a matching company name is only advisory" in rendered
+    assert "--reconfig" in rendered
 
 
 def test_orchestrator_keeps_additional_board_research_and_all_gates() -> None:
