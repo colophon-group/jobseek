@@ -119,6 +119,37 @@ def parse_args() -> argparse.Namespace:
         help="Reconcile unsupported-family issues; writes require explicit 'create'",
     )
     ats_inventory_p.add_argument(
+        "--candidate-issues",
+        choices=("off", "plan"),
+        default="off",
+        help="Explain conservative candidate deduplication without GitHub writes",
+    )
+    ats_inventory_p.add_argument(
+        "--candidate-limit",
+        type=int,
+        default=100,
+        help="Maximum impact-ranked rows to explain in candidate plan mode",
+    )
+    crawler_root = Path(__file__).resolve().parent.parent
+    ats_inventory_p.add_argument(
+        "--companies-file",
+        type=Path,
+        default=crawler_root / "data" / "companies.csv",
+        help="Checked-in company registry used for exact and soft matches",
+    )
+    ats_inventory_p.add_argument(
+        "--boards-file",
+        type=Path,
+        default=crawler_root / "data" / "boards.csv",
+        help="Checked-in board registry used for exact URL and ATS-tenant matches",
+    )
+    ats_inventory_p.add_argument(
+        "--candidate-ledger",
+        type=Path,
+        default=None,
+        help="Durable SQLite ledger (default: <cache-dir>/candidates/ledger.sqlite)",
+    )
+    ats_inventory_p.add_argument(
         "--github-repo",
         default=os.environ.get("ATS_INVENTORY_GITHUB_REPO", "colophon-group/jobseek"),
         help="Repository used for unsupported-family issues",
@@ -592,6 +623,8 @@ async def run() -> None:
             from src.ats_inventory.source import InventorySource
 
             timeout = httpx.Timeout(60.0, read=180.0)
+            if args.candidate_limit < 1:
+                raise ValueError("--candidate-limit must be at least 1")
             with exclusive_run_lock(args.cache_dir / "runner.lock"):
                 async with httpx.AsyncClient(
                     timeout=timeout,
@@ -609,31 +642,36 @@ async def run() -> None:
                     snapshot = await source.sync()
                     report = snapshot.to_report()
                     report["impact"] = {"enabled": args.impact}
+                    impact_snapshot = None
+                    impact = ImpactCache(
+                        args.cache_dir / "impact",
+                        client,
+                        max_cache_bytes=args.impact_max_cache_mib * 1024 * 1024,
+                        max_artifact_bytes=args.impact_max_artifact_mib * 1024 * 1024,
+                        min_free_bytes=args.impact_free_reserve_mib * 1024 * 1024,
+                    )
                     if args.impact:
-                        impact = ImpactCache(
-                            args.cache_dir / "impact",
-                            client,
-                            max_cache_bytes=args.impact_max_cache_mib * 1024 * 1024,
-                            max_artifact_bytes=args.impact_max_artifact_mib * 1024 * 1024,
-                            min_free_bytes=args.impact_free_reserve_mib * 1024 * 1024,
-                        )
+                        impact_snapshot = await impact.sync(snapshot)
                         report["impact"] = {
                             "enabled": True,
-                            **(await impact.sync(snapshot)).to_report(),
+                            **impact_snapshot.to_report(),
                         }
                     report["support_issues"] = {"mode": args.support_issues, "actions": []}
-                    if args.support_issues != "off":
+                    github = None
+                    if args.support_issues != "off" or args.candidate_issues != "off":
                         token = os.environ.get(args.github_token_env)
                         if not token:
                             raise RuntimeError(
-                                f"{args.github_token_env} is required for support issue "
-                                "reconciliation"
+                                f"{args.github_token_env} is required for GitHub issue "
+                                "reconciliation and candidate planning"
                             )
                         github = GitHubSupportIssueClient(
                             client,
                             repo=args.github_repo,
                             token=token,
                         )
+                    if args.support_issues != "off":
+                        assert github is not None
                         actions = await reconcile_support_issues(
                             snapshot,
                             github,
@@ -642,6 +680,60 @@ async def run() -> None:
                         report["support_issues"] = {
                             "mode": args.support_issues,
                             "actions": [action.to_dict() for action in actions],
+                            "rate_remaining": github.rate_remaining,
+                            "rate_reset": github.rate_reset,
+                        }
+                    report["candidate_issues"] = {
+                        "mode": args.candidate_issues,
+                        "actions": [],
+                    }
+                    if args.candidate_issues == "plan":
+                        from dataclasses import asdict
+
+                        from src.ats_inventory.candidate_issues import (
+                            CandidateIssueCoordinator,
+                        )
+                        from src.ats_inventory.candidates import Candidate, LocalRegistryIndex
+                        from src.ats_inventory.ledger import CandidateLedger
+
+                        assert github is not None
+                        if not snapshot.coverage.candidate_generation_allowed:
+                            raise RuntimeError(
+                                "candidate generation is quarantined below the coverage gate"
+                            )
+                        if impact_snapshot is None:
+                            impact_snapshot = impact.load_current()
+                        if (
+                            impact_snapshot.manifest_sha256 != snapshot.manifest_sha256
+                            or impact_snapshot.inventory_sha256 != snapshot.inventory_sha256
+                        ):
+                            raise RuntimeError(
+                                "cached impact does not match the current inventory; rerun with "
+                                "--impact"
+                            )
+                        local = LocalRegistryIndex.from_csv(args.companies_file, args.boards_file)
+                        ledger_path = args.candidate_ledger or (
+                            args.cache_dir / "candidates" / "ledger.sqlite"
+                        )
+                        coordinator = await CandidateIssueCoordinator.bootstrap(
+                            client=github,
+                            local=local,
+                            ledger=CandidateLedger(ledger_path),
+                        )
+                        candidate_actions = []
+                        for company in impact_snapshot.ranked()[: args.candidate_limit]:
+                            candidate = Candidate.from_impact(company)
+                            candidate_actions.append(
+                                await coordinator.create(candidate, dry_run=True)
+                            )
+                        report["candidate_issues"] = {
+                            "mode": "plan",
+                            "considered": len(candidate_actions),
+                            "eligible": sum(
+                                action.action == "would_create" for action in candidate_actions
+                            ),
+                            "actions": [action.to_dict() for action in candidate_actions],
+                            "ledger_reconciliation": asdict(coordinator.reconciliation),
                             "rate_remaining": github.rate_remaining,
                             "rate_reset": github.rate_reset,
                         }
