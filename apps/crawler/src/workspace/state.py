@@ -381,6 +381,28 @@ def _merge_dicts(base: dict, overlay: dict) -> dict:
     return merged
 
 
+_ATS_INVENTORY_TERMINAL_STATUSES = frozenset({"verified", "fallback"})
+
+
+def _merge_ats_inventory(base: object, overlay: object) -> object:
+    """Keep atomic inventory verification from being reverted by stale saves.
+
+    Parallel workspace commands may load the same pending seed and finish in a
+    different order.  The monitor records its terminal result through
+    ``update_workspace``; a later full-object ``save_workspace`` must not
+    restore that stale pending snapshot (or erase the seed with ``None``).
+    Terminal-to-terminal transitions, when ever needed, remain possible only
+    through the explicit atomic update path.
+    """
+    if not isinstance(base, dict) or not base:
+        return overlay
+    if not isinstance(overlay, dict) or not overlay:
+        return dict(base)
+    if base.get("status") in _ATS_INVENTORY_TERMINAL_STATUSES:
+        return dict(base)
+    return _merge_dicts(base, overlay)
+
+
 def save_workspace(ws: Workspace) -> None:
     """Write workspace.yaml atomically under advisory lock.
 
@@ -398,7 +420,11 @@ def save_workspace(ws: Workspace) -> None:
             except (yaml.YAMLError, OSError):
                 disk_data = None
             if isinstance(disk_data, dict):
-                merged = _merge_dicts(disk_data, ws.to_dict())
+                overlay = ws.to_dict()
+                overlay["ats_inventory"] = _merge_ats_inventory(
+                    disk_data.get("ats_inventory"), overlay.get("ats_inventory")
+                )
+                merged = _merge_dicts(disk_data, overlay)
             else:
                 merged = ws.to_dict()
         else:
