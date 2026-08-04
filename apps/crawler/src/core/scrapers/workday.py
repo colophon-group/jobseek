@@ -19,6 +19,7 @@ import structlog
 
 from src.core.enum_normalize import normalize_job_location_type
 from src.core.scrapers import JobContent, register
+from src.shared.http import mark_transient_response_failure
 
 log = structlog.get_logger()
 
@@ -259,6 +260,15 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
 
     assert last_payload is not None
     http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
+    # Workday occasionally serves HTML or another invalid API body with HTTP
+    # 200 across many tenants at once (#5230). After all provider-specific
+    # retries are exhausted, promote this to a transient upstream outcome so
+    # the shared per-origin circuit defers sibling postings. Do not mark an
+    # individual invalid attempt: a later valid retry proves the host healthy.
+    mark_transient_response_failure(
+        str(resp.url),
+        reason="workday_invalid_detail_payload",
+    )
     raise WorkdayDetailPayloadError(
         attempts=_DETAIL_RETRY_ATTEMPTS,
         reason=str(last_payload["reason"]),

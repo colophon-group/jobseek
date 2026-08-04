@@ -1992,6 +1992,28 @@ class TestSelectMonitorNaming:
             {"enrich": ["description", "employment_type", "job_location_type"]},
         )
 
+    def test_legacy_successfactors_static_enrichment_is_persisted(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        config = json.dumps(
+            {
+                "preset": "successfactors",
+                "variant": "legacy",
+                "host": "career5.successfactors.eu",
+                "company": "Acme",
+            }
+        )
+
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "rss", "--config", config],
+        )
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["rss"]
+        assert selected["scraper_type"] == "dom"
+        assert selected["scraper_config"]["scope"] == ".joqReqDescription"
+        assert selected["scraper_config"]["enrich"] == ["description"]
+
     def test_bamboohr_api_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
         """BambooHR selection carries its complete generic detail API preset."""
         self._setup(tmp_path, monkeypatch)

@@ -27,6 +27,7 @@ DEFAULT_STATE_DIR = Path("/var/lib/jobseek-observability/state")
 DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
 DEFAULT_RECONCILIATION_REVISION = Path("/var/lib/jobseek-reconciliation/deployed-sha")
 DEFAULT_CODEX_ERROR_REVIEW_STATUS = Path("/srv/jobseek-codex/state/error-review-status.json")
+REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS = 6 * 60 * 60
 POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
 POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
 MAX_LOG_LINES = 200
@@ -210,6 +211,68 @@ def _collect_container_metrics(role: str, lines: list[str]) -> None:
         lines.append(_metric("jobseek_container_running", int(state["running"]), **labels))
         lines.append(_metric("jobseek_container_oom_killed", int(state["oom_killed"]), **labels))
         lines.append(_metric("jobseek_container_restart_count", state["restart_count"], **labels))
+
+
+def _collect_redis_capacity_metrics(
+    lines: list[str],
+    state_dir: Path,
+    *,
+    now: float | None = None,
+) -> None:
+    """Refresh the expensive key-family SCAN at most once every six hours.
+
+    The crawler and host-observability deployments can finish in either order.
+    Missing CLI support therefore publishes ``available=0`` without failing the
+    whole host sampler; the stale-snapshot alert provides a bounded rollout
+    grace period. A prior valid snapshot remains published during refresh
+    failures so operators retain the last family attribution.
+    """
+    current = time.time() if now is None else now
+    cache = state_dir / "redis-capacity.prom"
+    cached = ""
+    cache_age = float("inf")
+    try:
+        cached = cache.read_text(encoding="utf-8")
+        cache_age = max(0.0, current - cache.stat().st_mtime)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        print(f"jobseek_redis_capacity_cache_failed error={type(exc).__name__}")
+
+    available = False
+    if cached and cache_age <= REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS:
+        available = True
+    else:
+        try:
+            result = _run(
+                [
+                    "docker",
+                    "exec",
+                    "deploy-worker-1-1",
+                    "/app/.venv/bin/crawler",
+                    "redis-capacity",
+                    "inspect",
+                    "--format",
+                    "prometheus",
+                ],
+                timeout=100,
+            )
+            rendered = "\n".join(
+                line
+                for line in result.stdout.splitlines()
+                if line.startswith("jobseek_redis_")
+            )
+            if "jobseek_redis_capacity_snapshot_unixtime " not in rendered:
+                raise ProbeError("Redis capacity output omitted its snapshot timestamp")
+            cached = rendered + "\n"
+            _atomic_write(cache, cached)
+            available = True
+        except Exception as exc:
+            print(f"jobseek_redis_capacity_refresh_failed error={_redact(str(exc))}")
+
+    if cached:
+        lines.extend(line for line in cached.splitlines() if line.startswith("jobseek_redis_"))
+    lines.append(_metric("jobseek_redis_capacity_snapshot_available", int(available)))
 
 
 def _unit_enabled(unit: str) -> bool:
@@ -1056,6 +1119,10 @@ def collect(
                 (
                     "codex-error-review",
                     lambda: _collect_codex_error_review_metrics(lines),
+                ),
+                (
+                    "redis-capacity",
+                    lambda: _collect_redis_capacity_metrics(lines, state_dir, now=now),
                 ),
             )
         )

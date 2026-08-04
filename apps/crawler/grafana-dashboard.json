@@ -1198,11 +1198,11 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "max by (wtype) (crawler_inflight_deadletter_depth)",
-          "legendFormat": "{{wtype}}"
+          "expr": "max by (wtype, lifecycle) (crawler_monitor_deadletter_lifecycle_depth)",
+          "legendFormat": "{{wtype}} {{lifecycle}}"
         }
       ],
-      "description": "Tasks parked in Redis deadletter:<wtype> after the inflight reaper reaches max strikes. Nonzero for >1h fires DeadletterQueueNotEmpty. Inspect with ZRANGE deadletter:simple 0 -1 WITHSCORES or ZRANGE deadletter:browser 0 -1 WITHSCORES."
+      "description": "Monitor tasks parked in Redis deadletter:<wtype>, classified against local Postgres. Only actionable/unresolved entries alert; retired/superseded residue remains visible for explicit pruning. Use `crawler deadletters inspect` before retrying or pruning an exact selector."
     },
     {
       "id": 14,
