@@ -15,6 +15,7 @@ import re
 from urllib.parse import parse_qsl
 
 from src.shared.adp import adp_board_from_url
+from src.shared.avature import is_avature_vendor_url
 from src.shared.beisen import beisen_board_from_url
 from src.shared.cornerstone import cornerstone_board_from_url
 from src.shared.darwinbox import darwinbox_board_from_url
@@ -111,6 +112,7 @@ def auto_skip_crawler_types() -> frozenset[str]:
 
 
 _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
+    "avature",
     "bite",
     "breezy",
     "eightfold",
@@ -205,6 +207,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "gem"
     if adp_board_from_url(url) is not None:
         return "adp"
+    if is_avature_vendor_url(url):
+        return "avature"
     if beisen_board_from_url(url) is not None:
         return "beisen"
     if gupy_tenant_from_url(url) is not None:
@@ -546,6 +550,44 @@ def auto_scraper_type(
         return ("json-ld", None)
     if monitor_type == "taleo":
         return ("json-ld", None)
+    if monitor_type == "avature":
+        return (
+            "dom",
+            {
+                "gone_url_pattern": r"/(?:Error|SearchJobs)(?:[/?#]|$)",
+                "retry_statuses": {"406": 2},
+                "steps": [
+                    {"tag": "h2", "field": "title"},
+                    {
+                        "field": "description",
+                        "html": True,
+                        "stop": "Apply",
+                        "optional": True,
+                    },
+                    {
+                        "text": "Location",
+                        "offset": 1,
+                        "field": "locations",
+                        "optional": True,
+                        "from": 0,
+                    },
+                    {
+                        "text": "Working time",
+                        "offset": 1,
+                        "field": "employment_type",
+                        "optional": True,
+                        "from": 0,
+                    },
+                    {
+                        "text": "Posted",
+                        "offset": 1,
+                        "field": "date_posted",
+                        "optional": True,
+                        "from": 0,
+                    },
+                ],
+            },
+        )
     if monitor_type == "breezy":
         return ("json-ld", _BREEZY_SCRAPER_CONFIG)
     if monitor_type == "bite":

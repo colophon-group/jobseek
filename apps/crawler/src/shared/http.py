@@ -65,24 +65,35 @@ DEFAULT_USER_AGENT = (
 # per-request entry winning on conflict).
 DEFAULT_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 
-# Avature's branded tenants all use a ``<something>Careers/JobDetail``
+# Avature's branded tenants commonly use a ``<something>Careers/*Detail``
 # route even when the public hostname does not mention Avature. During the
 # incident in #5710 those routes returned short-lived 406 bursts across five
 # unrelated tenants, while the exact same URLs subsequently returned their
 # normal job pages. Keep this predicate URL-specific: a generic 406 can still
 # be a permanent content-negotiation/configuration error.
-_AVATURE_JOB_DETAIL_PATH_RE = re.compile(r"/[^/]*careers[^/]*/jobdetail/", re.IGNORECASE)
+_AVATURE_DETAIL_PATH_RE = re.compile(
+    r"/[^/]*careers[^/]*/(?:job|folder|pipeline)detail(?:/|$)",
+    re.IGNORECASE,
+)
+_AVATURE_UNIQUE_DETAIL_PATH_RE = re.compile(
+    r"/(?:folder|pipeline)detail(?:/|$)",
+    re.IGNORECASE,
+)
 
 
 def is_avature_job_detail_url(url: str) -> bool:
-    """Return whether *url* is an Avature JobDetail page."""
+    """Return whether *url* is a recognizable Avature detail page."""
 
     parsed = urlparse(url)
     path = parsed.path
     host = (parsed.hostname or "").lower()
     return bool(
-        _AVATURE_JOB_DETAIL_PATH_RE.search(path)
-        or (host.endswith(".avature.net") and "/jobdetail/" in path.lower())
+        _AVATURE_DETAIL_PATH_RE.search(path)
+        or _AVATURE_UNIQUE_DETAIL_PATH_RE.search(path)
+        or (
+            host.endswith(".avature.net")
+            and re.search(r"/(?:job|folder|pipeline)detail(?:/|$)", path, re.IGNORECASE)
+        )
     )
 
 

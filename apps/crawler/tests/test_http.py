@@ -173,6 +173,18 @@ def test_does_not_treat_generic_job_detail_route_as_avature() -> None:
     assert is_avature_job_detail_url("https://example.com/jobs/JobDetail/Role/123") is False
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://jobs.example.com/careers/JobDetail?jobId=123",
+        "https://jobs.example.com/jobs/FolderDetail/Role/123",
+        "https://jobs.example.com/jobs/PipelineDetail?pipelineId=123",
+    ],
+)
+def test_recognizes_branded_avature_detail_variants(url: str) -> None:
+    assert is_avature_job_detail_url(url) is True
+
+
 class TestProxyOptIn:
     """Test the public contract: ``_client_kwargs`` is the exact dict we
     pass to ``httpx.AsyncClient(**kwargs)``. Asserting on it is robust
