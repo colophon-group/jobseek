@@ -36,6 +36,7 @@ _PAGINATION_PAIRS = {
         "folderRecordsPerPage",
         "folderOffset",
     ),
+    frozenset({"pipelineOffset"}): (None, "pipelineOffset"),
 }
 
 
@@ -99,16 +100,6 @@ class AvatureBoard:
     @property
     def listing_url(self) -> str:
         return f"https://{self.host}{self.prefix}/{self.page}"
-
-    @property
-    def data_url(self) -> str:
-        return f"https://{self.host}{self.prefix}/SearchJobsData"
-
-    def pipeline_url(self, pipeline_id: int | str) -> str:
-        return (
-            f"https://{self.host}{self.prefix}/PipelineDetail?"
-            f"{urlencode({'pipelineId': str(pipeline_id)})}"
-        )
 
 
 def avature_board_from_url(
@@ -216,7 +207,9 @@ class _AvatureParser(HTMLParser):
         parent_next = self._scope_stack[-1][1] if self._scope_stack else False
         parent_legend = self._scope_stack[-1][2] if self._scope_stack else False
         in_next = parent_next or "paginationnextlink" in class_names
-        in_legend = parent_legend or "list-controls__text__legend" in class_names
+        in_legend = parent_legend or bool(
+            {"list-controls__text__legend", "pagination__legend"} & class_names
+        )
 
         if tag == "meta":
             name = values.get("name", "")
@@ -308,13 +301,18 @@ def avature_pagination_url(
         return None
     size_key, offset_key = _PAGINATION_PAIRS[key_set]
     values = dict(pairs)
-    if not values[size_key].isdigit() or not values[offset_key].isdigit():
+    if (size_key is not None and not values[size_key].isdigit()) or not values[
+        offset_key
+    ].isdigit():
         return None
-    size = int(values[size_key])
+    size = int(values[size_key]) if size_key is not None else None
     offset = int(values[offset_key])
-    if size <= 0 or offset < 0 or (offset == 0 and not allow_zero_offset):
+    if (size is not None and size <= 0) or offset < 0 or (offset == 0 and not allow_zero_offset):
         return None
-    canonical = f"{board.listing_url}/?{urlencode([(size_key, size), (offset_key, offset)])}"
+    params = [(offset_key, offset)]
+    if size_key is not None and size is not None:
+        params.insert(0, (size_key, size))
+    canonical = f"{board.listing_url}/?{urlencode(params)}"
     return canonical, offset
 
 

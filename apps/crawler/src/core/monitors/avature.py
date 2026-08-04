@@ -10,7 +10,6 @@ URLs; the shared DOM scraper owns detail extraction on its normal schedule.
 from __future__ import annotations
 
 import html as html_module
-import json
 import re
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -41,7 +40,6 @@ if TYPE_CHECKING:
 MAX_JOBS = 50_000
 MAX_PAGES = 10_000
 MAX_HTML_CHARS = 2_000_000
-MAX_MAP_CHARS = 10_000_000
 _GONE_STATUSES = frozenset({404, 410})
 _TRANSIENT_STATUSES = frozenset({202, 401, 403, 406})
 _PAGE_LINK_RE = re.compile(
@@ -88,7 +86,7 @@ async def _fetch_listing(
     return body
 
 
-def _validate_search_page(page: AvaturePage, *, expected_start: int) -> None:
+def _validate_listing_page(page: AvaturePage, *, expected_start: int) -> None:
     if page.total is None:
         raise ValueError("Avature listing omitted its authoritative result count")
     if page.total == 0:
@@ -112,7 +110,7 @@ def _validate_search_page(page: AvaturePage, *, expected_start: int) -> None:
         raise ValueError("Avature listing exposed conflicting next-page links")
 
 
-async def _stream_search(
+async def _stream_listing(
     configured: AvatureBoard,
     client: httpx.AsyncClient,
     *,
@@ -123,8 +121,8 @@ async def _stream_search(
 
     first_body = await _fetch_listing(configured.listing_url, client, first_page=True)
     first = parse_avature_page(first_body, configured.listing_url)
-    if first is None or first.board.page != "SearchJobs":
-        raise ValueError("Avature URL returned a non-SearchJobs page")
+    if first is None or first.board.page != configured.page:
+        raise ValueError("Avature URL returned a different listing page")
     if (
         identity_is_configured
         and first.board.listing_url.casefold() != configured.listing_url.casefold()
@@ -147,7 +145,7 @@ async def _stream_search(
 
     while True:
         pages += 1
-        _validate_search_page(current, expected_start=expected_start)
+        _validate_listing_page(current, expected_start=expected_start)
         if current.board.listing_url.casefold() != board.listing_url.casefold():
             raise ValueError("Avature pagination crossed into a different portal")
         if current.portal_id != portal_id:
@@ -212,86 +210,9 @@ async def _stream_search(
         current_offset = next_offset
         body = await _fetch_listing(canonical_next, client, first_page=False)
         following = parse_avature_page(body, canonical_next)
-        if following is None or following.board.page != "SearchJobs":
+        if following is None or following.board.page != board.page:
             raise ValueError("Avature pagination returned a non-listing page")
         current = following
-
-
-async def _fetch_map_jobs(board: AvatureBoard, client: httpx.AsyncClient) -> set[str]:
-    body = await fetch_text_page_with_retry(
-        client,
-        board.data_url,
-        require_nonempty=True,
-        max_chars=MAX_MAP_CHARS + 1,
-        follow_redirects=False,
-        end_of_pagination_statuses=(),
-        retryable_statuses=_TRANSIENT_STATUSES,
-        log_event="avature.map_backoff",
-    )
-    if body is None:  # Strict status handling above makes this unreachable.
-        raise RuntimeError("Avature map data fetch returned no body")
-    if len(body) > MAX_MAP_CHARS:
-        raise ValueError("Avature map data exceeded the response safety cap")
-    try:
-        payload = json.loads(body.strip())
-    except json.JSONDecodeError as exc:
-        raise ValueError("Avature map data returned invalid JSON") from exc
-    locations = payload.get("locations") if isinstance(payload, dict) else None
-    if isinstance(locations, dict):
-        records = list(locations.values())
-    elif isinstance(locations, list):
-        records = locations
-    else:
-        raise ValueError("Avature map data omitted its locations collection")
-    if len(records) > MAX_JOBS:
-        raise ValueError(f"Avature map portal exceeded the {MAX_JOBS:,}-job safety cap")
-
-    ids: set[str] = set()
-    for record in records:
-        raw_id = record.get("id") if isinstance(record, dict) else None
-        value = str(raw_id) if isinstance(raw_id, (int, str)) else ""
-        if not re.fullmatch(r"[1-9]\d{0,19}", value):
-            raise ValueError("Avature map data contained an invalid pipeline ID")
-        if value in ids:
-            raise ValueError("Avature map data repeated a pipeline ID")
-        ids.add(value)
-    return {board.pipeline_url(value) for value in ids}
-
-
-async def _discover_map(
-    configured: AvatureBoard,
-    client: httpx.AsyncClient,
-    *,
-    identity_is_configured: bool,
-    configured_portal_id: str | None,
-) -> MonitorResult:
-    from src.core.monitor import MonitorResult
-
-    body = await _fetch_listing(configured.listing_url, client, first_page=True)
-    page = parse_avature_page(body, configured.listing_url)
-    if page is None or page.board.page != "SearchJobsMaps":
-        raise ValueError("Avature URL returned a non-SearchJobsMaps page")
-    if (
-        identity_is_configured
-        and page.board.listing_url.casefold() != configured.listing_url.casefold()
-    ):
-        raise ValueError("Configured Avature map portal redirected to a different identity")
-    if configured_portal_id is not None and page.portal_id != configured_portal_id:
-        raise ValueError("Configured Avature map portal ID changed")
-    urls = await _fetch_map_jobs(page.board, client)
-    log.info(
-        "avature.map_discovered",
-        host=page.board.host,
-        portal_id=page.portal_id,
-        jobs=len(urls),
-    )
-    return MonitorResult(
-        urls=urls,
-        metadata_updates={
-            "listing_url": page.board.listing_url,
-            "portal_id": page.portal_id,
-        },
-    )
 
 
 def _board_identity(board: dict) -> tuple[AvatureBoard, bool, str | None]:
@@ -321,15 +242,7 @@ async def stream(
 
     _ = pw
     resolved, identity_is_configured, configured_portal_id = _board_identity(board)
-    if resolved.page == "SearchJobsMaps":
-        yield await _discover_map(
-            resolved,
-            client,
-            identity_is_configured=identity_is_configured,
-            configured_portal_id=configured_portal_id,
-        )
-        return
-    async for result in _stream_search(
+    async for result in _stream_listing(
         resolved,
         client,
         identity_is_configured=identity_is_configured,
@@ -364,11 +277,8 @@ async def _probe_board(board: AvatureBoard, client: httpx.AsyncClient) -> dict |
         page = parse_avature_page(body, board.listing_url)
         if page is None:
             return None
-        if page.board.page == "SearchJobsMaps":
-            jobs = len(await _fetch_map_jobs(page.board, client))
-        else:
-            _validate_search_page(page, expected_start=1)
-            jobs = page.total
+        _validate_listing_page(page, expected_start=1)
+        jobs = page.total
     except TDMReservedError:
         raise
     except Exception:

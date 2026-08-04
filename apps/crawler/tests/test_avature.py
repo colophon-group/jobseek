@@ -36,6 +36,7 @@ def _listing(
     page: str = "SearchJobs",
     nested_next: bool = False,
     displayed: int | None = None,
+    legend_class: str = "list-controls__text__legend",
 ) -> str:
     jobs = jobs or []
     count = displayed if displayed is not None else len(jobs)
@@ -43,7 +44,7 @@ def _listing(
     legend = ""
     if start is not None:
         legend = (
-            f'<div class="list-controls__text__legend" aria-label="{total} results">'
+            f'<div class="{legend_class}" aria-label="{total} results">'
             f"{start}-{end} of {total} results</div>"
         )
     links = "".join(f'<a class="job" href="{job}">Job</a>' for job in jobs)
@@ -237,6 +238,11 @@ def test_pagination_url_is_strict_and_canonical():
         )
         is None
     )
+    map_board = AvatureBoard("acme.avature.net", "/careers", page="SearchJobsMaps")
+    assert avature_pagination_url("/careers/SearchJobsMaps?pipelineOffset=30", map_board) == (
+        "https://acme.avature.net/careers/SearchJobsMaps/?pipelineOffset=30",
+        30,
+    )
 
 
 @pytest.mark.asyncio
@@ -412,28 +418,41 @@ async def test_discover_propagates_tdm_reservation():
 
 
 @pytest.mark.asyncio
-async def test_discover_map_portal_uses_first_party_data_endpoint():
+async def test_discover_streams_all_map_pages_with_lower_bound_count():
     listing_url = "https://premium.avature.net/en_US/jobs/SearchJobsMaps"
-    listing = _listing(url=listing_url, page="SearchJobsMaps", jobs=[], start=None)
-    payload = {
-        "locations": {
-            "0": {"id": 119281, "title": "Merchandiser"},
-            "1": {"id": 119282, "title": "Specialist"},
-        }
-    }
+    first_jobs = [f"/en_US/jobs/PipelineDetail?pipelineId={job_id}" for job_id in range(1, 501)]
+    second_jobs = [f"/en_US/jobs/PipelineDetail?pipelineId={job_id}" for job_id in range(501, 1001)]
+    first = _listing(
+        url=listing_url,
+        page="SearchJobsMaps",
+        jobs=first_jobs,
+        total="999+",
+        next_url="/en_US/jobs/SearchJobsMaps/?pipelineOffset=500",
+        legend_class="pagination__legend",
+    )
+    second_url = f"{listing_url}/?pipelineOffset=500"
+    second = _listing(
+        url=second_url,
+        page="SearchJobsMaps",
+        jobs=second_jobs,
+        start=501,
+        total="999+",
+        legend_class="pagination__legend",
+    )
+    requested: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path.endswith("SearchJobsData"):
-            return httpx.Response(200, text=json.dumps(payload))
-        return httpx.Response(200, text=listing)
+        requested.append(str(request.url))
+        return httpx.Response(200, text=second if request.url.query else first)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        result = await discover({"board_url": listing_url, "metadata": {}}, client)
-    assert result.urls == {
-        "https://premium.avature.net/en_US/jobs/PipelineDetail?pipelineId=119281",
-        "https://premium.avature.net/en_US/jobs/PipelineDetail?pipelineId=119282",
-    }
-    assert result.truncated is False
+        batches = [
+            batch async for batch in stream({"board_url": listing_url, "metadata": {}}, client)
+        ]
+    assert requested == [listing_url, second_url]
+    assert [len(batch.urls) for batch in batches] == [500, 500]
+    assert len(set().union(*(batch.urls for batch in batches))) == 1000
+    assert batches[-1].truncated is False
 
 
 @pytest.mark.asyncio
