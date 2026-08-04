@@ -36,6 +36,11 @@ _ISSUE_PREFIX_RE = re.compile(
     r"^(?:\[ats inventory\]\s*)?(?:add|import|configure|monitor)\s+(?:company\s*:\s*)?",
     re.IGNORECASE,
 )
+_WORKDAY_STANDARD_HOST_RE = re.compile(
+    r"^(?P<company>[a-z0-9_-]+)\.(?P<instance>wd\d+)\.myworkdayjobs\.com$"
+)
+_WORKDAY_CUSTOM_HOST_RE = re.compile(r"^(?P<instance>wd\d+)\.myworkdaysite\.com$")
+_LOCALE_SEGMENT_RE = re.compile(r"^[a-z]{2}-[a-z]{2}$")
 _TRACKING_QUERY_KEYS = {"fbclid", "gclid", "mc_cid", "mc_eid"}
 _COMMON_SECOND_LEVEL_SUFFIXES = {
     "ac.uk",
@@ -211,10 +216,14 @@ class LocalRegistryIndex:
                 for family, compatibility in COMPATIBILITY.items():
                     if not _board_proves_compatibility(monitor_type, config, compatibility):
                         continue
-                    tenant = candidate_tenant_key(family, board_url)
+                    tenant = candidate_tenant_key(family, board_url, config=config)
                     if tenant is not None:
                         native_ats = _native_ats_identity(family, compatibility)
                         index.ats_tenants[(native_ats, tenant)].append(board)
+                        if family == "workday" and config.get("all_sites", True) is not False:
+                            wildcard = _workday_tenant_wildcard(tenant)
+                            if wildcard is not None:
+                                index.ats_tenants[(native_ats, wildcard)].append(board)
         return index
 
     def hard_evidence(self, candidate: Candidate) -> list[DedupEvidence]:
@@ -228,7 +237,14 @@ class LocalRegistryIndex:
                     _references(exact_urls),
                 )
             )
-        exact_tenants = self.ats_tenants.get((candidate.native_ats, candidate.tenant), ())
+        tenant_keys = [(candidate.native_ats, candidate.tenant)]
+        if candidate.family == "workday":
+            wildcard = _workday_tenant_wildcard(candidate.tenant)
+            if wildcard is not None:
+                tenant_keys.append((candidate.native_ats, wildcard))
+        exact_tenants = tuple(
+            board for key in tenant_keys for board in self.ats_tenants.get(key, ())
+        )
         if exact_tenants:
             evidence.append(
                 DedupEvidence(
@@ -456,7 +472,9 @@ def normalize_board_url(value: str) -> str:
     return urlunsplit(("https", netloc, path, query, ""))
 
 
-def candidate_tenant_key(family: str, board_url: str) -> str | None:
+def candidate_tenant_key(
+    family: str, board_url: str, *, config: dict[str, Any] | None = None
+) -> str | None:
     """Return the candidate/board identity, including provider board scope.
 
     Impact matching intentionally keeps host details where job artifacts need
@@ -466,17 +484,32 @@ def candidate_tenant_key(family: str, board_url: str) -> str | None:
 
     parsed = urlsplit(board_url)
     segments = tuple(segment.casefold() for segment in parsed.path.split("/") if segment)
-    if len(segments) > 0 and family in {
-        "ashby",
-        "gem",
-        "greenhouse",
-        "lever",
-        "rippling",
-        "smartrecruiters",
-        "workable",
-    }:
-        return f"{family}:{segments[0]}"
-    if family == "jobvite" and segments:
+    provider_token = _configured_provider_token(family, config or {})
+    if provider_token is None:
+        provider_token = _provider_token_from_url(family, parsed, segments)
+    if provider_token is not None:
+        return f"{family}:{provider_token}"
+    if family == "workday":
+        configured = config or {}
+        company = str(configured.get("company") or "").strip().casefold()
+        instance = str(configured.get("wd_instance") or "").strip().casefold()
+        site = str(configured.get("site") or "").strip().casefold()
+        if company and instance and site:
+            return f"workday:{company}:{instance}:{site}"
+        host = (parsed.hostname or "").casefold()
+        standard = _WORKDAY_STANDARD_HOST_RE.fullmatch(host)
+        if standard:
+            scoped = (
+                segments[1:] if segments and _LOCALE_SEGMENT_RE.fullmatch(segments[0]) else segments
+            )
+            if scoped:
+                return (
+                    f"workday:{standard.group('company')}:{standard.group('instance')}:{scoped[0]}"
+                )
+        custom = _WORKDAY_CUSTOM_HOST_RE.fullmatch(host)
+        if custom and len(segments) >= 3 and segments[0] == "recruiting":
+            return f"workday:{segments[1]}:{custom.group('instance')}:{segments[2]}"
+    if family == "jobvite" and len(segments) > 0:
         token = segments[1] if segments[0] == "careers" and len(segments) > 1 else segments[0]
         return f"jobvite:{token}"
     if family == "moka":
@@ -505,16 +538,98 @@ def candidate_tenant_key(family: str, board_url: str) -> str | None:
     return tenant_key(family, board_url)
 
 
+def _workday_tenant_wildcard(tenant: str) -> str | None:
+    if not tenant.startswith("workday:") or tenant.count(":") != 3:
+        return None
+    return f"{tenant.rsplit(':', 1)[0]}:*"
+
+
+def _configured_provider_token(family: str, config: dict[str, Any]) -> str | None:
+    keys = {
+        "ashby": ("token",),
+        "gem": ("token", "slug"),
+        "greenhouse": ("token", "board_token"),
+        "lever": ("token",),
+        "rippling": ("slug",),
+        "smartrecruiters": ("token",),
+        "workable": ("token",),
+    }.get(family, ())
+    for key in keys:
+        value = config.get(key)
+        if isinstance(value, str) and 0 < len(value.strip()) <= 240:
+            return value.strip().casefold()
+    return None
+
+
+def _provider_token_from_url(family: str, parsed: Any, segments: tuple[str, ...]) -> str | None:
+    query = {key.casefold(): value for key, value in parse_qsl(parsed.query)}
+    if family == "greenhouse":
+        configured = query.get("for") or query.get("url_token")
+        if configured:
+            return configured.strip().casefold()
+        value = _path_value_after(segments, "boards")
+        if value:
+            return value
+        if segments and segments[0] not in {"embed", "v1"}:
+            return segments[0]
+    elif family == "ashby":
+        value = _path_value_after(segments, "job-board")
+        if value:
+            return value
+        if segments and segments[0] != "posting-api":
+            return segments[0]
+    elif family == "lever":
+        value = _path_value_after(segments, "postings")
+        if value:
+            return value
+        if segments:
+            return segments[0]
+    elif family == "smartrecruiters":
+        value = _path_value_after(segments, "companies")
+        if value:
+            return value
+        if segments:
+            return segments[0]
+    elif family == "gem":
+        value = _path_value_after(segments, "v0")
+        if value:
+            return value
+        if segments:
+            return segments[0]
+    elif family == "rippling":
+        value = _path_value_after(segments, "board")
+        if value:
+            return value
+        if segments:
+            return segments[0]
+    elif family == "workable":
+        value = _path_value_after(segments, "accounts")
+        if value:
+            return value
+        if segments:
+            return segments[0]
+    return None
+
+
+def _path_value_after(segments: tuple[str, ...], label: str) -> str | None:
+    try:
+        return segments[segments.index(label) + 1]
+    except (ValueError, IndexError):
+        return None
+
+
 def render_candidate_issue(plan: CandidatePlan, *, parent_issue: int = 6184) -> tuple[str, str]:
     candidate = plan.candidate
     marker = candidate_marker(candidate.source_key, candidate.board_url)
-    title = f"Add company: {candidate.name}"
+    title_name = _safe_title_text(candidate.name, max_length=180)
+    body_name = _safe_code(_bounded_untrusted_text(candidate.name, max_length=300))
+    title = f"Add company: {title_name}"
     impact = "unknown" if candidate.impact_unknown else str(candidate.active_jobs)
     lines = [
         marker,
         "### Company",
         "",
-        f"{candidate.name} — {candidate.board_url}",
+        f"`{body_name}` — `{_safe_code(candidate.board_url)}`",
         "",
         "### Preconfigured board source",
         "",
@@ -657,3 +772,32 @@ def _references(items: Iterable[Any], *, limit: int = 8) -> tuple[str, ...]:
 
 def _safe_code(value: str) -> str:
     return value.replace("`", "\u02cb").replace("@", "@\u200b")
+
+
+def _bounded_untrusted_text(value: str, *, max_length: int) -> str:
+    text = " ".join(value.split())
+    text = "".join(character for character in text if character.isprintable()).strip()
+    text = text.replace("@", "@\u200b")
+    if not text:
+        return "Unnamed company"
+    if len(text) <= max_length:
+        return text
+    return f"{text[: max_length - 1].rstrip()}…"
+
+
+def _safe_title_text(value: str, *, max_length: int) -> str:
+    text = _bounded_untrusted_text(value, max_length=max_length)
+    return text.translate(
+        str.maketrans(
+            {
+                "`": "ˋ",
+                "[": "［",
+                "]": "］",
+                "*": "∗",
+                "_": "＿",
+                "#": "＃",
+                "<": "‹",
+                ">": "›",
+            }
+        )
+    )

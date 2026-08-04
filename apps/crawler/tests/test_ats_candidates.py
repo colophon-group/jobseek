@@ -202,7 +202,7 @@ def test_subsidiary_and_regional_board_are_soft_matches_not_skips(tmp_path: Path
                 "board_slug": "acme-us",
                 "board_url": "https://acme.wd5.myworkdayjobs.com/AcmeUS",
                 "monitor_type": "workday",
-                "monitor_config": "{}",
+                "monitor_config": '{"all_sites":false}',
             }
         ],
     )
@@ -217,6 +217,121 @@ def test_subsidiary_and_regional_board_are_soft_matches_not_skips(tmp_path: Path
     plan = _deduplicator(tmp_path, local).plan(candidate)
     assert plan.eligible
     assert "possible_parent_or_region" in {item.code for item in plan.soft_warnings}
+
+
+@pytest.mark.parametrize(
+    "local_url, config, upstream_url",
+    [
+        (
+            "https://airliquidehr.wd3.myworkdayjobs.com/en-US/AirLiquideExternalCareer",
+            '{"company":"airliquidehr","wd_instance":"wd3",'
+            '"site":"AirLiquideExternalCareer","all_sites":false}',
+            "https://airliquidehr.wd3.myworkdayjobs.com/AirLiquideExternalCareer",
+        ),
+        (
+            "https://wd3.myworkdaysite.com/recruiting/havas/GroupExternalCareerSite",
+            '{"company":"havas","wd_instance":"wd3",'
+            '"site":"GroupExternalCareerSite","all_sites":false}',
+            "https://havas.wd3.myworkdayjobs.com/GroupExternalCareerSite",
+        ),
+    ],
+)
+def test_workday_locales_custom_hosts_and_monitor_config_share_exact_identity(
+    tmp_path: Path, local_url: str, config: str, upstream_url: str
+) -> None:
+    local = _registries(
+        tmp_path,
+        boards=[
+            {
+                "company_slug": "existing",
+                "board_slug": "existing-workday",
+                "board_url": local_url,
+                "monitor_type": "workday",
+                "monitor_config": config,
+            }
+        ],
+    )
+    candidate = Candidate.from_impact(_impact(ats="workday", url=upstream_url))
+    plan = _deduplicator(tmp_path, local).plan(candidate)
+    assert not plan.eligible
+    assert "existing_ats_tenant" in {item.code for item in plan.hard_skips}
+
+
+@pytest.mark.parametrize(
+    "family, local_url, config, upstream_url",
+    [
+        (
+            "greenhouse",
+            "https://boards-api.greenhouse.io/v1/boards/airbnb/jobs",
+            "{}",
+            "https://job-boards.greenhouse.io/airbnb",
+        ),
+        (
+            "ashby",
+            "https://api.ashbyhq.com/posting-api/job-board/apollo-graphql",
+            '{"token":"apollo-graphql"}',
+            "https://jobs.ashbyhq.com/apollo-graphql",
+        ),
+        (
+            "lever",
+            "https://api.lever.co/v0/postings/neighbor?mode=json",
+            '{"token":"neighbor"}',
+            "https://jobs.lever.co/neighbor",
+        ),
+        (
+            "smartrecruiters",
+            "https://api.smartrecruiters.com/v1/companies/ASOS/postings",
+            '{"token":"ASOS"}',
+            "https://jobs.smartrecruiters.com/ASOS",
+        ),
+    ],
+)
+def test_api_embed_and_monitor_config_urls_share_provider_identity(
+    tmp_path: Path,
+    family: str,
+    local_url: str,
+    config: str,
+    upstream_url: str,
+) -> None:
+    local = _registries(
+        tmp_path,
+        boards=[
+            {
+                "company_slug": "existing",
+                "board_slug": f"existing-{family}",
+                "board_url": local_url,
+                "monitor_type": family,
+                "monitor_config": config,
+            }
+        ],
+    )
+    candidate = Candidate.from_impact(_impact(ats=family, url=upstream_url))
+    plan = _deduplicator(tmp_path, local).plan(candidate)
+    assert not plan.eligible
+    assert "existing_ats_tenant" in {item.code for item in plan.hard_skips}
+
+
+def test_workday_all_sites_board_hard_skips_another_site_on_same_tenant(
+    tmp_path: Path,
+) -> None:
+    local = _registries(
+        tmp_path,
+        boards=[
+            {
+                "company_slug": "acme",
+                "board_slug": "acme-workday",
+                "board_url": "https://acme.wd5.myworkdayjobs.com/AcmeUS",
+                "monitor_type": "workday",
+                "monitor_config": "{}",
+            }
+        ],
+    )
+    candidate = Candidate.from_impact(
+        _impact(ats="workday", url="https://acme.wd5.myworkdayjobs.com/AcmeEurope")
+    )
+    plan = _deduplicator(tmp_path, local).plan(candidate)
+    assert not plan.eligible
+    assert "existing_ats_tenant" in {item.code for item in plan.hard_skips}
 
 
 def test_same_company_on_a_second_ats_is_not_suppressed(tmp_path: Path) -> None:
@@ -319,6 +434,28 @@ def test_ledger_reconciles_remote_drift_but_remains_fail_closed(tmp_path: Path) 
     missing = ledger.reconcile_remote([])
     assert missing.missing_remote_sources == (candidate.source_key,)
     assert ledger.find_source(candidate.source_key).state == "remote_missing"  # type: ignore[union-attr]
+
+
+def test_active_pr_marker_is_temporary_and_cannot_poison_durable_ledger(
+    tmp_path: Path,
+) -> None:
+    candidate = Candidate.from_impact(_impact())
+    active_pr = _github_item(candidate, kind="pr")
+    ledger = CandidateLedger(tmp_path / "ledger.sqlite")
+    reconciliation = ledger.reconcile_remote([active_pr])
+    local = _registries(tmp_path)
+
+    assert reconciliation.remote_markers == 0
+    assert ledger.find_source(candidate.source_key) is None
+    active_plan = CandidateDeduplicator(local, GitHubCandidateIndex([active_pr]), ledger).plan(
+        candidate
+    )
+    assert not active_plan.eligible
+    assert "github_source_marker" in {item.code for item in active_plan.hard_skips}
+
+    ledger.reconcile_remote([])
+    later_plan = CandidateDeduplicator(local, GitHubCandidateIndex(), ledger).plan(candidate)
+    assert later_plan.eligible
 
 
 class _UnknownOutcomeClient:
@@ -431,6 +568,19 @@ def test_rendered_issue_preserves_all_soft_evidence_for_ws(tmp_path: Path) -> No
     assert "simplified `ws` path" in body
 
 
+def test_rendered_issue_sanitizes_and_bounds_untrusted_company_name(tmp_path: Path) -> None:
+    malicious = "@octocat **[owned]** `tick`\n" + "x" * 400
+    candidate = Candidate.from_impact(_impact(name=malicious))
+    plan = _deduplicator(tmp_path, _registries(tmp_path)).plan(candidate)
+    title, body = render_candidate_issue(plan)
+    assert len(title) <= len("Add company: ") + 180
+    assert "@octocat" not in title
+    assert "**[owned]**" not in title
+    assert "\n" not in title
+    assert "@octocat" not in body
+    assert "ˋtickˋ" in body
+
+
 @pytest.mark.asyncio
 async def test_github_state_is_bulk_indexed_without_per_candidate_searches() -> None:
     requests: list[httpx.Request] = []
@@ -486,3 +636,76 @@ async def test_github_state_is_bulk_indexed_without_per_candidate_searches() -> 
     assert requests[0].url.params["labels"] == "company-request"
     assert requests[0].url.params["state"] == "all"
     assert requests[1].url.params["state"] == "open"
+
+
+@pytest.mark.asyncio
+async def test_ambiguous_post_502_reconciles_marker_before_retry(tmp_path: Path) -> None:
+    candidate = Candidate.from_impact(_impact())
+    created_payload: dict[str, object] | None = None
+    post_calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal created_payload, post_calls
+        if request.method == "POST":
+            post_calls += 1
+            submitted = httpx.Response(200, content=request.content).json()
+            created_payload = {
+                "number": 88,
+                "state": "open",
+                "title": submitted["title"],
+                "body": submitted["body"],
+                "html_url": "https://github.test/issues/88",
+            }
+            return httpx.Response(502, request=request)
+        if request.url.path.endswith("/issues"):
+            payload = [] if created_payload is None else [created_payload]
+        else:
+            payload = []
+        return httpx.Response(
+            200,
+            json=payload,
+            headers={"x-ratelimit-remaining": "4998"},
+            request=request,
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        github = GitHubSupportIssueClient(
+            http,
+            repo="example/repo",
+            token="test-token",
+            pace_seconds=0,
+        )
+        coordinator = await CandidateIssueCoordinator.bootstrap(
+            client=github,
+            local=_registries(tmp_path),
+            ledger=CandidateLedger(tmp_path / "ledger.sqlite"),
+        )
+        action = await coordinator.create(candidate, dry_run=False)
+
+    assert action.action == "created_reconciled"
+    assert action.issue_number == 88
+    assert post_calls == 1
+
+
+@pytest.mark.parametrize(
+    "content",
+    [b"not-json", b"[]", b'{"number": 1}'],
+)
+@pytest.mark.asyncio
+async def test_malformed_successful_create_is_an_unknown_outcome(content: bytes) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(201, content=content, request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        github = GitHubSupportIssueClient(
+            http,
+            repo="example/repo",
+            token="test-token",
+            pace_seconds=0,
+        )
+        with pytest.raises(GitHubCreateOutcomeUnknown):
+            await github.create_candidate_issue(
+                title="Add company: Acme",
+                body="body",
+                labels=["company-request"],
+            )

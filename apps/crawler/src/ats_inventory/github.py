@@ -218,15 +218,31 @@ class GitHubSupportIssueClient:
             )
         except httpx.TransportError as exc:
             raise GitHubCreateOutcomeUnknown("GitHub create outcome is unknown") from exc
+        if response.status_code >= 500 or response.status_code in {408, 425}:
+            self.rate_remaining = _optional_int(response.headers.get("x-ratelimit-remaining"))
+            self.rate_reset = _optional_int(response.headers.get("x-ratelimit-reset"))
+            raise GitHubCreateOutcomeUnknown(
+                f"GitHub create outcome is unknown after HTTP {response.status_code}"
+            )
         self._check_response(response)
-        await asyncio.sleep(max(1.0, self.pace_seconds))
-        payload = response.json()
-        if not isinstance(payload, dict):
-            raise GitHubError("GitHub create response is not an object")
         try:
-            return CreatedIssue(number=int(payload["number"]), url=str(payload["html_url"]))
+            payload = response.json()
+        except ValueError as exc:
+            raise GitHubCreateOutcomeUnknown(
+                "GitHub create committed but returned invalid JSON"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise GitHubCreateOutcomeUnknown(
+                "GitHub create committed but returned a non-object response"
+            )
+        try:
+            created = CreatedIssue(number=int(payload["number"]), url=str(payload["html_url"]))
         except (KeyError, TypeError, ValueError) as exc:
-            raise GitHubError("GitHub create response has an invalid shape") from exc
+            raise GitHubCreateOutcomeUnknown(
+                "GitHub create committed but returned an invalid issue shape"
+            ) from exc
+        await asyncio.sleep(max(1.0, self.pace_seconds))
+        return created
 
     async def create_candidate_issue(
         self, *, title: str, body: str, labels: list[str]

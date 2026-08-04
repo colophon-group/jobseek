@@ -104,10 +104,14 @@ class CandidateIssueCoordinator:
             recovered = await self.client.list_candidate_work_items()
             self.reconciliation = self.ledger.reconcile_remote(recovered)
             self.github = GitHubCandidateIndex(recovered)
-            matches = self.github.source_hashes.get(candidate.source_hash, ())
+            matches = tuple(
+                item
+                for item in self.github.source_hashes.get(candidate.source_hash, ())
+                if item.kind == "issue"
+            )
             if not matches:
                 raise
-            item = min(matches, key=lambda value: (value.kind != "issue", value.number))
+            item = min(matches, key=lambda value: value.number)
             self.ledger.record_created(
                 source_key=candidate.source_key,
                 normalized_url=candidate.board_url,

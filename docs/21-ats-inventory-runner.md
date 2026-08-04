@@ -94,8 +94,9 @@ continuing to own and run all production monitors.
 Every candidate receives a stable source key beginning
 `ats-scrapers:<family>:`. The final component is a locally derived provider
 tenant/board identity; it is not copied from or coupled to upstream scraper
-code. Provider-host aliases are normalized where the native monitor uses one
-tenant token, while real board scopes such as Taleo CWS portals, Moka campus
+code. Provider-host/API/embed aliases and explicit native monitor configuration
+are normalized where the native monitor uses one tenant token, while real
+board scopes such as Taleo CWS portals, Moka campus
 portals, Keka sub-boards, and distinct Workday sites remain distinct. The issue
 body contains the readable source key and normalized board URL. Its machine
 marker stores a reversible base32 source identity plus a full SHA-256 URL
@@ -118,10 +119,12 @@ companies, subsidiaries, regional portals, and valid second ATS/board setups.
 
 Local companies and boards are loaded once from their CSV registries. GitHub
 company-request issues (open and closed) and active PRs are fetched in paginated
-bulk lists; there is no per-candidate GitHub search. Marked issues and PRs are
-reconciled into `candidates/ledger.sqlite` at startup. Each successful create is
-committed immediately with SQLite WAL enabled. If a create response is lost,
-the coordinator refreshes the bulk marker index before returning an unknown
+bulk lists; there is no per-candidate GitHub search. Marked issues are
+reconciled into `candidates/ledger.sqlite` at startup. Active PR markers remain
+ephemeral hard stops and never become durable ledger records. Each successful
+create is committed immediately with SQLite WAL enabled. If a create response
+is lost, returns an ambiguous 5xx, or has a malformed success body, the
+coordinator refreshes the bulk marker index before returning an unknown
 outcome. If the process dies between GitHub commit and the local commit, the
 next startup repairs the ledger from the marker. A missing remote record is
 reported as `remote_missing` and remains a fail-closed hard skip instead of

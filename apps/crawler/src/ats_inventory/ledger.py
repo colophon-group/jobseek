@@ -81,6 +81,10 @@ class CandidateLedger:
         now = int(time.time())
         marked: list[tuple[GitHubWorkItem, str, str]] = []
         for item in items:
+            # Active PRs remain an in-memory hard stop, but contributor-owned
+            # PR markers must never become permanent fail-closed ledger rows.
+            if item.kind != "issue":
+                continue
             for source_key, board_hash in parse_candidate_markers(item.body):
                 marked.append((item, source_key, board_hash))
         with self._connect() as connection:
@@ -161,6 +165,9 @@ class CandidateLedger:
         item: GitHubWorkItem,
     ) -> None:
         """Commit immediately after a successful or reconciled GitHub create."""
+
+        if item.kind != "issue":
+            raise ValueError("only created GitHub issues may enter the durable ledger")
 
         now = int(time.time())
         markers = parse_candidate_markers(item.body)
