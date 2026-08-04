@@ -99,8 +99,9 @@ describe("production migration safety", () => {
       'actions/runs/${run_id}/logs',
     );
     expect(evidenceValidator).toContain(
-      "'preauthorize/*.txt'",
+      "'*_preauthorize.txt'",
     );
+    expect(evidenceValidator).not.toContain("'preauthorize/*.txt'");
     expect(evidenceValidator).toContain("DISPATCH_MODE:");
     expect(evidenceValidator).toContain("- restore)");
     expect(evidenceValidator).not.toContain(
