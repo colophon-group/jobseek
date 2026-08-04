@@ -405,24 +405,42 @@ relisted AS (
             job_posting.description_r2_hash,
             false AS needs_scrape_enqueue
 ),
--- Cross-tenant URLs: the same source_url exists under another board
--- (e.g. ByteDance/TikTok share jobs.bytedance.com, Glencore reaches
--- GCAA's Workday tenant). Refresh the owning row's last_seen_at so
--- _MARK_GONE_BY_TIMESTAMP on the OWNING board doesn't tombstone jobs
--- that are still live via a secondary board. Excluded from new_urls
--- below so we don't chase an impossible INSERT every cycle.
---
--- We deliberately DO NOT gate this on is_active=true: refreshing
--- last_seen_at on an inactive foreign row is harmless (mark_gone only
--- operates on active rows) and prevents the URL from falling into an
--- invisible bucket where it appears in neither new_urls, touched,
--- relisted, nor foreign_touched.
-foreign_touched AS (
+-- A foreign-board discovery is liveness evidence for the globally canonical
+-- posting. Preserve the first owner's company_id/board_id deterministically:
+-- a shared ATS URL is not enough evidence to transfer company attribution.
+-- But an inactive canonical row must be recoverable when a sibling or shared
+-- tenant still lists it (#6159). Reset the same state as the owning-board
+-- relisted path, advance the exported timestamp through the CDC trigger, and
+-- return the canonical id so the discovering board can refresh its content.
+foreign_relisted AS (
   UPDATE job_posting
-  SET last_seen_at = now()
+  SET is_active = true,
+      missing_count = 0,
+      scrape_failures = 0,
+      last_seen_at = now(),
+      updated_at = now(),
+      next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
   FROM locked_existing locked
   WHERE job_posting.id = locked.id
     AND locked.board_id != $2
+    AND locked.is_active = false
+  RETURNING job_posting.id,
+            job_posting.source_url,
+            job_posting.description_r2_hash,
+            false AS needs_scrape_enqueue
+),
+-- Active foreign matches remain owned by their canonical board. Refreshing
+-- last_seen_at prevents a concurrent owner cycle from treating the URL as
+-- unseen, while clearing missing_count requires a full new confirmation
+-- window before a later owner-only absence can tombstone it.
+foreign_touched AS (
+  UPDATE job_posting
+  SET last_seen_at = now(),
+      missing_count = 0
+  FROM locked_existing locked
+  WHERE job_posting.id = locked.id
+    AND locked.board_id != $2
+    AND locked.is_active = true
   RETURNING job_posting.source_url
 ),
 new_urls AS (
@@ -447,8 +465,16 @@ SELECT 'relisted' AS action,
        needs_scrape_enqueue
 FROM relisted
 UNION ALL
--- id is NULL for foreign rows: the owning board's id has no meaning
--- for the calling board, and the Python layer only counts this action.
+SELECT 'foreign_relisted' AS action,
+       id::text,
+       source_url AS url,
+       description_r2_hash,
+       needs_scrape_enqueue
+FROM foreign_relisted
+UNION ALL
+-- Active foreign rows need no content refresh, so only their count is
+-- returned to the caller. Inactive foreign rows above return the canonical id
+-- because relisting does require the discovering board's refresh path.
 SELECT 'foreign' AS action,
        NULL::text,
        source_url AS url,

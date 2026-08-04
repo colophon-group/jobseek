@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import asyncpg
 import pytest
@@ -1750,6 +1750,34 @@ class TestInsertSqlContract:
         # new_urls must check "any board", not "this board only".
         assert "NOT EXISTS" in _DIFF_BATCH
 
+    def test_diff_batch_foreign_relisting_preserves_canonical_owner(self):
+        sql_compact = " ".join(_DIFF_BATCH.split())
+        start = sql_compact.index("foreign_relisted AS (")
+        end = sql_compact.index("foreign_touched AS (", start)
+        foreign_relisted = sql_compact[start:end]
+
+        assert "locked.board_id != $2" in foreign_relisted
+        assert "locked.is_active = false" in foreign_relisted
+        assert "SET is_active = true" in foreign_relisted
+        assert "missing_count = 0" in foreign_relisted
+        assert "scrape_failures = 0" in foreign_relisted
+        assert "updated_at = now()" in foreign_relisted
+        assert "next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END" in (
+            foreign_relisted
+        )
+        set_clause = foreign_relisted.split(" SET ", 1)[1].split(" FROM ", 1)[0]
+        assert "company_id" not in set_clause
+        assert "board_id" not in set_clause
+
+    def test_diff_batch_active_foreign_touch_resets_missing_confirmation(self):
+        sql_compact = " ".join(_DIFF_BATCH.split())
+        start = sql_compact.index("foreign_touched AS (")
+        end = sql_compact.index("new_urls AS (", start)
+        foreign_touched = sql_compact[start:end]
+
+        assert "locked.is_active = true" in foreign_touched
+        assert "SET last_seen_at = now(), missing_count = 0" in foreign_touched
+
     def test_diff_batch_locks_all_existing_matches_in_global_order(self):
         sql_compact = " ".join(_DIFF_BATCH.split())
         lock_start = sql_compact.index("locked_existing AS MATERIALIZED")
@@ -2269,7 +2297,7 @@ class TestDuplicateSourceUrl:
         The owning row's last_seen_at is refreshed inside _DIFF_BATCH
         itself, so nothing else is needed from the Python side.
         """
-        from src.metrics import monitor_dedup_total
+        from src.metrics import monitor_dedup_total, monitor_foreign_discovery_total
         from src.processing.board import _enqueue_scrapes_for_new
 
         pool, conn = mock_pool
@@ -2285,6 +2313,11 @@ class TestDuplicateSourceUrl:
         # Ensure label set is registered before reading.
         monitor_dedup_total.labels(path="cross_board")
         before = _counter_value(monitor_dedup_total, path="cross_board")
+        monitor_foreign_discovery_total.labels(outcome="active_touch")
+        before_active_touch = _counter_value(
+            monitor_foreign_discovery_total,
+            outcome="active_touch",
+        )
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -2303,6 +2336,67 @@ class TestDuplicateSourceUrl:
 
         # Metric contract: cross-board dedup counter bumped exactly once.
         assert _counter_value(monitor_dedup_total, path="cross_board") - before == 1
+        assert (
+            _counter_value(monitor_foreign_discovery_total, outcome="active_touch")
+            - before_active_touch
+            == 1
+        )
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_foreign_relisted_action_enqueues_canonical_posting_refresh(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A live foreign discovery recovers and refreshes the canonical row."""
+        from src.metrics import monitor_dedup_total, monitor_foreign_discovery_total
+        from src.processing.board import _enqueue_scrapes_for_relisted
+
+        pool, conn = mock_pool
+        foreign = "https://jobs.example.com/foreign/recovered-role"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={foreign}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [
+                _diff_row(
+                    "foreign_relisted",
+                    row_id="canonical-posting-id",
+                    url=foreign,
+                    r2_hash=123,
+                )
+            ],
+            [],  # MARK_GONE
+        ]
+
+        enqueue_relisted = _enqueue_scrapes_for_relisted
+        enqueue_relisted.reset_mock()
+        monitor_dedup_total.labels(path="cross_board")
+        before_dedup = _counter_value(monitor_dedup_total, path="cross_board")
+        monitor_foreign_discovery_total.labels(outcome="inactive_relisted")
+        before_relisted = _counter_value(
+            monitor_foreign_discovery_total,
+            outcome="inactive_relisted",
+        )
+
+        await _process_one_board(_mock_board(), pool, mock_http)
+
+        enqueue_relisted.assert_awaited_once_with(
+            [
+                {
+                    "id": "canonical-posting-id",
+                    "url": foreign,
+                    "r2_hash": 123,
+                }
+            ],
+            "board-1",
+            {},
+            ANY,
+            crawler_type="greenhouse",
+        )
+        assert _counter_value(monitor_dedup_total, path="cross_board") - before_dedup == 1
+        assert (
+            _counter_value(monitor_foreign_discovery_total, outcome="inactive_relisted")
+            - before_relisted
+            == 1
+        )
 
 
 # ── TestMonitorPipeline ──────────────────────────────────────────────
