@@ -61,6 +61,16 @@ def _board_identity(board: dict) -> JobviteBoard:
     metadata = board.get("metadata") or {}
     configured = jobvite_board_from_metadata(metadata) if isinstance(metadata, dict) else None
     direct = jobvite_board_from_url(board["board_url"])
+    has_configured_identity = isinstance(metadata, dict) and bool(
+        {"tenant", "listing_url"} & metadata.keys()
+    )
+    if has_configured_identity and configured is None:
+        raise ValueError("Invalid or internally inconsistent Jobvite monitor configuration")
+    if configured is not None and direct is not None and configured.tenant != direct.tenant:
+        raise ValueError(
+            f"Configured Jobvite tenant {configured.tenant!r} does not match "
+            f"board URL tenant {direct.tenant!r}"
+        )
     resolved = configured or direct
     if resolved is None:
         raise ValueError(
@@ -130,7 +140,7 @@ def _parse_listing(body: str, key: JobviteBoard) -> tuple[set[str], tuple[Jobvit
     return jobs, tuple(sorted(candidates, key=lambda item: item.listing_url))
 
 
-async def _resolve_listing(
+async def resolve_listing(
     initial: JobviteBoard,
     client: httpx.AsyncClient,
     *,
@@ -164,7 +174,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     """Discover every canonical detail URL on one Jobvite career site."""
     _ = pw
     initial = _board_identity(board)
-    resolved, jobs = await _resolve_listing(initial, client, terminal=True)
+    resolved, jobs = await resolve_listing(initial, client, terminal=True)
     log.info(
         "jobvite.discovered",
         tenant=resolved.tenant,
@@ -179,7 +189,7 @@ async def _probe_candidate(
     client: httpx.AsyncClient,
 ) -> tuple[JobviteBoard, set[str]] | None:
     try:
-        return await _resolve_listing(candidate, client, terminal=False)
+        return await resolve_listing(candidate, client, terminal=False)
     except TDMReservedError:
         raise
     except Exception:

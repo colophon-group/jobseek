@@ -105,9 +105,14 @@ def jobvite_board_from_metadata(metadata: Mapping[str, object]) -> JobviteBoard 
     """Resolve a configured listing, checking an optional tenant assertion."""
     listing_url = metadata.get("listing_url")
     configured_tenant = metadata.get("tenant")
+    has_tenant = "tenant" in metadata
     expected = _tenant(configured_tenant) if isinstance(configured_tenant, str) else None
+    if has_tenant and expected is None:
+        return None
 
-    if isinstance(listing_url, str):
+    if "listing_url" in metadata:
+        if not isinstance(listing_url, str):
+            return None
         board = jobvite_board_from_url(listing_url)
         if board is None or (expected is not None and expected != board.tenant):
             return None

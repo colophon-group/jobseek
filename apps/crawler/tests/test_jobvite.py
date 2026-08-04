@@ -5,11 +5,12 @@ import json
 import httpx
 import pytest
 
+from src.config import settings
 from src.core.monitors import BoardGoneError, all_monitor_types, jobvite
 from src.core.monitors.jobvite import can_handle, discover
 from src.core.scrapers.jsonld import parse_html as parse_jsonld_html
 from src.probe_boards import PROBES, _probe_jobvite
-from src.redis_queue import _KNOWN_ATS_DOMAINS
+from src.redis_queue import _KNOWN_ATS_DOMAINS, delay_for_domain
 from src.shared.jobvite import (
     JobviteBoard,
     jobvite_board_from_metadata,
@@ -83,6 +84,7 @@ class TestIdentity:
             {"tenant": TENANT, "listing_url": LISTING_URL}
         ) == JobviteBoard(TENANT, f"/{TENANT}")
         assert jobvite_board_from_metadata({"tenant": "other", "listing_url": LISTING_URL}) is None
+        assert jobvite_board_from_metadata({"tenant": "../bad", "listing_url": LISTING_URL}) is None
 
     def test_page_and_job_identity_helpers(self):
         page = _listing("oaGwAfwG")
@@ -128,6 +130,28 @@ class TestMonitor:
             )
         assert result == {JOB_URL}
         assert seen == [LISTING_URL]
+
+    async def test_configured_tenant_mismatch_fails_before_fetch(self):
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            return httpx.Response(200, text=_listing(), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="does not match"):
+                await discover(
+                    {
+                        "board_url": LISTING_URL,
+                        "metadata": {
+                            "tenant": "other",
+                            "listing_url": "https://jobs.jobvite.com/other",
+                        },
+                    },
+                    client,
+                )
+        assert calls == 0
 
     async def test_empty_first_party_listing_is_authoritative(self):
         transport = httpx.MockTransport(
@@ -317,6 +341,44 @@ class TestScheduledProbe:
             result = await _probe_jobvite(row, client)
         assert result.status == "fail"
 
+    async def test_branded_landing_resolves_jobs_destination(self):
+        landing = f"https://jobs.jobvite.com/careers/{TENANT}"
+        positions = f"https://jobs.jobvite.com/{TENANT}/jobs/positions"
+        row = {
+            "board_slug": "branded-jobvite",
+            "board_url": landing,
+            "monitor_type": "jobvite",
+            "monitor_config": "",
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if str(request.url) == landing:
+                return httpx.Response(
+                    200,
+                    text=_listing(extra=f'<a href="/{TENANT}/jobs/positions">Jobs</a>'),
+                    request=request,
+                )
+            assert str(request.url) == positions
+            return httpx.Response(200, text=_listing("oaGwAfwG"), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await _probe_jobvite(row, client)
+        assert result.status == "ok"
+        assert result.message == "200 (1 jobs)"
+        assert result.probe_url == positions
+
+    async def test_terminal_410_is_failed(self):
+        row = {
+            "board_slug": "retired-jobvite",
+            "board_url": LISTING_URL,
+            "monitor_type": "jobvite",
+            "monitor_config": "",
+        }
+        transport = httpx.MockTransport(lambda request: httpx.Response(410, request=request))
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await _probe_jobvite(row, client)
+        assert result.status == "fail"
+
 
 def test_existing_jsonld_scraper_extracts_jobvite_detail():
     payload = {
@@ -341,7 +403,8 @@ def test_existing_jsonld_scraper_extracts_jobvite_detail():
 
 def test_workspace_and_runtime_integration():
     assert "jobvite" in all_monitor_types()
-    assert "jobvite" in _KNOWN_ATS_DOMAINS
+    assert "jobs.jobvite.com" in _KNOWN_ATS_DOMAINS
+    assert delay_for_domain("jobs.jobvite.com") == settings.throttle_delay_ats
     assert detect_ats_from_url(LISTING_URL) == "jobvite"
     assert detect_ats_from_url(f"https://jobs.jobvite.com/{TENANT}/admin") is None
     assert auto_scraper_type("jobvite") == ("json-ld", None)
