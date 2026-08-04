@@ -74,6 +74,9 @@ Status tags:
 - [19 - Hetzner Data Backup and Recovery](19-data-backup-recovery.md)
   `[runbook]` - encrypted PostgreSQL and Typesense backups, restore drills,
   retention, scheduling, and replacement gates for legacy server backups.
+- [20 - Redis Capacity, Cleanup, and Recovery](20-redis-capacity.md)
+  `[runbook]` - key-family budgets, bounded orphan cleanup, noeviction pressure
+  behavior, and RDB scheduler rebuild procedures.
 - [20 - Supabase Free Downgrade](20-supabase-free-downgrade.md) `[runbook]` -
   guarded migration repair, saved-job cutover order, and production evidence
   gates for removing the crawler-owned mirror.
