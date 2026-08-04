@@ -49,6 +49,16 @@ packages = ["src"]
 "../src/workspace/" = "src/workspace/"
 "../src/shared/" = "src/shared/"
 "../src/core/" = "src/core/"
+# Inventory-generated company issues are authenticated by
+# src.workspace.ats_seed against this small Jobseek-owned identity subset. It
+# consumes only issue evidence here and never imports or executes upstream
+# scraper code. Keep the queue/cache runner out of the slim ws wheel.
+"../src/ats_inventory/__init__.py" = "src/ats_inventory/__init__.py"
+"../src/ats_inventory/candidates.py" = "src/ats_inventory/candidates.py"
+"../src/ats_inventory/compat.py" = "src/ats_inventory/compat.py"
+"../src/ats_inventory/constants.py" = "src/ats_inventory/constants.py"
+"../src/ats_inventory/models.py" = "src/ats_inventory/models.py"
+"../src/ats_inventory/tenant_keys.py" = "src/ats_inventory/tenant_keys.py"
 # `ws run scraper` imports src.processing.scrape._apply_defaults; that file
 # transitively pulls in src.processing.{cpu,r2_stage} and src.queries.
 # Without these, every `ws run scraper` invocation crashes with
