@@ -276,6 +276,18 @@ def test_postgresql_shared_memory_alert_enforces_contract_and_capacity() -> None
     )
 
 
+def test_phantom_active_postings_page_until_terminal_drift_is_zero() -> None:
+    rule = _alert_rule("CrawlerPhantomActivePostings")
+
+    assert rule["expr"] == "jobseek_crawler_phantom_active_postings > 0"
+    assert rule["for"] == "15m"
+    assert rule["labels"]["severity"] == "high"
+    assert rule["labels"]["page"] == "production"
+    assert rule["annotations"]["runbook"].endswith(
+        "docs/16-hetzner-maintenance.md#phantom-active-posting-sweep"
+    )
+
+
 def test_operator_handoffs_cover_daily_review_without_duplicate_mimir_deadman() -> None:
     failed = _alert_rule("CodexDailyErrorReviewFailed")
     stale = _alert_rule("CodexDailyErrorReviewStale")

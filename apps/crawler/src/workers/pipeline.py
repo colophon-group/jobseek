@@ -111,6 +111,13 @@ def _configured_egress_host(config: dict) -> str:
     except (json.JSONDecodeError, TypeError):
         metadata = {}
 
+    if config.get("crawler_type") == "taleo" and isinstance(metadata, dict):
+        from src.shared.taleo import taleo_request_host
+
+        resolved_host = taleo_request_host(str(config.get("board_url") or ""), metadata)
+        if resolved_host:
+            return normalize_egress_host(resolved_host)
+
     monitor_config = metadata.get("monitor_config", {}) if isinstance(metadata, dict) else {}
     if isinstance(monitor_config, dict):
         for key in ("api_url", "endpoint", "base_url", "url"):
@@ -878,17 +885,15 @@ async def _process_monitor_work(
     worker_log = worker_log.bind(board_id=board_id, crawler_type=config.get("crawler_type"))
 
     try:
-        # Self-heal: a board may have already been marked `disabled` /
-        # `gone` in Postgres but the Redis monitor task still exists
-        # (sync only purges between CSV pushes — can be days). Drop the
-        # task without rescheduling so the dead-board loop drains.
-        # See issue #2215.
+        # Self-heal stale Redis work for boards removed from configuration.
+        # Confirmed-gone configured boards intentionally remain schedulable at
+        # a daily recovery cadence (#6156), so only ``disabled`` is terminal.
         async with local_pool.acquire() as conn:
             board_status = await conn.fetchval(
                 "SELECT board_status FROM job_board WHERE id = $1::uuid",
                 board_id,
             )
-        if board_status in ("disabled", "gone"):
+        if board_status == "disabled":
             tasks_total.labels(kind="monitor", status="skipped_disabled").inc()
             worker_log.info(
                 "pipeline.monitor.skipped_disabled",
@@ -1049,16 +1054,20 @@ async def _process_monitor_work(
                     cgroup_after_bytes=reclaimed.cgroup_after_bytes,
                 )
         except BoardGoneError:
-            # board.py already recorded gone + delisted postings.
-            # Drop the Redis task instead of rescheduling — the board
-            # is now filtered by the self-heal check above so it
-            # won't return to the queue.
+            # board.py recorded the pending/terminal confirmation and its
+            # durable due time. Mirror that timestamp into Redis so spaced
+            # confirmations and daily recovery probes survive deploys.
             #
             # Explicit ``status="gone"`` (not silent / not ``failed``):
             # gone is an upstream signal, not a crawler defect, and
             # operators need a separate rollup so it doesn't dilute
             # the failure-rate alert (#3200).
             tasks_total.labels(kind="monitor", status="gone").inc()
+            next_check_at = max(
+                await _failure_next_due(local_pool, board_id, worker_log),
+                time.time() + 60,
+            )
+            await reschedule_task(domain, board_id, "monitor", next_check_at, browser=browser)
             return
 
         circuit_open_until = await _record_monitor_host_outcome(

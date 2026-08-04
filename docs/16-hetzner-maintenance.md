@@ -104,11 +104,15 @@ immediately.
 
 For a backup-key rotation, update `TYPESENSE_BACKUP_KEY` first and deploy
 `.github/workflows/deploy-data-backups.yml`. The backup installer probes the
-candidate against `/stats.json` before mutation, atomically replaces the
-root-only host value, runs a full backup smoke when the value changed, and
-restores the prior value if any later gate fails. Delete the superseded
-generated key only after that backup and the isolated restore drill in
-`19-data-backup-recovery.md` both pass.
+candidate against `/stats.json` without changing the live environment. When
+the value changed, it quiesces the timer/service, runs a full backup smoke from
+a root-only candidate environment while retaining the host-wide deployment
+lock, reacquires the service-data lock, and only then atomically commits the
+candidate. Rollback stays armed until fresh status, timer health, and the
+deployment marker have committed. Any failure restores the prior value and
+leaves the timer disabled/inactive; treat a reported rollback failure as a hard
+backup outage. Delete the superseded generated key only after that backup and
+the isolated restore drill in `19-data-backup-recovery.md` both pass.
 
 Read-only, redacted verification:
 
@@ -934,6 +938,151 @@ Migration 0015 prioritizes the deterministic Ashby recovery cohort
 immediately and spreads other legacy disabled boards across six hours. The
 deploy-time sync then re-disables historical rows absent from `boards.csv`, so
 only configured sources enter Redis.
+
+## Phantom Active Posting Sweep
+
+The fail-closed `sweep-phantoms` command repairs active postings only after
+their owning board has a terminal classification. It never touches
+`quarantined` or `gone_pending` boards. A `disabled` board is eligible only
+when its exact URL is absent from the deployed `boards.csv`; a configured
+disabled board with active postings aborts the entire mutation and must first
+recover through the provider-native monitor path. A configured `gone` board
+is eligible only after the spaced provider-gone policy has recorded its
+terminal timestamp and at least two confirmations.
+
+Start with the read-only classification from a deployed crawler container:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler sweep-phantoms --dry-run
+```
+
+The live invocation holds a PostgreSQL session advisory lock, commits at most
+1,000 rows per transaction, and rechecks terminal board state inside every
+chunk. `FOR UPDATE SKIP LOCKED` lets live workers finish rows they already
+own. The default invocation is capped at 100 chunks; if `remaining_postings`
+is nonzero, rerun the same command rather than increasing limits during an
+incident:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler sweep-phantoms
+```
+
+Every tombstone sets `updated_at=clock_timestamp()` so the ordered exporter
+publishes it through the normal local PostgreSQL-to-Typesense CDC path. The
+command also invalidates `cache:platform-stats` and recomputes Typesense
+company/taxonomy counts. A signal or failure rolls back only the current
+chunk; already committed chunks remain safe and the next invocation resumes
+from the remaining active rows.
+
+The PostgreSQL host sampler checks the invariant every minute:
+
+- `jobseek_crawler_phantom_active_boards`
+- `jobseek_crawler_phantom_active_postings`
+- `jobseek_crawler_phantom_active_oldest_seconds`
+
+`CrawlerPhantomActivePostings` pages after 15 minutes of nonzero drift. After
+a repair, require the local count to be zero, wait for the exporter cursor to
+pass the repair timestamps, and compare exact active posting IDs in local
+PostgreSQL and Typesense for every affected company. Do not clear the alert or
+edit exporter cursors manually.
+
+## Provider-Gone Confirmation and Recovery
+
+An explicit provider-native retirement signal such as a board API 404 is not
+terminal on its own. It moves the configured board to `gone_pending`, retains
+its active postings, and schedules the next confirmation six hours later.
+Boards successful during the preceding seven days need three spaced
+confirmations; older sources need two. Only the terminal transition delists
+the board's postings.
+
+Confirmed-gone configured boards remain enabled and receive a provider-native
+probe every 24 hours. A valid non-empty or empty response moves the row back to
+`active` (or the normal empty-board `suspect` state), increments the durable
+recovery counter, and lets the standard posting diff relist matching jobs.
+Removing the board from `boards.csv` remains the only configuration-owned
+terminal disable.
+
+The PostgreSQL host sampler exports:
+
+- `jobseek_crawler_gone_pending_boards`
+- `jobseek_crawler_gone_pending_confirmations`
+- `jobseek_crawler_gone_pending_oldest_seconds`
+- `jobseek_crawler_gone_terminal_boards`
+- `jobseek_crawler_board_gone_transitions_total`
+- `jobseek_crawler_board_gone_recoveries_total`
+
+Inspect without changing state:
+
+```bash
+docker exec -i postgres psql -U crawler -d crawler -X -v ON_ERROR_STOP=1 -c "
+SELECT board_slug, crawler_type, board_status, is_enabled,
+       gone_confirmation_count, gone_first_confirmed_at,
+       gone_last_confirmed_at, next_check_at, last_gone_status,
+       left(last_gone_endpoint, 160) AS last_gone_endpoint,
+       left(last_gone_error, 160) AS last_gone_error
+FROM job_board
+WHERE board_status IN ('gone_pending', 'gone')
+ORDER BY next_check_at, board_slug;"
+```
+
+Do not advance confirmation timestamps or set a row active manually. For a
+live source, run the supported `crawler board <board-slug>` path or wait for
+the durable Redis schedule; the successful provider response is the recovery
+proof. For a stale pending alert, compare `next_check_at` with the Redis task,
+check the stored endpoint/status, and inspect provider-wide failures before
+accepting a terminal transition. Migration 0016 treats every legacy one-shot
+`gone` row as one unconfirmed observation, schedules it within fifteen minutes,
+and lets the deploy-time CSV sync disable rows that are no longer configured.
+
+## Fail-Closed Stale-Board Retirement Report
+
+`retire-stale-boards` is a read-only evidence report. Database state selects
+the candidates, but does not authorize removal. The command loads the exact
+deployed `companies.csv` and `boards.csv`, probes supported provider-native
+listing endpoints with bounded concurrency, and separates the result into:
+
+- `verified_gone`: a current provider-gone result plus at least two durable
+  confirmations spaced by six hours;
+- `live_again`: a current valid response, including a valid board with zero
+  jobs; route these boards through the normal provider-native recovery run;
+- `probe_inconclusive`: unsupported probes, 429s, timeouts, transient 5xx
+  responses, redirects that need review, or a gone result still waiting for
+  durable confirmation;
+- `integration_broken`: registry/runtime drift, invalid configuration, or an
+  unexpected provider response contract;
+- `zero_board_registry_orphans`: company rows with no configured board rows.
+
+Run it from a deployed crawler container so the report uses the same registry
+and network path as production:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler retire-stale-boards \
+  --days 14 --format md --probe-concurrency 5
+docker exec deploy-worker-1-1 uv run --no-sync crawler retire-stale-boards \
+  --days 14 --format json --probe-concurrency 5
+```
+
+Every evidence row includes a UTC probe timestamp, stable reason code,
+endpoint class and URL, HTTP status, redirect target, job count when the
+provider exposes a reliable total, and current company board context. The
+JSON form is the automation contract.
+
+The `shell` format is deliberately fail closed. It emits executable CSV
+removal commands only for `verified_gone` board candidates and companies for
+which every configured board independently passed the same current and
+durable confirmation gates. Live, rate-limited, transient, unsupported,
+unconfigured, and otherwise inconclusive candidates appear only as comments:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler retire-stale-boards \
+  --days 14 --format shell --probe-concurrency 5
+```
+
+Do not convert a non-executable section into a manual removal command. Recover
+`live_again` boards with `crawler board <board-slug>` and let the normal success
+transition reset terminal state. Retry transient probes after backoff. Repair
+integration failures before repeating the report. Zero-board registry orphans
+require separate operator review; the report never assumes they are dead.
 
 ## Disk Triage
 
