@@ -430,22 +430,35 @@ def test_signal_during_candidate_smoke_preserves_prior_key_and_disables_timer(
         time.sleep(0.05)
     assert rotation_harness.smoke_started.exists(), "candidate smoke did not start"
     ps_arguments = (
-        ["ps", "-ax", "-o", "command="] if platform.system() == "Darwin" else ["ps", "-eo", "args="]
+        ["ps", "-ax", "-o", "pid=", "-o", "ppid=", "-o", "command="]
+        if platform.system() == "Darwin"
+        else ["ps", "-eo", "pid=,ppid=,args="]
     )
-    process_list = subprocess.run(
+    process_rows = subprocess.run(
         ps_arguments,
         check=True,
         capture_output=True,
         text=True,
-    ).stdout
-    backup_processes = "\n".join(
-        line
-        for line in process_list.splitlines()
-        if str(rotation_harness.root / "bin/backup") in line
+    ).stdout.splitlines()
+    parsed_rows = [line.strip().split(maxsplit=2) for line in process_rows]
+    process_tree = {
+        int(parts[0]): (int(parts[1]), parts[2] if len(parts) == 3 else "")
+        for parts in parsed_rows
+        if len(parts) >= 2
+    }
+    descendants = {process.pid}
+    while True:
+        discovered = {pid for pid, (parent, _) in process_tree.items() if parent in descendants}
+        if discovered <= descendants:
+            break
+        descendants.update(discovered)
+    rotation_processes = "\n".join(
+        process_tree[pid][1] for pid in descendants if pid in process_tree
     )
-    assert backup_processes
-    assert OLD_KEY not in backup_processes
-    assert NEW_KEY not in backup_processes
+    assert process.pid in process_tree
+    assert len(descendants) > 1
+    assert OLD_KEY not in rotation_processes
+    assert NEW_KEY not in rotation_processes
     os.killpg(process.pid, signal.SIGTERM)
     stdout, stderr = process.communicate(timeout=10)
 
