@@ -67,17 +67,21 @@ snapshot and perform zero job-artifact requests.
 The current published schema has no universal ATS tenant column. Small local
 extractors identify tenants from stable URL/query/path components (and, for
 Paylocity, the tenant prefix in `ats_id`); exact unique company-name matching is
-the conservative fallback. A resolvable company with no rows is known to have
-zero active jobs. Ambiguous companies and families without a job artifact stay
-`impact_unknown`; they are ranked after known-active companies but before
-confirmed-zero companies, so gaps remain discoverable instead of disappearing.
+the conservative fallback. Only a company with an actually matched active-job
+bucket is impact-known. An inventory-side key alone cannot prove zero because a
+job-detail URL may omit the tenant and its display name may drift. Unmatched
+companies and families without a job artifact stay `impact_unknown` and rank
+after known-active companies, so gaps remain discoverable instead of
+disappearing.
 
 Active job count is the primary rank. Unique location count, country coverage,
-company name, and a deterministic source URL key break ties. The compact
-snapshot also retains remote-job count, country codes, and the latest published
-`posted_at` value. Schema drift, corrupt Parquet, partial downloads, row-count
-mismatch, configured cache pressure, or the free-space reserve leave the prior
-impact pointer untouched.
+company name, and a deterministic source URL key break ties. Per-bucket
+locations are retained as bounded stable hashes and unioned after fallback
+matching, avoiding duplicate counts without storing the source strings. The
+compact snapshot also retains remote-job count, country codes, and the latest
+published `posted_at` value. Schema drift, corrupt Parquet, partial downloads,
+row-count mismatch, configured cache pressure, or the free-space reserve leave
+the prior impact pointer untouched.
 
 The preferred upstream improvement is a small `company_stats.parquet`, keyed by
 the same company inventory identity and containing active counts/signals. The

@@ -24,8 +24,9 @@ from src.ats_inventory.source import assert_trusted_artifact_url
 from src.ats_inventory.tenant_keys import normalize_identity, tenant_key
 
 _STATE_VERSION = 1
-_ALGORITHM_VERSION = 2
+_ALGORITHM_VERSION = 3
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_LOCATION_HASH_RE = re.compile(r"^[0-9a-f]{16}$")
 _REQUIRED_COLUMNS = frozenset(
     {"url", "company", "ats_id", "location", "country_iso", "is_remote", "posted_at"}
 )
@@ -55,7 +56,7 @@ class _Bucket:
     name_keys: tuple[str, ...]
     active_jobs: int
     remote_jobs: int
-    location_count: int
+    location_hashes: tuple[str, ...]
     country_codes: tuple[str, ...]
     latest_posted_at: str | None
 
@@ -66,7 +67,7 @@ class _Bucket:
             "name_keys": list(self.name_keys),
             "active_jobs": self.active_jobs,
             "remote_jobs": self.remote_jobs,
-            "location_count": self.location_count,
+            "location_hashes": list(self.location_hashes),
             "country_codes": list(self.country_codes),
             "latest_posted_at": self.latest_posted_at,
         }
@@ -116,13 +117,19 @@ class _MutableBucket:
                 self.latest_posted_at = value
 
     def freeze(self) -> _Bucket:
+        location_hashes = tuple(
+            sorted(
+                hashlib.sha256(f"location\0{location}".encode()).hexdigest()[:16]
+                for location in self.locations
+            )
+        )
         return _Bucket(
             kind=self.kind,
             key=self.key,
             name_keys=tuple(sorted(self.names)),
             active_jobs=self.active_jobs,
             remote_jobs=self.remote_jobs,
-            location_count=len(self.locations),
+            location_hashes=location_hashes,
             country_codes=tuple(sorted(self.countries)),
             latest_posted_at=self.latest_posted_at,
         )
@@ -160,14 +167,14 @@ class _FamilySummary:
 class _CompanyAccumulator:
     active_jobs: int = 0
     remote_jobs: int = 0
-    location_count: int = 0
+    locations: set[str] = field(default_factory=set)
     countries: set[str] = field(default_factory=set)
     latest_posted_at: str | None = None
 
     def add(self, bucket: _Bucket) -> None:
         self.active_jobs += bucket.active_jobs
         self.remote_jobs += bucket.remote_jobs
-        self.location_count += bucket.location_count
+        self.locations.update(bucket.location_hashes)
         self.countries.update(bucket.country_codes)
         if bucket.latest_posted_at is not None and (
             self.latest_posted_at is None or bucket.latest_posted_at > self.latest_posted_at
@@ -653,14 +660,11 @@ def _resolve_companies(
 
         known_companies = 0
         for index, row in enumerate(rows):
-            row_tenant = tenant_key(family, row.url)
             accumulator = accumulators[index]
-            # A unique URL key proves that a complete artifact contains zero
-            # rows. A name-only row is known only after an actual job matches.
-            resolvable = (
-                row_tenant is not None and tenant_map.get(row_tenant) == index
-            ) or accumulator.active_jobs > 0
-            impact_unknown = not resolvable
+            # Without a source-published company-stats row, absence is not
+            # proof of zero: a job-detail URL may omit the tenant and its name
+            # may drift. Only an actually matched active bucket is known.
+            impact_unknown = accumulator.active_jobs == 0
             known_companies += int(not impact_unknown)
             companies.append(
                 CompanyImpact(
@@ -671,7 +675,7 @@ def _resolve_companies(
                     impact_unknown=impact_unknown,
                     active_jobs=accumulator.active_jobs,
                     remote_jobs=accumulator.remote_jobs,
-                    location_count=accumulator.location_count,
+                    location_count=len(accumulator.locations),
                     country_codes=tuple(sorted(accumulator.countries)),
                     latest_posted_at=accumulator.latest_posted_at,
                 )
@@ -761,8 +765,14 @@ def _decode_bucket(value: object) -> _Bucket:
     names = _string_tuple(value.get("name_keys"), max_items=1_000, max_length=500)
     active = _nonnegative_int(value, "active_jobs")
     remote = _nonnegative_int(value, "remote_jobs")
-    locations = _nonnegative_int(value, "location_count")
-    if remote > active or locations > _MAX_LOCATION_IDENTITIES:
+    location_hashes = _string_tuple(
+        value.get("location_hashes"),
+        max_items=_MAX_LOCATION_IDENTITIES,
+        max_length=16,
+    )
+    if remote > active or any(
+        not _LOCATION_HASH_RE.fullmatch(location_hash) for location_hash in location_hashes
+    ):
         raise ImpactValidationError("family bucket counters are invalid")
     countries = _string_tuple(
         value.get("country_codes"), max_items=_MAX_COUNTRY_CODES, max_length=2
@@ -778,7 +788,7 @@ def _decode_bucket(value: object) -> _Bucket:
         name_keys=names,
         active_jobs=active,
         remote_jobs=remote,
-        location_count=locations,
+        location_hashes=location_hashes,
         country_codes=countries,
         latest_posted_at=latest,
     )

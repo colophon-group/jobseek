@@ -136,6 +136,7 @@ class ImpactSnapshot:
                 -company.active_jobs,
                 -company.location_count,
                 -len(company.country_codes),
+                company.country_codes,
                 company.name.casefold(),
                 company.source_key,
             )

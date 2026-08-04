@@ -208,6 +208,7 @@ async def test_unchanged_manifest_uses_compact_cache_without_artifact_downloads(
     assert acme.remote_jobs == 1
     assert acme.location_count == 2
     assert acme.country_codes == ("CH", "DE")
+    assert next(company for company in second.companies if company.slug == "zero").impact_unknown
 
 
 async def test_changed_inventory_reuses_same_family_summary(tmp_path: Path) -> None:
@@ -292,6 +293,37 @@ async def test_company_name_can_match_unique_composite_slug_root(tmp_path: Path)
 
     assert impact.ranked()[0].slug == "tesla/123"
     assert impact.ranked()[0].active_jobs == 2
+
+
+async def test_location_hashes_union_across_fallback_buckets(tmp_path: Path) -> None:
+    rows = [
+        InventoryRow("workable", "Acme Incorporated", "acme", "https://apply.workable.com/acme")
+    ]
+    body = _parquet(
+        [
+            _job("https://apply.workable.com/j/1", "acme", location="Zurich"),
+            _job(
+                "https://apply.workable.com/j/2",
+                "Acme Incorporated",
+                location="Zurich",
+            ),
+            _job(
+                "https://apply.workable.com/j/3",
+                "Acme Incorporated",
+                location="Paris",
+            ),
+        ]
+    )
+    url = "https://storage.stapply.ai/jobhive/v1/workable/jobs.parquet"
+
+    impact = await _sync(
+        tmp_path,
+        _Artifacts({url: body}),
+        _snapshot(rows, {"workable": body}),
+    )
+
+    assert impact.companies[0].active_jobs == 3
+    assert impact.companies[0].location_count == 2
 
 
 @pytest.mark.parametrize("failure", ["partial", "checksum", "schema"])
