@@ -389,6 +389,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"JazzHR static listing \u2014 tenant: {tenant}, {jobs} jobs"
         return f"JazzHR static listing \u2014 tenant: {tenant}"
+    if name == "jobvite":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Jobvite static listing \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"Jobvite static listing \u2014 tenant: {tenant}"
     if name == "icims":
         host = metadata.get("host", "?")
         jobs = metadata.get("jobs")
@@ -774,6 +780,7 @@ from src.core.monitors import (  # noqa: E402
     icims,  # noqa: F401
     inline,  # noqa: F401
     jazzhr,  # noqa: F401
+    jobvite,  # noqa: F401
     jobylon,  # noqa: F401
     join,  # noqa: F401
     keka,  # noqa: F401

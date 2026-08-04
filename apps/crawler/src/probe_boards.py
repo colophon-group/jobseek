@@ -46,6 +46,12 @@ from src.shared.dayforce import (
 )
 from src.shared.gupy import normalize_gupy_tenant
 from src.shared.http import DEFAULT_ACCEPT, DEFAULT_USER_AGENT
+from src.shared.http_retry import PaginationFetchError
+from src.shared.jobvite import (
+    is_jobvite_invalid_redirect,
+    jobvite_board_from_metadata,
+    jobvite_board_from_url,
+)
 from src.shared.keka import (
     extract_keka_identifier,
     is_keka_forbidden_redirect,
@@ -919,6 +925,78 @@ async def _probe_avature(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "avature", url, resp)
 
 
+async def _probe_jobvite(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = jobvite_board_from_metadata(cfg)
+    direct = jobvite_board_from_url(row["board_url"])
+    if configured is None and ({"tenant", "listing_url"} & cfg.keys()):
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            row["board_url"],
+            "warn",
+            "invalid Jobvite tenant/listing_url in monitor_config",
+        )
+    if configured is not None and direct is not None and configured.tenant != direct.tenant:
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            configured.listing_url,
+            "fail",
+            "configured Jobvite tenant does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            row["board_url"],
+            "warn",
+            "no valid Jobvite listing identity",
+        )
+
+    from src.core.monitors.jobvite import resolve_listing
+
+    try:
+        resolved, jobs = await resolve_listing(board, client, terminal=False)
+    except PaginationFetchError as exc:
+        if exc.last_status in {404, 410} or is_jobvite_invalid_redirect(exc.last_location):
+            return ProbeResult(
+                row["board_slug"],
+                "jobvite",
+                board.listing_url,
+                "fail",
+                f"terminal Jobvite listing response ({exc.last_status})",
+            )
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            board.listing_url,
+            "warn",
+            f"Jobvite listing fetch failed ({exc.last_status or exc.last_error})",
+        )
+    except ValueError as exc:
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            board.listing_url,
+            "warn",
+            str(exc),
+        )
+    return ProbeResult(
+        row["board_slug"],
+        "jobvite",
+        resolved.listing_url,
+        "ok",
+        f"200 ({len(jobs)} jobs)",
+    )
+
+
 async def _probe_ukg(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     cfg: dict[str, object] = {}
     if row["monitor_config"]:
@@ -1145,6 +1223,7 @@ def _classify(
 PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] = {
     "adp": _probe_adp,
     "avature": _probe_avature,
+    "jobvite": _probe_jobvite,
     "ukg": _probe_ukg,
     "greenhouse": _probe_greenhouse,
     "lever": _probe_lever,
