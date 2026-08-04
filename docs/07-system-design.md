@@ -291,7 +291,9 @@ Claims from `ready:browser:*` queues. Same pipeline pattern but with Chromium av
 All monitors use the streaming path (`_process_one_board_streaming` in `processing/board.py`):
 
 1. Monitor discovers jobs (yields batches for large datasets)
-2. Diff against local Postgres in a single SQL query (new/touched/relisted/gone)
+2. Diff against local Postgres in a single SQL query (new/touched/relisted,
+   including canonical recovery from foreign-board liveness evidence, then
+   gone)
 3. Rich data: insert full `job_posting` rows directly
 4. URL-only: insert URL stubs, enqueue scrapes to Redis
 5. Upload descriptions to `descriptions` table (R2 drain picks them up)

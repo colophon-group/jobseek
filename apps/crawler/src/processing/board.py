@@ -25,6 +25,7 @@ from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
 from src.metrics import (
     monitor_db_transaction_retries_total,
     monitor_dedup_total,
+    monitor_foreign_discovery_total,
     monitor_gone_events_total,
     monitor_gone_skipped_total,
     monitor_jobs_discovered,
@@ -956,12 +957,13 @@ async def _process_one_board_streaming(
                 relisted: list[dict] = []
                 touched: list[dict] = []
                 n_foreign = 0
+                n_foreign_relisted = 0
 
                 for row in rows:
                     action = row["action"]
                     if action == "new":
                         new_urls.append(row["url"])
-                    elif action == "relisted":
+                    elif action in {"relisted", "foreign_relisted"}:
                         r2h = row["description_r2_hash"]
                         relisted.append(
                             {
@@ -970,6 +972,8 @@ async def _process_one_board_streaming(
                                 "r2_hash": int(r2h) if r2h is not None else None,
                             }
                         )
+                        if action == "foreign_relisted":
+                            n_foreign_relisted += 1
                     elif action == "touched":
                         r2h = row["description_r2_hash"]
                         touched.append(
@@ -985,9 +989,19 @@ async def _process_one_board_streaming(
 
                 if n_foreign:
                     monitor_dedup_total.labels(path="cross_board").inc(n_foreign)
+                    monitor_foreign_discovery_total.labels(outcome="active_touch").inc(n_foreign)
                     board_log.info(
                         "batch.monitor.cross_board_duplicate",
                         count=n_foreign,
+                    )
+                if n_foreign_relisted:
+                    monitor_dedup_total.labels(path="cross_board").inc(n_foreign_relisted)
+                    monitor_foreign_discovery_total.labels(outcome="inactive_relisted").inc(
+                        n_foreign_relisted
+                    )
+                    board_log.info(
+                        "batch.monitor.cross_board_relisted",
+                        count=n_foreign_relisted,
                     )
 
                 total_new += len(new_urls)
