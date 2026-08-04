@@ -71,7 +71,11 @@ transport records the actual hostname used after redirects. A failed monitor
 run advances `host_fail:<egress_host>` once regardless of internal request
 retries or page count. A failed scrape advances it only when its final network
 outcome is a transport error, HTTP 408/425/429, or 5xx; extraction/configuration
-failures after a reachable response cannot block a whole host. Three failed
+failures after a reachable response cannot block a whole host. A provider
+scraper may explicitly promote an exhausted, provider-validated invalid
+success body to a transient outcome; Workday detail responses use this for the
+cross-tenant HTTP 200/HTML incident tracked in #5230. A response that recovers
+during provider-specific retries remains healthy. Three failed
 runs inside ten minutes open `host_open:<egress_host>` for thirty minutes.
 Sibling boards and postings are rescheduled to the stored unblock timestamp
 before making a network or proxy request. When that time arrives,
@@ -84,27 +88,51 @@ board can discover and scrape through different origins. The
 `crawler_host_circuit_state{egress_host}` gauge and
 `UpstreamHostCircuitOpen` alert provide one signal per failing origin.
 
+**Provider-incident circuit breaking** adds a narrower cross-origin gate for
+failures that a monitor can positively identify as one provider-wide event.
+Workday list pagination marks only an HTTP 303 that remains after all three
+POST retries. Redis counts affected tenant origins in
+`provider_fail_hosts:workday-list-303`; repeated failures from one tenant count
+once, while three distinct tenants inside ten minutes open the shared provider
+circuit for thirty minutes. Later Workday monitors are rescheduled before
+network I/O, but other crawler types continue normally and each tenant's host
+circuit remains active independently. Ordinary successes do not erase a
+partially accumulated cross-tenant quorum. After the open interval, one
+`provider_probe:workday-list-303` lease admits a recovery monitor: a successful
+probe clears the circuit and evidence, another exhausted 303 reopens it, and an
+unrelated parser/configuration failure releases the probe without affecting
+the provider evidence. Provider state reuses the host-circuit metrics with the
+bounded label `provider:workday-list-303`.
+
 ### Inflight Leases And Dead-Letter Recovery
 
 `claim_work.lua` moves claimed tasks into `inflight:<wtype>` with a lease deadline. Workers clear the lease when they reschedule or complete the task, and the reaper moves expired leases back to the appropriate per-domain queue. If the same task expires too many times (`redis_reaper_max_strikes`), the reaper stops retrying it and parks the descriptor in `deadletter:<wtype>`.
 
-The exported `crawler_inflight_deadletter_depth{wtype}` gauge is shown on the Queue Health dashboard row and alerts as `DeadletterQueueNotEmpty` when it stays nonzero for more than 1 hour. A nonzero value means the task will not be retried automatically until an operator reviews it.
+The raw `crawler_inflight_deadletter_depth{wtype}` gauge accounts for every parked task. Monitor descriptors are also joined to authoritative local Postgres state and exported as `crawler_monitor_deadletter_lifecycle_depth{wtype,lifecycle}`. The bounded lifecycle values are `actionable`, `retired`, `superseded`, and `unresolved`. `DeadletterQueueNotEmpty` alerts only for actionable or unresolved work; historical entries for disabled/removed boards and old routes stay visible without masking a new service-impacting poison task.
 
-Read-only inspection:
-
-```bash
-ssh -i ~/.ssh/hetzner_deploy root@$CRAWLER_BROWSER_IPv4
-docker exec deploy-redis-1 redis-cli ZCARD deadletter:simple
-docker exec deploy-redis-1 redis-cli ZRANGE deadletter:simple 0 -1 WITHSCORES
-docker exec deploy-redis-1 redis-cli ZCARD deadletter:browser
-docker exec deploy-redis-1 redis-cli ZRANGE deadletter:browser 0 -1 WITHSCORES
-```
-
-Dead-letter members are encoded as `task_type|domain|task_id`; `task_id` may contain `|`, so split only the first two separators. Before draining, check recent worker logs for `pipeline.reaper.swept` and the `crawler_inflight_reaped_total{outcome="dead_lettered"}` counter to understand whether the root cause is a poison board, a worker crash loop, or a lease TTL mismatch. Do not blindly clear the ZSET: after the root cause is fixed, re-enqueue through the normal crawler path or remove only the reviewed member:
+Supported read-only inspection (the default operation is non-mutating):
 
 ```bash
-docker exec deploy-redis-1 redis-cli ZREM deadletter:simple '<member>'
+docker exec -it deploy-worker-1-1 uv run crawler deadletters inspect
 ```
+
+The report includes a unique `ref` in `<wtype>:<member>` form, authoritative board state, config state, and the allowed resolution. Dead-letter members themselves remain encoded as `task_type|domain|task_id`; `task_id` may contain `|`, so split only the first two separators. Before resolution, check recent worker logs for `pipeline.reaper.swept` and the `crawler_inflight_reaped_total{outcome="dead_lettered"}` counter to understand whether the root cause is a poison board, worker crash loop, or lease TTL mismatch.
+
+Retry and prune are dry-run by default and require an exact selector copied from inspection:
+
+```bash
+docker exec -it deploy-worker-1-1 uv run crawler deadletters retry \
+  --entry 'simple:monitor|example.com|<board-uuid>'
+docker exec -it deploy-worker-1-1 uv run crawler deadletters retry \
+  --entry 'simple:monitor|example.com|<board-uuid>' --apply
+
+docker exec -it deploy-worker-1-1 uv run crawler deadletters prune \
+  --entry 'browser:monitor|old.example.com|<board-uuid>'
+docker exec -it deploy-worker-1-1 uv run crawler deadletters prune \
+  --entry 'browser:monitor|old.example.com|<board-uuid>' --apply
+```
+
+`retry` is allowed only when the local row is enabled and the Redis hash matches its current route. It ensures a current schedule exists without duplicating a first-time, recurring, or inflight task, then removes only the selected dead-letter member. `prune` is allowed only after local Postgres confirms that the board is disabled/removed, or that the descriptor belongs to a superseded domain/worker route whose current config is valid. Missing/stale active config is never discarded: run `crawler sync`, inspect again, and then resolve explicitly. Sync repairs hashes idempotently and reports lifecycle counts as `sync.deadletters.reconciled`; it does not silently remove dead-letter evidence.
 
 ## Worker Pipeline
 

@@ -485,6 +485,19 @@ class TestRawAtsScanning:
         found = _scan_ats_urls_in_html(html)
         assert any(f.url == "https://acme.avature.net/en_US/careers/SearchJobs" for f in found)
 
+    def test_successfactors_legacy_scan_preserves_company_identity(self):
+        html = """
+        <script>
+          window.jobs = "https://career55.sapsf.eu/career?company=Midea&amp;career_ns=job_listing_summary&amp;navBarLevel=JOB_SEARCH";
+        </script>
+        """
+        found = _scan_ats_urls_in_html(html)
+        assert any(
+            f.url
+            == "https://career55.sapsf.eu/career?company=Midea&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH"
+            for f in found
+        )
+
     def test_deduplicates_same_url(self):
         html = """
         <html><head></head><body>
