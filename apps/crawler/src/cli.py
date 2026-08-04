@@ -13,7 +13,9 @@ import argparse
 import asyncio
 import signal
 import uuid
+from typing import cast
 
+import asyncpg
 import dotenv
 import structlog
 
@@ -21,7 +23,11 @@ dotenv.load_dotenv(".env.local")
 dotenv.load_dotenv(".env")
 
 from src.config import settings  # noqa: E402
-from src.db import close_all_pools, create_local_pool, create_pool  # noqa: E402
+from src.db import (  # noqa: E402
+    close_all_pools,
+    create_local_pool,
+    create_web_pool,
+)
 from src.metrics import start_metrics_server  # noqa: E402
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
@@ -68,7 +74,10 @@ def parse_args() -> argparse.Namespace:
     sub.add_parser("run", help="Worker instance (all non-browser profiles)")
     sub.add_parser("run-browser", help="Browser instance (browser profiles only)")
 
-    export_p = sub.add_parser("export", help="CDC exporter (local Postgres -> Supabase)")
+    export_p = sub.add_parser(
+        "export",
+        help="CDC exporter (local Postgres -> Typesense)",
+    )
     export_p.add_argument(
         "--batch-size",
         type=int,
@@ -82,11 +91,11 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("drain", help="R2 drain instance")
 
-    sub.add_parser("sync", help="CSV -> local Postgres + Supabase + Redis")
+    sub.add_parser("sync", help="CSV -> local Postgres + Redis + Typesense")
 
     recon_p = sub.add_parser(
         "reconcile",
-        help="Deterministic local -> Supabase/Typesense reconciliation",
+        help="Deterministic local -> Typesense reconciliation",
     )
     recon_p.add_argument(
         "--repair",
@@ -112,9 +121,9 @@ def parse_args() -> argparse.Namespace:
     )
     recon_p.add_argument(
         "--target",
-        choices=("all", "supabase", "typesense"),
-        default="all",
-        help="Mirror to inspect (default: all)",
+        choices=("typesense",),
+        default="typesense",
+        help="Derived store to inspect (Typesense only)",
     )
 
     sub.add_parser("backfill-locations", help="Enqueue re-scrapes for jobs missing locations")
@@ -230,34 +239,6 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Report the count that would be affected; make no writes.",
-    )
-
-    repair_relisted_p = sub.add_parser(
-        "repair-relisted-cdc",
-        help=(
-            "Compare recently seen locally-active postings with Supabase and "
-            "Typesense, then touch confirmed downstream activity mismatches "
-            "so the normal CDC exporter repairs them."
-        ),
-    )
-    from src.repair_relisted_cdc import parse_aware_datetime
-
-    repair_relisted_p.add_argument(
-        "--since",
-        type=parse_aware_datetime,
-        required=True,
-        help="Only scan rows seen since this timezone-aware ISO-8601 timestamp.",
-    )
-    repair_relisted_p.add_argument(
-        "--batch-size",
-        type=int,
-        default=2000,
-        help="Local/Supabase comparison batch size (default 2000).",
-    )
-    repair_relisted_p.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Report confirmed mismatches without touching local CDC timestamps.",
     )
 
     sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
@@ -442,10 +423,9 @@ async def run() -> None:
             settings.export_batch_limit = args.batch_size
             settings.export_interval = args.interval
             local_pool = await create_local_pool()
-            supa_pool = await create_pool()
             from src.exporter import run_exporter
 
-            await run_exporter(local_pool, supa_pool, shutdown_event)
+            await run_exporter(local_pool, None, shutdown_event)
 
         elif args.command == "drain":
             start_metrics_server(settings.metrics_port)
@@ -531,35 +511,21 @@ async def run() -> None:
             else:
                 await retry_stalled_scrapes(local_pool, max_age_days=args.max_age_days)
 
-        elif args.command == "repair-relisted-cdc":
-            local_pool = await create_local_pool()
-            supa_pool = await create_pool()
-            from src.repair_relisted_cdc import repair_relisted_cdc
-
-            await repair_relisted_cdc(
-                local_pool,
-                supa_pool,
-                since=args.since,
-                dry_run=args.dry_run,
-                batch_size=args.batch_size,
-            )
-
         elif args.command == "backfill-typesense":
             from src.cron_metrics import cron_run
 
             async with cron_run("backfill-typesense"):
                 local_pool = await create_local_pool()
-                supa_pool = await create_pool()
                 from src.exporter import backfill_typesense
 
-                await backfill_typesense(local_pool, supa_pool)
+                await backfill_typesense(local_pool)
 
         elif args.command == "refresh-typesense":
             from src.cron_metrics import cron_run
 
             async with cron_run("refresh-typesense"):
                 local_pool = await create_local_pool()
-                supa_pool = await create_pool()
+                web_pool = await create_web_pool()
                 from src.sync import refresh_typesense_counts, sync_watchlists_typesense
                 from src.typesense_client import get_typesense_client
 
@@ -570,9 +536,11 @@ async def run() -> None:
                     # silent any more.
                     log.error("refresh-typesense: Typesense not configured")
                     raise RuntimeError("refresh-typesense: Typesense not configured")
-                async with local_pool.acquire() as local_conn, supa_pool.acquire() as supa_conn:
-                    await refresh_typesense_counts(local_conn, ts_client)
-                    await sync_watchlists_typesense(supa_conn, local_conn, ts_client)
+                async with local_pool.acquire() as local_conn, web_pool.acquire() as web_conn:
+                    local_connection = cast(asyncpg.Connection, local_conn)
+                    web_connection = cast(asyncpg.Connection, web_conn)
+                    await refresh_typesense_counts(local_connection, ts_client)
+                    await sync_watchlists_typesense(web_connection, local_connection, ts_client)
                 log.info("refresh-typesense: done")
 
         elif args.command == "refresh-currency-rates":
@@ -657,14 +625,13 @@ async def run() -> None:
 
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
-            supa_pool = await create_pool()
             from src.reconciliation import run_reconciliation
 
             await _await_task_or_shutdown(
                 asyncio.create_task(
                     run_reconciliation(
                         local_pool,
-                        supa_pool,
+                        None,
                         repair=args.repair,
                         full=args.full,
                         max_partitions=args.max_partitions,
@@ -718,7 +685,7 @@ async def run() -> None:
             local_pool = await create_local_pool()
             async with local_pool.acquire() as conn:
                 output = await report_stale_boards(
-                    conn,
+                    cast(asyncpg.Connection, conn),
                     days=args.days,
                     fmt=args.format,
                     concurrency=args.probe_concurrency,

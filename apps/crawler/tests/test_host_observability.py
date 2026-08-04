@@ -319,12 +319,7 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
         if "to_regclass" in sql:
             return "cross_store_reconciliation_state"
         if sql == host.RECONCILIATION_STATS_SQL:
-            return (
-                "supabase\t1000\t900\t950\t12.5\t670000\t1200000\t42\t42\t0"
-                "\trepaired\t16\t256\t1\n"
-                "typesense\t1001\t901\t951\t13.5\t670000\t694000\t7\t7\t0"
-                "\trepaired\t16\t256\t0"
-            )
+            return "typesense\t1001\t901\t951\t13.5\t670000\t694000\t7\t7\t0\trepaired\t16\t256\t0"
         if "cross_store_reconciliation_run" in sql:
             return "0"
         raise AssertionError(sql)
@@ -362,7 +357,8 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_crawler_phantom_active_postings 136.0" in content
     assert "jobseek_crawler_phantom_active_oldest_seconds 7776000.0" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
-    assert 'jobseek_cross_store_reconciliation_last_detected{target="supabase"} 42.0' in content
+    assert "WHERE target = 'typesense'" in host.RECONCILIATION_STATS_SQL
+    assert 'target="supabase"' not in content
     assert (
         'jobseek_cross_store_reconciliation_last_attempt_success{target="typesense"} 1' in content
     )

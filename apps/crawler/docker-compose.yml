@@ -5,7 +5,6 @@
 # Redis runs locally on the worker machine.
 
 x-common-env: &common-env
-  DATABASE_URL: ${DATABASE_URL}                    # Supabase (exporter writes only)
   LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}         # Hetzner Postgres machine
   REDIS_URL: redis://localhost:6379/0
   WORKER_ID_PREFIX: hetzner
@@ -311,8 +310,8 @@ services:
   # reach the local Hetzner Postgres machine via `LOCAL_DATABASE_URL`,
   # exactly like the crawler workers do. We forward the same DSN as
   # `MURMUR_DB_DSN` (the env var the shim's invoke-lib + claim-kv
-  # actually read); the legacy `DATABASE_URL` points at Supabase and
-  # is exporter-only.
+  # actually read). Neither crawler-mirror nor web-owned database credentials
+  # are exposed to the long-running Compose services.
   #
   # Port choice: 8080. Verified free on the box at deploy time
   # (existing crawler stack uses 6379, 9093-9098, 12346/12347 only).

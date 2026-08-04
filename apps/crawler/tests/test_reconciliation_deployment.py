@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import os
+import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-from src.cli import _await_task_or_shutdown
+from src.cli import _await_task_or_shutdown, parse_args
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / "deploy/reconciliation/run.sh"
@@ -47,6 +49,26 @@ def test_revision_state_recovers_from_missing_and_corrupt_files(tmp_path: Path) 
 
     state.install_revision(tmp_path, revision)
     assert state.read_revision(tmp_path) == revision
+
+
+def test_wrapper_digest_state_is_atomic_validated_and_group_readable(tmp_path: Path) -> None:
+    revision = "a" * 40
+    wrapper_sha256 = "b" * 64
+
+    state.install_revision(tmp_path, revision)
+    state.install_wrapper_sha256(tmp_path, wrapper_sha256)
+    assert state.read_wrapper_sha256(tmp_path) == wrapper_sha256
+    assert os.stat(tmp_path / "wrapper-sha256").st_mode & 0o777 == 0o640
+
+    (tmp_path / "wrapper-sha256").write_text("corrupt\n", encoding="ascii")
+    with pytest.raises(state.StateError, match="invalid"):
+        state.read_wrapper_sha256(tmp_path)
+    state.install_wrapper_sha256(tmp_path, wrapper_sha256)
+    assert state.read_wrapper_sha256(tmp_path) == wrapper_sha256
+
+    (tmp_path / "wrapper-sha256").unlink()
+    with pytest.raises(state.StateError, match="unavailable"):
+        state.read_wrapper_sha256(tmp_path)
     assert os.stat(tmp_path).st_mode & 0o777 == 0o750
     assert os.stat(tmp_path / "deployed-sha").st_mode & 0o777 == 0o640
 
@@ -79,7 +101,6 @@ def test_runner_is_bounded_immutable_and_fail_closed() -> None:
     assert '--env-file "$ENV_FILE"' not in source
     assert "required_env=(" in source
     for key in (
-        "DATABASE_URL",
         "LOCAL_DATABASE_URL",
         "TYPESENSE_HOST",
         "TYPESENSE_PORT",
@@ -87,11 +108,14 @@ def test_runner_is_bounded_immutable_and_fail_closed() -> None:
         "TYPESENSE_OPERATIONS_KEY",
     ):
         assert key in source
+    assert re.search(r"\bDATABASE_URL\b", source) is None
+    assert "WEB_DATABASE_URL" not in source
     assert "chmod 0600" in source
     assert 'rm -f "$RUNTIME_ENV"' in source
-    assert "reconciliation_args=(--repair --max-partitions 16)" in source
-    assert '"--full-target"' in source
-    assert 'reconciliation_args=(--repair --full --target "$2")' in source
+    assert "reconciliation_args=(--repair --max-partitions 16 --target typesense)" in source
+    assert '"--full"' in source
+    assert "reconciliation_args=(--repair --full --target typesense)" in source
+    assert "supabase" not in source.lower()
     assert '/app/.venv/bin/crawler reconcile "${reconciliation_args[@]}"' in source
     assert "uv run" not in source
     assert "jobseek-crawler-mutation.lock" in source
@@ -129,7 +153,16 @@ def test_runner_rejects_an_unbounded_or_combined_full_target() -> None:
     )
 
     assert result.returncode == 2
-    assert "full target must be supabase or typesense" in result.stderr
+    assert "usage:" in result.stderr
+
+
+def test_crawler_reconciliation_cli_cannot_select_supabase(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["crawler", "reconcile", "--target", "typesense"])
+    assert parse_args().target == "typesense"
+
+    monkeypatch.setattr(sys, "argv", ["crawler", "reconcile", "--target", "supabase"])
+    with pytest.raises(SystemExit):
+        parse_args()
 
 
 async def test_reconciliation_task_is_cancelled_on_process_shutdown() -> None:
@@ -165,6 +198,23 @@ def test_all_crawler_mutation_entrypoints_share_the_host_lock() -> None:
         assert "/usr/local/sbin/jobseek-maintenance oneoff" in source
 
 
+def test_scheduled_oneoffs_filter_database_credentials_by_command() -> None:
+    maintenance = MAINTENANCE.read_text(encoding="utf-8")
+    currency = REFRESH_CURRENCY.read_text(encoding="utf-8")
+
+    assert "--env-file /home/deploy/.env" not in maintenance
+    assert '--env-file "$RUNTIME_ENV"' in maintenance
+    assert 'if [[ "$TASK" == "refresh-typesense" ]]' in maintenance
+    assert "required_env+=(WEB_DATABASE_URL)" in maintenance
+    assert re.search(r"\bDATABASE_URL\b", maintenance) is None
+
+    assert "--env-file /home/deploy/.env" not in currency
+    assert '--env-file "$RUNTIME_ENV"' in currency
+    assert "^LOCAL_DATABASE_URL=" in currency
+    assert "WEB_DATABASE_URL" not in currency
+    assert re.search(r"\bDATABASE_URL\b", currency) is None
+
+
 def test_systemd_unit_has_separate_wait_and_runtime_budget() -> None:
     service = SERVICE.read_text(encoding="utf-8")
     timer = TIMER.read_text(encoding="utf-8")
@@ -190,17 +240,24 @@ def test_install_and_workflow_preserve_rollback_and_privilege_boundary() -> None
     assert "TIMER_WAS_ACTIVE" in installer
     assert "systemctl disable --now jobseek-crawler-reconciliation.timer" in installer
     assert "restore_previous" in installer
+    assert 'if [[ "$path" == "$STATE_ROOT/"* ]]' in installer
+    assert 'install -o root -g "$group"' in installer
     assert "systemd-analyze verify" in installer
     assert "systemctl enable --now jobseek-crawler-reconciliation.timer" in installer
     assert "install -d -o root -g deploy -m 0750" in installer
-    assert "jobseek-reconciliation-state install --revision" in installer
+    assert "jobseek-reconciliation-state install" in installer
+    assert '--revision "$DEPLOY_SHA"' in installer
+    assert "--wrapper-sha256" in installer
+    assert "/var/lib/jobseek-reconciliation/wrapper-sha256" in installer
     assert "runuser -u deploy" in installer
-    assert "grep -Eq '^[0-9a-f]{40}$' /var/lib/jobseek-reconciliation/deployed-sha" in (
-        DEPLOY.read_text(encoding="utf-8")
-    )
+    deploy = DEPLOY.read_text(encoding="utf-8")
+    assert "JOBSEEK_RECONCILIATION_WRAPPER_SHA256" in deploy
+    assert "sha256sum /usr/local/sbin/jobseek-crawler-reconciliation" in deploy
+    assert "--expected-wrapper-sha256" in deploy
     assert "environment: production" in workflow
     assert "username: root" in workflow
     assert "JOBSEEK_RECONCILIATION_DEPLOY_SHA" in workflow
+    assert "JOBSEEK_RECONCILIATION_WRAPPER_SHA256" in workflow
     assert "systemctl start --no-block jobseek-crawler-reconciliation.service" in workflow
     assert "! systemctl is-failed --quiet jobseek-crawler-reconciliation.service" in workflow
     for action in ("actions/checkout", "appleboy/scp-action", "appleboy/ssh-action"):

@@ -193,7 +193,7 @@ exporter_flush_duration = Histogram(
 
 exporter_rows_exported = Counter(
     "crawler_exporter_rows_exported_total",
-    "Rows exported from local Postgres to Supabase",
+    "Rows exported from local Postgres to configured downstreams",
     ["table"],
 )
 

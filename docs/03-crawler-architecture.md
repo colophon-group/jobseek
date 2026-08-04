@@ -1,15 +1,17 @@
 # Crawler Architecture
 
-The crawler uses Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase.
+The crawler uses Redis-orchestrated workers writing to authoritative local
+Postgres, with CDC publication to Typesense.
 
 ## Infrastructure
 
 ```
-                                +-----------+
-                                | Supabase  |
-                                | (user DB) |
-                                +-----^-----+
-                                      | batch COPY (write-only)
+                         +-----------+
+                         | Typesense |
+                         | read index|
+                         +-----^-----+
+                               | document upserts
+                               |
       +-------------------------------+-------------------------------+
       |  Hetzner (116.203.192.19)     |                               |
       |                    +----------+-----------+                    |
@@ -177,31 +179,11 @@ A host allowlist for the Avature 403 pattern was rejected (closed PR #2720) as o
 Either authority's tombstone is reversible. The monitor's discovery query (`queries/monitor.py` — the `relisted` CTE) flips `is_active = true`, resets `missing_count = 0`, AND resets `scrape_failures = 0` when a previously-tombstoned URL reappears in a fresh monitor cycle. So a transient 3-failure cluster on a still-live URL self-heals on the next monitor pass; only URLs that the monitor *also* doesn't re-list stay tombstoned.
 
 Relisting also advances `updated_at` in the same transaction. This is a CDC
-invariant: both downstream exporter cursors are keyed by `(updated_at, id)`, so
+invariant: the Typesense exporter cursor is keyed by `(updated_at, id)`, so
 changing `is_active` without the timestamp would repair local PostgreSQL while
-leaving Supabase and Typesense permanently inactive. For a bounded historical
-repair, `crawler repair-relisted-cdc --since <timezone-aware timestamp>`
-compares recent local candidates with both downstream activity sets and touches
-only confirmed mismatches; use `--dry-run` before the write pass. The repair
-and exporter share a PostgreSQL advisory cursor fence. A repair holds the fence
-from its downstream snapshot through its final touch, so exporter ticks wait
-instead of advancing past a bulk transaction that has not committed yet.
-The fence uses non-blocking `pg_try_advisory_lock` polling: a planned long
-repair emits one waiting signal instead of repeatedly hitting the asyncpg
-command timeout. Cancellation or an uncertain unlock terminates the dedicated
-PostgreSQL session before pool reuse, which makes the server release its
-session lock. Verify both the waiting/acquired signals and the absence of
-`exporter.tick_error` during a production contention test.
-Already-touched candidates remain eligible, making an interrupted or legacy
-unfenced repair safe to rerun. After acquiring the fence, the command opens one
-repeatable-read PostgreSQL snapshot, captures a database-time upper cutoff,
-then keeps every keyset page on that snapshot. The cutoff alone is not the
-safety mechanism: snapshot isolation also excludes worker transactions that
-selected an older `updated_at` but were still uncommitted when the downstream
-snapshot began. Worker ingestion can therefore continue without adding rows to
-later pages. Expect export lag to grow for the duration of a large repair;
-after release, verify cursor catch-up, then run another fenced dry-run against
-its new snapshot and require zero mismatches for that immutable population.
+leaving Typesense permanently inactive. The former Supabase/Typesense relisted
+repair command was removed from the production CLI at the mirror cutover; the
+transitional implementation remains library-only during the rollback window.
 
 The `scrape_failures` reset is load-bearing: without it, a relisted posting comes back with `scrape_failures = 3`, and the very next failed scrape would re-tombstone it via the budget condition — a flap loop on chronically slow upstreams.
 
@@ -263,24 +245,25 @@ No Redis stream needed -- the `descriptions` table in local Postgres serves as t
 ## Exporter (CDC)
 
 One process exports changed `job_posting` rows from authoritative local
-Postgres to Supabase and Typesense. Each target has an independent durable
-`(updated_at, id)` cursor in `exporter_state`; one unavailable target does not
-hold back the other.
+Postgres to Typesense. The production `crawler export` command never opens a
+relational-mirror connection, even if a developer shell happens to contain
+`DATABASE_URL`; it owns only the durable `typesense:job_posting`
+`(updated_at, id)` cursor in `exporter_state`.
 
 Every steady-state tick:
 
 1. acquire the operator-repair cursor fence;
 2. establish a commit-safe PostgreSQL cutoff (below);
-3. select at most 2,000 rows after the older eligible target cursor and
-   strictly before the cutoff;
-4. upsert eligible rows to Supabase and Typesense concurrently;
-5. advance only successful target cursors, atomically when saving both; and
+3. select at most 2,000 rows after the Typesense cursor and strictly before the
+   cutoff;
+4. upsert eligible rows to Typesense;
+5. advance only the Typesense cursor after the batch result; and
 6. release the repair fence.
 
-The exporter is the only **steady-state** component that writes posting rows
-to Supabase. Workers never touch Supabase directly. The separately scheduled
-cross-store reconciler may perform a bounded, fenced repair from authoritative
-local rows; it does not invent downstream state or mutate local posting data.
+No deployed crawler command reads or writes Supabase posting rows. The
+separately scheduled reconciler performs bounded, fenced Typesense repair from
+authoritative local rows; it does not invent downstream state or mutate local
+posting data. Its only accepted CLI target is `typesense`.
 
 ### Cross-store reconciliation
 
@@ -291,9 +274,6 @@ the complete posting population deterministically:
 
 - local PostgreSQL is authoritative;
 - UUID high-byte ranges `00` through `ff` form 256 stable, indexed partitions;
-- Supabase must contain every local row with matching `is_active`; a
-  Supabase-only active row is deactivated, while a Supabase-only inactive row
-  is retained as tolerated user-facing history;
 - Typesense must have the exact local document set and matching `is_active`;
   missing/mismatched documents are upserted and Typesense-only documents are
   deleted; and
@@ -313,17 +293,17 @@ the same partition for an idempotent retry.
 
 Two local PostgreSQL tables make scheduling visible across deploys:
 
-- `cross_store_reconciliation_state` holds independent Supabase and Typesense
-  cursors, cycle totals, last attempt/success/outcome, and the Typesense
-  bootstrap flag; and
+- `cross_store_reconciliation_state` holds the Typesense cursor, cycle totals,
+  last attempt/success/outcome, and bootstrap flag (the obsolete Supabase row
+  is retained temporarily for rollback-compatible schema cleanup); and
 - `cross_store_reconciliation_run` records bounded run lifecycle and exposes
   interrupted/stuck executions without storing posting IDs.
 
 The crawler host's `jobseek-crawler-reconciliation.timer` starts one hour
 after the previous service completes, with a bounded random delay. Each
-resource-capped, read-only one-shot container repairs at most 16 partitions per
-target, so a full cycle normally completes within 16 successful starts. The
-host mutation lock serializes it with crawler
+resource-capped, read-only one-shot container explicitly selects Typesense and
+repairs at most 16 partitions, so a full cycle normally completes within 16
+successful starts. The host mutation lock serializes it with crawler
 deploys, Typesense refreshes, and backfills; a PostgreSQL advisory lock rejects
 duplicate reconcilers even if host scheduling is bypassed. Reconciliation
 does not restart PostgreSQL, Typesense, or crawler services. It can briefly
@@ -333,9 +313,8 @@ section holds the existing fence/row locks.
 The CLI is read-only unless `--repair` is explicit:
 
 ```bash
-crawler reconcile --target all --max-partitions 16
-crawler reconcile --repair --target all --max-partitions 16
-crawler reconcile --repair --full --target supabase
+crawler reconcile --target typesense --max-partitions 16
+crawler reconcile --repair --target typesense --max-partitions 16
 crawler reconcile --repair --full --target typesense
 ```
 
@@ -415,7 +394,7 @@ oldest current posting-writer transaction.
 disappear during the dynamic-view scan, while
 `crawler_exporter_cdc_unknown_writers_total` counts only still-held markers
 without a safe floor. `CdcWriterIdentityUnavailable` routes any increment of
-the latter to Codex error review; the exporter keeps both cursors pinned.
+the latter to Codex error review; the exporter keeps the Typesense cursor pinned.
 `CdcWriterCutoffDelayed` routes a cutoff older than 120 seconds to Codex error
 review. Inspect `pg_stat_activity` and `cdc_snapshot_cutoff.delayed` before
 terminating a production backend. A holder with no attributable transaction
@@ -439,7 +418,9 @@ exists when the new exporter is running.
 ## Data Flow
 
 ```
-CSV -> sync.py -> Local Postgres + Redis queues + Supabase (company display data)
+CSV -> sync.py -> Local Postgres transaction (authoritative IDs) -> COMMIT
+                       v
+                 Redis queues -> Typesense taxonomy/company collections
                        |
 Workers (pipeline.py) claim from Redis -> process board/scrape -> write to Local Postgres
                        | (new/changed jobs)
@@ -447,7 +428,7 @@ Workers (pipeline.py) claim from Redis -> process board/scrape -> write to Local
                        |
 R2 Drain -> poll descriptions WHERE NOT r2_uploaded -> PUT to R2
                        |
-Exporter CDC -> commit-safe cutoff + keyset read -> Supabase + Typesense
+Exporter CDC -> commit-safe cutoff + keyset read -> Typesense
 ```
 
 ## File Structure
@@ -468,9 +449,9 @@ apps/crawler/src/
 │   └── lookups.py           # Cached lookup table loaders
 ├── redis_queue.py           # Lua-backed claim/enqueue/reschedule
 ├── lua/                     # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py              # CDC: local Postgres -> Supabase (job_posting only, no boards)
-├── sync.py                  # CSV -> Supabase + local Postgres + Redis
-├── bootstrap.py             # One-time: Supabase -> local Postgres copy
+├── exporter.py              # CDC: local Postgres -> Typesense
+├── sync.py                  # Local-first CSV sync + deferred Redis/Typesense publication
+├── bootstrap.py             # Non-executable rollback helpers for the retired mirror
 ├── cli.py                   # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py                # Settings: discovery_concurrency, monitor_concurrency, etc.
 ├── metrics.py               # Prometheus metrics
@@ -492,10 +473,10 @@ apps/crawler/src/
 ```bash
 crawler run              # HTTP worker (claims from simple queues)
 crawler run-browser      # Browser worker (claims from browser queues)
-crawler export           # CDC exporter loop
+crawler export           # Typesense CDC
 crawler drain            # R2 description uploader
-crawler sync             # CSV -> DB + Redis
-crawler reconcile        # Read-only deterministic Supabase + Typesense slice
+crawler sync             # CSV -> local DB, then Redis + Typesense
+crawler reconcile        # Read-only Typesense reconciliation slice
 crawler reconcile --repair --max-partitions 16  # Resume verified repairs
 crawler board <slug>     # Process single board (debug)
 ```
@@ -504,13 +485,42 @@ crawler board <slug>     # Process single board (debug)
 
 ```bash
 # docker-compose.yml defines: redis, worker (x3), browser, exporter, drain, alloy
-# deploy.sh: writes rollback-backed .env, pulls the requested tag, stops processors, migrates Postgres, patches Typesense, runs crawler sync, starts + gates services
+# deploy.sh: writes a rollback-backed least-privilege env, pulls the requested tag, stops processors, migrates Postgres, patches Typesense, runs plain crawler sync, starts + gates services
 # CI: .github/workflows/deploy-crawler-browser.yml builds versioned slim + full images, then promotes them to latest after deploy succeeds
 ```
 
 Docker images:
 - `crawler-slim` (~200MB): Python + httpx only (workers, exporter, drain)
 - `crawler-full` (~600MB): Python + httpx + Playwright + Chromium (browser worker)
+
+### Registry sync ordering
+
+`crawler sync` treats local Postgres as the only ID authority. Lookup tables,
+companies, descriptions, and boards are written in one local transaction using
+natural-key upserts that preserve existing IDs. Redis scheduling and Typesense
+publication start only after that transaction commits. A local failure therefore
+cannot publish queue work or search documents for uncommitted registry state.
+
+The command never opens `DATABASE_URL`, and the production CLI no longer
+exposes the temporary legacy-mirror selector. It publishes Redis and Typesense
+only after the authoritative local transaction commits.
+
+Crawler-owned Typesense taxonomy and company documents are read from local
+Postgres. Only watchlist reconciliation crosses the separate web-data boundary,
+using `WEB_DATABASE_URL`. Long-running worker, browser, exporter, and drain
+containers receive neither `WEB_DATABASE_URL` nor `DATABASE_URL`; only explicit
+sync/count-refresh jobs receive the web-owned credential.
+
+### Deferred mirror-code cleanup
+
+The runtime cutover intentionally leaves rollback-compatible library code for
+the former Supabase posting mirror: exporter COPY helpers, sync mirror helpers,
+Supabase reconciliation internals/state, `repair_relisted_cdc.py`,
+`bootstrap.py`, the optional `database_url` setting/pool, and their direct unit
+tests. None is reachable from a deployed normal `crawler` command, operational
+workflow, Compose service, or host timer. Remove these artifacts and obsolete
+cursor/metric/state definitions after the rollback window and schema-contract
+work complete; they must not be re-exposed as a production CLI selector.
 
 ## Performance
 
@@ -528,8 +538,7 @@ Docker images:
 | Worker crash | Task not completed | Redis schedule stale; sync.py re-bootstraps |
 | Redis dies | Queued work lost | sync.py rebuilds from CSV; no data loss |
 | Local Postgres down | Workers idle | Resume when Postgres recovers; data on persistent volume |
-| Supabase down | Exporter can't flush | Changed rows accumulate in local Postgres; catches up on recovery |
-| Exporter crash | CDC paused | Resumes independently from both durable `(updated_at, id)` cursors |
+| Exporter crash | CDC paused | Resumes from the durable Typesense `(updated_at, id)` cursor |
 | CDC writer barrier timeout | Freshness pauses; cursors stay pinned | Inspect the owning long transaction; exporter retries without skipped rows |
 | Reconciliation failure | One target partition remains pinned | Inspect the systemd journal/downstream, then rerun; never skip the failed partition |
 | R2 drain failure | Unuploaded descriptions | Rows stay r2_uploaded = false; retried automatically |

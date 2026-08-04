@@ -4,13 +4,16 @@ Crawler-specific instructions. See the root [AGENTS.md](../../AGENTS.md) for pro
 
 ## Architecture
 
-Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase + Typesense:
+Redis-orchestrated workers writing to local Postgres, with CDC export to
+Typesense:
 
 1. **Single Job** (`src/core/`) — pure async functions, no DB awareness
 2. **Workers** (`src/workers/pipeline.py`) — claim from Redis tiered queues, process, write to local Postgres
-3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Supabase batch COPY + Typesense upserts (two independent cursors, concurrent writes)
+3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Typesense; the
+   production CLI advances only the `typesense:job_posting` cursor
 4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
-5. **Typesense Sync** (`src/sync.py`) — taxonomy + company collections populated after CSV sync; rename detection updates denormalized names on postings
+5. **Registry Sync** (`src/sync.py`) — commits CSV state to authoritative local
+   Postgres first, then updates Redis and Typesense
 
 See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
 See [docs/11-typesense.md](../../docs/11-typesense.md) for Typesense deployment details.
@@ -66,13 +69,13 @@ src/
 │   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
 ├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
 ├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py            # Commit-safe CDC with non-blocking writer floor (two-cursor)
+├── exporter.py            # Commit-safe Typesense CDC
 ├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
-├── sync.py                # CSV -> local Postgres + Supabase + Redis + Typesense taxonomies
-├── bootstrap.py           # One-time: Supabase -> local Postgres copy
+├── sync.py                # CSV -> local Postgres, then Redis + Typesense
+├── bootstrap.py           # Non-executable rollback helpers for the retired mirror
 ├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py              # Settings (pydantic-settings)
-├── db.py                  # asyncpg pools (local Postgres + Supabase)
+├── db.py                  # asyncpg pools (local, optional mirror, web-owned data)
 ├── metrics.py             # Prometheus metrics
 ├── migrations/            # Alembic migrations for local Postgres
 ├── workspace/             # Workspace CLI (ws command)
@@ -161,14 +164,14 @@ ws reject --reason <key> --message "..."  # Uses active workspace's issue
 # Run crawler workers
 uv run crawler run                     # HTTP worker (claims from simple queues)
 uv run crawler run-browser             # Browser worker (claims from browser queues)
-uv run crawler export                  # CDC exporter loop (Supabase + Typesense)
+uv run crawler export                  # Typesense CDC
 uv run crawler drain                   # R2 description uploader
-uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis + Typesense
-uv run crawler reconcile               # Read-only deterministic cross-store slice
-uv run crawler reconcile --repair --max-partitions 16  # Resume verified Supabase + Typesense repairs (host timer uses this)
+uv run crawler sync                    # CSV -> local Postgres, then Redis + Typesense
+uv run crawler reconcile               # Read-only Typesense reconciliation slice
+uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs (host timer uses this)
 uv run crawler reconcile --repair --full --target typesense  # Operator full remaining target cycle
 uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense (manual; workflow_dispatch in .github/workflows/crawler-scheduled-maintenance.yml)
-uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists (every 4h via .github/workflows/crawler-scheduled-maintenance.yml, plus inline at every deploy/CSV sync)
+uv run crawler refresh-typesense       # Refresh counts + reconcile WEB_DATABASE_URL watchlists (every 4h and after sync)
 uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (RETIRED in #2821 — kept for revival; no scheduler invokes it)
 uv run crawler retry-stalled-scrapes   # Reset next_scrape_at for transient-3-strike-stalled postings (#2738; see docs/03-crawler-architecture.md "Delisting model" section 5)
 uv run crawler retry-stalled-scrapes --dry-run  # Report the count without writing
@@ -517,11 +520,10 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.CPUPerc}}\t{{.MemUsage}}"
 docker logs <name> 2>&1 | tail -20
 docker logs <name> 2>&1 | grep "error" | tail -10
 
-# Restart a service
-docker rm -f <name> && docker run -d --name <name> --restart unless-stopped \
-  --env-file /home/deploy/.env --network host --memory=1g --cpus=1.0 \
-  -e METRICS_PORT=<port> -e DISCOVERY_CONCURRENCY=30 -e MONITOR_CONCURRENCY=10 \
-  crawler-slim:latest uv run --no-sync crawler run
+# Restart a service through its credential-scoped Compose definition
+cd /home/deploy
+docker compose up -d --force-recreate <service>
+docker compose ps <service>
 
 # Build images after code changes
 rsync -az --delete --exclude='.venv' --exclude='__pycache__' --exclude='.env*' --exclude='*.pyc' \
@@ -730,8 +732,8 @@ rsync -az --delete --exclude='.venv' --exclude='__pycache__' --exclude='.env*' \
 # 2. Build image(s)
 ssh ... 'cd /home/deploy/crawler-src && docker build --target slim -t crawler-slim:latest .'
 
-# 3. Restart affected containers (worker, exporter, drain, etc.)
-ssh ... 'docker rm -f worker-1 && docker run -d --name worker-1 ...'
+# 3. Restart affected services through their credential-scoped Compose definitions
+ssh ... 'cd /home/deploy && docker compose up -d --force-recreate worker-1'
 
 # 4. Re-sync if CSV data changed
 ssh ... 'docker run --rm --env-file /home/deploy/.env --network host \
