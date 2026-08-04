@@ -322,6 +322,7 @@ def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
     network_service = NETWORK_SERVICE.read_text(encoding="utf-8")
     assert "User=root" in network_service
     assert "ExecStart=/usr/local/sbin/jobseek-ats-inventory-network ensure" in network_service
+    assert "ReadWritePaths=/run/lock" in network_service
     assert "OnCalendar=*-*-* 03:00:00 UTC" in timer
     assert "Persistent=true" in timer
     assert "RandomizedDelaySec=45m" in timer
