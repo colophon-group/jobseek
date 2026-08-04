@@ -15,6 +15,7 @@ __all__ = [
     "_DROP_GUARD_MIN_HISTORY",
     "_DROP_GUARD_THRESHOLD_DEFAULT",
     "_EXTEND_BOARD_LEASE",
+    "_FETCH_BOARD_GONE_STATE",
     "_FETCH_DUE_BOARDS",
     "_INSERT_RICH_JOB",
     "_INSERT_RICH_JOB_ENRICH",
@@ -42,7 +43,7 @@ WITH ranked AS (
          next_check_at
   FROM job_board
   WHERE is_enabled = true
-    AND board_status IN ('active', 'suspect', 'quarantined')
+    AND board_status IN ('active', 'suspect', 'quarantined', 'gone_pending', 'gone')
     AND next_check_at <= now()
     AND (leased_until IS NULL OR leased_until < now())
 ),
@@ -120,13 +121,38 @@ WHERE board_id = $1 AND is_active = true
 RETURNING id
 """
 
+_FETCH_BOARD_GONE_STATE = """
+SELECT board_status,
+       gone_confirmation_count,
+       gone_first_confirmed_at,
+       gone_last_confirmed_at,
+       last_success_at,
+       gone_at
+FROM job_board
+WHERE id = $1
+FOR UPDATE
+"""
+
 _RECORD_BOARD_GONE = """
 UPDATE job_board
-SET board_status = 'gone', gone_at = now(),
-    is_enabled = false,
-    lease_owner = NULL, leased_until = NULL,
+SET board_status = $2,
+    gone_confirmation_count = $3,
+    gone_first_confirmed_at = $4,
+    gone_last_confirmed_at = $5,
+    gone_at = $6,
+    next_check_at = $7,
+    last_error = $8,
+    last_gone_error = $8,
+    last_gone_endpoint = $9,
+    last_gone_status = $10,
+    gone_transition_count = gone_transition_count + CASE WHEN $11 THEN 1 ELSE 0 END,
+    consecutive_failures = 0,
+    is_enabled = true,
+    lease_owner = NULL,
+    leased_until = NULL,
     updated_at = now()
 WHERE id = $1
+RETURNING board_status, gone_confirmation_count, next_check_at
 """
 
 _RECORD_SUCCESS_NONEMPTY = """
@@ -143,15 +169,22 @@ WITH previous AS MATERIALIZED (
         next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
         empty_check_count = 0,
         board_status = 'active',
+        is_enabled = true,
         last_non_empty_at = now(),
         last_recovered_at = CASE
-            WHEN previous.board_status = 'quarantined' THEN now()
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN now()
             ELSE jb.last_recovered_at
         END,
         recovery_count = jb.recovery_count + CASE
-            WHEN previous.board_status = 'quarantined' THEN 1
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN 1
             ELSE 0
         END,
+        gone_recovery_count = jb.gone_recovery_count + CASE
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 1
+            ELSE 0
+        END,
+        gone_confirmation_count = 0,
+        gone_at = NULL,
         quarantined_at = NULL,
         quarantine_probe_count = 0,
         lease_owner = NULL,
@@ -159,9 +192,13 @@ WITH previous AS MATERIALIZED (
         updated_at = now()
     FROM previous
     WHERE jb.id = previous.id
-    RETURNING previous.board_status = 'quarantined' AS recovered
+    RETURNING CASE
+        WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'provider_gone'
+        WHEN previous.board_status = 'quarantined' THEN 'quarantined'
+        ELSE NULL
+    END AS recovered_from
 )
-SELECT recovered FROM updated
+SELECT recovered_from FROM updated
 """
 
 _RECORD_EMPTY_CHECK = """
@@ -180,17 +217,24 @@ WITH previous AS MATERIALIZED (
         board_status = CASE
             WHEN jb.last_non_empty_at IS NOT NULL AND jb.empty_check_count + 1 >= 3
             THEN 'suspect'
-            WHEN previous.board_status = 'quarantined' THEN 'active'
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN 'active'
             ELSE jb.board_status
         END,
+        is_enabled = true,
         last_recovered_at = CASE
-            WHEN previous.board_status = 'quarantined' THEN now()
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN now()
             ELSE jb.last_recovered_at
         END,
         recovery_count = jb.recovery_count + CASE
-            WHEN previous.board_status = 'quarantined' THEN 1
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN 1
             ELSE 0
         END,
+        gone_recovery_count = jb.gone_recovery_count + CASE
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 1
+            ELSE 0
+        END,
+        gone_confirmation_count = 0,
+        gone_at = NULL,
         quarantined_at = NULL,
         quarantine_probe_count = 0,
         lease_owner = NULL,
@@ -201,9 +245,13 @@ WITH previous AS MATERIALIZED (
     RETURNING
         jb.board_status,
         jb.empty_check_count >= 6 AS should_delist,
-        previous.board_status = 'quarantined' AS recovered
+        CASE
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'provider_gone'
+            WHEN previous.board_status = 'quarantined' THEN 'quarantined'
+            ELSE NULL
+        END AS recovered_from
 )
-SELECT board_status, should_delist, recovered FROM updated
+SELECT board_status, should_delist, recovered_from FROM updated
 """
 
 # Ordinary integration and upstream failures enter a recoverable quarantine
@@ -357,24 +405,42 @@ relisted AS (
             job_posting.description_r2_hash,
             false AS needs_scrape_enqueue
 ),
--- Cross-tenant URLs: the same source_url exists under another board
--- (e.g. ByteDance/TikTok share jobs.bytedance.com, Glencore reaches
--- GCAA's Workday tenant). Refresh the owning row's last_seen_at so
--- _MARK_GONE_BY_TIMESTAMP on the OWNING board doesn't tombstone jobs
--- that are still live via a secondary board. Excluded from new_urls
--- below so we don't chase an impossible INSERT every cycle.
---
--- We deliberately DO NOT gate this on is_active=true: refreshing
--- last_seen_at on an inactive foreign row is harmless (mark_gone only
--- operates on active rows) and prevents the URL from falling into an
--- invisible bucket where it appears in neither new_urls, touched,
--- relisted, nor foreign_touched.
-foreign_touched AS (
+-- A foreign-board discovery is liveness evidence for the globally canonical
+-- posting. Preserve the first owner's company_id/board_id deterministically:
+-- a shared ATS URL is not enough evidence to transfer company attribution.
+-- But an inactive canonical row must be recoverable when a sibling or shared
+-- tenant still lists it (#6159). Reset the same state as the owning-board
+-- relisted path, advance the exported timestamp through the CDC trigger, and
+-- return the canonical id so the discovering board can refresh its content.
+foreign_relisted AS (
   UPDATE job_posting
-  SET last_seen_at = now()
+  SET is_active = true,
+      missing_count = 0,
+      scrape_failures = 0,
+      last_seen_at = now(),
+      updated_at = now(),
+      next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
   FROM locked_existing locked
   WHERE job_posting.id = locked.id
     AND locked.board_id != $2
+    AND locked.is_active = false
+  RETURNING job_posting.id,
+            job_posting.source_url,
+            job_posting.description_r2_hash,
+            false AS needs_scrape_enqueue
+),
+-- Active foreign matches remain owned by their canonical board. Refreshing
+-- last_seen_at prevents a concurrent owner cycle from treating the URL as
+-- unseen, while clearing missing_count requires a full new confirmation
+-- window before a later owner-only absence can tombstone it.
+foreign_touched AS (
+  UPDATE job_posting
+  SET last_seen_at = now(),
+      missing_count = 0
+  FROM locked_existing locked
+  WHERE job_posting.id = locked.id
+    AND locked.board_id != $2
+    AND locked.is_active = true
   RETURNING job_posting.source_url
 ),
 new_urls AS (
@@ -399,8 +465,16 @@ SELECT 'relisted' AS action,
        needs_scrape_enqueue
 FROM relisted
 UNION ALL
--- id is NULL for foreign rows: the owning board's id has no meaning
--- for the calling board, and the Python layer only counts this action.
+SELECT 'foreign_relisted' AS action,
+       id::text,
+       source_url AS url,
+       description_r2_hash,
+       needs_scrape_enqueue
+FROM foreign_relisted
+UNION ALL
+-- Active foreign rows need no content refresh, so only their count is
+-- returned to the caller. Inactive foreign rows above return the canonical id
+-- because relisting does require the discovering board's refresh path.
 SELECT 'foreign' AS action,
        NULL::text,
        source_url AS url,

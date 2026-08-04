@@ -97,22 +97,27 @@ _ALLOW_SLUG_GUESS = contextvars.ContextVar("allow_slug_guess", default=False)
 
 
 class BoardGoneError(Exception):
-    """The upstream ATS confirms the board no longer exists.
+    """The upstream ATS returned an explicit board-retirement signal.
 
     Raised by API monitors (greenhouse/lever/recruitee/ashby) when the
-    per-board API endpoint returns 404 — i.e. the board's slug/token
-    has been deleted at the source. Distinct from a generic
-    ``HTTPStatusError`` so the board processor can immediately mark
-    the board as ``board_status='gone'`` instead of accumulating five
-    consecutive ``_RECORD_FAILURE`` increments before disabling. See
-    issue #2215.
+    per-board API endpoint returns 404. Distinct from a generic
+    ``HTTPStatusError`` so the board processor can apply the spaced,
+    recoverable provider-gone confirmation policy. See issues #2215 and
+    #6156.
 
-    Carries the upstream URL that returned the 404 for log forensics.
+    Carries the upstream URL and HTTP status for durable forensics.
     """
 
-    def __init__(self, message: str, *, url: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        url: str | None = None,
+        status_code: int | None = None,
+    ) -> None:
         super().__init__(message)
         self.url = url
+        self.status_code = status_code
 
 
 _STREAM_BATCH = 200
@@ -217,13 +222,13 @@ def all_monitor_types() -> frozenset[str]:
 def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
     """Return True if the monitor requires a Playwright browser.
 
-    accenture and dayforce always need a browser (public session replay via
-    Playwright).
+    accenture, darwinbox, and dayforce always need a browser (public session
+    replay via Playwright).
     api_sniffer needs a browser when ``browser`` is set in config or when
     no ``api_url`` is configured (auto-discover mode).  dom always benefits
     from a browser but falls back to static HTML.
     """
-    if name in {"accenture", "dayforce"}:
+    if name in {"accenture", "darwinbox", "dayforce"}:
         return True
     if name == "api_sniffer":
         cfg = config or {}
@@ -420,6 +425,16 @@ def _build_comment(name: str, metadata: dict) -> str:
         tenant = metadata.get("tenant", "?")
         portal = metadata.get("portal", "?")
         return f"Dayforce API \u2014 tenant: {tenant}, portal: {portal}"
+    if name == "darwinbox":
+        host = metadata.get("host", "?")
+        company_id = metadata.get("company_id", "main")
+        return f"Darwinbox API \u2014 host: {host}, company: {company_id}"
+    if name == "avature":
+        listing_url = metadata.get("listing_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Avature static listing \u2014 {jobs} jobs at {listing_url}"
+        return f"Avature static listing \u2014 {listing_url}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -551,6 +566,21 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Recruiterbox / Trakstar Hire \u2014 tenant: {tenant}, {jobs} jobs"
         return f"Recruiterbox / Trakstar Hire \u2014 tenant: {tenant}"
+    if name == "keka":
+        tenant = metadata.get("tenant", "?")
+        portal = metadata.get("portal", "default")
+        jobs = metadata.get("jobs")
+        label = f"tenant: {tenant}, portal: {portal}"
+        if jobs is not None:
+            return f"Keka API \u2014 {label}, {jobs} jobs"
+        return f"Keka API \u2014 {label}"
+    if name == "taleo":
+        org = metadata.get("org", "?")
+        cws = metadata.get("cws", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Taleo Business Edition \u2014 {org}/cws-{cws}, {jobs} jobs"
+        return f"Taleo Business Edition \u2014 {org}/cws-{cws}"
     if name == "recruiter_co_kr":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -712,11 +742,14 @@ from src.core.monitors import (  # noqa: E402
     amazon,  # noqa: F401
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401
+    avature,  # noqa: F401
     bamboohr,  # noqa: F401
+    beisen,  # noqa: F401
     bite,  # noqa: F401
     breezy,  # noqa: F401
     comeet,  # noqa: F401
     cornerstone,  # noqa: F401
+    darwinbox,  # noqa: F401
     dayforce,  # noqa: F401
     deel,  # noqa: F401
     dom,  # noqa: F401
@@ -735,6 +768,7 @@ from src.core.monitors import (  # noqa: E402
     jazzhr,  # noqa: F401
     jobylon,  # noqa: F401
     join,  # noqa: F401
+    keka,  # noqa: F401
     kipt,  # noqa: F401
     lever,  # noqa: F401
     mokahr,  # noqa: F401
@@ -755,6 +789,7 @@ from src.core.monitors import (  # noqa: E402
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
     talentbrew,  # noqa: F401
+    taleo,  # noqa: F401
     traffit,  # noqa: F401
     umantis,  # noqa: F401
     workable,  # noqa: F401
