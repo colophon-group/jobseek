@@ -830,8 +830,8 @@ class TestDiscoverPaginationRetry:
     async def test_first_page_404_still_raises_board_gone(self, monkeypatch):
         """Preserves the #2215 BoardGoneError contract: a 404 on the
         first page is a structural "board removed" signal, not a
-        transient failure — must surface as ``BoardGoneError`` so the
-        board processor disables in one shot.
+        generic failure — it must surface as ``BoardGoneError`` so the
+        board processor applies the recoverable confirmation policy.
         """
         from src.core.monitors import BoardGoneError
         from src.core.monitors import lever as lever_module

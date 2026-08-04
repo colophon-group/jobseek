@@ -27,7 +27,7 @@ Current design of all major subsystems across the crawler and web apps.
 | Component        | Service                 | Notes                                      |
 |------------------|-------------------------|--------------------------------------------|
 | Web app          | Vercel (Next.js 15)     | Serverless, edge-compatible                |
-| Crawler workers  | Hetzner CPX31 (116.203.192.19) | 8 vCPU, 16GB RAM; 3 HTTP workers, 1 browser worker, exporter, drain, Redis, Alloy |
+| Crawler workers  | Hetzner CPX31 (116.203.192.19) | 8 vCPU, 16GB RAM; 3 HTTP workers, 1 browser worker, exporter, drain, Redis, Alloy; native ATS monitors run without upstream scraper dependencies |
 | Local Postgres   | Hetzner Dedicated (178.104.102.63) | Postgres 16, 20GB XFS volume; crawler source of truth |
 | Supabase         | Managed Postgres        | Frontend read DB, populated by exporter CDC |
 | Redis            | Local (Hetzner)         | Tiered ready queues, domain throttling, task config |
@@ -174,12 +174,15 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `almacareer`      | Rich     | skip        | AlmaCareer / Capybara GraphQL API       |
 | 10   | `amazon`          | Rich     | skip        | Amazon Jobs                             |
 | 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |
+| 10   | `avature`         | URL-only | dom         | Avature static listings + map data      |
 | 10   | `bamboohr`        | Rich     | api_sniffer | BambooHR public careers API + detail enrichment |
+| 10   | `beisen`          | Rich/hybrid | skip/dom | Beisen modern public API + legacy listings |
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
 | 10   | `jazzhr`          | URL-only | jazzhr      | ApplyToJob static listing + JSON-LD/DOM detail parsing |
 | 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
 | 10   | `gupy`            | URL-only | json-ld     | Gupy single-page NextData inventory |
 | 10   | `cornerstone`     | Rich     | skip        | Cornerstone bootstrap + regional paginated search API |
+| 10   | `darwinbox`       | Rich     | skip        | Darwinbox browser-session public jobs API |
 | 10   | `dayforce`        | Rich     | skip        | Dayforce browser-context public search BFF |
 | 10   | `herp`            | URL-only | json-ld     | HERP Hire single static requisition listing |
 | 10   | `hrmos`           | URL-only | json-ld     | HRMOS static listings with bounded pagination |
@@ -194,6 +197,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `hirehive`        | Rich     | skip        | HireHive public Jobs API                |
 | 10   | `hireology`       | Rich     | skip        | Hireology Careers API                   |
 | 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
+| 10   | `keka`            | Rich     | skip        | Keka public career-portal jobs API      |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
 | 10   | `mokahr`          | Rich     | skip        | Mokahr encrypted listing API            |
 | 10   | `paylocity`       | Rich     | paylocity   | Paylocity embedded summaries + detail enrich |
@@ -201,6 +205,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `pinpoint`        | Rich     | skip        | Pinpoint API                            |
 | 10   | `recruitee`       | Rich     | skip        | Recruitee Careers API                   |
 | 10   | `recruiterbox`    | URL-only | json-ld     | Recruiterbox / Trakstar Hire static listings |
+| 10   | `taleo`           | URL-only | json-ld     | Taleo Business Edition total/cursor listings |
 | 10   | `rippling`        | URL-only | rippling    | Rippling ATS API                        |
 | 10   | `rss`             | Rich     | skip        | RSS 2.0 feed (SuccessFactors, Teamtailor, generic) |
 | 10   | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters API                 |
@@ -287,7 +292,9 @@ Claims from `ready:browser:*` queues. Same pipeline pattern but with Chromium av
 All monitors use the streaming path (`_process_one_board_streaming` in `processing/board.py`):
 
 1. Monitor discovers jobs (yields batches for large datasets)
-2. Diff against local Postgres in a single SQL query (new/touched/relisted/gone)
+2. Diff against local Postgres in a single SQL query (new/touched/relisted,
+   including canonical recovery from foreign-board liveness evidence, then
+   gone)
 3. Rich data: insert full `job_posting` rows directly
 4. URL-only: insert URL stubs, enqueue scrapes to Redis
 5. Upload descriptions to `descriptions` table (R2 drain picks them up)

@@ -205,9 +205,32 @@ its new snapshot and require zero mismatches for that immutable population.
 
 The `scrape_failures` reset is load-bearing: without it, a relisted posting comes back with `scrape_failures = 3`, and the very next failed scrape would re-tombstone it via the budget condition — a flap loop on chronically slow upstreams.
 
-### 4. Known recovery gap — cross-tenant URLs
+### 4. Cross-board recovery and canonical ownership
 
-When the same source URL is owned by board A but also discovered as a `foreign_touched` URL under board B (cross-tenant duplication — ByteDance/TikTok share a careers host; Glencore reaches GCAA's Workday tenant), only `last_seen_at` is refreshed on the foreign-board match (`queries/monitor.py` — `foreign_touched` CTE). `is_active` is never flipped back. A scrape-tombstoned posting on board A whose URL the monitor only finds via board B will stay tombstoned even though the URL is still listed somewhere. This is a pre-existing recovery gap made more visible by the scrape-side authority — flagged as a known limitation rather than a regression.
+`source_url` is globally unique, so the first accepted row remains the
+canonical owner even when sibling boards or shared ATS tenants discover the
+same URL. A foreign discovery is liveness evidence, but it is not sufficient
+evidence to transfer `company_id` or `board_id`: preserving the canonical
+owner prevents a shared tenant from moving a posting between companies based
+on monitor timing.
+
+`_DIFF_BATCH` distinguishes two foreign outcomes under the same globally
+ordered posting lock set:
+
+- `foreign_touched` refreshes an already-active canonical row and clears its
+  `missing_count`, so a later owner-only absence must pass a new confirmation
+  window;
+- `foreign_relisted` reactivates an inactive canonical row, clears
+  `missing_count` and `scrape_failures`, advances `updated_at` through the
+  commit-safe CDC trigger, and returns the canonical posting id. The
+  discovering board then supplies rich content or enqueues a scrape using the
+  path that just proved the URL live.
+
+The bounded `crawler_monitor_foreign_discovery_total{outcome=...}` metric
+separates active touches from inactive recoveries. Historical rows whose last
+foreign evidence predates the fix remain inactive until a monitor proves them
+live again; do not bulk-reactivate the `last_seen_at > updated_at` cohort
+without fresh listing evidence.
 
 ### 5. Known recovery gap — transient 3-strike on permanently-listed URLs
 

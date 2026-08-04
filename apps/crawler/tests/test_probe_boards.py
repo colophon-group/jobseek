@@ -704,6 +704,45 @@ class TestProbeRow:
         assert result.status == "warn"
         assert "no valid tenant" in result.message
 
+    async def test_avature_uses_configured_listing_and_validates_identity(self):
+        listing_url = "https://jobs.example.com/en_US/careers/SearchJobs"
+        row = _row(
+            board_slug="acme-avature",
+            board_url="https://legacy.example/careers",
+            monitor_type="avature",
+            monitor_config=json.dumps({"listing_url": listing_url, "portal_id": "4"}),
+        )
+        page = f"""
+            <meta name="avature.portal.id" content="4">
+            <meta name="avature.portal.page" content="SearchJobs">
+            <meta property="og:url" content="{listing_url}">
+            <div class="list-controls__text__legend" aria-label="1 results">
+              1-1 of 1 results
+            </div>
+            <a href="/en_US/careers/JobDetail/Engineer/101">Engineer</a>
+        """
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(200, text=page, request=request)
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert result.message == "200 (1 jobs)"
+        assert captured["url"] == listing_url
+
+    async def test_avature_404_is_failed(self):
+        row = _row(
+            board_slug="acme-avature",
+            board_url="https://acme.avature.net/careers/SearchJobs",
+            monitor_type="avature",
+            monitor_config="",
+        )
+        result = await self._run(row, lambda request: httpx.Response(404, request=request))
+        assert result.status == "fail"
+        assert "404" in result.message
+
     async def test_recruitee_uses_host_from_url(self):
         row = _row(
             board_slug="acme-recruitee",
@@ -768,17 +807,20 @@ def test_probe_registry_covers_expected_types():
         "lever",
         "ashby",
         "adp",
+        "avature",
         "bamboohr",
         "paycom",
         "jazzhr",
         "icims",
         "gupy",
         "cornerstone",
+        "darwinbox",
         "dayforce",
         "herp",
         "hrmos",
         "recruitee",
         "recruiterbox",
+        "taleo",
         "rippling",
         "smartrecruiters",
         "workday",

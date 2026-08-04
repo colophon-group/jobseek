@@ -37,9 +37,8 @@ if ! flock -w "$LOCK_TIMEOUT_S" 9; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-typesense_key_changed=0
-typesense_previous_env=""
-typesense_rotation_pending=0
+# shellcheck source=deploy/backups/typesense/credential-rotation.sh
+source "$REPO_ROOT/deploy/backups/typesense/credential-rotation.sh"
 web_candidate_root=""
 web_configuration_changed=0
 web_timer_was_enabled=0
@@ -49,16 +48,6 @@ web_timer_enabled_state=""
 web_timer_active_state=""
 web_candidate_commit_started=0
 web_candidate_commit_complete=0
-
-rollback_typesense_credential() {
-  if [[ "$typesense_rotation_pending" -ne 1 || -z "$typesense_previous_env" ]]; then
-    return
-  fi
-  flock -w "$LOCK_TIMEOUT_S" 9 || return
-  install -o root -g root -m 0600 \
-    "$typesense_previous_env" /etc/jobseek-backup/typesense.env
-  flock -u 9
-}
 
 read_web_timer_state() {
   web_timer_enabled_state=""
@@ -153,7 +142,10 @@ cleanup() {
   local status=$?
   local cleanup_failed=0
   if [[ "$status" -ne 0 ]]; then
-    rollback_typesense_credential || true
+    if [[ "$SERVICE" == "typesense" ]] && \
+      ! typesense_rotation_rollback "$LOCK_TIMEOUT_S" 9; then
+      cleanup_failed=1
+    fi
     if [[ "$web_candidate_commit_started" -eq 1 && \
       "$web_candidate_commit_complete" -ne 1 ]]; then
       echo "ERROR: web candidate commit is incomplete; timer will remain disabled" >&2
@@ -165,9 +157,7 @@ cleanup() {
       cleanup_failed=1
     fi
   fi
-  if [[ -n "$typesense_previous_env" ]]; then
-    rm -f -- "$typesense_previous_env"
-  fi
+  typesense_rotation_discard
   if [[ -n "$web_candidate_root" ]]; then
     rm -rf -- "$web_candidate_root"
   fi
@@ -177,6 +167,16 @@ cleanup() {
   exit "$status"
 }
 trap cleanup EXIT
+
+interrupt_install() {
+  local signal=$1
+  trap - HUP INT TERM
+  echo "ERROR: backup installation interrupted by ${signal}" >&2
+  exit 1
+}
+trap 'interrupt_install HUP' HUP
+trap 'interrupt_install INT' INT
+trap 'interrupt_install TERM' TERM
 
 install -d -m 0700 /etc/jobseek-backup
 install -d -m 0700 /var/lib/jobseek-backup/status
@@ -223,73 +223,10 @@ elif [[ "$SERVICE" == "typesense" ]]; then
   test -s /etc/jobseek-backup/typesense.env
   test -s /etc/jobseek-backup/typesense/id_ed25519
   : "${JOBSEEK_TYPESENSE_BACKUP_KEY_FILE:?JOBSEEK_TYPESENSE_BACKUP_KEY_FILE is required}"
-  test ! -L "$JOBSEEK_TYPESENSE_BACKUP_KEY_FILE"
-  test "$(stat -c '%U:%G:%a' "$JOBSEEK_TYPESENSE_BACKUP_KEY_FILE")" = root:root:600
-  export JOBSEEK_TYPESENSE_BACKUP_KEY_FILE
-  python3 - <<'PY'
-import json
-import os
-import urllib.error
-import urllib.request
-from pathlib import Path
-
-request = urllib.request.Request(
-    "http://127.0.0.1:8108/stats.json",
-    headers={
-        "X-TYPESENSE-API-KEY": Path(
-            os.environ["JOBSEEK_TYPESENSE_BACKUP_KEY_FILE"]
-        ).read_text(encoding="utf-8")
-    },
-)
-try:
-    with urllib.request.urlopen(request, timeout=15) as response:
-        payload = json.load(response)
-except urllib.error.HTTPError as exc:
-    raise SystemExit(
-        f"ERROR: Typesense backup credential authorization returned HTTP {exc.code}"
-    ) from exc
-if response.status != 200 or not isinstance(payload, dict):
-    raise SystemExit("ERROR: Typesense backup credential authorization probe failed")
-PY
+  typesense_rotation_prepare
   install -o root -g root -m 0755 \
     "$REPO_ROOT/scripts/jobseek-data-backup.py" \
     /usr/local/sbin/jobseek-data-backup
-  typesense_previous_env="$(mktemp /run/jobseek-typesense-backup-env.rollback.XXXXXX)"
-  chmod 0600 "$typesense_previous_env"
-  cp --preserve=mode,ownership \
-    /etc/jobseek-backup/typesense.env "$typesense_previous_env"
-  typesense_key_changed="$(python3 - <<'PY'
-import os
-from pathlib import Path
-
-path = Path("/etc/jobseek-backup/typesense.env")
-key = Path(os.environ["JOBSEEK_TYPESENSE_BACKUP_KEY_FILE"]).read_text(encoding="utf-8")
-if not key or any(character.isspace() for character in key):
-    raise SystemExit("ERROR: Typesense backup key must be a non-empty single token")
-lines = path.read_text(encoding="utf-8").splitlines()
-matches = [
-    index for index, line in enumerate(lines) if line.startswith("TYPESENSE_API_KEY=")
-]
-if len(matches) != 1:
-    raise SystemExit("ERROR: Typesense backup environment must contain one API key")
-current_key = lines[matches[0]].split("=", 1)[1]
-if current_key == key:
-    print(0)
-    raise SystemExit(0)
-lines[matches[0]] = f"TYPESENSE_API_KEY={key}"
-temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-    stream.write("\n".join(lines) + "\n")
-os.chown(temporary, 0, 0)
-os.chmod(temporary, 0o600)
-os.replace(temporary, path)
-print(1)
-PY
-  )"
-  if [[ "$typesense_key_changed" -eq 1 ]]; then
-    typesense_rotation_pending=1
-  fi
   if ! command -v restic >/dev/null 2>&1; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends restic
@@ -418,31 +355,8 @@ fi
 systemd-analyze verify "/etc/systemd/system/jobseek-${SERVICE}-backup.service"
 systemd-analyze verify "/etc/systemd/system/jobseek-${SERVICE}-backup.timer"
 
-if [[ "$SERVICE" == "typesense" && "$typesense_key_changed" -eq 1 ]]; then
-  flock -u 9
-  smoke_started="$(date +%s)"
-  systemctl reset-failed jobseek-typesense-backup.service
-  systemctl start jobseek-typesense-backup.service
-  BACKUP_SMOKE_STARTED="$smoke_started" python3 - <<'PY'
-import json
-import os
-from pathlib import Path
-
-status = json.loads(
-    Path("/var/lib/jobseek-backup/status/typesense.json").read_text(encoding="utf-8")
-)
-started = int(os.environ["BACKUP_SMOKE_STARTED"])
-if (
-    status.get("success") is not True
-    or int(status.get("attempt_unix") or 0) < started
-    or int(status.get("last_success_unix") or 0) < started
-):
-    raise SystemExit("ERROR: Typesense credential-change backup smoke did not succeed")
-PY
-  if ! flock -w "$LOCK_TIMEOUT_S" 9; then
-    echo "ERROR: could not reacquire Typesense service data lock after smoke" >&2
-    exit 1
-  fi
+if [[ "$SERVICE" == "typesense" && "$typesense_rotation_changed" -eq 1 ]]; then
+  typesense_rotation_smoke_and_commit "$LOCK_TIMEOUT_S" 9
 elif [[ "$SERVICE" == "web-postgresql" ]]; then
   read_web_timer_state
   if [[ "$web_timer_enabled_state" == enabled ]]; then
@@ -542,5 +456,7 @@ if [[ -n "${JOBSEEK_BACKUP_DEPLOY_SHA:-}" ]]; then
   chmod 0644 /var/lib/jobseek-backup/deployed-sha.tmp
   mv /var/lib/jobseek-backup/deployed-sha.tmp /var/lib/jobseek-backup/deployed-sha
 fi
-typesense_rotation_pending=0
+if [[ "$SERVICE" == "typesense" ]]; then
+  typesense_rotation_finalize
+fi
 echo "Installed ${SERVICE} backup automation; timer_action=${TIMER_ACTION}"
