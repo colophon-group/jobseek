@@ -110,7 +110,7 @@ class TestBoardSourceChangeReset:
         assert source_change in sql
         assert "job_board.metadata ? '_monitor_config_fingerprint'" in sql
         assert "IS DISTINCT FROM EXCLUDED.metadata ->> '_monitor_config_fingerprint'" in sql
-        assert "THEN true WHEN job_board.board_status IN ('disabled', 'gone')" in sql
+        assert "THEN true WHEN job_board.board_status = 'disabled'" in sql
         assert "THEN 'quarantined' ELSE job_board.board_status" in sql
         assert "THEN 0 ELSE job_board.consecutive_failures" in sql
         assert "THEN 0 ELSE job_board.empty_check_count" in sql
@@ -121,7 +121,7 @@ class TestBoardSourceChangeReset:
     def test_unchanged_disabled_source_stays_disabled(self):
         sql = " ".join(_UPSERT_BOARD_LOCAL.split())
 
-        assert "WHEN job_board.board_status IN ('disabled', 'gone') THEN false" in sql
+        assert "WHEN job_board.board_status = 'disabled' THEN false" in sql
         assert "ELSE job_board.consecutive_failures" in sql
         assert "ELSE job_board.last_error" in sql
 
@@ -621,12 +621,14 @@ class TestSyncBoards:
     @patch("src.sync.remove_monitors", new_callable=AsyncMock)
     @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
     @patch("src.sync.time.time", return_value=1_000.0)
-    async def test_quarantine_uses_recurring_tier_and_durable_due_time(
+    @pytest.mark.parametrize("recovery_status", ["quarantined", "gone_pending", "gone"])
+    async def test_recovery_states_use_recurring_tier_and_durable_due_time(
         self,
         _mock_time,
         mock_enqueue,
         mock_remove,
         mock_conn,
+        recovery_status,
     ):
         import uuid
 
@@ -653,7 +655,7 @@ class TestSyncBoards:
                         "company_id": str(company_id),
                         "board_url": "https://acme.test/jobs",
                         "metadata": {},
-                        "board_status": "quarantined",
+                        "board_status": recovery_status,
                         "next_check_at": due,
                     }
                 ],
@@ -678,9 +680,8 @@ class TestSyncBoards:
         mock_remove,
         mock_conn,
     ):
-        """When local_conn is provided, sync fetches every disabled/gone board
-        and removes their schedules so the Redis queue doesn't keep probing dead
-        URLs after a CSV removal.
+        """When local_conn is provided, sync fetches every disabled board and
+        removes its schedule so Redis cannot probe URLs removed from CSV.
         """
         import uuid
 

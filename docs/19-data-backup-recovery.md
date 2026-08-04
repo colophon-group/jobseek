@@ -167,14 +167,22 @@ so the workflow resolves them inside runtime steps after the main-only
 dispatch surface; rerun the trusted latest `main` push run for a resync.
 
 For Typesense, the protected `TYPESENSE_BACKUP_KEY` is authorization-probed
-against authenticated `GET /stats.json` before host state is changed. The
-installer then replaces exactly one `TYPESENSE_API_KEY` assignment with a
-root-owned `0600` temporary file and atomic rename. If the value changed, the
-deployment must complete a fresh snapshot, encrypted Restic upload, retention
-prune, and repository check before committing the rotation. Any later gate
-failure restores the prior environment file. A disabled/inactive timer, failed
-service, failed latest attempt, or stale last success is fatal; the deployed
-revision is recorded only after those checks pass.
+against authenticated `GET /stats.json` while the live host environment remains
+untouched. The installer stages a complete root-owned `0600` candidate beside
+the live file and compares exactly one `TYPESENSE_API_KEY` assignment. An
+unchanged key does not disturb the timer or run a deployment smoke. For a
+changed key, the installer records the exact timer state, proves the timer and
+service quiesced, and releases only the per-service data lock while retaining
+the host-wide deployment lock. It runs a fresh snapshot, encrypted Restic
+upload, retention prune, and repository check directly with the candidate
+environment, then reacquires the service lock before atomically committing the
+candidate and restoring the exact prior timer state. Rollback remains armed
+through status/timer gates and deployment-marker commit. Any failure restores
+the prior root-only environment atomically and leaves the timer disabled and
+inactive; a lock or credential rollback failure is itself the primary hard
+error and is never swallowed. A failed service, failed latest attempt, or stale
+last success is fatal; the deployed revision is recorded only after those
+checks pass.
 
 The web installer receives `DATABASE_URL_UNPOOLED` only after the protected
 production environment is attached. It atomically writes the URL to the

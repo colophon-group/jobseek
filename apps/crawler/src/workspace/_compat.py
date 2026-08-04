@@ -15,10 +15,14 @@ import re
 from urllib.parse import parse_qsl
 
 from src.shared.adp import adp_board_from_url
+from src.shared.beisen import beisen_board_from_url
 from src.shared.cornerstone import cornerstone_board_from_url
+from src.shared.darwinbox import darwinbox_board_from_url
 from src.shared.dayforce import dayforce_board_from_url
 from src.shared.gupy import gupy_tenant_from_url
+from src.shared.keka import keka_board_from_url
 from src.shared.recruiterbox import recruiterbox_board_from_url
+from src.shared.taleo import taleo_board_from_url
 
 _ICIMS_STATIC_QUERY_VALUES = {
     "in_iframe": "1",
@@ -49,8 +53,10 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "amazon",
         "ashby",
         "bamboohr",
+        "beisen",
         "comeet",
         "cornerstone",
+        "darwinbox",
         "dayforce",
         "deel",
         "dvinci",
@@ -61,6 +67,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "hireology",
         "inline",
         "jobylon",
+        "keka",
         "kipt",
         "lever",
         "mokahr",
@@ -81,8 +88,9 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
-# ``oracle_hcm``, ``adp``, ``bamboohr``, ``paycom``, and ``paylocity``, which
-# auto-resolve to enrichment scrapers (BambooHR uses a generic API preset;
+# ``oracle_hcm``, ``adp``, ``bamboohr``, ``beisen``, ``paycom``, and
+# ``paylocity``, which auto-resolve to enrichment scrapers (BambooHR uses a
+# generic API preset;
 # Paycom reuses its native bootstrap in a dedicated detail scraper).
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
 # rich boards (``scraper_type`` unset in metadata) are treated the same as
@@ -90,6 +98,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
     "adp",
     "bamboohr",
+    "beisen",
     "oracle_hcm",
     "paycom",
     "paylocity",
@@ -113,6 +122,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "join",
     "personio",
     "recruiterbox",
+    "taleo",
     "rippling",
     "smartrecruiters",
     "softgarden",
@@ -195,14 +205,22 @@ def detect_ats_from_url(url: str) -> str | None:
         return "gem"
     if adp_board_from_url(url) is not None:
         return "adp"
+    if beisen_board_from_url(url) is not None:
+        return "beisen"
     if gupy_tenant_from_url(url) is not None:
         return "gupy"
     if cornerstone_board_from_url(url) is not None:
         return "cornerstone"
+    if darwinbox_board_from_url(url) is not None:
+        return "darwinbox"
     if dayforce_board_from_url(url) is not None:
         return "dayforce"
     if recruiterbox_board_from_url(url) is not None:
         return "recruiterbox"
+    if keka_board_from_url(url) is not None:
+        return "keka"
+    if taleo_board_from_url(url) is not None:
+        return "taleo"
     if (
         host == "herp.careers"
         and not parsed.query
@@ -473,6 +491,43 @@ def auto_scraper_type(
             "paylocity",
             {"enrich": ["description", "employment_type", "job_location_type"]},
         )
+    if monitor_type == "beisen":
+        variant = (config or {}).get("variant")
+        if variant == "modern":
+            return ("skip", None)
+        if variant == "legacy":
+            template = (config or {}).get("legacy_template")
+            if template == "standard":
+                return (
+                    "dom",
+                    {
+                        "steps": [
+                            {
+                                "text": "工作职责",
+                                "field": "description",
+                                "html": True,
+                                "stop": "现在申请",
+                            },
+                        ],
+                        "enrich": ["description"],
+                    },
+                )
+            if template == "inline":
+                return (
+                    "dom",
+                    {
+                        "steps": [
+                            {
+                                "text": "岗位职责",
+                                "field": "description",
+                                "html": True,
+                                "stop": "立即申请",
+                            },
+                        ],
+                        "enrich": ["description"],
+                    },
+                )
+        return None
     if monitor_type in _RICH_MONITORS:
         return ("skip", None)
     if monitor_type == "join":
@@ -488,6 +543,8 @@ def auto_scraper_type(
     if monitor_type == "hrmos":
         return ("json-ld", None)
     if monitor_type == "recruiterbox":
+        return ("json-ld", None)
+    if monitor_type == "taleo":
         return ("json-ld", None)
     if monitor_type == "breezy":
         return ("json-ld", _BREEZY_SCRAPER_CONFIG)

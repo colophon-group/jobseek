@@ -38,9 +38,10 @@ def test_five_strikes_enter_daily_capped_recoverable_quarantine() -> None:
 
 
 def test_quarantined_boards_remain_due_and_success_self_recovers() -> None:
-    assert "'active', 'suspect', 'quarantined'" in _FETCH_DUE_BOARDS
+    assert "'active', 'suspect', 'quarantined', 'gone_pending', 'gone'" in _FETCH_DUE_BOARDS
     for sql in (_RECORD_SUCCESS_NONEMPTY, _RECORD_EMPTY_CHECK):
-        assert "previous.board_status = 'quarantined' AS recovered" in sql
+        assert "previous.board_status = 'quarantined' THEN 'quarantined'" in sql
+        assert "AS recovered_from" in sql
         assert "last_recovered_at" in sql
         assert "recovery_count" in sql
         assert "quarantined_at = NULL" in sql
@@ -83,6 +84,9 @@ def test_quarantine_alerts_are_owned_and_have_runbooks() -> None:
         "CrawlerBoardQuarantineHasActivePostings",
         "CrawlerBoardQuarantineStale",
         "CrawlerBoardQuarantineRecoveryStalled",
+        "CrawlerBoardGoneSchemaMissing",
+        "CrawlerBoardGonePendingStale",
+        "CrawlerBoardGoneTransitionSpike",
     }
     selected = [rule for rule in rules if rule.get("alert") in names]
 
@@ -90,4 +94,6 @@ def test_quarantine_alerts_are_owned_and_have_runbooks() -> None:
     for rule in selected:
         assert rule["labels"]["owner"] == "codex-error-review"
         assert rule["labels"]["route"] == "codex-daily"
-        assert rule["annotations"]["runbook"].endswith("#board-quarantine-recovery")
+        assert rule["annotations"]["runbook"].endswith(
+            ("#board-quarantine-recovery", "#provider-gone-confirmation-and-recovery")
+        )

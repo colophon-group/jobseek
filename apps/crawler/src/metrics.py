@@ -84,6 +84,12 @@ monitor_dedup_total = Counter(
     ["path"],
 )
 
+monitor_foreign_discovery_total = Counter(
+    "crawler_monitor_foreign_discovery_total",
+    "Cross-board discoveries by canonical posting recovery outcome",
+    ["outcome"],
+)
+
 monitor_db_transaction_retries_total = Counter(
     "crawler_monitor_db_transaction_retries_total",
     "Monitor database transactions retried after a transient PostgreSQL abort",
@@ -122,6 +128,15 @@ monitor_failed_per_board_total = Counter(
 monitor_quarantine_events_total = Counter(
     "crawler_monitor_quarantine_events_total",
     "Monitor quarantine state-machine transitions and recovery probes",
+    ["event"],
+)
+
+# Provider-native 404/retirement signals use a bounded confirmation state
+# machine (#6156). The three events expose durable confirmations, terminal
+# transitions, and self-recoveries without adding a per-board label.
+monitor_gone_events_total = Counter(
+    "crawler_monitor_gone_events_total",
+    "Monitor provider-gone confirmations, terminal transitions, and recoveries",
     ["event"],
 )
 

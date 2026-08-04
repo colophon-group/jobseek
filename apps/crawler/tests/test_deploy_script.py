@@ -67,6 +67,7 @@ def test_production_env_omits_crawler_mirror_and_scopes_web_database() -> None:
     assert re.search(r"^DATABASE_URL=", script, re.MULTILINE) is None
     assert "DATABASE_URL_UNPOOLED" not in script
     assert "WEB_DATABASE_URL=${WEB_DATABASE_URL}" in script
+    assert "JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}" in script
     assert "WEB_DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}" in workflow
     assert "DATABASE_URL" not in common_env
     assert "WEB_DATABASE_URL" not in common_env
