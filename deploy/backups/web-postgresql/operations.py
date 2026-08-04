@@ -145,6 +145,28 @@ def command_succeeds(argv: list[str], *, timeout: int = 60) -> bool:
     return completed.returncode == 0
 
 
+def reset_failed_unit_if_needed(unit: str) -> None:
+    try:
+        completed = subprocess.run(
+            ["systemctl", "is-failed", "--quiet", unit],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        raise OperationError("systemctl unit failure state is unavailable") from None
+    # `is-failed` reserves 0 for failed and 1 for not failed; all other states fail closed.
+    if completed.returncode == 0:
+        run_checked(["systemctl", "reset-failed", unit])
+        return
+    if completed.returncode != 1:
+        raise OperationError("systemctl unit failure state is unavailable")
+    load_state = run_checked(["systemctl", "show", unit, "--property=LoadState", "--value"]).strip()
+    if load_state != "loaded":
+        raise OperationError("systemctl unit failure state is unavailable")
+
+
 def new_restore_resources() -> RestoreResources:
     operation_id = secrets.token_hex(16)
     container = f"jobseek-web-postgresql-restore-{operation_id}"
@@ -770,7 +792,7 @@ def run_backup_locked(expected: ExpectedIdentity) -> None:
     EVIDENCE_PATH.unlink(missing_ok=True)
     before = timer_state()
     started = int(time.time())
-    run_checked(["systemctl", "reset-failed", BACKUP_UNIT])
+    reset_failed_unit_if_needed(BACKUP_UNIT)
     try:
         run_checked(["systemctl", "start", BACKUP_UNIT], timeout=2 * 60 * 60 + 300)
     except (OperationError, OSError, subprocess.TimeoutExpired):
@@ -907,7 +929,7 @@ def enable_timer_locked(expected: ExpectedIdentity) -> None:
     for event in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
         previous_handlers[event] = signal.signal(event, interrupted)
     try:
-        run_checked(["systemctl", "reset-failed", BACKUP_UNIT])
+        reset_failed_unit_if_needed(BACKUP_UNIT)
         run_checked(["systemctl", "start", TIMER_UNIT])
         if timer_state() != ("disabled", "active"):
             raise OperationError("timer activation postcondition failed")
