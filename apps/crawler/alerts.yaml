@@ -1239,6 +1239,23 @@ groups:
   - name: jobseek_crawler_board_quarantine
     interval: 30s
     rules:
+      - alert: CrawlerPhantomActivePostings
+        expr: jobseek_crawler_phantom_active_postings > 0
+        for: 15m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+          page: production
+        annotations:
+          summary: "Terminal crawler boards still own active postings"
+          description: >-
+            {{ $value }} locally active postings are owned by disabled or
+            confirmed-gone boards. Classify configured boards first, then run
+            the bounded phantom-posting sweep and verify Typesense convergence.
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#phantom-active-posting-sweep
+
       - alert: CrawlerBoardQuarantineSchemaMissing
         expr: jobseek_crawler_board_quarantine_schema_ready == 0
         for: 15m
@@ -1293,6 +1310,48 @@ groups:
           summary: "Crawler quarantine has no recoveries in 24 hours"
           description: "Configured boards remain quarantined and the durable recovery counter has not advanced."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#board-quarantine-recovery
+
+      - alert: CrawlerBoardGoneSchemaMissing
+        expr: jobseek_crawler_board_gone_schema_ready == 0
+        for: 15m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Crawler provider-gone confirmation schema is missing"
+          description: "The host sampler cannot observe spaced provider-gone confirmations or automatic recoveries after the deployment grace period."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#provider-gone-confirmation-and-recovery
+
+      - alert: CrawlerBoardGonePendingStale
+        expr: |
+          jobseek_crawler_gone_pending_oldest_seconds > 24 * 60 * 60
+            and on()
+          increase(jobseek_crawler_board_gone_recoveries_total[24h]) == 0
+        for: 30m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "A provider-gone confirmation has been pending for more than 24 hours"
+          description: "The oldest pending confirmation is {{ $value }} seconds old and no board has self-recovered in 24 hours; inspect Redis scheduling and the provider-native endpoint."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#provider-gone-confirmation-and-recovery
+
+      - alert: CrawlerBoardGoneTransitionSpike
+        expr: increase(jobseek_crawler_board_gone_transitions_total[1h]) > 10
+        for: 10m
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Provider-gone terminal transitions spiked"
+          description: "More than ten configured boards reached terminal gone after spaced confirmations in one hour; check for a provider/CDN incident before accepting the delist wave."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#provider-gone-confirmation-and-recovery
 
   - name: jobseek_operator_handoffs
     interval: 30s

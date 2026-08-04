@@ -319,6 +319,31 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    phantom_p = sub.add_parser(
+        "sweep-phantoms",
+        help=(
+            "Classify terminal boards and delist active postings only for "
+            "removed configuration or spaced provider-gone confirmations"
+        ),
+    )
+    phantom_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report the classified candidate count without changing postings",
+    )
+    phantom_p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=1_000,
+        help="Rows committed per transaction (default: 1000; max: 10000)",
+    )
+    phantom_p.add_argument(
+        "--max-chunks",
+        type=int,
+        default=100,
+        help="Maximum committed chunks in this resumable invocation (default: 100)",
+    )
+
     board_p = sub.add_parser("board", help="Dev testing for a single board")
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
@@ -336,15 +361,12 @@ def parse_args() -> argparse.Namespace:
     retire_p = sub.add_parser(
         "retire-stale-boards",
         help=(
-            "Two-section retirement report: Section A — boards that are dead "
-            "and safe to retire (board_status in ('disabled', 'gone'); "
-            "last_success_at is NULL or older than --days; zero active "
-            "postings; company has at least one live sibling board). "
-            "Section B (#2714) — companies whose ENTIRE board set is dead "
-            "(every board fails the dispatcher's live filter; every dead "
-            "board passes --days; zero active postings across all boards) "
-            "and are ripe for companies.csv removal in addition to "
-            "per-board retirement."
+            "Fail-closed retirement evidence report. Database terminal state "
+            "selects candidates, then current provider-native probes split "
+            "verified gone, live again, inconclusive, integration-broken, "
+            "and zero-board registry orphan sections. Executable removal "
+            "output requires current gone evidence plus durable spaced "
+            "confirmations."
         ),
     )
     retire_p.add_argument(
@@ -358,11 +380,19 @@ def parse_args() -> argparse.Namespace:
     )
     retire_p.add_argument(
         "--format",
-        choices=["md", "shell"],
+        choices=["md", "json", "shell"],
         default="md",
-        help="Output format: `md` markdown table for PR descriptions; "
-        "`shell` `grep -vF` snippets that drop the matching rows from "
-        "boards.csv.",
+        help=(
+            "Output format: `md` evidence report, `json` structured reason "
+            "codes, or `shell` commands only for candidates that pass every "
+            "provider and durable-confirmation gate."
+        ),
+    )
+    retire_p.add_argument(
+        "--probe-concurrency",
+        type=int,
+        default=5,
+        help="Concurrent provider-native liveness probes (default: 5; max: 20)",
     )
 
     prune_p = sub.add_parser(
@@ -613,6 +643,36 @@ async def run() -> None:
             finally:
                 await http.aclose()
 
+        elif args.command == "sweep-phantoms":
+            local_pool = await create_local_pool()
+            from src.phantom_sweep import refresh_derived_surfaces, sweep_phantom_postings
+
+            summary = await _await_task_or_shutdown(
+                asyncio.create_task(
+                    sweep_phantom_postings(
+                        local_pool,
+                        dry_run=args.dry_run,
+                        chunk_size=args.chunk_size,
+                        max_chunks=args.max_chunks,
+                    )
+                ),
+                shutdown_event,
+            )
+            if summary is not None:
+                log.info(
+                    "phantom_sweep.done",
+                    dry_run=summary.dry_run,
+                    eligible_boards=summary.eligible_boards,
+                    configured_disabled_boards=summary.configured_disabled_boards,
+                    candidate_postings=summary.candidate_postings,
+                    updated_postings=summary.updated_postings,
+                    remaining_postings=summary.remaining_postings,
+                    chunks_committed=summary.chunks_committed,
+                    complete=summary.complete,
+                )
+                if not summary.dry_run:
+                    await refresh_derived_surfaces(local_pool)
+
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
             supa_pool = await _create_optional_mirror_pool()
@@ -679,11 +739,13 @@ async def run() -> None:
                     cast(asyncpg.Connection, conn),
                     days=args.days,
                     fmt=args.format,
+                    concurrency=args.probe_concurrency,
                 )
             log.info(
                 "retire_stale_boards.report",
                 days=args.days,
                 format=args.format,
+                probe_concurrency=args.probe_concurrency,
                 output=output,
             )
             tty_message(output)
