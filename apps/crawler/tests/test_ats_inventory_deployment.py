@@ -233,6 +233,7 @@ def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> 
     assert "--network bridge" not in source
     assert "jobseek-ats-inventory-network.verified" in source
     assert "attestation_age >= 0 && attestation_age <= 300" in source
+    assert "root:deploy:640" in source
     assert source.index("STATUS_ARMED=1") < source.index('[[ -r "$CONFIG" ]]')
     assert source.rindex("apply_write_gate") < source.index(
         'run_phase 2700s github "$effective_mode" 1'

@@ -47,7 +47,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-for command in awk date docker flock grep mktemp openssl python3 sed sha256sum tail timeout tr; do
+for command in awk date docker flock grep mktemp openssl python3 sed sha256sum stat tail timeout tr; do
   command -v "$command" >/dev/null || {
     echo "ERROR: required command ${command} is unavailable" >&2
     exit 1
@@ -73,6 +73,10 @@ STATUS_ARMED=1
 }
 [[ -f "$NETWORK_ATTESTATION" && ! -L "$NETWORK_ATTESTATION" ]] || {
   echo "ERROR: ATS inventory network boundary is not verified" >&2
+  exit 1
+}
+[[ "$(stat -c '%U:%G:%a' "$NETWORK_ATTESTATION")" == root:deploy:640 ]] || {
+  echo "ERROR: ATS inventory network attestation ownership is unsafe" >&2
   exit 1
 }
 
