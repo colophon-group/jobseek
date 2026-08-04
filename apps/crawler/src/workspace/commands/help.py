@@ -1186,6 +1186,33 @@ ukg — UKG Pro public recruiting API
 """
 
 
+MONITOR_JOBVITE = """\
+jobvite — Jobvite public static listing monitor
+
+  Listing:  https://jobs.jobvite.com/{tenant}
+  Branded:  /careers/{tenant}, /{tenant}/jobs/positions
+  Returns:  Canonical /{tenant}/job/{id} detail URLs
+  Scraper:  Auto-configured shared json-ld scraper
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs and 5 MB listing HTML
+
+  Config:
+    {"tenant":"acme","listing_url":"https://jobs.jobvite.com/acme"}
+
+  The monitor reuses the shared DOM link extractor, HTTP retry policy, and
+  bot-challenge guard. It validates Jobvite's first-party careersiteName
+  marker before accepting empty results. Branded landing pages are resolved
+  only through explicit same-tenant Jobs links, never tenant guessing.
+
+  Detection: Direct Jobvite listing/detail URLs or explicit Jobvite links in
+             career-page HTML. Unknown-tenant redirects are BoardGone;
+             transient status, transport, empty-body, and malformed-page
+             failures do not remove jobs.
+  Upstream:  ats-scrapers is inventory input only. Jobseek does not import,
+             execute, or depend on upstream scraper code.
+"""
+
+
 MONITOR_TALEO = """\
 taleo — Taleo Business Edition static listing monitor
 
@@ -2634,6 +2661,7 @@ MONITOR_CARDS: dict[str, str] = {
     "beisen": MONITOR_BEISEN,
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
+    "jobvite": MONITOR_JOBVITE,
     "icims": MONITOR_ICIMS,
     "gupy": MONITOR_GUPY,
     "cornerstone": MONITOR_CORNERSTONE,

@@ -46,6 +46,13 @@ from src.shared.dayforce import (
 )
 from src.shared.gupy import normalize_gupy_tenant
 from src.shared.http import DEFAULT_ACCEPT, DEFAULT_USER_AGENT
+from src.shared.jobvite import (
+    is_jobvite_invalid_redirect,
+    jobvite_board_from_metadata,
+    jobvite_board_from_url,
+    jobvite_job_url,
+    jobvite_page_tenant,
+)
 from src.shared.keka import (
     extract_keka_identifier,
     is_keka_forbidden_redirect,
@@ -919,6 +926,71 @@ async def _probe_avature(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "avature", url, resp)
 
 
+async def _probe_jobvite(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = jobvite_board_from_metadata(cfg)
+    direct = jobvite_board_from_url(row["board_url"])
+    if configured is None and ({"tenant", "listing_url"} & cfg.keys()):
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            row["board_url"],
+            "warn",
+            "invalid Jobvite tenant/listing_url in monitor_config",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            row["board_url"],
+            "warn",
+            "no valid Jobvite listing identity",
+        )
+
+    url = board.listing_url
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        page_tenant = jobvite_page_tenant(resp.text)
+        if page_tenant != board.tenant:
+            return ProbeResult(
+                row["board_slug"],
+                "jobvite",
+                url,
+                "warn",
+                "Jobvite first-party listing identity missing or changed",
+            )
+        hrefs = re.findall(r"href\s*=\s*['\"]([^'\"]+)", resp.text, re.IGNORECASE)
+        jobs = {
+            canonical
+            for href in hrefs
+            if (canonical := jobvite_job_url(urljoin(url, href), board.tenant)) is not None
+        }
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            url,
+            "ok",
+            f"200 ({len(jobs)} jobs)",
+        )
+    if isinstance(resp, httpx.Response) and is_jobvite_invalid_redirect(
+        resp.headers.get("location")
+    ):
+        return ProbeResult(
+            row["board_slug"],
+            "jobvite",
+            url,
+            "fail",
+            "Jobvite board redirected to the invalid-tenant support page",
+        )
+    return _classify(row, "jobvite", url, resp)
+
+
 async def _probe_ukg(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     cfg: dict[str, object] = {}
     if row["monitor_config"]:
@@ -1145,6 +1217,7 @@ def _classify(
 PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] = {
     "adp": _probe_adp,
     "avature": _probe_avature,
+    "jobvite": _probe_jobvite,
     "ukg": _probe_ukg,
     "greenhouse": _probe_greenhouse,
     "lever": _probe_lever,

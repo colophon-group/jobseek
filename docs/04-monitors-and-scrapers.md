@@ -44,6 +44,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `beisen` | Rich/hybrid | skip or DOM enrichment | Beisen modern public API + legacy server-rendered listings |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
+| `jobvite` | URL-only | json-ld | Jobvite static listings, including branded career-site routes |
 | `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
 | `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination |
 | `gupy` | URL-only | json-ld | Gupy single-page NextData inventory |

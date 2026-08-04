@@ -175,6 +175,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `amazon`          | Rich     | skip        | Amazon Jobs                             |
 | 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |
 | 10   | `avature`         | URL-only | dom         | Avature static listings + map data      |
+| 10   | `jobvite`         | URL-only | json-ld     | Jobvite static career-site listings     |
 | 10   | `bamboohr`        | Rich     | api_sniffer | BambooHR public careers API + detail enrichment |
 | 10   | `beisen`          | Rich/hybrid | skip/dom | Beisen modern public API + legacy listings |
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
