@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   cacheLife: vi.fn(),
   cacheTag: vi.fn(),
   search: vi.fn(),
-  dbExecute: vi.fn(),
+  locationDocs: [] as Array<Record<string, unknown>>,
   cached: vi.fn((_key: string, fn: () => unknown) => fn()),
 }));
 
@@ -21,10 +21,14 @@ vi.mock("@/lib/search/typesense-client", () => ({
     collections: () => ({ documents: () => ({ search: mocks.search }) }),
   }),
 }));
-vi.mock("@/db", () => ({ db: { execute: mocks.dbExecute } }));
-vi.mock("drizzle-orm", () => ({
-  sql: (strings: TemplateStringsArray, ..._values: unknown[]) =>
-    strings.join("?"),
+vi.mock("@/lib/search/typesense-taxonomy", () => ({
+  fetchLocationMacroDocuments: () =>
+    mocks.locationDocs.filter((doc) => doc.type === "macro"),
+  fetchLocationDocumentsWithAncestors: () => mocks.locationDocs,
+  fetchLocationDocumentsByIds: (ids: number[]) =>
+    mocks.locationDocs.filter((doc) => ids.includes(doc.location_id as number)),
+  fetchLocationDocumentsBySlugs: () => [],
+  fetchLocationDescendants: () => [],
 }));
 vi.mock("@/lib/search/typesense-filters", () => ({
   buildFilterString: () => "",
@@ -38,6 +42,7 @@ import { getGlobalLocationsGrouped } from "../locations";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.locationDocs = [];
 });
 
 describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
@@ -48,33 +53,18 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
    * rendering uses the consistent label called for in the issue test plan.
    */
   it("includes macros with active postings, sorted by count, with canonical names", async () => {
-    // Order of dbExecute calls in `_fetchGlobalLocationsGrouped`:
-    //   1. SELECT id, slug, type, parent_id FROM location  (hierarchy)
-    //   2. SELECT location_id, locale, name FROM location_name  (display names)
-    //   3. SELECT macro_id, country_name FROM location_macro_member ...
-    //      (only when there are macros with non-zero counts)
-    mocks.dbExecute
-      .mockResolvedValueOnce([
-        { id: 4, slug: null, type: "macro", parent_id: null },
-        { id: 1, slug: null, type: "macro", parent_id: null },
-        { id: 5, slug: null, type: "macro", parent_id: null },
-        { id: 100, slug: "germany", type: "country", parent_id: null },
-        { id: 200, slug: "berlin", type: "city", parent_id: 100 },
-      ])
-      .mockResolvedValueOnce([
-        { location_id: 4, locale: "en", name: "EU" },
-        { location_id: 1, locale: "en", name: "EMEA" },
-        { location_id: 5, locale: "en", name: "DACH" },
-        { location_id: 100, locale: "en", name: "Germany" },
-        { location_id: 200, locale: "en", name: "Berlin" },
-      ])
-      .mockResolvedValueOnce([
-        { macro_id: 4, country_id: 100, country_name: "Germany" },
-        { macro_id: 4, country_id: 101, country_name: "France" },
-        { macro_id: 5, country_id: 100, country_name: "Germany" },
-        { macro_id: 5, country_id: 102, country_name: "Austria" },
-        { macro_id: 5, country_id: 103, country_name: "Switzerland" },
-      ]);
+    // Location hierarchy and membership come from the taxonomy collection;
+    // only posting counts require the two Typesense facet searches below.
+    mocks.locationDocs = [
+      { id: "4", location_id: 4, slug: "eu", type: "macro", name_en: "EU", member_country_ids: [100, 101] },
+      { id: "1", location_id: 1, slug: "emea", type: "macro", name_en: "EMEA" },
+      { id: "5", location_id: 5, slug: "dach", type: "macro", name_en: "DACH", member_country_ids: [100, 102, 103] },
+      { id: "100", location_id: 100, slug: "germany", type: "country", name_en: "Germany" },
+      { id: "101", location_id: 101, slug: "france", type: "country", name_en: "France" },
+      { id: "102", location_id: 102, slug: "austria", type: "country", name_en: "Austria" },
+      { id: "103", location_id: 103, slug: "switzerland", type: "country", name_en: "Switzerland" },
+      { id: "200", location_id: 200, slug: "berlin", type: "city", name_en: "Berlin", parent_id: 100 },
+    ];
 
     // Two parallel Typesense calls: country-tier facet (top-500) AND a
     // dedicated macro-only facet. Country-tier truncation can drop low-
@@ -133,8 +123,8 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
       name: "European Union",
       abbreviation: "EU",
       count: 146,
-      memberCountryNames: ["Germany", "France"],
-      memberCountryIds: [100, 101],
+      memberCountryNames: ["France", "Germany"],
+      memberCountryIds: [101, 100],
     });
     expect(out.macros[2]).toEqual({
       id: 5,
@@ -142,8 +132,8 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
       name: "DACH (Germany, Austria, Switzerland)",
       abbreviation: "DACH",
       count: 6,
-      memberCountryNames: ["Germany", "Austria", "Switzerland"],
-      memberCountryIds: [100, 102, 103],
+      memberCountryNames: ["Austria", "Germany", "Switzerland"],
+      memberCountryIds: [102, 100, 103],
     });
     // Country tier still works
     expect(out.countries.length).toBeGreaterThan(0);
@@ -159,18 +149,11 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
    * — the cluster only ever shows actionable filters.
    */
   it("drops macros that have zero active-posting facet count", async () => {
-    mocks.dbExecute
-      .mockResolvedValueOnce([
-        { id: 4, slug: null, type: "macro", parent_id: null },
-        { id: 9, slug: null, type: "macro", parent_id: null },
-        { id: 100, slug: "germany", type: "country", parent_id: null },
-      ])
-      .mockResolvedValueOnce([
-        { location_id: 4, locale: "en", name: "EU" },
-        { location_id: 9, locale: "en", name: "Worldwide" },
-        { location_id: 100, locale: "en", name: "Germany" },
-      ])
-      .mockResolvedValueOnce([]); // empty member table — should not break
+    mocks.locationDocs = [
+      { id: "4", location_id: 4, slug: "eu", type: "macro", name_en: "EU" },
+      { id: "9", location_id: 9, slug: "worldwide", type: "macro", name_en: "Worldwide" },
+      { id: "100", location_id: 100, slug: "germany", type: "country", name_en: "Germany" },
+    ];
 
     mocks.search.mockImplementation((args: { filter_by?: string }) => {
       const isMacroQuery = (args.filter_by ?? "").includes("location_ids:[");
@@ -205,8 +188,18 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
    * propagating. The modal renders the empty-state message in this case.
    */
   it("returns empty shape when Typesense is unreachable", async () => {
-    mocks.search.mockRejectedValue(new Error("Typesense down"));
+    mocks.search.mockRejectedValue(Object.assign(new Error("Typesense down"), { code: "ECONNRESET" }));
     const out = await getGlobalLocationsGrouped("en");
     expect(out).toEqual({ macros: [], countries: [] });
+  });
+
+  it("propagates unexpected Typesense errors", async () => {
+    mocks.search.mockRejectedValue(
+      Object.assign(new Error("Request failed with HTTP code 429"), {
+        httpStatus: 429,
+      }),
+    );
+
+    await expect(getGlobalLocationsGrouped("en")).rejects.toThrow("429");
   });
 });
