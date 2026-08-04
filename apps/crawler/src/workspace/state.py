@@ -252,6 +252,10 @@ class Workspace:
     # Active board alias
     active_board: str = ""
 
+    # Validated ats-inventory issue seed and fast-path verification status.
+    # Empty for ordinary human-created company requests.
+    ats_inventory: dict[str, Any] = field(default_factory=dict)
+
     # Submit checkpoint for idempotent retry
     submit_state: dict[str, Any] = field(default_factory=dict)
 
@@ -294,6 +298,7 @@ class Workspace:
                 "enrichment_extras": self.enrichment_extras or None,
             },
             "active_board": self.active_board,
+            "ats_inventory": self.ats_inventory or None,
             "submit_state": self.submit_state,
             "last_error": self.last_error or None,
         }
@@ -325,6 +330,7 @@ class Workspace:
             founded_year=company.get("founded_year"),
             enrichment_extras=company.get("enrichment_extras") or {},
             active_board=data.get("active_board", ""),
+            ats_inventory=data.get("ats_inventory") or {},
             submit_state=data.get("submit_state") or {},
             last_error=data.get("last_error") or {},
         )

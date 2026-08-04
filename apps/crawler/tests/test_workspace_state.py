@@ -36,6 +36,7 @@ class TestWorkspace:
             name="Stripe",
             website="https://stripe.com",
             active_board="careers",
+            ats_inventory={"source_key": "ats-scrapers:greenhouse:greenhouse%3Astripe"},
         )
         d = ws.to_dict()
         ws2 = Workspace.from_dict(d)
@@ -45,6 +46,7 @@ class TestWorkspace:
         assert ws2.pr == 45
         assert ws2.name == "Stripe"
         assert ws2.active_board == "careers"
+        assert ws2.ats_inventory == {"source_key": "ats-scrapers:greenhouse:greenhouse%3Astripe"}
 
     def test_from_dict_defaults(self):
         ws = Workspace.from_dict({"slug": "test"})
@@ -52,6 +54,7 @@ class TestWorkspace:
         assert ws.branch == ""
         assert ws.issue is None
         assert ws.pr is None
+        assert ws.ats_inventory == {}
         assert ws.submitted is False
 
     def test_save_and_load(self, tmp_path, monkeypatch):
