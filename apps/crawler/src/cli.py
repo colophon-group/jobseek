@@ -344,15 +344,12 @@ def parse_args() -> argparse.Namespace:
     retire_p = sub.add_parser(
         "retire-stale-boards",
         help=(
-            "Two-section retirement report: Section A — boards that are dead "
-            "and safe to retire (board_status in ('disabled', 'gone'); "
-            "last_success_at is NULL or older than --days; zero active "
-            "postings; company has at least one live sibling board). "
-            "Section B (#2714) — companies whose ENTIRE board set is dead "
-            "(every board fails the dispatcher's live filter; every dead "
-            "board passes --days; zero active postings across all boards) "
-            "and are ripe for companies.csv removal in addition to "
-            "per-board retirement."
+            "Fail-closed retirement evidence report. Database terminal state "
+            "selects candidates, then current provider-native probes split "
+            "verified gone, live again, inconclusive, integration-broken, "
+            "and zero-board registry orphan sections. Executable removal "
+            "output requires current gone evidence plus durable spaced "
+            "confirmations."
         ),
     )
     retire_p.add_argument(
@@ -366,11 +363,19 @@ def parse_args() -> argparse.Namespace:
     )
     retire_p.add_argument(
         "--format",
-        choices=["md", "shell"],
+        choices=["md", "json", "shell"],
         default="md",
-        help="Output format: `md` markdown table for PR descriptions; "
-        "`shell` `grep -vF` snippets that drop the matching rows from "
-        "boards.csv.",
+        help=(
+            "Output format: `md` evidence report, `json` structured reason "
+            "codes, or `shell` commands only for candidates that pass every "
+            "provider and durable-confirmation gate."
+        ),
+    )
+    retire_p.add_argument(
+        "--probe-concurrency",
+        type=int,
+        default=5,
+        help="Concurrent provider-native liveness probes (default: 5; max: 20)",
     )
 
     prune_p = sub.add_parser(
@@ -712,11 +717,17 @@ async def run() -> None:
 
             local_pool = await create_local_pool()
             async with local_pool.acquire() as conn:
-                output = await report_stale_boards(conn, days=args.days, fmt=args.format)
+                output = await report_stale_boards(
+                    conn,
+                    days=args.days,
+                    fmt=args.format,
+                    concurrency=args.probe_concurrency,
+                )
             log.info(
                 "retire_stale_boards.report",
                 days=args.days,
                 format=args.format,
+                probe_concurrency=args.probe_concurrency,
                 output=output,
             )
             tty_message(output)
