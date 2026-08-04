@@ -21,6 +21,11 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from src.shared.adp import adp_board_from_metadata, adp_board_from_url
+from src.shared.avature import (
+    avature_board_from_metadata,
+    avature_board_from_url,
+    parse_avature_page,
+)
 from src.shared.beisen import (
     beisen_board_from_metadata,
     beisen_board_from_url,
@@ -818,6 +823,101 @@ async def _probe_taleo(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "taleo", url, resp)
 
 
+async def _probe_avature(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = avature_board_from_metadata(cfg)
+    direct = avature_board_from_url(row["board_url"], allow_custom_host=True)
+    if configured is None and "listing_url" in cfg:
+        return ProbeResult(
+            row["board_slug"],
+            "avature",
+            row["board_url"],
+            "warn",
+            "invalid Avature listing_url in monitor_config",
+        )
+    if (
+        configured is not None
+        and direct is not None
+        and configured.listing_url.casefold() != direct.listing_url.casefold()
+    ):
+        return ProbeResult(
+            row["board_slug"],
+            "avature",
+            configured.listing_url,
+            "fail",
+            "configured Avature portal does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "avature",
+            row["board_url"],
+            "warn",
+            "no valid Avature listing identity",
+        )
+
+    url = board.listing_url
+    resp = await _retry(lambda: _get(client, url, follow_redirects=True))
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        page = parse_avature_page(resp.text, url)
+        if page is None:
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "warn",
+                "Avature portal metadata missing",
+            )
+        if configured is not None and page.board.listing_url.casefold() != url.casefold():
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "fail",
+                "configured Avature portal redirected to another identity",
+            )
+        configured_portal_id = cfg.get("portal_id")
+        if configured_portal_id is not None and str(configured_portal_id) != page.portal_id:
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "fail",
+                "configured Avature portal ID changed",
+            )
+        if page.board.page == "SearchJobsMaps":
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "ok",
+                "200 (map listing verified)",
+            )
+        if page.total is None or (page.total > 0 and not page.jobs):
+            return ProbeResult(
+                row["board_slug"],
+                "avature",
+                url,
+                "warn",
+                "Avature result count or first-page job links missing",
+            )
+        suffix = "+" if not page.total_exact else ""
+        return ProbeResult(
+            row["board_slug"],
+            "avature",
+            url,
+            "ok",
+            f"200 ({page.total}{suffix} jobs)",
+        )
+    return _classify(row, "avature", url, resp)
+
+
 async def _probe_beisen(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     cfg: dict[str, object] = {}
     if row["monitor_config"]:
@@ -979,6 +1079,7 @@ def _classify(
 # Monitor types we know how to probe. Others are skipped by probe_row.
 PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] = {
     "adp": _probe_adp,
+    "avature": _probe_avature,
     "greenhouse": _probe_greenhouse,
     "lever": _probe_lever,
     "ashby": _probe_ashby,

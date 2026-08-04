@@ -84,6 +84,27 @@ def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -
     )
 
 
+def _status_retry_limits(config: dict, url: str) -> dict[int, int]:
+    """Return validated static-fetch status retries from scraper config."""
+
+    limits = {406: 2} if is_avature_job_detail_url(url) else {}
+    configured = config.get("retry_statuses")
+    if configured is None:
+        return limits
+    if not isinstance(configured, dict):
+        raise ValueError("DOM scraper retry_statuses must be an object")
+    for raw_status, raw_limit in configured.items():
+        try:
+            status = int(raw_status)
+            limit = int(raw_limit)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("DOM scraper retry_statuses entries must be integers") from exc
+        if not 400 <= status <= 599 or not 0 <= limit <= 5:
+            raise ValueError("DOM scraper retry_statuses requires HTTP 400-599 and 0-5 retries")
+        limits[status] = max(limits.get(status, 0), limit)
+    return limits
+
+
 # ── Heuristic stop markers ────────────────────────────────────────────
 
 _STOP_MARKERS = [
@@ -315,7 +336,7 @@ async def scrape(
             async with async_playwright() as p:
                 html = await _render_page(p)
     else:
-        retry_limits = {406: 2} if is_avature_job_detail_url(url) else {}
+        retry_limits = _status_retry_limits(config, url)
         resp = await fetch_response_with_status_retries(
             http,
             url,

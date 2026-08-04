@@ -272,6 +272,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "eightfold",
         "accenture",
         "adp",
+        "avature",
         "deel",
         "jobs.dayforcehcm.com",
         "workforcenow.adp.com",
@@ -279,6 +280,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
 )
 
 _KNOWN_ATS_DOMAIN_SUFFIXES = (
+    ".avature.net",
     ".csod.com",
     ".darwinbox.in",
     ".darwinbox.com",
