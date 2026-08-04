@@ -429,6 +429,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         host = metadata.get("host", "?")
         company_id = metadata.get("company_id", "main")
         return f"Darwinbox API \u2014 host: {host}, company: {company_id}"
+    if name == "avature":
+        listing_url = metadata.get("listing_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Avature static listing \u2014 {jobs} jobs at {listing_url}"
+        return f"Avature static listing \u2014 {listing_url}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -736,6 +742,7 @@ from src.core.monitors import (  # noqa: E402
     amazon,  # noqa: F401
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401
+    avature,  # noqa: F401
     bamboohr,  # noqa: F401
     beisen,  # noqa: F401
     bite,  # noqa: F401
