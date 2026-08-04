@@ -74,13 +74,14 @@ jobs:
       - name: Resolve task
         id: task
         env:
+          EVENT_NAME: ${{ github.event_name }}
           INPUT_TASK: ${{ inputs.task }}
-          INPUT_EXPECTED_REVISION: ${{ inputs.expected_crawler_revision }}
+          INPUT_EXPECTED_CRAWLER_REVISION: ${{ inputs.expected_crawler_revision }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             task="$INPUT_TASK"
-            expected_revision="$INPUT_EXPECTED_REVISION"
+            expected_revision="$INPUT_EXPECTED_CRAWLER_REVISION"
           else
             task=refresh-typesense
             expected_revision=""
