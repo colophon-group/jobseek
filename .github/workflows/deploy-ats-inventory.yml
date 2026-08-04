@@ -6,6 +6,7 @@ on:
     paths:
       - 'deploy/ats-inventory/**'
       - 'deploy/systemd/jobseek-ats-inventory.*'
+      - 'deploy/systemd/jobseek-ats-inventory-network.service'
       - 'apps/crawler/src/ats_inventory/**'
       - 'apps/crawler/src/cli.py'
       - '.github/workflows/deploy-ats-inventory.yml'

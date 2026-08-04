@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -179,6 +180,17 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
 
 
 def test_ats_inventory_alerts_cover_freshness_coverage_and_hard_cap() -> None:
+    alloy = (ROOT / "deploy/observability/alloy-host.alloy").read_text()
+    journal_rule = re.search(
+        r'source_labels = \["__journal__systemd_unit"\]\s+'
+        r'regex\s+=\s+"([^"]+)"',
+        alloy,
+    )
+    assert journal_rule is not None
+    journal_pattern = json.loads(f'"{journal_rule.group(1)}"')
+    assert re.fullmatch(journal_pattern, "jobseek-ats-inventory.service")
+    assert re.fullmatch(journal_pattern, "jobseek-ats-inventory-network.service")
+
     expected = {
         "AtsInventoryStatusUnavailable": "status_available",
         "AtsInventoryRunFailed": "last_attempt_success",

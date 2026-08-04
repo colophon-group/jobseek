@@ -14,7 +14,8 @@ from typing import Any
 from urllib.parse import urlsplit
 
 _PRIVATE_NETWORKS = tuple(
-    ipaddress.ip_network(value) for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+    ipaddress.ip_network(value)
+    for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
 )
 _REQUIRED_ENDPOINTS = (
     {"label": "github-api", "host": "api.github.com", "port": 443},
@@ -37,7 +38,9 @@ def _read_exact_env(path: Path, key: str) -> str:
 
 def build_endpoints(*, env_file: Path, gateway: str) -> dict[str, Any]:
     gateway_ip = ipaddress.ip_address(gateway)
-    if gateway_ip.version != 4 or not any(gateway_ip in net for net in _PRIVATE_NETWORKS):
+    if gateway_ip.version != 4 or not any(
+        gateway_ip in net for net in _PRIVATE_NETWORKS
+    ):
         raise ValueError("ATS bridge gateway must be private IPv4")
 
     database_url = _read_exact_env(env_file, "LOCAL_DATABASE_URL")
@@ -56,7 +59,9 @@ def build_endpoints(*, env_file: Path, gateway: str) -> dict[str, Any]:
     }
     if not resolved:
         raise ValueError("production PostgreSQL hostname has no IPv4 address")
-    if any(not any(address in net for net in _PRIVATE_NETWORKS) for address in resolved):
+    if any(
+        not any(address in net for net in _PRIVATE_NETWORKS) for address in resolved
+    ):
         raise ValueError("production PostgreSQL must resolve only to private IPv4")
 
     blocked = [{"label": "crawler-host", "host": str(gateway_ip), "port": 22}]
@@ -76,7 +81,9 @@ def _connect(host: str, port: int, timeout: float) -> None:
         return
 
 
-def verify_endpoints(payload: dict[str, Any], *, timeout: float = 5.0) -> dict[str, Any]:
+def verify_endpoints(
+    payload: dict[str, Any], *, timeout: float = 5.0
+) -> dict[str, Any]:
     required = payload.get("required")
     blocked = payload.get("blocked")
     if not isinstance(required, list) or not isinstance(blocked, list) or not blocked:
@@ -148,7 +155,11 @@ def main() -> int:
             )
         else:
             payload = json.loads(args.path.read_text(encoding="utf-8"))
-            print(json.dumps(verify_endpoints(payload), sort_keys=True, separators=(",", ":")))
+            print(
+                json.dumps(
+                    verify_endpoints(payload), sort_keys=True, separators=(",", ":")
+                )
+            )
     except (OSError, RuntimeError, TypeError, ValueError) as exc:
         print(
             f"ERROR: ATS network probe {args.command} failed ({type(exc).__name__})",

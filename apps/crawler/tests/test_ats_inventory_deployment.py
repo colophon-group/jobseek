@@ -338,6 +338,7 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "HETZNER_BACKUP_KNOWN_HOSTS" in workflow
     assert "deploy-remote.sh" in workflow
     assert "deploy/ats-inventory/network-probe.py" in workflow
+    assert "deploy/systemd/jobseek-ats-inventory-network.service" in workflow
     assert 'PYTHONPYCACHEPREFIX="$RUNNER_TEMP/ats-inventory-pycache"' in workflow
     assert 'PYTHONDONTWRITEBYTECODE: "1"' in workflow
     assert "expected_tag=current" in workflow
@@ -411,6 +412,8 @@ def test_runner_network_is_private_state_isolated_and_runtime_verified(tmp_path:
     assert "NETWORK_ID=" in source and "VERIFIED_AT=" in source
     assert "jobseek-crawler-mutation.lock" in source
     assert "flock -w 300 8" in source
+    teardown = source[source.index("teardown() {") : source.index('if [[ "$ACTION" == teardown ]]')]
+    assert teardown.index('docker network rm "$NETWORK"') < teardown.index("remove_firewall")
 
     env_file = tmp_path / ".env"
     env_file.write_text(

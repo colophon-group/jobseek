@@ -30,7 +30,9 @@ def stream_bounded_tail(output: Path, *, max_bytes: int = DEFAULT_MAX_BYTES) -> 
             del tail[: newline + 1]
 
     output.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{output.name}.", dir=output.parent)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{output.name}.", dir=output.parent
+    )
     temporary = Path(temporary_name)
     try:
         os.fchmod(descriptor, 0o600)

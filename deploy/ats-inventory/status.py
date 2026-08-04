@@ -54,12 +54,17 @@ def _report_is_degraded(report: dict[str, Any] | None) -> bool:
     if report is None:
         return False
     candidate = report.get("candidate_issues")
-    return isinstance(candidate, dict) and candidate.get("status") in DEGRADED_QUEUE_STATUSES
+    return (
+        isinstance(candidate, dict)
+        and candidate.get("status") in DEGRADED_QUEUE_STATUSES
+    )
 
 
 def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o770)
-    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", dir=path.parent
+    )
     temporary = Path(temporary_name)
     try:
         os.fchmod(descriptor, 0o640)
@@ -127,8 +132,12 @@ def main() -> int:
     parser.add_argument("--state-root", type=Path, required=True)
     parser.add_argument("--log", type=Path, required=True)
     parser.add_argument("--return-code", type=int, required=True)
-    parser.add_argument("--requested-mode", choices=("report", "dry-run", "refill"), required=True)
-    parser.add_argument("--effective-mode", choices=("report", "dry-run", "refill"), required=True)
+    parser.add_argument(
+        "--requested-mode", choices=("report", "dry-run", "refill"), required=True
+    )
+    parser.add_argument(
+        "--effective-mode", choices=("report", "dry-run", "refill"), required=True
+    )
     parser.add_argument("--rollout-cap", type=int, choices=(1, 5, 25), required=True)
     parser.add_argument("--started-at", type=int, required=True)
     args = parser.parse_args()

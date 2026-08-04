@@ -99,14 +99,21 @@ def mint_installation_token(
     except (OSError, ValueError) as exc:
         raise TokenError("GitHub App token request failed") from exc
     token = payload.get("token") if isinstance(payload, dict) else None
-    if not isinstance(token, str) or not token or len(token) > 4096 or token.strip() != token:
+    if (
+        not isinstance(token, str)
+        or not token
+        or len(token) > 4096
+        or token.strip() != token
+    ):
         raise TokenError("GitHub App token response has an invalid shape")
     return token
 
 
 def _atomic_write_token(path: Path, token: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", dir=path.parent
+    )
     temporary = Path(temporary_name)
     try:
         os.fchmod(descriptor, 0o600)

@@ -72,14 +72,16 @@ remove_firewall() {
 
 teardown() {
   rm -f "$ATTESTATION"
-  remove_firewall
   if docker network inspect "$NETWORK" >/dev/null 2>&1; then
-    [[ "$(docker network inspect --format '{{len .Containers}}' "$NETWORK")" == 0 ]] || {
-      echo "ERROR: refusing to remove an in-use ATS inventory network" >&2
+    # Docker refuses this atomically while a container is attached. Keep the
+    # firewall hooks in place until removal succeeds so a failed teardown can
+    # never strand an attached parser on an unfiltered bridge.
+    docker network rm "$NETWORK" >/dev/null || {
+      echo "ERROR: refusing to tear down an in-use ATS inventory network" >&2
       exit 1
     }
-    docker network rm "$NETWORK" >/dev/null
   fi
+  remove_firewall
 }
 
 if [[ "$ACTION" == teardown ]]; then
