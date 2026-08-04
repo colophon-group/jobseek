@@ -878,7 +878,7 @@ groups:
       # severity because the fleet can keep processing other work, but
       # the parked task will never self-heal without operator review.
       - alert: DeadletterQueueNotEmpty
-        expr: max by (wtype) (crawler_inflight_deadletter_depth) > 0
+        expr: max by (wtype) (crawler_monitor_deadletter_lifecycle_depth{lifecycle=~"actionable|unresolved"}) > 0
         for: 1h
         labels:
           severity: medium
@@ -886,13 +886,13 @@ groups:
           owner: codex-error-review
           route: codex-daily
         annotations:
-          summary: "Crawler dead-letter queue {{ $labels.wtype }} is non-empty"
+          summary: "Crawler {{ $labels.wtype }} dead-letter queue needs operator action"
           description: |
-            `crawler_inflight_deadletter_depth{wtype="{{ $labels.wtype }}"}`
-            has been nonzero for more than 1 hour. The inflight reaper
-            moved one or more tasks to `deadletter:{{ $labels.wtype }}`
-            after repeated expired leases. Inspect the task descriptors
-            before removing anything from Redis.
+            `crawler_monitor_deadletter_lifecycle_depth` has reported an
+            actionable or unresolved monitor for more than 1 hour. Retired
+            and superseded residue is exposed separately and does not keep
+            this alert firing. Run `crawler deadletters inspect`, then retry
+            or prune only an exact reviewed selector.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/03-crawler-architecture.md#inflight-leases-and-dead-letter-recovery
 
       # Catches "exporter container alive but stuck on a Supabase

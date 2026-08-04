@@ -74,6 +74,62 @@ async def test_enqueue_monitor_nx_prevents_duplicate():
     assert await rq.enqueue_monitor("lever", "board-dup", t - 100, config, browser=False) is False
 
 
+async def test_enqueue_monitor_deduplicates_across_lifecycle_queues():
+    """One task cannot exist in first-time, recurring, and inflight at once."""
+
+    r = rq.get_redis()
+    now = time.time() - 10
+
+    assert await rq.enqueue_monitor(
+        "lever", "board-recurring", now, {"monitor": "lever"}, first_time=False
+    )
+    assert not await rq.enqueue_monitor(
+        "lever", "board-recurring", now, {"monitor": "lever"}, first_time=True
+    )
+    assert await r.zcard("monitors_simple:lever") == 1
+    assert await r.zcard("ft_monitors_simple:lever") == 0
+
+    assert await rq.enqueue_monitor(
+        "ashby", "board-first", now, {"monitor": "ashby"}, first_time=True
+    )
+    assert not await rq.enqueue_monitor(
+        "ashby", "board-first", now, {"monitor": "ashby"}, first_time=False
+    )
+    assert await r.zcard("ft_monitors_simple:ashby") == 1
+    assert await r.zcard("monitors_simple:ashby") == 0
+
+    await r.zadd(
+        "inflight:simple",
+        {"monitor|greenhouse|board-inflight": time.time() + 60},
+    )
+    assert not await rq.enqueue_monitor(
+        "greenhouse", "board-inflight", now, {"monitor": "greenhouse"}, first_time=False
+    )
+    assert await r.zcard("ft_monitors_simple:greenhouse") == 0
+    assert await r.zcard("monitors_simple:greenhouse") == 0
+
+
+async def test_scrape_fallback_can_enqueue_while_previous_step_is_inflight():
+    """Monitor dedup must not suppress the scrape pipeline's next fallback."""
+
+    r = rq.get_redis()
+    posting_id = "posting-fallback"
+    domain = "jobs.example.com"
+    await r.zadd(
+        "inflight:simple",
+        {f"scrape|{domain}|{posting_id}": time.time() + 60},
+    )
+
+    assert await rq.enqueue_scrape(
+        domain,
+        posting_id,
+        time.time(),
+        {"source_url": "https://jobs.example.com/job/1", "scrape_step": "1"},
+        first_time=True,
+    )
+    assert await r.zcard(f"ft_scrapes_simple:{domain}") == 1
+
+
 async def test_enqueue_monitor_first_time_flag():
     config = {"monitor": "ashby"}
     await rq.enqueue_monitor(
@@ -115,6 +171,41 @@ async def test_enqueue_monitors_pipelines_mixed_worker_schedules():
     assert browser_config["domain"] == "example.com"
     assert await r.zcard("ft_monitors_simple:greenhouse") == 1
     assert await r.zcard("ft_monitors_browser:example.com") == 1
+
+
+async def test_resync_repairs_missing_config_without_duplicate_or_deadletter_loss():
+    """A normal sync repairs HSET state but preserves queue/dead-letter evidence."""
+
+    r = rq.get_redis()
+    board_id = "board-resync-repair"
+    domain = "jobs.example.com"
+    member = f"monitor|{domain}|{board_id}"
+    schedule = rq.MonitorSchedule(
+        domain=domain,
+        board_id=board_id,
+        next_check_at=time.time(),
+        config={"crawler_type": "dom", "board_url": "https://jobs.example.com"},
+        first_time=False,
+    )
+    assert await rq.enqueue_monitors([schedule]) == [True]
+    await r.zadd("deadletter:simple", {member: time.time()})
+    await r.delete(f"board:{board_id}")
+
+    # Active-board sync asks for first-time priority, but the logical task is
+    # already recurring. The hash is repaired without creating an ft copy.
+    resync_schedule = rq.MonitorSchedule(
+        domain=domain,
+        board_id=board_id,
+        next_check_at=time.time(),
+        config=schedule.config,
+        first_time=True,
+    )
+    assert await rq.enqueue_monitors([resync_schedule]) == [False]
+
+    assert await r.hget(f"board:{board_id}", "crawler_type") == "dom"
+    assert await r.zcard(f"monitors_simple:{domain}") == 1
+    assert await r.zcard(f"ft_monitors_simple:{domain}") == 0
+    assert await r.zcard("deadletter:simple") == 1
 
 
 # ---------------------------------------------------------------------------

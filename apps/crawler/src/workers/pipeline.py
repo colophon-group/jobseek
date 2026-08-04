@@ -33,6 +33,7 @@ from src.metrics import (
     inflight_depth,
     inflight_heartbeat_total,
     inflight_reaped_total,
+    monitor_deadletter_lifecycle_depth,
     monitor_duration_seconds,
     monitor_failed_per_board_total,
     scrape_duration_seconds,
@@ -625,6 +626,7 @@ async def _reaper_loop(
     shutdown_event: asyncio.Event,
     *,
     browser: bool,
+    local_pool: asyncpg.Pool,
 ) -> None:
     """Periodically sweep expired inflight leases back to per-domain queues.
 
@@ -678,6 +680,29 @@ async def _reaper_loop(
                 except Exception:
                     # Gauge refresh is best-effort; the reaper must keep sweeping leases.
                     pass
+            # The raw ZCARD gauge above remains useful for queue accounting,
+            # while this local-Postgres join tells alerts whether a monitor is
+            # actionable or only historical residue from a retired route.
+            try:
+                from src.deadletters import (
+                    DEADLETTER_LIFECYCLES,
+                    DEADLETTER_WORKER_TYPES,
+                    classify_deadletters,
+                    lifecycle_counts,
+                )
+
+                deadletters = await classify_deadletters(local_pool)
+                counts = lifecycle_counts(deadletters)
+                for metric_wtype in DEADLETTER_WORKER_TYPES:
+                    for lifecycle in DEADLETTER_LIFECYCLES:
+                        monitor_deadletter_lifecycle_depth.labels(
+                            wtype=metric_wtype,
+                            lifecycle=lifecycle,
+                        ).set(counts[metric_wtype][lifecycle])
+            except Exception:
+                # Classification is best-effort observability and must never
+                # interfere with lease recovery.
+                reaper_log.warning("pipeline.deadletters.classification_failed", exc_info=True)
     finally:
         reaper_log.info("pipeline.reaper.stopped")
 
@@ -1779,7 +1804,7 @@ async def run_pipeline(
     # tasks orphaned by worker SIGKILL / OOM / segfault back
     # onto the per-domain queue. See #3159 / #3173.
     reaper_task = asyncio.create_task(
-        _reaper_loop(shutdown_event, browser=browser),
+        _reaper_loop(shutdown_event, browser=browser, local_pool=local_pool),
         name="reaper",
     )
     tasks.append(reaper_task)
