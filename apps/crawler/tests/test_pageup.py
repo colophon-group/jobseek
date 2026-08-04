@@ -8,7 +8,12 @@ import httpx
 import pytest
 
 from src.config import settings
-from src.core.monitors import BoardGoneError, all_monitor_types, api_monitor_types
+from src.core.monitors import (
+    BoardGoneError,
+    _build_comment,
+    all_monitor_types,
+    api_monitor_types,
+)
 from src.core.monitors import pageup as monitor
 from src.core.scrapers.dom import parse_html as parse_dom_html
 from src.probe_boards import PROBES, _probe_pageup
@@ -515,6 +520,11 @@ class TestDetectionAndWorkflow:
         )
         found = _scan_ats_urls_in_html(f'<a href="{LISTING_URL}">Jobs</a>')
         assert any(item.url == LISTING_URL for item in found)
+
+    def test_probe_comment_is_human_readable(self):
+        assert _build_comment("pageup", {"listing_url": LISTING_URL, "jobs": 17}) == (
+            f"PageUp static listing \u2014 17 jobs at {LISTING_URL}"
+        )
 
     def test_company_pr_label_allowlist_supports_pageup(self):
         script = Path(__file__).parents[3] / ".github" / "scripts" / "label-pr.sh"
