@@ -1,0 +1,350 @@
+"""Idempotent one-per-family GitHub support issues for unknown ATS sources."""
+
+from __future__ import annotations
+
+import asyncio
+import re
+from dataclasses import asdict, dataclass
+from typing import Any, Protocol
+
+import httpx
+
+from src.ats_inventory.models import InventorySnapshot
+
+_MARKER_RE = re.compile(r"<!-- ats-inventory-support:family=([a-z0-9][a-z0-9_]{0,63}) -->")
+_API_VERSION = "2022-11-28"
+_RATE_LIMIT_RESERVE = 100
+
+
+class GitHubError(RuntimeError):
+    pass
+
+
+class GitHubRateLimitError(GitHubError):
+    def __init__(self, message: str, *, retry_after: int | None = None) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+class GitHubCreateOutcomeUnknown(GitHubError):
+    """The create request may have committed before its transport failed."""
+
+
+@dataclass(frozen=True, slots=True)
+class ExistingIssue:
+    number: int
+    state: str
+    title: str
+    body: str
+    url: str
+
+
+@dataclass(frozen=True, slots=True)
+class CreatedIssue:
+    number: int
+    url: str
+
+
+class SupportIssueClient(Protocol):
+    async def list_support_issues(self) -> list[ExistingIssue]: ...
+
+    async def create_support_issue(
+        self, *, title: str, body: str, labels: list[str]
+    ) -> CreatedIssue: ...
+
+
+@dataclass(frozen=True, slots=True)
+class SupportIssueAction:
+    family: str
+    action: str
+    tenant_rows: int
+    job_rows: int | None
+    issue_number: int | None = None
+    issue_url: str | None = None
+    duplicate_issue_numbers: tuple[int, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+class GitHubSupportIssueClient:
+    """Minimal REST client; credentials are injected and never persisted."""
+
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        *,
+        repo: str,
+        token: str,
+        rate_limit_reserve: int = _RATE_LIMIT_RESERVE,
+        pace_seconds: float = 0.25,
+    ) -> None:
+        owner, separator, name = repo.partition("/")
+        if not separator or not owner or not name or "/" in name:
+            raise ValueError("repo must be in owner/name form")
+        if not token:
+            raise ValueError("GitHub token is required")
+        self.client = client
+        self.repo = f"{owner}/{name}"
+        self.headers = {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "X-GitHub-Api-Version": _API_VERSION,
+        }
+        self.rate_limit_reserve = rate_limit_reserve
+        self.pace_seconds = max(0.0, pace_seconds)
+        self.rate_remaining: int | None = None
+        self.rate_reset: int | None = None
+
+    async def list_support_issues(self) -> list[ExistingIssue]:
+        issues: list[ExistingIssue] = []
+        for page in range(1, 101):
+            if self.rate_remaining is not None and self.rate_remaining <= self.rate_limit_reserve:
+                raise GitHubRateLimitError(
+                    f"GitHub primary rate limit is below reserve ({self.rate_remaining})"
+                )
+            response = await self.client.get(
+                f"https://api.github.com/repos/{self.repo}/issues",
+                headers=self.headers,
+                params={
+                    "state": "all",
+                    "per_page": 100,
+                    "page": page,
+                },
+            )
+            self._check_response(response)
+            await asyncio.sleep(self.pace_seconds)
+            payload = response.json()
+            if not isinstance(payload, list):
+                raise GitHubError("GitHub issues response is not a list")
+            for raw in payload:
+                if not isinstance(raw, dict) or "pull_request" in raw:
+                    continue
+                body = raw.get("body")
+                if not isinstance(body, str) or _MARKER_RE.search(body) is None:
+                    continue
+                try:
+                    issues.append(
+                        ExistingIssue(
+                            number=int(raw["number"]),
+                            state=str(raw["state"]),
+                            title=str(raw["title"]),
+                            body=body,
+                            url=str(raw["html_url"]),
+                        )
+                    )
+                except (KeyError, TypeError, ValueError) as exc:
+                    raise GitHubError("GitHub issue has an invalid shape") from exc
+            if len(payload) < 100:
+                return issues
+        raise GitHubError("GitHub issue pagination exceeded 100 pages")
+
+    async def create_support_issue(
+        self, *, title: str, body: str, labels: list[str]
+    ) -> CreatedIssue:
+        if self.rate_remaining is not None and self.rate_remaining <= self.rate_limit_reserve:
+            raise GitHubRateLimitError(
+                f"GitHub primary rate limit is below reserve ({self.rate_remaining})"
+            )
+        try:
+            response = await self.client.post(
+                f"https://api.github.com/repos/{self.repo}/issues",
+                headers=self.headers,
+                json={"title": title, "body": body, "labels": labels},
+            )
+        except httpx.TransportError as exc:
+            raise GitHubCreateOutcomeUnknown("GitHub create outcome is unknown") from exc
+        self._check_response(response)
+        await asyncio.sleep(max(1.0, self.pace_seconds))
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise GitHubError("GitHub create response is not an object")
+        try:
+            return CreatedIssue(number=int(payload["number"]), url=str(payload["html_url"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise GitHubError("GitHub create response has an invalid shape") from exc
+
+    def _check_response(self, response: httpx.Response) -> None:
+        self.rate_remaining = _optional_int(response.headers.get("x-ratelimit-remaining"))
+        self.rate_reset = _optional_int(response.headers.get("x-ratelimit-reset"))
+        if response.status_code in (403, 429):
+            retry_after = _optional_int(response.headers.get("retry-after"))
+            raise GitHubRateLimitError(
+                f"GitHub rate limited request with HTTP {response.status_code}",
+                retry_after=retry_after,
+            )
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise GitHubError(f"GitHub request failed with HTTP {response.status_code}") from exc
+
+
+async def reconcile_support_issues(
+    snapshot: InventorySnapshot,
+    client: SupportIssueClient,
+    *,
+    create: bool,
+) -> list[SupportIssueAction]:
+    """Plan or create one issue for each unsupported inventory family.
+
+    Both open and closed issues are reconciled by a stable body marker. A
+    closed issue is surfaced, never replaced. If a POST's outcome is unknown,
+    the marker is refetched before the error escapes.
+    """
+
+    if not snapshot.coverage.unsupported_families:
+        return []
+    existing = await client.list_support_issues()
+    by_family = _issues_by_family(existing)
+    actions: list[SupportIssueAction] = []
+    for family in snapshot.coverage.unsupported_families:
+        matching = sorted(by_family.get(family, ()), key=lambda issue: issue.number)
+        tenant_rows = snapshot.family_counts[family]
+        job_rows = _job_rows(snapshot.manifest, family)
+        if matching:
+            primary = matching[0]
+            action = "open_existing" if primary.state == "open" else "closed_existing"
+            if len(matching) > 1:
+                action = "duplicate_existing"
+            actions.append(
+                SupportIssueAction(
+                    family=family,
+                    action=action,
+                    tenant_rows=tenant_rows,
+                    job_rows=job_rows,
+                    issue_number=primary.number,
+                    issue_url=primary.url,
+                    duplicate_issue_numbers=tuple(issue.number for issue in matching[1:]),
+                )
+            )
+            continue
+
+        if not create:
+            actions.append(
+                SupportIssueAction(
+                    family=family,
+                    action="would_create",
+                    tenant_rows=tenant_rows,
+                    job_rows=job_rows,
+                )
+            )
+            continue
+
+        title, body = render_support_issue(snapshot, family)
+        try:
+            created = await client.create_support_issue(
+                title=title,
+                body=body,
+                labels=["enhancement", "type:feature", "area:crawler"],
+            )
+        except GitHubCreateOutcomeUnknown:
+            # A timeout may happen after GitHub committed the issue. Reconcile
+            # before allowing a later invocation to consider another create.
+            recovered = _issues_by_family(await client.list_support_issues()).get(family, [])
+            if not recovered:
+                raise
+            issue = min(recovered, key=lambda candidate: candidate.number)
+            actions.append(
+                SupportIssueAction(
+                    family=family,
+                    action="created_reconciled",
+                    tenant_rows=tenant_rows,
+                    job_rows=job_rows,
+                    issue_number=issue.number,
+                    issue_url=issue.url,
+                )
+            )
+        else:
+            actions.append(
+                SupportIssueAction(
+                    family=family,
+                    action="created",
+                    tenant_rows=tenant_rows,
+                    job_rows=job_rows,
+                    issue_number=created.number,
+                    issue_url=created.url,
+                )
+            )
+    return actions
+
+
+def render_support_issue(snapshot: InventorySnapshot, family: str) -> tuple[str, str]:
+    if family not in snapshot.coverage.unsupported_families:
+        raise ValueError(f"family {family!r} is not unsupported")
+    rows = [row for row in snapshot.rows if row.ats == family]
+    tenant_rows = len(rows)
+    job_rows = _job_rows(snapshot.manifest, family)
+    representatives = sorted(rows, key=lambda row: (row.name.casefold(), row.url))[:5]
+    title = f"[ats inventory] Add native Jobseek support for {family}"
+    body_lines = [
+        f"<!-- ats-inventory-support:family={family} -->",
+        "## Outcome",
+        "",
+        f"Add Jobseek-owned support for the newly observed `{family}` inventory family.",
+        "The upstream project is an inventory/data source only: do not import or execute its",
+        "scraper implementation and do not add it as a runtime dependency.",
+        "",
+        "## Current evidence",
+        "",
+        f"- Upstream family: `{family}`",
+        f"- Company/tenant rows: {tenant_rows}",
+        f"- Published active job rows: {job_rows if job_rows is not None else 'unknown'}",
+        f"- Manifest: `{snapshot.manifest_sha256}`",
+        "- Suggested reuse: start with the shared RSS, sitemap, DOM, nextdata, or API",
+        "  monitor primitives and shared HTTP/retry/pagination helpers; add a dedicated thin",
+        "  monitor only where the provider contract requires it.",
+        "",
+        "Representative inventory rows:",
+        "",
+    ]
+    body_lines.extend(
+        f"- {_markdown_code(row.name)} — {_markdown_code(row.url)}" for row in representatives
+    )
+    body_lines.extend(
+        [
+            "",
+            "## Acceptance",
+            "",
+            "- Implement native Jobseek crawling with deterministic failure-mode tests.",
+            "- Reuse base monitor/scraper machinery wherever practical.",
+            "- Extend `ws` detection, selection, help, validation, scheduling, and tests.",
+            "- Deliver this family in its own isolated-worktree PR from latest `origin/main`.",
+            "- Obtain a fresh-context subagent review for codebase fit, simplification,",
+            "  resilience, and performance; address findings and require green CI.",
+            "- Keep companies in this family quarantined until the compatibility registry",
+            "  points to the verified native monitor or preset.",
+            "",
+            "Parent: #6184",
+            "",
+        ]
+    )
+    return title, "\n".join(body_lines)
+
+
+def _issues_by_family(issues: list[ExistingIssue]) -> dict[str, list[ExistingIssue]]:
+    result: dict[str, list[ExistingIssue]] = {}
+    for issue in issues:
+        for match in _MARKER_RE.finditer(issue.body):
+            result.setdefault(match.group(1), []).append(issue)
+    return result
+
+
+def _job_rows(manifest: dict[str, Any], family: str) -> int | None:
+    by_ats = manifest.get("by_ats")
+    artifact = by_ats.get(family) if isinstance(by_ats, dict) else None
+    value = artifact.get("rows") if isinstance(artifact, dict) else None
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _markdown_code(value: str) -> str:
+    safe = value.replace("`", "\u02cb").replace("@", "@\u200b")
+    return f"`{safe}`"
+
+
+def _optional_int(value: str | None) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None

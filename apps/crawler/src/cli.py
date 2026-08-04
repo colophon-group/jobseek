@@ -12,9 +12,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import signal
 import sys
 import uuid
+from pathlib import Path
 from typing import cast
 
 import asyncpg
@@ -102,6 +104,50 @@ def parse_args() -> argparse.Namespace:
     sub.add_parser("drain", help="R2 drain instance")
 
     sub.add_parser("sync", help="CSV -> local Postgres + legacy mirror + Redis")
+
+    ats_inventory_p = sub.add_parser(
+        "ats-inventory",
+        help="Validate and cache the data-only ats-scrapers company inventory",
+    )
+    ats_inventory_p.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=Path(os.environ.get("ATS_INVENTORY_CACHE_DIR", ".cache/ats-inventory")),
+        help="Persistent checksum-addressed cache directory",
+    )
+    ats_inventory_p.add_argument(
+        "--manifest-url",
+        default="https://storage.stapply.ai/jobhive/v1/manifest.json",
+        help="Published v2 manifest URL (restricted to storage.stapply.ai/jobhive/v1/)",
+    )
+    ats_inventory_p.add_argument(
+        "--support-issues",
+        choices=("off", "plan", "create"),
+        default="off",
+        help="Reconcile unsupported-family issues; writes require explicit 'create'",
+    )
+    ats_inventory_p.add_argument(
+        "--github-repo",
+        default=os.environ.get("ATS_INVENTORY_GITHUB_REPO", "colophon-group/jobseek"),
+        help="Repository used for unsupported-family issues",
+    )
+    ats_inventory_p.add_argument(
+        "--github-token-env",
+        default="GH_TOKEN",
+        help="Environment variable containing an injected GitHub token",
+    )
+    ats_inventory_p.add_argument(
+        "--retention",
+        type=int,
+        default=7,
+        help="Maximum recent validated manifest snapshots to retain",
+    )
+    ats_inventory_p.add_argument(
+        "--max-cache-mib",
+        type=int,
+        default=256,
+        help="Maximum steady-state cache size in MiB",
+    )
 
     recon_p = sub.add_parser(
         "reconcile",
@@ -547,6 +593,60 @@ async def run() -> None:
             from src.sync import run_sync
 
             await run_sync()
+
+        elif args.command == "ats-inventory":
+            import httpx
+
+            from src.ats_inventory.github import (
+                GitHubSupportIssueClient,
+                reconcile_support_issues,
+            )
+            from src.ats_inventory.locking import exclusive_run_lock
+            from src.ats_inventory.source import InventorySource
+
+            timeout = httpx.Timeout(60.0, read=180.0)
+            with exclusive_run_lock(args.cache_dir / "runner.lock"):
+                async with httpx.AsyncClient(
+                    timeout=timeout,
+                    follow_redirects=True,
+                    limits=httpx.Limits(max_connections=4, max_keepalive_connections=2),
+                    headers={"User-Agent": "jobseek-ats-inventory/1"},
+                ) as client:
+                    source = InventorySource(
+                        args.cache_dir,
+                        client,
+                        manifest_url=args.manifest_url,
+                        retention=args.retention,
+                        max_cache_bytes=args.max_cache_mib * 1024 * 1024,
+                    )
+                    snapshot = await source.sync()
+                    report = snapshot.to_report()
+                    report["support_issues"] = {"mode": args.support_issues, "actions": []}
+                    if args.support_issues != "off":
+                        token = os.environ.get(args.github_token_env)
+                        if not token:
+                            raise RuntimeError(
+                                f"{args.github_token_env} is required for support issue "
+                                "reconciliation"
+                            )
+                        github = GitHubSupportIssueClient(
+                            client,
+                            repo=args.github_repo,
+                            token=token,
+                        )
+                        actions = await reconcile_support_issues(
+                            snapshot,
+                            github,
+                            create=args.support_issues == "create",
+                        )
+                        report["support_issues"] = {
+                            "mode": args.support_issues,
+                            "actions": [action.to_dict() for action in actions],
+                            "rate_remaining": github.rate_remaining,
+                            "rate_reset": github.rate_reset,
+                        }
+                    log.info("ats_inventory.complete", report=report)
+                    tty_message(json.dumps(report, indent=2, sort_keys=True))
 
         elif args.command == "backfill-locations":
             local_pool = await create_local_pool()
