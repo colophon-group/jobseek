@@ -8,6 +8,7 @@ CONFIG=/etc/jobseek-ats-inventory/config.env
 WRITE_DISABLED=/etc/jobseek-ats-inventory/writes-disabled
 DEPLOY_SUCCESS=/home/deploy/.crawler-deploy-success.env
 ACCEPTANCE_PIN="$STATE_ROOT/acceptance-crawler.env"
+CACHE_ROOT="$STATE_ROOT/cache"
 CONTAINER=jobseek-ats-inventory
 TOKEN_FILE=""
 RUN_LOG=""
@@ -107,7 +108,7 @@ esac
 effective_mode="$requested_mode"
 
 apply_write_gate() {
-  if [[ -e "$WRITE_DISABLED" ]]; then
+  if [[ -e "$WRITE_DISABLED" || -e "$ACCEPTANCE_PIN" ]]; then
     effective_mode=report
     printf '%s\n' \
       '{"event":"ats_inventory.writes_disabled","effective_mode":"report"}'
@@ -127,6 +128,7 @@ wrapper_sha="$(tr -d '\n' <"$STATE_ROOT/wrapper-sha256")"
 release_file="$DEPLOY_SUCCESS"
 if [[ -e "$ACCEPTANCE_PIN" ]]; then
   release_file="$ACCEPTANCE_PIN"
+  CACHE_ROOT="$STATE_ROOT/acceptance-cache"
 fi
 [[ -r "$release_file" ]] || {
   echo "ERROR: committed crawler deployment marker is unavailable" >&2
@@ -169,12 +171,9 @@ run_phase() {
     --cap-drop ALL \
     --security-opt no-new-privileges \
     --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
-    --mount "type=bind,src=$STATE_ROOT/cache,dst=/state/cache" \
+    --mount "type=bind,src=$CACHE_ROOT,dst=/state/cache" \
     "${docker_extra[@]}" \
     -e PYTHONDONTWRITEBYTECODE=1 \
-    --label com.docker.compose.project=deploy \
-    --label com.docker.compose.service=ats-inventory \
-    --label com.docker.compose.oneoff=True \
     --label jobseek.maintenance.operation=ats-inventory \
     --label "jobseek.maintenance.phase=${phase}" \
     --label jobseek.maintenance.issue=6190 \

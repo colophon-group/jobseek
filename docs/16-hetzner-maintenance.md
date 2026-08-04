@@ -913,7 +913,11 @@ revision while holding `/run/lock/jobseek-crawler-mutation.lock`, then pins that
 exact release for a report-only acceptance run. The prior runner remains the
 rollback target until the fresh report succeeds and the timer is active. A stop
 timeout, failed report, stale status, or mismatched release fails the install and
-restores the prior units, credentials, write gate, and scheduling state.
+restores the prior units, credentials, and scheduling state. Acceptance uses a
+disposable cache; the independent operator write gate is never part of the
+rollback snapshot, so a concurrent emergency disable cannot be undone. Root
+creates a missing post-reboot mutation-lock inode as `deploy:deploy 0600` and
+opens it read-only, preserving the shared cross-user lock contract.
 
 Read-only checks:
 

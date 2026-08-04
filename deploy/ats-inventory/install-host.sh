@@ -26,7 +26,6 @@ FILES=(
   /etc/systemd/system/jobseek-ats-inventory.service
   /etc/systemd/system/jobseek-ats-inventory.timer
   /etc/jobseek-ats-inventory/config.env
-  /etc/jobseek-ats-inventory/writes-disabled
   /etc/jobseek-ats-inventory/github-app-id
   /etc/jobseek-ats-inventory/github-app-installation-id
   /etc/jobseek-ats-inventory/github-app-private-key
@@ -38,9 +37,7 @@ TIMER_WAS_ENABLED=0
 TIMER_WAS_ACTIVE=0
 SERVICE_WAS_ACTIVE=0
 STATE_ROOT_WAS_PRESENT=0
-CONFIG_ROOT_WAS_PRESENT=0
 CONFIG_WAS_PRESENT=0
-WRITE_GATE_WAS_PRESENT=0
 ROLLBACK_ARMED=1
 
 [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: deployment SHA is invalid" >&2; exit 1; }
@@ -76,9 +73,7 @@ systemctl is-enabled --quiet jobseek-ats-inventory.timer 2>/dev/null && TIMER_WA
 systemctl is-active --quiet jobseek-ats-inventory.timer 2>/dev/null && TIMER_WAS_ACTIVE=1 || true
 systemctl is-active --quiet jobseek-ats-inventory.service 2>/dev/null && SERVICE_WAS_ACTIVE=1 || true
 [[ ! -d "$STATE_ROOT" ]] || STATE_ROOT_WAS_PRESENT=1
-[[ ! -d "$CONFIG_ROOT" ]] || CONFIG_ROOT_WAS_PRESENT=1
 [[ ! -e "$CONFIG_ROOT/config.env" ]] || CONFIG_WAS_PRESENT=1
-[[ ! -e "$CONFIG_ROOT/writes-disabled" ]] || WRITE_GATE_WAS_PRESENT=1
 ROLLBACK="$(mktemp -d /run/jobseek-ats-inventory-rollback.XXXXXX)"
 for path in "${FILES[@]}"; do
   [[ ! -e "$path" ]] || cp --archive "$path" "$ROLLBACK/"
@@ -94,15 +89,16 @@ restore_previous() {
       group=root
       [[ "$path" == "$STATE_ROOT/"* ]] && group=deploy
       [[ "$path" == "$CONFIG_ROOT/config.env" ]] && group=deploy
-      [[ "$path" == "$CONFIG_ROOT/writes-disabled" ]] && group=deploy
       mode="$(stat -c '%a' "$ROLLBACK/$name")"
       install -o root -g "$group" -m "$mode" "$ROLLBACK/$name" "$path"
     else
       rm -f "$path"
     fi
   done
-  (( CONFIG_ROOT_WAS_PRESENT != 0 )) || rm -rf -- "$CONFIG_ROOT"
-  (( STATE_ROOT_WAS_PRESENT != 0 )) || rm -rf -- "$STATE_ROOT"
+  rm -rf -- "$STATE_ROOT/acceptance-cache"
+  if (( STATE_ROOT_WAS_PRESENT == 0 )); then
+    rmdir "$STATE_ROOT/status" "$STATE_ROOT/cache" "$STATE_ROOT" 2>/dev/null || true
+  fi
   systemctl daemon-reload
   (( TIMER_WAS_ENABLED == 0 )) || systemctl enable jobseek-ats-inventory.timer >/dev/null 2>&1 || true
   (( TIMER_WAS_ACTIVE == 0 )) || systemctl start jobseek-ats-inventory.timer >/dev/null 2>&1 || true
@@ -145,11 +141,28 @@ stop_unit_if_present() {
   fi
 }
 
+open_shared_crawler_lock() {
+  if [[ ! -e "$CRAWLER_LOCK" ]]; then
+    (umask 077; set -o noclobber; : >"$CRAWLER_LOCK") 2>/dev/null || true
+  fi
+  [[ -f "$CRAWLER_LOCK" && ! -L "$CRAWLER_LOCK" ]] || {
+    echo "ERROR: crawler mutation lock is not a regular file" >&2
+    return 1
+  }
+  chown deploy:deploy "$CRAWLER_LOCK"
+  chmod 0600 "$CRAWLER_LOCK"
+  [[ "$(stat -c '%U:%G:%a' "$CRAWLER_LOCK")" == deploy:deploy:600 ]] || {
+    echo "ERROR: crawler mutation lock ownership is unsafe" >&2
+    return 1
+  }
+  exec 8<"$CRAWLER_LOCK"
+}
+
 # Serialize the exact committed-release check and the short host-surface
 # replacement with crawler deploys. The long report-only acceptance is pinned
 # below, so the mutation lock can be released before network work begins.
-exec 8>"$CRAWLER_LOCK"
-flock -w 7200 8 || { echo "ERROR: timed out waiting for crawler mutation lock" >&2; exit 1; }
+open_shared_crawler_lock
+flock -w 300 8 || { echo "ERROR: timed out waiting for crawler mutation lock" >&2; exit 1; }
 [[ -f "$DEPLOY_SUCCESS" && ! -L "$DEPLOY_SUCCESS" ]] || {
   echo "ERROR: committed crawler deployment marker is unavailable" >&2
   exit 1
@@ -169,6 +182,8 @@ stop_unit_if_present jobseek-ats-inventory.service
 install -d -o root -g deploy -m 0750 "$STATE_ROOT"
 install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/cache"
 install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/status"
+rm -rf -- "$STATE_ROOT/acceptance-cache"
+install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/acceptance-cache"
 install -d -o root -g deploy -m 0750 "$CONFIG_ROOT"
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/run.sh" \
   /usr/local/sbin/jobseek-ats-inventory
@@ -193,6 +208,8 @@ if (( CONFIG_WAS_PRESENT == 0 )); then
   printf 'ATS_INVENTORY_MODE=report\nATS_INVENTORY_ROLLOUT_CAP=1\n' >"$temporary"
   install -o root -g deploy -m 0640 "$temporary" "$CONFIG_ROOT/config.env"
   rm -f "$temporary"
+  [[ -e "$CONFIG_ROOT/writes-disabled" ]] || \
+    install -o root -g deploy -m 0640 /dev/null "$CONFIG_ROOT/writes-disabled"
 fi
 
 printf '%s\n' "$DEPLOY_SHA" >"$STATE_ROOT/deployed-sha.tmp"
@@ -211,7 +228,6 @@ printf 'CRAWLER_IMAGE_TAG=%s\nJOBSEEK_DEPLOY_REVISION=%s\n' \
 chown root:deploy "$acceptance_temporary"
 chmod 0640 "$acceptance_temporary"
 mv "$acceptance_temporary" "$ACCEPTANCE_PIN"
-install -o root -g deploy -m 0640 /dev/null "$CONFIG_ROOT/writes-disabled"
 flock -u 8
 
 systemctl daemon-reload
@@ -248,9 +264,7 @@ assert (state / "wrapper-sha256").read_text().strip() == expected_wrapper
 PY
 
 rm -f "$ACCEPTANCE_PIN"
-if (( CONFIG_WAS_PRESENT != 0 && WRITE_GATE_WAS_PRESENT == 0 )); then
-  rm -f "$CONFIG_ROOT/writes-disabled"
-fi
+rm -rf -- "$STATE_ROOT/acceptance-cache"
 systemctl start jobseek-ats-inventory.timer
 systemctl is-enabled --quiet jobseek-ats-inventory.timer
 systemctl is-active --quiet jobseek-ats-inventory.timer

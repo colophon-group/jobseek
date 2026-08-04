@@ -198,8 +198,10 @@ def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> 
     assert "--memory 1536m" in source
     assert "--cpus 1.0" in source
     assert "--pids-limit 256" in source
-    assert "type=bind,src=$STATE_ROOT/cache,dst=/state/cache" in source
+    assert "type=bind,src=$CACHE_ROOT,dst=/state/cache" in source
     assert "type=bind,src=$STATE_ROOT,dst=/state" not in source
+    assert "com.docker.compose.oneoff" not in source
+    assert "com.docker.compose.project" not in source
     assert "mktemp /run/lock/jobseek-ats-inventory-log" in source
     assert "run_phase 9900s data off 0" in source
     assert 'run_phase 2700s github "$effective_mode" 1' in source
@@ -256,6 +258,14 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert "jobseek-crawler-mutation.lock" in installer
     assert ".crawler-deploy-success.env" in installer
     assert "acceptance-crawler.env" in installer
+    assert "acceptance-cache" in installer
+    files = installer.partition("FILES=(")[2].partition(")")[0]
+    assert "writes-disabled" not in files
+    runner = RUNNER.read_text(encoding="utf-8")
+    assert '[[ -e "$WRITE_DISABLED" || -e "$ACCEPTANCE_PIN" ]]' in runner
+    assert 'exec 8<"$CRAWLER_LOCK"' in installer
+    assert 'exec 8>"$CRAWLER_LOCK"' not in installer
+    assert 'chown deploy:deploy "$CRAWLER_LOCK"' in installer
     acceptance = installer.index("systemctl start jobseek-ats-inventory.service")
     disarm = installer.index("ROLLBACK_ARMED=0")
     assert acceptance < disarm
@@ -302,6 +312,10 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "expected_tag=current" in workflow
     assert "expected_revision=current" in workflow
     assert "derive-crawler-build-version.mjs" in workflow
+    assert "fetch-depth: 0" in workflow
+    assert 'git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA"' in workflow
+    assert ".github/workflows/deploy-crawler-browser.yml" in workflow
+    assert "timeout-minutes: 355" in workflow
     assert "appleboy/" not in workflow
     checkout = [line for line in workflow.splitlines() if "uses: actions/checkout@" in line]
     assert checkout and all("@v" not in line for line in checkout)
@@ -310,15 +324,22 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
 
 def test_remote_deploy_waits_for_exact_image_before_quiescing_install() -> None:
     source = REMOTE.read_text(encoding="utf-8")
-    image_gate = source.index("for ((attempt = 1; attempt <= 300; attempt++))")
+    image_gate = source.index("for ((attempt = 1; attempt <= 120; attempt++))")
     install = source.index("install-host-from-stdin.sh")
     assert image_gate < install
     gate = source[image_gate:install]
-    assert "jobseek-crawler-mutation.lock" in gate
+    assert "jobseek-crawler-mutation.lock" in source[:install]
     assert ".crawler-deploy-success.env" in source[:install]
     assert "CRAWLER_IMAGE_TAG" in gate
     assert "JOBSEEK_DEPLOY_REVISION" in gate
+    assert 'exec 8<"$lock"' in source[:install]
+    assert 'exec 8>"$lock"' not in source[:install]
+    assert 'chown deploy:deploy "$lock"' in source[:install]
     assert "/home/deploy/.env" not in gate
+    assert " 60m " in source
+    assert " 250m " in source
+    assert " 150m " not in source
+    assert " 5h " not in source
 
 
 def test_runner_uses_only_committed_release_or_transactional_acceptance_pin() -> None:

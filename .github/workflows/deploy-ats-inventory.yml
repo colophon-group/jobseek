@@ -21,6 +21,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 355
     environment: production
     permissions:
       contents: read
@@ -29,7 +30,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 2
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
       - name: Validate ATS inventory deployment artifacts
@@ -66,18 +67,24 @@ jobs:
           ATS_GITHUB_APP_ID: ${{ secrets.ATS_INVENTORY_GITHUB_APP_ID }}
           ATS_GITHUB_APP_INSTALLATION_ID: ${{ secrets.ATS_INVENTORY_GITHUB_APP_INSTALLATION_ID }}
           ATS_GITHUB_APP_PRIVATE_KEY: ${{ secrets.ATS_INVENTORY_GITHUB_APP_PRIVATE_KEY }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
           expected_tag=current
           expected_revision=current
           if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "ERROR: push before-SHA is invalid" >&2
+              exit 1
+            }
             crawler_changed=0
             while IFS= read -r path; do
               case "$path" in
-                apps/crawler/data/*|apps/crawler/traces/*|apps/crawler/ws-package/*|apps/crawler/*.md) ;;
-                apps/crawler/*) crawler_changed=1 ;;
+                apps/crawler/data/*|apps/crawler/traces/*|apps/crawler/ws-package/*) ;;
+                apps/crawler/*.md|apps/crawler/**/*.md) ;;
+                apps/crawler/*|.github/workflows/deploy-crawler-browser.yml) crawler_changed=1 ;;
               esac
-            done < <(git diff --name-only "$GITHUB_SHA^" "$GITHUB_SHA")
+            done < <(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")
             if (( crawler_changed )); then
               version_output="$(mktemp)"
               node scripts/derive-crawler-build-version.mjs \

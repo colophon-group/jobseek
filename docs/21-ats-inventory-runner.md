@@ -298,10 +298,13 @@ Production runs as `jobseek-ats-inventory.timer` on the ordinary crawler host,
 not as a Codex task. The persistent daily timer uses a 45-minute randomized
 delay. Its hardened one-shot resolves the immutable crawler image from the
 atomic `/home/deploy/.crawler-deploy-success.env` marker published only after
-the crawler health gates pass and rollback is disarmed. It mounts only the persistent cache subdirectory
-and one short-lived GitHub App installation-token file, and invokes the
-installed `crawler` entry point directly. It never installs or executes
-upstream code.
+the crawler health gates pass and rollback is disarmed. It mounts only the
+persistent cache subdirectory and one short-lived GitHub App installation-token
+file, and invokes the installed `crawler` entry point directly. It never
+installs or executes upstream code. The data-only container deliberately has no
+Docker Compose project/one-off labels: it neither touches crawler databases nor
+participates in crawler cutover, so a long inventory fetch cannot block or be
+removed by an unrelated crawler deployment.
 
 The GitHub App private key is delivered with systemd `LoadCredential`. A
 host-side helper signs a nine-minute JWT with OpenSSL, mints an installation
@@ -364,16 +367,21 @@ for the exact reviewed crawler tag and full revision under the crawler mutation
 lock, snapshots the prior host surface, and requires both the timer and active
 service to stop cleanly before replacement. Every install runs the new surface
 once in report mode against an exact-image acceptance pin while rollback remains
-armed. Only a fresh successful data-only report commits the install, restores
-the operator's prior write-gate state, and starts the timer; any failure restores
-the prior surface and scheduling state.
+armed and with an isolated disposable acceptance cache. The installer never
+removes or rolls back the independent operator write gate, so an emergency
+`disable` asserted during acceptance always wins. Only a fresh successful
+data-only report commits the install and starts the timer; any failure restores
+the prior executable surface and scheduling state.
 
-When the same push changes crawler runtime or deployment files, the ATS workflow
-derives the crawler workflow's immutable tag and waits for that exact revision.
+When the same push changes any path that triggers the crawler workflow, the ATS
+workflow evaluates the full GitHub push range with the crawler workflow's exact
+include/exclude rules, derives its immutable tag, and waits for that revision.
 A host-surface-only ATS change instead snapshots the already committed tag and
 revision under the same lock; it does not rebuild or overwrite an unchanged
 crawler image. The installer repeats the exact resolved pair check before
-mutation, closing the gap between the workflow wait and host replacement.
+mutation, closing the gap between the workflow wait and host replacement. Root
+opens the shared mutation lock read-only and normalizes a missing post-reboot
+inode to `deploy:deploy 0600`, preserving access for later deploy-user jobs.
 
 After stage 1, record the created issue/source key, resolver claim time,
 verified/fallback/PR/closed outcome, and the exactly-one replacement refill in

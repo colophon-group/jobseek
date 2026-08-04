@@ -50,7 +50,7 @@ tar --create --gzip --file - \
   deploy/ats-inventory \
   deploy/systemd/jobseek-ats-inventory.service \
   deploy/systemd/jobseek-ats-inventory.timer |
-  timeout --foreground --signal=TERM --kill-after=30s 15m \
+  timeout --foreground --signal=TERM --kill-after=30s 5m \
     ssh "${ssh_options[@]}" "root@$TARGET_HOST" \
     "install -d -o root -g root -m 0755 /opt/jobseek-ats-inventory && \
       tar --extract --gzip --file - --directory /opt/jobseek-ats-inventory \
@@ -60,21 +60,32 @@ tar --create --gzip --file - \
 # exact reviewed crawler release to pass health checks and commit. The crawler
 # mutation lock prevents observing its marker while a deploy or maintenance
 # operation is active; the installer repeats this gate before any mutation.
-resolved_release="$(timeout --foreground --signal=TERM --kill-after=30s 150m \
+resolved_release="$(timeout --foreground --signal=TERM --kill-after=30s 60m \
   ssh "${ssh_options[@]}" "root@$TARGET_HOST" \
   "bash -s -- '$EXPECTED_TAG' '$EXPECTED_REVISION'" <<'REMOTE'
 set -euo pipefail
 expected_tag="$1"
 expected_revision="$2"
 marker=/home/deploy/.crawler-deploy-success.env
+lock=/run/lock/jobseek-crawler-mutation.lock
+open_shared_lock() {
+  if [[ ! -e "$lock" ]]; then
+    (umask 077; set -o noclobber; : >"$lock") 2>/dev/null || true
+  fi
+  [[ -f "$lock" && ! -L "$lock" ]] || return 1
+  chown deploy:deploy "$lock"
+  chmod 0600 "$lock"
+  [[ "$(stat -c '%U:%G:%a' "$lock")" == deploy:deploy:600 ]] || return 1
+  exec 8<"$lock"
+}
 read_exact() {
   local key="$1"
   mapfile -t matches < <(sed -n "s/^${key}=//p" "$marker" 2>/dev/null)
   [[ ${#matches[@]} -eq 1 ]] || return 1
   printf '%s' "${matches[0]}"
 }
-for ((attempt = 1; attempt <= 300; attempt++)); do
-  exec 8>/run/lock/jobseek-crawler-mutation.lock
+for ((attempt = 1; attempt <= 120; attempt++)); do
+  open_shared_lock
   if flock -w 30 8; then
     deployed_tag="$(read_exact CRAWLER_IMAGE_TAG || true)"
     deployed_revision="$(read_exact JOBSEEK_DEPLOY_REVISION || true)"
@@ -106,7 +117,7 @@ read -r resolved_tag resolved_revision extra <<<"$resolved_release"
   printf '%s' "$ATS_GITHUB_APP_INSTALLATION_ID" | base64 | tr -d '\n'; printf '\n'
   printf '%s' "$ATS_GITHUB_APP_PRIVATE_KEY" | base64 | tr -d '\n'; printf '\n'
 } >"$payload"
-timeout --foreground --signal=TERM --kill-after=30s 5h \
+timeout --foreground --signal=TERM --kill-after=30s 250m \
   ssh "${ssh_options[@]}" "root@$TARGET_HOST" \
   "bash /opt/jobseek-ats-inventory/deploy/ats-inventory/install-host-from-stdin.sh" \
   <"$payload"
