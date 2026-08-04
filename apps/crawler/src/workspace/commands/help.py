@@ -77,6 +77,7 @@ Monitor Types (cheapest first):
   almacareer        10      Full job data     No (skipped)
   adp               10      Full/partial      Auto-enriched
   ashby             10      Full job data     No (skipped)
+  avature           10      Job URLs          Auto-configured DOM
   bamboohr          10      Full/partial      Auto-enriched
   beisen            10      Full/partial      Auto skip/DOM enrich
   bite              10      Job URLs          Auto-configured
@@ -976,6 +977,8 @@ dom — Link Extraction (fallback)
     headless       Run headless (default: true)
     proxy          Route traffic through the configured proxy provider. Use for
                    origins that block the crawler's datacenter IP.
+    retry_statuses Static HTTP status-to-retry-count map, for provider-specific
+                   transient responses only (HTTP 400-599, maximum 5 retries).
     persistent_context
                    Use a real browser profile shape for anti-bot challenges.
                    Usually pair with channel: "chrome" and headless: false.
@@ -1135,6 +1138,28 @@ keka — Keka public career-portal API
               and authoritative listing 404/410 are treated as BoardGone.
   Upstream:   ats-scrapers is inventory input only. Jobseek does not import,
               execute, or depend on upstream scraper code."""
+
+MONITOR_AVATURE = """\
+avature — Avature public static listing monitor
+
+  Listing:  https://{host}/{optional-locale}/{portal}/SearchJobs
+  Map:      https://{host}/{optional-locale}/{portal}/SearchJobsMaps
+  Config:   {"listing_url":"https://acme.avature.net/careers/SearchJobs",
+             "portal_id":"4"}
+
+  Returns stable JobDetail, FolderDetail, or PipelineDetail URLs. The monitor
+  follows Avature's explicit static next link; it does not use the capped RSS
+  feed. Branded custom domains are accepted only after live avature.portal.*
+  metadata validation. Direct *.avature.net URLs and links found on the
+  company career page are auto-detected without tenant slug guessing.
+
+  Detail scraper: auto-configured shared DOM scraper. ws may refine its DOM
+  steps for localized or heavily customized portal templates after sampling.
+  A first-page 404/410 is definitive gone; 202/401/403/406 and transport
+  failures remain transient. Configure the normal proxy option for WAF-gated
+  portals.
+"""
+
 
 MONITOR_TALEO = """\
 taleo — Taleo Business Edition static listing monitor
@@ -2578,6 +2603,7 @@ MONITOR_CARDS: dict[str, str] = {
     "lever": MONITOR_LEVER,
     "ashby": MONITOR_ASHBY,
     "adp": MONITOR_ADP,
+    "avature": MONITOR_AVATURE,
     "bamboohr": MONITOR_BAMBOOHR,
     "beisen": MONITOR_BEISEN,
     "paycom": MONITOR_PAYCOM,

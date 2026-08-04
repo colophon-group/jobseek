@@ -909,6 +909,7 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
 
 _MONITOR_CONFIG_HINTS = {
     "adp": "Requires: cid, cc_id, locale (auto-filled from an ADP Workforce Now URL)",
+    "avature": "Requires: listing_url, portal_id (auto-filled from an Avature public portal)",
     "join": "Optional: slug (auto-derived from join.com URL), description_path(s)",
     "ashby": "Requires: token (auto-filled from probe)",
     "bamboohr": "Requires: tenant (auto-filled from a BambooHR careers URL)",

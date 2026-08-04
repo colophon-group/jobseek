@@ -39,6 +39,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `almacareer` | Rich | skip | AlmaCareer / Capybara GraphQL boards |
 | `amazon` | Rich | skip | Amazon Jobs |
 | `ashby` | Rich | skip | Ashby ATS |
+| `avature` | URL-only | dom | Avature static listings and map data, with streamed pagination |
 | `bamboohr` | Rich | api_sniffer | BambooHR summaries plus detail API enrichment |
 | `beisen` | Rich/hybrid | skip or DOM enrichment | Beisen modern public API + legacy server-rendered listings |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
