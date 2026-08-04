@@ -128,10 +128,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Record protected owner authorization
+        env:
+          AUTHORIZING_ACTOR: ${{ github.actor }}
+          CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -euo pipefail
-          test "${{ github.actor }}" = viktor-shcherb
-          test "${{ inputs.confirmation }}" = DROP-ONLY-JOB-POSTING-0086
+          test "$AUTHORIZING_ACTOR" = viktor-shcherb
+          test "$CONFIRMATION" = DROP-ONLY-JOB-POSTING-0086
           echo "Protected production-migrations approval recorded; live evidence will be revalidated before any write." >> "$GITHUB_STEP_SUMMARY"
 
   apply:
