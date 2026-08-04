@@ -240,12 +240,18 @@ class QueueRefiller:
                 if self.refresh_open_count is None:
                     raise RuntimeError("refill requires a live open-queue counter")
                 try:
-                    latest_open_count = await self.refresh_open_count()
+                    refreshed_open_count = await self.refresh_open_count()
                 except GitHubRateLimitError as exc:
                     status = "rate_limited"
                     retry_after = exc.retry_after
                     retry_at = exc.retry_at(now=int(now.timestamp()))
                     break
+                # GitHub list consistency must not make this process forget
+                # issues it already committed during the current batch.
+                latest_open_count = max(
+                    refreshed_open_count,
+                    before.total_open + created,
+                )
                 if latest_open_count >= self.policy.hard_cap - _EXTERNAL_WRITER_RESERVE:
                     status = "hard_cap_live"
                     break

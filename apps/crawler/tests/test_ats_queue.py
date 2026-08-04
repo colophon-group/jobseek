@@ -294,6 +294,30 @@ async def test_live_hard_cap_recheck_reserves_a_slot_for_external_writer(
 
 
 @pytest.mark.asyncio
+async def test_live_hard_cap_remembers_own_create_if_github_list_is_stale(
+    tmp_path: Path,
+) -> None:
+    items = [_item(number) for number in range(1, 599)]
+    refiller, _, client = await _refiller(
+        tmp_path,
+        items=items,
+        claims=[_claim(number, NOW) for number in range(1, 201)],
+        policy=QueuePolicy(rollout_cap=5),
+    )
+
+    async def stale_open_count() -> int:
+        return 598
+
+    refiller.refresh_open_count = stale_open_count
+    report = await refiller.run([_impact(1, 100), _impact(2, 90)], mode="refill")
+    assert report.status == "hard_cap_live"
+    assert report.requested_creates == 2
+    assert report.created == 1
+    assert report.total_open_after == 599
+    assert len(client.created_labels) == 1
+
+
+@pytest.mark.asyncio
 async def test_coverage_quarantine_suppresses_all_candidate_admission(tmp_path: Path) -> None:
     refiller, _, client = await _refiller(tmp_path, policy=QueuePolicy(rollout_cap=25))
     report = await refiller.run(
