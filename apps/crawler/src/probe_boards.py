@@ -58,6 +58,7 @@ from src.shared.keka import (
     keka_board_from_metadata,
     keka_board_from_url,
 )
+from src.shared.pageup import pageup_board_from_metadata, pageup_board_from_url
 from src.shared.recruiterbox import (
     recruiterbox_board_from_metadata,
     recruiterbox_board_from_url,
@@ -997,6 +998,90 @@ async def _probe_jobvite(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     )
 
 
+async def _probe_pageup(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = pageup_board_from_metadata(cfg)
+    direct = pageup_board_from_url(row["board_url"])
+    identity_keys = {"instance", "source_pointer", "locale", "listing_url"}
+    if configured is None and identity_keys & cfg.keys():
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            row["board_url"],
+            "warn",
+            "invalid PageUp identity in monitor_config",
+        )
+    if configured is not None and direct is not None and configured != direct:
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            configured.listing_url,
+            "fail",
+            "configured PageUp identity does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            row["board_url"],
+            "warn",
+            "no valid PageUp listing identity",
+        )
+
+    from src.core.monitors.pageup import (
+        PROBE_PAGE_SIZE,
+        _fetch_listing_page,
+        _parse_listing_page,
+    )
+
+    try:
+        url, document = await _fetch_listing_page(
+            board,
+            client,
+            page=1,
+            page_size=PROBE_PAGE_SIZE,
+            terminal=False,
+        )
+        _jobs, total, _has_next = _parse_listing_page(
+            document,
+            url,
+            board,
+            page=1,
+            page_size=PROBE_PAGE_SIZE,
+            expected_total=None,
+        )
+    except PaginationFetchError as exc:
+        status = "fail" if exc.last_status in {404, 410} else "warn"
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            board.listing_url,
+            status,
+            f"PageUp listing fetch failed ({exc.last_status or exc.last_error})",
+        )
+    except ValueError as exc:
+        return ProbeResult(
+            row["board_slug"],
+            "pageup",
+            board.listing_url,
+            "warn",
+            str(exc),
+        )
+    return ProbeResult(
+        row["board_slug"],
+        "pageup",
+        board.listing_url,
+        "ok",
+        f"200 ({total} jobs)",
+    )
+
+
 async def _probe_ukg(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     cfg: dict[str, object] = {}
     if row["monitor_config"]:
@@ -1224,6 +1309,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "adp": _probe_adp,
     "avature": _probe_avature,
     "jobvite": _probe_jobvite,
+    "pageup": _probe_pageup,
     "ukg": _probe_ukg,
     "greenhouse": _probe_greenhouse,
     "lever": _probe_lever,

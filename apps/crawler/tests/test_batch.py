@@ -154,6 +154,9 @@ class TestThrottleKey:
                     metadata={"host": "acme.darwinbox.in", "company_id": "main"},
                 )
                 assert _throttle_key(board) == "acme.darwinbox.in"
+            elif api_type == "pageup":
+                board = self._board(crawler_type=api_type)
+                assert _throttle_key(board) == "careers.pageuppeople.com"
             else:
                 board = self._board(crawler_type=api_type)
                 assert _throttle_key(board) == api_type

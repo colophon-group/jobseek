@@ -98,6 +98,7 @@ Monitor Types (cheapest first):
   hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
   jazzhr            10      Job URLs          Auto-configured
+  pageup            10      Full/partial      Auto-enriched DOM
   keka              10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
@@ -1208,6 +1209,39 @@ jobvite — Jobvite public static listing monitor
              career-page HTML. Unknown-tenant redirects are BoardGone;
              transient status, transport, empty-body, and malformed-page
              failures do not remove jobs.
+  Upstream:  ats-scrapers is inventory input only. Jobseek does not import,
+             execute, or depend on upstream scraper code.
+"""
+
+
+MONITOR_PAGEUP = """\
+pageup — PageUp public static listing monitor
+
+  Listing:  https://careers.pageuppeople.com/{instance}/{source}/{locale}
+  Returns:  Rich title summaries plus stable /job/{id}/{slug} detail URLs
+  Scraper:  Auto-configured shared static DOM description enrichment
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs, 500 jobs/page, 5 MB/page
+
+  Config:
+    {"instance":873,"source_pointer":"cw","locale":"en-us",
+     "listing_url":"https://careers.pageuppeople.com/873/cw/en-us"}
+
+  Each page is checked against PageUp's first-party PU.Jobs.source identity
+  when present, stable visible titles, exact page size, and explicit next-page
+  remaining count. Branded proxy templates that omit PU.Jobs.source are accepted
+  only with non-empty same-board job links; they can never assert an empty board.
+  Duplicate responsive-layout anchors are collapsed. Missing, overlapping,
+  conflicting, or changing pages fail the run instead of removing jobs. Pages
+  stream in bounded batches to keep worker heartbeats live.
+
+  The monitor never fetches per-job details. The shared DOM scraper enriches
+  only descriptions on its normal schedule and recognizes PageUp's explicit
+  jobnotfound redirect as a permanent gone signal.
+
+  Detection: Direct PageUp listing/detail URLs or explicit PageUp links in a
+             career page. Instance IDs are never guessed.
+  Zero jobs? A first-party listing with authoritative total 0 is valid.
   Upstream:  ats-scrapers is inventory input only. Jobseek does not import,
              execute, or depend on upstream scraper code.
 """
@@ -2662,6 +2696,7 @@ MONITOR_CARDS: dict[str, str] = {
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "jobvite": MONITOR_JOBVITE,
+    "pageup": MONITOR_PAGEUP,
     "icims": MONITOR_ICIMS,
     "gupy": MONITOR_GUPY,
     "cornerstone": MONITOR_CORNERSTONE,

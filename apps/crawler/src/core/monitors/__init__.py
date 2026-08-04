@@ -441,6 +441,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Avature static listing \u2014 {jobs} jobs at {listing_url}"
         return f"Avature static listing \u2014 {listing_url}"
+    if name == "pageup":
+        listing_url = metadata.get("listing_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"PageUp static listing \u2014 {jobs} jobs at {listing_url}"
+        return f"PageUp static listing \u2014 {listing_url}"
     if name == "ukg":
         tenant = metadata.get("tenant", "?")
         board_id = metadata.get("board_id", "?")
@@ -790,6 +796,7 @@ from src.core.monitors import (  # noqa: E402
     nextdata,  # noqa: F401
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
+    pageup,  # noqa: F401
     paycom,  # noqa: F401
     paylocity,  # noqa: F401
     personio,  # noqa: F401

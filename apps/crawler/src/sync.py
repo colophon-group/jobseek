@@ -625,6 +625,8 @@ def _compute_throttle_key(
         resolved_host = avature_request_host(board_url, metadata or {})
         if resolved_host:
             return resolved_host
+    if monitor_type == "pageup":
+        return "careers.pageuppeople.com"
     if monitor_type in _API_MONITOR_TYPES:
         return monitor_type
     if monitor_type == "taleo":

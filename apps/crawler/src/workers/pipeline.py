@@ -131,6 +131,13 @@ def _configured_egress_host(config: dict) -> str:
         if resolved_host:
             return normalize_egress_host(resolved_host)
 
+    if config.get("crawler_type") == "pageup" and isinstance(metadata, dict):
+        from src.shared.pageup import pageup_board_from_metadata
+
+        resolved = pageup_board_from_metadata(metadata)
+        if resolved is not None:
+            return "careers.pageuppeople.com"
+
     monitor_config = metadata.get("monitor_config", {}) if isinstance(metadata, dict) else {}
     if isinstance(monitor_config, dict):
         for key in ("api_url", "endpoint", "base_url", "url"):

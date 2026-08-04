@@ -250,6 +250,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "paycom",
         "jazzhr",
         "jobs.jobvite.com",
+        "careers.pageuppeople.com",
         "icims",
         "workable",
         "smartrecruiters",
