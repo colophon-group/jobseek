@@ -1433,13 +1433,11 @@ async def _process_scrape_work(
         # monitor's relisted path will re-enqueue when the URL is
         # next discovered.
         #
-        # Hash-delete is deliberately skipped on the tombstoned path:
-        # if the monitor relists this URL between our SELECT and a
-        # ``r.delete``, the relisted_scrapes enqueue would write a
-        # fresh ``scrape:<id>`` hash that we'd then wipe — silently
-        # losing the relist until the next monitor cycle. The hash
-        # leaks instead (one entry per tombstoned posting, ~100B
-        # each); steady-state cost is bounded.
+        # Config cleanup is delegated to ``complete_task.lua`` after this
+        # function returns. It removes the hash only when no scrape queue,
+        # lease, or deadletter references the posting. That atomic check
+        # preserves a concurrent relist/reroute while preventing terminal
+        # config hashes from accumulating forever.
         #
         # Recovery: when Postgres is reachable, the monitor's
         # ``relisted`` CTE re-enqueues to Redis via
@@ -1518,12 +1516,6 @@ async def _process_scrape_work(
             _process_one_scrape,
         )
 
-        async def _delete_scrape_hash() -> None:
-            try:
-                await r.delete(f"scrape:{posting_id}")
-            except Exception:
-                worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
-
         async def _reroute_to_browser(reason: str) -> None:
             """Self-heal: a slim worker claimed a task whose current scraper
             config requires a browser. Re-enqueue to the browser queue so a
@@ -1569,7 +1561,6 @@ async def _process_scrape_work(
             """
             async with local_pool.acquire() as conn:
                 await conn.execute(_CLEAR_SCRAPE_FOR_RICH, [posting_id])
-            await _delete_scrape_hash()
             tasks_total.labels(kind="scrape", status="skipped_rich").inc()
             worker_log.info(
                 "pipeline.scrape.skipped_rich",
@@ -1592,7 +1583,6 @@ async def _process_scrape_work(
 
             async with local_pool.acquire() as conn:
                 await conn.execute(_RECORD_SCRAPE_TRANSIENT, posting_id)
-            await _delete_scrape_hash()
             tasks_total.labels(kind="scrape", status="stale_config").inc()
             worker_log.warning(
                 "pipeline.scrape.stale_config",

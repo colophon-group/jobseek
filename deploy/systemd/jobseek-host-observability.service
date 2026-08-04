@@ -10,7 +10,7 @@ ConditionPathExists=/etc/jobseek-observability/host.env
 Type=oneshot
 EnvironmentFile=/etc/jobseek-observability/host.env
 ExecStart=/usr/local/sbin/jobseek-host-observability
-TimeoutStartSec=2m
+TimeoutStartSec=3m
 UMask=0077
 
 NoNewPrivileges=true

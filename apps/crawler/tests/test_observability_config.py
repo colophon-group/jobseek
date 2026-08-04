@@ -221,6 +221,27 @@ def test_postgresql_capacity_alert_uses_current_and_forecast_headroom() -> None:
     )
 
 
+def test_redis_capacity_alerts_cover_attribution_growth_and_lead_time() -> None:
+    stale = _alert_rule("RedisCapacitySnapshotStale")
+    orphan = _alert_rule("RedisOrphanScrapeConfigs")
+    family = _alert_rule("RedisKeyFamilyBudgetHigh")
+    forecast = _alert_rule("RedisMemoryForecastPressure")
+
+    assert "snapshot_available" in stale["expr"]
+    assert "snapshot_unixtime" in stale["expr"]
+    assert 'state="orphan"' in orphan["expr"]
+    assert "estimated_bytes" in family["expr"]
+    assert "budget_bytes" in family["expr"]
+    assert "predict_linear" in forecast["expr"]
+    assert "0.75" in forecast["expr"]
+    for rule in (stale, orphan, family, forecast):
+        assert rule["labels"]["severity"] == "high"
+        assert rule["labels"]["owner"] == "codex-error-review"
+        assert rule["labels"]["route"] == "codex-daily"
+        assert rule["annotations"]["runbook"].endswith("docs/20-redis-capacity.md") is False
+        assert "docs/20-redis-capacity.md#" in rule["annotations"]["runbook"]
+
+
 def test_postgresql_checkpoint_alert_requires_requested_dominance() -> None:
     rule = _alert_rule("PostgreSQLCheckpointPressure")
 
