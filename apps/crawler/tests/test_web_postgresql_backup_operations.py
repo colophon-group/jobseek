@@ -52,7 +52,14 @@ def test_identity_requires_exact_deployed_revision_and_every_artifact(
     deployed_path.write_text(deployed_sha + "\n", encoding="utf-8")
     artifacts = {
         name: tmp_path / name
-        for name in ("data_backup", "operations", "restore_drill", "service", "timer")
+        for name in (
+            "data_backup",
+            "operations",
+            "retirement_migration",
+            "restore_drill",
+            "service",
+            "timer",
+        )
     }
     for name, path in artifacts.items():
         path.write_text(f"{name}\n", encoding="utf-8")
@@ -425,6 +432,83 @@ def test_bound_backup_rejects_deployment_or_live_status_drift(
         operations.load_bound_backup(expected)
 
 
+def test_restore_binds_exact_retirement_artifact_and_convergence_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    operations = load_operations()
+    migration_sha256 = "d" * 64
+    expected = operations.ExpectedIdentity("a" * 40, {"retirement_migration": migration_sha256})
+    backup = {
+        "archive_sha256": "c" * 64,
+        "row_count": 12,
+        "table_count": 17,
+    }
+    evidence: dict[str, object] = {"backup": backup}
+    restore_status = {
+        "archive_sha256": backup["archive_sha256"],
+        "deploy_sha": expected.deploy_sha,
+        "duration_seconds": 3,
+        "finished_at": "1970-01-01T00:16:40Z",
+        "retirement_convergence_applied": True,
+        "retirement_created_at": 1_785_760_800_000,
+        "retirement_ledger_count": 76,
+        "retirement_migration_sha256": migration_sha256,
+        "row_count": backup["row_count"],
+        "saved_job_digest": "e" * 32,
+        "saved_job_rows": 4,
+        "service": "web-postgresql-restore",
+        "started_at": "1970-01-01T00:16:40Z",
+        "success": True,
+        "table_count": backup["table_count"],
+    }
+    observed_restore: dict[str, object] = {}
+    writes: list[dict[str, object]] = []
+
+    def load_bound(_expected: object, *, clear_restore: bool = False) -> tuple[object, object]:
+        if clear_restore:
+            evidence.pop("restore", None)
+        return evidence, backup
+
+    def run_drill(_resources: object, **kwargs: object) -> None:
+        observed_restore.update(kwargs)
+
+    monkeypatch.setattr(operations, "validate_host_readiness", lambda _expected: None)
+    monkeypatch.setattr(operations, "load_bound_backup", load_bound)
+    monkeypatch.setattr(operations, "timer_state", lambda: ("disabled", "inactive"))
+    monkeypatch.setattr(operations, "service_data_lock", lambda: nullcontext(42))
+    monkeypatch.setattr(operations, "reconcile_stale_restore_resources", lambda: None)
+    monkeypatch.setattr(operations, "run_restore_drill", run_drill)
+    monkeypatch.setattr(operations, "read_json", lambda _path: restore_status)
+    monkeypatch.setattr(operations, "atomic_json", lambda _path, value: writes.append(value))
+    monkeypatch.setattr(operations.time, "time", lambda: 1_000)
+
+    operations.run_restore_locked(expected, deployment_lock_fd=43)
+
+    assert observed_restore == {
+        "deploy_sha": expected.deploy_sha,
+        "service_lock_fd": 42,
+        "deployment_lock_fd": 43,
+    }
+    assert evidence["restore"] == {
+        field: restore_status[field] for field in operations.RESTORE_FIELDS
+    }
+    assert writes[-1] is evidence
+
+    restore_status["retirement_ledger_count"] = 79
+    with pytest.raises(operations.OperationError, match="does not match the bound backup"):
+        operations.run_restore_locked(expected, deployment_lock_fd=43)
+
+    restore_status["retirement_convergence_applied"] = False
+    operations.run_restore_locked(expected, deployment_lock_fd=43)
+    assert evidence["restore"] == {
+        field: restore_status[field] for field in operations.RESTORE_FIELDS
+    }
+
+    restore_status["retirement_migration_sha256"] = "f" * 64
+    with pytest.raises(operations.OperationError, match="does not match the bound backup"):
+        operations.run_restore_locked(expected, deployment_lock_fd=43)
+
+
 def test_enable_timer_rolls_back_partial_activation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -644,6 +728,7 @@ def test_restore_timeout_terminates_process_group_and_runs_exact_reconciliation(
     with pytest.raises(operations.OperationError, match="timed out"):
         operations.run_restore_drill(
             resources,
+            deploy_sha="f" * 40,
             service_lock_fd=42,
             deployment_lock_fd=43,
             timeout=1,
@@ -655,6 +740,7 @@ def test_restore_timeout_terminates_process_group_and_runs_exact_reconciliation(
     assert observed_env["WEB_POSTGRES_RESTORE_CONTAINER"] == resources.container
     assert observed_env["WEB_POSTGRES_RESTORE_NETWORK"] == resources.network
     assert observed_env["WEB_POSTGRES_RESTORE_OPERATION_ROOT"] == str(resources.operation_root)
+    assert observed_env["WEB_POSTGRES_RESTORE_DEPLOY_SHA"] == "f" * 40
     assert observed_env["WEB_POSTGRES_RESTORE_LOCK_FD"] == "42"
     assert observed_env["WEB_POSTGRES_RESTORE_DEPLOYMENT_LOCK_FD"] == "43"
     assert observed_pass_fds == (42, 43)
@@ -703,7 +789,7 @@ def test_restore_does_not_reconcile_until_process_group_death_is_proven(
     monkeypatch.setattr(operations, "reconcile_restore_resources", observe_reconcile)
 
     with pytest.raises(operations.OperationError, match="liveness cannot be excluded"):
-        operations.run_restore_drill(resources, timeout=1)
+        operations.run_restore_drill(resources, deploy_sha="f" * 40, timeout=1)
 
     assert reconciled is False
 
@@ -753,7 +839,7 @@ def test_restore_termination_is_retried_after_handler_setup_failure(
     )
 
     with pytest.raises(operations.OperationError, match="interrupted"):
-        operations.run_restore_drill(resources)
+        operations.run_restore_drill(resources, deploy_sha="f" * 40)
 
     assert terminations == [process.pid]
     assert reconciled == [resources]
@@ -821,6 +907,7 @@ def test_next_restore_reconciles_only_service_labeled_stale_resources_under_lock
         "        reconcile_stale_restore_resources()\n"
         "        run_restore_drill(\n"
         "            new_restore_resources(),\n"
+        "            deploy_sha=expected.deploy_sha,\n"
         "            service_lock_fd=service_lock_fd,\n"
         "            deployment_lock_fd=deployment_lock_fd,\n"
         "        )" in MODULE_PATH.read_text(encoding="utf-8")

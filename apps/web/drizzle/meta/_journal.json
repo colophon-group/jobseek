@@ -519,6 +519,13 @@
       "when": 1785757200000,
       "tag": "0085_saved_job_snapshot_contract",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1785760800000,
+      "tag": "0086_drop_supabase_job_posting",
+      "breakpoints": true
     }
   ]
 }

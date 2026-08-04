@@ -1,4 +1,4 @@
-import { pgTable, text, integer, uuid, timestamp, numeric, uniqueIndex, index, foreignKey, unique, serial, boolean, jsonb, smallint, real, check, bigint, primaryKey, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, text, integer, uuid, timestamp, numeric, uniqueIndex, index, foreignKey, unique, serial, boolean, jsonb, smallint, real, check, primaryKey, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const locationType = pgEnum("location_type", ['macro', 'country', 'region', 'city']);
@@ -162,6 +162,18 @@ export const savedJob = pgTable("saved_job", {
 	userId: text("user_id").notNull(),
 	jobPostingId: uuid("job_posting_id").notNull(),
 	savedAt: timestamp("saved_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	postingTitle: text("posting_title").notNull(),
+	postingSourceUrl: text("posting_source_url").notNull(),
+	postingFirstSeenAt: timestamp("posting_first_seen_at", { withTimezone: true, mode: 'string' }).notNull(),
+	postingIsActive: boolean("posting_is_active").notNull(),
+	postingSalaryMin: integer("posting_salary_min"),
+	postingSalaryMax: integer("posting_salary_max"),
+	postingSalaryCurrency: text("posting_salary_currency"),
+	postingSalaryPeriod: text("posting_salary_period"),
+	companyId: uuid("company_id").notNull(),
+	companyName: text("company_name").notNull(),
+	companySlug: text("company_slug").notNull(),
+	companyIcon: text("company_icon"),
 	status: text().default('saved').notNull(),
 	statusChangedAt: timestamp("status_changed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	appliedAt: timestamp("applied_at", { withTimezone: true, mode: 'string' }),
@@ -172,20 +184,16 @@ export const savedJob = pgTable("saved_job", {
 	salaryCurrencyOverride: text("salary_currency_override"),
 	salaryPeriodOverride: text("salary_period_override"),
 }, (table) => [
-	uniqueIndex("idx_sj_user_posting").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.jobPostingId.asc().nullsLast().op("text_ops")),
+	uniqueIndex("idx_sj_user_posting").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.jobPostingId.asc().nullsLast().op("uuid_ops")),
 	index("idx_sj_user_saved_at").using("btree", table.userId.asc().nullsLast().op("timestamptz_ops"), table.savedAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_sj_user_status").using("btree", table.userId.asc().nullsLast(), table.status.asc().nullsLast()),
 	index("idx_sj_user_status_changed").using("btree", table.userId.asc().nullsLast(), table.statusChangedAt.asc().nullsLast()),
-	foreignKey({
-			columns: [table.jobPostingId],
-			foreignColumns: [jobPosting.id],
-			name: "saved_job_job_posting_id_job_posting_id_fk"
-		}).onDelete("cascade"),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [user.id],
 			name: "saved_job_user_id_user_id_fk"
 		}).onDelete("cascade"),
+	check("saved_job_snapshot_text_nonblank_check", sql`NULLIF(btrim(posting_title), ''::text) IS NOT NULL AND NULLIF(btrim(posting_source_url), ''::text) IS NOT NULL AND NULLIF(btrim(company_name), ''::text) IS NOT NULL AND NULLIF(btrim(company_slug), ''::text) IS NOT NULL`),
 ]);
 
 export const applicationInterview = pgTable("application_interview", {
@@ -200,7 +208,7 @@ export const applicationInterview = pgTable("application_interview", {
 	foreignKey({
 			columns: [table.savedJobId],
 			foreignColumns: [savedJob.id],
-			name: "application_interview_saved_job_id_saved_job_id_fk"
+			name: "application_interview_saved_job_id_fkey"
 		}).onDelete("cascade"),
 ]);
 
@@ -365,81 +373,6 @@ export const currencyRate = pgTable("currency_rate", {
 	toEur: numeric("to_eur", { precision: 10, scale:  6 }).notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 });
-
-export const jobPosting = pgTable("job_posting", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	companyId: uuid("company_id").notNull(),
-	boardId: uuid("board_id"),
-	sourceUrl: text("source_url").notNull(),
-	firstSeenAt: timestamp("first_seen_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: 'string' }),
-	employmentType: text("employment_type"),
-	nextScrapeAt: timestamp("next_scrape_at", { withTimezone: true, mode: 'string' }),
-	lastScrapedAt: timestamp("last_scraped_at", { withTimezone: true, mode: 'string' }),
-	leasedUntil: timestamp("leased_until", { withTimezone: true, mode: 'string' }),
-	scrapeFailures: smallint("scrape_failures").default(0).notNull(),
-	missingCount: smallint("missing_count").default(0).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	descriptionR2Hash: bigint("description_r2_hash", { mode: "number" }),
-	isActive: boolean("is_active").default(true).notNull(),
-	locales: text().array().default([""]).notNull(),
-	titles: text().array().default([""]).notNull(),
-	locationIds: integer("location_ids").array(),
-	locationTypes: text("location_types").array(),
-	enrichment: jsonb(),
-	toBeEnriched: boolean("to_be_enriched").default(true).notNull(),
-	enrichVersion: smallint("enrich_version").default(0).notNull(),
-	lastEnrichedAt: timestamp("last_enriched_at", { withTimezone: true, mode: 'string' }),
-	leaseOwner: text("lease_owner"),
-	occupationId: integer("occupation_id"),
-	seniorityId: integer("seniority_id"),
-	technologyIds: integer("technology_ids").array(),
-	salaryMin: integer("salary_min"),
-	salaryMax: integer("salary_max"),
-	salaryCurrency: text("salary_currency"),
-	salaryPeriod: text("salary_period"),
-	salaryEur: integer("salary_eur"),
-	experienceMin: numeric("experience_min", { precision: 3, scale: 1 }),
-	experienceMax: numeric("experience_max", { precision: 3, scale: 1 }),
-}, (table) => [
-	index("idx_jp_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`(is_active = true)`),
-	index("idx_jp_board_url").using("btree", table.boardId.asc().nullsLast().op("uuid_ops"), table.sourceUrl.asc().nullsLast().op("text_ops")),
-	index("idx_jp_company").using("btree", table.companyId.asc().nullsLast().op("uuid_ops")),
-	index("idx_jp_experience_min").using("btree", table.experienceMin.asc().nullsLast().op("numeric_ops")).where(sql`(experience_min IS NOT NULL)`),
-	index("idx_jp_lease").using("btree", table.leasedUntil.asc().nullsLast().op("timestamptz_ops")).where(sql`(leased_until IS NOT NULL)`),
-	index("idx_jp_location_ids").using("gin", table.locationIds.asc().nullsLast().op("array_ops")),
-	index("idx_jp_next_scrape").using("btree", table.nextScrapeAt.asc().nullsLast().op("timestamptz_ops")).where(sql`((is_active = true) AND (next_scrape_at IS NOT NULL))`),
-	index("idx_jp_occupation").using("btree", table.occupationId.asc().nullsLast().op("int4_ops")).where(sql`(occupation_id IS NOT NULL)`),
-	index("idx_jp_salary_eur").using("btree", table.salaryEur.asc().nullsLast().op("int4_ops")).where(sql`(salary_eur IS NOT NULL)`),
-	index("idx_jp_search_vector").using("gin", sql`((setweight(to_tsvector('simple'::regconfig, COALESCE(titles[1]`),
-	index("idx_jp_seniority").using("btree", table.seniorityId.asc().nullsLast().op("int4_ops")).where(sql`(seniority_id IS NOT NULL)`),
-	index("idx_jp_technology_ids").using("gin", table.technologyIds.asc().nullsLast().op("array_ops")).where(sql`(technology_ids IS NOT NULL)`),
-	index("idx_jp_to_be_enriched").using("btree", table.toBeEnriched.asc().nullsLast().op("bool_ops")).where(sql`((is_active = true) AND (to_be_enriched = true))`),
-	foreignKey({
-			columns: [table.boardId],
-			foreignColumns: [jobBoard.id],
-			name: "job_posting_board_id_job_board_id_fk"
-		}).onDelete("set null"),
-	foreignKey({
-			columns: [table.companyId],
-			foreignColumns: [company.id],
-			name: "job_posting_company_id_company_id_fk"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.occupationId],
-			foreignColumns: [occupation.id],
-			name: "job_posting_occupation_id_fkey"
-		}),
-	foreignKey({
-			columns: [table.seniorityId],
-			foreignColumns: [seniority.id],
-			name: "job_posting_seniority_id_fkey"
-		}),
-	unique("job_posting_source_url_unique").on(table.sourceUrl),
-	check("chk_employment_type", sql`(employment_type IS NULL) OR (employment_type = ANY (ARRAY['full_time'::text, 'part_time'::text, 'contract'::text, 'internship'::text, 'temporary'::text, 'volunteer'::text, 'full_or_part'::text]))`),
-	check("chk_location_arrays_length", sql`((location_ids IS NULL) AND (location_types IS NULL)) OR (array_length(location_ids, 1) = array_length(location_types, 1))`),
-	check("chk_location_types", sql`location_types <@ ARRAY['onsite'::text, 'remote'::text, 'hybrid'::text]`),
-]);
 
 export const verification = pgTable("verification", {
 	id: text().primaryKey().notNull(),

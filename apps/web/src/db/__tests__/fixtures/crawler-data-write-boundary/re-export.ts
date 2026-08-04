@@ -1,1 +1,1 @@
-export { jobPosting as crawlerTable } from "../../../schema";
+export { jobPosting as crawlerTable } from "./fixture-schema";

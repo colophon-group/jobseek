@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { company, jobPosting } from "./schema";
+import { company } from "./schema";
 import { logExternalError } from "@/lib/safe-external-error";
 
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
@@ -17,7 +17,7 @@ async function main() {
   console.log("Seeding database...");
 
   // --- Companies ---
-  const [acme, globex, initech] = await db
+  await db
     .insert(company)
     .values([
       {
@@ -39,41 +39,7 @@ async function main() {
         description: "Enterprise software solutions.",
       },
     ])
-    .returning();
-
-  // --- Job Postings ---
-  await db.insert(jobPosting).values([
-    {
-      companyId: acme.id,
-      titles: ["Senior Frontend Engineer"],
-      locales: ["en"],
-      sourceUrl: "https://acme.example.com/jobs/senior-frontend-engineer",
-    },
-    {
-      companyId: acme.id,
-      titles: ["Backend Developer"],
-      locales: ["en"],
-      sourceUrl: "https://acme.example.com/jobs/backend-developer",
-    },
-    {
-      companyId: globex.id,
-      titles: ["Product Manager"],
-      locales: ["en"],
-      sourceUrl: "https://globex.example.com/jobs/product-manager",
-    },
-    {
-      companyId: globex.id,
-      titles: ["DevOps Engineer"],
-      locales: ["en"],
-      sourceUrl: "https://globex.example.com/jobs/devops-engineer",
-    },
-    {
-      companyId: initech.id,
-      titles: ["Full Stack Developer"],
-      locales: ["en"],
-      sourceUrl: "https://initech.example.com/jobs/full-stack-developer",
-    },
-  ]);
+    .onConflictDoNothing();
 
   // --- Subscriptions (placeholder user IDs — no real users in seed) ---
   // Skipped: subscriptions reference user.id via FK, so seeding

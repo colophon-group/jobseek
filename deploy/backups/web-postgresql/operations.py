@@ -57,6 +57,9 @@ _BACKUP_FAILURE_CONTROL = re.compile(r"[\x00-\x1f\x7f]+")
 ARTIFACT_PATHS = {
     "data_backup": Path("/usr/local/sbin/jobseek-data-backup"),
     "operations": Path("/usr/local/sbin/jobseek-web-postgresql-operations"),
+    "retirement_migration": Path(
+        "/usr/local/share/jobseek-backup/0086_drop_supabase_job_posting.sql"
+    ),
     "restore_drill": Path("/usr/local/sbin/jobseek-web-postgresql-restore-drill"),
     "service": Path("/etc/systemd/system/jobseek-web-postgresql-backup.service"),
     "timer": Path("/etc/systemd/system/jobseek-web-postgresql-backup.timer"),
@@ -64,6 +67,7 @@ ARTIFACT_PATHS = {
 ARTIFACT_MODES = {
     "data_backup": 0o755,
     "operations": 0o755,
+    "retirement_migration": 0o644,
     "restore_drill": 0o755,
     "service": 0o644,
     "timer": 0o644,
@@ -84,9 +88,16 @@ BACKUP_FIELDS = (
 )
 RESTORE_FIELDS = (
     "archive_sha256",
+    "deploy_sha",
     "duration_seconds",
     "finished_at",
+    "retirement_convergence_applied",
+    "retirement_created_at",
+    "retirement_ledger_count",
+    "retirement_migration_sha256",
     "row_count",
+    "saved_job_digest",
+    "saved_job_rows",
     "service",
     "started_at",
     "success",
@@ -384,6 +395,7 @@ def terminate_restore_process(process: subprocess.Popen[str]) -> None:
 def run_restore_drill(
     resources: RestoreResources,
     *,
+    deploy_sha: str,
     service_lock_fd: int | None = None,
     deployment_lock_fd: int | None = None,
     timeout: int = 90 * 60,
@@ -395,6 +407,7 @@ def run_restore_drill(
             "WEB_POSTGRES_RESTORE_CONTAINER": resources.container,
             "WEB_POSTGRES_RESTORE_NETWORK": resources.network,
             "WEB_POSTGRES_RESTORE_OPERATION_ROOT": str(resources.operation_root),
+            "WEB_POSTGRES_RESTORE_DEPLOY_SHA": deploy_sha,
         }
     )
     if (service_lock_fd is None) != (deployment_lock_fd is None):
@@ -851,6 +864,7 @@ def run_restore_locked(expected: ExpectedIdentity, *, deployment_lock_fd: int) -
         reconcile_stale_restore_resources()
         run_restore_drill(
             new_restore_resources(),
+            deploy_sha=expected.deploy_sha,
             service_lock_fd=service_lock_fd,
             deployment_lock_fd=deployment_lock_fd,
         )
@@ -858,6 +872,8 @@ def run_restore_locked(expected: ExpectedIdentity, *, deployment_lock_fd: int) -
         raise OperationError("restore operation changed the timer state")
     evidence, backup = load_bound_backup(expected)
     restore_status = read_json(RESTORE_STATUS_PATH)
+    convergence_applied = restore_status.get("retirement_convergence_applied")
+    retirement_ledger_count = restore_status.get("retirement_ledger_count")
     if (
         restore_status.get("service") != "web-postgresql-restore"
         or restore_status.get("success") is not True
@@ -866,6 +882,19 @@ def run_restore_locked(expected: ExpectedIdentity, *, deployment_lock_fd: int) -
         or restore_status.get("archive_sha256") != backup.get("archive_sha256")
         or restore_status.get("table_count") != backup.get("table_count")
         or restore_status.get("row_count") != backup.get("row_count")
+        or restore_status.get("deploy_sha") != expected.deploy_sha
+        or restore_status.get("retirement_migration_sha256")
+        != expected.artifact_sha256["retirement_migration"]
+        or restore_status.get("retirement_created_at") != 1_785_760_800_000
+        or not isinstance(convergence_applied, bool)
+        or isinstance(retirement_ledger_count, bool)
+        or not isinstance(retirement_ledger_count, int)
+        or retirement_ledger_count < 76
+        or (convergence_applied and retirement_ledger_count != 76)
+        or isinstance(restore_status.get("saved_job_rows"), bool)
+        or not isinstance(restore_status.get("saved_job_rows"), int)
+        or restore_status.get("saved_job_rows", -1) < 0
+        or not re.fullmatch(r"[0-9a-f]{32}", str(restore_status.get("saved_job_digest", "")))
     ):
         raise OperationError("fresh isolated restore evidence does not match the bound backup")
     restore = project(restore_status, RESTORE_FIELDS)
@@ -968,6 +997,7 @@ def expected_identity(args: argparse.Namespace) -> ExpectedIdentity:
         artifact_sha256={
             "data_backup": args.expected_data_backup_sha256,
             "operations": args.expected_operations_sha256,
+            "retirement_migration": args.expected_retirement_migration_sha256,
             "restore_drill": args.expected_restore_drill_sha256,
             "service": args.expected_service_sha256,
             "timer": args.expected_timer_sha256,
@@ -981,6 +1011,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-deploy-sha", required=True)
     parser.add_argument("--expected-data-backup-sha256", required=True)
     parser.add_argument("--expected-operations-sha256", required=True)
+    parser.add_argument("--expected-retirement-migration-sha256", required=True)
     parser.add_argument("--expected-restore-drill-sha256", required=True)
     parser.add_argument("--expected-service-sha256", required=True)
     parser.add_argument("--expected-timer-sha256", required=True)
