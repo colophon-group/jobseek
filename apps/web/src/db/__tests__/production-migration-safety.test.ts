@@ -109,6 +109,14 @@ describe("production migration safety", () => {
     expect(evidenceValidator).toContain('git/ref/heads/main');
     expect(evidenceValidator).toContain('test "$main_sha" = "$CURRENT_SHA"');
     expect(evidenceValidator).toContain("Crawler maintenance: backfill-typesense @");
+    expect(
+      evidenceValidator
+        .split("\n")
+        .filter((line) => line.trim() === '"$backfill_title" \\'),
+    ).toHaveLength(2);
+    expect(evidenceValidator).not.toContain(
+      "'Crawler scheduled maintenance' \\",
+    );
     expect(evidenceValidator).toContain("apps/crawler \\");
     expect(workflow).toContain('cancel-in-progress: false');
     expect(workflow).toContain(
