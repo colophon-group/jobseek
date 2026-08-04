@@ -128,6 +128,7 @@ def test_ats_inventory_status_publishes_only_bounded_aggregate_metrics(tmp_path:
                 "last_success_unixtime": 200,
                 "last_attempt_duration_seconds": 12,
                 "last_attempt_success": 1,
+                "last_attempt_degraded": 0,
                 "requested_mode": "refill",
                 "effective_mode": "refill",
                 "rollout_cap": 5,
@@ -187,7 +188,8 @@ def test_ats_inventory_rate_limit_preflight_remains_observable_without_queue(
                 "last_attempt_unixtime": 200,
                 "last_success_unixtime": 200,
                 "last_attempt_duration_seconds": 12,
-                "last_attempt_success": 1,
+                "last_attempt_success": 0,
+                "last_attempt_degraded": 1,
                 "requested_mode": "report",
                 "effective_mode": "report",
                 "rollout_cap": 1,
@@ -210,6 +212,7 @@ def test_ats_inventory_rate_limit_preflight_remains_observable_without_queue(
 
     content = "\n".join(lines)
     assert 'status="rate_limited_preflight"' in content
+    assert "jobseek_ats_inventory_last_attempt_degraded 1" in content
     assert "jobseek_ats_inventory_queue_available" not in content
 
 
@@ -245,6 +248,7 @@ def test_ats_inventory_status_rejects_malformed_aggregate_metrics(
                 "last_success_unixtime": 200,
                 "last_attempt_duration_seconds": 12,
                 "last_attempt_success": 1,
+                "last_attempt_degraded": 0,
                 "requested_mode": "report",
                 "effective_mode": "report",
                 "rollout_cap": 1,

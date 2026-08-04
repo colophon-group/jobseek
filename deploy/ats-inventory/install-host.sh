@@ -15,6 +15,7 @@ WRAPPER_SHA256="$(sha256sum "$REPO_ROOT/deploy/ats-inventory/run.sh" | awk '{pri
 FILES=(
   /usr/local/sbin/jobseek-ats-inventory
   /usr/local/sbin/jobseek-ats-inventory-control
+  /usr/local/sbin/jobseek-ats-inventory-bounded-tee
   /usr/local/sbin/jobseek-ats-inventory-github-token
   /usr/local/sbin/jobseek-ats-inventory-status
   /etc/systemd/system/jobseek-ats-inventory.service
@@ -29,6 +30,7 @@ FILES=(
 )
 TIMER_WAS_ENABLED=0
 TIMER_WAS_ACTIVE=0
+SERVICE_WAS_ACTIVE=0
 ROLLBACK_ARMED=1
 
 [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: deployment SHA is invalid" >&2; exit 1; }
@@ -54,6 +56,7 @@ unset app_id installation_id
 
 systemctl is-enabled --quiet jobseek-ats-inventory.timer 2>/dev/null && TIMER_WAS_ENABLED=1 || true
 systemctl is-active --quiet jobseek-ats-inventory.timer 2>/dev/null && TIMER_WAS_ACTIVE=1 || true
+systemctl is-active --quiet jobseek-ats-inventory.service 2>/dev/null && SERVICE_WAS_ACTIVE=1 || true
 install -d -o root -g deploy -m 0750 "$STATE_ROOT"
 install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/cache"
 install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/status"
@@ -83,6 +86,7 @@ restore_previous() {
   systemctl daemon-reload
   (( TIMER_WAS_ENABLED == 0 )) || systemctl enable jobseek-ats-inventory.timer >/dev/null 2>&1 || true
   (( TIMER_WAS_ACTIVE == 0 )) || systemctl start jobseek-ats-inventory.timer >/dev/null 2>&1 || true
+  (( SERVICE_WAS_ACTIVE == 0 )) || systemctl start --no-block jobseek-ats-inventory.service >/dev/null 2>&1 || true
 }
 
 cleanup() {
@@ -94,10 +98,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+systemctl stop jobseek-ats-inventory.timer >/dev/null 2>&1 || true
+systemctl stop jobseek-ats-inventory.service >/dev/null 2>&1 || true
+
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/run.sh" \
   /usr/local/sbin/jobseek-ats-inventory
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/control.sh" \
   /usr/local/sbin/jobseek-ats-inventory-control
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/bounded-tee.py" \
+  /usr/local/sbin/jobseek-ats-inventory-bounded-tee
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/github-app-token.py" \
   /usr/local/sbin/jobseek-ats-inventory-github-token
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/status.py" \

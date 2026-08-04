@@ -904,6 +904,8 @@ sentinel. The timer can remain active while writes are disabled: source/cache
 validation and queue reporting continue, while candidate/support issue POSTs
 cannot occur. Cache and ledger data under `/var/lib/jobseek-ats-inventory`
 survive disable, failed installs, and transactional host-surface rollback.
+Disabling also stops an active run after publishing the gate; the wrapper
+rechecks that gate immediately before its credentialed GitHub phase.
 
 Read-only checks:
 

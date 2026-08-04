@@ -50,6 +50,20 @@ tar --create --gzip --file - \
       tar --extract --gzip --file - --directory /opt/jobseek-ats-inventory \
         --no-same-owner --no-same-permissions"
 
+# The host surface and application image deploy independently. Wait for the
+# exact reviewed crawler release before quiescing or replacing the live runner.
+timeout --foreground --signal=TERM --kill-after=30s 90m \
+  ssh "${ssh_options[@]}" "root@$TARGET_HOST" "bash -s -- '$EXPECTED_TAG'" <<'REMOTE'
+set -euo pipefail
+expected_tag="$1"
+for ((attempt = 1; attempt <= 180; attempt++)); do
+  deployed_tag="$(sed -n 's/^CRAWLER_IMAGE_TAG=//p' /home/deploy/.env | tail -n1)"
+  [[ "$deployed_tag" != "$expected_tag" ]] || break
+  sleep 30
+done
+[[ "$(sed -n 's/^CRAWLER_IMAGE_TAG=//p' /home/deploy/.env | tail -n1)" == "$expected_tag" ]]
+REMOTE
+
 {
   printf '%s\n' "$DEPLOY_SHA"
   printf '%s' "$ATS_GITHUB_APP_ID" | base64 | tr -d '\n'; printf '\n'
@@ -61,18 +75,9 @@ timeout --foreground --signal=TERM --kill-after=30s 20m \
   "bash /opt/jobseek-ats-inventory/deploy/ats-inventory/install-host-from-stdin.sh" \
   <"$payload"
 
-# The host surface and application image deploy independently. Wait for the
-# exact reviewed crawler release before the first disabled/report-only smoke.
-timeout --foreground --signal=TERM --kill-after=30s 90m \
-  ssh "${ssh_options[@]}" "root@$TARGET_HOST" "bash -s -- '$EXPECTED_TAG'" <<'REMOTE'
+timeout --foreground --signal=TERM --kill-after=30s 4h \
+  ssh "${ssh_options[@]}" "root@$TARGET_HOST" "bash -s" <<'REMOTE'
 set -euo pipefail
-expected_tag="$1"
-for ((attempt = 1; attempt <= 180; attempt++)); do
-  deployed_tag="$(sed -n 's/^CRAWLER_IMAGE_TAG=//p' /home/deploy/.env | tail -n1)"
-  [[ "$deployed_tag" != "$expected_tag" ]] || break
-  sleep 30
-done
-[[ "$(sed -n 's/^CRAWLER_IMAGE_TAG=//p' /home/deploy/.env | tail -n1)" == "$expected_tag" ]]
 systemctl is-enabled --quiet jobseek-ats-inventory.timer
 systemctl is-active --quiet jobseek-ats-inventory.timer
 /usr/local/sbin/jobseek-ats-inventory-control status

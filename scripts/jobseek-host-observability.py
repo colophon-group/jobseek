@@ -365,6 +365,9 @@ def _collect_ats_inventory_metrics(
     attempt_success = integer("last_attempt_success")
     if attempt_success not in {0, 1}:
         raise ProbeError("ATS inventory status has invalid last_attempt_success")
+    attempt_degraded = integer("last_attempt_degraded")
+    if attempt_degraded not in {0, 1}:
+        raise ProbeError("ATS inventory status has invalid last_attempt_degraded")
     rollout_cap = integer("rollout_cap", minimum=1)
     if rollout_cap not in {1, 5, 25}:
         raise ProbeError("ATS inventory status has invalid rollout_cap")
@@ -374,6 +377,7 @@ def _collect_ats_inventory_metrics(
             _metric("jobseek_ats_inventory_last_attempt_unixtime", integer("last_attempt_unixtime")),
             _metric("jobseek_ats_inventory_last_success_unixtime", integer("last_success_unixtime")),
             _metric("jobseek_ats_inventory_last_attempt_success", attempt_success),
+            _metric("jobseek_ats_inventory_last_attempt_degraded", attempt_degraded),
             _metric(
                 "jobseek_ats_inventory_last_attempt_duration_seconds",
                 integer("last_attempt_duration_seconds"),

@@ -13,6 +13,7 @@ from typing import Any
 
 MAX_LOG_BYTES = 16 * 1024 * 1024
 MAX_HISTORY = 32
+DEGRADED_QUEUE_STATUSES = {"rate_limited", "rate_limited_preflight"}
 
 
 class StatusError(RuntimeError):
@@ -49,6 +50,13 @@ def _read_previous(path: Path) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _report_is_degraded(report: dict[str, Any] | None) -> bool:
+    if report is None:
+        return False
+    candidate = report.get("candidate_issues")
+    return isinstance(candidate, dict) and candidate.get("status") in DEGRADED_QUEUE_STATUSES
+
+
 def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o770)
     descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
@@ -78,7 +86,9 @@ def record(
 ) -> dict[str, Any]:
     finished = int(time.time()) if finished_at is None else finished_at
     report = extract_complete_report(log_path)
-    success = return_code == 0 and report is not None
+    visible_report = report if return_code == 0 else None
+    degraded = _report_is_degraded(visible_report)
+    success = return_code == 0 and report is not None and not degraded
     current_path = state_root / "status" / "current.json"
     previous = _read_previous(current_path)
     payload: dict[str, Any] = {
@@ -87,6 +97,7 @@ def record(
         "last_attempt_started_unixtime": started_at,
         "last_attempt_duration_seconds": max(0, finished - started_at),
         "last_attempt_success": int(success),
+        "last_attempt_degraded": int(degraded),
         "last_success_unixtime": (
             finished if success else int(previous.get("last_success_unixtime") or 0)
         ),
@@ -94,7 +105,7 @@ def record(
         "requested_mode": requested_mode,
         "effective_mode": effective_mode,
         "rollout_cap": rollout_cap,
-        "report": report if success else None,
+        "report": visible_report,
         "last_success_report": (
             report
             if success

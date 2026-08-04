@@ -36,6 +36,7 @@ jobs:
           set -euo pipefail
           for script in deploy/ats-inventory/*.sh; do bash -n "$script"; done
           python3 -m py_compile \
+            deploy/ats-inventory/bounded-tee.py \
             deploy/ats-inventory/github-app-token.py \
             deploy/ats-inventory/status.py
           test -s deploy/systemd/jobseek-ats-inventory.service

@@ -31,6 +31,7 @@ case "$ACTION" in
     ;;
   disable)
     install -o root -g deploy -m 0640 /dev/null "$DISABLED"
+    systemctl stop jobseek-ats-inventory.service
     echo "ATS inventory writes disabled; cache and ledger retained"
     ;;
   configure)

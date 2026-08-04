@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -19,6 +20,7 @@ RECEIVER = DEPLOY / "install-host-from-stdin.sh"
 REMOTE = DEPLOY / "deploy-remote.sh"
 TOKEN_HELPER = DEPLOY / "github-app-token.py"
 STATUS_HELPER = DEPLOY / "status.py"
+BOUNDED_TEE = DEPLOY / "bounded-tee.py"
 SERVICE = ROOT / "deploy" / "systemd" / "jobseek-ats-inventory.service"
 TIMER = ROOT / "deploy" / "systemd" / "jobseek-ats-inventory.timer"
 WORKFLOW = ROOT / ".github" / "workflows" / "deploy-ats-inventory.yml"
@@ -34,6 +36,7 @@ def _load(name: str, path: Path):
 
 token_helper = _load("ats_inventory_github_app_token", TOKEN_HELPER)
 status_helper = _load("ats_inventory_status", STATUS_HELPER)
+bounded_tee = _load("ats_inventory_bounded_tee", BOUNDED_TEE)
 
 
 def test_shell_surfaces_parse() -> None:
@@ -92,6 +95,7 @@ def test_status_is_atomic_bounded_and_preserves_last_success(tmp_path: Path) -> 
         finished_at=120,
     )
     assert first["last_attempt_success"] == 1
+    assert first["last_attempt_degraded"] == 0
     assert first["last_success_unixtime"] == 120
     assert first["last_success_report"] == report
     assert os.stat(state / "status" / "current.json").st_mode & 0o777 == 0o640
@@ -126,6 +130,62 @@ def test_status_is_atomic_bounded_and_preserves_last_success(tmp_path: Path) -> 
     assert len(list((state / "status" / "history").glob("*.json"))) == 32
 
 
+def test_bounded_logger_mirrors_stream_and_retains_parseable_tail(tmp_path: Path) -> None:
+    output = tmp_path / "run.log"
+    completion = json.dumps(
+        {"event": "ats_inventory.complete", "report": {"data_only": True}}
+    ).encode()
+    source = b"x" * 5000 + b"\n" + completion + b"\n"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(BOUNDED_TEE),
+            "--output",
+            str(output),
+            "--max-bytes",
+            "2048",
+        ],
+        input=source,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == source
+    assert output.stat().st_size <= 2048
+    assert output.read_bytes() == completion + b"\n"
+
+
+def test_rate_limited_complete_report_is_degraded_not_fresh_success(tmp_path: Path) -> None:
+    state = tmp_path / "state"
+    log = tmp_path / "run.log"
+    report = {
+        "data_only": True,
+        "candidate_issues": {"status": "rate_limited_preflight"},
+    }
+    log.write_text(
+        json.dumps({"event": "ats_inventory.complete", "report": report}) + "\n",
+        encoding="utf-8",
+    )
+
+    status = status_helper.record(
+        state,
+        log,
+        return_code=0,
+        requested_mode="refill",
+        effective_mode="refill",
+        rollout_cap=1,
+        started_at=100,
+        finished_at=120,
+    )
+
+    assert status["last_attempt_success"] == 0
+    assert status["last_attempt_degraded"] == 1
+    assert status["last_success_unixtime"] == 0
+    assert status["report"] == report
+
+
 def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> None:
     source = RUNNER.read_text(encoding="utf-8")
     assert 'image="ghcr.io/colophon-group/jobseek-crawler:${tag}"' in source
@@ -141,9 +201,15 @@ def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> 
     assert "type=bind,src=$STATE_ROOT/cache,dst=/state/cache" in source
     assert "type=bind,src=$STATE_ROOT,dst=/state" not in source
     assert "mktemp /run/lock/jobseek-ats-inventory-log" in source
-    assert "timeout --foreground --signal=TERM --kill-after=90s 3h" in source
+    assert "run_phase 9900s data off 0" in source
+    assert 'run_phase 2700s github "$effective_mode" 1' in source
+    assert "jobseek-ats-inventory-bounded-tee" in source
+    assert "--max-bytes 16777216" in source
+    assert source.index("run_phase 9900s data off 0") < source.index(
+        "jobseek-ats-inventory-github-token"
+    )
     assert "--impact" in source
-    assert '--candidate-issues "$effective_mode"' in source
+    assert '--candidate-issues "$candidate_mode"' in source
     assert '--queue-rollout-cap "$rollout_cap"' in source
     assert "--github-token-file /run/credentials/github-token" in source
     assert "GH_TOKEN=" not in source
@@ -153,17 +219,26 @@ def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> 
     assert "npm install" not in source
     assert "writes-disabled" in source
     assert "effective_mode=report" in source
+    assert source.count("apply_write_gate") >= 3
+    assert source.index("STATUS_ARMED=1") < source.index('[[ -r "$CONFIG" ]]')
+    assert source.rindex("apply_write_gate") < source.index(
+        'run_phase 2700s github "$effective_mode" 1'
+    )
 
 
 def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     control = CONTROL.read_text(encoding="utf-8")
     installer = INSTALLER.read_text(encoding="utf-8")
     assert "disable)" in control
+    assert "systemctl stop jobseek-ats-inventory.service" in control
     assert "cache and ledger retained" in control
     assert "configure)" in control and "enable)" in control
     assert "1|5|25" in control
     assert "writes-disabled" in control
     assert "restore_previous" in installer
+    assert "systemctl stop jobseek-ats-inventory.timer" in installer
+    assert "systemctl stop jobseek-ats-inventory.service" in installer
+    assert "SERVICE_WAS_ACTIVE" in installer
     assert 'install -d -o root -g deploy -m 0750 "$STATE_ROOT"' in installer
     assert "TIMER_WAS_ENABLED" in installer and "TIMER_WAS_ACTIVE" in installer
     assert "systemd-analyze verify" in installer
@@ -188,7 +263,7 @@ def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
     assert "User=deploy" in service
     assert "NoNewPrivileges=true" in service
     assert "ProtectSystem=strict" in service
-    assert "RestrictAddressFamilies=AF_UNIX" in service
+    assert "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6" in service
     assert "ReadWritePaths=/run/lock /var/lib/jobseek-ats-inventory" in service
     assert "OnCalendar=*-*-* 03:00:00 UTC" in timer
     assert "Persistent=true" in timer
@@ -209,3 +284,10 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     checkout = [line for line in workflow.splitlines() if "uses: actions/checkout@" in line]
     assert checkout and all("@v" not in line for line in checkout)
     assert "uses: astral-sh/setup-uv@c771a70" in workflow
+
+
+def test_remote_deploy_waits_for_exact_image_before_quiescing_install() -> None:
+    source = REMOTE.read_text(encoding="utf-8")
+    image_gate = source.index("for ((attempt = 1; attempt <= 180; attempt++))")
+    install = source.index("install-host-from-stdin.sh")
+    assert image_gate < install

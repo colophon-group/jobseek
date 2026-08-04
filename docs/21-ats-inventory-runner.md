@@ -307,14 +307,19 @@ host-side helper signs a nine-minute JWT with OpenSSL, mints an installation
 token, and writes that token to a mode-`0600` temporary file. The container sees
 the file through a read-only bind mount; the token value is absent from Docker
 arguments, environment metadata, reports, and logs. The token file and bounded
-run log are deleted on every exit path.
+run log are deleted on every exit path. The wrapper first refreshes source and
+impact data without GitHub credentials, then mints the installation token and
+runs the cached GitHub queue pass inside a 45-minute budget. Long artifact
+downloads therefore cannot age out the one-hour installation token.
 
 The persistent root is `/var/lib/jobseek-ats-inventory`. Source and impact
 caches remain bounded by their existing 256/768 MiB limits, raw Parquet files
 remain transient, status history retains 32 runs, and the ledger survives
 disable/rollback. The wrapper has a non-blocking host lock in addition to the
-cache lock, a three-hour runtime cap, 1.5 GiB memory limit, one CPU, PID cap,
-read-only container root, dropped capabilities, and no-new-privileges.
+cache lock, a four-hour service cap, 1.5 GiB memory limit, one CPU, PID cap,
+read-only container root, dropped capabilities, and no-new-privileges. A
+streaming logger mirrors output to journald while retaining at most a 16 MiB
+parseable tail for status extraction.
 
 Every run records a credential-free operator status at
 `/var/lib/jobseek-ats-inventory/status/current.json`: inventory freshness and
@@ -351,6 +356,12 @@ systemctl start jobseek-ats-inventory.service
 # retains every cache, report, and ledger file.
 /usr/local/sbin/jobseek-ats-inventory-control disable
 ```
+
+`disable` writes the gate first and then stops any active service. The wrapper
+also rechecks the gate immediately before its GitHub phase. Deployment waits
+for the exact reviewed crawler image, snapshots the prior host surface, stops
+the timer and active service, installs transactionally, and restores the prior
+surface and scheduling state on failure.
 
 After stage 1, record the created issue/source key, resolver claim time,
 verified/fallback/PR/closed outcome, and the exactly-one replacement refill in

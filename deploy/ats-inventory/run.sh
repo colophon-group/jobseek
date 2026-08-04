@@ -10,35 +10,68 @@ DEPLOY_ENV=/home/deploy/.env
 CONTAINER=jobseek-ats-inventory
 TOKEN_FILE=""
 RUN_LOG=""
+requested_mode=report
+effective_mode=report
+rollout_cap=1
+started_at=0
+STATUS_ARMED=0
 
 cleanup() {
-  status=$?
+  local status=$?
   trap - EXIT HUP INT TERM
-  if docker ps -a --format '{{.Names}}' | grep -Fxq "$CONTAINER"; then
+  if command -v docker >/dev/null && docker ps -a --format '{{.Names}}' | grep -Fxq "$CONTAINER"; then
     docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
   fi
   [[ -z "$TOKEN_FILE" ]] || rm -f -- "$TOKEN_FILE"
+  if (( STATUS_ARMED )); then
+    /usr/local/sbin/jobseek-ats-inventory-status \
+      --state-root "$STATE_ROOT" \
+      --log "$RUN_LOG" \
+      --return-code "$status" \
+      --requested-mode "$requested_mode" \
+      --effective-mode "$effective_mode" \
+      --rollout-cap "$rollout_cap" \
+      --started-at "$started_at" || {
+        (( status != 0 )) || status=1
+      }
+  fi
   [[ -z "$RUN_LOG" ]] || rm -f -- "$RUN_LOG"
   exit "$status"
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
-for command in awk date docker flock grep mktemp openssl python3 sed sha256sum tee timeout tr; do
+for command in awk date docker flock grep mktemp openssl python3 sed sha256sum tail timeout tr; do
   command -v "$command" >/dev/null || {
     echo "ERROR: required command ${command} is unavailable" >&2
     exit 1
   }
 done
+exec 9>/run/lock/jobseek-ats-inventory-host.lock
+flock -n 9 || {
+  echo "ERROR: another ATS inventory host run is active" >&2
+  exit 75
+}
+RUN_LOG="$(mktemp /run/lock/jobseek-ats-inventory-log.XXXXXX)"
+chmod 0600 "$RUN_LOG"
+started_at="$(date +%s)"
+STATUS_ARMED=1
+
+[[ -x /usr/local/sbin/jobseek-ats-inventory-status ]] || {
+  echo "ERROR: ATS inventory status helper is unavailable" >&2
+  exit 1
+}
+[[ -x /usr/local/sbin/jobseek-ats-inventory-bounded-tee ]] || {
+  echo "ERROR: ATS inventory bounded logger is unavailable" >&2
+  exit 1
+}
 [[ -r "$DEPLOY_ENV" ]] || { echo "ERROR: crawler deployment environment is unavailable" >&2; exit 1; }
 [[ -r "$CONFIG" ]] || { echo "ERROR: ATS inventory configuration is unavailable" >&2; exit 1; }
 [[ -n "${CREDENTIALS_DIRECTORY:-}" && -d "$CREDENTIALS_DIRECTORY" ]] || {
   echo "ERROR: GitHub App systemd credentials are unavailable" >&2
   exit 1
-}
-exec 9>/run/lock/jobseek-ats-inventory-host.lock
-flock -n 9 || {
-  echo "ERROR: another ATS inventory host run is active" >&2
-  exit 75
 }
 
 read_exact_config() {
@@ -51,16 +84,26 @@ read_exact_config() {
   printf '%s' "${matches[0]}"
 }
 
-requested_mode="$(read_exact_config ATS_INVENTORY_MODE)"
-rollout_cap="$(read_exact_config ATS_INVENTORY_ROLLOUT_CAP)"
-case "$requested_mode" in report|dry-run|refill) ;; *) echo "ERROR: invalid ATS inventory mode" >&2; exit 1 ;; esac
-case "$rollout_cap" in 1|5|25) ;; *) echo "ERROR: invalid ATS inventory rollout cap" >&2; exit 1 ;; esac
+configured_mode="$(read_exact_config ATS_INVENTORY_MODE)"
+configured_cap="$(read_exact_config ATS_INVENTORY_ROLLOUT_CAP)"
+case "$configured_mode" in
+  report|dry-run|refill) requested_mode="$configured_mode" ;;
+  *) echo "ERROR: invalid ATS inventory mode" >&2; exit 1 ;;
+esac
+case "$configured_cap" in
+  1|5|25) rollout_cap="$configured_cap" ;;
+  *) echo "ERROR: invalid ATS inventory rollout cap" >&2; exit 1 ;;
+esac
 effective_mode="$requested_mode"
-if [[ -e "$WRITE_DISABLED" ]]; then
-  effective_mode=report
-  printf '%s\n' \
-    '{"event":"ats_inventory.writes_disabled","effective_mode":"report"}'
-fi
+
+apply_write_gate() {
+  if [[ -e "$WRITE_DISABLED" ]]; then
+    effective_mode=report
+    printf '%s\n' \
+      '{"event":"ats_inventory.writes_disabled","effective_mode":"report"}'
+  fi
+}
+apply_write_gate
 
 revision="$(tr -d '\n' <"$STATE_ROOT/deployed-sha")"
 wrapper_sha="$(tr -d '\n' <"$STATE_ROOT/wrapper-sha256")"
@@ -78,65 +121,82 @@ tag="$(sed -n 's/^CRAWLER_IMAGE_TAG=//p' "$DEPLOY_ENV" | tail -n1)"
 }
 image="ghcr.io/colophon-group/jobseek-crawler:${tag}"
 
-TOKEN_FILE="$(mktemp /run/lock/jobseek-ats-inventory-token.XXXXXX)"
-chmod 0600 "$TOKEN_FILE"
-/usr/local/sbin/jobseek-ats-inventory-github-token \
-  --credentials-dir "$CREDENTIALS_DIRECTORY" \
-  --output "$TOKEN_FILE"
-RUN_LOG="$(mktemp /run/lock/jobseek-ats-inventory-log.XXXXXX)"
-chmod 0600 "$RUN_LOG"
-started_at="$(date +%s)"
-
 if docker ps --format '{{.Names}}' | grep -Fxq "$CONTAINER"; then
   echo "ERROR: ATS inventory container already exists" >&2
   exit 1
 fi
 docker rm "$CONTAINER" >/dev/null 2>&1 || true
 
-set +e
-timeout --foreground --signal=TERM --kill-after=90s 3h docker run --rm \
-  --name "$CONTAINER" \
-  --init \
-  --stop-timeout 60 \
-  --network host \
-  --memory 1536m \
-  --cpus 1.0 \
-  --pids-limit 256 \
-  --read-only \
-  --cap-drop ALL \
-  --security-opt no-new-privileges \
-  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
-  --mount "type=bind,src=$STATE_ROOT/cache,dst=/state/cache" \
-  --mount "type=bind,src=$TOKEN_FILE,dst=/run/credentials/github-token,readonly" \
-  -e PYTHONDONTWRITEBYTECODE=1 \
-  --label com.docker.compose.project=deploy \
-  --label com.docker.compose.service=ats-inventory \
-  --label com.docker.compose.oneoff=True \
-  --label jobseek.maintenance.operation=ats-inventory \
-  --label jobseek.maintenance.issue=6190 \
-  --label "jobseek.maintenance.revision=${revision}" \
-  --label jobseek.maintenance.budget-seconds=10800 \
-  "$image" \
-  /app/.venv/bin/crawler ats-inventory \
-    --cache-dir /state/cache \
-    --impact \
-    --candidate-issues "$effective_mode" \
-    --queue-rollout-cap "$rollout_cap" \
-    --github-token-file /run/credentials/github-token \
-    --max-cache-mib 256 \
-    --impact-max-cache-mib 768 \
-    --impact-max-artifact-mib 512 \
-    --impact-free-reserve-mib 1024 \
-  2>&1 | tee "$RUN_LOG"
-run_status=${PIPESTATUS[0]}
-set -e
+run_phase() {
+  local budget="$1" phase="$2" candidate_mode="$3" use_token="$4"
+  local -a docker_extra=() crawler_extra=(--candidate-issues "$candidate_mode")
+  if [[ "$use_token" == 1 ]]; then
+    docker_extra+=(--mount "type=bind,src=$TOKEN_FILE,dst=/run/credentials/github-token,readonly")
+    crawler_extra+=(--github-token-file /run/credentials/github-token)
+  fi
+  timeout --foreground --signal=TERM --kill-after=90s "$budget" docker run --rm \
+    --name "$CONTAINER" \
+    --init \
+    --stop-timeout 60 \
+    --network host \
+    --memory 1536m \
+    --cpus 1.0 \
+    --pids-limit 256 \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges \
+    --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+    --mount "type=bind,src=$STATE_ROOT/cache,dst=/state/cache" \
+    "${docker_extra[@]}" \
+    -e PYTHONDONTWRITEBYTECODE=1 \
+    --label com.docker.compose.project=deploy \
+    --label com.docker.compose.service=ats-inventory \
+    --label com.docker.compose.oneoff=True \
+    --label jobseek.maintenance.operation=ats-inventory \
+    --label "jobseek.maintenance.phase=${phase}" \
+    --label jobseek.maintenance.issue=6190 \
+    --label "jobseek.maintenance.revision=${revision}" \
+    --label jobseek.maintenance.budget-seconds=12600 \
+    "$image" \
+    /app/.venv/bin/crawler ats-inventory \
+      --cache-dir /state/cache \
+      --impact \
+      --queue-rollout-cap "$rollout_cap" \
+      --max-cache-mib 256 \
+      --impact-max-cache-mib 768 \
+      --impact-max-artifact-mib 512 \
+      --impact-free-reserve-mib 1024 \
+      "${crawler_extra[@]}" \
+    2>&1 | /usr/local/sbin/jobseek-ats-inventory-bounded-tee \
+      --output "$RUN_LOG" --max-bytes 16777216
+  local -a pipeline_status=("${PIPESTATUS[@]}")
+  local phase_status="${pipeline_status[0]}"
+  if (( phase_status == 0 && pipeline_status[1] != 0 )); then
+    phase_status="${pipeline_status[1]}"
+  fi
+  return "$phase_status"
+}
 
-/usr/local/sbin/jobseek-ats-inventory-status \
-  --state-root "$STATE_ROOT" \
-  --log "$RUN_LOG" \
-  --return-code "$run_status" \
-  --requested-mode "$requested_mode" \
-  --effective-mode "$effective_mode" \
-  --rollout-cap "$rollout_cap" \
-  --started-at "$started_at"
+# Refresh and verify the large data artifacts before minting the one-hour
+# installation token. The second pass reuses the exact checksum-addressed
+# impact cache and keeps all GitHub work inside a short budget.
+set +e
+run_phase 9900s data off 0
+run_status=$?
+set -e
+(( run_status == 0 )) || exit "$run_status"
+
+TOKEN_FILE="$(mktemp /run/lock/jobseek-ats-inventory-token.XXXXXX)"
+chmod 0600 "$TOKEN_FILE"
+/usr/local/sbin/jobseek-ats-inventory-github-token \
+  --credentials-dir "$CREDENTIALS_DIRECTORY" \
+  --output "$TOKEN_FILE"
+
+# The root control may have disabled writes while the data phase ran. Recheck
+# immediately before the only container that can reach GitHub issue APIs.
+apply_write_gate
+set +e
+run_phase 2700s github "$effective_mode" 1
+run_status=$?
+set -e
 exit "$run_status"
