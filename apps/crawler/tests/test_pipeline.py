@@ -1245,6 +1245,43 @@ async def test_avature_406_scrape_failures_open_host_circuit(mock_redis, monkeyp
 
 
 @pytest.mark.asyncio
+async def test_workday_invalid_payload_failures_open_host_circuit(mock_redis, monkeypatch):
+    """Three exhausted invalid API responses defer the remaining tenant burst."""
+    from src.config import settings
+    from src.shared.http import RequestHostTracker
+    from src.workers.pipeline import _record_scrape_host_outcome
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    domain = "co.wd1.myworkdayjobs.com"
+    url = f"https://{domain}/wday/cxs/co/Site/job/X/JR001"
+    for attempt in range(3):
+        tracker = RequestHostTracker()
+        tracker.note_request(domain, url)
+        tracker.note_response(domain, 200)
+        tracker.note_transient_response_failure(
+            domain,
+            url,
+            "workday_invalid_detail_payload",
+        )
+        open_until = await _record_scrape_host_outcome(
+            "board-workday-invalid-payload",
+            domain,
+            "",
+            tracker,
+            False,
+            structlog.get_logger(),
+        )
+        if attempt < 2:
+            assert open_until is None
+
+    assert open_until is not None
+    assert await rq.get_host_circuit_open_until(domain) == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
 async def test_half_open_circuit_defers_siblings_while_single_probe_is_leased(
     mock_redis, monkeypatch
 ):

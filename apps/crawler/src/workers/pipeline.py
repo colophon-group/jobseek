@@ -301,9 +301,10 @@ async def _record_scrape_host_outcome(
 ) -> float | None:
     """Update the shared circuit once for a completed scrape run.
 
-    Only final transport failures and transient HTTP statuses advance the
-    failure streak. A parser/config error following a reachable response is
-    deliberately excluded so one broken scraper cannot block a whole host.
+    Only final transport failures, transient HTTP statuses, and explicitly
+    promoted provider incidents advance the failure streak. A generic
+    parser/config error following a reachable response is deliberately
+    excluded so one broken scraper cannot block a whole host.
     """
 
     failure_host = tracker.transient_failure_host if not success else None

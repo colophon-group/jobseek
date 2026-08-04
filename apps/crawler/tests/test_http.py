@@ -16,6 +16,7 @@ from src.shared.http import (
     create_logging_http_client,
     create_nossl_http_client,
     is_avature_job_detail_url,
+    mark_transient_response_failure,
     track_request_hosts,
 )
 
@@ -153,6 +154,24 @@ class TestRequestHostTracking:
             with track_request_hosts() as tracker:
                 await client.get("https://api.example.com/v1/search")
 
+        assert tracker.transient_failure_host is None
+
+    async def test_new_response_clears_promoted_application_failure(self):
+        responses = iter((200, 200))
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(next(responses), request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                first = await client.get("https://degraded.example/detail")
+                mark_transient_response_failure(str(first.url), reason="provider_invalid_payload")
+                assert tracker.transient_failure_host == "degraded.example"
+
+                await client.get("https://degraded.example/recovered")
+
+        assert tracker.last_application_error is None
         assert tracker.transient_failure_host is None
 
 
