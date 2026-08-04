@@ -45,6 +45,7 @@ from src.redis_queue import (
     BoardWork,
     ScrapeWork,
     acquire_host_circuit_probe,
+    acquire_provider_circuit_probe,
     claim_work,
     complete_task,
     enqueue_monitor,
@@ -52,17 +53,21 @@ from src.redis_queue import (
     get_deadletter_depth,
     get_host_circuit_open_until,
     get_inflight_depth,
+    get_provider_circuit_open_until,
     heartbeat_task,
     normalize_egress_host,
     reap_expired,
     record_host_failure,
     record_host_success,
+    record_provider_circuit_success,
+    record_provider_incident_failure,
+    release_provider_circuit_probe,
     remember_board_egress_host,
     remember_board_scrape_egress_host,
     reschedule_task,
     update_board_metadata_cache,
 )
-from src.shared.http import RequestHostTracker, track_request_hosts
+from src.shared.http import WORKDAY_LIST_303_INCIDENT, RequestHostTracker, track_request_hosts
 from src.workers.monitor_memory import (
     cgroup_memory_bytes,
     process_rss_bytes,
@@ -218,6 +223,171 @@ async def _record_monitor_host_outcome(
             egress_host=egress_host,
             exc_info=True,
         )
+        return None
+
+
+def _monitor_provider_incident(config: dict) -> str:
+    """Return the only provider-wide incident this monitor may contribute to."""
+
+    if config.get("crawler_type") == "workday":
+        return WORKDAY_LIST_303_INCIDENT
+    return ""
+
+
+def _provider_circuit_metric_label(incident: str) -> str:
+    """Keep provider series bounded within the existing circuit metrics."""
+
+    return f"provider:{incident}"
+
+
+async def _release_monitor_provider_probe(
+    incident: str,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> None:
+    """Release a provider probe that could not produce an authoritative result."""
+
+    if not incident:
+        return
+    try:
+        await release_provider_circuit_probe(incident)
+    except Exception:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_probe_release_failed",
+            provider_incident=incident,
+            exc_info=True,
+        )
+
+
+async def _defer_monitor_for_provider_circuit(
+    domain: str,
+    board_id: str,
+    incident: str,
+    *,
+    browser: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> tuple[bool, bool]:
+    """Defer Workday monitors during a confirmed cross-tenant incident.
+
+    Returns ``(deferred, probe_acquired)``. The provider gate runs before the
+    tenant-local host circuit so one provider probe can be released when that
+    tenant is independently blocked.
+    """
+
+    if not incident:
+        return False, False
+    metric_label = _provider_circuit_metric_label(incident)
+    try:
+        open_until = await get_provider_circuit_open_until(incident)
+    except Exception:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_check_failed",
+            provider_incident=incident,
+            exc_info=True,
+        )
+        return False, False
+
+    if open_until is None:
+        return False, False
+
+    now = time.time()
+    if open_until > now:
+        await reschedule_task(domain, board_id, "monitor", open_until, browser=browser)
+        host_circuit_state.labels(egress_host=metric_label).set(1)
+        host_circuit_skipped_total.labels(egress_host=metric_label).inc()
+        tasks_total.labels(kind="monitor", status="provider_circuit_open").inc()
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_deferred",
+            provider_incident=incident,
+            open_until=open_until,
+        )
+        return True, False
+
+    try:
+        probe_acquired = await acquire_provider_circuit_probe(incident)
+    except Exception:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_probe_failed",
+            provider_incident=incident,
+            exc_info=True,
+        )
+        return False, False
+
+    host_circuit_state.labels(egress_host=metric_label).set(0.5)
+    if probe_acquired:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_probe_started",
+            provider_incident=incident,
+        )
+        return False, True
+
+    probe_due = now + settings.host_circuit_probe_seconds
+    await reschedule_task(domain, board_id, "monitor", probe_due, browser=browser)
+    host_circuit_skipped_total.labels(egress_host=metric_label).inc()
+    tasks_total.labels(kind="monitor", status="provider_circuit_half_open").inc()
+    worker_log.info(
+        "pipeline.monitor.provider_circuit_probe_deferred",
+        provider_incident=incident,
+        next_probe_at=probe_due,
+    )
+    return True, False
+
+
+async def _record_monitor_provider_outcome(
+    incident: str,
+    probe_acquired: bool,
+    tracker: RequestHostTracker,
+    success: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> float | None:
+    """Update the distinct-origin circuit from one completed monitor run."""
+
+    if not incident:
+        return None
+    metric_label = _provider_circuit_metric_label(incident)
+    incident_matches = tracker.last_provider_incident == incident
+    incident_host = normalize_egress_host(tracker.last_provider_incident_host or "")
+
+    try:
+        if incident_matches and incident_host:
+            state = await record_provider_incident_failure(incident, incident_host)
+            host_circuit_state.labels(egress_host=metric_label).set(1 if state.is_open else 0)
+            if state.opened_now:
+                host_circuit_opened_total.labels(egress_host=metric_label).inc()
+                worker_log.warning(
+                    "pipeline.monitor.provider_circuit_opened",
+                    provider_incident=incident,
+                    distinct_hosts=state.failures,
+                    open_until=state.open_until,
+                )
+            return state.open_until
+
+        if probe_acquired and success:
+            still_open = await record_provider_circuit_success(incident)
+            host_circuit_state.labels(egress_host=metric_label).set(
+                1 if still_open is not None else 0
+            )
+            worker_log.info(
+                "pipeline.monitor.provider_circuit_recovered",
+                provider_incident=incident,
+            )
+            return still_open
+
+        if probe_acquired:
+            # An unrelated parser/configuration failure says nothing about the
+            # 303 incident. Release the lease without reopening or clearing
+            # the distinct-host evidence so another tenant can probe.
+            await release_provider_circuit_probe(incident)
+            host_circuit_state.labels(egress_host=metric_label).set(0.5)
+        return None
+    except Exception:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_update_failed",
+            provider_incident=incident,
+            incident_host=incident_host,
+            exc_info=True,
+        )
+        if probe_acquired:
+            await _release_monitor_provider_probe(incident, worker_log)
         return None
 
 
@@ -891,6 +1061,8 @@ async def _process_monitor_work(
     domain = board_work.domain
 
     worker_log = worker_log.bind(board_id=board_id, crawler_type=config.get("crawler_type"))
+    provider_incident = _monitor_provider_incident(config)
+    half_open_provider_probe = False
 
     try:
         # Self-heal stale Redis work for boards removed from configuration.
@@ -948,6 +1120,16 @@ async def _process_monitor_work(
                 except Exception:
                     worker_log.warning("pipeline.monitor.reroute_failed", exc_info=True)
 
+        provider_deferred, half_open_provider_probe = await _defer_monitor_for_provider_circuit(
+            domain,
+            board_id,
+            provider_incident,
+            browser=browser,
+            worker_log=worker_log,
+        )
+        if provider_deferred:
+            return
+
         fallback_host = _configured_egress_host(config)
         half_open_probe_host = ""
         if fallback_host:
@@ -965,6 +1147,9 @@ async def _process_monitor_work(
 
             now = time.time()
             if open_until is not None and open_until > now:
+                if half_open_provider_probe:
+                    await _release_monitor_provider_probe(provider_incident, worker_log)
+                    half_open_provider_probe = False
                 await reschedule_task(
                     domain,
                     board_id,
@@ -998,6 +1183,9 @@ async def _process_monitor_work(
 
                 host_circuit_state.labels(egress_host=fallback_host).set(0.5)
                 if not probe_acquired:
+                    if half_open_provider_probe:
+                        await _release_monitor_provider_probe(provider_incident, worker_log)
+                        half_open_provider_probe = False
                     probe_due = now + settings.host_circuit_probe_seconds
                     await reschedule_task(
                         domain,
@@ -1071,6 +1259,9 @@ async def _process_monitor_work(
             # operators need a separate rollup so it doesn't dilute
             # the failure-rate alert (#3200).
             tasks_total.labels(kind="monitor", status="gone").inc()
+            if half_open_provider_probe:
+                await _release_monitor_provider_probe(provider_incident, worker_log)
+                half_open_provider_probe = False
             next_check_at = max(
                 await _failure_next_due(local_pool, board_id, worker_log),
                 time.time() + 60,
@@ -1086,6 +1277,14 @@ async def _process_monitor_work(
             success,
             worker_log,
         )
+        provider_open_until = await _record_monitor_provider_outcome(
+            provider_incident,
+            half_open_provider_probe,
+            host_tracker,
+            success,
+            worker_log,
+        )
+        half_open_provider_probe = False
         await _refresh_board_metadata_cache(local_pool, board_id, worker_log)
 
         profile = "browser" if browser else "simple"
@@ -1103,6 +1302,8 @@ async def _process_monitor_work(
             next_check_at = await _failure_next_due(local_pool, board_id, worker_log)
             if circuit_open_until is not None:
                 next_check_at = max(next_check_at, circuit_open_until)
+            if provider_open_until is not None:
+                next_check_at = max(next_check_at, provider_open_until)
         await reschedule_task(domain, board_id, "monitor", next_check_at, browser=browser)
 
         # Emit the success/failure rollup for monitor tasks so Grafana
@@ -1123,6 +1324,9 @@ async def _process_monitor_work(
         )
 
     except Exception:
+        if half_open_provider_probe:
+            await _release_monitor_provider_probe(provider_incident, worker_log)
+            half_open_provider_probe = False
         # Per-board failure attribution (#2704). Increment first so a
         # downstream Redis failure in the reschedule path doesn't hide
         # the original monitor failure from the metric.

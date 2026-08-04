@@ -80,6 +80,11 @@ _AVATURE_UNIQUE_DETAIL_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Stable incident identifier shared by Workday's list monitor and the worker
+# cohort circuit. Keep this provider/status-specific: ordinary Workday
+# failures must never be able to pause every tenant (#5715).
+WORKDAY_LIST_303_INCIDENT = "workday-list-303"
+
 
 def is_avature_job_detail_url(url: str) -> bool:
     """Return whether *url* is a recognizable Avature detail page."""
@@ -122,6 +127,8 @@ class RequestHostTracker:
     last_status_code: int | None = None
     last_transport_error: str | None = None
     last_application_error: str | None = None
+    last_provider_incident: str | None = None
+    last_provider_incident_host: str | None = None
 
     def note(self, host: str) -> None:
         normalized = host.rstrip(".").lower()
@@ -165,6 +172,21 @@ class RequestHostTracker:
         self.last_transport_error = None
         self.last_application_error = reason
 
+    def note_provider_incident(self, host: str, url: str, incident: str) -> None:
+        """Record a provider-specific exhausted response on the final host.
+
+        The worker may use this marker for a distinct-origin cohort circuit.
+        It deliberately does not change the generic host classification: the
+        monitor path already accounts for every failed run once.
+        """
+
+        self.note(host)
+        self.last_url = url
+        self.last_transport_error = None
+        self.last_application_error = None
+        self.last_provider_incident = incident
+        self.last_provider_incident_host = self.last_host
+
     @property
     def transient_failure_host(self) -> str | None:
         """Return the final host only for an upstream-transient outcome.
@@ -207,6 +229,15 @@ def mark_transient_response_failure(url: str, *, reason: str) -> None:
     host = urlparse(url).hostname
     if tracker is not None and host:
         tracker.note_transient_response_failure(host, url, reason)
+
+
+def mark_provider_incident(url: str, *, incident: str) -> None:
+    """Attach a verified provider incident to the current task outcome."""
+
+    tracker = _request_host_tracker.get()
+    host = urlparse(url).hostname
+    if tracker is not None and host:
+        tracker.note_provider_incident(host, url, incident)
 
 
 @contextmanager

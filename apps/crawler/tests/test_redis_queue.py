@@ -200,6 +200,61 @@ async def test_expired_circuit_allows_one_probe_then_closes_or_reopens(mock_redi
     assert await mock_redis.get("host_probe:probe.example.com") is None
 
 
+async def test_provider_circuit_requires_distinct_tenant_hosts(mock_redis, monkeypatch):
+    """One broken Workday tenant cannot satisfy the provider-wide quorum."""
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+    incident = "workday-list-303"
+    now = time.time()
+
+    first = await rq.record_provider_incident_failure(incident, "one.wd1.example", now=now)
+    repeated = await rq.record_provider_incident_failure(incident, "ONE.wd1.example.", now=now + 1)
+    second = await rq.record_provider_incident_failure(incident, "two.wd2.example", now=now + 2)
+    third = await rq.record_provider_incident_failure(incident, "three.wd3.example", now=now + 3)
+
+    assert (first.failures, first.is_open) == (1, False)
+    assert (repeated.failures, repeated.is_open) == (1, False)
+    assert (second.failures, second.is_open) == (2, False)
+    assert third.failures == 3
+    assert third.opened_now is True
+    assert third.open_until == pytest.approx(now + 1803)
+    assert await rq.get_provider_circuit_open_until(incident) == third.open_until
+    assert await mock_redis.smembers(f"provider_fail_hosts:{incident}") == {
+        "one.wd1.example",
+        "two.wd2.example",
+        "three.wd3.example",
+    }
+
+
+async def test_provider_half_open_probe_reopens_or_recovers(mock_redis, monkeypatch):
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 30)
+    monkeypatch.setattr(settings, "host_circuit_probe_seconds", 60)
+    incident = "workday-list-303"
+
+    await rq.record_provider_incident_failure(incident, "one.example", now=1000)
+    await rq.record_provider_incident_failure(incident, "two.example", now=1001)
+    opened = await rq.record_provider_incident_failure(incident, "three.example", now=1002)
+    assert opened.open_until == 1032
+
+    assert await rq.acquire_provider_circuit_probe(incident) is True
+    assert await rq.acquire_provider_circuit_probe(incident) is False
+
+    reopened = await rq.record_provider_incident_failure(incident, "probe-failed.example", now=1033)
+    assert reopened.opened_now is True
+    assert reopened.open_until == 1063
+    assert await mock_redis.get(f"provider_probe:{incident}") is None
+
+    assert await rq.acquire_provider_circuit_probe(incident) is True
+    assert await rq.record_provider_circuit_success(incident, now=1064) is None
+    assert await rq.get_provider_circuit_open_until(incident) is None
+    assert await mock_redis.get(f"provider_probe:{incident}") is None
+    assert await mock_redis.get(f"provider_fail_hosts:{incident}") is None
+
+
 # ---------------------------------------------------------------------------
 # Monitor queue: reschedule
 # ---------------------------------------------------------------------------

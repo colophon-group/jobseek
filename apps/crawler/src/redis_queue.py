@@ -37,11 +37,17 @@ Upstream-host circuit breaker (shared across boards, postings, and worker types)
     host_fail:{egress_host}  — consecutive failed crawler runs within a window
     host_open:{egress_host}  — unix unblock timestamp with an expiry
     host_probe:{egress_host} — single half-open recovery probe lease
+
+Provider-incident circuit breaker (shared across distinct tenant hosts):
+    provider_fail_hosts:{incident} — SET of affected origins within a window
+    provider_open:{incident}       — unix unblock timestamp with an expiry
+    provider_probe:{incident}      — single half-open recovery probe lease
 """
 
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections.abc import Awaitable, Sequence
 from dataclasses import dataclass
@@ -439,6 +445,145 @@ async def record_host_success(host: str, *, now: float | None = None) -> float |
         f"host_fail:{normalized}",
         f"host_open:{normalized}",
         f"host_probe:{normalized}",
+        str(current),
+    )
+    value = float(result or 0)
+    return value if value > 0 else None
+
+
+# A provider circuit is intentionally stricter than the generic host circuit:
+# only a provider-specific terminal response can contribute, and the threshold
+# counts distinct origins rather than repeated attempts against one tenant.
+# This lets a confirmed provider-wide event pause sibling tenants without
+# allowing one broken board to stop the whole crawler fleet (#5715).
+_PROVIDER_INCIDENT_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+_RECORD_PROVIDER_FAILURE_LUA = """
+redis.call("SADD", KEYS[1], ARGV[6])
+if redis.call("TTL", KEYS[1]) < 0 then
+    redis.call("EXPIRE", KEYS[1], tonumber(ARGV[2]))
+end
+
+local count = redis.call("SCARD", KEYS[1])
+local open_until = redis.call("GET", KEYS[2])
+local opened_now = 0
+local expired_open = open_until and tonumber(open_until) <= tonumber(ARGV[3])
+if expired_open or (not open_until and count >= tonumber(ARGV[1])) then
+    open_until = tonumber(ARGV[3]) + tonumber(ARGV[4])
+    redis.call(
+        "SET",
+        KEYS[2],
+        tostring(open_until),
+        "EX",
+        tonumber(ARGV[4]) + (2 * tonumber(ARGV[5]))
+    )
+    redis.call("DEL", KEYS[3])
+    opened_now = 1
+end
+
+return {count, tostring(open_until or 0), opened_now}
+"""
+
+
+def normalize_provider_incident(incident: str) -> str:
+    """Return a bounded Redis/metric key for an approved provider incident."""
+
+    normalized = incident.strip().lower()
+    return normalized if _PROVIDER_INCIDENT_RE.fullmatch(normalized) else ""
+
+
+async def get_provider_circuit_open_until(incident: str) -> float | None:
+    """Return the provider circuit unblock timestamp, if one exists."""
+
+    normalized = normalize_provider_incident(incident)
+    if not normalized:
+        return None
+    key = f"provider_open:{normalized}"
+    value = await get_redis().get(key)
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        # Corrupt/manual state must fail open rather than pause every tenant.
+        await get_redis().delete(key)
+        return None
+
+
+async def record_provider_incident_failure(
+    incident: str,
+    host: str,
+    *,
+    now: float | None = None,
+) -> HostCircuitState:
+    """Record one distinct affected origin for a provider-specific incident."""
+
+    normalized_incident = normalize_provider_incident(incident)
+    normalized_host = normalize_egress_host(host)
+    if not normalized_incident or not normalized_host:
+        return HostCircuitState(failures=0, open_until=None, opened_now=False)
+
+    current = time.time() if now is None else now
+    result = await get_redis().eval(
+        _RECORD_PROVIDER_FAILURE_LUA,
+        3,
+        f"provider_fail_hosts:{normalized_incident}",
+        f"provider_open:{normalized_incident}",
+        f"provider_probe:{normalized_incident}",
+        str(max(1, settings.host_circuit_failure_threshold)),
+        str(max(1, settings.host_circuit_failure_window_seconds)),
+        str(current),
+        str(max(1, settings.host_circuit_open_seconds)),
+        str(max(1, settings.host_circuit_probe_seconds)),
+        normalized_host,
+    )
+    open_until = float(result[1]) if result and float(result[1]) > 0 else None
+    return HostCircuitState(
+        failures=int(result[0]),
+        open_until=open_until,
+        opened_now=bool(int(result[2])),
+    )
+
+
+async def acquire_provider_circuit_probe(incident: str) -> bool:
+    """Acquire the single half-open recovery lease for a provider incident."""
+
+    normalized = normalize_provider_incident(incident)
+    if not normalized:
+        return False
+    acquired = await get_redis().set(
+        f"provider_probe:{normalized}",
+        "1",
+        nx=True,
+        ex=max(1, settings.host_circuit_probe_seconds),
+    )
+    return bool(acquired)
+
+
+async def release_provider_circuit_probe(incident: str) -> None:
+    """Release an unused provider probe so another tenant can recover it."""
+
+    normalized = normalize_provider_incident(incident)
+    if normalized:
+        await get_redis().delete(f"provider_probe:{normalized}")
+
+
+async def record_provider_circuit_success(
+    incident: str,
+    *,
+    now: float | None = None,
+) -> float | None:
+    """Close an expired provider circuit after its half-open probe succeeds."""
+
+    normalized = normalize_provider_incident(incident)
+    if not normalized:
+        return None
+    current = time.time() if now is None else now
+    result = await get_redis().eval(
+        _RECORD_HOST_SUCCESS_LUA,
+        3,
+        f"provider_fail_hosts:{normalized}",
+        f"provider_open:{normalized}",
+        f"provider_probe:{normalized}",
         str(current),
     )
     value = float(result or 0)
