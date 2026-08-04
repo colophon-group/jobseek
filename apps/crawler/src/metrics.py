@@ -84,6 +84,12 @@ monitor_dedup_total = Counter(
     ["path"],
 )
 
+monitor_foreign_discovery_total = Counter(
+    "crawler_monitor_foreign_discovery_total",
+    "Cross-board discoveries by canonical posting recovery outcome",
+    ["outcome"],
+)
+
 monitor_db_transaction_retries_total = Counter(
     "crawler_monitor_db_transaction_retries_total",
     "Monitor database transactions retried after a transient PostgreSQL abort",
