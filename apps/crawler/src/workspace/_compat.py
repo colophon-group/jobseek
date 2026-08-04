@@ -249,7 +249,7 @@ def detect_ats_from_url(url: str) -> str | None:
         host == "herp.careers"
         and not parsed.query
         and re.fullmatch(
-            r"/v1/[a-z0-9][a-z0-9_-]{0,62}(?:/[A-Za-z0-9_-]{6,64})?/?",
+            r"/v1/[a-z0-9][a-z0-9_-]{0,62}(?:/[A-Za-z0-9_~-]{6,64})?/?",
             parsed.path,
             re.IGNORECASE,
         )

@@ -29,11 +29,11 @@ MAX_JOBS = 50_000
 MAX_HTML_CHARS = 2_000_000
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$", re.IGNORECASE)
-_JOB_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
+_JOB_ID_RE = re.compile(r"^[A-Za-z0-9_~-]{6,64}$")
 _PAGE_PATTERNS = [
     re.compile(
         r"https?://herp\.careers/v1/([a-z0-9][a-z0-9_-]{0,62})"
-        r"(?:/[A-Za-z0-9_-]{6,64})?/?(?=[#\"'<\s]|$)",
+        r"(?:/[A-Za-z0-9_~-]{6,64})?/?(?=[#\"'<\s]|$)",
         re.IGNORECASE,
     )
 ]
@@ -81,7 +81,7 @@ def _listing_url(slug: str) -> str:
 def _job_matcher(slug: str) -> re.Pattern[str]:
     return re.compile(
         rf"^https://herp\.careers/v1/{re.escape(slug)}/"
-        r"[A-Za-z0-9_-]{6,64}(?:[/?#]|$)",
+        r"[A-Za-z0-9_~-]{6,64}(?:[/?#]|$)",
         re.IGNORECASE,
     )
 
@@ -125,7 +125,11 @@ async def _fetch_listing(slug: str, client: httpx.AsyncClient) -> str:
         )
     except PaginationFetchError as exc:
         if exc.last_status in _GONE_STATUSES:
-            raise BoardGoneError("HERP board no longer exists", url=url) from exc
+            raise BoardGoneError(
+                "HERP board no longer exists",
+                url=url,
+                status_code=exc.last_status,
+            ) from exc
         raise
     if page is None:  # Strict status handling above makes this unreachable.
         raise RuntimeError(f"HERP listing fetch returned no page for {slug!r}")

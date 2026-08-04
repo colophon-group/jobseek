@@ -17,6 +17,8 @@ SLUG = "a244"
 BOARD_URL = f"https://herp.careers/v1/{SLUG}"
 JOB_ID = "Q8BB49VqptS0"
 JOB_URL = f"{BOARD_URL}/{JOB_ID}"
+TILDE_JOB_ID = "wHhEeEpmb8~C"
+TILDE_JOB_URL = f"{BOARD_URL}/{TILDE_JOB_ID}"
 
 
 def _listing(*job_ids: str) -> str:
@@ -39,6 +41,17 @@ class TestSlugAndUrls:
         assert _slug_from_url(url) == expected
 
     @pytest.mark.parametrize(
+        ("url", "slug"),
+        [
+            ("https://herp.careers/v1/gcphr/wHhEeEpmb8~C", "gcphr"),
+            ("https://herp.careers/v1/medicalnote/8NIVUvkEdKw~", "medicalnote"),
+            ("https://herp.careers/v1/minma/td_Q93qgK~3s", "minma"),
+        ],
+    )
+    def test_extracts_slug_from_live_tilde_job_urls(self, url: str, slug: str):
+        assert _slug_from_url(url) == slug
+
+    @pytest.mark.parametrize(
         "url",
         [
             f"http://herp.careers/v1/{SLUG}",
@@ -58,7 +71,7 @@ class TestSlugAndUrls:
 
 class TestMonitor:
     async def test_discovers_canonical_urls_via_shared_dom_extractor(self):
-        page = _listing(JOB_ID, "vzmK31n19VfH").replace(
+        page = _listing(JOB_ID, "vzmK31n19VfH", TILDE_JOB_ID).replace(
             "</div>",
             (
                 f'<a href="{JOB_URL}?ref=duplicate">Duplicate</a>'
@@ -75,7 +88,7 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": BOARD_URL}, client)
 
-        assert result == {JOB_URL, f"{BOARD_URL}/vzmK31n19VfH"}
+        assert result == {JOB_URL, TILDE_JOB_URL, f"{BOARD_URL}/vzmK31n19VfH"}
         assert requests == [BOARD_URL]
 
     async def test_metadata_slug_override(self):
@@ -105,8 +118,10 @@ class TestMonitor:
     async def test_terminal_status_is_board_gone(self, status: int):
         transport = httpx.MockTransport(lambda request: httpx.Response(status, request=request))
         async with httpx.AsyncClient(transport=transport) as client:
-            with pytest.raises(BoardGoneError):
+            with pytest.raises(BoardGoneError) as exc_info:
                 await discover({"board_url": BOARD_URL}, client)
+        assert exc_info.value.status_code == status
+        assert exc_info.value.url == BOARD_URL
 
     @pytest.mark.parametrize("status", [204, 302, 400])
     async def test_unexpected_status_is_not_board_gone(self, status: int):
@@ -275,6 +290,7 @@ def test_runtime_and_workspace_integration():
     assert "herp" in all_monitor_types()
     assert "herp.careers" in _KNOWN_ATS_DOMAINS
     assert detect_ats_from_url(BOARD_URL) == "herp"
+    assert detect_ats_from_url(TILDE_JOB_URL) == "herp"
     assert detect_ats_from_url(f"{BOARD_URL}?group=engineering") is None
     assert auto_scraper_type("herp") == ("json-ld", None)
     assert "herp" in MONITOR_CARDS
@@ -282,9 +298,13 @@ def test_runtime_and_workspace_integration():
 
 
 def test_career_discovery_finds_listing_and_detail_links():
-    html = f'<a href="{BOARD_URL}">Jobs</a><a href="{JOB_URL}">Role</a>'
+    html = (
+        f'<a href="{BOARD_URL}">Jobs</a>'
+        f'<a href="{JOB_URL}">Role</a>'
+        f'<a href="{TILDE_JOB_URL}">Tilde role</a>'
+    )
     candidates = _scan_ats_urls_in_html(html)
-    assert [candidate.url for candidate in candidates] == [BOARD_URL, JOB_URL]
+    assert [candidate.url for candidate in candidates] == [BOARD_URL, JOB_URL, TILDE_JOB_URL]
 
 
 def test_career_discovery_rejects_group_and_query_scoped_paths():
