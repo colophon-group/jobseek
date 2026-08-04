@@ -348,6 +348,8 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert 'changed_paths="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")"' in workflow
     assert 'done <<< "$changed_paths"' in workflow
     assert "could not classify the full push range" in workflow
+    # In shell case patterns, * spans slash; a ** arm is redundant and actionlint rejects it.
+    assert "apps/crawler/**/*.md" not in workflow
     assert "done < <(git diff" not in workflow
     assert ".github/workflows/deploy-crawler-browser.yml" in workflow
     assert "timeout-minutes: 355" in workflow
