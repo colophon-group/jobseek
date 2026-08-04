@@ -19,6 +19,7 @@ import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-f
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
 import { canonicalStringCompare } from "@/lib/sort";
+import { logExternalError } from "@/lib/safe-external-error";
 
 export interface TaxonomySuggestion {
   id: number;
@@ -543,8 +544,9 @@ export async function getAllOccupationsGrouped(
     });
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[getAllOccupationsGrouped] Typesense unavailable; returning no occupations",
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "all_occupations_grouped" },
       err,
     );
     return [];
@@ -892,10 +894,7 @@ export async function getAllSeniorities(
     });
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[getAllSeniorities] Typesense unavailable; returning no seniorities",
-      err,
-    );
+    logExternalError("error", { service: "typesense", operation: "all_seniorities" }, err);
     return [];
   }
 }
@@ -1006,8 +1005,9 @@ export async function getAllTechnologiesGrouped(
     });
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[getAllTechnologiesGrouped] Typesense unavailable; returning no technologies",
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "all_technologies_grouped" },
       err,
     );
     return [];

@@ -20,6 +20,7 @@ import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
 import { canonicalStringCompare, makeDisplayStringCompare } from "@/lib/sort";
 import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
 import type { LocationType } from "@/lib/search/types";
+import { logExternalError } from "@/lib/safe-external-error";
 
 export interface LocationSuggestion {
   id: number;
@@ -349,8 +350,9 @@ export async function getGlobalLocationsGrouped(
     });
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[getGlobalLocationsGrouped] Typesense unavailable; returning no locations",
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "global_locations_grouped" },
       err,
     );
     return { macros: [], countries: [] };
@@ -493,8 +495,9 @@ export async function searchGlobalLocations(
     });
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[searchGlobalLocations] Typesense unavailable; returning no matches",
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "search_global_locations" },
       err,
     );
     return [];

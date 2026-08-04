@@ -410,10 +410,7 @@ export async function suggestIndustries(params: {
     return await _suggestIndustries(params);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[suggestIndustries] Typesense unavailable; returning no industries",
-      err,
-    );
+    logExternalError("error", { service: "typesense", operation: "suggest_industries" }, err);
     return [];
   }
 }
@@ -1038,8 +1035,9 @@ export async function getCompanyTopLocations(
     return await _getCompanyTopLocationsCached(companyId, locale);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[getCompanyTopLocations] Typesense unavailable; returning no locations",
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "company_top_locations" },
       err,
     );
     return { locations: [], totalCount: 0 };
@@ -1157,8 +1155,9 @@ export async function getCompanyLocationsGrouped(
     return await _getCompanyLocationsGroupedCached(companyId, locale);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[getCompanyLocationsGrouped] Typesense unavailable; returning no locations",
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "company_locations_grouped" },
       err,
     );
     return [];
@@ -1190,8 +1189,9 @@ export async function getCompanyLocationsGroupedWithMacros(
     return await _getCompanyLocationsGroupedWithMacrosCached(companyId, locale);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error(
-      "[getCompanyLocationsGroupedWithMacros] Typesense unavailable; returning no locations",
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "company_locations_grouped_with_macros" },
       err,
     );
     return { countries: [], macros: [] };
