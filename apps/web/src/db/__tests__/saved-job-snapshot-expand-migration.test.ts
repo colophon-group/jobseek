@@ -68,8 +68,8 @@ describe("0084 saved-job snapshot expand", () => {
     ) as { entries: { tag: string }[] };
     const tags = journal.entries.map((entry) => entry.tag);
 
-    expect(tags.at(-3)).toBe("0083_reconcile_supabase_baseline");
-    expect(tags.at(-2)).toBe("0084_saved_job_snapshot_expand");
-    expect(tags.at(-1)).toBe("0085_saved_job_snapshot_contract");
+    const expandIndex = tags.indexOf("0084_saved_job_snapshot_expand");
+    expect(tags[expandIndex - 1]).toBe("0083_reconcile_supabase_baseline");
+    expect(tags[expandIndex + 1]).toBe("0085_saved_job_snapshot_contract");
   });
 });

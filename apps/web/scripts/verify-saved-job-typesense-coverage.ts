@@ -30,6 +30,8 @@ type TypesensePostingDocument = Record<string, unknown>;
 const REQUEST_INTERVAL_MS = 400;
 const RATE_LIMIT_FALLBACK_MS = 65_000;
 const RETRIEVE_ATTEMPTS = 3;
+let verificationPhase = "configuration";
+let evidenceWritten = false;
 
 const REQUIRED_TEXT_FIELDS = [
   ["id", "postingId"],
@@ -166,6 +168,7 @@ async function main() {
   const port = requiredEnvironment("TYPESENSE_PORT");
   const apiKey = requiredEnvironment("TYPESENSE_SEARCH_KEY");
   const baseUrl = new URL(`${protocol}://${host}:${port}`);
+  verificationPhase = "database_snapshot";
 
   const sql = postgres(databaseUrl, {
     max: 1,
@@ -206,6 +209,7 @@ async function main() {
       throw new Error("No saved posting sources found; refusing an unproven cutover");
     }
 
+    verificationPhase = "typesense_coverage";
     const failures: {
       postingId: string;
       kind: "retrieve" | "parity";
@@ -241,6 +245,7 @@ async function main() {
     const parityFailures = failures.length - retrievalFailures;
     const evidence = {
       checkedAt: new Date().toISOString(),
+      status: failures.length === 0 && retrieved === rows.length ? "passed" : "failed",
       savedJobs,
       uniqueSavedPostings: rows.length,
       documentsRetrieved: retrieved,
@@ -252,6 +257,7 @@ async function main() {
         .digest("hex"),
       failureSample: failures.slice(0, 20),
     };
+    evidenceWritten = true;
     process.stdout.write(`${JSON.stringify(evidence, null, 2)}\n`);
     if (failures.length > 0 || retrieved !== rows.length) {
       throw new Error(
@@ -265,6 +271,20 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   void main().catch((error: unknown) => {
+    if (!evidenceWritten) {
+      process.stdout.write(
+        `${JSON.stringify(
+          {
+            checkedAt: new Date().toISOString(),
+            status: "failed",
+            phase: verificationPhase,
+            failure: "Saved-job coverage verification aborted before complete evidence",
+          },
+          null,
+          2,
+        )}\n`,
+      );
+    }
     logExternalError("error", { service: "typesense", operation: "verify_saved_job_coverage" }, error);
     process.exitCode = 1;
   });

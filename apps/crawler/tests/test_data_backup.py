@@ -35,6 +35,46 @@ def shell_function(script: str, name: str) -> str:
     return match.group(0)
 
 
+def run_restore_retirement_state_selector(
+    **overrides: str,
+) -> subprocess.CompletedProcess[str]:
+    restore = RESTORE_SCRIPT_PATH.read_text(encoding="utf-8")
+    migration_sha256 = hashlib.sha256(
+        (ROOT / "apps/web/drizzle/0086_drop_supabase_job_posting.sql").read_bytes()
+    ).hexdigest()
+    match = re.search(
+        r"^# BEGIN RESTORE_RETIREMENT_STATE_SELECTOR\n(?P<body>.*?)"
+        r"^# END RESTORE_RETIREMENT_STATE_SELECTOR$",
+        restore,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    assert match is not None
+    environment = {
+        **os.environ,
+        "RESTORED_LEDGER_COUNT": "75",
+        "RESTORED_LEDGER_TIP_HASH": backup.WEB_POSTGRES_CONTRACT_HASH,
+        "RESTORED_LEDGER_TIP_CREATED_AT": str(backup.WEB_POSTGRES_CONTRACT_CREATED_AT),
+        "CONTRACT_LEDGER_MATCH": "1",
+        "CONTRACT_CREATED_MATCH": "1",
+        "RETIREMENT_LEDGER_MATCH": "0",
+        "RETIREMENT_CREATED_MATCH": "0",
+        "RETIREMENT_HASH_MATCH": "0",
+        "RESTORED_JOB_POSTING_ABSENT": "t",
+        "CONTRACT_CREATED_AT": str(backup.WEB_POSTGRES_CONTRACT_CREATED_AT),
+        "CONTRACT_SHA256": backup.WEB_POSTGRES_CONTRACT_HASH,
+        "RETIREMENT_CREATED_AT": "1785760800000",
+        "RETIREMENT_MIGRATION_SHA256": migration_sha256,
+        **overrides,
+    }
+    return subprocess.run(
+        ["python3", "-c", match.group("body")],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+
 def run_mocked_restore_cleanup(
     tmp_path: Path,
     *,
@@ -669,6 +709,131 @@ def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> No
     ):
         assert required_snapshot_field in restore
     assert "murmur" not in restore.lower()
+
+
+def test_web_postgresql_restore_converges_through_reviewed_0086_bytes() -> None:
+    restore = RESTORE_SCRIPT_PATH.read_text(encoding="utf-8")
+    migration_path = ROOT / "apps/web/drizzle/0086_drop_supabase_job_posting.sql"
+    migration = migration_path.read_text(encoding="utf-8")
+    installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+    transport = (ROOT / "deploy/backups/deploy-remote.sh").read_text(encoding="utf-8")
+    operations = (ROOT / "deploy/backups/web-postgresql/operations.py").read_text(encoding="utf-8")
+
+    installed = "/usr/local/share/jobseek-backup/0086_drop_supabase_job_posting.sql"
+    assert "apps/web/drizzle/0086_drop_supabase_job_posting.sql" in transport
+    assert '"$REPO_ROOT/apps/web/drizzle/0086_drop_supabase_job_posting.sql"' in installer
+    assert installed in installer
+    assert installed in restore
+    assert installed in operations
+    assert "retirement_migration" in operations
+    assert "--expected-retirement-migration-sha256" in operations
+
+    assert "CREATE TEMP TABLE jobseek_retirement_attestation" in restore
+    for field in (
+        "mode text",
+        "confirmation text",
+        "backup_restore_run_id bigint",
+        "crawler_deploy_run_id bigint",
+        "typesense_backfill_run_id bigint",
+        "web_deploy_sha text",
+        "readiness_digest text",
+        "attested_at timestamptz",
+    ):
+        assert field in restore
+    assert "'restore-drill'" in restore
+    assert "RESTORE-ONLY-JOB-POSTING-0086" in restore
+    assert "\\i /migration/0086_drop_supabase_job_posting.sql" in restore
+    assert "INSERT INTO drizzle.__drizzle_migrations (hash, created_at)" in restore
+    assert "1785760800000" in restore
+    assert f"CONTRACT_CREATED_AT={backup.WEB_POSTGRES_CONTRACT_CREATED_AT}" in restore
+    assert f"CONTRACT_SHA256={backup.WEB_POSTGRES_CONTRACT_HASH}" in restore
+    assert 'RETIREMENT_MIGRATION_SHA256="$(sha256sum "$RETIREMENT_MIGRATION")"' in restore
+    assert "WEB_POSTGRES_RESTORE_DEPLOY_SHA" in restore
+    assert 'if [[ "$CONVERGENCE_ACTION" == apply ]]' in restore
+    assert 'elif [[ "$CONVERGENCE_ACTION" != already-applied ]]' in restore
+    assert "retirement_convergence_applied" in restore
+
+    verify = restore.index("web-postgresql-verify")
+    converge = restore.index("\\i /migration/0086_drop_supabase_job_posting.sql")
+    ledger = restore.index("INSERT INTO drizzle.__drizzle_migrations", converge)
+    canary = restore.index("# Exercise the restored Better Auth", ledger)
+    assert verify < converge < ledger < canary
+    assert restore.count("<(saved_job_fingerprint)") == 2
+    assert "to_regclass('public.job_posting') IS NULL" in restore
+    assert "((RETIREMENT_LEDGER_COUNT_RESULT >= 76))" in restore
+    assert '[[ "$SAVED_JOB_ROWS_AFTER" == "$SAVED_JOB_ROWS_BEFORE" ]]' in restore
+    assert '[[ "$SAVED_JOB_DIGEST_AFTER" == "$SAVED_JOB_DIGEST_BEFORE" ]]' in restore
+
+    # The exact reviewed SQL itself owns the production-vs-restore distinction.
+    assert "pg_temp.jobseek_retirement_attestation" in migration
+    assert "Refusing production retirement: public.job_posting is already absent" in migration
+    assert "Refusing restore-only convergence: public.job_posting unexpectedly exists" in migration
+
+
+def test_restore_retirement_selector_accepts_pre_drop_and_post_drop_or_later() -> None:
+    pre_drop = run_restore_retirement_state_selector()
+    assert pre_drop.returncode == 0, pre_drop.stderr
+    assert pre_drop.stdout.strip() == "apply"
+
+    migration_sha256 = hashlib.sha256(
+        (ROOT / "apps/web/drizzle/0086_drop_supabase_job_posting.sql").read_bytes()
+    ).hexdigest()
+    post_drop = run_restore_retirement_state_selector(
+        RESTORED_LEDGER_COUNT="76",
+        RESTORED_LEDGER_TIP_HASH=migration_sha256,
+        RESTORED_LEDGER_TIP_CREATED_AT="1785760800000",
+        RETIREMENT_LEDGER_MATCH="1",
+        RETIREMENT_CREATED_MATCH="1",
+        RETIREMENT_HASH_MATCH="1",
+    )
+    assert post_drop.returncode == 0, post_drop.stderr
+    assert post_drop.stdout.strip() == "already-applied"
+
+    future = run_restore_retirement_state_selector(
+        RESTORED_LEDGER_COUNT="79",
+        RESTORED_LEDGER_TIP_HASH="f" * 64,
+        RESTORED_LEDGER_TIP_CREATED_AT="1785771600000",
+        RETIREMENT_LEDGER_MATCH="1",
+        RETIREMENT_CREATED_MATCH="1",
+        RETIREMENT_HASH_MATCH="1",
+    )
+    assert future.returncode == 0, future.stderr
+    assert future.stdout.strip() == "already-applied"
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    (
+        {"RESTORED_JOB_POSTING_ABSENT": "f"},
+        {"RESTORED_LEDGER_COUNT": "76"},
+        {
+            "RESTORED_LEDGER_COUNT": "76",
+            "RETIREMENT_LEDGER_MATCH": "2",
+            "RETIREMENT_CREATED_MATCH": "2",
+            "RETIREMENT_HASH_MATCH": "2",
+        },
+        {
+            "RETIREMENT_LEDGER_MATCH": "1",
+            "RETIREMENT_CREATED_MATCH": "1",
+            "RETIREMENT_HASH_MATCH": "1",
+        },
+        {
+            "RESTORED_LEDGER_COUNT": "76",
+            "RESTORED_LEDGER_TIP_HASH": "f" * 64,
+            "RESTORED_LEDGER_TIP_CREATED_AT": "1785771600000",
+            "RETIREMENT_LEDGER_MATCH": "1",
+            "RETIREMENT_CREATED_MATCH": "1",
+            "RETIREMENT_HASH_MATCH": "1",
+        },
+    ),
+)
+def test_restore_retirement_selector_rejects_mixed_states(
+    overrides: dict[str, str],
+) -> None:
+    result = run_restore_retirement_state_selector(**overrides)
+
+    assert result.returncode != 0
+    assert "mixed or unsupported" in result.stderr
 
 
 def test_restore_cleanup_accepts_failed_remove_only_after_proving_absence(

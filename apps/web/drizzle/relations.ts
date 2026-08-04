@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { company, followedCompany, user, occupationDomain, occupation, subscription, jobBoard, jobPosting, savedJob, applicationInterview, session, companyRequest, account, industry, userPreferences, location, seniority, locationMacroMember, companyDescription, occupationName, seniorityName, occupationDomainName, locationName, industryName } from "./schema";
+import { company, followedCompany, user, occupationDomain, occupation, subscription, jobBoard, savedJob, applicationInterview, session, companyRequest, account, industry, userPreferences, location, seniority, locationMacroMember, companyDescription, occupationName, seniorityName, occupationDomainName, locationName, industryName } from "./schema";
 
 export const starredCompanyRelations = relations(followedCompany, ({one}) => ({
 	company: one(company, {
@@ -20,7 +20,6 @@ export const companyRelations = relations(company, ({one, many}) => ({
 		fields: [company.industry],
 		references: [industry.id]
 	}),
-	jobPostings: many(jobPosting),
 	companyDescriptions: many(companyDescription),
 }));
 
@@ -46,7 +45,6 @@ export const occupationRelations = relations(occupation, ({one, many}) => ({
 	occupations: many(occupation, {
 		relationName: "occupation_parentId_occupation_id"
 	}),
-	jobPostings: many(jobPosting),
 	occupationNames: many(occupationName),
 }));
 
@@ -68,14 +66,9 @@ export const jobBoardRelations = relations(jobBoard, ({one, many}) => ({
 		references: [company.id]
 	}),
 	companyRequests: many(companyRequest),
-	jobPostings: many(jobPosting),
 }));
 
 export const savedJobRelations = relations(savedJob, ({one, many}) => ({
-	jobPosting: one(jobPosting, {
-		fields: [savedJob.jobPostingId],
-		references: [jobPosting.id]
-	}),
 	user: one(user, {
 		fields: [savedJob.userId],
 		references: [user.id]
@@ -87,26 +80,6 @@ export const applicationInterviewRelations = relations(applicationInterview, ({o
 	savedJob: one(savedJob, {
 		fields: [applicationInterview.savedJobId],
 		references: [savedJob.id]
-	}),
-}));
-
-export const jobPostingRelations = relations(jobPosting, ({one, many}) => ({
-	savedJobs: many(savedJob),
-	jobBoard: one(jobBoard, {
-		fields: [jobPosting.boardId],
-		references: [jobBoard.id]
-	}),
-	company: one(company, {
-		fields: [jobPosting.companyId],
-		references: [company.id]
-	}),
-	occupation: one(occupation, {
-		fields: [jobPosting.occupationId],
-		references: [occupation.id]
-	}),
-	seniority: one(seniority, {
-		fields: [jobPosting.seniorityId],
-		references: [seniority.id]
 	}),
 }));
 
@@ -165,11 +138,6 @@ export const locationRelations = relations(location, ({one, many}) => ({
 	locationNames: many(locationName),
 }));
 
-export const seniorityRelations = relations(seniority, ({many}) => ({
-	jobPostings: many(jobPosting),
-	seniorityNames: many(seniorityName),
-}));
-
 export const locationMacroMemberRelations = relations(locationMacroMember, ({one}) => ({
 	location_countryId: one(location, {
 		fields: [locationMacroMember.countryId],
@@ -181,6 +149,10 @@ export const locationMacroMemberRelations = relations(locationMacroMember, ({one
 		references: [location.id],
 		relationName: "locationMacroMember_macroId_location_id"
 	}),
+}));
+
+export const seniorityRelations = relations(seniority, ({many}) => ({
+	seniorityNames: many(seniorityName),
 }));
 
 export const companyDescriptionRelations = relations(companyDescription, ({one}) => ({
