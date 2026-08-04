@@ -1236,6 +1236,61 @@ groups:
             silently truncating (#2722) — needs fixing.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/14-error-review-routine.md
 
+  - name: jobseek_redis_capacity
+    interval: 5m
+    rules:
+      - alert: RedisCapacitySnapshotStale
+        expr: jobseek_redis_capacity_snapshot_available == 0 or time() - jobseek_redis_capacity_snapshot_unixtime > 8 * 60 * 60
+        for: 1h
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Redis key-family capacity snapshot is unavailable or stale"
+          description: "The bounded six-hour key-family inventory has been unavailable for an hour or its last successful snapshot is older than eight hours. Aggregate memory remains visible, but attribution and orphan-growth warning are degraded."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/20-redis-capacity.md#alerts-and-operator-response
+
+      - alert: RedisOrphanScrapeConfigs
+        expr: jobseek_redis_scrape_config_state_keys{state="orphan"} > 10000
+        for: 6h
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Redis orphan scrape configs exceed the steady-state budget"
+          description: "More than 10,000 scrape config hashes are absent from every queue, lease, and deadletter. Run the dry-run bounded orphan prune, investigate completion lifecycle regressions, then apply bounded batches."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/20-redis-capacity.md#bounded-orphan-prune
+
+      - alert: RedisKeyFamilyBudgetHigh
+        expr: max by (family) (jobseek_redis_key_family_estimated_bytes / jobseek_redis_key_family_budget_bytes or jobseek_redis_key_family_items / jobseek_redis_key_family_budget_items or jobseek_redis_key_family_keys / jobseek_redis_key_family_budget_keys) > 0.8
+        for: 1h
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Redis {{ $labels.family }} family exceeds 80% of budget"
+          description: "A bounded Redis key family is approaching its agreed byte, logical-item, or key-cardinality budget. Inspect the current family snapshot before aggregate noeviction pressure rejects writes."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/20-redis-capacity.md#alerts-and-operator-response
+
+      - alert: RedisMemoryForecastPressure
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.75 or (deriv(redis_memory_used_bytes[6h]) > 0 and predict_linear(redis_memory_used_bytes[6h], 24 * 60 * 60) / redis_memory_max_bytes > 0.75)
+        for: 1h
+        labels:
+          severity: high
+          service: crawler
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "Redis memory is above or forecast to cross 75% within 24h"
+          description: "Current memory or the positive six-hour growth trend reaches the 75% intervention threshold within 24 hours, leaving at least 15 percentage points before the critical 90% noeviction alert."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/20-redis-capacity.md#alerts-and-operator-response
+
   - name: jobseek_crawler_board_quarantine
     interval: 30s
     rules:

@@ -528,6 +528,33 @@ async def test_enqueue_scrape_browser():
     assert await r.zcard("ready:browser:0") >= 1
 
 
+async def test_bulk_enqueue_scrapes_writes_config_and_queue_atomically(mock_redis):
+    schedules = [
+        rq.ScrapeSchedule(
+            domain="jobs.example.com",
+            posting_id="bulk-1",
+            next_scrape_at=time.time(),
+            config={"source_url": "https://jobs.example.com/1", "board_id": "board-1"},
+            browser=False,
+            first_time=False,
+        ),
+        rq.ScrapeSchedule(
+            domain="browser.example.com",
+            posting_id="bulk-2",
+            next_scrape_at=0,
+            config={"source_url": "https://browser.example.com/2", "board_id": "board-2"},
+            browser=True,
+            first_time=True,
+        ),
+    ]
+
+    assert await rq.enqueue_scrapes(schedules) == [True, True]
+    assert await mock_redis.hget("scrape:bulk-1", "domain") == "jobs.example.com"
+    assert await mock_redis.zscore("scrapes_simple:jobs.example.com", "bulk-1") is not None
+    assert await mock_redis.hget("scrape:bulk-2", "source_url") == ("https://browser.example.com/2")
+    assert await mock_redis.zscore("ft_scrapes_browser:browser.example.com", "bulk-2") is not None
+
+
 async def test_claim_scrape_returns_none_on_empty():
     work = await rq.claim_work(browser=False)
     assert work is None
@@ -1047,6 +1074,67 @@ async def test_complete_task_clears_inflight_lease(mock_redis):
     # Second call is a no-op (idempotent).
     removed = await rq.complete_task(domain, "board-lease-3", "monitor", browser=False)
     assert removed == 0
+
+
+async def test_complete_scrape_removes_config_after_final_reference_drains(mock_redis):
+    domain = "jobs.example.com"
+    posting_id = "posting-terminal"
+    await rq.enqueue_scrape(
+        domain,
+        posting_id,
+        time.time() - 10,
+        {"source_url": f"https://{domain}/1", "board_id": "board-1"},
+        first_time=True,
+    )
+    await rq.claim_work(browser=False)
+
+    assert await mock_redis.exists(f"scrape:{posting_id}") == 1
+    assert await rq.complete_task(domain, posting_id, "scrape", browser=False) == 1
+    assert await mock_redis.exists(f"scrape:{posting_id}") == 0
+
+
+async def test_complete_scrape_preserves_config_for_concurrent_reroute(mock_redis):
+    domain = "jobs.example.com"
+    posting_id = "posting-rerouted"
+    await rq.enqueue_scrape(
+        domain,
+        posting_id,
+        time.time() - 10,
+        {"source_url": f"https://{domain}/old", "board_id": "board-1"},
+        first_time=True,
+    )
+    await rq.claim_work(browser=False)
+
+    await rq.enqueue_scrape(
+        domain,
+        posting_id,
+        time.time() + 60,
+        {"source_url": f"https://{domain}/fresh", "board_id": "board-1"},
+        browser=True,
+        first_time=False,
+    )
+    await rq.complete_task(domain, posting_id, "scrape", browser=False)
+
+    assert await mock_redis.zscore(f"scrapes_browser:{domain}", posting_id) is not None
+    assert await mock_redis.hget(f"scrape:{posting_id}", "source_url") == (
+        f"https://{domain}/fresh"
+    )
+
+
+async def test_complete_scrape_preserves_deadletter_config(mock_redis):
+    domain = "jobs.example.com"
+    posting_id = "posting-deadletter"
+    member = f"scrape|{domain}|{posting_id}"
+    await mock_redis.hset(
+        f"scrape:{posting_id}",
+        mapping={"domain": domain, "source_url": f"https://{domain}/1"},
+    )
+    await mock_redis.zadd("inflight:simple", {member: time.time() + 60})
+    await mock_redis.zadd("deadletter:simple", {member: time.time()})
+
+    await rq.complete_task(domain, posting_id, "scrape", browser=False)
+
+    assert await mock_redis.exists(f"scrape:{posting_id}") == 1
 
 
 async def test_heartbeat_extends_lease(mock_redis):

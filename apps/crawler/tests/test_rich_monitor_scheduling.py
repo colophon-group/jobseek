@@ -334,8 +334,9 @@ class TestProcessScrapeWorkSkipGuard:
         assert len(clear_calls) == 1
         assert clear_calls[0].args[1] == ["11111111-1111-1111-1111-111111111111"]
 
-        # Redis scrape hash is also deleted (no orphan key left behind).
-        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
+        # Direct deletion would race a concurrent relist. The surrounding
+        # lease context delegates reachability-safe deletion to complete_task.lua.
+        redis.delete.assert_not_awaited()
 
         # No Redis reschedule — the task is dropped, draining the loop.
         mock_reschedule.assert_not_awaited()
@@ -347,22 +348,17 @@ class TestProcessScrapeWorkSkipGuard:
     @patch("src.workers.pipeline.reschedule_task", new_callable=AsyncMock)
     @patch("src.workers.pipeline.claim_work", new_callable=AsyncMock)
     @patch("src.redis_queue.get_redis")
-    async def test_drop_survives_redis_delete_failure(
+    async def test_drop_does_not_directly_delete_race_sensitive_scrape_hash(
         self, mock_get_redis, _mock_claim, mock_reschedule
     ):
-        """If ``r.delete`` raises (Redis blip), the drop must still succeed.
-
-        The ``try/except`` wrapping the delete exists so a transient Redis
-        error doesn't re-raise out of the worker and trigger the 5-min
-        error-backoff reschedule.
-        """
+        """Terminal cleanup belongs to the atomic lease completion script."""
         pool, conn = self._mock_pool()
         http = AsyncMock()
 
         redis = self._mock_redis(
             {"metadata": json.dumps({"scraper_type": "skip"}), "crawler_type": "greenhouse"}
         )
-        redis.delete = AsyncMock(side_effect=RuntimeError("redis is sad"))
+        redis.delete = AsyncMock(side_effect=AssertionError("direct delete is unsafe"))
         mock_get_redis.return_value = redis
 
         with patch(
@@ -380,6 +376,7 @@ class TestProcessScrapeWorkSkipGuard:
             if c.args and c.args[0] == _CLEAR_SCRAPE_FOR_RICH
         ]
         assert len(clear_calls) == 1
+        redis.delete.assert_not_awaited()
         mock_reschedule.assert_not_awaited()
 
     @patch("src.workers.pipeline.reschedule_task", new_callable=AsyncMock)
@@ -416,7 +413,7 @@ class TestProcessScrapeWorkSkipGuard:
             if c.args and c.args[0] == _CLEAR_SCRAPE_FOR_RICH
         ]
         assert len(clear_calls) == 1
-        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
+        redis.delete.assert_not_awaited()
         mock_reschedule.assert_not_awaited()
         assert _counter_value("scrape", "skipped_rich") == before + 1
 
@@ -470,7 +467,7 @@ class TestProcessScrapeWorkSkipGuard:
         assert len(fail_calls) == 1
         assert fail_calls[0].args[1] == "11111111-1111-1111-1111-111111111111"
 
-        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
+        redis.delete.assert_not_awaited()
         mock_reschedule.assert_not_awaited()
 
         # Metric increment: stale_config, not skipped_rich.

@@ -8,6 +8,7 @@
 -- ARGV[5] = task_type ("monitor" or "scrape")
 -- ARGV[6] = first_time ("1" or "0")
 -- ARGV[7] = now (float timestamp)
+-- ARGV[8..] = optional scrape config field/value pairs
 --
 -- Returns: 1 if newly added, 0 if already existed
 
@@ -18,6 +19,21 @@ local score = tonumber(ARGV[4])
 local task_type = ARGV[5]
 local first_time = ARGV[6] == "1"
 local now = tonumber(ARGV[7])
+
+-- Scrape queue membership and its config hash are one lifecycle record. Keep
+-- them in this script so an orphan-prune/completion script can never observe
+-- a newly queued posting without its new config (or vice versa). Monitor
+-- hashes remain deploy-owned and are intentionally written by sync in bulk.
+if task_type == "scrape" then
+    local config_args = {"domain", domain}
+    for index = 8, #ARGV, 2 do
+        if ARGV[index + 1] ~= nil then
+            table.insert(config_args, ARGV[index])
+            table.insert(config_args, ARGV[index + 1])
+        end
+    end
+    redis.call("HSET", "scrape:" .. task_id, unpack(config_args))
+end
 
 -- Build both lifecycle queue keys. A monitor is one logical schedule across
 -- its first-time, recurring, and inflight representations. Checking only the

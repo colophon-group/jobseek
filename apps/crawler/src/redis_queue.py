@@ -149,6 +149,18 @@ class MonitorSchedule:
     first_time: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class ScrapeSchedule:
+    """One atomic scrape config/queue write for recovery and bulk repair."""
+
+    domain: str
+    posting_id: str
+    next_scrape_at: float
+    config: dict
+    browser: bool = False
+    first_time: bool = False
+
+
 @dataclass
 class ScrapeWork:
     posting_id: str
@@ -774,6 +786,12 @@ async def enqueue_scrape(
     r = get_redis()
     wtype = "browser" if browser else "simple"
 
+    config_args: list[str] = []
+    for field, value in config.items():
+        if field == "domain":
+            continue
+        config_args.extend((str(field), str(value)))
+
     added = await r.evalsha(
         _ENQUEUE_SHA,
         0,
@@ -784,14 +802,62 @@ async def enqueue_scrape(
         "scrape",
         "1" if first_time else "0",
         str(time.time()),
+        *config_args,
     )
 
-    if config:
-        config["domain"] = domain
-        await r.hset(f"scrape:{posting_id}", mapping=config)
     await r.set(f"delay:{domain}", str(delay_for_domain(domain)))
 
     return bool(added)
+
+
+async def enqueue_scrapes(schedules: Sequence[ScrapeSchedule]) -> list[bool]:
+    """Pipeline bounded scrape schedules while preserving per-item atomicity."""
+    if not schedules:
+        return []
+
+    await _load_scripts()
+    assert _ENQUEUE_SHA is not None
+    r = get_redis()
+    added: list[bool] = []
+    batch_size = 1000
+
+    for start in range(0, len(schedules), batch_size):
+        batch = schedules[start : start + batch_size]
+        pipe = r.pipeline(transaction=False)
+        result_indexes: list[int] = []
+        command_count = 0
+        now = str(time.time())
+        domains: set[str] = set()
+
+        for schedule in batch:
+            config_args: list[str] = []
+            for field, value in schedule.config.items():
+                if field == "domain":
+                    continue
+                config_args.extend((str(field), str(value)))
+            result_indexes.append(command_count)
+            pipe.evalsha(
+                _ENQUEUE_SHA,
+                0,
+                "browser" if schedule.browser else "simple",
+                schedule.domain,
+                schedule.posting_id,
+                str(schedule.next_scrape_at),
+                "scrape",
+                "1" if schedule.first_time else "0",
+                now,
+                *config_args,
+            )
+            command_count += 1
+            domains.add(schedule.domain)
+
+        for domain in sorted(domains):
+            pipe.set(f"delay:{domain}", str(delay_for_domain(domain)))
+
+        results = await pipe.execute()
+        added.extend(bool(results[index]) for index in result_indexes)
+
+    return added
 
 
 # ---------------------------------------------------------------------------
