@@ -312,6 +312,45 @@ class TestProbeRow:
         assert result.status == "ok"
         assert captured["url"] == "https://acme.applytojob.com/apply/jobs"
 
+    async def test_jazzhr_rejects_config_tenant_that_conflicts_with_url(self):
+        row = _row(
+            board_slug="acme-jazzhr",
+            board_url="https://acme.applytojob.com/apply",
+            monitor_type="jazzhr",
+            monitor_config=json.dumps({"tenant": "other"}),
+        )
+        requests: list[str] = []
+
+        def handler(request):
+            requests.append(str(request.url))
+            return httpx.Response(200, request=request)
+
+        result = await self._run(row, handler)
+
+        assert result.status == "fail"
+        assert "does not match" in result.message
+        assert requests == []
+
+    @pytest.mark.parametrize("invalid_tenant", [None, "", 123])
+    async def test_jazzhr_rejects_explicit_invalid_config_tenant(self, invalid_tenant: object):
+        row = _row(
+            board_slug="acme-jazzhr",
+            board_url="https://acme.applytojob.com/apply",
+            monitor_type="jazzhr",
+            monitor_config=json.dumps({"tenant": invalid_tenant}),
+        )
+        requests: list[str] = []
+
+        def handler(request):
+            requests.append(str(request.url))
+            return httpx.Response(200, request=request)
+
+        result = await self._run(row, handler)
+
+        assert result.status == "fail"
+        assert "tenant is invalid" in result.message
+        assert requests == []
+
     async def test_jazzhr_marketing_redirect_is_failed(self):
         row = _row(
             board_slug="acme-jazzhr",

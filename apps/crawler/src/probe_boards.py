@@ -47,6 +47,7 @@ from src.shared.dayforce import (
 from src.shared.gupy import normalize_gupy_tenant
 from src.shared.http import DEFAULT_ACCEPT, DEFAULT_USER_AGENT
 from src.shared.http_retry import PaginationFetchError
+from src.shared.jazzhr import jazzhr_listing_url, resolve_jazzhr_tenant
 from src.shared.jobvite import (
     is_jobvite_invalid_redirect,
     jobvite_board_from_metadata,
@@ -327,19 +328,22 @@ async def _probe_adp(row: dict, client: httpx.AsyncClient) -> ProbeResult:
 
 
 async def _probe_jazzhr(row: dict, client: httpx.AsyncClient) -> ProbeResult:
-    tenant = _token_from_config(row["monitor_config"], "tenant")
-    if not tenant:
-        host = (urlparse(row["board_url"]).hostname or "").lower()
-        match = re.fullmatch(
-            r"([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\.applytojob\.com",
-            host,
+    try:
+        decoded = json.loads(row["monitor_config"] or "{}")
+    except (json.JSONDecodeError, TypeError):
+        decoded = {}
+    metadata = decoded if isinstance(decoded, dict) else {}
+    try:
+        tenant = resolve_jazzhr_tenant(row["board_url"], metadata)
+    except ValueError as exc:
+        return ProbeResult(
+            row["board_slug"],
+            "jazzhr",
+            row["board_url"],
+            "fail",
+            str(exc),
         )
-        tenant = match.group(1) if match else None
-    if (
-        not tenant
-        or tenant in {"app", "developers", "login", "portal", "support", "www"}
-        or re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", tenant) is None
-    ):
+    if tenant is None:
         return ProbeResult(
             row["board_slug"],
             "jazzhr",
@@ -348,7 +352,7 @@ async def _probe_jazzhr(row: dict, client: httpx.AsyncClient) -> ProbeResult:
             "no valid tenant in monitor_config or JazzHR URL",
         )
 
-    url = f"https://{tenant}.applytojob.com/apply/jobs"
+    url = jazzhr_listing_url(tenant)
     resp = await _retry(lambda: _get(client, url, follow_redirects=False))
     if isinstance(resp, httpx.Response):
         if resp.status_code in {404, 410}:
