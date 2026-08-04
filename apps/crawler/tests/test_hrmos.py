@@ -149,8 +149,10 @@ class TestMonitor:
     async def test_terminal_first_page_status_is_board_gone(self, status: int):
         transport = httpx.MockTransport(lambda request: httpx.Response(status, request=request))
         async with httpx.AsyncClient(transport=transport) as client:
-            with pytest.raises(BoardGoneError):
+            with pytest.raises(BoardGoneError) as exc_info:
                 await discover({"board_url": BOARD_URL}, client)
+        assert exc_info.value.status_code == status
+        assert exc_info.value.url == BOARD_URL
 
     async def test_terminal_later_page_status_is_transient_failure(self):
         def handler(request: httpx.Request) -> httpx.Response:

@@ -164,7 +164,11 @@ async def _fetch_listing(
         )
     except PaginationFetchError as exc:
         if page_number == 1 and exc.last_status in _GONE_STATUSES:
-            raise BoardGoneError("HRMOS board no longer exists", url=url) from exc
+            raise BoardGoneError(
+                "HRMOS board no longer exists",
+                url=url,
+                status_code=exc.last_status,
+            ) from exc
         raise
     if page is None:  # Strict status handling above makes this unreachable.
         raise RuntimeError(f"HRMOS listing fetch returned no page for {tenant!r}")
