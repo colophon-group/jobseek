@@ -112,12 +112,15 @@ async def seed():
     # Load all locale names
     name_rows = await conn.fetch("SELECT location_id, locale, name, is_display FROM location_name")
     loc_name_map: dict[int, dict[str, str]] = {}
+    loc_alias_map: dict[int, set[str]] = {}
     for r in name_rows:
         lid = r["location_id"]
         if lid not in loc_name_map:
             loc_name_map[lid] = {}
         if r["is_display"]:
             loc_name_map[lid][r["locale"]] = r["name"]
+        else:
+            loc_alias_map.setdefault(lid, set()).add(r["name"])
 
     # Parent name lookup
     parent_names = {}
@@ -125,17 +128,34 @@ async def seed():
         names = loc_name_map.get(r["id"], {})
         parent_names[r["id"]] = names.get("en", names.get("", ""))
 
+    macro_rows = await conn.fetch("SELECT macro_id, country_id FROM location_macro_member")
+    parents = {r["id"]: r["parent_id"] for r in loc_rows}
+    types = {r["id"]: r["type"] for r in loc_rows}
+    macros_by_country: dict[int, set[int]] = {}
+    members_by_macro: dict[int, set[int]] = {}
+    for r in macro_rows:
+        macros_by_country.setdefault(r["country_id"], set()).add(r["macro_id"])
+        members_by_macro.setdefault(r["macro_id"], set()).add(r["country_id"])
+
     docs = []
     for r in loc_rows:
         lid = r["id"]
         names = loc_name_map.get(lid, {})
         cnt = loc_counts.get(lid, 0)
+        ancestors: set[int] = set()
+        current: int | None = lid
+        while current is not None and current not in ancestors:
+            ancestors.add(current)
+            if types.get(current) == "country":
+                ancestors.update(macros_by_country.get(current, set()))
+            current = parents.get(current)
         doc: dict = {
             "id": str(lid),
             "location_id": lid,
             "slug": r["slug"] or f"loc-{lid}",
             "name_en": names.get("en", names.get("", f"Location {lid}")),
             "type": r["type"],
+            "ancestor_ids": [lid, *sorted(ancestors - {lid})],
             "has_active_postings": cnt > 0,
             "active_posting_count": cnt,
         }
@@ -148,13 +168,21 @@ async def seed():
             doc["population"] = r["population"]
         if r["parent_id"] and r["parent_id"] in parent_names:
             doc["parent_name"] = parent_names[r["parent_id"]]
+            doc["parent_id"] = r["parent_id"]
+        if lid in members_by_macro:
+            doc["member_country_ids"] = sorted(members_by_macro[lid])
+        if lid in loc_alias_map:
+            doc["aliases"] = sorted(loc_alias_map[lid])
         docs.append(doc)
 
     _upsert(ts, "location", docs)
 
     # --- Occupations ---
     print("Seeding occupations...")
-    occ_rows = await conn.fetch("SELECT id, slug FROM occupation")
+    occ_rows = await conn.fetch(
+        "SELECT o.id, o.slug, o.parent_id, o.domain_id, d.slug AS domain_slug "
+        "FROM occupation o LEFT JOIN occupation_domain d ON d.id = o.domain_id"
+    )
     occ_name_rows = await conn.fetch(
         "SELECT occupation_id, locale, name, is_display FROM occupation_name"
     )
@@ -174,6 +202,7 @@ async def seed():
             occ_display[oid][loc] = r["name"]
 
     occ_slugs = {r["id"]: r["slug"] for r in occ_rows}
+    occ_meta = {r["id"]: r for r in occ_rows}
     docs = []
     for oid, locales in occ_name_map.items():
         cnt = occ_counts.get(oid, 0)
@@ -183,18 +212,24 @@ async def seed():
                 continue
             display = occ_display.get(oid, {}).get(loc, names[0] if names else f"Occ {oid}")
             aliases = [n for n in names if n != display]
-            docs.append(
-                {
-                    "id": f"{oid}-{loc}",
-                    "occupation_id": oid,
-                    "slug": slug,
-                    "name": display,
-                    "aliases": aliases,
-                    "locale": loc,
-                    "has_active_postings": cnt > 0,
-                    "active_posting_count": cnt,
-                }
-            )
+            doc = {
+                "id": f"{oid}-{loc}",
+                "occupation_id": oid,
+                "slug": slug,
+                "name": display,
+                "aliases": aliases,
+                "locale": loc,
+                "has_active_postings": cnt > 0,
+                "active_posting_count": cnt,
+            }
+            meta = occ_meta[oid]
+            if meta["parent_id"] is not None:
+                doc["parent_id"] = meta["parent_id"]
+            if meta["domain_id"] is not None:
+                doc["domain_id"] = meta["domain_id"]
+            if meta["domain_slug"]:
+                doc["domain_slug"] = meta["domain_slug"]
+            docs.append(doc)
     _upsert(ts, "occupation", docs)
 
     # --- Seniorities ---

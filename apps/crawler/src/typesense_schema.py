@@ -63,6 +63,15 @@ COLLECTIONS: list[dict] = [
             # the exporter has explicitly stamped as `false`.
             {"name": "has_content", "type": "bool", "facet": True, "optional": True},
             {"name": "location_ids", "type": "int32[]", "facet": True},
+            # Unexpanded source IDs as stored on the crawler row. Company
+            # location views need direct-tag counts, while ``location_ids``
+            # intentionally includes ancestors for search filtering.
+            {
+                "name": "location_direct_ids",
+                "type": "int32[]",
+                "facet": True,
+                "optional": True,
+            },
             {"name": "location_names", "type": "string[]", "facet": True},
             {"name": "location_types", "type": "string[]", "facet": True},
             {"name": "location_geo_types", "type": "string[]", "index": False},
@@ -113,7 +122,9 @@ COLLECTIONS: list[dict] = [
         "name": "location",
         "fields": [
             {"name": "location_id", "type": "int32"},
-            {"name": "slug", "type": "string", "index": False},
+            # Exact slug filters back the web filter-chip resolver. Unlike the
+            # old Postgres mirror lookup, this field must remain indexed.
+            {"name": "slug", "type": "string"},
             {"name": "name_en", "type": "string", "locale": "en"},
             {"name": "name_de", "type": "string", "locale": "de", "optional": True},
             {"name": "name_fr", "type": "string", "locale": "fr", "optional": True},
@@ -125,6 +136,23 @@ COLLECTIONS: list[dict] = [
             # countries fall through to ``name_*``. See #2939.
             {"name": "aliases", "type": "string[]", "optional": True},
             {"name": "parent_name", "type": "string", "optional": True},
+            {"name": "parent_id", "type": "int32", "optional": True},
+            # Self + geographic parents + macro regions. This supports the
+            # descendant expansion contract without a recursive SQL CTE.
+            {
+                "name": "ancestor_ids",
+                "type": "int32[]",
+                "facet": True,
+                "optional": True,
+            },
+            # Populated only on macro documents; used by the location modal's
+            # tooltip/disable semantics and the company multi-country gate.
+            {
+                "name": "member_country_ids",
+                "type": "int32[]",
+                "index": False,
+                "optional": True,
+            },
             {"name": "type", "type": "string", "facet": True},
             {"name": "coordinates", "type": "geopoint", "optional": True},
             {"name": "population", "type": "int32", "optional": True},
@@ -137,9 +165,12 @@ COLLECTIONS: list[dict] = [
         "name": "occupation",
         "fields": [
             {"name": "occupation_id", "type": "int32"},
-            {"name": "slug", "type": "string", "index": False},
+            {"name": "slug", "type": "string"},
             {"name": "name", "type": "string"},
             {"name": "aliases", "type": "string[]"},
+            {"name": "parent_id", "type": "int32", "optional": True},
+            {"name": "domain_id", "type": "int32", "optional": True},
+            {"name": "domain_slug", "type": "string", "index": False, "optional": True},
             {"name": "domain_name", "type": "string", "facet": True, "optional": True},
             {"name": "locale", "type": "string", "facet": True},
             {"name": "has_active_postings", "type": "bool", "facet": True},
@@ -151,7 +182,7 @@ COLLECTIONS: list[dict] = [
         "name": "seniority",
         "fields": [
             {"name": "seniority_id", "type": "int32"},
-            {"name": "slug", "type": "string", "index": False},
+            {"name": "slug", "type": "string"},
             {"name": "name", "type": "string"},
             {"name": "aliases", "type": "string[]"},
             {"name": "locale", "type": "string", "facet": True},
@@ -199,9 +230,13 @@ COLLECTIONS: list[dict] = [
             {"name": "description_it", "type": "string", "index": False, "optional": True},
             {"name": "industry_id", "type": "int32", "facet": True, "optional": True},
             {"name": "industry_name", "type": "string", "facet": True, "optional": True},
-            {"name": "industry_name_de", "type": "string", "index": False, "optional": True},
-            {"name": "industry_name_fr", "type": "string", "index": False, "optional": True},
-            {"name": "industry_name_it", "type": "string", "index": False, "optional": True},
+            # Industry suggestions query all localized names, not just the
+            # English display value. These fields must therefore stay indexed;
+            # ``index: false`` makes Typesense reject the entire ``query_by``
+            # list even for a wildcard browse request.
+            {"name": "industry_name_de", "type": "string", "optional": True},
+            {"name": "industry_name_fr", "type": "string", "optional": True},
+            {"name": "industry_name_it", "type": "string", "optional": True},
             {"name": "employee_count_range", "type": "int32", "optional": True},
             {"name": "founded_year", "type": "int32", "optional": True},
             {"name": "active_posting_count", "type": "int32"},

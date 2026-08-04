@@ -171,6 +171,32 @@ evidence. Verify deploy and CSV logs show plain `crawler sync`, exporter logs
 show `exporter.typesense_enabled` plus `exporter.relational_mirror_disabled`,
 and reconciliation command/journal evidence contains `--target typesense`.
 
+## Typesense retirement proof
+
+Dispatch `crawler-scheduled-maintenance.yml` with task `backfill-typesense` and
+the exact `JOBSEEK_DEPLOY_REVISION` recorded on the live crawler host. The
+workflow refuses a branch name, abbreviated SHA, stale deployment, mutable
+image tag, missing/duplicate exporter, exporter image mismatch, or any
+relational-mirror credential in the exporter environment. Under one host
+mutation lock and one bounded container it performs, in order:
+
+1. a complete local-Postgres-to-Typesense posting backfill;
+2. a fresh full repair reconciliation that starts at bucket 0 and proves all
+   256 posting buckets; and
+3. `verify-typesense-taxonomies`, which validates the live schema and compares
+   the full static consumer contract for every location, occupation,
+   seniority, technology, and company-industry document against one read-only
+   repeatable-read local snapshot.
+
+The taxonomy verifier includes hierarchy arrays, localized names, aliases,
+parent/domain metadata, technology categories, and company industry IDs plus
+all localized industry names. Its JSON evidence is value-redacted: document
+keys are SHA-256 hashed, projection values are represented by collection-level
+digests, and detailed mismatches are bounded. Posting-derived taxonomy/company
+counts are refreshed separately and are not misrepresented as part of this
+static proof. Any failed command prevents the later commands from running and
+makes the maintenance job non-successful.
+
 Rollback-compatible Supabase library code remains temporarily in
 `exporter.py`, `sync.py`, `reconciliation.py`, `repair_relisted_cdc.py`,
 `bootstrap.py`, `db.py`, and the obsolete cursor/state/metric tests. It is not

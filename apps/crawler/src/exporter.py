@@ -568,6 +568,7 @@ def _build_typesense_docs(
             "is_active": row["is_active"],
             "has_content": has_content,
             "location_ids": expanded_location_ids,
+            "location_direct_ids": list(raw_location_ids),
             "location_names": location_names,
             "location_types": list(row["location_types"] or []),
             "location_geo_types": location_geo_types,

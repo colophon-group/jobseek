@@ -607,7 +607,12 @@ async def _finish_run(
     )
 
 
-async def _ensure_cycle(local_pool: asyncpg.Pool, target: ReconciliationTarget) -> int:
+async def _ensure_cycle(
+    local_pool: asyncpg.Pool,
+    target: ReconciliationTarget,
+    *,
+    fresh: bool = False,
+) -> int:
     async with local_pool.acquire() as conn, conn.transaction():
         row = await conn.fetchrow(
             "SELECT * FROM cross_store_reconciliation_state WHERE target = $1 FOR UPDATE",
@@ -615,10 +620,10 @@ async def _ensure_cycle(local_pool: asyncpg.Pool, target: ReconciliationTarget) 
         )
         if row is None:
             raise ReconciliationError(f"Missing reconciliation state for {target}")
-        if row["cycle_id"] is None:
+        if fresh or row["cycle_id"] is None:
             await conn.execute(
                 "UPDATE cross_store_reconciliation_state SET "
-                "cycle_id = $2, cycle_started_at = clock_timestamp(), "
+                "next_partition = 0, cycle_id = $2, cycle_started_at = clock_timestamp(), "
                 "cycle_runtime_seconds = 0, cycle_local_rows = 0, "
                 "cycle_local_active = 0, cycle_remote_rows = 0, "
                 "cycle_remote_active = 0, cycle_missing_remote = 0, "
@@ -630,6 +635,13 @@ async def _ensure_cycle(local_pool: asyncpg.Pool, target: ReconciliationTarget) 
                 target,
                 uuid.uuid4(),
             )
+            if fresh:
+                log.info(
+                    "reconciliation.cycle_restarted",
+                    target=target,
+                    previous_partition=int(row["next_partition"]),
+                    previous_cycle_id=str(row["cycle_id"]) if row["cycle_id"] else None,
+                )
         else:
             await conn.execute(
                 "UPDATE cross_store_reconciliation_state SET "
@@ -638,7 +650,7 @@ async def _ensure_cycle(local_pool: asyncpg.Pool, target: ReconciliationTarget) 
                 "updated_at = clock_timestamp() WHERE target = $1",
                 target,
             )
-        return cast(int, row["next_partition"])
+        return 0 if fresh else cast(int, row["next_partition"])
 
 
 async def _advance_state(
@@ -784,6 +796,7 @@ async def run_reconciliation(
     *,
     repair: bool = False,
     full: bool = False,
+    fresh_cycle: bool = False,
     max_partitions: int = DEFAULT_MAX_PARTITIONS,
     start_partition: int = 0,
     target_scope: TargetScope = "all",
@@ -791,12 +804,16 @@ async def run_reconciliation(
     """Run or resume a bounded bidirectional reconciliation command.
 
     Repair runs persist a cursor independently for each target. Dry runs never
-    move that cursor and start at ``start_partition``. A partition advances
-    only after every downstream mutation and its verification succeeds.
+    move that cursor and start at ``start_partition``. ``fresh_cycle`` replaces
+    an in-progress repair cycle at partition zero and is only valid with a full
+    repair. A partition advances only after every downstream mutation and its
+    verification succeeds.
     """
 
     if max_partitions < 1 or max_partitions > PARTITION_COUNT:
         raise ValueError(f"max_partitions must be in [1, {PARTITION_COUNT}]")
+    if fresh_cycle and not (repair and full):
+        raise ValueError("fresh_cycle requires repair=True and full=True")
     partition_bucket(start_partition)
     run_id = uuid.uuid4()
     summary = RunSummary(
@@ -812,6 +829,10 @@ async def run_reconciliation(
         )
         if acquired is not True:
             log.info("reconciliation.already_running")
+            if fresh_cycle:
+                raise ReconciliationError(
+                    "Fresh reconciliation proof could not acquire the advisory lock"
+                )
             return summary
         try:
             await _start_run(local_pool, summary)
@@ -820,10 +841,11 @@ async def run_reconciliation(
             maps: TaxonomyMaps | None = None
             try:
                 failures: list[str] = []
-                for target in _targets(
+                selected_targets = _targets(
                     target_scope,
                     relational_mirror_available=supa_pool is not None,
-                ):
+                )
+                for target in selected_targets:
                     last_result: PartitionResult | None = None
                     try:
                         if target == "typesense" and typesense is None:
@@ -831,7 +853,9 @@ async def run_reconciliation(
                             if repair:
                                 maps = await _get_taxonomy_maps(local_pool)
                         partition = (
-                            await _ensure_cycle(local_pool, target) if repair else start_partition
+                            await _ensure_cycle(local_pool, target, fresh=fresh_cycle)
+                            if repair
+                            else start_partition
                         )
                         budget = PARTITION_COUNT - partition if full else max_partitions
                         for _ in range(budget):
@@ -925,6 +949,14 @@ async def run_reconciliation(
                     raise ReconciliationRunFailed(
                         f"Reconciliation failed for {len(failures)} target(s)"
                     )
+                if fresh_cycle:
+                    expected_partitions = PARTITION_COUNT * len(selected_targets)
+                    if summary.partitions_completed != expected_partitions:
+                        raise ReconciliationError(
+                            "Fresh reconciliation proof did not inspect every partition: "
+                            f"completed={summary.partitions_completed}, "
+                            f"expected={expected_partitions}"
+                        )
                 await _finish_run(local_pool, summary, status="success")
                 run_finished = True
             except BaseException as exc:

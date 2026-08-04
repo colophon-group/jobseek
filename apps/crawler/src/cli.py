@@ -276,6 +276,14 @@ def parse_args() -> argparse.Namespace:
         help="Process the full remaining 256-partition cycle",
     )
     recon_p.add_argument(
+        "--fresh-cycle",
+        action="store_true",
+        help=(
+            "Start the selected target(s) at partition 0 instead of resuming "
+            "durable progress (requires --repair --full)"
+        ),
+    )
+    recon_p.add_argument(
         "--max-partitions",
         type=int,
         default=16,
@@ -410,6 +418,11 @@ def parse_args() -> argparse.Namespace:
     )
 
     sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
+
+    sub.add_parser(
+        "verify-typesense-taxonomies",
+        help="Strict local-Postgres -> Typesense taxonomy readiness gate",
+    )
 
     sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
 
@@ -618,7 +631,10 @@ def parse_args() -> argparse.Namespace:
         help="Maximum durable schedules selected by one rebuild invocation",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.command == "reconcile" and args.fresh_cycle and not (args.repair and args.full):
+        parser.error("reconcile --fresh-cycle requires --repair --full")
+    return args
 
 
 async def run() -> None:
@@ -1020,6 +1036,15 @@ async def run() -> None:
 
                 await backfill_typesense(local_pool)
 
+        elif args.command == "verify-typesense-taxonomies":
+            local_pool = await create_local_pool()
+            from src.taxonomy_readiness import run_cli
+            from src.typesense_client import get_typesense_client
+
+            exit_code = await run_cli(local_pool, get_typesense_client())
+            if exit_code != 0:
+                raise SystemExit(exit_code)
+
         elif args.command == "refresh-typesense":
             from src.cron_metrics import cron_run
 
@@ -1134,6 +1159,7 @@ async def run() -> None:
                         None,
                         repair=args.repair,
                         full=args.full,
+                        fresh_cycle=args.fresh_cycle,
                         max_partitions=args.max_partitions,
                         start_partition=args.start_partition,
                         target_scope=args.target,

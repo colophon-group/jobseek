@@ -1814,7 +1814,7 @@ async def sync_locations_typesense(
     """
     rows = await local_conn.fetch(
         """
-        SELECT l.id, l.type, l.lat, l.lng, l.slug, l.population,
+        SELECT l.id, l.type, l.lat, l.lng, l.slug, l.population, l.parent_id,
                pn.name AS parent_name
         FROM location l
         LEFT JOIN location parent ON parent.id = l.parent_id
@@ -1837,11 +1837,41 @@ async def sync_locations_typesense(
         )
 
     name_rows = await local_conn.fetch(
-        "SELECT location_id, locale, name FROM location_name WHERE is_display"
+        "SELECT location_id, locale, name, is_display FROM location_name "
+        "WHERE locale IN ('en', 'de', 'fr', 'it')"
     )
     names_by_id: dict[int, dict[str, str]] = {}
+    aliases_by_id: dict[int, set[str]] = {}
     for nr in name_rows:
-        names_by_id.setdefault(nr["location_id"], {})[nr["locale"]] = nr["name"]
+        if nr["is_display"]:
+            names_by_id.setdefault(nr["location_id"], {})[nr["locale"]] = nr["name"]
+        else:
+            aliases_by_id.setdefault(nr["location_id"], set()).add(nr["name"])
+
+    # Publish the complete hierarchy contract with each location document so
+    # the web app can resolve parent paths, expand descendants and render macro
+    # membership without reading the crawler mirror. ``ancestor_ids`` contains
+    # self + geographic parents + every macro attached to the country in that
+    # path, matching exporter.py's job-posting expansion semantics.
+    macro_rows = await local_conn.fetch("SELECT macro_id, country_id FROM location_macro_member")
+    parent_by_id = {r["id"]: r["parent_id"] for r in rows}
+    type_by_id = {r["id"]: r["type"] for r in rows}
+    macros_by_country: dict[int, set[int]] = {}
+    members_by_macro: dict[int, set[int]] = {}
+    for mr in macro_rows:
+        macros_by_country.setdefault(mr["country_id"], set()).add(mr["macro_id"])
+        members_by_macro.setdefault(mr["macro_id"], set()).add(mr["country_id"])
+
+    ancestors_by_id: dict[int, list[int]] = {}
+    for location_id in parent_by_id:
+        ancestors: set[int] = set()
+        current: int | None = location_id
+        while current is not None and current not in ancestors:
+            ancestors.add(current)
+            if type_by_id.get(current) == "country":
+                ancestors.update(macros_by_country.get(current, set()))
+            current = parent_by_id.get(current)
+        ancestors_by_id[location_id] = [location_id, *sorted(ancestors - {location_id})]
 
     # Count active postings per location. We read the count from the
     # Typesense ``job_posting`` facet on ``location_ids`` (post ancestor
@@ -1882,6 +1912,7 @@ async def sync_locations_typesense(
             "slug": r["slug"] or "",
             "name_en": loc_names.get("en", ""),
             "type": r["type"] or "city",
+            "ancestor_ids": ancestors_by_id[loc_id],
             "has_active_postings": count > 0,
             "active_posting_count": count,
         }
@@ -1896,15 +1927,21 @@ async def sync_locations_typesense(
             doc["coordinates"] = [float(r["lat"]), float(r["lng"])]
         if r["parent_name"]:
             doc["parent_name"] = r["parent_name"]
+        if r["parent_id"] is not None:
+            doc["parent_id"] = r["parent_id"]
+        member_country_ids = members_by_macro.get(loc_id)
+        if member_country_ids:
+            doc["member_country_ids"] = sorted(member_country_ids)
         if r["population"] is not None:
             doc["population"] = r["population"]
         # Macro-region aliases (#2939): natural-language synonyms so
         # "Europe" / "European Union" / "DACH" / "Asia Pacific" / etc.
         # match the macro row whose ``name_en`` is just the abbreviation.
+        aliases = set(aliases_by_id.get(loc_id, set()))
         if r["type"] == "macro" and r["slug"]:
-            aliases = _LOCATION_MACRO_ALIASES.get(r["slug"])
-            if aliases:
-                doc["aliases"] = aliases
+            aliases.update(_LOCATION_MACRO_ALIASES.get(r["slug"], []))
+        if aliases:
+            doc["aliases"] = sorted(aliases)
 
         docs.append(doc)
 
@@ -1922,7 +1959,7 @@ async def sync_occupations_typesense(
     """
     rows = await local_conn.fetch(
         """
-        SELECT o.id, o.slug,
+        SELECT o.id, o.slug, o.parent_id, o.domain_id,
                on2.locale, on2.name, on2.is_display,
                d.slug AS domain_slug
         FROM occupation o
@@ -1942,10 +1979,6 @@ async def sync_occupations_typesense(
     domain_names: dict[int, dict[str, str]] = {}
     for dr in domain_name_rows:
         domain_names.setdefault(dr["domain_id"], {})[dr["locale"]] = dr["name"]
-
-    # Domain slug -> id mapping
-    domain_rows = await local_conn.fetch("SELECT id, slug FROM occupation_domain")
-    domain_slug_to_id = {r["slug"]: r["id"] for r in domain_rows}
 
     # Active posting counts from local Postgres
     # Counts come from the Typesense ``job_posting`` facet on
@@ -1982,11 +2015,14 @@ async def sync_occupations_typesense(
         key = (occ_id, locale)
 
         if key not in occ_data:
-            domain_id = domain_slug_to_id.get(r["domain_slug"]) if r["domain_slug"] else None
+            domain_id = r["domain_id"]
             domain_name_map = domain_names.get(domain_id, {}) if domain_id else {}
             occ_data[key] = {
                 "occ_id": occ_id,
                 "slug": r["slug"],
+                "parent_id": r["parent_id"],
+                "domain_id": domain_id,
+                "domain_slug": r["domain_slug"],
                 "locale": locale,
                 "name": None,
                 "aliases": [],
@@ -2024,6 +2060,12 @@ async def sync_occupations_typesense(
             "has_active_postings": count > 0,
             "active_posting_count": count,
         }
+        if data["parent_id"] is not None:
+            doc["parent_id"] = data["parent_id"]
+        if data["domain_id"] is not None:
+            doc["domain_id"] = data["domain_id"]
+        if data["domain_slug"]:
+            doc["domain_slug"] = data["domain_slug"]
         if data["domain_name"]:
             doc["domain_name"] = data["domain_name"]
 
