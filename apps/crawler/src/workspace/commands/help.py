@@ -110,6 +110,7 @@ Monitor Types (cheapest first):
   smartrecruiters   10      Job URLs          Auto-configured
   softgarden        10      Job URLs          Auto-configured
   traffit           10      Full job data     No (skipped)
+  ukg               10      Full/partial      Auto-enriched
   workable          10      Job URLs          Auto-configured
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
@@ -1158,6 +1159,30 @@ avature — Avature public static listing monitor
   A first-page 404/410 is definitive gone; 202/401/403/406 and transport
   failures remain transient. Configure the normal proxy option for WAF-gated
   portals.
+"""
+
+
+MONITOR_UKG = """\
+ukg — UKG Pro public recruiting API
+
+  Listing:  https://{host}/{tenant}/JobBoard/{board_id}
+  Search:   POST {listing}/JobBoardView/LoadSearchResults
+  Config:   {"host":"recruiting.ultipro.com","tenant":"ACM1000ACME",
+             "board_id":"11111111-1111-4111-8111-111111111111"}
+
+  Returns rich summaries from bounded, streamed API pages: title, locations,
+  employment and workplace type, posting date, brief description, and stable
+  OpportunityDetail URLs. The shared embedded scraper enriches only the full
+  Description field from UKG's CandidateOpportunityDetail JSON constructor.
+
+  Detection accepts direct or explicitly linked public UKG board URLs on
+  recruiting*.ultipro.com and recruiting.ultipro.ca. It never guesses tenant
+  or board UUIDs. First-page 404/410 is definitive gone; transient auth, rate
+  limit, transport, and server failures fail the run without removing jobs.
+  Pagination is capped at 50,000 opportunities.
+
+  Upstream ats-scrapers is inventory input only. Jobseek neither imports nor
+  executes upstream scraper code.
 """
 
 
@@ -2604,6 +2629,7 @@ MONITOR_CARDS: dict[str, str] = {
     "ashby": MONITOR_ASHBY,
     "adp": MONITOR_ADP,
     "avature": MONITOR_AVATURE,
+    "ukg": MONITOR_UKG,
     "bamboohr": MONITOR_BAMBOOHR,
     "beisen": MONITOR_BEISEN,
     "paycom": MONITOR_PAYCOM,

@@ -936,6 +936,7 @@ _MONITOR_CONFIG_HINTS = {
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",
     "recruiterbox": "Requires: tenant (auto-filled from a Recruiterbox / Trakstar Hire URL)",
     "taleo": "Requires: host, partition, org, cws (auto-filled from a Taleo TBE URL)",
+    "ukg": "Requires: host, tenant, board_id (auto-filled from a UKG Pro board URL)",
     "rippling": "Requires: slug (auto-filled from probe)",
     "smartrecruiters": "Requires: token (auto-filled from probe)",
     "softgarden": "Requires: slug. Optional: job_url_pattern",

@@ -435,6 +435,14 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Avature static listing \u2014 {jobs} jobs at {listing_url}"
         return f"Avature static listing \u2014 {listing_url}"
+    if name == "ukg":
+        tenant = metadata.get("tenant", "?")
+        board_id = metadata.get("board_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"tenant: {tenant}, board: {board_id}"
+        if jobs is not None:
+            return f"UKG Pro API \u2014 {label}, {jobs} jobs"
+        return f"UKG Pro API \u2014 {label}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -791,6 +799,7 @@ from src.core.monitors import (  # noqa: E402
     talentbrew,  # noqa: F401
     taleo,  # noqa: F401
     traffit,  # noqa: F401
+    ukg,  # noqa: F401
     umantis,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
