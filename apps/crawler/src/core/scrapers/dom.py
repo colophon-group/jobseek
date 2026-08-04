@@ -6,7 +6,8 @@ structured fields from the HTML.
 By default (``render: false``), fetches the page via static HTTP.  Set
 ``render: true`` to render with Playwright for JS-heavy sites.
 
-Config uses ``steps`` (same format as ``walk_steps``) plus optional browser
+Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
+CSS selector that limits extraction to one content container, plus browser
 lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``, ``actions``)
 which are only used when rendering.
 
@@ -32,6 +33,7 @@ from urllib.parse import urlparse
 
 import httpx
 import structlog
+from selectolax.lexbor import LexborHTMLParser
 
 from src.core.scrapers import JobContent, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
@@ -40,6 +42,29 @@ from src.shared.http import is_avature_job_detail_url
 from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
+
+
+def _scope_html(html: str, config: dict) -> str:
+    """Limit extraction to one configured container before flattening.
+
+    Branded career pages often wrap the ATS fragment in malformed or enormous
+    navigation markup. Scoping is generic DOM-scraper behavior: it makes
+    selectors deterministic and prevents surrounding site chrome from
+    shadowing job fields without introducing provider-specific parsing.
+    """
+
+    scope = config.get("scope")
+    if scope is None:
+        return html
+    if not isinstance(scope, str) or not scope.strip() or len(scope) > 256 or "\x00" in scope:
+        raise ValueError("DOM scraper scope must be a non-empty CSS selector up to 256 chars")
+    try:
+        node = LexborHTMLParser(html).css_first(scope)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"DOM scraper scope is not a valid CSS selector: {scope!r}") from exc
+    if node is None:
+        raise ValueError(f"DOM scraper scope did not match the page: {scope!r}")
+    return node.html
 
 
 def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -> None:
@@ -221,7 +246,7 @@ def parse_html(html: str, config: dict) -> JobContent:
     steps = config.get("steps")
     if not steps:
         return JobContent()
-    elements = flatten(html)
+    elements = flatten(_scope_html(html, config))
     raw, _ = walk_steps(elements, steps)
     return _map_to_job_content(raw)
 
@@ -351,6 +376,7 @@ async def scrape(
         resp.raise_for_status()
         html = resp.text
 
+    html = _scope_html(html, config)
     elements = flatten(html)
 
     if artifact_dir is not None:

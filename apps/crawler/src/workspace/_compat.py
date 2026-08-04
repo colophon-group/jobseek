@@ -23,6 +23,7 @@ from src.shared.dayforce import dayforce_board_from_url
 from src.shared.gupy import gupy_tenant_from_url
 from src.shared.jobvite import jobvite_board_from_url
 from src.shared.keka import keka_board_from_url
+from src.shared.pageup import pageup_board_from_url
 from src.shared.recruiterbox import recruiterbox_board_from_url
 from src.shared.taleo import taleo_board_from_url
 from src.shared.ukg import is_ukg_url
@@ -75,6 +76,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "lever",
         "mokahr",
         "oracle_hcm",
+        "pageup",
         "paycom",
         "paylocity",
         "pinpoint",
@@ -93,7 +95,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
 # ``oracle_hcm``, ``adp``, ``bamboohr``, ``beisen``, ``paycom``, and
-# ``paylocity`` and ``ukg``, which auto-resolve to enrichment scrapers (BambooHR uses a
+# ``pageup``, ``paylocity`` and ``ukg``, which auto-resolve to enrichment scrapers (BambooHR uses a
 # generic API preset;
 # Paycom reuses its native bootstrap in a dedicated detail scraper).
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
@@ -104,6 +106,7 @@ _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
     "bamboohr",
     "beisen",
     "oracle_hcm",
+    "pageup",
     "paycom",
     "paylocity",
     "ukg",
@@ -234,6 +237,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ukg"
     if jobvite_board_from_url(url) is not None:
         return "jobvite"
+    if pageup_board_from_url(url) is not None:
+        return "pageup"
     if (
         host == "herp.careers"
         and not parsed.query
@@ -503,6 +508,55 @@ def auto_scraper_type(
         return (
             "paylocity",
             {"enrich": ["description", "employment_type", "job_location_type"]},
+        )
+    if monitor_type == "pageup":
+        return (
+            "dom",
+            {
+                "gone_url_pattern": r"/listing/\?jobnotfound=true(?:&|$)",
+                "scope": "#job-content",
+                "steps": [
+                    {
+                        "tag": "h3",
+                        "offset": 1,
+                        "field": "description",
+                        "html": True,
+                        "stop": "Back to search results",
+                        "optional": True,
+                    },
+                    {
+                        "tag": "dt",
+                        "text": "Categories:",
+                        "offset": 2,
+                        "field": "description",
+                        "html": True,
+                        "stop": "Advertised:",
+                        "optional": True,
+                        "from": 0,
+                    },
+                    {
+                        "tag": "p",
+                        "text": "Categories:",
+                        "offset": 1,
+                        "field": "description",
+                        "html": True,
+                        "stop": "Advertised:",
+                        "optional": True,
+                        "from": 0,
+                    },
+                    {
+                        "tag": "p",
+                        "text": "Job no:",
+                        "offset": 1,
+                        "field": "description",
+                        "html": True,
+                        "stop": "Advertised:",
+                        "optional": True,
+                        "from": 0,
+                    },
+                ],
+                "enrich": ["description"],
+            },
         )
     if monitor_type == "ukg":
         return (

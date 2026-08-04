@@ -719,6 +719,8 @@ def _throttle_key(board: asyncpg.Record) -> str:
             resolved_host = avature_request_host(board["board_url"], metadata)
             if resolved_host:
                 return resolved_host
+    if crawler_type == "pageup":
+        return "careers.pageuppeople.com"
     if crawler_type in _API_MONITOR_TYPES:
         return crawler_type
     if crawler_type == "taleo":

@@ -917,6 +917,7 @@ _MONITOR_CONFIG_HINTS = {
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
+    "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",
     "icims": "Requires: host (auto-filled from an icims.com URL)",
     "gupy": "Requires: tenant (auto-filled from a *.gupy.io URL)",
     "cornerstone": "Requires: tenant, site_id, corp (auto-filled from a *.csod.com URL)",
