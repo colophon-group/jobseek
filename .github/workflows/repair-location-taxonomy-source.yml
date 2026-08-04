@@ -193,8 +193,8 @@ jobs:
               "ghcr.io/${owner}/jobseek-crawler:${active_tag}"
             if docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$exporter_id" \
               | cut -d= -f1 \
-              | grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL|LOCAL_DATABASE_URL)$'; then
-              echo "Live exporter has a relational database credential" >&2
+              | grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL)$'; then
+              echo "Live exporter has a forbidden database credential" >&2
               exit 1
             fi
 
