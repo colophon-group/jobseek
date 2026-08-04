@@ -22,6 +22,8 @@ from src.shared.taleo import (
     taleo_safe_redirect,
     taleo_total_from_html,
 )
+from src.sync import _compute_throttle_key
+from src.workers.pipeline import _configured_egress_host
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 from src.workspace.career_discover import _scan_ats_urls_in_html
 from src.workspace.commands.crawl import _MONITOR_CONFIG_HINTS
@@ -174,9 +176,39 @@ class TestIdentity:
             taleo_safe_redirect(
                 BOARD,
                 LISTING_URL,
+                FINAL_BOARD.listing_url(row_from=10),
+            )
+            is None
+        )
+        assert (
+            taleo_safe_redirect(
+                BOARD,
+                LISTING_URL,
+                f"{DISPATCHER_URL}%26rowFrom%3D10",
+            )
+            is None
+        )
+        assert (
+            taleo_safe_redirect(
+                BOARD,
+                LISTING_URL,
                 DISPATCHER_URL.replace("org=ACME", "org=OTHER", 1),
             )
             is None
+        )
+
+    def test_resolved_identity_controls_scheduler_and_circuit_hosts(self):
+        metadata = _config(FINAL_BOARD)
+        assert _compute_throttle_key("taleo", LISTING_URL, metadata) == FINAL_BOARD.host
+        assert (
+            _configured_egress_host(
+                {
+                    "crawler_type": "taleo",
+                    "board_url": LISTING_URL,
+                    "metadata": json.dumps(metadata),
+                }
+            )
+            == FINAL_BOARD.host
         )
 
     def test_validates_cursor_links_and_inactive_dispatcher(self):
@@ -306,6 +338,25 @@ class TestMonitor:
             lambda request: httpx.Response(
                 302,
                 headers={"location": "https://evil.test/jobs"},
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="untrusted redirect"):
+                await discover({"board_url": LISTING_URL}, client)
+
+    @pytest.mark.parametrize(
+        "location",
+        [
+            FINAL_BOARD.listing_url(row_from=10),
+            f"{DISPATCHER_URL}%26rowFrom%3D10",
+        ],
+    )
+    async def test_paginated_migration_redirect_fails_whole_run(self, location: str):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                302,
+                headers={"location": location},
                 request=request,
             )
         )

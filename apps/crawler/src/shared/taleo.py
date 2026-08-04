@@ -164,6 +164,29 @@ def taleo_listing_board_from_url(url: str) -> TaleoBoard | None:
     return parts[0] if parts is not None and parts[1] == "listing" else None
 
 
+def _taleo_first_listing_board_from_url(url: str) -> TaleoBoard | None:
+    """Return the board only for its unpaginated, canonical first-page route."""
+    parts = _url_parts(url)
+    if parts is None or parts[1] != "listing" or parts[3] is not None:
+        return None
+    return parts[0]
+
+
+def taleo_request_host(board_url: str, metadata: Mapping[str, object]) -> str | None:
+    """Return the validated Taleo host that a configured monitor will request.
+
+    Resolved metadata intentionally wins over the source URL: Taleo moves
+    tenants between clusters, while the CSV board URL remains a useful public
+    entry point. The monitor uses the resolved identity for every request, so
+    schedulers and the host circuit must use that same host.
+    """
+    configured = taleo_board_from_metadata(metadata)
+    if configured is not None:
+        return configured.host
+    direct = taleo_board_from_url(board_url)
+    return direct.host if direct is not None else None
+
+
 def taleo_requisition_id(url: str, board: TaleoBoard) -> int | None:
     parts = _url_parts(url)
     if parts is None or parts[0] != board or parts[1] != "detail":
@@ -186,9 +209,9 @@ def taleo_safe_redirect(
     if not location:
         return None
     target = urljoin(request_url, html.unescape(location))
-    listing = taleo_listing_board_from_url(target)
+    listing = _taleo_first_listing_board_from_url(target)
     if listing is not None:
-        return (target, listing) if listing.org == board.org else None
+        return (listing.listing_url(), listing) if listing.org == board.org else None
 
     try:
         parsed = urlparse(target)
@@ -214,7 +237,7 @@ def taleo_safe_redirect(
         params[key] = value
     if set(params) != {"org", "act", "redirectUrl"}:
         return None
-    embedded = taleo_listing_board_from_url(params["redirectUrl"])
+    embedded = _taleo_first_listing_board_from_url(params["redirectUrl"])
     if _org(params["org"]) != board.org or params["act"] != "redirectCws" or embedded != board:
         return None
     return target, board

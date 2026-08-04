@@ -694,6 +694,19 @@ def _throttle_key(board: asyncpg.Record) -> str:
     crawler_type = board["crawler_type"]
     if crawler_type in _API_MONITOR_TYPES:
         return crawler_type
+    if crawler_type == "taleo":
+        from src.shared.taleo import taleo_request_host
+
+        metadata = board["metadata"] or {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+        if isinstance(metadata, dict):
+            resolved_host = taleo_request_host(board["board_url"], metadata)
+            if resolved_host:
+                return resolved_host
     return urlparse(board["board_url"]).hostname or board["board_url"]
 
 

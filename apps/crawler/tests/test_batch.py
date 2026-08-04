@@ -158,6 +158,16 @@ class TestThrottleKey:
         board = self._board(crawler_type="dom", board_url="https://bigcorp.com/careers")
         assert _throttle_key(board) == "bigcorp.com"
 
+    def test_taleo_uses_resolved_metadata_host(self):
+        board = self._board(
+            crawler_type="taleo",
+            board_url=(
+                "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1"
+            ),
+            metadata={"host": "phh.tbe.taleo.net", "partition": "phh01", "org": "ACME", "cws": 41},
+        )
+        assert _throttle_key(board) == "phh.tbe.taleo.net"
+
     def test_no_hostname_fallback(self):
         board = self._board(crawler_type="sitemap", board_url="not-a-url")
         assert _throttle_key(board) == "not-a-url"
