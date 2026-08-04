@@ -243,6 +243,11 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
 
+    sub.add_parser(
+        "verify-typesense-taxonomies",
+        help="Strict local-Postgres -> Typesense taxonomy readiness gate",
+    )
+
     sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
 
     refresh_currency_p = sub.add_parser(
@@ -489,6 +494,15 @@ async def run() -> None:
                 from src.exporter import backfill_typesense
 
                 await backfill_typesense(local_pool)
+
+        elif args.command == "verify-typesense-taxonomies":
+            local_pool = await create_local_pool()
+            from src.taxonomy_readiness import run_cli
+            from src.typesense_client import get_typesense_client
+
+            exit_code = await run_cli(local_pool, get_typesense_client())
+            if exit_code != 0:
+                raise SystemExit(exit_code)
 
         elif args.command == "refresh-typesense":
             from src.cron_metrics import cron_run
