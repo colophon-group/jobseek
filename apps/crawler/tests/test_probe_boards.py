@@ -58,6 +58,22 @@ def _dayforce_page(*, disabled=None, culture="en-US") -> str:
     return f'<script id="__NEXT_DATA__">{json.dumps(data)}</script>'
 
 
+def _paycom_bootstrap_page() -> str:
+    config = {
+        "sessionJWT": "a.b.c",
+        "libConfig": json.dumps(
+            {
+                "atsPortalMantleServiceUrl": (
+                    "https://portal-applicant-tracking.us-cent.paycomonline.net"
+                ),
+                "locale": "en-US",
+                "translationHighlights": False,
+            }
+        ),
+    }
+    return f"<script>var configsFromHost = {json.dumps(config)};</script>"
+
+
 class TestRowsAddedOrChanged:
     def test_new_row_is_included(self):
         base = [_row()]
@@ -257,19 +273,116 @@ class TestProbeRow:
             monitor_type="paycom",
             monitor_config=json.dumps({"token": token}),
         )
-        captured = {}
+        captured: list[str] = []
 
         def handler(request):
-            captured["url"] = str(request.url)
+            captured.append(str(request.url))
+            if request.method == "GET":
+                return httpx.Response(200, text=_paycom_bootstrap_page(), request=request)
             return httpx.Response(
                 200,
-                text="<script>var configsFromHost = {};</script>",
+                json={
+                    "jobPostingPreviewsCount": 2,
+                    "jobPostingPreviews": [{"jobId": 1, "jobTitle": "Engineer"}],
+                },
                 request=request,
             )
 
         result = await self._run(row, handler)
         assert result.status == "ok"
-        assert captured["url"].endswith(f"/portal/{token}/career-page")
+        assert result.message == "2 jobs"
+        assert captured == [
+            f"https://www.paycomonline.net/v4/ats/web.php/portal/{token}/career-page",
+            (
+                "https://portal-applicant-tracking.us-cent.paycomonline.net/"
+                "api/ats/job-posting-previews/search"
+            ),
+        ]
+
+    async def test_paycom_rejects_config_token_that_conflicts_with_url(self):
+        token = "0123456789abcdef0123456789abcdef"
+        row = _row(
+            board_slug="acme-paycom",
+            board_url=(f"https://www.paycomonline.net/v4/ats/web.php/portal/{token}/career-page"),
+            monitor_type="paycom",
+            monitor_config=json.dumps({"token": "f" * 32}),
+        )
+        requests: list[str] = []
+
+        def handler(request):
+            requests.append(str(request.url))
+            return httpx.Response(200, request=request)
+
+        result = await self._run(row, handler)
+
+        assert result.status == "fail"
+        assert "does not match" in result.message
+        assert requests == []
+
+    @pytest.mark.parametrize("invalid_token", [None, "", 123])
+    async def test_paycom_rejects_explicit_invalid_config_token(self, invalid_token: object):
+        token = "0123456789abcdef0123456789abcdef"
+        row = _row(
+            board_slug="acme-paycom",
+            board_url=(f"https://www.paycomonline.net/v4/ats/web.php/portal/{token}/career-page"),
+            monitor_type="paycom",
+            monitor_config=json.dumps({"token": invalid_token}),
+        )
+        requests: list[str] = []
+
+        def handler(request):
+            requests.append(str(request.url))
+            return httpx.Response(200, request=request)
+
+        result = await self._run(row, handler)
+
+        assert result.status == "fail"
+        assert "token is invalid" in result.message
+        assert requests == []
+
+    async def test_paycom_probe_requires_working_listing_search(self):
+        token = "0123456789abcdef0123456789abcdef"
+        row = _row(
+            board_slug="acme-paycom",
+            board_url=(f"https://www.paycomonline.net/v4/ats/web.php/portal/{token}/career-page"),
+            monitor_type="paycom",
+            monitor_config="",
+        )
+        requests: list[str] = []
+
+        def handler(request):
+            requests.append(str(request.url))
+            if request.method == "GET":
+                return httpx.Response(200, text=_paycom_bootstrap_page(), request=request)
+            return httpx.Response(400, request=request)
+
+        result = await self._run(row, handler)
+
+        assert result.status == "fail"
+        assert "listing search" in result.message
+        assert len(requests) == 2
+
+    async def test_paycom_probe_rejects_inconsistent_count_page(self):
+        token = "0123456789abcdef0123456789abcdef"
+        row = _row(
+            board_slug="acme-paycom",
+            board_url=(f"https://www.paycomonline.net/v4/ats/web.php/portal/{token}/career-page"),
+            monitor_type="paycom",
+            monitor_config="",
+        )
+
+        def handler(request):
+            if request.method == "GET":
+                return httpx.Response(200, text=_paycom_bootstrap_page(), request=request)
+            return httpx.Response(
+                200,
+                json={"jobPostingPreviewsCount": 2, "jobPostingPreviews": []},
+                request=request,
+            )
+
+        result = await self._run(row, handler)
+        assert result.status == "fail"
+        assert "listing search" in result.message
 
     async def test_paycom_unavailable_200_is_failed(self):
         token = "0123456789abcdef0123456789abcdef"
