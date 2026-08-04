@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -176,6 +177,39 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "RequiredContainerUnavailable",
         "HostRebootRequired",
     } <= names
+
+
+def test_ats_inventory_alerts_cover_freshness_coverage_and_hard_cap() -> None:
+    alloy = (ROOT / "deploy/observability/alloy-host.alloy").read_text()
+    journal_rule = re.search(
+        r'source_labels = \["__journal__systemd_unit"\]\s+'
+        r'regex\s+=\s+"([^"]+)"',
+        alloy,
+    )
+    assert journal_rule is not None
+    journal_pattern = json.loads(f'"{journal_rule.group(1)}"')
+    assert re.fullmatch(journal_pattern, "jobseek-ats-inventory.service")
+    assert re.fullmatch(journal_pattern, "jobseek-ats-inventory-network.service")
+
+    expected = {
+        "AtsInventoryStatusUnavailable": "status_available",
+        "AtsInventoryRunFailed": "last_attempt_success",
+        "AtsInventoryRunStale": "last_success_unixtime",
+        "AtsInventoryCoverageQuarantined": "candidate_coverage_percent < 99",
+        "AtsInventoryQueueAtHardCap": "queue_total_open >= 600",
+    }
+    for name, signal in expected.items():
+        rule = _alert_rule(name)
+        assert signal in rule["expr"]
+        assert rule["labels"] == {
+            "severity": "high",
+            "service": "ats-inventory",
+            "owner": "codex-error-review",
+            "route": "codex-daily",
+        }
+        assert rule["annotations"]["runbook"].startswith(
+            "https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md#"
+        )
 
 
 def test_typesense_reliability_alerts_cover_the_incident_chain() -> None:

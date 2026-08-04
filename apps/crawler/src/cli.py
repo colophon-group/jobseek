@@ -226,6 +226,16 @@ def parse_args() -> argparse.Namespace:
         help="Environment variable containing an injected GitHub token",
     )
     ats_inventory_p.add_argument(
+        "--github-token-file",
+        type=Path,
+        default=(
+            Path(os.environ["ATS_INVENTORY_GITHUB_TOKEN_FILE"])
+            if os.environ.get("ATS_INVENTORY_GITHUB_TOKEN_FILE")
+            else None
+        ),
+        help="Ephemeral GitHub token file (preferred for the production container)",
+    )
+    ats_inventory_p.add_argument(
         "--retention",
         type=int,
         default=7,
@@ -710,6 +720,7 @@ async def run() -> None:
             from src.ats_inventory.github import (
                 GitHubRateLimitError,
                 GitHubSupportIssueClient,
+                read_injected_github_token,
                 reconcile_support_issues,
             )
             from src.ats_inventory.impact import ImpactCache
@@ -766,12 +777,10 @@ async def run() -> None:
                     report["support_issues"] = {"mode": args.support_issues, "actions": []}
                     github = None
                     if args.support_issues != "off" or args.candidate_issues != "off":
-                        token = os.environ.get(args.github_token_env)
-                        if not token:
-                            raise RuntimeError(
-                                f"{args.github_token_env} is required for GitHub issue "
-                                "reconciliation and candidate planning"
-                            )
+                        token = read_injected_github_token(
+                            env_name=args.github_token_env,
+                            token_file=args.github_token_file,
+                        )
                         github = GitHubSupportIssueClient(
                             client,
                             repo=args.github_repo,

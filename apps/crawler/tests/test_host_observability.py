@@ -119,6 +119,158 @@ def test_invalid_codex_error_review_status_fails_probe(tmp_path: Path) -> None:
         host._collect_codex_error_review_metrics([], path)
 
 
+def test_ats_inventory_status_publishes_only_bounded_aggregate_metrics(tmp_path: Path) -> None:
+    path = tmp_path / "ats-status.json"
+    path.write_text(
+        json.dumps(
+            {
+                "last_attempt_unixtime": 200,
+                "last_success_unixtime": 200,
+                "last_attempt_duration_seconds": 12,
+                "last_attempt_success": 1,
+                "last_attempt_degraded": 0,
+                "requested_mode": "refill",
+                "effective_mode": "refill",
+                "rollout_cap": 5,
+                "report": {
+                    "rows": 80_000,
+                    "coverage": {
+                        "candidate_coverage_pct": 100.0,
+                        "unsupported_families": [],
+                    },
+                    "impact": {"active_companies": 15_000},
+                    "candidate_issues": {
+                        "status": "refilled",
+                        "created": 5,
+                        "queue_before": {
+                            "available": 440,
+                            "total_open": 470,
+                            "import_open": 20,
+                            "import_closed": 3,
+                            "import_fresh_claimed": 4,
+                            "import_active_linked_pr": 2,
+                            "import_pickup_latency_avg_seconds": None,
+                        },
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    lines: list[str] = []
+
+    host._collect_ats_inventory_metrics(lines, path)
+
+    content = "\n".join(lines)
+    assert "jobseek_ats_inventory_status_available 1" in content
+    assert "jobseek_ats_inventory_candidate_coverage_percent 100.0" in content
+    assert "jobseek_ats_inventory_queue_available 440" in content
+    assert "jobseek_ats_inventory_pickup_latency_avg_seconds 0" in content
+    assert "jobseek_ats_inventory_created_last_run 5" in content
+    assert 'status="refilled"' in content
+
+
+def test_missing_ats_inventory_status_is_fail_closed_but_not_a_probe_error(
+    tmp_path: Path,
+) -> None:
+    lines: list[str] = []
+    host._collect_ats_inventory_metrics(lines, tmp_path / "missing.json")
+    assert lines == ["jobseek_ats_inventory_status_available 0"]
+
+
+def test_ats_inventory_rate_limit_preflight_remains_observable_without_queue(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "ats-status.json"
+    path.write_text(
+        json.dumps(
+            {
+                "last_attempt_unixtime": 200,
+                "last_success_unixtime": 200,
+                "last_attempt_duration_seconds": 12,
+                "last_attempt_success": 0,
+                "last_attempt_degraded": 1,
+                "requested_mode": "report",
+                "effective_mode": "report",
+                "rollout_cap": 1,
+                "report": {
+                    "rows": 80_000,
+                    "coverage": {
+                        "candidate_coverage_pct": 100.0,
+                        "unsupported_families": [],
+                    },
+                    "impact": {"active_companies": 15_000},
+                    "candidate_issues": {"status": "rate_limited_preflight"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    lines: list[str] = []
+
+    host._collect_ats_inventory_metrics(lines, path)
+
+    content = "\n".join(lines)
+    assert 'status="rate_limited_preflight"' in content
+    assert "jobseek_ats_inventory_last_attempt_degraded 1" in content
+    assert "jobseek_ats_inventory_queue_available" not in content
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("unsupported_families", "greenhouse", "unsupported families"),
+        ("import_pickup_latency_avg_seconds", "fast", "pickup_latency"),
+    ),
+)
+def test_ats_inventory_status_rejects_malformed_aggregate_metrics(
+    tmp_path: Path, field: str, value: object, message: str
+) -> None:
+    path = tmp_path / "ats-status.json"
+    coverage = {"candidate_coverage_pct": 100.0, "unsupported_families": []}
+    queue = {
+        "available": 440,
+        "total_open": 470,
+        "import_open": 20,
+        "import_closed": 3,
+        "import_fresh_claimed": 4,
+        "import_active_linked_pr": 2,
+        "import_pickup_latency_avg_seconds": 900,
+    }
+    if field == "unsupported_families":
+        coverage[field] = value
+    else:
+        queue[field] = value
+    path.write_text(
+        json.dumps(
+            {
+                "last_attempt_unixtime": 200,
+                "last_success_unixtime": 200,
+                "last_attempt_duration_seconds": 12,
+                "last_attempt_success": 1,
+                "last_attempt_degraded": 0,
+                "requested_mode": "report",
+                "effective_mode": "report",
+                "rollout_cap": 1,
+                "report": {
+                    "rows": 80_000,
+                    "coverage": coverage,
+                    "impact": {"active_companies": 15_000},
+                    "candidate_issues": {
+                        "status": "report_only",
+                        "created": 0,
+                        "queue_before": queue,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(host.ProbeError, match=message):
+        host._collect_ats_inventory_metrics([], path)
+
+
 def test_typesense_process_limit_parser_requires_numeric_nofile() -> None:
     limits = """Limit                     Soft Limit           Hard Limit           Units
 Max open files            65536                65536                files
@@ -507,6 +659,7 @@ def test_cursor_rejects_future_and_old_values(tmp_path: Path) -> None:
 def test_rule_source_has_bounded_owned_groups() -> None:
     groups = rules._load_groups(ROOT / "apps" / "crawler" / "alerts.yaml")
     assert {group["name"] for group in groups} == {
+        "jobseek_ats_inventory",
         "jobseek_hetzner_fleet",
         "jobseek_operator_handoffs",
         "jobseek_postgresql_capacity",
@@ -523,6 +676,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 19,
         "jobseek_crawler_board_quarantine": 8,
+        "jobseek_ats_inventory": 5,
         "jobseek_redis_capacity": 4,
         "jobseek_operator_handoffs": 3,
     }

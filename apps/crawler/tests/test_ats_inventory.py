@@ -16,6 +16,7 @@ from src.ats_inventory.github import (
     CreatedIssue,
     ExistingIssue,
     GitHubCreateOutcomeUnknown,
+    read_injected_github_token,
     reconcile_support_issues,
     render_support_issue,
 )
@@ -28,6 +29,38 @@ from src.ats_inventory.source import (
 from src.workspace._compat import all_monitor_types
 
 COMPANIES_URL = "https://storage.stapply.ai/jobhive/v1/companies.csv"
+
+
+def test_github_token_prefers_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    token_file = tmp_path / "token"
+    token_file.write_text("file-token\n", encoding="utf-8")
+    monkeypatch.setenv("TEST_GH_TOKEN", "environment-token")
+
+    assert (
+        read_injected_github_token(env_name="TEST_GH_TOKEN", token_file=token_file)
+        == "environment-token"
+    )
+
+
+def test_github_token_file_is_strict_and_never_requires_an_env_value(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("TEST_GH_TOKEN", raising=False)
+    token_file = tmp_path / "token"
+    token_file.write_text("installation-token\n", encoding="utf-8")
+    assert (
+        read_injected_github_token(env_name="TEST_GH_TOKEN", token_file=token_file)
+        == "installation-token"
+    )
+
+    token_file.write_text("two\nlines\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="exactly one"):
+        read_injected_github_token(env_name="TEST_GH_TOKEN", token_file=token_file)
+
+    token_file.unlink()
+    token_file.symlink_to(tmp_path / "missing")
+    with pytest.raises(RuntimeError, match="non-symlink|unreadable"):
+        read_injected_github_token(env_name="TEST_GH_TOKEN", token_file=token_file)
 
 
 def _csv_bytes(rows: list[dict[str, str]], *, header: tuple[str, ...] = ()) -> bytes:

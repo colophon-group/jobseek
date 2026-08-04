@@ -183,6 +183,17 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "target: /home/deploy/\n" not in workflow
 
 
+def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
+    script = DEPLOY_SH.read_text()
+    prepare = script.index("printf 'CRAWLER_IMAGE_TAG=%s\\nJOBSEEK_DEPLOY_REVISION=%s\\n'")
+    health = script.index("\nwait_for_core_services\n")
+    disarm = script.index("\ndisarm_deploy_rollback\n")
+    publish = script.index('mv "$deploy_success_temporary" "$DEPLOY_SUCCESS_FILE"')
+
+    assert health < prepare < disarm < publish
+    assert 'DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"' in script
+
+
 def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     restore = script[

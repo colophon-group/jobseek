@@ -64,6 +64,12 @@ class QueueSnapshot:
     active_linked_pr: int
     import_open: int
     human_open: int
+    import_closed: int
+    import_fresh_claimed: int
+    import_active_linked_pr: int
+    import_pickup_latency_samples: int
+    import_pickup_latency_avg_seconds: int | None
+    import_pickup_latency_max_seconds: int | None
     unparseable_claims: int
     fresh_claim_issue_numbers: tuple[int, ...]
     linked_pr_issue_numbers: tuple[int, ...]
@@ -112,6 +118,10 @@ def classify_queue(
     open_issues = {
         item.number: item for item in items if item.kind == "issue" and item.state == "open"
     }
+    import_issues = {
+        item.number: item for item in items if item.kind == "issue" and IMPORT_LABEL in item.labels
+    }
+    import_open_numbers = import_issues.keys() & open_issues.keys()
     linked: set[int] = set()
     for item in items:
         if item.kind != "pr" or item.state != "open":
@@ -122,6 +132,7 @@ def classify_queue(
 
     cutoff = now.astimezone(UTC) - timedelta(seconds=claim_ttl_seconds)
     fresh_claims: set[int] = set()
+    import_pickup_latencies: dict[int, int] = {}
     unparseable = 0
     for claim in claims:
         if claim.issue_number not in open_issues or not claim.body.startswith(CLAIM_MARKER):
@@ -133,6 +144,14 @@ def classify_queue(
             fresh_claims.add(claim.issue_number)
         elif created_at >= cutoff:
             fresh_claims.add(claim.issue_number)
+            issue = import_issues.get(claim.issue_number)
+            issue_created_at = _parse_timestamp(issue.created_at) if issue is not None else None
+            if issue_created_at is not None and created_at >= issue_created_at:
+                latency = int((created_at - issue_created_at).total_seconds())
+                prior = import_pickup_latencies.get(claim.issue_number)
+                import_pickup_latencies[claim.issue_number] = (
+                    latency if prior is None else min(prior, latency)
+                )
 
     unavailable = fresh_claims | linked
     import_open = sum(IMPORT_LABEL in item.labels for item in open_issues.values())
@@ -143,6 +162,18 @@ def classify_queue(
         active_linked_pr=len(linked),
         import_open=import_open,
         human_open=len(open_issues) - import_open,
+        import_closed=sum(item.state != "open" for item in import_issues.values()),
+        import_fresh_claimed=len(fresh_claims & import_open_numbers),
+        import_active_linked_pr=len(linked & import_open_numbers),
+        import_pickup_latency_samples=len(import_pickup_latencies),
+        import_pickup_latency_avg_seconds=(
+            round(sum(import_pickup_latencies.values()) / len(import_pickup_latencies))
+            if import_pickup_latencies
+            else None
+        ),
+        import_pickup_latency_max_seconds=(
+            max(import_pickup_latencies.values()) if import_pickup_latencies else None
+        ),
         unparseable_claims=unparseable,
         fresh_claim_issue_numbers=tuple(sorted(fresh_claims)),
         linked_pr_issue_numbers=tuple(sorted(linked)),

@@ -888,6 +888,66 @@ verified cursor. Stopping or disabling the timer is a scheduling rollback
 only—the migration and optional Typesense bucket field are additive, and
 disabling the timer does not undo already verified downstream repairs.
 
+## ATS Inventory Candidate Timer
+
+`jobseek-ats-inventory.timer` runs the data-only company inventory and impact
+refresh daily on the crawler host, with persistent catch-up and a 45-minute
+random delay. It uses the immutable crawler image named by the atomic committed
+release marker (published after crawler health and rollback disarm) and never runs
+Codex or upstream scraper code. Three root-owned GitHub App credentials enter
+the service through systemd `LoadCredential`; only a short-lived installation
+token file is mounted into the read-only one-shot container. No GitHub token,
+private key, crawler environment file, database credential, or issue body is
+written to Docker metadata or the operator status.
+
+The first install is report-only and has an independent `writes-disabled`
+sentinel. The timer can remain active while writes are disabled: source/cache
+validation and queue reporting continue, while candidate/support issue POSTs
+cannot occur. Cache and ledger data under `/var/lib/jobseek-ats-inventory`
+survive disable, failed installs, and transactional host-surface rollback.
+Disabling also stops an active run after publishing the gate; the wrapper
+rechecks that gate immediately before its credentialed GitHub phase.
+
+Host-surface deployment verifies the committed crawler tag and full Git
+revision while holding `/run/lock/jobseek-crawler-mutation.lock`, then pins that
+exact release for a report-only acceptance run. The prior runner remains the
+rollback target until the fresh report succeeds and the timer is active. A stop
+timeout, failed report, stale status, or mismatched release fails the install and
+restores the prior units, credentials, and scheduling state. Acceptance uses a
+disposable cache; the independent operator write gate is never part of the
+rollback snapshot, so a concurrent emergency disable cannot be undone. Root
+creates a missing post-reboot mutation-lock inode through a deploy-user process
+as `deploy:deploy 0600` and opens it read-only, avoiding a root-owned creation
+window and preserving the shared cross-user lock contract. The runner container
+uses the dedicated IPv4-only `jobseek-ats-inventory-egress` bridge. Before every
+run, `jobseek-ats-inventory-network.service` rebuilds a fail-closed
+`DOCKER-USER` policy that rejects the host and private/reserved destinations,
+allows only public HTTPS/DNS, and disables inter-container communication. A
+credential-free container probe must reach GitHub and the inventory source while
+failing TCP connects to both the crawler host and the exact production
+PostgreSQL address. This closes both the loopback Redis and routed private-DB
+paths; a missing rule, stale network, DNS failure, or reachable blocked endpoint
+prevents the runner from starting.
+
+Read-only checks:
+
+```bash
+systemctl is-enabled jobseek-ats-inventory.timer
+systemctl is-active jobseek-ats-inventory.timer
+systemctl status jobseek-ats-inventory-network.service --no-pager
+systemctl list-timers --all jobseek-ats-inventory.timer --no-pager
+/usr/local/sbin/jobseek-ats-inventory-control status
+python3 -m json.tool /var/lib/jobseek-ats-inventory/status/current.json
+journalctl -u jobseek-ats-inventory.service --since '24 hours ago' --no-pager
+```
+
+The host sampler exports `jobseek_ats_inventory_*` aggregate series for
+freshness, success, coverage, queue health, imported issue lifecycle, pickup
+latency, creates, and rollout state. A missing status is explicitly exported
+as unavailable. The complete deployment, report/dry-run/refill controls,
+stage-1/5/25 evidence gates, and emergency disable procedure are documented in
+[`21-ats-inventory-runner.md`](21-ats-inventory-runner.md#hetzner-deployment-and-rollout).
+
 ## Board Quarantine Recovery
 
 Ordinary monitor failures are recoverable. After five consecutive failures a
