@@ -31,6 +31,7 @@ from src.shared.cornerstone import (
     cornerstone_board_from_url,
     extract_cornerstone_context,
 )
+from src.shared.darwinbox import darwinbox_board_from_metadata, darwinbox_board_from_url
 from src.shared.dayforce import (
     dayforce_board_from_metadata,
     dayforce_board_from_url,
@@ -574,6 +575,29 @@ async def _probe_dayforce(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "dayforce", url, resp)
 
 
+async def _probe_darwinbox(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    try:
+        raw_config = json.loads(row["monitor_config"]) if row["monitor_config"] else {}
+    except (json.JSONDecodeError, TypeError):
+        raw_config = {}
+    config = raw_config if isinstance(raw_config, dict) else {}
+    board = darwinbox_board_from_metadata(config) or darwinbox_board_from_url(row["board_url"])
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "darwinbox",
+            row["board_url"],
+            "warn",
+            "no valid host/company_id in monitor_config or Darwinbox URL",
+        )
+
+    url = board.listing_url()
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response) and resp.status_code in {404, 410}:
+        return ProbeResult(row["board_slug"], "darwinbox", url, "fail", "board not found")
+    return _classify(row, "darwinbox", url, resp)
+
+
 async def _probe_hrmos(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     tenant = _token_from_config(row["monitor_config"], "tenant")
     tenant = tenant.strip().lower() if tenant else None
@@ -965,6 +989,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "icims": _probe_icims,
     "gupy": _probe_gupy,
     "cornerstone": _probe_cornerstone,
+    "darwinbox": _probe_darwinbox,
     "dayforce": _probe_dayforce,
     "herp": _probe_herp,
     "hrmos": _probe_hrmos,

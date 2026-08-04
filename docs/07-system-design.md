@@ -27,7 +27,7 @@ Current design of all major subsystems across the crawler and web apps.
 | Component        | Service                 | Notes                                      |
 |------------------|-------------------------|--------------------------------------------|
 | Web app          | Vercel (Next.js 15)     | Serverless, edge-compatible                |
-| Crawler workers  | Hetzner CPX31 (116.203.192.19) | 8 vCPU, 16GB RAM; 3 HTTP workers, 1 browser worker, exporter, drain, Redis, Alloy |
+| Crawler workers  | Hetzner CPX31 (116.203.192.19) | 8 vCPU, 16GB RAM; 3 HTTP workers, 1 browser worker, exporter, drain, Redis, Alloy; native ATS monitors run without upstream scraper dependencies |
 | Local Postgres   | Hetzner Dedicated (178.104.102.63) | Postgres 16, 20GB XFS volume; crawler source of truth |
 | Supabase         | Managed Postgres        | Frontend read DB, populated by exporter CDC |
 | Redis            | Local (Hetzner)         | Tiered ready queues, domain throttling, task config |
@@ -181,6 +181,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
 | 10   | `gupy`            | URL-only | json-ld     | Gupy single-page NextData inventory |
 | 10   | `cornerstone`     | Rich     | skip        | Cornerstone bootstrap + regional paginated search API |
+| 10   | `darwinbox`       | Rich     | skip        | Darwinbox browser-session public jobs API |
 | 10   | `dayforce`        | Rich     | skip        | Dayforce browser-context public search BFF |
 | 10   | `herp`            | URL-only | json-ld     | HERP Hire single static requisition listing |
 | 10   | `hrmos`           | URL-only | json-ld     | HRMOS static listings with bounded pagination |
