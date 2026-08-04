@@ -692,6 +692,19 @@ def _throttle_key(board: asyncpg.Record) -> str:
     URL-only monitors each hit their own company domain.
     """
     crawler_type = board["crawler_type"]
+    if crawler_type == "darwinbox":
+        from src.shared.darwinbox import darwinbox_board_from_metadata, darwinbox_board_from_url
+
+        metadata = board["metadata"] or {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+        configured = darwinbox_board_from_metadata(metadata) if isinstance(metadata, dict) else None
+        resolved = configured or darwinbox_board_from_url(board["board_url"])
+        if resolved is not None:
+            return resolved.host
     if crawler_type in _API_MONITOR_TYPES:
         return crawler_type
     if crawler_type == "taleo":

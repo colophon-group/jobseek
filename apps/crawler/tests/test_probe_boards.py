@@ -774,6 +774,7 @@ def test_probe_registry_covers_expected_types():
         "icims",
         "gupy",
         "cornerstone",
+        "darwinbox",
         "dayforce",
         "herp",
         "hrmos",

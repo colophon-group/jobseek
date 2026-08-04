@@ -612,6 +612,14 @@ def _compute_throttle_key(
     metadata: Mapping[str, object] | None = None,
 ) -> str:
     """Compute rate-limit grouping key from monitor type and board URL."""
+    if monitor_type == "darwinbox":
+        from src.shared.darwinbox import darwinbox_board_from_metadata, darwinbox_board_from_url
+
+        resolved = darwinbox_board_from_metadata(metadata or {}) or darwinbox_board_from_url(
+            board_url
+        )
+        if resolved is not None:
+            return resolved.host
     if monitor_type in _API_MONITOR_TYPES:
         return monitor_type
     if monitor_type == "taleo":

@@ -83,6 +83,7 @@ Monitor Types (cheapest first):
   breezy            10      Job URLs          Auto-configured
   comeet            10      Full job data     No (skipped)
   cornerstone       10      Full job data     No (skipped)
+  darwinbox         10      Full job data     No (skipped)
   dayforce          10      Full job data     No (skipped)
   deel              10      Full job data     No (skipped)
   dvinci            10      Full job data     No (skipped)
@@ -1712,6 +1713,30 @@ dayforce — Dayforce public career-site API
   Detection:  ws probe shows "Dayforce API — tenant: X, portal: Y"
   Zero jobs?  A valid search response reports maxCount=0 and jobPostings=[]."""
 
+MONITOR_DARWINBOX = """\
+darwinbox — Darwinbox public career-site API
+
+  Listing:  GET  https://{host}/ms/candidatev2/{company_id}/careers
+  Search:   POST https://{host}/ms/candidateapi/job/alljobs
+  Returns:  Full job data streamed in 100-job pages; no detail fan-out
+  Scraper:  None (rich monitor)
+  Browser:  Required. Cloudflare rejects stateless replay, so the monitor
+            reuses Jobseek's browser fetch transport after opening the public
+            same-origin career portal.
+  Note:     Validates strict Darwinbox host, portal, response, count, identity,
+            and pagination invariants. Incomplete or drifting runs are marked
+            truncated to prevent false delisting. The upstream ats-scrapers
+            project is inventory-only and is never imported or executed.
+
+  Config:
+    {"host": "acme.darwinbox.in", "company_id": "main"}
+
+    host        Full single-tenant *.darwinbox.in or *.darwinbox.com host.
+    company_id  Public portal route/API identity (normally "main").
+
+  Detection:  ws probe shows "Darwinbox API — host: X, company: Y"
+  Zero jobs?  A valid response reports job_counts=0 and data=[]."""
+
 MONITOR_HRMOS = """\
 hrmos — HRMOS server-rendered listings
 
@@ -2560,6 +2585,7 @@ MONITOR_CARDS: dict[str, str] = {
     "icims": MONITOR_ICIMS,
     "gupy": MONITOR_GUPY,
     "cornerstone": MONITOR_CORNERSTONE,
+    "darwinbox": MONITOR_DARWINBOX,
     "dayforce": MONITOR_DAYFORCE,
     "herp": MONITOR_HERP,
     "hrmos": MONITOR_HRMOS,

@@ -17,6 +17,7 @@ from urllib.parse import parse_qsl
 from src.shared.adp import adp_board_from_url
 from src.shared.beisen import beisen_board_from_url
 from src.shared.cornerstone import cornerstone_board_from_url
+from src.shared.darwinbox import darwinbox_board_from_url
 from src.shared.dayforce import dayforce_board_from_url
 from src.shared.gupy import gupy_tenant_from_url
 from src.shared.keka import keka_board_from_url
@@ -55,6 +56,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "beisen",
         "comeet",
         "cornerstone",
+        "darwinbox",
         "dayforce",
         "deel",
         "dvinci",
@@ -209,6 +211,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "gupy"
     if cornerstone_board_from_url(url) is not None:
         return "cornerstone"
+    if darwinbox_board_from_url(url) is not None:
+        return "darwinbox"
     if dayforce_board_from_url(url) is not None:
         return "dayforce"
     if recruiterbox_board_from_url(url) is not None:

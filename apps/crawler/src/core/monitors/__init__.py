@@ -222,13 +222,13 @@ def all_monitor_types() -> frozenset[str]:
 def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
     """Return True if the monitor requires a Playwright browser.
 
-    accenture and dayforce always need a browser (public session replay via
-    Playwright).
+    accenture, darwinbox, and dayforce always need a browser (public session
+    replay via Playwright).
     api_sniffer needs a browser when ``browser`` is set in config or when
     no ``api_url`` is configured (auto-discover mode).  dom always benefits
     from a browser but falls back to static HTML.
     """
-    if name in {"accenture", "dayforce"}:
+    if name in {"accenture", "darwinbox", "dayforce"}:
         return True
     if name == "api_sniffer":
         cfg = config or {}
@@ -425,6 +425,10 @@ def _build_comment(name: str, metadata: dict) -> str:
         tenant = metadata.get("tenant", "?")
         portal = metadata.get("portal", "?")
         return f"Dayforce API \u2014 tenant: {tenant}, portal: {portal}"
+    if name == "darwinbox":
+        host = metadata.get("host", "?")
+        company_id = metadata.get("company_id", "main")
+        return f"Darwinbox API \u2014 host: {host}, company: {company_id}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -738,6 +742,7 @@ from src.core.monitors import (  # noqa: E402
     breezy,  # noqa: F401
     comeet,  # noqa: F401
     cornerstone,  # noqa: F401
+    darwinbox,  # noqa: F401
     dayforce,  # noqa: F401
     deel,  # noqa: F401
     dom,  # noqa: F401

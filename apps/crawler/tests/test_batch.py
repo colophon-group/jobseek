@@ -147,8 +147,16 @@ class TestThrottleKey:
 
     def test_all_api_types(self):
         for api_type in api_monitor_types():
-            board = self._board(crawler_type=api_type)
-            assert _throttle_key(board) == api_type
+            if api_type == "darwinbox":
+                board = self._board(
+                    crawler_type=api_type,
+                    board_url="https://acme.darwinbox.in/ms/candidate/careers",
+                    metadata={"host": "acme.darwinbox.in", "company_id": "main"},
+                )
+                assert _throttle_key(board) == "acme.darwinbox.in"
+            else:
+                board = self._board(crawler_type=api_type)
+                assert _throttle_key(board) == api_type
 
     def test_url_monitor_returns_hostname(self):
         board = self._board(crawler_type="sitemap", board_url="https://acme.com/jobs")
