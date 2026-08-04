@@ -26,20 +26,48 @@ def test_dispatch_is_owner_main_revision_and_confirmation_bound_before_approval(
     assert 'test "$DISPATCH_ACTOR" = viktor-shcherb' in preauthorize
     assert 'test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb' in preauthorize
     assert 'test "$DISPATCH_REF" = refs/heads/main' in preauthorize
-    assert 'test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"' in preauthorize
+    assert '[[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]' in preauthorize
+    assert 'test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"' not in preauthorize
     assert "REPAIR-LOCAL-LOCATION-TAXONOMY-37526" in preauthorize
     assert "needs: preauthorize" in authorize
     assert "environment: production-migrations" in authorize
     assert 'test "$DISPATCH_ACTOR" = viktor-shcherb' in authorize
     assert 'test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb' in authorize
     assert 'test "$DISPATCH_REF" = refs/heads/main' in authorize
-    assert 'test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"' in authorize
     assert "REPAIR-LOCAL-LOCATION-TAXONOMY-37526" in authorize
     assert 'echo "crawler_revision=${EXPECTED_CRAWLER_REVISION}"' in authorize
     assert "needs: [preauthorize, authorize]" in repair
     assert "needs.authorize.result == 'success'" in repair
     assert "environment: Production" in repair
     assert "github.triggering_actor == 'viktor-shcherb'" in repair
+
+
+def test_authorize_allows_current_main_after_the_deployed_revision() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    authorize = _job(workflow, "authorize", "repair")
+
+    assert "fetch-depth: 0" in authorize
+    assert 'test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"' in authorize
+    assert 'test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"' not in authorize
+    assert (
+        'version="$(git show "${EXPECTED_CRAWLER_REVISION}:apps/crawler/VERSION" '
+        "| tr -d '[:space:]')\""
+    ) in authorize
+    assert 'echo "crawler_revision=${EXPECTED_CRAWLER_REVISION}"' in authorize
+    assert 'echo "image_tag=v${version}"' in authorize
+
+
+def test_authorize_rejects_a_non_ancestor_target_revision() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    authorize = _job(workflow, "authorize", "repair")
+
+    object_check = 'git cat-file -e "${EXPECTED_CRAWLER_REVISION}^{commit}"'
+    ancestor_check = 'git merge-base --is-ancestor "$EXPECTED_CRAWLER_REVISION" "$DISPATCH_SHA"'
+    assert "set -euo pipefail" in authorize
+    assert object_check in authorize
+    assert ancestor_check in authorize
+    assert authorize.index(object_check) < authorize.index(ancestor_check)
+    assert f"{ancestor_check} ||" not in authorize
 
 
 def test_repair_secrets_resolve_only_after_protected_authorization() -> None:

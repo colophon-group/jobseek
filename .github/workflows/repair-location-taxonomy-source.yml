@@ -45,8 +45,8 @@ jobs:
           test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
           test "$DISPATCH_EVENT" = workflow_dispatch
           test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
-          test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"
           test "$DISPATCH_CONFIRMATION" = REPAIR-LOCAL-LOCATION-TAXONOMY-37526
 
   authorize:
@@ -74,20 +74,23 @@ jobs:
           test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
           test "$DISPATCH_EVENT" = workflow_dispatch
           test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
-          test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"
           test "$DISPATCH_CONFIRMATION" = REPAIR-LOCAL-LOCATION-TAXONOMY-37526
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Bind the operation to the reviewed release image
+      - name: Bind the operation to the deployed ancestor and release image
         id: contract
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$EXPECTED_CRAWLER_REVISION"
-          version="$(tr -d '[:space:]' < apps/crawler/VERSION)"
+          test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
+          git cat-file -e "${EXPECTED_CRAWLER_REVISION}^{commit}"
+          git merge-base --is-ancestor "$EXPECTED_CRAWLER_REVISION" "$DISPATCH_SHA"
+          version="$(git show "${EXPECTED_CRAWLER_REVISION}:apps/crawler/VERSION" | tr -d '[:space:]')"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           {
             echo "crawler_revision=${EXPECTED_CRAWLER_REVISION}"
