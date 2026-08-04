@@ -37,6 +37,9 @@ Status tags:
   shape, provider boundaries, and rollout constraints.
 - [10 - Parallel Agent Pipeline](10-parallel-agent-pipeline.md) `[historical]`
   - earlier multi-agent company onboarding design and backlog notes.
+- [21 - ATS Inventory Candidate Runner](21-ats-inventory-runner.md) `[reference]`
+  - data-only upstream boundary, compatibility coverage, validated cache, and
+  unsupported-family quarantine contract.
 
 ## Search, SEO, And Web Read Paths
 
