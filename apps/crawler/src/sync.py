@@ -1701,16 +1701,36 @@ def _ts_bulk_upsert(
         batch = docs[i : i + _TYPESENSE_BATCH_SIZE]
         documents = cast(Any, client.collections[collection].documents)
         results = documents.import_(batch, {"action": action})
-        errors = [r for r in results if not r.get("success", True)]
-        if errors:
-            if fail_on_error:
+        if fail_on_error:
+            acknowledged_count = len(results) if isinstance(results, list) else 0
+            successful_count = (
+                sum(
+                    1
+                    for result in results
+                    if isinstance(result, dict) and result.get("success") is True
+                )
+                if isinstance(results, list)
+                else 0
+            )
+            if (
+                not isinstance(results, list)
+                or len(results) != len(batch)
+                or any(
+                    not isinstance(result, dict) or result.get("success") is not True
+                    for result in results
+                )
+            ):
                 log.error(
-                    "typesense.bulk_upsert.errors",
+                    "typesense.bulk_upsert.invalid_acknowledgement",
                     collection=collection,
                     action=action,
-                    error_count=len(errors),
+                    expected_count=len(batch),
+                    acknowledged_count=acknowledged_count,
+                    successful_count=successful_count,
                 )
-                raise RuntimeError("Typesense bulk import failed") from None
+                raise RuntimeError("Typesense bulk import acknowledgement was invalid") from None
+        errors = [r for r in results if not r.get("success", True)]
+        if errors:
             log.warning(
                 "typesense.bulk_upsert.errors",
                 collection=collection,
@@ -2346,8 +2366,8 @@ async def sync_companies_typesense(
         """
     )
     if not rows:
-        log.info("typesense.companies.empty")
-        return
+        log.error("typesense.companies.empty_authority", expected_count=0)
+        raise RuntimeError("Local company authority is empty")
 
     desc_rows = await local_conn.fetch(
         "SELECT company_id, locale, description FROM company_description"

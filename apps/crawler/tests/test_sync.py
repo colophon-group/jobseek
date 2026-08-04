@@ -29,6 +29,7 @@ from src.sync import (
     _load_companies,
     _monitor_config_fingerprint,
     _one_year_ago_epoch,
+    _ts_bulk_upsert,
     apply_board_redis_effects,
     refresh_typesense_counts,
     run_sync,
@@ -2194,19 +2195,21 @@ class TestSyncCompaniesTypesense:
         local_ids = ["co-alpha", "co-beta"]
         local_conn = _company_connection(local_ids)
         client, collection, remote_ids, deleted_ids = _company_typesense_client(set(local_ids))
+        collection.documents.import_.return_value = [
+            {"success": True},
+            {"success": True},
+        ]
 
-        with (
-            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
-            patch("src.sync._ts_bulk_upsert") as upsert,
-        ):
+        with patch("src.sync._fetch_company_posting_counts", return_value=({}, {})):
             await sync_companies_typesense(local_conn, client)
 
         assert remote_ids == set(local_ids)
         assert deleted_ids == []
         assert collection.documents.search.call_count == 2
         collection.documents.__getitem__.assert_not_called()
-        assert {doc["id"] for doc in upsert.call_args.args[2]} == set(local_ids)
-        assert upsert.call_args.kwargs == {"fail_on_error": True}
+        imported_docs, import_options = collection.documents.import_.call_args.args
+        assert {doc["id"] for doc in imported_docs} == set(local_ids)
+        assert import_options == {"action": "upsert"}
 
     async def test_local_company_absent_from_csv_is_preserved_during_stale_delete(self):
         # co-retained-local intentionally represents a row retained in local
@@ -2321,13 +2324,14 @@ class TestSyncCompaniesTypesense:
         assert deleted_ids == []
         collection.documents.__getitem__.assert_not_called()
 
-    async def test_empty_local_authority_never_upserts_reads_or_prunes(self):
+    async def test_empty_local_authority_is_fatal_without_remote_reads_or_pruning(self):
         local_conn = _company_connection([])
         client, collection, remote_ids, deleted_ids = _company_typesense_client({"co-stale"})
 
         with (
             patch("src.sync._fetch_company_posting_counts") as counts,
             patch("src.sync._ts_bulk_upsert") as upsert,
+            pytest.raises(RuntimeError, match="authority is empty"),
         ):
             await sync_companies_typesense(local_conn, client)
 
@@ -2359,6 +2363,71 @@ class TestSyncCompaniesTypesense:
         collection.documents.__getitem__.assert_not_called()
         assert remote_ids == {"co-alpha", "co-stale"}
         assert deleted_ids == []
+
+    @pytest.mark.parametrize(
+        "acknowledgement",
+        [
+            pytest.param([], id="empty-list"),
+            pytest.param([{}], id="missing-success"),
+            pytest.param(["malformed"], id="non-dict-item"),
+            pytest.param([{"success": 1}], id="non-boolean-success"),
+            pytest.param(
+                [{"success": True}, {"success": True}],
+                id="too-many-items",
+            ),
+            pytest.param({"success": True}, id="non-list-response"),
+        ],
+    )
+    async def test_invalid_import_acknowledgement_blocks_remote_reads_and_pruning(
+        self,
+        acknowledgement,
+    ):
+        local_conn = _company_connection(["co-alpha"])
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-stale"}
+        )
+        collection.documents.import_.return_value = acknowledgement
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            pytest.raises(RuntimeError, match="acknowledgement was invalid"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
+        assert remote_ids == {"co-alpha", "co-stale"}
+        assert deleted_ids == []
+
+    async def test_short_import_acknowledgement_blocks_remote_reads_and_pruning(self):
+        local_conn = _company_connection(["co-alpha", "co-beta"])
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-beta", "co-stale"}
+        )
+        collection.documents.import_.return_value = [{"success": True}]
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            pytest.raises(RuntimeError, match="acknowledgement was invalid"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
+        assert remote_ids == {"co-alpha", "co-beta", "co-stale"}
+        assert deleted_ids == []
+
+    @pytest.mark.parametrize("acknowledgement", [[], [{}]])
+    def test_legacy_bulk_upsert_acknowledgement_semantics_are_preserved(self, acknowledgement):
+        client = MagicMock()
+        documents = client.collections["company"].documents
+        documents.import_.return_value = acknowledgement
+
+        _ts_bulk_upsert(client, "company", [{"id": "co-alpha"}])
+
+        documents.import_.assert_called_once()
 
     async def test_delete_failure_is_fatal_and_skips_convergence_read(self):
         local_ids = [f"co-authority-{index:03d}" for index in range(100)]
@@ -2417,3 +2486,21 @@ class TestSyncCompaniesTypesense:
             pytest.raises(CompanyTypesenseSyncError, match="company exact sync"),
         ):
             await sync_typesense(local_conn, web_conn, client)
+
+    async def test_empty_authority_propagates_from_typesense_orchestrator(self):
+        client, collection, _remote_ids, _deleted_ids = _company_typesense_client({"co-stale"})
+        local_conn = _company_connection([])
+        web_conn = AsyncMock()
+
+        with (
+            patch("src.sync.sync_locations_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_occupations_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_seniority_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_technologies_typesense", new_callable=AsyncMock),
+            pytest.raises(CompanyTypesenseSyncError, match="company exact sync"),
+        ):
+            await sync_typesense(local_conn, web_conn, client)
+
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
