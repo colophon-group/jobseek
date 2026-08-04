@@ -1025,6 +1025,56 @@ accepting a terminal transition. Migration 0016 treats every legacy one-shot
 `gone` row as one unconfirmed observation, schedules it within fifteen minutes,
 and lets the deploy-time CSV sync disable rows that are no longer configured.
 
+## Fail-Closed Stale-Board Retirement Report
+
+`retire-stale-boards` is a read-only evidence report. Database state selects
+the candidates, but does not authorize removal. The command loads the exact
+deployed `companies.csv` and `boards.csv`, probes supported provider-native
+listing endpoints with bounded concurrency, and separates the result into:
+
+- `verified_gone`: a current provider-gone result plus at least two durable
+  confirmations spaced by six hours;
+- `live_again`: a current valid response, including a valid board with zero
+  jobs; route these boards through the normal provider-native recovery run;
+- `probe_inconclusive`: unsupported probes, 429s, timeouts, transient 5xx
+  responses, redirects that need review, or a gone result still waiting for
+  durable confirmation;
+- `integration_broken`: registry/runtime drift, invalid configuration, or an
+  unexpected provider response contract;
+- `zero_board_registry_orphans`: company rows with no configured board rows.
+
+Run it from a deployed crawler container so the report uses the same registry
+and network path as production:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler retire-stale-boards \
+  --days 14 --format md --probe-concurrency 5
+docker exec deploy-worker-1-1 uv run --no-sync crawler retire-stale-boards \
+  --days 14 --format json --probe-concurrency 5
+```
+
+Every evidence row includes a UTC probe timestamp, stable reason code,
+endpoint class and URL, HTTP status, redirect target, job count when the
+provider exposes a reliable total, and current company board context. The
+JSON form is the automation contract.
+
+The `shell` format is deliberately fail closed. It emits executable CSV
+removal commands only for `verified_gone` board candidates and companies for
+which every configured board independently passed the same current and
+durable confirmation gates. Live, rate-limited, transient, unsupported,
+unconfigured, and otherwise inconclusive candidates appear only as comments:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler retire-stale-boards \
+  --days 14 --format shell --probe-concurrency 5
+```
+
+Do not convert a non-executable section into a manual removal command. Recover
+`live_again` boards with `crawler board <board-slug>` and let the normal success
+transition reset terminal state. Retry transient probes after backoff. Repair
+integration failures before repeating the report. Zero-board registry orphans
+require separate operator review; the report never assumes they are dead.
+
 ## Disk Triage
 
 Use these first when a deploy fails with `No space left on device`, Redis
