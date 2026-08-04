@@ -27,7 +27,11 @@ from src.core.scrapers.workday import (
     _parse_location_type,
     scrape,
 )
-from src.shared.http import RequestHostTrackingTransport, track_request_hosts
+from src.shared.http import (
+    WORKDAY_LIST_303_INCIDENT,
+    RequestHostTrackingTransport,
+    track_request_hosts,
+)
 from src.shared.http_retry import PaginationFetchError
 
 
@@ -807,13 +811,43 @@ class TestPostPageWithRetry:
                 return httpx.Response(303, headers={"Location": ""})
             return httpx.Response(200, json={"total": 0, "jobPostings": [], "facets": []})
 
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            data = await _post_page_with_retry(
-                client, _LIST_URL, {"limit": 20, "offset": 0}, base_delay=0.001
-            )
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                data = await _post_page_with_retry(
+                    client, _LIST_URL, {"limit": 20, "offset": 0}, base_delay=0.001
+                )
 
         assert data == {"total": 0, "jobPostings": [], "facets": []}
         assert methods == ["POST", "POST"]
+        assert tracker.last_provider_incident is None
+
+    async def test_marks_only_an_exhausted_303_provider_incident(self, monkeypatch):
+        """Three terminal POST 303s retain distinct-host circuit evidence."""
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+        methods: list[str] = []
+
+        def handler(request):
+            methods.append(request.method)
+            return httpx.Response(303, headers={"Location": ""})
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                with pytest.raises(PaginationFetchError) as exc_info:
+                    await _post_page_with_retry(
+                        client,
+                        _LIST_URL,
+                        {"limit": 20, "offset": 0},
+                        base_delay=0.001,
+                    )
+
+        assert exc_info.value.last_status == 303
+        assert methods == ["POST", "POST", "POST"]
+        assert tracker.last_provider_incident == WORKDAY_LIST_303_INCIDENT
+        assert tracker.last_provider_incident_host == "co.wd1.myworkdayjobs.com"
 
     async def test_retries_on_cloudflare_5xx(self, monkeypatch):
         """Cloudflare origin codes 520-526/530 are retried (parity with
@@ -850,18 +884,21 @@ class TestPostPageWithRetry:
             calls["n"] += 1
             return httpx.Response(500, text="internal")
 
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            with pytest.raises(PaginationFetchError) as exc_info:
-                await _post_page_with_retry(
-                    client,
-                    _LIST_URL,
-                    {"limit": 20, "offset": 0},
-                    retries=3,
-                    base_delay=0.001,
-                )
-            assert exc_info.value.last_status == 500
-            assert exc_info.value.attempts == 3
-            assert calls["n"] == 3
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                with pytest.raises(PaginationFetchError) as exc_info:
+                    await _post_page_with_retry(
+                        client,
+                        _LIST_URL,
+                        {"limit": 20, "offset": 0},
+                        retries=3,
+                        base_delay=0.001,
+                    )
+        assert exc_info.value.last_status == 500
+        assert exc_info.value.attempts == 3
+        assert calls["n"] == 3
+        assert tracker.last_provider_incident is None
 
     async def test_raises_on_non_retryable_4xx_immediately(self, monkeypatch):
         """A 401 / 403 / 400 indicates a hard error — no point retrying.

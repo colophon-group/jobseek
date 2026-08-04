@@ -1096,6 +1096,80 @@ async def test_failed_sibling_boards_open_one_host_circuit_and_skip_fourth(mock_
 
 
 @pytest.mark.asyncio
+async def test_distinct_workday_303_hosts_open_provider_circuit_and_skip_next(
+    mock_redis, monkeypatch
+):
+    """A cross-tenant Workday event pauses later tenants before network I/O."""
+    from src.config import settings
+    from src.shared.http import WORKDAY_LIST_303_INCIDENT, mark_provider_incident
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    async def monitor(board, *_args, **_kwargs):
+        if board["id"] == "board-workday-healthy":
+            return True, 1.0
+        mark_provider_incident(
+            f"{board['board_url']}/wday/cxs/company/site/jobs",
+            incident=WORKDAY_LIST_303_INCIDENT,
+        )
+        return False, 30.0
+
+    monitor_mock = AsyncMock(side_effect=monitor)
+    reschedule = AsyncMock(return_value=None)
+    local_pool = _make_monitor_local_pool()
+    now = time.time()
+
+    def work(name: str) -> rq.BoardWork:
+        return rq.BoardWork(
+            board_id=f"board-workday-{name}",
+            domain="workday",
+            config={
+                "crawler_type": "workday",
+                "company_id": f"company-{name}",
+                "board_url": f"https://tenant-{name}.wd1.myworkdayjobs.com/Careers",
+                "check_interval_minutes": "60",
+                "metadata": "{}",
+            },
+        )
+
+    with (
+        patch("src.processing.board._process_one_board_streaming", new=monitor_mock),
+        patch("src.workers.pipeline.reschedule_task", new=reschedule),
+        patch(
+            "src.workers.pipeline._failure_next_due",
+            new=AsyncMock(return_value=now + 300),
+        ),
+        patch(
+            "src.workers.pipeline._refresh_board_metadata_cache",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        # The healthy run proves ordinary successes cannot erase concurrent
+        # distinct-host evidence before the provider quorum is reached.
+        for name in ("1", "healthy", "2", "3", "4"):
+            await _process_monitor_work(
+                structlog.get_logger(),
+                work(name),
+                local_pool,
+                AsyncMock(),
+                browser=False,
+            )
+
+    assert monitor_mock.await_count == 4
+    open_until = await rq.get_provider_circuit_open_until(WORKDAY_LIST_303_INCIDENT)
+    assert open_until is not None
+    assert await mock_redis.scard(f"provider_fail_hosts:{WORKDAY_LIST_303_INCIDENT}") == 3
+    assert reschedule.await_args_list[-1].args[:3] == (
+        "workday",
+        "board-workday-4",
+        "monitor",
+    )
+    assert reschedule.await_args_list[-1].args[3] == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
 async def test_failed_sibling_scrapes_open_one_host_circuit_and_skip_fourth(
     mock_redis, monkeypatch
 ):
