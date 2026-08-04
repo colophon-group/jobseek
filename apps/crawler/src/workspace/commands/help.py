@@ -1517,20 +1517,25 @@ personio — Personio XML Feed + HTML Fallback
   Zero jobs?  Verify slug — try the listing page in a browser"""
 
 MONITOR_RSS = """\
-rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
+rss — RSS 2.0 Feed Monitor + legacy SuccessFactors (presets: successfactors, teamtailor, generic)
 
   Feed:     GET {feed_url}
-  Returns:  Full job data (title, HTML description, locations, date_posted)
+  Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
+            posting date, and stable URL; static DOM enriches description.
             metadata: id and preset-specific fields
-  Scraper:  Not needed (feed returns full data, scraper step is skipped)
+  Scraper:  Feeds are skipped. Legacy SuccessFactors automatically uses the
+            static DOM scraper scoped to .joqReqDescription.
   Cap:      50,000 jobs
   Note:     One monitor type with multiple ATS presets:
             - successfactors: /googlefeed.xml (Google Base namespace)
+              or native static DWR pagination for /career?company=... boards
             - teamtailor: /jobs.rss (offset-paginated)
             - generic: standard RSS 2.0 (manual feed URL)
 
   Config:
     {"preset": "successfactors", "feed_url": "https://jobs.sap.com/googlefeed.xml"}
+    {"preset": "successfactors", "variant": "legacy",
+     "host": "career5.successfactors.eu", "company": "1657261P"}
     {"preset": "teamtailor", "feed_url": "https://company.teamtailor.com/jobs.rss"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
 
@@ -1538,9 +1543,12 @@ rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
                Defaults to "generic" when not set.
     feed_url   RSS URL. For known presets, ws probe can auto-fill this from
                the board URL; for generic feeds set it explicitly.
+    variant    SuccessFactors only: "feed" or "legacy". Legacy identity and
+               listing_url are auto-filled from strict SAP board URLs.
 
   Detection:  ws probe shows labels like:
               "SuccessFactors RSS — <feed_url>, N jobs"
+              "SuccessFactors legacy DWR — company: X @ host, N jobs"
               "Teamtailor RSS — <feed_url>, N jobs"
               "RSS (generic) — <feed_url>, N jobs"
   Zero jobs?  Verify feed_url directly in a browser and confirm it returns

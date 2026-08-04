@@ -301,6 +301,12 @@ _KNOWN_ATS_DOMAIN_SUFFIXES = (
     ".tbe.taleo.net",
     ".ultipro.com",
     ".ultipro.ca",
+    ".successfactors.com",
+    ".successfactors.eu",
+    ".sapsf.com",
+    ".sapsf.eu",
+    ".sapsf.cn",
+    ".jobs.hr.cloud.sap",
 )
 
 

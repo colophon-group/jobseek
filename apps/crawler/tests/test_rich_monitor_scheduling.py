@@ -93,6 +93,9 @@ class TestIsSkipNoScrape:
     def test_implicit_rss_is_skip(self):
         assert _is_skip_no_scrape({}, crawler_type="rss") is True
 
+    def test_legacy_successfactors_rss_requires_enrichment(self):
+        assert _is_skip_no_scrape({"variant": "legacy"}, crawler_type="rss") is False
+
     def test_implicit_amazon_is_skip(self):
         assert _is_skip_no_scrape({}, crawler_type="amazon") is True
 

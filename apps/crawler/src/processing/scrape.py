@@ -303,6 +303,10 @@ def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
 
         if ct in auto_skip_crawler_types():
             return True
+        # RSS is conditionally rich: ordinary feeds include descriptions,
+        # while legacy SuccessFactors DWR listings require DOM enrichment.
+        if ct == "rss" and metadata.get("variant") != "legacy":
+            return True
         # api_sniffer / nextdata are conditionally rich: they auto-resolve to
         # ("skip", None) only when ``fields`` is set in their monitor
         # metadata. Mirrors ``auto_scraper_type()`` and ``is_rich_monitor()``.

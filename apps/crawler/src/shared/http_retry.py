@@ -342,6 +342,8 @@ async def fetch_text_page_with_retry(
     client: httpx.AsyncClient,
     url: str,
     *,
+    method: _RequestMethod = "GET",
+    content: str | bytes | None = None,
     retries: int = 3,
     base_delay: float = 0.5,
     timeout: float | None = None,
@@ -351,6 +353,7 @@ async def fetch_text_page_with_retry(
     end_of_pagination_statuses: Collection[int] = END_OF_PAGINATION_STATUSES,
     require_nonempty: bool = False,
     max_chars: int | None = None,
+    response_headers: dict[str, str] | None = None,
     log_event: str = "http_retry.text_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
 ) -> str | None:
@@ -363,7 +366,10 @@ async def fetch_text_page_with_retry(
     through ``retryable_statuses`` without weakening the global 4xx policy.
     ``require_nonempty`` retries empty 200 responses instead of accepting a
     likely CDN/WAF glitch, and ``max_chars`` bounds the returned text while
-    leaving response-status handling authoritative.
+    leaving response-status handling authoritative. ``POST`` and the optional
+    response-header sink support form/text pagination protocols while keeping
+    their status, transport, empty-body, TDM, and backoff behavior identical
+    to ordinary GET pages.
     """
     from src.metrics import (
         http_retry_attempts_total,
@@ -373,6 +379,11 @@ async def fetch_text_page_with_retry(
     from src.shared.tdm import TDMReservedError
     from src.shared.tdm import check_response as _tdm_check
 
+    if method not in ("GET", "POST"):
+        raise ValueError(f"unsupported retry method: {method!r}")
+    if method == "GET" and content is not None:
+        raise ValueError("GET text-page requests cannot include content")
+
     host = http_retry_host(url)
     last_exc: BaseException | None = None
     last_status: int | None = None
@@ -380,17 +391,29 @@ async def fetch_text_page_with_retry(
 
     for attempt in range(retries):
         try:
-            resp = await client.get(
-                url,
-                follow_redirects=follow_redirects,
-                timeout=timeout,
-                headers=headers,
-            )
+            if method == "GET":
+                resp = await client.get(
+                    url,
+                    follow_redirects=follow_redirects,
+                    timeout=timeout,
+                    headers=headers,
+                )
+            else:
+                resp = await client.post(
+                    url,
+                    follow_redirects=follow_redirects,
+                    timeout=timeout,
+                    headers=headers,
+                    content=content,
+                )
             last_status = resp.status_code
             if resp.status_code == 200:
                 _tdm_check(resp, body_excerpt=resp.text)
                 text = resp.text
                 if not require_nonempty or text:
+                    if response_headers is not None:
+                        response_headers.clear()
+                        response_headers.update(resp.headers)
                     if retried:
                         http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
                     return text[:max_chars] if max_chars is not None else text

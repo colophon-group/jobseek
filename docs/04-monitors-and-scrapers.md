@@ -75,7 +75,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `recruiterbox` | URL-only | json-ld | Recruiterbox / Trakstar Hire server-rendered listings |
 | `taleo` | URL-only | json-ld | Taleo Business Edition total/cursor static listings |
 | `rippling` | URL-only | rippling | Rippling ATS |
-| `rss` | Rich | skip | RSS 2.0 feeds (SuccessFactors, Teamtailor, etc.) |
+| `rss` | Rich/hybrid | skip or DOM enrichment | RSS feeds plus native legacy SuccessFactors DWR listings |
 | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters ATS |
 | `softgarden` | URL-only | json-ld | Softgarden ATS |
 | `traffit` | Rich | skip | Traffit ATS |
@@ -96,6 +96,23 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `dom` | URL-only | — | Last resort — link extraction from page HTML |
 
 Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection. Conditional monitors return rich data only under the condition named in the table; otherwise they need a scraper or runtime coverage check.
+
+### rss / SuccessFactors
+
+Modern SuccessFactors Career Site Builder boards keep the existing
+`{"preset":"successfactors","variant":"feed"}` path and stream the
+first-party `/googlefeed.xml` response. Legacy shared SAP boards use the same
+`rss` monitor with `variant: "legacy"`, a strict `host` + case-sensitive
+`company` identity, and native static DWR pagination. DWR response text is
+parsed as a restricted declaration/assignment graph and is never evaluated as
+JavaScript. Counts, page envelopes, IDs, detail hosts, and page overlap must
+all agree; malformed or partial responses fail the run.
+
+Legacy listing batches are marked hybrid and automatically enrich only the
+description through the static DOM scraper scoped to `.joqReqDescription`.
+This preserves already-scraped content on touched rows while keeping the
+hourly monitor free of N+1 detail requests. SAP legacy and modern shared hosts
+use normal ATS throttling and do not require the browser worker.
 
 ### api_sniffer
 
