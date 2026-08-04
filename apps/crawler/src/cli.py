@@ -97,6 +97,11 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("sync", help="CSV -> local Postgres + Redis + Typesense")
 
+    sub.add_parser(
+        "repair-location-taxonomy-source",
+        help="One-shot retained web DB -> local location slug/coordinate repair",
+    )
+
     ats_inventory_p = sub.add_parser(
         "ats-inventory",
         help="Validate and cache the data-only ats-scrapers company inventory",
@@ -610,6 +615,15 @@ async def run() -> None:
             from src.sync import run_sync
 
             await run_sync()
+
+        elif args.command == "repair-location-taxonomy-source":
+            local_pool = await create_local_pool()
+            source_pool = await create_web_pool()
+            from src.location_taxonomy_repair import repair_location_taxonomy_source
+
+            summary = await repair_location_taxonomy_source(source_pool, local_pool)
+            sys.stdout.write(json.dumps(summary.to_dict(), sort_keys=True) + "\n")
+            sys.stdout.flush()
 
         elif args.command == "ats-inventory":
             import httpx
