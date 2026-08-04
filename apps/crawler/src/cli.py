@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import signal
 import uuid
 
@@ -399,6 +400,30 @@ def parse_args() -> argparse.Namespace:
         help="Count what would be removed; do not write.",
     )
 
+    deadletter_p = sub.add_parser(
+        "deadletters",
+        help="Inspect or explicitly resolve lifecycle-classified monitor deadletters",
+    )
+    deadletter_p.add_argument(
+        "action",
+        choices=("inspect", "retry", "prune"),
+        help="Inspect all entries, retry active entries, or prune authoritative stale entries",
+    )
+    deadletter_p.add_argument(
+        "--entry",
+        action="append",
+        default=None,
+        help=(
+            "Exact '<wtype>:<member>' selector from inspect output. Repeat for multiple "
+            "entries. Required for retry/prune."
+        ),
+    )
+    deadletter_p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Perform selected retry/prune mutations (default is dry-run)",
+    )
+
     return parser.parse_args()
 
 
@@ -711,6 +736,26 @@ async def run() -> None:
                 dry_run=args.dry_run,
             )
             log.info("prune.scrape_queues.done", dry_run=args.dry_run, **result)
+
+        elif args.command == "deadletters":
+            local_pool = await create_local_pool()
+            from src.deadletters import resolve_deadletters
+
+            result = await resolve_deadletters(
+                local_pool,
+                action=args.action,
+                selected_refs=args.entry,
+                apply=args.apply,
+            )
+            output = json.dumps(result, indent=2, sort_keys=True)
+            log.info(
+                "deadletters.complete",
+                action=args.action,
+                dry_run=not args.apply,
+                selected=result["selected"],
+                counts=result["counts"],
+            )
+            tty_message(output)
 
         elif args.command == "retire-stale-boards":
             from src.retire_stale_boards import report_stale_boards

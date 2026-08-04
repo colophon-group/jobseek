@@ -3254,6 +3254,20 @@ async def run_sync(dry_run: bool = False) -> None:
                         dry_run,
                     )
 
+        # Reconcile visibility after board hashes/schedules and retired-board
+        # cleanup are complete. This deliberately classifies and reports only:
+        # active poison descriptors remain parked until an explicit operator
+        # retry, and retired descriptors remain until an explicit prune.
+        if local_pool is not None and not dry_run:
+            from src.deadletters import classify_deadletters, lifecycle_counts
+
+            deadletters = await classify_deadletters(local_pool)
+            log.info(
+                "sync.deadletters.reconciled",
+                total=len(deadletters),
+                counts=lifecycle_counts(deadletters),
+            )
+
         log.info(
             "sync.complete",
             occupation_domains=len(occupation_domains),
