@@ -1,9 +1,10 @@
-"""Fail-closed local-Postgres -> Typesense taxonomy readiness verification.
+"""Fail-closed local-Postgres -> Typesense taxonomy count-and-sample evidence.
 
 This is intentionally separate from :mod:`src.sync`: sync is an eventually
 consistent producer and logs downstream failures, while this module is an
-operator gate that must return a non-zero status for every unverifiable or
-divergent state.
+operator gate that must return a non-zero status for unverifiable counts or
+deterministic sampled identity/display drift. This is not a full-document
+export/hash comparison.
 """
 
 from __future__ import annotations
@@ -342,7 +343,7 @@ async def verify_taxonomy_readiness(
     *,
     sample_size: int = SAMPLE_SIZE,
 ) -> dict[str, Any]:
-    """Return redacted evidence and never downgrade verification failures."""
+    """Return redacted count-and-sample evidence without downgrading failures."""
 
     if typesense_client is None:
         raise RuntimeError("Typesense operations client is not configured")
@@ -368,6 +369,12 @@ async def verify_taxonomy_readiness(
         "command": "verify-typesense-taxonomies",
         "status": "ready" if ready else "not_ready",
         "authority": "local_postgres",
+        "coverage": {
+            "document_counts": "full",
+            "documents": "deterministic_sample",
+            "sample_size_per_taxonomy": sample_size,
+            "fields": "identity_slug_display_locale",
+        },
         "snapshot": {"isolation": "repeatable_read", "read_only": True},
         "typesense_calls": {"collection_metadata": 4, "multi_search": 1, "total": 5},
         "taxonomies": taxonomy_evidence,
@@ -383,7 +390,7 @@ def emit_evidence(evidence: Mapping[str, Any]) -> None:
 
 
 async def run_cli(local_pool: asyncpg.Pool, typesense_client: Any) -> int:
-    """Run the strict gate, emitting redacted JSON for success and failure."""
+    """Run the fail-closed count-and-sample gate and emit redacted JSON."""
 
     try:
         evidence = await verify_taxonomy_readiness(local_pool, typesense_client)

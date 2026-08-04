@@ -1,4 +1,4 @@
-"""Tests for the strict retained-taxonomy readiness gate."""
+"""Tests for the retained-taxonomy count-and-sample readiness gate."""
 
 from __future__ import annotations
 
@@ -209,6 +209,12 @@ async def test_ready_evidence_uses_one_read_only_snapshot_and_five_typesense_cal
     evidence = await verify_taxonomy_readiness(_Pool(connection), typesense)  # type: ignore[arg-type]
 
     assert evidence["status"] == "ready"
+    assert evidence["coverage"] == {
+        "document_counts": "full",
+        "documents": "deterministic_sample",
+        "sample_size_per_taxonomy": SAMPLE_SIZE,
+        "fields": "identity_slug_display_locale",
+    }
     assert connection.transaction_kwargs == {
         "isolation": "repeatable_read",
         "readonly": True,
