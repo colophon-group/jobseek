@@ -111,6 +111,13 @@ def _configured_egress_host(config: dict) -> str:
     except (json.JSONDecodeError, TypeError):
         metadata = {}
 
+    if config.get("crawler_type") == "taleo" and isinstance(metadata, dict):
+        from src.shared.taleo import taleo_request_host
+
+        resolved_host = taleo_request_host(str(config.get("board_url") or ""), metadata)
+        if resolved_host:
+            return normalize_egress_host(resolved_host)
+
     monitor_config = metadata.get("monitor_config", {}) if isinstance(metadata, dict) else {}
     if isinstance(monitor_config, dict):
         for key in ("api_url", "endpoint", "base_url", "url"):

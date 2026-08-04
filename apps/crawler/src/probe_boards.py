@@ -52,6 +52,12 @@ from src.shared.recruiterbox import (
     recruiterbox_inactive_from_html,
     recruiterbox_total_from_html,
 )
+from src.shared.taleo import (
+    taleo_board_from_metadata,
+    taleo_board_from_url,
+    taleo_listing_marker_from_html,
+    taleo_total_from_html,
+)
 
 # Literal set of statuses a probe can return. CI treats "fail" as a hard error
 # and "skipped" / "ok" / "warn" as non-blocking.
@@ -747,6 +753,47 @@ async def _probe_keka(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "keka", url, resp)
 
 
+async def _probe_taleo(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    board = taleo_board_from_metadata(cfg) or taleo_board_from_url(row["board_url"])
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "taleo",
+            row["board_url"],
+            "warn",
+            "no valid identity in monitor_config or Taleo TBE URL",
+        )
+
+    url = board.listing_url()
+    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        total = taleo_total_from_html(resp.text)
+        if total is None:
+            if taleo_listing_marker_from_html(resp.text):
+                return ProbeResult(
+                    row["board_slug"],
+                    "taleo",
+                    url,
+                    "ok",
+                    "200 (cursor listing verified)",
+                )
+            return ProbeResult(
+                row["board_slug"],
+                "taleo",
+                url,
+                "warn",
+                "Taleo listing marker or job total missing",
+            )
+        return ProbeResult(row["board_slug"], "taleo", url, "ok", f"200 ({total} jobs)")
+    return _classify(row, "taleo", url, resp)
+
+
 async def _probe_beisen(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     cfg: dict[str, object] = {}
     if row["monitor_config"]:
@@ -924,6 +971,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "recruitee": _probe_recruitee,
     "recruiterbox": _probe_recruiterbox,
     "keka": _probe_keka,
+    "taleo": _probe_taleo,
     "rippling": _probe_rippling,
     "smartrecruiters": _probe_smartrecruiters,
     "workday": _probe_workday,

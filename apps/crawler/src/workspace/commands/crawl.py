@@ -933,6 +933,7 @@ _MONITOR_CONFIG_HINTS = {
     "pinpoint": "Requires: slug (auto-filled from probe)",
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",
     "recruiterbox": "Requires: tenant (auto-filled from a Recruiterbox / Trakstar Hire URL)",
+    "taleo": "Requires: host, partition, org, cws (auto-filled from a Taleo TBE URL)",
     "rippling": "Requires: slug (auto-filled from probe)",
     "smartrecruiters": "Requires: token (auto-filled from probe)",
     "softgarden": "Requires: slug. Optional: job_url_pattern",

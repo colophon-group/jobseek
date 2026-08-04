@@ -1135,6 +1135,31 @@ keka — Keka public career-portal API
   Upstream:   ats-scrapers is inventory input only. Jobseek does not import,
               execute, or depend on upstream scraper code."""
 
+MONITOR_TALEO = """\
+taleo — Taleo Business Edition static listing monitor
+
+  Listing:  GET https://{host}/{partition}/ats/careers/v2/searchResults
+  Returns:  Canonical requisition URLs from server-rendered HTML
+  Scraper:  Auto-configured (json-ld) for full JobPosting details
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs
+
+  Config:
+    {"host":"phe.tbe.taleo.net","partition":"phe01","org":"ACME","cws":1}
+
+  Reuses the shared DOM link extractor and HTTP retry policy. Each ten-row
+  page is checked against Taleo's authoritative total or exact next-row cursor;
+  missing, duplicated, redirected, or malformed child pages fail the run
+  instead of removing jobs. Both official TBE v2 listing themes are supported.
+  Initial discovery follows only validated same-organization migrations across
+  official Taleo clusters and records the resolved identity in ws.
+
+  Detection: Direct Taleo TBE URLs or explicit links in career-page HTML.
+             Blind organization guessing is disabled.
+  Zero jobs? An active listing with authoritative total 0 is valid.
+  Upstream:  ats-scrapers is inventory input only. Jobseek does not import,
+             execute, or depend on upstream scraper code."""
+
 MONITOR_BEISEN = """\
 beisen — Beisen modern API + legacy static listing monitor
 
@@ -2541,6 +2566,7 @@ MONITOR_CARDS: dict[str, str] = {
     "recruitee": MONITOR_RECRUITEE,
     "recruiterbox": MONITOR_RECRUITERBOX,
     "keka": MONITOR_KEKA,
+    "taleo": MONITOR_TALEO,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
     "softgarden": MONITOR_SOFTGARDEN,

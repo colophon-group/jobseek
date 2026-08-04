@@ -49,6 +49,7 @@ from src.redis_queue import (
     remove_monitors,
 )
 from src.shared.logging import setup_logging
+from src.shared.taleo import taleo_request_host
 from src.typesense_client import get_typesense_client
 
 _API_MONITOR_TYPES = api_monitor_types()
@@ -605,10 +606,18 @@ def _or_none(val: str | None) -> str | None:
     return val if val else None
 
 
-def _compute_throttle_key(monitor_type: str, board_url: str) -> str:
+def _compute_throttle_key(
+    monitor_type: str,
+    board_url: str,
+    metadata: Mapping[str, object] | None = None,
+) -> str:
     """Compute rate-limit grouping key from monitor type and board URL."""
     if monitor_type in _API_MONITOR_TYPES:
         return monitor_type
+    if monitor_type == "taleo":
+        resolved_host = taleo_request_host(board_url, metadata or {})
+        if resolved_host:
+            return resolved_host
     return urlparse(board_url).hostname or board_url
 
 
@@ -1341,7 +1350,7 @@ async def sync_boards(
         crawler_types.append(mon_type)
         metadatas.append(metadata)
         metadata_objs.append(metadata_obj)
-        throttle_keys.append(_compute_throttle_key(mon_type, row["board_url"]))
+        throttle_keys.append(_compute_throttle_key(mon_type, row["board_url"], metadata_obj))
         monitor_browser_flags.append(mon_browser)
         scraper_browser_flags.append(scr_browser)
 

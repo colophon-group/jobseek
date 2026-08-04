@@ -15,6 +15,7 @@ MIGRATED_MONITORS = {
     "src/core/monitors/dayforce.py": "fetch_text_page_with_retry",
     "src/core/monitors/herp.py": "fetch_text_page_with_retry",
     "src/core/monitors/hrmos.py": "fetch_text_page_with_retry",
+    "src/core/monitors/taleo.py": "fetch_text_page_with_retry",
     "src/core/monitors/paycom.py": "fetch_json_page_with_retry",
     "src/core/monitors/hirehive.py": "fetch_json_page_with_retry",
     "src/core/monitors/hireology.py": "fetch_json_page_with_retry",

@@ -21,6 +21,7 @@ from src.shared.dayforce import dayforce_board_from_url
 from src.shared.gupy import gupy_tenant_from_url
 from src.shared.keka import keka_board_from_url
 from src.shared.recruiterbox import recruiterbox_board_from_url
+from src.shared.taleo import taleo_board_from_url
 
 _ICIMS_STATIC_QUERY_VALUES = {
     "in_iframe": "1",
@@ -119,6 +120,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "join",
     "personio",
     "recruiterbox",
+    "taleo",
     "rippling",
     "smartrecruiters",
     "softgarden",
@@ -213,6 +215,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "recruiterbox"
     if keka_board_from_url(url) is not None:
         return "keka"
+    if taleo_board_from_url(url) is not None:
+        return "taleo"
     if (
         host == "herp.careers"
         and not parsed.query
@@ -535,6 +539,8 @@ def auto_scraper_type(
     if monitor_type == "hrmos":
         return ("json-ld", None)
     if monitor_type == "recruiterbox":
+        return ("json-ld", None)
+    if monitor_type == "taleo":
         return ("json-ld", None)
     if monitor_type == "breezy":
         return ("json-ld", _BREEZY_SCRAPER_CONFIG)

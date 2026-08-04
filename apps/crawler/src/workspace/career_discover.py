@@ -120,6 +120,8 @@ _ATS_URL_RE = re.compile(
     r"(?:/[a-z0-9](?:[a-z0-9-]{0,62})?)?"
     r"(?:/jobdetails/[1-9]\d{0,18})?/?"
     r"(?:\?source=[^#\"'<\s]+)?(?=[#\"'<\s]|$)"
+    r"|[a-z]{3}\.tbe\.taleo\.net/[a-z]{3}[0-9]{2}/ats/careers/v2/"
+    r"(?:searchResults|viewRequisition)\?[^#\"'<\s]+"
     r"|[\w-]+\.jobs\.personio\.(?:de|com)"
     r"|[\w-]+\.pinpointhq\.com"
     r"|(?:jobs|careers)\.smartrecruiters\.com/[\w-]+"

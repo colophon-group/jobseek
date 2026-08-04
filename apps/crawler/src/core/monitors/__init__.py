@@ -564,6 +564,13 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Keka API \u2014 {label}, {jobs} jobs"
         return f"Keka API \u2014 {label}"
+    if name == "taleo":
+        org = metadata.get("org", "?")
+        cws = metadata.get("cws", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Taleo Business Edition \u2014 {org}/cws-{cws}, {jobs} jobs"
+        return f"Taleo Business Edition \u2014 {org}/cws-{cws}"
     if name == "recruiter_co_kr":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -770,6 +777,7 @@ from src.core.monitors import (  # noqa: E402
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
     talentbrew,  # noqa: F401
+    taleo,  # noqa: F401
     traffit,  # noqa: F401
     umantis,  # noqa: F401
     workable,  # noqa: F401
