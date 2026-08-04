@@ -230,9 +230,13 @@ COLLECTIONS: list[dict] = [
             {"name": "description_it", "type": "string", "index": False, "optional": True},
             {"name": "industry_id", "type": "int32", "facet": True, "optional": True},
             {"name": "industry_name", "type": "string", "facet": True, "optional": True},
-            {"name": "industry_name_de", "type": "string", "index": False, "optional": True},
-            {"name": "industry_name_fr", "type": "string", "index": False, "optional": True},
-            {"name": "industry_name_it", "type": "string", "index": False, "optional": True},
+            # Industry suggestions query all localized names, not just the
+            # English display value. These fields must therefore stay indexed;
+            # ``index: false`` makes Typesense reject the entire ``query_by``
+            # list even for a wildcard browse request.
+            {"name": "industry_name_de", "type": "string", "optional": True},
+            {"name": "industry_name_fr", "type": "string", "optional": True},
+            {"name": "industry_name_it", "type": "string", "optional": True},
             {"name": "employee_count_range", "type": "int32", "optional": True},
             {"name": "founded_year", "type": "int32", "optional": True},
             {"name": "active_posting_count", "type": "int32"},

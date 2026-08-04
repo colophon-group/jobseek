@@ -124,16 +124,69 @@ COMPANIES = [
         "id": f"{_PREFIX}_company_{i}",
         "name": name,
         "slug": slug,
+        "industry_id": industry_id,
+        "industry_name": industry_name,
+        "industry_name_de": industry_name_de,
+        "industry_name_fr": industry_name_fr,
+        "industry_name_it": industry_name_it,
         "active_posting_count": 0,  # will be updated after postings
         "year_posting_count": 0,
     }
-    for i, (name, slug) in enumerate(
+    for i, (
+        name,
+        slug,
+        industry_id,
+        industry_name,
+        industry_name_de,
+        industry_name_fr,
+        industry_name_it,
+    ) in enumerate(
         [
-            ("Acme Corp", "acme-corp"),
-            ("Globex Inc", "globex-inc"),
-            ("Initech", "initech"),
-            ("Umbrella Corp", "umbrella-corp"),
-            ("Stark Industries", "stark-industries"),
+            (
+                "Acme Corp",
+                "acme-corp",
+                9100,
+                "Software",
+                "Softwareentwicklung",
+                "Logiciels",
+                "Software",
+            ),
+            (
+                "Globex Inc",
+                "globex-inc",
+                9101,
+                "Financial Services",
+                "Finanzdienstleistungen",
+                "Services financiers",
+                "Servizi finanziari",
+            ),
+            (
+                "Initech",
+                "initech",
+                9100,
+                "Software",
+                "Softwareentwicklung",
+                "Logiciels",
+                "Software",
+            ),
+            (
+                "Umbrella Corp",
+                "umbrella-corp",
+                9102,
+                "Biotechnology",
+                "Biotechnologie",
+                "Biotechnologie",
+                "Biotecnologia",
+            ),
+            (
+                "Stark Industries",
+                "stark-industries",
+                9103,
+                "Industrial Engineering",
+                "Industrieingenieurwesen",
+                "Genie industriel",
+                "Ingegneria industriale",
+            ),
         ]
     )
 ]
@@ -575,6 +628,21 @@ class TestSchemas:
         assert set(info.get("token_separators", [])) == {"+", "#", "."}
         assert set(info.get("symbols_to_index", [])) == {"+", "#", "."}
 
+    def test_company_localized_industry_fields_are_searchable(
+        self, ts_client: typesense.Client, alias_map: dict
+    ):
+        info = _col(ts_client, alias_map, "company").retrieve()
+        fields_by_name = {field["name"]: field for field in info["fields"]}
+
+        for name in (
+            "industry_name",
+            "industry_name_de",
+            "industry_name_fr",
+            "industry_name_it",
+        ):
+            assert fields_by_name[name]["type"] == "string"
+            assert fields_by_name[name].get("index", True) is True
+
     def test_location_field_count(self, ts_client: typesense.Client, alias_map: dict):
         """location collection has the expected schema fields."""
         _assert_field_count(ts_client, alias_map, "location")
@@ -993,6 +1061,47 @@ class TestSearch:
         )
         assert results["found"] >= 1
         assert any("Acme" in h["document"]["name"] for h in results["hits"])
+
+    def test_company_industry_empty_query_browse_uses_localized_query_fields(
+        self, ts_client: typesense.Client, alias_map: dict
+    ):
+        col = _col(ts_client, alias_map, "company")
+        company_ids = ",".join(f"`{company['id']}`" for company in COMPANIES)
+        results = col.documents.search(
+            {
+                "q": "*",
+                "query_by": ("industry_name,industry_name_de,industry_name_fr,industry_name_it"),
+                "filter_by": f"id:[{company_ids}] && industry_id:>=0",
+                "group_by": "industry_id",
+                "group_limit": 1,
+                "per_page": 100,
+            }
+        )
+
+        assert len(results["grouped_hits"]) == len(
+            {company["industry_id"] for company in COMPANIES}
+        )
+
+    def test_company_industry_search_matches_localized_name(
+        self, ts_client: typesense.Client, alias_map: dict
+    ):
+        col = _col(ts_client, alias_map, "company")
+        company_ids = ",".join(f"`{company['id']}`" for company in COMPANIES)
+        results = col.documents.search(
+            {
+                "q": "Softwareentwicklung",
+                "query_by": ("industry_name,industry_name_de,industry_name_fr,industry_name_it"),
+                "filter_by": f"id:[{company_ids}] && industry_id:>=0",
+                "group_by": "industry_id",
+                "group_limit": 1,
+                "per_page": 100,
+                "prefix": True,
+                "num_typos": 0,
+            }
+        )
+
+        assert results["found"] >= 1
+        assert results["grouped_hits"][0]["hits"][0]["document"]["industry_id"] == 9100
 
     def test_company_posting_counts(self, ts_client: typesense.Client, alias_map: dict):
         """Companies have active_posting_count reflecting seeded postings."""

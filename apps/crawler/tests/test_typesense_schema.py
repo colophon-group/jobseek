@@ -55,6 +55,20 @@ def test_taxonomy_schema_carries_web_hierarchy_contract() -> None:
     assert {"parent_id", "domain_id", "domain_slug"} <= occupation_fields.keys()
 
 
+def test_company_schema_indexes_localized_industry_search_fields() -> None:
+    company = next(c for c in COLLECTIONS if c["name"] == "company")
+    fields = {field["name"]: field for field in company["fields"]}
+
+    for name in (
+        "industry_name",
+        "industry_name_de",
+        "industry_name_fr",
+        "industry_name_it",
+    ):
+        assert fields[name]["type"] == "string"
+        assert fields[name].get("index", True) is True
+
+
 def _stub_client(retrieve_fields: list[dict]):
     """Build a typesense.Client lookalike whose retrieve() returns ``fields``.
 

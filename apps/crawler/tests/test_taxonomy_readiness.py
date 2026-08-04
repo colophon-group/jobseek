@@ -1,8 +1,9 @@
-"""Tests for the retained-taxonomy count-and-sample readiness gate."""
+"""Tests for the exact retained-taxonomy readiness gate."""
 
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from contextlib import AbstractAsyncContextManager
@@ -11,42 +12,99 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src import cli
+from src import cli, taxonomy_readiness
 from src.cli import parse_args
 from src.taxonomy_readiness import SAMPLE_SIZE, run_cli, verify_taxonomy_readiness
+from src.typesense_schema import COLLECTIONS
 
 
-def _sample_rows(kind: str) -> list[dict[str, Any]]:
+def _location_rows() -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for index in range(1, SAMPLE_SIZE + 1):
-        if kind == "location":
-            rows.append(
+        rows.append(
+            {
+                "id": index,
+                "type": "macro" if index == 1 else "country" if index == 2 else "city",
+                "lat": 47.0 + index / 100 if index == 3 else None,
+                "lng": 8.0 + index / 100 if index == 3 else None,
+                "slug": "eu" if index == 1 else f"location-{index}",
+                "population": index * 1_000 if index >= 2 else None,
+                "parent_id": 2 if index == 3 else None,
+            }
+        )
+    return rows
+
+
+def _localized_rows(
+    id_field: str,
+    prefix: str,
+    *,
+    include_aliases: bool = False,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for index in range(1, SAMPLE_SIZE + 1):
+        rows.extend(
+            [
                 {
-                    "id": index,
-                    "slug": f"location-{index}",
-                    "name_en": f"Location {index}",
-                    "name_de": f"Ort {index}",
-                    "name_fr": None,
-                    "name_it": None,
-                }
-            )
-        elif kind in {"occupation", "seniority"}:
-            rows.append(
-                {
-                    "id": index,
-                    "slug": f"{kind}-{index}",
+                    id_field: index,
                     "locale": "en",
-                    "name": f"{kind.title()} {index}",
-                }
-            )
-        else:
+                    "name": f"{prefix} {index}",
+                    "is_display": True,
+                },
+                {
+                    id_field: index,
+                    "locale": "de",
+                    "name": f"{prefix} DE {index}",
+                    "is_display": True,
+                },
+            ]
+        )
+        if include_aliases:
             rows.append(
                 {
-                    "id": index,
-                    "slug": f"technology-{index}",
-                    "name": f"Technology {index}",
+                    id_field: index,
+                    "locale": "en",
+                    "name": f"{prefix} alias {index}",
+                    "is_display": False,
                 }
             )
+    return rows
+
+
+def _occupation_rows() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for index in range(1, SAMPLE_SIZE + 1):
+        common = {
+            "id": index,
+            "slug": f"occupation-{index}",
+            "parent_id": 1 if index > 1 else None,
+            "domain_id": 1,
+            "domain_slug": "engineering",
+            "locale": "en",
+        }
+        rows.extend(
+            [
+                {**common, "name": f"Occupation {index}", "is_display": True},
+                {**common, "name": f"Occupation alias {index}", "is_display": False},
+            ]
+        )
+    return rows
+
+
+def _seniority_rows() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for index in range(1, SAMPLE_SIZE + 1):
+        common = {
+            "id": index,
+            "slug": f"seniority-{index}",
+            "locale": "en",
+        }
+        rows.extend(
+            [
+                {**common, "name": f"Seniority {index}", "is_display": True},
+                {**common, "name": f"Seniority alias {index}", "is_display": False},
+            ]
+        )
     return rows
 
 
@@ -66,39 +124,65 @@ class _Connection:
     def __init__(self) -> None:
         self.events: list[str] = []
         self.transaction_kwargs: dict[str, Any] | None = None
-        self.rows = {
-            "location": _sample_rows("location"),
-            "occupation": _sample_rows("occupation"),
-            "seniority": _sample_rows("seniority"),
-            "technology": _sample_rows("technology"),
-        }
+        self.location_rows = _location_rows()
+        self.location_name_rows = _localized_rows("location_id", "Location", include_aliases=True)
+        self.location_macro_rows = [{"macro_id": 1, "country_id": 2}]
+        self.occupation_rows = _occupation_rows()
+        self.occupation_domain_name_rows = [
+            {"domain_id": 1, "locale": "en", "name": "Engineering"},
+            {"domain_id": 1, "locale": "de", "name": "Entwicklung"},
+        ]
+        self.seniority_rows = _seniority_rows()
+        self.technology_rows = [
+            {
+                "id": index,
+                "slug": f"technology-{index}",
+                "name": f"Technology {index}",
+                "category": "language" if index % 2 else None,
+            }
+            for index in range(1, SAMPLE_SIZE + 1)
+        ]
+        self.company_rows = [
+            {
+                "id": f"00000000-0000-0000-0000-{index:012d}",
+                "industry": index,
+                "industry_name": f"Industry {index}",
+            }
+            for index in range(1, SAMPLE_SIZE + 1)
+        ]
+        self.industry_name_rows = [
+            {"industry_id": index, "locale": locale, "name": f"Industry {locale} {index}"}
+            for index in range(1, SAMPLE_SIZE + 1)
+            for locale in ("de", "fr", "it")
+        ]
 
     def transaction(self, **kwargs: Any) -> _Transaction:
         self.transaction_kwargs = kwargs
         return _Transaction(self, kwargs)
 
-    @staticmethod
-    def _taxonomy(sql: str) -> str:
-        if "FROM location" in sql:
-            return "location"
-        if "occupation_name" in sql:
-            return "occupation"
-        if "seniority_name" in sql:
-            return "seniority"
-        if "FROM technology" in sql:
-            return "technology"
-        raise AssertionError(f"unexpected SQL: {sql}")
-
-    async def fetchval(self, sql: str) -> int:
-        taxonomy = self._taxonomy(sql)
-        self.events.append(f"count:{taxonomy}")
-        return len(self.rows[taxonomy])
-
-    async def fetch(self, sql: str, limit: int) -> list[dict[str, Any]]:
-        taxonomy = self._taxonomy(sql)
-        assert "ORDER BY md5(" in sql
-        self.events.append(f"sample:{taxonomy}")
-        return self.rows[taxonomy][:limit]
+    async def fetch(self, sql: str) -> list[dict[str, Any]]:
+        if "FROM location_macro_member" in sql:
+            name, rows = "location_macro", self.location_macro_rows
+        elif "FROM location_name" in sql:
+            name, rows = "location_name", self.location_name_rows
+        elif "FROM location" in sql:
+            name, rows = "location", self.location_rows
+        elif "FROM occupation_domain_name" in sql:
+            name, rows = "occupation_domain_name", self.occupation_domain_name_rows
+        elif "FROM occupation o" in sql:
+            name, rows = "occupation", self.occupation_rows
+        elif "FROM seniority s" in sql:
+            name, rows = "seniority", self.seniority_rows
+        elif "FROM technology" in sql:
+            name, rows = "technology", self.technology_rows
+        elif "FROM industry_name" in sql:
+            name, rows = "industry_name", self.industry_name_rows
+        elif "FROM company c" in sql:
+            name, rows = "company", self.company_rows
+        else:
+            raise AssertionError(f"unexpected SQL: {sql}")
+        self.events.append(f"fetch:{name}")
+        return copy.deepcopy(rows)
 
 
 class _Acquire(AbstractAsyncContextManager[_Connection]):
@@ -120,14 +204,36 @@ class _Pool:
         return _Acquire(self.connection)
 
 
-class _Collection:
+class _Documents:
     def __init__(self, client: _Typesense, name: str) -> None:
         self.client = client
         self.name = name
 
-    def retrieve(self) -> dict[str, int]:
+    def search(self, params: dict[str, Any]) -> dict[str, Any]:
+        self.client.search_calls.append((self.name, copy.deepcopy(params)))
+        documents = self.client.documents[self.name]
+        page = params["page"]
+        per_page = params["per_page"]
+        offset = (page - 1) * per_page
+        include_fields = params["include_fields"].split(",")
+        hits = [
+            {"document": {field: document[field] for field in include_fields if field in document}}
+            for document in documents[offset : offset + per_page]
+        ]
+        return {"found": len(documents), "hits": hits}
+
+
+class _Collection:
+    def __init__(self, client: _Typesense, name: str) -> None:
+        self.client = client
+        self.name = name
+        self.documents = _Documents(client, name)
+
+    def retrieve(self) -> dict[str, Any]:
         self.client.metadata_calls.append(self.name)
-        return {"num_documents": self.client.counts[self.name]}
+        if self.client.retrieve_error_for == self.name:
+            raise RuntimeError("secret operations key should not be printed")
+        return copy.deepcopy(self.client.metadata[self.name])
 
 
 class _Collections:
@@ -138,82 +244,62 @@ class _Collections:
         return _Collection(self.client, name)
 
 
-class _MultiSearch:
-    def __init__(self, client: _Typesense) -> None:
-        self.client = client
-
-    def perform(self, request: dict[str, Any]) -> dict[str, Any]:
-        self.client.multi_search_calls.append(request)
-        results = []
-        for search in request["searches"]:
-            collection = search["collection"]
-            documents = self.client.documents[collection]
-            results.append({"hits": [{"document": document} for document in documents]})
-        return {"results": results}
-
-
 class _Typesense:
-    def __init__(self, connection: _Connection) -> None:
-        self.counts = {name: len(rows) for name, rows in connection.rows.items()}
+    def __init__(
+        self,
+        authoritative: dict[str, taxonomy_readiness.AuthoritativeCollection],
+    ) -> None:
+        schemas = {collection["name"]: collection for collection in COLLECTIONS}
         self.documents = {
-            "location": [
-                {
-                    "id": str(row["id"]),
-                    "location_id": row["id"],
-                    "slug": row["slug"],
-                    "name_en": row["name_en"],
-                    "name_de": row["name_de"],
+            name: copy.deepcopy(list(collection.documents))
+            for name, collection in authoritative.items()
+        }
+        self.metadata = {
+            "job_posting": {
+                "num_documents": 0,
+                "fields": copy.deepcopy(schemas["job_posting"]["fields"]),
+            },
+            **{
+                name: {
+                    "num_documents": len(documents),
+                    "fields": copy.deepcopy(schemas[name]["fields"]),
                 }
-                for row in connection.rows["location"]
-            ],
-            "occupation": [
-                {
-                    "id": f"{row['id']}-{row['locale']}",
-                    "occupation_id": row["id"],
-                    "slug": row["slug"],
-                    "name": row["name"],
-                    "locale": row["locale"],
-                }
-                for row in connection.rows["occupation"]
-            ],
-            "seniority": [
-                {
-                    "id": f"{row['id']}-{row['locale']}",
-                    "seniority_id": row["id"],
-                    "slug": row["slug"],
-                    "name": row["name"],
-                    "locale": row["locale"],
-                }
-                for row in connection.rows["seniority"]
-            ],
-            "technology": [
-                {
-                    "id": str(row["id"]),
-                    "technology_id": row["id"],
-                    "slug": row["slug"],
-                    "name": row["name"],
-                }
-                for row in connection.rows["technology"]
-            ],
+                for name, documents in self.documents.items()
+            },
         }
         self.metadata_calls: list[str] = []
-        self.multi_search_calls: list[dict[str, Any]] = []
+        self.search_calls: list[tuple[str, dict[str, Any]]] = []
+        self.retrieve_error_for: str | None = None
         self.collections = _Collections(self)
-        self.multi_search = _MultiSearch(self)
 
 
-async def test_ready_evidence_uses_one_read_only_snapshot_and_five_typesense_calls() -> None:
+async def _authoritative(
+    connection: _Connection,
+) -> dict[str, taxonomy_readiness.AuthoritativeCollection]:
+    connection.events.clear()
+    return await taxonomy_readiness._load_authoritative_snapshot(  # pyright: ignore[reportPrivateUsage]
+        _Pool(connection)  # type: ignore[arg-type]
+    )
+
+
+async def test_ready_evidence_compares_every_static_field_in_one_snapshot() -> None:
     connection = _Connection()
-    typesense = _Typesense(connection)
+    typesense = _Typesense(await _authoritative(connection))
+    connection.events.clear()
 
-    evidence = await verify_taxonomy_readiness(_Pool(connection), typesense)  # type: ignore[arg-type]
+    evidence = await verify_taxonomy_readiness(
+        _Pool(connection),  # type: ignore[arg-type]
+        typesense,
+        page_size=3,
+    )
 
     assert evidence["status"] == "ready"
     assert evidence["coverage"] == {
-        "document_counts": "full",
-        "documents": "deterministic_sample",
-        "sample_size_per_taxonomy": SAMPLE_SIZE,
-        "fields": "identity_slug_display_locale",
+        "document_counts": "exact",
+        "documents": "full",
+        "fields": "static_consumer_contract",
+        "collections": ["location", "occupation", "seniority", "technology", "company"],
+        "excluded_dynamic_fields": ["active_posting_count", "has_active_postings"],
     }
     assert connection.transaction_kwargs == {
         "isolation": "repeatable_read",
@@ -221,43 +307,77 @@ async def test_ready_evidence_uses_one_read_only_snapshot_and_five_typesense_cal
     }
     assert connection.events[0] == "snapshot_enter"
     assert connection.events[-1] == "snapshot_exit"
-    assert typesense.metadata_calls == ["location", "occupation", "seniority", "technology"]
-    assert len(typesense.multi_search_calls) == 1
-    for taxonomy in evidence["taxonomies"].values():
-        assert taxonomy["authoritative_sample_size"] == SAMPLE_SIZE
-        assert taxonomy["typesense_sample_size"] == SAMPLE_SIZE
-        assert taxonomy["expected_sample_sha256"] == taxonomy["typesense_sample_sha256"]
-        assert taxonomy["mismatches"] == []
+    assert typesense.metadata_calls == [
+        "job_posting",
+        "location",
+        "occupation",
+        "seniority",
+        "technology",
+        "company",
+    ]
+    assert len(typesense.search_calls) == 20
+    for collection in evidence["collections"].values():
+        assert collection["authoritative_document_count"] == SAMPLE_SIZE
+        assert collection["compared_document_count"] == SAMPLE_SIZE
+        assert collection["expected_projection_sha256"] == collection["typesense_projection_sha256"]
+        assert collection["mismatch_details"] == []
 
 
-async def test_count_and_display_drift_fail_with_redacted_evidence(capsys) -> None:
+async def test_hierarchy_and_localized_industry_drift_fail_with_redacted_evidence(
+    capsys,
+) -> None:
     connection = _Connection()
-    typesense = _Typesense(connection)
-    typesense.counts["occupation"] += 1
-    typesense.documents["technology"][0]["name"] = "private stale display value"
+    typesense = _Typesense(await _authoritative(connection))
+    typesense.documents["location"][2]["ancestor_ids"] = [3]
+    typesense.documents["company"][0]["industry_name_de"] = "private stale value"
 
     exit_code = await run_cli(_Pool(connection), typesense)  # type: ignore[arg-type]
     evidence = json.loads(capsys.readouterr().out)
 
     assert exit_code == 1
     assert evidence["status"] == "not_ready"
-    assert evidence["taxonomies"]["occupation"]["count_matches"] is False
-    mismatch = evidence["taxonomies"]["technology"]["mismatches"][0]
-    assert mismatch["kind"] == "field_mismatch"
-    assert mismatch["fields"] == ["name"]
-    assert len(mismatch["sample_key_sha256"]) == 64
-    assert "private stale display value" not in json.dumps(evidence)
+    location_mismatch = evidence["collections"]["location"]["mismatch_details"][0]
+    company_mismatch = evidence["collections"]["company"]["mismatch_details"][0]
+    assert location_mismatch["kind"] == "field_mismatch"
+    assert location_mismatch["fields"] == ["ancestor_ids"]
+    assert company_mismatch["fields"] == ["industry_name_de"]
+    assert len(company_mismatch["document_key_sha256"]) == 64
+    assert "private stale value" not in json.dumps(evidence)
+
+
+async def test_nonindexed_localized_industry_schema_fails_the_gate() -> None:
+    connection = _Connection()
+    typesense = _Typesense(await _authoritative(connection))
+    company_fields = typesense.metadata["company"]["fields"]
+    next(field for field in company_fields if field["name"] == "industry_name_de")["index"] = False
+
+    evidence = await verify_taxonomy_readiness(_Pool(connection), typesense)  # type: ignore[arg-type]
+
+    assert evidence["status"] == "not_ready"
+    assert evidence["schema"]["status"] == "not_ready"
+    assert evidence["schema"]["collections"]["company"]["mismatches"] == [
+        {"field": "industry_name_de", "attributes": ["index"]}
+    ]
+
+
+async def test_count_drift_fails_even_when_search_documents_match() -> None:
+    connection = _Connection()
+    typesense = _Typesense(await _authoritative(connection))
+    typesense.metadata["occupation"]["num_documents"] += 1
+
+    evidence = await verify_taxonomy_readiness(_Pool(connection), typesense)  # type: ignore[arg-type]
+
+    assert evidence["status"] == "not_ready"
+    assert evidence["collections"]["occupation"]["count_matches"] is False
+    assert evidence["collections"]["occupation"]["mismatch_count"] == 0
 
 
 async def test_typesense_error_is_nonzero_and_redacted(capsys) -> None:
     connection = _Connection()
-    typesense = _Typesense(connection)
+    typesense = _Typesense(await _authoritative(connection))
+    typesense.retrieve_error_for = "location"
 
-    def fail_retrieve() -> dict[str, int]:
-        raise RuntimeError("secret operations key should not be printed")
-
-    with patch.object(_Collection, "retrieve", side_effect=fail_retrieve):
-        exit_code = await run_cli(_Pool(connection), typesense)  # type: ignore[arg-type]
+    exit_code = await run_cli(_Pool(connection), typesense)  # type: ignore[arg-type]
 
     evidence = json.loads(capsys.readouterr().out)
     assert exit_code == 1
@@ -271,16 +391,16 @@ async def test_typesense_error_is_nonzero_and_redacted(capsys) -> None:
 
 async def test_fewer_than_ten_authoritative_documents_fails_the_gate() -> None:
     connection = _Connection()
-    connection.rows["seniority"] = connection.rows["seniority"][: SAMPLE_SIZE - 1]
-    typesense = _Typesense(connection)
+    connection.seniority_rows = connection.seniority_rows[:-2]
+    typesense = _Typesense(await _authoritative(connection))
 
     evidence = await verify_taxonomy_readiness(_Pool(connection), typesense)  # type: ignore[arg-type]
 
-    seniority = evidence["taxonomies"]["seniority"]
+    seniority = evidence["collections"]["seniority"]
     assert evidence["status"] == "not_ready"
     assert seniority["count_matches"] is True
-    assert seniority["sample_size_sufficient"] is False
-    assert seniority["authoritative_sample_size"] == SAMPLE_SIZE - 1
+    assert seniority["minimum_satisfied"] is False
+    assert seniority["authoritative_document_count"] == SAMPLE_SIZE - 1
 
 
 def test_crawler_cli_exposes_taxonomy_readiness_gate(monkeypatch) -> None:
