@@ -238,6 +238,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "lever",
         "ashby",
         "bamboohr",
+        "beisen",
         "cornerstone",
         "dayforce",
         "paycom",
@@ -252,6 +253,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "recruiterbox",
         "recruiterbox.com",
         "hire.trakstar.com",
+        "taleo",
         "personio",
         "workday",
         "pinpoint",
@@ -260,6 +262,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "bite",
         "breezy",
         "join",
+        "keka",
         "softgarden",
         "traffit",
         "mokahr",
@@ -277,9 +280,14 @@ _KNOWN_ATS_DOMAINS = frozenset(
 
 _KNOWN_ATS_DOMAIN_SUFFIXES = (
     ".csod.com",
+    ".darwinbox.in",
+    ".darwinbox.com",
     ".gupy.io",
+    ".zhiye.com",
     ".recruiterbox.com",
     ".hire.trakstar.com",
+    ".keka.com",
+    ".tbe.taleo.net",
 )
 
 

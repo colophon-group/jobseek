@@ -40,12 +40,14 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `amazon` | Rich | skip | Amazon Jobs |
 | `ashby` | Rich | skip | Ashby ATS |
 | `bamboohr` | Rich | api_sniffer | BambooHR summaries plus detail API enrichment |
+| `beisen` | Rich/hybrid | skip or DOM enrichment | Beisen modern public API + legacy server-rendered listings |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
 | `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination |
 | `gupy` | URL-only | json-ld | Gupy single-page NextData inventory |
 | `cornerstone` | Rich | skip | Cornerstone bootstrap + regional paginated search API |
+| `darwinbox` | Rich | skip | Darwinbox browser-session public jobs API |
 | `dayforce` | Rich | skip | Dayforce browser-context public search BFF |
 | `herp` | URL-only | json-ld | HERP Hire single static requisition listing |
 | `hrmos` | URL-only | json-ld | HRMOS static listings with bounded pagination |
@@ -60,6 +62,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `hirehive` | Rich | skip | HireHive public Jobs API |
 | `hireology` | Rich | skip | Hireology ATS |
 | `jobylon` | Rich | skip | Jobylon iframe embeds |
+| `keka` | Rich | skip | Keka career-portal bootstrap and public rich-jobs API |
 | `lever` | Rich | skip | Lever ATS |
 | `mokahr` | Rich | skip | Mokahr ATS |
 | `paylocity` | Rich | paylocity | Paylocity embedded summaries plus detail enrichment |
@@ -67,6 +70,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `pinpoint` | Rich | skip | Pinpoint ATS |
 | `recruitee` | Rich | skip | Recruitee ATS |
 | `recruiterbox` | URL-only | json-ld | Recruiterbox / Trakstar Hire server-rendered listings |
+| `taleo` | URL-only | json-ld | Taleo Business Edition total/cursor static listings |
 | `rippling` | URL-only | rippling | Rippling ATS |
 | `rss` | Rich | skip | RSS 2.0 feeds (SuccessFactors, Teamtailor, etc.) |
 | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters ATS |
