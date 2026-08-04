@@ -20,6 +20,8 @@ from src.sync import (
     _UPSERT_OCCUPATION_DOMAINS,
     _UPSERT_OCCUPATION_NAMES,
     _UPSERT_OCCUPATIONS,
+    CompanyTypesenseSyncError,
+    _company_prune_within_safety_budget,
     _fetch_company_posting_counts,
     _fetch_facet_counts,
     _is_trivial_watchlist,
@@ -38,6 +40,7 @@ from src.sync import (
     sync_occupation_domains,
     sync_occupations,
     sync_occupations_typesense,
+    sync_typesense,
     sync_watchlists_typesense,
 )
 
@@ -1165,6 +1168,83 @@ class TestRunSync:
         mock_close_all_pools.assert_called_once()
         mock_close_redis.assert_called_once()
 
+    async def test_company_typesense_failure_aborts_run_sync(self):
+        companies = pl.DataFrame(
+            {
+                "slug": ["acme"],
+                "name": ["Acme Corp"],
+                "website": ["https://acme.test"],
+                "logo_url": [""],
+                "icon_url": [""],
+                "logo_type": [""],
+            },
+            schema_overrides=_COMPANY_SCHEMA,
+        )
+        boards = pl.DataFrame(
+            {column: [] for column in _BOARD_COLS},
+            schema_overrides=_BOARD_SCHEMA,
+        )
+        local_conn = MagicMock()
+        local_conn.execute = AsyncMock()
+        local_conn.transaction.return_value.__aenter__ = AsyncMock()
+        local_conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
+        web_conn = MagicMock()
+
+        class _Acquire:
+            def __init__(self, connection):
+                self.connection = connection
+
+            async def __aenter__(self):
+                return self.connection
+
+            async def __aexit__(self, *_args):
+                return None
+
+        local_pool = MagicMock()
+        local_pool.acquire.side_effect = lambda: _Acquire(local_conn)
+        web_pool = MagicMock()
+        web_pool.acquire.side_effect = lambda: _Acquire(web_conn)
+
+        empty = pl.DataFrame()
+        close_pools = AsyncMock()
+        close_redis = AsyncMock()
+        sync_patches = {
+            "setup_logging": MagicMock(),
+            "_load_occupation_domains": MagicMock(return_value=empty),
+            "_load_occupations": MagicMock(return_value=empty),
+            "_load_seniority": MagicMock(return_value=empty),
+            "_load_technologies": MagicMock(return_value=empty),
+            "_load_industries": MagicMock(return_value=empty),
+            "_load_companies": MagicMock(return_value=companies),
+            "_load_company_descriptions": MagicMock(return_value=empty),
+            "_load_boards": MagicMock(return_value=boards),
+            "get_typesense_client": MagicMock(return_value=MagicMock()),
+            "create_local_pool": AsyncMock(return_value=local_pool),
+            "create_web_pool": AsyncMock(return_value=web_pool),
+            "sync_lookup_tables_local": AsyncMock(),
+            "sync_companies": AsyncMock(),
+            "sync_company_descriptions": AsyncMock(),
+            "sync_boards": AsyncMock(),
+            "resolve_pending_misses": AsyncMock(),
+            "apply_board_redis_effects": AsyncMock(),
+            "_snapshot_name_maps": AsyncMock(return_value={}),
+            "_apply_taxonomy_renames": AsyncMock(),
+            "sync_typesense": AsyncMock(
+                side_effect=CompanyTypesenseSyncError("company exact sync failed")
+            ),
+            "close_all_pools": close_pools,
+            "close_redis": close_redis,
+        }
+        with (
+            patch.multiple("src.sync", **sync_patches),
+            patch("src.deadletters.classify_deadletters", new_callable=AsyncMock, return_value=[]),
+            pytest.raises(CompanyTypesenseSyncError, match="company exact sync failed"),
+        ):
+            await run_sync(dry_run=False)
+
+        close_pools.assert_awaited_once()
+        close_redis.assert_awaited_once()
+
 
 class TestIsTrivialWatchlist:
     def test_no_companies_no_filters_is_trivial(self):
@@ -1960,8 +2040,84 @@ class TestRefreshTypesenseCounts:
         assert by_id["co-accenture"]["year_posting_count"] == 81971
 
 
+def _company_row(company_id: str) -> _StubRecord:
+    return _StubRecord(
+        id=company_id,
+        name=f"Company {company_id}",
+        slug=company_id,
+        icon=None,
+        logo=None,
+        website=None,
+        industry=None,
+        employee_count_range=None,
+        founded_year=None,
+        industry_name=None,
+    )
+
+
+def _company_connection(company_ids: list[str]) -> AsyncMock:
+    connection = AsyncMock()
+
+    async def _fetch(sql: str, *_args, **_kwargs):
+        if "FROM company c" in sql:
+            return [_company_row(company_id) for company_id in company_ids]
+        if "FROM company_description" in sql or "FROM industry_name" in sql:
+            return []
+        raise AssertionError(f"unexpected company-sync query: {sql}")
+
+    connection.fetch = AsyncMock(side_effect=_fetch)
+    return connection
+
+
+def _company_typesense_client(
+    remote_ids: set[str],
+    *,
+    remove_on_delete: bool = True,
+    delete_error: Exception | None = None,
+) -> tuple[MagicMock, MagicMock, set[str], list[str]]:
+    client = MagicMock()
+    collection = client.collections["company"]
+    current_ids = set(remote_ids)
+    deleted_ids: list[str] = []
+
+    collection.retrieve.side_effect = lambda: {"num_documents": len(current_ids)}
+
+    def _search(params: dict) -> dict:
+        assert params["q"] == "*"
+        assert params["include_fields"] == "id"
+        assert "sort_by" not in params
+        assert params["enable_overrides"] is False
+        ordered = sorted(current_ids)
+        offset = (params["page"] - 1) * params["per_page"]
+        return {
+            "found": len(ordered),
+            "hits": [
+                {"document": {"id": document_id}}
+                for document_id in ordered[offset : offset + params["per_page"]]
+            ],
+        }
+
+    collection.documents.search.side_effect = _search
+
+    def _document(document_id: str) -> MagicMock:
+        document = MagicMock()
+
+        def _delete() -> None:
+            if delete_error is not None:
+                raise delete_error
+            deleted_ids.append(document_id)
+            if remove_on_delete:
+                current_ids.remove(document_id)
+
+        document.delete.side_effect = _delete
+        return document
+
+    collection.documents.__getitem__.side_effect = _document
+    return client, collection, current_ids, deleted_ids
+
+
 class TestSyncCompaniesTypesense:
-    """Initial company documents use the same indexed count source."""
+    """Company documents are sourced locally and synchronized exactly."""
 
     async def test_company_counts_apply_has_content_filter(self):
         supa_conn = AsyncMock()
@@ -2003,6 +2159,14 @@ class TestSyncCompaniesTypesense:
         client = MagicMock()
 
         def _search(params):
+            if params.get("q") == "*" and "facet_by" not in params:
+                return {
+                    "found": 2,
+                    "hits": [
+                        {"document": {"id": "co-empty"}},
+                        {"document": {"id": "co-microsoft"}},
+                    ],
+                }
             if params["filter_by"] == "is_active:true && has_content:!=false":
                 counts = [{"value": "co-microsoft", "count": 1428}]
             else:
@@ -2010,6 +2174,7 @@ class TestSyncCompaniesTypesense:
             return {"facet_counts": [{"field_name": "company_id", "counts": counts}]}
 
         client.collections["job_posting"].documents.search.side_effect = _search
+        client.collections["company"].retrieve.return_value = {"num_documents": 2}
         captured_upserts: list[tuple[str, list[dict]]] = []
 
         def _capture_upsert(_client, collection, docs, *_a, **_kw):
@@ -2024,3 +2189,231 @@ class TestSyncCompaniesTypesense:
         assert by_id["co-microsoft"]["year_posting_count"] == 9000
         assert by_id["co-empty"]["active_posting_count"] == 0
         assert by_id["co-empty"]["year_posting_count"] == 0
+
+    async def test_exact_remote_ids_are_reverified_without_deletes(self):
+        local_ids = ["co-alpha", "co-beta"]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(set(local_ids))
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert") as upsert,
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert remote_ids == set(local_ids)
+        assert deleted_ids == []
+        assert collection.documents.search.call_count == 2
+        collection.documents.__getitem__.assert_not_called()
+        assert {doc["id"] for doc in upsert.call_args.args[2]} == set(local_ids)
+        assert upsert.call_args.kwargs == {"fail_on_error": True}
+
+    async def test_local_company_absent_from_csv_is_preserved_during_stale_delete(self):
+        # co-retained-local intentionally represents a row retained in local
+        # Postgres after it disappeared from companies.csv. Local Postgres,
+        # not the CSV frame, is the company index authority.
+        local_ids = ["co-alpha", "co-beta", "co-retained-local"] + [
+            f"co-authority-{index:03d}" for index in range(97)
+        ]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {*local_ids, "co-stale"}
+        )
+
+        with (
+            patch("src.sync._load_companies") as csv_authority,
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert") as upsert,
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert remote_ids == set(local_ids)
+        assert deleted_ids == ["co-stale"]
+        assert collection.documents.search.call_count == 2
+        assert {doc["id"] for doc in upsert.call_args.args[2]} == set(local_ids)
+        csv_authority.assert_not_called()
+
+    def test_prune_budget_accepts_observed_drift_and_blocks_collapse(self):
+        assert _company_prune_within_safety_budget(remote_count=5072, delete_count=11)
+        assert not _company_prune_within_safety_budget(remote_count=5072, delete_count=51)
+        assert not _company_prune_within_safety_budget(remote_count=1000, delete_count=11)
+
+    async def test_prune_budget_blocks_all_deletes(self):
+        local_ids = [f"co-authority-{index:03d}" for index in range(100)]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {*local_ids, "co-stale-one", "co-stale-two"}
+        )
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="safety budget"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert len(remote_ids) == 102
+        assert deleted_ids == []
+        collection.documents.__getitem__.assert_not_called()
+
+    async def test_missing_expected_id_blocks_every_delete(self):
+        local_ids = ["co-alpha", "co-beta"]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-stale"}
+        )
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="missing expected"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert remote_ids == {"co-alpha", "co-stale"}
+        assert deleted_ids == []
+        collection.documents.__getitem__.assert_not_called()
+
+    @pytest.mark.parametrize("failure", ["invalid", "changing", "duplicate", "short"])
+    async def test_invalid_or_changing_pagination_blocks_every_delete(self, failure: str):
+        local_ids = ["co-alpha", "co-beta"]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-beta", "co-stale"}
+        )
+        calls = 0
+
+        def _broken_search(_params: dict) -> dict:
+            nonlocal calls
+            calls += 1
+            if failure == "invalid":
+                return {"found": "3", "hits": []}
+            if failure == "duplicate":
+                return {
+                    "found": 3,
+                    "hits": [
+                        {"document": {"id": "co-alpha"}},
+                        {"document": {"id": "co-alpha"}},
+                    ],
+                }
+            if failure == "short":
+                return {"found": 3, "hits": [{"document": {"id": "co-alpha"}}]}
+            if calls == 1:
+                return {
+                    "found": 3,
+                    "hits": [
+                        {"document": {"id": "co-alpha"}},
+                        {"document": {"id": "co-beta"}},
+                    ],
+                }
+            return {"found": 4, "hits": [{"document": {"id": "co-stale"}}]}
+
+        collection.documents.search.side_effect = _broken_search
+        with (
+            patch("src.sync._TYPESENSE_COMPANY_ID_PAGE_SIZE", 2),
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="Typesense company"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert remote_ids == {"co-alpha", "co-beta", "co-stale"}
+        assert deleted_ids == []
+        collection.documents.__getitem__.assert_not_called()
+
+    async def test_empty_local_authority_never_upserts_reads_or_prunes(self):
+        local_conn = _company_connection([])
+        client, collection, remote_ids, deleted_ids = _company_typesense_client({"co-stale"})
+
+        with (
+            patch("src.sync._fetch_company_posting_counts") as counts,
+            patch("src.sync._ts_bulk_upsert") as upsert,
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        counts.assert_not_called()
+        upsert.assert_not_called()
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
+        assert remote_ids == {"co-stale"}
+        assert deleted_ids == []
+
+    async def test_rejected_import_blocks_remote_reads_and_pruning(self):
+        local_conn = _company_connection(["co-alpha"])
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-stale"}
+        )
+        collection.documents.import_.return_value = [
+            {"success": False, "error": "schema rejected document"}
+        ]
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            pytest.raises(RuntimeError, match="bulk import"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
+        assert remote_ids == {"co-alpha", "co-stale"}
+        assert deleted_ids == []
+
+    async def test_delete_failure_is_fatal_and_skips_convergence_read(self):
+        local_ids = [f"co-authority-{index:03d}" for index in range(100)]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {*local_ids, "co-stale"},
+            delete_error=RuntimeError("request included a private identifier"),
+        )
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="prune deletion failed") as exc_info,
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert "private identifier" not in str(exc_info.value)
+        assert collection.documents.search.call_count == 1
+        assert remote_ids == {*local_ids, "co-stale"}
+        assert deleted_ids == []
+
+    async def test_post_delete_non_convergence_is_fatal(self):
+        local_ids = [f"co-authority-{index:03d}" for index in range(100)]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {*local_ids, "co-stale"},
+            remove_on_delete=False,
+        )
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="did not converge"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert deleted_ids == ["co-stale"]
+        assert remote_ids == {*local_ids, "co-stale"}
+        assert collection.documents.search.call_count == 2
+
+    async def test_company_failure_propagates_from_typesense_orchestrator(self):
+        client = MagicMock()
+        local_conn = AsyncMock()
+        web_conn = AsyncMock()
+
+        with (
+            patch("src.sync.sync_locations_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_occupations_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_seniority_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_technologies_typesense", new_callable=AsyncMock),
+            patch(
+                "src.sync.sync_companies_typesense",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("exact sync failed"),
+            ),
+            pytest.raises(CompanyTypesenseSyncError, match="company exact sync"),
+        ):
+            await sync_typesense(local_conn, web_conn, client)

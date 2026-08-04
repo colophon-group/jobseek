@@ -23,6 +23,7 @@ from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
@@ -68,6 +69,10 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 # the label promised (issue #3009 / #3238).
 _POSTING_BASE_FILTER = "is_active:true && has_content:!=false"
 _POSTING_FLOW_FILTER = "has_content:!=false"
+
+
+class CompanyTypesenseSyncError(RuntimeError):
+    """Fail-closed company index error that must abort crawler sync."""
 
 
 def _monitor_config_fingerprint(
@@ -1676,6 +1681,8 @@ def _ts_bulk_upsert(
     collection: str,
     docs: list[dict],
     action: str = "upsert",
+    *,
+    fail_on_error: bool = False,
 ) -> None:
     """Bulk write documents to a Typesense collection.
 
@@ -1684,8 +1691,9 @@ def _ts_bulk_upsert(
     - ``"update"``: partial merge into an existing doc; 404s if the doc doesn't exist
     - ``"emplace"``: partial merge if the doc exists, otherwise creates it
 
-    Splits into batches of ``_TYPESENSE_BATCH_SIZE``. Logs errors but does
-    not raise — Typesense writes are fire-and-forget.
+    Splits into batches of ``_TYPESENSE_BATCH_SIZE``. Existing callers keep
+    the historical best-effort behavior. Exact-sync callers can set
+    ``fail_on_error`` so a rejected import blocks any subsequent pruning.
     """
     if not docs:
         return
@@ -1695,6 +1703,14 @@ def _ts_bulk_upsert(
         results = documents.import_(batch, {"action": action})
         errors = [r for r in results if not r.get("success", True)]
         if errors:
+            if fail_on_error:
+                log.error(
+                    "typesense.bulk_upsert.errors",
+                    collection=collection,
+                    action=action,
+                    error_count=len(errors),
+                )
+                raise RuntimeError("Typesense bulk import failed") from None
             log.warning(
                 "typesense.bulk_upsert.errors",
                 collection=collection,
@@ -2218,6 +2234,97 @@ async def sync_technologies_typesense(
 # ---------------------------------------------------------------------------
 
 
+_TYPESENSE_COMPANY_ID_PAGE_SIZE = 250
+_TYPESENSE_COMPANY_PRUNE_MAX_DOCUMENTS = 50
+_TYPESENSE_COMPANY_PRUNE_MAX_BASIS_POINTS = 100  # 1% of the observed remote set.
+
+
+def _company_prune_within_safety_budget(*, remote_count: int, delete_count: int) -> bool:
+    """Bound exact-sync pruning against accidental authority collapse."""
+
+    if remote_count <= 0 or delete_count < 0:
+        return False
+    return (
+        delete_count <= _TYPESENSE_COMPANY_PRUNE_MAX_DOCUMENTS
+        and delete_count * 10_000 <= remote_count * _TYPESENSE_COMPANY_PRUNE_MAX_BASIS_POINTS
+    )
+
+
+def _fetch_typesense_company_ids(client: typesense.Client) -> set[str]:
+    """Read every company id while enforcing exact pagination invariants."""
+
+    collection = client.collections["company"]
+    metadata = collection.retrieve()
+    if not isinstance(metadata, dict):
+        raise RuntimeError("Typesense company collection returned invalid metadata")
+    metadata_count = metadata.get("num_documents")
+    if (
+        not isinstance(metadata_count, int)
+        or isinstance(metadata_count, bool)
+        or metadata_count < 0
+    ):
+        raise RuntimeError("Typesense company collection returned an invalid count")
+
+    found: int | None = None
+    returned_count = 0
+    seen_ids: set[str] = set()
+    page = 1
+    while True:
+        response = collection.documents.search(
+            {
+                "q": "*",
+                "query_by": "name",
+                "include_fields": "id",
+                "enable_overrides": False,
+                "page": page,
+                "per_page": _TYPESENSE_COMPANY_ID_PAGE_SIZE,
+            }
+        )
+        if not isinstance(response, dict):
+            raise RuntimeError("Typesense company search returned an invalid response")
+        response_found = response.get("found")
+        hits = response.get("hits")
+        if (
+            not isinstance(response_found, int)
+            or isinstance(response_found, bool)
+            or response_found < 0
+            or not isinstance(hits, list)
+        ):
+            raise RuntimeError("Typesense company search returned invalid pagination")
+        if found is None:
+            found = response_found
+        elif response_found != found:
+            raise RuntimeError("Typesense company count changed during pagination")
+        if response_found != metadata_count:
+            raise RuntimeError("Typesense company metadata and search counts differ")
+
+        remaining = response_found - returned_count
+        if remaining < 0:
+            raise RuntimeError("Typesense company pagination exceeded its count")
+        expected_hits = min(_TYPESENSE_COMPANY_ID_PAGE_SIZE, remaining)
+        if len(hits) != expected_hits:
+            raise RuntimeError("Typesense company pagination returned an invalid page size")
+
+        for hit in hits:
+            if not isinstance(hit, dict) or not isinstance(hit.get("document"), dict):
+                raise RuntimeError("Typesense company search returned an invalid hit")
+            document_id = hit["document"].get("id")
+            if not isinstance(document_id, str) or not document_id:
+                raise RuntimeError("Typesense company search returned an invalid id")
+            if document_id in seen_ids:
+                raise RuntimeError("Typesense company pagination returned a duplicate id")
+            seen_ids.add(document_id)
+
+        returned_count += len(hits)
+        if returned_count == response_found:
+            break
+        page += 1
+
+    if len(seen_ids) != metadata_count:
+        raise RuntimeError("Typesense company pagination count did not converge")
+    return seen_ids
+
+
 async def sync_companies_typesense(
     local_conn: asyncpg.Connection,
     client: typesense.Client,
@@ -2304,8 +2411,88 @@ async def sync_companies_typesense(
 
         docs.append(doc)
 
-    await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", docs)
-    log.info("typesense.companies.synced", count=len(docs))
+    expected_ids = {str(doc["id"]) for doc in docs}
+    if len(expected_ids) != len(docs):
+        raise RuntimeError("Local company authority returned duplicate ids")
+
+    await loop.run_in_executor(
+        None,
+        partial(
+            _ts_bulk_upsert,
+            client,
+            "company",
+            docs,
+            fail_on_error=True,
+        ),
+    )
+
+    remote_ids = await loop.run_in_executor(None, _fetch_typesense_company_ids, client)
+    missing_count = len(expected_ids - remote_ids)
+    if missing_count:
+        log.error(
+            "typesense.companies.prune.blocked",
+            expected_count=len(expected_ids),
+            remote_count=len(remote_ids),
+            missing_count=missing_count,
+        )
+        raise RuntimeError("Typesense company index is missing expected documents")
+
+    stale_ids = remote_ids - expected_ids
+    if stale_ids and not _company_prune_within_safety_budget(
+        remote_count=len(remote_ids),
+        delete_count=len(stale_ids),
+    ):
+        log.error(
+            "typesense.companies.prune.budget_blocked",
+            expected_count=len(expected_ids),
+            remote_count=len(remote_ids),
+            delete_count=len(stale_ids),
+            max_delete_count=_TYPESENSE_COMPANY_PRUNE_MAX_DOCUMENTS,
+            max_delete_basis_points=_TYPESENSE_COMPANY_PRUNE_MAX_BASIS_POINTS,
+        )
+        raise RuntimeError("Typesense company prune exceeds the safety budget")
+    log.info(
+        "typesense.companies.prune.planned",
+        expected_count=len(expected_ids),
+        remote_count=len(remote_ids),
+        delete_count=len(stale_ids),
+    )
+    deleted_count = 0
+    for document_id in sorted(stale_ids):
+        try:
+            await loop.run_in_executor(
+                None,
+                client.collections["company"].documents[document_id].delete,
+            )
+        except Exception:
+            log.error(
+                "typesense.companies.prune.delete_failed",
+                expected_count=len(expected_ids),
+                remote_count=len(remote_ids),
+                planned_delete_count=len(stale_ids),
+                completed_delete_count=deleted_count,
+            )
+            raise RuntimeError("Typesense company prune deletion failed") from None
+        deleted_count += 1
+
+    converged_ids = await loop.run_in_executor(None, _fetch_typesense_company_ids, client)
+    if converged_ids != expected_ids:
+        log.error(
+            "typesense.companies.convergence_failed",
+            expected_count=len(expected_ids),
+            remote_count=len(converged_ids),
+            missing_count=len(expected_ids - converged_ids),
+            unexpected_count=len(converged_ids - expected_ids),
+            deleted_count=deleted_count,
+        )
+        raise RuntimeError("Typesense company index did not converge")
+
+    log.info(
+        "typesense.companies.synced",
+        expected_count=len(expected_ids),
+        remote_count=len(converged_ids),
+        deleted_count=deleted_count,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -3000,7 +3187,10 @@ async def sync_typesense(
     try:
         await sync_companies_typesense(local_conn, client)
     except Exception:
-        log.exception("typesense.sync.companies.failed")
+        # Exact-sync stages emit count-only diagnostics before raising. Do not
+        # attach a client exception that may contain a document identifier.
+        log.error("typesense.sync.companies.failed")
+        raise CompanyTypesenseSyncError("Typesense company exact sync failed") from None
 
     try:
         await sync_watchlists_typesense(web_conn, local_conn, client)
@@ -3157,6 +3347,9 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
                         except Exception:
                             log.exception("typesense.rename_detection.failed")
                     await sync_typesense(local_connection, web_connection, ts_client)
+            except CompanyTypesenseSyncError:
+                log.exception("typesense.sync.failed")
+                raise
             except Exception:
                 log.exception("typesense.sync.failed")
 
