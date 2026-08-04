@@ -173,6 +173,8 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `amazon`          | Rich     | skip        | Amazon Jobs                             |
 | 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |
 | 10   | `avature`         | URL-only | dom         | Avature static listings + map data      |
+| 10   | `jobvite`         | URL-only | json-ld     | Jobvite static career-site listings     |
+| 10   | `pageup`          | Rich     | dom         | PageUp static listings + description enrichment |
 | 10   | `bamboohr`        | Rich     | api_sniffer | BambooHR public careers API + detail enrichment |
 | 10   | `beisen`          | Rich/hybrid | skip/dom | Beisen modern public API + legacy listings |
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
@@ -209,6 +211,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters API                 |
 | 10   | `softgarden`      | URL-only | json-ld     | Softgarden ATS                          |
 | 10   | `traffit`         | Rich     | skip        | Traffit ATS API                         |
+| 10   | `ukg`             | Rich     | embedded    | UKG Pro search API + detail enrichment  |
 | 10   | `workable`        | URL-only | workable    | Workable API                            |
 | 10   | `workday`         | URL-only | workday     | Workday Job Board API                   |
 | 10   | `ycombinator`     | URL-only | json-ld     | YCombinator Jobs fallback pages         |
@@ -249,7 +252,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `adp`          | Fetch ADP detail JSON and DOCX description attachments | None               |
 | `api_sniffer`  | Direct API replay or XHR/fetch capture on job pages | `{api_url, fields, pagination}` |
 | `bite`         | Fetch BITE detail JSON                             | None                   |
-| `dom`          | Step-based DOM extraction (static or Playwright)   | `{steps, render, ...}` |
+| `dom`          | Step-based DOM extraction (static or Playwright)   | `{steps, scope?, render, ...}` |
 | `eightfold`    | JSON-LD extraction with Eightfold position API fallback | None              |
 | `embedded`     | Parse embedded JSON/RSC data from page source      | `{pattern/script_id/source, path, fields}` |
 | `json-ld`      | Parse `<script type="application/ld+json">` (JobPosting schema) | None (auto)    |

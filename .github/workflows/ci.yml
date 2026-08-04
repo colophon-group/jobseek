@@ -455,6 +455,26 @@ jobs:
       - run: uv run pytest tests/ -v --ignore=tests/e2e/test_typesense_indexing.py
         working-directory: apps/crawler
 
+      - name: Verify Redis noeviction write pressure
+        run: |
+          docker run --detach --name jobseek-redis-pressure \
+            --publish 127.0.0.1:6380:6379 \
+            redis:8-alpine \
+            redis-server --maxmemory 8mb --maxmemory-policy noeviction --save ""
+          for _ in {1..20}; do
+            if docker exec jobseek-redis-pressure redis-cli ping | grep -qx PONG; then
+              break
+            fi
+            sleep 1
+          done
+          uv run python ../../scripts/test-redis-noeviction-pressure.py \
+            --url redis://127.0.0.1:6380/15
+        working-directory: apps/crawler
+
+      - name: Stop Redis pressure fixture
+        if: always()
+        run: docker rm --force jobseek-redis-pressure || true
+
   test-crawler-typesense-e2e:
     name: Test Crawler Typesense E2E
     needs: changes

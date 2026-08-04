@@ -637,7 +637,7 @@ test("scheduled maintenance one-offs carry exact validated provenance labels", (
     "jobseek.maintenance.operation=${TASK}",
     "jobseek.maintenance.issue=2630",
     "jobseek.maintenance.revision=${GITHUB_SHA}",
-    "jobseek.maintenance.budget-seconds=7200",
+    "jobseek.maintenance.budget-seconds=${operation_budget}",
   ]) {
     assert.ok(
       crawlerScheduledMaintenanceWorkflow.includes(label),
@@ -647,9 +647,17 @@ test("scheduled maintenance one-offs carry exact validated provenance labels", (
   assert.match(crawlerScheduledMaintenanceWorkflow, /envs: GITHUB_SHA/);
   assert.match(
     crawlerScheduledMaintenanceWorkflow,
-    /timeout --foreground --signal=TERM --kill-after=90s 2h docker run --rm/,
+    /operation_budget=7200/,
   );
-  assert.match(crawlerScheduledMaintenanceWorkflow, /command_timeout: 5h/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$TASK" == backfill-typesense \]\]; then[\s\S]*operation_budget=14400/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /timeout --foreground --signal=TERM --kill-after=90s "\$operation_budget" docker run --rm/,
+  );
+  assert.match(crawlerScheduledMaintenanceWorkflow, /command_timeout: 8h/);
 });
 
 test("recurring crawler one-offs use the bounded maintenance wrapper", () => {
