@@ -109,6 +109,18 @@ for rotation and verification.
   - The backfill script (`typesense-backfill-local.py`) must use the same logic.
 
   **Invariant**: `buildFilterString()` in the web app filters on `location_ids` and `occupation_ids` (plural array fields). If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin"). If ancestors are written to Postgres instead, the `location_ids`/`location_types` length constraint breaks local writes.
+- **Direct location IDs**: `job_posting.location_direct_ids` preserves the
+  unexpanded source IDs alongside `location_ids`. Company location summaries
+  facet the direct field so a city is not counted again as its country or macro;
+  search filters continue to use the ancestor-expanded field.
+- **Taxonomy read contract**: taxonomy documents carry the identity and
+  hierarchy metadata required by web readers. Location documents include the
+  indexed `slug`, `parent_id`, `ancestor_ids` (self + geographic ancestors +
+  macros), localized display names/aliases, and `member_country_ids` on macro
+  rows. Occupation documents include indexed `slug`, `parent_id`, `domain_id`,
+  and `domain_slug`; seniority slugs are indexed. This metadata is a producer
+  contract, not an optional display optimization: the web app does not query
+  the Supabase crawler mirror to reconstruct it.
 - **Sentinel values**: `experience_min_years = -1` for NULL (and legacy `experience_min = -1` during the integer-field compatibility window). `locales = ["_none"]` for jobs with no detected language.
 - **Experience precision**: Postgres stores `experience_min` / `experience_max` as decimal years (`NUMERIC(3,1)`), so sub-year requirements such as "6 months" index as `0.5`. Typesense filters use `experience_min_years` / `experience_max_years` float fields, while legacy integer `experience_min` / `experience_max` fields remain for backfill compatibility.
 - **Denormalized names**: Taxonomy names (location, occupation, seniority, technology) are stored directly on each job posting document for search and faceting without joins.
@@ -205,6 +217,8 @@ company collections. It does not read the transitional Supabase mirror for
 these documents. Includes:
 
 - `active_posting_count` and `has_active_postings` for each taxonomy entry
+- localized taxonomy display names and aliases, stable slugs, parent/domain
+  hierarchy, and macro-region membership used by the web taxonomy provider
 - Taxonomy rename detection: if a name changes in CSV, affected job posting documents in Typesense are updated with the new denormalized name
 
 `crawler sync` does not open `DATABASE_URL`, and the production CLI no longer
@@ -244,6 +258,13 @@ exponential backoff. If Typesense still rejects or times out a batch, the
 command fails without advancing the scan or CDC cursor past that batch;
 operators must fix the downstream failure and rerun the backfill before
 running `refresh-typesense`.
+
+`location_direct_ids` is populated by the exporter for new changes, but adding
+the field does not rewrite older posting documents. Roll out this read contract
+in order: deploy/run `crawler setup-typesense`, run `crawler sync` to rewrite
+taxonomy documents, complete `crawler backfill-typesense`, and only then deploy
+the web reader. Verify the backfill before enabling the reader; there is no
+Supabase crawler-mirror fallback for missing contract fields.
 
 For local development/testing only:
 ```bash

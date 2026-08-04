@@ -98,7 +98,11 @@ class FakeConnection:
             ]
         if normalized == "SELECT location_id, locale, name, is_display FROM location_name":
             return [{"location_id": 1, "locale": "en", "name": "Zurich", "is_display": True}]
-        if normalized == "SELECT id, slug FROM occupation":
+        if normalized == "SELECT macro_id, country_id FROM location_macro_member":
+            return []
+        if normalized.startswith(
+            "SELECT o.id, o.slug, o.parent_id, o.domain_id, d.slug AS domain_slug"
+        ):
             return []
         if normalized == "SELECT occupation_id, locale, name, is_display FROM occupation_name":
             return []
@@ -157,6 +161,7 @@ async def test_seed_locations_uses_current_location_schema_query(
             "slug": "zurich",
             "name_en": "Zurich",
             "type": "city",
+            "ancestor_ids": [1],
             "has_active_postings": True,
             "active_posting_count": 3,
             "coordinates": [47.3769, 8.5417],

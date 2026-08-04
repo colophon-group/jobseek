@@ -1798,6 +1798,7 @@ class TestBuildTypesenseDocsAncestors:
         assert len(docs) == 1
         assert docs[0]["reconciliation_bucket"] == uuid.UUID(docs[0]["id"]).hex[:2]
         loc_ids = set(docs[0]["location_ids"])
+        assert docs[0]["location_direct_ids"] == [10]
         assert 10 in loc_ids  # leaf (city)
         assert 20 in loc_ids  # region ancestor
         assert 30 in loc_ids  # country ancestor
