@@ -841,10 +841,11 @@ async def run_reconciliation(
             maps: TaxonomyMaps | None = None
             try:
                 failures: list[str] = []
-                for target in _targets(
+                selected_targets = _targets(
                     target_scope,
                     relational_mirror_available=supa_pool is not None,
-                ):
+                )
+                for target in selected_targets:
                     last_result: PartitionResult | None = None
                     try:
                         if target == "typesense" and typesense is None:
@@ -949,7 +950,7 @@ async def run_reconciliation(
                         f"Reconciliation failed for {len(failures)} target(s)"
                     )
                 if fresh_cycle:
-                    expected_partitions = PARTITION_COUNT * len(_targets(target_scope))
+                    expected_partitions = PARTITION_COUNT * len(selected_targets)
                     if summary.partitions_completed != expected_partitions:
                         raise ReconciliationError(
                             "Fresh reconciliation proof did not inspect every partition: "

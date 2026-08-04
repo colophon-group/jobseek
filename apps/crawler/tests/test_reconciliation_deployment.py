@@ -206,7 +206,8 @@ def test_scheduled_oneoffs_filter_database_credentials_by_command() -> None:
     assert '--env-file "$RUNTIME_ENV"' in maintenance
     assert 'if [[ "$TASK" == "refresh-typesense" ]]' in maintenance
     assert "required_env+=(WEB_DATABASE_URL)" in maintenance
-    assert re.search(r"\bDATABASE_URL\b", maintenance) is None
+    assert re.findall(r"\bDATABASE_URL\b", maintenance) == ["DATABASE_URL"]
+    assert "grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL)$'" in maintenance
 
     assert "--env-file /home/deploy/.env" not in currency
     assert '--env-file "$RUNTIME_ENV"' in currency
