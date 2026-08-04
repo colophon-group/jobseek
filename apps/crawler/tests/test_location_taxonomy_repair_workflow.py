@@ -15,7 +15,8 @@ def _job(workflow: str, name: str, next_name: str | None = None) -> str:
 
 def test_dispatch_is_owner_main_revision_and_confirmation_bound_before_approval() -> None:
     workflow = WORKFLOW.read_text(encoding="utf-8")
-    preauthorize = _job(workflow, "preauthorize", "repair")
+    preauthorize = _job(workflow, "preauthorize", "authorize")
+    authorize = _job(workflow, "authorize", "repair")
     repair = _job(workflow, "repair")
 
     assert "workflow_dispatch:" in workflow
@@ -27,9 +28,41 @@ def test_dispatch_is_owner_main_revision_and_confirmation_bound_before_approval(
     assert 'test "$DISPATCH_REF" = refs/heads/main' in preauthorize
     assert 'test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"' in preauthorize
     assert "REPAIR-LOCAL-LOCATION-TAXONOMY-37526" in preauthorize
-    assert "needs: preauthorize" in repair
-    assert "environment: production-migrations" in repair
+    assert "needs: preauthorize" in authorize
+    assert "environment: production-migrations" in authorize
+    assert 'test "$DISPATCH_ACTOR" = viktor-shcherb' in authorize
+    assert 'test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb' in authorize
+    assert 'test "$DISPATCH_REF" = refs/heads/main' in authorize
+    assert 'test "$DISPATCH_SHA" = "$EXPECTED_CRAWLER_REVISION"' in authorize
+    assert "REPAIR-LOCAL-LOCATION-TAXONOMY-37526" in authorize
+    assert 'echo "crawler_revision=${EXPECTED_CRAWLER_REVISION}"' in authorize
+    assert "needs: [preauthorize, authorize]" in repair
+    assert "needs.authorize.result == 'success'" in repair
+    assert "environment: Production" in repair
     assert "github.triggering_actor == 'viktor-shcherb'" in repair
+
+
+def test_repair_secrets_resolve_only_after_protected_authorization() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    preauthorize = _job(workflow, "preauthorize", "authorize")
+    authorize = _job(workflow, "authorize", "repair")
+    repair = _job(workflow, "repair")
+
+    assert "secrets." not in preauthorize
+    assert "secrets." not in authorize
+    assert workflow.count("environment: production-migrations") == 1
+    assert workflow.count("environment: Production") == 1
+    assert "EXPECTED_CRAWLER_REVISION: ${{ needs.authorize.outputs.crawler_revision }}" in repair
+    assert "EXPECTED_IMAGE_TAG: ${{ needs.authorize.outputs.image_tag }}" in repair
+    assert "${{ inputs.expected_crawler_revision }}" not in repair
+    for secret in (
+        "GRAFANA_PROM_URL",
+        "GRAFANA_PROM_USERNAME",
+        "GRAFANA_PROM_PASSWORD",
+        "HETZNER_HOST",
+        "HETZNER_SSH_KEY",
+    ):
+        assert f"${{{{ secrets.{secret} }}}}" in repair
 
 
 def test_operation_attests_exact_deployment_image_and_credentials_without_exposing_values() -> None:
