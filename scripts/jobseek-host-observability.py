@@ -467,6 +467,7 @@ SELECT
   partition_count,
   bootstrap_complete::int
 FROM cross_store_reconciliation_state
+WHERE target = 'typesense'
 ORDER BY target;
 """.strip()
 

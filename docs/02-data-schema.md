@@ -91,7 +91,6 @@ state to local Postgres first, then publishes Redis and Typesense derived state.
 CSV → local DB → derived targets:
   companies.csv  → local company table (upsert on slug) → Typesense company docs
   boards.csv     → local job_board table (upsert on board_url) → Redis scheduling/config
-  --legacy-mirror copies the committed local identities to DATABASE_URL during transition
 ```
 
 - **New rows**: Inserted with staggered `next_check_at` (random offset to prevent thundering herd)
@@ -103,7 +102,6 @@ CSV → local DB → derived targets:
 ```bash
 cd apps/crawler
 uv run crawler sync                   # local Postgres, Redis, and Typesense
-uv run crawler sync --legacy-mirror   # transition: also update DATABASE_URL
 ```
 
 ## CSV Validation

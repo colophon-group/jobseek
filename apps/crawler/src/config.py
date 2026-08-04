@@ -7,8 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # Optional crawler-mirror target. Commands that only need local Postgres
-    # and Typesense must not require or open this connection.
+    # Retained only for direct transitional library calls. Production crawler
+    # commands and generated runtime environments never select this boundary.
     database_url: str = ""
     # Provider-neutral boundary for web-owned data (currently watchlists).
     # This may point at Supabase Free without making it a crawler mirror.

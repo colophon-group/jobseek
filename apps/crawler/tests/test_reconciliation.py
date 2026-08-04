@@ -169,7 +169,7 @@ def test_reconciliation_cli_defaults_to_bounded_read_only(monkeypatch) -> None:
     assert args.full is False
     assert args.max_partitions == 16
     assert args.start_partition == 0
-    assert args.target == "all"
+    assert args.target == "typesense"
 
 
 def test_full_reconciliation_still_requires_explicit_repair(monkeypatch) -> None:

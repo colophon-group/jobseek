@@ -777,15 +777,16 @@ minutes after the timer is activated; it launches
 user. The wrapper resolves the immutable image tag already deployed in
 `/home/deploy/.env` and starts a read-only one-shot container with a 1 GiB
 memory limit, one CPU, a PID cap, and no persistent container filesystem. It
-processes at most 16 partitions per target and then exits. Lock acquisition
+explicitly targets Typesense, processes at most 16 partitions, and then exits. Lock acquisition
 may wait up to two hours for an authorized deploy/backfill; once acquired, the
 container has a separate 50-minute hard runtime cap. The next timer interval
 starts only after this service is inactive, preventing delayed work from
 causing an immediate second run. The wrapper filters the crawler environment
-into a mode-`0600` ephemeral file containing only the two database URLs and
-four Typesense settings; proxy, R2, Redis, Codex, Murmur, and other unrelated
-credentials never enter the one-shot container, and the file is removed on
-every exit path. It invokes the installed `/app/.venv/bin/crawler` entry point
+into a mode-`0600` ephemeral file containing only `LOCAL_DATABASE_URL` and four
+Typesense settings. Neither the retired crawler mirror credential nor
+`WEB_DATABASE_URL` enters the one-shot container; proxy, R2, Redis, Codex,
+Murmur, and other unrelated credentials are also excluded, and the file is
+removed on every exit path. It invokes the installed `/app/.venv/bin/crawler` entry point
 directly so the read-only root filesystem never depends on a runtime package
 manager cache.
 
@@ -812,13 +813,17 @@ root, then queues one immediate bounded reconciliation run. A failed install
 restores the previous files. The deployed commit is written atomically to
 `/var/lib/jobseek-reconciliation/deployed-sha`: the directory is
 `root:deploy 0750` and the file is `root:deploy 0640`, so the unprivileged
-service can read the revision without being able to replace it. Reinstalling
-the host surface repairs a missing or corrupt file and normalizes incorrect
-ownership. The reconciliation deploy, crawler deploy, and crawler-host
-observability deploy all verify the same installed state contract and active
-timer before succeeding. The timer remains enabled for subsequent hourly
-slices; the application deploy owns Alembic and the additive Typesense schema
-patch.
+service can read the revision without being able to replace it. The installer
+also atomically publishes the exact installed wrapper digest to the
+group-readable `wrapper-sha256` state file as its final compatibility marker.
+Reinstalling the host surface repairs missing or corrupt state and normalizes
+incorrect ownership. Before changing credentials, files, or services, the
+crawler deploy waits for the installed wrapper content and completed-install
+marker to match the digest from its own revision; a timeout fails closed. The
+reconciliation deploy, crawler deploy, and crawler-host observability deploy
+verify the installed state and active timer appropriate to their boundary
+before succeeding. The timer remains enabled for subsequent hourly slices;
+the application deploy owns Alembic and the additive Typesense schema patch.
 
 The 2026-07-23 outage was an ownership regression, not a cleanup operation.
 The revision preflight was added while the state directory was still created
@@ -842,10 +847,12 @@ docker ps --filter name=jobseek-cross-store-reconciliation --no-trunc
 
 Do not print `/home/deploy/.env`, database rows, or Typesense documents during
 triage. The PostgreSQL-host textfile exposes only aggregate
-`jobseek_cross_store_reconciliation_*` series. Healthy production has both
-targets completing a full verified cycle within 30 hours, zero unresolved
-drift, no run older than two hours still marked running, and Typesense
-bootstrap complete. The crawler-host collector also publishes the current
+`jobseek_cross_store_reconciliation_*` series. The PostgreSQL-host sampler
+filters the rollback-compatible state table to `target='typesense'`, so the
+obsolete Supabase state row cannot create stale production alerts. Healthy
+production has a full verified Typesense cycle within 30 hours, zero unresolved
+drift, no run older than two hours still marked running, and bootstrap
+complete. The crawler-host collector also publishes the current
 revision as `jobseek_cross_store_reconciliation_deployed_revision_info`, its
 file mtime, and a boolean availability series. A missing/inaccessible revision
 alerts after three minutes; no completed hourly slice within 2.5 hours alerts
@@ -870,12 +877,10 @@ resource limits, secret filter, and 50-minute cap:
 ```bash
 systemctl is-active jobseek-crawler-reconciliation.service || true
 sudo -u deploy /usr/local/sbin/jobseek-crawler-reconciliation \
-  --full-target supabase
-sudo -u deploy /usr/local/sbin/jobseek-crawler-reconciliation \
-  --full-target typesense
+  --full
 ```
 
-Run one target at a time and inspect its aggregate result before continuing.
+Inspect the Typesense aggregate result before continuing.
 If the cap is reached, the verified partition cursor remains resumable; rerun
 the same command rather than increasing limits during an incident. Confirm the
 interrupted run is recorded and that the next invocation resumes at the last

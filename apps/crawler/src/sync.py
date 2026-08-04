@@ -3,9 +3,9 @@
 Reads data/companies.csv and data/boards.csv, upserts rows into the database.
 The DB is derived state — CSVs are the source of truth.
 
-Local Postgres is the only allocator and transactional authority. After its
-transaction commits, sync may update an explicitly requested legacy relational
-mirror, Redis board queues, and Typesense collections.
+Local Postgres is the only allocator and transactional authority. The normal
+CLI publishes Redis board queues and Typesense collections after commit. The
+legacy relational-mirror helpers remain library-only during rollback cleanup.
 
 Usage:
     uv run python -m src.sync              # sync both CSVs
@@ -2485,12 +2485,15 @@ async def sync_watchlists_typesense(
     against local Postgres (the job_posting source of truth) and aggregated
     per watchlist in Python. Shared company UUIDs make the cross-database
     aggregation exact. This avoids a costly web-database join against its
-    transitional posting mirror. The legacy join remains only for callers
-    that do not supply a local connection.
+    transitional posting mirror. A missing local connection fails closed so
+    no caller can silently restore that retired read path.
 
     Trivial watchlists (no companies, no meaningful filters) are deleted
     from Typesense rather than upserted.
     """
+    if local_conn is None:
+        raise RuntimeError("watchlist sync requires a local Postgres connection")
+
     rows = await web_conn.fetch(
         """
         SELECT w.id, w.slug, w.title, w.description,
@@ -2509,9 +2512,9 @@ async def sync_watchlists_typesense(
     parsed_filters_by_id = {str(r["id"]): _parse_watchlist_filters(r["filters"]) for r in rows}
     try:
         resolved_filter_ids_by_id = await _resolve_watchlist_filter_ids(
-            local_conn or web_conn,
+            local_conn,
             parsed_filters_by_id,
-            fallback_conn=web_conn if local_conn is not None else None,
+            fallback_conn=web_conn,
         )
     except Exception:
         log.exception("typesense.watchlists.filter_ids_failed")
@@ -2529,36 +2532,22 @@ async def sync_watchlists_typesense(
     for r in wc_pairs:
         company_counts[str(r["watchlist_id"])] += 1
 
-    job_counts: dict[str, int]
-    if local_conn is not None:
-        distinct_company_ids = list({r["company_id"] for r in wc_pairs})
-        per_company: dict = {}
-        if distinct_company_ids:
-            active_rows = await local_conn.fetch(
-                """
-                SELECT company_id, COUNT(*) AS cnt
-                FROM job_posting
-                WHERE is_active AND company_id = ANY($1::uuid[])
-                GROUP BY 1
-                """,
-                distinct_company_ids,
-            )
-            per_company = {r["company_id"]: r["cnt"] for r in active_rows}
-        job_counts = defaultdict(int)
-        for r in wc_pairs:
-            job_counts[str(r["watchlist_id"])] += per_company.get(r["company_id"], 0)
-    else:
-        job_count_rows = await web_conn.fetch(
+    distinct_company_ids = list({r["company_id"] for r in wc_pairs})
+    per_company: dict = {}
+    if distinct_company_ids:
+        active_rows = await local_conn.fetch(
             """
-            SELECT wc.watchlist_id, COUNT(jp.id) AS cnt
-            FROM watchlist_company wc
-            JOIN job_posting jp ON jp.company_id = wc.company_id AND jp.is_active
-            WHERE wc.watchlist_id = ANY($1::uuid[])
+            SELECT company_id, COUNT(*) AS cnt
+            FROM job_posting
+            WHERE is_active AND company_id = ANY($1::uuid[])
             GROUP BY 1
             """,
-            watchlist_ids,
+            distinct_company_ids,
         )
-        job_counts = {str(r["watchlist_id"]): r["cnt"] for r in job_count_rows}
+        per_company = {r["company_id"]: r["cnt"] for r in active_rows}
+    job_counts: dict[str, int] = defaultdict(int)
+    for r in wc_pairs:
+        job_counts[str(r["watchlist_id"])] += per_company.get(r["company_id"], 0)
 
     # Mirror counts
     mirror_count_rows = await web_conn.fetch(
@@ -3137,13 +3126,8 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
 def main():
     parser = argparse.ArgumentParser(description="Sync CSV config to database")
     parser.add_argument("--dry-run", action="store_true", help="Show changes without writing")
-    parser.add_argument(
-        "--legacy-mirror",
-        action="store_true",
-        help="Also update the transitional crawler mirror (requires DATABASE_URL)",
-    )
     args = parser.parse_args()
-    asyncio.run(run_sync(dry_run=args.dry_run, legacy_mirror=args.legacy_mirror))
+    asyncio.run(run_sync(dry_run=args.dry_run))
 
 
 if __name__ == "__main__":

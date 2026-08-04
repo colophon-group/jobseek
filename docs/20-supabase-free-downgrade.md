@@ -106,6 +106,78 @@ therefore remains intentionally nullable. Migration 0084 installs the old-app
 compatibility trigger before its backfill and fails unless every required
 snapshot is complete and the outbound posting FK still exists.
 
+## Crawler runtime cutover (#6249)
+
+The crawler deployment boundary is staged without changing protected secret
+contracts. `.github/workflows/deploy-crawler-browser.yml` maps the existing
+provider-neutral `DATABASE_URL_UNPOOLED` secret into the remote process only as
+`WEB_DATABASE_URL`. `deploy.sh` writes that separately named value for explicit
+watchlist sync/count-refresh jobs and omits `DATABASE_URL` entirely.
+Deployment files arrive in `/home/deploy/incoming`; the active env and complete
+Compose deployment spec are snapshotted before activation. A failed rollout
+restores both before restarting the previous image, preserving the previous
+credential semantics rather than combining an old image with a new Compose
+allowlist. Rollback starts Compose with an empty process environment plus the
+restored env file, so the failed SSH process's `CRAWLER_IMAGE_TAG` and other
+inputs cannot override the old contract.
+
+Before the first rollout of this mechanism, explicitly capture the actual
+host-active Compose file while the old crawler deployment still owns it. Do
+this before merging or dispatching a change that can independently replace the
+shared Compose file:
+
+```bash
+install -m 0644 /home/deploy/docker-compose.yml \
+  /home/deploy/.crawler-active-docker-compose.yml
+sha256sum /home/deploy/.crawler-active-docker-compose.yml \
+  | awk '{print $1}' > /home/deploy/.crawler-active-docker-compose.sha256.tmp
+chmod 0644 /home/deploy/.crawler-active-docker-compose.sha256.tmp
+mv /home/deploy/.crawler-active-docker-compose.sha256.tmp \
+  /home/deploy/.crawler-active-docker-compose.sha256
+```
+
+The deploy does not infer first-rollout state from a Git revision: a skipped or
+failed prior deploy can leave the host behind Git. Missing or mismatched
+snapshot evidence fails closed before mutation. Every successful crawler
+deploy replaces both files for the next rollback. The deploy also fails closed
+before activation unless the installed reconciliation wrapper's content and
+completed-install digest marker exactly match the required Typesense-only
+wrapper contract.
+Once activation is armed, ordinary errors, shell exit, SSH hangup, and
+termination signals all run the same guarded rollback exactly once; the guard
+is disarmed only after service readiness and the durable Compose snapshot pass.
+
+Least privilege is enforced at each runtime surface:
+
+- long-running HTTP/browser workers, exporter, drain, and Alloy receive neither
+  database variable;
+- Alembic receives only `LOCAL_DATABASE_URL`, and Typesense schema setup
+  receives only its four Typesense settings;
+- deploy/CSV registry sync receives local Postgres, the separately named
+  web-owned watchlist credential, and Typesense settings; CSV sync builds a
+  mode-`0600` filtered env instead of passing the host file wholesale;
+- `crawler export` always passes no relational-mirror pool and advances only
+  `typesense:job_posting`;
+- the production CLI exposes no legacy sync selector, no Supabase
+  reconciliation target, and no relisted Supabase repair command; and
+- the host reconciler always passes `--target typesense`, copies no web/mirror
+  URL, and host metrics publish only the Typesense state row.
+
+After deploying this slice but before dropping `public.job_posting`, verify the
+new `/home/deploy/.env` has exactly one non-local database boundary named
+`WEB_DATABASE_URL`, no `DATABASE_URL` line, and that inspected long-running
+container environments contain neither. Do not print values while collecting
+evidence. Verify deploy and CSV logs show plain `crawler sync`, exporter logs
+show `exporter.typesense_enabled` plus `exporter.relational_mirror_disabled`,
+and reconciliation command/journal evidence contains `--target typesense`.
+
+Rollback-compatible Supabase library code remains temporarily in
+`exporter.py`, `sync.py`, `reconciliation.py`, `repair_relisted_cdc.py`,
+`bootstrap.py`, `db.py`, and the obsolete cursor/state/metric tests. It is not
+reachable from deployed normal commands. Remove it, the `database_url` setting,
+the Supabase reconciliation state row/schema allowances, and obsolete metrics
+after the rollback window and contract migration are complete.
+
 ## Free-plan guardrails
 
 Supabase's current platform documentation was rechecked on 2026-08-03. The

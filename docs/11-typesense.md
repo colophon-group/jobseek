@@ -101,14 +101,14 @@ for rotation and verification.
 
 - **Ancestor IDs**: Typesense `job_posting` documents store `location_ids` and `occupation_ids` as **ancestor-expanded arrays** (leaf ID + all parent/grandparent IDs + macro region IDs). This enables hierarchy-free filtering -- searching for "Germany" matches all cities in Germany without recursive joins.
 
-  **Design rule: Postgres stores leaf IDs only; the exporter expands to ancestors at indexing time.** Do NOT expand ancestors in the crawler processing pipeline (`_resolve_locations_sync`, `_resolve_locations`). Postgres `location_ids` and `location_types` must remain parallel arrays of the same length (Supabase enforces `chk_location_arrays_length`). Ancestor expansion adds extra IDs without matching type entries, breaking this constraint.
+  **Design rule: Postgres stores leaf IDs only; the exporter expands to ancestors at indexing time.** Do NOT expand ancestors in the crawler processing pipeline (`_resolve_locations_sync`, `_resolve_locations`). Postgres `location_ids` and `location_types` must remain parallel arrays of the same length. Ancestor expansion adds extra IDs without matching type entries, breaking this database invariant.
 
   **Where ancestor expansion happens (exporter only):**
   - `exporter.py` → `TaxonomyMaps.location_ancestors`: walks `location.parent_id` chain + `location_macro_member` (macro regions like EU, DACH). Populates `location_ids` on Typesense documents.
   - `exporter.py` → `TaxonomyMaps.occupation_ancestors`: walks `occupation.parent_id` chain. Populates `occupation_ids` on Typesense documents.
   - The backfill script (`typesense-backfill-local.py`) must use the same logic.
 
-  **Invariant**: `buildFilterString()` in the web app filters on `location_ids` and `occupation_ids` (plural array fields). If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin"). If ancestors are written to Postgres instead, the `location_ids`/`location_types` length constraint breaks and the Supabase exporter stalls.
+  **Invariant**: `buildFilterString()` in the web app filters on `location_ids` and `occupation_ids` (plural array fields). If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin"). If ancestors are written to Postgres instead, the `location_ids`/`location_types` length constraint breaks local writes.
 - **Sentinel values**: `experience_min_years = -1` for NULL (and legacy `experience_min = -1` during the integer-field compatibility window). `locales = ["_none"]` for jobs with no detected language.
 - **Experience precision**: Postgres stores `experience_min` / `experience_max` as decimal years (`NUMERIC(3,1)`), so sub-year requirements such as "6 months" index as `0.5`. Typesense filters use `experience_min_years` / `experience_max_years` float fields, while legacy integer `experience_min` / `experience_max` fields remain for backfill compatibility.
 - **Denormalized names**: Taxonomy names (location, occupation, seniority, technology) are stored directly on each job posting document for search and faceting without joins.
@@ -164,14 +164,9 @@ The `company` collection doubles as the source for the company detail page (see 
 
 ### Job Postings (CDC via exporter.py)
 
-The exporter supports two deployment modes:
-
-- **Typesense-only** (the Free-plan cutover target): leave `DATABASE_URL`
-  empty. The process opens no relational-mirror connection and owns only the
-  `typesense:job_posting` keyset cursor.
-- **Dual-write transition**: set `DATABASE_URL` to keep the legacy relational
-  mirror. Supabase and Typesense each have an independent `(updated_at, id)`
-  cursor.
+The production exporter is Typesense-only. `crawler export` opens no
+relational-mirror connection and owns only the `typesense:job_posting` keyset
+cursor, regardless of an ambient developer `DATABASE_URL`.
 
 On each tick:
 
@@ -179,16 +174,13 @@ On each tick:
    transaction start in one non-blocking query, using the earlier value as the
    commit-safe cutoff.
 2. SELECT changed postings strictly before the cutoff and after the Typesense
-   cursor (or the older eligible target cursor in dual-write mode).
+   cursor.
 3. Denormalize + expand ancestor IDs, upsert to Typesense, and advance only the
-   Typesense cursor. In dual-write mode, the relational-mirror upsert runs
-   concurrently and advances only its own cursor.
+   Typesense cursor.
 
 The Typesense document builder (`_build_typesense_docs`) expands `location_ids` and `occupation_ids` with all ancestor IDs using pre-loaded hierarchy maps (`TaxonomyMaps.location_ancestors`, `occupation_ancestors`). This means even legacy Postgres rows with leaf-only IDs produce correct hierarchy-filterable Typesense documents.
 
-In dual-write mode, one target failing stalls only its cursor. In
-Typesense-only mode, no Supabase cursor is loaded, written, or considered when
-selecting rows.
+No Supabase cursor is loaded, written, or considered when selecting rows.
 The exporter/operator fence is held across the mutable-row read, downstream
 upserts, and cursor save so an operator repair cannot race past the cursor. See
 [`03-crawler-architecture.md`](03-crawler-architecture.md#commit-safe-posting-cdc)
@@ -196,9 +188,8 @@ for the trigger contract, writer-floor delay alert, and deployment ordering.
 
 **Feature flag**: Typesense writes only happen when
 `TYPESENSE_OPERATIONS_KEY` is set (non-empty). Environments without Typesense
-can still run the dual-write transition mode, but the exporter requires at
-least one configured downstream. The env var must be passed to containers in
-`docker-compose.yml` (`x-common-env`).
+cannot run the production exporter. The env var must be passed to containers
+in `docker-compose.yml` (`x-common-env`).
 
 **Denormalization**: The exporter's `TaxonomyMaps` reads all lookup data from
 **local Postgres** (the source of truth). Company info, location names,
@@ -216,11 +207,9 @@ these documents. Includes:
 - `active_posting_count` and `has_active_postings` for each taxonomy entry
 - Taxonomy rename detection: if a name changes in CSV, affected job posting documents in Typesense are updated with the new denormalized name
 
-The default `crawler sync` does not open `DATABASE_URL`. During the transition,
-operators can pass `--legacy-mirror` to copy exact local identities to that
-database after the local commit; drift or an unavailable mirror fails closed
-before Redis and Typesense publication. Watchlist reconciliation remains a
-separate web-owned read through `WEB_DATABASE_URL`.
+`crawler sync` does not open `DATABASE_URL`, and the production CLI no longer
+exposes a mirror selector. Watchlist reconciliation remains a separate
+web-owned read through `WEB_DATABASE_URL`.
 
 ### Count Refresh + Watchlist Reconciliation
 
@@ -230,8 +219,9 @@ uv run crawler refresh-typesense
 
 - Refreshes `active_posting_count` / `has_active_postings` on all taxonomy and company collections
 - Reconciles the `watchlist` collection against the web-owned database selected
-  by `WEB_DATABASE_URL` (upserts missing, deletes stale). This boundary is
-  intentionally independent from the optional crawler mirror `DATABASE_URL`.
+  by `WEB_DATABASE_URL` (upserts missing, deletes stale). Only explicit
+  sync/count-refresh jobs receive this credential; long-running crawler
+  services receive no web-owned database URL.
 
 **When it runs in production** (two paths, both version-controlled):
 
@@ -328,14 +318,8 @@ Three data tiers, three read paths:
 | Tier | Role | Reads |
 |------|------|-------|
 | Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` count aggregations, watchlist active-posting counts (via crawler) |
-| Supabase Postgres | Transitional mirror of crawler data; **only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, `saved_job`, ...) | Auth, watchlist metadata/mutations, saved-job snapshots, watchlist company-pair lookups, and deferred company location/taxonomy reads pending removal |
+| Web-owned Postgres | **Only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, `saved_job`, ...) | Auth, watchlist mutations, saved-job snapshots, and watchlist company-pair lookups |
 | Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads, browse-all modals, watchlist company search/discovery/posting lists/counts, company autocomplete/detail, public site stats, similar-company strip |
-
-**Deployment blocker:** `apps/web/src/lib/services/company.ts` still contains the
-deferred company location/taxonomy aggregations that read the Supabase
-`job_posting` mirror. The production contract-drop in #6249 must not run until
-that separate cutover lands and its deployed-read guard passes. This watchlist
-slice does not change or guard `company.ts`.
 
 Aggregation queries against `job_posting` are deliberately kept on local Postgres, not Supabase, to keep Supabase compute reserved for user-facing CRUD. Notable examples:
 
