@@ -235,12 +235,19 @@ class GitHubSupportIssueClient:
             raise GitHubCreateOutcomeUnknown(
                 "GitHub create committed but returned a non-object response"
             )
-        try:
-            created = CreatedIssue(number=int(payload["number"]), url=str(payload["html_url"]))
-        except (KeyError, TypeError, ValueError) as exc:
+        number = payload.get("number")
+        url = payload.get("html_url")
+        if (
+            not isinstance(number, int)
+            or isinstance(number, bool)
+            or number <= 0
+            or not isinstance(url, str)
+            or not url.strip()
+        ):
             raise GitHubCreateOutcomeUnknown(
                 "GitHub create committed but returned an invalid issue shape"
-            ) from exc
+            )
+        created = CreatedIssue(number=number, url=url)
         await asyncio.sleep(max(1.0, self.pace_seconds))
         return created
 

@@ -689,7 +689,16 @@ async def test_ambiguous_post_502_reconciles_marker_before_retry(tmp_path: Path)
 
 @pytest.mark.parametrize(
     "content",
-    [b"not-json", b"[]", b'{"number": 1}'],
+    [
+        b"not-json",
+        b"[]",
+        b'{"number": 1}',
+        b'{"number": 1, "html_url": null}',
+        b'{"number": true, "html_url": "https://github.com/example/repo/issues/1"}',
+        b'{"number": 1.9, "html_url": "https://github.com/example/repo/issues/1"}',
+        b'{"number": 1, "html_url": {}}',
+        b'{"number": 1, "html_url": ""}',
+    ],
 )
 @pytest.mark.asyncio
 async def test_malformed_successful_create_is_an_unknown_outcome(content: bytes) -> None:
