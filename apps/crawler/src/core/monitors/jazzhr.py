@@ -21,6 +21,11 @@ from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_han
 from src.core.monitors.dom import _extract_links_static, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
 from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
+from src.shared.jazzhr import (
+    jazzhr_listing_url,
+    jazzhr_tenant_from_url,
+    resolve_jazzhr_tenant,
+)
 from src.shared.tdm import TDMReservedError
 from src.shared.truncation import truncated_url_result
 
@@ -29,11 +34,6 @@ log = structlog.get_logger()
 MAX_JOBS = 50_000
 MAX_HTML_CHARS = 5_000_000
 
-_TENANT_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
-_DIRECT_PATH_RE = re.compile(
-    r"^(?:/apply(?:/jobs(?:/details/[A-Za-z0-9_-]+)?)?)?/?$",
-    re.IGNORECASE,
-)
 _PAGE_PATTERNS = [
     re.compile(
         r"https?://([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\.applytojob\.com"
@@ -46,36 +46,9 @@ _LISTING_MARKER = 'id="job_listings_wrapper"'
 _GONE_STATUSES = frozenset({404, 410})
 
 
-def _normalize_tenant(value: object) -> str | None:
-    if not isinstance(value, str):
-        return None
-    tenant = value.strip().lower()
-    return tenant if _TENANT_RE.fullmatch(tenant) else None
-
-
-def _tenant_from_url(url: str) -> str | None:
-    try:
-        parsed = urlparse(url)
-        port = parsed.port
-    except ValueError:
-        return None
-    host = (parsed.hostname or "").lower()
-    suffix = ".applytojob.com"
-    if (
-        parsed.scheme != "https"
-        or not host.endswith(suffix)
-        or host.count(".") != 2
-        or parsed.username is not None
-        or parsed.password is not None
-        or port not in {None, 443}
-        or _DIRECT_PATH_RE.fullmatch(parsed.path) is None
-    ):
-        return None
-    return _normalize_tenant(host.removesuffix(suffix))
-
-
-def _listing_url(tenant: str) -> str:
-    return f"https://{tenant}.applytojob.com/apply/jobs"
+# Compatibility alias for internal callers and tests that predate the shared
+# identity helper.
+_tenant_from_url = jazzhr_tenant_from_url
 
 
 def _job_matcher(tenant: str) -> re.Pattern[str]:
@@ -110,7 +83,7 @@ def _canonical_job_url(url: str, tenant: str) -> str | None:
 
 
 async def _fetch_listing(tenant: str, client: httpx.AsyncClient) -> str:
-    url = _listing_url(tenant)
+    url = jazzhr_listing_url(tenant)
     try:
         page = await fetch_text_page_with_retry(
             client,
@@ -124,7 +97,11 @@ async def _fetch_listing(tenant: str, client: httpx.AsyncClient) -> str:
         )
     except PaginationFetchError as exc:
         if exc.last_status in _GONE_STATUSES:
-            raise BoardGoneError("JazzHR board no longer exists", url=url) from exc
+            raise BoardGoneError(
+                "JazzHR board no longer exists",
+                url=url,
+                status_code=exc.last_status,
+            ) from exc
         raise
     if page is None:  # Strict status handling above makes this unreachable.
         raise RuntimeError(f"JazzHR listing fetch returned no page for {tenant!r}")
@@ -135,7 +112,7 @@ async def _fetch_listing(tenant: str, client: httpx.AsyncClient) -> str:
 
 
 def _parse_listing(page: str, tenant: str) -> set[str]:
-    raw_urls = _extract_links_static(page, _listing_url(tenant), _job_matcher(tenant))
+    raw_urls = _extract_links_static(page, jazzhr_listing_url(tenant), _job_matcher(tenant))
     return {
         canonical for url in raw_urls if (canonical := _canonical_job_url(url, tenant)) is not None
     }
@@ -145,7 +122,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     """Discover canonical JazzHR detail URLs from one static listing."""
     _ = pw
     metadata = board.get("metadata") or {}
-    tenant = _normalize_tenant(metadata.get("tenant")) or _tenant_from_url(board["board_url"])
+    tenant = resolve_jazzhr_tenant(board["board_url"], metadata)
     if tenant is None:
         raise ValueError(
             f"Cannot derive JazzHR tenant from board URL {board['board_url']!r} "
@@ -220,7 +197,7 @@ async def can_handle(
         url,
         client,
         monitor_name="jazzhr",
-        token_from_url=_tenant_from_url,
+        token_from_url=jazzhr_tenant_from_url,
         page_patterns=_PAGE_PATTERNS,
         ignore_tokens=frozenset(),
         fetch_job_count=_fetch_job_count,
@@ -240,15 +217,15 @@ async def save_raw(
     metadata: dict,
     client: httpx.AsyncClient,
 ) -> None:
-    tenant = _normalize_tenant(metadata.get("tenant")) or _tenant_from_url(board_url)
+    tenant = resolve_jazzhr_tenant(board_url, metadata)
     if tenant is None:
         return
     await save_text_response(
         artifact_dir,
         client,
-        _listing_url(tenant),
+        jazzhr_listing_url(tenant),
         filename="jazzhr-listing.html",
-        follow_redirects=True,
+        follow_redirects=False,
     )
 
 

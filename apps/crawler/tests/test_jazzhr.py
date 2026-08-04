@@ -128,6 +128,39 @@ class TestMonitor:
         assert result == set()
         assert seen == [LISTING_URL]
 
+    async def test_conflicting_canonical_and_configured_tenants_fail_closed(self):
+        requests: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(str(request.url))
+            return httpx.Response(200, text=_listing(), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="does not match"):
+                await discover(
+                    {"board_url": LISTING_URL, "metadata": {"tenant": "other"}},
+                    client,
+                )
+
+        assert requests == []
+
+    @pytest.mark.parametrize("invalid_tenant", [None, "", 123])
+    async def test_explicit_invalid_configured_tenant_fails_closed(self, invalid_tenant: object):
+        requests: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(str(request.url))
+            return httpx.Response(200, text=_listing(), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="tenant is invalid"):
+                await discover(
+                    {"board_url": LISTING_URL, "metadata": {"tenant": invalid_tenant}},
+                    client,
+                )
+
+        assert requests == []
+
     async def test_empty_listing_is_authoritative(self):
         transport = httpx.MockTransport(
             lambda request: httpx.Response(200, text=_listing(), request=request)
@@ -139,8 +172,10 @@ class TestMonitor:
     async def test_terminal_status_is_board_gone(self, status: int):
         transport = httpx.MockTransport(lambda request: httpx.Response(status, request=request))
         async with httpx.AsyncClient(transport=transport) as client:
-            with pytest.raises(BoardGoneError):
+            with pytest.raises(BoardGoneError) as exc_info:
                 await discover({"board_url": LISTING_URL}, client)
+        assert exc_info.value.status_code == status
+        assert exc_info.value.url == LISTING_URL
 
     @pytest.mark.parametrize("status", [204, 302, 400])
     async def test_unexpected_terminal_status_is_not_board_gone(self, status: int):
