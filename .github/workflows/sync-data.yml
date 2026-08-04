@@ -60,4 +60,4 @@ jobs:
               --network host \
               -v /home/deploy/csv-overlay:/app/data \
               "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
-              uv run --no-sync crawler sync
+              uv run --no-sync crawler sync --legacy-mirror

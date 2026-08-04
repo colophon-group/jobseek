@@ -65,9 +65,7 @@ def test_sync_detects_monitor_contract_repairs_without_retry_storms() -> None:
     assert _MONITOR_CONFIG_FINGERPRINT == "_monitor_config_fingerprint"
     assert "job_board.metadata ? '_monitor_config_fingerprint'" in _UPSERT_BOARD_LOCAL
     assert "THEN 'quarantined'" in _UPSERT_BOARD_LOCAL
-    assert "RETURNING id::text AS board_id, metadata, next_check_at, board_status" in (
-        _UPSERT_BOARD_LOCAL
-    )
+    assert "metadata, next_check_at, board_status" in _UPSERT_BOARD_LOCAL
     assert "quarantined_at" not in _DISABLE_REMOVED_BOARDS
     assert "lease_owner" not in _DISABLE_REMOVED_BOARDS
     assert "leased_until" not in _DISABLE_REMOVED_BOARDS

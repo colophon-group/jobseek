@@ -500,7 +500,13 @@ exists when the new exporter is running.
 ## Data Flow
 
 ```
-CSV -> sync.py -> Local Postgres + Redis queues + legacy Supabase mirror (transition)
+CSV -> sync.py -> Local Postgres transaction (authoritative IDs) -> COMMIT
+                       |                                      |
+                       |                         --legacy-mirror only
+                       |                                      v
+                       |                         Supabase mirror transaction
+                       v
+                 Redis queues -> Typesense taxonomy/company collections
                        |
 Workers (pipeline.py) claim from Redis -> process board/scrape -> write to Local Postgres
                        | (new/changed jobs)
@@ -530,7 +536,7 @@ apps/crawler/src/
 ├── redis_queue.py           # Lua-backed claim/enqueue/reschedule
 ├── lua/                     # claim_work.lua, enqueue_task.lua, reschedule_task.lua
 ├── exporter.py              # CDC: local Postgres -> Typesense + optional relational mirror
-├── sync.py                  # CSV -> local Postgres + Redis + transitional mirror data
+├── sync.py                  # Local-first CSV sync + deferred Redis/Typesense publication
 ├── bootstrap.py             # One-time: Supabase -> local Postgres copy
 ├── cli.py                   # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py                # Settings: discovery_concurrency, monitor_concurrency, etc.
@@ -555,7 +561,8 @@ crawler run              # HTTP worker (claims from simple queues)
 crawler run-browser      # Browser worker (claims from browser queues)
 crawler export           # Typesense CDC; also writes mirror when DATABASE_URL is set
 crawler drain            # R2 description uploader
-crawler sync             # CSV -> DB + Redis
+crawler sync             # CSV -> local DB, then Redis + Typesense
+crawler sync --legacy-mirror  # Also copy exact local IDs to DATABASE_URL
 crawler reconcile        # Read-only enabled-target reconciliation slice
 crawler reconcile --repair --max-partitions 16  # Resume verified repairs
 crawler board <slug>     # Process single board (debug)
@@ -565,13 +572,34 @@ crawler board <slug>     # Process single board (debug)
 
 ```bash
 # docker-compose.yml defines: redis, worker (x3), browser, exporter, drain, alloy
-# deploy.sh: writes rollback-backed .env, pulls the requested tag, stops processors, migrates Postgres, patches Typesense, runs crawler sync, starts + gates services
+# deploy.sh: writes rollback-backed .env, pulls the requested tag, stops processors, migrates Postgres, patches Typesense, runs crawler sync --legacy-mirror during the transition, starts + gates services
 # CI: .github/workflows/deploy-crawler-browser.yml builds versioned slim + full images, then promotes them to latest after deploy succeeds
 ```
 
 Docker images:
 - `crawler-slim` (~200MB): Python + httpx only (workers, exporter, drain)
 - `crawler-full` (~600MB): Python + httpx + Playwright + Chromium (browser worker)
+
+### Registry sync ordering and transition mode
+
+`crawler sync` treats local Postgres as the only ID authority. Lookup tables,
+companies, descriptions, and boards are written in one local transaction using
+natural-key upserts that preserve existing IDs. Redis scheduling and Typesense
+publication start only after that transaction commits. A local failure therefore
+cannot publish queue work or search documents for uncommitted registry state.
+
+The default command never opens `DATABASE_URL`, even when the variable happens
+to be present. The temporary `--legacy-mirror` flag opts into a post-commit copy
+of the local identities. It requires `DATABASE_URL`, verifies matching IDs and
+natural keys before writing, and performs the mirror in one transaction. Identity
+drift or mirror unavailability fails the command before Redis or Typesense are
+updated; it is never silently skipped. Production `deploy.sh` passes this flag
+explicitly until the mirror cutover is complete. Removing that invocation is a
+separate rollout step.
+
+Crawler-owned Typesense taxonomy and company documents are read from local
+Postgres. Only watchlist reconciliation crosses the separate web-data boundary,
+using `WEB_DATABASE_URL`; it is not coupled to the legacy mirror credential.
 
 ## Performance
 

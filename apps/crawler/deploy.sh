@@ -476,7 +476,7 @@ docker run --rm --env-file "$ENV_FILE" --network host \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-sync \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
-  uv run --no-sync crawler sync
+  uv run --no-sync crawler sync --legacy-mirror
 
 # ── Start the full stack on the freshly seeded Redis state ───────────
 docker compose up -d --remove-orphans

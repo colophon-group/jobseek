@@ -342,23 +342,23 @@ The `descriptions` table in local Postgres serves as the upload queue:
 src/exporter.py    # CDC: local Postgres -> Supabase
 ```
 
-The exporter is the only steady-state component that writes posting rows to
-Supabase. It queries local Postgres with a commit-safe `(updated_at, id)`
-cursor and batch COPYs rows to Supabase. The separately scheduled reconciler
-is the sole exception: it performs bounded, fenced, verified repairs from a
-locked local snapshot.
+The exporter queries local Postgres with a commit-safe `(updated_at, id)`
+cursor and publishes posting documents to Typesense. While `DATABASE_URL` is
+configured it also maintains the legacy relational mirror with an independent
+cursor. The separately scheduled reconciler performs bounded, fenced,
+verified repairs from a locked local snapshot.
 
 ### Export Loop
 
 - Polls every 1-2 seconds
 - Batch size: 2000 rows per tick
 - Throughput: ~2100 rows/sec sustained
-- Latency: ~1.5s average (change to visible on Supabase)
+- Latency: ~1.5s average (change to visible downstream)
 
 ### What Gets Exported
 
 - `job_posting`: all display columns (titles, locales, locations, employment type, salary, enrichment, etc.)
-- Board status is NOT exported (Supabase `job_board` is populated by `sync.py` only)
+- Board status is not exported; `job_board` registry rows come from `sync.py`.
 
 ### Reconciliation
 
@@ -544,8 +544,9 @@ Local Postgres additionally has: `missing_count`, scrape scheduling columns, and
 
 ```
 data/companies.csv --+
-data/boards.csv    --+  sync.py  -->  Local Postgres + Supabase + Redis queues
-                     +----------+
+data/boards.csv    --+  sync.py  -->  Local Postgres transaction --> Redis + Typesense
+                     +----------+                         |
+                                                   --legacy-mirror--> relational mirror
 
 Workers claim from Redis tiered queues
   |

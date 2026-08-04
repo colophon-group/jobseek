@@ -208,10 +208,19 @@ local; there is no Supabase fallback. All ancestor chain computation
 
 ### Taxonomy Collections (via sync.py)
 
-After CSV sync, `sync.py` populates taxonomy collections (location, occupation, seniority, technology, company) in Typesense. Includes:
+After the authoritative local Postgres transaction commits, `sync.py` reads
+local data to populate the location, occupation, seniority, technology, and
+company collections. It does not read the transitional Supabase mirror for
+these documents. Includes:
 
 - `active_posting_count` and `has_active_postings` for each taxonomy entry
 - Taxonomy rename detection: if a name changes in CSV, affected job posting documents in Typesense are updated with the new denormalized name
+
+The default `crawler sync` does not open `DATABASE_URL`. During the transition,
+operators can pass `--legacy-mirror` to copy exact local identities to that
+database after the local commit; drift or an unavailable mirror fails closed
+before Redis and Typesense publication. Watchlist reconciliation remains a
+separate web-owned read through `WEB_DATABASE_URL`.
 
 ### Count Refresh + Watchlist Reconciliation
 

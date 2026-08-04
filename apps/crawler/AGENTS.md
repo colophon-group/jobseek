@@ -13,7 +13,9 @@ Typesense and an optional legacy relational mirror:
    `DATABASE_URL` temporarily enables Supabase batch COPY with an independent
    cursor
 4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
-5. **Typesense Sync** (`src/sync.py`) — taxonomy + company collections populated after CSV sync; rename detection updates denormalized names on postings
+5. **Registry Sync** (`src/sync.py`) — commits CSV state to authoritative local
+   Postgres first, then updates Redis and Typesense; `--legacy-mirror` explicitly
+   enables the transitional Supabase mirror
 
 See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
 See [docs/11-typesense.md](../../docs/11-typesense.md) for Typesense deployment details.
@@ -71,7 +73,7 @@ src/
 ├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
 ├── exporter.py            # Commit-safe CDC with optional relational-mirror cursor
 ├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
-├── sync.py                # CSV -> local Postgres + Supabase + Redis + Typesense taxonomies
+├── sync.py                # CSV -> local Postgres, then optional mirror + Redis + Typesense
 ├── bootstrap.py           # One-time: Supabase -> local Postgres copy
 ├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py              # Settings (pydantic-settings)
@@ -166,7 +168,8 @@ uv run crawler run                     # HTTP worker (claims from simple queues)
 uv run crawler run-browser             # Browser worker (claims from browser queues)
 uv run crawler export                  # Typesense CDC (+ mirror when DATABASE_URL is set)
 uv run crawler drain                   # R2 description uploader
-uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis + Typesense
+uv run crawler sync                    # CSV -> local Postgres, then Redis + Typesense
+uv run crawler sync --legacy-mirror    # Also mirror exact local IDs to DATABASE_URL (transition only)
 uv run crawler reconcile               # Read-only enabled-target reconciliation slice
 uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs (host timer uses this)
 uv run crawler reconcile --repair --full --target typesense  # Operator full remaining target cycle
@@ -738,7 +741,7 @@ ssh ... 'docker rm -f worker-1 && docker run -d --name worker-1 ...'
 
 # 4. Re-sync if CSV data changed
 ssh ... 'docker run --rm --env-file /home/deploy/.env --network host \
-  crawler-slim:latest uv run --no-sync crawler sync'
+  crawler-slim:latest uv run --no-sync crawler sync --legacy-mirror'
 ```
 
 ## Code Conventions
