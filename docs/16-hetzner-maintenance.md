@@ -345,7 +345,7 @@ docker stats --no-stream postgres
 Healthy state has `configured_bytes=1073741824`, a 1 GiB mounted capacity,
 no OOM flag, and adequate free capacity under normal parallel load. The host
 sampler publishes configured/capacity/used/available byte gauges. The
-`PostgreSQLSharedMemoryPressure` rule pages and routes to the daily Codex error
+`PostgreSQLSharedMemoryPressure` rule fires and routes to the daily Codex error
 review if the configured contract regresses or available capacity remains
 below 15% for three minutes.
 
@@ -579,9 +579,9 @@ the crawler, PostgreSQL, and Typesense hosts sequentially; then polls Grafana
 until fresh sampler, probe, container, backup, PostgreSQL-readiness,
 Typesense-readiness, and Codex daily-review status series are present and
 healthy for every expected role. Only after that ingestion gate passes does it
-transactionally sync the Grafana-managed contact point, policy, bridge and
-deadman rules, followed by the six Mimir rule groups. This catches a healthy
-local sampler whose collector
+remove the retired Jobseek notification routes, contact point, bridge,
+deadman, and synthetic test rule, followed by the six Mimir rule groups. This
+catches a healthy local sampler whose collector
 silently omits the textfile directory. Environment-scoped host variables are
 resolved inside runtime steps after the protected `production` environment is
 attached. The installer snapshots the prior binary, configuration, secret env,
@@ -618,10 +618,9 @@ disk/inode, sampler, backup, PostgreSQL, Typesense/tunnel, and reboot alerts.
 It also routes failed, stale, unresolved, and stuck cross-store reconciliation
 state from PostgreSQL-host metrics; reconciliation state does not depend on an
 ephemeral crawler process exposing Prometheus.
-The independent notification route is Grafana Cloud email. The daily Hetzner
-Codex error-review issue workflow remains a secondary, deduplicated context
-route; its own failure and freshness are exported by the crawler-host sampler
-and page independently.
+Production email paging is disabled. The daily Hetzner Codex error-review
+issue workflow remains the deduplicated context route; its own failure and
+freshness are exported by the crawler-host sampler and remain visible in Mimir.
 
 Check one host without printing configuration or credentials:
 
@@ -650,65 +649,30 @@ backup, PostgreSQL archive/readiness failure, or Typesense/tunnel failure as an
 incident. Inspect evidence first; this telemetry path does not authorize an
 automatic workload restart.
 
-### Independent production paging
+### Production paging is disabled
 
-Grafana Cloud Mimir evaluates the repository-owned service rules. A
-Grafana-managed bridge independently queries the hosted Prometheus `ALERTS`
-series for firing `page=production` instances, and Grafana's built-in
-Alertmanager sends email without depending on the crawler, PostgreSQL,
-Typesense, or Codex runner. A bridge query failure has `execErrState=Alerting`,
-so loss of the Mimir query path pages rather than failing open. Production
-configuration is owned by
+Grafana Cloud Mimir continues to evaluate the repository-owned service rules,
+but Jobseek does not install an email contact, notification route, bridge,
+deadman, or synthetic paging test. The former scheduled/manual **Test
+Production Paging** workflow is removed and manually disabled in GitHub.
+
 [`scripts/sync-grafana-alertmanager.py`](../scripts/sync-grafana-alertmanager.py)
-and deployed only after host metric ingestion is verified. The sync is
-transactional: it preserves non-Jobseek policies and contact points, snapshots
-the owned folder and rules, verifies every owned resource, and restores the
-prior state on failure. Production secrets are `GRAFANA_URL`,
-`GRAFANA_API_KEY`, and `GRAFANA_ALERT_EMAIL`; never place their values in the
-repository, workflow logs, issue comments, or command arguments visible in
-process listings.
+is now a removal-only utility. It first strips only routes owned by the
+`jobseek-production-email` receiver while preserving unrelated policy, then
+deletes the Jobseek bridge, deadman, cancelled-test rule, and contact point.
+Every observability deployment runs it with `--disable` before syncing Mimir
+rules, so a stale production resource is removed rather than reactivated. The
+utility has no supported activation mode.
 
-Every `severity=critical` source rule also has `page=production` and becomes
-firing after at most three minutes. The bridge evaluates at least once per
-minute and the Alertmanager waits 30 seconds to group related instances, which
-keeps the normal end-to-end page under five minutes. It sends recovery
-notifications and repeats an unresolved critical notification every 30
-minutes. This repeat is the escalation path when an incident remains
-unacknowledged or unresolved; the recipient must not rely on the daily GitHub
-review for urgent delivery.
-
-The Grafana-managed `PagingRouteDeadman` intentionally remains firing and uses
-a dedicated route that repeats once per 24 hours. The expected daily subject
-identifies the Jobseek production deadman. Treat absence for 36 hours as a
-paging incident:
-
-1. Open Grafana Alerting, select the built-in Grafana Alertmanager, and
-   inspect contact-point delivery status plus the active deadman alert.
-2. Check the latest **Test Production Paging** workflow and dispatch it once
-   manually. The workflow creates a uniquely labelled, five-minute
-   auto-expiring Grafana-managed rule, verifies it becomes active, holds it
-   past the 30-second group wait, changes it to `vector(0)`, verifies recovery,
-   and deletes it. It runs every Monday as a scheduled end-to-end exercise.
-3. If Grafana returns 401/403, rotate the service-account API key and update
-   `GRAFANA_API_KEY` in the protected production environment. If delivery
-   fails with valid credentials, repair the email contact point before
-   silencing any alert.
-4. Confirm both the forced firing and resolved emails arrive. A successful
-   API/workflow result without receiver delivery is still a failed test.
-
-The repository owner receiving `GRAFANA_ALERT_EMAIL` is the initial incident
-owner. The first human to see a non-deadman critical page acknowledges it by
-opening or updating the deduplicated GitHub incident with an UTC timestamp,
-their owner name, and a next-update time. A silence is not acknowledgment; use
-one only for a bounded, documented maintenance window. Recovery requires the
-resolved email, no firing critical instance in Grafana, the service-specific
-runbook checks, and durable evidence in the incident before closure.
+Do not add a paging schedule, dispatch workflow, contact, route, or activation
+command without an explicit new operator decision. Continue using Grafana for
+rule state and the deduplicated daily GitHub error-review routine for delivery.
 
 The daily error-review service records an atomic status document before and
 after every attempt. The host sampler exports last attempt, last success,
 success state, and in-progress state without exposing result text. Failure,
 36-hour success staleness, and a run exceeding three hours are independent
-critical pages. If these fire, inspect:
+critical alerts. If these fire, inspect:
 
 ```bash
 systemctl status jobseek-codex-daily-error-review.service --no-pager
@@ -718,9 +682,8 @@ jq '{last_attempt_unixtime,last_success_unixtime,last_attempt_success,run_in_pro
   /srv/jobseek-codex/state/error-review-status.json
 ```
 
-Do not disable Grafana paging while repairing the Codex routine. After repair,
-run the service once, require a fresh successful status, and allow the alert to
-resolve normally.
+After repairing the Codex routine, run the service once and require a fresh
+successful status so its Mimir alert state resolves normally.
 
 ### Telemetry delivery budgets
 
@@ -1040,7 +1003,7 @@ The PostgreSQL host sampler checks the invariant every minute:
 - `jobseek_crawler_phantom_active_postings`
 - `jobseek_crawler_phantom_active_oldest_seconds`
 
-`CrawlerPhantomActivePostings` pages after 15 minutes of nonzero drift. After
+`CrawlerPhantomActivePostings` fires after 15 minutes of nonzero drift. After
 a repair, require the local count to be zero, wait for the exporter cursor to
 pass the repair timestamps, and compare exact active posting IDs in local
 PostgreSQL and Typesense for every affected company. Do not clear the alert or

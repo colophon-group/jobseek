@@ -1502,8 +1502,8 @@ groups:
           page: production
         annotations:
           summary: "The daily Codex error review failed"
-          description: "The crawler-host routine completed unsuccessfully. Independent paging remains active; inspect the unit journal and preserve its redacted evidence bundle."
-          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#independent-production-paging
+          description: "The crawler-host routine completed unsuccessfully. Production paging is disabled; inspect the unit journal and preserve its redacted evidence bundle."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#production-paging-is-disabled
 
       - alert: CodexDailyErrorReviewStale
         expr: |
@@ -1519,8 +1519,8 @@ groups:
           page: production
         annotations:
           summary: "The daily Codex error review has no fresh success"
-          description: "No successful daily review has completed within 36 hours. Grafana Cloud paging is independent of the routine and must remain the primary urgent handoff."
-          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#independent-production-paging
+          description: "No successful daily review has completed within 36 hours. Production paging is disabled; restore the deduplicated GitHub issue delivery routine."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#production-paging-is-disabled
 
       - alert: CodexDailyErrorReviewRunStuck
         expr: |
@@ -1536,5 +1536,5 @@ groups:
           page: production
         annotations:
           summary: "The daily Codex error review is stuck"
-          description: "The routine has remained in progress beyond its normal runtime budget. Inspect lock ownership and the unit journal without disabling independent paging."
-          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#independent-production-paging
+          description: "The routine has remained in progress beyond its normal runtime budget. Production paging is disabled; inspect lock ownership and the unit journal."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#production-paging-is-disabled

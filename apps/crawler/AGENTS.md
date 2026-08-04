@@ -609,9 +609,11 @@ PostgreSQL readiness/archive/connections, Typesense/tunnel health, and pending
 reboots. Every alert must carry a repository runbook plus
 `owner=codex-error-review` and `route=codex-daily`. The daily Hetzner Codex
 review owns deduplicated GitHub issue delivery. Every critical alert must also
-carry `page=production` and a pending duration of at most three minutes. A
-Grafana-managed bridge queries the Mimir `ALERTS` series and the built-in
-Grafana Alertmanager owns independent email paging, recovery, and repeats.
+carry `page=production` and a pending duration of at most three minutes.
+Production email paging is disabled: the observability deployment removes the
+Jobseek contact, notification routes, bridge/deadman rules, and synthetic test
+rule before syncing Mimir rules. The former scheduled paging workflow is not
+installed, and the paging utility has no activation CLI mode.
 `ExporterStale` must retain `instance="exporter"` because the shared metrics
 module exposes a default-zero gauge from other crawler endpoints.
 
@@ -620,10 +622,10 @@ module exposes a default-zero gauge from other crawler endpoints.
 cd apps/crawler
 uv run python ../../scripts/sync-grafana-rules.py --dry-run
 uv run python ../../scripts/sync-grafana-alertmanager.py \
-  --dry-run --email operator@example.com
+  --dry-run --url https://grafana.example.com --api-key test-only
 
-# CI/CD uses the same client without --dry-run. It snapshots the old group,
-# verifies the exact active rule set, and rolls back on failure.
+# Production deploys run the paging utility only with --disable, then sync and
+# verify the Mimir rules. There is no supported paging activation command.
 ```
 
 The `RedisMemoryPressure` alert depends on the `redis_exporter` block
@@ -712,15 +714,13 @@ ignored `.env.local` (`GRAFANA_*` vars); production copies are protected
 deployment secrets. Prometheus and Loki have **different user IDs**
 (`GRAFANA_USER_ID` for Prometheus; Loki has its own instance ID).
 
-Critical alerts also route through the Grafana-managed bridge and built-in
-Alertmanager to the protected production email receiver. Preserve
-`page=production`, a pending duration of at most three minutes,
-`route=codex-daily`, recovery notifications, the 30-minute unresolved repeat,
-the daily deadman, and the scheduled synthetic paging test. The Grafana URL,
-service-account API key, and recipient address belong only in ignored local
-env files or protected production secrets. Operational acknowledgment and
-recovery are defined in
-`docs/16-hetzner-maintenance.md#independent-production-paging`.
+Production paging is disabled. The observability deployment removes the
+retired Jobseek notification routes, email contact, bridge/deadman rules, and
+synthetic test rule on every run. Do not add a paging schedule, contact,
+route, test, or activation command without an explicit new operator decision.
+Rule state remains visible in Grafana; the daily Codex error-review workflow
+owns deduplicated issue delivery. See
+`docs/16-hetzner-maintenance.md#production-paging-is-disabled`.
 
 ### Deploying Code Changes
 
