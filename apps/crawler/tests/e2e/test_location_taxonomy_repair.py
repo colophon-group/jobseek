@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import os
 import uuid
 
@@ -15,6 +16,35 @@ pytestmark = pytest.mark.skipif(
     not REQUIRE_POSTGRES_E2E,
     reason="set REQUIRE_POSTGRES_E2E=true against an isolated migrated PostgreSQL",
 )
+
+
+async def test_migration_guards_future_blanks_without_scanning_historical_rows() -> None:
+    connection = await asyncpg.connect(os.environ["LOCAL_DATABASE_URL"])
+    migration = importlib.import_module("src.migrations.versions.0017_guard_location_slug")
+    try:
+        assert await connection.fetchval("SELECT to_regclass('public.location')") is None
+        await connection.execute(
+            "CREATE TABLE public.location (id INTEGER PRIMARY KEY, slug TEXT, lat REAL, lng REAL)"
+        )
+        await connection.execute(
+            "INSERT INTO public.location (id, slug, lat, lng) VALUES (1, '', NULL, NULL)"
+        )
+
+        await connection.execute(migration._ADD_NONBLANK_LOCATION_SLUG_GUARD)
+
+        assert await connection.fetchval("SELECT count(*) FROM public.location") == 1
+        assert not await connection.fetchval(
+            "SELECT convalidated FROM pg_constraint "
+            "WHERE conrelid = 'public.location'::regclass "
+            "AND conname = 'chk_location_slug_nonblank'"
+        )
+        with pytest.raises(asyncpg.CheckViolationError):
+            await connection.execute(
+                "INSERT INTO public.location (id, slug, lat, lng) VALUES (2, ' ', NULL, NULL)"
+            )
+    finally:
+        await connection.execute("DROP TABLE IF EXISTS public.location")
+        await connection.close()
 
 
 async def _pools() -> tuple[asyncpg.Connection, asyncpg.Pool, asyncpg.Pool, str, str]:
