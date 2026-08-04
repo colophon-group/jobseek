@@ -10,12 +10,12 @@ from typing import Any, Literal, Protocol
 
 import httpx
 
+from src.ats_inventory.constants import ATS_INVENTORY_LABEL as ATS_INVENTORY_LABEL
 from src.ats_inventory.models import InventorySnapshot
 
 _MARKER_RE = re.compile(r"<!-- ats-inventory-support:family=([a-z0-9][a-z0-9_]{0,63}) -->")
 _API_VERSION = "2022-11-28"
 _RATE_LIMIT_RESERVE = 100
-ATS_INVENTORY_LABEL = "source:ats-inventory"
 
 
 class GitHubError(RuntimeError):

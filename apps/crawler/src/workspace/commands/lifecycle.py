@@ -128,6 +128,7 @@ def new(
     automatically on retry.
     """
     local = is_local_mode()
+    inventory_seed = None
 
     # Ensure we have a repo clone with latest main when running in pip-installed mode
     if not local:
@@ -193,6 +194,31 @@ def new(
             out.die("GitHub CLI not authenticated. Run: gh auth login")
         out.info("github", "gh authenticated")
         out.info("workspace", f"Slug {slug!r} is valid")
+
+        # Inventory-generated issues carry redundant, content-addressed
+        # evidence.  Parse it here (after auth, before state creation) so
+        # normal human requests remain byte-for-byte on the established path.
+        if issue and not reconfig:
+            from src.workspace.ats_seed import (
+                InventorySeedInvalid,
+                issue_has_inventory_label,
+                parse_inventory_seed,
+            )
+
+            try:
+                issue_data = git.fetch_issue(issue)
+                if issue_has_inventory_label(issue_data):
+                    inventory_seed = parse_inventory_seed(str(issue_data.get("body") or ""))
+            except InventorySeedInvalid as exc:
+                out.warn(
+                    "inventory",
+                    f"Ignoring invalid ATS inventory seed ({exc}); using normal discovery",
+                )
+            except Exception as exc:
+                out.warn(
+                    "inventory",
+                    f"Could not load ATS inventory seed ({exc}); using normal discovery",
+                )
 
         # Attach to explicit PR or reuse one from a previous attempt
         if pr_opt:
@@ -313,7 +339,42 @@ def new(
                         out.info("reconfig", f"Loaded descriptions: {', '.join(ws.descriptions)}")
                     break
 
+    seeded_board = None
+    if inventory_seed is not None and not reconfig:
+        from src.workspace.ats_seed import (
+            apply_inventory_fallback,
+            apply_inventory_seed,
+            current_registry_hard_evidence,
+        )
+
+        evidence = current_registry_hard_evidence(
+            inventory_seed,
+            companies_path=get_data_dir() / "companies.csv",
+            boards_path=get_data_dir() / "boards.csv",
+        )
+        if evidence:
+            codes = ", ".join(item.code for item in evidence)
+            reason = f"current registry hard evidence: {codes}"
+            apply_inventory_fallback(ws, inventory_seed, reason)
+            out.warn(
+                "inventory",
+                f"Seed now matches the current registry ({codes}); using normal discovery",
+            )
+        else:
+            seeded_board = apply_inventory_seed(ws, inventory_seed)
+
     save_workspace(ws)
+
+    if seeded_board is not None:
+        save_board(slug, seeded_board)
+        out.info(
+            "inventory",
+            f"Seeded {inventory_seed.monitor_type} monitor on {inventory_seed.board_url}",
+        )
+        out.plain(
+            "inventory",
+            "Run the seeded monitor first; probe normally if it fails or returns no jobs",
+        )
 
     # Pre-populate boards when reconfiguring
     if reconfig:
@@ -817,6 +878,22 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
     from src.workspace.log import _format_field_quality
 
     lines = [f"Closes #{ws.issue}", ""] if ws.issue else [""]
+
+    if ws.ats_inventory:
+        from src.ats_inventory.candidates import candidate_marker
+
+        source_key = str(ws.ats_inventory.get("source_key") or "")
+        board_url = str(ws.ats_inventory.get("board_url") or "")
+        if source_key and board_url:
+            lines.extend(
+                [
+                    candidate_marker(source_key, board_url),
+                    "## ATS inventory provenance",
+                    f"Source key: `{source_key}`",
+                    f"Seed verification: `{ws.ats_inventory.get('status', 'unknown')}`",
+                    "",
+                ]
+            )
 
     display_name = ws.name or ws.slug
     lines.append(f"## {display_name}")

@@ -15,6 +15,8 @@ and `ws help` exclusively. All interaction with the system goes through `ws`.
 
 {issue_body}
 
+{ats_inventory_context}
+
 ---
 
 ## Step 1: Check if the company already exists

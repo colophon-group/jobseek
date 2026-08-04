@@ -42,6 +42,27 @@ def _setup_csvs(tmp_path, companies="", boards=""):
     (tmp_path / "boards.csv").write_text(BOARDS_HEADER + boards)
 
 
+def _inventory_issue_body() -> str:
+    from src.ats_inventory.candidates import Candidate, CandidatePlan, render_candidate_issue
+    from src.ats_inventory.models import CompanyImpact
+
+    candidate = Candidate.from_impact(
+        CompanyImpact(
+            ats="greenhouse",
+            name="Acme",
+            slug="acme",
+            url="https://boards.greenhouse.io/acme",
+            impact_unknown=False,
+            active_jobs=12,
+            remote_jobs=2,
+            location_count=3,
+            country_codes=("US",),
+            latest_posted_at="2026-08-01T00:00:00Z",
+        )
+    )
+    return render_candidate_issue(CandidatePlan(candidate, (), ()))[1]
+
+
 def _patch_all(monkeypatch, tmp_path):
     """Patch path getters for testing."""
     ws_dir = tmp_path / ".ws"
@@ -916,6 +937,68 @@ class TestReject:
 
 
 class TestTaskIssueBinding:
+    def test_task_preverify_surfaces_validated_inventory_seed(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        with (
+            patch("src.workspace.git.check_gh_auth", return_value=True),
+            patch(
+                "src.workspace.git.fetch_issue",
+                return_value={
+                    "title": "Add company: Acme",
+                    "body": _inventory_issue_body(),
+                    "labels": [{"name": "source:ats-inventory"}],
+                },
+            ),
+        ):
+            result = CliRunner().invoke(ws, ["task", "--issue", "39"])
+
+        assert result.exit_code == 0, result.output
+        assert "Validated inventory seed" in result.output
+        assert "will preselect Jobseek's `greenhouse` monitor" in result.output
+        assert 'ws search "<company name>"' in result.output
+
+    def test_task_preverify_human_request_has_no_inventory_guidance(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        with (
+            patch("src.workspace.git.check_gh_auth", return_value=True),
+            patch(
+                "src.workspace.git.fetch_issue",
+                return_value={
+                    "title": "Please add Acme",
+                    "body": "Website: https://acme.example",
+                },
+            ),
+        ):
+            result = CliRunner().invoke(ws, ["task", "--issue", "39"])
+
+        assert result.exit_code == 0, result.output
+        assert "Website: https://acme.example" in result.output
+        assert "Validated inventory seed" not in result.output
+        assert "Inventory seed validation" not in result.output
+        assert 'ws search "<company name>"' in result.output
+
+    def test_task_preverify_ignores_spoofed_marker_without_inventory_label(
+        self, tmp_path, monkeypatch
+    ):
+        _patch_all(monkeypatch, tmp_path)
+        with (
+            patch("src.workspace.git.check_gh_auth", return_value=True),
+            patch(
+                "src.workspace.git.fetch_issue",
+                return_value={
+                    "title": "Add company: Acme",
+                    "body": _inventory_issue_body(),
+                    "labels": [{"name": "company-request"}],
+                },
+            ),
+        ):
+            result = CliRunner().invoke(ws, ["task", "--issue", "39"])
+
+        assert result.exit_code == 0, result.output
+        assert "Validated inventory seed" not in result.output
+        assert "will preselect" not in result.output
+        assert 'ws search "<company name>"' in result.output
+
     def test_task_issue_binds_to_matching_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="swissquote-bank", issue=38, branch="add-company/swissquote"))
@@ -1357,6 +1440,17 @@ class TestRunMonitorOutput:
         ws_obj.active_board = "careers"
         save_workspace(ws_obj)
 
+    def _setup_inventory_board(self, tmp_path, monkeypatch):
+        from src.workspace.ats_seed import apply_inventory_seed, parse_inventory_seed
+
+        _patch_all(monkeypatch, tmp_path)
+        workspace = Workspace(slug="acme", issue=1)
+        seed = parse_inventory_seed(_inventory_issue_body())
+        assert seed is not None
+        board = apply_inventory_seed(workspace, seed)
+        save_workspace(workspace)
+        save_board("acme", board)
+
     def test_zero_jobs_warning(self, tmp_path, monkeypatch):
         """0 jobs should produce a warning, not a regular info line."""
         self._setup_monitor_board(tmp_path, monkeypatch)
@@ -1401,6 +1495,102 @@ class TestRunMonitorOutput:
 
         assert "\u2713" in result.output  # Checkmark symbol
         assert "2 jobs" in result.output
+
+    def test_inventory_seed_success_is_verified(self, tmp_path, monkeypatch):
+        self._setup_inventory_board(tmp_path, monkeypatch)
+
+        @dataclass
+        class FakeResult:
+            urls: set[str]
+            jobs_by_url: dict | None
+            filtered_count: int = 0
+
+        fake_result = FakeResult(
+            urls={"https://boards.greenhouse.io/acme/jobs/1"},
+            jobs_by_url=None,
+        )
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+            expected = _as_run_monitor_result(fake_result, 1.0, [])
+
+            def _succeed(coro):
+                from src.workspace.state import update_workspace
+
+                coro.close()
+                # Parallel enrichment can finish while the monitor is in
+                # flight; the seed-status write must not restore stale state.
+                with update_workspace("acme") as concurrent_workspace:
+                    concurrent_workspace.name = "Acme Concurrent"
+                return expected
+
+            mock_asyncio.run.side_effect = _succeed
+            result = CliRunner().invoke(
+                ws,
+                ["run", "monitor", "acme", "--board", "careers", "--config", "inventory-seed"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert load_workspace("acme").ats_inventory["status"] == "verified"
+        assert load_workspace("acme").ats_inventory["jobs"] == 1
+        assert load_workspace("acme").name == "Acme Concurrent"
+        assert load_board("acme", "careers").configs["inventory-seed"]["status"] == "tested"
+
+    def test_inventory_seed_zero_jobs_forces_normal_fallback(self, tmp_path, monkeypatch):
+        self._setup_inventory_board(tmp_path, monkeypatch)
+
+        @dataclass
+        class FakeResult:
+            urls: set[str]
+            jobs_by_url: dict | None
+            filtered_count: int = 0
+
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+            expected = _as_run_monitor_result(
+                FakeResult(urls=set(), jobs_by_url=None),
+                1.0,
+                [],
+            )
+
+            def _succeed(coro):
+                coro.close()
+                return expected
+
+            mock_asyncio.run.side_effect = _succeed
+            result = CliRunner().invoke(
+                ws,
+                ["run", "monitor", "acme", "--board", "careers", "--config", "inventory-seed"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Fast path rejected" in result.output
+        assert load_workspace("acme").ats_inventory["status"] == "fallback"
+        board = load_board("acme", "careers")
+        assert board.configs["inventory-seed"]["status"] == "selected"
+        assert board.ready is False
+
+    def test_inventory_seed_monitor_failure_records_fallback(self, tmp_path, monkeypatch):
+        self._setup_inventory_board(tmp_path, monkeypatch)
+        from src.workspace.lib import WsMonitorRunFailed
+
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+
+            def _fail(coro):
+                coro.close()
+                raise WsMonitorRunFailed("seed endpoint is stale")
+
+            mock_asyncio.run.side_effect = _fail
+            result = CliRunner().invoke(
+                ws,
+                ["run", "monitor", "acme", "--board", "careers", "--config", "inventory-seed"],
+            )
+
+        assert result.exit_code != 0
+        assert "use normal probe/discovery" in result.output
+        state = load_workspace("acme").ats_inventory
+        assert state["status"] == "fallback"
+        assert state["reason"] == "seed endpoint is stale"
 
     def test_monitor_failure_shows_recovery_guidance(self, tmp_path, monkeypatch):
         self._setup_monitor_board(tmp_path, monkeypatch, monitor_type="greenhouse")
@@ -3415,6 +3605,23 @@ class TestSubmitLastError:
 class TestBuildPrBody:
     """Test PR body generation."""
 
+    def test_inventory_source_marker_is_preserved_for_queue_reconciliation(self):
+        from src.ats_inventory.candidates import parse_candidate_markers
+        from src.workspace.ats_seed import apply_inventory_seed, parse_inventory_seed
+        from src.workspace.commands.lifecycle import _build_pr_body
+
+        workspace = Workspace(slug="acme", name="Acme", issue=1)
+        seed = parse_inventory_seed(_inventory_issue_body())
+        assert seed is not None
+        board = apply_inventory_seed(workspace, seed)
+        workspace.ats_inventory["status"] = "verified"
+
+        body = _build_pr_body(workspace, [board])
+
+        assert parse_candidate_markers(body) == ((seed.source_key, seed.board_sha256),)
+        assert f"Source key: `{seed.source_key}`" in body
+        assert "Seed verification: `verified`" in body
+
     def test_image_preview_uses_commit_sha_url(self, tmp_path, monkeypatch):
         from src.workspace.commands.lifecycle import _build_pr_body
 
@@ -4507,7 +4714,16 @@ class TestProbeAllBoards:
 class TestNewIdempotent:
     """ws new should not fail when slug already exists in CSV from a prior attempt."""
 
-    def _git_mocks(self, stack, tmp_path, *, pr_branch=None, existing_prs=None):
+    def _git_mocks(
+        self,
+        stack,
+        tmp_path,
+        *,
+        pr_branch=None,
+        existing_prs=None,
+        issue_body="",
+        issue_labels=(),
+    ):
         """Set up common git mocks for new() tests."""
         stack.enter_context(
             patch(
@@ -4516,6 +4732,16 @@ class TestNewIdempotent:
             )
         )
         stack.enter_context(patch("src.workspace.git.check_gh_auth", return_value=True))
+        stack.enter_context(
+            patch(
+                "src.workspace.git.fetch_issue",
+                return_value={
+                    "title": "Add company: Acme",
+                    "body": issue_body,
+                    "labels": [{"name": label} for label in issue_labels],
+                },
+            )
+        )
         stack.enter_context(patch("src.workspace.git.fetch"))
         stack.enter_context(
             patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees")
@@ -4614,6 +4840,75 @@ class TestNewIdempotent:
         sync_branch.assert_not_called()
         assert "acme" in (tmp_path / "companies.csv").read_text()
         assert load_workspace("acme").pr is None
+        assert load_workspace("acme").ats_inventory == {}
+        assert list_boards("acme") == []
+
+    def test_new_seeds_valid_inventory_board_without_publishing(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+
+        with ExitStack() as stack:
+            add_files, commit, push, create_pr, _, _, _ = self._git_mocks(
+                stack,
+                tmp_path,
+                issue_body=_inventory_issue_body(),
+                issue_labels=("source:ats-inventory",),
+            )
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1"])
+
+        assert result.exit_code == 0, result.output
+        assert "Seeded greenhouse monitor" in result.output
+        workspace = load_workspace("acme")
+        assert workspace.ats_inventory["source_key"].startswith("ats-scrapers:greenhouse:")
+        assert workspace.ats_inventory["status"] == "pending"
+        board = load_board("acme", "careers")
+        assert board.active_config == "inventory-seed"
+        assert board.configs["inventory-seed"]["status"] == "selected"
+        assert board.configs["inventory-seed"]["monitor_type"] == "greenhouse"
+        add_files.assert_not_called()
+        commit.assert_not_called()
+        push.assert_not_called()
+        create_pr.assert_not_called()
+
+    def test_new_ignores_inventory_marker_without_protected_label(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+
+        with ExitStack() as stack:
+            self._git_mocks(stack, tmp_path, issue_body=_inventory_issue_body())
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1"])
+
+        assert result.exit_code == 0, result.output
+        assert "Seeded greenhouse monitor" not in result.output
+        assert load_workspace("acme").ats_inventory == {}
+        assert list_boards("acme") == []
+
+    def test_new_quarantines_seed_that_now_matches_current_registry(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies="existing,Existing,https://existing.example,,,\n",
+            boards=(
+                "existing,existing-careers,https://boards.greenhouse.io/acme,"
+                "greenhouse,{},skip,{}\n"
+            ),
+        )
+
+        with ExitStack() as stack:
+            self._git_mocks(
+                stack,
+                tmp_path,
+                issue_body=_inventory_issue_body(),
+                issue_labels=("source:ats-inventory",),
+            )
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1"])
+
+        assert result.exit_code == 0, result.output
+        assert "matches the current registry" in result.output
+        workspace = load_workspace("acme")
+        assert workspace.ats_inventory["status"] == "fallback"
+        assert "existing_ats_tenant" in workspace.ats_inventory["reason"]
+        assert list_boards("acme") == []
 
     def test_new_reuses_pr_discovered_from_issue(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)

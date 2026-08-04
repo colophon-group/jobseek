@@ -21,6 +21,7 @@ from src.workspace.state import (
     resolve_slug,
     resolve_two_args,
     save_board,
+    update_workspace,
     workspace_exists,
 )
 
@@ -1215,6 +1216,16 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
     if not mon_type:
         out.die("No monitor selected. Run: ws select monitor <type>")
 
+    from src.workspace.ats_seed import inventory_seed_matches_run
+
+    inventory_seed_run = inventory_seed_matches_run(
+        ws,
+        board,
+        config_name,
+        mon_type,
+        mon_config or {},
+    )
+
     # Create artifact directory before the run so monitor_one can write raw data
     from src.workspace.artifacts import (
         capture_structlog,
@@ -1255,10 +1266,24 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
         elapsed = lib_result.elapsed_seconds
         http_log = lib_result.http_log
     except WsConfigMissing as exc:
+        if inventory_seed_run:
+            from src.workspace.ats_seed import set_inventory_seed_status
+
+            with update_workspace(slug) as current_ws:
+                set_inventory_seed_status(current_ws, "fallback", reason=str(exc))
         out.die(str(exc))
         return  # pragma: no cover
     except WsMonitorRunFailed as exc:
         detail = str(exc).strip() or exc.__class__.__name__
+        if inventory_seed_run:
+            from src.workspace.ats_seed import set_inventory_seed_status
+
+            with update_workspace(slug) as current_ws:
+                set_inventory_seed_status(current_ws, "fallback", reason=detail)
+            out.warn(
+                "inventory",
+                "Preconfigured monitor was not verified; use normal probe/discovery",
+            )
         out.error("monitor", f"Run failed: {detail}")
         out.plain("monitor", f"Monitor: {mon_type} | Board: {board.url}")
         out.plain("monitor", "Try:")
@@ -1311,8 +1336,11 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
         run_data["description_samples"] = desc_samples
     cfg["run"] = run_data
 
-    # Mark config as tested and record measured cost
-    cfg["status"] = "tested"
+    # A zero-result inventory seed is not a verified fast path.  Preserve its
+    # run evidence, but keep the config untested so normal workflow gates force
+    # probing/configuration rather than accepting a stale or wrong tenant.
+    inventory_seed_zero = inventory_seed_run and job_count == 0
+    cfg["status"] = "selected" if inventory_seed_zero else "tested"
     cost = cfg.get("cost") or {}
     cost["monitor_per_cycle"] = round(elapsed, 2)
     cfg["cost"] = cost
@@ -1345,6 +1373,20 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
 
     save_board(slug, board)
 
+    if inventory_seed_run:
+        from src.workspace.ats_seed import set_inventory_seed_status
+
+        with update_workspace(slug) as current_ws:
+            if inventory_seed_zero:
+                set_inventory_seed_status(
+                    current_ws,
+                    "fallback",
+                    jobs=0,
+                    reason="seeded native monitor returned zero jobs",
+                )
+            else:
+                set_inventory_seed_status(current_ws, "verified", jobs=job_count)
+
     # Print results
     if result.filtered_count:
         out.plain("monitor", f"URL filter: {result.filtered_count} URLs removed")
@@ -1366,6 +1408,11 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
             out.warn(
                 "monitor",
                 f"Regression: previous run found {prev_jobs} jobs, now 0 — board may have changed",
+            )
+        if inventory_seed_zero:
+            out.warn(
+                "inventory",
+                "Fast path rejected: run `ws probe monitor` and continue with normal discovery",
             )
     else:
         out.info("monitor", f"{job_count} jobs in {elapsed:.1f}s")

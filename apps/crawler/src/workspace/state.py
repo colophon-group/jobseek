@@ -252,6 +252,10 @@ class Workspace:
     # Active board alias
     active_board: str = ""
 
+    # Validated ats-inventory issue seed and fast-path verification status.
+    # Empty for ordinary human-created company requests.
+    ats_inventory: dict[str, Any] = field(default_factory=dict)
+
     # Submit checkpoint for idempotent retry
     submit_state: dict[str, Any] = field(default_factory=dict)
 
@@ -294,6 +298,7 @@ class Workspace:
                 "enrichment_extras": self.enrichment_extras or None,
             },
             "active_board": self.active_board,
+            "ats_inventory": self.ats_inventory or None,
             "submit_state": self.submit_state,
             "last_error": self.last_error or None,
         }
@@ -325,6 +330,7 @@ class Workspace:
             founded_year=company.get("founded_year"),
             enrichment_extras=company.get("enrichment_extras") or {},
             active_board=data.get("active_board", ""),
+            ats_inventory=data.get("ats_inventory") or {},
             submit_state=data.get("submit_state") or {},
             last_error=data.get("last_error") or {},
         )
@@ -375,6 +381,28 @@ def _merge_dicts(base: dict, overlay: dict) -> dict:
     return merged
 
 
+_ATS_INVENTORY_TERMINAL_STATUSES = frozenset({"verified", "fallback"})
+
+
+def _merge_ats_inventory(base: object, overlay: object) -> object:
+    """Keep atomic inventory verification from being reverted by stale saves.
+
+    Parallel workspace commands may load the same pending seed and finish in a
+    different order.  The monitor records its terminal result through
+    ``update_workspace``; a later full-object ``save_workspace`` must not
+    restore that stale pending snapshot (or erase the seed with ``None``).
+    Terminal-to-terminal transitions, when ever needed, remain possible only
+    through the explicit atomic update path.
+    """
+    if not isinstance(base, dict) or not base:
+        return overlay
+    if not isinstance(overlay, dict) or not overlay:
+        return dict(base)
+    if base.get("status") in _ATS_INVENTORY_TERMINAL_STATUSES:
+        return dict(base)
+    return _merge_dicts(base, overlay)
+
+
 def save_workspace(ws: Workspace) -> None:
     """Write workspace.yaml atomically under advisory lock.
 
@@ -392,7 +420,11 @@ def save_workspace(ws: Workspace) -> None:
             except (yaml.YAMLError, OSError):
                 disk_data = None
             if isinstance(disk_data, dict):
-                merged = _merge_dicts(disk_data, ws.to_dict())
+                overlay = ws.to_dict()
+                overlay["ats_inventory"] = _merge_ats_inventory(
+                    disk_data.get("ats_inventory"), overlay.get("ats_inventory")
+                )
+                merged = _merge_dicts(disk_data, overlay)
             else:
                 merged = ws.to_dict()
         else:

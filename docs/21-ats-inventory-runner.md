@@ -169,6 +169,33 @@ not waste a queue slot. Soft duplicates remain in the issue body for `ws`.
 Created issues carry both `company-request` and `source:ats-inventory`; the
 source label must be provisioned before the first canary.
 
+### `ws` native-monitor fast path
+
+The issue also carries a content-addressed candidate marker plus redundant
+readable fields for source key, upstream family, native ATS identity, exact
+tenant, and normalized board URL. `ws new --issue N` fetches that evidence and
+preselects a native Jobseek monitor only when GitHub also attached the protected
+`source:ats-inventory` label and every field, the URL hash, tenant identity, and
+`ats_inventory.compat` mapping agree. A self-consistent marker in an unlabeled
+human issue is not trusted. Immediately before seeding, `ws` rechecks the
+current CSV registry for exact normalized URL and native ATS tenant matches;
+new evidence disables the fast path. The queue never supplies or executes
+upstream scraper code.
+
+The preselected config is named `inventory-seed`. `ws run monitor ... --config
+inventory-seed` must succeed with one or more live jobs before the fast path is
+marked verified. A stale URL, monitor error, zero jobs, wrong tenant, unknown
+family, or evidence mismatch leaves the config unready and sends the agent
+through ordinary probe/discovery. Human-created issues without the marker use
+the original workflow unchanged. Rerendering `ws task` does not retest a seed
+already marked `verified` or `fallback`.
+
+Verification does not reduce the rest of `ws`: duplicate/company research,
+metadata, logos, global and regional board discovery, live count comparison,
+feedback, overlap checks, CSV validation, and PR gates all remain mandatory.
+The source marker is preserved in the resulting PR body so later runner ticks
+can reconcile the candidate while work is active.
+
 Creates are sequential, paced by the GitHub client, and separated by bounded
 jitter. Primary remaining/reset headers and `Retry-After` are retained in the
 report. A 429, primary-limit 403, or recognized secondary-limit 403 stops the
