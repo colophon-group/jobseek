@@ -36,6 +36,12 @@ class SourceValidationError(RuntimeError):
     """The new source cannot safely replace the last-known-good snapshot."""
 
 
+def assert_trusted_artifact_url(url: str) -> None:
+    """Enforce the shared published-artifact trust boundary."""
+
+    _assert_trusted_artifact_url(url)
+
+
 @dataclass(frozen=True, slots=True)
 class _ManifestDetails:
     generated_at: str

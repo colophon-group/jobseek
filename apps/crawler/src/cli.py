@@ -140,6 +140,29 @@ def parse_args() -> argparse.Namespace:
         default=256,
         help="Maximum steady-state cache size in MiB",
     )
+    ats_inventory_p.add_argument(
+        "--impact",
+        action="store_true",
+        help="Refresh compact per-company impact from changed per-ATS Parquet artifacts",
+    )
+    ats_inventory_p.add_argument(
+        "--impact-max-cache-mib",
+        type=int,
+        default=768,
+        help="Maximum impact-cache bytes including one transient Parquet download",
+    )
+    ats_inventory_p.add_argument(
+        "--impact-max-artifact-mib",
+        type=int,
+        default=512,
+        help="Maximum accepted size of one per-ATS Parquet artifact",
+    )
+    ats_inventory_p.add_argument(
+        "--impact-free-reserve-mib",
+        type=int,
+        default=512,
+        help="Free disk space retained while streaming a changed artifact",
+    )
 
     recon_p = sub.add_parser(
         "reconcile",
@@ -564,6 +587,7 @@ async def run() -> None:
                 GitHubSupportIssueClient,
                 reconcile_support_issues,
             )
+            from src.ats_inventory.impact import ImpactCache
             from src.ats_inventory.locking import exclusive_run_lock
             from src.ats_inventory.source import InventorySource
 
@@ -584,6 +608,19 @@ async def run() -> None:
                     )
                     snapshot = await source.sync()
                     report = snapshot.to_report()
+                    report["impact"] = {"enabled": args.impact}
+                    if args.impact:
+                        impact = ImpactCache(
+                            args.cache_dir / "impact",
+                            client,
+                            max_cache_bytes=args.impact_max_cache_mib * 1024 * 1024,
+                            max_artifact_bytes=args.impact_max_artifact_mib * 1024 * 1024,
+                            min_free_bytes=args.impact_free_reserve_mib * 1024 * 1024,
+                        )
+                        report["impact"] = {
+                            "enabled": True,
+                            **(await impact.sync(snapshot)).to_report(),
+                        }
                     report["support_issues"] = {"mode": args.support_issues, "actions": []}
                     if args.support_issues != "off":
                         token = os.environ.get(args.github_token_env)

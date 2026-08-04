@@ -7,11 +7,14 @@ or executes upstream scraper code; Jobseek remains the owner of every monitor.
 from __future__ import annotations
 
 from src.ats_inventory.compat import COMPATIBILITY, Compatibility
+from src.ats_inventory.impact import ImpactCache, ImpactValidationError
 from src.ats_inventory.source import InventorySource, SourceValidationError
 
 __all__ = [
     "COMPATIBILITY",
     "Compatibility",
+    "ImpactCache",
+    "ImpactValidationError",
     "InventorySource",
     "SourceValidationError",
 ]
