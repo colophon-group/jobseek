@@ -6,7 +6,8 @@ umask 077
 STATE_ROOT=/var/lib/jobseek-ats-inventory
 CONFIG=/etc/jobseek-ats-inventory/config.env
 WRITE_DISABLED=/etc/jobseek-ats-inventory/writes-disabled
-DEPLOY_ENV=/home/deploy/.env
+DEPLOY_SUCCESS=/home/deploy/.crawler-deploy-success.env
+ACCEPTANCE_PIN="$STATE_ROOT/acceptance-crawler.env"
 CONTAINER=jobseek-ats-inventory
 TOKEN_FILE=""
 RUN_LOG=""
@@ -67,7 +68,6 @@ STATUS_ARMED=1
   echo "ERROR: ATS inventory bounded logger is unavailable" >&2
   exit 1
 }
-[[ -r "$DEPLOY_ENV" ]] || { echo "ERROR: crawler deployment environment is unavailable" >&2; exit 1; }
 [[ -r "$CONFIG" ]] || { echo "ERROR: ATS inventory configuration is unavailable" >&2; exit 1; }
 [[ -n "${CREDENTIALS_DIRECTORY:-}" && -d "$CREDENTIALS_DIRECTORY" ]] || {
   echo "ERROR: GitHub App systemd credentials are unavailable" >&2
@@ -79,6 +79,16 @@ read_exact_config() {
   mapfile -t matches < <(sed -n "s/^${key}=//p" "$CONFIG")
   [[ ${#matches[@]} -eq 1 && -n "${matches[0]}" ]] || {
     echo "ERROR: ${key} must appear exactly once in the ATS inventory config" >&2
+    exit 1
+  }
+  printf '%s' "${matches[0]}"
+}
+
+read_exact_release() {
+  local path="$1" key="$2"
+  mapfile -t matches < <(sed -n "s/^${key}=//p" "$path")
+  [[ ${#matches[@]} -eq 1 && -n "${matches[0]}" ]] || {
+    echo "ERROR: ${key} must appear exactly once in ${path}" >&2
     exit 1
   }
   printf '%s' "${matches[0]}"
@@ -114,9 +124,22 @@ wrapper_sha="$(tr -d '\n' <"$STATE_ROOT/wrapper-sha256")"
   exit 1
 }
 
-tag="$(sed -n 's/^CRAWLER_IMAGE_TAG=//p' "$DEPLOY_ENV" | tail -n1)"
-[[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-  echo "ERROR: deployed crawler image tag is missing or invalid" >&2
+release_file="$DEPLOY_SUCCESS"
+if [[ -e "$ACCEPTANCE_PIN" ]]; then
+  release_file="$ACCEPTANCE_PIN"
+fi
+[[ -r "$release_file" ]] || {
+  echo "ERROR: committed crawler deployment marker is unavailable" >&2
+  exit 1
+}
+tag="$(read_exact_release "$release_file" CRAWLER_IMAGE_TAG)"
+[[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ ]] || {
+  echo "ERROR: committed crawler image tag is invalid" >&2
+  exit 1
+}
+crawler_revision="$(read_exact_release "$release_file" JOBSEEK_DEPLOY_REVISION)"
+[[ "$crawler_revision" =~ ^[0-9a-f]{40}$ ]] || {
+  echo "ERROR: committed crawler deployment revision is invalid" >&2
   exit 1
 }
 image="ghcr.io/colophon-group/jobseek-crawler:${tag}"

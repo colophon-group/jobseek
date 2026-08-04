@@ -5,8 +5,14 @@ umask 077
 
 DEPLOY_SHA="${1:-}"
 EXPECTED_TAG="${2:-}"
+EXPECTED_REVISION="${3:-}"
 [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
-[[ "$EXPECTED_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 2
+if [[ "$EXPECTED_TAG" == current || "$EXPECTED_REVISION" == current ]]; then
+  [[ "$EXPECTED_TAG" == current && "$EXPECTED_REVISION" == current ]] || exit 2
+else
+  [[ "$EXPECTED_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ ]] || exit 2
+  [[ "$EXPECTED_REVISION" =~ ^[0-9a-f]{40}$ ]] || exit 2
+fi
 : "${TARGET_HOST:?TARGET_HOST is required}"
 : "${SSH_PRIVATE_KEY:?SSH_PRIVATE_KEY is required}"
 : "${SSH_KNOWN_HOSTS:?SSH_KNOWN_HOSTS is required}"
@@ -51,41 +57,69 @@ tar --create --gzip --file - \
         --no-same-owner --no-same-permissions"
 
 # The host surface and application image deploy independently. Wait for the
-# exact reviewed crawler release before quiescing or replacing the live runner.
-timeout --foreground --signal=TERM --kill-after=30s 90m \
-  ssh "${ssh_options[@]}" "root@$TARGET_HOST" "bash -s -- '$EXPECTED_TAG'" <<'REMOTE'
+# exact reviewed crawler release to pass health checks and commit. The crawler
+# mutation lock prevents observing its marker while a deploy or maintenance
+# operation is active; the installer repeats this gate before any mutation.
+resolved_release="$(timeout --foreground --signal=TERM --kill-after=30s 150m \
+  ssh "${ssh_options[@]}" "root@$TARGET_HOST" \
+  "bash -s -- '$EXPECTED_TAG' '$EXPECTED_REVISION'" <<'REMOTE'
 set -euo pipefail
 expected_tag="$1"
-for ((attempt = 1; attempt <= 180; attempt++)); do
-  deployed_tag="$(sed -n 's/^CRAWLER_IMAGE_TAG=//p' /home/deploy/.env | tail -n1)"
-  [[ "$deployed_tag" != "$expected_tag" ]] || break
+expected_revision="$2"
+marker=/home/deploy/.crawler-deploy-success.env
+read_exact() {
+  local key="$1"
+  mapfile -t matches < <(sed -n "s/^${key}=//p" "$marker" 2>/dev/null)
+  [[ ${#matches[@]} -eq 1 ]] || return 1
+  printf '%s' "${matches[0]}"
+}
+for ((attempt = 1; attempt <= 300; attempt++)); do
+  exec 8>/run/lock/jobseek-crawler-mutation.lock
+  if flock -w 30 8; then
+    deployed_tag="$(read_exact CRAWLER_IMAGE_TAG || true)"
+    deployed_revision="$(read_exact JOBSEEK_DEPLOY_REVISION || true)"
+    flock -u 8
+    if [[ "$deployed_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ && \
+          "$deployed_revision" =~ ^[0-9a-f]{40}$ && \
+          ( "$expected_tag" == current || \
+            ( "$deployed_tag" == "$expected_tag" && "$deployed_revision" == "$expected_revision" ) ) ]]; then
+      printf '%s %s\n' "$deployed_tag" "$deployed_revision"
+      exit 0
+    fi
+  fi
   sleep 30
 done
-[[ "$(sed -n 's/^CRAWLER_IMAGE_TAG=//p' /home/deploy/.env | tail -n1)" == "$expected_tag" ]]
+echo "ERROR: exact committed crawler release did not become available" >&2
+exit 1
 REMOTE
+)"
+read -r resolved_tag resolved_revision extra <<<"$resolved_release"
+[[ -z "${extra:-}" ]] || exit 1
+[[ "$resolved_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ ]] || exit 1
+[[ "$resolved_revision" =~ ^[0-9a-f]{40}$ ]] || exit 1
 
 {
   printf '%s\n' "$DEPLOY_SHA"
+  printf '%s\n' "$resolved_tag"
+  printf '%s\n' "$resolved_revision"
   printf '%s' "$ATS_GITHUB_APP_ID" | base64 | tr -d '\n'; printf '\n'
   printf '%s' "$ATS_GITHUB_APP_INSTALLATION_ID" | base64 | tr -d '\n'; printf '\n'
   printf '%s' "$ATS_GITHUB_APP_PRIVATE_KEY" | base64 | tr -d '\n'; printf '\n'
 } >"$payload"
-timeout --foreground --signal=TERM --kill-after=30s 20m \
+timeout --foreground --signal=TERM --kill-after=30s 5h \
   ssh "${ssh_options[@]}" "root@$TARGET_HOST" \
   "bash /opt/jobseek-ats-inventory/deploy/ats-inventory/install-host-from-stdin.sh" \
   <"$payload"
 
-timeout --foreground --signal=TERM --kill-after=30s 4h \
-  ssh "${ssh_options[@]}" "root@$TARGET_HOST" "bash -s" <<'REMOTE'
+timeout --foreground --signal=TERM --kill-after=30s 5m \
+  ssh "${ssh_options[@]}" "root@$TARGET_HOST" "bash -s -- '$DEPLOY_SHA'" <<'REMOTE'
 set -euo pipefail
+expected_revision="$1"
 systemctl is-enabled --quiet jobseek-ats-inventory.timer
 systemctl is-active --quiet jobseek-ats-inventory.timer
 /usr/local/sbin/jobseek-ats-inventory-control status
-if [[ -e /etc/jobseek-ats-inventory/writes-disabled ]]; then
-  systemctl reset-failed jobseek-ats-inventory.service || true
-  systemctl start jobseek-ats-inventory.service
-  systemctl is-failed --quiet jobseek-ats-inventory.service && exit 1
-  python3 - <<'PY'
+[[ "$(tr -d '\n' </var/lib/jobseek-ats-inventory/deployed-sha)" == "$expected_revision" ]]
+python3 - <<'PY'
 import json
 from pathlib import Path
 
@@ -94,5 +128,4 @@ assert payload["last_attempt_success"] == 1
 assert payload["effective_mode"] == "report"
 assert payload["report"]["data_only"] is True
 PY
-fi
 REMOTE

@@ -892,7 +892,8 @@ disabling the timer does not undo already verified downstream repairs.
 
 `jobseek-ats-inventory.timer` runs the data-only company inventory and impact
 refresh daily on the crawler host, with persistent catch-up and a 45-minute
-random delay. It uses the immutable deployed crawler image and never runs
+random delay. It uses the immutable crawler image named by the atomic committed
+release marker (published after crawler health and rollback disarm) and never runs
 Codex or upstream scraper code. Three root-owned GitHub App credentials enter
 the service through systemd `LoadCredential`; only a short-lived installation
 token file is mounted into the read-only one-shot container. No GitHub token,
@@ -906,6 +907,13 @@ cannot occur. Cache and ledger data under `/var/lib/jobseek-ats-inventory`
 survive disable, failed installs, and transactional host-surface rollback.
 Disabling also stops an active run after publishing the gate; the wrapper
 rechecks that gate immediately before its credentialed GitHub phase.
+
+Host-surface deployment verifies the committed crawler tag and full Git
+revision while holding `/run/lock/jobseek-crawler-mutation.lock`, then pins that
+exact release for a report-only acceptance run. The prior runner remains the
+rollback target until the fresh report succeeds and the timer is active. A stop
+timeout, failed report, stale status, or mismatched release fails the install and
+restores the prior units, credentials, write gate, and scheduling state.
 
 Read-only checks:
 

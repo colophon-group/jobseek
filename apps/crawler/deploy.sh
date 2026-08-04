@@ -66,6 +66,7 @@ ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
 ACTIVE_COMPOSE_SNAPSHOT="$DEPLOY_DIR/.crawler-active-docker-compose.yml"
 ACTIVE_COMPOSE_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-docker-compose.sha256"
+DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"
 ENV_FILE_WAS_PRESENT=0
 ROLLBACK_ARMED=0
 ROLLBACK_RUNNING=0
@@ -697,12 +698,20 @@ stop_maintenance_window
 # ── Cleanup ──────────────────────────────────────────────────────────
 active_compose_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose.XXXXXX")"
 active_compose_digest_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose-digest.XXXXXX")"
+deploy_success_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-deploy-success.XXXXXX")"
 install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$active_compose_temporary"
 sha256sum "$active_compose_temporary" | awk '{print $1}' >"$active_compose_digest_temporary"
 chmod 0644 "$active_compose_digest_temporary"
+printf 'CRAWLER_IMAGE_TAG=%s\nJOBSEEK_DEPLOY_REVISION=%s\n' \
+  "$IMAGE_TAG" "$JOBSEEK_DEPLOY_REVISION" >"$deploy_success_temporary"
+chmod 0644 "$deploy_success_temporary"
 mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"
 mv "$active_compose_digest_temporary" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256"
+# Publish the exact committed release only after all health gates pass and the
+# rollback trap is disarmed. Consumers must use this atomic marker rather than
+# the earlier .env write, which is intentionally part of the rollback window.
 disarm_deploy_rollback
-rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
-docker image prune -f
+mv "$deploy_success_temporary" "$DEPLOY_SUCCESS_FILE"
+rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" || true
+docker image prune -f || true
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"

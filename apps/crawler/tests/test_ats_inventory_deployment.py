@@ -236,19 +236,38 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert "1|5|25" in control
     assert "writes-disabled" in control
     assert "restore_previous" in installer
-    assert "systemctl stop jobseek-ats-inventory.timer" in installer
-    assert "systemctl stop jobseek-ats-inventory.service" in installer
+    assert "stop_unit_if_present jobseek-ats-inventory.timer" in installer
+    assert "stop_unit_if_present jobseek-ats-inventory.service" in installer
+    quiesce = installer[
+        installer.index("stop_unit_if_present jobseek-ats-inventory.timer") : installer.index(
+            'install -d -o root -g deploy -m 0750 "$STATE_ROOT"'
+        )
+    ]
+    assert "|| true" not in quiesce
     assert "SERVICE_WAS_ACTIVE" in installer
     assert 'install -d -o root -g deploy -m 0750 "$STATE_ROOT"' in installer
     assert "TIMER_WAS_ENABLED" in installer and "TIMER_WAS_ACTIVE" in installer
     assert "systemd-analyze verify" in installer
-    assert "systemctl enable --now jobseek-ats-inventory.timer" in installer
+    assert "systemctl enable jobseek-ats-inventory.timer" in installer
+    assert "systemctl start jobseek-ats-inventory.timer" in installer
     assert "ATS_INVENTORY_MODE=report" in installer
     assert "ATS_INVENTORY_ROLLOUT_CAP=1" in installer
     assert 'install -o root -g deploy -m 0640 /dev/null "$CONFIG_ROOT/writes-disabled"' in installer
+    assert "jobseek-crawler-mutation.lock" in installer
+    assert ".crawler-deploy-success.env" in installer
+    assert "acceptance-crawler.env" in installer
+    acceptance = installer.index("systemctl start jobseek-ats-inventory.service")
+    disarm = installer.index("ROLLBACK_ARMED=0")
+    assert acceptance < disarm
+    assert 'payload["last_attempt_success"] == 1' in installer
+    assert 'payload["effective_mode"] == "report"' in installer
     assert "GitHub App private key is not PEM encoded" in installer
     assert "JOBSEEK_GITHUB_APP_PRIVATE_KEY_FILE" in installer
-    assert '"$payload_size" -le 131072' in RECEIVER.read_text(encoding="utf-8")
+    receiver = RECEIVER.read_text(encoding="utf-8")
+    assert '"$payload_size" -le 131072' in receiver
+    assert "${#fields[@]} -eq 6" in receiver
+    assert "JOBSEEK_EXPECTED_CRAWLER_IMAGE_TAG" in receiver
+    assert "JOBSEEK_EXPECTED_CRAWLER_DEPLOY_REVISION" in receiver
 
 
 def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
@@ -280,6 +299,9 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "ATS_INVENTORY_GITHUB_APP_PRIVATE_KEY" in workflow
     assert "HETZNER_BACKUP_KNOWN_HOSTS" in workflow
     assert "deploy-remote.sh" in workflow
+    assert "expected_tag=current" in workflow
+    assert "expected_revision=current" in workflow
+    assert "derive-crawler-build-version.mjs" in workflow
     assert "appleboy/" not in workflow
     checkout = [line for line in workflow.splitlines() if "uses: actions/checkout@" in line]
     assert checkout and all("@v" not in line for line in checkout)
@@ -288,6 +310,22 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
 
 def test_remote_deploy_waits_for_exact_image_before_quiescing_install() -> None:
     source = REMOTE.read_text(encoding="utf-8")
-    image_gate = source.index("for ((attempt = 1; attempt <= 180; attempt++))")
+    image_gate = source.index("for ((attempt = 1; attempt <= 300; attempt++))")
     install = source.index("install-host-from-stdin.sh")
     assert image_gate < install
+    gate = source[image_gate:install]
+    assert "jobseek-crawler-mutation.lock" in gate
+    assert ".crawler-deploy-success.env" in source[:install]
+    assert "CRAWLER_IMAGE_TAG" in gate
+    assert "JOBSEEK_DEPLOY_REVISION" in gate
+    assert "/home/deploy/.env" not in gate
+
+
+def test_runner_uses_only_committed_release_or_transactional_acceptance_pin() -> None:
+    source = RUNNER.read_text(encoding="utf-8")
+    assert "DEPLOY_SUCCESS=/home/deploy/.crawler-deploy-success.env" in source
+    assert 'ACCEPTANCE_PIN="$STATE_ROOT/acceptance-crawler.env"' in source
+    assert 'release_file="$DEPLOY_SUCCESS"' in source
+    assert 'release_file="$ACCEPTANCE_PIN"' in source
+    assert "JOBSEEK_DEPLOY_REVISION" in source
+    assert "/home/deploy/.env" not in source
