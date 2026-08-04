@@ -330,6 +330,10 @@ PY
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/web-postgresql/restore-drill.sh" \
     /usr/local/sbin/jobseek-web-postgresql-restore-drill
+  install -d -o root -g root -m 0755 /usr/local/share/jobseek-backup
+  install -o root -g root -m 0644 \
+    "$REPO_ROOT/apps/web/drizzle/0086_drop_supabase_job_posting.sql" \
+    /usr/local/share/jobseek-backup/0086_drop_supabase_job_posting.sql
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/web-postgresql/operations.py" \
     /usr/local/sbin/jobseek-web-postgresql-operations

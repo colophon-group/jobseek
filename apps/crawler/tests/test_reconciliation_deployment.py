@@ -263,3 +263,14 @@ def test_install_and_workflow_preserve_rollback_and_privilege_boundary() -> None
     for action in ("actions/checkout", "appleboy/scp-action", "appleboy/ssh-action"):
         matching = [line for line in workflow.splitlines() if f"uses: {action}@" in line]
         assert matching and all("@v" not in line for line in matching)
+
+
+def test_scheduled_refresh_resolves_the_common_image_owner_before_dispatch() -> None:
+    maintenance = MAINTENANCE.read_text(encoding="utf-8")
+
+    owner = maintenance.index("owner=\"$(grep -E '^OWNER='")
+    backfill_only = maintenance.index('if [[ "$TASK" == backfill-typesense ]]')
+    image = maintenance.index('"ghcr.io/${owner}/jobseek-crawler:${tag}"')
+
+    assert owner < backfill_only < image
+    assert '[[ -n "$owner" ]]' in maintenance

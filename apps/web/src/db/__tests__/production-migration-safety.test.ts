@@ -50,11 +50,20 @@ describe("production migration safety", () => {
     expect(runner).toContain("pg_advisory_unlock");
     expect(runner).toContain("MIGRATION_REQUIRE_UNPOOLED");
     expect(runner).toContain('parsedUrl.port === "6543"');
+    expect(runner).toContain("pg_temp.jobseek_retirement_attestation");
+    expect(runner).toContain("RETIREMENT_BACKUP_RESTORE_RUN_ID");
+    expect(runner).toContain("RETIREMENT_CRAWLER_DEPLOY_RUN_ID");
+    expect(runner).toContain("RETIREMENT_TYPESENSE_BACKFILL_RUN_ID");
+    expect(runner).toContain("RETIREMENT_READINESS_DIGEST");
+    expect(runner).toContain("does not bind the evidence inputs");
   });
 
   it("separates approved writes from unattended read-only drift checks", () => {
     const workflow = readRepo(
       ".github/workflows/web-database-migrations.yml",
+    );
+    const evidenceValidator = readRepo(
+      "scripts/validate-supabase-retirement-evidence.sh",
     );
 
     expect(workflow).toContain("environment: production-migrations");
@@ -65,15 +74,44 @@ describe("production migration safety", () => {
     expect(workflow).toContain(
       "DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_READONLY }}",
     );
-    expect(workflow).toContain('test "$GIT_REF" = "refs/heads/main"');
-    expect(workflow).toContain(
-      'test "$DISPATCH_CONFIRMATION" = "APPLY-0085"',
+    expect(evidenceValidator).toContain('test "$GIT_REF" = "refs/heads/main"');
+    expect(evidenceValidator).toContain(
+      'test "$DISPATCH_CONFIRMATION" = "DROP-ONLY-JOB-POSTING-0086"',
     );
+    expect(workflow).not.toContain("APPLY-0085");
     expect(workflow).not.toContain("APPLY-0084");
-    expect(workflow).toContain("db:migrate:verify-contract");
+    expect(workflow).toContain("db:migrate:verify-retirement");
+    expect(workflow).toContain("backup_restore_run_id:");
+    expect(workflow).toContain("crawler_deploy_run_id:");
+    expect(workflow).toContain("typesense_backfill_run_id:");
+    expect(workflow).toContain("actions: read");
+    expect(workflow).toContain("deployments: read");
+    expect(workflow).toContain("verify-typesense-retirement-readiness.ts");
+    expect(workflow).toContain("verify-saved-job-typesense-coverage.ts");
+    expect(workflow).toContain("test-job-posting-retirement-pg17.ts");
+    expect(workflow).toContain("RETIREMENT_ATTESTATION_MODE: production-drop");
+    expect(workflow).toContain("needs: [validate, authorize]");
+    expect(workflow.match(/validate-supabase-retirement-evidence\.sh/g)).toHaveLength(2);
+    expect(evidenceValidator).toContain("Operate Web PostgreSQL Backup (Hetzner)");
+    expect(evidenceValidator).toContain("latest_matching_run_id");
+    expect(evidenceValidator).toContain('git/ref/heads/main');
+    expect(evidenceValidator).toContain('test "$main_sha" = "$CURRENT_SHA"');
+    expect(evidenceValidator).toContain("Crawler maintenance: backfill-typesense @");
+    expect(evidenceValidator).toContain("apps/crawler \\");
     expect(workflow).toContain('cancel-in-progress: false');
     expect(workflow).toContain(
       "timeout --signal=TERM --kill-after=15s 12m pnpm db:migrate",
+    );
+
+    const maintenance = readRepo(
+      ".github/workflows/crawler-scheduled-maintenance.yml",
+    );
+    expect(maintenance).toContain(
+      "crawler reconcile --repair --full --fresh-cycle --target typesense",
+    );
+    expect(maintenance).toContain("crawler verify-typesense-taxonomies");
+    expect(maintenance).toContain(
+      'run-name: "Crawler maintenance: ${{ inputs.task || \'refresh-typesense\' }} @ ${{ inputs.expected_crawler_revision || \'scheduled\' }}"',
     );
   });
 });

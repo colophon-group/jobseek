@@ -1,4 +1,5 @@
 name: Operate Web PostgreSQL Backup (Hetzner)
+run-name: "Web PostgreSQL backup operation: ${{ inputs.mode }}"
 
 on:
   workflow_dispatch:
@@ -66,6 +67,7 @@ jobs:
       deploy_sha: ${{ steps.artifacts.outputs.deploy_sha }}
       data_backup_sha256: ${{ steps.artifacts.outputs.data_backup_sha256 }}
       operations_sha256: ${{ steps.artifacts.outputs.operations_sha256 }}
+      retirement_migration_sha256: ${{ steps.artifacts.outputs.retirement_migration_sha256 }}
       restore_drill_sha256: ${{ steps.artifacts.outputs.restore_drill_sha256 }}
       service_sha256: ${{ steps.artifacts.outputs.service_sha256 }}
       timer_sha256: ${{ steps.artifacts.outputs.timer_sha256 }}
@@ -136,6 +138,7 @@ jobs:
             echo "deploy_sha=$deploy_sha"
             echo "data_backup_sha256=$(sha256sum scripts/jobseek-data-backup.py | cut -d' ' -f1)"
             echo "operations_sha256=$(sha256sum deploy/backups/web-postgresql/operations.py | cut -d' ' -f1)"
+            echo "retirement_migration_sha256=$(sha256sum apps/web/drizzle/0086_drop_supabase_job_posting.sql | cut -d' ' -f1)"
             echo "restore_drill_sha256=$(sha256sum deploy/backups/web-postgresql/restore-drill.sh | cut -d' ' -f1)"
             echo "service_sha256=$(sha256sum deploy/systemd/jobseek-web-postgresql-backup.service | cut -d' ' -f1)"
             echo "timer_sha256=$(sha256sum deploy/systemd/jobseek-web-postgresql-backup.timer | cut -d' ' -f1)"
@@ -157,6 +160,7 @@ jobs:
       EXPECTED_DEPLOY_SHA: ${{ needs.authorize.outputs.deploy_sha }}
       EXPECTED_DATA_BACKUP_SHA256: ${{ needs.authorize.outputs.data_backup_sha256 }}
       EXPECTED_OPERATIONS_SHA256: ${{ needs.authorize.outputs.operations_sha256 }}
+      EXPECTED_RETIREMENT_MIGRATION_SHA256: ${{ needs.authorize.outputs.retirement_migration_sha256 }}
       EXPECTED_RESTORE_DRILL_SHA256: ${{ needs.authorize.outputs.restore_drill_sha256 }}
       EXPECTED_SERVICE_SHA256: ${{ needs.authorize.outputs.service_sha256 }}
       EXPECTED_TIMER_SHA256: ${{ needs.authorize.outputs.timer_sha256 }}
@@ -178,6 +182,7 @@ jobs:
           for digest in \
             "$EXPECTED_DATA_BACKUP_SHA256" \
             "$EXPECTED_OPERATIONS_SHA256" \
+            "$EXPECTED_RETIREMENT_MIGRATION_SHA256" \
             "$EXPECTED_RESTORE_DRILL_SHA256" \
             "$EXPECTED_SERVICE_SHA256" \
             "$EXPECTED_TIMER_SHA256"; do
@@ -230,6 +235,7 @@ jobs:
               --expected-deploy-sha '$EXPECTED_DEPLOY_SHA' \
               --expected-data-backup-sha256 '$EXPECTED_DATA_BACKUP_SHA256' \
               --expected-operations-sha256 '$EXPECTED_OPERATIONS_SHA256' \
+              --expected-retirement-migration-sha256 '$EXPECTED_RETIREMENT_MIGRATION_SHA256' \
               --expected-restore-drill-sha256 '$EXPECTED_RESTORE_DRILL_SHA256' \
               --expected-service-sha256 '$EXPECTED_SERVICE_SHA256' \
               --expected-timer-sha256 '$EXPECTED_TIMER_SHA256'"

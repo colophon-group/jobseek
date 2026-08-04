@@ -59,7 +59,8 @@ TypeScript-symbol-aware source test covers deployable TS/JS modules in `app`,
 `src`, an optional root `pages` tree, and explicit Next root runtime entries
 such as `proxy`, `middleware`, instrumentation, and MDX components. It rejects
 Drizzle mutations through relative imports, namespaces, aliases, re-exports,
-and local indirection, plus raw SQL and Supabase `job_posting` mutations.
+and local indirection, plus raw SQL, `ONLY` queries, local Drizzle table
+declarations, and Supabase `job_posting` reads or mutations.
 
 The merged native-crawler cutover in #2361 recorded 534 sitemap URLs in 3.0
 seconds and 10/10 successful stratified job-page samples in 1.8 seconds. The
@@ -77,7 +78,8 @@ sequence is:
 
 1. add the original salary fields to Typesense, deploy the crawler schema, run
    a full posting backfill, and prove every saved posting with
-   `pnpm db:verify-saved-job-typesense` using the production server read key;
+   `pnpm exec tsx scripts/verify-saved-job-typesense-coverage.ts` using the
+   production server read key;
 2. expand migration: nullable snapshot columns, backfill, replace the
    cascading posting FK with `ON DELETE RESTRICT`, validate the temporary
    completeness CHECK, and protect old-app inserts;
@@ -88,8 +90,8 @@ sequence is:
    up only missing required values; require the seven identity fields; retain
    a permanent validated nonblank-text CHECK; then remove the temporary CHECK,
    compatibility trigger/function, and posting foreign key last;
-5. prove encrypted backup/restore, stop mirror writes, and only then drop the
-   crawler-owned tables.
+5. prove encrypted backup/restore, stop mirror writes, deploy every Typesense
+   consumer, and only then apply 0086 to drop `public.job_posting` alone.
 
 Salary and icon fields may remain nullable. Posting title, source URL,
 first-seen timestamp, active state, and company identity/name/slug must be
@@ -177,6 +179,83 @@ Rollback-compatible Supabase library code remains temporarily in
 reachable from deployed normal commands. Remove it, the `database_url` setting,
 the Supabase reconciliation state row/schema allowances, and obsolete metrics
 after the rollback window and contract migration are complete.
+
+## First retirement window (0086)
+
+The first window deliberately retains the smaller `company`, `job_board`, and
+taxonomy tables. Migration `0086_drop_supabase_job_posting` can remove only
+`public.job_posting`; it uses an attested `DROP TABLE IF EXISTS ... RESTRICT`,
+refuses any inbound FK,
+view, function, non-internal trigger, publication, saved-job invariant drift,
+known compatibility trigger/function, routine text reference in any non-system
+application schema, or
+migration-ledger drift, and aborts unless the projected database size is below
+400 MiB. The current Drizzle schema and seed command no longer expose or write
+the retired table. Historical 0083-0085 verification scripts remain as
+auditable source, but their operator-facing package commands are retired after
+0086 in favor of `db:migrate:verify-retirement`.
+
+0086 cannot run through an ordinary migration CLI session. The real migrator
+creates a session-local TEMP attestation only when it receives a mode-specific
+confirmation, three GitHub evidence run IDs, the deployed web SHA, and a
+SHA-256 binding those values. The SQL revalidates that marker on the same
+physical connection. `production-drop` requires `job_posting` to exist;
+`restore-drill` requires it to be absent and uses a different exact
+confirmation. This preserves replayability for a pre-drop logical backup—which
+intentionally excludes crawler-owned `job_posting` but records ledger tip
+0085—without introducing an absent-table escape hatch in production. The
+isolated restore drill installs and hashes the reviewed 0086 bytes, converges
+an exact 0085 restore transactionally, and also accepts an already-converged
+post-0086 backup only after verifying its exact ledger row and saved-job
+fingerprint.
+
+The latest read-only source audit on 2026-08-04, before 0085, recorded 2,646,380
+posting rows, 1,507,000,320 bytes in `job_posting`, and 1,696,858,639 database
+bytes total. That projects 190,016,659 bytes after the table drop. Re-run the dedicated
+preflight immediately before the window; these figures are evidence, not a
+hard-coded row-count condition.
+
+Do not dispatch 0086 until all of the following evidence is attached to the
+downgrade issue:
+
+1. 0085 postflight and scheduled drift are green;
+2. an encrypted web-owned backup has been restored and verified;
+3. the Typesense taxonomy producer has been deployed, setup/sync/backfill have
+   completed, a fresh (not resumed) 256-bucket Typesense-only reconciliation
+   has inspected every partition, and the local-authoritative taxonomy proof
+   (exact collection counts plus 10 deterministic identity/slug/display/locale
+   samples per taxonomy), frozen posting-floor coverage, plus saved-job
+   coverage pass;
+4. the posting exporter no longer receives any web/mirror database credential,
+   its active revision and immutable image tag are recorded durably, and its
+   rollback path has been exercised. The deploy/sync one-shot may retain the
+   separately named `WEB_DATABASE_URL` for smaller retained web-owned or
+   taxonomy boundaries; it is not forwarded to the long-lived exporter;
+5. the web read-plane cutovers are deployed and the repository/runtime guards
+   find no Supabase `job_posting` reader or writer;
+6. a fresh 0086 preflight reports zero external dependencies and a projected
+   size below 400 MiB.
+
+Then run **Actions → Web Database Migrations** from `main`, choose `apply`,
+enter `DROP-ONLY-JOB-POSTING-0086`, and provide the successful protected
+restore-drill, crawler deploy, and Typesense backfill run IDs. Before an
+environment approval is requested, the workflow checks all three successful
+main-branch runs, requires them to be the latest matching successes and no more
+than 6h/24h/4h old (restore/crawler/backfill), checks commit ancestry and exact
+reviewed bytes, and requires the current SHA's successful Vercel production
+deployment. The protected `production-migrations` job records owner approval;
+the subsequent apply job shares the crawler deploy concurrency group. After
+approval it runs the posting-floor and all-saved-posting Typesense checks, then
+repeats the immutable/latest/freshness/Vercel proof immediately before DDL and
+SSH-attests the exact live exporter revision, image tag, and absence of mirror
+credentials. Taxonomy readiness is not read from stale Supabase tables: the
+bound backfill run executes the fail-closed local-authoritative count-and-sample
+`crawler verify-typesense-taxonomies` command. The apply job uses the scoped
+`TYPESENSE_SEARCH_KEY` from `production`, creates the one-session readiness
+attestation, and applies 0086. The always-run summary and 14-day artifact retain
+the preflight, posting-floor, saved-job coverage, and postflight JSON. Run an
+authenticated save/list/detail/unsave write canary, and confirm the actual database size
+remains below 400 MiB before changing the subscription.
 
 ## Free-plan guardrails
 

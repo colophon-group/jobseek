@@ -52,6 +52,7 @@ ssh_options=(
 
 artifact_paths=(
   scripts/jobseek-data-backup.py
+  apps/web/drizzle/0086_drop_supabase_job_posting.sql
   deploy/backups
   deploy/systemd/jobseek-postgresql-backup.service
   deploy/systemd/jobseek-postgresql-backup.timer

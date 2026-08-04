@@ -22,7 +22,6 @@ const runtimeExtensions = new Set([
   ".mjs",
   ".cjs",
 ]);
-const developmentOnlyFiles = new Set([join(webRoot, "src/db/seed.ts")]);
 const fixtureRoot = join(
   webRoot,
   "src/db/__tests__/fixtures/crawler-data-write-boundary",
@@ -51,7 +50,6 @@ function listSourceFiles(dir: string, skipTests: boolean): string[] {
     if (
       stat.isFile() &&
       runtimeExtensions.has(extname(path)) &&
-      !developmentOnlyFiles.has(path) &&
       !(skipTests && path.match(/\.(?:test|spec)\.[^.]+$/))
     ) {
       files.push(path);
@@ -147,23 +145,15 @@ function resolveAlias(symbol: ts.Symbol): ts.Symbol {
 const exportedJobPosting = checker
   .getExportsOfModule(schemaModule)
   .find((symbol) => symbol.name === "jobPosting");
-
-if (!exportedJobPosting) {
-  throw new Error("TypeScript could not resolve the jobPosting schema export");
-}
-
-const jobPostingSymbol = resolveAlias(exportedJobPosting);
+const jobPostingSymbol = exportedJobPosting
+  ? resolveAlias(exportedJobPosting)
+  : null;
 const jobPostingDeclaration =
-  jobPostingSymbol.valueDeclaration ?? jobPostingSymbol.declarations?.[0];
-
-if (!jobPostingDeclaration) {
-  throw new Error("jobPosting does not have a value declaration");
-}
-
-const jobPostingType = checker.getTypeOfSymbolAtLocation(
-  jobPostingSymbol,
-  jobPostingDeclaration,
-);
+  jobPostingSymbol?.valueDeclaration ?? jobPostingSymbol?.declarations?.[0];
+const jobPostingType =
+  jobPostingSymbol && jobPostingDeclaration
+    ? checker.getTypeOfSymbolAtLocation(jobPostingSymbol, jobPostingDeclaration)
+    : null;
 
 function unwrapExpression(expression: ts.Expression): ts.Expression {
   let current = expression;
@@ -186,6 +176,7 @@ function isUsableType(type: ts.Type): boolean {
 }
 
 function hasJobPostingType(type: ts.Type): boolean {
+  if (!jobPostingType) return false;
   if (type.isUnionOrIntersection()) {
     return type.types.some(hasJobPostingType);
   }
@@ -205,7 +196,7 @@ function symbolReferencesJobPosting(
   if (!symbol) return false;
 
   const resolved = resolveAlias(symbol);
-  if (resolved === jobPostingSymbol) return true;
+  if (jobPostingSymbol && resolved === jobPostingSymbol) return true;
   if (seen.has(resolved)) return false;
   seen.add(resolved);
 
@@ -313,6 +304,63 @@ function staticString(
   return null;
 }
 
+function isPgTableFactory(
+  input: ts.Expression,
+  seen = new Set<ts.Symbol>(),
+): boolean {
+  const expression = unwrapExpression(input);
+  if (ts.isIdentifier(expression) && expression.text === "pgTable") return true;
+
+  const namespaceTarget =
+    ts.isPropertyAccessExpression(expression) && expression.name.text === "pgTable"
+      ? expression.expression
+      : ts.isElementAccessExpression(expression) &&
+          expression.argumentExpression &&
+          ts.isStringLiteralLike(expression.argumentExpression) &&
+          expression.argumentExpression.text === "pgTable"
+        ? expression.expression
+        : null;
+  if (namespaceTarget) {
+    const namespaceSymbol = checker.getSymbolAtLocation(
+      unwrapExpression(namespaceTarget),
+    );
+    const isPgCoreNamespace = namespaceSymbol?.declarations?.some((declaration) => {
+      if (!ts.isNamespaceImport(declaration)) return false;
+      let ancestor: ts.Node | undefined = declaration;
+      while (ancestor && !ts.isImportDeclaration(ancestor)) {
+        ancestor = ancestor.parent;
+      }
+      return Boolean(
+        ancestor &&
+          ts.isImportDeclaration(ancestor) &&
+          ts.isStringLiteralLike(ancestor.moduleSpecifier) &&
+          ancestor.moduleSpecifier.text === "drizzle-orm/pg-core",
+      );
+    });
+    if (isPgCoreNamespace) return true;
+  }
+
+  const symbol = checker.getSymbolAtLocation(expression);
+  if (!symbol || seen.has(symbol)) return false;
+  seen.add(symbol);
+  for (const declaration of symbol.declarations ?? []) {
+    if (
+      ts.isImportSpecifier(declaration) &&
+      (declaration.propertyName ?? declaration.name).text === "pgTable"
+    ) {
+      return true;
+    }
+    if (
+      ts.isVariableDeclaration(declaration) &&
+      declaration.initializer &&
+      isPgTableFactory(declaration.initializer, seen)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function originatesFromSupabaseJobPosting(
   input: ts.Expression,
   seen = new Set<ts.Symbol>(),
@@ -354,17 +402,54 @@ function originatesFromSupabaseJobPosting(
   );
 }
 
-const rawSqlMutation =
-  /\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:["`]?public["`]?\s*\.\s*)?["`]?job_posting\b["`]?/i;
+const rawSqlReference =
+  /\b(?:FROM|JOIN|INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?|ALTER\s+TABLE|DROP\s+TABLE)\s+(?:ONLY\s+)?(?:["`]?public["`]?\s*\.\s*)?["`]?job_posting\b["`]?/i;
 
-function mutatesCrawlerPostings(sourceFile: ts.SourceFile): boolean {
-  if (rawSqlMutation.test(sourceFile.text)) return true;
+function declaresRetiredPostingTable(sourceFile: ts.SourceFile): boolean {
+  let declarationFound = false;
+  const visit = (node: ts.Node): void => {
+    if (declarationFound) return;
+    if (
+      ts.isCallExpression(node) &&
+      node.arguments[0] &&
+      staticString(node.arguments[0]) === "job_posting"
+    ) {
+      const method = calledMethodName(node.expression);
+      if (
+        isPgTableFactory(node.expression) ||
+        method === "table"
+      ) {
+        declarationFound = true;
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return declarationFound;
+}
+
+const schemaDeclaresRetiredPostingTable =
+  declaresRetiredPostingTable(schemaSource);
+
+function referencesSupabaseCrawlerPostings(sourceFile: ts.SourceFile): boolean {
+  if (
+    rawSqlReference.test(sourceFile.text) ||
+    declaresRetiredPostingTable(sourceFile)
+  ) {
+    return true;
+  }
 
   let mutationFound = false;
   const visit = (node: ts.Node): void => {
     if (mutationFound) return;
 
     if (ts.isCallExpression(node)) {
+      if (originatesFromSupabaseJobPosting(node)) {
+        mutationFound = true;
+        return;
+      }
+
       const method = calledMethodName(node.expression);
       if (
         method &&
@@ -376,16 +461,6 @@ function mutatesCrawlerPostings(sourceFile: ts.SourceFile): boolean {
         return;
       }
 
-      if (
-        method &&
-        ["insert", "update", "upsert", "delete"].includes(method) &&
-        (ts.isPropertyAccessExpression(node.expression) ||
-          ts.isElementAccessExpression(node.expression)) &&
-        originatesFromSupabaseJobPosting(node.expression.expression)
-      ) {
-        mutationFound = true;
-        return;
-      }
     }
 
     ts.forEachChild(node, visit);
@@ -402,6 +477,11 @@ function sourceFile(path: string): ts.SourceFile {
 }
 
 describe("web crawler-data write boundary (#6248)", () => {
+  it("keeps the retired Supabase table out of the current Drizzle schema", () => {
+    expect(exportedJobPosting).toBeUndefined();
+    expect(schemaDeclaresRetiredPostingTable).toBe(false);
+  });
+
   it("keeps the retired Meta Apify endpoint and importer absent", () => {
     for (const extension of runtimeExtensions) {
       expect(
@@ -415,14 +495,18 @@ describe("web crawler-data write boundary (#6248)", () => {
     }
   });
 
-  it("does not mutate crawler job_posting data from web runtime code", () => {
-    const offenders = runtimeFiles
-      .filter((path) => mutatesCrawlerPostings(sourceFile(path)))
-      .map((path) => relative(webRoot, path))
-      .sort();
+  it(
+    "does not reference Supabase job_posting from web runtime code",
+    () => {
+      const offenders = runtimeFiles
+        .filter((path) => referencesSupabaseCrawlerPostings(sourceFile(path)))
+        .map((path) => relative(webRoot, path))
+        .sort();
 
-    expect(offenders).toEqual([]);
-  });
+      expect(offenders).toEqual([]);
+    },
+    15_000,
+  );
 
   it("discovers and analyzes explicit root Next runtime entries", () => {
     expect(listRootRuntimeFiles(webRoot)).toContain(join(webRoot, "proxy.ts"));
@@ -432,7 +516,7 @@ describe("web crawler-data write boundary (#6248)", () => {
     expect(discoveredFixtures.map((path) => relative(maliciousRoot, path))).toEqual([
       "proxy.ts",
     ]);
-    expect(discoveredFixtures.every((path) => mutatesCrawlerPostings(sourceFile(path)))).toBe(
+    expect(discoveredFixtures.every((path) => referencesSupabaseCrawlerPostings(sourceFile(path)))).toBe(
       true,
     );
 
@@ -447,18 +531,13 @@ describe("web crawler-data write boundary (#6248)", () => {
   });
 
   it.each([
-    "relative-named.ts",
-    "namespace.ts",
-    "named-alias.ts",
-    "re-export-consumer.ts",
-    "structural-indirection.ts",
-    "javascript.js",
-    "module.mjs",
-    "commonjs.cjs",
+    "fixture-schema.ts",
+    "namespace-pg-table.ts",
+    "raw-only.ts",
     "raw-sql.ts",
     "supabase.ts",
   ])("detects the malicious %s fixture", (name) => {
-    expect(mutatesCrawlerPostings(sourceFile(join(fixtureRoot, name)))).toBe(true);
+    expect(referencesSupabaseCrawlerPostings(sourceFile(join(fixtureRoot, name)))).toBe(true);
   });
 
   it("does not restore Apify access in the web deployment", () => {

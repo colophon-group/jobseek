@@ -68,6 +68,7 @@ def test_operations_require_owner_review_main_and_exact_confirmation() -> None:
     operate = _job(workflow, "operate")
 
     assert "workflow_dispatch:" in workflow
+    assert 'run-name: "Web PostgreSQL backup operation: ${{ inputs.mode }}"' in workflow
     assert "schedule:" not in workflow
     assert "push:" not in workflow
     assert "environment:" not in preauthorize
@@ -138,6 +139,7 @@ def test_dispatch_is_bound_to_reviewed_revision_and_installed_helper() -> None:
     for output in (
         "data_backup_sha256",
         "operations_sha256",
+        "retirement_migration_sha256",
         "restore_drill_sha256",
         "service_sha256",
         "timer_sha256",
@@ -187,6 +189,7 @@ def test_backup_deploy_uses_strict_native_transport_and_stdin_credentials() -> N
     assert "exec 8>/run/jobseek-backup-deployment.lock" in (
         ROOT / "deploy/backups/install-host.sh"
     ).read_text(encoding="utf-8")
+    assert "apps/web/drizzle/0086_drop_supabase_job_posting.sql" in transport
 
 
 def test_deploy_revision_ignores_unrelated_commits_but_tracks_relevant_changes(

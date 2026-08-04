@@ -205,7 +205,11 @@ describe("0085 saved-job snapshot contract", () => {
     const journal = JSON.parse(
       readFileSync(resolve(process.cwd(), "drizzle/meta/_journal.json"), "utf8"),
     ) as { entries: { idx: number; when: number; tag: string }[] };
-    expect(journal.entries.at(-1)).toEqual({
+    expect(
+      journal.entries.find(
+        (entry) => entry.tag === "0085_saved_job_snapshot_contract",
+      ),
+    ).toEqual({
       idx: 73,
       version: "7",
       when: 1_785_757_200_000,
