@@ -204,6 +204,49 @@ reachable from deployed normal commands. Remove it, the `database_url` setting,
 the Supabase reconciliation state row/schema allowances, and obsolete metrics
 after the rollback window and contract migration are complete.
 
+## Local location source repair (#6282)
+
+The historical taxonomy bootstrap copied all 37,526 retained `location` IDs
+but omitted `slug`, `lat`, and `lng`. An ordinary crawler deploy therefore
+continues to refuse only the location Typesense refresh and preserves the
+previous live collection; it must not deploy the #6256 location schema change
+until the local source has been repaired.
+
+Migration 0017 installs `chk_location_slug_nonblank` as `NOT VALID`. Existing
+historical blanks do not block that release, while every later insert or
+update is prevented from introducing another blank slug. The protected repair
+holds a repeatable-read source snapshot and one serializable local transaction,
+proves exact 37,526-row ID parity, rejects source defects and populated local
+conflicts, updates only missing fields, proves exact field equality, and then
+validates the durable constraint before committing.
+
+Run only after the repair release has deployed successfully from `main`:
+
+1. Record the exact deployed 40-character main SHA.
+2. Open **Actions → Repair Local Location Taxonomy Source (Hetzner) → Run
+   workflow** on `main`.
+3. Enter that SHA as `expected_crawler_revision` and enter the exact token
+   `REPAIR-LOCAL-LOCATION-TAXONOMY-37526`.
+4. Approve the reviewer-gated `production-migrations` environment. The
+   preauthorization job deliberately rejects non-owner,
+   rerun-as-other-actor, non-main, wrong-revision, and wrong-token dispatches
+   before requesting this approval. Do not use the non-review-gated
+   `production` environment for this mutation.
+5. Retain the bounded JSON evidence showing 37,526 source and local rows,
+   `source_local_equal=true`, and `constraint_validated=true`.
+
+The workflow shares both the crawler deployment concurrency group and
+`/run/lock/jobseek-crawler-mutation.lock`. It verifies PostgreSQL recovery
+headroom, exact deployed revision, immutable crawler image tag, exporter image
+identity, and absence of relational credentials from the exporter. The repair
+container receives only `LOCAL_DATABASE_URL` and the separately named retained
+`WEB_DATABASE_URL`; neither value is printed or copied to GitHub.
+
+After this evidence is attached to #6282/#6170, deploy #6256, require
+`typesense.locations.synced count=37526` and the full taxonomy verifier, and
+only then permit #6258. Do not combine this repair with the #6256 producer
+schema change.
+
 ## Free-plan guardrails
 
 Supabase's current platform documentation was rechecked on 2026-08-03. The

@@ -673,6 +673,9 @@ docker run --rm \
   uv run --no-sync crawler sync
 
 # ── Start the full stack on the freshly seeded Redis state ───────────
+# Coupled rollout marker (2026-08-04): this comment-only deploy contract
+# change intentionally triggers the same-revision Murmur workflow and keeps
+# the crawler workflow behind its Murmur safety wait for this one rollout.
 docker compose up -d --remove-orphans
 
 # Force-recreate alloy so it picks up any alloy.river bind-mount changes.

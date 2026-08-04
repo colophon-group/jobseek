@@ -97,6 +97,11 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("sync", help="CSV -> local Postgres + Redis + Typesense")
 
+    sub.add_parser(
+        "repair-location-taxonomy-source",
+        help="One-shot retained web DB -> local location slug/coordinate repair",
+    )
+
     ats_inventory_p = sub.add_parser(
         "ats-inventory",
         help="Validate and cache the data-only ats-scrapers company inventory",
@@ -119,6 +124,37 @@ def parse_args() -> argparse.Namespace:
         help="Reconcile unsupported-family issues; writes require explicit 'create'",
     )
     ats_inventory_p.add_argument(
+        "--candidate-issues",
+        choices=("off", "plan"),
+        default="off",
+        help="Explain conservative candidate deduplication without GitHub writes",
+    )
+    ats_inventory_p.add_argument(
+        "--candidate-limit",
+        type=int,
+        default=100,
+        help="Maximum impact-ranked rows to explain in candidate plan mode",
+    )
+    crawler_root = Path(__file__).resolve().parent.parent
+    ats_inventory_p.add_argument(
+        "--companies-file",
+        type=Path,
+        default=crawler_root / "data" / "companies.csv",
+        help="Checked-in company registry used for exact and soft matches",
+    )
+    ats_inventory_p.add_argument(
+        "--boards-file",
+        type=Path,
+        default=crawler_root / "data" / "boards.csv",
+        help="Checked-in board registry used for exact URL and ATS-tenant matches",
+    )
+    ats_inventory_p.add_argument(
+        "--candidate-ledger",
+        type=Path,
+        default=None,
+        help="Durable SQLite ledger (default: <cache-dir>/candidates/ledger.sqlite)",
+    )
+    ats_inventory_p.add_argument(
         "--github-repo",
         default=os.environ.get("ATS_INVENTORY_GITHUB_REPO", "colophon-group/jobseek"),
         help="Repository used for unsupported-family issues",
@@ -139,6 +175,29 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=256,
         help="Maximum steady-state cache size in MiB",
+    )
+    ats_inventory_p.add_argument(
+        "--impact",
+        action="store_true",
+        help="Refresh compact per-company impact from changed per-ATS Parquet artifacts",
+    )
+    ats_inventory_p.add_argument(
+        "--impact-max-cache-mib",
+        type=int,
+        default=768,
+        help="Maximum impact-cache bytes including one transient Parquet download",
+    )
+    ats_inventory_p.add_argument(
+        "--impact-max-artifact-mib",
+        type=int,
+        default=512,
+        help="Maximum accepted size of one per-ATS Parquet artifact",
+    )
+    ats_inventory_p.add_argument(
+        "--impact-free-reserve-mib",
+        type=int,
+        default=512,
+        help="Free disk space retained while streaming a changed artifact",
     )
 
     recon_p = sub.add_parser(
@@ -573,6 +632,15 @@ async def run() -> None:
 
             await run_sync()
 
+        elif args.command == "repair-location-taxonomy-source":
+            local_pool = await create_local_pool()
+            source_pool = await create_web_pool()
+            from src.location_taxonomy_repair import repair_location_taxonomy_source
+
+            summary = await repair_location_taxonomy_source(source_pool, local_pool)
+            sys.stdout.write(json.dumps(summary.to_dict(), sort_keys=True) + "\n")
+            sys.stdout.flush()
+
         elif args.command == "ats-inventory":
             import httpx
 
@@ -580,10 +648,13 @@ async def run() -> None:
                 GitHubSupportIssueClient,
                 reconcile_support_issues,
             )
+            from src.ats_inventory.impact import ImpactCache
             from src.ats_inventory.locking import exclusive_run_lock
             from src.ats_inventory.source import InventorySource
 
             timeout = httpx.Timeout(60.0, read=180.0)
+            if args.candidate_limit < 1:
+                raise ValueError("--candidate-limit must be at least 1")
             with exclusive_run_lock(args.cache_dir / "runner.lock"):
                 async with httpx.AsyncClient(
                     timeout=timeout,
@@ -600,19 +671,37 @@ async def run() -> None:
                     )
                     snapshot = await source.sync()
                     report = snapshot.to_report()
+                    report["impact"] = {"enabled": args.impact}
+                    impact_snapshot = None
+                    impact = ImpactCache(
+                        args.cache_dir / "impact",
+                        client,
+                        max_cache_bytes=args.impact_max_cache_mib * 1024 * 1024,
+                        max_artifact_bytes=args.impact_max_artifact_mib * 1024 * 1024,
+                        min_free_bytes=args.impact_free_reserve_mib * 1024 * 1024,
+                    )
+                    if args.impact:
+                        impact_snapshot = await impact.sync(snapshot)
+                        report["impact"] = {
+                            "enabled": True,
+                            **impact_snapshot.to_report(),
+                        }
                     report["support_issues"] = {"mode": args.support_issues, "actions": []}
-                    if args.support_issues != "off":
+                    github = None
+                    if args.support_issues != "off" or args.candidate_issues != "off":
                         token = os.environ.get(args.github_token_env)
                         if not token:
                             raise RuntimeError(
-                                f"{args.github_token_env} is required for support issue "
-                                "reconciliation"
+                                f"{args.github_token_env} is required for GitHub issue "
+                                "reconciliation and candidate planning"
                             )
                         github = GitHubSupportIssueClient(
                             client,
                             repo=args.github_repo,
                             token=token,
                         )
+                    if args.support_issues != "off":
+                        assert github is not None
                         actions = await reconcile_support_issues(
                             snapshot,
                             github,
@@ -621,6 +710,60 @@ async def run() -> None:
                         report["support_issues"] = {
                             "mode": args.support_issues,
                             "actions": [action.to_dict() for action in actions],
+                            "rate_remaining": github.rate_remaining,
+                            "rate_reset": github.rate_reset,
+                        }
+                    report["candidate_issues"] = {
+                        "mode": args.candidate_issues,
+                        "actions": [],
+                    }
+                    if args.candidate_issues == "plan":
+                        from dataclasses import asdict
+
+                        from src.ats_inventory.candidate_issues import (
+                            CandidateIssueCoordinator,
+                        )
+                        from src.ats_inventory.candidates import Candidate, LocalRegistryIndex
+                        from src.ats_inventory.ledger import CandidateLedger
+
+                        assert github is not None
+                        if not snapshot.coverage.candidate_generation_allowed:
+                            raise RuntimeError(
+                                "candidate generation is quarantined below the coverage gate"
+                            )
+                        if impact_snapshot is None:
+                            impact_snapshot = impact.load_current()
+                        if (
+                            impact_snapshot.manifest_sha256 != snapshot.manifest_sha256
+                            or impact_snapshot.inventory_sha256 != snapshot.inventory_sha256
+                        ):
+                            raise RuntimeError(
+                                "cached impact does not match the current inventory; rerun with "
+                                "--impact"
+                            )
+                        local = LocalRegistryIndex.from_csv(args.companies_file, args.boards_file)
+                        ledger_path = args.candidate_ledger or (
+                            args.cache_dir / "candidates" / "ledger.sqlite"
+                        )
+                        coordinator = await CandidateIssueCoordinator.bootstrap(
+                            client=github,
+                            local=local,
+                            ledger=CandidateLedger(ledger_path),
+                        )
+                        candidate_actions = []
+                        for company in impact_snapshot.ranked()[: args.candidate_limit]:
+                            candidate = Candidate.from_impact(company)
+                            candidate_actions.append(
+                                await coordinator.create(candidate, dry_run=True)
+                            )
+                        report["candidate_issues"] = {
+                            "mode": "plan",
+                            "considered": len(candidate_actions),
+                            "eligible": sum(
+                                action.action == "would_create" for action in candidate_actions
+                            ),
+                            "actions": [action.to_dict() for action in candidate_actions],
+                            "ledger_reconciliation": asdict(coordinator.reconciliation),
                             "rate_remaining": github.rate_remaining,
                             "rate_reset": github.rate_reset,
                         }
