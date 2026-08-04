@@ -1,0 +1,231 @@
+name: Bootstrap Crawler Active Compose Snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Enter BOOTSTRAP-CRAWLER-ACTIVE-COMPOSE-0.13.241
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: crawler-active-compose-snapshot-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  preauthorize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+      DISPATCH_EVENT: ${{ github.event_name }}
+      DISPATCH_REF: ${{ github.ref }}
+    steps:
+      - name: Reject unauthorized dispatches before requesting approval
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_EVENT" = workflow_dispatch
+          test "$DISPATCH_REF" = refs/heads/main
+          test "$DISPATCH_CONFIRMATION" = BOOTSTRAP-CRAWLER-ACTIVE-COMPOSE-0.13.241
+
+  bootstrap:
+    needs: preauthorize
+    if: github.actor == 'viktor-shcherb' && github.triggering_actor == 'viktor-shcherb'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    env:
+      DISPATCH_ACTOR: ${{ github.actor }}
+      DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+      DISPATCH_EVENT: ${{ github.event_name }}
+      DISPATCH_REF: ${{ github.ref }}
+    steps:
+      - name: Bootstrap the audited crawler rollback snapshot
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: DISPATCH_ACTOR,DISPATCH_TRIGGERING_ACTOR,DISPATCH_CONFIRMATION,DISPATCH_EVENT,DISPATCH_REF
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+
+            fail() {
+              printf 'ERROR: crawler active Compose bootstrap precondition failed: %s\n' "$1" >&2
+              exit 1
+            }
+
+            test "$DISPATCH_ACTOR" = viktor-shcherb || fail 'actor'
+            test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb || fail 'triggering actor'
+            test "$DISPATCH_EVENT" = workflow_dispatch || fail 'event'
+            test "$DISPATCH_REF" = refs/heads/main || fail 'ref'
+            test "$DISPATCH_CONFIRMATION" = BOOTSTRAP-CRAWLER-ACTIVE-COMPOSE-0.13.241 \
+              || fail 'confirmation'
+
+            deploy_dir=/home/deploy
+            env_file="$deploy_dir/.env"
+            active_compose="$deploy_dir/docker-compose.yml"
+            active_snapshot="$deploy_dir/.crawler-active-docker-compose.yml"
+            active_snapshot_digest="$deploy_dir/.crawler-active-docker-compose.sha256"
+            expected_compose_sha256=3866e0dbeea5c53c96fd5262fd90c3d4327ca1bbdb0e42968a73c8c49ef60d8f
+
+            test ! -L /run/lock/jobseek-crawler-mutation.lock \
+              || fail 'mutation lock is a symlink'
+            exec 9>/run/lock/jobseek-crawler-mutation.lock
+            flock -w 30 9 || fail 'mutation lock is busy'
+
+            test -f "$env_file" && test ! -L "$env_file" \
+              || fail 'deployment environment file'
+            test "$(stat -c '%U:%G:%a' "$env_file")" = deploy:deploy:600 \
+              || fail 'deployment environment ownership or mode'
+            mapfile -t active_tags < <(sed -n 's/^CRAWLER_IMAGE_TAG=//p' "$env_file")
+            test "${#active_tags[@]}" -eq 1 \
+              || fail 'crawler image tag cardinality'
+            test "${active_tags[0]}" = v0.13.241 \
+              || fail 'crawler image tag'
+
+            active_files=(
+              "$deploy_dir/deploy.sh"
+              "$deploy_dir/deploy_helpers.sh"
+              "$active_compose"
+              "$deploy_dir/alloy.river"
+              "$deploy_dir/scripts/postgresql-operational-preflight.py"
+            )
+            for active_file in "${active_files[@]}"; do
+              test -f "$active_file" && test ! -L "$active_file" \
+                || fail 'active deployment bundle'
+            done
+            sha256sum --quiet -c <<'SHA256S' \
+              || fail 'active deployment bundle digest'
+            4bdb2dde650bb68c59047d1062dfb255d50ed6d4b3dbbc6b247240d0d99d7755  /home/deploy/deploy.sh
+            c14492ec234780e42b018d22ac1d1bd788d563c975486a6f38c4e5f04bd65649  /home/deploy/deploy_helpers.sh
+            3866e0dbeea5c53c96fd5262fd90c3d4327ca1bbdb0e42968a73c8c49ef60d8f  /home/deploy/docker-compose.yml
+            485821333308d1ab7ef053923ead0622459ab9f551bf11e4b27f70c5a53a7d82  /home/deploy/alloy.river
+            cc425aaef22ff31386492e4780e41c1bddc4056f9b64fd87048a7192faab7502  /home/deploy/scripts/postgresql-operational-preflight.py
+            SHA256S
+
+            running_oneoffs="$(docker ps \
+              --filter label=com.docker.compose.project=deploy \
+              --filter label=com.docker.compose.oneoff=True \
+              --format '{{.ID}}')"
+            test -z "$running_oneoffs" || fail 'running Compose one-off container'
+            running_typesense_maintenance="$(docker ps \
+              --filter 'name=^/crawler-(backfill|refresh)-typesense-' \
+              --format '{{.ID}}')"
+            test -z "$running_typesense_maintenance" \
+              || fail 'running Typesense maintenance container'
+
+            compose=(
+              docker compose
+              --project-name deploy
+              --env-file "$env_file"
+              --file "$active_compose"
+            )
+            core_services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)
+            for service in "${core_services[@]}"; do
+              mapfile -t container_ids < <("${compose[@]}" ps --all --quiet "$service")
+              test "${#container_ids[@]}" -eq 1 \
+                || fail "${service} container cardinality"
+              container_id="${container_ids[0]}"
+              state="$(docker inspect --format '{{.State.Status}}' "$container_id")"
+              test "$state" = running || fail "${service} state"
+              health="$(docker inspect \
+                --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+                "$container_id")"
+
+              case "$service" in
+                redis)
+                  expected_image=redis:8-alpine
+                  expected_health=healthy
+                  ;;
+                worker-1|worker-2|worker-3)
+                  expected_image=ghcr.io/colophon-group/jobseek-crawler:v0.13.241
+                  expected_health=healthy
+                  ;;
+                browser-1)
+                  expected_image=ghcr.io/colophon-group/jobseek-crawler-browser:v0.13.241
+                  expected_health=healthy
+                  ;;
+                exporter|drain)
+                  expected_image=ghcr.io/colophon-group/jobseek-crawler:v0.13.241
+                  expected_health=none
+                  ;;
+                alloy)
+                  expected_image='grafana/alloy:v1.18.0@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308'
+                  expected_health=none
+                  ;;
+                *)
+                  fail 'unexpected core service'
+                  ;;
+              esac
+
+              image="$(docker inspect --format '{{.Config.Image}}' "$container_id")"
+              test "$image" = "$expected_image" || fail "${service} image"
+              test "$health" = "$expected_health" || fail "${service} health"
+            done
+            curl --fail --silent --show-error --max-time 2 \
+              http://127.0.0.1:12346/-/ready >/dev/null \
+              || fail 'Alloy readiness'
+
+            test ! -e "$active_snapshot" && test ! -L "$active_snapshot" \
+              || fail 'active snapshot path is not absent'
+            test ! -e "$active_snapshot_digest" && test ! -L "$active_snapshot_digest" \
+              || fail 'active snapshot digest path is not absent'
+
+            snapshot_temporary=''
+            digest_temporary=''
+            cleanup() {
+              status=$?
+              trap - EXIT HUP INT TERM
+              if [[ -n "$snapshot_temporary" ]]; then
+                rm -f -- "$snapshot_temporary"
+              fi
+              if [[ -n "$digest_temporary" ]]; then
+                rm -f -- "$digest_temporary"
+              fi
+              exit "$status"
+            }
+            trap cleanup EXIT HUP INT TERM
+
+            snapshot_temporary="$(mktemp "$deploy_dir/.crawler-active-compose.XXXXXX")"
+            digest_temporary="$(mktemp "$deploy_dir/.crawler-active-compose-digest.XXXXXX")"
+            install -m 0644 "$active_compose" "$snapshot_temporary"
+            sha256sum "$snapshot_temporary" | awk '{print $1}' >"$digest_temporary"
+            chmod 0644 "$digest_temporary"
+            test "$(tr -d '[:space:]' <"$digest_temporary")" = "$expected_compose_sha256" \
+              || fail 'temporary snapshot digest'
+
+            mv "$snapshot_temporary" "$active_snapshot"
+            snapshot_temporary=''
+            mv "$digest_temporary" "$active_snapshot_digest"
+            digest_temporary=''
+
+            test -f "$active_snapshot" && test ! -L "$active_snapshot" \
+              || fail 'created snapshot file'
+            test -f "$active_snapshot_digest" && test ! -L "$active_snapshot_digest" \
+              || fail 'created snapshot digest file'
+            test "$(stat -c '%U:%G:%a' "$active_snapshot")" = deploy:deploy:644 \
+              || fail 'created snapshot ownership or mode'
+            test "$(stat -c '%U:%G:%a' "$active_snapshot_digest")" = deploy:deploy:644 \
+              || fail 'created snapshot digest ownership or mode'
+            actual_snapshot_sha256="$(sha256sum "$active_snapshot" | awk '{print $1}')"
+            stored_snapshot_sha256="$(tr -d '[:space:]' <"$active_snapshot_digest")"
+            test "$actual_snapshot_sha256" = "$expected_compose_sha256" \
+              || fail 'created snapshot content'
+            test "$stored_snapshot_sha256" = "$actual_snapshot_sha256" \
+              || fail 'created snapshot verification'
+
+            printf '%s\n' \
+              "bootstrap_complete version=v0.13.241 compose_sha256=${actual_snapshot_sha256} core_services=8"
