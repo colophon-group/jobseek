@@ -1349,8 +1349,26 @@ async def _probe_rss(row: dict, client: httpx.AsyncClient) -> ProbeResult:
             "warn",
             "no feed_url in monitor_config",
         )
-    resp = await _retry(lambda: _get(client, feed_url))
-    return _classify(row, "rss", feed_url, resp)
+    # Reuse the runtime's streamed XML parser so a retired feed returning an
+    # HTML landing page with HTTP 200 cannot be reported healthy here.
+    from src.core.monitors.rss import _probe_feed
+
+    valid, count = await _probe_feed(feed_url, client, cfg.get("preset"))
+    if not valid:
+        return ProbeResult(
+            row["board_slug"],
+            "rss",
+            feed_url,
+            "fail",
+            "feed did not return valid RSS/XML",
+        )
+    return ProbeResult(
+        row["board_slug"],
+        "rss",
+        feed_url,
+        "ok",
+        f"valid RSS/XML: {count or 0} jobs",
+    )
 
 
 def _classify(

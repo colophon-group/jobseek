@@ -29,7 +29,7 @@ from src.processing.board import (
     _enqueue_scrapes_for_new,
     _enqueue_scrapes_for_relisted,
 )
-from src.processing.scrape import _is_skip_no_scrape
+from src.processing.scrape import _effective_board_enrich, _is_skip_no_scrape
 from src.queries.monitor import _INSERT_URL_ONLY_JOBS
 from src.queries.scrape import _CLEAR_SCRAPE_FOR_RICH, _RECORD_SCRAPE_TRANSIENT
 from src.redis_queue import ScrapeWork
@@ -95,6 +95,18 @@ class TestIsSkipNoScrape:
 
     def test_legacy_successfactors_rss_requires_enrichment(self):
         assert _is_skip_no_scrape({"variant": "legacy"}, crawler_type="rss") is False
+
+    def test_legacy_successfactors_inherits_auto_enrichment_at_runtime(self):
+        metadata = {"preset": "successfactors", "variant": "legacy"}
+        assert _effective_board_enrich(metadata, "rss") == ["description"]
+
+    def test_explicit_scraper_config_is_not_merged_with_auto_enrichment(self):
+        metadata = {
+            "preset": "successfactors",
+            "variant": "legacy",
+            "scraper_config": {"scope": "main"},
+        }
+        assert _effective_board_enrich(metadata, "rss") is None
 
     def test_implicit_amazon_is_skip(self):
         assert _is_skip_no_scrape({}, crawler_type="amazon") is True

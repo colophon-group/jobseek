@@ -30,6 +30,7 @@ log = structlog.get_logger()
 __all__ = [
     "END_OF_PAGINATION_STATUSES",
     "PaginationFetchError",
+    "ResponseBodyTooLargeError",
     "_RETRYABLE_STATUSES",
     "fetch_json_page_with_retry",
     "fetch_response_with_status_retries",
@@ -129,6 +130,15 @@ class PaginationFetchError(Exception):
         self.last_location = last_location
         detail = f"status={last_status}" if last_status is not None else f"error={last_error}"
         super().__init__(f"pagination fetch failed for {url} after {attempts} attempts ({detail})")
+
+
+class ResponseBodyTooLargeError(Exception):
+    """A streamed response exceeded its caller-supplied decoded-byte cap."""
+
+    def __init__(self, url: str, max_bytes: int) -> None:
+        self.url = url
+        self.max_bytes = max_bytes
+        super().__init__(f"response body for {url} exceeded {max_bytes} bytes")
 
 
 # Explicitly-retryable non-5xx statuses. Anything in the 500–599 range is
@@ -353,6 +363,7 @@ async def fetch_text_page_with_retry(
     end_of_pagination_statuses: Collection[int] = END_OF_PAGINATION_STATUSES,
     require_nonempty: bool = False,
     max_chars: int | None = None,
+    max_bytes: int | None = None,
     response_headers: dict[str, str] | None = None,
     log_event: str = "http_retry.text_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
@@ -365,11 +376,12 @@ async def fetch_text_page_with_retry(
     successful empty page. Provider-specific transient statuses can be added
     through ``retryable_statuses`` without weakening the global 4xx policy.
     ``require_nonempty`` retries empty 200 responses instead of accepting a
-    likely CDN/WAF glitch, and ``max_chars`` bounds the returned text while
-    leaving response-status handling authoritative. ``POST`` and the optional
-    response-header sink support form/text pagination protocols while keeping
-    their status, transport, empty-body, TDM, and backoff behavior identical
-    to ordinary GET pages.
+    likely CDN/WAF glitch. ``max_chars`` bounds the returned text after decode;
+    ``max_bytes`` switches to streamed reading and aborts before buffering more
+    than that many decoded response bytes. ``POST`` and the optional response-
+    header sink support form/text pagination protocols while keeping their
+    status, transport, empty-body, TDM, and backoff behavior identical to
+    ordinary GET pages.
     """
     from src.metrics import (
         http_retry_attempts_total,
@@ -383,6 +395,8 @@ async def fetch_text_page_with_retry(
         raise ValueError(f"unsupported retry method: {method!r}")
     if method == "GET" and content is not None:
         raise ValueError("GET text-page requests cannot include content")
+    if max_bytes is not None and max_bytes < 1:
+        raise ValueError("max_bytes must be positive")
 
     host = http_retry_host(url)
     last_exc: BaseException | None = None
@@ -391,7 +405,32 @@ async def fetch_text_page_with_retry(
 
     for attempt in range(retries):
         try:
-            if method == "GET":
+            text: str | None = None
+            if max_bytes is not None:
+                request_kwargs: dict[str, Any] = {
+                    "follow_redirects": follow_redirects,
+                    "timeout": timeout,
+                    "headers": headers,
+                }
+                if method == "POST":
+                    request_kwargs["content"] = content
+                async with client.stream(method, url, **request_kwargs) as resp:
+                    last_status = resp.status_code
+                    if resp.status_code == 200:
+                        # Check the authoritative HTTP header before reading a
+                        # potentially large body, then inspect the bounded body
+                        # for the HTML meta-policy form after decode.
+                        _tdm_check(resp)
+                        body = bytearray()
+                        async for chunk in resp.aiter_bytes():
+                            remaining = (max_bytes + 1) - len(body)
+                            if remaining > 0:
+                                body.extend(chunk[:remaining])
+                            if len(body) > max_bytes:
+                                raise ResponseBodyTooLargeError(url, max_bytes)
+                        text = bytes(body).decode(resp.encoding or "utf-8", errors="replace")
+                        _tdm_check(resp, body_excerpt=text)
+            elif method == "GET":
                 resp = await client.get(
                     url,
                     follow_redirects=follow_redirects,
@@ -408,8 +447,9 @@ async def fetch_text_page_with_retry(
                 )
             last_status = resp.status_code
             if resp.status_code == 200:
-                _tdm_check(resp, body_excerpt=resp.text)
-                text = resp.text
+                if text is None:
+                    text = resp.text
+                    _tdm_check(resp, body_excerpt=text)
                 if not require_nonempty or text:
                     if response_headers is not None:
                         response_headers.clear()
@@ -434,7 +474,7 @@ async def fetch_text_page_with_retry(
                     last_status=resp.status_code,
                     last_location=resp.headers.get("location"),
                 )
-        except (PaginationFetchError, TDMReservedError):
+        except (PaginationFetchError, ResponseBodyTooLargeError, TDMReservedError):
             raise
         except Exception as exc:  # noqa: BLE001 - timeout, network, etc.
             last_exc = exc

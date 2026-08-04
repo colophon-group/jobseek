@@ -266,6 +266,29 @@ def _board_has_enrich(metadata: dict) -> list[str] | None:
     return None
 
 
+def _effective_board_enrich(metadata: dict, crawler_type: str | None) -> list[str] | None:
+    """Return persisted enrichment or a monitor's complete auto-configured default.
+
+    Runtime scheduling must match scraper resolution even when a board arrived
+    through direct CSV/config ingress instead of ``ws select``. A caller-
+    supplied scraper config remains authoritative and is never merged with an
+    auto default; only a genuinely absent config can inherit auto enrichment.
+    """
+    configured = _board_has_enrich(metadata)
+    if configured is not None:
+        return configured
+    if metadata.get("scraper_type") or "scraper_config" in metadata:
+        return None
+    if not crawler_type:
+        return None
+
+    from src.workspace._compat import auto_scraper_type
+
+    auto = auto_scraper_type(crawler_type, metadata)
+    auto_config = auto[1] if auto is not None else None
+    return _board_has_enrich({"scraper_config": auto_config})
+
+
 def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
     """Return True if this board is 'rich monitor, no scraping needed'.
 

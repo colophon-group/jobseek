@@ -22,7 +22,11 @@ import structlog
 
 from src.core.monitor import MonitorResult
 from src.core.monitors import BoardGoneError, DiscoveredJob
-from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
+from src.shared.http_retry import (
+    PaginationFetchError,
+    ResponseBodyTooLargeError,
+    fetch_text_page_with_retry,
+)
 from src.shared.successfactors import (
     SuccessFactorsLegacyBoard,
     successfactors_legacy_board_from_metadata,
@@ -55,6 +59,11 @@ _CALLBACK_RE = re.compile(
     r"dwr\.engine\._remoteHandleCallback\('(?P<batch>\d+)',\s*'0',\s*"
     r"(?P<root>\{(?:payload:s\d+|filters:s\d+,results:s\d+)\})\s*\);"
 )
+_PRELUDE_RE = re.compile(
+    r"\A\s*(?:throw\s+'allowScriptTagRemoting is false\.';\s*//#DWR-INSERT\s*)?"
+    r"//#DWR-REPLY\s*"
+)
+_WHITESPACE_RE = re.compile(r"\s*")
 _INITIAL_ROOT_RE = re.compile(r"\{payload:(s\d+)\}")
 _SEARCH_ROOT_RE = re.compile(r"\{filters:(s\d+),results:(s\d+)\}")
 _LOCATION_LABEL_RE = re.compile(
@@ -137,9 +146,12 @@ async def _bootstrap_session(
             end_of_pagination_statuses=(),
             require_nonempty=True,
             max_chars=MAX_BOOTSTRAP_CHARS + 1,
+            max_bytes=MAX_BOOTSTRAP_CHARS,
             response_headers=headers,
             log_event="rss.successfactors_legacy_bootstrap_backoff",
         )
+    except ResponseBodyTooLargeError as exc:
+        raise SuccessFactorsLegacyProtocolError("legacy bootstrap exceeded the HTML cap") from exc
     except PaginationFetchError as exc:
         if exc.last_status is not None and 300 <= exc.last_status < 400 and exc.last_location:
             raise SuccessFactorsLegacyRedirect(
@@ -260,19 +272,25 @@ async def _post_dwr(
 ) -> str:
     origin = f"https://{session.board.host}"
     url = f"{origin}/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.{method}.dwr"
-    response = await fetch_text_page_with_retry(
-        client,
-        url,
-        method="POST",
-        content=body,
-        headers=_dwr_headers(session),
-        follow_redirects=False,
-        retryable_statuses=_TRANSIENT_STATUSES,
-        end_of_pagination_statuses=(),
-        require_nonempty=True,
-        max_chars=MAX_DWR_CHARS + 1,
-        log_event="rss.successfactors_legacy_dwr_backoff",
-    )
+    try:
+        response = await fetch_text_page_with_retry(
+            client,
+            url,
+            method="POST",
+            content=body,
+            headers=_dwr_headers(session),
+            follow_redirects=False,
+            retryable_statuses=_TRANSIENT_STATUSES,
+            end_of_pagination_statuses=(),
+            require_nonempty=True,
+            max_chars=MAX_DWR_CHARS + 1,
+            max_bytes=MAX_DWR_CHARS,
+            log_event="rss.successfactors_legacy_dwr_backoff",
+        )
+    except ResponseBodyTooLargeError as exc:
+        raise SuccessFactorsLegacyProtocolError(
+            "legacy DWR response exceeded the safety cap"
+        ) from exc
     if response is None:
         raise SuccessFactorsLegacyProtocolError("legacy DWR returned no response")
     if len(response) > MAX_DWR_CHARS:
@@ -312,55 +330,77 @@ def _parse_value(raw: str, objects: dict[str, object]) -> object:
 
 
 def _parse_dwr(response: str, *, batch: int, initial: bool) -> dict:
-    if "//#DWR-REPLY" not in response:
+    prelude = _PRELUDE_RE.match(response)
+    if prelude is None:
         raise SuccessFactorsLegacyProtocolError("response omitted the DWR reply marker")
-    if "_remoteHandleException" in response:
-        raise SuccessFactorsLegacyProtocolError("SuccessFactors returned a DWR exception")
 
     objects: dict[str, object] = {}
-    for match in _DECL_RE.finditer(response):
-        name, shape = match.groups()
-        if name in objects:
-            raise SuccessFactorsLegacyProtocolError("DWR redeclared an object")
-        objects[name] = {} if shape == "{}" else []
+    callback: re.Match[str] | None = None
+    cursor = prelude.end()
+    while cursor < len(response):
+        whitespace = _WHITESPACE_RE.match(response, cursor)
+        if whitespace is not None:
+            cursor = whitespace.end()
+        if cursor == len(response):
+            break
+
+        declaration = _DECL_RE.match(response, cursor)
+        if declaration is not None:
+            name, shape = declaration.groups()
+            if name in objects:
+                raise SuccessFactorsLegacyProtocolError("DWR redeclared an object")
+            objects[name] = {} if shape == "{}" else []
+            cursor = declaration.end()
+            continue
+
+        assignment = _ASSIGN_RE.match(response, cursor)
+        if assignment is not None:
+            owner = objects.get(assignment.group("owner"))
+            if owner is None:
+                raise SuccessFactorsLegacyProtocolError("DWR assigned to an undeclared object")
+            value = _parse_value(assignment.group("value"), objects)
+            property_name = assignment.group("property") or assignment.group("key")
+            if property_name is not None:
+                if not isinstance(owner, dict):
+                    raise SuccessFactorsLegacyProtocolError("DWR used an object key on an array")
+                if property_name in owner:
+                    raise SuccessFactorsLegacyProtocolError("DWR assigned an object key twice")
+                owner[property_name] = value
+            else:
+                if not isinstance(owner, list):
+                    raise SuccessFactorsLegacyProtocolError("DWR used an array index on an object")
+                index = int(assignment.group("index"))
+                if index > MAX_JOBS * 4:
+                    raise SuccessFactorsLegacyProtocolError(
+                        "DWR array index exceeded the safety cap"
+                    )
+                if index < len(owner) and owner[index] is not None:
+                    raise SuccessFactorsLegacyProtocolError("DWR assigned an array index twice")
+                if index >= len(owner):
+                    owner.extend([None] * (index + 1 - len(owner)))
+                owner[index] = value
+            cursor = assignment.end()
+            continue
+
+        parsed_callback = _CALLBACK_RE.match(response, cursor)
+        if parsed_callback is not None and callback is None:
+            callback = parsed_callback
+            cursor = parsed_callback.end()
+            if response[cursor:].strip():
+                raise SuccessFactorsLegacyProtocolError(
+                    "DWR contained statements after its callback"
+                )
+            break
+
+        raise SuccessFactorsLegacyProtocolError(
+            "DWR contained a statement outside the supported grammar"
+        )
+
     if not objects:
         raise SuccessFactorsLegacyProtocolError("DWR response declared no data graph")
-
-    assignments = list(_ASSIGN_RE.finditer(response))
-    assignment_starts = {match.start() for match in assignments}
-    for suspicious in re.finditer(r"\bs\d+(?:\.|\[)[^;\r\n]{0,4096}=", response):
-        if suspicious.start() not in assignment_starts:
-            raise SuccessFactorsLegacyProtocolError("DWR contained an unsupported assignment")
-
-    for match in assignments:
-        owner = objects.get(match.group("owner"))
-        if owner is None:
-            raise SuccessFactorsLegacyProtocolError("DWR assigned to an undeclared object")
-        value = _parse_value(match.group("value"), objects)
-        property_name = match.group("property") or match.group("key")
-        if property_name is not None:
-            if not isinstance(owner, dict):
-                raise SuccessFactorsLegacyProtocolError("DWR used an object key on an array")
-            if property_name in owner:
-                raise SuccessFactorsLegacyProtocolError("DWR assigned an object key twice")
-            owner[property_name] = value
-            continue
-        if not isinstance(owner, list):
-            raise SuccessFactorsLegacyProtocolError("DWR used an array index on an object")
-        index = int(match.group("index"))
-        if index > MAX_JOBS * 4:
-            raise SuccessFactorsLegacyProtocolError("DWR array index exceeded the safety cap")
-        if index < len(owner) and owner[index] is not None:
-            raise SuccessFactorsLegacyProtocolError("DWR assigned an array index twice")
-        if index >= len(owner):
-            owner.extend([None] * (index + 1 - len(owner)))
-        owner[index] = value
-
-    callbacks = list(_CALLBACK_RE.finditer(response))
-    expected = [match for match in callbacks if match.group("batch") == str(batch)]
-    if len(callbacks) != 1 or len(expected) != 1:
+    if callback is None or callback.group("batch") != str(batch):
         raise SuccessFactorsLegacyProtocolError("DWR response omitted its unique callback")
-    root_text = expected[0].group("root")
+    root_text = callback.group("root")
     root_match = (_INITIAL_ROOT_RE if initial else _SEARCH_ROOT_RE).fullmatch(root_text)
     if root_match is None:
         raise SuccessFactorsLegacyProtocolError("DWR callback had an unexpected result shape")

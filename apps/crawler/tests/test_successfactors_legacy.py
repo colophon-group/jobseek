@@ -246,6 +246,19 @@ class TestSafeDwrParser:
         assert root["results"]["postingCount"] == 2
         assert len(root["results"]["postings"]) == 2
 
+    def test_string_contents_are_not_scanned_as_statements(self):
+        response = _initial_response(1).replace(
+            _quote("Engineer 1"),
+            _quote("var s0={}; alert(1);"),
+        )
+        root = legacy._parse_dwr(response, batch=0, initial=True)
+        assert root["results"]["postings"][0]["title"] == "var s0={}; alert(1);"
+
+    def test_rejects_unsupported_standalone_statement(self):
+        response = _initial_response(1).replace("var s0={};", "var s0={};alert(1);", 1)
+        with pytest.raises(legacy.SuccessFactorsLegacyProtocolError, match="supported grammar"):
+            legacy._parse_dwr(response, batch=0, initial=True)
+
     @pytest.mark.parametrize(
         "response",
         [
@@ -358,6 +371,21 @@ class TestDiscovery:
         assert len(result.urls) == 1
         assert attempts == 2
 
+    async def test_oversized_dwr_response_aborts_at_streamed_cap(self, monkeypatch):
+        monkeypatch.setattr(legacy, "MAX_DWR_CHARS", 64)
+
+        def handler(request: httpx.Request):
+            if request.method == "GET":
+                return _bootstrap_response()
+            return httpx.Response(200, content=b"x" * 65)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(
+                legacy.SuccessFactorsLegacyProtocolError,
+                match="exceeded the safety cap",
+            ):
+                await discover(_board(), client)
+
 
 class TestDetectionAndWorkspace:
     async def test_direct_legacy_probe_returns_canonical_config(self):
@@ -396,6 +424,30 @@ class TestDetectionAndWorkspace:
             result = await probe_row(row, client)
         assert result.status == "ok"
         assert result.message == "legacy SuccessFactors DWR: 1 jobs"
+
+    async def test_scheduled_feed_probe_rejects_html_200(self):
+        row = {
+            "board_slug": "acme",
+            "board_url": "https://jobs.acme.example/search",
+            "monitor_type": "rss",
+            "monitor_config": json.dumps(
+                {
+                    "preset": "successfactors",
+                    "variant": "feed",
+                    "feed_url": "https://jobs.acme.example/googlefeed.xml",
+                }
+            ),
+        }
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda _request: httpx.Response(200, text="<html>retired</html>")
+            )
+        ) as client:
+            result = await probe_row(row, client)
+
+        assert result.status == "fail"
+        assert result.message == "feed did not return valid RSS/XML"
 
     async def test_migrated_legacy_url_falls_forward_to_google_feed(self):
         feed = """<?xml version="1.0"?><rss><channel><item>
