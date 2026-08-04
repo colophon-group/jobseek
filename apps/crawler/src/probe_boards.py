@@ -65,6 +65,10 @@ from src.shared.recruiterbox import (
     recruiterbox_inactive_from_html,
     recruiterbox_total_from_html,
 )
+from src.shared.successfactors import (
+    successfactors_legacy_board_from_metadata,
+    successfactors_legacy_board_from_url,
+)
 from src.shared.taleo import (
     taleo_board_from_metadata,
     taleo_board_from_url,
@@ -1275,6 +1279,98 @@ async def _probe_workday(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "workday", url, resp)
 
 
+async def _probe_rss(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict = {}
+    if row["monitor_config"]:
+        try:
+            decoded = json.loads(row["monitor_config"])
+        except (json.JSONDecodeError, TypeError):
+            decoded = None
+        if isinstance(decoded, dict):
+            cfg = decoded
+
+    if cfg.get("preset") == "successfactors" and cfg.get("variant") == "legacy":
+        identity = successfactors_legacy_board_from_metadata(cfg)
+        direct = successfactors_legacy_board_from_url(row["board_url"])
+        if identity is None:
+            identity = direct
+        if identity is None or (direct is not None and direct != identity):
+            return ProbeResult(
+                row["board_slug"],
+                "rss",
+                row["board_url"],
+                "fail",
+                "invalid SuccessFactors legacy identity",
+            )
+        from src.core.monitors import BoardGoneError
+        from src.core.monitors._successfactors_legacy import (
+            SuccessFactorsLegacyProtocolError,
+            probe_legacy,
+        )
+
+        try:
+            result = await probe_legacy(identity, client)
+        except BoardGoneError:
+            return ProbeResult(
+                row["board_slug"],
+                "rss",
+                identity.listing_url,
+                "fail",
+                "legacy SuccessFactors board is gone",
+            )
+        except (PaginationFetchError, SuccessFactorsLegacyProtocolError) as exc:
+            return ProbeResult(
+                row["board_slug"],
+                "rss",
+                identity.listing_url,
+                "fail",
+                f"legacy SuccessFactors probe failed: {exc}",
+            )
+        return ProbeResult(
+            row["board_slug"],
+            "rss",
+            identity.listing_url,
+            "ok",
+            f"legacy SuccessFactors DWR: {result['jobs']} jobs",
+        )
+
+    feed_url = cfg.get("feed_url")
+    if not isinstance(feed_url, str) or not feed_url:
+        preset = cfg.get("preset")
+        suffix = "/jobs.rss" if preset == "teamtailor" else "/googlefeed.xml"
+        parsed = urlparse(row["board_url"])
+        if parsed.scheme in {"http", "https"} and parsed.netloc:
+            feed_url = f"{parsed.scheme}://{parsed.netloc}{suffix}"
+    if not isinstance(feed_url, str) or not feed_url:
+        return ProbeResult(
+            row["board_slug"],
+            "rss",
+            row["board_url"],
+            "warn",
+            "no feed_url in monitor_config",
+        )
+    # Reuse the runtime's streamed XML parser so a retired feed returning an
+    # HTML landing page with HTTP 200 cannot be reported healthy here.
+    from src.core.monitors.rss import _probe_feed
+
+    valid, count = await _probe_feed(feed_url, client, cfg.get("preset"))
+    if not valid:
+        return ProbeResult(
+            row["board_slug"],
+            "rss",
+            feed_url,
+            "fail",
+            "feed did not return valid RSS/XML",
+        )
+    return ProbeResult(
+        row["board_slug"],
+        "rss",
+        feed_url,
+        "ok",
+        f"valid RSS/XML: {count or 0} jobs",
+    )
+
+
 def _classify(
     row: dict,
     monitor_type: str,
@@ -1332,6 +1428,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "rippling": _probe_rippling,
     "smartrecruiters": _probe_smartrecruiters,
     "workday": _probe_workday,
+    "rss": _probe_rss,
 }
 
 

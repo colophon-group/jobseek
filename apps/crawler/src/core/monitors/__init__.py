@@ -671,6 +671,13 @@ def _build_comment(name: str, metadata: dict) -> str:
         return f"Jobylon embed \u2014 {label}"
     if name == "rss":
         preset = metadata.get("preset", "generic")
+        variant = metadata.get("variant")
+        if preset == "successfactors" and variant == "legacy":
+            company = metadata.get("company", "?")
+            host = metadata.get("host", "?")
+            jobs = metadata.get("jobs")
+            label = f"SuccessFactors legacy DWR \u2014 company: {company} @ {host}"
+            return f"{label}, {jobs} jobs" if jobs is not None else label
         feed_url = metadata.get("feed_url", "?")
         jobs = metadata.get("jobs")
         label = {

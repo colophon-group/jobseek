@@ -6,6 +6,7 @@ import asyncio
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -171,8 +172,11 @@ _ATS_URL_RE = re.compile(
     r"|recruitingapp-\d+(?:\.\w+)?\.umantis\.com"
     # Teamtailor
     r"|(?:career|jobs?)\.[\w-]+\.teamtailor\.com"
-    # SAP SuccessFactors
-    r"|career\d*\.successfactors\.(?:eu|com)"
+    # SAP SuccessFactors (legacy shared hosts + modern SAP-hosted CSB)
+    r"|(?:career\d{0,3}|performancemanager\d{1,3})\."
+    r"(?:successfactors\.(?:eu|com)|sapsf\.(?:cn|eu|com))"
+    r"(?:/career\?[^#\"'<\s]{1,512})?"
+    r"|[a-z0-9][a-z0-9-]*\.jobs\.hr\.cloud\.sap"
     r")",
     re.IGNORECASE,
 )
@@ -490,7 +494,7 @@ def _scan_ats_urls_in_html(html: str) -> list[_ExtractedLink]:
     found: list[_ExtractedLink] = []
     seen: set[str] = set()
     for match in _ATS_URL_RE.finditer(html):
-        url = match.group(0)
+        url = unescape(match.group(0))
         if url not in seen:
             seen.add(url)
             found.append(
