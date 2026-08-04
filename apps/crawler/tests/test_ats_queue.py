@@ -12,6 +12,7 @@ from src.ats_inventory.candidates import LocalRegistryIndex
 from src.ats_inventory.github import (
     CreatedIssue,
     GitHubClaim,
+    GitHubError,
     GitHubRateLimitError,
     GitHubSupportIssueClient,
     GitHubWorkItem,
@@ -68,6 +69,10 @@ def _impact(number: int, active_jobs: int) -> CompanyImpact:
         country_codes=("US",),
         latest_posted_at=None,
     )
+
+
+async def _open_count(items: list[GitHubWorkItem]) -> int:
+    return sum(item.kind == "issue" and item.state == "open" for item in items)
 
 
 def _local_registry(tmp_path: Path) -> LocalRegistryIndex:
@@ -153,6 +158,7 @@ async def _refiller(
             now=lambda: NOW,
             sleep=sleep,
             jitter=lambda low, high: (low + high) / 2,
+            refresh_open_count=lambda: _open_count(client.items),
         ),
         ledger,
         client,
@@ -264,6 +270,30 @@ async def test_dry_run_is_write_free_and_hard_cap_wins(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_live_hard_cap_recheck_reserves_a_slot_for_external_writer(
+    tmp_path: Path,
+) -> None:
+    items = [_item(number) for number in range(1, 599)]
+    refiller, _, client = await _refiller(
+        tmp_path,
+        items=items,
+        claims=[_claim(number, NOW) for number in range(1, 201)],
+        policy=QueuePolicy(rollout_cap=5),
+    )
+
+    async def external_writer_already_opened_one() -> int:
+        return 599
+
+    refiller.refresh_open_count = external_writer_already_opened_one
+    report = await refiller.run([_impact(1, 100)], mode="refill")
+    assert report.status == "hard_cap_live"
+    assert report.requested_creates == 2
+    assert report.created == 0
+    assert report.total_open_after == 599
+    assert not client.created_labels
+
+
+@pytest.mark.asyncio
 async def test_coverage_quarantine_suppresses_all_candidate_admission(tmp_path: Path) -> None:
     refiller, _, client = await _refiller(tmp_path, policy=QueuePolicy(rollout_cap=25))
     report = await refiller.run(
@@ -334,6 +364,7 @@ async def test_refill_stops_cleanly_on_rate_limit(tmp_path: Path) -> None:
         claims=[],
         policy=QueuePolicy(),
         now=lambda: NOW,
+        refresh_open_count=lambda: _open_count(client.items),
     ).run([_impact(1, 10)], mode="refill")
 
     assert report.status == "rate_limited"
@@ -374,6 +405,32 @@ async def test_github_rate_limit_preserves_retry_and_reset(status: int) -> None:
 
 
 @pytest.mark.asyncio
+async def test_permission_403_is_not_misclassified_as_rate_limit() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            403,
+            json={"message": "Resource not accessible by integration"},
+            headers={"x-ratelimit-remaining": "4999"},
+            request=request,
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        github = GitHubSupportIssueClient(
+            http,
+            repo="example/repo",
+            token="token",
+            pace_seconds=0,
+        )
+        with pytest.raises(GitHubError) as caught:
+            await github.create_candidate_issue(
+                title="Add company: Acme",
+                body="body",
+                labels=["company-request", IMPORT_LABEL],
+            )
+    assert not isinstance(caught.value, GitHubRateLimitError)
+
+
+@pytest.mark.asyncio
 async def test_recent_claims_are_loaded_in_bulk() -> None:
     requests: list[httpx.Request] = []
 
@@ -408,3 +465,27 @@ async def test_recent_claims_are_loaded_in_bulk() -> None:
     assert len(requests) == 1
     assert requests[0].url.path.endswith("/issues/comments")
     assert requests[0].url.params["since"] == "2026-08-04T08:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_live_open_count_excludes_pull_requests_from_issues_endpoint() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=[
+                {"number": 1},
+                {"number": 2},
+                {"number": 3, "pull_request": {}},
+            ],
+            request=request,
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        github = GitHubSupportIssueClient(
+            http,
+            repo="example/repo",
+            token="token",
+            pace_seconds=0,
+        )
+        count = await github.count_open_company_requests()
+    assert count == 2

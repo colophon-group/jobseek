@@ -6,10 +6,11 @@ import sqlite3
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from src.ats_inventory.candidates import hash_text, parse_candidate_markers
-from src.ats_inventory.github import GitHubWorkItem
+from src.ats_inventory.github import ATS_INVENTORY_LABEL, GitHubWorkItem
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,6 +146,14 @@ class CandidateLedger:
                         now,
                     ),
                 )
+                created_at = _timestamp(item.created_at)
+                if ATS_INVENTORY_LABEL in item.labels and created_at is not None:
+                    connection.execute(
+                        """INSERT OR IGNORE INTO creation_events (
+                               issue_number, source_key, created_at
+                           ) VALUES (?, ?, ?)""",
+                        (item.number, source_key, created_at),
+                    )
             missing = before - observed
             if missing:
                 placeholders = ",".join("?" for _ in missing)
@@ -293,3 +302,15 @@ class CandidateLedger:
             key: tuple(sorted(values, key=lambda value: value.source_key))
             for key, values in urls.items()
         }
+
+
+def _timestamp(value: str | None) -> int | None:
+    if value is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return int(parsed.timestamp())

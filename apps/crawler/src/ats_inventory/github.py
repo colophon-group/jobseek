@@ -15,6 +15,7 @@ from src.ats_inventory.models import InventorySnapshot
 _MARKER_RE = re.compile(r"<!-- ats-inventory-support:family=([a-z0-9][a-z0-9_]{0,63}) -->")
 _API_VERSION = "2022-11-28"
 _RATE_LIMIT_RESERVE = 100
+ATS_INVENTORY_LABEL = "source:ats-inventory"
 
 
 class GitHubError(RuntimeError):
@@ -32,6 +33,12 @@ class GitHubRateLimitError(GitHubError):
         super().__init__(message)
         self.retry_after = retry_after
         self.reset_at = reset_at
+
+    def retry_at(self, *, now: int) -> int | None:
+        candidates = [value for value in (self.reset_at,) if value is not None]
+        if self.retry_after is not None:
+            candidates.append(now + max(0, self.retry_after))
+        return max(candidates) if candidates else None
 
 
 class GitHubCreateOutcomeUnknown(GitHubError):
@@ -62,6 +69,7 @@ class GitHubWorkItem:
     body: str
     url: str
     labels: tuple[str, ...] = ()
+    created_at: str | None = None
 
     @property
     def reference(self) -> str:
@@ -193,6 +201,11 @@ class GitHubSupportIssueClient:
                             body=body if isinstance(body, str) else "",
                             url=str(raw["html_url"]),
                             labels=_label_names(raw.get("labels")) if kind == "issue" else (),
+                            created_at=(
+                                raw["created_at"]
+                                if isinstance(raw.get("created_at"), str)
+                                else None
+                            ),
                         )
                     )
                 except (KeyError, TypeError, ValueError) as exc:
@@ -235,6 +248,14 @@ class GitHubSupportIssueClient:
                 )
             )
         return claims
+
+    async def count_open_company_requests(self) -> int:
+        """Return a live bulk count for the pre-create hard-cap gate."""
+
+        payloads = await self._list_pages(
+            "issues", params={"state": "open", "labels": "company-request"}
+        )
+        return sum("pull_request" not in raw for raw in payloads)
 
     async def _list_pages(self, endpoint: str, *, params: dict[str, str]) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = []
@@ -314,7 +335,9 @@ class GitHubSupportIssueClient:
 
     def _check_response(self, response: httpx.Response) -> None:
         self._update_rate(response)
-        if response.status_code in (403, 429):
+        if response.status_code == 429 or (
+            response.status_code == 403 and _is_rate_limited_403(response)
+        ):
             retry_after = _optional_int(response.headers.get("retry-after"))
             raise GitHubRateLimitError(
                 f"GitHub rate limited request with HTTP {response.status_code}",
@@ -505,6 +528,29 @@ def _label_names(value: object) -> tuple[str, ...]:
         if isinstance(raw, dict) and isinstance(raw.get("name"), str):
             names.add(raw["name"])
     return tuple(sorted(names))
+
+
+def _is_rate_limited_403(response: httpx.Response) -> bool:
+    if response.headers.get("retry-after") is not None:
+        return True
+    if _optional_int(response.headers.get("x-ratelimit-remaining")) == 0:
+        return True
+    try:
+        payload = response.json()
+    except ValueError:
+        return False
+    message = payload.get("message") if isinstance(payload, dict) else None
+    if not isinstance(message, str):
+        return False
+    lowered = message.casefold()
+    return any(
+        phrase in lowered
+        for phrase in (
+            "secondary rate limit",
+            "api rate limit exceeded",
+            "abuse detection mechanism",
+        )
+    )
 
 
 def _optional_int(value: str | None) -> int | None:

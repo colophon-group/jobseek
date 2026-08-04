@@ -16,12 +16,18 @@ from src.ats_inventory.candidate_issues import (
     CandidateIssueCoordinator,
 )
 from src.ats_inventory.candidates import Candidate
-from src.ats_inventory.github import GitHubClaim, GitHubRateLimitError, GitHubWorkItem
+from src.ats_inventory.github import (
+    ATS_INVENTORY_LABEL,
+    GitHubClaim,
+    GitHubRateLimitError,
+    GitHubWorkItem,
+)
 from src.ats_inventory.ledger import CandidateLedger
 from src.ats_inventory.models import CompanyImpact, company_impact_rank_key
 
-IMPORT_LABEL = "source:ats-inventory"
+IMPORT_LABEL = ATS_INVENTORY_LABEL
 CLAIM_MARKER = "<!-- ws-claim -->"
+_EXTERNAL_WRITER_RESERVE = 1
 _CLOSES_RE = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b", re.I)
 
 
@@ -155,6 +161,7 @@ class QueueRefiller:
         now: Callable[[], datetime] | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         jitter: Callable[[float, float], float] = random.uniform,
+        refresh_open_count: Callable[[], Awaitable[int]] | None = None,
     ) -> None:
         self.coordinator = coordinator
         self.ledger = ledger
@@ -164,6 +171,7 @@ class QueueRefiller:
         self.now = now or (lambda: datetime.now(UTC))
         self.sleep = sleep
         self.jitter = jitter
+        self.refresh_open_count = refresh_open_count
 
     async def run(
         self,
@@ -209,6 +217,7 @@ class QueueRefiller:
         retry_after: int | None = None
         retry_at: int | None = None
         reserved_sources: set[str] = set()
+        latest_open_count = before.total_open
         for company in sorted(companies, key=company_impact_rank_key):
             if selected >= requested:
                 break
@@ -227,8 +236,20 @@ class QueueRefiller:
                     hard_skips[evidence.code] += 1
                 continue
 
-            selected += 1
-            reserved_sources.add(candidate.source_key)
+            if mode == "refill":
+                if self.refresh_open_count is None:
+                    raise RuntimeError("refill requires a live open-queue counter")
+                try:
+                    latest_open_count = await self.refresh_open_count()
+                except GitHubRateLimitError as exc:
+                    status = "rate_limited"
+                    retry_after = exc.retry_after
+                    retry_at = exc.retry_at(now=int(now.timestamp()))
+                    break
+                if latest_open_count >= self.policy.hard_cap - _EXTERNAL_WRITER_RESERVE:
+                    status = "hard_cap_live"
+                    break
+
             try:
                 action = await self.coordinator.create(
                     candidate,
@@ -237,11 +258,14 @@ class QueueRefiller:
             except GitHubRateLimitError as exc:
                 status = "rate_limited"
                 retry_after = exc.retry_after
-                retry_at = _retry_at(exc, now)
+                retry_at = exc.retry_at(now=int(now.timestamp()))
                 break
+            selected += 1
+            reserved_sources.add(candidate.source_key)
             actions.append(action)
             if action.action in {"created", "created_reconciled"}:
                 created += 1
+                latest_open_count += 1
                 if selected < requested:
                     await self.sleep(
                         self.jitter(
@@ -250,7 +274,7 @@ class QueueRefiller:
                         )
                     )
 
-        if status != "rate_limited":
+        if status not in {"rate_limited", "hard_cap_live"}:
             if selected < requested:
                 status = "candidate_pool_exhausted"
             elif mode == "dry-run":
@@ -270,6 +294,7 @@ class QueueRefiller:
             actions=tuple(actions),
             retry_after=retry_after,
             retry_at=retry_at,
+            total_open_after=latest_open_count,
         )
 
     def _report(
@@ -287,6 +312,7 @@ class QueueRefiller:
         actions: tuple[CandidateIssueAction, ...] = (),
         retry_after: int | None = None,
         retry_at: int | None = None,
+        total_open_after: int | None = None,
     ) -> QueueRunReport:
         client = self.coordinator.client
         return QueueRunReport(
@@ -294,7 +320,9 @@ class QueueRefiller:
             status=status,
             queue_before=before,
             available_after=before.available + created,
-            total_open_after=before.total_open + created,
+            total_open_after=(
+                total_open_after if total_open_after is not None else before.total_open + created
+            ),
             created_today_before=created_today,
             requested_creates=requested,
             inspected_candidates=inspected,
@@ -345,13 +373,6 @@ def _parse_timestamp(value: str) -> datetime | None:
     if parsed.tzinfo is None:
         return None
     return parsed.astimezone(UTC)
-
-
-def _retry_at(error: GitHubRateLimitError, now: datetime) -> int | None:
-    candidates = [value for value in (error.reset_at,) if value is not None]
-    if error.retry_after is not None:
-        candidates.append(int(now.timestamp()) + max(0, error.retry_after))
-    return max(candidates) if candidates else None
 
 
 __all__ = [

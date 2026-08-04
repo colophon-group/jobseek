@@ -133,7 +133,10 @@ silently recreating the issue.
 Every coordinator-created issue is recorded in a separate `creation_events`
 ledger table keyed by GitHub issue number. This makes the UTC-day creation cap
 survive restarts while keeping startup reconciliation of older remote markers
-from consuming today's budget.
+from consuming today's budget. If GitHub commits just before a process crash,
+startup uses the trusted import label and GitHub `created_at` timestamp to
+reconstruct the missing event; unlabelled contributor markers cannot consume
+the daily budget.
 
 ## Bounded resolver queue
 
@@ -151,6 +154,14 @@ the deliberate canary stages 1, 5, and 25 and defaults to 1. The smallest of
 the target deficit, hard-cap capacity, tick budget, daily budget, and rollout
 stage wins.
 
+Before every production POST, the runner bulk-refreshes the live open-request
+count and refuses to fill the final hard-cap slot, reserving it for one
+concurrent external writer. GitHub does not provide an atomic conditional
+issue-create API, so multiple human/API creates in the tiny interval between
+that read and POST cannot be serialized by this runner; the live recheck and
+reserved slot are the conservative boundary available without a separate
+admission service.
+
 Candidates are sorted with the same stable impact key used by the impact
 snapshot. The runner scans past exact hard duplicates until it has the needed
 number of eligible companies, so an already-configured high-ranked row does
@@ -160,8 +171,12 @@ source label must be provisioned before the first canary.
 
 Creates are sequential, paced by the GitHub client, and separated by bounded
 jitter. Primary remaining/reset headers and `Retry-After` are retained in the
-report. A 403 or 429 stops the refill cleanly and records the later of the
-primary reset and retry delay; it does not loop or burst. The cache-wide
+report. A 429, primary-limit 403, or recognized secondary-limit 403 stops the
+refill cleanly and records the later of the primary reset and retry delay; it
+does not loop or burst. Permanent permission/policy 403s remain actionable
+errors instead of being retried as throttling. Rate limits during support,
+work-item, or claim preflight also produce a structured `rate_limited_preflight`
+report. The cache-wide
 non-blocking lock rejects a concurrent invocation. Ambiguous create outcomes
 still use the marker reconciliation path described above.
 

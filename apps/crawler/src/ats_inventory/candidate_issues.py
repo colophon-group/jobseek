@@ -14,6 +14,7 @@ from src.ats_inventory.candidates import (
     render_candidate_issue,
 )
 from src.ats_inventory.github import (
+    ATS_INVENTORY_LABEL,
     CreatedIssue,
     GitHubCreateOutcomeUnknown,
     GitHubWorkItem,
@@ -100,7 +101,7 @@ class CandidateIssueCoordinator:
             created = await self.client.create_candidate_issue(
                 title=title,
                 body=body,
-                labels=["company-request", "source:ats-inventory"],
+                labels=["company-request", ATS_INVENTORY_LABEL],
             )
         except GitHubCreateOutcomeUnknown:
             recovered = await self.client.list_candidate_work_items()
