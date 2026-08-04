@@ -74,6 +74,112 @@ def test_identity_requires_exact_deployed_revision_and_every_artifact(
         operations.validate_identity(expected)
 
 
+def test_reset_failed_unit_resets_only_a_genuinely_failed_unit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    operations = load_operations()
+    checked: list[list[str]] = []
+    reset: list[list[str]] = []
+    monkeypatch.setattr(
+        operations.subprocess,
+        "run",
+        lambda argv, **_kwargs: (
+            checked.append(argv) or subprocess.CompletedProcess(argv, 0, "", "")
+        ),
+    )
+    monkeypatch.setattr(
+        operations,
+        "run_checked",
+        lambda argv, **_kwargs: reset.append(argv) or "",
+    )
+
+    operations.reset_failed_unit_if_needed(operations.BACKUP_UNIT)
+
+    assert checked == [["systemctl", "is-failed", "--quiet", operations.BACKUP_UNIT]]
+    assert reset == [["systemctl", "reset-failed", operations.BACKUP_UNIT]]
+
+
+def test_reset_failed_unit_accepts_a_loaded_nonfailed_unit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    operations = load_operations()
+    checked: list[list[str]] = []
+    followups: list[list[str]] = []
+    monkeypatch.setattr(
+        operations.subprocess,
+        "run",
+        lambda argv, **_kwargs: (
+            checked.append(argv) or subprocess.CompletedProcess(argv, 1, "", "")
+        ),
+    )
+
+    def fake_run_checked(argv: list[str], **_kwargs: object) -> str:
+        followups.append(argv)
+        return "loaded\n"
+
+    monkeypatch.setattr(operations, "run_checked", fake_run_checked)
+
+    operations.reset_failed_unit_if_needed(operations.BACKUP_UNIT)
+
+    assert checked == [["systemctl", "is-failed", "--quiet", operations.BACKUP_UNIT]]
+    assert followups == [
+        [
+            "systemctl",
+            "show",
+            operations.BACKUP_UNIT,
+            "--property=LoadState",
+            "--value",
+        ]
+    ]
+
+
+@pytest.mark.parametrize(
+    ("returncode", "load_state"),
+    ((4, None), (1, "not-found\n")),
+)
+def test_reset_failed_unit_rejects_unknown_or_unavailable_state(
+    monkeypatch: pytest.MonkeyPatch,
+    returncode: int,
+    load_state: str | None,
+) -> None:
+    operations = load_operations()
+    followups: list[list[str]] = []
+    monkeypatch.setattr(
+        operations.subprocess,
+        "run",
+        lambda argv, **_kwargs: subprocess.CompletedProcess(
+            argv,
+            returncode,
+            "",
+            "password=must-not-appear postgresql://must-not-appear",
+        ),
+    )
+
+    def fake_run_checked(argv: list[str], **_kwargs: object) -> str:
+        followups.append(argv)
+        assert load_state is not None
+        return load_state
+
+    monkeypatch.setattr(operations, "run_checked", fake_run_checked)
+
+    with pytest.raises(operations.OperationError, match="state is unavailable") as raised:
+        operations.reset_failed_unit_if_needed(operations.BACKUP_UNIT)
+
+    assert "must-not-appear" not in str(raised.value)
+    if returncode == 4:
+        assert followups == []
+    else:
+        assert followups == [
+            [
+                "systemctl",
+                "show",
+                operations.BACKUP_UNIT,
+                "--property=LoadState",
+                "--value",
+            ]
+        ]
+
+
 def test_failed_backup_emits_only_fresh_aggregate_evidence_and_preserves_failure(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -83,11 +189,17 @@ def test_failed_backup_emits_only_fresh_aggregate_evidence_and_preserves_failure
     expected = operations.ExpectedIdentity("a" * 40, {})
     status_path = tmp_path / "web-postgresql.json"
     original_failure = operations.OperationError("systemctl operation failed")
+    failure_state_checks: list[str] = []
     monkeypatch.setattr(operations, "BACKUP_STATUS_PATH", status_path)
     monkeypatch.setattr(operations, "EVIDENCE_PATH", tmp_path / "activation.json")
     monkeypatch.setattr(operations, "validate_host_readiness", lambda _expected: None)
     monkeypatch.setattr(operations, "validate_identity", lambda _expected: {})
     monkeypatch.setattr(operations, "timer_state", lambda: ("disabled", "inactive"))
+    monkeypatch.setattr(
+        operations,
+        "reset_failed_unit_if_needed",
+        lambda unit: failure_state_checks.append(unit),
+    )
     monkeypatch.setattr(operations.time, "time", lambda: 1_000)
 
     def fail_start(argv: list[str], **_kwargs: object) -> str:
@@ -111,6 +223,7 @@ def test_failed_backup_emits_only_fresh_aggregate_evidence_and_preserves_failure
         operations.run_backup_locked(expected)
 
     assert raised.value is original_failure
+    assert failure_state_checks == [operations.BACKUP_UNIT]
     prefix = "Backup failure evidence: "
     diagnostic_line = capsys.readouterr().err.strip()
     assert diagnostic_line.startswith(prefix)
@@ -175,6 +288,7 @@ def test_failed_backup_without_fresh_valid_evidence_preserves_original_failure(
     monkeypatch.setattr(operations, "validate_host_readiness", lambda _expected: None)
     monkeypatch.setattr(operations, "validate_identity", lambda _expected: {})
     monkeypatch.setattr(operations, "timer_state", lambda: ("disabled", "inactive"))
+    monkeypatch.setattr(operations, "reset_failed_unit_if_needed", lambda _unit: None)
     monkeypatch.setattr(operations.time, "time", lambda: 1_000)
     monkeypatch.setattr(
         operations,
@@ -328,6 +442,7 @@ def test_enable_timer_rolls_back_partial_activation(
     monkeypatch.setattr(operations, "timer_state", lambda: next(states))
     monkeypatch.setattr(operations, "command_succeeds", lambda *_args, **_kwargs: False)
     monkeypatch.setattr(operations, "validate_identity", lambda _expected: {})
+    monkeypatch.setattr(operations, "reset_failed_unit_if_needed", lambda _unit: None)
 
     def fake_run_checked(argv: list[str], **_kwargs: object) -> str:
         if "NextElapseUSecRealtime" in " ".join(argv):
@@ -356,6 +471,7 @@ def test_enable_timer_disarms_rollback_only_after_postconditions(
     states = iter((("disabled", "inactive"), ("disabled", "active"), ("enabled", "active")))
     activation_commands: list[list[str]] = []
     rollback_commands: list[list[str]] = []
+    failure_state_checks: list[str] = []
     monkeypatch.setattr(operations, "validate_host_readiness", lambda _expected: None)
     monkeypatch.setattr(
         operations,
@@ -365,6 +481,11 @@ def test_enable_timer_disarms_rollback_only_after_postconditions(
     monkeypatch.setattr(operations, "timer_state", lambda: next(states))
     monkeypatch.setattr(operations, "command_succeeds", lambda *_args, **_kwargs: False)
     monkeypatch.setattr(operations, "validate_identity", lambda _expected: {})
+    monkeypatch.setattr(
+        operations,
+        "reset_failed_unit_if_needed",
+        lambda unit: failure_state_checks.append(unit),
+    )
 
     def fake_run_checked(argv: list[str], **_kwargs: object) -> str:
         activation_commands.append(argv)
@@ -384,8 +505,8 @@ def test_enable_timer_disarms_rollback_only_after_postconditions(
     operations.enable_timer(expected)
 
     assert rollback_commands == []
+    assert failure_state_checks == [operations.BACKUP_UNIT]
     assert activation_commands == [
-        ["systemctl", "reset-failed", operations.BACKUP_UNIT],
         ["systemctl", "start", operations.TIMER_UNIT],
         [
             "systemctl",
@@ -414,6 +535,7 @@ def test_enable_timer_rolls_back_post_enable_identity_drift(
     )
     monkeypatch.setattr(operations, "timer_state", lambda: next(states))
     monkeypatch.setattr(operations, "command_succeeds", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(operations, "reset_failed_unit_if_needed", lambda _unit: None)
     monkeypatch.setattr(
         operations,
         "run_checked",
