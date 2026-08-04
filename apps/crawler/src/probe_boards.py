@@ -64,6 +64,7 @@ from src.shared.taleo import (
     taleo_listing_marker_from_html,
     taleo_total_from_html,
 )
+from src.shared.ukg import ukg_board_from_metadata, ukg_board_from_url
 
 # Literal set of statuses a probe can return. CI treats "fail" as a hard error
 # and "skipped" / "ok" / "warn" as non-blocking.
@@ -918,6 +919,70 @@ async def _probe_avature(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     return _classify(row, "avature", url, resp)
 
 
+async def _probe_ukg(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    cfg: dict[str, object] = {}
+    if row["monitor_config"]:
+        with contextlib.suppress(json.JSONDecodeError):
+            decoded = json.loads(row["monitor_config"])
+            if isinstance(decoded, dict):
+                cfg = decoded
+    configured = ukg_board_from_metadata(cfg)
+    direct = ukg_board_from_url(row["board_url"])
+    if configured is not None and direct is not None and configured != direct:
+        return ProbeResult(
+            row["board_slug"],
+            "ukg",
+            configured.listing_url(),
+            "fail",
+            "configured UKG board does not match board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "ukg",
+            row["board_url"],
+            "warn",
+            "no valid UKG board identity",
+        )
+
+    url = board.search_url()
+    payload = {"opportunitySearch": {"Top": 1, "Skip": 0, "QueryString": "", "Filters": []}}
+    resp = await _retry(
+        lambda: _get(
+            client,
+            url,
+            method="POST",
+            json=payload,
+            headers={"content-type": "application/json"},
+            follow_redirects=False,
+        )
+    )
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        try:
+            data = resp.json()
+        except ValueError:
+            data = None
+        total = data.get("totalCount") if isinstance(data, dict) else None
+        rows = data.get("opportunities") if isinstance(data, dict) else None
+        if (
+            not isinstance(total, int)
+            or isinstance(total, bool)
+            or total < 0
+            or not isinstance(rows, list)
+            or len(rows) > 1
+        ):
+            return ProbeResult(
+                row["board_slug"],
+                "ukg",
+                url,
+                "warn",
+                "UKG search response shape changed",
+            )
+        return ProbeResult(row["board_slug"], "ukg", url, "ok", f"200 ({total} jobs)")
+    return _classify(row, "ukg", url, resp)
+
+
 async def _probe_beisen(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     cfg: dict[str, object] = {}
     if row["monitor_config"]:
@@ -1080,6 +1145,7 @@ def _classify(
 PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] = {
     "adp": _probe_adp,
     "avature": _probe_avature,
+    "ukg": _probe_ukg,
     "greenhouse": _probe_greenhouse,
     "lever": _probe_lever,
     "ashby": _probe_ashby,

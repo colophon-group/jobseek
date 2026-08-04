@@ -24,6 +24,7 @@ from src.shared.gupy import gupy_tenant_from_url
 from src.shared.keka import keka_board_from_url
 from src.shared.recruiterbox import recruiterbox_board_from_url
 from src.shared.taleo import taleo_board_from_url
+from src.shared.ukg import is_ukg_url
 
 _ICIMS_STATIC_QUERY_VALUES = {
     "in_iframe": "1",
@@ -80,6 +81,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "recruiter_co_kr",
         "rss",
         "traffit",
+        "ukg",
     }
 )
 
@@ -90,7 +92,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
 # ``oracle_hcm``, ``adp``, ``bamboohr``, ``beisen``, ``paycom``, and
-# ``paylocity``, which auto-resolve to enrichment scrapers (BambooHR uses a
+# ``paylocity`` and ``ukg``, which auto-resolve to enrichment scrapers (BambooHR uses a
 # generic API preset;
 # Paycom reuses its native bootstrap in a dedicated detail scraper).
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
@@ -103,6 +105,7 @@ _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
     "oracle_hcm",
     "paycom",
     "paylocity",
+    "ukg",
 }
 
 
@@ -225,6 +228,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "keka"
     if taleo_board_from_url(url) is not None:
         return "taleo"
+    if is_ukg_url(url):
+        return "ukg"
     if (
         host == "herp.careers"
         and not parsed.query
@@ -494,6 +499,17 @@ def auto_scraper_type(
         return (
             "paylocity",
             {"enrich": ["description", "employment_type", "job_location_type"]},
+        )
+    if monitor_type == "ukg":
+        return (
+            "embedded",
+            {
+                "pattern": r"new\s+US\.Opportunity\.CandidateOpportunityDetail\s*\(",
+                # Title is extracted for scraper observability and safe empty-field
+                # backfill; the enrichment allowlist still updates description only.
+                "fields": {"title": "Title", "description": "Description"},
+                "enrich": ["description"],
+            },
         )
     if monitor_type == "beisen":
         variant = (config or {}).get("variant")

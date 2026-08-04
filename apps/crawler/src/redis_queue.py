@@ -273,6 +273,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "accenture",
         "adp",
         "avature",
+        "ukg",
         "deel",
         "jobs.dayforcehcm.com",
         "workforcenow.adp.com",
@@ -290,6 +291,8 @@ _KNOWN_ATS_DOMAIN_SUFFIXES = (
     ".hire.trakstar.com",
     ".keka.com",
     ".tbe.taleo.net",
+    ".ultipro.com",
+    ".ultipro.ca",
 )
 
 
