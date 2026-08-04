@@ -44,7 +44,7 @@ validate_workflow_dispatch_input() {
     gh api "repos/${REPO}/actions/runs/${run_id}/logs" > "$archive"
   fi
   actual_modes="$(
-    unzip -p "$archive" 'preauthorize/*.txt' \
+    unzip -p "$archive" '*_preauthorize.txt' \
       | sed -n 's/^[0-9T:.+-]*Z   DISPATCH_MODE: \([^[:space:]]*\)\r*$/\1/p' \
       | sort -u
   )"
