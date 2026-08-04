@@ -68,3 +68,95 @@ class InventorySnapshot:
             "changed_urls": self.changed_urls,
             "coverage": self.coverage.to_dict(),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyImpact:
+    """Compact impact signals for one published company-inventory row."""
+
+    ats: str
+    name: str
+    slug: str
+    url: str
+    impact_unknown: bool
+    active_jobs: int
+    remote_jobs: int
+    location_count: int
+    country_codes: tuple[str, ...]
+    latest_posted_at: str | None
+
+    @property
+    def source_key(self) -> str:
+        """Deterministic local tie-breaker; #6187 owns durable source identity."""
+
+        return f"{self.ats}:{self.url.casefold()}"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "ats": self.ats,
+            "name": self.name,
+            "slug": self.slug,
+            "url": self.url,
+            "impact_unknown": self.impact_unknown,
+            "active_jobs": self.active_jobs,
+            "remote_jobs": self.remote_jobs,
+            "location_count": self.location_count,
+            "country_codes": list(self.country_codes),
+            "latest_posted_at": self.latest_posted_at,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ImpactSnapshot:
+    """Atomically published, compact company-impact snapshot."""
+
+    snapshot_sha256: str
+    manifest_sha256: str
+    inventory_sha256: str
+    generated_at: str
+    derived_at: str
+    companies: tuple[CompanyImpact, ...]
+    family_artifacts: dict[str, str | None]
+    family_reports: dict[str, dict[str, Any]]
+    changed: bool
+    downloads: int
+
+    def ranked(self) -> tuple[CompanyImpact, ...]:
+        """Rank active companies first, then unknowns, then confirmed zeroes."""
+
+        def key(company: CompanyImpact) -> tuple[object, ...]:
+            if company.active_jobs > 0:
+                impact_group = 0
+            elif company.impact_unknown:
+                impact_group = 1
+            else:
+                impact_group = 2
+            return (
+                impact_group,
+                -company.active_jobs,
+                -company.location_count,
+                -len(company.country_codes),
+                company.name.casefold(),
+                company.source_key,
+            )
+
+        return tuple(sorted(self.companies, key=key))
+
+    def to_report(self) -> dict[str, Any]:
+        known = sum(not company.impact_unknown for company in self.companies)
+        active = sum(company.active_jobs > 0 for company in self.companies)
+        return {
+            "snapshot_sha256": self.snapshot_sha256,
+            "manifest_sha256": self.manifest_sha256,
+            "inventory_sha256": self.inventory_sha256,
+            "generated_at": self.generated_at,
+            "derived_at": self.derived_at,
+            "changed": self.changed,
+            "downloads": self.downloads,
+            "companies": len(self.companies),
+            "impact_known": known,
+            "impact_unknown": len(self.companies) - known,
+            "active_companies": active,
+            "family_artifacts": dict(sorted(self.family_artifacts.items())),
+            "family_reports": dict(sorted(self.family_reports.items())),
+        }

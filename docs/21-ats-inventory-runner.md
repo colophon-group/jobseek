@@ -19,6 +19,13 @@ The cache contains:
 - `snapshots/<manifest-sha256>.json`: validated snapshot metadata;
 - `current.json`: the atomically replaced last-known-good pointer.
 
+With `--impact`, the `impact/` subdirectory additionally contains:
+
+- `families/<ats>/<parquet-sha256>.json`: compact tenant buckets derived from
+  one validated per-ATS jobs artifact;
+- `snapshots/<sha256>.json`: complete per-company counts and secondary signals;
+- `current.json`: the atomically replaced impact-snapshot pointer.
+
 The command sends `If-None-Match` on later runs. An unchanged manifest does not
 download the company inventory again. A changed manifest may reuse the existing
 company object when its SHA-256 is unchanged.
@@ -40,6 +47,43 @@ cannot replace a newer snapshot. If a local object is corrupt while the server
 returns 304, ingestion validates before touching `current.json`, retries once
 without the ETag, and repairs the cache only through the complete validation
 path.
+
+## Impact derivation
+
+Impact refresh reads only the manifest's changed per-ATS Parquet artifacts for
+candidate-eligible families. It never requests the aggregate all-jobs CSV or
+Parquet. Each changed family is streamed to a bounded temporary file, checked
+against the published size and SHA-256, scanned with Polars, reduced to compact
+tenant buckets, and then removed. Keeping raw artifacts would make frequent
+upstream revisions require multiple copies of a corpus larger than 1 GiB; the
+checksum-addressed derived object is the durable cache instead.
+
+The per-family objects are independent of the company inventory. A partially
+completed first refresh can therefore resume without redownloading families it
+already derived. A company-inventory-only update remaps those cached buckets
+without touching Parquet. Normal unchanged runs load the compact current
+snapshot and perform zero job-artifact requests.
+
+The current published schema has no universal ATS tenant column. Small local
+extractors identify tenants from stable URL/query/path components (and, for
+Paylocity, the tenant prefix in `ats_id`); exact unique company-name matching is
+the conservative fallback. A resolvable company with no rows is known to have
+zero active jobs. Ambiguous companies and families without a job artifact stay
+`impact_unknown`; they are ranked after known-active companies but before
+confirmed-zero companies, so gaps remain discoverable instead of disappearing.
+
+Active job count is the primary rank. Unique location count, country coverage,
+company name, and a deterministic source URL key break ties. The compact
+snapshot also retains remote-job count, country codes, and the latest published
+`posted_at` value. Schema drift, corrupt Parquet, partial downloads, row-count
+mismatch, configured cache pressure, or the free-space reserve leave the prior
+impact pointer untouched.
+
+The preferred upstream improvement is a small `company_stats.parquet`, keyed by
+the same company inventory identity and containing active counts/signals. The
+next-best improvement is a direct `tenant_key` column on every job row and the
+matching key in `companies.csv`. Jobseek will consume either as data, while
+continuing to own and run all production monitors.
 
 ## Compatibility and quarantine
 
@@ -72,6 +116,11 @@ From `apps/crawler/`:
 ```bash
 # Source/cache validation only (default; no GitHub calls)
 uv run crawler ats-inventory --cache-dir /var/lib/jobseek/ats-inventory
+
+# Refresh changed per-family job artifacts and publish compact impact
+uv run crawler ats-inventory \
+  --cache-dir /var/lib/jobseek/ats-inventory \
+  --impact
 
 # Reconcile unsupported families without writes
 GH_TOKEN=... uv run crawler ats-inventory \
