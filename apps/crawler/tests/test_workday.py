@@ -27,6 +27,7 @@ from src.core.scrapers.workday import (
     _parse_location_type,
     scrape,
 )
+from src.shared.http import RequestHostTrackingTransport, track_request_hosts
 from src.shared.http_retry import PaginationFetchError
 
 
@@ -569,40 +570,48 @@ class TestScrape:
 
         sleep = AsyncMock()
 
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await scrape(
-                "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
-                {},
-                client,
-                sleep=sleep,
-            )
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                result = await scrape(
+                    "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
+                    {},
+                    client,
+                    sleep=sleep,
+                )
 
         assert result.title == "Recovered engineer"
         assert len(requests) == 2
         assert all(request.headers["accept"] == "application/json" for request in requests)
         assert all("content-type" not in request.headers for request in requests)
         sleep.assert_awaited_once()
+        assert tracker.last_status_code == 200
+        assert tracker.last_application_error is None
+        assert tracker.transient_failure_host is None
 
     async def test_invalid_success_payload_exhaustion_is_classified_and_redacted(self):
         """Final errors carry safe diagnostics without logging response content."""
         secret_body = b"<html>upstream challenge with sensitive request echo</html>"
-        transport = httpx.MockTransport(
-            lambda request: httpx.Response(
-                200,
-                content=secret_body,
-                headers={"content-type": "text/html; charset=utf-8"},
+        transport = RequestHostTrackingTransport(
+            httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200,
+                    content=secret_body,
+                    headers={"content-type": "text/html; charset=utf-8"},
+                )
             )
         )
         sleep = AsyncMock()
 
         async with httpx.AsyncClient(transport=transport) as client:
-            with pytest.raises(WorkdayDetailPayloadError) as raised:
-                await scrape(
-                    "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
-                    {},
-                    client,
-                    sleep=sleep,
-                )
+            with track_request_hosts() as tracker:
+                with pytest.raises(WorkdayDetailPayloadError) as raised:
+                    await scrape(
+                        "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
+                        {},
+                        client,
+                        sleep=sleep,
+                    )
 
         error = raised.value
         assert error.attempts == 3
@@ -612,6 +621,9 @@ class TestScrape:
         assert "sensitive request echo" not in str(error)
         assert len(error.body_sha256) == 16
         assert sleep.await_count == 2
+        assert tracker.last_status_code == 200
+        assert tracker.last_application_error == "workday_invalid_detail_payload"
+        assert tracker.transient_failure_host == "co.wd1.myworkdayjobs.com"
 
     async def test_unparseable_url_returns_empty(self):
         transport = httpx.MockTransport(lambda r: httpx.Response(200))

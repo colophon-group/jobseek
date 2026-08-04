@@ -67,7 +67,11 @@ transport records the actual hostname used after redirects. A failed monitor
 run advances `host_fail:<egress_host>` once regardless of internal request
 retries or page count. A failed scrape advances it only when its final network
 outcome is a transport error, HTTP 408/425/429, or 5xx; extraction/configuration
-failures after a reachable response cannot block a whole host. Three failed
+failures after a reachable response cannot block a whole host. A provider
+scraper may explicitly promote an exhausted, provider-validated invalid
+success body to a transient outcome; Workday detail responses use this for the
+cross-tenant HTTP 200/HTML incident tracked in #5230. A response that recovers
+during provider-specific retries remains healthy. Three failed
 runs inside ten minutes open `host_open:<egress_host>` for thirty minutes.
 Sibling boards and postings are rescheduled to the stored unblock timestamp
 before making a network or proxy request. When that time arrives,
