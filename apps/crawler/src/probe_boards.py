@@ -253,15 +253,30 @@ async def _probe_bamboohr(row: dict, client: httpx.AsyncClient) -> ProbeResult:
 
 
 async def _probe_paycom(row: dict, client: httpx.AsyncClient) -> ProbeResult:
-    token = _token_from_config(row["monitor_config"], "token")
-    if not token:
-        match = re.search(
-            r"paycomonline\.net/v4/ats/web\.php/portal/([0-9a-f]{32})(?:/|$)",
+    from src.core.monitors import BoardGoneError
+    from src.core.monitors.paycom import (
+        fetch_paycom_job_count,
+        paycom_portal_url,
+        resolve_paycom_token,
+    )
+    from src.shared.tdm import TDMReservedError
+
+    try:
+        decoded = json.loads(row["monitor_config"] or "{}")
+    except (json.JSONDecodeError, TypeError):
+        decoded = {}
+    metadata = decoded if isinstance(decoded, dict) else {}
+    try:
+        token = resolve_paycom_token(row["board_url"], metadata)
+    except ValueError as exc:
+        return ProbeResult(
+            row["board_slug"],
+            "paycom",
             row["board_url"],
-            re.IGNORECASE,
+            "fail",
+            str(exc),
         )
-        token = match.group(1).lower() if match else None
-    if not token or re.fullmatch(r"[0-9a-f]{32}", token, re.IGNORECASE) is None:
+    if token is None:
         return ProbeResult(
             row["board_slug"],
             "paycom",
@@ -270,23 +285,23 @@ async def _probe_paycom(row: dict, client: httpx.AsyncClient) -> ProbeResult:
             "no valid token in monitor_config or Paycom URL",
         )
 
-    url = f"https://www.paycomonline.net/v4/ats/web.php/portal/{token.lower()}/career-page"
-    resp = await _retry(lambda: _get(client, url, follow_redirects=False))
-    if isinstance(resp, httpx.Response):
-        if resp.status_code in {404, 410}:
-            return ProbeResult(row["board_slug"], "paycom", url, "fail", "board not found")
-        if resp.status_code == 200:
-            if "job board does not exist or is unavailable" in resp.text.casefold():
-                return ProbeResult(row["board_slug"], "paycom", url, "fail", "board unavailable")
-            if "configsFromHost" not in resp.text:
-                return ProbeResult(
-                    row["board_slug"],
-                    "paycom",
-                    url,
-                    "warn",
-                    "portal config missing",
-                )
-    return _classify(row, "paycom", url, resp)
+    url = paycom_portal_url(token)
+    try:
+        total = await fetch_paycom_job_count(token, client)
+    except TDMReservedError:
+        raise
+    except BoardGoneError as exc:
+        message = "board unavailable" if exc.status_code == 200 else "board not found"
+        return ProbeResult(row["board_slug"], "paycom", url, "fail", message)
+    except Exception:
+        return ProbeResult(
+            row["board_slug"],
+            "paycom",
+            url,
+            "fail",
+            "Paycom bootstrap or listing search validation failed",
+        )
+    return ProbeResult(row["board_slug"], "paycom", url, "ok", f"{total} jobs")
 
 
 async def _probe_adp(row: dict, client: httpx.AsyncClient) -> ProbeResult:

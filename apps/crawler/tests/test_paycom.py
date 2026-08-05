@@ -8,10 +8,10 @@ import pytest
 from src.core.monitor import MonitorResult
 from src.core.monitors import BoardGoneError, all_monitor_types, api_monitor_types, paycom
 from src.core.monitors.paycom import (
-    _extract_bootstrap,
-    _token_from_url,
     can_handle,
     discover,
+    extract_paycom_bootstrap,
+    paycom_token_from_url,
 )
 from src.core.scrapers import _REGISTRY as scraper_registry
 from src.core.scrapers.paycom import can_handle as scraper_can_handle
@@ -69,9 +69,9 @@ def _search(rows: list[object], *, count: int | None = None) -> dict:
 
 class TestTokenAndBootstrap:
     def test_extracts_portal_token_from_listing_and_job_urls(self):
-        assert _token_from_url(PORTAL_URL) == TOKEN
+        assert paycom_token_from_url(PORTAL_URL) == TOKEN
         assert (
-            _token_from_url(
+            paycom_token_from_url(
                 f"https://www.paycomonline.net/v4/ats/web.php/portal/{TOKEN}/jobs/123?jpt=public"
             )
             == TOKEN
@@ -88,10 +88,10 @@ class TestTokenAndBootstrap:
         ],
     )
     def test_rejects_untrusted_or_malformed_urls(self, url: str):
-        assert _token_from_url(url) is None
+        assert paycom_token_from_url(url) is None
 
     def test_extracts_and_validates_bootstrap(self):
-        bootstrap = _extract_bootstrap(_bootstrap_page(), PORTAL_URL)
+        bootstrap = extract_paycom_bootstrap(_bootstrap_page(), PORTAL_URL)
         assert bootstrap.service_url == SERVICE_URL
         assert bootstrap.headers == {
             "Accept": "application/json",
@@ -111,7 +111,7 @@ class TestTokenAndBootstrap:
     )
     def test_rejects_malformed_bootstrap(self, page: str):
         with pytest.raises(ValueError):
-            _extract_bootstrap(page, PORTAL_URL)
+            extract_paycom_bootstrap(page, PORTAL_URL)
 
     @pytest.mark.parametrize(
         "service_url",
@@ -125,7 +125,7 @@ class TestTokenAndBootstrap:
     )
     def test_rejects_untrusted_bootstrap_service(self, service_url: str):
         with pytest.raises(ValueError, match="untrusted"):
-            _extract_bootstrap(_bootstrap_page(service_url=service_url), PORTAL_URL)
+            extract_paycom_bootstrap(_bootstrap_page(service_url=service_url), PORTAL_URL)
 
 
 class TestMonitor:
@@ -148,13 +148,16 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": PORTAL_URL}, client)
 
-        assert isinstance(result, list)
-        assert len(result) == 101
+        assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
+        assert result.truncated is False
+        assert len(result.urls) == 101
         assert requests[0] == ("GET", PORTAL_URL, None)
         assert requests[1][2]["take"] == 100
         assert requests[1][2]["skip"] == 0
         assert requests[2][2]["skip"] == 100
-        job = result[-1]
+        assert result.jobs_by_url is not None
+        job = result.jobs_by_url[f"{PORTAL_URL.removesuffix('/career-page')}/jobs/101"]
         assert job.url.endswith(f"/{TOKEN}/jobs/101")
         assert job.title == "Site Reliability Engineer"
         assert job.description == "<p>Build reliable systems.</p>"
@@ -179,8 +182,46 @@ class TestMonitor:
                 client,
             )
 
-        assert result == []
+        assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
+        assert result.urls == set()
         assert seen == [PORTAL_URL, SEARCH_URL]
+
+    async def test_conflicting_canonical_and_configured_tokens_fail_closed(self):
+        requests: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(str(request.url))
+            return httpx.Response(200, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="does not match"):
+                await discover(
+                    {
+                        "board_url": PORTAL_URL,
+                        "metadata": {"token": "f" * 32},
+                    },
+                    client,
+                )
+
+        assert requests == []
+
+    @pytest.mark.parametrize("invalid_token", [None, "", 123])
+    async def test_explicit_invalid_configured_token_fails_closed(self, invalid_token: object):
+        requests: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(str(request.url))
+            return httpx.Response(200, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="token is invalid"):
+                await discover(
+                    {"board_url": PORTAL_URL, "metadata": {"token": invalid_token}},
+                    client,
+                )
+
+        assert requests == []
 
     async def test_empty_board_is_authoritative(self):
         def handler(request: httpx.Request) -> httpx.Response:
@@ -189,14 +230,19 @@ class TestMonitor:
             return httpx.Response(200, json=_search([]), request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            assert await discover({"board_url": PORTAL_URL}, client) == []
+            result = await discover({"board_url": PORTAL_URL}, client)
+        assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
+        assert result.urls == set()
 
     @pytest.mark.parametrize("status", [404, 410])
     async def test_terminal_status_is_board_gone(self, status: int):
         transport = httpx.MockTransport(lambda request: httpx.Response(status, request=request))
         async with httpx.AsyncClient(transport=transport) as client:
-            with pytest.raises(BoardGoneError):
+            with pytest.raises(BoardGoneError) as exc_info:
                 await discover({"board_url": PORTAL_URL}, client)
+        assert exc_info.value.status_code == status
+        assert exc_info.value.url == PORTAL_URL
 
     async def test_unavailable_marker_is_board_gone(self):
         transport = httpx.MockTransport(
@@ -207,8 +253,30 @@ class TestMonitor:
             )
         )
         async with httpx.AsyncClient(transport=transport) as client:
-            with pytest.raises(BoardGoneError):
+            with pytest.raises(BoardGoneError) as exc_info:
                 await discover({"board_url": PORTAL_URL}, client)
+        assert exc_info.value.status_code == 200
+        assert exc_info.value.url == PORTAL_URL
+
+    async def test_bootstrap_redirect_is_not_followed_or_recorded_as_gone(self):
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            if str(request.url) != PORTAL_URL:
+                raise AssertionError("redirect target must not be fetched")
+            return httpx.Response(
+                302,
+                headers={"location": "http://127.0.0.1/internal"},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler), follow_redirects=True
+        ) as client:
+            with pytest.raises(PaginationFetchError):
+                await discover({"board_url": PORTAL_URL}, client)
+        assert requested == [PORTAL_URL]
 
     async def test_search_retries_transient_status(self):
         search_calls = 0
@@ -224,8 +292,9 @@ class TestMonitor:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": PORTAL_URL}, client)
-        assert isinstance(result, list)
-        assert len(result) == 1
+        assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
+        assert len(result.urls) == 1
         assert search_calls == 2
 
     async def test_premature_empty_page_gets_one_semantic_retry(self):
@@ -241,8 +310,9 @@ class TestMonitor:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": PORTAL_URL}, client)
-        assert isinstance(result, list)
-        assert len(result) == 1
+        assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
+        assert len(result.urls) == 1
         assert search_calls == 2
 
     async def test_persistent_premature_empty_page_fails(self):
@@ -288,6 +358,7 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": PORTAL_URL}, client)
         assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
         assert result.truncated is True
         assert result.urls == {f"https://www.paycomonline.net/v4/ats/web.php/portal/{TOKEN}/jobs/1"}
 
@@ -304,6 +375,7 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": PORTAL_URL}, client)
         assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
         assert result.truncated is True
 
     async def test_cap_returns_truncated_result(self, monkeypatch: pytest.MonkeyPatch):
@@ -322,8 +394,39 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": PORTAL_URL}, client)
         assert isinstance(result, MonitorResult)
+        assert result.hybrid is True
         assert result.truncated is True
         assert len(result.urls) == 2
+
+    async def test_stream_yields_before_fetching_later_pages(self):
+        allow_later_pages = False
+        search_skips: list[int] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.method == "GET":
+                return httpx.Response(200, text=_bootstrap_page(), request=request)
+            skip = json.loads(request.content)["skip"]
+            search_skips.append(skip)
+            if skip >= 200 and not allow_later_pages:
+                raise AssertionError("later page fetched before first streamed batch")
+            final = min(skip + 100, 401)
+            rows = [_preview(index) for index in range(skip + 1, final + 1)]
+            return httpx.Response(200, json=_search(rows, count=401), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            iterator = paycom.stream({"board_url": PORTAL_URL}, client)
+            first = await anext(iterator)
+            assert len(first.urls) == 200
+            assert first.hybrid is True
+            assert first.truncated is False
+            assert search_skips == [0, 100]
+
+            allow_later_pages = True
+            remaining = [batch async for batch in iterator]
+
+        assert [len(batch.urls) for batch in remaining] == [200, 1]
+        assert all(batch.hybrid is True and batch.truncated is False for batch in remaining)
+        assert len(set().union(first.urls, *(batch.urls for batch in remaining))) == 401
 
 
 class TestDetection:
@@ -340,6 +443,23 @@ class TestDetection:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             assert await can_handle(PORTAL_URL, client) == {"token": TOKEN, "jobs": 45}
+
+    @pytest.mark.parametrize(
+        ("rows", "count"),
+        [([], 2), ([_preview(1)], 0), ([{"jobId": "invalid"}], 1)],
+    )
+    async def test_probe_rejects_inconsistent_one_row_search(
+        self,
+        rows: list[object],
+        count: int,
+    ):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.method == "GET":
+                return httpx.Response(200, text=_bootstrap_page(), request=request)
+            return httpx.Response(200, json=_search(rows, count=count), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            assert await can_handle(PORTAL_URL, client) is None
 
     async def test_embedded_link_is_detected_without_guessing(self):
         requested: list[str] = []
