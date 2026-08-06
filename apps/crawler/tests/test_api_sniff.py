@@ -420,6 +420,25 @@ class TestAutoMapFields:
         mapping = auto_map_fields(items)
         assert mapping.get("locations") == "offices[].name"
 
+    def test_adp_nested_requisition_locations(self):
+        items = [
+            {
+                "jobTitle": "Cloud Administrator",
+                "requisitionLocations": [
+                    {
+                        "nameCode": {
+                            "codeValue": "153",
+                            "longName": "Virginia - Fairfax",
+                        }
+                    }
+                ],
+            }
+        ]
+
+        mapping = auto_map_fields(items)
+
+        assert mapping["locations"] == "requisitionLocations[].nameCode.longName"
+
     def test_location_array_of_strings(self):
         items = [
             {"title": "Dev", "locations": ["NYC", "SF"]},
