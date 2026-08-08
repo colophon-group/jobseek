@@ -2085,6 +2085,7 @@ glydways,glydways-greenhouse,https://job-boards.greenhouse.io/glydways,greenhous
 goals,goals-teamtailor,https://tt.playgoals.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://tt.playgoals.com/jobs.rss""}",skip,
 goat-group,goat-group-greenhouse,https://job-boards.greenhouse.io/goatgroup,greenhouse,"{""token"": ""goatgroup""}",skip,
 gocardless,gocardless-greenhouse,https://job-boards.greenhouse.io/gocardless,greenhouse,"{""token"": ""gocardless""}",skip,
+godaddy,godaddy-careers,https://careers.godaddy/jobs/search,sitemap,"{""sitemap_url"": ""https://careers.godaddy/sitemap.xml"", ""url_filter"": ""/jobs/""}",json-ld,"{""render"": true}"
 gofundme,gofundme-greenhouse,https://job-boards.greenhouse.io/gofundme,greenhouse,"{""token"": ""gofundme""}",skip,
 goguardian,goguardian-greenhouse,https://job-boards.greenhouse.io/goguardian,greenhouse,"{""token"": ""goguardian""}",skip,
 golden-apple-foundation-careers,golden-apple-foundation-careers-greenhouse,https://job-boards.greenhouse.io/goldenapplefoundationcareers,greenhouse,"{""token"": ""goldenapplefoundationcareers""}",skip,
