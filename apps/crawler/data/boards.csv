@@ -3539,6 +3539,7 @@ numerix,numerix-greenhouse,https://job-boards.greenhouse.io/numerix,greenhouse,"
 numeus,numeus-greenhouse,https://job-boards.greenhouse.io/numus,greenhouse,"{""token"": ""numus""}",skip,
 nunu-ai,nunu-ai-careers,https://nunu-ai.notion.site/jobs,notion,,notion,
 nuro,nuro-greenhouse,https://job-boards.greenhouse.io/nuro,greenhouse,"{""token"": ""nuro""}",skip,
+nutanix,nutanix-main,https://careers.nutanix.com/en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.nutanix.com/sitemap.xml"", ""url_filter"": ""/en/jobs/.+""}",json-ld,
 nutrafol,nutrafol-greenhouse,https://job-boards.greenhouse.io/nutrafol,greenhouse,"{""token"": ""nutrafol""}",skip,
 nutrisense,nutrisense-recruitee,https://nutrisense.recruitee.com,recruitee,"{""token"": ""nutrisense""}",skip,
 nvidia,nvidia-careers,https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite,workday,"{""company"": ""nvidia"", ""wd_instance"": ""wd5"", ""site"": ""NVIDIAExternalCareerSite""}",workday,"{""proxy"": true}"
