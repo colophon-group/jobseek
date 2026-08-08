@@ -50,6 +50,17 @@ PAGE_SIZE = 1_000
 MAX_JOBS = 50_000
 MAX_PAGES = MAX_JOBS // PAGE_SIZE
 MAX_HTML_CHARS = 2_000_000
+_MODERN_DISPLAY_FIELDS = [
+    "Category",
+    "Kind",
+    "LocId",
+    "DetailAddress",
+    "Org",
+    "PostDate",
+    "Salary",
+    "Degree",
+    "YearsOfWorking",
+]
 _GONE_STATUSES = frozenset({404, 410})
 _TRANSIENT_STATUSES = frozenset({202, 401, 403})
 _LEGACY_MARKER_RE = re.compile(r"\b_splash\([^)]*['\"]new_zhiye_com['\"]", re.IGNORECASE)
@@ -393,7 +404,10 @@ async def _modern_page(
             "KeyWords": "",
             "SpecialType": 0,
             "PortalId": board.portal_id,
-            "DisplayFields": ["Category"],
+            # Beisen only populates optional list fields when they are requested.
+            # In particular, asking for LocId populates LocNames even when LocId
+            # itself remains null.
+            "DisplayFields": _MODERN_DISPLAY_FIELDS,
         },
         follow_redirects=False,
         retryable_statuses=_TRANSIENT_STATUSES,

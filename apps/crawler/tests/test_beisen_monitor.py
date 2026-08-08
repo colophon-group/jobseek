@@ -223,6 +223,17 @@ class TestModernMonitor:
             body = json.loads(request.content)
             assert body["PageSize"] == 1_000
             assert body["PortalId"] == PORTAL_ID
+            assert body["DisplayFields"] == [
+                "Category",
+                "Kind",
+                "LocId",
+                "DetailAddress",
+                "Org",
+                "PostDate",
+                "Salary",
+                "Degree",
+                "YearsOfWorking",
+            ]
             return httpx.Response(200, json=_payload(_modern_job()), request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
