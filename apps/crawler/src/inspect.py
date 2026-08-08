@@ -363,8 +363,23 @@ def validate_csvs() -> list[ValidationError]:
                                             f"Invalid enrich field: {fname!r}",
                                         )
                                     )
-                            # Warn if enrich is used with URL-only monitor
-                            if enrich and monitor_type in url_only_monitors:
+                            # DOM is URL-only by default, but ``listing`` opts
+                            # into partial rich card fields that must be paired
+                            # with detail enrichment.
+                            dom_listing = False
+                            if monitor_type == "dom" and monitor_config:
+                                try:
+                                    parsed_monitor = json.loads(monitor_config)
+                                    dom_listing = bool(
+                                        isinstance(parsed_monitor, dict)
+                                        and isinstance(parsed_monitor.get("listing"), dict)
+                                        and parsed_monitor["listing"]
+                                    )
+                                except (json.JSONDecodeError, TypeError):
+                                    pass
+
+                            # Warn if enrich is used with a truly URL-only monitor.
+                            if enrich and monitor_type in url_only_monitors and not dom_listing:
                                 errors.append(
                                     ValidationError(
                                         "boards.csv",

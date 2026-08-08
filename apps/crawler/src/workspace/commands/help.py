@@ -959,7 +959,7 @@ kipt — NSC KIPT PDF vacancy bulletins (rich)
 MONITOR_DOM = """\
 dom — Link Extraction (fallback)
 
-  Returns:  URL set only (needs scraper)
+  Returns:  URL set by default; optional partial listing fields (needs scraper)
   Cap:      50,000 URLs
   Cost:     Highest — use only as last resort.
 
@@ -992,6 +992,33 @@ dom — Link Extraction (fallback)
                    Keep patterns broad enough to include URL variants
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
                    (numeric suffixes, trailing slash, query params)
+
+  Listing-card fields (single-page boards only):
+    When detail pages omit fields shown on each listing card, configure CSS
+    selectors so the monitor preserves those fields before a detail scraper
+    enriches the posting:
+
+    {
+      "render": true,
+      "url_filter": "/jobs/",
+      "listing": {
+        "item": ".job-card",
+        "link": "h3 a",
+        "fields": {
+          "title": "h3",
+          "locations": {"selector": ".location", "split": ";"}
+        }
+      }
+    }
+
+    listing.item    CSS selector for each repeated job card (required)
+    listing.link    Relative CSS selector for the job link (default: a[href])
+    listing.fields  CSS selectors for title, locations, employment_type,
+                    job_location_type, or date_posted. A field may be an object
+                    with selector + split to produce a list (notably locations).
+    The listing cards must map every URL matched by url_filter exactly once.
+    Pair partial listing fields with scraper_config.enrich (usually
+    ["description"]). Listing extraction cannot be combined with pagination.
 
   Pagination (multi-page career sites):
     {

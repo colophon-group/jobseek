@@ -273,6 +273,23 @@ class TestValidateCsvs:
         errors = validate_csvs()
         assert any("requires a scraper_type" in str(e) for e in errors)
 
+    def test_dom_listing_fields_allow_description_enrichment(self, tmp_path, monkeypatch):
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\n"
+            "test,Test,https://test.com,,,wordmark\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            'test,test-careers,https://example.com/jobs,dom,"{""listing"": '
+            '{""item"": "".card""}}",json-ld,'
+            '"{""enrich"": [""description""]}"\n',
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert not any("enrich" in str(e) for e in errors)
+
     def test_invalid_scraper_type(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,

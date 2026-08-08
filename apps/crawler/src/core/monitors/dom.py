@@ -20,8 +20,9 @@ from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 import structlog
+from selectolax.lexbor import LexborHTMLParser
 
-from src.core.monitors import register
+from src.core.monitors import DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 
@@ -194,6 +195,130 @@ def _extract_links_static(
         elif any(kw in absolute.lower() for kw in _JOB_KEYWORDS):
             urls.add(absolute)
     return urls
+
+
+def _listing_field_value(item, spec) -> str | list[str] | None:
+    """Extract one configured field from a listing-card node."""
+    if isinstance(spec, str):
+        selector = spec
+        split = None
+    elif isinstance(spec, dict):
+        selector = spec.get("selector")
+        split = spec.get("split")
+    else:
+        raise ValueError("DOM listing field specs must be CSS selector strings or objects")
+
+    if not isinstance(selector, str) or not selector.strip():
+        raise ValueError("DOM listing field selectors must be non-empty strings")
+    if split is not None and (not isinstance(split, str) or not split):
+        raise ValueError("DOM listing field split values must be non-empty strings")
+
+    try:
+        node = item.css_first(selector)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid DOM listing field selector: {selector!r}") from exc
+    if node is None:
+        return None
+
+    value = " ".join(node.text(separator=" ", strip=True).split())
+    if not value:
+        return None
+    if split is not None:
+        return [part.strip() for part in value.split(split) if part.strip()]
+    return value
+
+
+def _extract_listing_jobs(
+    html: str,
+    base_url: str,
+    config: dict,
+    url_matcher: re.Pattern | None = None,
+) -> list[DiscoveredJob]:
+    """Extract partial rich data from configured listing cards.
+
+    ``dom`` remains URL-only by default. Boards whose detail pages omit fields
+    that are present on the listing can opt into a small CSS map:
+
+    .. code-block:: json
+
+       {
+         "listing": {
+           "item": ".job-card",
+           "link": "a[href]",
+           "fields": {
+             "title": "h3",
+             "locations": {"selector": ".location", "split": ";"}
+           }
+         }
+       }
+
+    The result is intentionally partial and is returned as a hybrid monitor
+    result by :func:`dom_discover`, so an enrichment scraper can fill detail-
+    page fields without later monitor cycles nulling them out.
+    """
+    item_selector = config.get("item")
+    link_selector = config.get("link", "a[href]")
+    fields = config.get("fields")
+    if not isinstance(item_selector, str) or not item_selector.strip():
+        raise ValueError("DOM listing.item must be a non-empty CSS selector")
+    if not isinstance(link_selector, str) or not link_selector.strip():
+        raise ValueError("DOM listing.link must be a non-empty CSS selector")
+    if not isinstance(fields, dict) or not fields:
+        raise ValueError("DOM listing.fields must be a non-empty object")
+
+    supported_fields = {
+        "title",
+        "locations",
+        "employment_type",
+        "job_location_type",
+        "date_posted",
+    }
+    unknown_fields = set(fields) - supported_fields
+    if unknown_fields:
+        raise ValueError(f"Unsupported DOM listing fields: {', '.join(sorted(unknown_fields))}")
+
+    try:
+        items = LexborHTMLParser(html).css(item_selector)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid DOM listing item selector: {item_selector!r}") from exc
+
+    jobs_by_url: dict[str, DiscoveredJob] = {}
+    for item in items:
+        try:
+            link = item.css_first(link_selector)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid DOM listing link selector: {link_selector!r}") from exc
+        href = link.attributes.get("href") if link is not None else None
+        if not href:
+            continue
+        url = urljoin(base_url, href)
+        if not url.startswith("http") or (url_matcher is not None and not url_matcher.search(url)):
+            continue
+
+        values = {name: _listing_field_value(item, spec) for name, spec in fields.items()}
+        locations = values.get("locations")
+        if isinstance(locations, str):
+            locations = [locations]
+        jobs_by_url[url] = DiscoveredJob(
+            url=url,
+            title=values.get("title") if isinstance(values.get("title"), str) else None,
+            locations=locations if isinstance(locations, list) else None,
+            employment_type=(
+                values.get("employment_type")
+                if isinstance(values.get("employment_type"), str)
+                else None
+            ),
+            job_location_type=(
+                values.get("job_location_type")
+                if isinstance(values.get("job_location_type"), str)
+                else None
+            ),
+            date_posted=(
+                values.get("date_posted") if isinstance(values.get("date_posted"), str) else None
+            ),
+        )
+
+    return list(jobs_by_url.values())
 
 
 # ---------------------------------------------------------------------------
@@ -502,7 +627,7 @@ async def dom_discover(
     board: dict,
     client: httpx.AsyncClient | None = None,
     pw=None,
-) -> set[str]:
+):
     """Discover job URLs from a career page."""
     if client is None:
         raise ValueError("DOM monitor requires an HTTP client")
@@ -512,8 +637,14 @@ async def dom_discover(
     render = metadata.get("render", False)
     actions = metadata.get("actions")
     pagination = metadata.get("pagination")
+    listing = metadata.get("listing")
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
     url_transform = metadata.get("url_transform")
+
+    if listing is not None and not isinstance(listing, dict):
+        raise ValueError("DOM listing config must be an object")
+    if listing and pagination:
+        raise ValueError("DOM listing field extraction does not support pagination")
 
     if not render and actions:
         log.warning(
@@ -529,6 +660,7 @@ async def dom_discover(
         if pw is not None:
             async with open_page(pw, combined, use_proxy=bool(metadata.get("proxy"))) as page:
                 urls = await _extract_links_rendered(page, combined, url_matcher)
+                listing_html = await safe_content(page) if listing else None
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
                     urls = await _paginate_urls(
@@ -554,6 +686,7 @@ async def dom_discover(
                 open_page(p, combined, use_proxy=bool(metadata.get("proxy"))) as page,
             ):
                 urls = await _extract_links_rendered(page, combined, url_matcher)
+                listing_html = await safe_content(page) if listing else None
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
                     urls = await _paginate_urls(
@@ -579,6 +712,7 @@ async def dom_discover(
             return set()
         _raise_if_bot_challenge(board_url, html)
         urls = _extract_links_static(html, board_url, url_matcher)
+        listing_html = html if listing else None
         if pagination:
             urls = await _paginate_urls(
                 board_url,
@@ -596,6 +730,30 @@ async def dom_discover(
     if len(urls) > MAX_URLS:
         log.warning("dom.truncated", total=len(urls), cap=MAX_URLS)
         urls = set(sorted(urls)[:MAX_URLS])
+
+    if listing:
+        jobs = _extract_listing_jobs(listing_html or "", board_url, listing, url_matcher)
+        jobs = [job for job in jobs if job.url.rstrip("/") != normalized_board]
+        if len(jobs) > MAX_URLS:
+            jobs = sorted(jobs, key=lambda job: job.url)[:MAX_URLS]
+        if {job.url for job in jobs} != urls:
+            raise ValueError(
+                "DOM listing extraction must map every discovered job URL exactly once"
+            )
+        log.info(
+            "dom.complete",
+            board_url=board_url,
+            urls_found=len(jobs),
+            render=render,
+            listing_fields=sorted(listing.get("fields", {})),
+        )
+        from src.core.monitor import MonitorResult
+
+        return MonitorResult(
+            urls={job.url for job in jobs},
+            jobs_by_url={job.url: job for job in jobs},
+            hybrid=True,
+        )
 
     log.info("dom.complete", board_url=board_url, urls_found=len(urls), render=render)
     return urls
