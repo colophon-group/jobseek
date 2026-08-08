@@ -135,20 +135,24 @@ def test_generate_url_slug_caps_length():
 
 
 class _FakeResponse:
-    def __init__(self, text: str):
+    def __init__(self, text: str, status_code: int = 200):
         self.text = text
-        self.status_code = 200
+        self.status_code = status_code
 
     def raise_for_status(self):
-        pass
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
 
 
 class _FakeClient:
-    def __init__(self, html: str):
+    def __init__(self, html: str, responses: dict[str, _FakeResponse] | None = None):
         self._html = html
+        self._responses = responses or {}
+        self.requested_urls: list[str] = []
 
     async def get(self, url, **kwargs):
-        return _FakeResponse(self._html)
+        self.requested_urls.append(str(url))
+        return self._responses.get(str(url), _FakeResponse(self._html))
 
 
 @pytest.mark.asyncio
@@ -201,6 +205,66 @@ async def test_discover_with_defaults():
     assert len(jobs) == 1
     assert jobs[0].employment_type == "full_time"
     assert jobs[0].job_location_type == "onsite"
+
+
+@pytest.mark.asyncio
+async def test_discover_fetch_url_keeps_canonical_job_url_and_description_default():
+    client = _FakeClient("<html><head><title>Evergreen Driver</title></head></html>")
+    board = {
+        "board_url": "https://careers.example.com/driver",
+        "metadata": {
+            "fetch_url": "https://render.example.net/driver",
+            "steps": [{"tag": "title", "field": "title"}],
+            "defaults": {
+                "description": "<p>Deliver customer orders from a local depot.</p>",
+                "locations": ["South Korea"],
+            },
+        },
+    }
+
+    jobs = await discover(board, client)
+
+    assert client.requested_urls == ["https://render.example.net/driver"]
+    assert len(jobs) == 1
+    assert jobs[0].title == "Evergreen Driver"
+    assert jobs[0].description == "<p>Deliver customer orders from a local depot.</p>"
+    assert jobs[0].locations == ["South Korea"]
+    assert jobs[0].url.startswith("https://careers.example.com/driver?_jid=")
+
+
+@pytest.mark.asyncio
+async def test_discover_fetch_urls_falls_back_and_validates_required_text():
+    blocked = "https://careers.example.com/driver"
+    incomplete = "https://render-one.example.net/driver"
+    working = "https://render-two.example.net/driver"
+    client = _FakeClient(
+        "",
+        responses={
+            blocked: _FakeResponse("Access denied", 403),
+            incomplete: _FakeResponse("<html><head><title>Gateway error</title></head></html>"),
+            working: _FakeResponse(
+                "<html><head><title>Evergreen Driver</title></head></html>"
+            ),
+        },
+    )
+    board = {
+        "board_url": blocked,
+        "metadata": {
+            "fetch_urls": [blocked, incomplete, working],
+            "fetch_contains": "Evergreen Driver",
+            "steps": [{"tag": "title", "field": "title"}],
+            "defaults": {
+                "description": "<p>Deliver customer orders.</p>",
+                "locations": ["South Korea"],
+            },
+        },
+    }
+
+    jobs = await discover(board, client)
+
+    assert client.requested_urls == [blocked, incomplete, working]
+    assert [job.title for job in jobs] == ["Evergreen Driver"]
+    assert jobs[0].url.startswith(f"{blocked}?_jid=")
 
 
 @pytest.mark.asyncio
