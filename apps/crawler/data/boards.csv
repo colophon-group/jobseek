@@ -223,6 +223,7 @@ akkuro,akkuro-akkuro,https://akkuro.com/company/careers,dom,"{""render"": false,
 aktos,aktos-greenhouse,https://job-boards.greenhouse.io/applytoaktos,greenhouse,"{""token"": ""applytoaktos""}",skip,
 akuity,akuity-greenhouse,https://job-boards.greenhouse.io/akuity,greenhouse,"{""token"": ""akuity""}",skip,
 akuna-capital,akuna-capital-greenhouse,https://job-boards.greenhouse.io/akunacapital,greenhouse,"{""token"": ""akunacapital""}",skip,
+alacris,alacris-join,https://join.com/companies/alacris,join,"{""slug"": ""alacris""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""schemaDescription"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 alamar-biosciences,alamar-biosciences-greenhouse,https://job-boards.greenhouse.io/alamarbiosciences,greenhouse,"{""token"": ""alamarbiosciences""}",skip,
 alan,alan-ashby,https://jobs.ashbyhq.com/alan,ashby,"{""token"": ""alan""}",skip,
 alarm-com,alarm-com-greenhouse,https://job-boards.greenhouse.io/alarmcom,greenhouse,"{""token"": ""alarmcom""}",skip,
