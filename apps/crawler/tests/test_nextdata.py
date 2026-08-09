@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 
+from src.core.monitor import monitor_one, monitor_one_stream
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.nextdata import (
     _add_query_param,
@@ -1476,6 +1477,114 @@ class TestRscDiscover:
         async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
             result = await discover(BOARD_RSC, client)
         assert result == []
+
+
+def _onlyfy_rsc_data(page: int, *, page_count: int = 2, page_size: int = 5) -> dict:
+    start = (page - 1) * page_size
+    jobs = [
+        {
+            "id": start + i,
+            "title": f"Job {start + i}",
+            "cityName": f"City {start + i}",
+            "positionTypeName": "Full-time employee",
+            "publishedAt": "2026-07-20T12:00:00+02:00",
+            "jobAdUrl": f"https://acme.onlyfy.jobs/job/token{start + i}",
+        }
+        for i in range(page_size)
+    ]
+    return {
+        "jobsData": {
+            "data": jobs,
+            "meta": {
+                "totalItems": page_count * page_size,
+                "currentPage": page,
+                "itemsPerPage": page_size,
+                "totalPages": page_count,
+            },
+        }
+    }
+
+
+def _onlyfy_transport(page_count: int = 2, page_size: int = 5):
+    def handler(request: httpx.Request):
+        page = int(request.url.params.get("page", "1"))
+        data = _onlyfy_rsc_data(page, page_count=page_count, page_size=page_size)
+        return httpx.Response(200, text=_html_with_rsc_data(data))
+
+    return httpx.MockTransport(handler)
+
+
+class TestOnlyfyRsc:
+    async def test_can_handle_returns_ready_rich_config(self):
+        transport = _onlyfy_transport()
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await can_handle("https://acme.onlyfy.jobs/en", client)
+
+        assert result == {
+            "source": "rsc",
+            "path": "jobsData.data",
+            "count": 10,
+            "url_template": "{jobAdUrl}",
+            "url_transform": {
+                "find": "/job/",
+                "replace": "/candidate/job/print/",
+            },
+            "fields": {
+                "title": "title",
+                "locations": "cityName",
+                "employment_type": "positionTypeName",
+                "date_posted": "publishedAt",
+            },
+            "pagination": {
+                "path": "jobsData.meta",
+                "page_count": "totalPages",
+                "page_param": "page",
+            },
+        }
+
+    async def test_monitor_one_paginates_and_maps_print_urls_once(self):
+        transport = _onlyfy_transport()
+        async with httpx.AsyncClient(transport=transport) as client:
+            config = await can_handle("https://acme.onlyfy.jobs/en", client)
+            result = await monitor_one(
+                "https://acme.onlyfy.jobs/en",
+                "nextdata",
+                config,
+                client,
+            )
+
+        assert result.jobs_by_url is not None
+        jobs = list(result.jobs_by_url.values())
+        assert len(jobs) == 10
+        assert jobs[0] == DiscoveredJob(
+            url="https://acme.onlyfy.jobs/candidate/job/print/token0",
+            title="Job 0",
+            locations=["City 0"],
+            employment_type="Full-time employee",
+            date_posted="2026-07-20T12:00:00+02:00",
+        )
+        assert jobs[-1].url.endswith("/candidate/job/print/token9")
+        assert all("/candidate/candidate/" not in job.url for job in jobs)
+
+    async def test_monitor_stream_maps_print_urls_once(self):
+        transport = _onlyfy_transport()
+        async with httpx.AsyncClient(transport=transport) as client:
+            config = await can_handle("https://acme.onlyfy.jobs/en", client)
+            batches = [
+                batch
+                async for batch in monitor_one_stream(
+                    "https://acme.onlyfy.jobs/en",
+                    "nextdata",
+                    config,
+                    client,
+                )
+            ]
+
+        jobs = [job for batch in batches for job in (batch.jobs_by_url or {}).values()]
+        assert len(jobs) == 10
+        assert jobs[0].url.endswith("/candidate/job/print/token0")
+        assert jobs[-1].url.endswith("/candidate/job/print/token9")
+        assert all("/candidate/candidate/" not in job.url for job in jobs)
 
 
 # ---------------------------------------------------------------------------

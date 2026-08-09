@@ -12,7 +12,7 @@ dependencies = [
     "cairosvg>=2.7",
     "structlog>=24.4",
     "jmespath>=1.0",
-    "playwright>=1.58.0",
+    "playwright>=1.62.0",
     "huggingface_hub>=1.27.0",
     # `ws task` renders Jinja2 templates from steps/parallel/orchestrator.md.
     # Missing this dependency made `ws task --issue N` crash on every fresh
