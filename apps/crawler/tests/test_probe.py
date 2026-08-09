@@ -633,7 +633,7 @@ class TestProbeScrapers:
         assert spa_suspect is False
 
     async def test_probe_order(self):
-        """Results should be in display order: json-ld, nextdata, embedded, dom, api_sniffer."""
+        """Results should be in the configured display order."""
         http = _mock_http_client(
             {
                 "https://example.com/job/1": (200, _JSONLD_HTML),
@@ -646,7 +646,15 @@ class TestProbeScrapers:
         )
 
         names = [r[0] for r in results]
-        assert names == ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
+        assert names == [
+            "json-ld",
+            "nextdata",
+            "embedded",
+            "onlyfy",
+            "pdf",
+            "dom",
+            "api_sniffer",
+        ]
 
     async def test_spa_detection(self):
         """Pages with very little text content should set spa_suspect=True."""
@@ -768,4 +776,12 @@ class TestProbeScrapersPw:
         )
 
         names = [r[0] for r in results]
-        assert names == ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
+        assert names == [
+            "json-ld",
+            "nextdata",
+            "embedded",
+            "onlyfy",
+            "pdf",
+            "dom",
+            "api_sniffer",
+        ]
