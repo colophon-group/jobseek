@@ -2037,6 +2037,11 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
     request_headers  Cleaned request headers (auto-filled)
     post_data        POST body string (for POST APIs, null for GET)
     pagination       Pagination config (auto-detected from multiple requests)
+                     style is "offset" or "page" for ordinary pagination.
+                     Use "cumulative_limit" when a load-more API accepts only
+                     an increasing limit and repeats the earlier result prefix;
+                     the monitor makes one bounded request using the advertised
+                     total instead of accumulating duplicate pages.
     fields           Field mapping (same spec as nextdata: key, nested.key, array[].field)
                      When present → rich mode (scraper skipped)
                      When absent → URL-only (scraper needed)
