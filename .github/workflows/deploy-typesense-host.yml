@@ -1,6 +1,13 @@
 name: Deploy Typesense Host (Hetzner)
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/typesense-host/**'
+      - 'deploy/systemd/cloudflared.service'
+      - 'scripts/verify-typesense-host-credentials.py'
+      - '.github/workflows/deploy-typesense-host.yml'
   push:
     branches: [main]
     paths:
@@ -57,7 +64,8 @@ jobs:
           container=jobseek-typesense-config-smoke
           cleanup() {
             docker rm -f "$container" >/dev/null 2>&1 || true
-            rm -rf "$root"
+            # Typesense runs as root and leaves root-owned files in the bind mount.
+            sudo rm -rf -- "$root"
           }
           trap cleanup EXIT
           install -d -m 0700 "$root/data"
@@ -71,7 +79,7 @@ jobs:
           chmod 0600 "$root/typesense-server.ini"
           docker run -d \
             --name "$container" \
-            -p 127.0.0.1::8108 \
+            -p 127.0.0.1:18108:8108 \
             --ulimit nofile=65536:65536 \
             --log-opt max-size=50m \
             --log-opt max-file=3 \
@@ -79,12 +87,28 @@ jobs:
             -v "$root/typesense-server.ini:/run/secrets/typesense-server.ini:ro" \
             typesense/typesense:27.1 \
             --config=/run/secrets/typesense-server.ini >/dev/null
-          port="$(docker port "$container" 8108/tcp | sed 's/.*://')"
+          healthy=0
           for _ in $(seq 1 60); do
-            curl -fsS "http://127.0.0.1:${port}/health" >/dev/null && break
+            if curl -fsS "http://127.0.0.1:18108/health" >/dev/null; then
+              healthy=1
+              break
+            fi
+            state="$(docker inspect "$container" --format '{{.State.Status}}' 2>/dev/null || true)"
+            if [[ "$state" == exited || "$state" == dead ]]; then
+              echo "Typesense smoke container terminated before becoming healthy" >&2
+              docker logs "$container" >&2 || true
+              docker inspect "$container" >&2 || true
+              exit 1
+            fi
             sleep 1
           done
-          curl -fsS "http://127.0.0.1:${port}/health" |
+          if [[ "$healthy" != 1 ]]; then
+            echo "Typesense smoke container did not become healthy" >&2
+            docker logs "$container" >&2 || true
+            docker inspect "$container" >&2 || true
+            exit 1
+          fi
+          curl -fsS "http://127.0.0.1:18108/health" |
             python3 -c 'import json,sys; assert json.load(sys.stdin)["ok"] is True'
           docker inspect "$container" >"$root/inspect.json"
           if grep -Fq 'smoke-bootstrap-key' "$root/inspect.json"; then

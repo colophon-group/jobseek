@@ -1128,6 +1128,10 @@ test("CI runs Typesense E2E suites against a service container", () => {
 
 test("Typesense credentials are separated by consumer and host promotion is manual", () => {
   assert.match(
+    deployTypesenseHostWorkflow,
+    /pull_request:\n    branches: \[main\]\n    paths:/,
+  );
+  assert.match(
     deployCrawlerWorkflow,
     /TYPESENSE_OPERATIONS_KEY: \$\{\{ secrets\.TYPESENSE_OPERATIONS_KEY \}\}/,
   );
@@ -1155,6 +1159,23 @@ test("Typesense credentials are separated by consumer and host promotion is manu
   assert.match(
     deployTypesenseHostWorkflow,
     /--config=\/run\/secrets\/typesense-server\.ini/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /-p 127\.0\.0\.1:18108:8108[\s\S]*http:\/\/127\.0\.0\.1:18108\/health/,
+  );
+  assert.match(deployTypesenseHostWorkflow, /echo '\[server\]'/);
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /--ulimit nofile=65536:65536[\s\S]*--log-opt max-size=50m[\s\S]*--log-opt max-file=3/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /\.State\.Status[\s\S]*docker logs "\$container"[\s\S]*docker inspect "\$container"/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /cleanup\(\)[\s\S]*docker rm -f "\$container"[\s\S]*sudo rm -rf -- "\$root"/,
   );
   assert.doesNotMatch(
     deployTypesenseHostWorkflow,
