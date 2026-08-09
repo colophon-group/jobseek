@@ -44,6 +44,16 @@ assert(
   "server.json package version must match package.json version",
 );
 
+assert(
+  packageJson.repository?.url ===
+    "git+https://github.com/colophon-group/jobseek.git",
+  "package.json repository.url must identify the trusted-publisher repository",
+);
+assert(
+  packageJson.repository?.directory === "packages/mcp-server",
+  "package.json repository.directory must identify this workspace package",
+);
+
 // Exercise the published protocol boundary. This catches SDK/Zod integration
 // regressions that package metadata and TypeScript compilation cannot detect,
 // including schemas that the MCP SDK can register but cannot serialize.
