@@ -59,7 +59,9 @@ _BROWSER_FETCH_JS = (
     "}"
 )
 
-_JOB_KEYWORDS = frozenset({"job", "career", "position", "posting", "opening", "role", "vacancy"})
+_JOB_KEYWORDS = frozenset(
+    {"job", "career", "position", "posting", "opening", "role", "vacancy", "stellenangebot"}
+)
 
 _SITEGROUND_CHALLENGE_PATHS = (
     "/.well-known/captcha",
