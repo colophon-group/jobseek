@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import httpx
@@ -26,13 +28,16 @@ from src.shared.http_retry import (
     fetch_text_page_with_retry,
 )
 from src.shared.tdm import TDMReservedError
-from src.shared.truncation import truncated_rich_result
+
+if TYPE_CHECKING:
+    from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
 
 PAGE_SIZE = 100
 MAX_JOBS = 50_000
 MAX_PAGES = MAX_JOBS // PAGE_SIZE
+STREAM_BATCH = 200
 
 _TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
 _CONFIG_MARKER_RE = re.compile(r"\bvar\s+configsFromHost\s*=\s*")
@@ -53,21 +58,21 @@ class Bootstrap:
     headers: dict[str, str]
 
 
-def _clean_string(value: object) -> str | None:
+def clean_paycom_string(value: object) -> str | None:
     if not isinstance(value, str):
         return None
     value = value.strip()
     return value or None
 
 
-def _normalize_token(value: object) -> str | None:
+def normalize_paycom_token(value: object) -> str | None:
     if not isinstance(value, str):
         return None
     token = value.strip().lower()
     return token if _TOKEN_RE.fullmatch(token) else None
 
 
-def _token_from_url(url: str) -> str | None:
+def paycom_token_from_url(url: str) -> str | None:
     try:
         parsed = urlparse(url)
         port = parsed.port
@@ -84,10 +89,28 @@ def _token_from_url(url: str) -> str | None:
     segments = [segment for segment in parsed.path.split("/") if segment]
     if len(segments) < 5 or segments[:4] != ["v4", "ats", "web.php", "portal"]:
         return None
-    return _normalize_token(segments[4])
+    return normalize_paycom_token(segments[4])
 
 
-def _portal_url(token: str) -> str:
+def resolve_paycom_token(
+    board_url: str,
+    metadata: Mapping[str, object],
+) -> str | None:
+    """Resolve one portal token and reject contradictory configured identity."""
+
+    direct = paycom_token_from_url(board_url)
+    has_configured = "token" in metadata
+    configured = normalize_paycom_token(metadata.get("token"))
+    if has_configured and configured is None:
+        raise ValueError("Configured Paycom token is invalid")
+    if direct is not None and configured is not None and direct != configured:
+        raise ValueError(
+            f"Configured Paycom token {configured!r} does not match the board URL token {direct!r}"
+        )
+    return direct or configured
+
+
+def paycom_portal_url(token: str) -> str:
     return f"https://www.paycomonline.net/v4/ats/web.php/portal/{token}/career-page"
 
 
@@ -118,7 +141,7 @@ def _trusted_service_url(value: object) -> str:
     return value.rstrip("/")
 
 
-def _extract_bootstrap(page: str, portal_url: str) -> Bootstrap:
+def extract_paycom_bootstrap(page: str, portal_url: str) -> Bootstrap:
     match = _CONFIG_MARKER_RE.search(page)
     if match is None:
         raise ValueError("Paycom portal omitted configsFromHost")
@@ -129,7 +152,7 @@ def _extract_bootstrap(page: str, portal_url: str) -> Bootstrap:
     if not isinstance(config, dict):
         raise ValueError("Paycom configsFromHost is not an object")
 
-    session_jwt = _clean_string(config.get("sessionJWT"))
+    session_jwt = clean_paycom_string(config.get("sessionJWT"))
     if session_jwt is None or len(session_jwt.split(".")) != 3:
         raise ValueError("Paycom portal returned a malformed session token")
 
@@ -144,7 +167,7 @@ def _extract_bootstrap(page: str, portal_url: str) -> Bootstrap:
         raise ValueError("Paycom library config is not an object")
 
     service_url = _trusted_service_url(lib_config.get("atsPortalMantleServiceUrl"))
-    locale = _clean_string(lib_config.get("locale")) or "en-US"
+    locale = clean_paycom_string(lib_config.get("locale")) or "en-US"
     highlights = str(bool(lib_config.get("translationHighlights"))).lower()
     return Bootstrap(
         service_url=service_url,
@@ -158,19 +181,31 @@ def _extract_bootstrap(page: str, portal_url: str) -> Bootstrap:
     )
 
 
-async def _bootstrap(token: str, client: httpx.AsyncClient) -> Bootstrap:
-    portal_url = _portal_url(token)
-    page = await fetch_text_page_with_retry(
-        client,
-        portal_url,
-        retries=3,
-        base_delay=0.5,
-        end_of_pagination_statuses={404, 410},
-        log_event="paycom.bootstrap_backoff",
-    )
-    if page is None or _MISSING_BOARD_MARKER.casefold() in page.casefold():
-        raise BoardGoneError("Paycom board no longer exists", url=portal_url)
-    return _extract_bootstrap(page, portal_url)
+async def bootstrap_paycom(token: str, client: httpx.AsyncClient) -> Bootstrap:
+    portal_url = paycom_portal_url(token)
+    try:
+        page = await fetch_text_page_with_retry(
+            client,
+            portal_url,
+            retries=3,
+            base_delay=0.5,
+            follow_redirects=False,
+            end_of_pagination_statuses=(),
+            log_event="paycom.bootstrap_backoff",
+        )
+    except PaginationFetchError as exc:
+        if exc.last_status in {404, 410}:
+            raise BoardGoneError(
+                "Paycom board no longer exists",
+                url=portal_url,
+                status_code=exc.last_status,
+            ) from exc
+        raise
+    if page is None:  # Strict status handling above makes this unreachable.
+        raise RuntimeError(f"Paycom bootstrap returned no page for {token!r}")
+    if _MISSING_BOARD_MARKER.casefold() in page.casefold():
+        raise BoardGoneError("Paycom board no longer exists", url=portal_url, status_code=200)
+    return extract_paycom_bootstrap(page, portal_url)
 
 
 def _search_url(bootstrap: Bootstrap) -> str:
@@ -227,8 +262,8 @@ def _parse_job(raw: dict, token: str) -> DiscoveredJob | None:
     if job_id <= 0:
         return None
 
-    location = _clean_string(raw.get("locations"))
-    location_type = normalize_job_location_type(_clean_string(raw.get("remoteType")))
+    location = clean_paycom_string(raw.get("locations"))
+    location_type = normalize_job_location_type(clean_paycom_string(raw.get("remoteType")))
     if location_type is None and location and "remote" in location.casefold():
         location_type = "remote"
 
@@ -242,12 +277,12 @@ def _parse_job(raw: dict, token: str) -> DiscoveredJob | None:
     }
     return DiscoveredJob(
         url=_job_url(token, job_id),
-        title=_clean_string(raw.get("jobTitle")),
-        description=_clean_string(raw.get("description")),
+        title=clean_paycom_string(raw.get("jobTitle")),
+        description=clean_paycom_string(raw.get("description")),
         locations=[location] if location else None,
-        employment_type=_clean_string(raw.get("positionType")),
+        employment_type=clean_paycom_string(raw.get("positionType")),
         job_location_type=location_type,
-        date_posted=_clean_string(raw.get("postedOn")),
+        date_posted=clean_paycom_string(raw.get("postedOn")),
         metadata=metadata,
     )
 
@@ -262,17 +297,32 @@ def _page_rows(payload: dict, token: str) -> tuple[int, list[dict]]:
     return total, rows
 
 
-async def _discover_jobs(
-    token: str,
-    bootstrap: Bootstrap,
+async def stream(
+    board: dict,
     client: httpx.AsyncClient,
-) -> tuple[list[DiscoveredJob], bool]:
-    jobs: list[DiscoveredJob] = []
+    pw=None,
+) -> AsyncIterator[MonitorResult]:
+    """Stream API pagination in bounded hybrid batches for lease heartbeats."""
+    from src.core.monitor import MonitorResult
+
+    _ = pw
+    metadata = board.get("metadata") or {}
+    token = resolve_paycom_token(board["board_url"], metadata)
+    if token is None:
+        raise ValueError(
+            f"Cannot derive Paycom token from board URL {board['board_url']!r} "
+            "and no valid token is present in metadata"
+        )
+
+    bootstrap = await bootstrap_paycom(token, client)
+    pending: list[DiscoveredJob] = []
     seen_urls: set[str] = set()
     expected_total: int | None = None
     raw_seen = 0
+    raw_since_yield = 0
     invalid = 0
     duplicates = 0
+    emitted = False
 
     for _page_number in range(MAX_PAGES):
         skip = raw_seen
@@ -309,6 +359,7 @@ async def _discover_jobs(
 
         for raw in rows:
             raw_seen += 1
+            raw_since_yield += 1
             if not isinstance(raw, dict):
                 invalid += 1
                 continue
@@ -320,15 +371,26 @@ async def _discover_jobs(
                 duplicates += 1
                 continue
             seen_urls.add(job.url)
-            jobs.append(job)
+            pending.append(job)
 
-        if raw_seen >= total or raw_seen >= MAX_JOBS:
+        done = raw_seen >= total or raw_seen >= MAX_JOBS
+        if not done and raw_since_yield >= STREAM_BATCH:
+            batch = {job.url: job for job in pending}
+            yield MonitorResult(
+                urls=set(batch),
+                jobs_by_url=batch,
+                hybrid=True,
+            )
+            emitted = True
+            pending.clear()
+            raw_since_yield = 0
+        if done:
             break
     else:
         log.warning("paycom.page_cap", token=token, cap=MAX_PAGES)
 
     assert expected_total is not None
-    if expected_total and not jobs:
+    if expected_total and not seen_urls:
         raise ValueError(f"Paycom {token!r} returned no valid job IDs")
 
     truncated = (
@@ -338,14 +400,22 @@ async def _discover_jobs(
         log.warning(
             "paycom.truncated",
             token=token,
-            jobs=len(jobs),
+            jobs=len(seen_urls),
             raw_seen=raw_seen,
             expected_total=expected_total,
             invalid=invalid,
             duplicates=duplicates,
             cap=MAX_JOBS,
         )
-    return jobs[:MAX_JOBS], truncated
+    final_batch = {job.url: job for job in pending}
+    if final_batch or not emitted or truncated:
+        yield MonitorResult(
+            urls=set(final_batch),
+            jobs_by_url=final_batch,
+            hybrid=True,
+            truncated=truncated,
+        )
+    log.info("paycom.discovered", token=token, jobs=len(seen_urls), truncated=truncated)
 
 
 async def discover(
@@ -353,29 +423,40 @@ async def discover(
     client: httpx.AsyncClient,
     pw=None,
 ):
-    """Fetch one Paycom portal through its public preview API."""
-    _ = pw
-    metadata = board.get("metadata") or {}
-    token = _normalize_token(metadata.get("token")) or _token_from_url(board["board_url"])
-    if token is None:
-        raise ValueError(
-            f"Cannot derive Paycom token from board URL {board['board_url']!r} "
-            "and no valid token is present in metadata"
-        )
+    """Materialize the streaming monitor for single-board debug callers."""
 
-    bootstrap = await _bootstrap(token, client)
-    jobs, truncated = await _discover_jobs(token, bootstrap, client)
-    if truncated:
-        return truncated_rich_result(jobs)
-    log.info("paycom.discovered", token=token, jobs=len(jobs))
-    return jobs
+    from src.core.monitor import MonitorResult
+
+    urls: set[str] = set()
+    jobs_by_url: dict[str, DiscoveredJob] = {}
+    truncated = False
+    async for batch in stream(board, client, pw=pw):
+        urls.update(batch.urls)
+        if batch.jobs_by_url:
+            jobs_by_url.update(batch.jobs_by_url)
+        truncated = truncated or batch.truncated
+    return MonitorResult(
+        urls=urls,
+        jobs_by_url=jobs_by_url,
+        hybrid=True,
+        truncated=truncated,
+    )
 
 
-async def _probe_token(token: str, client: httpx.AsyncClient) -> ProbeResult:
+async def fetch_paycom_job_count(token: str, client: httpx.AsyncClient) -> int:
+    """Validate the real bootstrap/search path and return its advertised count."""
+
+    bootstrap = await bootstrap_paycom(token, client)
+    payload = await _fetch_search_page(bootstrap, client, skip=0, take=1)
+    total, rows = _page_rows(payload, token)
+    if len(rows) != min(total, 1) or (rows and _parse_job(rows[0], token) is None):
+        raise ValueError(f"Paycom {token!r} returned an inconsistent one-row search probe")
+    return total
+
+
+async def probe_paycom_token(token: str, client: httpx.AsyncClient) -> ProbeResult:
     try:
-        bootstrap = await _bootstrap(token, client)
-        payload = await _fetch_search_page(bootstrap, client, skip=0, take=1)
-        total, _ = _page_rows(payload, token)
+        total = await fetch_paycom_job_count(token, client)
     except TDMReservedError:
         raise
     except Exception:
@@ -390,7 +471,7 @@ async def _fetch_job_count(
     context: None,
 ) -> ProbeCount | None:
     _ = context
-    found, count = await _probe_token(token, client)
+    found, count = await probe_paycom_token(token, client)
     return count if found else None
 
 
@@ -400,7 +481,7 @@ async def _probe_candidate(
     context: None,
 ) -> ProbeResult:
     _ = context
-    return await _probe_token(token, client)
+    return await probe_paycom_token(token, client)
 
 
 def _build_result(token: str, count: ProbeCount | None, context: None) -> dict:
@@ -422,7 +503,7 @@ async def can_handle(
         url,
         client,
         monitor_name="paycom",
-        token_from_url=_token_from_url,
+        token_from_url=paycom_token_from_url,
         page_patterns=_PAGE_PATTERNS,
         ignore_tokens=frozenset(),
         fetch_job_count=_fetch_job_count,
@@ -442,10 +523,10 @@ async def save_raw(
     metadata: dict,
     client: httpx.AsyncClient,
 ) -> None:
-    token = _normalize_token(metadata.get("token")) or _token_from_url(board_url)
+    token = resolve_paycom_token(board_url, metadata)
     if token is None:
         return
-    bootstrap = await _bootstrap(token, client)
+    bootstrap = await bootstrap_paycom(token, client)
     payload = await _fetch_search_page(bootstrap, client, skip=0)
     (artifact_dir / "paycom-search.json").write_text(
         json.dumps(payload, indent=2, default=str),
@@ -453,4 +534,12 @@ async def save_raw(
     )
 
 
-register("paycom", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)
+register(
+    "paycom",
+    discover,
+    cost=10,
+    can_handle=can_handle,
+    rich=True,
+    stream=stream,
+    save_raw=save_raw,
+)

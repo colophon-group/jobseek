@@ -229,10 +229,10 @@ class TestModernMonitor:
                 "LocId",
                 "DetailAddress",
                 "Org",
-                "PostDate",
-                "Salary",
                 "Degree",
                 "YearsOfWorking",
+                "Salary",
+                "PostDate",
             ]
             return httpx.Response(200, json=_payload(_modern_job()), request=request)
 
@@ -246,6 +246,7 @@ class TestModernMonitor:
         job = result.jobs_by_url[next(iter(result.urls))]  # type: ignore[index]
         assert job.title == "Platform Engineer"
         assert job.locations == ["Shanghai"]
+        assert job.employment_type == "Full-time"
         assert job.date_posted == "2026-07-31"
         assert "<h3>Responsibilities</h3>" in (job.description or "")
         assert job.metadata == {

@@ -56,10 +56,10 @@ _MODERN_DISPLAY_FIELDS = [
     "LocId",
     "DetailAddress",
     "Org",
-    "PostDate",
-    "Salary",
     "Degree",
     "YearsOfWorking",
+    "Salary",
+    "PostDate",
 ]
 _GONE_STATUSES = frozenset({404, 410})
 _TRANSIENT_STATUSES = frozenset({202, 401, 403})
@@ -404,9 +404,8 @@ async def _modern_page(
             "KeyWords": "",
             "SpecialType": 0,
             "PortalId": board.portal_id,
-            # Beisen only populates optional list fields when they are requested.
-            # In particular, asking for LocId populates LocNames even when LocId
-            # itself remains null.
+            # Beisen leaves configurable fields at empty sentinel values unless
+            # they are named here. LocId populates LocNames in the response.
             "DisplayFields": _MODERN_DISPLAY_FIELDS,
         },
         follow_redirects=False,
