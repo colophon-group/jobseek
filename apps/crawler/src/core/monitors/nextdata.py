@@ -45,7 +45,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
@@ -113,7 +112,6 @@ def _build_url(
     item: dict,
     url_template: str,
     slug_fields: list[str] | None,
-    url_transform: dict | None = None,
 ) -> str | None:
     """Build a job URL from *item* fields and *url_template*.
 
@@ -136,21 +134,9 @@ def _build_url(
             variables["slug"] = "-".join(parts)
 
     try:
-        url = url_template.format_map(variables)
+        return url_template.format_map(variables)
     except (KeyError, IndexError, ValueError):
         return None
-
-    if not isinstance(url_transform, dict) or not url_transform.get("find"):
-        return url
-    try:
-        return re.sub(
-            str(url_transform["find"]),
-            str(url_transform.get("replace", "")),
-            url,
-        )
-    except re.error as exc:
-        log.warning("nextdata.url_transform_invalid", error=str(exc))
-        return url
 
 
 def _detection_metadata(source: str, data: dict, path: str, count: int) -> dict:
@@ -437,7 +423,6 @@ async def discover(
     source: str = metadata.get("source", "nextdata")
     fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
-    url_transform: dict | None = metadata.get("url_transform")
     render = metadata.get("render", False)
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
@@ -498,15 +483,8 @@ async def discover(
         items = items[:MAX_URLS]
 
     if fields_map:
-        return _extract_rich(
-            items,
-            url_template,
-            slug_fields,
-            fields_map,
-            base_salary_cfg,
-            url_transform,
-        )
-    return _extract_urls(items, url_template, slug_fields, url_transform)
+        return _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
+    return _extract_urls(items, url_template, slug_fields)
 
 
 # How many pages to fetch per streaming batch before yielding.
@@ -534,7 +512,6 @@ async def discover_stream(
     source: str = metadata.get("source", "nextdata")
     fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
-    url_transform: dict | None = metadata.get("url_transform")
     render = metadata.get("render", False)
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
@@ -566,46 +543,25 @@ async def discover_stream(
     # No pagination — single yield
     if not pagination_cfg:
         if fields_map:
-            yield _extract_rich(
-                items,
-                url_template,
-                slug_fields,
-                fields_map,
-                base_salary_cfg,
-                url_transform,
-            )
+            yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
         else:
-            yield _extract_urls(items, url_template, slug_fields, url_transform)
+            yield _extract_urls(items, url_template, slug_fields)
         return
 
     # Determine page count
     page_count = _resolve_page_count(data, pagination_cfg)
     if page_count is None or page_count <= 1:
         if fields_map:
-            yield _extract_rich(
-                items,
-                url_template,
-                slug_fields,
-                fields_map,
-                base_salary_cfg,
-                url_transform,
-            )
+            yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
         else:
-            yield _extract_urls(items, url_template, slug_fields, url_transform)
+            yield _extract_urls(items, url_template, slug_fields)
         return
 
     # Yield first page immediately
     if fields_map:
-        yield _extract_rich(
-            items,
-            url_template,
-            slug_fields,
-            fields_map,
-            base_salary_cfg,
-            url_transform,
-        )
+        yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
     else:
-        yield _extract_urls(items, url_template, slug_fields, url_transform)
+        yield _extract_urls(items, url_template, slug_fields)
 
     page_urls = _compute_page_urls(board_url, page_count, pagination_cfg)
     sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
@@ -637,15 +593,10 @@ async def discover_stream(
         if batch_items:
             if fields_map:
                 yield _extract_rich(
-                    batch_items,
-                    url_template,
-                    slug_fields,
-                    fields_map,
-                    base_salary_cfg,
-                    url_transform,
+                    batch_items, url_template, slug_fields, fields_map, base_salary_cfg
                 )
             else:
-                yield _extract_urls(batch_items, url_template, slug_fields, url_transform)
+                yield _extract_urls(batch_items, url_template, slug_fields)
 
 
 def _resolve_page_count(data: dict, pagination_cfg: dict) -> int | None:
@@ -773,14 +724,13 @@ def _extract_rich(
     slug_fields: list[str] | None,
     fields_map: dict[str, str | dict],
     base_salary_cfg: dict | None = None,
-    url_transform: dict | None = None,
 ) -> list[DiscoveredJob]:
     """Extract ``DiscoveredJob`` objects using the field mapping."""
     jobs: list[DiscoveredJob] = []
     for item in items:
         if not isinstance(item, dict):
             continue
-        url = _build_url(item, url_template, slug_fields, url_transform)
+        url = _build_url(item, url_template, slug_fields)
         if not url:
             continue
 
@@ -823,14 +773,13 @@ def _extract_urls(
     items: list[dict],
     url_template: str,
     slug_fields: list[str] | None,
-    url_transform: dict | None = None,
 ) -> set[str]:
     """Build URL-only set from items."""
     urls: set[str] = set()
     for item in items:
         if not isinstance(item, dict):
             continue
-        url = _build_url(item, url_template, slug_fields, url_transform)
+        url = _build_url(item, url_template, slug_fields)
         if url:
             urls.add(url)
     return urls

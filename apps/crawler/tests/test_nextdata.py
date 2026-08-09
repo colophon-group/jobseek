@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 
+from src.core.monitor import monitor_one, monitor_one_stream
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.nextdata import (
     _add_query_param,
@@ -322,21 +323,6 @@ class TestBuildUrl:
         item = {"id": 42}
         url = _build_url(item, "https://example.com/jobs/{id}", None)
         assert url == "https://example.com/jobs/42"
-
-    def test_applies_url_transform(self):
-        item = {"url": "https://acme.onlyfy.jobs/job/abc123"}
-        url = _build_url(
-            item,
-            "{url}",
-            None,
-            {"find": "/job/", "replace": "/candidate/job/print/"},
-        )
-        assert url == "https://acme.onlyfy.jobs/candidate/job/print/abc123"
-
-    def test_invalid_url_transform_falls_back_to_built_url(self):
-        item = {"url": "https://example.com/job/abc123"}
-        url = _build_url(item, "{url}", None, {"find": "[", "replace": "/print/"})
-        assert url == item["url"]
 
 
 class TestExtractNextData:
@@ -1556,25 +1542,49 @@ class TestOnlyfyRsc:
             },
         }
 
-    async def test_discover_paginates_and_maps_print_urls(self):
+    async def test_monitor_one_paginates_and_maps_print_urls_once(self):
         transport = _onlyfy_transport()
         async with httpx.AsyncClient(transport=transport) as client:
             config = await can_handle("https://acme.onlyfy.jobs/en", client)
-            result = await discover(
-                {"board_url": "https://acme.onlyfy.jobs/en", "metadata": config},
+            result = await monitor_one(
+                "https://acme.onlyfy.jobs/en",
+                "nextdata",
+                config,
                 client,
             )
 
-        assert isinstance(result, list)
-        assert len(result) == 10
-        assert result[0] == DiscoveredJob(
+        assert result.jobs_by_url is not None
+        jobs = list(result.jobs_by_url.values())
+        assert len(jobs) == 10
+        assert jobs[0] == DiscoveredJob(
             url="https://acme.onlyfy.jobs/candidate/job/print/token0",
             title="Job 0",
             locations=["City 0"],
             employment_type="Full-time employee",
             date_posted="2026-07-20T12:00:00+02:00",
         )
-        assert result[-1].url.endswith("/candidate/job/print/token9")
+        assert jobs[-1].url.endswith("/candidate/job/print/token9")
+        assert all("/candidate/candidate/" not in job.url for job in jobs)
+
+    async def test_monitor_stream_maps_print_urls_once(self):
+        transport = _onlyfy_transport()
+        async with httpx.AsyncClient(transport=transport) as client:
+            config = await can_handle("https://acme.onlyfy.jobs/en", client)
+            batches = [
+                batch
+                async for batch in monitor_one_stream(
+                    "https://acme.onlyfy.jobs/en",
+                    "nextdata",
+                    config,
+                    client,
+                )
+            ]
+
+        jobs = [job for batch in batches for job in (batch.jobs_by_url or {}).values()]
+        assert len(jobs) == 10
+        assert jobs[0].url.endswith("/candidate/job/print/token0")
+        assert jobs[-1].url.endswith("/candidate/job/print/token9")
+        assert all("/candidate/candidate/" not in job.url for job in jobs)
 
 
 # ---------------------------------------------------------------------------
