@@ -116,8 +116,7 @@ async def test_discover_uses_native_finder_suffix_pagination():
 
     board = {
         "board_url": (
-            "https://example.fa.us2.oraclecloud.com/hcmUI/"
-            "CandidateExperience/en/sites/CX_2001"
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001"
         ),
         "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_2001"},
     }
@@ -139,6 +138,7 @@ async def test_discover_uses_native_finder_suffix_pagination():
 @pytest.mark.asyncio
 async def test_discover_marks_oracle_result_window_cap_as_truncated():
     """An empty page before TotalJobsCount suppresses unsafe gone-detection."""
+
     def handler(request: httpx.Request) -> httpx.Response:
         url = str(request.url)
         if ",offset=200" in url:
@@ -164,8 +164,7 @@ async def test_discover_marks_oracle_result_window_cap_as_truncated():
 
     board = {
         "board_url": (
-            "https://example.fa.us2.oraclecloud.com/hcmUI/"
-            "CandidateExperience/en/sites/CX_2001"
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001"
         ),
         "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_2001"},
     }
