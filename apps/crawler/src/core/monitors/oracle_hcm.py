@@ -1,8 +1,8 @@
 """Oracle Cloud HCM monitor.
 
-Thin wrapper around api_sniffer that auto-constructs the Oracle HCM REST
-API URLs from a ``host`` and ``site`` in the board metadata.  Supports
-pagination via the ``finder`` param's ``offset`` suffix.
+Constructs Oracle HCM REST API URLs from a ``host`` and ``site`` in the
+board metadata. Supports pagination via the ``finder`` param's ``offset``
+suffix.
 
 Board metadata:
     host        Oracle HCM tenant hostname (e.g. "jpmc.fa.oraclecloud.com")
@@ -18,13 +18,17 @@ from __future__ import annotations
 import asyncio
 import random
 import re
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import httpx
 import structlog
 
 from src.core.monitors import DiscoveredJob, register
-from src.core.monitors.api_sniffer import discover as api_sniffer_discover
+from src.shared.truncation import truncated_rich_result
+
+if TYPE_CHECKING:
+    from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
 
@@ -84,13 +88,6 @@ _DEFAULT_FIELDS = {
     "locations": "PrimaryLocation",
     "date_posted": "PostedDate",
     "employment_type": "JobSchedule",
-}
-
-_DEFAULT_PAGINATION = {
-    "param_name": "offset",
-    "start": 0,
-    "increment": 200,
-    "location": "suffix",
 }
 
 _ORACLE_HCM_RE = re.compile(
@@ -153,40 +150,23 @@ async def discover(
     board: dict,
     client: httpx.AsyncClient,
     pw=None,
-) -> list[DiscoveredJob] | set[str]:
-    """Discover jobs via Oracle HCM REST API.
+) -> list[DiscoveredJob] | MonitorResult:
+    """Discover available jobs via the monitor's native streaming implementation.
 
-    Delegates to api_sniffer after injecting the constructed API URL,
-    field mapping, and pagination config.
+    Keeping the non-streaming entry point on the same Oracle-specific path is
+    important for workspace validation, which calls ``discover`` directly.
+    The generic API sniffer cannot represent Oracle's compound ``finder``
+    pagination reliably and previously replayed the first page until its page
+    cap, returning only a small changing subset for large tenants.
     """
-    metadata = board.get("metadata") or {}
-    host = metadata.get("host")
-    site = metadata.get("site")
-
-    if not host or not site:
-        # Try to extract from board_url
-        parsed = urlparse(board["board_url"])
-        host = host or parsed.hostname
-        parts = parsed.path.rstrip("/").split("/")
-        try:
-            idx = parts.index("sites")
-            site = site or parts[idx + 1]
-        except (ValueError, IndexError):
-            log.error("oracle_hcm.missing_host_or_site", board_url=board["board_url"])
-            return set()
-
-    # Inject api_sniffer config
-    enriched_metadata = {
-        **metadata,
-        "api_url": _build_api_url(host, site),
-        "json_path": "items[0].requisitionList",
-        "url_template": _build_url_template(host, site),
-        "fields": metadata.get("fields") or _DEFAULT_FIELDS,
-        "pagination": metadata.get("pagination") or _DEFAULT_PAGINATION,
-    }
-    enriched_board = {**board, "metadata": enriched_metadata}
-
-    return await api_sniffer_discover(enriched_board, client, pw=pw)
+    jobs: list[DiscoveredJob] = []
+    truncated = False
+    async for batch in discover_stream(board, client, pw=pw):
+        if isinstance(batch, list):
+            jobs.extend(batch)
+        elif batch.truncated:
+            truncated = True
+    return truncated_rich_result(jobs) if truncated else jobs
 
 
 async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
@@ -212,6 +192,8 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
 
     offset = 0
     total = None
+    seen_job_ids: set[str] = set()
+    partial = False
     while total is None or offset < total:
         page_url = f"{api_url},offset={offset}" if offset else api_url
         resp = await _get_with_retry(client, page_url, timeout=30)
@@ -219,20 +201,55 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         data = resp.json()
 
         wrapper = (data.get("items") or [{}])[0]
+        page_total = wrapper.get("TotalJobsCount")
         if total is None:
-            total = wrapper.get("TotalJobsCount", 0)
+            total = page_total or 0
             if total == 0:
                 return
+        elif page_total is not None and page_total != total:
+            # Offset pagination is not snapshot-isolated. A changing total is
+            # enough to make the cycle unsafe for authoritative gone-detection,
+            # even if every individual response looks well formed.
+            partial = True
+            log.warning(
+                "oracle_hcm.total_changed",
+                host=host,
+                site=site,
+                initial_total=total,
+                page_total=page_total,
+                offset=offset,
+            )
 
         items = wrapper.get("requisitionList", [])
+        expected_page_size = min(200, max(total - offset, 0))
+        if len(items) != expected_page_size:
+            partial = True
         if not items:
+            if total is not None and offset < total:
+                # Oracle HCM caps public search windows at 10,000 for large
+                # tenants even when TotalJobsCount advertises more. Signal a
+                # partial cycle so downstream gone-detection does not
+                # tombstone postings outside the accessible window.
+                log.warning(
+                    "oracle_hcm.truncated",
+                    host=host,
+                    site=site,
+                    discovered=offset,
+                    advertised_total=total,
+                )
             break
 
         jobs: list[DiscoveredJob] = []
         for item in items:
             job_id = item.get("Id")
             if not job_id:
+                partial = True
                 continue
+            job_id = str(job_id)
+            if job_id in seen_job_ids:
+                partial = True
+                continue
+            seen_job_ids.add(job_id)
             url = url_template.format(Id=job_id)
             jobs.append(
                 DiscoveredJob(
@@ -251,8 +268,18 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             log.debug("oracle_hcm.stream_batch", offset=offset, batch=len(jobs), total=total)
 
         offset += 200
-        if len(items) < 200:
-            break
+
+    if total is not None and len(seen_job_ids) != total:
+        partial = True
+    if partial:
+        log.warning(
+            "oracle_hcm.partial_cycle",
+            host=host,
+            site=site,
+            discovered=len(seen_job_ids),
+            advertised_total=total,
+        )
+        yield truncated_rich_result([])
 
     log.info("oracle_hcm.stream_done", host=host, site=site, total=total)
 

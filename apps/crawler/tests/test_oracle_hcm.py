@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from src.core.monitors.oracle_hcm import _RETRY_ATTEMPTS, _get_with_retry
+from src.core.monitor import MonitorResult
+from src.core.monitors.oracle_hcm import _RETRY_ATTEMPTS, _get_with_retry, discover
 from src.core.scrapers.oracle_hcm import _build_detail_url, scrape
 
 
@@ -77,6 +78,142 @@ class TestGetWithRetry:
 
         # _RETRY_ATTEMPTS attempts → _RETRY_ATTEMPTS - 1 sleeps between them
         assert sleep.await_count == _RETRY_ATTEMPTS - 1
+
+
+@pytest.mark.asyncio
+async def test_discover_uses_native_finder_suffix_pagination():
+    """The workspace path paginates past short pages via Oracle's finder suffix."""
+    requested_urls: list[str] = []
+
+    def _jobs(start: int, count: int) -> list[dict]:
+        return [
+            {
+                "Id": str(i),
+                "Title": f"Job {i}",
+                "PrimaryLocation": "Cincinnati, OH, United States",
+                "PostedDate": "2026-08-09",
+                "JobSchedule": "Full time",
+            }
+            for i in range(start, start + count)
+        ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        requested_urls.append(url)
+        if ",offset=400" in url:
+            offset, count = 400, 50
+        elif ",offset=200" in url:
+            # Oracle can return a short page while jobs are changing. It is
+            # not a reliable end-of-results signal (Kroger #6379).
+            offset, count = 200, 199
+        else:
+            offset, count = 0, 200
+        rows = _jobs(offset, count)
+        return httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": 450, "requisitionList": rows}]},
+        )
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001"
+        ),
+        "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_2001"},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        jobs = await discover(board, client)
+
+    assert isinstance(jobs, MonitorResult)
+    assert jobs.truncated is True
+    assert len(jobs.urls) == 449
+    assert requested_urls[0].endswith("limit=200,sortBy=POSTING_DATES_DESC")
+    assert requested_urls[1].endswith("limit=200,sortBy=POSTING_DATES_DESC,offset=200")
+    assert requested_urls[2].endswith("limit=200,sortBy=POSTING_DATES_DESC,offset=400")
+    assert [
+        jobs.jobs_by_url[
+            f"https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001/job/{i}"
+        ].title
+        for i in range(198, 202)
+    ] == [
+        "Job 198",
+        "Job 199",
+        "Job 200",
+        "Job 201",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_discover_marks_cross_page_duplicate_as_truncated():
+    """Offset churn can repeat one ID while silently omitting another."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        start = 199 if ",offset=200" in str(request.url) else 0
+        rows = [
+            {
+                "Id": str(i),
+                "Title": f"Job {i}",
+                "PrimaryLocation": "Cincinnati, OH, United States",
+            }
+            for i in range(start, start + 200)
+        ]
+        return httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": 400, "requisitionList": rows}]},
+        )
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001"
+        ),
+        "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_2001"},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(board, client)
+
+    assert isinstance(result, MonitorResult)
+    assert result.truncated is True
+    assert len(result.urls) == 399
+
+
+@pytest.mark.asyncio
+async def test_discover_marks_oracle_result_window_cap_as_truncated():
+    """An empty page before TotalJobsCount suppresses unsafe gone-detection."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if ",offset=200" in url:
+            offset, count = 200, 200
+        elif ",offset=400" in url:
+            offset, count = 400, 50
+        elif ",offset=600" in url:
+            offset, count = 600, 0
+        else:
+            offset, count = 0, 200
+        rows = [
+            {
+                "Id": str(i),
+                "Title": f"Job {i}",
+                "PrimaryLocation": "Cincinnati, OH, United States",
+            }
+            for i in range(offset, offset + count)
+        ]
+        return httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": 900, "requisitionList": rows}]},
+        )
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001"
+        ),
+        "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_2001"},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(board, client)
+
+    assert isinstance(result, MonitorResult)
+    assert result.truncated is True
+    assert len(result.urls) == 450
 
 
 # ── Vanity-domain config-driven scraper path ────────────────────────
