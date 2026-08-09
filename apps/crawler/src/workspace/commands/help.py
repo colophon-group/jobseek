@@ -896,25 +896,45 @@ inline — Single-Page Extraction (rich)
 
   Config:
     {
+      "fetch_urls": [
+        "https://company.example/jobs",
+        "https://render.example.com/company/jobs",
+        {
+          "url": "https://reader.example.com/company/jobs",
+          "headers": {"X-No-Cache": "true"}
+        }
+      ],
+      "fetch_contains": "Open positions",
       "render": true,
       "steps": [
         {"tag": "h3", "field": "title"},
         {"text": "Location", "offset": 1, "field": "location", "optional": true},
         {"tag": "p", "field": "description", "html": true, "stop_tag": "h3"}
       ],
-      "defaults": {"employment_type": "full_time"},
+      "defaults": {
+        "description": "<p>Evergreen role description.</p>",
+        "employment_type": "full_time"
+      },
       "defaults_by_title": {
         "Account Manager": {"locations": ["USA, Remote"]}
       }
     }
 
     render       true = Playwright, false = static HTTP (default: false)
+    fetch_urls   Optional ordered URLs used only to read the page. Each entry is
+                 a URL string or {"url": ..., "headers": {...}} object. Headers
+                 are scoped to that exact candidate and are never forwarded to
+                 other hosts. Failed URLs fall through to the next equivalent
+                 representation. Synthetic job URLs remain on board_url.
+    fetch_contains
+                 Required text that every accepted representation must contain.
+                 A response without it falls through to the next fetch URL.
     steps        Extraction steps run once per job (see: ws help steps).
                  The first step with a field (usually title) is the stop
                  condition — when it can't find a match, extraction ends.
     defaults     Default field values applied when extracted value is absent.
-                 Supports: locations (list), employment_type, job_location_type,
-                 date_posted.
+                 Supports: description, locations (list), employment_type,
+                 job_location_type, date_posted.
     defaults_by_title
                  Exact extracted title -> defaults mapping for pages that omit
                  per-role fields. Supports the same fields as defaults; title
