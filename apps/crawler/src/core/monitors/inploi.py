@@ -16,6 +16,8 @@ import structlog
 
 from src.core.enum_normalize import normalize_job_location_type, normalize_salary_unit
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.shared.http_retry import fetch_json_page_with_retry
+from src.shared.tdm import TDMReservedError
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -87,12 +89,12 @@ def _salary(raw: dict) -> dict | None:
         return None
 
     raw_unit = str(raw.get("pay_type") or "").casefold()
-    unit = normalize_salary_unit(raw_unit.removesuffix("ly"))
+    unit = normalize_salary_unit(raw_unit)
     return {
         "currency": raw.get("pay_currency") or raw.get("currency_code"),
         "min": minimum,
         "max": maximum,
-        "unit": unit or raw_unit or None,
+        "unit": unit,
     }
 
 
@@ -120,10 +122,17 @@ def _parse_job(
     }
     raw_location_type = raw.get("location_type")
     job_location_type = (
-        "onsite"
+        None
         if str(raw_location_type).casefold() == "location"
         else normalize_job_location_type(raw_location_type, default=None)
     )
+    location_text = " ".join(
+        value.strip()
+        for key in ("town", "city", "country")
+        if isinstance((value := raw.get(key)), str) and value.strip()
+    )
+    if job_location_type is None and "remote" in location_text.casefold():
+        job_location_type = "remote"
 
     return DiscoveredJob(
         url=_job_url(board_url, job_id, job_url_template),
@@ -145,22 +154,52 @@ async def _fetch_page(
     page: int,
     page_size: int,
 ) -> dict:
-    response = await client.get(
+    return await fetch_json_page_with_retry(
+        client,
         API_URL,
-        params=[
-            ("filters[segment_ids][0]", segment_id),
-            ("query", ""),
-            ("page", str(page)),
-            ("per_page", str(page_size)),
-        ],
+        expect_shape=dict,
+        params={
+            "filters[segment_ids][0]": segment_id,
+            "query": "",
+            "page": str(page),
+            "per_page": str(page_size),
+        },
         headers={"Accept": "application/json", "x-publishable-key": api_key},
         follow_redirects=True,
+        retries=3,
+        base_delay=0.5,
+        log_event="inploi.search_backoff",
     )
-    response.raise_for_status()
-    payload = response.json()
-    if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+
+
+def _page_rows(payload: dict, *, page: int, page_size: int) -> tuple[int, int, list[object]]:
+    """Validate one complete, positionally consistent Inploi result page."""
+    rows = payload.get("data")
+    pagination = payload.get("pagination")
+    if not isinstance(rows, list) or not isinstance(pagination, dict):
         raise ValueError("Inploi search response is not a paginated job list")
-    return payload
+
+    total = pagination.get("total")
+    current_page = pagination.get("current_page")
+    last_page = pagination.get("last_page")
+    if (
+        isinstance(total, bool)
+        or not isinstance(total, int)
+        or total < 0
+        or isinstance(current_page, bool)
+        or not isinstance(current_page, int)
+        or isinstance(last_page, bool)
+        or not isinstance(last_page, int)
+        or current_page != page
+        or last_page < 1
+    ):
+        raise ValueError("Inploi search response has invalid pagination metadata")
+
+    expected_last_page = max(1, (total + page_size - 1) // page_size)
+    expected_rows = min(page_size, max(total - ((page - 1) * page_size), 0))
+    if last_page != expected_last_page or len(rows) != expected_rows:
+        raise ValueError("Inploi search response has inconsistent pagination counts")
+    return total, last_page, rows
 
 
 async def _detect(url: str, client: httpx.AsyncClient) -> dict | None:
@@ -183,18 +222,18 @@ async def _detect(url: str, client: httpx.AsyncClient) -> dict | None:
                 page=1,
                 page_size=1,
             )
+            total, _last_page, _rows = _page_rows(payload, page=1, page_size=1)
+        except TDMReservedError:
+            raise
         except Exception:
             log.debug("inploi.probe_failed", url=candidate, exc_info=True)
             continue
-        pagination = payload.get("pagination")
-        total = pagination.get("total") if isinstance(pagination, dict) else None
         result = {
             "api_key": api_key,
             "segment_id": segment_id,
             "search_url": candidate,
         }
-        if isinstance(total, int):
-            result["jobs"] = total
+        result["jobs"] = total
         return result
     return None
 
@@ -226,8 +265,14 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     page_size = min(max(int(config.get("page_size", PAGE_SIZE)), 1), MAX_JOBS)
     jobs: list[DiscoveredJob] = []
+    seen_urls: set[str] = set()
+    expected_total: int | None = None
+    expected_last_page: int | None = None
+    raw_seen = 0
+    invalid = 0
+    duplicates = 0
     page = 1
-    while len(jobs) < MAX_JOBS:
+    while True:
         payload = await _fetch_page(
             client,
             api_key=api_key,
@@ -235,22 +280,53 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             page=page,
             page_size=page_size,
         )
-        items = payload["data"]
-        for raw in items:
-            if isinstance(raw, dict):
-                parsed = _parse_job(raw, board["board_url"], config.get("job_url_template"))
-                if parsed:
-                    jobs.append(parsed)
+        total, last_page, items = _page_rows(payload, page=page, page_size=page_size)
+        if expected_total is None:
+            expected_total = total
+            expected_last_page = last_page
+        elif total != expected_total or last_page != expected_last_page:
+            raise ValueError("Inploi pagination totals changed during discovery")
 
-        pagination = payload.get("pagination")
-        last_page = pagination.get("last_page") if isinstance(pagination, dict) else None
-        if not items or not isinstance(last_page, int) or page >= last_page:
+        raw_seen += len(items)
+        for raw in items:
+            if not isinstance(raw, dict):
+                invalid += 1
+                continue
+            parsed = _parse_job(raw, board["board_url"], config.get("job_url_template"))
+            if parsed is None:
+                invalid += 1
+                continue
+            if parsed.url in seen_urls:
+                duplicates += 1
+                continue
+            seen_urls.add(parsed.url)
+            jobs.append(parsed)
+
+        if page >= last_page:
+            break
+        if total > MAX_JOBS and raw_seen + page_size > MAX_JOBS:
             break
         page += 1
 
-    if len(jobs) >= MAX_JOBS:
-        log.warning("inploi.truncated", segment_id=segment_id, cap=MAX_JOBS)
-        return truncated_rich_result(jobs[:MAX_JOBS])
+    assert expected_total is not None
+    if expected_total and not jobs:
+        raise ValueError("Inploi search returned no valid jobs")
+
+    truncated = (
+        invalid > 0 or duplicates > 0 or raw_seen != expected_total or expected_total > MAX_JOBS
+    )
+    if truncated:
+        log.warning(
+            "inploi.truncated",
+            segment_id=segment_id,
+            jobs=len(jobs),
+            raw_seen=raw_seen,
+            expected_total=expected_total,
+            invalid=invalid,
+            duplicates=duplicates,
+            cap=MAX_JOBS,
+        )
+        return truncated_rich_result(jobs)
     return jobs
 
 
