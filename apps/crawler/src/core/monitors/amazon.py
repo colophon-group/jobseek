@@ -266,7 +266,11 @@ async def _fetch_page(
     async with semaphore:
         resp = await client.get(API_URL, params=params)
         if resp.status_code == 404 and params.get("offset", 0) == 0:
-            raise BoardGoneError("Amazon Jobs API returned 404", url=str(resp.url))
+            raise BoardGoneError(
+                "Amazon Jobs API returned 404",
+                url=str(resp.url),
+                status_code=resp.status_code,
+            )
         resp.raise_for_status()
         data = resp.json()
 

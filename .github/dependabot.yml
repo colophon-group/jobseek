@@ -14,6 +14,9 @@ updates:
           - "*"
 
   - package-ecosystem: "npm"
+    # pnpm owns workspace resolution and the shared lockfile at the repository
+    # root. Running Dependabot from member directories makes pnpm reject the
+    # update; the root updater still discovers and groups workspace manifests.
     directory: "/"
     schedule:
       interval: "weekly"
@@ -21,31 +24,56 @@ updates:
       time: "04:30"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 10
-    exclude-paths:
-      - "apps/crawler/murmur/**"
-      - "apps/murmur-shim/**"
+    ignore:
+      # TypeScript 7 is blocked by typescript-eslint's stable peer range
+      # (<6.1 as of 2026-07-22). Track the deliberate migration in #5866.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
+      # CI and production run Node 22, while the published MCP package still
+      # supports Node 18. Future Node ambient types would expose APIs that are
+      # unavailable on both supported runtime boundaries.
+      - dependency-name: "@types/node"
+        update-types:
+          - "version-update:semver-major"
     groups:
+      security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
       next-react:
+        applies-to: "version-updates"
         patterns:
           - "next"
           - "@next/*"
           - "react"
           - "react-dom"
       lingui:
+        applies-to: "version-updates"
         patterns:
           - "@lingui/*"
       typesense:
+        applies-to: "version-updates"
         patterns:
           - "typesense"
       aws-sdk:
+        applies-to: "version-updates"
         patterns:
           - "@aws-sdk/*"
       test-tooling:
+        applies-to: "version-updates"
         dependency-type: "development"
         patterns:
           - "@testing-library/*"
           - "@vitest/*"
           - "vitest"
+      workspace-dependencies:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        # Keep the catch-all as one reviewable workspace update. Splitting this
+        # group back into one PR per dependency exhausted the 10-PR limit and
+        # prevented later security work from completing.
 
   - package-ecosystem: "uv"
     directory: "/apps/crawler"

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { clearStoredUserImage } from "@/lib/actions/preferences";
+import { logExternalError } from "@/lib/safe-external-error";
 
 /**
  * Compute the 1-2 char initials placeholder displayed when no avatar
@@ -171,7 +172,7 @@ export function UserAvatar({
     // failure is logged; nothing the UI can do about it.
     Promise.resolve((onBrokenImage ?? clearStoredUserImage)()).catch(
       (err) => {
-        console.warn("[UserAvatar] broken-image heal failed", err);
+        logExternalError("warn", { service: "database", operation: "heal_user_avatar" }, err);
       },
     );
   }

@@ -11,19 +11,23 @@ prometheus.scrape "crawler" {
     {"__address__" = "localhost:9093", "instance" = "exporter", "job" = "crawler"},
     {"__address__" = "localhost:9094", "instance" = "drain", "job" = "crawler"},
   ]
-  forward_to     = [prometheus.remote_write.grafana_cloud.receiver]
+  forward_to     = [prometheus.relabel.crawler.receiver]
   scrape_interval = "15s"
 }
 
-// ── Host metrics ──────────────────────────────────────────
-prometheus.exporter.unix "host" {
-  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "loadavg", "netdev"]
-}
+// The circuit breaker retains one labelled gauge/counter set per real
+// upstream origin for the lifetime of every worker. With thousands of career
+// sites this eventually exceeds the Grafana tenant's active-series budget.
+// Keep the bounded fleet-level task outcomes for alerting; the structured
+// Docker logs retain per-origin attribution for incident diagnosis.
+prometheus.relabel "crawler" {
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
 
-prometheus.scrape "node" {
-  targets        = prometheus.exporter.unix.host.targets
-  forward_to     = [prometheus.remote_write.grafana_cloud.receiver]
-  scrape_interval = "15s"
+  rule {
+    source_labels = ["__name__"]
+    regex         = "crawler_host_circuit_.*"
+    action        = "drop"
+  }
 }
 
 // ── Redis metrics ─────────────────────────────────────────
@@ -38,8 +42,22 @@ prometheus.exporter.redis "redis_local" {
 
 prometheus.scrape "redis" {
   targets        = prometheus.exporter.redis.redis_local.targets
-  forward_to     = [prometheus.remote_write.grafana_cloud.receiver]
+  forward_to     = [prometheus.relabel.redis.receiver]
   scrape_interval = "15s"
+}
+
+// Command-level latency histograms multiply every Redis command into many
+// bucket series. The allowlist retains the capacity, persistence, connection,
+// error, traffic, CPU, and keyspace signals used to operate this single Redis
+// instance without spending hundreds of series on command attribution.
+prometheus.relabel "redis" {
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "(up|scrape_(duration_seconds|samples_scraped|samples_post_metric_relabeling|series_added)|redis_(up|memory_.*|connected_clients|blocked_clients|rejected_connections_total|evicted_keys_total|expired_keys_total|keyspace_(hits|misses)_total|commands_processed_total|net_(input|output)_bytes_total|db_keys(_expiring)?|rdb_.*|aof_.*|loading|latest_fork_seconds|cpu_.*|uptime_in_seconds))"
+    action        = "keep"
+  }
 }
 
 // ── Remote write ──────────────────────────────────────────
@@ -49,6 +67,16 @@ prometheus.remote_write "grafana_cloud" {
     basic_auth {
       username = sys.env("PROM_USERNAME")
       password = sys.env("PROM_PASSWORD")
+    }
+    queue_config {
+      capacity             = 4000
+      min_shards           = 1
+      max_shards           = 1
+      max_samples_per_send = 500
+      batch_send_deadline  = "5s"
+      min_backoff          = "1s"
+      max_backoff          = "30s"
+      retry_on_http_429    = true
     }
   }
 }

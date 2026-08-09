@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import postgres from "postgres";
+import { logExternalError } from "../src/lib/safe-external-error";
 
 const dryRun = process.argv.includes("--dry-run");
 const sql = postgres(process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL!, { max: 1 });
@@ -148,6 +149,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Failed:", err);
+  logExternalError("error", { service: "database", operation: "backfill_slugs" }, err);
   process.exit(1);
 });

@@ -1,5 +1,6 @@
 import { siteConfig } from "@/content/config";
 import { locales, type Locale } from "@/lib/i18n";
+import { logExternalError } from "@/lib/safe-external-error";
 
 /**
  * Build hreflang alternates for Next.js Metadata API.
@@ -191,7 +192,7 @@ export function JsonLd({ data }: { data: Record<string, unknown> }) {
   try {
     json = JSON.stringify(data).replace(/</g, "\\u003c");
   } catch (err) {
-    console.error("[JsonLd] failed to serialise payload", err);
+    logExternalError("error", { service: "external_http", operation: "serialize_json_ld" }, err);
     return null;
   }
   return (

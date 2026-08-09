@@ -28,20 +28,4 @@ export function register(server: McpServer, client: JobseekClient) {
     return { content: [{ type: "text", text: [`=== Ghost Analysis: ${r.company} ===`, `Risk: ${r.overallGhostRisk}/100 | Rate: ${Math.round(r.ghostRate * 100)}% (${r.ghostCandidates}/${r.totalUniqueJobs}) | Avg ${r.avgDurationDays} days`, `Recommendation: ${r.recommendation}`, r.orgGhostSignal ?? "", hcLine, r.geminiSummary, jobs.length ? `\nTop ghost roles:\n${jobs.join("\n")}` : ""].filter(Boolean).join("\n") }] };
   });
 
-  server.tool("trigger_discovery_run", "Trigger a fresh company-discovery-actor run on Apify. Scans 39+ job boards in parallel batches (Greenhouse, Lever, Ashby, Workday, SmartRecruiters, Wellfound, hiring.cafe, Fountain, Rippling, Factorial, Kenjo, LinkedIn, Glassdoor, Softgarden, JOIN, etc.) and updates the dataset. Takes 10–20 min. Call get_discovery_results after completion.", { sources: z.array(z.string()).optional().describe("Override default sources list (omit to use all 39+ sources)"), enableAiDiscovery: z.boolean().optional().describe("Enable Gemini AI portal discovery (default true)") }, { title: "Trigger Discovery Run", readOnlyHint: false, destructiveHint: false, openWorldHint: true }, async (p) => {
-    const d = await client.post("/agentic/api/discovery/trigger", p as Record<string, unknown>) as { runId: string; status: string };
-    return { content: [{ type: "text", text: `Discovery run started.\nrunId: ${d.runId}\nStatus: ${d.status}\nCall get_discovery_results after ~15 minutes to see updated results.` }] };
-  });
-
-  server.tool("get_discovery_results", "Get the latest company discovery results — top hiring companies, fastest-growing (hiring.cafe delta), shrinking companies (possible hiring freeze / layoffs), and source breakdown. Refreshed every ~5 min from 30+ job boards.", {}, { title: "Get Discovery Results", readOnlyHint: true, destructiveHint: false, openWorldHint: true }, async () => {
-    type DR = { companiesDiscovered: number; totalJobsTracked?: number; runAt: string; topCompanies: Array<{ name: unknown; jobs: unknown; source: unknown }>; growingCompanies: Array<{ name: unknown; jobs: unknown; delta: unknown }>; shrinkingCompanies?: Array<{ name: unknown; jobs: unknown; delta: unknown }>; newHiringCompanies?: Array<{ name: unknown; jobs: unknown }>; sourceBreakdown?: Record<string, number> };
-    const d = await client.get('/agentic/api/discovery', {}) as DR;
-    const top = d.topCompanies?.slice(0, 10).map(c => `  ${c.name} — ${c.jobs} jobs (${c.source})`).join('\n') ?? '';
-    const growing = d.growingCompanies?.slice(0, 5).map(c => `  ${c.name} +${c.delta} (now ${c.jobs})`).join('\n') ?? '';
-    const shrinking = d.shrinkingCompanies?.slice(0, 5).map(c => `  ${c.name} ${c.delta} (now ${c.jobs})`).join('\n') ?? '';
-    const newHiring = d.newHiringCompanies?.slice(0, 5).map(c => `  ${c.name} — ${c.jobs} listings (new!)`).join('\n') ?? '';
-    const breakdown = d.sourceBreakdown ? Object.entries(d.sourceBreakdown).sort(([,a],[,b])=>b-a).slice(0,10).map(([s,n])=>`  ${s}: ${n}`).join('\n') : '';
-    const header = `Discovery as of ${d.runAt?.slice(0, 10)} — ${d.companiesDiscovered} companies${d.totalJobsTracked ? `, ${d.totalJobsTracked.toLocaleString()} total job slots` : ''}`;
-    return { content: [{ type: "text", text: [header, top ? `\nTop companies by job count:\n${top}` : '', growing ? `\nFastest-growing (hiring.cafe):\n${growing}` : '', newHiring ? `\nNew burst-hiring companies (first appearance ≥5 jobs):\n${newHiring}` : '', shrinking ? `\nShrinking / hiring freeze signal:\n${shrinking}` : '', breakdown ? `\nTop sources by company count:\n${breakdown}` : ''].filter(Boolean).join('\n') }] };
-  });
 }

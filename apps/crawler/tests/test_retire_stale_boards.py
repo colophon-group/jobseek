@@ -1,492 +1,711 @@
-"""Tests for retire_stale_boards formatting + query shape.
-
-The DB query is exercised in the e2e suite (or by running the CLI against
-a populated dev DB). Unit tests cover the pure formatting layer plus
-guard-rail assertions on the query string itself.
-"""
-
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import json
+import sys
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from types import ModuleType
 from typing import Any
 
+import httpx
 import pytest
 
+from src.cli import parse_args
 from src.retire_stale_boards import (
+    _COMPANY_BOARDS_QUERY,
     _COMPANY_QUERY,
     _QUERY,
+    ProbeObservation,
+    RetirementReport,
+    RetirementSafetyError,
+    VerifiedGoneCompany,
+    ZeroBoardRegistryOrphan,
+    build_retirement_report,
+    classify_candidate,
     find_dead_companies,
+    find_dead_company_boards,
     find_stale_boards,
     format_md,
     format_shell_snippets,
+    load_registry,
+    probe_registry_rows,
     report_stale_boards,
 )
 
+NOW = datetime(2026, 8, 3, 20, 0, tzinfo=UTC)
+FIRST_GONE = NOW - timedelta(hours=12)
+LAST_GONE = NOW - timedelta(hours=6)
 
-def _row(**overrides: Any) -> dict[str, Any]:
+
+def _candidate(**overrides: Any) -> dict[str, Any]:
     base: dict[str, Any] = {
         "id": "00000000-0000-0000-0000-000000000001",
         "company_id": "00000000-0000-0000-0000-000000000010",
         "company_slug": "acme",
         "company_name": "Acme Corp",
-        "board_slug": "acme-careers",
+        "board_slug": "acme-greenhouse",
         "crawler_type": "greenhouse",
-        "board_url": "https://boards.greenhouse.io/acme",
-        "board_status": "disabled",
-        "last_success_at": datetime(2026, 4, 10, 12, 0, tzinfo=UTC),
-        "consecutive_failures": 8,
-        "stale_days": 15.4,
+        "board_url": "https://job-boards.greenhouse.io/acme",
+        "board_status": "gone",
+        "is_enabled": True,
+        "last_success_at": NOW - timedelta(days=30),
+        "consecutive_failures": 3,
+        "gone_at": LAST_GONE,
+        "gone_confirmation_count": 2,
+        "gone_first_confirmed_at": FIRST_GONE,
+        "gone_last_confirmed_at": LAST_GONE,
+        "last_gone_status": 404,
+        "last_gone_endpoint": "https://boards-api.greenhouse.io/v1/boards/acme/jobs",
+        "stale_days": 30.0,
         "active_postings": 0,
         "healthy_siblings": 1,
+        "company_total_boards": 2,
+        "company_live_boards": 1,
+        "candidate_scope": "board",
     }
     base.update(overrides)
     return base
 
 
-# ---------- format_md ----------------------------------------------------
-
-
-def test_format_md_empty_returns_friendly_message() -> None:
-    assert format_md([]) == "No retirement candidates found."
-
-
-def test_format_md_renders_header_and_one_row() -> None:
-    out = format_md([_row()])
-    assert "| Company | Board slug |" in out
-    assert "|---|" in out
-    assert "acme (Acme Corp)" in out
-    assert "`acme-careers`" in out
-    assert "`greenhouse`" in out
-    assert "`disabled`" in out
-    assert "2026-04-10 12:00 UTC" in out
-    assert "15.4" in out
-
-
-def test_format_md_handles_missing_board_slug_and_crawler() -> None:
-    out = format_md([_row(board_slug=None, crawler_type=None)])
-    assert "(no slug)" in out
-    assert "(none)" in out
-
-
-def test_format_md_handles_no_last_success() -> None:
-    out = format_md([_row(last_success_at=None)])
-    assert "(never)" in out
-
-
-def test_format_md_renders_multiple_rows_in_order() -> None:
-    rows = [
-        _row(company_slug="alpha", board_slug="alpha-careers"),
-        _row(company_slug="beta", board_slug="beta-careers"),
-    ]
-    out = format_md(rows)
-    alpha_pos = out.index("alpha-careers")
-    beta_pos = out.index("beta-careers")
-    assert alpha_pos < beta_pos
-
-
-# ---------- format_shell_snippets -----------------------------------------
-
-
-def test_format_csv_empty_returns_friendly_comment() -> None:
-    assert format_shell_snippets([]) == "# No retirement candidates found."
-
-
-def test_format_csv_renders_grep_per_row() -> None:
-    out = format_shell_snippets([_row()])
-    assert "grep -vF" in out
-    assert "data/boards.csv" in out
-    assert "https://boards.greenhouse.io/acme" in out
-    assert "# acme acme-careers (disabled)" in out
-
-
-def test_format_csv_uses_fixed_string_match_not_regex() -> None:
-    """`grep -F` is critical: URLs contain `.` which would otherwise be a regex
-    metachar and over-match unrelated rows (e.g. `jobs.x.com` matching
-    `jobsXxXcom`)."""
-    out = format_shell_snippets([_row(board_url="https://jobs.example.com/path")])
-    assert "grep -vF" in out
-    assert "https://jobs.example.com/path" in out
-
-
-def test_format_csv_skips_rows_with_unsafe_quote_in_url() -> None:
-    """Defensive: shell-unsafe URLs (rare; no-op today) emit a SKIP comment
-    rather than a snippet that the operator might paste blindly."""
-    out = format_shell_snippets([_row(board_url="https://x.com/o'brien")])
-    assert "SKIP" in out
-    assert "single quote" in out
-    assert "grep -vF" not in out
-
-
-def test_format_csv_anchors_on_url_with_csv_separators() -> None:
-    """The pattern `,<url>,` ensures we don't accidentally match a substring
-    of a different column (e.g. a URL embedded in scraper_config JSON)."""
-    out = format_shell_snippets([_row()])
-    assert ",https://boards.greenhouse.io/acme," in out
-
-
-def test_format_csv_includes_operator_instructions_header() -> None:
-    out = format_shell_snippets([_row()])
-    assert "Run from apps/crawler/" in out
-    assert "git checkout -b" in out
-
-
-# ---------- query shape ---------------------------------------------------
-
-
-def test_query_filters_to_disabled_or_gone() -> None:
-    """Only boards in the dead status set should be candidates."""
-    assert "board_status IN ('disabled', 'gone')" in _QUERY
-
-
-def test_query_excludes_boards_with_active_postings() -> None:
-    """A board with active postings must not be a retirement candidate
-    (orphan postings are a separate cleanup concern)."""
-    assert "bs.active_postings = 0" in _QUERY
-
-
-def test_query_excludes_companies_without_healthy_siblings() -> None:
-    """Retirement must not orphan a company — at least one live sibling
-    board must remain. Live = active OR suspect (matches the dispatcher's
-    definition in queries/monitor.py)."""
-    assert "bs.healthy_siblings >= 1" in _QUERY
-    assert "sib.board_status IN ('active', 'suspect')" in _QUERY
-    assert "sib.is_enabled = true" in _QUERY
-
-
-def test_query_treats_never_succeeded_as_strongest_candidate() -> None:
-    """A disabled board with `last_success_at IS NULL` (never succeeded)
-    must be a candidate, not silently excluded. The strip-NOT-NULL bug in
-    an earlier draft would have hidden these from the operator."""
-    assert "jb.last_success_at IS NULL" in _QUERY
-    assert "OR jb.last_success_at <" in _QUERY
-
-
-def test_query_filters_on_last_success_age_with_days_param() -> None:
-    """The --days threshold must apply to last_success_at."""
-    assert "jb.last_success_at <" in _QUERY
-    assert "$1::int || ' days'" in _QUERY
-
-
-def test_query_orders_results_for_stable_diffs() -> None:
-    """Stable ordering keeps PR diffs and operator scans deterministic."""
-    assert "ORDER BY c.slug, bs.board_slug" in _QUERY
-
-
-def test_query_only_targets_dead_statuses_in_outer_filter() -> None:
-    """Defensive: the outer `board_status` filter must exclude live statuses.
-    `'active'`/`'suspect'` legitimately appear in the sibling sub-query —
-    use a full-string check on the outer filter clause."""
-    assert "jb.board_status IN ('disabled', 'gone')" in _QUERY
-
-
-# ---------- SQL syntactic guard-rails -----------------------------------
-#
-# Substring assertions above don't catch a structurally broken query
-# (mismatched parens, missing CTE close, etc.). The cheapest backstop
-# without a real Postgres in the test env is paren-balance + a single-
-# `SELECT` statement check at the structure level (postgres lets you
-# nest SELECTs but the WITH ... SELECT shape we use should have one
-# outer SELECT after the final CTE close paren, no stray top-level
-# fragments).
-
-
-def _strip_string_literals(sql: str) -> str:
-    """Remove '...' literals so paren-balance counting isn't fooled by
-    a literal that happens to contain `(` or `)`. Both queries use only
-    simple ANSI single-quoted strings without escaped quotes."""
-    out: list[str] = []
-    in_str = False
-    for ch in sql:
-        if ch == "'":
-            in_str = not in_str
-            continue
-        if not in_str:
-            out.append(ch)
-    return "".join(out)
-
-
-def _assert_balanced(sql: str) -> None:
-    cleaned = _strip_string_literals(sql)
-    depth = 0
-    for ch in cleaned:
-        if ch == "(":
-            depth += 1
-        elif ch == ")":
-            depth -= 1
-            assert depth >= 0, f"unbalanced ')' at depth -1 in:\n{sql}"
-    assert depth == 0, f"{depth} unclosed '(' in:\n{sql}"
-
-
-def test_query_has_balanced_parens() -> None:
-    """Regression for an Edit that dropped a CTE's closing `)` —
-    substring tests still passed, but the SQL would have failed at
-    runtime with a syntax error. This guard would have caught it."""
-    _assert_balanced(_QUERY)
-
-
-def test_query_cte_close_is_followed_by_outer_select() -> None:
-    """The CTE-then-SELECT shape: ``)\\nSELECT`` (or `) SELECT`) appears
-    exactly once after the WITH block. Asserts the structural seam
-    rather than counting characters."""
-    # Strip whitespace variants for a robust check.
-    compact = " ".join(_QUERY.split())
-    assert ") SELECT" in compact
-
-
-# ---------- Section B: company-level "entirely dead" -----------------------
-
-
-def _company_row(**overrides: Any) -> dict[str, Any]:
+def _observation(**overrides: Any) -> ProbeObservation:
     base: dict[str, Any] = {
-        "company_id": "00000000-0000-0000-0000-000000000010",
-        "company_slug": "ghost-corp",
-        "company_name": "Ghost Corp",
-        "total_boards": 2,
-        "stale_dead_boards": 2,
-        "oldest_stale_days": 28.4,
+        "status": "fail",
+        "probed_at": NOW,
+        "endpoint_class": "greenhouse",
+        "endpoint_url": "https://boards-api.greenhouse.io/v1/boards/acme/jobs",
+        "message": "404 Not Found",
+        "http_status": 404,
+        "redirect_url": None,
+        "job_count": None,
     }
     base.update(overrides)
-    return base
+    return ProbeObservation(**base)
 
 
-# ---------- _COMPANY_QUERY shape ----------------------------------------
+def _registry_row(**overrides: str) -> dict[str, str]:
+    row = {
+        "company_slug": "acme",
+        "board_slug": "acme-greenhouse",
+        "board_url": "https://job-boards.greenhouse.io/acme",
+        "monitor_type": "greenhouse",
+        "monitor_config": json.dumps({"token": "acme"}),
+        "scraper_type": "skip",
+        "scraper_config": "",
+    }
+    row.update(overrides)
+    return row
 
 
-def test_company_query_uses_dispatcher_live_definition() -> None:
-    """Live = `is_enabled = true AND board_status IN ('active', 'suspect')`,
-    matching the dispatcher's claim filter in queries/monitor.py. The
-    SECTION_B definition of "dead" is the strict negation, so a board
-    with (board_status='active', is_enabled=false) — which Section A's
-    outer `board_status IN ('disabled', 'gone')` filter would silently
-    miss — is still counted as dead here."""
-    assert "is_enabled = true" in _COMPANY_QUERY
-    assert "board_status IN ('active', 'suspect')" in _COMPANY_QUERY
-    assert "AS is_live" in _COMPANY_QUERY
-
-
-def test_company_query_filters_to_zero_live_boards() -> None:
-    """A company with even one live board is NOT a Section B candidate
-    (it lives via that board). Mutual exclusion with Section A follows
-    from this filter."""
-    assert "ch.live_boards = 0" in _COMPANY_QUERY
-
-
-def test_company_query_requires_every_dead_board_stale() -> None:
-    """A company whose boards just turned dead in the last few hours is
-    not yet a candidate — transient outages happen. Every non-live
-    board must pass the --days staleness gate."""
-    assert "stale_dead_boards = ch.total_boards" in _COMPANY_QUERY
-    assert "$1::int || ' days'" in _COMPANY_QUERY
-
-
-def test_company_query_excludes_companies_with_active_postings() -> None:
-    """Active postings = real user-facing pages; do not retire."""
-    assert "ch.total_active_postings = 0" in _COMPANY_QUERY
-
-
-def test_company_query_excludes_companies_with_zero_boards() -> None:
-    """A company row without any boards (rare; CSV bug) shouldn't be
-    flagged as 'all dead' — it's just incomplete."""
-    assert "ch.total_boards >= 1" in _COMPANY_QUERY
-
-
-def test_company_query_orders_results_for_stable_diffs() -> None:
-    assert "ORDER BY c.slug" in _COMPANY_QUERY
-
-
-def test_company_query_joins_company_metadata() -> None:
-    """Need slug + name for the report rows."""
-    assert "JOIN company c" in _COMPANY_QUERY
-    assert "c.slug AS company_slug" in _COMPANY_QUERY
-    assert "c.name AS company_name" in _COMPANY_QUERY
-
-
-def test_company_query_has_balanced_parens() -> None:
-    """Same guard as `test_query_has_balanced_parens` — the company-
-    level query has nested CTEs (per_board, company_health) and is
-    even more vulnerable to a stray `)` drop."""
-    _assert_balanced(_COMPANY_QUERY)
-
-
-# ---------- format_md with Section B ------------------------------------
-
-
-def test_format_md_with_only_section_b() -> None:
-    out = format_md([], [_company_row()])
-    assert "## Section A" not in out
-    assert "## Section B" in out
-    assert "ghost-corp (Ghost Corp)" in out
-    assert "| 2 | 2 | 28.4 |" in out
-
-
-def test_format_md_with_both_sections() -> None:
-    """Section A renders before Section B."""
-    out = format_md([_row()], [_company_row()])
-    a_pos = out.index("## Section A")
-    b_pos = out.index("## Section B")
-    assert a_pos < b_pos
-    assert "acme (Acme Corp)" in out
-    assert "ghost-corp (Ghost Corp)" in out
-
-
-def test_format_md_with_neither_section_returns_friendly_message() -> None:
-    assert format_md([], []) == "No retirement candidates found."
-    assert format_md([], None) == "No retirement candidates found."
-
-
-def test_format_md_section_b_handles_null_oldest_stale_days() -> None:
-    """All boards `last_success_at IS NULL` → Postgres returns NULL for
-    the MAX. Render as 0.0 rather than crashing."""
-    out = format_md([], [_company_row(oldest_stale_days=None)])
-    assert "| 0.0 |" in out
-
-
-# ---------- format_shell_snippets with Section B ------------------------
-
-
-def test_format_shell_section_b_drops_company_row_anchored_at_line_start() -> None:
-    """companies.csv schema: slug is the first column. Anchor with ^slug,
-    so a slug that is a substring of another slug doesn't false-positive."""
-    out = format_shell_snippets([], [_company_row(company_slug="ghost-corp")])
-    assert "data/companies.csv" in out
-    assert "'^ghost-corp,'" in out
-
-
-def test_format_shell_section_b_drops_all_company_boards() -> None:
-    """boards.csv schema: company_slug is the first column. Use the same
-    ^slug, anchor; one grep call removes every board row for the company."""
-    out = format_shell_snippets([], [_company_row(company_slug="ghost-corp")])
-    assert "data/boards.csv" in out
-    # Both companies.csv and boards.csv use the ^slug, prefix; check the
-    # boards.csv line specifically by looking for the comment tail.
-    assert "remove all boards for ghost-corp" in out
-
-
-def test_format_shell_section_b_skips_unsafe_slugs() -> None:
-    """Defensive: a quote/comma in a slug would shell-escape badly. SLUG_RE
-    excludes both today, but bail loudly if the data ever drifts."""
-    out = format_shell_snippets([], [_company_row(company_slug="bad'slug")])
-    assert "SKIP bad'slug" in out
-    assert "'^bad'slug,'" not in out
-
-
-def test_format_shell_with_both_sections_orders_a_then_b() -> None:
-    out = format_shell_snippets([_row()], [_company_row()])
-    a_pos = out.index("--- Section A")
-    b_pos = out.index("--- Section B")
-    assert a_pos < b_pos
-    # Section A still emits its boards.csv-only grep
-    assert "https://boards.greenhouse.io/acme" in out
-    # Section B emits the company-wide block
-    assert "remove ghost-corp" in out
-
-
-def test_format_shell_with_neither_section_returns_friendly_comment() -> None:
-    assert format_shell_snippets([], []) == "# No retirement candidates found."
-    assert format_shell_snippets([], None) == "# No retirement candidates found."
-
-
-# ---------- mutual exclusion guard --------------------------------------
-
-
-def test_section_a_filter_implies_company_is_excluded_from_section_b() -> None:
-    """Logical guard, not a code path: `_QUERY` filters per-board with
-    `healthy_siblings >= 1`, which means at least one live sibling.
-    `_COMPANY_QUERY` filters per-company with `live_boards = 0`. The two
-    sets are therefore disjoint by construction — assert both clauses
-    coexist so neither is silently dropped in a future refactor."""
-    assert "bs.healthy_siblings >= 1" in _QUERY
-    assert "ch.live_boards = 0" in _COMPANY_QUERY
-
-
-# ---------- end-to-end: real call path through report_stale_boards ------
+def _write_registry(path: Path, board_rows: list[dict[str, str]]) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    board_header = (
+        "company_slug,board_slug,board_url,monitor_type,monitor_config,"
+        "scraper_type,scraper_config\n"
+    )
+    board_lines = []
+    for row in board_rows:
+        config = row["monitor_config"].replace('"', '""')
+        board_lines.append(
+            f"{row['company_slug']},{row['board_slug']},{row['board_url']},"
+            f'{row["monitor_type"]},"{config}",{row["scraper_type"]},'
+            f"{row['scraper_config']}"
+        )
+    (path / "boards.csv").write_text(board_header + "\n".join(board_lines) + "\n", encoding="utf-8")
+    configured = sorted({row["company_slug"] for row in board_rows})
+    company_lines = [f"{slug},{slug.title()},https://{slug}.example" for slug in configured]
+    company_lines.extend(
+        [
+            "banco-bradesco,Banco Bradesco,https://banco.example",
+            "krea,Krea,https://krea.example",
+        ]
+    )
+    (path / "companies.csv").write_text(
+        "slug,name,website\n" + "\n".join(company_lines) + "\n",
+        encoding="utf-8",
+    )
 
 
 class _StubConn:
-    """Minimal asyncpg.Connection stand-in that records fetch() calls.
-
-    The two queries dispatched by ``report_stale_boards`` are
-    distinguishable by the SQL — ``_QUERY`` mentions
-    ``healthy_siblings`` while ``_COMPANY_QUERY`` mentions
-    ``live_boards``. This lets the stub return the right canned rowset
-    per call without re-implementing the fetch protocol.
-    """
-
     def __init__(
         self,
-        board_rows: list[dict[str, Any]],
-        company_rows: list[dict[str, Any]],
+        board_rows: list[dict[str, Any]] | None = None,
+        company_rows: list[dict[str, Any]] | None = None,
+        company_board_rows: list[dict[str, Any]] | None = None,
     ) -> None:
-        self.board_rows = board_rows
-        self.company_rows = company_rows
+        self.board_rows = board_rows or []
+        self.company_rows = company_rows or []
+        self.company_board_rows = company_board_rows or []
         self.calls: list[tuple[str, tuple[Any, ...]]] = []
 
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
         self.calls.append((query, args))
-        if "healthy_siblings" in query:
-            return self.board_rows  # type: ignore[return-value]
-        if "live_boards" in query:
-            return self.company_rows  # type: ignore[return-value]
-        raise AssertionError(f"unexpected query: {query[:80]!r}")
+        if query == _QUERY:
+            return self.board_rows
+        if query == _COMPANY_QUERY:
+            return self.company_rows
+        if query == _COMPANY_BOARDS_QUERY:
+            return self.company_board_rows
+        raise AssertionError("unexpected query")
+
+
+def _company_row(**overrides: Any) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "company_id": "00000000-0000-0000-0000-000000000020",
+        "company_slug": "ghost",
+        "company_name": "Ghost Corp",
+        "total_boards": 1,
+        "live_boards": 0,
+        "stale_dead_boards": 1,
+        "oldest_stale_days": 30.0,
+    }
+    row.update(overrides)
+    return row
+
+
+def _company_board(**overrides: Any) -> dict[str, Any]:
+    values = {
+        "id": "00000000-0000-0000-0000-000000000002",
+        "company_id": "00000000-0000-0000-0000-000000000020",
+        "company_slug": "ghost",
+        "company_name": "Ghost Corp",
+        "board_slug": "ghost-greenhouse",
+        "board_url": "https://job-boards.greenhouse.io/ghost",
+        "healthy_siblings": 0,
+        "company_total_boards": 1,
+        "company_live_boards": 0,
+        "candidate_scope": "company",
+    }
+    values.update(overrides)
+    return _candidate(**values)
+
+
+# Query candidate selection remains conservative and deterministic.
+
+
+def test_board_query_keeps_existing_candidate_guards_and_context() -> None:
+    assert "board_status IN ('disabled', 'gone')" in _QUERY
+    assert "bs.active_postings = 0" in _QUERY
+    assert "bs.healthy_siblings >= 1" in _QUERY
+    assert "sib.board_status IN ('active', 'suspect')" in _QUERY
+    assert "$1::int || ' days'" in _QUERY
+    assert "gone_confirmation_count" in _QUERY
+    assert "company_total_boards" in _QUERY
+    assert "ORDER BY c.slug, bs.board_slug" in _QUERY
+
+
+def test_company_query_requires_every_board_stale_and_no_live_jobs() -> None:
+    assert "ch.live_boards = 0" in _COMPANY_QUERY
+    assert "ch.stale_dead_boards = ch.total_boards" in _COMPANY_QUERY
+    assert "ch.total_active_postings = 0" in _COMPANY_QUERY
+    assert "ch.total_boards >= 1" in _COMPANY_QUERY
+
+
+def test_company_board_query_fetches_confirmation_and_sibling_context() -> None:
+    assert "gone_first_confirmed_at" in _COMPANY_BOARDS_QUERY
+    assert "gone_last_confirmed_at" in _COMPANY_BOARDS_QUERY
+    assert "company_live_boards" in _COMPANY_BOARDS_QUERY
+    assert "ANY($1::uuid[])" in _COMPANY_BOARDS_QUERY
 
 
 @pytest.mark.asyncio
-async def test_report_stale_boards_md_includes_both_sections() -> None:
-    """Real call path: report_stale_boards → find_stale_boards +
-    find_dead_companies → format_md. Verifies both queries are dispatched
-    with the --days param and the rendered output contains both
-    sections' content."""
-    conn = _StubConn([_row()], [_company_row()])
-    out = await report_stale_boards(conn, days=14, fmt="md")  # type: ignore[arg-type]
-
-    assert "## Section A" in out
-    assert "## Section B" in out
-    assert "acme (Acme Corp)" in out
-    assert "ghost-corp (Ghost Corp)" in out
-    # Both queries received the days param
-    assert len(conn.calls) == 2
+async def test_query_helpers_dispatch_days_and_company_ids() -> None:
+    conn = _StubConn([_candidate()], [_company_row()], [_company_board()])
+    assert len(await find_stale_boards(conn, days=14)) == 1  # type: ignore[arg-type]
+    assert len(await find_dead_companies(conn, days=14)) == 1  # type: ignore[arg-type]
+    assert (
+        len(
+            await find_dead_company_boards(
+                conn,  # type: ignore[arg-type]
+                ["00000000-0000-0000-0000-000000000020"],
+            )
+        )
+        == 1
+    )
     assert conn.calls[0][1] == (14,)
     assert conn.calls[1][1] == (14,)
+    assert conn.calls[2][1] == (["00000000-0000-0000-0000-000000000020"],)
+
+
+# Pure fail-closed classification.
+
+
+def test_current_live_200_routes_terminal_board_to_recovery() -> None:
+    item = classify_candidate(
+        _candidate(),
+        _observation(status="ok", http_status=200, message="200", job_count=17),
+    )
+    assert item.classification == "live_again"
+    assert item.reason_code == "provider_live_currently"
+    assert item.job_count == 17
+    assert item.recommended_action == "recover_with_provider_native_monitor"
+
+
+def test_empty_but_valid_board_is_live_not_gone() -> None:
+    item = classify_candidate(
+        _candidate(),
+        _observation(status="ok", http_status=200, message="200", job_count=0),
+    )
+    assert item.classification == "live_again"
+    assert item.job_count == 0
+
+
+def test_true_404_with_spaced_confirmations_is_verified_gone() -> None:
+    item = classify_candidate(_candidate(), _observation())
+    assert item.classification == "verified_gone"
+    assert item.reason_code == "provider_gone_spaced_confirmations"
+
+
+@pytest.mark.parametrize(
+    ("candidate_overrides", "reason"),
+    [
+        ({"gone_confirmation_count": 1}, "provider_gone_needs_spaced_confirmations"),
+        (
+            {"gone_last_confirmed_at": FIRST_GONE + timedelta(hours=5)},
+            "provider_gone_needs_spaced_confirmations",
+        ),
+        (
+            {"board_status": "disabled", "is_enabled": False},
+            "provider_gone_needs_spaced_confirmations",
+        ),
+    ],
+)
+def test_404_without_durable_spaced_confirmation_is_inconclusive(
+    candidate_overrides: dict[str, Any], reason: str
+) -> None:
+    item = classify_candidate(_candidate(**candidate_overrides), _observation())
+    assert item.classification == "probe_inconclusive"
+    assert item.reason_code == reason
+
+
+@pytest.mark.parametrize(
+    ("observation", "reason"),
+    [
+        (
+            _observation(status="warn", http_status=429, message="unexpected status 429"),
+            "provider_rate_limited",
+        ),
+        (
+            _observation(status="warn", http_status=503, message="unexpected status 503"),
+            "provider_transient_http_error",
+        ),
+        (
+            _observation(status="warn", http_status=None, message="network error: ReadTimeout"),
+            "provider_network_error",
+        ),
+        (
+            _observation(status="warn", http_status=302, message="unexpected status 302"),
+            "provider_redirect_or_transient_status",
+        ),
+    ],
+)
+def test_transient_rate_limit_timeout_and_redirect_are_inconclusive(
+    observation: ProbeObservation, reason: str
+) -> None:
+    item = classify_candidate(_candidate(), observation)
+    assert item.classification == "probe_inconclusive"
+    assert item.reason_code == reason
+
+
+def test_unprobed_monitor_is_inconclusive() -> None:
+    item = classify_candidate(
+        _candidate(),
+        _observation(
+            status="skipped",
+            endpoint_class="unsupported",
+            http_status=None,
+            message="no probe configured",
+        ),
+    )
+    assert item.classification == "probe_inconclusive"
+    assert item.reason_code == "provider_probe_unsupported"
+
+
+def test_probe_contract_failure_is_integration_broken() -> None:
+    item = classify_candidate(
+        _candidate(),
+        _observation(status="warn", http_status=200, message="invalid listing shape"),
+    )
+    assert item.classification == "integration_broken"
+    assert item.reason_code == "provider_probe_contract_broken"
+
+
+def test_registry_missing_board_is_integration_broken_without_probe_trust() -> None:
+    item = classify_candidate(
+        _candidate(registry_missing=True),
+        _observation(status="skipped", endpoint_class="registry", http_status=None),
+    )
+    assert item.classification == "integration_broken"
+    assert item.reason_code == "registry_board_missing"
+
+
+# Current HTTP evidence capture.
 
 
 @pytest.mark.asyncio
-async def test_report_stale_boards_shell_includes_both_sections() -> None:
-    conn = _StubConn([_row()], [_company_row()])
-    out = await report_stale_boards(conn, days=14, fmt="shell")  # type: ignore[arg-type]
+async def test_probe_records_live_status_empty_job_count_and_custom_redirect() -> None:
+    requests: list[str] = []
 
-    assert "--- Section A" in out
-    assert "--- Section B" in out
-    assert "data/boards.csv" in out
-    assert "data/companies.csv" in out
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(str(request.url))
+        if len(requests) == 1:
+            return httpx.Response(
+                302,
+                headers={"location": "https://custom.example/current"},
+                request=request,
+            )
+        return httpx.Response(200, json={"jobs": []}, request=request)
 
-
-@pytest.mark.asyncio
-async def test_report_stale_boards_with_no_candidates_anywhere() -> None:
-    conn = _StubConn([], [])
-    md = await report_stale_boards(conn, days=14, fmt="md")  # type: ignore[arg-type]
-    shell = await report_stale_boards(conn, days=14, fmt="shell")  # type: ignore[arg-type]
-    assert md == "No retirement candidates found."
-    assert shell == "# No retirement candidates found."
-
-
-@pytest.mark.asyncio
-async def test_find_dead_companies_dispatches_company_query_with_days() -> None:
-    conn = _StubConn([], [_company_row()])
-    rows = await find_dead_companies(conn, days=21)  # type: ignore[arg-type]
-    assert len(rows) == 1
-    assert rows[0]["company_slug"] == "ghost-corp"
-    # Only one query (the company-level one), with the days param
-    assert len(conn.calls) == 1
-    assert "live_boards" in conn.calls[0][0]
-    assert conn.calls[0][1] == (21,)
+    result = await probe_registry_rows(
+        [_registry_row()],
+        1,
+        transport=httpx.MockTransport(handler),
+    )
+    assert len(result) == 1
+    assert result[0].status == "ok"
+    assert result[0].http_status == 200
+    assert result[0].redirect_url == "https://custom.example/current"
+    assert result[0].job_count == 0
+    assert result[0].endpoint_class == "greenhouse"
 
 
 @pytest.mark.asyncio
-async def test_find_stale_boards_does_not_dispatch_company_query() -> None:
-    """Defense against accidentally calling the wrong query inside
-    find_stale_boards (would be a copy-paste regression)."""
-    conn = _StubConn([_row()], [])
-    rows = await find_stale_boards(conn, days=14)  # type: ignore[arg-type]
-    assert len(rows) == 1
-    assert len(conn.calls) == 1
-    assert "healthy_siblings" in conn.calls[0][0]
+async def test_probe_records_true_404() -> None:
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(404, json={"error": "missing"}, request=request)
+    )
+    result = await probe_registry_rows([_registry_row()], 1, transport=transport)
+    assert result[0].status == "fail"
+    assert result[0].http_status == 404
+    assert result[0].probed_at.tzinfo is not None
+
+
+@pytest.mark.asyncio
+async def test_probe_marks_unsupported_monitor_without_network() -> None:
+    transport = httpx.MockTransport(
+        lambda request: (_ for _ in ()).throw(AssertionError("must not request"))
+    )
+    result = await probe_registry_rows(
+        [_registry_row(monitor_type="dom", monitor_config="{}")],
+        1,
+        transport=transport,
+    )
+    assert result[0].status == "skipped"
+    assert result[0].endpoint_class == "unsupported"
+    assert result[0].http_status is None
+
+
+@pytest.mark.asyncio
+async def test_unexpected_probe_exception_becomes_integration_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def broken_probe_row(row: dict[str, str], client: httpx.AsyncClient):
+        del row, client
+        raise KeyError("provider shape changed")
+
+    monkeypatch.setattr("src.retire_stale_boards.probe_row", broken_probe_row)
+    result = await probe_registry_rows([_registry_row()], 1)
+    assert result[0].status == "warn"
+    assert result[0].http_status is None
+    assert "probe exception: KeyError" in result[0].message
+    evidence = classify_candidate(_candidate(), result[0])
+    assert evidence.classification == "integration_broken"
+    assert evidence.reason_code == "provider_probe_contract_broken"
+
+
+# Registry-vs-runtime orphan detection.
+
+
+def test_registry_surfaces_banco_bradesco_and_krea_zero_board_orphans(
+    tmp_path: Path,
+) -> None:
+    _write_registry(tmp_path, [_registry_row()])
+    by_url, orphans = load_registry(tmp_path)
+    assert set(by_url) == {"https://job-boards.greenhouse.io/acme"}
+    assert [item.company_slug for item in orphans] == ["banco-bradesco", "krea"]
+    assert all(item.reason_code == "zero_configured_boards" for item in orphans)
+
+
+def test_registry_duplicate_board_url_fails_closed(tmp_path: Path) -> None:
+    _write_registry(
+        tmp_path,
+        [_registry_row(), _registry_row(board_slug="acme-copy")],
+    )
+    with pytest.raises(RetirementSafetyError, match="duplicate board_url"):
+        load_registry(tmp_path)
+
+
+# End-to-end report assembly and formatting.
+
+
+@pytest.mark.asyncio
+async def test_build_report_separates_sections_and_verifies_company(
+    tmp_path: Path,
+) -> None:
+    board = _candidate()
+    company = _company_row()
+    company_board = _company_board()
+    _write_registry(
+        tmp_path,
+        [
+            _registry_row(),
+            _registry_row(
+                company_slug="ghost",
+                board_slug="ghost-greenhouse",
+                board_url="https://job-boards.greenhouse.io/ghost",
+                monitor_config=json.dumps({"token": "ghost"}),
+            ),
+        ],
+    )
+    conn = _StubConn([board], [company], [company_board])
+
+    async def fake_probe(rows: list[dict[str, str]], concurrency: int) -> list[ProbeObservation]:
+        assert concurrency == 3
+        assert [row["board_slug"] for row in rows] == [
+            "acme-greenhouse",
+            "ghost-greenhouse",
+        ]
+        return [
+            _observation(status="ok", http_status=200, message="200, 4 jobs", job_count=4),
+            _observation(endpoint_url="https://boards-api.greenhouse.io/v1/boards/ghost/jobs"),
+        ]
+
+    report = await build_retirement_report(
+        conn,  # type: ignore[arg-type]
+        days=14,
+        concurrency=3,
+        data_dir=tmp_path,
+        probe_runner=fake_probe,
+        now=NOW,
+    )
+    assert [item.board_slug for item in report.section("live_again")] == ["acme-greenhouse"]
+    assert [item.board_slug for item in report.section("verified_gone")] == ["ghost-greenhouse"]
+    assert [item.company_slug for item in report.verified_gone_companies] == ["ghost"]
+    assert [item.company_slug for item in report.zero_board_registry_orphans] == [
+        "banco-bradesco",
+        "krea",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_company_removal_requires_every_board_verified(
+    tmp_path: Path,
+) -> None:
+    company = _company_row(total_boards=2, stale_dead_boards=2)
+    first = _company_board()
+    second = _company_board(
+        id="00000000-0000-0000-0000-000000000003",
+        board_slug="ghost-second",
+        board_url="https://job-boards.greenhouse.io/ghost-second",
+    )
+    _write_registry(
+        tmp_path,
+        [
+            _registry_row(
+                company_slug="ghost",
+                board_slug="ghost-greenhouse",
+                board_url=first["board_url"],
+                monitor_config=json.dumps({"token": "ghost"}),
+            ),
+            _registry_row(
+                company_slug="ghost",
+                board_slug="ghost-second",
+                board_url=second["board_url"],
+                monitor_config=json.dumps({"token": "ghost-second"}),
+            ),
+        ],
+    )
+    conn = _StubConn([], [company], [first, second])
+
+    async def fake_probe(rows: list[dict[str, str]], concurrency: int) -> list[ProbeObservation]:
+        return [
+            _observation(),
+            _observation(status="ok", http_status=200, message="200", job_count=0),
+        ]
+
+    report = await build_retirement_report(
+        conn,  # type: ignore[arg-type]
+        days=14,
+        data_dir=tmp_path,
+        probe_runner=fake_probe,
+        now=NOW,
+    )
+    assert report.verified_gone_companies == ()
+    assert len(report.section("verified_gone")) == 1
+    assert len(report.section("live_again")) == 1
+
+
+@pytest.mark.asyncio
+async def test_probe_cardinality_mismatch_fails_closed(tmp_path: Path) -> None:
+    _write_registry(tmp_path, [_registry_row()])
+    conn = _StubConn([_candidate()])
+
+    async def broken_probe(rows: list[dict[str, str]], concurrency: int) -> list[ProbeObservation]:
+        return []
+
+    with pytest.raises(RetirementSafetyError, match="cardinality mismatch"):
+        await build_retirement_report(
+            conn,  # type: ignore[arg-type]
+            days=14,
+            data_dir=tmp_path,
+            probe_runner=broken_probe,
+        )
+
+
+def _format_report() -> RetirementReport:
+    verified = classify_candidate(_candidate(), _observation())
+    live = classify_candidate(
+        _candidate(
+            id="00000000-0000-0000-0000-000000000004",
+            company_slug="liveco",
+            board_slug="liveco-greenhouse",
+            board_url="https://job-boards.greenhouse.io/liveco",
+        ),
+        _observation(status="ok", http_status=200, message="200", job_count=0),
+    )
+    transient = classify_candidate(
+        _candidate(
+            id="00000000-0000-0000-0000-000000000005",
+            company_slug="ratelimited",
+            board_slug="ratelimited-greenhouse",
+            board_url="https://job-boards.greenhouse.io/ratelimited",
+        ),
+        _observation(status="warn", http_status=429, message="unexpected status 429"),
+    )
+    broken = classify_candidate(
+        _candidate(
+            id="00000000-0000-0000-0000-000000000006",
+            company_slug="broken",
+            board_slug="broken-greenhouse",
+            board_url="https://job-boards.greenhouse.io/broken",
+        ),
+        _observation(status="warn", http_status=200, message="invalid listing shape"),
+    )
+    return RetirementReport(
+        generated_at=NOW,
+        stale_days=14,
+        evidence=(verified, live, transient, broken),
+        verified_gone_companies=(),
+        zero_board_registry_orphans=(
+            ZeroBoardRegistryOrphan("krea", "Krea", "https://krea.example"),
+        ),
+    )
+
+
+def test_markdown_has_all_required_sections_evidence_and_reason_codes() -> None:
+    out = format_md(_format_report())
+    assert "## Verified gone" in out
+    assert "## Live again — recover, do not retire" in out
+    assert "## Probe inconclusive — no removal output" in out
+    assert "## Integration broken — repair, do not retire" in out
+    assert "## Zero-board registry orphans — operator review" in out
+    assert "provider_live_currently" in out
+    assert "provider_rate_limited" in out
+    assert "2026-08-03T20:00:00Z" in out
+    assert "https://boards-api.greenhouse.io/v1/boards/acme/jobs" in out
+    assert "404 Not Found" in out
+    assert "0 live / 2 total" not in out
+    assert "1 live / 2 total" in out
+
+
+def test_shell_emits_commands_only_for_verified_rows() -> None:
+    out = format_shell_snippets(_format_report())
+    command_lines = [line for line in out.splitlines() if line and not line.startswith("#")]
+    assert len(command_lines) == 1
+    assert "job-boards.greenhouse.io/acme" in command_lines[0]
+    assert "liveco" not in command_lines[0]
+    assert "ratelimited" not in command_lines[0]
+    assert "broken" not in command_lines[0]
+    assert "# RECOVER liveco/liveco-greenhouse" in out
+    assert "# INCONCLUSIVE ratelimited/ratelimited-greenhouse" in out
+
+
+def test_shell_emits_nothing_executable_when_no_candidate_is_verified() -> None:
+    report = _format_report()
+    report = RetirementReport(
+        generated_at=report.generated_at,
+        stale_days=report.stale_days,
+        evidence=tuple(item for item in report.evidence if item.classification != "verified_gone"),
+        verified_gone_companies=(),
+        zero_board_registry_orphans=report.zero_board_registry_orphans,
+    )
+    out = format_shell_snippets(report)
+    assert not [line for line in out.splitlines() if line and not line.startswith("#")]
+    assert "No candidates passed every executable removal gate" in out
+
+
+def test_shell_company_commands_require_verified_company_summary() -> None:
+    report = _format_report()
+    report = RetirementReport(
+        generated_at=report.generated_at,
+        stale_days=report.stale_days,
+        evidence=report.evidence,
+        verified_gone_companies=(
+            VerifiedGoneCompany(
+                company_id="00000000-0000-0000-0000-000000000020",
+                company_slug="ghost",
+                company_name="Ghost Corp",
+                total_boards=1,
+                board_slugs=("ghost-greenhouse",),
+                evidence_at=NOW,
+            ),
+        ),
+        zero_board_registry_orphans=report.zero_board_registry_orphans,
+    )
+    out = format_shell_snippets(report)
+    assert "'^ghost,' data/companies.csv" in out
+    assert "'^ghost,' data/boards.csv" in out
+
+
+@pytest.mark.asyncio
+async def test_report_json_is_machine_readable(tmp_path: Path) -> None:
+    _write_registry(tmp_path, [_registry_row()])
+    conn = _StubConn([_candidate()])
+
+    async def fake_probe(rows: list[dict[str, str]], concurrency: int) -> list[ProbeObservation]:
+        return [_observation()]
+
+    out = await report_stale_boards(
+        conn,  # type: ignore[arg-type]
+        days=14,
+        fmt="json",
+        data_dir=tmp_path,
+        probe_runner=fake_probe,
+        now=NOW,
+    )
+    payload = json.loads(out)
+    assert payload["generated_at"] == "2026-08-03T20:00:00Z"
+    assert payload["sections"]["verified_gone"][0]["reason_code"] == (
+        "provider_gone_spaced_confirmations"
+    )
+    assert [row["company_slug"] for row in payload["zero_board_registry_orphans"]] == [
+        "banco-bradesco",
+        "krea",
+    ]
+
+
+def test_cli_accepts_json_and_probe_concurrency(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _noop_arguments(parser: Any) -> None:
+        del parser
+
+    salary_module = ModuleType("src.salary_reprocess")
+    salary_module.add_salary_reprocess_arguments = _noop_arguments  # type: ignore[attr-defined]
+    occupation_module = ModuleType("src.occupation_reprocess")
+    occupation_module.add_occupation_reprocess_arguments = _noop_arguments  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "src.salary_reprocess", salary_module)
+    monkeypatch.setitem(sys.modules, "src.occupation_reprocess", occupation_module)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "crawler",
+            "retire-stale-boards",
+            "--format",
+            "json",
+            "--probe-concurrency",
+            "7",
+        ],
+    )
+    args = parse_args()
+    assert args.command == "retire-stale-boards"
+    assert args.format == "json"
+    assert args.probe_concurrency == 7

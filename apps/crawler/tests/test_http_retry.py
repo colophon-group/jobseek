@@ -151,6 +151,33 @@ class TestFetchWithRetry:
         assert out is None
         assert client.get.await_count == 1
 
+    async def test_custom_retryable_status_recovers(self):
+        """Callers can opt a provider-specific status into bounded retries."""
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[_resp(202, "challenge"), _resp(200, "<html>recovered</html>")]
+        )
+
+        out = await fetch_with_retry(
+            client,
+            "https://example.com/careers",
+            retryable_statuses={202},
+            base_delay=0.001,
+        )
+
+        assert out == "<html>recovered</html>"
+        assert client.get.await_count == 2
+
+    async def test_custom_retryable_status_is_opt_in(self):
+        """Adding custom statuses must not alter existing callers' contract."""
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(202, "accepted"))
+
+        out = await fetch_with_retry(client, "https://example.com/careers")
+
+        assert out is None
+        assert client.get.await_count == 1
+
     async def test_retries_on_503_then_succeeds(self):
         """Transient 503 retries, then 200 returns text."""
         client = AsyncMock()
@@ -549,6 +576,25 @@ class TestFetchTextPageWithRetry:
         assert exc_info.value.last_status == 404
         assert client.get.await_count == 1
         sleep.assert_not_awaited()
+
+    async def test_required_nonempty_response_retries_and_honors_cap(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(side_effect=[_resp(200, ""), _resp(200, "<html>complete</html>")])
+
+        text = await fetch_text_page_with_retry(
+            client,
+            "https://example.com/board",
+            require_nonempty=True,
+            max_chars=6,
+            retries=3,
+            base_delay=0.001,
+            sleep=sleep,
+        )
+
+        assert text == "<html>"
+        assert client.get.await_count == 2
+        sleep.assert_awaited_once()
 
 
 # ─── Retry observability (#3210) ────────────────────────────────────────

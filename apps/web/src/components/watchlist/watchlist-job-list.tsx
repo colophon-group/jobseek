@@ -25,8 +25,15 @@ import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { LanguageStatsRow } from "@/components/search/language-stats-row";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { formatDateDivider, getDateKey } from "@/components/watchlist/format-date-divider";
+import { logExternalError } from "@/lib/safe-external-error";
 
 const BATCH = 20;
+
+function formatLocationSummary(locationNames: string[] | undefined): string {
+  const names = [...new Set((locationNames ?? []).filter(Boolean))];
+  if (names.length === 0) return "";
+  return names.length === 1 ? names[0]! : `${names[0]} +${names.length - 1}`;
+}
 
 export interface WatchlistJobListFilters {
   companyIds: string[];
@@ -120,7 +127,7 @@ export function WatchlistJobList({
       if (cancelled) return;
       setYearTotal(next);
     }).catch((err) => {
-      console.error("[WatchlistJobList] year-count refetch failed", err);
+      logExternalError("error", { service: "typesense", operation: "watchlist_year_count" }, err);
     });
     return () => {
       cancelled = true;
@@ -150,6 +157,7 @@ export function WatchlistJobList({
   const seenDividers = new Set<string>();
 
   for (const entry of postings) {
+    const locationSummary = formatLocationSummary(entry.locationNames);
     const dateKey = getDateKey(entry.firstSeenAt);
     if (dateKey !== lastDateKey && !seenDividers.has(dateKey)) {
       lastDateKey = dateKey;
@@ -196,7 +204,7 @@ export function WatchlistJobList({
           onClick={() => handleOpenPosting(entry.id)}
           aria-label={
             entry.title
-              ? `${entry.company.name} — ${entry.title}`
+              ? `${entry.company.name} — ${entry.title}${locationSummary ? ` — ${locationSummary}` : ""}`
               : t({
                   id: "watchlists.jobList.openPosting",
                   comment: "Aria label for the row open-posting button when the posting title is missing",
@@ -212,8 +220,13 @@ export function WatchlistJobList({
           {entry.company.name}
         </span>
 
-        <span className="min-w-0 flex-1 truncate text-sm">
-          {entry.title ?? "—"}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm">{entry.title ?? "—"}</span>
+          {locationSummary && (
+            <span className="block truncate text-[10px] text-muted">
+              {locationSummary}
+            </span>
+          )}
         </span>
 
         {!entry.title && (
@@ -244,7 +257,7 @@ export function WatchlistJobList({
           suppressHydrationWarning
           className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted"
         >
-          {timeAgoShort(entry.firstSeenAt)}
+          {timeAgoShort(entry.firstSeenAt, locale)}
         </span>
       </div>,
     );

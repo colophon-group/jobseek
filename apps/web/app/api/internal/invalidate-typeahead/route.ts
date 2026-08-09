@@ -4,6 +4,7 @@ import { revalidateTag } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { invalidatePattern } from "@/lib/cache";
+import { logExternalError } from "@/lib/safe-external-error";
 import {
   CACHE_PREFIXES_INVALIDATED_ON_SYNC,
   CACHE_TAGS_INVALIDATED_ON_SYNC,
@@ -80,11 +81,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // A revalidation hiccup must not fail the sweep — the legacy
       // Redis prefix loop below is the backstop for any straggler keys,
       // and the slot's 3600s TTL is the ultimate backstop.
-      console.warn(
-        "[invalidate-typeahead] revalidateTag failed",
-        tag,
-        err,
-      );
+      logExternalError("warn", { service: "external_http", operation: "revalidate_typeahead" }, err);
     }
   }
 

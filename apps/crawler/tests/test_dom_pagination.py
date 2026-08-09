@@ -9,7 +9,9 @@ import httpx
 import pytest
 
 from src.core.monitors.dom import (
+    BotChallengeError,
     _build_url_matcher,
+    _extract_links_rendered,
     _extract_links_static,
     _fetch_via_page,
     _paginate_urls,
@@ -116,6 +118,134 @@ class TestBuildUrlMatcher:
 
 
 class TestDomDiscoverInitialFetch:
+    async def test_siteground_challenge_raises_instead_of_successful_empty(self, monkeypatch):
+        """A SiteGround HTTP-202 captcha shell is not an empty board."""
+
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.shared.http_retry.asyncio.sleep", AsyncMock())
+
+        challenge = (
+            '<html><head><meta http-equiv="refresh" '
+            'content="0;/.well-known/sgcaptcha/?r=%2Fcareer%2F"></head></html>'
+        )
+
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(202, text=challenge)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await dom_discover(
+                    {
+                        "board_url": "https://blocked.example/careers",
+                        "metadata": {"url_filter": "/job/"},
+                    },
+                    client,
+                )
+
+        assert attempts == 3
+        assert exc_info.value.last_status == 202
+
+    async def test_rendered_siteground_challenge_raises(self, monkeypatch):
+        """The Playwright redirect target must also fail the monitor cycle."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/.well-known/captcha/?r=%2Fcareers"
+        page.content = AsyncMock(return_value="<html><body>Checking your browser</body></html>")
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
+    async def test_rendered_siteground_meta_refresh_raises(self, monkeypatch):
+        """Challenge markup must be caught before its redirect settles."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/careers"
+        page.content = AsyncMock(
+            return_value=(
+                '<html><head><meta http-equiv="refresh" '
+                'content="0;/.well-known/sgcaptcha/?r=%2Fcareers"></head></html>'
+            )
+        )
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
+    async def test_rendered_cloudflare_challenge_raises(self, monkeypatch):
+        """Cloudflare's interstitial must not look like an empty board."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/careers"
+        page.content = AsyncMock(
+            return_value=(
+                "<html><head><title>Just a moment...</title></head>"
+                "<body><script src='/cdn-cgi/challenge-platform/scripts/jsd/main.js'>"
+                "</script><p>Enable JavaScript and cookies to continue</p></body></html>"
+            )
+        )
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
+    async def test_rendered_cloudflare_block_page_raises(self, monkeypatch):
+        """Cloudflare's permanent block page must also fail the cycle."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/careers"
+        page.content = AsyncMock(
+            return_value=(
+                "<html><head><title>Attention Required! | Cloudflare</title></head>"
+                "<body><script src='/cdn-cgi/challenge-platform/h/g/orchestrate/'>"
+                "</script><h1>Sorry, you have been blocked</h1></body></html>"
+            )
+        )
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
+    async def test_rendered_captcha_library_is_not_a_challenge(self, monkeypatch):
+        """A normal page may load BotDetect without being a challenge page."""
+
+        page = MagicMock()
+        page.url = "https://example.com/careers"
+        page.content = AsyncMock(
+            return_value='<html><script src="/BotDetectCaptcha.ashx"></script></html>'
+        )
+        page.evaluate = AsyncMock(return_value=["https://example.com/job/123"])
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        urls = await _extract_links_rendered(
+            page,
+            {"_board_url": "https://example.com/careers"},
+        )
+
+        assert urls == {"https://example.com/job/123"}
+
     async def test_initial_403_raises_instead_of_successful_empty(self, monkeypatch):
         """A blocked listing page must fail the monitor cycle.
 
@@ -205,6 +335,27 @@ class TestPaginateUrls:
                 MagicMock(),
             )
         assert result == {"https://example.com/jobs/1"}
+
+    async def test_bot_challenge_mid_pagination_raises(self):
+        """A challenge on page 2 must not silently truncate the board."""
+
+        challenge = (
+            "<html><head><title>Attention Required! | Cloudflare</title></head>"
+            "<body><script src='/cdn-cgi/challenge-platform/h/g/orchestrate/'>"
+            "</script><h1>Sorry, you have been blocked</h1></body></html>"
+        )
+        pages = {"https://example.com/careers?p=2": challenge}
+
+        with (
+            patch(_FETCH_PATCH, new=_make_fetch(pages)),
+            pytest.raises(BotChallengeError, match="proxy transport"),
+        ):
+            await _paginate_urls(
+                "https://example.com/careers",
+                {"param_name": "p", "max_pages": 3},
+                {"https://example.com/jobs/1"},
+                MagicMock(),
+            )
 
     async def test_stops_when_tracking_variants_transform_to_the_same_job(self):
         """Transformation-aware identity prevents duplicate pages and 429s."""
@@ -506,6 +657,26 @@ class TestFetchViaPage:
         page.evaluate = AsyncMock(return_value={"status": 403, "text": "forbidden"})
         result = await _fetch_via_page(page, "https://example.com/forbidden")
         assert result is None
+        assert page.evaluate.await_count == 1
+
+    async def test_cloudflare_403_raises_instead_of_stopping(self):
+        """A WAF block is not a legitimate end-of-pagination."""
+
+        page = MagicMock()
+        page.evaluate = AsyncMock(
+            return_value={
+                "status": 403,
+                "text": (
+                    "<title>Attention Required! | Cloudflare</title>"
+                    "<script src='/cdn-cgi/challenge-platform/h/g/orchestrate/'></script>"
+                    "<h1>Sorry, you have been blocked</h1>"
+                ),
+            }
+        )
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _fetch_via_page(page, "https://example.com/forbidden")
+
         assert page.evaluate.await_count == 1
 
     async def test_retries_on_503_then_succeeds(self, monkeypatch):

@@ -32,7 +32,9 @@ def _build_skip_no_scrape_predicate(board_alias: str = "jb") -> str:
     1. ``metadata.scraper_type = 'skip'`` explicitly.
     2. ``metadata.scraper_type`` is unset AND ``crawler_type`` is in the
        auto-resolved rich-monitor set.
-    3. ``metadata.scraper_type`` is unset AND ``crawler_type`` is
+    3. ``metadata.scraper_type`` is unset AND ``crawler_type`` is ``rss``
+       except for the legacy SuccessFactors variant.
+    4. ``metadata.scraper_type`` is unset AND ``crawler_type`` is
        ``api_sniffer`` / ``nextdata`` AND ``metadata.fields`` is set
        (conditionally rich monitors).
 
@@ -52,8 +54,12 @@ def _build_skip_no_scrape_predicate(board_alias: str = "jb") -> str:
              OR (
                  {board_alias}.metadata->>'scraper_type' IS NULL
                  AND (
-                     {board_alias}.crawler_type IN ({literal})
-                     OR (
+                    {board_alias}.crawler_type IN ({literal})
+                    OR (
+                        {board_alias}.crawler_type = 'rss'
+                        AND COALESCE({board_alias}.metadata->>'variant', '') <> 'legacy'
+                    )
+                    OR (
                          {board_alias}.crawler_type IN ('api_sniffer', 'nextdata')
                          AND {board_alias}.metadata ? 'fields'
                      )

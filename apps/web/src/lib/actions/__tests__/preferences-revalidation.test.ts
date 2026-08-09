@@ -106,7 +106,7 @@ describe("updatePreferences invalidates job-language-dependent pages (#2916)", (
     expect(mocks.writeAnonJobLanguagesCookie).toHaveBeenCalledWith(["fr"]);
     expect(mocks.revalidatePath).toHaveBeenCalledTimes(PATHS.length);
     for (const p of PATHS) {
-      expect(mocks.revalidatePath).toHaveBeenCalledWith(p);
+      expect(mocks.revalidatePath).toHaveBeenCalledWith(p, "page");
     }
   });
 
@@ -132,7 +132,7 @@ describe("updatePreferences invalidates job-language-dependent pages (#2916)", (
 
     expect(mocks.revalidatePath).toHaveBeenCalledTimes(PATHS.length);
     for (const p of PATHS) {
-      expect(mocks.revalidatePath).toHaveBeenCalledWith(p);
+      expect(mocks.revalidatePath).toHaveBeenCalledWith(p, "page");
     }
   });
 
@@ -160,7 +160,7 @@ describe("updatePreferences invalidates job-language-dependent pages (#2916)", (
 
     expect(mocks.revalidatePath).toHaveBeenCalledTimes(PATHS.length);
     for (const p of PATHS) {
-      expect(mocks.revalidatePath).toHaveBeenCalledWith(p);
+      expect(mocks.revalidatePath).toHaveBeenCalledWith(p, "page");
     }
   });
 

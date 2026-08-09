@@ -1,0 +1,107 @@
+name: Deploy ATS Inventory Runner (Hetzner)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/ats-inventory/**'
+      - 'deploy/systemd/jobseek-ats-inventory.*'
+      - 'deploy/systemd/jobseek-ats-inventory-network.service'
+      - 'apps/crawler/src/ats_inventory/**'
+      - 'apps/crawler/src/cli.py'
+      - '.github/workflows/deploy-ats-inventory.yml'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+concurrency:
+  group: ats-inventory-production-sync
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    environment: production
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      - name: Validate ATS inventory deployment artifacts
+        run: |
+          set -euo pipefail
+          for script in deploy/ats-inventory/*.sh; do bash -n "$script"; done
+          PYTHONPYCACHEPREFIX="$RUNNER_TEMP/ats-inventory-pycache" python3 -m py_compile \
+            deploy/ats-inventory/bounded-tee.py \
+            deploy/ats-inventory/github-app-token.py \
+            deploy/ats-inventory/network-probe.py \
+            deploy/ats-inventory/status.py
+          test -s deploy/systemd/jobseek-ats-inventory.service
+          test -s deploy/systemd/jobseek-ats-inventory-network.service
+          test -s deploy/systemd/jobseek-ats-inventory.timer
+          cd apps/crawler
+          uv run --frozen pytest \
+            tests/test_ats_inventory.py \
+            tests/test_ats_queue.py \
+            tests/test_ats_inventory_deployment.py -q
+
+      - name: Provision protected inventory source label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create source:ats-inventory \
+            --repo colophon-group/jobseek \
+            --color 1D76DB \
+            --description 'Created by the data-only ATS inventory runner' \
+            --force
+
+      - name: Copy credentials and install over host-key-pinned OpenSSH
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+          ATS_GITHUB_APP_ID: ${{ secrets.ATS_INVENTORY_GITHUB_APP_ID }}
+          ATS_GITHUB_APP_INSTALLATION_ID: ${{ secrets.ATS_INVENTORY_GITHUB_APP_INSTALLATION_ID }}
+          ATS_GITHUB_APP_PRIVATE_KEY: ${{ secrets.ATS_INVENTORY_GITHUB_APP_PRIVATE_KEY }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          expected_tag=current
+          expected_revision=current
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "ERROR: push before-SHA is invalid" >&2
+              exit 1
+            }
+            changed_paths="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")" || {
+              echo "ERROR: could not classify the full push range" >&2
+              exit 1
+            }
+            crawler_changed=0
+            while IFS= read -r path; do
+              case "$path" in
+                apps/crawler/data/*|apps/crawler/traces/*|apps/crawler/ws-package/*) ;;
+                apps/crawler/*.md) ;;
+                apps/crawler/*|.github/workflows/deploy-crawler-browser.yml) crawler_changed=1 ;;
+              esac
+            done <<< "$changed_paths"
+            if (( crawler_changed )); then
+              version_output="$(mktemp)"
+              node scripts/derive-crawler-build-version.mjs \
+                --write-version apps/crawler/VERSION \
+                --github-output "$version_output"
+              expected_tag="$(sed -n 's/^image_tag=//p' "$version_output")"
+              rm -f "$version_output"
+              expected_revision="$GITHUB_SHA"
+            fi
+          fi
+          bash deploy/ats-inventory/deploy-remote.sh \
+            "$GITHUB_SHA" "$expected_tag" "$expected_revision"

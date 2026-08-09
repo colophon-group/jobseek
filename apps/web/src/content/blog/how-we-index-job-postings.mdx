@@ -10,7 +10,7 @@ relatedWatchlists: ["colophongroup/big-tech-jobs-in-switzerland"]
 
 A new role goes up on <Company slug="anthropic" />'s careers page at 10:14 in the morning. By 11:32 it's in our index. By the next time your watchlist refreshes, it's in your feed.
 
-If you want the spec-style summary — exact User-Agent string, request rate per host, retry policy, full ATS list — that's on the [indexing policy page](/en/how-we-index). This post is the story.
+If you want the spec-style summary — current User-Agent behavior, request pacing per host, retry policy, full ATS list — that's on the [indexing policy page](/en/how-we-index). This post is the story.
 
 ## Step 1: a thirty-second handshake
 
@@ -25,7 +25,7 @@ For Anthropic specifically — a Greenhouse board — the monitor hits `https://
 Two rules govern every request the crawler makes:
 
 - **A few seconds between requests to the same host.** Default is 2s, dropping to 0.5s for known-friendly ATS domains. A full board re-check fires at most once an hour. Even at the largest companies in our set, we're never the loudest visitor on the careers page. Concurrency budget per IP, exponential backoff on errors, automatic disable after 5 consecutive failures so a misconfigured or moved board fails loudly instead of silently.
-- **`robots.txt` is binding.** If a company's robots disallows what we're trying to fetch, we stop. We also respect the EU's TDM-Reservation (text and data mining opt-out) header for any companies that emit it. Our User-Agent identifies us — `Job-Seek-Crawler/X.Y +https://jseek.co/how-we-index` — so anyone reading server logs knows exactly who's calling.
+- **`robots.txt` is currently a discovery source.** We read sitemap directives from it; Disallow enforcement is not yet active and the rollout is [tracked publicly](https://github.com/colophon-group/jobseek/issues/2841). We respect the EU's TDM-Reservation (text and data mining opt-out) header for companies that emit it. Most requests use a stable browser-compatible User-Agent because some ATS and WAF paths reject bot UAs; source-specific paths may use an identifying Job Seek UA.
 
 This isn't generosity, it's how you stay welcome over years. The number of companies that have asked us to slow down or stop is small, which is the only metric here that matters.
 
@@ -45,7 +45,7 @@ Some careers pages don't want bots from datacenters. Starbucks's eightfold-hoste
 
 The compromise: a small, transparent set of boards opt into a residential-proxy provider. Boards on the proxy path get rate-limited even more aggressively. If a proxy IP gets blocked by an origin, we lose that IP and don't argue.
 
-We never pretend to be a real user. The User-Agent stays honest. We just route the request through a residential exit so the origin's IP-rep filter doesn't reject it before its content filter has a chance to see who's asking.
+The compatibility trade-off is explicit: residential-proxy paths still use the stable browser-compatible User-Agent. We do not claim that every request is self-identifying; the same pacing, retry budgets, TDM checks, and opt-out channel apply on either egress path.
 
 ## Step 5: from "in the database" to "in your feed"
 

@@ -437,10 +437,8 @@ rate-limit checks (1 Redis call) and response serialization:
 | `GET /api/v1/watchlists` | 2 + 2N | None | `max-age=300` | 40-200ms+ |
 | `POST /api/auth/*` | 1-5 | Session: 5min | None | 20-150ms |
 | `POST /api/stripe/webhook` | 1-2 | None | None | 15-60ms |
-| `POST /api/admin/.../apify-import` | 100+ | None | None | 5-30s |
 
-The admin import route explicitly sets `runtime = "nodejs"` and is the only
-long-running function. All others complete in under 500ms.
+The listed routes typically complete in under 500ms.
 
 ### OG image compute
 
@@ -511,8 +509,6 @@ that caching adds invalidation complexity without a meaningful win.
 
 - Set `maxDuration` in `vercel.json` or per-route to cap runaway functions.
   Default is 10s on Pro plans.
-- The admin import route (`apify-import`) should use `maxDuration: 60` since
-  it's a batch operation.
 - Monitor p99 durations in Vercel's Functions tab — any route consistently
   above 500ms is worth investigating.
 

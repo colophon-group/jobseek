@@ -3,51 +3,88 @@
 import { useEffect, useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { fetchWatchlistPageData, type WatchlistPageData } from "@/lib/actions/watchlist-page-data";
+import { hasAnonJobLanguagesHint, hasLoggedInHint } from "@/lib/client-cookies";
 import { WatchlistSkeleton } from "@/components/search/watchlist-skeleton";
 import { WatchlistViewPage } from "./watchlist-view-page";
+import { WatchlistNotFoundState } from "./watchlist-not-found";
 
 type WatchlistContentProps = {
   lang: string;
   userSlug: string;
   watchlistSlug: string;
+  /** Cache-safe anonymous data, or null when the server confirmed no access. */
+  initialData?: WatchlistPageData | null;
+  /** The server already resolved this specific viewer, so no mount fetch is needed. */
+  viewerResolved?: boolean;
 };
 
-function WatchlistNotFound() {
+function WatchlistNotFound({ lang }: { lang: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <h1 className="text-2xl font-bold">
+    <WatchlistNotFoundState
+      lang={lang}
+      title={
         <Trans
           id="watchlist.notFound.title"
           comment="Heading shown when the watchlist URL doesn't resolve to a public watchlist"
         >
           Watchlist not found
         </Trans>
-      </h1>
-      <p className="mt-2 text-muted">
+      }
+      message={
         <Trans
           id="watchlist.notFound.body"
           comment="Body text for the watchlist-not-found page; explains the watchlist is either gone or private"
         >
           This watchlist does not exist or is not public.
         </Trans>
-      </p>
-    </div>
+      }
+      browseLabel={
+        <Trans
+          id="watchlist.notFound.browse"
+          comment="Recovery action on the watchlist-not-found page"
+        >
+          Browse watchlists
+        </Trans>
+      }
+    />
   );
 }
 
-export function WatchlistContent({ lang, userSlug, watchlistSlug }: WatchlistContentProps) {
-  const [data, setData] = useState<WatchlistPageData | null | "not-found">(null);
+export function WatchlistContent({
+  lang,
+  userSlug,
+  watchlistSlug,
+  initialData,
+  viewerResolved = false,
+}: WatchlistContentProps) {
+  const [data, setData] = useState<WatchlistPageData | null | "not-found">(
+    initialData === null ? "not-found" : (initialData ?? null),
+  );
 
   useEffect(() => {
-    setData(null);
     window.scrollTo(0, 0);
+    if (viewerResolved) {
+      setData(initialData ?? "not-found");
+      return;
+    }
+
+    const needsPersonalizedFetch =
+      hasLoggedInHint() ||
+      hasAnonJobLanguagesHint() ||
+      initialData === undefined;
+    if (!needsPersonalizedFetch) {
+      setData(initialData);
+      return;
+    }
+
+    setData(null);
     fetchWatchlistPageData({ userSlug, watchlistSlug, locale: lang }).then((result) => {
       setData(result ?? "not-found");
     });
-  }, [lang, userSlug, watchlistSlug]);
+  }, [initialData, lang, userSlug, viewerResolved, watchlistSlug]);
 
   if (data === null) return <WatchlistSkeleton />;
-  if (data === "not-found") return <WatchlistNotFound />;
+  if (data === "not-found") return <WatchlistNotFound lang={lang} />;
 
   return (
     <WatchlistViewPage
