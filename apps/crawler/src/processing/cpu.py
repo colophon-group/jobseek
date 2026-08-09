@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import html
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time
@@ -313,16 +314,18 @@ def _parse_update_count(result: object) -> int:
 
 
 def _build_titles(title: str | None, localizations: dict | None) -> list[str]:
-    """Build titles array from primary title + localizations."""
+    """Build decoded, deduplicated titles from primary title + localizations."""
     titles: list[str] = []
     if title:
-        titles.append(title)
+        titles.append(html.unescape(title))
     if localizations and isinstance(localizations, dict):
         for loc_data in localizations.values():
             if isinstance(loc_data, dict):
                 loc_title = loc_data.get("title")
-                if loc_title and loc_title not in titles:
-                    titles.append(loc_title)
+                if isinstance(loc_title, str) and loc_title:
+                    decoded_title = html.unescape(loc_title)
+                    if decoded_title not in titles:
+                        titles.append(decoded_title)
     return titles
 
 

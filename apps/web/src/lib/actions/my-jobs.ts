@@ -2,8 +2,11 @@
 
 import { eq, and, desc, asc, count, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { savedJob, jobPosting, company, applicationInterview } from "@/db/schema";
+import { savedJob, applicationInterview } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
+import { decodeSavedJobSnapshot } from "@/lib/saved-job-snapshot";
+import { fetchIndexedPostingStates } from "@/lib/search/typesense-posting-detail";
+import { logExternalError } from "@/lib/safe-external-error";
 import {
   type ApplicationStatus,
   type InterviewType,
@@ -36,6 +39,14 @@ const LEGAL_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
 };
 
 type SortBy = "status_changed_at" | "saved_at" | "status" | "company_name";
+
+type DatabaseTimestamp = Date | string;
+
+function serializeDatabaseTimestamp(value: DatabaseTimestamp): string {
+  return value instanceof Date
+    ? value.toISOString()
+    : new Date(value).toISOString();
+}
 
 // ── getMyJobs ────────────────────────────────────────────────────────
 
@@ -86,14 +97,14 @@ export async function getMyJobs(params: {
     status_changed_at: savedJob.statusChangedAt,
     saved_at: savedJob.savedAt,
     status: savedJob.status,
-    company_name: company.name,
+    company_name: savedJob.companyName,
   }[sortBy];
 
   const dirFn = sortDir === "asc" ? asc : desc;
 
   const orderClauses = [];
   if (groupByCompany) {
-    orderClauses.push(asc(company.name));
+    orderClauses.push(asc(savedJob.companyName));
   }
   orderClauses.push(dirFn(sortCol));
 
@@ -109,23 +120,21 @@ export async function getMyJobs(params: {
       salaryMaxOverride: savedJob.salaryMaxOverride,
       salaryCurrencyOverride: savedJob.salaryCurrencyOverride,
       salaryPeriodOverride: savedJob.salaryPeriodOverride,
-      postingId: jobPosting.id,
-      postingTitle: sql<string | null>`${jobPosting.titles}[1]`,
-      postingSourceUrl: jobPosting.sourceUrl,
-      postingFirstSeenAt: jobPosting.firstSeenAt,
-      postingIsActive: jobPosting.isActive,
-      postingSalaryMin: jobPosting.salaryMin,
-      postingSalaryMax: jobPosting.salaryMax,
-      postingSalaryCurrency: jobPosting.salaryCurrency,
-      postingSalaryPeriod: jobPosting.salaryPeriod,
-      companyId: company.id,
-      companyName: company.name,
-      companySlug: company.slug,
-      companyIcon: company.icon,
+      postingId: savedJob.jobPostingId,
+      postingTitle: savedJob.postingTitle,
+      postingSourceUrl: savedJob.postingSourceUrl,
+      postingFirstSeenAt: savedJob.postingFirstSeenAt,
+      postingIsActive: savedJob.postingIsActive,
+      postingSalaryMin: savedJob.postingSalaryMin,
+      postingSalaryMax: savedJob.postingSalaryMax,
+      postingSalaryCurrency: savedJob.postingSalaryCurrency,
+      postingSalaryPeriod: savedJob.postingSalaryPeriod,
+      companyId: savedJob.companyId,
+      companyName: savedJob.companyName,
+      companySlug: savedJob.companySlug,
+      companyIcon: savedJob.companyIcon,
     })
     .from(savedJob)
-    .innerJoin(jobPosting, eq(savedJob.jobPostingId, jobPosting.id))
-    .innerJoin(company, eq(jobPosting.companyId, company.id))
     .where(where)
     .orderBy(...orderClauses)
     .offset(offset)
@@ -147,6 +156,9 @@ export async function getMyJobs(params: {
   // Saved jobs with zero interviews are absent from the result and
   // default to count = 0.
   const savedJobIds = rows.map((r) => r.id);
+  const postingStatesPromise = fetchIndexedPostingStates(
+    rows.map((row) => row.postingId),
+  );
   const interviewCounts = new Map<string, number>();
   if (savedJobIds.length > 0) {
     const countRows = await db
@@ -162,38 +174,32 @@ export async function getMyJobs(params: {
       interviewCounts.set(cr.savedJobId, cr.count);
     }
   }
+  const postingStates = await postingStatesPromise;
 
-  const jobs: MyJobEntry[] = rows.map((r) => ({
-    id: r.id,
-    savedAt: r.savedAt.toISOString(),
-    status: r.status as ApplicationStatus,
-    statusChangedAt: r.statusChangedAt.toISOString(),
-    appliedAt: r.appliedAt?.toISOString() ?? null,
-    interviewCount: interviewCounts.get(r.id) ?? 0,
-    posting: {
-      id: r.postingId,
-      title: r.postingTitle,
-      sourceUrl: r.postingSourceUrl,
-      firstSeenAt: r.postingFirstSeenAt.toISOString(),
-      isActive: r.postingIsActive,
-      salaryMin: r.postingSalaryMin,
-      salaryMax: r.postingSalaryMax,
-      salaryCurrency: r.postingSalaryCurrency,
-      salaryPeriod: r.postingSalaryPeriod,
-    },
-    company: {
-      id: r.companyId,
-      name: r.companyName,
-      slug: r.companySlug,
-      icon: r.companyIcon,
-    },
-    salaryOverride: {
-      min: r.salaryMinOverride,
-      max: r.salaryMaxOverride,
-      currency: r.salaryCurrencyOverride,
-      period: r.salaryPeriodOverride,
-    },
-  }));
+  const jobs: MyJobEntry[] = rows.map((r) => {
+    const snapshot = decodeSavedJobSnapshot(r);
+    return {
+      id: r.id,
+      savedAt: r.savedAt.toISOString(),
+      status: r.status as ApplicationStatus,
+      statusChangedAt: r.statusChangedAt.toISOString(),
+      appliedAt: r.appliedAt?.toISOString() ?? null,
+      interviewCount: interviewCounts.get(r.id) ?? 0,
+      posting: {
+        ...snapshot.posting,
+        firstSeenAt: snapshot.posting.firstSeenAt.toISOString(),
+        isActive:
+          postingStates.get(r.postingId)?.isActive ?? snapshot.posting.isActive,
+      },
+      company: snapshot.company,
+      salaryOverride: {
+        min: r.salaryMinOverride,
+        max: r.salaryMaxOverride,
+        currency: r.salaryCurrencyOverride,
+        period: r.salaryPeriodOverride,
+      },
+    };
+  });
 
   return { jobs, total };
 }
@@ -219,41 +225,45 @@ export async function getMyJobDetail(
       salaryMaxOverride: savedJob.salaryMaxOverride,
       salaryCurrencyOverride: savedJob.salaryCurrencyOverride,
       salaryPeriodOverride: savedJob.salaryPeriodOverride,
-      postingId: jobPosting.id,
-      postingTitle: sql<string | null>`${jobPosting.titles}[1]`,
-      postingSourceUrl: jobPosting.sourceUrl,
-      postingFirstSeenAt: jobPosting.firstSeenAt,
-      postingIsActive: jobPosting.isActive,
-      postingSalaryMin: jobPosting.salaryMin,
-      postingSalaryMax: jobPosting.salaryMax,
-      postingSalaryCurrency: jobPosting.salaryCurrency,
-      postingSalaryPeriod: jobPosting.salaryPeriod,
-      companyId: company.id,
-      companyName: company.name,
-      companySlug: company.slug,
-      companyIcon: company.icon,
+      postingId: savedJob.jobPostingId,
+      postingTitle: savedJob.postingTitle,
+      postingSourceUrl: savedJob.postingSourceUrl,
+      postingFirstSeenAt: savedJob.postingFirstSeenAt,
+      postingIsActive: savedJob.postingIsActive,
+      postingSalaryMin: savedJob.postingSalaryMin,
+      postingSalaryMax: savedJob.postingSalaryMax,
+      postingSalaryCurrency: savedJob.postingSalaryCurrency,
+      postingSalaryPeriod: savedJob.postingSalaryPeriod,
+      companyId: savedJob.companyId,
+      companyName: savedJob.companyName,
+      companySlug: savedJob.companySlug,
+      companyIcon: savedJob.companyIcon,
     })
     .from(savedJob)
-    .innerJoin(jobPosting, eq(savedJob.jobPostingId, jobPosting.id))
-    .innerJoin(company, eq(jobPosting.companyId, company.id))
     .where(and(eq(savedJob.id, savedJobId), eq(savedJob.userId, userId)))
     .limit(1);
 
   if (!row) return null;
 
-  const interviewRows = await db
-    .select()
-    .from(applicationInterview)
-    .where(eq(applicationInterview.savedJobId, savedJobId))
-    .orderBy(asc(applicationInterview.round));
+  const [interviewRows, postingStates] = await Promise.all([
+    db
+      .select()
+      .from(applicationInterview)
+      .where(eq(applicationInterview.savedJobId, savedJobId))
+      .orderBy(asc(applicationInterview.round)),
+    fetchIndexedPostingStates([row.postingId]),
+  ]);
 
   const interviews: InterviewEntry[] = interviewRows.map((r) => ({
     id: r.id,
     round: r.round,
     type: r.type as InterviewType,
-    scheduledAt: r.scheduledAt?.toISOString() ?? null,
-    createdAt: r.createdAt.toISOString(),
+    scheduledAt: r.scheduledAt
+      ? serializeDatabaseTimestamp(r.scheduledAt)
+      : null,
+    createdAt: serializeDatabaseTimestamp(r.createdAt),
   }));
+  const snapshot = decodeSavedJobSnapshot(row);
 
   return {
     id: row.id,
@@ -265,22 +275,12 @@ export async function getMyJobDetail(
     rejectedAt: row.rejectedAt?.toISOString() ?? null,
     interviewCount: interviews.length,
     posting: {
-      id: row.postingId,
-      title: row.postingTitle,
-      sourceUrl: row.postingSourceUrl,
-      firstSeenAt: row.postingFirstSeenAt.toISOString(),
-      isActive: row.postingIsActive,
-      salaryMin: row.postingSalaryMin,
-      salaryMax: row.postingSalaryMax,
-      salaryCurrency: row.postingSalaryCurrency,
-      salaryPeriod: row.postingSalaryPeriod,
+      ...snapshot.posting,
+      firstSeenAt: snapshot.posting.firstSeenAt.toISOString(),
+      isActive:
+        postingStates.get(row.postingId)?.isActive ?? snapshot.posting.isActive,
     },
-    company: {
-      id: row.companyId,
-      name: row.companyName,
-      slug: row.companySlug,
-      icon: row.companyIcon,
-    },
+    company: snapshot.company,
     salaryOverride: {
       min: row.salaryMinOverride,
       max: row.salaryMaxOverride,
@@ -402,8 +402,8 @@ export async function addInterview(
         id: string;
         round: number;
         type: string;
-        scheduledAt: Date | null;
-        createdAt: Date;
+        scheduledAt: DatabaseTimestamp | null;
+        createdAt: DatabaseTimestamp;
       }
     | undefined;
   let lastErr: unknown;
@@ -414,8 +414,8 @@ export async function addInterview(
         id: string;
         round: number;
         type: string;
-        scheduled_at: Date | null;
-        created_at: Date;
+        scheduled_at: DatabaseTimestamp | null;
+        created_at: DatabaseTimestamp;
       }>(sql`
         INSERT INTO application_interview (saved_job_id, round, type)
         SELECT
@@ -431,8 +431,8 @@ export async function addInterview(
         id: string;
         round: number;
         type: string;
-        scheduled_at: Date | null;
-        created_at: Date;
+        scheduled_at: DatabaseTimestamp | null;
+        created_at: DatabaseTimestamp;
       }>)[0];
 
       if (!r) {
@@ -466,9 +466,10 @@ export async function addInterview(
     // Exhausted the retry budget without a successful insert. Surface as
     // a soft error so the caller can decide (the UI shows a toast). The
     // server log path picks up the underlying postgres error.
-    console.warn(
-      "[addInterview] failed to assign unique round after retries",
-      { savedJobId, type, lastErr },
+    logExternalError(
+      "warn",
+      { service: "database", operation: "assign_interview_round", retryCount: MAX_ATTEMPTS },
+      lastErr,
     );
     return { ok: false, error: "interview_round_failed" };
   }
@@ -487,8 +488,10 @@ export async function addInterview(
       id: inserted.id,
       round: inserted.round,
       type: inserted.type as InterviewType,
-      scheduledAt: inserted.scheduledAt?.toISOString() ?? null,
-      createdAt: inserted.createdAt.toISOString(),
+      scheduledAt: inserted.scheduledAt
+        ? serializeDatabaseTimestamp(inserted.scheduledAt)
+        : null,
+      createdAt: serializeDatabaseTimestamp(inserted.createdAt),
     },
   };
 }

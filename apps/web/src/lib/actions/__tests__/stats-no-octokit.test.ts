@@ -1,4 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  collections: vi.fn(),
+  search: vi.fn(),
+}));
 
 /**
  * #3193 — Regression guard.
@@ -38,24 +43,20 @@ vi.mock("next/cache", () => ({
   cacheLife: vi.fn(),
 }));
 
-vi.mock("@/db", () => ({
-  db: {
-    select: () => ({
-      from: () => Promise.resolve([{ count: 0 }]),
-    }),
-  },
+vi.mock("@/lib/search/typesense-client", () => ({
+  getSearchClient: () => ({ collections: mocks.collections }),
 }));
 
-vi.mock("@/db/schema", () => ({
-  company: {},
-  jobPosting: { isActive: { name: "is_active" } },
+vi.mock("@/lib/search/typesense-retry", () => ({
+  withTypesenseRetry: (fn: () => Promise<unknown>) => fn(),
 }));
 
-vi.mock("drizzle-orm", () => ({
-  sql: Object.assign((..._args: unknown[]) => ({ _isSql: true }), {
-    raw: (..._args: unknown[]) => ({ _isRaw: true }),
-  }),
-}));
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.collections.mockImplementation(() => ({
+    documents: () => ({ search: mocks.search }),
+  }));
+});
 
 afterEach(() => {
   vi.resetModules();
@@ -67,5 +68,28 @@ describe("stats.ts no longer eagerly pulls octokit (#3193)", () => {
     // the `vi.mock` factory above throws and this import will reject.
     const mod = await import("../stats");
     expect(typeof mod.getSiteStats).toBe("function");
+  });
+
+  it("reads company and active-posting counts from Typesense", async () => {
+    mocks.search
+      .mockResolvedValueOnce({ found: 1_234 })
+      .mockResolvedValueOnce({ found: 56_789 });
+    const { getSiteStats } = await import("../stats");
+
+    await expect(getSiteStats()).resolves.toEqual({
+      companyCount: 1_234,
+      jobPostingCount: 56_789,
+    });
+    expect(mocks.collections).toHaveBeenNthCalledWith(1, "company");
+    expect(mocks.collections).toHaveBeenNthCalledWith(2, "job_posting");
+    expect(mocks.search).toHaveBeenNthCalledWith(1, {
+      q: "*",
+      per_page: 0,
+    });
+    expect(mocks.search).toHaveBeenNthCalledWith(2, {
+      q: "*",
+      filter_by: "is_active:true",
+      per_page: 0,
+    });
   });
 });

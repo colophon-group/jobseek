@@ -9,6 +9,7 @@
  */
 
 import { getWriteClient } from "@/lib/search/typesense-client";
+import { logExternalError } from "@/lib/safe-external-error";
 
 export interface WatchlistDoc {
   id: string;
@@ -36,7 +37,7 @@ export function upsertWatchlist(doc: WatchlistDoc): void {
     .documents()
     .upsert(doc)
     .catch((err) => {
-      console.error("[typesense] failed to upsert watchlist", doc.id, err);
+      logExternalError("error", { service: "typesense", operation: "upsert_watchlist" }, err);
     });
 }
 
@@ -51,7 +52,7 @@ export function deleteWatchlist(watchlistId: string): void {
     .catch((err) => {
       // 404 is fine — the doc may not exist (e.g., was never public)
       if (err?.httpStatus === 404) return;
-      console.error("[typesense] failed to delete watchlist", watchlistId, err);
+      logExternalError("error", { service: "typesense", operation: "delete_watchlist" }, err);
     });
 }
 
@@ -69,6 +70,6 @@ export function updateWatchlistField(
     .catch((err) => {
       // 404 is fine — the doc may not exist yet
       if (err?.httpStatus === 404) return;
-      console.error("[typesense] failed to update watchlist", watchlistId, err);
+      logExternalError("error", { service: "typesense", operation: "update_watchlist" }, err);
     });
 }

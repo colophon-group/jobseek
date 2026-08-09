@@ -6,7 +6,7 @@
 
 | # | Request | Type | Source |
 |---|---------|------|--------|
-| 1 | `/:lang/progress` HTML document | SSR | Serverless function — fetches platform stats |
+| 1 | `/:lang/progress` HTML document | SSR | Serverless function |
 | 2 | Middleware redirect | Edge function | Only if visiting `/progress` without locale prefix |
 | 3-6 | JS chunks | Static (CDN) | Framework + page + CompanyRequestForm |
 | 7 | CSS bundle | Static (CDN) | Tailwind |
@@ -20,12 +20,13 @@
 ## Server-side data fetching (during SSR)
 
 - App layout: `getSession()`, `getPreferences()`, `getSavedJobStatuses()`, `getStarredCompanyIds()`
-- `getSiteStats()` — company count and job posting count
+- The platform counters load after hydration; the SSR path does not query the crawler mirror.
 
 ## Client-side requests (user interaction)
 
 | Request | Type | Trigger |
 |---------|------|---------|
+| Server action: `getSiteStats()` | Serverless function | Page mount; reads company and active-posting counts from Typesense |
 | Server action: company request submission | Serverless function | Submit company request form |
 
 ## Notes
@@ -44,13 +45,14 @@
 | `getPreferences()` | 1 | parallel | None | 10-30ms |
 | `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
 | `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
-| `getSiteStats()` (public) | 2 | parallel | Redis 6h | 10-30ms |
 
-**Total DB queries:** 6 (4 if stats cached)
+**Total DB queries:** 4
 **Estimated function duration:** 30-80ms (warm instance)
 
-Lightest `(app)` page. Public stats (company count + posting count) are
-cached for 6 hours and run in `Promise.all()` — often a single Redis lookup.
+Lightest `(app)` page. Public stats (company count + active-posting count) are
+loaded from Typesense after hydration. The two count-only searches run in
+parallel and are cached per region for hours; a Typesense outage leaves the
+counters as em dashes without a Supabase crawler-mirror fallback.
 
 ## Estimated edge requests
 

@@ -5,31 +5,32 @@ description = "Job listing monitor and extraction crawler"
 requires-python = ">=3.13"
 dependencies = [
     "asyncpg>=0.30",
-    "boto3>=1.35",
+    "boto3>=1.43.53",
     "click>=8.4.2",
     "httpx>=0.28",
     "pydantic-settings>=2.14.2",
     "pyyaml>=6.0",
-    "structlog>=24.4",
+    "structlog>=26.1.0",
     "python-dotenv>=1.2.2",
-    "polars>=1.38.1",
+    "polars>=1.43.2",
     "jmespath>=1.0",
     "upstash-redis>=1.7.0",
     "Pillow>=12.3.0",
     "cairosvg>=2.9.0",
-    "playwright>=1.58.0",
+    "defusedxml>=0.7.1",
+    "playwright>=1.62.0",
     "fast-langdetect>=1.0.1",
-    "prometheus-client>=0.21",
-    "redis>=5.0",
+    "prometheus-client>=0.26.0",
+    "redis>=8.0.1",
     "alembic>=1.18.5",
     "psycopg2-binary>=2.9.12",
     "selectolax>=0.4.11",
-    "pypdf>=6.13.3",
+    "pypdf>=6.15.0",
     "jinja2>=3.1",
-    "huggingface-hub>=1.24.0",
-    "cryptography>=48.0.1",
+    "huggingface-hub>=1.27.0",
+    "cryptography>=50.0.0",
     "typesense>=0.21",
-    "beautifulsoup4>=4.12",
+    "beautifulsoup4>=4.15.0",
     "jsonschema>=4.23",
 ]
 
@@ -39,14 +40,14 @@ ws = "src.workspace.cli:main"
 labeller = "src.labeller.cli:main"
 
 [project.optional-dependencies]
-enrich = ["openai>=2.46.0", "anthropic>=0.116.0", "google-genai>=1.0"]
+enrich = ["openai>=2.53.0", "anthropic>=0.121.0", "google-genai>=2.17.0"]
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
-    "pytest-asyncio>=0.25",
+    "pytest-asyncio>=1.4.0",
     "pytest-timeout>=2.4.0",
-    "ruff>=0.15.4",
+    "ruff>=0.15.22",
     "fakeredis[lua]>=2.36.2",
     "pyright>=1.1.411",
     "pytest-cov>=7.1.0",

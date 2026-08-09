@@ -1,0 +1,46 @@
+[Unit]
+Description=Jobseek web PostgreSQL encrypted logical backup
+Documentation=file:///opt/jobseek-backup/docs/19-data-backup-recovery.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/sbin/jobseek-data-backup
+ConditionPathExists=/etc/jobseek-backup/web-postgresql.env
+ConditionPathExists=/etc/jobseek-backup/web-postgresql.database-url
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=/etc/jobseek-backup/web-postgresql.env
+LoadCredential=web-database-url:/etc/jobseek-backup/web-postgresql.database-url
+Environment=BACKUP_STATUS_DIR=/var/lib/jobseek-backup/status
+Environment=WEB_POSTGRES_STAGING_ROOT=/run/jobseek-backup/web-postgresql
+Environment=WEB_POSTGRES_IMAGE=postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+ExecStart=/usr/local/sbin/jobseek-data-backup web-postgresql
+TimeoutStartSec=2h
+RuntimeDirectory=jobseek-backup/web-postgresql
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ReadWritePaths=/var/lib/jobseek-backup /run
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

@@ -30,6 +30,7 @@ log = structlog.get_logger()
 __all__ = [
     "END_OF_PAGINATION_STATUSES",
     "PaginationFetchError",
+    "ResponseBodyTooLargeError",
     "_RETRYABLE_STATUSES",
     "fetch_json_page_with_retry",
     "fetch_response_with_status_retries",
@@ -120,13 +121,24 @@ class PaginationFetchError(Exception):
         *,
         last_status: int | None = None,
         last_error: str | None = None,
+        last_location: str | None = None,
     ) -> None:
         self.url = url
         self.attempts = attempts
         self.last_status = last_status
         self.last_error = last_error
+        self.last_location = last_location
         detail = f"status={last_status}" if last_status is not None else f"error={last_error}"
         super().__init__(f"pagination fetch failed for {url} after {attempts} attempts ({detail})")
+
+
+class ResponseBodyTooLargeError(Exception):
+    """A streamed response exceeded its caller-supplied decoded-byte cap."""
+
+    def __init__(self, url: str, max_bytes: int) -> None:
+        self.url = url
+        self.max_bytes = max_bytes
+        super().__init__(f"response body for {url} exceeded {max_bytes} bytes")
 
 
 # Explicitly-retryable non-5xx statuses. Anything in the 500–599 range is
@@ -305,6 +317,7 @@ async def fetch_json_page_with_retry(
                     url,
                     attempts=attempt + 1,
                     last_status=resp.status_code,
+                    last_location=resp.headers.get("location"),
                 )
         except (PaginationFetchError, TDMReservedError):
             raise
@@ -339,6 +352,8 @@ async def fetch_text_page_with_retry(
     client: httpx.AsyncClient,
     url: str,
     *,
+    method: _RequestMethod = "GET",
+    content: str | bytes | None = None,
     retries: int = 3,
     base_delay: float = 0.5,
     timeout: float | None = None,
@@ -346,6 +361,10 @@ async def fetch_text_page_with_retry(
     follow_redirects: bool = True,
     retryable_statuses: Collection[int] = (),
     end_of_pagination_statuses: Collection[int] = END_OF_PAGINATION_STATUSES,
+    require_nonempty: bool = False,
+    max_chars: int | None = None,
+    max_bytes: int | None = None,
+    response_headers: dict[str, str] | None = None,
     log_event: str = "http_retry.text_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
 ) -> str | None:
@@ -356,10 +375,28 @@ async def fetch_text_page_with_retry(
     collection so retired endpoints fail explicitly instead of looking like a
     successful empty page. Provider-specific transient statuses can be added
     through ``retryable_statuses`` without weakening the global 4xx policy.
+    ``require_nonempty`` retries empty 200 responses instead of accepting a
+    likely CDN/WAF glitch. ``max_chars`` bounds the returned text after decode;
+    ``max_bytes`` switches to streamed reading and aborts before buffering more
+    than that many decoded response bytes. ``POST`` and the optional response-
+    header sink support form/text pagination protocols while keeping their
+    status, transport, empty-body, TDM, and backoff behavior identical to
+    ordinary GET pages.
     """
-    from src.metrics import http_retry_attempts_total, http_retry_host
+    from src.metrics import (
+        http_retry_attempts_total,
+        http_retry_empty_200_total,
+        http_retry_host,
+    )
     from src.shared.tdm import TDMReservedError
     from src.shared.tdm import check_response as _tdm_check
+
+    if method not in ("GET", "POST"):
+        raise ValueError(f"unsupported retry method: {method!r}")
+    if method == "GET" and content is not None:
+        raise ValueError("GET text-page requests cannot include content")
+    if max_bytes is not None and max_bytes < 1:
+        raise ValueError("max_bytes must be positive")
 
     host = http_retry_host(url)
     last_exc: BaseException | None = None
@@ -368,21 +405,65 @@ async def fetch_text_page_with_retry(
 
     for attempt in range(retries):
         try:
-            resp = await client.get(
-                url,
-                follow_redirects=follow_redirects,
-                timeout=timeout,
-                headers=headers,
-            )
+            text: str | None = None
+            if max_bytes is not None:
+                request_kwargs: dict[str, Any] = {
+                    "follow_redirects": follow_redirects,
+                    "timeout": timeout,
+                    "headers": headers,
+                }
+                if method == "POST":
+                    request_kwargs["content"] = content
+                async with client.stream(method, url, **request_kwargs) as resp:
+                    last_status = resp.status_code
+                    if resp.status_code == 200:
+                        # Check the authoritative HTTP header before reading a
+                        # potentially large body, then inspect the bounded body
+                        # for the HTML meta-policy form after decode.
+                        _tdm_check(resp)
+                        body = bytearray()
+                        async for chunk in resp.aiter_bytes():
+                            remaining = (max_bytes + 1) - len(body)
+                            if remaining > 0:
+                                body.extend(chunk[:remaining])
+                            if len(body) > max_bytes:
+                                raise ResponseBodyTooLargeError(url, max_bytes)
+                        text = bytes(body).decode(resp.encoding or "utf-8", errors="replace")
+                        _tdm_check(resp, body_excerpt=text)
+            elif method == "GET":
+                resp = await client.get(
+                    url,
+                    follow_redirects=follow_redirects,
+                    timeout=timeout,
+                    headers=headers,
+                )
+            else:
+                resp = await client.post(
+                    url,
+                    follow_redirects=follow_redirects,
+                    timeout=timeout,
+                    headers=headers,
+                    content=content,
+                )
             last_status = resp.status_code
             if resp.status_code == 200:
-                _tdm_check(resp, body_excerpt=resp.text)
-                if retried:
-                    http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
-                return resp.text
-            if resp.status_code in end_of_pagination_statuses:
+                if text is None:
+                    text = resp.text
+                    _tdm_check(resp, body_excerpt=text)
+                if not require_nonempty or text:
+                    if response_headers is not None:
+                        response_headers.clear()
+                        response_headers.update(resp.headers)
+                    if retried:
+                        http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+                    return text[:max_chars] if max_chars is not None else text
+                last_exc = None
+                http_retry_empty_200_total.labels(host=host).inc()
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
+            elif resp.status_code in end_of_pagination_statuses:
                 return None
-            if is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
+            elif is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
                 last_exc = None
                 http_retry_attempts_total.labels(host=host, outcome="retry").inc()
                 retried = True
@@ -391,8 +472,9 @@ async def fetch_text_page_with_retry(
                     url,
                     attempts=attempt + 1,
                     last_status=resp.status_code,
+                    last_location=resp.headers.get("location"),
                 )
-        except (PaginationFetchError, TDMReservedError):
+        except (PaginationFetchError, ResponseBodyTooLargeError, TDMReservedError):
             raise
         except Exception as exc:  # noqa: BLE001 - timeout, network, etc.
             last_exc = exc
@@ -431,6 +513,7 @@ async def fetch_with_retry(
     timeout: float | None = None,
     headers: dict | None = None,
     transient_403: bool = False,
+    retryable_statuses: Collection[int] = (),
 ) -> str | None:
     """Fetch ``url`` and return its text body.
 
@@ -472,6 +555,11 @@ async def fetch_with_retry(
     "this URL is permanently blocked, drop it" — silently turning that
     into a hard failure would 5-strike-disable boards on first
     encounter.
+
+    ``retryable_statuses`` lets a caller opt specific non-standard statuses
+    into the same retry-and-fail contract.  SiteGround, for example, serves
+    crawler-IP captcha shells as HTTP 202; a DOM monitor must not record that
+    response as a healthy empty board.
 
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
     retries — exponential with full jitter. Defaults to ~0.5–1s,
@@ -538,7 +626,7 @@ async def fetch_with_retry(
                 )
             elif resp.status_code in END_OF_PAGINATION_STATUSES:
                 return None
-            elif is_retryable_status(resp.status_code):
+            elif is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
                 last_exc = None  # status-only, no exception
                 http_retry_attempts_total.labels(host=host, outcome="retry").inc()
                 retried = True

@@ -1,11 +1,8 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
-import { db } from "@/db";
 import { CACHE_TTL_DETAIL } from "@/lib/cache-ttl";
 import { cached } from "@/lib/cache";
 import { companyDetailCacheKey } from "@/lib/cache-registry";
-import { withDbRetry } from "@/lib/db-retry";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import {
   isRetryableError as isRetryableTypesenseError,
@@ -16,11 +13,9 @@ import {
 import {
   canResolveCompanyBySlugFromEnv,
   isSafeCompanySlug,
-  mapPostgresCompanyRowToDetail,
   mapTypesenseCompanyHitToDetail,
   resolveCompanyBySlug,
   type CompanyDetail,
-  type PostgresCompanyRow,
 } from "@/lib/services/company-detail-lookup";
 
 export type { CompanyDetail } from "@/lib/services/company-detail-lookup";
@@ -30,7 +25,7 @@ export async function getCompanyBySlug(
   locale: string,
 ): Promise<CompanyDetail | null> {
   if (!canResolveCompanyBySlugFromEnv(process.env)) {
-    console.warn("[company] lookup skipped because Typesense and DATABASE_URL are not configured");
+    console.warn("[company] lookup skipped because Typesense is not configured");
     return null;
   }
   const key = companyDetailCacheKey(slug, locale);
@@ -46,8 +41,6 @@ export async function getCompanyBySlug(
 async function fetchCompanyBySlug(slug: string, locale: string): Promise<CompanyDetail | null> {
   return resolveCompanyBySlug(slug, locale, {
     fetchFromTypesense: fetchCompanyBySlugFromTypesense,
-    fetchFromPostgres: fetchCompanyBySlugFromPostgres,
-    hasPostgresConfig: () => Boolean(process.env.DATABASE_URL),
     isTypesenseUnavailableError,
     logger: console,
   });
@@ -79,55 +72,4 @@ async function fetchCompanyBySlugFromTypesense(
   );
   const hit = result.hits?.[0]?.document as Record<string, unknown> | undefined;
   return hit ? mapTypesenseCompanyHitToDetail(hit, slug, locale) : null;
-}
-
-async function fetchCompanyBySlugFromPostgres(
-  slug: string,
-  locale: string,
-): Promise<CompanyDetail | null> {
-  // Retry on transient connection-class errors (#2918): the build that
-  // killed prerender at 2026-05-09T15:41:49Z hit `read ECONNRESET` from
-  // the Supabase pooler on this exact query. The next build 2 min later
-  // succeeded, a flake, not structural break. `withDbRetry` only retries
-  // ECONNRESET / ETIMEDOUT / ECONNREFUSED / EPIPE / "Connection
-  // terminated"-class messages; syntax / constraint / business errors
-  // propagate immediately so the original signal is preserved.
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        name: string;
-        slug: string;
-        icon: string | null;
-        logo: string | null;
-        website: string | null;
-        description: string | null;
-        industry_id: number | null;
-        industry_name: string | null;
-        employee_count_range: number | null;
-        founded_year: number | null;
-      }>(sql`
-        SELECT c.id, c.name, c.slug, c.icon, c.logo, c.website,
-          COALESCE(cd.description, c.description) AS description,
-          c.industry AS industry_id,
-          COALESCE(ind_name.name, i.name) AS industry_name,
-          c.employee_count_range,
-          c.founded_year
-        FROM company c
-        LEFT JOIN industry i ON i.id = c.industry
-        LEFT JOIN company_description cd
-          ON cd.company_id = c.id AND cd.locale = ${locale}
-        LEFT JOIN LATERAL (
-          SELECT name FROM industry_name
-          WHERE industry_id = c.industry AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) ind_name ON c.industry IS NOT NULL
-        WHERE c.slug = ${slug}
-      `),
-    { label: `companyBySlug[${slug}]` },
-  );
-
-  const row = (rows as unknown as PostgresCompanyRow[])[0];
-  return row ? mapPostgresCompanyRowToDetail(row) : null;
 }

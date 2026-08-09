@@ -7,6 +7,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { getAllSeniorities } from "@/lib/actions/taxonomy";
 import type { SeniorityOption } from "@/lib/actions/taxonomy";
+import { FacetCount } from "./facet-count";
 
 interface SeniorityModalProps {
   open: boolean;
@@ -96,9 +97,7 @@ export function SeniorityModal({
                       }`}
                     >
                       <span className="font-medium">{opt.name}</span>
-                      <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-                        ({opt.count})
-                      </span>
+                      <FacetCount count={opt.count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
                     </button>
                   );
                 })}

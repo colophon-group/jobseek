@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { chromium, type Browser } from "playwright";
+import { logExternalError } from "../src/lib/safe-external-error";
 
 const port = Number(process.env.SMOKE_PORT ?? "3100");
 const baseUrl = `http://127.0.0.1:${port}`;
@@ -124,6 +125,6 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  console.error(error);
+  logExternalError("error", { service: "external_http", operation: "smoke_built_app" }, error);
   process.exit(1);
 });

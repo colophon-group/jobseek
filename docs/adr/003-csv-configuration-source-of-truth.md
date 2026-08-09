@@ -36,7 +36,8 @@ the current Git diff workflow.
 ## Consequences
 
 - PRs that change companies or boards should include the CSV diff.
-- Local Postgres and Supabase config rows can be regenerated from CSV sync.
+- Local Postgres config rows can be regenerated from CSV sync; the explicit
+  transition mode copies the resulting identities to the legacy mirror.
 - Ad hoc DB edits to company/board configuration are temporary operational
   repairs unless they are backported to CSV.
 - Murmur MCP tooling must not silently create a second source of truth.

@@ -30,4 +30,29 @@ local removed = redis.call("ZREM", "inflight:" .. wtype, member)
 -- across many successful completions.
 redis.call("HDEL", "inflight_strikes:" .. wtype, member)
 
+-- Scrape config is derived scheduler state and is only useful while the
+-- posting is represented by a queue, lease, or deadletter. Delete it when
+-- completion drains the final representation. The reachability check and
+-- UNLINK are atomic with respect to enqueue/reschedule Lua scripts, which
+-- avoids wiping a concurrent relist or browser reroute.
+if task_type == "scrape" then
+    local config_key = "scrape:" .. task_id
+    local config_domain = redis.call("HGET", config_key, "domain") or domain
+    local simple_member = "scrape|" .. config_domain .. "|" .. task_id
+    local browser_member = simple_member
+    local reachable = (
+        redis.call("ZSCORE", "ft_scrapes_simple:" .. config_domain, task_id) ~= false or
+        redis.call("ZSCORE", "scrapes_simple:" .. config_domain, task_id) ~= false or
+        redis.call("ZSCORE", "ft_scrapes_browser:" .. config_domain, task_id) ~= false or
+        redis.call("ZSCORE", "scrapes_browser:" .. config_domain, task_id) ~= false or
+        redis.call("ZSCORE", "inflight:simple", simple_member) ~= false or
+        redis.call("ZSCORE", "inflight:browser", browser_member) ~= false or
+        redis.call("ZSCORE", "deadletter:simple", simple_member) ~= false or
+        redis.call("ZSCORE", "deadletter:browser", browser_member) ~= false
+    )
+    if not reachable then
+        redis.call("UNLINK", config_key)
+    end
+end
+
 return removed

@@ -10,7 +10,7 @@ relatedWatchlists: ["colophongroup/big-tech-jobs-in-switzerland"]
 
 Une nouvelle offre apparaît à 10h14 le matin sur la page carrière d'<Company slug="anthropic" />. À 11h32 elle est dans notre index. Au prochain rafraîchissement de votre watchlist, elle est dans votre flux.
 
-Si vous voulez le résumé façon spécifications — chaîne User-Agent exacte, fréquence des requêtes par hôte, politique de retry, liste complète des ATS — c'est sur la [page de politique d'indexation](/fr/how-we-index). Cet article raconte l'histoire.
+Si vous voulez le résumé façon spécifications — comportement actuel du User-Agent, rythme des requêtes par hôte, politique de retry, liste complète des ATS — c'est sur la [page de politique d'indexation](/fr/how-we-index). Cet article raconte l'histoire.
 
 ## Étape 1 : une poignée de main de trente secondes
 
@@ -25,7 +25,7 @@ Pour Anthropic précisément — un board Greenhouse — le moniteur appelle `ht
 Deux règles régissent chaque requête du crawler :
 
 - **Quelques secondes entre requêtes au même hôte.** 2s par défaut, descendant à 0,5s pour les domaines ATS connus pour être tolérants. Un re-check complet d'un board se déclenche au plus une fois par heure. Même chez les plus grandes entreprises de notre liste, nous ne sommes jamais le visiteur le plus bruyant de la page carrière. Budget de concurrence par IP, backoff exponentiel sur erreur, désactivation automatique après 5 échecs consécutifs, pour qu'un board mal configuré ou déplacé échoue bruyamment plutôt que silencieusement.
-- **`robots.txt` fait foi.** Si la robots.txt d'une entreprise interdit ce que nous tentons de récupérer, nous arrêtons. Nous respectons aussi l'en-tête TDM-Reservation européen (opt-out pour le text and data mining) pour toute entreprise qui l'émet. Notre User-Agent nous identifie — `Job-Seek-Crawler/X.Y +https://jseek.co/how-we-index` — pour que quiconque lit les logs du serveur sache exactement qui appelle.
+- **`robots.txt` sert actuellement à la découverte.** Nous y lisons les directives de sitemap ; l'application des règles Disallow n'est pas encore active et son déploiement est [suivi publiquement](https://github.com/colophon-group/jobseek/issues/2841). Nous respectons l'en-tête TDM-Reservation européen (opt-out pour le text and data mining) pour les entreprises qui l'émettent. La plupart des requêtes utilisent un User-Agent stable et compatible avec les navigateurs, car certains chemins ATS et WAF rejettent les UA de robots ; certains chemins propres à une source peuvent utiliser un UA Job Seek identifiable.
 
 Ce n'est pas de la générosité, c'est ainsi qu'on reste bienvenu sur la durée. Le nombre d'entreprises qui nous ont demandé de ralentir ou de cesser est faible — c'est la seule métrique qui compte ici.
 
@@ -45,7 +45,7 @@ Certaines pages carrière ne veulent pas de bots provenant de datacenters. Le bo
 
 Le compromis : un petit ensemble transparent de boards opte pour un fournisseur de proxy résidentiel. Les boards sur la voie proxy sont rate-limités encore plus strictement. Si une IP proxy se fait bloquer par une origine, nous perdons cette IP et nous ne discutons pas.
 
-Nous ne nous faisons jamais passer pour un vrai utilisateur. Le User-Agent reste honnête. Nous routons simplement la requête par une sortie résidentielle pour que le filtre de réputation IP de l'origine ne la rejette pas avant que son filtre de contenu ait une chance de voir qui appelle.
+Le compromis de compatibilité est explicite : les chemins passant par des proxys résidentiels utilisent eux aussi le User-Agent stable et compatible avec les navigateurs. Nous ne prétendons pas que chaque requête s'identifie ; le même rythme, les mêmes budgets de retry, contrôles TDM et canal d'opt-out s'appliquent aux deux chemins de sortie.
 
 ## Étape 5 : de « dans la base » à « dans votre flux »
 

@@ -14,7 +14,7 @@ import structlog
 dotenv.load_dotenv(".env.local")
 dotenv.load_dotenv(".env")
 
-from src.db import close_pool, create_pool  # noqa: E402
+from src.db import close_all_pools, create_local_pool  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
 from src.sync import run_sync  # noqa: E402
 
@@ -36,7 +36,7 @@ async def main() -> None:
     await run_sync()
 
     # Re-open pool (run_sync closes it)
-    pool = await create_pool()
+    pool = await create_local_pool()
     try:
         rows = await pool.fetch(_RESET_NEXT_CHECK, "meta-careers")
         if rows:
@@ -45,7 +45,7 @@ async def main() -> None:
         else:
             log.error("seed_meta.not_found", board_slug="meta-careers")
     finally:
-        await close_pool()
+        await close_all_pools()
 
 
 if __name__ == "__main__":

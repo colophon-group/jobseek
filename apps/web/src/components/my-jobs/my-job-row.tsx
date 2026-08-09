@@ -5,6 +5,7 @@ import { timeAgoShort } from "@/lib/time";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 import type { MyJobEntry } from "@/lib/actions/my-jobs";
+import { useLingui } from "@lingui/react/macro";
 
 interface MyJobRowProps {
   entry: MyJobEntry;
@@ -17,6 +18,8 @@ export function MyJobRow({
   isSelected,
   onSelect,
 }: MyJobRowProps) {
+  const { i18n } = useLingui();
+
   return (
     <div
       role="button"
@@ -45,7 +48,7 @@ export function MyJobRow({
         suppressHydrationWarning
         className="w-8 shrink-0 text-right text-[10px] tabular-nums text-muted"
       >
-        {timeAgoShort(entry.statusChangedAt)}
+        {timeAgoShort(entry.statusChangedAt, i18n.locale)}
       </span>
 
       <TrackingDot postingId={entry.posting.id} />

@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => ({
     (_key: string, fetcher: () => Promise<unknown>, _options: unknown) => fetcher(),
   ),
   search: vi.fn(),
-  dbExecute: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -17,11 +16,6 @@ vi.mock("@/lib/search/typesense-client", () => ({
   getSearchClient: () => ({
     collections: () => ({ documents: () => ({ search: mocks.search }) }),
   }),
-}));
-vi.mock("@/db", () => ({ db: { execute: mocks.dbExecute } }));
-vi.mock("drizzle-orm", () => ({
-  sql: (strings: TemplateStringsArray, ..._values: unknown[]) =>
-    strings.join("?"),
 }));
 vi.mock("@/lib/search/typesense-retry", () => ({
   isRetryableError: (err: unknown) =>
@@ -53,11 +47,8 @@ vi.mock("@/lib/search/typesense-retry", () => ({
 import { getCompanyBySlug } from "../company-detail";
 
 const searchMock = mocks.search;
-const dbExecuteMock = mocks.dbExecute;
 const cachedMock = mocks.cached;
 const TEST_ENV = {
-  DATABASE_URL:
-    process.env.DATABASE_URL ?? "postgresql://test:test@localhost:5432/test",
   TYPESENSE_HOST: process.env.TYPESENSE_HOST ?? "localhost",
   TYPESENSE_PORT: process.env.TYPESENSE_PORT ?? "8108",
   TYPESENSE_PROTOCOL: process.env.TYPESENSE_PROTOCOL ?? "http",
@@ -80,20 +71,6 @@ const hit = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const pgRow = {
-  id: "co-1",
-  name: "Acme Corp",
-  slug: "acme",
-  icon: null,
-  logo: null,
-  website: null,
-  description: "From Postgres",
-  industry_id: 7,
-  industry_name: "Software",
-  employee_count_range: 3,
-  founded_year: 2015,
-};
-
 withTestEnv(TEST_ENV);
 
 beforeEach(() => {
@@ -102,7 +79,6 @@ beforeEach(() => {
     (_key: string, fetcher: () => Promise<unknown>, _options: unknown) => fetcher(),
   );
   searchMock.mockReset();
-  dbExecuteMock.mockReset();
 });
 
 describe("getCompanyBySlug", () => {
@@ -126,7 +102,6 @@ describe("getCompanyBySlug", () => {
 
   it("returns null on miss without throwing a cache-boundary sentinel", async () => {
     searchMock.mockResolvedValue({ hits: [] });
-    dbExecuteMock.mockResolvedValue([]);
 
     const out = await getCompanyBySlug("ghost-slug", "en");
 
@@ -152,27 +127,28 @@ describe("getCompanyBySlug", () => {
     expect(out).toBeNull();
     expect(cachedMock).not.toHaveBeenCalled();
     expect(searchMock).not.toHaveBeenCalled();
-    expect(dbExecuteMock).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
-      "[company] lookup skipped because Typesense and DATABASE_URL are not configured",
+      "[company] lookup skipped because Typesense is not configured",
     );
     warnSpy.mockRestore();
   });
 
-  it("retries the Postgres query on transient ECONNRESET", async () => {
-    searchMock.mockRejectedValue(new Error("TYPESENSE_SEARCH_KEY is not set"));
-    const econn = new Error("read ECONNRESET") as Error & { code: string };
-    econn.code = "ECONNRESET";
-    dbExecuteMock
-      .mockRejectedValueOnce(econn)
-      .mockResolvedValueOnce([pgRow]);
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("returns null and reports explicit degradation when Typesense is unavailable", async () => {
+    const error = new Error("TYPESENSE_SEARCH_KEY is not set");
+    searchMock.mockRejectedValue(error);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const out = await getCompanyBySlug("acme", "en");
 
-    expect(out?.description).toBe("From Postgres");
-    expect(dbExecuteMock).toHaveBeenCalledTimes(2);
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(out).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[company] Typesense unavailable; company detail degraded to not found",
+      expect.objectContaining({
+        event: "external_client_error",
+        service: "typesense",
+        operation: "company_detail_lookup",
+      }),
+    );
+    errorSpy.mockRestore();
   });
 });

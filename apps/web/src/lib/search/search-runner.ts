@@ -20,6 +20,7 @@ import {
   ANON_MAX_POSTINGS,
   ANON_MAX_WATCHLIST_POSTINGS,
 } from "./constants";
+import { logExternalError } from "@/lib/safe-external-error";
 
 type SearchInput = SearchFilters & { keywords: string[]; offset: number; limit: number };
 type ListInput = SearchFilters & { offset: number; limit: number };
@@ -71,7 +72,7 @@ export async function runSearchJobs(
       const result = await provider.search(params);
       if (!result.degraded) return applyAnonCap(result, params.offset, isLoggedIn);
     } catch (err) {
-      console.error("[search-runner] browser searchJobs failed, falling back", err);
+      logExternalError("error", { service: "typesense", operation: "browser_search_jobs" }, err);
     }
   }
   return serverSearchJobs(params);
@@ -90,7 +91,11 @@ export async function runListTopCompanies(
       const result = await provider.listTopCompanies(params);
       if (!result.degraded) return applyAnonCap(result, params.offset, isLoggedIn);
     } catch (err) {
-      console.error("[search-runner] browser listTopCompanies failed, falling back", err);
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "browser_list_top_companies" },
+        err,
+      );
     }
   }
   return serverListTopCompanies(params);
@@ -134,7 +139,11 @@ export async function runGetWatchlistPostings(
           : undefined;
       return truncated ? { ...result, truncated } : result;
     } catch (err) {
-      console.error("[search-runner] browser getWatchlistPostings failed, falling back", err);
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "browser_watchlist_postings" },
+        err,
+      );
     }
   }
   return serverGetWatchlistPostings(params);
@@ -172,7 +181,11 @@ export async function runGetCompanyPostings(
       }
       return result;
     } catch (err) {
-      console.error("[search-runner] browser getCompanyPostings failed, falling back", err);
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "browser_company_postings" },
+        err,
+      );
     }
   }
   return serverGetCompanyPostings(params);

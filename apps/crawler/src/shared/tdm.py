@@ -1,7 +1,7 @@
 """TDM-Reservation respect — W3C Text-and-Data-Mining opt-out (#2842).
 
 Every shared fetch helper in :mod:`src.shared.http_retry` and the
-per-monitor retry helpers (workday, lever, smartrecruiters, hireology,
+per-monitor retry helpers (workday, lever, smartrecruiters, hirehive, hireology,
 api_sniffer, accenture, umantis, dom-browser-page) inspect each upstream
 response for two TDM-Reservation signals:
 

@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 
 from src.shared.api_sniff import (
+    ApiSnifferDomUnavailableError,
     ArrayCandidate,
     Exchange,
     JobListResult,
@@ -30,6 +32,7 @@ from src.shared.api_sniff import (
     score_candidate,
     set_body_param,
     set_url_param,
+    trigger_interactions,
 )
 
 
@@ -46,6 +49,38 @@ def _make_exchange(
         content_type="application/json",
         phase=phase,
     )
+
+
+class TestTriggerInteractions:
+    @pytest.mark.asyncio
+    async def test_rejects_missing_document_body_with_stable_error(self):
+        page = AsyncMock()
+        page.evaluate.return_value = False
+
+        with pytest.raises(
+            ApiSnifferDomUnavailableError,
+            match="require a usable document body",
+        ):
+            await trigger_interactions(page, [])
+
+        page.click.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_scroll_race_does_not_dereference_null_body(self):
+        page = AsyncMock()
+        page.evaluate.side_effect = [True, None, False]
+        page.click.side_effect = RuntimeError("selector absent")
+        exchanges = [_make_exchange(), _make_exchange()]
+
+        with pytest.raises(
+            ApiSnifferDomUnavailableError,
+            match="require a usable document body",
+        ):
+            await trigger_interactions(page, exchanges)
+
+        scroll_script = page.evaluate.await_args_list[-1].args[0]
+        assert "document.scrollingElement" in scroll_script
+        assert "if (!root) return false" in scroll_script
 
 
 class TestFindArrays:
@@ -239,6 +274,46 @@ class TestDetectJobList:
         assert result.url_field == "url"
         assert result.total_count == 100
 
+    def test_prefers_bamboohr_jobs_over_currency_reference_data(self):
+        currency_items = [
+            {"id": i, "code": f"C{i}", "name": f"Currency {i}", "symbol": "$"} for i in range(20)
+        ]
+        job_items = [
+            {
+                "id": str(i),
+                "jobOpeningName": f"Engineer {i}",
+                "departmentLabel": "Engineering",
+                "employmentStatusLabel": "Full-Time",
+                "location": {"city": "Sheffield", "state": "South Yorkshire"},
+                "locationType": "0",
+            }
+            for i in range(10)
+        ]
+        currency = _make_exchange(
+            url="https://example.bamboohr.com/ajax/get_currency",
+            body={"data": currency_items},
+        )
+        careers = _make_exchange(
+            url="https://example.bamboohr.com/careers/list",
+            body={"meta": {"totalCount": 10}, "result": job_items},
+        )
+
+        result = detect_job_list(
+            [currency, careers],
+            "https://example.bamboohr.com/careers",
+        )
+
+        assert result is not None
+        assert result.candidate.exchange.url.endswith("/careers/list")
+        assert result.candidate.json_path == "result"
+        assert auto_map_fields(result.candidate.items) == {
+            "title": "jobOpeningName",
+            "employment_type": "employmentStatusLabel",
+            "job_location_type": "locationType",
+            "locations": "location.city",
+            "metadata.team": "departmentLabel",
+        }
+
     def test_returns_none_no_exchanges(self):
         assert detect_job_list([], "https://example.com") is None
 
@@ -344,6 +419,25 @@ class TestAutoMapFields:
         ]
         mapping = auto_map_fields(items)
         assert mapping.get("locations") == "offices[].name"
+
+    def test_adp_nested_requisition_locations(self):
+        items = [
+            {
+                "jobTitle": "Cloud Administrator",
+                "requisitionLocations": [
+                    {
+                        "nameCode": {
+                            "codeValue": "153",
+                            "longName": "Virginia - Fairfax",
+                        }
+                    }
+                ],
+            }
+        ]
+
+        mapping = auto_map_fields(items)
+
+        assert mapping["locations"] == "requisitionLocations[].nameCode.longName"
 
     def test_location_array_of_strings(self):
         items = [
@@ -542,6 +636,24 @@ class TestFetchFactories:
 
         assert result == {"jobs": items}
         mock_page.evaluate.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_make_browser_fetcher_raises_http_status_error(self):
+        """The browser bridge preserves status for the shared retry classifier."""
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(
+            return_value={
+                "status": 429,
+                "headers": {"content-type": "application/json"},
+                "text": json.dumps({"error": "rate limited"}),
+            }
+        )
+
+        fetch_fn = make_browser_fetcher(mock_page)
+        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+            await fetch_fn("POST", "https://example.com/api", {}, "{}")
+
+        assert exc_info.value.response.status_code == 429
 
     @pytest.mark.asyncio
     async def test_make_http_fetcher_delegates_to_client(self):

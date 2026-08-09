@@ -196,7 +196,20 @@ Rationale: the dataset's purpose is to *train* a canonicalizer that is better th
 
 ## Sampling
 
-`labeller sample --date {{date}} --count N` queries the crawler's local Postgres for postings with `first_seen_at` in the last 24h, groups by company, samples one per company until reaching N (or exhausting companies), then fills with a weighted tail drawing under-represented postings. Sampler is deterministic given a seed so runs can be replayed.
+`labeller sample --date {{date}} --count N` queries the crawler's local
+Postgres for active postings with `first_seen_at` in the last 24h, ordered by
+`first_seen_at DESC, id`. It groups by company, samples one per company until
+reaching N (or exhausting companies), then fills with a weighted tail drawing
+under-represented postings. The UUID tie-breaker makes the database input order
+stable, so the sampler is deterministic given a seed and runs can be replayed.
+
+Migration `0014` owns the matching partial btree
+`idx_jp_active_first_seen (first_seen_at DESC, id) WHERE is_active`. It is
+created and dropped concurrently. The PostgreSQL E2E suite loads a large old
+active population and uses `EXPLAIN (ANALYZE, BUFFERS)` to reject sequential
+scans, explicit sorts, or a plan that does not use this index. Keep that plan
+guard aligned with `SAMPLE_CANDIDATES_SQL` when changing the sampling window or
+ordering.
 
 ## PII and legal posture (public repo)
 
@@ -220,6 +233,12 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
 - Do not add a GitHub Actions or Claude-compatible schedule for this routine.
   The scheduled production path is the Hetzner Codex runner; the slash command
   remains a manual compatibility route only.
+- The orchestrator's final response ends with one
+  `JOBSEEK_ROUTINE_RESULT=<json>` line. A failed result names the first failing
+  phase and a concise redacted causal error. The runner records that cause
+  first and appends remote upload verification only as downstream evidence;
+  the absence of `data/<date>.jsonl` must never mask an earlier sampler,
+  validator, or model failure.
 
 ### Dependencies
 

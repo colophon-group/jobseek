@@ -1,0 +1,43 @@
+name: Set up deterministic web build environment
+description: Export secretless build-time configuration for web CI jobs.
+
+inputs:
+  app-url:
+    description: Local URL used by Better Auth while the test server is running.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Export build-time configuration
+      shell: bash
+      env:
+        APP_URL: ${{ inputs.app-url }}
+      run: |
+        {
+          # Backing services are intentionally absent. Company and watchlist
+          # lookups then exercise their supported build-time fallback instead
+          # of reaching production or treating an invalid placeholder as a DSN.
+          echo 'DATABASE_URL='
+          echo 'DATABASE_URL_UNPOOLED='
+          echo 'TYPESENSE_HOST='
+          echo 'TYPESENSE_PORT='
+          echo 'TYPESENSE_PROTOCOL='
+
+          # These values satisfy module-level configuration reads only. They
+          # cannot authenticate to any external service.
+          echo 'BETTER_AUTH_SECRET=ci-stub-better-auth-secret-not-used-at-build-time'
+          echo "BETTER_AUTH_URL=$APP_URL"
+          echo 'TYPESENSE_SEARCH_KEY=ci-stub-not-used-at-build-time'
+          echo 'TYPESENSE_WRITE_KEY=ci-stub-not-used-at-build-time'
+          echo 'GITHUB_CLIENT_ID=ci-stub'
+          echo 'GITHUB_CLIENT_SECRET=ci-stub'
+          echo 'GOOGLE_CLIENT_ID=ci-stub'
+          echo 'GOOGLE_CLIENT_SECRET=ci-stub'
+          echo 'LINKEDIN_CLIENT_ID=ci-stub'
+          echo 'LINKEDIN_CLIENT_SECRET=ci-stub'
+          echo 'RESEND_API_KEY=ci-stub'
+          echo 'UPSTASH_REDIS_REST_URL=https://stub.invalid'
+          echo 'UPSTASH_REDIS_REST_TOKEN=ci-stub'
+          echo 'COMPANY_OG_PRERENDER_TOP_N=0'
+        } >> "$GITHUB_ENV"

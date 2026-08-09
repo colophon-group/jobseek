@@ -20,6 +20,15 @@ def _reset_connection(port: int) -> None:
     sock.close()
 
 
+def test_metrics_listener_defaults_to_loopback() -> None:
+    server, _thread = _start_metrics_http_server(0)
+    try:
+        assert server.server_address[0] == "127.0.0.1"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def test_metrics_client_reset_does_not_emit_traceback():
     """A peer reset before the request line is expected scrape noise (#5354)."""
     stderr = io.StringIO()

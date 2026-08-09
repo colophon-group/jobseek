@@ -3,6 +3,7 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Trans } from "@lingui/react/macro";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
+import { FacetCount } from "./facet-count";
 
 interface DisabledFilterPillProps {
   /** Display name (e.g. "Berlin"). */
@@ -22,8 +23,6 @@ interface DisabledFilterPillProps {
   variant?: "pill" | "parent" | "country" | "region" | "domain";
   /** Optional left-side icon (e.g. country flag). Only rendered for `country` variant. */
   leftAdornment?: React.ReactNode;
-  /** Auxiliary count rendered after the name (e.g. parent + children sum). */
-  auxText?: string;
 }
 
 /**
@@ -39,7 +38,6 @@ export function DisabledFilterPill({
   ancestorName,
   variant = "pill",
   leftAdornment,
-  auxText,
 }: DisabledFilterPillProps) {
   const baseClass = (() => {
     switch (variant) {
@@ -70,14 +68,14 @@ export function DisabledFilterPill({
           >
             {leftAdornment}
             <span>{name}</span>
-            {auxText && (
-              <span className="ml-1 text-xs font-normal text-muted">{auxText}</span>
-            )}
             {count != null && variant === "pill" && (
-              <span className="text-xs text-muted">({count})</span>
+              <FacetCount count={count} className="text-xs text-muted" />
+            )}
+            {count != null && variant === "parent" && (
+              <FacetCount count={count} className="ml-1 text-xs font-normal text-muted" />
             )}
             {count != null && (variant === "country" || variant === "region" || variant === "domain") && (
-              <span className="ml-1 text-[10px] font-normal normal-case text-muted">({count})</span>
+              <FacetCount count={count} className="ml-1 text-[10px] font-normal normal-case text-muted" />
             )}
           </button>
         </Tooltip.Trigger>

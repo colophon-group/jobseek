@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Jobseek ATS inventory candidate runner daily
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 UTC
+Persistent=true
+RandomizedDelaySec=45m
+AccuracySec=5m
+Unit=jobseek-ats-inventory.service
+
+[Install]
+WantedBy=timers.target
