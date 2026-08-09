@@ -26,12 +26,12 @@
     "@types/node": "^22",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitest/ui": "^4.1.9",
+    "@vitest/ui": "^4.1.10",
     "eslint": "^9.39.3",
     "happy-dom": "^20.8.9",
     "typescript": "^5",
     "typescript-eslint": "^8.65.0",
-    "vitest": "^4.1.9",
+    "vitest": "^4.1.10",
     "yaml": "^2.6.1"
   }
 }
