@@ -496,6 +496,47 @@ class TestInventoryCompleteness:
                 ]
 
 
+class TestFacetedPagination:
+    async def test_large_site_paginates_facets_with_bounded_concurrency(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        active = 0
+        max_active = 0
+        facet_ids = [f"location-{i}" for i in range(12)]
+
+        async def fake_paginate(list_url, body, client, *, cap_abort=0):
+            nonlocal active, max_active
+            if not body:
+                return (
+                    ["/first-page"],
+                    2000,
+                    [
+                        {
+                            "facetParameter": "location",
+                            "values": [
+                                {"id": facet_id, "count": 1} for facet_id in facet_ids
+                            ],
+                        }
+                    ],
+                )
+
+            facet_id = body["appliedFacets"]["location"][0]
+            active += 1
+            max_active = max(max_active, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+            return [f"/job/{facet_id}"], 1, []
+
+        monkeypatch.setattr(wd_module, "_paginate_query", fake_paginate)
+
+        async with httpx.AsyncClient() as client:
+            paths, truncated = await _api_list("co", "wd1", "Site", client)
+
+        assert set(paths) == {f"/job/{facet_id}" for facet_id in facet_ids}
+        assert truncated is False
+        assert max_active == wd_module._FACET_CONCURRENCY
+
+
 class TestDiscover:
     async def test_returns_urls(self):
         def handler(request):
